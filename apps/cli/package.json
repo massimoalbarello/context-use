@@ -4,17 +4,21 @@
   "private": true,
   "type": "module",
   "bin": {
-    "context-use": "./src/index.ts"
+    "context-use": "./src/main.ts"
   },
   "scripts": {
-    "dev": "bun src/index.ts",
-    "build": "bun build src/index.ts --compile --outfile dist/context-use",
-    "typecheck": "tsc --noEmit",
+    "dev": "bun src/main.ts",
+    "build": "bun build src/main.ts --compile --outfile dist/context-use",
+    "codegen": "parsh-codegen generate --commands src/commands --out src/command-tree.gen.ts",
+    "typecheck": "bun run codegen && tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",
-    "commander": "15.0.0",
+    "@parshjs/core": "0.0.10",
     "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@parshjs/codegen": "0.0.5"
   }
 }
