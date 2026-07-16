@@ -40,6 +40,14 @@ exports="$(jq -rn \
 
 remote_script="$(cat <<REMOTE
 set -euo pipefail
+cleanup() {
+  rm -f /tmp/context-use-deploy.sh /tmp/context-use-verify.sh
+}
+trap cleanup EXIT
+if ! timeout 600 bash -c 'until command -v aws >/dev/null 2>&1 && command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 && mountpoint -q /data && [ -d /data/context-use ]; do sleep 5; done'; then
+  echo 'EC2 bootstrap did not finish within 10 minutes' >&2
+  exit 1
+fi
 if [ -f /data/context-use/secrets/runtime.env ] && [ -f /opt/context-use/deploy/docker-compose.yml ]; then
   cd /opt/context-use/deploy
   docker compose --env-file /data/context-use/secrets/runtime.env run --rm backup once
@@ -50,7 +58,6 @@ chmod 0700 /tmp/context-use-deploy.sh /tmp/context-use-verify.sh
 ${exports}
 /tmp/context-use-deploy.sh
 /tmp/context-use-verify.sh
-rm -f /tmp/context-use-deploy.sh /tmp/context-use-verify.sh
 REMOTE
 )"
 

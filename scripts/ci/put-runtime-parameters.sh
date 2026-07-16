@@ -13,6 +13,9 @@ set -euo pipefail
 : "${CLOUDWATCH_LOG_GROUP:?CLOUDWATCH_LOG_GROUP is required}"
 : "${BACKUP_RETENTION_DAYS:?BACKUP_RETENTION_DAYS is required}"
 
+parameter_tmpdir="$(mktemp -d)"
+trap 'rm -rf "$parameter_tmpdir"' EXIT
+
 parameter_exists() {
   aws ssm get-parameter --name "${PARAMETER_PREFIX}/$1" >/dev/null 2>&1
 }
@@ -21,7 +24,7 @@ put_parameter() {
   local name="$1"
   local value="$2"
   local input
-  input="$(mktemp)"
+  input="${parameter_tmpdir}/input.json"
   chmod 0600 "$input"
   jq -cn \
     --arg name "${PARAMETER_PREFIX}/${name}" \

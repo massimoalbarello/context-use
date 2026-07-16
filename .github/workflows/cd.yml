@@ -78,8 +78,9 @@ jobs:
       app_hostname: ${{ steps.config.outputs.app_hostname }}
       installation_id: ${{ steps.config.outputs.installation_id }}
       instance_id: ${{ steps.compute_outputs.outputs.instance_id }}
-      state_bucket: ${{ steps.config.outputs.state_bucket }}
-      state_kms_key_arn: ${{ steps.state.outputs.state_kms_key_arn }}
+      deployment_artifact_bucket: ${{ steps.data_outputs.outputs.deployment_artifact_bucket }}
+      data_kms_key_arn: ${{ steps.data_outputs.outputs.kms_key_arn }}
+      github_deploy_role_arn: ${{ steps.data_outputs.outputs.github_deploy_role_arn }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
@@ -143,7 +144,10 @@ jobs:
             -var="installation_id=${{ steps.config.outputs.installation_id }}" \
             -var="app_hostname=${{ steps.config.outputs.app_hostname }}" \
             -var="data_volume_size_gb=50" \
-            -var="backup_retention_days=30"
+            -var="backup_retention_days=30" \
+            -var="enable_github_deploy=true" \
+            -var="github_repo=${GITHUB_REPOSITORY}" \
+            -var="github_branch=main"
       - name: Block unexpected retained-data destruction
         if: inputs.allow_destroy != true
         run: scripts/ci/check-terraform-destroy-plan.sh infra/data/tfplan
@@ -157,6 +161,8 @@ jobs:
             echo "kms_key_arn=$(terraform -chdir=infra/data output -raw kms_key_arn)"
             echo "asset_bucket=$(terraform -chdir=infra/data output -raw asset_bucket)"
             echo "backup_bucket=$(terraform -chdir=infra/data output -raw backup_bucket)"
+            echo "deployment_artifact_bucket=$(terraform -chdir=infra/data output -raw deployment_artifact_bucket)"
+            echo "github_deploy_role_arn=$(terraform -chdir=infra/data output -raw github_deploy_role_arn)"
           } >> "$GITHUB_OUTPUT"
       - name: Initialize compute state
         run: |
@@ -211,13 +217,17 @@ jobs:
           BACKUP_RETENTION_DAYS: "30"
         run: scripts/ci/put-runtime-parameters.sh
       - name: Terraform outputs
+        env:
+          APP_HOSTNAME: ${{ steps.config.outputs.app_hostname }}
+          INSTALLATION_ID: ${{ steps.config.outputs.installation_id }}
+          PUBLIC_IP: ${{ steps.compute_outputs.outputs.public_ip }}
         run: |
           {
             echo '## Production infrastructure'
             echo
-            echo '- Installation: `${{ steps.config.outputs.installation_id }}`'
-            echo '- Public IP: `${{ steps.compute_outputs.outputs.public_ip }}`'
-            echo '- Application: `https://${{ steps.config.outputs.app_hostname }}`'
+            printf '%s\n' "- Installation: \`${INSTALLATION_ID}\`"
+            printf '%s\n' "- Public IP: \`${PUBLIC_IP}\`"
+            printf '%s\n' "- Application: \`https://${APP_HOSTNAME}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
@@ -225,15 +235,23 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Verify deployment images are publicly pullable
+        env:
+          CONTEXT_USE_APP_IMAGE: ${{ needs.images.outputs.app }}
+          CONTEXT_USE_BACKUP_IMAGE: ${{ needs.images.outputs.backup }}
+        run: |
+          docker buildx imagetools inspect "$CONTEXT_USE_APP_IMAGE" >/dev/null
+          docker buildx imagetools inspect "$CONTEXT_USE_BACKUP_IMAGE" >/dev/null
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          role-to-assume: ${{ needs.infrastructure.outputs.github_deploy_role_arn }}
           aws-region: ${{ env.AWS_REGION }}
       - name: Package, back up, and deploy through SSM
         env:
-          STATE_BUCKET: ${{ needs.infrastructure.outputs.state_bucket }}
-          STATE_KMS_KEY_ARN: ${{ needs.infrastructure.outputs.state_kms_key_arn }}
+          DEPLOYMENT_ARTIFACT_BUCKET: ${{ needs.infrastructure.outputs.deployment_artifact_bucket }}
+          DATA_KMS_KEY_ARN: ${{ needs.infrastructure.outputs.data_kms_key_arn }}
           INSTANCE_ID: ${{ needs.infrastructure.outputs.instance_id }}
           CONTEXT_USE_VERSION: sha-${{ github.sha }}
           CONTEXT_USE_APP_IMAGE: ${{ needs.images.outputs.app }}
@@ -241,12 +259,12 @@ jobs:
           CONTEXT_USE_PARAMETER_PREFIX: /context-use/${{ needs.infrastructure.outputs.installation_id }}/production
         run: |
           archive="${RUNNER_TEMP}/context-use-${GITHUB_SHA}.tar.gz"
-          tar -czf "$archive" infra deploy
+          scripts/ci/package-runtime-bundle.sh "$archive"
           sha256="$(sha256sum "$archive" | cut -d' ' -f1)"
           object="deployments/${GITHUB_SHA}.tar.gz"
-          aws s3 cp "$archive" "s3://${STATE_BUCKET}/${object}" --only-show-errors \
-            --sse aws:kms --sse-kms-key-id "$STATE_KMS_KEY_ARN"
-          bundle_url="$(aws s3 presign "s3://${STATE_BUCKET}/${object}" --expires-in 3600)"
+          aws s3 cp "$archive" "s3://${DEPLOYMENT_ARTIFACT_BUCKET}/${object}" --only-show-errors \
+            --sse aws:kms --sse-kms-key-id "$DATA_KMS_KEY_ARN"
+          bundle_url="$(aws s3 presign "s3://${DEPLOYMENT_ARTIFACT_BUCKET}/${object}" --expires-in 3600)"
           echo "::add-mask::$bundle_url"
           CONTEXT_USE_BUNDLE_URL="$bundle_url" \
             CONTEXT_USE_BUNDLE_SHA256="$sha256" \

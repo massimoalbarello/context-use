@@ -52,6 +52,11 @@ The first deployment also requires the repository secret
 generates all database and application secrets there; later deployments can run
 without the GitHub secret unless the Google credential is being rotated.
 
+The bootstrap role is used only for Terraform and encrypted runtime-parameter
+updates. Terraform creates a separate branch-scoped deployment role and a
+dedicated KMS-encrypted artifact bucket with 30-day retention; the deploy job
+uses that narrower role for artifact upload and SSM rollout.
+
 Terraform plans containing any delete action are blocked on pushes. An
 intentional replacement must be run manually with `allow_destroy` enabled. The
 workflow takes a database backup before updating an existing installation,
