@@ -87,6 +87,9 @@
       },
     },
   },
+  "overrides": {
+    "kysely": "0.28.17",
+  },
   "packages": {
     "@aws-sdk/checksums": ["@aws-sdk/checksums@3.1000.18", "", { "dependencies": { "@aws-sdk/core": "^3.975.3", "@aws-sdk/types": "^3.974.2", "@smithy/core": "^3.29.4", "@smithy/types": "^4.16.1", "tslib": "^2.6.2" } }, "sha512-IImkbEyXdV6/uaF5r6Wkk+8718mQw1ll83j0a4a30R3JM/rHVFdWAiT4jtJpFjJiIwM/oJ6SxIxr0z2TaQUGqw=="],
 
@@ -600,7 +603,7 @@
 
     "json5": ["json5@2.2.3", "", { "bin": { "json5": "lib/cli.js" } }, "sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg=="],
 
-    "kysely": ["kysely@0.29.3", "", {}, "sha512-VHtBdW6XB/pgoTSqraM3UAa2rYoYdNXqnNPpX+8XXP+cwYbVEFuAp3HyPt1vpNfU9l7Y2kpUrA9QDPsy8uUqOQ=="],
+    "kysely": ["kysely@0.28.17", "", {}, "sha512-nbD8lB9EB3wNdMhOCdx5Li8DxnLbvKByylRLcJ1h+4SkrowVeECAyZlyiKMThF7xFdRz0jSQ2MoJr+wXux2y0Q=="],
 
     "launder": ["launder@1.7.1", "", { "dependencies": { "dayjs": "^1.11.7" } }, "sha512-mU6WRz5EusL9ZZuiZ5SO4Y6C0P9PAUR9iwdb6bzj4KDihm28DiHFw+/yk9DBH4f+Pv1wuzQ4e2jV3oQ7mkIqvw=="],
 

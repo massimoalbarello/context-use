@@ -30,6 +30,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun audit --production
       - run: bun run typecheck
+      - run: bun --cwd apps/server build
       - run: bun test
       - name: Apply migrations and verify database roles
         env:
