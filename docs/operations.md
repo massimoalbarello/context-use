@@ -31,3 +31,33 @@ context-use auth recover-passkey
 ```
 
 The command operates through AWS Systems Manager rather than a public administrative endpoint. Open the emitted URL, sign in with the allowlisted Google account, consume the one-time token, and register a new passkey. Register a second passkey after recovery.
+
+## First-party GitHub deployment
+
+The maintainer installation is deployed from `main` by
+`.github/workflows/cd.yml`; external installations continue to use the CLI.
+GitHub authenticates to AWS with OIDC, so no long-lived AWS access keys are
+stored in GitHub.
+
+Bootstrap `infra/bootstrap/github-oidc-bootstrap.yaml` once in the target AWS
+account, then configure these repository variables:
+
+- `AWS_TERRAFORM_ROLE_ARN`
+- `AWS_REGION` (defaults to `eu-west-2`)
+- `CONTEXT_USE_APP_HOSTNAME`
+- `CONTEXT_USE_ASSET_HOSTNAME` (optional; defaults to `assets.<app hostname>`)
+- `CONTEXT_USE_AVAILABILITY_ZONE` (optional; defaults to `<region>a`)
+- `CONTEXT_USE_ROUTE53_ZONE_ID` (optional for manual DNS)
+- `CONTEXT_USE_OWNER_EMAIL`
+- `CONTEXT_USE_GOOGLE_CLIENT_ID`
+
+The first deployment also requires the repository secret
+`CONTEXT_USE_GOOGLE_CLIENT_SECRET`. The workflow writes it to encrypted SSM and
+generates all database and application secrets there; later deployments can run
+without the GitHub secret unless the Google credential is being rotated.
+
+Terraform plans containing any delete action are blocked on pushes. An
+intentional replacement must be run manually with `allow_destroy` enabled. The
+workflow takes a database backup before updating an existing installation,
+deploys over SSM, and checks both the on-instance database permissions and the
+public HTTP authentication boundary.

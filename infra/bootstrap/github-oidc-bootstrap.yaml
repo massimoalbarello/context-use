@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  One-time bootstrap for the first-party context-use deployment. Creates the
+  Terraform role assumed by GitHub Actions. The GitHub OIDC provider must
+  already exist in the AWS account.
+
+Parameters:
+  GitHubRepo:
+    Type: String
+    Default: massimoalbarello/context-use
+    Description: owner/repo allowed to assume the Terraform role.
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: branch allowed to assume the Terraform role.
+
+Resources:
+  TerraformRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: context-use-terraform
+      Description: Assumed by GitHub Actions to manage the first-party context-use deployment.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub repo:${GitHubRepo}:ref:refs/heads/${GitHubBranch}
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+Outputs:
+  TerraformRoleArn:
+    Description: Set this as the AWS_TERRAFORM_ROLE_ARN repository variable.
+    Value: !GetAtt TerraformRole.Arn

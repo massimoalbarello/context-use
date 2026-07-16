@@ -1,0 +1,257 @@
+name: CD (production)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      allow_destroy:
+        description: "Apply even if a Terraform plan destroys or replaces resources"
+        type: boolean
+        default: false
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+env:
+  NO_COLOR: "1"
+  TF_IN_AUTOMATION: "true"
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-2' }}
+  CONTEXT_USE_APP_HOSTNAME: ${{ vars.CONTEXT_USE_APP_HOSTNAME }}
+  CONTEXT_USE_ASSET_HOSTNAME: ${{ vars.CONTEXT_USE_ASSET_HOSTNAME }}
+  CONTEXT_USE_AVAILABILITY_ZONE: ${{ vars.CONTEXT_USE_AVAILABILITY_ZONE }}
+  CONTEXT_USE_ROUTE53_ZONE_ID: ${{ vars.CONTEXT_USE_ROUTE53_ZONE_ID }}
+  CONTEXT_USE_OWNER_EMAIL: ${{ vars.CONTEXT_USE_OWNER_EMAIL }}
+  CONTEXT_USE_GOOGLE_CLIENT_ID: ${{ vars.CONTEXT_USE_GOOGLE_CLIENT_ID }}
+
+jobs:
+  images:
+    runs-on: ubuntu-24.04
+    outputs:
+      app: ${{ steps.refs.outputs.app }}
+      backup: ${{ steps.refs.outputs.backup }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: app
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
+      - id: backup
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/backup/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/${{ github.repository }}-backup:sha-${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=backup
+          cache-to: type=gha,mode=max,scope=backup
+      - id: refs
+        run: |
+          echo "app=ghcr.io/${GITHUB_REPOSITORY}@${{ steps.app.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          echo "backup=ghcr.io/${GITHUB_REPOSITORY}-backup@${{ steps.backup.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  infrastructure:
+    runs-on: ubuntu-24.04
+    outputs:
+      app_hostname: ${{ steps.config.outputs.app_hostname }}
+      installation_id: ${{ steps.config.outputs.installation_id }}
+      instance_id: ${{ steps.compute_outputs.outputs.instance_id }}
+      state_bucket: ${{ steps.config.outputs.state_bucket }}
+      state_kms_key_arn: ${{ steps.state.outputs.state_kms_key_arn }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+          terraform_wrapper: false
+      - name: Require deployment configuration
+        env:
+          AWS_TERRAFORM_ROLE_ARN: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+        run: |
+          missing=()
+          for name in AWS_TERRAFORM_ROLE_ARN CONTEXT_USE_APP_HOSTNAME CONTEXT_USE_OWNER_EMAIL CONTEXT_USE_GOOGLE_CLIENT_ID; do
+            if [ -z "${!name:-}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            printf 'Missing required repository variables: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Resolve stable deployment identity
+        id: config
+        run: |
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          installation_id="$(printf '%s' "${account_id}:${AWS_REGION}:${CONTEXT_USE_APP_HOSTNAME}" | sha256sum | cut -c1-12)"
+          hostname_hash="$(printf '%s' "$CONTEXT_USE_APP_HOSTNAME" | sha256sum | cut -c1-10)"
+          asset_hostname="${CONTEXT_USE_ASSET_HOSTNAME:-assets.${CONTEXT_USE_APP_HOSTNAME}}"
+          availability_zone="${CONTEXT_USE_AVAILABILITY_ZONE:-${AWS_REGION}a}"
+          {
+            echo "account_id=$account_id"
+            echo "app_hostname=$CONTEXT_USE_APP_HOSTNAME"
+            echo "asset_hostname=$asset_hostname"
+            echo "availability_zone=$availability_zone"
+            echo "installation_id=$installation_id"
+            echo "state_bucket=context-use-${account_id}-${AWS_REGION}-${hostname_hash}-tfstate"
+          } >> "$GITHUB_OUTPUT"
+      - name: Bootstrap encrypted Terraform state
+        id: state
+        env:
+          INSTALLATION_ID: ${{ steps.config.outputs.installation_id }}
+          STATE_BUCKET: ${{ steps.config.outputs.state_bucket }}
+        run: scripts/ci/bootstrap-terraform-state.sh
+      - name: Initialize retained-data state
+        run: |
+          terraform -chdir=infra/data init -input=false -reconfigure \
+            -backend-config="bucket=${{ steps.config.outputs.state_bucket }}" \
+            -backend-config="key=${{ steps.config.outputs.installation_id }}/production/data.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true" \
+            -backend-config="kms_key_id=${{ steps.state.outputs.state_kms_key_arn }}"
+      - name: Plan retained data
+        run: |
+          terraform -chdir=infra/data plan -input=false -out=tfplan \
+            -var="aws_region=${AWS_REGION}" \
+            -var="availability_zone=${{ steps.config.outputs.availability_zone }}" \
+            -var="environment=production" \
+            -var="installation_id=${{ steps.config.outputs.installation_id }}" \
+            -var="app_hostname=${{ steps.config.outputs.app_hostname }}" \
+            -var="data_volume_size_gb=50" \
+            -var="backup_retention_days=30"
+      - name: Block unexpected retained-data destruction
+        if: inputs.allow_destroy != true
+        run: scripts/ci/check-terraform-destroy-plan.sh infra/data/tfplan
+      - name: Apply retained data
+        run: terraform -chdir=infra/data apply -input=false tfplan
+      - name: Capture retained-data outputs
+        id: data_outputs
+        run: |
+          {
+            echo "data_volume_id=$(terraform -chdir=infra/data output -raw data_volume_id)"
+            echo "kms_key_arn=$(terraform -chdir=infra/data output -raw kms_key_arn)"
+            echo "asset_bucket=$(terraform -chdir=infra/data output -raw asset_bucket)"
+            echo "backup_bucket=$(terraform -chdir=infra/data output -raw backup_bucket)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Initialize compute state
+        run: |
+          terraform -chdir=infra/compute init -input=false -reconfigure \
+            -backend-config="bucket=${{ steps.config.outputs.state_bucket }}" \
+            -backend-config="key=${{ steps.config.outputs.installation_id }}/production/compute.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true" \
+            -backend-config="kms_key_id=${{ steps.state.outputs.state_kms_key_arn }}"
+      - name: Plan compute
+        run: |
+          terraform -chdir=infra/compute plan -input=false -out=tfplan \
+            -var="aws_region=${AWS_REGION}" \
+            -var="availability_zone=${{ steps.config.outputs.availability_zone }}" \
+            -var="environment=production" \
+            -var="installation_id=${{ steps.config.outputs.installation_id }}" \
+            -var="instance_type=t3.small" \
+            -var="app_hostname=${{ steps.config.outputs.app_hostname }}" \
+            -var="asset_hostname=${{ steps.config.outputs.asset_hostname }}" \
+            -var="route53_zone_id=${CONTEXT_USE_ROUTE53_ZONE_ID}" \
+            -var="data_volume_id=${{ steps.data_outputs.outputs.data_volume_id }}" \
+            -var="kms_key_arn=${{ steps.data_outputs.outputs.kms_key_arn }}" \
+            -var="asset_bucket=${{ steps.data_outputs.outputs.asset_bucket }}" \
+            -var="backup_bucket=${{ steps.data_outputs.outputs.backup_bucket }}" \
+            -var="ssm_parameter_prefix=/context-use/${{ steps.config.outputs.installation_id }}/production"
+      - name: Block unexpected compute destruction
+        if: inputs.allow_destroy != true
+        run: scripts/ci/check-terraform-destroy-plan.sh infra/compute/tfplan
+      - name: Apply compute
+        run: terraform -chdir=infra/compute apply -input=false tfplan
+      - name: Capture compute outputs
+        id: compute_outputs
+        run: |
+          {
+            echo "instance_id=$(terraform -chdir=infra/compute output -raw instance_id)"
+            echo "public_ip=$(terraform -chdir=infra/compute output -raw public_ip)"
+            echo "cloudwatch_log_group=$(terraform -chdir=infra/compute output -raw cloudwatch_log_group)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Store KMS-encrypted runtime parameters
+        env:
+          APP_HOSTNAME: ${{ steps.config.outputs.app_hostname }}
+          ASSET_HOSTNAME: ${{ steps.config.outputs.asset_hostname }}
+          OWNER_EMAIL: ${{ env.CONTEXT_USE_OWNER_EMAIL }}
+          GOOGLE_CLIENT_ID: ${{ env.CONTEXT_USE_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.CONTEXT_USE_GOOGLE_CLIENT_SECRET }}
+          PARAMETER_PREFIX: /context-use/${{ steps.config.outputs.installation_id }}/production
+          DATA_KMS_KEY_ARN: ${{ steps.data_outputs.outputs.kms_key_arn }}
+          ASSET_BUCKET: ${{ steps.data_outputs.outputs.asset_bucket }}
+          BACKUP_BUCKET: ${{ steps.data_outputs.outputs.backup_bucket }}
+          CLOUDWATCH_LOG_GROUP: ${{ steps.compute_outputs.outputs.cloudwatch_log_group }}
+          BACKUP_RETENTION_DAYS: "30"
+        run: scripts/ci/put-runtime-parameters.sh
+      - name: Terraform outputs
+        run: |
+          {
+            echo '## Production infrastructure'
+            echo
+            echo '- Installation: `${{ steps.config.outputs.installation_id }}`'
+            echo '- Public IP: `${{ steps.compute_outputs.outputs.public_ip }}`'
+            echo '- Application: `https://${{ steps.config.outputs.app_hostname }}`'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: [images, infrastructure]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Package, back up, and deploy through SSM
+        env:
+          STATE_BUCKET: ${{ needs.infrastructure.outputs.state_bucket }}
+          STATE_KMS_KEY_ARN: ${{ needs.infrastructure.outputs.state_kms_key_arn }}
+          INSTANCE_ID: ${{ needs.infrastructure.outputs.instance_id }}
+          CONTEXT_USE_VERSION: sha-${{ github.sha }}
+          CONTEXT_USE_APP_IMAGE: ${{ needs.images.outputs.app }}
+          CONTEXT_USE_BACKUP_IMAGE: ${{ needs.images.outputs.backup }}
+          CONTEXT_USE_PARAMETER_PREFIX: /context-use/${{ needs.infrastructure.outputs.installation_id }}/production
+        run: |
+          archive="${RUNNER_TEMP}/context-use-${GITHUB_SHA}.tar.gz"
+          tar -czf "$archive" infra deploy
+          sha256="$(sha256sum "$archive" | cut -d' ' -f1)"
+          object="deployments/${GITHUB_SHA}.tar.gz"
+          aws s3 cp "$archive" "s3://${STATE_BUCKET}/${object}" --only-show-errors \
+            --sse aws:kms --sse-kms-key-id "$STATE_KMS_KEY_ARN"
+          bundle_url="$(aws s3 presign "s3://${STATE_BUCKET}/${object}" --expires-in 3600)"
+          echo "::add-mask::$bundle_url"
+          CONTEXT_USE_BUNDLE_URL="$bundle_url" \
+            CONTEXT_USE_BUNDLE_SHA256="$sha256" \
+            scripts/ci/deploy-via-ssm.sh
+      - name: Verify public security boundary
+        env:
+          APP_HOSTNAME: ${{ needs.infrastructure.outputs.app_hostname }}
+        run: scripts/ci/verify-deployment.sh

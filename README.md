@@ -26,6 +26,7 @@ External ingestion, vault migration, automations, approval queues, collaboration
 | Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
 | Public visitor | None | `/p/*` and independently published assets |
 | Deployment administrator | Local AWS identity | `context-use` CLI |
+| First-party production deployer | GitHub OIDC identity restricted to `main` | GitHub Actions CD only |
 
 These credentials are intentionally non-interchangeable. Dashboard endpoints reject `Authorization`; MCP rejects cookies. Application roles mirror that boundary in PostgreSQL, and public requests query security-barrier views rather than base tables. Publishing a page never publishes linked pages or assets.
 
@@ -72,6 +73,13 @@ context-use destroy --purge-data
 ```
 
 Ordinary `destroy` removes replaceable compute but retains encrypted data and Terraform state. `--purge-data` requires the hostname and a second destructive confirmation.
+
+The project maintainer's production installation is managed separately by the
+[`CD (production)` workflow](.github/workflows/cd.yml). This does not change the
+CLI deployment path for external self-hosters. The CD workflow builds images
+pinned by digest, applies guarded Terraform plans against installation-specific
+encrypted state, stores runtime secrets in KMS-encrypted SSM parameters, deploys
+through Systems Manager, and verifies the live security boundary.
 
 ## Agent connection
 
