@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { Client } from "pg";
 
 const enabled = process.env.TEST_APP_DATABASE_URL === "1";
@@ -42,6 +42,53 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(malformedPage.status).toBe(404);
     expect(missingPage.status).toBe(404);
     expect(await malformedPage.text()).toBe(await missingPage.text());
+  });
+
+  test("owner enrollment requires the configured email and setup capability", async () => {
+    const invalid = new URL("http://localhost:3000/api/auth/passkey/generate-register-options");
+    invalid.searchParams.set("context", JSON.stringify({
+      email: "attacker@example.com",
+      token: "development-owner-setup-token-0000000000000",
+    }));
+    expect((await application!.handle(new Request(invalid))).status).toBe(403);
+
+    const valid = new URL("http://localhost:3000/api/auth/passkey/generate-register-options");
+    valid.searchParams.set("context", JSON.stringify({
+      email: "owner@example.com",
+      token: "development-owner-setup-token-0000000000000",
+    }));
+    const response = await application!.handle(new Request(valid));
+    expect(response.status).toBe(200);
+    const options = await response.json() as {
+      authenticatorSelection: { residentKey: string; requireResidentKey: boolean; userVerification: string };
+    };
+    expect(options.authenticatorSelection).toMatchObject({
+      residentKey: "required",
+      requireResidentKey: true,
+      userVerification: "required",
+    });
+  });
+
+  test("passkey sign-in options require user verification without an email", async () => {
+    const response = await application!.handle(new Request(
+      "http://localhost:3000/api/auth/passkey/generate-authenticate-options",
+    ));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ userVerification: "required" });
+  });
+
+  test("Google social sign-in is not configured", async () => {
+    const errorLog = spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const response = await application!.handle(new Request("http://localhost:3000/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+        body: JSON.stringify({ provider: "google", callbackURL: "http://localhost:3000/app" }),
+      }));
+      expect(response.ok).toBe(false);
+    } finally {
+      errorLog.mockRestore();
+    }
   });
 
   test("dynamic clients default to read-only and public clients cannot omit PKCE", async () => {

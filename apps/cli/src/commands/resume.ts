@@ -4,7 +4,7 @@ import { bootstrapStateBucket, configureStateBucketKms, createStateKmsKey } from
 import { deploy } from "../deploy.ts";
 import { readConfig, saveConfig } from "../paths.ts";
 import { deploymentRoot, releaseManifest } from "../release.ts";
-import { storeRuntimeParameters } from "../setup.ts";
+import { ownerSetupUrl, storeRuntimeParameters } from "../setup.ts";
 import { applyCompute, applyData, assertTerraformVersion } from "../terraform.ts";
 
 export const command = defineCommand("resume", {
@@ -30,14 +30,12 @@ export const command = defineCommand("resume", {
       await saveConfig(config);
     }
     if (!config.parametersReady) {
-      const secret = await p.password({ message: "Google OAuth client secret (needed to finish interrupted setup)" });
-      if (p.isCancel(secret) || !secret) throw new Error("Google OAuth client secret is required");
-      await storeRuntimeParameters(config, secret);
+      await storeRuntimeParameters(config);
     }
     await deploy(config, manifest);
     config.phase = "deployed";
     await saveConfig(config);
-    p.outro(`context-use is ready at https://${config.hostname}/app`);
+    p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}`);
   },
 });
 

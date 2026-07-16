@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const developmentSecret = "development-only-secret-that-is-long-enough";
+const developmentSetupTokenHash = "0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cfa864a96a0efe17b1694";
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -13,8 +14,7 @@ const schema = z.object({
   PUBLIC_DATABASE_URL: z.string().min(1).default("postgres://context_use_public:development-only@localhost:5432/context_use"),
   PUBLISHER_DATABASE_URL: z.string().min(1).default("postgres://context_use_publisher:development-only@localhost:5432/context_use"),
   OWNER_EMAIL: z.string().email().default("owner@example.com"),
-  GOOGLE_CLIENT_ID: z.string().default("development-google-client"),
-  GOOGLE_CLIENT_SECRET: z.string().default("development-google-secret"),
+  OWNER_SETUP_TOKEN_HASH: z.string().regex(/^[a-f0-9]{64}$/).default(developmentSetupTokenHash),
   BETTER_AUTH_SECRET: z.string().min(32).default(developmentSecret),
   OAUTH_ISSUER: z.string().url().default("http://localhost:3000"),
   MCP_RESOURCE: z.string().url().default("http://localhost:3000/mcp"),
@@ -47,8 +47,8 @@ if (production) {
   if (config.MCP_RESOURCE !== `${config.APP_ORIGIN}/mcp`) insecure.push("MCP_RESOURCE must be the canonical /mcp URI");
   if (config.WEBAUTHN_RP_ID !== app.hostname) insecure.push("WEBAUTHN_RP_ID must equal the application hostname");
   if (config.BETTER_AUTH_SECRET === developmentSecret) insecure.push("BETTER_AUTH_SECRET must be changed");
-  if (!config.GOOGLE_CLIENT_ID || !config.GOOGLE_CLIENT_SECRET) insecure.push("Google OAuth credentials are required");
   if (config.OWNER_EMAIL === "owner@example.com") insecure.push("OWNER_EMAIL must be configured");
+  if (config.OWNER_SETUP_TOKEN_HASH === developmentSetupTokenHash) insecure.push("OWNER_SETUP_TOKEN_HASH must be changed");
   if (!config.ASSET_BUCKET || config.STORAGE_DRIVER !== "s3") insecure.push("production storage must be S3");
   if (!config.KMS_KEY_ID) insecure.push("KMS_KEY_ID is required");
   if (config.SESSION_MAX_SECONDS > 604_800) insecure.push("dashboard sessions cannot exceed seven days");

@@ -49,6 +49,7 @@ jobs:
           PUBLIC_DATABASE_URL: postgres://context_use_public:test-public@localhost:5432/context_use
           PUBLISHER_DATABASE_URL: postgres://context_use_publisher:test-publisher@localhost:5432/context_use
           OWNER_EMAIL: owner@example.com
+          OWNER_SETUP_TOKEN_HASH: 0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cfa864a96a0efe17b1694
         run: |
           bun run db:migrate
           bun test
@@ -74,8 +75,7 @@ jobs:
           APP_HOSTNAME: context.example.com
           ASSET_HOSTNAME: assets.context.example.com
           OWNER_EMAIL: owner@example.com
-          GOOGLE_CLIENT_ID: test
-          GOOGLE_CLIENT_SECRET: test
+          OWNER_SETUP_TOKEN_HASH: 0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cfa864a96a0efe17b1694
           BETTER_AUTH_SECRET: test-test-test-test-test-test-test-test
           AWS_REGION: eu-west-2
           ASSET_BUCKET: test-assets

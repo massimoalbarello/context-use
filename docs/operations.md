@@ -4,7 +4,9 @@
 
 `context-use setup` bootstraps an installation-specific encrypted/versioned Terraform state bucket, applies the retained-data stack, applies replaceable compute, stores runtime secrets in SSM, configures optional Route 53 records, and deploys through SSM. Non-secret progress is stored with mode `0600` under `~/.config/context-use/config.json`.
 
-`context-use resume` is idempotent across infrastructure phases. If interruption occurred before SSM secrets were complete, it asks for the Google client secret again; that secret is never saved locally.
+`context-use resume` is idempotent across infrastructure phases. If interruption occurred before SSM secrets were complete, it regenerates and stores the installation secrets before continuing.
+
+After deployment, the CLI prints an owner-enrollment URL containing a random setup capability in its fragment. The browser removes the fragment from its address bar, asks for the configured owner email, and sends both values only as part of the same-origin passkey ceremony. Enrollment closes permanently after the first credential is stored. The email labels the owner account but is not an authentication or recovery factor.
 
 `context-use update` takes a database backup, applies compatible Terraform changes, runs migrations, deploys images pinned by digest, then verifies health and credential separation. Failed application health checks redeploy the previous image release.
 
@@ -24,6 +26,6 @@ Assets are protected independently through S3 versioning. PostgreSQL backups con
 
 ## Passkey permanence
 
-The first fresh owner session can enroll one publication passkey. After enrollment, the installation does not allow that credential to be added, replaced, or removed through the dashboard, CLI, or an administrative endpoint.
+The one-time owner-enrollment link creates one discoverable, user-verified passkey. After enrollment, the installation does not allow that credential to be added, replaced, or removed through the dashboard, CLI, or an administrative endpoint.
 
-Losing the passkey permanently prevents future publication changes, including unpublishing. Google sign-in and private dashboard access continue to work, but backups cannot recreate a lost private credential. Use a synced credential manager or a durable authenticator that you expect to retain before enrolling.
+Losing the passkey permanently prevents dashboard sign-in and every future publication change, including unpublishing. Email cannot recover access, and backups cannot recreate a lost private credential. Use a synced credential manager or a durable authenticator that you expect to retain before enrolling.

@@ -23,7 +23,7 @@ export DB_BACKUP_PASSWORD=development-only
 bun run db:migrate
 ```
 
-Copy `.env.example` to `.env`, set a Google OAuth development client if testing sign-in, then run the server and web development processes:
+Copy `.env.example` to `.env`, then run the server and web development processes:
 
 ```sh
 bun run dev:server
@@ -31,6 +31,8 @@ bun run dev:web
 ```
 
 The Vite development server proxies application requests to the API server. Filesystem asset storage is used locally.
+
+For local owner enrollment, open `http://localhost:5173/app#setup=development-owner-setup-token-0000000000000` and enter the `OWNER_EMAIL` value. The development token corresponds to the hash in `.env.example`; production setup always generates a random token.
 
 ## Verification
 

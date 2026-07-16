@@ -131,6 +131,15 @@ export async function putSecureParameter(profile: string, region: string, name: 
   }
 }
 
+export async function getSecureParameter(profile: string, region: string, name: string): Promise<string> {
+  const result = await awsJson<{ Parameter?: { Value?: string } }>(profile, region, [
+    "ssm", "get-parameter", "--name", name, "--with-decryption",
+  ]);
+  const value = result.Parameter?.Value;
+  if (!value) throw new Error(`SSM parameter ${name} has no value`);
+  return value;
+}
+
 export async function deleteParameterPath(profile: string, region: string, prefix: string): Promise<void> {
   const result = await awsJson<{ Parameters?: Array<{ Name: string }> }>(profile, region, [
     "ssm", "get-parameters-by-path", "--path", prefix, "--recursive",
