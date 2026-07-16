@@ -38,7 +38,7 @@ test("root help lists the operational commands", async () => {
   expect(result.stderr).toBe("");
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("setup");
-  expect(result.stdout).toContain("auth recover-passkey");
+  expect(result.stdout).not.toContain("recover-passkey");
   expect(result.stdout).toContain("destroy");
 });
 
