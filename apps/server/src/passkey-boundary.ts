@@ -1,5 +1,5 @@
 import { authPool, dashboardPrincipal } from "./auth.ts";
-import { immutablePasskeyRejection } from "./passkey-policy.ts";
+import { immutablePasskeyRejection, passkeyMutationForPath } from "./passkey-policy.ts";
 
 type PasskeyAuthBoundary = {
   denied: Response | null;
@@ -8,15 +8,14 @@ type PasskeyAuthBoundary = {
 
 export async function authorizePasskeyAuthRequest(request: Request): Promise<PasskeyAuthBoundary> {
   const path = new URL(request.url).pathname;
-  const registration = path.endsWith("/passkey/generate-register-options") || path.endsWith("/passkey/verify-registration");
-  const deletion = path.endsWith("/passkey/delete-passkey");
-  if (!registration && !deletion) return { denied: null };
+  const mutation = passkeyMutationForPath(path);
+  if (!mutation) return { denied: null };
 
   const principal = await dashboardPrincipal(request);
   if (!principal) return { denied: Response.json({ error: "owner_session_required" }, { status: 401 }) };
 
-  if (deletion) {
-    const rejection = immutablePasskeyRejection("delete", 0, undefined);
+  if (mutation !== "register") {
+    const rejection = immutablePasskeyRejection(mutation, 0, undefined);
     return { denied: Response.json({ error: rejection!.error }, { status: rejection!.status }) };
   }
 
