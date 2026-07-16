@@ -55,6 +55,7 @@ revoke all on "user", "session", "account", "verification", "jwks", "passkey",
 
 grant select, insert, update, delete on "user", "session", "account", "verification", "jwks", "passkey",
   "oauthClient", "oauthRefreshToken", "oauthAccessToken", "oauthConsent" to context_use_auth;
+grant insert on security_audit_events to context_use_auth;
 
 grant select on "user", "session", "account", "verification", "jwks", "passkey",
   "oauthClient", "oauthRefreshToken", "oauthAccessToken", "oauthConsent" to context_use_backup;
