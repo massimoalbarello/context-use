@@ -11,5 +11,5 @@ coverage/
 *.tfstate.*
 terraform.tfvars
 .context-use/
-data/
+/data/
 apps/web/src/routeTree.gen.ts

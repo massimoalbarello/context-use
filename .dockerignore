@@ -6,4 +6,4 @@ dist
 **/.terraform
 *.tfstate*
 .env*
-data
+/data
