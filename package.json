@@ -7,6 +7,9 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "kysely": "0.28.17"
+  },
   "scripts": {
     "dev": "bun run --filter '@context-use/*' dev",
     "dev:server": "bun --cwd apps/server dev",
