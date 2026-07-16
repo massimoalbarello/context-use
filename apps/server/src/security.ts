@@ -41,7 +41,7 @@ export const securityHeaders = {
     "default-src 'self'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
-    "form-action 'self' https://accounts.google.com",
+    "form-action 'self'",
     `img-src 'self' data: ${config.ASSET_ORIGIN}`,
     "media-src 'self' blob:",
     "object-src 'none'",

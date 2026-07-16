@@ -38,7 +38,7 @@ export function OAuthConsent() {
     <span className="eyebrow">Agent connection</span>
     <h1>Allow this agent to access context-use?</h1>
     <div className="security-callout"><strong>{client?.name ?? "Unidentified MCP client"}</strong><span>Client ID: {client?.client_id ?? params.get("client_id") ?? "missing"}{client?.software_version ? ` · version ${client.software_version}` : ""}</span>{client?.uri && <span>{client.uri}</span>}</div>
-    <p>The agent receives an OAuth token, never your Google login or dashboard cookie.</p>
+    <p>The agent receives an OAuth token, never your passkey or dashboard cookie.</p>
     <ul className="scope-list">{requested.map((scope) => <li key={scope}>
       <strong>{scope}</strong><span>{SCOPE_DESCRIPTIONS[scope] ?? "Additional OAuth permission"}</span>
     </li>)}</ul>

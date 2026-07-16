@@ -15,7 +15,6 @@ export type DeploymentConfig = {
   dnsMode: "route53" | "manual";
   route53ZoneId: string;
   ownerEmail: string;
-  googleClientId: string;
   parametersReady: boolean;
   stateBucket: string;
   stateKmsKeyArn?: string;

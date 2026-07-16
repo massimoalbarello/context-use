@@ -1,4 +1,5 @@
 import { authPool, dashboardPrincipal } from "./auth.ts";
+import { ownerUserId } from "./owner.ts";
 import { immutablePasskeyRejection, passkeyMutationForPath } from "./passkey-policy.ts";
 
 type PasskeyAuthBoundary = {
@@ -11,11 +12,10 @@ export async function authorizePasskeyAuthRequest(request: Request): Promise<Pas
   const mutation = passkeyMutationForPath(path);
   if (!mutation) return { denied: null };
 
-  const principal = await dashboardPrincipal(request);
-  if (!principal) return { denied: Response.json({ error: "owner_session_required" }, { status: 401 }) };
-
   if (mutation !== "register") {
-    const rejection = immutablePasskeyRejection(mutation, 0, undefined);
+    const principal = await dashboardPrincipal(request);
+    if (!principal) return { denied: Response.json({ error: "owner_session_required" }, { status: 401 }) };
+    const rejection = immutablePasskeyRejection(mutation, 0);
     return { denied: Response.json({ error: rejection!.error }, { status: rejection!.status }) };
   }
 
@@ -31,7 +31,7 @@ export async function authorizePasskeyAuthRequest(request: Request): Promise<Pas
       return;
     }
     try {
-      await lockClient.query("SELECT pg_advisory_unlock(hashtextextended($1,0))", [principal.userId]);
+      await lockClient.query("SELECT pg_advisory_unlock(hashtextextended($1,0))", [ownerUserId]);
       lockHeld = false;
       lockClient.release();
     } catch (error) {
@@ -43,7 +43,7 @@ export async function authorizePasskeyAuthRequest(request: Request): Promise<Pas
     if (lockClient) {
       const lock = await lockClient.query<{ locked: boolean }>(
         "SELECT pg_try_advisory_lock(hashtextextended($1,0)) AS locked",
-        [principal.userId],
+        [ownerUserId],
       );
       if (!lock.rows[0]?.locked) {
         await releaseLock();
@@ -55,20 +55,10 @@ export async function authorizePasskeyAuthRequest(request: Request): Promise<Pas
     const database = lockClient ?? authPool;
     const passkeyCount = await database.query<{ count: string }>(
       "SELECT count(*)::text AS count FROM passkey WHERE \"userId\"=$1",
-      [principal.userId],
+      [ownerUserId],
     );
     const count = Number(passkeyCount.rows[0]?.count ?? 0);
-    let sessionCreatedAt: Date | undefined;
-    if (count === 0) {
-      const session = await database.query<{ createdAt: Date }>(
-        "SELECT \"createdAt\" FROM session WHERE id=$1",
-        [principal.sessionId],
-      );
-      const createdAt = session.rows[0]?.createdAt;
-      sessionCreatedAt = createdAt ? new Date(createdAt) : undefined;
-    }
-
-    const rejection = immutablePasskeyRejection("register", count, sessionCreatedAt);
+    const rejection = immutablePasskeyRejection("register", count);
     if (rejection) {
       await releaseLock();
       return { denied: Response.json({ error: rejection.error }, { status: rejection.status }) };

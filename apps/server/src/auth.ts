@@ -4,13 +4,49 @@ import { APIError, betterAuth, type BetterAuthPlugin } from "better-auth";
 import { jwt } from "better-auth/plugins";
 import { Pool } from "pg";
 import { config, production } from "./config.ts";
-import { isVerifiedOwner, normalizedOwnerEmail } from "./owner.ts";
+import {
+  isVerifiedOwner,
+  normalizedOwnerEmail,
+  ownerSetupContext,
+  ownerUserId,
+} from "./owner.ts";
 
 export const authPool = new Pool({
   connectionString: config.AUTH_DATABASE_URL,
   max: 10,
   application_name: "context-use-auth",
 });
+
+async function resolveOwnerSetup(context: string | null | undefined) {
+  const setup = ownerSetupContext(context);
+  if (!setup) throw new APIError("FORBIDDEN", { message: "Invalid owner setup claim" });
+  const existing = await authPool.query("SELECT 1 FROM passkey LIMIT 1");
+  if (existing.rowCount) throw new APIError("CONFLICT", { message: "The owner passkey is already registered" });
+  return {
+    id: ownerUserId,
+    name: setup.email,
+    displayName: "context-use owner",
+  };
+}
+
+async function createOwner(): Promise<void> {
+  try {
+    await authPool.query(
+      `INSERT INTO "user"(id,name,email,"emailVerified") VALUES ($1,'Owner',$2,true)
+       ON CONFLICT (id) DO NOTHING`,
+      [ownerUserId, normalizedOwnerEmail],
+    );
+  } catch (error) {
+    throw new APIError("CONFLICT", { message: "The owner identity could not be created", cause: error });
+  }
+  const owner = await authPool.query<{ email: string; emailVerified: boolean }>(
+    `SELECT email,"emailVerified" FROM "user" WHERE id=$1`,
+    [ownerUserId],
+  );
+  if (!owner.rows[0] || !isVerifiedOwner(owner.rows[0].email, owner.rows[0].emailVerified)) {
+    throw new APIError("FORBIDDEN", { message: "The owner identity does not match this installation" });
+  }
+}
 
 export const auth = betterAuth({
   appName: "context-use",
@@ -20,13 +56,6 @@ export const auth = betterAuth({
   database: authPool,
   telemetry: { enabled: false },
   trustedOrigins: [config.APP_ORIGIN],
-  socialProviders: {
-    google: {
-      clientId: config.GOOGLE_CLIENT_ID,
-      clientSecret: config.GOOGLE_CLIENT_SECRET,
-      prompt: "select_account",
-    },
-  },
   session: {
     expiresIn: config.SESSION_MAX_SECONDS,
     updateAge: 3_600,
@@ -37,7 +66,10 @@ export const auth = betterAuth({
     window: 60,
     max: 60,
     customRules: {
-      "/sign-in/social": { window: 60, max: 10 },
+      "/passkey/generate-register-options": { window: 60, max: 10 },
+      "/passkey/verify-registration": { window: 60, max: 10 },
+      "/passkey/generate-authenticate-options": { window: 60, max: 20 },
+      "/passkey/verify-authentication": { window: 60, max: 20 },
       "/oauth2/register": { window: 60, max: 10 },
       "/oauth2/token": { window: 60, max: 30 },
     },
@@ -57,8 +89,8 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          if (!isVerifiedOwner(user.email, user.emailVerified)) {
-            throw new APIError("FORBIDDEN", { message: "This installation accepts only its verified owner" });
+          if (user.id !== ownerUserId || !isVerifiedOwner(user.email, user.emailVerified)) {
+            throw new APIError("FORBIDDEN", { message: "This installation accepts only its configured owner" });
           }
           return { data: { ...user, email: normalizedOwnerEmail, emailVerified: true } };
         },
@@ -102,10 +134,29 @@ export const auth = betterAuth({
       rpName: config.WEBAUTHN_RP_NAME,
       origin: config.APP_ORIGIN,
       authenticatorSelection: {
-        residentKey: "preferred",
+        residentKey: "required",
+        requireResidentKey: true,
         userVerification: "required",
       },
-      registration: { requireSession: true },
+      registration: {
+        requireSession: false,
+        resolveUser: ({ context }) => resolveOwnerSetup(context),
+        afterVerification: async ({ context, verification }) => {
+          if (!verification.registrationInfo?.userVerified) {
+            throw new APIError("FORBIDDEN", { message: "User verification is required" });
+          }
+          await resolveOwnerSetup(context);
+          await createOwner();
+          return { userId: ownerUserId, name: "Owner passkey" };
+        },
+      },
+      authentication: {
+        afterVerification: ({ verification }) => {
+          if (!verification.authenticationInfo.userVerified) {
+            throw new APIError("FORBIDDEN", { message: "User verification is required" });
+          }
+        },
+      },
     }),
     oauthProvider({
       loginPage: "/app/login",
@@ -134,7 +185,7 @@ export const auth = betterAuth({
         principal_type: "mcp_agent",
         resource: resources?.[0] ?? config.MCP_RESOURCE,
       }),
-      clientPrivileges: ({ user }) => user ? isVerifiedOwner(user.email, user.emailVerified) : undefined,
+      clientPrivileges: ({ user }) => user?.id === ownerUserId && isVerifiedOwner(user.email, user.emailVerified) ? true : undefined,
     }) as unknown as BetterAuthPlugin,
   ],
 });
@@ -148,7 +199,7 @@ export type DashboardPrincipal = {
 export async function dashboardPrincipal(request: Request): Promise<DashboardPrincipal | null> {
   if (request.headers.has("authorization")) return null;
   const result = await auth.api.getSession({ headers: request.headers });
-  if (!result || !isVerifiedOwner(result.user.email, result.user.emailVerified)) return null;
+  if (!result || result.user.id !== ownerUserId || !isVerifiedOwner(result.user.email, result.user.emailVerified)) return null;
 
   const createdAt = new Date(result.session.createdAt).getTime();
   const updatedAt = new Date(result.session.updatedAt).getTime();
