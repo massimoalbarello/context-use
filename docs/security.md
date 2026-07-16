@@ -45,7 +45,7 @@ The migration container alone uses the database administrator. The long-running 
 
 Google sign-in is accepted only when the provider reports a verified email exactly matching the normalized installation owner. Dashboard sessions are database-backed, revocable, uncached, seven days maximum, and twelve hours idle. Production cookies are secure, HTTP-only, host-only, `SameSite=Lax`, and have no `Domain` attribute.
 
-WebAuthn requires user verification. Initial passkey enrollment is available only during a fresh owner session with zero existing credentials. Subsequent additions or removals require an existing passkey and a one-time management grant.
+WebAuthn requires user verification. Initial passkey enrollment is available only during a fresh owner session with zero existing credentials. After enrollment, the server rejects every additional registration and every deletion; the publication credential is immutable for the lifetime of the installation.
 
 MCP OAuth uses authorization code with mandatory PKCE. Access tokens expire after fifteen minutes and are bound to the canonical `/mcp` audience and client identifier. Offline access requires separate consent. Refresh tokens rotate; reuse invalidates the token family. MCP also verifies the current client and consent record on every request, so dashboard revocation takes effect before a JWT expires.
 
@@ -65,8 +65,8 @@ Each installation derives a unique identifier from the AWS account, region, and 
 
 Secrets are generated locally in memory, sent directly to SSM `SecureString`, fetched on-instance into a root-only file, and mounted only where required. They are neither Terraform variables nor outputs. Images are deployed by immutable digest from a checksum-verified release bundle.
 
-## Recovery boundary
+## Passkey permanence
 
-If all passkeys are lost, `context-use auth recover-passkey` must be invoked with the deployment administrator's AWS identity. It revokes dashboard sessions, OAuth consents, and refresh grants, then emits a single-use ten-minute recovery URL and an audit event. Recovery itself cannot publish content.
+There is no passkey recovery or rotation path in v1. Losing the credential leaves private dashboard access available through the allowlisted Google account, but permanently prevents publishing, republishing, slug changes, and unpublishing. This makes deployment-administrator access insufficient to replace the publication factor.
 
 Security issues should be reported as described in [SECURITY.md](../SECURITY.md), not in a public issue.

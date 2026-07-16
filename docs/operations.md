@@ -22,15 +22,11 @@ Assets are protected independently through S3 versioning. PostgreSQL backups con
 
 `context-use destroy --purge-data` is irreversible. After hostname confirmation and a second explicit prompt, it removes every version and delete marker from asset and backup buckets, removes SSM parameters, destroys the retained-data stack, and deletes the versioned state bucket. AWS schedules the KMS key for deletion using its 30-day safety window.
 
-## Passkey recovery
+## Passkey permanence
 
-Run:
+The first fresh owner session can enroll one publication passkey. After enrollment, the installation does not allow that credential to be added, replaced, or removed through the dashboard, CLI, or an administrative endpoint.
 
-```sh
-context-use auth recover-passkey
-```
-
-The command operates through AWS Systems Manager rather than a public administrative endpoint. Open the emitted URL, sign in with the allowlisted Google account, consume the one-time token, and register a new passkey. Register a second passkey after recovery.
+Losing the passkey permanently prevents future publication changes, including unpublishing. Google sign-in and private dashboard access continue to work, but backups cannot recreate a lost private credential. Use a synced credential manager or a durable authenticator that you expect to retain before enrolling.
 
 ## First-party GitHub deployment
 
