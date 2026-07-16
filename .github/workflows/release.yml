@@ -64,7 +64,7 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: context-use-${{ matrix.os_name }}-${{ matrix.arch }}.tar.gz
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cli-${{ matrix.os_name }}-${{ matrix.arch }}
           path: context-use-${{ matrix.os_name }}-${{ matrix.arch }}.tar.gz
