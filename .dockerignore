@@ -1,0 +1,9 @@
+.git
+node_modules
+dist
+**/dist
+.terraform
+**/.terraform
+*.tfstate*
+.env*
+data

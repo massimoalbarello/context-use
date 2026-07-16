@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dnf update -y --security
+dnf install -y docker
+systemctl enable --now docker
+
+if ! docker compose version >/dev/null 2>&1; then
+  machine="$(uname -m)"
+  case "$${machine}" in
+    x86_64) compose_sha=486b3ffc0f806ca2efbc430cef89955386011662f0c76bad17c103d059cfa9cf ;;
+    aarch64) compose_sha=4d0f7678dd3338452beba4518e36a8e22b20cad79ba2535c687da554dc3997fb ;;
+    *) echo "Unsupported architecture: $${machine}" >&2; exit 1 ;;
+  esac
+  curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/docker/compose/releases/download/v2.38.2/docker-compose-linux-$${machine}" -o /usr/local/lib/docker/cli-plugins/docker-compose
+  echo "$${compose_sha}  /usr/local/lib/docker/cli-plugins/docker-compose" | sha256sum -c -
+  chmod 0755 /usr/local/lib/docker/cli-plugins/docker-compose
+fi
+
+device="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_${volume_id}"
+for _ in $(seq 1 60); do [ -e "$${device}" ] && break; sleep 2; done
+if [ ! -e "$${device}" ]; then device=/dev/xvdf; fi
+for _ in $(seq 1 30); do [ -e "$${device}" ] && break; sleep 2; done
+
+if ! blkid "$${device}" >/dev/null 2>&1; then mkfs.xfs "$${device}"; fi
+mkdir -p /data
+uuid="$(blkid -s UUID -o value "$${device}")"
+grep -q "UUID=$${uuid}" /etc/fstab || echo "UUID=$${uuid} /data xfs defaults,nofail,nodev,nosuid 0 2" >> /etc/fstab
+mount /data
+mkdir -p /data/context-use
+chmod 0700 /data/context-use

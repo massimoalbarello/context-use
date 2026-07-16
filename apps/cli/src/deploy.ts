@@ -1,0 +1,68 @@
+import { resolve } from "node:path";
+import { sendSsmCommands, waitForSsm } from "./aws.ts";
+import { deploymentRoot } from "./release.ts";
+import type { DeploymentConfig, ReleaseManifest } from "./types.ts";
+
+export async function deploy(config: DeploymentConfig, manifest: ReleaseManifest): Promise<void> {
+  if (!config.computeOutputs) throw new Error("Compute infrastructure outputs are missing");
+  await waitForSsm(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id);
+  const deployScript = await Bun.file(resolve(await deploymentRoot(manifest), "deploy/deploy.sh")).text();
+  const encoded = Buffer.from(deployScript).toString("base64");
+  const command = [
+    `echo '${encoded}' | base64 -d > /tmp/context-use-deploy.sh`,
+    "chmod 0700 /tmp/context-use-deploy.sh",
+    `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' /tmp/context-use-deploy.sh`,
+    "rm -f /tmp/context-use-deploy.sh",
+  ];
+  await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, command);
+  await verifyDeployment(config.hostname);
+  await verifyRemoteSecurity(config);
+}
+
+export async function verifyRemoteSecurity(config: DeploymentConfig): Promise<void> {
+  if (!config.computeOutputs) throw new Error("Compute infrastructure outputs are missing");
+  const envFile = "/data/context-use/secrets/runtime.env";
+  const compose = `docker compose --env-file ${envFile}`;
+  const sql = [
+    "SELECT CASE WHEN",
+    "NOT has_column_privilege('context_use_mcp','knowledge_pages','published_version_id','UPDATE')",
+    "AND NOT has_column_privilege('context_use_dashboard','knowledge_pages','public_slug','UPDATE')",
+    "AND NOT has_function_privilege('context_use_mcp','confirm_publication_intent(uuid,text,text,text)','EXECUTE')",
+    "AND has_function_privilege('context_use_publisher','confirm_publication_intent(uuid,text,text,text)','EXECUTE')",
+    "AND NOT has_table_privilege('context_use_public','knowledge_pages','SELECT')",
+    "AND has_table_privilege('context_use_public','published_pages','SELECT')",
+    "THEN 'ok' ELSE 'denied' END",
+  ].join(" ");
+  await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, [
+    "set -euo pipefail",
+    "cd /opt/context-use/deploy",
+    `test \"$(${compose} exec -T postgres sh -c 'PGPASSWORD=\"$POSTGRES_PASSWORD\" psql -U postgres -d context_use -Atq -c \"${sql}\"')\" = ok`,
+    `set -a; . ${envFile}; set +a`,
+    "test \"$(aws s3api get-bucket-encryption --bucket \"$ASSET_BUCKET\" --query 'ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm' --output text)\" = 'aws:kms'",
+    "test \"$(aws s3api get-public-access-block --bucket \"$ASSET_BUCKET\" --query 'PublicAccessBlockConfiguration.[BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets]' --output text | tr -d '[:space:]')\" = 'TrueTrueTrueTrue'",
+    "aws s3api head-bucket --bucket \"$BACKUP_BUCKET\"",
+    `${compose} run --rm backup once`,
+  ]);
+}
+
+async function verifyDeployment(hostname: string): Promise<void> {
+  const origin = `https://${hostname}`;
+  let lastError = "health check did not complete";
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      const health = await fetch(`${origin}/api/health`, { redirect: "error" });
+      if (health.ok) break;
+      lastError = `health returned HTTP ${health.status}`;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+    if (attempt === 59) throw new Error(`Deployment did not become healthy: ${lastError}`);
+    await Bun.sleep(3_000);
+  }
+  const metadata = await fetch(`${origin}/.well-known/oauth-protected-resource/mcp`);
+  if (!metadata.ok) throw new Error("MCP protected-resource metadata is unavailable");
+  const bearerDashboard = await fetch(`${origin}/api/dashboard/pages`, { headers: { Authorization: "Bearer invalid" } });
+  if (bearerDashboard.status !== 401) throw new Error("Security check failed: dashboard did not reject bearer authentication");
+  const cookieMcp = await fetch(`${origin}/mcp`, { method: "POST", headers: { Cookie: "better-auth.session_token=invalid", "Content-Type": "application/json" }, body: "{}" });
+  if (cookieMcp.status !== 401) throw new Error("Security check failed: MCP did not reject browser cookies");
+}

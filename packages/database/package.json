@@ -1,0 +1,24 @@
+{
+  "name": "@context-use/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "migrate": "bun src/migrate.ts",
+    "test:roles": "bun test test/roles.integration.test.ts"
+  },
+  "dependencies": {
+    "@context-use/shared": "workspace:*",
+    "pg": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.20.0"
+  }
+}

@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: context_use
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d context_use"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: 1.3.11 }
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.11.4 }
+      - run: bun install --frozen-lockfile
+      - run: bun audit --production
+      - run: bun run typecheck
+      - run: bun test
+      - name: Apply migrations and verify database roles
+        env:
+          MIGRATOR_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use
+          DB_AUTH_PASSWORD: test-auth
+          DB_DASHBOARD_PASSWORD: test-dashboard
+          DB_MCP_PASSWORD: test-mcp
+          DB_PUBLIC_PASSWORD: test-public
+          DB_PUBLISHER_PASSWORD: test-publisher
+          DB_BACKUP_PASSWORD: test-backup
+          TEST_APP_DATABASE_URL: "1"
+          DATABASE_URL: postgres://context_use_dashboard:test-dashboard@localhost:5432/context_use
+          AUTH_DATABASE_URL: postgres://context_use_auth:test-auth@localhost:5432/context_use
+          MCP_DATABASE_URL: postgres://context_use_mcp:test-mcp@localhost:5432/context_use
+          PUBLIC_DATABASE_URL: postgres://context_use_public:test-public@localhost:5432/context_use
+          PUBLISHER_DATABASE_URL: postgres://context_use_publisher:test-publisher@localhost:5432/context_use
+          OWNER_EMAIL: owner@example.com
+        run: |
+          bun run db:migrate
+          bun test
+      - run: bun --cwd apps/web build
+      - name: Validate Terraform
+        run: |
+          terraform -chdir=infra/data init -backend=false
+          terraform -chdir=infra/data validate
+          terraform -chdir=infra/compute init -backend=false
+          terraform -chdir=infra/compute validate
+      - name: Validate Compose and Caddy
+        env:
+          VERSION: v0.1.0
+          APP_IMAGE: ghcr.io/massimoalbarello/context-use@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          BACKUP_IMAGE: ghcr.io/massimoalbarello/context-use-backup@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          POSTGRES_PASSWORD: test
+          DB_AUTH_PASSWORD: test
+          DB_DASHBOARD_PASSWORD: test
+          DB_MCP_PASSWORD: test
+          DB_PUBLIC_PASSWORD: test
+          DB_PUBLISHER_PASSWORD: test
+          DB_BACKUP_PASSWORD: test
+          APP_HOSTNAME: context.example.com
+          ASSET_HOSTNAME: assets.context.example.com
+          OWNER_EMAIL: owner@example.com
+          GOOGLE_CLIENT_ID: test
+          GOOGLE_CLIENT_SECRET: test
+          BETTER_AUTH_SECRET: test-test-test-test-test-test-test-test
+          AWS_REGION: eu-west-2
+          ASSET_BUCKET: test-assets
+          BACKUP_BUCKET: test-backups
+          KMS_KEY_ID: test
+          CLOUDWATCH_LOG_GROUP: test
+        run: |
+          docker compose -f deploy/docker-compose.yml config --quiet
+          docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" -e APP_HOSTNAME=context.example.com -e ASSET_HOSTNAME=assets.context.example.com caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
+      - run: docker build -t context-use:test .
+      - run: docker build -f deploy/backup/Dockerfile -t context-use-backup:test .

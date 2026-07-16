@@ -1,0 +1,129 @@
+name: context-use
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: context_use
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
+    command: ["postgres", "-c", "password_encryption=scram-sha-256", "-c", "listen_addresses=*"]
+    volumes:
+      - /data/context-use/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d context_use"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [data]
+    logging: &logging
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: postgres
+
+  migrate:
+    image: ${APP_IMAGE}
+    profiles: [migration]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      MIGRATOR_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/context_use
+      DB_AUTH_PASSWORD: ${DB_AUTH_PASSWORD}
+      DB_DASHBOARD_PASSWORD: ${DB_DASHBOARD_PASSWORD}
+      DB_MCP_PASSWORD: ${DB_MCP_PASSWORD}
+      DB_PUBLIC_PASSWORD: ${DB_PUBLIC_PASSWORD}
+      DB_PUBLISHER_PASSWORD: ${DB_PUBLISHER_PASSWORD}
+      DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD}
+    command: ["bun", "packages/database/src/migrate.ts"]
+    networks: [data]
+
+  app:
+    image: ${APP_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      APP_ORIGIN: https://${APP_HOSTNAME}
+      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      OAUTH_ISSUER: https://${APP_HOSTNAME}
+      MCP_RESOURCE: https://${APP_HOSTNAME}/mcp
+      WEBAUTHN_RP_ID: ${APP_HOSTNAME}
+      WEBAUTHN_RP_NAME: context-use
+      OWNER_EMAIL: ${OWNER_EMAIL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      DATABASE_URL: postgres://context_use_dashboard:${DB_DASHBOARD_PASSWORD}@postgres:5432/context_use
+      AUTH_DATABASE_URL: postgres://context_use_auth:${DB_AUTH_PASSWORD}@postgres:5432/context_use
+      MCP_DATABASE_URL: postgres://context_use_mcp:${DB_MCP_PASSWORD}@postgres:5432/context_use
+      PUBLIC_DATABASE_URL: postgres://context_use_public:${DB_PUBLIC_PASSWORD}@postgres:5432/context_use
+      PUBLISHER_DATABASE_URL: postgres://context_use_publisher:${DB_PUBLISHER_PASSWORD}@postgres:5432/context_use
+      STORAGE_DRIVER: s3
+      AWS_REGION: ${AWS_REGION}
+      ASSET_BUCKET: ${ASSET_BUCKET}
+      KMS_KEY_ID: ${KMS_KEY_ID}
+    networks: [data, web]
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: app
+
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      APP_HOSTNAME: ${APP_HOSTNAME}
+      ASSET_HOSTNAME: ${ASSET_HOSTNAME}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /data/context-use/caddy/data:/data
+      - /data/context-use/caddy/config:/config
+    networks: [web]
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: caddy
+
+  backup:
+    image: ${BACKUP_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: context_use
+      PGUSER: context_use_backup
+      PGPASSWORD: ${DB_BACKUP_PASSWORD}
+      BACKUP_BUCKET: ${BACKUP_BUCKET}
+      KMS_KEY_ID: ${KMS_KEY_ID}
+      AWS_REGION: ${AWS_REGION}
+      RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    networks: [data, outbound]
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: backup
+
+networks:
+  web: {}
+  outbound: {}
+  data:
+    internal: true

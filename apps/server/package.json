@@ -1,0 +1,35 @@
+{
+  "name": "@context-use/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1088.0",
+    "@aws-sdk/s3-request-presigner": "3.1088.0",
+    "@better-auth/oauth-provider": "1.7.0-rc.1",
+    "@better-auth/passkey": "1.7.0-rc.1",
+    "@context-use/database": "workspace:*",
+    "@context-use/shared": "workspace:*",
+    "@elysiajs/static": "1.4.10",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@simplewebauthn/server": "13.3.2",
+    "better-auth": "1.7.0-rc.1",
+    "elysia": "1.4.29",
+    "jose": "6.2.3",
+    "marked": "18.0.6",
+    "pg": "8.22.0",
+    "sanitize-html": "2.17.6",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/pg": "8.20.0",
+    "@types/sanitize-html": "2.16.1"
+  }
+}

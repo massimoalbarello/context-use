@@ -1,0 +1,35 @@
+{
+	admin off
+	email off
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
+{$APP_HOSTNAME} {
+	encode zstd gzip
+	header {
+		-Server
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+	}
+	request_body {
+		max_size 3MB
+	}
+	reverse_proxy app:3000
+}
+
+{$ASSET_HOSTNAME} {
+	request_body {
+		max_size 64KB
+	}
+	header {
+		-Server
+		-Set-Cookie
+		Access-Control-Allow-Origin "https://{$APP_HOSTNAME}"
+		Cross-Origin-Resource-Policy cross-origin
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+	}
+	reverse_proxy app:3000
+}

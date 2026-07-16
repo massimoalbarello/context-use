@@ -1,0 +1,24 @@
+{
+  "name": "context-use",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "bun@1.3.11",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '@context-use/*' dev",
+    "dev:server": "bun --cwd apps/server dev",
+    "dev:web": "bun --cwd apps/web dev",
+    "build": "bun run --filter '@context-use/*' build",
+    "typecheck": "bun run --filter '@context-use/*' typecheck",
+    "test": "bun test",
+    "db:migrate": "bun --cwd packages/database migrate",
+    "db:test:roles": "bun --cwd packages/database test:roles"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.8",
+    "typescript": "5.9.3"
+  }
+}

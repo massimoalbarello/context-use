@@ -1,0 +1,20 @@
+{
+  "name": "@context-use/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "context-use": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "build": "bun build src/index.ts --compile --outfile dist/context-use",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.7.0",
+    "commander": "15.0.0",
+    "zod": "4.4.3"
+  }
+}
