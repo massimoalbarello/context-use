@@ -18,7 +18,7 @@ jobs:
       backup_digest: ${{ steps.backup.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
