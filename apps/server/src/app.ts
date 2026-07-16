@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import {
   oauthProviderAuthServerMetadata,
@@ -30,7 +30,7 @@ import { auth, authPool, dashboardPrincipal } from "./auth.ts";
 import { config, production } from "./config.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
 import { createMcpRequestHandler } from "./mcp.ts";
-import { authorizePasskeyAuthRequest } from "./passkey-management.ts";
+import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import {
   SecurityError,
   assertDashboardRequestSecurity,
@@ -140,15 +140,6 @@ const confirmSchema = z.object({
   intent_id: z.string().uuid(),
   response: z.custom<AuthenticationResponseJSON>((value) => Boolean(value && typeof value === "object")),
 }).strict();
-const passkeyManagementIntentSchema = z.object({
-  action: z.enum(["add_passkey", "delete_passkey"]),
-  target_credential_id: z.string().min(1).nullable().optional(),
-}).strict();
-const passkeyManagementConfirmSchema = z.object({
-  intent_id: z.string().uuid(),
-  response: z.custom<AuthenticationResponseJSON>((value) => Boolean(value && typeof value === "object")),
-}).strict();
-const recoveryConsumeSchema = z.object({ token: z.string().min(32).max(256) }).strict();
 
 const webRoot = resolve(config.WEB_DIST);
 function webFile(path: string): Bun.BunFile | null {
@@ -173,28 +164,30 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     : routeError(error))
   .get("/api/health", () => json({ status: "ok", version: "0.1.1" }))
   .all("/api/auth/*", async ({ request }) => {
-    const denied = await authorizePasskeyAuthRequest(request);
-    if (denied) return denied;
-    const principal = await dashboardPrincipal(request);
-    const response = await auth.handler(request);
-    const pathname = new URL(request.url).pathname;
-    if (response.ok && principal) {
-      const eventType = pathname.endsWith("/passkey/verify-registration")
-        ? "passkey_registered"
-        : pathname.endsWith("/passkey/delete-passkey")
-          ? "passkey_deleted"
+    const boundary = await authorizePasskeyAuthRequest(request);
+    if (boundary.denied) return boundary.denied;
+    try {
+      const principal = await dashboardPrincipal(request);
+      const response = await auth.handler(request);
+      const pathname = new URL(request.url).pathname;
+      if (response.ok && principal) {
+        const eventType = pathname.endsWith("/passkey/verify-registration")
+          ? "passkey_registered"
           : pathname.endsWith("/oauth2/consent")
             ? "oauth_consent_changed"
             : null;
-      if (eventType) {
-        await authPool.query(
-          `INSERT INTO security_audit_events(event_type,actor_type,actor_id,target_type,target_id)
-           VALUES ($1,'owner',$2,'user',$2)`,
-          [eventType, principal.userId],
-        );
+        if (eventType) {
+          await authPool.query(
+            `INSERT INTO security_audit_events(event_type,actor_type,actor_id,target_type,target_id)
+             VALUES ($1,'owner',$2,'user',$2)`,
+            [eventType, principal.userId],
+          );
+        }
       }
+      return response;
+    } finally {
+      await boundary.release?.();
     }
-    return response;
   })
   .get("/.well-known/oauth-authorization-server", ({ request }) => authServerMetadata(request))
   .get("/.well-known/openid-configuration", ({ request }) => openIdMetadata(request))
@@ -240,107 +233,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .get("/api/dashboard/csrf", async ({ request }) => {
     const principal = await ownerRequest(request);
     return json({ csrf_token: csrfToken(principal) });
-  })
-  .post("/api/dashboard/passkey-management/intents", async ({ request }) => {
-    const principal = await ownerRequest(request, true);
-    const input = passkeyManagementIntentSchema.parse(await bodyJson(request));
-    const passkeys = await getOwnerPasskeys(principal.userId);
-    if (!passkeys.length) return problem("No existing passkey is available for confirmation", 409, "passkey_required");
-    if (input.action === "delete_passkey" && !input.target_credential_id) return problem("Target credential is required", 422);
-    const options = await generateAuthenticationOptions({
-      rpID: config.WEBAUTHN_RP_ID,
-      userVerification: "required",
-      timeout: 300_000,
-      allowCredentials: passkeys.map((key) => ({
-        id: key.credentialID,
-        ...(key.transports ? { transports: key.transports.split(",").filter(Boolean) as AuthenticatorTransportFuture[] } : {}),
-      })),
-    });
-    const result = await authPool.query(
-      `INSERT INTO passkey_management_intents(action,target_credential_id,owner_user_id,session_id,challenge,expires_at)
-       VALUES ($1,$2,$3,$4,$5,now()+interval '5 minutes')
-       RETURNING id,action,target_credential_id,expires_at`,
-      [input.action, input.target_credential_id ?? null, principal.userId, principal.sessionId, options.challenge],
-    );
-    return json({ intent: result.rows[0], authentication_options: options }, 201);
-  })
-  .post("/api/dashboard/passkey-management/confirm", async ({ request }) => {
-    const principal = await ownerRequest(request, true);
-    const input = passkeyManagementConfirmSchema.parse(await bodyJson(request));
-    const intentResult = await authPool.query<{
-      id: string; action: string; target_credential_id: string | null; challenge: string; expires_at: Date; verified_at: Date | null;
-    }>(
-      `SELECT id,action,target_credential_id,challenge,expires_at,verified_at
-       FROM passkey_management_intents
-       WHERE id=$1 AND owner_user_id=$2 AND session_id=$3 FOR UPDATE`,
-      [input.intent_id, principal.userId, principal.sessionId],
-    );
-    const intent = intentResult.rows[0];
-    if (!intent || intent.verified_at || new Date(intent.expires_at).getTime() <= Date.now()) return problem("Security intent is inactive", 409, "intent_inactive");
-    const passkey = (await getOwnerPasskeys(principal.userId)).find((key) => key.credentialID === input.response.id);
-    if (!passkey) return problem("Passkey is not registered to the owner", 403, "passkey_invalid");
-    const verification = await verifyAuthenticationResponse({
-      response: input.response,
-      expectedChallenge: intent.challenge,
-      expectedOrigin: config.APP_ORIGIN,
-      expectedRPID: config.WEBAUTHN_RP_ID,
-      credential: {
-        id: passkey.credentialID, publicKey: Buffer.from(passkey.publicKey, "base64"), counter: passkey.counter,
-        ...(passkey.transports ? { transports: passkey.transports.split(",").filter(Boolean) as AuthenticatorTransportFuture[] } : {}),
-      },
-      requireUserVerification: true,
-    });
-    if (!verification.verified || !verification.authenticationInfo.userVerified) return problem("Passkey verification failed", 403, "passkey_invalid");
-    const managementToken = randomBytes(32).toString("base64url");
-    const tokenHash = createHash("sha256").update(managementToken).digest("hex");
-    const authClient = await authPool.connect();
-    try {
-      await authClient.query("BEGIN");
-      await authClient.query("UPDATE passkey SET counter=$2 WHERE id=$1 AND counter<=$2", [passkey.id, verification.authenticationInfo.newCounter]);
-      const claimed = await authClient.query("UPDATE passkey_management_intents SET verified_at=now() WHERE id=$1 AND verified_at IS NULL RETURNING id", [intent.id]);
-      if (!claimed.rowCount) throw new SecurityError("Security intent was already used", 409);
-      await authClient.query(
-        `INSERT INTO passkey_management_grants(intent_id,token_hash,action,target_credential_id,owner_user_id,session_id,expires_at)
-         VALUES ($1,$2,$3,$4,$5,$6,now()+interval '5 minutes')`,
-        [intent.id, tokenHash, intent.action, intent.target_credential_id, principal.userId, principal.sessionId],
-      );
-      await authClient.query("COMMIT");
-    } catch (error) {
-      await authClient.query("ROLLBACK");
-      throw error;
-    } finally {
-      authClient.release();
-    }
-    return json({ management_token: managementToken, expires_in: 300 });
-  })
-  .post("/api/dashboard/passkey-recovery/consume", async ({ request }) => {
-    const principal = await ownerRequest(request, true);
-    const input = recoveryConsumeSchema.parse(await bodyJson(request));
-    const tokenHash = createHash("sha256").update(input.token).digest("hex");
-    const authClient = await authPool.connect();
-    try {
-      await authClient.query("BEGIN");
-      const consumed = await authClient.query<{ id: string }>(
-        `UPDATE passkey_recovery_tokens SET consumed_at=now()
-         WHERE token_hash=$1 AND lower(owner_email)=lower($2) AND consumed_at IS NULL AND expires_at>now()
-         RETURNING id`,
-        [tokenHash, principal.email],
-      );
-      if (!consumed.rowCount) throw new SecurityError("Recovery token is invalid or expired", 403);
-      await authClient.query("DELETE FROM passkey WHERE \"userId\"=$1", [principal.userId]);
-      await authClient.query(
-        `INSERT INTO security_audit_events(event_type,actor_type,actor_id,target_type,target_id)
-         VALUES ('passkey_recovery_consumed','owner',$1,'user',$1)`,
-        [principal.userId],
-      );
-      await authClient.query("COMMIT");
-    } catch (error) {
-      await authClient.query("ROLLBACK");
-      throw error;
-    } finally {
-      authClient.release();
-    }
-    return json({ recovered: true, next: "register_new_passkey" });
   })
   .get("/api/dashboard/oauth-clients", async ({ request }) => {
     const principal = await ownerRequest(request);

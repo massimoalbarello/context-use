@@ -9,7 +9,7 @@ The public site is deliberately separate: a page or asset becomes public only af
 - Hierarchical Markdown pages with immutable versions, commit messages, history, restore, backlinks, and full-text search.
 - Private S3 assets with checksum-bound uploads and five-minute authorized downloads.
 - Google sign-in restricted to one verified owner email.
-- Passkey-protected publishing, republishing, slug changes, unpublishing, and passkey management.
+- Passkey-protected publishing, republishing, slug changes, and unpublishing with one immutable credential.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
 - Stateless Streamable HTTP MCP at `/mcp` with page read/write and asset-read tools only.
 - Exact published snapshots at `/p/:slug` and independently published assets on a cookieless hostname.
@@ -29,7 +29,7 @@ External ingestion, vault migration, automations, approval queues, collaboration
 
 These credentials are intentionally non-interchangeable. Dashboard endpoints reject `Authorization`; MCP rejects cookies. Application roles mirror that boundary in PostgreSQL, and public requests query security-barrier views rather than base tables. Publishing a page never publishes linked pages or assets.
 
-See [Security architecture](docs/security.md) and [Operations](docs/operations.md) for the complete boundary and recovery model.
+See [Security architecture](docs/security.md) and [Operations](docs/operations.md) for the complete boundary and operating model.
 
 ## Deploy on AWS
 
@@ -66,7 +66,6 @@ context-use update [--version vX.Y.Z]
 context-use backup
 context-use restore
 context-use open
-context-use auth recover-passkey
 context-use destroy
 context-use destroy --purge-data
 ```
