@@ -60,6 +60,9 @@ jobs:
         with: { bun-version: 1.3.11 }
       - run: bun install --frozen-lockfile
       - run: bun build apps/cli/src/index.ts --compile --target=${{ matrix.target }} --outfile context-use
+      - name: Smoke-test release version
+        if: matrix.target == 'bun-linux-x64'
+        run: test "$(./context-use version)" = "${GITHUB_REF_NAME}"
       - run: tar -czf context-use-${{ matrix.os_name }}-${{ matrix.arch }}.tar.gz context-use
       - uses: actions/attest-build-provenance@v2
         with:

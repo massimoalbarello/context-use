@@ -11,6 +11,10 @@ import { applyCompute, applyData, assertTerraformVersion, destroyCompute, destro
 
 const program = new Command().name("context-use").description("Deploy and maintain a private context-use knowledge base").version(currentVersion);
 
+program.command("version").description("Print the context-use CLI version").action(() => {
+  console.log(currentVersion);
+});
+
 program.command("setup").description("Create a new AWS deployment").action(setup);
 
 program.command("resume").description("Continue an interrupted setup").action(async () => {

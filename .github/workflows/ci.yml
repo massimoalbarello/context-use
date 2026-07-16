@@ -60,7 +60,7 @@ jobs:
           terraform -chdir=infra/compute validate
       - name: Validate Compose and Caddy
         env:
-          VERSION: v0.1.0
+          VERSION: v0.1.1
           APP_IMAGE: ghcr.io/massimoalbarello/context-use@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           BACKUP_IMAGE: ghcr.io/massimoalbarello/context-use-backup@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
           POSTGRES_PASSWORD: test
