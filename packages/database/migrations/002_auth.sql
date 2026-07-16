@@ -24,7 +24,7 @@ create index "account_userId_idx" on "account" ("userId");
 
 create index "verification_identifier_idx" on "verification" ("identifier");
 
-create index "passkey_userId_idx" on "passkey" ("userId");
+create unique index "passkey_userId_unique" on "passkey" ("userId");
 
 create index "passkey_credentialID_idx" on "passkey" ("credentialID");
 
