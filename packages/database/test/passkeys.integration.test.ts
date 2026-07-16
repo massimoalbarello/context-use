@@ -18,13 +18,13 @@ describeDatabase("immutable passkey schema", () => {
   });
 
   test("enforces one passkey per owner", async () => {
-    const userId = randomUUID();
+    const userId = "context-use-owner";
     await admin.query("BEGIN");
     try {
       await admin.query(
         `INSERT INTO "user"(id,name,email,"emailVerified")
          VALUES ($1,'Passkey owner',$2,true)`,
-        [userId, `${userId}@example.com`],
+        [userId, "owner@example.com"],
       );
       await admin.query(
         `INSERT INTO passkey(id,"publicKey","userId","credentialID",counter,"deviceType","backedUp")
@@ -49,5 +49,11 @@ describeDatabase("immutable passkey schema", () => {
     } finally {
       await admin.query("ROLLBACK");
     }
+  });
+
+  test("rejects any second owner identity", async () => {
+    await expect(admin.query(
+      `INSERT INTO "user"(id,name,email,"emailVerified") VALUES ('another-owner','Other','other@example.com',true)`,
+    )).rejects.toMatchObject({ code: "23514", constraint: "user_single_owner_check" });
   });
 });

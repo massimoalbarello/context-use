@@ -8,8 +8,8 @@ The public site is deliberately separate: a page or asset becomes public only af
 
 - Hierarchical Markdown pages with immutable versions, commit messages, history, restore, backlinks, and full-text search.
 - Private S3 assets with checksum-bound uploads and five-minute authorized downloads.
-- Google sign-in restricted to one verified owner email.
-- Passkey-protected publishing, republishing, slug changes, and unpublishing with one immutable credential.
+- Passkey-only owner signup and sign-in, bound to the configured owner email through a one-time setup link.
+- Passkey-protected publishing, republishing, slug changes, and unpublishing with the same immutable credential.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
 - Stateless Streamable HTTP MCP at `/mcp` with page read/write and asset-read tools only.
 - Exact published snapshots at `/p/:slug` and independently published assets on a cookieless hostname.
@@ -21,6 +21,7 @@ External ingestion, vault migration, automations, approval queues, collaboration
 
 | Principal | Credential | Accepted surface |
 |---|---|---|
+| Owner sign-in | Discoverable, user-verified passkey | Session creation |
 | Owner | Host-only secure session cookie | `/api/dashboard/*` |
 | Owner publishing | Session + CSRF + exact origin + action-bound passkey assertion | Publication confirmation only |
 | Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
@@ -39,7 +40,6 @@ Prerequisites:
 - An authenticated AWS CLI profile with permission to create the documented resources.
 - Terraform `>= 1.11, < 2.0`.
 - A hostname you control.
-- A Google OAuth web client. Configure `https://YOUR_HOST/api/auth/callback/google` as its authorized redirect URI.
 - GitHub CLI for release-provenance verification during installation.
 
 Install the signed release artifact:
@@ -55,7 +55,7 @@ Ensure `~/.local/bin` is on `PATH`, then run:
 context-use setup
 ```
 
-The CLI asks for the AWS profile, region, hostname, DNS mode, owner email, and Google credentials. It creates everything else, stores secrets only as KMS-encrypted SSM parameters, deploys through Systems Manager, waits for TLS, and checks the authentication boundary. Manual DNS setup pauses safely and continues with `context-use resume`.
+The CLI asks for the AWS profile, region, hostname, DNS mode, and owner email. It creates everything else, stores secrets only as KMS-encrypted SSM parameters, deploys through Systems Manager, waits for TLS, and prints a one-time owner-enrollment link. The link asks for the configured email and creates the installation's permanent passkey; email is an identity label, not a sign-in or recovery method. Manual DNS setup pauses safely and continues with `context-use resume`.
 
 Useful commands:
 

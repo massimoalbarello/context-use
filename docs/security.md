@@ -5,7 +5,7 @@
 The only private-to-public transition is:
 
 ```text
-verified Google owner
+user-verified owner passkey
 → revocable dashboard session
 → reviewed immutable page version or exact asset
 → session-bound, five-minute publication intent
@@ -43,9 +43,9 @@ The migration container alone uses the database administrator. The long-running 
 
 ## Authentication
 
-Google sign-in is accepted only when the provider reports a verified email exactly matching the normalized installation owner. Dashboard sessions are database-backed, revocable, uncached, seven days maximum, and twelve hours idle. Production cookies are secure, HTTP-only, host-only, `SameSite=Lax`, and have no `Domain` attribute.
+Initial enrollment requires both a random installation setup capability and the exact normalized owner email configured during deployment. The setup capability is delivered in the enrollment URL fragment and enrollment closes after the first credential is stored. The email is an account identifier only: it cannot create a session or recover access.
 
-WebAuthn requires user verification. Initial passkey enrollment is available only during a fresh owner session with zero existing credentials. After enrollment, the server rejects every additional registration and every deletion; the publication credential is immutable for the lifetime of the installation.
+The owner passkey must be discoverable and WebAuthn user verification is enforced during both registration and authentication. Successful authentication creates a database-backed, revocable, uncached dashboard session lasting at most seven days with a twelve-hour idle limit. Production cookies are secure, HTTP-only, host-only, `SameSite=Lax`, and have no `Domain` attribute. The server rejects every additional registration, update, and deletion; the credential is immutable for the lifetime of the installation.
 
 MCP OAuth uses authorization code with mandatory PKCE. Access tokens expire after fifteen minutes and are bound to the canonical `/mcp` audience and client identifier. Offline access requires separate consent. Refresh tokens rotate; reuse invalidates the token family. MCP also verifies the current client and consent record on every request, so dashboard revocation takes effect before a JWT expires.
 
@@ -67,6 +67,6 @@ Secrets are generated locally in memory, sent directly to SSM `SecureString`, fe
 
 ## Passkey permanence
 
-There is no passkey recovery or rotation path in v1. Losing the credential leaves private dashboard access available through the allowlisted Google account, but permanently prevents publishing, republishing, slug changes, and unpublishing. This makes deployment-administrator access insufficient to replace the publication factor.
+There is no passkey recovery or rotation path in v1. Losing every copy of the credential permanently removes dashboard access and prevents publishing, republishing, slug changes, and unpublishing. The configured email cannot be used to bypass or replace the passkey.
 
 Security issues should be reported as described in [SECURITY.md](../SECURITY.md), not in a public issue.

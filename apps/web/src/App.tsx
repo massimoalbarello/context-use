@@ -5,7 +5,6 @@ import { Assets } from "./components/Assets.tsx";
 import { Editor } from "./components/Editor.tsx";
 import { Login } from "./components/Login.tsx";
 import { OAuthConsent } from "./components/OAuthConsent.tsx";
-import { PasskeyOnboarding } from "./components/PasskeyOnboarding.tsx";
 import { Security, type PasskeySummary } from "./components/Security.tsx";
 import type { Page } from "./types.ts";
 
@@ -40,7 +39,7 @@ export function App() {
   if (!authSession) return <Login />;
   if (consent) return <OAuthConsent />;
   if (!session) return <main className="center-card">Verifying owner session…</main>;
-  if (session.passkey_count === 0) return <PasskeyOnboarding onComplete={() => { history.replaceState({}, "", "/app"); loadSession(); }} />;
+  if (session.passkey_count === 0) return <main className="center-card"><h1>Owner passkey missing</h1><p>This session cannot access an installation without its permanent owner passkey.</p></main>;
 
   const createPage = async () => {
     const path = window.prompt("Page path (lowercase, e.g. notes/new-page)");

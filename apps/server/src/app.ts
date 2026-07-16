@@ -30,6 +30,7 @@ import { auth, authPool, dashboardPrincipal } from "./auth.ts";
 import { config, production } from "./config.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
 import { createMcpRequestHandler } from "./mcp.ts";
+import { ownerUserId } from "./owner.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import {
   SecurityError,
@@ -38,6 +39,7 @@ import {
   securityHeaders,
 } from "./security.ts";
 import { contentDisposition, mayRenderInline, storage } from "./storage.ts";
+import { requireAuthenticationUserVerification } from "./webauthn-policy.ts";
 
 const dashboardPool = createPool(config.DATABASE_URL);
 const mcpPool = createPool(config.MCP_DATABASE_URL);
@@ -162,15 +164,15 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
-  .get("/api/health", () => json({ status: "ok", version: "0.1.1" }))
+  .get("/api/health", () => json({ status: "ok", version: "0.1.2" }))
   .all("/api/auth/*", async ({ request }) => {
     const boundary = await authorizePasskeyAuthRequest(request);
     if (boundary.denied) return boundary.denied;
     try {
-      const principal = await dashboardPrincipal(request);
-      const response = await auth.handler(request);
       const pathname = new URL(request.url).pathname;
-      if (response.ok && principal) {
+      const principal = await dashboardPrincipal(request);
+      const response = await requireAuthenticationUserVerification(pathname, await auth.handler(request));
+      if (response.ok) {
         const eventType = pathname.endsWith("/passkey/verify-registration")
           ? "passkey_registered"
           : pathname.endsWith("/oauth2/consent")
@@ -180,7 +182,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
           await authPool.query(
             `INSERT INTO security_audit_events(event_type,actor_type,actor_id,target_type,target_id)
              VALUES ($1,'owner',$2,'user',$2)`,
-            [eventType, principal.userId],
+            [eventType, principal?.userId ?? ownerUserId],
           );
         }
       }

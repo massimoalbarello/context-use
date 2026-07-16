@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts";
 import { createHash } from "node:crypto";
-import { accountId, bootstrapStateBucket, configureStateBucketKms, createStateKmsKey, generateSecret, putSecureParameter } from "./aws.ts";
+import { accountId, bootstrapStateBucket, configureStateBucketKms, createStateKmsKey, generateSecret, getSecureParameter, putSecureParameter } from "./aws.ts";
 import { deploy } from "./deploy.ts";
 import { configPath, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
@@ -24,15 +24,16 @@ function validHostname(input: string | undefined): boolean {
   return input.split(".").every((label) => label.length > 0 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label));
 }
 
-export async function storeRuntimeParameters(config: DeploymentConfig, googleSecret: string): Promise<void> {
+export async function storeRuntimeParameters(config: DeploymentConfig): Promise<void> {
   if (!config.dataOutputs || !config.computeOutputs) throw new Error("Infrastructure outputs missing");
   const prefix = `/context-use/${config.installationId}/${config.environment}`;
+  const ownerSetupToken = generateSecret(32);
   const generated: Record<string, string> = {
     APP_HOSTNAME: config.hostname,
     ASSET_HOSTNAME: config.assetHostname,
     OWNER_EMAIL: config.ownerEmail,
-    GOOGLE_CLIENT_ID: config.googleClientId,
-    GOOGLE_CLIENT_SECRET: googleSecret,
+    OWNER_SETUP_TOKEN: ownerSetupToken,
+    OWNER_SETUP_TOKEN_HASH: createHash("sha256").update(ownerSetupToken).digest("hex"),
     BETTER_AUTH_SECRET: generateSecret(48),
     POSTGRES_PASSWORD: generateSecret(36),
     DB_AUTH_PASSWORD: generateSecret(36),
@@ -59,6 +60,12 @@ export async function storeRuntimeParameters(config: DeploymentConfig, googleSec
   await saveConfig(config);
 }
 
+export async function ownerSetupUrl(config: DeploymentConfig): Promise<string> {
+  const prefix = `/context-use/${config.installationId}/${config.environment}`;
+  const token = await getSecureParameter(config.awsProfile, config.awsRegion, `${prefix}/OWNER_SETUP_TOKEN`);
+  return `https://${config.hostname}/app#setup=${encodeURIComponent(token)}`;
+}
+
 export async function setup(): Promise<void> {
   p.intro("context-use · private knowledge infrastructure");
   if (await Bun.file(configPath).exists()) {
@@ -74,17 +81,15 @@ export async function setup(): Promise<void> {
   const hostname = required(await p.text({ message: "Dashboard hostname", placeholder: "context.example.com", validate: (input) => validHostname(input) ? undefined : "Enter a valid lowercase hostname" }), "Hostname");
   const dnsMode = value(await p.select({ message: "DNS management", options: [{ value: "route53", label: "Route 53 (automatic)" }, { value: "manual", label: "Manual DNS" }] })) as "route53" | "manual";
   const route53ZoneId = dnsMode === "route53" ? required(await p.text({ message: "Route 53 hosted zone ID" }), "Route 53 zone ID") : "";
-  const ownerEmail = required(await p.text({ message: "Verified Google owner email", validate: (input) => input && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input) ? undefined : "Enter a valid email" }), "Owner email").trim().toLowerCase();
-  p.note("context-use has no analytics or telemetry. Google receives authentication traffic, and the certificate authority receives the two configured hostnames.", "External services");
-  const googleClientId = required(await p.text({ message: "Google OAuth client ID", validate: (input) => input && /^[A-Za-z0-9._-]+$/.test(input) ? undefined : "Enter the Google client ID" }), "Google client ID");
-  const googleClientSecret = required(await p.password({ message: "Google OAuth client secret", validate: (input) => input && /^[A-Za-z0-9._-]+$/.test(input) ? undefined : "Enter the Google client secret" }), "Google client secret");
+  const ownerEmail = required(await p.text({ message: "Owner email", validate: (input) => input && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input) ? undefined : "Enter a valid email" }), "Owner email").trim().toLowerCase();
+  p.note("context-use has no analytics or telemetry. No identity provider receives authentication traffic; the certificate authority receives the two configured hostnames.", "External services");
   const manifest = await releaseManifest(process.env.CONTEXT_USE_VERSION ?? "latest");
   const config: DeploymentConfig = {
     schemaVersion: 1, releaseVersion: manifest.version, phase: "new", environment: "production",
     installationId: createHash("sha256").update(`${identity}:${awsRegion}:${hostname}`).digest("hex").slice(0, 12),
     awsProfile, awsRegion, availabilityZone: `${awsRegion}a`, accountId: identity,
     hostname, assetHostname: `assets.${hostname}`, dnsMode, route53ZoneId, ownerEmail,
-    googleClientId, parametersReady: false,
+    parametersReady: false,
     stateBucket: `context-use-${identity}-${awsRegion}-${createHash("sha256").update(hostname).digest("hex").slice(0, 10)}-tfstate`, instanceType: "t3.small",
     dataVolumeSizeGb: 50, backupRetentionDays: 30,
   };
@@ -101,7 +106,7 @@ export async function setup(): Promise<void> {
   config.phase = "data_ready"; await saveConfig(config);
   config.computeOutputs = await applyCompute(root, config);
   config.phase = "compute_ready"; await saveConfig(config);
-  await storeRuntimeParameters(config, googleClientSecret);
+  await storeRuntimeParameters(config);
   if (dnsMode === "manual") {
     config.phase = "awaiting_dns"; await saveConfig(config);
     p.note(`Create these A records pointing to ${config.computeOutputs.public_ip}:\n${config.hostname}\n${config.assetHostname}\n\nThen run: context-use resume`, "DNS required");
@@ -109,5 +114,5 @@ export async function setup(): Promise<void> {
   }
   await deploy(config, manifest);
   config.phase = "deployed"; await saveConfig(config);
-  p.outro(`context-use is ready at https://${config.hostname}/app`);
+  p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}`);
 }

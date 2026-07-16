@@ -11,6 +11,7 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { z } from "zod";
 import { authPool } from "./auth.ts";
 import { config } from "./config.ts";
+import { ownerUserId } from "./owner.ts";
 import type { ObjectStorage } from "./storage.ts";
 
 type McpContext = {
@@ -49,9 +50,9 @@ async function contextFromJwt(jwt: JWTPayload): Promise<McpContext | null> {
      JOIN "user" owner ON owner.id=consent."userId"
      WHERE client."clientId"=$1 AND consent."userId"=$2
        AND coalesce(client.disabled,false)=false
-       AND lower(owner.email)=lower($3) AND owner."emailVerified"=true
-       AND consent.scopes @> $4::jsonb`,
-    [clientId, userId, config.OWNER_EMAIL, JSON.stringify([...scopes])],
+       AND owner.id=$3 AND lower(owner.email)=lower($4) AND owner."emailVerified"=true
+       AND consent.scopes @> $5::jsonb`,
+    [clientId, userId, ownerUserId, config.OWNER_EMAIL, JSON.stringify([...scopes])],
   );
   if (!result.rowCount) return null;
 
@@ -72,7 +73,7 @@ const jsonContent = (value: unknown) => ({
 });
 
 function createServer(context: McpContext, pages: PageRepository, assets: AssetRepository, storage: ObjectStorage): McpServer {
-  const server = new McpServer({ name: "context-use", version: "0.1.1" });
+  const server = new McpServer({ name: "context-use", version: "0.1.2" });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
   server.registerTool("list_pages", {
