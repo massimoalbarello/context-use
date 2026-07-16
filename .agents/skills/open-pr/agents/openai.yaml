@@ -1,4 +1,0 @@
-interface:
-  display_name: "Open Pull Request"
-  short_description: "Open and shepherd repository pull requests"
-  default_prompt: "Use $open-pr to publish these changes as a pull request and shepherd its checks."
