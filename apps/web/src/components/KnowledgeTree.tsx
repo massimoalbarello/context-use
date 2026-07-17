@@ -20,6 +20,7 @@ type KnowledgeTreeProps = {
   query: string;
   selected: KnowledgeSelection | null;
   onSelect: (selection: KnowledgeSelection) => void;
+  emptyMessage?: string;
 };
 
 function restoredExpandedPaths(): Set<string> | null {
@@ -155,7 +156,7 @@ function DirectoryBranch({
   </div>;
 }
 
-export function KnowledgeTree({ pages, assets, query, selected, onSelect }: KnowledgeTreeProps) {
+export function KnowledgeTree({ pages, assets, query, selected, onSelect, emptyMessage }: KnowledgeTreeProps) {
   const tree = useMemo(() => buildKnowledgeTree(pages, assets), [pages, assets]);
   const restoredPaths = useRef<Set<string> | null>(restoredExpandedPaths());
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
@@ -200,7 +201,7 @@ export function KnowledgeTree({ pages, assets, query, selected, onSelect }: Know
     return next;
   });
 
-  if (!pages.length && !assets.length) return <div className="tree-empty">{query ? "No matching knowledge" : "No knowledge yet"}</div>;
+  if (!pages.length && !assets.length) return <div className="tree-empty">{query ? "No matching knowledge" : emptyMessage ?? "No knowledge yet"}</div>;
 
   return <div className="page-tree" role="tree" aria-label="Knowledge pages and assets">
     {tree.directories.map((directory) => <DirectoryBranch
