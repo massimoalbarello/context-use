@@ -2,10 +2,29 @@ import { useEffect, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { api, uploadFile } from "../api.ts";
 import type { Asset } from "../types.ts";
+import "./Assets.css";
 
 async function sha256(file: File): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function assetTypeLabel(asset: Asset): string {
+  const extension = asset.filename.match(/\.([a-z0-9]{1,8})$/i)?.[1];
+  return extension?.toUpperCase() ?? asset.content_type.split("/")[0] ?? "file";
+}
+
+function AssetPreview({ asset }: { asset: Asset }) {
+  const [failed, setFailed] = useState(false);
+  const source = `/api/dashboard/assets/${asset.id}/preview`;
+
+  if (!failed && /^(image\/(?:png|jpeg|gif|webp))$/i.test(asset.content_type)) {
+    return <div className="asset-preview"><img src={source} alt={`Preview of ${asset.filename}`} loading="lazy" onError={() => setFailed(true)} /></div>;
+  }
+  if (!failed && /^application\/pdf$/i.test(asset.content_type)) {
+    return <div className="asset-preview pdf-preview"><iframe src={`${source}#page=1&view=FitH&toolbar=0&navpanes=0&scrollbar=0`} title={`Preview of ${asset.filename}`} loading="lazy" tabIndex={-1} /></div>;
+  }
+  return <div className="asset-icon">{assetTypeLabel(asset)}</div>;
 }
 
 export function Assets() {
@@ -51,6 +70,6 @@ export function Assets() {
 
   return <main className="content-page"><header><div><span className="eyebrow">Private by default</span><h1>Assets</h1></div><label className="upload-button">Upload asset<input type="file" onChange={(event) => event.target.files?.[0] && upload(event.target.files[0])} /></label></header>
     {message && <p>{message}</p>}
-    <div className="asset-grid">{assets.map((asset) => <article key={asset.id}><div className="asset-icon">{asset.content_type.split("/")[0]}</div><strong>{asset.filename}</strong><span>{(asset.size_bytes / 1024).toFixed(1)} KB · {asset.published_at ? "Public" : "Private"}</span><code>context-use://asset/{asset.id}</code><div className="button-row"><a className="button" href={`/api/dashboard/assets/${asset.id}/content`} target="_blank" rel="noreferrer">Open</a><button onClick={() => visibility(asset, asset.published_at ? "unpublish" : "publish")}>{asset.published_at ? "Unpublish" : "Publish with passkey"}</button>{!asset.published_at && <button className="danger" onClick={() => remove(asset)}>Delete</button>}</div></article>)}</div>
+    <div className="asset-grid">{assets.map((asset) => <article key={asset.id}><AssetPreview asset={asset} /><strong className="asset-name" title={asset.filename}>{asset.filename}</strong><span>{(asset.size_bytes / 1024).toFixed(1)} KB · {asset.published_at ? "Public" : "Private"}</span><code>context-use://asset/{asset.id}</code><div className="button-row"><a className="button" href={`/api/dashboard/assets/${asset.id}/content`} target="_blank" rel="noreferrer">Open</a><button onClick={() => visibility(asset, asset.published_at ? "unpublish" : "publish")}>{asset.published_at ? "Unpublish" : "Publish with passkey"}</button>{!asset.published_at && <button className="danger" onClick={() => remove(asset)}>Delete</button>}</div></article>)}</div>
   </main>;
 }

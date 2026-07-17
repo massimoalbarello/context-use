@@ -37,10 +37,11 @@ import {
   SecurityError,
   assertDashboardRequestSecurity,
   assertDashboardUploadSecurity,
+  assetPreviewSecurityHeaders,
   csrfToken,
   securityHeaders,
 } from "./security.ts";
-import { AssetIntegrityError, contentDisposition, mayRenderInline, storage } from "./storage.ts";
+import { AssetIntegrityError, contentDisposition, mayPreview, mayRenderInline, storage } from "./storage.ts";
 import { requireAuthenticationUserVerification } from "./webauthn-policy.ts";
 
 const dashboardPool = createPool(config.DATABASE_URL);
@@ -467,6 +468,20 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       throw error;
     }
     return json({ uploaded: true });
+  })
+  .get("/api/dashboard/assets/:id/preview", async ({ request, params }) => {
+    await ownerRequest(request);
+    const asset = await dashboardAssets.get(z.string().uuid().parse(params.id), true);
+    if (!asset) return problem("Asset not found", 404, "not_found");
+    if (!mayPreview(asset.content_type)) return problem("Asset type cannot be previewed", 415, "preview_unsupported");
+    return new Response(await storage.read(asset.s3_object_key), {
+      headers: {
+        ...assetPreviewSecurityHeaders,
+        "content-type": asset.content_type,
+        "content-length": String(asset.size_bytes),
+        "content-disposition": contentDisposition(asset.filename, true),
+      },
+    });
   })
   .get("/api/dashboard/assets/:id/content", async ({ request, params }) => {
     await ownerRequest(request);

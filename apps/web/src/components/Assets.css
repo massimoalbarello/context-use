@@ -1,0 +1,35 @@
+.asset-grid article {
+  min-width: 0;
+}
+
+.asset-name {
+  overflow-wrap: anywhere;
+}
+
+.asset-grid .asset-icon,
+.asset-grid .asset-preview {
+  height: 132px;
+  border-radius: 8px;
+  background: #e7ede8;
+  overflow: hidden;
+}
+
+.asset-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.pdf-preview {
+  background: #dfe4df;
+}
+
+.pdf-preview iframe {
+  display: block;
+  width: 100%;
+  height: 170%;
+  border: 0;
+  background: #fff;
+  pointer-events: none;
+}

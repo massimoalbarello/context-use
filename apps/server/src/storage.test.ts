@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "bun:test";
-import { AssetIntegrityError, FilesystemStorage, type StoredAsset } from "./storage.ts";
+import { AssetIntegrityError, FilesystemStorage, mayPreview, type StoredAsset } from "./storage.ts";
 
 const temporaryDirectories: string[] = [];
 
@@ -52,5 +52,20 @@ describe("application-routed asset storage", () => {
 
     await expect(storage.write(asset, new Blob([supplied]).stream())).rejects.toBeInstanceOf(AssetIntegrityError);
     expect(await Bun.file(join(root, asset.objectKey)).exists()).toBe(false);
+  });
+});
+
+describe("private asset previews", () => {
+  test("allows the image and PDF types rendered by asset cards", () => {
+    for (const contentType of ["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"]) {
+      expect(mayPreview(contentType)).toBe(true);
+    }
+    expect(mayPreview("APPLICATION/PDF")).toBe(true);
+  });
+
+  test("does not embed active or unsupported content", () => {
+    for (const contentType of ["image/svg+xml", "text/html", "application/javascript", "video/mp4"]) {
+      expect(mayPreview(contentType)).toBe(false);
+    }
   });
 });

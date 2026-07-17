@@ -56,6 +56,11 @@ export function mayRenderInline(contentType: string): boolean {
   return INLINE_TYPES.test(contentType.toLowerCase());
 }
 
+const PREVIEW_TYPES = /^(image\/(?:png|jpeg|gif|webp)|application\/pdf)$/;
+export function mayPreview(contentType: string): boolean {
+  return PREVIEW_TYPES.test(contentType.toLowerCase());
+}
+
 class S3Storage implements ObjectStorage {
   private readonly client = new S3Client({ region: config.AWS_REGION });
 

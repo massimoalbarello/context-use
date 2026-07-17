@@ -64,3 +64,11 @@ export const securityHeaders = {
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
 };
+
+// Private asset previews are the one response type intentionally embedded by the
+// same-origin dashboard. All other application responses remain non-frameable.
+export const assetPreviewSecurityHeaders = {
+  ...securityHeaders,
+  "content-security-policy": "default-src 'none'; frame-ancestors 'self'",
+  "x-frame-options": "SAMEORIGIN",
+};
