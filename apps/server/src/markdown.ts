@@ -1,4 +1,4 @@
-import { extractAssetLinks, extractPageLinks } from "@context-use/database";
+import { extractAssetLinks, extractPageLinks, extractWikiLinks } from "@context-use/database";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { config } from "./config.ts";
@@ -6,6 +6,7 @@ import { config } from "./config.ts";
 export type LinkResolution = { available: true; href: string } | { available: false };
 export type MarkdownResolvers = {
   page: (id: string) => Promise<LinkResolution>;
+  pagePath: (path: string) => Promise<LinkResolution>;
   asset: (id: string) => Promise<LinkResolution>;
 };
 
@@ -15,8 +16,10 @@ function escapeHtml(value: string): string {
 
 export async function renderMarkdown(markdown: string, resolvers: MarkdownResolvers): Promise<string> {
   const pages = new Map<string, LinkResolution>();
+  const wikiPages = new Map<string, LinkResolution>();
   const assets = new Map<string, LinkResolution>();
   await Promise.all(extractPageLinks(markdown).map(async (id) => pages.set(id, await resolvers.page(id))));
+  await Promise.all(extractWikiLinks(markdown).map(async ({ path }) => wikiPages.set(path, await resolvers.pagePath(path))));
   await Promise.all(extractAssetLinks(markdown).map(async (id) => assets.set(id, await resolvers.asset(id))));
 
   let source = markdown.replace(
@@ -35,6 +38,17 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
       return target?.available
         ? `![${label}](${target.href})`
         : `<span class="private-reference">Private asset unavailable</span>`;
+    },
+  );
+  source = source.replace(
+    /(?<!!)\[\[([a-z0-9][a-z0-9/_-]*)(?:\|([^\]\n]+))?\]\]/gi,
+    (_match, rawPath: string, rawLabel: string | undefined) => {
+      const path = rawPath.toLowerCase();
+      const label = rawLabel?.trim() || path.split("/").at(-1) || path;
+      const target = wikiPages.get(path);
+      return target?.available
+        ? `<a href="${escapeHtml(target.href)}">${escapeHtml(label)}</a>`
+        : `<span class="private-reference">${escapeHtml(label)}</span>`;
     },
   );
 
@@ -56,10 +70,15 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
     allowedClasses: { span: ["private-reference"] },
     allowedSchemes: ["http", "https", "mailto"],
     transformTags: {
-      a: (_tag, attributes) => ({
-        tagName: "a",
-        attribs: { ...attributes, rel: "noopener noreferrer", target: "_blank" },
-      }),
+      a: (_tag, attributes) => {
+        const external = /^(?:https?:|mailto:)/i.test(attributes.href ?? "");
+        return {
+          tagName: "a",
+          attribs: external
+            ? { ...attributes, rel: "noopener noreferrer", target: "_blank" }
+            : attributes,
+        };
+      },
       img: (_tag, attributes) => ({
         tagName: "img",
         attribs: { ...attributes, loading: "lazy" },
@@ -80,7 +99,9 @@ export function publicationWarnings(markdown: string): string[] {
   if (/(?:BEGIN (?:RSA |EC )?PRIVATE KEY|api[_-]?key\s*[:=]|secret\s*[:=]|bearer\s+[a-z0-9._-]{16,})/i.test(markdown)) {
     warnings.push("Possible secret material detected; review the page carefully");
   }
-  const privateReferences = extractPageLinks(markdown).length + extractAssetLinks(markdown).length;
+  const privateReferences = extractPageLinks(markdown).length
+    + extractWikiLinks(markdown).length
+    + extractAssetLinks(markdown).length;
   if (privateReferences) warnings.push(`${privateReferences} context-use reference(s) have independent visibility`);
   return warnings;
 }

@@ -1,57 +1,45 @@
 # Development
 
-## Local stack with Docker Compose
+## Docker Compose development environment
 
-Build the app, start PostgreSQL, apply migrations, and serve the dashboard at
-`http://localhost:3000`:
+Start PostgreSQL, run the migrations, and launch the API and Vite development servers:
 
 ```sh
 docker compose up --build
 ```
 
-For first-time owner enrollment, open:
+The root Compose file includes `compose.dev.yml`. The source tree is bind-mounted into the API and web containers, so both servers reload as files change. PostgreSQL data, uploaded assets, and container dependencies live in named Docker volumes.
 
-```text
-http://localhost:3000/app#setup=development-owner-setup-token-0000000000000
-```
-
-Use `you@example.com` and create the passkey with your normal browser. Stop the
-stack with `Ctrl+C`, or run `docker compose down`. To reset all local pages,
-assets, and enrollment state, run `docker compose down -v`.
-
-## Local PostgreSQL
-
-Start PostgreSQL 17 on a local port:
+Open the one-time local owner enrollment page:
 
 ```sh
-docker run --name context-use-dev-db --rm \
-  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=context_use \
-  -p 5432:5432 postgres:17-alpine
+http://localhost:5173/app#setup=development-owner-setup-token-0000000000000
 ```
 
-In another shell, apply migrations and role passwords:
+The default owner email is `you@example.com`. Override it for a fresh database with `OWNER_EMAIL=me@example.com docker compose up --build`.
+
+Stop the containers without removing local data:
 
 ```sh
-export MIGRATOR_DATABASE_URL=postgres://postgres:postgres@localhost:5432/context_use
-export DB_AUTH_PASSWORD=development-only
-export DB_DASHBOARD_PASSWORD=development-only
-export DB_MCP_PASSWORD=development-only
-export DB_PUBLIC_PASSWORD=development-only
-export DB_PUBLISHER_PASSWORD=development-only
-export DB_BACKUP_PASSWORD=development-only
-bun run db:migrate
+docker compose down
 ```
 
-Copy `.env.example` to `.env`, then run the server and web development processes:
+To discard the local database, assets, and installed container dependencies as well, add `--volumes` to the `down` command.
+
+## Host processes with a containerized database
+
+If you prefer running Bun directly on the host, start only the database and migration services:
 
 ```sh
+docker compose up -d postgres
+docker compose run --rm migrate
+bun install --frozen-lockfile
+cp .env.example .env
 bun run dev:server
 bun run dev:web
 ```
 
-The Vite development server proxies application requests to the API server. Filesystem asset storage is used locally.
-
-For local owner enrollment, open `http://localhost:5173/app#setup=development-owner-setup-token-0000000000000` and enter the `OWNER_EMAIL` value. The development token corresponds to the hash in `.env.example`; production setup always generates a random token.
+The Vite development server proxies application requests to the API server. Filesystem asset storage is used locally. The development setup token is fixed; production setup always generates a random token.
 
 ## Verification
 

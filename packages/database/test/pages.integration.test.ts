@@ -13,7 +13,6 @@ describeDatabase("immutable page history", () => {
 
   afterAll(async () => {
     for (const id of createdIds) {
-      await pool.query("DELETE FROM knowledge_page_links WHERE source_version_id IN (SELECT id FROM knowledge_page_versions WHERE page_id=$1)", [id]);
       await pool.query("DELETE FROM knowledge_asset_links WHERE source_version_id IN (SELECT id FROM knowledge_page_versions WHERE page_id=$1)", [id]);
       await pool.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
       await pool.query("DELETE FROM knowledge_pages WHERE id=$1", [id]);

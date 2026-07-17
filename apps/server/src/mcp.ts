@@ -120,24 +120,6 @@ function createServer(context: McpContext, pages: PageRepository, assets: AssetR
     return jsonContent(await pages.version(page_id, version_number));
   });
 
-  server.registerTool("get_page_links", {
-    description: "Get current outgoing links from a page.",
-    inputSchema: z.object({ page_id: z.string().uuid() }).strict(),
-    annotations: { readOnlyHint: true },
-  }, async ({ page_id }) => {
-    requireScope(context, "kb:read");
-    return jsonContent((await pages.links(page_id)).outgoing);
-  });
-
-  server.registerTool("get_backlinks", {
-    description: "Get current pages that link to a page.",
-    inputSchema: z.object({ page_id: z.string().uuid() }).strict(),
-    annotations: { readOnlyHint: true },
-  }, async ({ page_id }) => {
-    requireScope(context, "kb:read");
-    return jsonContent((await pages.links(page_id)).backlinks);
-  });
-
   server.registerTool("create_page", {
     description: "Create a private Markdown page and its first immutable version.",
     inputSchema: createPageSchema,

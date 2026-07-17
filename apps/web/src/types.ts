@@ -9,11 +9,8 @@ export type Page = {
   title: string;
   body_markdown: string;
   rendered_html?: string;
-  outgoing?: LinkedPage[];
-  backlinks?: LinkedPage[];
 };
 
-export type LinkedPage = { id: string; current_path: string; title: string };
 export type Version = {
   id: string;
   page_id: string;
