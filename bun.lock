@@ -11,7 +11,7 @@
     },
     "apps/cli": {
       "name": "@context-use/cli",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "bin": {
         "context-use": "./src/main.ts",
       },
@@ -26,7 +26,7 @@
     },
     "apps/server": {
       "name": "@context-use/server",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1088.0",
         "@aws-sdk/s3-request-presigner": "3.1088.0",
@@ -52,7 +52,7 @@
     },
     "apps/web": {
       "name": "@context-use/web",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "dependencies": {
         "@better-auth/oauth-provider": "1.7.0-rc.1",
         "@better-auth/passkey": "1.7.0-rc.1",
@@ -73,9 +73,10 @@
     },
     "packages/database": {
       "name": "@context-use/database",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "dependencies": {
         "@context-use/shared": "workspace:*",
+        "croner": "10.0.1",
         "pg": "8.22.0",
       },
       "devDependencies": {
@@ -84,7 +85,7 @@
     },
     "packages/shared": {
       "name": "@context-use/shared",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "dependencies": {
         "zod": "4.4.3",
       },
@@ -473,6 +474,8 @@
     "cookie-signature": ["cookie-signature@1.2.2", "", {}, "sha512-D76uU73ulSXrD1UXF4KE2TMxVVwhsnCgfAyTg9k8P6KGZjlXKrOLe4dJQKI3Bxi5wjesZoFXJWElNWBjPZMbhg=="],
 
     "cors": ["cors@2.8.6", "", { "dependencies": { "object-assign": "^4", "vary": "^1" } }, "sha512-tJtZBBHA6vjIAaF6EnIaq6laBBP9aq/Y3ouVJjEfoHbRBcHBAHYcMh/w8LDrk2PvIMMq8gmopa5D4V8RmbrxGw=="],
+
+    "croner": ["croner@10.0.1", "", {}, "sha512-ixNtAJndqh173VQ4KodSdJEI6nuioBWI0V1ITNKhZZsO0pEMoDxz539T4FTTbSZ/xIOSuDnzxLVRqBVSvPNE2g=="],
 
     "cross-spawn": ["cross-spawn@7.0.6", "", { "dependencies": { "path-key": "^3.1.0", "shebang-command": "^2.0.0", "which": "^2.0.1" } }, "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA=="],
 

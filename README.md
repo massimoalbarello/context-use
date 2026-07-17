@@ -11,11 +11,12 @@ The public site is deliberately separate: a page or asset becomes public only af
 - Passkey-only owner signup and sign-in, bound to the configured owner email through a one-time setup link.
 - Passkey-protected publishing, republishing, slug changes, and unpublishing with the same immutable credential.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
-- Stateless Streamable HTTP MCP at `/mcp` with page read/write and asset-read tools only.
+- Stateless Streamable HTTP MCP at `/mcp` with knowledge, asset-read, and automation execution tools.
+- Versioned Markdown automation skills, time-zone-aware cron schedules, durable run history, and leased agent execution.
 - Exact published snapshots at `/p/:slug` and independently published assets on a cookieless hostname.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
 
-External ingestion, vault migration, automations, approval queues, collaboration, and semantic search are intentionally outside v1.
+External ingestion, vault migration, approval queues, collaboration, and semantic search are intentionally outside v1.
 
 ## Security model
 
@@ -80,7 +81,21 @@ Point an OAuth-capable MCP client at:
 https://YOUR_HOST/mcp
 ```
 
-The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, and `assets:read`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or administration scope exists.
+The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or administration scope exists.
+
+Skills and schedules are created in the owner dashboard under **Automations**. Context Use does not require a resident scheduler process: loading the dashboard or calling `claim_due_run` transactionally materializes elapsed schedules. The first version creates one catch-up run per schedule and skips additional occurrences missed while nobody was polling.
+
+Any connected agent can use the same generic external cron prompt:
+
+```text
+Check Context Use for scheduled work. Call claim_due_run. If it returns a run,
+follow the supplied skill instructions using the supplied input. When finished,
+call complete_run with the run ID and claim token; if the work cannot be
+completed, call fail_run with a concise error. Continue until claim_due_run
+returns null.
+```
+
+Claims are atomic and leased for six hours. Runs, inputs, skill versions, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
 
 ## Development
 

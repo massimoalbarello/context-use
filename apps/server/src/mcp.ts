@@ -1,7 +1,8 @@
-import { AssetRepository, PageRepository } from "@context-use/database";
+import { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
 import {
   archivePageSchema,
   createPageSchema,
+  type McpScope,
   updatePageSchema,
 } from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -63,7 +64,7 @@ async function contextFromJwt(jwt: JWTPayload): Promise<McpContext | null> {
   return { clientId, userId, scopes };
 }
 
-function requireScope(context: McpContext, scope: "kb:read" | "kb:write" | "assets:read"): void {
+function requireScope(context: McpContext, scope: McpScope): void {
   if (!context.scopes.has(scope)) throw new Error(`insufficient_scope:${scope}`);
 }
 
@@ -71,8 +72,14 @@ const jsonContent = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
 
-function createServer(context: McpContext, pages: PageRepository, assets: AssetRepository, storage: ObjectStorage): McpServer {
-  const server = new McpServer({ name: "context-use", version: "0.1.8" });
+function createServer(
+  context: McpContext,
+  pages: PageRepository,
+  assets: AssetRepository,
+  automations: AutomationRepository,
+  storage: ObjectStorage,
+): McpServer {
+  const server = new McpServer({ name: "context-use", version: "0.1.9" });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
   server.registerTool("list_pages", {
@@ -173,10 +180,50 @@ function createServer(context: McpContext, pages: PageRepository, assets: AssetR
     return jsonContent({ ...metadata, download_url, expires_in: 300 });
   });
 
+  server.registerTool("claim_due_run", {
+    description: "Claim the oldest due automation run. Returns the exact persisted skill instructions and inputs, or null when no work is ready. The claim is leased for six hours.",
+    inputSchema: z.object({}).strict(),
+    annotations: { destructiveHint: false },
+  }, async () => {
+    requireScope(context, "automations:claim");
+    return jsonContent(await automations.claimDueRun(context.clientId));
+  });
+
+  server.registerTool("complete_run", {
+    description: "Mark a claimed automation run as successfully completed. Use the run ID and claim token returned by claim_due_run.",
+    inputSchema: z.object({
+      run_id: z.string().uuid(),
+      claim_token: z.string().uuid(),
+      result_summary: z.string().trim().min(1).max(10_000).optional(),
+    }).strict(),
+    annotations: { destructiveHint: false },
+  }, async ({ run_id, claim_token, result_summary }) => {
+    requireScope(context, "automations:execute");
+    return jsonContent(await automations.completeRun(run_id, claim_token, context.clientId, result_summary));
+  });
+
+  server.registerTool("fail_run", {
+    description: "Mark a claimed automation run as failed and persist a concise error for the owner dashboard.",
+    inputSchema: z.object({
+      run_id: z.string().uuid(),
+      claim_token: z.string().uuid(),
+      error_message: z.string().trim().min(1).max(10_000),
+    }).strict(),
+    annotations: { destructiveHint: false },
+  }, async ({ run_id, claim_token, error_message }) => {
+    requireScope(context, "automations:execute");
+    return jsonContent(await automations.failRun(run_id, claim_token, context.clientId, error_message));
+  });
+
   return server;
 }
 
-export function createMcpRequestHandler(pages: PageRepository, assets: AssetRepository, storage: ObjectStorage) {
+export function createMcpRequestHandler(
+  pages: PageRepository,
+  assets: AssetRepository,
+  automations: AutomationRepository,
+  storage: ObjectStorage,
+) {
   const jwks = createRemoteJWKSet(new URL(`${config.APP_ORIGIN}/api/auth/jwks`));
 
   return async (request: Request): Promise<Response> => {
@@ -204,7 +251,7 @@ export function createMcpRequestHandler(pages: PageRepository, assets: AssetRepo
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();
-    const server = createServer(context, pages, assets, storage);
+    const server = createServer(context, pages, assets, automations, storage);
     await server.connect(transport);
     try {
       return await transport.handleRequest(request);
