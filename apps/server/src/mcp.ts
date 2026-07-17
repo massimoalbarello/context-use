@@ -6,11 +6,11 @@ import {
   updatePageSchema,
 } from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { z } from "zod";
 import { authPool } from "./auth.ts";
 import { config } from "./config.ts";
+import { createStatelessMcpTransport } from "./mcp-transport.ts";
 import { ownerUserId } from "./owner.ts";
 import type { ObjectStorage } from "./storage.ts";
 
@@ -229,7 +229,7 @@ export function createMcpRequestHandler(pages: PageRepository, assets: AssetRepo
     }
     const context = await contextFromJwt(jwt);
     if (!context) return mcpUnauthorized("OAuth grant is inactive");
-    const transport = new WebStandardStreamableHTTPServerTransport();
+    const transport = createStatelessMcpTransport();
     const server = createServer(context, pages, assets, storage);
     await server.connect(transport);
     try {
