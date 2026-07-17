@@ -34,7 +34,7 @@ export function App() {
   const [selected, setSelected] = useState<KnowledgeSelection | null>(selectionFromLocation);
   const [section, setSection] = useState<Section>(sectionFromLocation);
   const [query, setQuery] = useState("");
-  const [kindFilter, setKindFilter] = useState<"all" | "page" | "asset">("all");
+  const [publicationFilter, setPublicationFilter] = useState<"all" | "public">("all");
   const [showArchived, setShowArchived] = useState(false);
   const [message, setMessage] = useState("");
   const consent = window.location.pathname === "/app/oauth/consent";
@@ -64,13 +64,17 @@ export function App() {
   }, []);
 
   const visibleAssets = useMemo(() => {
-    if (kindFilter === "page") return [];
     const normalized = query.trim().toLocaleLowerCase();
-    return normalized
+    const matchingAssets = normalized
       ? assets.filter((asset) => `${asset.current_path} ${asset.filename}`.toLocaleLowerCase().includes(normalized))
       : assets;
-  }, [assets, query, kindFilter]);
-  const visiblePages = kindFilter === "asset" ? [] : pages;
+    return publicationFilter === "public"
+      ? matchingAssets.filter((asset) => Boolean(asset.published_at))
+      : matchingAssets;
+  }, [assets, query, publicationFilter]);
+  const visiblePages = useMemo(() => publicationFilter === "public"
+    ? pages.filter((page) => Boolean(page.published_version_id))
+    : pages, [pages, publicationFilter]);
   const selectedAsset = selected?.kind === "asset" ? assets.find((asset) => asset.id === selected.id) ?? null : null;
 
   if (isPending) return <main className="center-card">Loading…</main>;
@@ -121,9 +125,9 @@ export function App() {
     <aside className="sidebar">
       <div className="sidebar-brand"><div className="brand-mark small">cu</div><strong>context-use</strong></div>
       <input className="search" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} />
-      <div className="knowledge-filter">{(["all", "page", "asset"] as const).map((kind) => <button className={kindFilter === kind ? "active" : ""} key={kind} onClick={() => setKindFilter(kind)}>{kind === "all" ? "All" : `${kind}s`}</button>)}</div>
+      <div className="knowledge-filter" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>{(["all", "public"] as const).map((filter) => <button className={publicationFilter === filter ? "active" : ""} aria-pressed={publicationFilter === filter} key={filter} onClick={() => setPublicationFilter(filter)}>{filter === "all" ? "All" : "Public"}</button>)}</div>
       <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
-      <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} />
+      <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} emptyMessage={publicationFilter === "public" ? "Nothing public yet" : "No knowledge yet"} />
       <div className="knowledge-actions"><button onClick={createPage}>＋ New page</button><label className="button upload-button">↑ Upload asset<input type="file" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadAsset(file); }} /></label></div>
       <footer>
         <span className="sidebar-user">{session.owner.email} · {session.passkey_count} passkey{session.passkey_count === 1 ? "" : "s"}</span>
