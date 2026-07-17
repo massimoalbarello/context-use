@@ -80,12 +80,21 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("automation roles separate owner-authored logic from agent run state", async () => {
+  test("automation roles allow MCP creation without granting definition updates", async () => {
     expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_table_privilege('context_use_mcp','automation_skill_versions','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
+      "SELECT has_column_privilege('context_use_mcp','automation_skills','name','INSERT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp','automation_skill_versions','instructions_markdown','INSERT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','INSERT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','UPDATE') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp','automation_skills','name','UPDATE') AS allowed",
     )).rows[0]?.allowed).toBe(false);
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_mcp','automation_runs','status','UPDATE') AS allowed",

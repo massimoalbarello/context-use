@@ -22,7 +22,7 @@ An agent cannot substitute its OAuth token for any step:
 - `/mcp` rejects session cookies.
 - CSRF, exact `Origin`, same-site Fetch Metadata, JSON content type, and the dashboard session are required for mutations.
 - The agent never receives the host-only session cookie or passkey private key.
-- OAuth scopes are limited to knowledge, asset-read, and automation execution capabilities; none grants publication or dashboard access.
+- OAuth scopes are limited to knowledge, asset-read, and automation authoring/execution capabilities; none grants publication or dashboard access.
 - MCP schemas are strict and have no visibility fields.
 - The MCP database role cannot update publication columns or execute the publication function.
 - The dashboard role can create an intent but cannot change publication columns.
@@ -34,7 +34,7 @@ The application opens independent pools using independent SCRAM credentials:
 
 - `context_use_auth`: Better Auth, passkeys, OAuth clients, grants, and sessions.
 - `context_use_dashboard`: private page and asset operations; no direct publication updates.
-- `context_use_mcp`: page reads/writes, asset metadata reads, and narrowly column-scoped automation claiming/completion; no skill authoring, cron-definition changes, asset mutation, or publication.
+- `context_use_mcp`: page reads/writes, asset metadata reads, narrowly column-scoped automation creation, and automation claiming/completion; no skill or cron updates, asset mutation, or publication.
 - `context_use_public`: `SELECT` only on `published_pages` and `published_assets` security-barrier views.
 - `context_use_publisher`: execute-only publication capability.
 - `context_use_backup`: read-only database backup access.
@@ -49,7 +49,7 @@ The owner passkey must be discoverable and WebAuthn user verification is enforce
 
 MCP OAuth uses authorization code with mandatory PKCE. Access tokens expire after fifteen minutes and are bound to the canonical `/mcp` audience and client identifier. Offline access requires separate consent. Refresh tokens rotate; reuse invalidates the token family. MCP also verifies the current client and consent record on every request, so dashboard revocation takes effect before a JWT expires.
 
-Automation skill and cron mutations remain dashboard-only. MCP agents may read the exact skill version attached to a claimed run, advance a schedule's next occurrence, create due run records, and update only run lifecycle columns. A random claim token and the OAuth client identifier bind completion or failure to the claiming agent. Expired six-hour leases may be claimed again; already completed runs cannot be reclaimed.
+The `automations:write` scope allows MCP agents to create versioned automation skills and cron schedules. MCP agents cannot update existing skill instructions or cron definitions. They may read the exact skill version attached to a claimed run, advance a schedule's next occurrence, create due run records, and update only run lifecycle columns. A random claim token and the OAuth client identifier bind completion or failure to the claiming agent. Expired six-hour leases may be claimed again; already completed runs cannot be reclaimed.
 
 ## Content isolation
 

@@ -8,6 +8,8 @@ import {
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeDatabase = databaseUrl ? describe : describe.skip;
+const mcpDatabaseUrl = process.env.MCP_DATABASE_URL;
+const describeMcpDatabase = databaseUrl && mcpDatabaseUrl ? describe : describe.skip;
 
 describeDatabase("persisted automation lifecycle", () => {
   const pool = new Pool({ connectionString: databaseUrl });
@@ -80,5 +82,55 @@ describeDatabase("persisted automation lifecycle", () => {
       commit_message: "Attempt stale edit",
       expected_version_number: 1,
     }, { kind: "dashboard", subject: "integration-test-owner" })).rejects.toBeInstanceOf(AutomationVersionConflictError);
+  });
+});
+
+describeMcpDatabase("MCP automation authoring role", () => {
+  const adminPool = new Pool({ connectionString: databaseUrl });
+  const mcpPool = new Pool({ connectionString: mcpDatabaseUrl });
+  const automations = new AutomationRepository(mcpPool);
+  let skillId: string | undefined;
+
+  afterAll(async () => {
+    if (skillId) {
+      await adminPool.query("DELETE FROM automation_runs WHERE skill_version_id IN (SELECT id FROM automation_skill_versions WHERE skill_id=$1)", [skillId]);
+      await adminPool.query("DELETE FROM cron_schedules WHERE skill_version_id IN (SELECT id FROM automation_skill_versions WHERE skill_id=$1)", [skillId]);
+      await adminPool.query("ALTER TABLE automation_skills DISABLE TRIGGER ALL");
+      await adminPool.query("DELETE FROM automation_skills WHERE id=$1", [skillId]);
+      await adminPool.query("ALTER TABLE automation_skills ENABLE TRIGGER ALL");
+      await adminPool.query("DELETE FROM automation_skill_versions WHERE skill_id=$1", [skillId]);
+    }
+    await mcpPool.end();
+    await adminPool.end();
+  });
+
+  test("creates a skill and cron schedule without definition update privileges", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const skill = await automations.createSkill({
+      name: `MCP review ${suffix}`,
+      instructions_markdown: "Review the current project and record decisions.",
+      commit_message: "Create MCP review skill",
+    }, { kind: "mcp", subject: "integration-test-client" });
+    skillId = skill.id;
+
+    const schedule = await automations.createSchedule({
+      name: `MCP schedule ${suffix}`,
+      skill_version_id: skill.current_version_id,
+      cron_expression: "0 9 * * 1-5",
+      timezone: "Europe/London",
+      input: { project: "context-use" },
+      enabled: true,
+    });
+
+    expect(schedule).toMatchObject({
+      skill_version_id: skill.current_version_id,
+      cron_expression: "0 9 * * 1-5",
+      timezone: "Europe/London",
+    });
+    await expect(automations.updateSkill(skill.id, {
+      instructions_markdown: "Attempt an update.",
+      commit_message: "Attempt MCP skill update",
+      expected_version_number: 1,
+    }, { kind: "mcp", subject: "integration-test-client" })).rejects.toThrow();
   });
 });

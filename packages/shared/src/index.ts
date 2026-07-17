@@ -132,5 +132,12 @@ export type Asset = {
   deleted_at: string | null;
 };
 
-export const MCP_SCOPES = ["kb:read", "kb:write", "assets:read", "automations:claim", "automations:execute"] as const;
+export const MCP_SCOPES = [
+  "kb:read",
+  "kb:write",
+  "assets:read",
+  "automations:write",
+  "automations:claim",
+  "automations:execute",
+] as const;
 export type McpScope = (typeof MCP_SCOPES)[number];
