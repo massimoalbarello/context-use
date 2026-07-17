@@ -73,7 +73,7 @@ const jsonContent = (value: unknown) => ({
 });
 
 function createServer(context: McpContext, pages: PageRepository, assets: AssetRepository, storage: ObjectStorage): McpServer {
-  const server = new McpServer({ name: "context-use", version: "0.1.4" });
+  const server = new McpServer({ name: "context-use", version: "0.1.5" });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
   server.registerTool("list_pages", {
