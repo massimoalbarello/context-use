@@ -87,6 +87,14 @@ describeDatabase("PostgreSQL security roles", () => {
     expect(result.rows[0]?.allowed).toBe(false);
   });
 
+  test("audit history is not stored", async () => {
+    const result = await admin.query<{ security_audit: string | null; publication_audit: string | null }>(
+      `SELECT to_regclass('security_audit_events')::text AS security_audit,
+              to_regclass('publication_events')::text AS publication_audit`,
+    );
+    expect(result.rows[0]).toEqual({ security_audit: null, publication_audit: null });
+  });
+
   test("public role is denied every private base table", async () => {
     const tables = await admin.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
@@ -135,8 +143,6 @@ describeDatabase("PostgreSQL security roles", () => {
 
       const published = await admin.query("SELECT 1 FROM published_pages WHERE id=$1 AND published_version_id=$2", [pageId, versionId]);
       expect(published.rowCount).toBe(1);
-      const event = await admin.query("SELECT 1 FROM publication_events WHERE intent_id=$1", [intentId]);
-      expect(event.rowCount).toBe(1);
       await expect(admin.query("SELECT confirm_publication_intent($1,'owner','session','verified-credential')", [intentId])).rejects.toThrow();
     } finally {
       await admin.query("ROLLBACK");

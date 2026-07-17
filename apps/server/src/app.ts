@@ -32,7 +32,6 @@ import { auth, authPool, dashboardPrincipal } from "./auth.ts";
 import { config, production } from "./config.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
 import { createMcpRequestHandler } from "./mcp.ts";
-import { ownerUserId } from "./owner.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import {
   SecurityError,
@@ -182,28 +181,13 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
-  .get("/api/health", () => json({ status: "ok", version: "0.1.7" }))
+  .get("/api/health", () => json({ status: "ok", version: "0.1.8" }))
   .all("/api/auth/*", async ({ request }) => {
     const boundary = await authorizePasskeyAuthRequest(request);
     if (boundary.denied) return boundary.denied;
     try {
       const pathname = new URL(request.url).pathname;
-      const principal = await dashboardPrincipal(request);
       const response = await requireAuthenticationUserVerification(pathname, await auth.handler(request));
-      if (response.ok) {
-        const eventType = pathname.endsWith("/passkey/verify-registration")
-          ? "passkey_registered"
-          : pathname.endsWith("/oauth2/consent")
-            ? "oauth_consent_changed"
-            : null;
-        if (eventType) {
-          await authPool.query(
-            `INSERT INTO security_audit_events(event_type,actor_type,actor_id,target_type,target_id)
-             VALUES ($1,'owner',$2,'user',$2)`,
-            [eventType, principal?.userId ?? ownerUserId],
-          );
-        }
-      }
       return response;
     } finally {
       await boundary.release?.();
@@ -300,11 +284,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
         `DELETE FROM "oauthAccessToken" WHERE "clientId"=$1 AND "userId"=$2`,
         [clientId, principal.userId],
       );
-      await authClient.query(
-        `INSERT INTO security_audit_events(event_type,actor_type,actor_id,target_type,target_id)
-         VALUES ('mcp_client_revoked','owner',$1,'oauth_client',$2)`,
-        [principal.userId, clientId],
-      );
       await authClient.query("COMMIT");
     } catch (error) {
       await authClient.query("ROLLBACK");
@@ -313,24 +292,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       authClient.release();
     }
     return json({ revoked: true });
-  })
-  .get("/api/dashboard/audit", async ({ request }) => {
-    await ownerRequest(request);
-    const [security, publication] = await Promise.all([
-      authPool.query(
-        `SELECT id,event_type,actor_type,actor_id,target_type,target_id,details,created_at
-         FROM security_audit_events ORDER BY created_at DESC LIMIT 200`,
-      ),
-      dashboardPool.query(
-        `SELECT id,'publication_' || action::text AS event_type,'owner' AS actor_type,
-                owner_user_id AS actor_id,target_kind::text AS target_type,target_id::text,
-                jsonb_build_object('version_id',version_id,'public_slug',public_slug) AS details,created_at
-         FROM publication_events ORDER BY created_at DESC LIMIT 200`,
-      ),
-    ]);
-    return json([...security.rows, ...publication.rows]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 200));
   })
   .get("/api/dashboard/pages", async ({ request, query }) => {
     await ownerRequest(request);
