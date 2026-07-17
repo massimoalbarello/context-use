@@ -10,7 +10,7 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { z } from "zod";
 import { authPool } from "./auth.ts";
 import { config } from "./config.ts";
-import { createStatelessMcpTransport } from "./mcp-transport.ts";
+import { createStatelessMcpTransport, unsupportedMcpMethodResponse } from "./mcp-transport.ts";
 import { ownerUserId } from "./owner.ts";
 import type { ObjectStorage } from "./storage.ts";
 
@@ -229,6 +229,8 @@ export function createMcpRequestHandler(pages: PageRepository, assets: AssetRepo
     }
     const context = await contextFromJwt(jwt);
     if (!context) return mcpUnauthorized("OAuth grant is inactive");
+    const unsupportedMethod = unsupportedMcpMethodResponse(request);
+    if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();
     const server = createServer(context, pages, assets, storage);
     await server.connect(transport);
