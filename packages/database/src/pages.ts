@@ -6,7 +6,7 @@ import type {
   CreatePageInput,
   UpdatePageInput,
 } from "@context-use/shared";
-import { extractAssetLinks, extractPageLinks } from "./links.ts";
+import { extractAssetLinks, extractPageLinks, extractWikiLinks, wikiLinkCandidatePaths } from "./links.ts";
 
 export class VersionConflictError extends Error {
   constructor(readonly currentVersion: number) {
@@ -38,13 +38,30 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
   }
 }
 
-async function insertLinks(client: PoolClient, versionId: string, markdown: string): Promise<void> {
+async function insertLinks(
+  client: PoolClient,
+  versionId: string,
+  markdown: string,
+  sourcePath: string,
+): Promise<void> {
   for (const targetId of extractPageLinks(markdown)) {
     await client.query(
       `INSERT INTO knowledge_page_links(source_version_id, target_page_id)
        SELECT $1, id FROM knowledge_pages WHERE id = $2
        ON CONFLICT DO NOTHING`,
       [versionId, targetId],
+    );
+  }
+  for (const { path } of extractWikiLinks(markdown)) {
+    const candidates = wikiLinkCandidatePaths(path, sourcePath);
+    await client.query(
+      `INSERT INTO knowledge_page_links(source_version_id, target_page_id)
+       SELECT $1, id FROM knowledge_pages
+       WHERE current_path = ANY($2::text[]) AND archived_at IS NULL
+       ORDER BY array_position($2::text[], current_path)
+       LIMIT 1
+       ON CONFLICT DO NOTHING`,
+      [versionId, candidates],
     );
   }
   for (const targetId of extractAssetLinks(markdown)) {
@@ -84,7 +101,7 @@ export class PageRepository {
         ) VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8)`,
         [versionId, pageId, input.path, input.title, input.body_markdown, input.commit_message, actor.kind, actor.subject],
       );
-      await insertLinks(client, versionId, input.body_markdown);
+      await insertLinks(client, versionId, input.body_markdown, input.path);
       return this.getWith(client, pageId);
     });
   }
@@ -113,7 +130,7 @@ export class PageRepository {
          WHERE id = $1`,
         [pageId, input.path, versionId],
       );
-      await insertLinks(client, versionId, input.body_markdown);
+      await insertLinks(client, versionId, input.body_markdown, input.path);
       return this.getWith(client, pageId);
     });
   }
@@ -142,13 +159,21 @@ export class PageRepository {
         `UPDATE knowledge_pages SET current_version_id=$2, archived_at=now(),updated_at=now() WHERE id=$1`,
         [pageId, versionId],
       );
-      await insertLinks(client, versionId, row.body_markdown);
+      await insertLinks(client, versionId, row.body_markdown, row.current_path);
       return this.getWith(client, pageId);
     });
   }
 
   async get(pageId: string) {
     const result = await this.pool.query(`${CURRENT_PAGE_SELECT} WHERE p.id = $1`, [pageId]);
+    return result.rows[0] ?? null;
+  }
+
+  async getByPath(path: string) {
+    const result = await this.pool.query(
+      `${CURRENT_PAGE_SELECT} WHERE p.current_path = $1 AND p.archived_at IS NULL`,
+      [path],
+    );
     return result.rows[0] ?? null;
   }
 

@@ -1,16 +1,18 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? "http://localhost:3000";
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     proxy: {
-      "/api": "http://localhost:3000",
-      "/mcp": "http://localhost:3000",
-      "/p": "http://localhost:3000",
-      "/.well-known": "http://localhost:3000",
-      "/public.css": "http://localhost:3000",
+      "/api": apiProxyTarget,
+      "/mcp": apiProxyTarget,
+      "/p": apiProxyTarget,
+      "/.well-known": apiProxyTarget,
+      "/public.css": apiProxyTarget,
     },
   },
   build: { outDir: "dist", sourcemap: true },

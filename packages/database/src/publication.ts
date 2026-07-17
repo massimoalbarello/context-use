@@ -72,6 +72,14 @@ export class PublicRepository {
     return result.rows[0] ?? null;
   }
 
+  async pageByPath(path: string) {
+    const result = await this.pool.query(
+      "SELECT * FROM published_pages WHERE path=$1 ORDER BY version_created_at DESC LIMIT 1",
+      [path],
+    );
+    return result.rows[0] ?? null;
+  }
+
   async asset(id: string) {
     const result = await this.pool.query("SELECT * FROM published_assets WHERE id=$1", [id]);
     return result.rows[0] ?? null;
