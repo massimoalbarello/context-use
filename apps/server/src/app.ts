@@ -344,11 +344,8 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     await ownerRequest(request);
     const page = await dashboardPages.get(z.string().uuid().parse(params.id));
     if (!page) return problem("Page not found", 404, "not_found");
-    const [links, html] = await Promise.all([
-      dashboardPages.links(page.id),
-      renderMarkdown(page.body_markdown, await pageResolvers(true, page.current_path)),
-    ]);
-    return json({ ...page, ...links, rendered_html: html });
+    const html = await renderMarkdown(page.body_markdown, await pageResolvers(true, page.current_path));
+    return json({ ...page, rendered_html: html });
   })
   .put("/api/dashboard/pages/:id", async ({ request, params }) => {
     const principal = await ownerRequest(request, true);

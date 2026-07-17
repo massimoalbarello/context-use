@@ -13,7 +13,6 @@ describeDatabase("immutable page history", () => {
 
   afterAll(async () => {
     for (const id of createdIds) {
-      await pool.query("DELETE FROM knowledge_page_links WHERE source_version_id IN (SELECT id FROM knowledge_page_versions WHERE page_id=$1)", [id]);
       await pool.query("DELETE FROM knowledge_asset_links WHERE source_version_id IN (SELECT id FROM knowledge_page_versions WHERE page_id=$1)", [id]);
       await pool.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
       await pool.query("DELETE FROM knowledge_pages WHERE id=$1", [id]);
@@ -52,29 +51,5 @@ describeDatabase("immutable page history", () => {
     expect(history.map((version) => version.commit_message)).toEqual([
       "Archive test page", "Rename and update", "Create test page",
     ]);
-  });
-
-  test("indexes relative Obsidian wikilinks in the page graph", async () => {
-    const suffix = crypto.randomUUID().slice(0, 8);
-    const target = await pages.create({
-      path: `tests/${suffix}/target`,
-      title: "Target",
-      body_markdown: "Target page",
-      commit_message: "Create target page",
-    }, actor);
-    const source = await pages.create({
-      path: `tests/${suffix}/source`,
-      title: "Source",
-      body_markdown: "See [[target|the target]].",
-      commit_message: "Create source page",
-    }, actor);
-    createdIds.push(source.id, target.id);
-
-    const links = await pages.links(source.id);
-    expect(links.outgoing).toEqual([{
-      id: target.id,
-      current_path: target.current_path,
-      title: target.title,
-    }]);
   });
 });

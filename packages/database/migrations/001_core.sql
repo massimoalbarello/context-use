@@ -85,14 +85,6 @@ ALTER TABLE knowledge_pages
   REFERENCES knowledge_page_versions(id, page_id)
   DEFERRABLE INITIALLY DEFERRED;
 
-CREATE TABLE knowledge_page_links (
-  source_version_id uuid NOT NULL REFERENCES knowledge_page_versions(id) ON DELETE CASCADE,
-  target_page_id uuid NOT NULL REFERENCES knowledge_pages(id) ON DELETE RESTRICT,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (source_version_id, target_page_id)
-);
-CREATE INDEX knowledge_page_links_target_idx ON knowledge_page_links(target_page_id);
-
 CREATE TABLE assets (
   id uuid PRIMARY KEY,
   filename text NOT NULL CHECK (length(filename) BETWEEN 1 AND 1024),
@@ -270,26 +262,24 @@ REVOKE ALL ON FUNCTION confirm_publication_intent(uuid, text, text, text) FROM P
 
 GRANT USAGE ON SCHEMA public TO context_use_auth, context_use_dashboard, context_use_mcp, context_use_public, context_use_publisher, context_use_backup;
 
-GRANT SELECT ON knowledge_pages, knowledge_page_versions, knowledge_page_links, assets,
+GRANT SELECT ON knowledge_pages, knowledge_page_versions, assets,
   publication_intents, publication_events, security_audit_events TO context_use_dashboard;
 GRANT INSERT (id, current_path, current_version_id, created_at, updated_at, archived_at)
   ON knowledge_pages TO context_use_dashboard;
 GRANT UPDATE (current_path, current_version_id, updated_at, archived_at)
   ON knowledge_pages TO context_use_dashboard;
-GRANT INSERT ON knowledge_page_versions, knowledge_page_links, publication_intents, security_audit_events
+GRANT INSERT ON knowledge_page_versions, publication_intents, security_audit_events
   TO context_use_dashboard;
 GRANT INSERT (id,filename,content_type,size_bytes,content_hash,s3_object_key,width,height,duration_seconds,created_at)
   ON assets TO context_use_dashboard;
-GRANT DELETE ON knowledge_page_links TO context_use_dashboard;
 GRANT UPDATE (filename, deleted_at) ON assets TO context_use_dashboard;
 
-GRANT SELECT ON knowledge_pages, knowledge_page_versions, knowledge_page_links, assets TO context_use_mcp;
+GRANT SELECT ON knowledge_pages, knowledge_page_versions, assets TO context_use_mcp;
 GRANT INSERT (id, current_path, current_version_id, created_at, updated_at, archived_at)
   ON knowledge_pages TO context_use_mcp;
 GRANT UPDATE (current_path, current_version_id, updated_at, archived_at)
   ON knowledge_pages TO context_use_mcp;
-GRANT INSERT ON knowledge_page_versions, knowledge_page_links TO context_use_mcp;
-GRANT DELETE ON knowledge_page_links TO context_use_mcp;
+GRANT INSERT ON knowledge_page_versions TO context_use_mcp;
 
 GRANT SELECT ON published_pages, published_assets TO context_use_public;
 GRANT EXECUTE ON FUNCTION confirm_publication_intent(uuid, text, text, text) TO context_use_publisher;
