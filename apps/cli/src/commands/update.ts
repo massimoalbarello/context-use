@@ -2,13 +2,14 @@ import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { z } from "zod";
 import { sendSsmCommands } from "../aws.ts";
+import { continueUpdateWithCli, installCliRelease } from "../cli-update.ts";
 import { deploy } from "../deploy.ts";
 import { readConfig, saveConfig } from "../paths.ts";
-import { deploymentRoot, releaseManifest } from "../release.ts";
+import { currentVersion, deploymentRoot, releaseManifest } from "../release.ts";
 import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs } from "../terraform.ts";
 
 export const command = defineCommand("update", {
-  description: "Back up and deploy a release.",
+  description: "Update the CLI and deployed release.",
   options: {
     version: {
       schema: z.string().default("latest"),
@@ -16,9 +17,16 @@ export const command = defineCommand("update", {
     },
   },
   handler: async ({ options }) => {
+    const manifest = await releaseManifest(options.version);
+    if (currentVersion !== manifest.version) {
+      const executable = await installCliRelease(manifest);
+      p.log.success(`Updated CLI to ${manifest.version}`);
+      await continueUpdateWithCli(executable, manifest.version);
+      return;
+    }
+
     const config = await readConfig();
     if (!config.computeOutputs) throw new Error("No active compute deployment");
-    const manifest = await releaseManifest(options.version);
     await assertTerraformVersion(manifest);
     const root = await deploymentRoot(manifest);
 
