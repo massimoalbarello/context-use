@@ -15,6 +15,10 @@ export const PublicSlug = z
   .min(1)
   .max(160)
   .regex(/^[a-z0-9][a-z0-9-]*$/);
+export const AutomationName = z.string().trim().min(1).max(160);
+export const CronExpression = z.string().trim().min(9).max(160);
+export const TimeZone = z.string().trim().min(1).max(100);
+export const AutomationInput = z.record(z.string(), z.unknown());
 
 export const createPageSchema = z
   .object({
@@ -63,10 +67,39 @@ export const publicationIntentSchema = z
     }
   });
 
+export const createAutomationSkillSchema = z.object({
+  name: AutomationName,
+  instructions_markdown: z.string().trim().min(1).max(2_000_000),
+  commit_message: CommitMessage,
+}).strict();
+
+export const updateAutomationSkillSchema = z.object({
+  instructions_markdown: z.string().trim().min(1).max(2_000_000),
+  commit_message: CommitMessage,
+  expected_version_number: z.number().int().positive(),
+}).strict();
+
+export const createCronScheduleSchema = z.object({
+  name: AutomationName,
+  skill_version_id: UUID,
+  cron_expression: CronExpression,
+  timezone: TimeZone,
+  input: AutomationInput.default({}),
+  enabled: z.boolean().default(true),
+}).strict();
+
+export const updateCronScheduleSchema = createCronScheduleSchema.extend({
+  enabled: z.boolean(),
+}).strict();
+
 export type CreatePageInput = z.infer<typeof createPageSchema>;
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
 export type PublicationIntentInput = z.infer<typeof publicationIntentSchema>;
+export type CreateAutomationSkillInput = z.infer<typeof createAutomationSkillSchema>;
+export type UpdateAutomationSkillInput = z.infer<typeof updateAutomationSkillSchema>;
+export type CreateCronScheduleInput = z.infer<typeof createCronScheduleSchema>;
+export type UpdateCronScheduleInput = z.infer<typeof updateCronScheduleSchema>;
 
 export type Actor = {
   kind: "dashboard" | "mcp";
@@ -99,5 +132,5 @@ export type Asset = {
   deleted_at: string | null;
 };
 
-export const MCP_SCOPES = ["kb:read", "kb:write", "assets:read"] as const;
+export const MCP_SCOPES = ["kb:read", "kb:write", "assets:read", "automations:claim", "automations:execute"] as const;
 export type McpScope = (typeof MCP_SCOPES)[number];

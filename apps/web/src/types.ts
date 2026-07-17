@@ -56,3 +56,56 @@ export type ConnectedClient = {
   approved_at: string;
   last_used_at: string | null;
 };
+
+export type AutomationSkill = {
+  id: string;
+  name: string;
+  current_version_id: string;
+  version_number: number;
+  instructions_markdown: string;
+  commit_message: string;
+  version_created_at: string;
+  schedule_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CronSchedule = {
+  id: string;
+  name: string;
+  skill_id: string;
+  skill_name: string;
+  skill_version_id: string;
+  skill_version_number: number;
+  cron_expression: string;
+  timezone: string;
+  input: Record<string, unknown>;
+  enabled: boolean;
+  next_run_at: string;
+  ready_count: number;
+  claimed_count: number;
+  last_completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AutomationRun = {
+  id: string;
+  schedule_id: string;
+  schedule_name: string;
+  skill_id: string;
+  skill_name: string;
+  skill_version_id: string;
+  skill_version_number: number;
+  scheduled_for: string;
+  input: Record<string, unknown>;
+  status: "ready" | "claimed" | "succeeded" | "failed";
+  attempt_count: number;
+  claimed_by: string | null;
+  claimed_at: string | null;
+  lease_expires_at: string | null;
+  completed_at: string | null;
+  result_summary: string | null;
+  error_message: string | null;
+  created_at: string;
+};

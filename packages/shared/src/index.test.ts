@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { AssetPath, createPageSchema, publicationIntentSchema, updatePageSchema } from "./index.ts";
+import {
+  AssetPath,
+  createCronScheduleSchema,
+  createPageSchema,
+  publicationIntentSchema,
+  updatePageSchema,
+} from "./index.ts";
 
 const pageId = "11111111-1111-4111-8111-111111111111";
 const versionId = "22222222-2222-4222-8222-222222222222";
@@ -33,6 +39,24 @@ describe("strict mutation schemas", () => {
     }).success).toBe(false);
     expect(publicationIntentSchema.safeParse({
       action: "publish", target_kind: "asset", target_id: pageId, public_slug: "asset-has-no-slug",
+    }).success).toBe(false);
+  });
+
+  test("cron schedules accept only the persisted first-version fields", () => {
+    expect(createCronScheduleSchema.safeParse({
+      name: "Morning review",
+      skill_version_id: versionId,
+      cron_expression: "0 9 * * *",
+      timezone: "Europe/London",
+      input: { project: "context-use" },
+      enabled: true,
+    }).success).toBe(true);
+    expect(createCronScheduleSchema.safeParse({
+      name: "Advertises capabilities",
+      skill_version_id: versionId,
+      cron_expression: "0 9 * * *",
+      timezone: "Europe/London",
+      capabilities: ["browser"],
     }).success).toBe(false);
   });
 });

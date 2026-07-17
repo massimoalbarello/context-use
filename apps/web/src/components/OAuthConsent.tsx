@@ -6,6 +6,8 @@ const SCOPE_DESCRIPTIONS: Record<string, string> = {
   "kb:read": "Read private knowledge pages and their history",
   "kb:write": "Create, update, and archive private pages",
   "assets:read": "Read private asset metadata and download assets",
+  "automations:claim": "Claim due automation runs and receive their persisted skill instructions",
+  "automations:execute": "Record automation run outcomes in Context Use",
   offline_access: "Remain connected when you are away",
   openid: "Identify your owner account",
 };

@@ -40,6 +40,10 @@ export function remoteSecurityCommands(): string[] {
     "AND has_function_privilege('context_use_publisher','confirm_publication_intent(uuid,text,text,text)','EXECUTE')",
     "AND NOT has_table_privilege('context_use_public','knowledge_pages','SELECT')",
     "AND has_table_privilege('context_use_public','published_pages','SELECT')",
+    "AND NOT has_table_privilege('context_use_mcp','automation_skill_versions','INSERT')",
+    "AND NOT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','UPDATE')",
+    "AND has_column_privilege('context_use_mcp','automation_runs','status','UPDATE')",
+    "AND NOT has_column_privilege('context_use_dashboard','automation_runs','status','UPDATE')",
     "THEN 'ok' ELSE 'denied' END",
   ].join(" ");
   const encodedSql = Buffer.from(sql).toString("base64");

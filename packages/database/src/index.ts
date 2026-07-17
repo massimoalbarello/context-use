@@ -3,6 +3,13 @@ export { PageRepository, PublicationStateError, VersionConflictError } from "./p
 export { AssetRepository, type NewAsset } from "./assets.ts";
 export { PublicationRepository, PublicRepository, hashPublicationPayload } from "./publication.ts";
 export {
+  AutomationClaimError,
+  AutomationRepository,
+  AutomationValidationError,
+  AutomationVersionConflictError,
+  nextCronOccurrence,
+} from "./automations.ts";
+export {
   extractAssetLinks,
   extractPageLinks,
   extractWikiLinks,

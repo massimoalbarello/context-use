@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, refreshCsrf, uploadFile } from "./api.ts";
 import { authClient } from "./auth-client.ts";
 import { AssetDetails } from "./components/Assets.tsx";
+import { Automations } from "./components/Automations.tsx";
 import { Editor } from "./components/Editor.tsx";
 import { KnowledgeTree, type KnowledgeSelection } from "./components/KnowledgeTree.tsx";
 import { Login } from "./components/Login.tsx";
@@ -10,7 +11,7 @@ import { Settings, type PasskeySummary } from "./components/Settings.tsx";
 import type { Asset, Page } from "./types.ts";
 
 type SessionInfo = { owner: { id: string; email: string }; passkey_count: number; passkeys: PasskeySummary[] };
-type Section = "knowledge" | "settings";
+type Section = "knowledge" | "automations" | "settings";
 
 function selectionFromLocation(): KnowledgeSelection | null {
   const match = window.location.pathname.match(/^\/app\/(pages|assets)\/([0-9a-f-]+)/);
@@ -18,7 +19,9 @@ function selectionFromLocation(): KnowledgeSelection | null {
 }
 
 function sectionFromLocation(): Section {
-  return window.location.pathname === "/app/settings" ? "settings" : "knowledge";
+  if (window.location.pathname === "/app/settings") return "settings";
+  if (window.location.pathname === "/app/automations") return "automations";
+  return "knowledge";
 }
 
 async function sha256(file: File): Promise<string> {
@@ -121,14 +124,25 @@ export function App() {
     if (window.location.pathname !== "/app/settings") history.pushState({}, "", "/app/settings");
   };
 
+  const openAutomations = () => {
+    setSection("automations");
+    history.pushState({}, "", "/app/automations");
+  };
+
+  const openKnowledge = () => {
+    setSection("knowledge");
+    history.pushState({}, "", selected ? `/app/${selected.kind === "page" ? "pages" : "assets"}/${selected.id}` : "/app");
+  };
+
   return <div className="shell">
     <aside className="sidebar">
       <div className="sidebar-brand"><div className="brand-mark small">cu</div><strong>context-use</strong></div>
-      <input className="search" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} />
-      <div className="knowledge-filter" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>{(["all", "public"] as const).map((filter) => <button className={publicationFilter === filter ? "active" : ""} aria-pressed={publicationFilter === filter} key={filter} onClick={() => setPublicationFilter(filter)}>{filter === "all" ? "All" : "Public"}</button>)}</div>
-      <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
-      <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} emptyMessage={publicationFilter === "public" ? "Nothing public yet" : "No knowledge yet"} />
-      <div className="knowledge-actions"><button onClick={createPage}>＋ New page</button><label className="button upload-button">↑ Upload asset<input type="file" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadAsset(file); }} /></label></div>
+      <nav className="sidebar-section-nav"><button className={section === "knowledge" ? "active" : ""} onClick={openKnowledge}>Knowledge</button><button className={section === "automations" ? "active" : ""} onClick={openAutomations}>Automations</button></nav>
+      {section === "knowledge" ? <><input className="search" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <div className="knowledge-filter" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>{(["all", "public"] as const).map((filter) => <button className={publicationFilter === filter ? "active" : ""} aria-pressed={publicationFilter === filter} key={filter} onClick={() => setPublicationFilter(filter)}>{filter === "all" ? "All" : "Public"}</button>)}</div>
+        <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
+        <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} emptyMessage={publicationFilter === "public" ? "Nothing public yet" : "No knowledge yet"} />
+        <div className="knowledge-actions"><button onClick={createPage}>＋ New page</button><label className="button upload-button">↑ Upload asset<input type="file" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadAsset(file); }} /></label></div></> : <div className="sidebar-section-summary"><strong>{section === "automations" ? "Portable scheduled work" : "Owner controls"}</strong><p>{section === "automations" ? "Skills, cron schedules, and durable run history live in Context Use." : "Manage the permanent passkey and connected agents."}</p></div>}
       <footer>
         <span className="sidebar-user">{session.owner.email} · {session.passkey_count} passkey{session.passkey_count === 1 ? "" : "s"}</span>
         <div className="sidebar-footer-actions">
@@ -140,7 +154,7 @@ export function App() {
         </div>
       </footer>
     </aside>
-    {section === "settings" ? <Settings passkeys={session.passkeys} /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="brand-mark">cu</div><h2>Select or create knowledge</h2><p>Pages and assets remain private until you explicitly publish them.</p></main>}
+    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "automations" ? <Automations /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="brand-mark">cu</div><h2>Select or create knowledge</h2><p>Pages and assets remain private until you explicitly publish them.</p></main>}
     {message && <div className="toast">{message}</div>}
   </div>;
 }

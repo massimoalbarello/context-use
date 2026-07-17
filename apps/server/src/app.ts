@@ -5,6 +5,9 @@ import {
 } from "@better-auth/oauth-provider";
 import {
   AssetRepository,
+  AutomationRepository,
+  AutomationValidationError,
+  AutomationVersionConflictError,
   PageRepository,
   PublicationRepository,
   PublicRepository,
@@ -19,9 +22,13 @@ import {
 import {
   AssetPath,
   archivePageSchema,
+  createAutomationSkillSchema,
+  createCronScheduleSchema,
   createPageSchema,
   MCP_SCOPES,
   publicationIntentSchema,
+  updateAutomationSkillSchema,
+  updateCronScheduleSchema,
   updatePageSchema,
 } from "@context-use/shared";
 import { generateAuthenticationOptions, verifyAuthenticationResponse } from "@simplewebauthn/server";
@@ -50,11 +57,13 @@ const publisherPool = createPool(config.PUBLISHER_DATABASE_URL);
 
 const dashboardPages = new PageRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
+const dashboardAutomations = new AutomationRepository(dashboardPool);
 const mcpPages = new PageRepository(mcpPool);
 const mcpAssets = new AssetRepository(mcpPool);
+const mcpAutomations = new AutomationRepository(mcpPool);
 const publicData = new PublicRepository(publicPool);
 const publications = new PublicationRepository(dashboardPool, publisherPool);
-const mcp = createMcpRequestHandler(mcpPages, mcpAssets, storage);
+const mcp = createMcpRequestHandler(mcpPages, mcpAssets, mcpAutomations, storage);
 
 const authServerMetadata = oauthProviderAuthServerMetadata(auth as never);
 const openIdMetadata = oauthProviderOpenIdConfigMetadata(auth as never);
@@ -89,6 +98,10 @@ function routeError(error: unknown): Response {
     return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
   }
   if (error instanceof PublicationStateError) return problem(error.message, 409, "publication_state");
+  if (error instanceof AutomationValidationError) return problem(error.message, 422, "automation_validation");
+  if (error instanceof AutomationVersionConflictError) {
+    return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
+  }
   if (error instanceof z.ZodError) return json({ error: "validation_error", issues: error.issues }, 422);
   if (error instanceof Error && "code" in error) {
     const code = String((error as Error & { code: unknown }).code);
@@ -292,6 +305,45 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       authClient.release();
     }
     return json({ revoked: true });
+  })
+  .get("/api/dashboard/automations/skills", async ({ request }) => {
+    await ownerRequest(request);
+    return json(await dashboardAutomations.listSkills());
+  })
+  .post("/api/dashboard/automations/skills", async ({ request }) => {
+    const principal = await ownerRequest(request, true);
+    const input = createAutomationSkillSchema.parse(await bodyJson(request));
+    return json(await dashboardAutomations.createSkill(input, { kind: "dashboard", subject: principal.userId }), 201);
+  })
+  .put("/api/dashboard/automations/skills/:id", async ({ request, params }) => {
+    const principal = await ownerRequest(request, true);
+    const input = updateAutomationSkillSchema.parse(await bodyJson(request));
+    const skill = await dashboardAutomations.updateSkill(
+      z.string().uuid().parse(params.id),
+      input,
+      { kind: "dashboard", subject: principal.userId },
+    );
+    return skill ? json(skill) : problem("Automation skill not found", 404, "not_found");
+  })
+  .get("/api/dashboard/automations/schedules", async ({ request }) => {
+    await ownerRequest(request);
+    return json(await dashboardAutomations.listSchedules());
+  })
+  .post("/api/dashboard/automations/schedules", async ({ request }) => {
+    await ownerRequest(request, true);
+    const input = createCronScheduleSchema.parse(await bodyJson(request));
+    return json(await dashboardAutomations.createSchedule(input), 201);
+  })
+  .put("/api/dashboard/automations/schedules/:id", async ({ request, params }) => {
+    await ownerRequest(request, true);
+    const input = updateCronScheduleSchema.parse(await bodyJson(request));
+    const schedule = await dashboardAutomations.updateSchedule(z.string().uuid().parse(params.id), input);
+    return schedule ? json(schedule) : problem("Cron schedule not found", 404, "not_found");
+  })
+  .get("/api/dashboard/automations/runs", async ({ request, query }) => {
+    await ownerRequest(request);
+    const limit = z.coerce.number().int().min(1).max(500).default(200).parse(query.limit);
+    return json(await dashboardAutomations.listRuns(limit));
   })
   .get("/api/dashboard/pages", async ({ request, query }) => {
     await ownerRequest(request);
