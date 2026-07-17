@@ -53,6 +53,11 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(await malformedPage.text()).toBe(await missingPage.text());
   });
 
+  test("audit history endpoint is absent", async () => {
+    const response = await application!.handle(new Request("http://localhost:3000/api/dashboard/audit"));
+    expect(response.status).toBe(404);
+  });
+
   test("owner enrollment requires the configured email and setup capability", async () => {
     const invalid = new URL("http://localhost:3000/api/auth/passkey/generate-register-options");
     invalid.searchParams.set("context", JSON.stringify({

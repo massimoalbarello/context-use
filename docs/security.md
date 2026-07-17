@@ -32,7 +32,7 @@ An agent cannot substitute its OAuth token for any step:
 
 The application opens independent pools using independent SCRAM credentials:
 
-- `context_use_auth`: Better Auth, passkeys, OAuth clients, grants, sessions, and security audit records.
+- `context_use_auth`: Better Auth, passkeys, OAuth clients, grants, and sessions.
 - `context_use_dashboard`: private page and asset operations; no direct publication updates.
 - `context_use_mcp`: page reads/writes and asset metadata reads; no asset mutation or publication.
 - `context_use_public`: `SELECT` only on `published_pages` and `published_assets` security-barrier views.

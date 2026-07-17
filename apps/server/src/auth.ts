@@ -104,17 +104,6 @@ export const auth = betterAuth({
         },
       },
     },
-    session: {
-      create: {
-        after: async (session) => {
-          await authPool.query(
-            `INSERT INTO security_audit_events(event_type,actor_type,actor_id,target_type,target_id)
-             VALUES ('dashboard_session_created','owner',$1,'session',$2)`,
-            [session.userId, session.id],
-          );
-        },
-      },
-    },
   },
   plugins: [
     jwt({

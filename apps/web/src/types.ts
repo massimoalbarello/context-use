@@ -56,14 +56,3 @@ export type ConnectedClient = {
   approved_at: string;
   last_used_at: string | null;
 };
-
-export type AuditEvent = {
-  id: string;
-  event_type: string;
-  actor_type: string;
-  actor_id: string;
-  target_type: string | null;
-  target_id: string | null;
-  details: Record<string, unknown>;
-  created_at: string;
-};
