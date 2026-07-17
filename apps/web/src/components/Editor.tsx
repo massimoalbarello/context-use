@@ -8,7 +8,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   const [history, setHistory] = useState<Version[]>([]);
   const [draft, setDraft] = useState({ path: "", title: "", body_markdown: "" });
   const [commit, setCommit] = useState("");
-  const [tab, setTab] = useState<"preview" | "history" | "links">("preview");
+  const [tab, setTab] = useState<"preview" | "history">("preview");
   const [isEditing, setIsEditing] = useState(false);
   const [publishingVersion, setPublishingVersion] = useState<number | null>(null);
   const [message, setMessage] = useState("");
@@ -103,7 +103,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
       </div>
     </header>
     {!isEditing && <nav className="tabs">
-      <div>{(["preview", "history", "links"] as const).map((item) => <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
+      <div>{(["preview", "history"] as const).map((item) => <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
       {tab === "preview" && <button className="edit-page-button" onClick={edit} aria-label="Edit page">
         <svg aria-hidden="true" viewBox="0 0 16 16"><path d="M11.7 2.3a1 1 0 0 1 1.4 0l.6.6a1 1 0 0 1 0 1.4l-8 8-3.2.7.7-3.2 8-8Z" /><path d="m9.8 4.2 2 2" /></svg>
         Edit
@@ -144,7 +144,6 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         </article>;
       })}
     </section>}
-    {!isEditing && tab === "links" && <section className="links-grid"><div><h3>Outgoing</h3>{page.outgoing?.map((link) => <a href={`/app/pages/${link.id}`} key={link.id}>{link.title}<span>{link.current_path}</span></a>)}</div><div><h3>Backlinks</h3>{page.backlinks?.map((link) => <a href={`/app/pages/${link.id}`} key={link.id}>{link.title}<span>{link.current_path}</span></a>)}</div></section>}
     {message && <div className="toast">{message}</div>}
     {publishingVersion != null && <PublicationDialog page={page} versionNumber={publishingVersion} publishedVersionNumber={publishedVersionNumber} onClose={() => setPublishingVersion(null)} onChanged={publicationChanged} />}
   </main>;
