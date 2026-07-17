@@ -23,7 +23,7 @@ describeDatabase("immutable page history", () => {
     await pool.end();
   });
 
-  test("create, update, conflict, restore, and archive always preserve immutable versions", async () => {
+  test("create, update, conflict, and archive always preserve immutable versions", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     const created = await pages.create({
       path: `tests/${suffix}/page`, title: "Original", body_markdown: "Original body", commit_message: "Create test page",
@@ -41,23 +41,16 @@ describeDatabase("immutable page history", () => {
       commit_message: "Stale update", expected_version_number: 1,
     }, actor)).rejects.toBeInstanceOf(VersionConflictError);
 
-    const restored = await pages.restore(created.id, {
-      version_number: 1, commit_message: "Restore original", expected_version_number: 2,
-    }, actor);
-    expect(restored?.version_number).toBe(3);
-    expect(restored?.title).toBe("Original");
-    expect(restored?.body_markdown).toBe("Original body");
-
     const archived = await pages.archive(created.id, {
-      commit_message: "Archive test page", expected_version_number: 3,
+      commit_message: "Archive test page", expected_version_number: 2,
     }, actor);
-    expect(archived?.version_number).toBe(4);
+    expect(archived?.version_number).toBe(3);
     expect(archived?.archived_at).not.toBeNull();
 
     const history = await pages.history(created.id);
-    expect(history.map((version) => version.version_number)).toEqual([4, 3, 2, 1]);
+    expect(history.map((version) => version.version_number)).toEqual([3, 2, 1]);
     expect(history.map((version) => version.commit_message)).toEqual([
-      "Archive test page", "Restore original", "Rename and update", "Create test page",
+      "Archive test page", "Rename and update", "Create test page",
     ]);
   });
 });

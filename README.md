@@ -6,7 +6,7 @@ The public site is deliberately separate: a page or asset becomes public only af
 
 ## What v1 includes
 
-- Hierarchical Markdown pages with immutable versions, commit messages, history, restore, backlinks, and full-text search.
+- Hierarchical Markdown pages with immutable versions, commit messages, history, backlinks, and full-text search.
 - Private S3 assets with checksum-bound uploads and five-minute authorized downloads.
 - Passkey-only owner signup and sign-in, bound to the configured owner email through a one-time setup link.
 - Passkey-protected publishing, republishing, slug changes, and unpublishing with the same immutable credential.

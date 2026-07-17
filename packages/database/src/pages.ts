@@ -4,7 +4,6 @@ import type {
   Actor,
   ArchivePageInput,
   CreatePageInput,
-  RestorePageInput,
   UpdatePageInput,
 } from "@context-use/shared";
 import { extractAssetLinks, extractPageLinks } from "./links.ts";
@@ -142,39 +141,6 @@ export class PageRepository {
       await client.query(
         `UPDATE knowledge_pages SET current_version_id=$2, archived_at=now(),updated_at=now() WHERE id=$1`,
         [pageId, versionId],
-      );
-      await insertLinks(client, versionId, row.body_markdown);
-      return this.getWith(client, pageId);
-    });
-  }
-
-  async restore(pageId: string, input: RestorePageInput, actor: Actor) {
-    return transaction(this.pool, async (client) => {
-      const current = await client.query<{ version_number: number }>(
-        `${CURRENT_PAGE_SELECT} WHERE p.id = $1 FOR UPDATE OF p`,
-        [pageId],
-      );
-      if (!current.rowCount) return null;
-      const currentVersion = current.rows[0]!.version_number;
-      if (currentVersion !== input.expected_version_number) throw new VersionConflictError(currentVersion);
-      const source = await client.query<{ path: string; title: string; body_markdown: string }>(
-        `SELECT path,title,body_markdown FROM knowledge_page_versions
-         WHERE page_id=$1 AND version_number=$2`,
-        [pageId, input.version_number],
-      );
-      if (!source.rowCount) return null;
-      const versionId = randomUUID();
-      const row = source.rows[0]!;
-      await client.query(
-        `INSERT INTO knowledge_page_versions(
-          id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [versionId, pageId, currentVersion + 1, row.path, row.title, row.body_markdown, input.commit_message, actor.kind, actor.subject],
-      );
-      await client.query(
-        `UPDATE knowledge_pages SET current_path=$2,current_version_id=$3,archived_at=NULL,updated_at=now()
-         WHERE id=$1`,
-        [pageId, row.path, versionId],
       );
       await insertLinks(client, versionId, row.body_markdown);
       return this.getWith(client, pageId);

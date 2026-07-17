@@ -2,7 +2,6 @@ import { AssetRepository, PageRepository } from "@context-use/database";
 import {
   archivePageSchema,
   createPageSchema,
-  restorePageSchema,
   updatePageSchema,
 } from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -164,15 +163,6 @@ function createServer(context: McpContext, pages: PageRepository, assets: AssetR
   }, async ({ page_id, ...input }) => {
     requireScope(context, "kb:write");
     return jsonContent(await pages.archive(page_id, input, actor));
-  });
-
-  server.registerTool("restore_page", {
-    description: "Restore a version by creating a new current version.",
-    inputSchema: restorePageSchema.extend({ page_id: z.string().uuid() }).strict(),
-    annotations: { destructiveHint: false },
-  }, async ({ page_id, ...input }) => {
-    requireScope(context, "kb:write");
-    return jsonContent(await pages.restore(page_id, input, actor));
   });
 
   server.registerTool("list_assets", {

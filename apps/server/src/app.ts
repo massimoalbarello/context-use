@@ -20,7 +20,6 @@ import {
   createPageSchema,
   MCP_SCOPES,
   publicationIntentSchema,
-  restorePageSchema,
   updatePageSchema,
 } from "@context-use/shared";
 import { generateAuthenticationOptions, verifyAuthenticationResponse } from "@simplewebauthn/server";
@@ -344,12 +343,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const input = archivePageSchema.parse(await bodyJson(request));
     const page = await dashboardPages.archive(z.string().uuid().parse(params.id), input, { kind: "dashboard", subject: principal.userId });
     return page ? json(page) : problem("Page not found", 404, "not_found");
-  })
-  .post("/api/dashboard/pages/:id/restore", async ({ request, params }) => {
-    const principal = await ownerRequest(request, true);
-    const input = restorePageSchema.parse(await bodyJson(request));
-    const page = await dashboardPages.restore(z.string().uuid().parse(params.id), input, { kind: "dashboard", subject: principal.userId });
-    return page ? json(page) : problem("Page or version not found", 404, "not_found");
   })
   .get("/api/dashboard/pages/:id/history", async ({ request, params }) => {
     await ownerRequest(request);
