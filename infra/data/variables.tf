@@ -19,10 +19,6 @@ variable "installation_id" {
   }
 }
 
-variable "app_hostname" {
-  type = string
-}
-
 variable "data_volume_size_gb" {
   type    = number
   default = 50

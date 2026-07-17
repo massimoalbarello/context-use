@@ -16,16 +16,24 @@ export function csrfToken(principal: DashboardPrincipal): string {
     .digest("base64url");
 }
 
-export function assertDashboardRequestSecurity(request: Request, principal: DashboardPrincipal): void {
-  if (!MUTATING.has(request.method)) return;
+function assertDashboardMutationSource(request: Request, principal: DashboardPrincipal): void {
   if (request.headers.get("origin") !== config.APP_ORIGIN) throw new SecurityError("Untrusted origin", 403);
   const fetchSite = request.headers.get("sec-fetch-site");
   if (fetchSite !== "same-origin") throw new SecurityError("Missing or cross-site Fetch Metadata", 403);
   const supplied = request.headers.get("x-csrf-token") ?? "";
   if (!constantTimeTextEqual(supplied, csrfToken(principal))) throw new SecurityError("Invalid CSRF token", 403);
+}
+
+export function assertDashboardRequestSecurity(request: Request, principal: DashboardPrincipal): void {
+  if (!MUTATING.has(request.method)) return;
+  assertDashboardMutationSource(request, principal);
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
     throw new SecurityError("JSON content type required", 415);
   }
+}
+
+export function assertDashboardUploadSecurity(request: Request, principal: DashboardPrincipal): void {
+  assertDashboardMutationSource(request, principal);
 }
 
 export class SecurityError extends Error {

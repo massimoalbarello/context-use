@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import type { DashboardPrincipal } from "./auth.ts";
-import { SecurityError, assertDashboardRequestSecurity, csrfToken } from "./security.ts";
+import {
+  SecurityError,
+  assertDashboardRequestSecurity,
+  assertDashboardUploadSecurity,
+  csrfToken,
+} from "./security.ts";
 
 const principal: DashboardPrincipal = { userId: "owner", sessionId: "session", email: "owner@example.com" };
 
@@ -34,4 +39,18 @@ describe("dashboard mutation boundary", () => {
       expect(() => assertDashboardRequestSecurity(mutation(headers), principal)).toThrow(SecurityError);
     });
   }
+
+  test("accepts a checksum-bound same-origin file upload without requiring JSON", () => {
+    const request = new Request("http://localhost:3000/api/dashboard/assets/11111111-1111-4111-8111-111111111111/content", {
+      method: "PUT",
+      headers: {
+        origin: "http://localhost:3000",
+        "sec-fetch-site": "same-origin",
+        "content-type": "application/pdf",
+        "x-csrf-token": csrfToken(principal),
+      },
+      body: "pdf bytes",
+    });
+    expect(() => assertDashboardUploadSecurity(request, principal)).not.toThrow();
+  });
 });
