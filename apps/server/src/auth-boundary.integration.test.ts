@@ -91,7 +91,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     }
   });
 
-  test("dynamic clients default to read-only and public clients cannot omit PKCE", async () => {
+  test("dynamic clients default to all MCP tool scopes and public clients cannot omit PKCE", async () => {
     const registration = await application!.handle(new Request("http://localhost:3000/api/auth/oauth2/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -106,19 +106,26 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(registration.status).toBe(201);
     const client = await registration.json() as { client_id: string; scope: string };
     createdClients.push(client.client_id);
-    expect(client.scope).toBe("kb:read");
+    expect(client.scope).toBe("kb:read kb:write assets:read");
 
     const authorization = new URL("http://localhost:3000/api/auth/oauth2/authorize");
     authorization.search = new URLSearchParams({
       client_id: client.client_id,
       redirect_uri: "http://127.0.0.1:49321/callback",
       response_type: "code",
-      scope: "kb:read",
+      scope: "kb:read kb:write assets:read",
       resource: "http://localhost:3000/mcp",
       state: "test-state",
     }).toString();
     const response = await application!.handle(new Request(authorization));
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toContain("error_description=pkce+is+required+for+public+clients");
+  });
+
+  test("JWKS endpoint can provision the configured signing key", async () => {
+    const response = await application!.handle(new Request("http://localhost:3000/api/auth/jwks"));
+    expect(response.status).toBe(200);
+    const body = await response.json() as { keys: Array<{ alg: string; crv: string }> };
+    expect(body.keys).toContainEqual(expect.objectContaining({ alg: "EdDSA", crv: "Ed25519" }));
   });
 });

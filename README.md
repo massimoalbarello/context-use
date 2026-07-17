@@ -80,7 +80,7 @@ Point an OAuth-capable MCP client at:
 https://YOUR_HOST/mcp
 ```
 
-The server publishes protected-resource and authorization-server metadata. New dynamic clients receive `kb:read` by default. The owner must separately approve `kb:write`, `assets:read`, and `offline_access`; no publication or administration scope exists.
+The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, and `assets:read`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or administration scope exists.
 
 ## Development
 
