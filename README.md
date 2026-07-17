@@ -37,7 +37,7 @@ See [Security architecture](docs/security.md) and [Operations](docs/operations.m
 Prerequisites:
 
 - macOS or Linux on ARM64 or x86-64.
-- An authenticated AWS CLI profile with permission to create the documented resources.
+- An authenticated AWS CLI v2 profile with permission to create the documented resources. Browser sessions created by `aws login` are supported.
 - Terraform `>= 1.11, < 2.0`.
 - A hostname you control.
 - GitHub CLI for release-provenance verification during installation.
@@ -55,7 +55,7 @@ Ensure `~/.local/bin` is on `PATH`, then run:
 context-use setup
 ```
 
-The CLI asks for the AWS profile, region, hostname, DNS mode, and owner email. It creates everything else, stores secrets only as KMS-encrypted SSM parameters, deploys through Systems Manager, waits for TLS, and prints a one-time owner-enrollment link. The link asks for the configured email and creates the installation's permanent passkey; email is an identity label, not a sign-in or recovery method. Manual DNS setup pauses safely and continues with `context-use resume`.
+The CLI asks for the AWS profile, region, hostname, DNS mode, and owner email. It exports short-lived credentials from that profile to Terraform without storing access keys, creates everything else, stores secrets only as KMS-encrypted SSM parameters, deploys through Systems Manager, waits for TLS, and prints a one-time owner-enrollment link. The link asks for the configured email and creates the installation's permanent passkey; email is an identity label, not a sign-in or recovery method. Manual DNS setup pauses safely and continues with `context-use resume`.
 
 Useful commands:
 

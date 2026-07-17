@@ -4,7 +4,9 @@
 
 `context-use setup` bootstraps an installation-specific encrypted/versioned Terraform state bucket, applies the retained-data stack, applies replaceable compute, stores runtime secrets in SSM, configures optional Route 53 records, and deploys through SSM. Non-secret progress is stored with mode `0600` under `~/.config/context-use/config.json`.
 
-`context-use resume` is idempotent across infrastructure phases. If interruption occurred before SSM secrets were complete, it regenerates and stores the installation secrets before continuing.
+The selected AWS CLI profile remains the source of authentication. Before each Terraform operation, the CLI uses `aws configure export-credentials` to pass short-lived credentials through the child-process environment. This supports `aws login`, SSO, credential-process, role, and conventional profiles without persisting exported credentials or embedding them in Terraform backend configuration.
+
+`context-use resume` is idempotent across infrastructure phases. If interruption occurred before SSM secrets were complete, it regenerates and stores the installation secrets before continuing. A resumed manual-DNS installation pauses after compute and secrets are ready, prints both required A records, and deploys only after the next `resume`.
 
 After deployment, the CLI prints an owner-enrollment URL containing a random setup capability in its fragment. The browser removes the fragment from its address bar, asks for the configured owner email, and sends both values only as part of the same-origin passkey ceremony. Enrollment closes permanently after the first credential is stored. The email labels the owner account but is not an authentication or recovery factor.
 

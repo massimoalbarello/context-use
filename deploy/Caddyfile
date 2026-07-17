@@ -1,6 +1,5 @@
 {
 	admin off
-	email off
 	servers {
 		protocols h1 h2 h3
 	}

@@ -66,6 +66,19 @@ export async function ownerSetupUrl(config: DeploymentConfig): Promise<string> {
   return `https://${config.hostname}/app#setup=${encodeURIComponent(token)}`;
 }
 
+export function shouldPauseForManualDns(config: DeploymentConfig): boolean {
+  return config.dnsMode === "manual" && ["new", "data_ready", "compute_ready"].includes(config.phase);
+}
+
+export async function pauseForManualDns(config: DeploymentConfig): Promise<boolean> {
+  if (!shouldPauseForManualDns(config)) return false;
+  if (!config.computeOutputs) throw new Error("Compute infrastructure outputs are missing");
+  config.phase = "awaiting_dns";
+  await saveConfig(config);
+  p.note(`Create these A records pointing to ${config.computeOutputs.public_ip}:\n${config.hostname}\n${config.assetHostname}\n\nThen run: context-use resume`, "DNS required");
+  return true;
+}
+
 export async function setup(): Promise<void> {
   p.intro("context-use · private knowledge infrastructure");
   if (await Bun.file(configPath).exists()) {
@@ -107,11 +120,7 @@ export async function setup(): Promise<void> {
   config.computeOutputs = await applyCompute(root, config);
   config.phase = "compute_ready"; await saveConfig(config);
   await storeRuntimeParameters(config);
-  if (dnsMode === "manual") {
-    config.phase = "awaiting_dns"; await saveConfig(config);
-    p.note(`Create these A records pointing to ${config.computeOutputs.public_ip}:\n${config.hostname}\n${config.assetHostname}\n\nThen run: context-use resume`, "DNS required");
-    return;
-  }
+  if (await pauseForManualDns(config)) return;
   await deploy(config, manifest);
   config.phase = "deployed"; await saveConfig(config);
   p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}`);

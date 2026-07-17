@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { resolve } from "node:path";
 import { cacheDirectory } from "./paths.ts";
-import { run } from "./process.ts";
+import { redactSensitiveText, run } from "./process.ts";
 
 export function awsArgs(profile: string, region: string, args: string[]): string[] {
   return ["aws", "--profile", profile, "--region", region, ...args];
@@ -200,17 +200,24 @@ export async function waitForSsm(profile: string, region: string, instanceId: st
 
 export async function sendSsmCommands(profile: string, region: string, instanceId: string, commands: string[]): Promise<string> {
   const path = resolve(cacheDirectory, `ssm-command-${randomBytes(8).toString("hex")}.json`);
-  await Bun.write(path, JSON.stringify({ DocumentName: "AWS-RunShellScript", InstanceIds: [instanceId], Parameters: { commands } }), { createPath: true, mode: 0o600 });
+  await Bun.write(path, JSON.stringify({ DocumentName: "AWS-RunShellScript", InstanceIds: [instanceId], Parameters: { commands: strictSsmCommands(commands) } }), { createPath: true, mode: 0o600 });
   try {
     const result = await awsJson<{ Command: { CommandId: string } }>(profile, region, ["ssm", "send-command", "--cli-input-json", `file://${path}`]);
     const commandId = result.Command.CommandId;
-    await run(awsArgs(profile, region, ["ssm", "wait", "command-executed", "--command-id", commandId, "--instance-id", instanceId]), { quiet: true });
+    await run(awsArgs(profile, region, ["ssm", "wait", "command-executed", "--command-id", commandId, "--instance-id", instanceId]), { quiet: true, allowFailure: true });
     const invocation = await awsJson<{ Status: string; StandardOutputContent: string; StandardErrorContent: string }>(profile, region, [
       "ssm", "get-command-invocation", "--command-id", commandId, "--instance-id", instanceId,
     ]);
-    if (invocation.Status !== "Success") throw new Error(`Remote command failed: ${invocation.StandardErrorContent}`);
+    if (invocation.Status !== "Success") {
+      const detail = redactSensitiveText(invocation.StandardErrorContent.trim()) || `status ${invocation.Status}`;
+      throw new Error(`Remote command failed: ${detail}`);
+    }
     return invocation.StandardOutputContent;
   } finally {
     await Bun.file(path).delete();
   }
+}
+
+export function strictSsmCommands(commands: string[]): string[] {
+  return commands[0] === "set -euo pipefail" ? commands : ["set -euo pipefail", ...commands];
 }

@@ -7,20 +7,29 @@ export async function deploy(config: DeploymentConfig, manifest: ReleaseManifest
   if (!config.computeOutputs) throw new Error("Compute infrastructure outputs are missing");
   await waitForSsm(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id);
   const deployScript = await Bun.file(resolve(await deploymentRoot(manifest), "deploy/deploy.sh")).text();
-  const encoded = Buffer.from(deployScript).toString("base64");
-  const command = [
-    `echo '${encoded}' | base64 -d > /tmp/context-use-deploy.sh`,
-    "chmod 0700 /tmp/context-use-deploy.sh",
-    `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' /tmp/context-use-deploy.sh`,
-    "rm -f /tmp/context-use-deploy.sh",
-  ];
+  const command = deploymentCommands(config, manifest, deployScript);
   await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, command);
   await verifyDeployment(config.hostname);
   await verifyRemoteSecurity(config);
 }
 
+export function deploymentCommands(config: DeploymentConfig, manifest: ReleaseManifest, deployScript: string): string[] {
+  const encoded = Buffer.from(deployScript).toString("base64");
+  return [
+    "trap 'rm -f /tmp/context-use-deploy.sh' EXIT",
+    "cloud-init status --wait",
+    `echo '${encoded}' | base64 -d > /tmp/context-use-deploy.sh`,
+    "chmod 0700 /tmp/context-use-deploy.sh",
+    `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' /tmp/context-use-deploy.sh`,
+  ];
+}
+
 export async function verifyRemoteSecurity(config: DeploymentConfig): Promise<void> {
   if (!config.computeOutputs) throw new Error("Compute infrastructure outputs are missing");
+  await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, remoteSecurityCommands());
+}
+
+export function remoteSecurityCommands(): string[] {
   const envFile = "/data/context-use/secrets/runtime.env";
   const compose = `docker compose --env-file ${envFile}`;
   const sql = [
@@ -33,16 +42,17 @@ export async function verifyRemoteSecurity(config: DeploymentConfig): Promise<vo
     "AND has_table_privilege('context_use_public','published_pages','SELECT')",
     "THEN 'ok' ELSE 'denied' END",
   ].join(" ");
-  await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, [
-    "set -euo pipefail",
+  const encodedSql = Buffer.from(sql).toString("base64");
+  return [
     "cd /opt/context-use/deploy",
-    `test \"$(${compose} exec -T postgres sh -c 'PGPASSWORD=\"$POSTGRES_PASSWORD\" psql -U postgres -d context_use -Atq -c \"${sql}\"')\" = ok`,
     `set -a; . ${envFile}; set +a`,
-    "test \"$(aws s3api get-bucket-encryption --bucket \"$ASSET_BUCKET\" --query 'ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm' --output text)\" = 'aws:kms'",
-    "test \"$(aws s3api get-public-access-block --bucket \"$ASSET_BUCKET\" --query 'PublicAccessBlockConfiguration.[BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets]' --output text | tr -d '[:space:]')\" = 'TrueTrueTrueTrue'",
+    "export PGPASSWORD=\"$POSTGRES_PASSWORD\"",
+    `test "$(printf %s ${encodedSql} | base64 -d | ${compose} exec -T -e PGPASSWORD postgres psql -U postgres -d context_use -Atq)" = ok`,
+    "test \"$(aws s3api get-bucket-encryption --bucket \"$ASSET_BUCKET\" --query \"ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm\" --output text)\" = aws:kms",
+    "test \"$(aws s3api get-public-access-block --bucket \"$ASSET_BUCKET\" --query \"PublicAccessBlockConfiguration.[BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets]\" --output text | tr -d \"[:space:]\")\" = TrueTrueTrueTrue",
     "aws s3api head-bucket --bucket \"$BACKUP_BUCKET\"",
     `${compose} run --rm backup once`,
-  ]);
+  ];
 }
 
 async function verifyDeployment(hostname: string): Promise<void> {
