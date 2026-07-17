@@ -8,7 +8,8 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   const [history, setHistory] = useState<Version[]>([]);
   const [draft, setDraft] = useState({ path: "", title: "", body_markdown: "" });
   const [commit, setCommit] = useState("");
-  const [tab, setTab] = useState<"edit" | "preview" | "history" | "links">("edit");
+  const [tab, setTab] = useState<"preview" | "history" | "links">("preview");
+  const [isEditing, setIsEditing] = useState(false);
   const [publishingVersion, setPublishingVersion] = useState<number | null>(null);
   const [message, setMessage] = useState("");
 
@@ -29,6 +30,8 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     setCommit("");
     setMessage("");
     setPublishingVersion(null);
+    setTab("preview");
+    setIsEditing(false);
     load().catch((error: Error) => setMessage(error.message));
   }, [pageId]);
 
@@ -37,6 +40,18 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   const publishedVersion = history.find((version) => version.id === page.published_version_id);
   const publishedVersionNumber = publishedVersion?.version_number;
   const hasUnpublishedChanges = Boolean(page.published_version_id && page.published_version_id !== page.current_version_id);
+
+  const edit = () => {
+    setDraft({ path: page.current_path, title: page.title, body_markdown: page.body_markdown });
+    setCommit("");
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setDraft({ path: page.current_path, title: page.title, body_markdown: page.body_markdown });
+    setCommit("");
+    setIsEditing(false);
+  };
 
   const save = async () => {
     setMessage("");
@@ -48,6 +63,8 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
       setCommit("");
       await load();
       onChanged();
+      setIsEditing(false);
+      setTab("preview");
       setMessage(page.published_version_id
         ? `Saved as v${saved.version_number}. Your public page is still v${publishedVersionNumber ?? page.version_number}; publish the new version when it is ready.`
         : `Saved as v${saved.version_number}.`);
@@ -85,8 +102,14 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         {!page.archived_at && page.published_version_id && !hasUnpublishedChanges && <button onClick={() => setPublishingVersion(page.version_number)}>Manage publication</button>}
       </div>
     </header>
-    <nav className="tabs">{(["edit", "preview", "history", "links"] as const).map((item) => <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>)}</nav>
-    {tab === "edit" && <section className="edit-grid">
+    {!isEditing && <nav className="tabs">
+      <div>{(["preview", "history", "links"] as const).map((item) => <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
+      {tab === "preview" && <button className="edit-page-button" onClick={edit} aria-label="Edit page">
+        <svg aria-hidden="true" viewBox="0 0 16 16"><path d="M11.7 2.3a1 1 0 0 1 1.4 0l.6.6a1 1 0 0 1 0 1.4l-8 8-3.2.7.7-3.2 8-8Z" /><path d="m9.8 4.2 2 2" /></svg>
+        Edit
+      </button>}
+    </nav>}
+    {isEditing && <section className="edit-grid">
       <div className="edit-top">
         {page.published_version_id && <div className={`publication-notice${hasUnpublishedChanges ? " pending" : ""}`}>
           <div>
@@ -98,10 +121,10 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         <div className="editor-fields"><label>Path<input value={draft.path} onChange={(event) => setDraft({ ...draft, path: event.target.value })} /></label><label>Title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label></div>
       </div>
       <textarea className="markdown-editor" value={draft.body_markdown} onChange={(event) => setDraft({ ...draft, body_markdown: event.target.value })} spellCheck />
-      <footer className="save-bar"><input placeholder="Describe this change (required)" value={commit} onChange={(event) => setCommit(event.target.value)} /><button className="primary" disabled={commit.trim().length < 3} onClick={save}>Save version</button></footer>
+      <footer className="save-bar"><input placeholder="Describe this change (required)" value={commit} onChange={(event) => setCommit(event.target.value)} /><div className="button-row"><button onClick={cancelEdit}>Cancel</button><button className="primary" disabled={commit.trim().length < 3} onClick={save}>Save version</button></div></footer>
     </section>}
-    {tab === "preview" && <article className="rendered" dangerouslySetInnerHTML={{ __html: page.rendered_html ?? "" }} />}
-    {tab === "history" && <section className="history-list">
+    {!isEditing && tab === "preview" && <article className="rendered" dangerouslySetInnerHTML={{ __html: page.rendered_html ?? "" }} />}
+    {!isEditing && tab === "history" && <section className="history-list">
       <header><h2>Version history</h2><p>The latest editable version and the published version are independent. Publishing points the public URL at one exact snapshot.</p></header>
       {history.map((version) => {
         const isLatest = version.id === page.current_version_id;
@@ -121,7 +144,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         </article>;
       })}
     </section>}
-    {tab === "links" && <section className="links-grid"><div><h3>Outgoing</h3>{page.outgoing?.map((link) => <a href={`/app/pages/${link.id}`} key={link.id}>{link.title}<span>{link.current_path}</span></a>)}</div><div><h3>Backlinks</h3>{page.backlinks?.map((link) => <a href={`/app/pages/${link.id}`} key={link.id}>{link.title}<span>{link.current_path}</span></a>)}</div></section>}
+    {!isEditing && tab === "links" && <section className="links-grid"><div><h3>Outgoing</h3>{page.outgoing?.map((link) => <a href={`/app/pages/${link.id}`} key={link.id}>{link.title}<span>{link.current_path}</span></a>)}</div><div><h3>Backlinks</h3>{page.backlinks?.map((link) => <a href={`/app/pages/${link.id}`} key={link.id}>{link.title}<span>{link.current_path}</span></a>)}</div></section>}
     {message && <div className="toast">{message}</div>}
     {publishingVersion != null && <PublicationDialog page={page} versionNumber={publishingVersion} publishedVersionNumber={publishedVersionNumber} onClose={() => setPublishingVersion(null)} onChanged={publicationChanged} />}
   </main>;
