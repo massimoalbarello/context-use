@@ -53,4 +53,28 @@ describeDatabase("immutable page history", () => {
       "Archive test page", "Rename and update", "Create test page",
     ]);
   });
+
+  test("indexes relative Obsidian wikilinks in the page graph", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const target = await pages.create({
+      path: `tests/${suffix}/target`,
+      title: "Target",
+      body_markdown: "Target page",
+      commit_message: "Create target page",
+    }, actor);
+    const source = await pages.create({
+      path: `tests/${suffix}/source`,
+      title: "Source",
+      body_markdown: "See [[target|the target]].",
+      commit_message: "Create source page",
+    }, actor);
+    createdIds.push(source.id, target.id);
+
+    const links = await pages.links(source.id);
+    expect(links.outgoing).toEqual([{
+      id: target.id,
+      current_path: target.current_path,
+      title: target.title,
+    }]);
+  });
 });

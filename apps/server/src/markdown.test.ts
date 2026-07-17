@@ -3,6 +3,7 @@ import { renderMarkdown } from "./markdown.ts";
 
 const privateResolvers = {
   page: async () => ({ available: false as const }),
+  pagePath: async () => ({ available: false as const }),
   asset: async () => ({ available: false as const }),
 };
 
@@ -29,5 +30,22 @@ describe("safe Markdown rendering", () => {
     expect(html).not.toContain("context-use://");
     expect(html).not.toContain("11111111-1111-4111-8111-111111111111");
     expect(html).not.toContain("22222222-2222-4222-8222-222222222222");
+  });
+
+  test("renders Obsidian wikilinks with aliases and safe internal targets", async () => {
+    const html = await renderMarkdown(
+      "[[me/intro|My intro]] [[missing/page|Missing page]] [[me/intro|<img src=x onerror=alert(1)>]]",
+      {
+        ...privateResolvers,
+        pagePath: async (path) => path === "me/intro"
+          ? { available: true as const, href: "/app/pages/11111111-1111-4111-8111-111111111111" }
+          : { available: false as const },
+      },
+    );
+    expect(html).toContain('<a href="/app/pages/11111111-1111-4111-8111-111111111111">My intro</a>');
+    expect(html).toContain('<span class="private-reference">Missing page</span>');
+    expect(html).not.toContain("[[");
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain('target="_blank"');
   });
 });

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api, refreshCsrf } from "./api.ts";
 import { authClient } from "./auth-client.ts";
 import { Assets } from "./components/Assets.tsx";
 import { Editor } from "./components/Editor.tsx";
+import { KnowledgeTree } from "./components/KnowledgeTree.tsx";
 import { Login } from "./components/Login.tsx";
 import { OAuthConsent } from "./components/OAuthConsent.tsx";
 import { Security, type PasskeySummary } from "./components/Security.tsx";
@@ -34,7 +35,6 @@ export function App() {
   useEffect(() => { if (authSession) loadSession().catch(() => setSession(null)); }, [authSession]);
   useEffect(() => { if (session) loadPages().catch(() => undefined); }, [session, query, showArchived]);
 
-  const tree = useMemo(() => pages, [pages]);
   if (isPending) return <main className="center-card">Loading…</main>;
   if (!authSession) return <Login />;
   if (consent) return <OAuthConsent />;
@@ -54,7 +54,7 @@ export function App() {
     <aside className="sidebar">
       <div className="sidebar-brand"><div className="brand-mark small">cu</div><strong>context-use</strong></div>
       <div className="section-switch"><button className={section === "pages" ? "active" : ""} onClick={() => setSection("pages")}>Knowledge</button><button className={section === "assets" ? "active" : ""} onClick={() => setSection("assets")}>Assets</button><button className={section === "security" ? "active" : ""} onClick={() => setSection("security")}>Security</button></div>
-      {section === "pages" && <><input className="search" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived</label><div className="page-tree">{tree.map((page) => <button className={`${selected === page.id ? "selected" : ""} ${page.archived_at ? "archived" : ""}`} key={page.id} onClick={() => { setSelected(page.id); history.pushState({}, "", `/app/pages/${page.id}`); }}><span>{page.current_path}</span><strong>{page.title}</strong>{page.archived_at ? <i>archived</i> : page.published_version_id && <i>public</i>}</button>)}</div><button className="new-page" onClick={createPage}>＋ New page</button></>}
+      {section === "pages" && <><input className="search" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived</label><KnowledgeTree pages={pages} query={query} selectedPageId={selected} onSelectPage={(page) => { setSelected(page.id); history.pushState({}, "", `/app/pages/${page.id}`); }} /><button className="new-page" onClick={createPage}>＋ New page</button></>}
       <footer><span>{session.owner.email} · {session.passkey_count} passkey{session.passkey_count === 1 ? "" : "s"}</span><button onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}>Sign out</button></footer>
     </aside>
     {section === "assets" ? <Assets /> : section === "security" ? <Security passkeys={session.passkeys} /> : selected ? <Editor pageId={selected} onChanged={loadPages} /> : <main className="editor-empty"><div className="brand-mark">cu</div><h2>Select or create a page</h2><p>Your knowledge remains private until you explicitly publish an exact version.</p></main>}

@@ -1,38 +1,45 @@
 # Development
 
-## Local PostgreSQL
+## Docker Compose development environment
 
-Start PostgreSQL 17 on a local port:
+Start PostgreSQL, run the migrations, and launch the API and Vite development servers:
 
 ```sh
-docker run --name context-use-dev-db --rm \
-  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=context_use \
-  -p 5432:5432 postgres:17-alpine
+docker compose -f compose.dev.yml up --build
 ```
 
-In another shell, apply migrations and role passwords:
+The source tree is bind-mounted into the API and web containers, so both servers reload as files change. PostgreSQL data, uploaded assets, and container dependencies live in named Docker volumes.
+
+Open the one-time local owner enrollment page:
 
 ```sh
-export MIGRATOR_DATABASE_URL=postgres://postgres:postgres@localhost:5432/context_use
-export DB_AUTH_PASSWORD=development-only
-export DB_DASHBOARD_PASSWORD=development-only
-export DB_MCP_PASSWORD=development-only
-export DB_PUBLIC_PASSWORD=development-only
-export DB_PUBLISHER_PASSWORD=development-only
-export DB_BACKUP_PASSWORD=development-only
-bun run db:migrate
+http://localhost:5173/app#setup=development-owner-setup-token-0000000000000
 ```
 
-Copy `.env.example` to `.env`, then run the server and web development processes:
+The default owner email is `you@example.com`. Override it for a fresh database with `OWNER_EMAIL=me@example.com docker compose -f compose.dev.yml up --build`.
+
+Stop the containers without removing local data:
 
 ```sh
+docker compose -f compose.dev.yml down
+```
+
+To discard the local database, assets, and installed container dependencies as well, add `--volumes` to the `down` command.
+
+## Host processes with a containerized database
+
+If you prefer running Bun directly on the host, start only the database and migration services:
+
+```sh
+docker compose -f compose.dev.yml up -d postgres
+docker compose -f compose.dev.yml run --rm migrate
+bun install --frozen-lockfile
+cp .env.example .env
 bun run dev:server
 bun run dev:web
 ```
 
-The Vite development server proxies application requests to the API server. Filesystem asset storage is used locally.
-
-For local owner enrollment, open `http://localhost:5173/app#setup=development-owner-setup-token-0000000000000` and enter the `OWNER_EMAIL` value. The development token corresponds to the hash in `.env.example`; production setup always generates a random token.
+The Vite development server proxies application requests to the API server. Filesystem asset storage is used locally. The development setup token is fixed; production setup always generates a random token.
 
 ## Verification
 

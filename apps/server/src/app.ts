@@ -13,6 +13,8 @@ import {
   createPool,
   extractAssetLinks,
   extractPageLinks,
+  extractWikiLinks,
+  wikiLinkCandidatePaths,
 } from "@context-use/database";
 import {
   archivePageSchema,
@@ -97,7 +99,7 @@ function routeError(error: unknown): Response {
   return problem("Internal server error", 500, "internal_error");
 }
 
-async function pageResolvers(privateMode: boolean) {
+async function pageResolvers(privateMode: boolean, sourcePath: string) {
   return {
     page: async (id: string) => {
       if (privateMode) {
@@ -106,6 +108,20 @@ async function pageResolvers(privateMode: boolean) {
       }
       const page = await publicData.pageById(id);
       return page ? { available: true as const, href: `/p/${page.public_slug}` } : { available: false as const };
+    },
+    pagePath: async (path: string) => {
+      if (privateMode) {
+        for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
+          const page = await dashboardPages.getByPath(candidate);
+          if (page) return { available: true as const, href: `/app/pages/${page.id}` };
+        }
+        return { available: false as const };
+      }
+      for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
+        const page = await publicData.pageByPath(candidate);
+        if (page) return { available: true as const, href: `/p/${page.public_slug}` };
+      }
+      return { available: false as const };
     },
     asset: async (id: string) => {
       if (privateMode) {
@@ -330,7 +346,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     if (!page) return problem("Page not found", 404, "not_found");
     const [links, html] = await Promise.all([
       dashboardPages.links(page.id),
-      renderMarkdown(page.body_markdown, await pageResolvers(true)),
+      renderMarkdown(page.body_markdown, await pageResolvers(true, page.current_path)),
     ]);
     return json({ ...page, ...links, rendered_html: html });
   })
@@ -366,11 +382,25 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const versionNumber = query.version ? z.coerce.number().int().positive().parse(query.version) : page.version_number;
     const version = await dashboardPages.version(pageId, versionNumber);
     if (!version) return problem("Version not found", 404, "not_found");
-    const html = await renderMarkdown(version.body_markdown, await pageResolvers(false));
+    const html = await renderMarkdown(version.body_markdown, await pageResolvers(false, version.path));
     const references = await Promise.all([
       ...extractPageLinks(version.body_markdown).map(async (id) => {
         const target = await dashboardPages.get(id);
         return { kind: "page" as const, id, label: target?.title ?? "Missing page", path: target?.current_path ?? null, public: Boolean(target?.published_version_id) };
+      }),
+      ...extractWikiLinks(version.body_markdown).map(async ({ path, label }) => {
+        let target = null;
+        for (const candidate of wikiLinkCandidatePaths(path, version.path)) {
+          target = await dashboardPages.getByPath(candidate);
+          if (target) break;
+        }
+        return {
+          kind: "page" as const,
+          id: target?.id ?? `path:${path}`,
+          label: target?.title ?? label,
+          path: target?.current_path ?? path,
+          public: Boolean(target?.published_version_id),
+        };
       }),
       ...extractAssetLinks(version.body_markdown).map(async (id) => {
         const target = await dashboardAssets.get(id);
@@ -545,7 +575,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const slug = parsedSlug.data;
     const page = await publicData.pageBySlug(slug);
     if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
-    const content = await renderMarkdown(page.body_markdown, await pageResolvers(false));
+    const content = await renderMarkdown(page.body_markdown, await pageResolvers(false, page.path));
     const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(page.title)}</title><link rel="stylesheet" href="/public.css"></head><body><main class="public-page"><article>${content}</article></main></body></html>`;
     return new Response(html, { headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" } });
   })
