@@ -1,4 +1,10 @@
-const REDACT = /(?:secret|password|token|credential|private[_-]?key)/i;
+const SENSITIVE_KEY = /(?:secret|password|token|credential|private[_-]?key)/i;
+
+export function redactSensitiveText(input: string): string {
+  return input
+    .replace(/([a-z][a-z0-9+.-]*:\/\/[^\s:/]+:)[^\s@]+(@)/gi, "$1[redacted]$2")
+    .replace(/((?:"?(?:[A-Z0-9_.-]*(?:SECRET|PASSWORD|TOKEN|CREDENTIAL|PRIVATE_KEY)[A-Z0-9_.-]*|secretAccessKey|accessKeyId)"?)\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi, "$1[redacted]");
+}
 
 export type RunOptions = {
   cwd?: string;
@@ -10,7 +16,7 @@ export type RunOptions = {
 
 export async function run(command: string[], options: RunOptions = {}): Promise<string> {
   if (process.env.CONTEXT_USE_DRY_RUN === "1") {
-    if (!options.quiet) console.log(`[dry-run] ${command.map((part) => REDACT.test(part) ? "[redacted]" : part).join(" ")}`);
+    if (!options.quiet) console.log(`[dry-run] ${command.map((part) => SENSITIVE_KEY.test(part) ? "[redacted]" : part).join(" ")}`);
     return "{}";
   }
   const subprocess = Bun.spawn(command, {
@@ -31,10 +37,10 @@ export async function run(command: string[], options: RunOptions = {}): Promise<
     subprocess.exited,
   ]);
   if (exitCode !== 0 && !options.allowFailure) {
-    const safeError = REDACT.test(stderr) ? "Command failed; sensitive output was redacted" : stderr.trim();
+    const safeError = redactSensitiveText(stderr.trim()) || "Command failed without diagnostic output";
     throw new Error(`${command[0]} failed (${exitCode}): ${safeError}`);
   }
-  if (!options.quiet && stderr.trim() && !REDACT.test(stderr)) console.error(stderr.trim());
+  if (!options.quiet && stderr.trim()) console.error(redactSensitiveText(stderr.trim()));
   return stdout.trim();
 }
 

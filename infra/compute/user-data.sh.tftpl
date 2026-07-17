@@ -6,6 +6,7 @@ dnf install -y docker
 systemctl enable --now docker
 
 if ! docker compose version >/dev/null 2>&1; then
+  install -d -m 0755 /usr/local/lib/docker/cli-plugins
   machine="$(uname -m)"
   case "$${machine}" in
     x86_64) compose_sha=486b3ffc0f806ca2efbc430cef89955386011662f0c76bad17c103d059cfa9cf ;;

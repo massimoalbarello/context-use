@@ -4,7 +4,7 @@ import { bootstrapStateBucket, configureStateBucketKms, createStateKmsKey } from
 import { deploy } from "../deploy.ts";
 import { readConfig, saveConfig } from "../paths.ts";
 import { deploymentRoot, releaseManifest } from "../release.ts";
-import { ownerSetupUrl, storeRuntimeParameters } from "../setup.ts";
+import { ownerSetupUrl, pauseForManualDns, storeRuntimeParameters } from "../setup.ts";
 import { applyCompute, applyData, assertTerraformVersion } from "../terraform.ts";
 
 export const command = defineCommand("resume", {
@@ -32,6 +32,7 @@ export const command = defineCommand("resume", {
     if (!config.parametersReady) {
       await storeRuntimeParameters(config);
     }
+    if (await pauseForManualDns(config)) return;
     await deploy(config, manifest);
     config.phase = "deployed";
     await saveConfig(config);
