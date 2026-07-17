@@ -74,7 +74,6 @@ export async function applyData(root: string, config: DeploymentConfig): Promise
     `-var=availability_zone=${config.availabilityZone}`,
     `-var=environment=${config.environment}`,
     `-var=installation_id=${config.installationId}`,
-    `-var=app_hostname=${config.hostname}`,
     `-var=data_volume_size_gb=${config.dataVolumeSizeGb}`,
     `-var=backup_retention_days=${config.backupRetentionDays}`,
   ], { cwd: directory, env });
@@ -137,7 +136,7 @@ export async function destroyData(root: string, config: DeploymentConfig): Promi
   await run(["terraform", "destroy", "-input=false", "-auto-approve",
     `-var=aws_region=${config.awsRegion}`, `-var=availability_zone=${config.availabilityZone}`,
     `-var=environment=${config.environment}`, `-var=installation_id=${config.installationId}`,
-    `-var=app_hostname=${config.hostname}`, `-var=data_volume_size_gb=${config.dataVolumeSizeGb}`,
+    `-var=data_volume_size_gb=${config.dataVolumeSizeGb}`,
     `-var=backup_retention_days=${config.backupRetentionDays}`,
   ], { cwd: directory, env });
 }

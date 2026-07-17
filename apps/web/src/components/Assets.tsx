@@ -17,11 +17,11 @@ export function Assets() {
   const upload = async (file: File) => {
     setMessage("Hashing and preparing upload…");
     try {
-      const created = await api<{ asset: Asset; upload: { url: string; headers: Record<string, string> } }>("/api/dashboard/assets/upload-intent", {
+      const created = await api<{ asset: Asset }>("/api/dashboard/assets/upload-intent", {
         method: "POST",
         body: JSON.stringify({ filename: file.name, content_type: file.type || "application/octet-stream", size_bytes: file.size, sha256: await sha256(file) }),
       });
-      await uploadFile(created.upload.url, file, created.upload.headers);
+      await uploadFile(`/api/dashboard/assets/${created.asset.id}/content`, file, created.asset.content_type);
       setMessage("Asset uploaded privately.");
       await load();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Upload failed"); }

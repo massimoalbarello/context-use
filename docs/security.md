@@ -53,7 +53,7 @@ MCP OAuth uses authorization code with mandatory PKCE. Access tokens expire afte
 
 Public views select the exact published page version, not the current private version. Page and asset publication states are independent. Public rendering resolves only targets visible through public views, so a link to a private object reveals no title, path, filename, MIME type, size, or S3 key.
 
-Raw HTML and remote inline media are removed from Markdown. Rendered HTML is sanitized and served under a restrictive CSP. Active file formats, including HTML and SVG, are forced to download. S3 buckets have all public-access blocks enabled, require TLS, use KMS encryption, and are never used as a public origin; access is through short-lived, object-specific signed URLs.
+Raw HTML and remote inline media are removed from Markdown. Rendered HTML is sanitized and served under a restrictive CSP. Active file formats, including HTML and SVG, are forced to download. S3 buckets have all public-access blocks enabled, require TLS, and use KMS encryption. Upload bytes pass through the authenticated application origin and are checksum-validated by S3; short-lived, object-specific signed URLs are used only for authorized private downloads.
 
 Private and public content use `Cache-Control: no-store` in v1. Unpublication prevents future access through context-use but cannot retract copies already made by third parties.
 

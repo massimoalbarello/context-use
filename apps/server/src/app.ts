@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import {
   oauthProviderAuthServerMetadata,
@@ -35,10 +34,11 @@ import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import {
   SecurityError,
   assertDashboardRequestSecurity,
+  assertDashboardUploadSecurity,
   csrfToken,
   securityHeaders,
 } from "./security.ts";
-import { contentDisposition, mayRenderInline, storage } from "./storage.ts";
+import { AssetIntegrityError, contentDisposition, mayRenderInline, storage } from "./storage.ts";
 import { requireAuthenticationUserVerification } from "./webauthn-policy.ts";
 
 const dashboardPool = createPool(config.DATABASE_URL);
@@ -404,32 +404,36 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       ...(input.height ? { height: input.height } : {}),
       ...(input.duration_seconds !== undefined ? { durationSeconds: input.duration_seconds } : {}),
     });
-    const upload = await storage.createUpload({
-      id: created.id,
-      objectKey: created.objectKey,
-      filename: created.filename,
-      contentType: created.content_type,
-      sizeBytes: Number(created.size_bytes),
-      contentHash: created.content_hash,
-    });
     const { objectKey: _hidden, ...asset } = created;
-    return json({ asset, upload }, 201);
+    return json({ asset }, 201);
   })
   .put("/api/dashboard/assets/:id/content", async ({ request, params }) => {
     const principal = await ownerRequest(request);
-    if (request.headers.get("origin") !== config.APP_ORIGIN
-      || request.headers.get("sec-fetch-site") !== "same-origin"
-      || request.headers.get("x-csrf-token") !== csrfToken(principal)) {
-      throw new SecurityError("Upload authorization failed", 403);
-    }
-    if (!storage.writeLocal) return problem("Direct application uploads are disabled", 405, "method_not_allowed");
+    assertDashboardUploadSecurity(request, principal);
     const asset = await dashboardAssets.get(z.string().uuid().parse(params.id), true);
     if (!asset) return problem("Asset not found", 404, "not_found");
-    const bytes = new Uint8Array(await request.arrayBuffer());
-    if (bytes.byteLength !== Number(asset.size_bytes)) return problem("Asset size mismatch", 422, "integrity_error");
-    const hash = createHash("sha256").update(bytes).digest("hex");
-    if (hash !== asset.content_hash) return problem("Asset checksum mismatch", 422, "integrity_error");
-    await storage.writeLocal(asset.s3_object_key, new Request(request.url, { method: "PUT", body: bytes }));
+    const expectedSize = Number(asset.size_bytes);
+    const suppliedSize = request.headers.get("content-length");
+    if (suppliedSize !== null && (!/^\d+$/.test(suppliedSize) || Number(suppliedSize) !== expectedSize)) {
+      return problem("Asset size mismatch", 422, "integrity_error");
+    }
+    if (request.headers.get("content-type")?.toLowerCase() !== asset.content_type.toLowerCase()) {
+      return problem("Asset content type mismatch", 422, "integrity_error");
+    }
+    if (!request.body && expectedSize !== 0) return problem("Asset size mismatch", 422, "integrity_error");
+    try {
+      await storage.write({
+        id: asset.id,
+        objectKey: asset.s3_object_key,
+        filename: asset.filename,
+        contentType: asset.content_type,
+        sizeBytes: expectedSize,
+        contentHash: asset.content_hash,
+      }, request.body);
+    } catch (error) {
+      if (error instanceof AssetIntegrityError) return problem(error.message, 422, "integrity_error");
+      throw error;
+    }
     return json({ uploaded: true });
   })
   .get("/api/dashboard/assets/:id/content", async ({ request, params }) => {

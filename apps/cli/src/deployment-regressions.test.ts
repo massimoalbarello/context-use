@@ -156,13 +156,14 @@ test("an interrupted manual-DNS setup pauses once before deployment", () => {
   expect(shouldPauseForManualDns(deploymentConfig({ phase: "compute_ready", dnsMode: "route53" }))).toBe(false);
 });
 
-test("instance bootstrap and TLS configuration contain the live-deployment fixes", async () => {
-  const [userData, deployScript, caddy, compute, update] = await Promise.all([
+test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
+  const [userData, deployScript, caddy, compute, update, data] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/deploy.sh", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile", import.meta.url)).text(),
     Bun.file(new URL("../../../infra/compute/main.tf", import.meta.url)).text(),
     Bun.file(new URL("./commands/update.ts", import.meta.url)).text(),
+    Bun.file(new URL("../../../infra/data/main.tf", import.meta.url)).text(),
   ]);
 
   expect(userData.indexOf("install -d -m 0755 /usr/local/lib/docker/cli-plugins")).toBeLessThan(userData.indexOf("docker-compose-linux-"));
@@ -172,8 +173,12 @@ test("instance bootstrap and TLS configuration contain the live-deployment fixes
   expect(deployScript).toContain("mountpoint -q /data");
   expect(deployScript).toContain("/data/context-use/.volume-id");
   expect(caddy).not.toContain("email off");
+  expect(caddy).toContain("handle /api/dashboard/assets/*/content");
+  expect(caddy).toContain("max_size 5GB");
+  expect(caddy).toContain("max_size 3MB");
   expect(compute).toContain("s3:GetEncryptionConfiguration");
   expect(compute).toContain("s3:GetBucketPublicAccessBlock");
   expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("run --rm backup once"));
   expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(4);
+  expect(data).not.toContain("aws_s3_bucket_cors_configuration");
 });

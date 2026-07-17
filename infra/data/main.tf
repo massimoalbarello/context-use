@@ -80,17 +80,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "private" {
   }
 }
 
-resource "aws_s3_bucket_cors_configuration" "assets" {
-  bucket = aws_s3_bucket.assets.id
-  cors_rule {
-    allowed_headers = ["content-type", "x-amz-checksum-sha256", "x-amz-content-sha256", "x-amz-date", "x-amz-server-side-encryption", "x-amz-server-side-encryption-aws-kms-key-id", "authorization"]
-    allowed_methods = ["GET", "HEAD", "PUT"]
-    allowed_origins = ["https://${var.app_hostname}"]
-    expose_headers  = ["ETag", "x-amz-checksum-sha256"]
-    max_age_seconds = 300
-  }
-}
-
 resource "aws_s3_bucket_lifecycle_configuration" "backups" {
   bucket = aws_s3_bucket.backups.id
   rule {

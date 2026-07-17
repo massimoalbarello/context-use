@@ -11,10 +11,18 @@
 		-Server
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 	}
-	request_body {
-		max_size 3MB
+	handle /api/dashboard/assets/*/content {
+		request_body {
+			max_size 5GB
+		}
+		reverse_proxy app:3000
 	}
-	reverse_proxy app:3000
+	handle {
+		request_body {
+			max_size 3MB
+		}
+		reverse_proxy app:3000
+	}
 }
 
 {$ASSET_HOSTNAME} {

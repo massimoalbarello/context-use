@@ -1,5 +1,10 @@
-import { mkdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { createReadStream, createWriteStream } from "node:fs";
+import { mkdir, rename, unlink } from "node:fs/promises";
 import { basename, resolve } from "node:path";
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -19,21 +24,26 @@ export type StoredAsset = {
   contentHash: string;
 };
 
-export type UploadDescriptor = {
-  url: string;
-  method: "PUT";
-  headers: Record<string, string>;
-  expires_in: number;
-};
-
 export interface ObjectStorage {
-  createUpload(asset: StoredAsset): Promise<UploadDescriptor>;
+  write(asset: StoredAsset, body: ReadableStream<Uint8Array> | null): Promise<void>;
   createDownload(asset: Pick<StoredAsset, "objectKey" | "filename" | "contentType">, inline?: boolean): Promise<string>;
   delete(objectKey: string): Promise<void>;
   read(objectKey: string): Promise<BodyInit>;
   verify(objectKey: string, sizeBytes: number, contentHash: string): Promise<boolean>;
-  writeLocal?(objectKey: string, request: Request): Promise<void>;
   localFile?(objectKey: string): Bun.BunFile;
+}
+
+export class AssetIntegrityError extends Error {
+  constructor(message = "Asset bytes failed integrity verification") {
+    super(message);
+    this.name = "AssetIntegrityError";
+  }
+}
+
+function nodeStream(body: ReadableStream<Uint8Array> | null): Readable {
+  return body
+    ? Readable.fromWeb(body as unknown as NodeReadableStream<Uint8Array>)
+    : Readable.from([]);
 }
 
 export function contentDisposition(filename: string, inline: boolean): string {
@@ -49,28 +59,26 @@ export function mayRenderInline(contentType: string): boolean {
 class S3Storage implements ObjectStorage {
   private readonly client = new S3Client({ region: config.AWS_REGION });
 
-  async createUpload(asset: StoredAsset): Promise<UploadDescriptor> {
+  async write(asset: StoredAsset, body: ReadableStream<Uint8Array> | null): Promise<void> {
     const checksum = Buffer.from(asset.contentHash, "hex").toString("base64");
     const command = new PutObjectCommand({
       Bucket: config.ASSET_BUCKET,
       Key: asset.objectKey,
+      Body: nodeStream(body),
       ContentType: asset.contentType,
       ContentLength: asset.sizeBytes,
       ChecksumSHA256: checksum,
       ServerSideEncryption: "aws:kms",
       SSEKMSKeyId: config.KMS_KEY_ID,
     });
-    return {
-      url: await getSignedUrl(this.client, command, { expiresIn: 300 }),
-      method: "PUT",
-      headers: {
-        "content-type": asset.contentType,
-        "x-amz-checksum-sha256": checksum,
-        "x-amz-server-side-encryption": "aws:kms",
-        "x-amz-server-side-encryption-aws-kms-key-id": config.KMS_KEY_ID,
-      },
-      expires_in: 300,
-    };
+    try {
+      await this.client.send(command);
+    } catch (error) {
+      if (error instanceof Error && error.name === "BadDigest") {
+        throw new AssetIntegrityError("Asset checksum mismatch");
+      }
+      throw error;
+    }
   }
 
   async createDownload(
@@ -109,8 +117,12 @@ class S3Storage implements ObjectStorage {
   }
 }
 
-class FilesystemStorage implements ObjectStorage {
-  private readonly root = resolve(config.STORAGE_PATH);
+export class FilesystemStorage implements ObjectStorage {
+  private readonly root: string;
+
+  constructor(root = config.STORAGE_PATH) {
+    this.root = resolve(root);
+  }
 
   private path(objectKey: string): string {
     const path = resolve(this.root, objectKey);
@@ -118,17 +130,33 @@ class FilesystemStorage implements ObjectStorage {
     return path;
   }
 
-  async createUpload(asset: StoredAsset): Promise<UploadDescriptor> {
-    return {
-      url: `${config.APP_ORIGIN}/api/dashboard/assets/${asset.id}/content`,
-      method: "PUT",
-      headers: { "content-type": asset.contentType },
-      expires_in: 300,
-    };
-  }
-
   async createDownload(asset: Pick<StoredAsset, "objectKey">): Promise<string> {
     return `${config.APP_ORIGIN}/api/dashboard/assets/object/${encodeURIComponent(asset.objectKey)}`;
+  }
+
+  async write(asset: StoredAsset, body: ReadableStream<Uint8Array> | null): Promise<void> {
+    const path = this.path(asset.objectKey);
+    const temporaryPath = `${path}.upload-${crypto.randomUUID()}`;
+    await mkdir(resolve(path, ".."), { recursive: true });
+    try {
+      const hash = createHash("sha256");
+      let size = 0;
+      const verifier = new Transform({
+        transform(chunk: Buffer, _encoding, callback) {
+          size += chunk.byteLength;
+          hash.update(chunk);
+          callback(null, chunk);
+        },
+      });
+      await pipeline(nodeStream(body), verifier, createWriteStream(temporaryPath, { flags: "wx" }));
+      if (size !== asset.sizeBytes || hash.digest("hex") !== asset.contentHash) {
+        throw new AssetIntegrityError();
+      }
+      await rename(temporaryPath, path);
+    } catch (error) {
+      await unlink(temporaryPath).catch(() => undefined);
+      throw error;
+    }
   }
 
   async delete(objectKey: string): Promise<void> {
@@ -142,15 +170,12 @@ class FilesystemStorage implements ObjectStorage {
     return file;
   }
 
-  async verify(objectKey: string, sizeBytes: number, _contentHash: string): Promise<boolean> {
+  async verify(objectKey: string, sizeBytes: number, contentHash: string): Promise<boolean> {
     const file = Bun.file(this.path(objectKey));
-    return await file.exists() && file.size === sizeBytes;
-  }
-
-  async writeLocal(objectKey: string, request: Request): Promise<void> {
-    const path = this.path(objectKey);
-    await mkdir(resolve(path, ".."), { recursive: true });
-    await Bun.write(path, await request.arrayBuffer());
+    if (!(await file.exists()) || file.size !== sizeBytes) return false;
+    const hash = createHash("sha256");
+    for await (const chunk of createReadStream(file.name!)) hash.update(chunk);
+    return hash.digest("hex") === contentHash;
   }
 
   localFile(objectKey: string): Bun.BunFile {
