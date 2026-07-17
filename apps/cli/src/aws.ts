@@ -198,21 +198,46 @@ export async function waitForSsm(profile: string, region: string, instanceId: st
   throw new Error("EC2 instance did not become available through Systems Manager");
 }
 
+export type SsmCommandInvocation = {
+  Status: string;
+  StandardOutputContent?: string;
+  StandardErrorContent?: string;
+};
+
+const pendingSsmStatuses = new Set(["Pending", "InProgress", "Delayed", "Cancelling"]);
+
+export async function waitForSsmInvocation(
+  readInvocation: () => Promise<SsmCommandInvocation>,
+  pause: () => Promise<void> = () => Bun.sleep(5_000),
+  maxAttempts = 720,
+): Promise<SsmCommandInvocation> {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const invocation = await readInvocation();
+      if (!pendingSsmStatuses.has(invocation.Status)) return invocation;
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      if (!detail.includes("InvocationDoesNotExist")) throw error;
+    }
+    if (attempt < maxAttempts - 1) await pause();
+  }
+  throw new Error("Remote command did not complete within one hour");
+}
+
 export async function sendSsmCommands(profile: string, region: string, instanceId: string, commands: string[]): Promise<string> {
   const path = resolve(cacheDirectory, `ssm-command-${randomBytes(8).toString("hex")}.json`);
   await Bun.write(path, JSON.stringify({ DocumentName: "AWS-RunShellScript", InstanceIds: [instanceId], Parameters: { commands: strictSsmCommands(commands) } }), { createPath: true, mode: 0o600 });
   try {
     const result = await awsJson<{ Command: { CommandId: string } }>(profile, region, ["ssm", "send-command", "--cli-input-json", `file://${path}`]);
     const commandId = result.Command.CommandId;
-    await run(awsArgs(profile, region, ["ssm", "wait", "command-executed", "--command-id", commandId, "--instance-id", instanceId]), { quiet: true, allowFailure: true });
-    const invocation = await awsJson<{ Status: string; StandardOutputContent: string; StandardErrorContent: string }>(profile, region, [
+    const invocation = await waitForSsmInvocation(() => awsJson<SsmCommandInvocation>(profile, region, [
       "ssm", "get-command-invocation", "--command-id", commandId, "--instance-id", instanceId,
-    ]);
+    ]));
     if (invocation.Status !== "Success") {
-      const detail = redactSensitiveText(invocation.StandardErrorContent.trim()) || `status ${invocation.Status}`;
+      const detail = redactSensitiveText(invocation.StandardErrorContent?.trim() ?? "") || `status ${invocation.Status}`;
       throw new Error(`Remote command failed: ${detail}`);
     }
-    return invocation.StandardOutputContent;
+    return invocation.StandardOutputContent ?? "";
   } finally {
     await Bun.file(path).delete();
   }

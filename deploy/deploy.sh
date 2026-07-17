@@ -11,6 +11,8 @@ set -euo pipefail
 
 root=/opt/context-use
 secrets=/data/context-use/secrets
+mountpoint -q /data || { echo "Retained data volume is not mounted" >&2; exit 1; }
+[ -s /data/context-use/.volume-id ] || { echo "Retained data volume marker is missing" >&2; exit 1; }
 mkdir -p "${root}" "${secrets}" /data/context-use/{postgres,caddy/data,caddy/config}
 chmod 0700 "${secrets}"
 chown 70:70 /data/context-use/postgres

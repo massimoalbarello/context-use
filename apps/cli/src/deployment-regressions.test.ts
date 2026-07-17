@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
-import { strictSsmCommands } from "./aws.ts";
-import { deploymentCommands, remoteSecurityCommands } from "./deploy.ts";
+import { strictSsmCommands, waitForSsmInvocation } from "./aws.ts";
+import { deploymentCommands, healthMatchesVersion, remoteSecurityCommands } from "./deploy.ts";
+import { restoreCommands } from "./commands/restore.ts";
 import { redactSensitiveText } from "./process.ts";
 import { shouldPauseForManualDns } from "./setup.ts";
 import { backendArgs, terraformEnvironment } from "./terraform.ts";
@@ -84,6 +85,31 @@ test("SSM scripts fail on the first unsuccessful command", () => {
   expect(strictSsmCommands(["set -euo pipefail", "echo ok"])).toEqual(["set -euo pipefail", "echo ok"]);
 });
 
+test("SSM polling treats in-progress commands and invocation propagation as non-terminal", async () => {
+  const responses = [
+    new Error("InvocationDoesNotExist"),
+    { Status: "Pending" },
+    { Status: "InProgress" },
+    { Status: "Success", StandardOutputContent: "deployed" },
+  ];
+  let pauses = 0;
+  const invocation = await waitForSsmInvocation(async () => {
+    const response = responses.shift();
+    if (response instanceof Error) throw response;
+    if (!response) throw new Error("No response");
+    return response;
+  }, async () => { pauses += 1; }, 4);
+
+  expect(invocation).toEqual({ Status: "Success", StandardOutputContent: "deployed" });
+  expect(pauses).toBe(3);
+});
+
+test("SSM polling returns terminal failures and bounds the wait", async () => {
+  expect(await waitForSsmInvocation(async () => ({ Status: "Failed" }), async () => {}, 1)).toEqual({ Status: "Failed" });
+  await expect(waitForSsmInvocation(async () => ({ Status: "InProgress" }), async () => {}, 2))
+    .rejects.toThrow("within one hour");
+});
+
 test("deployment waits for cloud-init and always removes its temporary script", () => {
   const commands = strictSsmCommands(deploymentCommands(deploymentConfig(), manifest, "#!/bin/sh\nexit 0\n"));
 
@@ -106,6 +132,22 @@ test("remote verification avoids shell-quoting SQL and passes the database passw
   expect(script).not.toContain("sh -c");
 });
 
+test("restore sources the database password and restarts services after errors", () => {
+  const script = restoreCommands("backup-bucket", "postgres/2026-07-17T10-39-47Z.sql.gz").join("\n");
+
+  expect(script).toContain(". /data/context-use/secrets/runtime.env");
+  expect(script).toContain("export PGPASSWORD=\"$POSTGRES_PASSWORD\"");
+  expect(script).toContain("exec -T -e PGPASSWORD postgres psql");
+  expect(script).toContain("trap 'docker compose");
+  expect(script).not.toContain("POSTGRES_PASSWORD=");
+});
+
+test("deployment health must report the requested release version", () => {
+  expect(healthMatchesVersion({ status: "ok", version: "0.1.4" }, "v0.1.4")).toBe(true);
+  expect(healthMatchesVersion({ status: "ok", version: "0.1.3" }, "v0.1.4")).toBe(false);
+  expect(healthMatchesVersion({ status: "ok" }, "v0.1.4")).toBe(false);
+});
+
 test("an interrupted manual-DNS setup pauses once before deployment", () => {
   expect(shouldPauseForManualDns(deploymentConfig({ phase: "new" }))).toBe(true);
   expect(shouldPauseForManualDns(deploymentConfig({ phase: "compute_ready" }))).toBe(true);
@@ -115,14 +157,23 @@ test("an interrupted manual-DNS setup pauses once before deployment", () => {
 });
 
 test("instance bootstrap and TLS configuration contain the live-deployment fixes", async () => {
-  const [userData, caddy, compute] = await Promise.all([
+  const [userData, deployScript, caddy, compute, update] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
+    Bun.file(new URL("../../../deploy/deploy.sh", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile", import.meta.url)).text(),
     Bun.file(new URL("../../../infra/compute/main.tf", import.meta.url)).text(),
+    Bun.file(new URL("./commands/update.ts", import.meta.url)).text(),
   ]);
 
   expect(userData.indexOf("install -d -m 0755 /usr/local/lib/docker/cli-plugins")).toBeLessThan(userData.indexOf("docker-compose-linux-"));
+  expect(userData).toContain("Refusing to format non-blank retained data volume");
+  expect(userData).toContain("cmp -n 16777216");
+  expect(userData).not.toContain("if ! blkid");
+  expect(deployScript).toContain("mountpoint -q /data");
+  expect(deployScript).toContain("/data/context-use/.volume-id");
   expect(caddy).not.toContain("email off");
   expect(compute).toContain("s3:GetEncryptionConfiguration");
   expect(compute).toContain("s3:GetBucketPublicAccessBlock");
+  expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("run --rm backup once"));
+  expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(4);
 });
