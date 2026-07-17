@@ -4,7 +4,7 @@ import { authClient } from "../auth-client.ts";
 
 const SCOPE_DESCRIPTIONS: Record<string, string> = {
   "kb:read": "Read private knowledge pages and their history",
-  "kb:write": "Create, update, archive, and restore private pages",
+  "kb:write": "Create, update, and archive private pages",
   "assets:read": "Read private asset metadata and download assets",
   offline_access: "Remain connected when you are away",
   openid: "Identify your owner account",

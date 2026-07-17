@@ -40,14 +40,6 @@ export const archivePageSchema = z
   })
   .strict();
 
-export const restorePageSchema = z
-  .object({
-    version_number: z.number().int().positive(),
-    commit_message: CommitMessage,
-    expected_version_number: z.number().int().positive(),
-  })
-  .strict();
-
 export const publicationIntentSchema = z
   .object({
     action: z.enum(["publish", "republish", "unpublish"]),
@@ -72,7 +64,6 @@ export const publicationIntentSchema = z
 export type CreatePageInput = z.infer<typeof createPageSchema>;
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
-export type RestorePageInput = z.infer<typeof restorePageSchema>;
 export type PublicationIntentInput = z.infer<typeof publicationIntentSchema>;
 
 export type Actor = {

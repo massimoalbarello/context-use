@@ -9,41 +9,49 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   const [draft, setDraft] = useState({ path: "", title: "", body_markdown: "" });
   const [commit, setCommit] = useState("");
   const [tab, setTab] = useState<"edit" | "preview" | "history" | "links">("edit");
-  const [publishing, setPublishing] = useState(false);
+  const [publishingVersion, setPublishingVersion] = useState<number | null>(null);
   const [message, setMessage] = useState("");
 
-  const load = async () => {
-    const next = await api<Page>(`/api/dashboard/pages/${pageId}`);
+  const load = async (preserveDraft = false) => {
+    const [next, versions] = await Promise.all([
+      api<Page>(`/api/dashboard/pages/${pageId}`),
+      api<Version[]>(`/api/dashboard/pages/${pageId}/history`),
+    ]);
     setPage(next);
-    setDraft({ path: next.current_path, title: next.title, body_markdown: next.body_markdown });
-    setHistory(await api<Version[]>(`/api/dashboard/pages/${pageId}/history`));
+    if (!preserveDraft) setDraft({ path: next.current_path, title: next.title, body_markdown: next.body_markdown });
+    setHistory(versions);
+    return { page: next, history: versions };
   };
-  useEffect(() => { load().catch((error: Error) => setMessage(error.message)); }, [pageId]);
+
+  useEffect(() => {
+    setPage(null);
+    setHistory([]);
+    setCommit("");
+    setMessage("");
+    setPublishingVersion(null);
+    load().catch((error: Error) => setMessage(error.message));
+  }, [pageId]);
 
   if (!page) return <main className="editor-empty">{message || "Loading page…"}</main>;
+
+  const publishedVersion = history.find((version) => version.id === page.published_version_id);
+  const publishedVersionNumber = publishedVersion?.version_number;
+  const hasUnpublishedChanges = Boolean(page.published_version_id && page.published_version_id !== page.current_version_id);
 
   const save = async () => {
     setMessage("");
     try {
-      await api(`/api/dashboard/pages/${page.id}`, {
+      const saved = await api<Page>(`/api/dashboard/pages/${page.id}`, {
         method: "PUT",
         body: JSON.stringify({ ...draft, commit_message: commit, expected_version_number: page.version_number }),
       });
       setCommit("");
       await load();
       onChanged();
-      setMessage("Saved as a new immutable version.");
+      setMessage(page.published_version_id
+        ? `Saved as v${saved.version_number}. Your public page is still v${publishedVersionNumber ?? page.version_number}; publish the new version when it is ready.`
+        : `Saved as v${saved.version_number}.`);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Save failed"); }
-  };
-
-  const restore = async (version: Version) => {
-    const commitMessage = window.prompt(`Commit message for restoring version ${version.version_number}`);
-    if (!commitMessage) return;
-    await api(`/api/dashboard/pages/${page.id}/restore`, {
-      method: "POST",
-      body: JSON.stringify({ version_number: version.version_number, commit_message: commitMessage, expected_version_number: page.version_number }),
-    });
-    await load(); onChanged();
   };
 
   const archive = async () => {
@@ -58,21 +66,63 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     } catch (error) { setMessage(error instanceof Error ? error.message : "Archive failed"); }
   };
 
+  const publicationChanged = async (action: "publish" | "republish" | "unpublish") => {
+    const published = publishingVersion;
+    await load(true);
+    onChanged();
+    setMessage(action === "unpublish" ? "The page is now private." : `v${published} is now published.`);
+  };
+
   return <main className="editor">
     <header className="editor-header">
       <div><span className="path">{page.current_path}</span><h1>{page.title}</h1></div>
-      <div className="button-row"><span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : page.published_version_id ? `Public · ${page.public_slug}` : "Private"}</span>{!page.archived_at && <button onClick={archive}>Archive</button>}{!page.archived_at && <button onClick={() => setPublishing(true)}>{page.published_version_id ? "Visibility" : "Publish"}</button>}</div>
+      <div className="button-row">
+        <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_slug}` : "Private"}</span>
+        {!page.archived_at && !page.published_version_id && <button onClick={archive}>Archive</button>}
+        {!page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
+        {!page.archived_at && page.published_version_id && hasUnpublishedChanges && publishedVersionNumber && <button onClick={() => setPublishingVersion(publishedVersionNumber)}>Manage public v{publishedVersionNumber}</button>}
+        {!page.archived_at && page.published_version_id && hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish latest</button>}
+        {!page.archived_at && page.published_version_id && !hasUnpublishedChanges && <button onClick={() => setPublishingVersion(page.version_number)}>Manage publication</button>}
+      </div>
     </header>
     <nav className="tabs">{(["edit", "preview", "history", "links"] as const).map((item) => <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>)}</nav>
     {tab === "edit" && <section className="edit-grid">
-      <div className="editor-fields"><label>Path<input value={draft.path} onChange={(event) => setDraft({ ...draft, path: event.target.value })} /></label><label>Title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label></div>
+      <div className="edit-top">
+        {page.published_version_id && <div className={`publication-notice${hasUnpublishedChanges ? " pending" : ""}`}>
+          <div>
+            <strong>{hasUnpublishedChanges ? `The public page is still v${publishedVersionNumber ?? "?"}.` : `v${publishedVersionNumber ?? page.version_number} is currently public.`}</strong>
+            <span>{hasUnpublishedChanges ? `Your latest version, v${page.version_number}, remains private until you publish it.` : "Saving edits creates a new private version. The published page will not update automatically."}</span>
+          </div>
+          {hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish v{page.version_number}</button>}
+        </div>}
+        <div className="editor-fields"><label>Path<input value={draft.path} onChange={(event) => setDraft({ ...draft, path: event.target.value })} /></label><label>Title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label></div>
+      </div>
       <textarea className="markdown-editor" value={draft.body_markdown} onChange={(event) => setDraft({ ...draft, body_markdown: event.target.value })} spellCheck />
       <footer className="save-bar"><input placeholder="Describe this change (required)" value={commit} onChange={(event) => setCommit(event.target.value)} /><button className="primary" disabled={commit.trim().length < 3} onClick={save}>Save version</button></footer>
     </section>}
     {tab === "preview" && <article className="rendered" dangerouslySetInnerHTML={{ __html: page.rendered_html ?? "" }} />}
-    {tab === "history" && <section className="history-list">{history.map((version) => <article key={version.id}><div><strong>v{version.version_number} · {version.commit_message}</strong><span>{version.actor_kind} · {new Date(version.created_at).toLocaleString()}</span></div><button onClick={() => restore(version)}>Restore</button></article>)}</section>}
+    {tab === "history" && <section className="history-list">
+      <header><h2>Version history</h2><p>The latest editable version and the published version are independent. Publishing points the public URL at one exact snapshot.</p></header>
+      {history.map((version) => {
+        const isLatest = version.id === page.current_version_id;
+        const isPublished = version.id === page.published_version_id;
+        return <article className={isPublished ? "published-version" : ""} key={version.id}>
+          <div className="version-info">
+            <div className="version-heading"><strong>v{version.version_number}</strong>{isLatest && <span className="version-badge latest">Latest</span>}{isPublished && <span className="version-badge published">Published</span>}</div>
+            <span className="commit-message">{version.commit_message}</span>
+            <span>{version.actor_kind} · {new Date(version.created_at).toLocaleString()}</span>
+          </div>
+          {!page.archived_at && <div className="version-actions">
+            {isPublished && page.public_slug && <a className="button" href={`/p/${page.public_slug}`} target="_blank" rel="noreferrer">View public</a>}
+            {isPublished
+              ? <button onClick={() => setPublishingVersion(version.version_number)}>Manage</button>
+              : <button className={isLatest ? "primary" : ""} onClick={() => setPublishingVersion(version.version_number)}>Publish this version</button>}
+          </div>}
+        </article>;
+      })}
+    </section>}
     {tab === "links" && <section className="links-grid"><div><h3>Outgoing</h3>{page.outgoing?.map((link) => <a href={`/app/pages/${link.id}`} key={link.id}>{link.title}<span>{link.current_path}</span></a>)}</div><div><h3>Backlinks</h3>{page.backlinks?.map((link) => <a href={`/app/pages/${link.id}`} key={link.id}>{link.title}<span>{link.current_path}</span></a>)}</div></section>}
     {message && <div className="toast">{message}</div>}
-    {publishing && <PublicationDialog page={page} onClose={() => setPublishing(false)} onChanged={load} />}
+    {publishingVersion != null && <PublicationDialog page={page} versionNumber={publishingVersion} publishedVersionNumber={publishedVersionNumber} onClose={() => setPublishingVersion(null)} onChanged={publicationChanged} />}
   </main>;
 }
