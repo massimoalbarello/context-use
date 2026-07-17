@@ -1,9 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { createStatelessMcpTransport } from "./mcp-transport.ts";
+import { createStatelessMcpTransport, unsupportedMcpMethodResponse } from "./mcp-transport.ts";
 
 describe("stateless MCP transport", () => {
+  test("rejects standalone stream probes without creating a short-lived SSE response", () => {
+    for (const method of ["GET", "DELETE"]) {
+      const response = unsupportedMcpMethodResponse(new Request("https://example.com/mcp", { method }));
+
+      expect(response?.status).toBe(405);
+      expect(response?.headers.get("allow")).toBe("POST");
+    }
+
+    expect(unsupportedMcpMethodResponse(new Request("https://example.com/mcp", { method: "POST" }))).toBeNull();
+  });
+
   test("materializes the initialize result before per-request cleanup", async () => {
     const server = new McpServer({ name: "transport-test", version: "1.0.0" });
     const transport = createStatelessMcpTransport();
