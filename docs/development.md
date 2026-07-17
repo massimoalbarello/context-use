@@ -1,5 +1,24 @@
 # Development
 
+## Local stack with Docker Compose
+
+Build the app, start PostgreSQL, apply migrations, and serve the dashboard at
+`http://localhost:3000`:
+
+```sh
+docker compose up --build
+```
+
+For first-time owner enrollment, open:
+
+```text
+http://localhost:3000/app#setup=development-owner-setup-token-0000000000000
+```
+
+Use `you@example.com` and create the passkey with your normal browser. Stop the
+stack with `Ctrl+C`, or run `docker compose down`. To reset all local pages,
+assets, and enrollment state, run `docker compose down -v`.
+
 ## Local PostgreSQL
 
 Start PostgreSQL 17 on a local port:

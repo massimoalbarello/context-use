@@ -15,6 +15,7 @@ import {
   extractPageLinks,
 } from "@context-use/database";
 import {
+  AssetPath,
   archivePageSchema,
   createPageSchema,
   MCP_SCOPES,
@@ -151,6 +152,7 @@ function webFile(path: string): Bun.BunFile | null {
 }
 
 const assetUploadSchema = z.object({
+  path: AssetPath,
   filename: z.string().trim().min(1).max(1024),
   content_type: z.string().trim().min(1).max(255),
   size_bytes: z.number().int().min(0).max(5_000_000_000),
@@ -374,7 +376,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       }),
       ...extractAssetLinks(version.body_markdown).map(async (id) => {
         const target = await dashboardAssets.get(id);
-        return { kind: "asset" as const, id, label: target?.filename ?? "Missing asset", path: null, public: Boolean(target?.published_at) };
+        return { kind: "asset" as const, id, label: target?.filename ?? "Missing asset", path: target?.current_path ?? null, public: Boolean(target?.published_at) };
       }),
     ]);
     return json({
@@ -398,6 +400,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     await ownerRequest(request, true);
     const input = assetUploadSchema.parse(await bodyJson(request));
     const created = await dashboardAssets.create({
+      currentPath: input.path,
       filename: input.filename,
       contentType: input.content_type,
       sizeBytes: input.size_bytes,

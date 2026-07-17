@@ -166,7 +166,7 @@ function createServer(context: McpContext, pages: PageRepository, assets: AssetR
   });
 
   server.registerTool("list_assets", {
-    description: "List private asset metadata. Does not reveal S3 keys.",
+    description: "List private asset metadata and organizational paths. Does not reveal S3 keys.",
     inputSchema: z.object({}).strict(),
     annotations: { readOnlyHint: true },
   }, async () => {

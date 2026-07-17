@@ -1,12 +1,14 @@
 import { z } from "zod";
 
 export const UUID = z.string().uuid();
-export const PagePath = z
+export const KnowledgePath = z
   .string()
   .min(1)
   .max(512)
   .regex(/^[a-z0-9][a-z0-9/_-]*$/, "Use lowercase path segments only")
   .refine((value) => !value.includes("//") && !value.endsWith("/"), "Invalid path");
+export const PagePath = KnowledgePath;
+export const AssetPath = KnowledgePath;
 export const CommitMessage = z.string().trim().min(3).max(240);
 export const PublicSlug = z
   .string()
@@ -87,6 +89,7 @@ export type Page = {
 
 export type Asset = {
   id: string;
+  current_path: string;
   filename: string;
   content_type: string;
   size_bytes: number;

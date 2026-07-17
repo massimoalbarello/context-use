@@ -29,6 +29,7 @@ export type Version = {
 
 export type Asset = {
   id: string;
+  current_path: string;
   filename: string;
   content_type: string;
   size_bytes: number;

@@ -1,23 +1,37 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, refreshCsrf } from "./api.ts";
+import { api, refreshCsrf, uploadFile } from "./api.ts";
 import { authClient } from "./auth-client.ts";
-import { Assets } from "./components/Assets.tsx";
+import { AssetDetails } from "./components/Assets.tsx";
 import { Editor } from "./components/Editor.tsx";
+import { KnowledgeTree, type KnowledgeSelection } from "./components/KnowledgeTree.tsx";
 import { Login } from "./components/Login.tsx";
 import { OAuthConsent } from "./components/OAuthConsent.tsx";
 import { Security, type PasskeySummary } from "./components/Security.tsx";
-import type { Page } from "./types.ts";
+import type { Asset, Page } from "./types.ts";
 
 type SessionInfo = { owner: { id: string; email: string }; passkey_count: number; passkeys: PasskeySummary[] };
+
+function selectionFromLocation(): KnowledgeSelection | null {
+  const match = window.location.pathname.match(/^\/app\/(pages|assets)\/([0-9a-f-]+)/);
+  return match ? { kind: match[1] === "pages" ? "page" : "asset", id: match[2]! } : null;
+}
+
+async function sha256(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 export function App() {
   const { data: authSession, isPending } = authClient.useSession();
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [pages, setPages] = useState<Page[]>([]);
-  const [selected, setSelected] = useState<string | null>(() => window.location.pathname.match(/^\/app\/pages\/([0-9a-f-]+)/)?.[1] ?? null);
-  const [section, setSection] = useState<"pages" | "assets" | "security">("pages");
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [selected, setSelected] = useState<KnowledgeSelection | null>(selectionFromLocation);
+  const [section, setSection] = useState<"knowledge" | "security">("knowledge");
   const [query, setQuery] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | "page" | "asset">("all");
   const [showArchived, setShowArchived] = useState(false);
+  const [message, setMessage] = useState("");
   const consent = window.location.pathname === "/app/oauth/consent";
 
   const loadSession = async () => {
@@ -31,10 +45,20 @@ export function App() {
     if (showArchived) parameters.set("archived", "true");
     setPages(await api<Page[]>(`/api/dashboard/pages${parameters.size ? `?${parameters}` : ""}`));
   };
+  const loadAssets = async () => setAssets(await api<Asset[]>("/api/dashboard/assets"));
   useEffect(() => { if (authSession) loadSession().catch(() => setSession(null)); }, [authSession]);
   useEffect(() => { if (session) loadPages().catch(() => undefined); }, [session, query, showArchived]);
+  useEffect(() => { if (session) loadAssets().catch(() => undefined); }, [session]);
 
-  const tree = useMemo(() => pages, [pages]);
+  const visibleAssets = useMemo(() => {
+    if (kindFilter === "page") return [];
+    const normalized = query.trim().toLocaleLowerCase();
+    return normalized
+      ? assets.filter((asset) => `${asset.current_path} ${asset.filename}`.toLocaleLowerCase().includes(normalized))
+      : assets;
+  }, [assets, query, kindFilter]);
+  const visiblePages = kindFilter === "asset" ? [] : pages;
+  const selectedAsset = selected?.kind === "asset" ? assets.find((asset) => asset.id === selected.id) ?? null : null;
   if (isPending) return <main className="center-card">Loading…</main>;
   if (!authSession) return <Login />;
   if (consent) return <OAuthConsent />;
@@ -46,17 +70,41 @@ export function App() {
     if (!path) return;
     const title = window.prompt("Page title") ?? path.split("/").at(-1) ?? path;
     const page = await api<Page>("/api/dashboard/pages", { method: "POST", body: JSON.stringify({ path, title, body_markdown: "", commit_message: "Create page" }) });
-    setSelected(page.id); setSection("pages"); await loadPages();
+    setSelected({ kind: "page", id: page.id }); setSection("knowledge"); await loadPages();
     history.pushState({}, "", `/app/pages/${page.id}`);
+  };
+
+  const uploadAsset = async (file: File) => {
+    const path = window.prompt("Asset path (lowercase, e.g. projects/acme/site-photo)");
+    if (!path) return;
+    setMessage("Hashing and preparing upload…");
+    try {
+      const created = await api<{ asset: Asset }>("/api/dashboard/assets/upload-intent", {
+        method: "POST",
+        body: JSON.stringify({ path, filename: file.name, content_type: file.type || "application/octet-stream", size_bytes: file.size, sha256: await sha256(file) }),
+      });
+      await uploadFile(`/api/dashboard/assets/${created.asset.id}/content`, file, created.asset.content_type);
+      await loadAssets();
+      setSelected({ kind: "asset", id: created.asset.id });
+      setSection("knowledge");
+      history.pushState({}, "", `/app/assets/${created.asset.id}`);
+      setMessage("Asset uploaded privately.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Upload failed"); }
+  };
+
+  const selectKnowledge = (selection: KnowledgeSelection) => {
+    setSelected(selection);
+    history.pushState({}, "", `/app/${selection.kind === "page" ? "pages" : "assets"}/${selection.id}`);
   };
 
   return <div className="shell">
     <aside className="sidebar">
       <div className="sidebar-brand"><div className="brand-mark small">cu</div><strong>context-use</strong></div>
-      <div className="section-switch"><button className={section === "pages" ? "active" : ""} onClick={() => setSection("pages")}>Knowledge</button><button className={section === "assets" ? "active" : ""} onClick={() => setSection("assets")}>Assets</button><button className={section === "security" ? "active" : ""} onClick={() => setSection("security")}>Security</button></div>
-      {section === "pages" && <><input className="search" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived</label><div className="page-tree">{tree.map((page) => <button className={`${selected === page.id ? "selected" : ""} ${page.archived_at ? "archived" : ""}`} key={page.id} onClick={() => { setSelected(page.id); history.pushState({}, "", `/app/pages/${page.id}`); }}><span>{page.current_path}</span><strong>{page.title}</strong>{page.archived_at ? <i>archived</i> : page.published_version_id && <i>public</i>}</button>)}</div><button className="new-page" onClick={createPage}>＋ New page</button></>}
+      <div className="section-switch"><button className={section === "knowledge" ? "active" : ""} onClick={() => setSection("knowledge")}>Knowledge</button><button className={section === "security" ? "active" : ""} onClick={() => setSection("security")}>Security</button></div>
+      {section === "knowledge" && <><input className="search" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><div className="knowledge-filter">{(["all", "page", "asset"] as const).map((kind) => <button className={kindFilter === kind ? "active" : ""} key={kind} onClick={() => setKindFilter(kind)}>{kind === "all" ? "All" : `${kind}s`}</button>)}</div><label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label><div className="page-tree"><KnowledgeTree pages={visiblePages} assets={visibleAssets} selected={selected} forceExpanded={Boolean(query.trim())} onSelect={selectKnowledge} /></div><div className="knowledge-actions"><button onClick={createPage}>＋ New page</button><label className="button upload-button">↑ Upload asset<input type="file" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadAsset(file); }} /></label></div></>}
       <footer><span>{session.owner.email} · {session.passkey_count} passkey{session.passkey_count === 1 ? "" : "s"}</span><button onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}>Sign out</button></footer>
     </aside>
-    {section === "assets" ? <Assets /> : section === "security" ? <Security passkeys={session.passkeys} /> : selected ? <Editor pageId={selected} onChanged={loadPages} /> : <main className="editor-empty"><div className="brand-mark">cu</div><h2>Select or create a page</h2><p>Your knowledge remains private until you explicitly publish an exact version.</p></main>}
+    {section === "security" ? <Security passkeys={session.passkeys} /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="brand-mark">cu</div><h2>Select or create knowledge</h2><p>Pages and assets remain private until you explicitly publish them.</p></main>}
+    {message && <div className="toast">{message}</div>}
   </div>;
 }

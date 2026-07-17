@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { createPageSchema, publicationIntentSchema, updatePageSchema } from "./index.ts";
+import { AssetPath, createPageSchema, publicationIntentSchema, updatePageSchema } from "./index.ts";
 
 const pageId = "11111111-1111-4111-8111-111111111111";
 const versionId = "22222222-2222-4222-8222-222222222222";
 
 describe("strict mutation schemas", () => {
+  test("asset paths use the same hierarchical format as page paths", () => {
+    expect(AssetPath.safeParse("projects/acme/site-photo").success).toBe(true);
+    expect(AssetPath.safeParse("Projects/acme/site-photo.jpg").success).toBe(false);
+    expect(AssetPath.safeParse("projects//site-photo").success).toBe(false);
+  });
+
   test("ordinary page writes reject publication fields", () => {
     expect(createPageSchema.safeParse({
       path: "private/page", title: "Private", body_markdown: "Body", commit_message: "Create page", public_slug: "leak",
