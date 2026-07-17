@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 
 export type NewAsset = {
+  currentPath: string;
   filename: string;
   contentType: string;
   sizeBytes: number;
@@ -18,10 +19,10 @@ export class AssetRepository {
     const id = randomUUID();
     const key = `objects/${id}`;
     const result = await this.pool.query(
-      `INSERT INTO assets(id,filename,content_type,size_bytes,content_hash,s3_object_key,width,height,duration_seconds)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-       RETURNING id,filename,content_type,size_bytes,content_hash,width,height,duration_seconds,published_at,created_at,deleted_at`,
-      [id, input.filename, input.contentType, input.sizeBytes, input.contentHash, key,
+      `INSERT INTO assets(id,current_path,filename,content_type,size_bytes,content_hash,s3_object_key,width,height,duration_seconds)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING id,current_path,filename,content_type,size_bytes,content_hash,width,height,duration_seconds,published_at,created_at,deleted_at`,
+      [id, input.currentPath, input.filename, input.contentType, input.sizeBytes, input.contentHash, key,
         input.width ?? null, input.height ?? null, input.durationSeconds ?? null],
     );
     return { ...result.rows[0], objectKey: key };
@@ -29,7 +30,7 @@ export class AssetRepository {
 
   async get(id: string, includeObjectKey = false) {
     const result = await this.pool.query(
-      `SELECT id,filename,content_type,size_bytes,content_hash,width,height,duration_seconds,
+      `SELECT id,current_path,filename,content_type,size_bytes,content_hash,width,height,duration_seconds,
         published_at,created_at,deleted_at${includeObjectKey ? ",s3_object_key" : ""}
        FROM assets WHERE id=$1 AND deleted_at IS NULL`,
       [id],
@@ -39,8 +40,8 @@ export class AssetRepository {
 
   async list() {
     const result = await this.pool.query(
-      `SELECT id,filename,content_type,size_bytes,content_hash,width,height,duration_seconds,
-        published_at,created_at,deleted_at FROM assets WHERE deleted_at IS NULL ORDER BY created_at DESC`,
+      `SELECT id,current_path,filename,content_type,size_bytes,content_hash,width,height,duration_seconds,
+        published_at,created_at,deleted_at FROM assets WHERE deleted_at IS NULL ORDER BY current_path`,
     );
     return result.rows;
   }

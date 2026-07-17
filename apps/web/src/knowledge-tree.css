@@ -86,6 +86,10 @@
   color: #85877f;
 }
 
+.tree-asset-icon {
+  color: #587565;
+}
+
 .page-tree .tree-label {
   min-width: 0;
   overflow: hidden;

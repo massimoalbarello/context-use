@@ -1,4 +1,4 @@
-import type { Page } from "./types.ts";
+import type { Asset, Page } from "./types.ts";
 
 export const EXPANDED_PATHS_STORAGE_KEY = "context-use.knowledge-tree.expanded-paths.v1";
 
@@ -8,12 +8,19 @@ export type PageTreePage = {
   page: Page;
 };
 
+export type AssetTreeAsset = {
+  kind: "asset";
+  name: string;
+  asset: Asset;
+};
+
 export type PageTreeDirectory = {
   kind: "directory";
   name: string;
   path: string;
   directories: PageTreeDirectory[];
   pages: PageTreePage[];
+  assets: AssetTreeAsset[];
 };
 
 type MutableDirectory = Omit<PageTreeDirectory, "directories"> & {
@@ -36,48 +43,71 @@ function materialize(directory: MutableDirectory): PageTreeDirectory {
     pages: [...directory.pages].sort((left, right) => (
       compareNames(left.name, right.name) || compareNames(left.page.title, right.page.title)
     )),
+    assets: [...directory.assets].sort((left, right) => (
+      compareNames(left.name, right.name) || compareNames(left.asset.filename, right.asset.filename)
+    )),
   };
 }
 
-export function buildPageTree(pages: Page[]): PageTreeDirectory {
+function directoryForPath(root: MutableDirectory, currentPath: string) {
+  const segments = currentPath.split("/").filter(Boolean);
+  const name = segments.pop() ?? currentPath;
+  let directory = root;
+
+  for (const segment of segments) {
+    const path = directory.path ? `${directory.path}/${segment}` : segment;
+    let child = directory.directories.get(segment);
+    if (!child) {
+      child = {
+        kind: "directory",
+        name: segment,
+        path,
+        directories: new Map(),
+        pages: [],
+        assets: [],
+      };
+      directory.directories.set(segment, child);
+    }
+    directory = child;
+  }
+
+  return { directory, name };
+}
+
+export function buildKnowledgeTree(pages: Page[], assets: Asset[]): PageTreeDirectory {
   const root: MutableDirectory = {
     kind: "directory",
     name: "",
     path: "",
     directories: new Map(),
     pages: [],
+    assets: [],
   };
 
   for (const page of pages) {
-    const segments = page.current_path.split("/").filter(Boolean);
-    const name = segments.pop() ?? page.title;
-    let directory = root;
-
-    for (const segment of segments) {
-      const path = directory.path ? `${directory.path}/${segment}` : segment;
-      let child = directory.directories.get(segment);
-      if (!child) {
-        child = {
-          kind: "directory",
-          name: segment,
-          path,
-          directories: new Map(),
-          pages: [],
-        };
-        directory.directories.set(segment, child);
-      }
-      directory = child;
-    }
-
+    const { directory, name } = directoryForPath(root, page.current_path);
     directory.pages.push({ kind: "page", name, page });
+  }
+
+  for (const asset of assets) {
+    const { directory, name } = directoryForPath(root, asset.current_path);
+    directory.assets.push({ kind: "asset", name, asset });
   }
 
   return materialize(root);
 }
 
-export function directoryPathsForPage(page: Page): string[] {
-  const segments = page.current_path.split("/").filter(Boolean).slice(0, -1);
+export function buildPageTree(pages: Page[]): PageTreeDirectory {
+  return buildKnowledgeTree(pages, []);
+}
+
+export function directoryPathsForPath(currentPath: string): string[] {
+  const segments = currentPath.split("/").filter(Boolean).slice(0, -1);
   return segments.map((_, index) => segments.slice(0, index + 1).join("/"));
+}
+
+export function directoryPathsForPage(page: Page): string[] {
+  return directoryPathsForPath(page.current_path);
 }
 
 export function allDirectoryPaths(directory: PageTreeDirectory): string[] {

@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   allDirectoryPaths,
-  buildPageTree,
-  directoryPathsForPage,
+  buildKnowledgeTree,
+  directoryPathsForPath,
   EXPANDED_PATHS_STORAGE_KEY,
   parseExpandedPaths,
   serializeExpandedPaths,
+  type AssetTreeAsset,
   type PageTreeDirectory,
+  type PageTreePage,
 } from "../knowledge-tree.ts";
-import type { Page } from "../types.ts";
+import type { Asset, Page } from "../types.ts";
+
+export type KnowledgeSelection = { kind: "page" | "asset"; id: string };
 
 type KnowledgeTreeProps = {
   pages: Page[];
+  assets: Asset[];
   query: string;
-  selectedPageId: string | null;
-  onSelectPage: (page: Page) => void;
+  selected: KnowledgeSelection | null;
+  onSelect: (selection: KnowledgeSelection) => void;
 };
 
 function restoredExpandedPaths(): Set<string> | null {
@@ -45,20 +50,74 @@ function PageIcon() {
   </svg>;
 }
 
+function AssetIcon() {
+  return <svg className="tree-icon tree-asset-icon" viewBox="0 0 16 16" aria-hidden="true">
+    <path d="M2.25 2.25h11.5v11.5H2.25z" /><path d="m3.75 11 2.5-2.75 2 2 1.5-1.5 2.5 2.25" /><circle cx="10.75" cy="5.25" r="1" />
+  </svg>;
+}
+
+type TreeItem = PageTreePage | AssetTreeAsset;
+
+function itemName(item: TreeItem) {
+  return item.name;
+}
+
+function KnowledgeItems({
+  directory,
+  depth,
+  selected,
+  onSelect,
+}: {
+  directory: PageTreeDirectory;
+  depth: number;
+  selected: KnowledgeSelection | null;
+  onSelect: (selection: KnowledgeSelection) => void;
+}) {
+  const items: TreeItem[] = [...directory.pages, ...directory.assets].sort((left, right) => (
+    itemName(left).localeCompare(itemName(right), undefined, { numeric: true, sensitivity: "base" })
+  ));
+
+  return <>{items.map((item) => {
+    const entity = item.kind === "page" ? item.page : item.asset;
+    const label = item.kind === "page" ? item.page.title || item.name : item.asset.filename || item.name;
+    const active = selected?.kind === item.kind && selected.id === entity.id;
+    const archived = item.kind === "page" && Boolean(item.page.archived_at);
+    const isPublic = item.kind === "page" ? Boolean(item.page.published_version_id) : Boolean(item.asset.published_at);
+
+    return <button
+      type="button"
+      className={`tree-row tree-${item.kind}-row${active ? " selected" : ""}${archived ? " archived" : ""}`}
+      style={{ "--tree-depth": depth } as CSSProperties}
+      role="treeitem"
+      aria-selected={active}
+      title={`${label}\n${entity.current_path}`}
+      key={`${item.kind}-${entity.id}`}
+      onClick={() => onSelect({ kind: item.kind, id: entity.id })}
+    >
+      <span className="tree-chevron-spacer" aria-hidden="true" />
+      {item.kind === "page" ? <PageIcon /> : <AssetIcon />}
+      <span className="tree-label">{label}</span>
+      {archived
+        ? <span className="tree-status">archived</span>
+        : isPublic && <span className="tree-status public">public</span>}
+    </button>;
+  })}</>;
+}
+
 function DirectoryBranch({
   directory,
   depth,
   expandedPaths,
-  selectedPageId,
+  selected,
   onToggle,
-  onSelectPage,
+  onSelect,
 }: {
   directory: PageTreeDirectory;
   depth: number;
   expandedPaths: Set<string>;
-  selectedPageId: string | null;
+  selected: KnowledgeSelection | null;
   onToggle: (path: string) => void;
-  onSelectPage: (page: Page) => void;
+  onSelect: (selection: KnowledgeSelection) => void;
 }) {
   const expanded = expandedPaths.has(directory.path);
   const rowStyle = { "--tree-depth": depth } as CSSProperties;
@@ -87,33 +146,17 @@ function DirectoryBranch({
         directory={child}
         depth={depth + 1}
         expandedPaths={expandedPaths}
-        selectedPageId={selectedPageId}
+        selected={selected}
         onToggle={onToggle}
-        onSelectPage={onSelectPage}
+        onSelect={onSelect}
       />)}
-      {directory.pages.map(({ page, name }) => <button
-        type="button"
-        className={`tree-row tree-page-row${selectedPageId === page.id ? " selected" : ""}${page.archived_at ? " archived" : ""}`}
-        style={{ "--tree-depth": depth + 1 } as CSSProperties}
-        role="treeitem"
-        aria-selected={selectedPageId === page.id}
-        title={`${page.title}\n${page.current_path}`}
-        key={page.id}
-        onClick={() => onSelectPage(page)}
-      >
-        <span className="tree-chevron-spacer" aria-hidden="true" />
-        <PageIcon />
-        <span className="tree-label">{page.title || name}</span>
-        {page.archived_at
-          ? <span className="tree-status">archived</span>
-          : page.published_version_id && <span className="tree-status public">public</span>}
-      </button>)}
+      <KnowledgeItems directory={directory} depth={depth + 1} selected={selected} onSelect={onSelect} />
     </div>}
   </div>;
 }
 
-export function KnowledgeTree({ pages, query, selectedPageId, onSelectPage }: KnowledgeTreeProps) {
-  const tree = useMemo(() => buildPageTree(pages), [pages]);
+export function KnowledgeTree({ pages, assets, query, selected, onSelect }: KnowledgeTreeProps) {
+  const tree = useMemo(() => buildKnowledgeTree(pages, assets), [pages, assets]);
   const restoredPaths = useRef<Set<string> | null>(restoredExpandedPaths());
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => restoredPaths.current ?? new Set(),
@@ -130,12 +173,16 @@ export function KnowledgeTree({ pages, query, selectedPageId, onSelectPage }: Kn
 
   useEffect(() => {
     const pathsToReveal: string[] = [];
-    if (!initialized.current && pages.length) {
+    if (!initialized.current && (pages.length || assets.length)) {
       pathsToReveal.push(...tree.directories.map((directory) => directory.path));
       initialized.current = true;
     }
-    const selectedPage = pages.find((page) => page.id === selectedPageId);
-    if (selectedPage) pathsToReveal.push(...directoryPathsForPage(selectedPage));
+    const selectedPath = selected?.kind === "page"
+      ? pages.find((page) => page.id === selected.id)?.current_path
+      : selected?.kind === "asset"
+        ? assets.find((asset) => asset.id === selected.id)?.current_path
+        : undefined;
+    if (selectedPath) pathsToReveal.push(...directoryPathsForPath(selectedPath));
     if (query.trim()) pathsToReveal.push(...allDirectoryPaths(tree));
     if (!pathsToReveal.length) return;
 
@@ -144,7 +191,7 @@ export function KnowledgeTree({ pages, query, selectedPageId, onSelectPage }: Kn
       pathsToReveal.forEach((path) => next.add(path));
       return next;
     });
-  }, [pages, query, selectedPageId, tree]);
+  }, [assets, pages, query, selected, tree]);
 
   const toggle = (path: string) => setExpandedPaths((current) => {
     const next = new Set(current);
@@ -153,34 +200,18 @@ export function KnowledgeTree({ pages, query, selectedPageId, onSelectPage }: Kn
     return next;
   });
 
-  if (!pages.length) return <div className="tree-empty">{query ? "No matching pages" : "No pages yet"}</div>;
+  if (!pages.length && !assets.length) return <div className="tree-empty">{query ? "No matching knowledge" : "No knowledge yet"}</div>;
 
-  return <div className="page-tree" role="tree" aria-label="Knowledge pages">
+  return <div className="page-tree" role="tree" aria-label="Knowledge pages and assets">
     {tree.directories.map((directory) => <DirectoryBranch
       key={directory.path}
       directory={directory}
       depth={0}
       expandedPaths={expandedPaths}
-      selectedPageId={selectedPageId}
+      selected={selected}
       onToggle={toggle}
-      onSelectPage={onSelectPage}
+      onSelect={onSelect}
     />)}
-    {tree.pages.map(({ page, name }) => <button
-      type="button"
-      className={`tree-row tree-page-row${selectedPageId === page.id ? " selected" : ""}${page.archived_at ? " archived" : ""}`}
-      style={{ "--tree-depth": 0 } as CSSProperties}
-      role="treeitem"
-      aria-selected={selectedPageId === page.id}
-      title={`${page.title}\n${page.current_path}`}
-      key={page.id}
-      onClick={() => onSelectPage(page)}
-    >
-      <span className="tree-chevron-spacer" aria-hidden="true" />
-      <PageIcon />
-      <span className="tree-label">{page.title || name}</span>
-      {page.archived_at
-        ? <span className="tree-status">archived</span>
-        : page.published_version_id && <span className="tree-status public">public</span>}
-    </button>)}
+    <KnowledgeItems directory={tree} depth={0} selected={selected} onSelect={onSelect} />
   </div>;
 }

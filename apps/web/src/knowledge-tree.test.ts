@@ -1,12 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
   allDirectoryPaths,
+  buildKnowledgeTree,
   buildPageTree,
   directoryPathsForPage,
   parseExpandedPaths,
   serializeExpandedPaths,
 } from "./knowledge-tree.ts";
-import type { Page } from "./types.ts";
+import type { Asset, Page } from "./types.ts";
 
 function page(id: string, currentPath: string, title: string): Page {
   return {
@@ -19,6 +20,19 @@ function page(id: string, currentPath: string, title: string): Page {
     version_number: 1,
     title,
     body_markdown: "",
+  };
+}
+
+function asset(id: string, currentPath: string, filename: string): Asset {
+  return {
+    id,
+    current_path: currentPath,
+    filename,
+    content_type: "image/jpeg",
+    size_bytes: 123,
+    content_hash: "a".repeat(64),
+    published_at: null,
+    created_at: "2026-01-01T00:00:00.000Z",
   };
 }
 
@@ -42,6 +56,17 @@ describe("knowledge tree", () => {
       "entrepreneurship",
       "science",
     ]);
+  });
+
+  test("groups assets and pages into the same directories", () => {
+    const tree = buildKnowledgeTree(
+      [page("brief", "projects/acme/brief", "Brief")],
+      [asset("photo", "projects/acme/site-photo", "site-photo.jpg")],
+    );
+    const acme = tree.directories[0]!.directories[0]!;
+
+    expect(acme.pages.map(({ name }) => name)).toEqual(["brief"]);
+    expect(acme.assets.map(({ name }) => name)).toEqual(["site-photo"]);
   });
 
   test("returns the ancestors needed to reveal a selected page", () => {
