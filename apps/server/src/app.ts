@@ -165,7 +165,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
-  .get("/api/health", () => json({ status: "ok", version: "0.1.3" }))
+  .get("/api/health", () => json({ status: "ok", version: "0.1.4" }))
   .all("/api/auth/*", async ({ request }) => {
     const boundary = await authorizePasskeyAuthRequest(request);
     if (boundary.denied) return boundary.denied;

@@ -105,6 +105,15 @@ export async function applyCompute(root: string, config: DeploymentConfig): Prom
   return terraformOutputs(directory, env);
 }
 
+export async function currentComputeOutputs(root: string, config: DeploymentConfig): Promise<NonNullable<DeploymentConfig["computeOutputs"]>> {
+  const directory = resolve(root, "infra/compute");
+  const env = await terraformEnvironment(config);
+  await init(directory, config, stateKey(config, "compute"), env);
+  const outputs = await terraformOutputs<NonNullable<DeploymentConfig["computeOutputs"]>>(directory, env);
+  if (!outputs.instance_id) throw new Error("Terraform state has no active compute deployment");
+  return outputs;
+}
+
 export async function destroyCompute(root: string, config: DeploymentConfig): Promise<void> {
   const directory = resolve(root, "infra/compute");
   const env = await terraformEnvironment(config);

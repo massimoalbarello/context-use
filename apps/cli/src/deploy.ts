@@ -9,7 +9,7 @@ export async function deploy(config: DeploymentConfig, manifest: ReleaseManifest
   const deployScript = await Bun.file(resolve(await deploymentRoot(manifest), "deploy/deploy.sh")).text();
   const command = deploymentCommands(config, manifest, deployScript);
   await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, command);
-  await verifyDeployment(config.hostname);
+  await verifyDeployment(config.hostname, manifest.version);
   await verifyRemoteSecurity(config);
 }
 
@@ -55,14 +55,24 @@ export function remoteSecurityCommands(): string[] {
   ];
 }
 
-async function verifyDeployment(hostname: string): Promise<void> {
+export function healthMatchesVersion(health: unknown, releaseVersion: string): boolean {
+  if (!health || typeof health !== "object" || !("version" in health)) return false;
+  return health.version === releaseVersion.replace(/^v/, "");
+}
+
+async function verifyDeployment(hostname: string, releaseVersion: string): Promise<void> {
   const origin = `https://${hostname}`;
   let lastError = "health check did not complete";
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
       const health = await fetch(`${origin}/api/health`, { redirect: "error" });
-      if (health.ok) break;
-      lastError = `health returned HTTP ${health.status}`;
+      if (health.ok) {
+        const body: unknown = await health.json();
+        if (healthMatchesVersion(body, releaseVersion)) break;
+        lastError = `health returned a version other than ${releaseVersion}`;
+      } else {
+        lastError = `health returned HTTP ${health.status}`;
+      }
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
     }
