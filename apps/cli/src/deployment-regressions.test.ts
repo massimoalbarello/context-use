@@ -178,6 +178,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).toContain("max_size 3MB");
   expect(compute).toContain("s3:GetEncryptionConfiguration");
   expect(compute).toContain("s3:GetBucketPublicAccessBlock");
+  expect(update.indexOf("installCliRelease")).toBeLessThan(update.indexOf("readConfig"));
   expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("run --rm backup once"));
   expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(4);
   expect(data).not.toContain("aws_s3_bucket_cors_configuration");

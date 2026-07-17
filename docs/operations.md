@@ -10,7 +10,7 @@ The selected AWS CLI profile remains the source of authentication. Before each T
 
 After deployment, the CLI prints an owner-enrollment URL containing a random setup capability in its fragment. The browser removes the fragment from its address bar, asks for the configured owner email, and sends both values only as part of the same-origin passkey ceremony. Enrollment closes permanently after the first credential is stored. The email labels the owner account but is not an authentication or recovery factor.
 
-`context-use update` takes a database backup, applies compatible Terraform changes, runs migrations, deploys images pinned by digest, then verifies health and credential separation. Failed application health checks redeploy the previous image release.
+`context-use update` downloads and verifies the target release's CLI, atomically replaces the installed CLI when its version differs, and continues the update with that exact binary. The target CLI takes a database backup, applies compatible Terraform changes, runs migrations, deploys images pinned by digest, then verifies health and credential separation. Failed application health checks redeploy the previous image release; the target CLI remains installed so it can safely operate on any partially updated state.
 
 ## Backups and restore
 
