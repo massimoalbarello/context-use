@@ -34,6 +34,15 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource/mcp");
   });
 
+  test("MCP transport methods take precedence over the public asset route", async () => {
+    for (const method of ["GET", "DELETE"]) {
+      const response = await application!.handle(new Request("http://localhost:3000/mcp", { method }));
+
+      expect(response.status).toBe(401);
+      expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource/mcp");
+    }
+  });
+
   test("anonymous private access is rejected while malformed public identifiers are indistinguishable", async () => {
     const dashboard = await application!.handle(new Request("http://localhost:3000/api/dashboard/pages"));
     expect(dashboard.status).toBe(401);

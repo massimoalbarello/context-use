@@ -206,7 +206,9 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     scopes_supported: [...MCP_SCOPES],
     bearer_methods_supported: ["header"],
   }))
-  .all("/mcp", ({ request }) => mcp(request))
+  .get("/mcp", ({ request }) => mcp(request))
+  .post("/mcp", ({ request }) => mcp(request))
+  .delete("/mcp", ({ request }) => mcp(request))
 
   .get("/app", async () => {
     const file = webFile("index.html");
