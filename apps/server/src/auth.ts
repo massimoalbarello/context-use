@@ -2,6 +2,7 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import { passkey } from "@better-auth/passkey";
 import { APIError, betterAuth, type BetterAuthPlugin } from "better-auth";
 import { jwt } from "better-auth/plugins";
+import { MCP_SCOPES } from "@context-use/shared";
 import { Pool } from "pg";
 import { config, production } from "./config.ts";
 import {
@@ -161,13 +162,13 @@ export const auth = betterAuth({
     oauthProvider({
       loginPage: "/app/login",
       consentPage: "/app/oauth/consent",
-      scopes: ["openid", "offline_access", "kb:read", "kb:write", "assets:read"],
+      scopes: ["openid", "offline_access", ...MCP_SCOPES],
       resources: [{
         identifier: config.MCP_RESOURCE,
         name: "context-use MCP",
         accessTokenTtl: 900,
         refreshTokenTtl: 2_592_000,
-        allowedScopes: ["openid", "offline_access", "kb:read", "kb:write", "assets:read"],
+        allowedScopes: ["openid", "offline_access", ...MCP_SCOPES],
       }],
       resourceSeedMode: "overwrite",
       enforcePerClientResources: false,
@@ -177,8 +178,8 @@ export const auth = betterAuth({
       codeExpiresIn: 300,
       allowDynamicClientRegistration: true,
       allowUnauthenticatedClientRegistration: true,
-      clientRegistrationDefaultScopes: ["kb:read"],
-      clientRegistrationAllowedScopes: ["kb:write", "assets:read", "offline_access", "openid"],
+      clientRegistrationDefaultScopes: [...MCP_SCOPES],
+      clientRegistrationAllowedScopes: ["offline_access", "openid"],
       clientRegistrationClientSecretExpiration: "30 days",
       silenceWarnings: { oauthAuthServerConfig: true, openidConfig: true },
       customAccessTokenClaims: ({ resources }) => ({

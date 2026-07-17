@@ -18,6 +18,7 @@ import {
 import {
   archivePageSchema,
   createPageSchema,
+  MCP_SCOPES,
   publicationIntentSchema,
   restorePageSchema,
   updatePageSchema,
@@ -196,14 +197,14 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .get("/.well-known/oauth-protected-resource", () => json({
     resource: config.MCP_RESOURCE,
     authorization_servers: [config.OAUTH_ISSUER],
-    scopes_supported: ["kb:read", "kb:write", "assets:read"],
+    scopes_supported: [...MCP_SCOPES],
     bearer_methods_supported: ["header"],
     resource_name: "context-use personal knowledge base",
   }))
   .get("/.well-known/oauth-protected-resource/mcp", () => json({
     resource: config.MCP_RESOURCE,
     authorization_servers: [config.OAUTH_ISSUER],
-    scopes_supported: ["kb:read", "kb:write", "assets:read"],
+    scopes_supported: [...MCP_SCOPES],
     bearer_methods_supported: ["header"],
   }))
   .all("/mcp", ({ request }) => mcp(request))
