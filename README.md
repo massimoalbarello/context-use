@@ -81,9 +81,9 @@ Point an OAuth-capable MCP client at:
 https://YOUR_HOST/mcp
 ```
 
-The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or administration scope exists.
+The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
 
-Skills and schedules are created in the owner dashboard under **Automations**. Context Use does not require a resident scheduler process: loading the dashboard or calling `claim_due_run` transactionally materializes elapsed schedules. The first version creates one catch-up run per schedule and skips additional occurrences missed while nobody was polling.
+Skills and schedules can be created in the owner dashboard under **Automations** or through the MCP `create_automation_skill` and `create_cron_schedule` tools. Creating a skill returns its current version ID, which is the `skill_version_id` required to create a schedule. Context Use does not require a resident scheduler process: loading the dashboard or calling `claim_due_run` transactionally materializes elapsed schedules. The first version creates one catch-up run per schedule and skips additional occurrences missed while nobody was polling.
 
 Any connected agent can use the same generic external cron prompt:
 

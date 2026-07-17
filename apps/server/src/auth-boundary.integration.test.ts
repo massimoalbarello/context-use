@@ -120,14 +120,14 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(registration.status).toBe(201);
     const client = await registration.json() as { client_id: string; scope: string };
     createdClients.push(client.client_id);
-    expect(client.scope).toBe("kb:read kb:write assets:read automations:claim automations:execute");
+    expect(client.scope).toBe("kb:read kb:write assets:read automations:write automations:claim automations:execute");
 
     const authorization = new URL("http://localhost:3000/api/auth/oauth2/authorize");
     authorization.search = new URLSearchParams({
       client_id: client.client_id,
       redirect_uri: "http://127.0.0.1:49321/callback",
       response_type: "code",
-      scope: "kb:read kb:write assets:read automations:claim automations:execute",
+      scope: "kb:read kb:write assets:read automations:write automations:claim automations:execute",
       resource: "http://localhost:3000/mcp",
       state: "test-state",
     }).toString();
