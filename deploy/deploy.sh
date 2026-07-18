@@ -59,4 +59,7 @@ cd "${root}/deploy"
 docker compose --env-file "${secrets}/runtime.env" pull --quiet
 docker compose --env-file "${secrets}/runtime.env" --profile migration run --rm migrate
 docker compose --env-file "${secrets}/runtime.env" up -d --remove-orphans
+# Compose does not recreate a service when only bind-mounted file contents
+# change. Recreate Caddy so every release loads the newly extracted Caddyfile.
+docker compose --env-file "${secrets}/runtime.env" up -d --force-recreate --no-deps caddy
 docker compose --env-file "${secrets}/runtime.env" ps
