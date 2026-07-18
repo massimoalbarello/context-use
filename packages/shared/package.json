@@ -1,6 +1,6 @@
 {
   "name": "@context-use/shared",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "private": true,
   "type": "module",
   "exports": {
