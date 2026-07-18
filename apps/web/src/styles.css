@@ -1091,13 +1091,121 @@ button:disabled {
 }
 
 .asset-icon {
-  height: 150px;
+  min-height: 150px;
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 8px;
   border-radius: 12px;
   background: #eae4da;
   color: var(--accent);
   font: 500 26px/1 ui-serif, Georgia, serif;
+}
+
+.asset-icon small {
+  color: var(--muted);
+  font: 500 10px/1.4 Inter, "SF Pro Text", sans-serif;
+}
+
+.asset-preview {
+  min-height: 260px;
+  max-height: 520px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #eeebe4;
+}
+
+.asset-preview img,
+.asset-preview video {
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+}
+
+.asset-preview.pdf { height: min(520px, 62vh); }
+
+.asset-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.asset-preview-state {
+  min-height: 180px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: #f5f3ee;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+.asset-preview-state strong { color: var(--ink); font-size: 15px; }
+.asset-preview-state span { max-width: 500px; line-height: 1.5; }
+
+.asset-preview-state.error {
+  border-color: rgba(157, 56, 45, .25);
+  background: #fbf1ef;
+}
+
+.asset-upload-button {
+  position: relative;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.asset-upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.asset-message {
+  width: min(760px, 100%);
+  margin: 14px auto 0;
+  padding: 10px 13px;
+  border-radius: 8px;
+  background: #f2efe8;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.asset-reference {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.asset-reference > span {
+  color: #8b867e;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.asset-reference > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.asset-reference code { min-width: 0; }
+
+.asset-reference.public code {
+  background: var(--green-soft);
+  color: var(--green);
 }
 
 .settings-page {

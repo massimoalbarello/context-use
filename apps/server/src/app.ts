@@ -235,7 +235,13 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .get("/mcp", ({ request }) => mcp(request))
   .post("/mcp", ({ request }) => mcp(request))
   .delete("/mcp", ({ request }) => mcp(request))
-  .put("/api/mcp/assets/:id/content", ({ request, params }) => mcpAssetUpload(request, params.id))
+  .put(
+    "/api/mcp/assets/:id/content",
+    ({ request, params }) => mcpAssetUpload(request, params.id),
+    // Asset bytes are integrity-checked while streaming to storage. Never let
+    // Elysia's content-type parser buffer or apply its ordinary body limit.
+    { parse: "none" },
+  )
   .get("/api/mcp/assets/:id/content", ({ request, params }) => mcpAssetDownload(request, params.id))
 
   .get("/app", async () => {
@@ -469,6 +475,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const { objectKey: _hidden, ...asset } = created;
     return json({ asset }, 201);
   })
+  // Keep large dashboard recovery uploads on the raw streaming path too.
   .put("/api/dashboard/assets/:id/content", async ({ request, params }) => {
     const principal = await ownerRequest(request);
     assertDashboardUploadSecurity(request, principal);
@@ -497,6 +504,19 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       throw error;
     }
     return json({ uploaded: true });
+  }, { parse: "none" })
+  .get("/api/dashboard/assets/:id/status", async ({ request, params }) => {
+    await ownerRequest(request);
+    const asset = await dashboardAssets.get(z.string().uuid().parse(params.id), true);
+    if (!asset) return problem("Asset not found", 404, "not_found");
+    return json({
+      content_available: await storage.verify(
+        asset.s3_object_key,
+        Number(asset.size_bytes),
+        asset.content_hash,
+      ),
+      public_url: `${config.ASSET_ORIGIN}/api/public/assets/${asset.id}/content`,
+    });
   })
   .get("/api/dashboard/assets/:id/content", async ({ request, params }) => {
     await ownerRequest(request);

@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "bun:test";
-import { AssetIntegrityError, FilesystemStorage, type StoredAsset } from "./storage.ts";
+import { AssetIntegrityError, FilesystemStorage, mayRenderInline, type StoredAsset } from "./storage.ts";
 
 const temporaryDirectories: string[] = [];
 
@@ -26,6 +26,14 @@ async function fixture(bytes: Uint8Array) {
 }
 
 describe("application-routed asset storage", () => {
+  test("inlines passive preview formats without allowing active images", () => {
+    expect(mayRenderInline("image/avif")).toBe(true);
+    expect(mayRenderInline("video/quicktime")).toBe(true);
+    expect(mayRenderInline("application/pdf")).toBe(true);
+    expect(mayRenderInline("image/svg+xml")).toBe(false);
+    expect(mayRenderInline("text/html")).toBe(false);
+  });
+
   test("writes verified bytes without buffering them in the route", async () => {
     const bytes = new TextEncoder().encode("a private PDF");
     const { root, asset, storage } = await fixture(bytes);
