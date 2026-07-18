@@ -43,7 +43,7 @@ const annotations = {
 };
 
 export function createPublicMcpServer(reader: PublicPageReader, publicSiteOrigin: string): McpServer {
-  const server = new McpServer({ name: "context-use-public", version: "0.1.13" }, {
+  const server = new McpServer({ name: "context-use-public", version: "0.1.14" }, {
     instructions: "Read-only access to intentionally published pages. Call get_main_page first for the complete hierarchical index, then get_public_page or search_public_pages as needed.",
   });
 
