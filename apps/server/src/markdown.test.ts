@@ -48,4 +48,23 @@ describe("safe Markdown rendering", () => {
     expect(html).not.toContain("<img");
     expect(html).not.toContain('target="_blank"');
   });
+
+  test("rewrites legacy private routes for public targets and hides private targets", async () => {
+    const publicId = "11111111-1111-4111-8111-111111111111";
+    const privateId = "22222222-2222-4222-8222-222222222222";
+    const html = await renderMarkdown(
+      `[Published](/app/pages/${publicId}) [Owner only](/app/pages/${privateId})`,
+      {
+        ...privateResolvers,
+        page: async (id) => id === publicId
+          ? { available: true as const, href: "/p/published-page" }
+          : { available: false as const },
+      },
+    );
+
+    expect(html).toContain('<a href="/p/published-page">Published</a>');
+    expect(html).toContain('<span class="private-reference">Owner only</span>');
+    expect(html).not.toContain("/app/pages/");
+    expect(html).not.toContain(privateId);
+  });
 });

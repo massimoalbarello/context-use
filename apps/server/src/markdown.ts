@@ -1,4 +1,9 @@
-import { extractAssetLinks, extractPageLinks, extractWikiLinks } from "@context-use/database";
+import {
+  extractAssetLinks,
+  extractPageLinks,
+  extractWikiLinks,
+  normalizeInternalPageLinks,
+} from "@context-use/database";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { config } from "./config.ts";
@@ -15,14 +20,17 @@ function escapeHtml(value: string): string {
 }
 
 export async function renderMarkdown(markdown: string, resolvers: MarkdownResolvers): Promise<string> {
+  // Old page versions can contain dashboard URLs. Convert them before any
+  // resolution so public output never carries a private route or page UUID.
+  const normalizedMarkdown = normalizeInternalPageLinks(markdown);
   const pages = new Map<string, LinkResolution>();
   const wikiPages = new Map<string, LinkResolution>();
   const assets = new Map<string, LinkResolution>();
-  await Promise.all(extractPageLinks(markdown).map(async (id) => pages.set(id, await resolvers.page(id))));
-  await Promise.all(extractWikiLinks(markdown).map(async ({ path }) => wikiPages.set(path, await resolvers.pagePath(path))));
-  await Promise.all(extractAssetLinks(markdown).map(async (id) => assets.set(id, await resolvers.asset(id))));
+  await Promise.all(extractPageLinks(normalizedMarkdown).map(async (id) => pages.set(id, await resolvers.page(id))));
+  await Promise.all(extractWikiLinks(normalizedMarkdown).map(async ({ path }) => wikiPages.set(path, await resolvers.pagePath(path))));
+  await Promise.all(extractAssetLinks(normalizedMarkdown).map(async (id) => assets.set(id, await resolvers.asset(id))));
 
-  let source = markdown.replace(
+  let source = normalizedMarkdown.replace(
     /\[([^\]]*)\]\(context-use:\/\/page\/([0-9a-f-]{36})\)/gi,
     (_match, label: string, id: string) => {
       const target = pages.get(id.toLowerCase());

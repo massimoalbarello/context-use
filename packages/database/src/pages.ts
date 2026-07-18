@@ -9,7 +9,7 @@ import type {
   UpdateAutomationPageInput,
   UpdatePageInput,
 } from "@context-use/shared";
-import { extractAssetLinks } from "./links.ts";
+import { extractAssetLinks, normalizeInternalPageLinks } from "./links.ts";
 
 export class VersionConflictError extends Error {
   constructor(readonly currentVersion: number) {
@@ -115,6 +115,7 @@ export class PageRepository {
       await this.assertNoActiveAutomationClaim(client, actor);
       const pageId = randomUUID();
       const versionId = randomUUID();
+      const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
         `INSERT INTO knowledge_pages(id, current_path, current_version_id)
          VALUES ($1, $2, $3)`,
@@ -125,9 +126,9 @@ export class PageRepository {
           id, page_id, version_number, path, title, body_markdown,
           commit_message, actor_kind, actor_subject
         ) VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8)`,
-        [versionId, pageId, input.path, input.title, input.body_markdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, pageId, input.path, input.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
-      await insertAssetLinks(client, versionId, input.body_markdown);
+      await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, pageId);
     });
   }
@@ -138,6 +139,7 @@ export class PageRepository {
       const path = automationKnowledgePath(automationId, input.relative_path);
       const pageId = randomUUID();
       const versionId = randomUUID();
+      const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,automation_id)
          VALUES ($1,$2,$3,$4)`,
@@ -148,9 +150,9 @@ export class PageRepository {
           id,page_id,version_number,path,title,body_markdown,
           commit_message,actor_kind,actor_subject
         ) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8)`,
-        [versionId, pageId, path, input.title, input.body_markdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, pageId, path, input.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
-      await insertAssetLinks(client, versionId, input.body_markdown);
+      await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, pageId);
     });
   }
@@ -167,12 +169,13 @@ export class PageRepository {
       if (currentVersion !== input.expected_version_number) throw new VersionConflictError(currentVersion);
       const nextVersion = currentVersion + 1;
       const versionId = randomUUID();
+      const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
         `INSERT INTO knowledge_page_versions(
           id, page_id, version_number, path, title, body_markdown,
           commit_message, actor_kind, actor_subject
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [versionId, pageId, nextVersion, input.path, input.title, input.body_markdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, pageId, nextVersion, input.path, input.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages
@@ -180,7 +183,7 @@ export class PageRepository {
          WHERE id = $1`,
         [pageId, input.path, versionId],
       );
-      await insertAssetLinks(client, versionId, input.body_markdown);
+      await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, pageId);
     });
   }
@@ -197,19 +200,20 @@ export class PageRepository {
       if (currentVersion !== input.expected_version_number) throw new VersionConflictError(currentVersion);
       const path = automationKnowledgePath(automationId, input.relative_path);
       const versionId = randomUUID();
+      const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
         `INSERT INTO knowledge_page_versions(
           id,page_id,version_number,path,title,body_markdown,
           commit_message,actor_kind,actor_subject
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [versionId, input.page_id, currentVersion + 1, path, input.title, input.body_markdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, input.page_id, currentVersion + 1, path, input.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages SET current_path=$2,current_version_id=$3,updated_at=now()
          WHERE id=$1`,
         [input.page_id, path, versionId],
       );
-      await insertAssetLinks(client, versionId, input.body_markdown);
+      await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, input.page_id);
     });
   }
@@ -229,17 +233,18 @@ export class PageRepository {
       if (row.version_number !== input.expected_version_number) throw new VersionConflictError(row.version_number);
       if (row.published_version_id) throw new PublicationStateError();
       const versionId = randomUUID();
+      const bodyMarkdown = normalizeInternalPageLinks(row.body_markdown);
       await client.query(
         `INSERT INTO knowledge_page_versions(
           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [versionId, pageId, row.version_number + 1, row.current_path, row.title, row.body_markdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, pageId, row.version_number + 1, row.current_path, row.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages SET current_version_id=$2, archived_at=now(),updated_at=now() WHERE id=$1`,
         [pageId, versionId],
       );
-      await insertAssetLinks(client, versionId, row.body_markdown);
+      await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, pageId);
     });
   }
@@ -259,17 +264,18 @@ export class PageRepository {
       if (row.version_number !== input.expected_version_number) throw new VersionConflictError(row.version_number);
       if (row.published_version_id) throw new PublicationStateError();
       const versionId = randomUUID();
+      const bodyMarkdown = normalizeInternalPageLinks(row.body_markdown);
       await client.query(
         `INSERT INTO knowledge_page_versions(
           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [versionId, input.page_id, row.version_number + 1, row.current_path, row.title, row.body_markdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, input.page_id, row.version_number + 1, row.current_path, row.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages SET current_version_id=$2,archived_at=now(),updated_at=now() WHERE id=$1`,
         [input.page_id, versionId],
       );
-      await insertAssetLinks(client, versionId, row.body_markdown);
+      await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, input.page_id);
     });
   }

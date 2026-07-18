@@ -24,11 +24,14 @@ describeDatabase("immutable page history", () => {
 
   test("create, update, conflict, and archive always preserve immutable versions", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
+    const linkedPageId = crypto.randomUUID();
     const created = await pages.create({
-      path: `tests/${suffix}/page`, title: "Original", body_markdown: "Original body", commit_message: "Create test page",
+      path: `tests/${suffix}/page`, title: "Original",
+      body_markdown: `[Related](/app/pages/${linkedPageId})`, commit_message: "Create test page",
     }, actor);
     createdIds.push(created.id);
     expect(created.version_number).toBe(1);
+    expect(created.body_markdown).toBe(`[Related](context-use://page/${linkedPageId})`);
 
     const updated = await pages.update(created.id, {
       path: `tests/${suffix}/renamed`, title: "Updated", body_markdown: "Searchable updated body",
