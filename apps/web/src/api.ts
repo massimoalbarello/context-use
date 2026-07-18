@@ -39,20 +39,3 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   return response.json() as Promise<T>;
 }
-
-export async function uploadFile(path: string, file: File, contentType: string): Promise<void> {
-  if (!csrfToken) await refreshCsrf();
-  const response = await fetch(path, {
-    method: "PUT",
-    body: file,
-    headers: { "content-type": contentType, "x-csrf-token": csrfToken },
-    credentials: "include",
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "upload_failed", message: response.statusText })) as {
-      error?: string;
-      message?: string;
-    };
-    throw new ApiError(response.status, error.error ?? "upload_failed", error.message ?? response.statusText);
-  }
-}

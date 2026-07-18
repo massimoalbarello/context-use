@@ -1,11 +1,21 @@
 .page-tree {
   min-height: 0;
   margin: 2px -4px 0;
-  padding: 2px 4px 8px;
-  overflow: auto;
+  padding: 2px 2px 8px 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
   flex: 1;
-  scrollbar-gutter: stable;
+  scrollbar-color: rgba(74, 69, 62, .3) transparent;
+  scrollbar-width: thin;
 }
+
+.page-tree::-webkit-scrollbar { width: 6px; }
+.page-tree::-webkit-scrollbar-track { background: transparent; }
+.page-tree::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(74, 69, 62, .24);
+}
+.page-tree::-webkit-scrollbar-thumb:hover { background: rgba(74, 69, 62, .38); }
 
 .page-tree .tree-row {
   position: relative;
@@ -16,6 +26,7 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: flex-start;
   gap: 5px;
   border: 0;
   border-radius: 7px;
@@ -93,6 +104,8 @@
 .tree-asset-icon { color: var(--accent); }
 
 .page-tree .tree-label {
+  display: block;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   color: inherit;

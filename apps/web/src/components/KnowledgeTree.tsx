@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
-  allDirectoryPaths,
   buildKnowledgeTree,
-  directoryPathsForPath,
   EXPANDED_PATHS_STORAGE_KEY,
+  expandedPathsForDisplay,
   parseExpandedPaths,
   serializeExpandedPaths,
   type AssetTreeAsset,
@@ -163,6 +162,10 @@ export function KnowledgeTree({ pages, assets, query, selected, onSelect, emptyM
     () => restoredPaths.current ?? new Set(),
   );
   const initialized = useRef(restoredPaths.current !== null);
+  const visibleExpandedPaths = useMemo(
+    () => expandedPathsForDisplay(expandedPaths, tree, query),
+    [expandedPaths, query, tree],
+  );
 
   useEffect(() => {
     try {
@@ -173,26 +176,10 @@ export function KnowledgeTree({ pages, assets, query, selected, onSelect, emptyM
   }, [expandedPaths]);
 
   useEffect(() => {
-    const pathsToReveal: string[] = [];
-    if (!initialized.current && (pages.length || assets.length)) {
-      pathsToReveal.push(...tree.directories.map((directory) => directory.path));
-      initialized.current = true;
-    }
-    const selectedPath = selected?.kind === "page"
-      ? pages.find((page) => page.id === selected.id)?.current_path
-      : selected?.kind === "asset"
-        ? assets.find((asset) => asset.id === selected.id)?.current_path
-        : undefined;
-    if (selectedPath) pathsToReveal.push(...directoryPathsForPath(selectedPath));
-    if (query.trim()) pathsToReveal.push(...allDirectoryPaths(tree));
-    if (!pathsToReveal.length) return;
-
-    setExpandedPaths((current) => {
-      const next = new Set(current);
-      pathsToReveal.forEach((path) => next.add(path));
-      return next;
-    });
-  }, [assets, pages, query, selected, tree]);
+    if (initialized.current || (!pages.length && !assets.length)) return;
+    initialized.current = true;
+    setExpandedPaths(new Set(tree.directories.map((directory) => directory.path)));
+  }, [assets.length, pages.length, tree]);
 
   const toggle = (path: string) => setExpandedPaths((current) => {
     const next = new Set(current);
@@ -208,7 +195,7 @@ export function KnowledgeTree({ pages, assets, query, selected, onSelect, emptyM
       key={directory.path}
       directory={directory}
       depth={0}
-      expandedPaths={expandedPaths}
+      expandedPaths={visibleExpandedPaths}
       selected={selected}
       onToggle={toggle}
       onSelect={onSelect}
