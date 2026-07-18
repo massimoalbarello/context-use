@@ -198,6 +198,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(userData).not.toContain("if ! blkid");
   expect(deployScript).toContain("mountpoint -q /data");
   expect(deployScript).toContain("/data/context-use/.volume-id");
+  expect(deployScript.indexOf("up -d --remove-orphans")).toBeLessThan(deployScript.indexOf("up -d --force-recreate --no-deps caddy"));
   expect(caddy).not.toContain("email off");
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
   expect(caddy).toContain("handle /api/mcp/assets/*/content");
@@ -235,6 +236,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(publicMcpService).not.toContain("AWS_REGION:");
   expect(caddy).toContain("max_size 5GB");
   expect(caddy).toContain("max_size 3MB");
+  expect(compute).toContain("s3:AbortMultipartUpload");
   expect(compute).toContain("s3:GetEncryptionConfiguration");
   expect(compute).toContain("s3:GetBucketPublicAccessBlock");
   expect(compute).toContain('resource "aws_route53_record" "public_mcp"');
