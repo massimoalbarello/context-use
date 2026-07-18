@@ -12,6 +12,7 @@ export type DeploymentConfig = {
   accountId: string;
   hostname: string;
   assetHostname: string;
+  publicMcpHostname: string;
   dnsMode: "route53" | "manual";
   route53ZoneId: string;
   ownerEmail: string;
@@ -34,6 +35,7 @@ export type DeploymentConfig = {
     public_ip: string;
     app_url: string;
     asset_url: string;
+    public_mcp_url: string;
     cloudwatch_log_group: string;
   };
 };

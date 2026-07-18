@@ -84,7 +84,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3001"
-      PUBLIC_MCP_ENDPOINT: https://${APP_HOSTNAME}/public/mcp
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       PUBLIC_SITE_ORIGIN: https://${APP_HOSTNAME}
       PUBLIC_MCP_DATABASE_URL: postgres://context_use_public_mcp:${DB_PUBLIC_MCP_PASSWORD}@postgres:5432/context_use
     command: ["bun", "apps/public-mcp/src/index.ts"]
@@ -114,6 +114,7 @@ services:
     environment:
       APP_HOSTNAME: ${APP_HOSTNAME}
       ASSET_HOSTNAME: ${ASSET_HOSTNAME}
+      PUBLIC_MCP_HOSTNAME: ${PUBLIC_MCP_HOSTNAME}
     ports:
       - "80:80"
       - "443:443"

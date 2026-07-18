@@ -86,6 +86,7 @@ export async function applyCompute(root: string, config: DeploymentConfig): Prom
   const env = await terraformEnvironment(config);
   console.log("Applying single-instance compute infrastructure…");
   await init(directory, config, stateKey(config, "compute"), env);
+  const publicMcpArgs = await publicMcpHostnameArgs(directory, config);
   await run(["terraform", "apply", "-input=false", "-auto-approve",
     `-var=aws_region=${config.awsRegion}`,
     `-var=availability_zone=${config.availabilityZone}`,
@@ -94,6 +95,7 @@ export async function applyCompute(root: string, config: DeploymentConfig): Prom
     `-var=instance_type=${config.instanceType}`,
     `-var=app_hostname=${config.hostname}`,
     `-var=asset_hostname=${config.assetHostname}`,
+    ...publicMcpArgs,
     `-var=route53_zone_id=${config.route53ZoneId}`,
     `-var=data_volume_id=${config.dataOutputs.data_volume_id}`,
     `-var=kms_key_arn=${config.dataOutputs.kms_key_arn}`,
@@ -117,16 +119,24 @@ export async function destroyCompute(root: string, config: DeploymentConfig): Pr
   const directory = resolve(root, "infra/compute");
   const env = await terraformEnvironment(config);
   await init(directory, config, stateKey(config, "compute"), env);
+  const publicMcpArgs = await publicMcpHostnameArgs(directory, config);
   await run(["terraform", "destroy", "-input=false", "-auto-approve",
     `-var=aws_region=${config.awsRegion}`, `-var=availability_zone=${config.availabilityZone}`,
     `-var=environment=${config.environment}`, `-var=installation_id=${config.installationId}`, `-var=instance_type=${config.instanceType}`,
     `-var=app_hostname=${config.hostname}`, `-var=asset_hostname=${config.assetHostname}`,
+    ...publicMcpArgs,
     `-var=route53_zone_id=${config.route53ZoneId}`, `-var=data_volume_id=${config.dataOutputs?.data_volume_id}`,
     `-var=kms_key_arn=${config.dataOutputs?.kms_key_arn}`, `-var=asset_bucket=${config.dataOutputs?.asset_bucket}`,
     `-var=backup_bucket=${config.dataOutputs?.backup_bucket}`, `-var=ssm_parameter_prefix=/context-use/${config.installationId}/${config.environment}`,
   ], { cwd: directory, env });
 }
 
+async function publicMcpHostnameArgs(directory: string, config: DeploymentConfig): Promise<string[]> {
+  const variables = await Bun.file(resolve(directory, "variables.tf")).text();
+  return variables.includes('variable "public_mcp_hostname"')
+    ? [`-var=public_mcp_hostname=${config.publicMcpHostname}`]
+    : [];
+}
 
 export async function destroyData(root: string, config: DeploymentConfig): Promise<void> {
   if (!config.dataOutputs) throw new Error("Data infrastructure outputs are missing");

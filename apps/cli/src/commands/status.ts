@@ -10,6 +10,7 @@ export const command = defineCommand("status", {
       phase: config.phase,
       version: config.releaseVersion,
       url: `https://${config.hostname}/app`,
+      publicMcp: `https://${config.publicMcpHostname}/mcp`,
       instance: config.computeOutputs?.instance_id,
       publicIp: config.computeOutputs?.public_ip,
     }, null, 2));

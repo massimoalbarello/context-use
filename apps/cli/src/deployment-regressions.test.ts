@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { strictSsmCommands, waitForSsmInvocation } from "./aws.ts";
-import { deploymentCommands, healthMatchesVersion, remoteSecurityCommands } from "./deploy.ts";
+import { deploymentCommands, healthMatchesVersion, publicMcpDnsMatches, remoteSecurityCommands } from "./deploy.ts";
 import { restoreCommands } from "./commands/restore.ts";
+import { normalizeDeploymentConfig } from "./paths.ts";
 import { redactSensitiveText } from "./process.ts";
 import { shouldPauseForManualDns } from "./setup.ts";
 import { backendArgs, terraformEnvironment } from "./terraform.ts";
@@ -20,6 +21,7 @@ function deploymentConfig(overrides: Partial<DeploymentConfig> = {}): Deployment
     accountId: "123456789012",
     hostname: "context.example.com",
     assetHostname: "assets.context.example.com",
+    publicMcpHostname: "public.context.example.com",
     dnsMode: "manual",
     route53ZoneId: "",
     ownerEmail: "owner@example.com",
@@ -148,6 +150,29 @@ test("deployment health must report the requested release version", () => {
   expect(healthMatchesVersion({ status: "ok" }, "v0.1.4")).toBe(false);
 });
 
+test("legacy configs derive a dedicated public MCP hostname", () => {
+  const { publicMcpHostname: _publicMcpHostname, ...legacy } = deploymentConfig();
+  expect(normalizeDeploymentConfig(legacy)).toMatchObject({
+    hostname: "context.example.com",
+    publicMcpHostname: "public.context.example.com",
+  });
+});
+
+test("manual public MCP DNS must resolve to the deployment IP", async () => {
+  const config = deploymentConfig({ computeOutputs: {
+    instance_id: "i-test",
+    public_ip: "192.0.2.10",
+    app_url: "https://context.example.com",
+    asset_url: "https://assets.context.example.com",
+    public_mcp_url: "https://public.context.example.com/mcp",
+    cloudwatch_log_group: "test",
+  } });
+  expect(await publicMcpDnsMatches(config, async () => ["192.0.2.10"])).toBe(true);
+  expect(await publicMcpDnsMatches(config, async () => ["192.0.2.11"])).toBe(false);
+  expect(await publicMcpDnsMatches(config, async () => { throw new Error("NXDOMAIN"); })).toBe(false);
+  expect(await publicMcpDnsMatches({ ...config, dnsMode: "route53" }, async () => [])).toBe(true);
+});
+
 test("an interrupted manual-DNS setup pauses once before deployment", () => {
   expect(shouldPauseForManualDns(deploymentConfig({ phase: "new" }))).toBe(true);
   expect(shouldPauseForManualDns(deploymentConfig({ phase: "compute_ready" }))).toBe(true);
@@ -175,8 +200,17 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployScript).toContain("/data/context-use/.volume-id");
   expect(caddy).not.toContain("email off");
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
-  expect(caddy).toContain("handle /public/mcp");
+  expect(caddy).not.toContain("handle /public/mcp");
+  expect(caddy).toContain("{$PUBLIC_MCP_HOSTNAME}");
+  expect(caddy).toContain("handle /mcp");
   expect(caddy).toContain("reverse_proxy public-mcp:3001");
+  const publicMcpSite = caddy.slice(
+    caddy.indexOf("{$PUBLIC_MCP_HOSTNAME}"),
+    caddy.indexOf("{$ASSET_HOSTNAME}"),
+  );
+  expect(publicMcpSite).toContain('respond "Not found" 404');
+  expect(publicMcpSite).not.toContain("reverse_proxy app:3000");
+  expect(publicMcpSite).not.toContain("oauth-protected-resource");
   const publicMcpService = deployCompose.slice(
     deployCompose.indexOf("  public-mcp:"),
     deployCompose.indexOf("  caddy:"),
@@ -188,6 +222,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(publicMcpService).not.toContain("web");
   expect(publicMcpService).not.toContain("outbound");
   expect(publicMcpService).toContain("PUBLIC_MCP_DATABASE_URL");
+  expect(publicMcpService).toContain("PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp");
   expect(publicMcpService).not.toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(publicMcpService).not.toContain("OWNER_EMAIL");
   expect(publicMcpService).not.toContain("AWS_REGION:");
@@ -195,6 +230,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).toContain("max_size 3MB");
   expect(compute).toContain("s3:GetEncryptionConfiguration");
   expect(compute).toContain("s3:GetBucketPublicAccessBlock");
+  expect(compute).toContain('resource "aws_route53_record" "public_mcp"');
   expect(update.indexOf("installCliRelease")).toBeLessThan(update.indexOf("readConfig"));
   expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("run --rm backup once"));
   expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(4);

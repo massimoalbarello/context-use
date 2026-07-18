@@ -38,8 +38,8 @@ if (config.NODE_ENV === "production") {
   if (endpoint.protocol !== "https:" || site.protocol !== "https:") {
     throw new Error("Public MCP production URLs must use HTTPS");
   }
-  if (endpoint.origin !== site.origin) {
-    throw new Error("PUBLIC_MCP_ENDPOINT and PUBLIC_SITE_ORIGIN must share an origin");
+  if (endpoint.origin === site.origin) {
+    throw new Error("PUBLIC_MCP_ENDPOINT must use an origin dedicated to the public MCP server");
   }
 }
 

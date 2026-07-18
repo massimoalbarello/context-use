@@ -20,7 +20,7 @@ An agent cannot substitute its OAuth token for any step:
 
 - `/api/dashboard/*` rejects every request containing `Authorization`, before handler logic.
 - `/mcp` rejects session cookies.
-- `/public/mcp` rejects both cookies and bearer credentials and has no authentication path into `/mcp`.
+- The dedicated public MCP origin's `/mcp` rejects both cookies and bearer credentials and has no network or routing path into the private origin's `/mcp`.
 - CSRF, exact `Origin`, same-site Fetch Metadata, JSON content type, and the dashboard session are required for mutations.
 - The agent never receives the host-only session cookie or passkey private key.
 - OAuth scopes separate knowledge, skill discovery/authoring, asset-read, and automation authoring/execution capabilities; none grants publication or dashboard access.
@@ -73,7 +73,7 @@ Each installation derives a unique identifier from the AWS account, region, and 
 
 Secrets are generated locally in memory, sent directly to SSM `SecureString`, fetched on-instance into a root-only file, and mounted only where required. They are neither Terraform variables nor outputs. Images are deployed by immutable digest from a checksum-verified release bundle.
 
-The anonymous MCP runs as a separate read-only container with no dashboard, auth, publisher, private MCP, storage, owner-identity, or AWS configuration. Its two Docker networks are internal and dedicated: one connects only it and PostgreSQL, while the other connects only it and Caddy. It shares no network with the private application or outbound gateway. The container drops all Linux capabilities, enables `no-new-privileges`, and receives only the dedicated public MCP database URL and public origins.
+The anonymous MCP runs as a separate read-only container with no dashboard, auth, publisher, private MCP, storage, owner-identity, or AWS configuration. Its two Docker networks are internal and dedicated: one connects only it and PostgreSQL, while the other connects only it and Caddy. It shares no network with the private application or outbound gateway. Its dedicated public hostname serves only the exact `/mcp` route; OAuth/OpenID discovery and every other path return `404`, while the old same-origin `/public/mcp` route is absent. The container drops all Linux capabilities, enables `no-new-privileges`, and receives only the dedicated public MCP database URL and public origins.
 
 ## Passkey permanence
 

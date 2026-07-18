@@ -7,11 +7,11 @@ const reader: PublicPageReader = {
   async getPage() { return null; },
   async searchPages() { return []; },
 };
-const endpoint = new URL("https://context.example.com/public/mcp");
-const handler = createPublicMcpRequestHandler(reader, endpoint, endpoint.origin);
+const endpoint = new URL("https://public.context.example.com/mcp");
+const handler = createPublicMcpRequestHandler(reader, endpoint, "https://context.example.com");
 
-function request(init: RequestInit = {}, path = "/public/mcp"): Request {
-  return new Request(`https://context.example.com${path}`, {
+function request(init: RequestInit = {}, path = "/mcp"): Request {
+  return new Request(`https://public.context.example.com${path}`, {
     method: "POST",
     headers: {
       accept: "application/json, text/event-stream",

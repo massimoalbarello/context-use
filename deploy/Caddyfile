@@ -11,12 +11,6 @@
 		-Server
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 	}
-	handle /public/mcp {
-		request_body {
-			max_size 128KB
-		}
-		reverse_proxy public-mcp:3001
-	}
 	handle /api/dashboard/assets/*/content {
 		request_body {
 			max_size 5GB
@@ -28,6 +22,25 @@
 			max_size 3MB
 		}
 		reverse_proxy app:3000
+	}
+}
+
+{$PUBLIC_MCP_HOSTNAME} {
+	header {
+		-Server
+		-Set-Cookie
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+	handle /mcp {
+		request_body {
+			max_size 128KB
+		}
+		reverse_proxy public-mcp:3001
+	}
+	handle {
+		respond "Not found" 404
 	}
 }
 
