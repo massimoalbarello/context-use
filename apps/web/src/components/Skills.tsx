@@ -71,17 +71,19 @@ export function Skills() {
   };
 
   return <main className="content-page automations-page skills-page">
-    <header><div><span className="eyebrow">Reusable agent capabilities</span><h1>Skills</h1><p>Agents discover this library from names and short descriptions, then load the full instructions only when a skill is relevant.</p></div><button onClick={() => load().catch(() => undefined)}>Refresh</button></header>
+    <header><div><span className="eyebrow">Capability library</span><h1>Skills</h1><p>Reusable instructions that give connected agents a dependable way to work with your context.</p></div><button onClick={() => load().catch(() => undefined)}>Refresh library</button></header>
     {message && <div className="automation-message">{message}</div>}
 
-    <section className="skill-standard-note">
-      <div><span className="eyebrow">SKILL.md standard</span><h2>Progressive disclosure</h2></div>
-      <p>Names use lowercase hyphen-case. Descriptions explain both what the skill does and when to use it. Context Use assembles these fields with the instruction body into a standard SKILL.md document.</p>
-    </section>
+    <aside className="skill-standard-note">
+      <span className="skill-note-mark" aria-hidden="true">✦</span>
+      <div><span className="eyebrow">SKILL.md standard</span><h2>Small on discovery. Detailed on demand.</h2></div>
+      <p>Agents scan names and descriptions first, then load complete instructions only when the capability is relevant.</p>
+    </aside>
 
     <section>
-      <div className="section-heading"><div><h2>Available skills</h2><p>Descriptions are the discovery layer; opening a card reveals the complete instructions.</p></div></div>
+      <div className="section-heading"><div><h2>Available skills</h2><p>{skills.length} reusable {skills.length === 1 ? "capability" : "capabilities"} in this workspace.</p></div></div>
       {loading ? <p>Loading skills…</p> : skills.length === 0 ? <p className="empty-note">No skills are available yet.</p> : <div className="skill-grid">{skills.map((skill) => <article key={skill.id}>
+        <span className="skill-glyph" aria-hidden="true">✦</span>
         <div><strong>{skill.name}</strong><span>Version {skill.version_number} · {skill.schedule_count} automation{skill.schedule_count === 1 ? "" : "s"}</span></div>
         <p className="skill-description">{skill.description}</p>
         <details><summary>View SKILL.md</summary><pre>{skill.skill_markdown}</pre></details>
