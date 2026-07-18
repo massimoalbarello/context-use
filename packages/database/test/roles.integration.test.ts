@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { Client } from "pg";
+import { Client, type Pool } from "pg";
 import { randomUUID } from "node:crypto";
+import { PublicMcpRepository } from "../src/index.ts";
 
 const adminUrl = process.env.TEST_DATABASE_URL;
 const describeDatabase = adminUrl ? describe : describe.skip;
@@ -46,7 +47,7 @@ describeDatabase("PostgreSQL security roles", () => {
   });
 
   test("only publisher role can execute visibility procedure", async () => {
-    for (const role of ["context_use_mcp", "context_use_dashboard", "context_use_public", "context_use_auth"]) {
+    for (const role of ["context_use_mcp", "context_use_dashboard", "context_use_public", "context_use_public_mcp", "context_use_auth"]) {
       const result = await admin.query<{ allowed: boolean }>(
         "SELECT has_function_privilege($1, 'confirm_publication_intent(uuid,text,text,text)', 'EXECUTE') AS allowed",
         [role],
@@ -68,6 +69,41 @@ describeDatabase("PostgreSQL security roles", () => {
     );
     expect(privateTable.rows[0]?.allowed).toBe(false);
     expect(publicView.rows[0]?.allowed).toBe(true);
+  });
+
+  test("public MCP role can read only its lossy page projection", async () => {
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_table_privilege('context_use_public_mcp','public_mcp_pages','SELECT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    for (const privilege of ["INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege('context_use_public_mcp','public_mcp_pages',$1) AS allowed",
+        [privilege],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_schema_privilege('context_use_public_mcp','public','CREATE') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+    for (const role of ["context_use_auth", "context_use_dashboard", "context_use_mcp", "context_use_public", "context_use_publisher", "context_use_backup"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT pg_has_role('context_use_public_mcp',$1,'MEMBER') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    for (const relation of ["knowledge_pages", "knowledge_page_versions", "assets", "published_pages", "published_assets"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege('context_use_public_mcp',$1,'SELECT') AS allowed",
+        [relation],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    const columns = await admin.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='public_mcp_pages'
+       ORDER BY ordinal_position`,
+    );
+    expect(columns.rows.map(({ column_name }) => column_name)).toEqual([
+      "public_slug", "title", "body_markdown", "parent_slug",
+    ]);
   });
 
   test("MCP cannot mutate assets", async () => {
@@ -128,17 +164,119 @@ describeDatabase("PostgreSQL security roles", () => {
     expect(result.rows[0]).toEqual({ security_audit: null, publication_audit: null });
   });
 
-  test("public role is denied every private base table", async () => {
+  test("anonymous public roles are denied every private base table", async () => {
     const tables = await admin.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema='public' AND table_type='BASE TABLE'`,
     );
-    for (const { table_name } of tables.rows) {
-      const result = await admin.query<{ allowed: boolean }>(
-        "SELECT has_table_privilege('context_use_public', format('%I', $1::text), 'SELECT') AS allowed",
-        [table_name],
+    for (const role of ["context_use_public", "context_use_public_mcp"]) {
+      for (const { table_name } of tables.rows) {
+        const result = await admin.query<{ allowed: boolean }>(
+          "SELECT has_table_privilege($1, format('%I', $2::text), 'SELECT') AS allowed",
+          [role, table_name],
+        );
+        expect(result.rows[0]?.allowed).toBe(false);
+      }
+    }
+  });
+
+  test("public MCP projection redacts private references and links only published ancestors", async () => {
+    const privatePageId = randomUUID();
+    const privateVersionId = randomUUID();
+    const parentPageId = randomUUID();
+    const parentVersionId = randomUUID();
+    const childPageId = randomUUID();
+    const childVersionId = randomUUID();
+    const assetId = randomUUID();
+    await admin.query("BEGIN");
+    try {
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id)
+         VALUES ($1,'about/work',$2)`,
+        [privatePageId, privateVersionId],
       );
-      expect(result.rows[0]?.allowed).toBe(false);
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'about/work','PRIVATE-CANARY title','PRIVATE-CANARY body','Create private page','dashboard','owner')`,
+        [privateVersionId, privatePageId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_slug)
+         VALUES ($1,'about',$2,$2,'about')`,
+        [parentPageId, parentVersionId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'about','About','Public parent','Create public parent','dashboard','owner')`,
+        [parentVersionId, parentPageId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_slug)
+         VALUES ($1,'about/work/project',$2,$2,'project')`,
+        [childPageId, childVersionId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES (
+           $1,$2,1,'about/work/project','Project',
+           $3,'Create public child','dashboard','owner'
+         )`,
+        [
+          childVersionId,
+          childPageId,
+          [
+            "PUBLIC-CANARY content",
+            `[Private label](context-use://page/${privatePageId})`,
+            `![Private image](context-use://asset/${assetId})`,
+            "[[private/strategy]]",
+            "[[private/strategy|Authored label]]",
+            `context-use://page/${privatePageId}`,
+            "<!-- COMMENT-CANARY -->",
+            "<script>SCRIPT-CANARY</script>",
+            "<style>STYLE-CANARY</style>",
+            "<meta name=private content=ATTRIBUTE-CANARY>",
+            "<span data-private=ATTRIBUTE-CANARY>Visible span text</span>",
+            "<script>UNCLOSED-SCRIPT-CANARY",
+          ].join("\n\n"),
+        ],
+      );
+
+      await admin.query("SET LOCAL ROLE context_use_public_mcp");
+      const repository = new PublicMcpRepository(admin as unknown as Pool);
+      const projected = await admin.query<{
+        public_slug: string;
+        title: string;
+        body_markdown: string;
+        parent_slug: string | null;
+      }>("SELECT public_slug,title,body_markdown,parent_slug FROM public_mcp_pages ORDER BY public_slug");
+      expect((await repository.listPages()).map(({ slug }) => slug)).toEqual(["about", "project"]);
+      expect(await repository.getPage("project")).toMatchObject({ slug: "project", parent_slug: "about" });
+      expect((await repository.searchPages("content", 10)).map(({ slug }) => slug)).toEqual(["project"]);
+      await expectDenied("SELECT * FROM published_pages");
+      await admin.query("RESET ROLE");
+
+      expect(projected.rows.map(({ public_slug }) => public_slug)).toEqual(["about", "project"]);
+      const child = projected.rows.find(({ public_slug }) => public_slug === "project");
+      expect(child).toMatchObject({ title: "Project", parent_slug: "about" });
+      expect(child?.body_markdown).toContain("PUBLIC-CANARY content");
+      expect(child?.body_markdown).toContain("Private label");
+      expect(child?.body_markdown).toContain("Authored label");
+      expect(child?.body_markdown).not.toContain(privatePageId);
+      expect(child?.body_markdown).not.toContain(assetId);
+      expect(child?.body_markdown).not.toContain("private/strategy");
+      expect(child?.body_markdown).not.toContain("context-use://");
+      expect(child?.body_markdown).not.toContain("COMMENT-CANARY");
+      expect(child?.body_markdown).not.toContain("SCRIPT-CANARY");
+      expect(child?.body_markdown).not.toContain("STYLE-CANARY");
+      expect(child?.body_markdown).not.toContain("ATTRIBUTE-CANARY");
+      expect(child?.body_markdown).toContain("Visible span text");
+      expect(JSON.stringify(projected.rows)).not.toContain("PRIVATE-CANARY");
+      expect(JSON.stringify(projected.rows)).not.toContain("about/work");
+    } finally {
+      await admin.query("ROLLBACK");
     }
   });
 

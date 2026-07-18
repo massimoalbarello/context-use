@@ -85,3 +85,68 @@ export class PublicRepository {
     return result.rows[0] ?? null;
   }
 }
+
+export type PublicMcpPageSummary = {
+  slug: string;
+  title: string;
+  parent_slug: string | null;
+};
+
+export type PublicMcpPage = PublicMcpPageSummary & {
+  body_markdown: string;
+};
+
+export type PublicMcpSearchResult = PublicMcpPageSummary & {
+  excerpt: string;
+};
+
+export class PublicMcpRepository {
+  constructor(private readonly pool: Pool) {}
+
+  async listPages(): Promise<PublicMcpPageSummary[]> {
+    const result = await this.pool.query<PublicMcpPageSummary>(
+      `SELECT public_slug AS slug,title,parent_slug
+       FROM public_mcp_pages
+       ORDER BY lower(title),public_slug`,
+    );
+    return result.rows;
+  }
+
+  async getPage(slug: string): Promise<PublicMcpPage | null> {
+    const result = await this.pool.query<PublicMcpPage>(
+      `SELECT public_slug AS slug,title,parent_slug,body_markdown
+       FROM public_mcp_pages
+       WHERE public_slug=$1`,
+      [slug],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async searchPages(query: string, limit: number): Promise<PublicMcpSearchResult[]> {
+    const result = await this.pool.query<PublicMcpSearchResult>(
+      `WITH searched AS (
+         SELECT public_slug,title,parent_slug,body_markdown,
+                websearch_to_tsquery('english',$1) AS query
+         FROM public_mcp_pages
+       )
+       SELECT public_slug AS slug,title,parent_slug,
+              ts_headline(
+                'english',body_markdown,query,
+                'MaxFragments=2,MaxWords=35,MinWords=10,StartSel=**,StopSel=**'
+              ) AS excerpt
+       FROM searched
+       WHERE (
+         setweight(to_tsvector('simple',coalesce(title,'')),'A') ||
+         setweight(to_tsvector('english',coalesce(body_markdown,'')),'B')
+       ) @@ query
+       ORDER BY ts_rank(
+         setweight(to_tsvector('simple',coalesce(title,'')),'A') ||
+         setweight(to_tsvector('english',coalesce(body_markdown,'')),'B'),
+         query
+       ) DESC,lower(title),public_slug
+       LIMIT $2`,
+      [query, limit],
+    );
+    return result.rows;
+  }
+}

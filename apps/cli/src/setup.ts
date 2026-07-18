@@ -40,6 +40,7 @@ export async function storeRuntimeParameters(config: DeploymentConfig): Promise<
     DB_DASHBOARD_PASSWORD: generateSecret(36),
     DB_MCP_PASSWORD: generateSecret(36),
     DB_PUBLIC_PASSWORD: generateSecret(36),
+    DB_PUBLIC_MCP_PASSWORD: generateSecret(36),
     DB_PUBLISHER_PASSWORD: generateSecret(36),
     DB_BACKUP_PASSWORD: generateSecret(36),
     AWS_REGION: config.awsRegion,

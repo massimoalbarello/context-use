@@ -12,6 +12,7 @@ The public site is deliberately separate: a page or asset becomes public only af
 - Passkey-protected publishing, republishing, slug changes, and unpublishing with the same immutable credential.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
 - Stateless Streamable HTTP MCP at `/mcp` with knowledge, asset-read, and automation execution tools.
+- Anonymous, tools-only MCP at `/public/mcp` with a hierarchical index, page reads, and full-text search over published snapshots only.
 - Versioned, discoverable Agent Skills; time-zone-aware automations; isolated generated knowledge; durable run history; and leased agent execution.
 - Exact published snapshots at `/p/:slug` and independently published assets on a cookieless hostname.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
@@ -27,6 +28,7 @@ External ingestion, vault migration, approval queues, collaboration, and semanti
 | Owner publishing | Session + CSRF + exact origin + action-bound passkey assertion | Publication confirmation only |
 | Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
 | Public visitor | None | `/p/*` and independently published assets |
+| Public MCP client | None; credentials are rejected | `/public/mcp` only |
 | Deployment administrator | Local AWS identity | `context-use` CLI |
 
 These credentials are intentionally non-interchangeable. Dashboard endpoints reject `Authorization`; MCP rejects cookies. Application roles mirror that boundary in PostgreSQL, and public requests query security-barrier views rather than base tables. Publishing a page never publishes linked pages or assets.
@@ -77,6 +79,8 @@ Ordinary `destroy` removes replaceable compute but retains encrypted data and Te
 
 ## Agent connection
 
+### Private agent
+
 Point an OAuth-capable MCP client at:
 
 ```text
@@ -84,6 +88,22 @@ https://YOUR_HOST/mcp
 ```
 
 The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `skills:read`, `skills:write`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
+
+### Public readers
+
+Anyone can connect an MCP client without authentication at:
+
+```text
+https://YOUR_HOST/public/mcp
+```
+
+The public server deliberately exposes tools rather than MCP resources for broad client compatibility:
+
+- `get_main_page` returns the published `home` page, when present, and a complete nested index of all published pages.
+- `get_public_page` reads one page by its public slug and includes published breadcrumbs and children.
+- `search_public_pages` searches only the sanitized published-page projection.
+
+The public MCP runs in a separate read-only container with a separate database credential. Its database role can select only `public_mcp_pages`, a lossy security-barrier view with public slugs, titles, sanitized Markdown, and published-parent slugs. It cannot read the webpage views, base tables, asset metadata, internal paths, UUIDs, page versions, private reference targets, or S3 keys. Unpublished intermediate folders are omitted; a page attaches to its closest published ancestor.
 
 Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification): a standard name and short description form the discovery layer, while instructions load only after selection. MCP agents use `list_skills`, `get_skill`, and `create_skill`. Automations live separately under **Automations** and can also be created with `create_automation`. Creating a skill returns its current version ID, which is the `skill_version_id` required by an automation.
 

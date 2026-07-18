@@ -14,6 +14,7 @@ x-role-passwords: &role-passwords
   DB_DASHBOARD_PASSWORD: development-only
   DB_MCP_PASSWORD: development-only
   DB_PUBLIC_PASSWORD: development-only
+  DB_PUBLIC_MCP_PASSWORD: development-only
   DB_PUBLISHER_PASSWORD: development-only
   DB_BACKUP_PASSWORD: development-only
 
@@ -85,13 +86,37 @@ services:
       timeout: 3s
       retries: 30
 
+  public-mcp:
+    <<: *code-service
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: development
+      PORT: "3001"
+      PUBLIC_MCP_ENDPOINT: http://localhost:5173/public/mcp
+      PUBLIC_SITE_ORIGIN: http://localhost:5173
+      PUBLIC_MCP_DATABASE_URL: postgres://context_use_public_mcp:development-only@postgres:5432/context_use
+    command: ["bun", "--cwd", "apps/public-mcp", "dev"]
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3001/health'); if (!response.ok) process.exit(1)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   web:
     <<: *code-service
     depends_on:
       server:
         condition: service_healthy
+      public-mcp:
+        condition: service_healthy
     environment:
       VITE_API_PROXY_TARGET: http://server:3000
+      VITE_PUBLIC_MCP_PROXY_TARGET: http://public-mcp:3001
     command: ["bun", "--cwd", "apps/web", "dev", "--host", "0.0.0.0"]
     ports:
       - "5173:5173"
