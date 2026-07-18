@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.ts";
 import type { AutomationRun, AutomationSkill, CronSchedule } from "../types.ts";
 
-const WORKER_PROMPT = `Check Context Use for scheduled work. Call claim_due_run. If it returns a run, follow the supplied skill instructions using the supplied input. When finished, call complete_run with the run ID and claim token; if the work cannot be completed, call fail_run with a concise error. Continue until claim_due_run returns null.`;
+const WORKER_PROMPT = `Check Context Use for scheduled work. Call claim_due_run. If it returns a run, follow its SKILL.md using the supplied input. Persist run output only with the automation page tools and the supplied run ID and claim token; those tools confine writes to the returned knowledge path. When finished, call complete_run; if the work cannot be completed, call fail_run. Continue until claim_due_run returns null.`;
 
 function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleString() : "—";
@@ -20,8 +20,6 @@ export function Automations() {
   const [runs, setRuns] = useState<AutomationRun[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [skillName, setSkillName] = useState("");
-  const [instructions, setInstructions] = useState("");
   const [scheduleName, setScheduleName] = useState("");
   const [scheduleSkill, setScheduleSkill] = useState("");
   const [cronExpression, setCronExpression] = useState("0 9 * * *");
@@ -33,7 +31,7 @@ export function Automations() {
     try {
       const nextRuns = await api<AutomationRun[]>("/api/dashboard/automations/runs");
       const [nextSkills, nextSchedules] = await Promise.all([
-        api<AutomationSkill[]>("/api/dashboard/automations/skills"),
+        api<AutomationSkill[]>("/api/dashboard/skills"),
         api<CronSchedule[]>("/api/dashboard/automations/schedules"),
       ]);
       setRuns(nextRuns);
@@ -57,29 +55,13 @@ export function Automations() {
 
   const activeRuns = useMemo(() => runs.filter((run) => run.status === "ready" || run.status === "claimed"), [runs]);
   const recentRuns = useMemo(() => runs.filter((run) => run.status === "succeeded" || run.status === "failed"), [runs]);
-
-  const createSkill = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setMessage("");
-    try {
-      await api("/api/dashboard/automations/skills", {
-        method: "POST",
-        body: JSON.stringify({ name: skillName, instructions_markdown: instructions, commit_message: "Create automation skill" }),
-      });
-      setSkillName("");
-      setInstructions("");
-      setMessage("Skill created and stored in Context Use.");
-      await load(true);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not create skill");
-    }
-  };
+  const selectedSkill = skills.find((skill) => skill.current_version_id === scheduleSkill);
 
   const createSchedule = async (event: React.FormEvent) => {
     event.preventDefault();
     setMessage("");
     try {
-      await api("/api/dashboard/automations/schedules", {
+      const created = await api<CronSchedule>("/api/dashboard/automations/schedules", {
         method: "POST",
         body: JSON.stringify({
           name: scheduleName,
@@ -92,31 +74,10 @@ export function Automations() {
       });
       setScheduleName("");
       setScheduleInput("{}");
-      setMessage("Cron schedule created.");
+      setMessage(`Automation created. Generated pages are confined to ${created.knowledge_path}.`);
       await load(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not create schedule");
-    }
-  };
-
-  const updateSkill = async (skill: AutomationSkill) => {
-    const nextInstructions = window.prompt("Skill instructions for the new version", skill.instructions_markdown);
-    if (nextInstructions === null || !nextInstructions.trim()) return;
-    const commitMessage = window.prompt("Describe this change", "Update automation skill");
-    if (!commitMessage) return;
-    try {
-      await api(`/api/dashboard/automations/skills/${skill.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          instructions_markdown: nextInstructions,
-          commit_message: commitMessage,
-          expected_version_number: skill.version_number,
-        }),
-      });
-      setMessage("A new immutable skill version was created. Future scheduled runs will use it.");
-      await load(true);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not update skill");
+      setMessage(error instanceof Error ? error.message : "Could not create automation");
     }
   };
 
@@ -137,7 +98,7 @@ export function Automations() {
   };
 
   const editSchedule = async (schedule: CronSchedule) => {
-    const name = window.prompt("Schedule name", schedule.name);
+    const name = window.prompt("Automation name", schedule.name);
     if (!name) return;
     const expression = window.prompt("Five-field cron expression", schedule.cron_expression);
     if (!expression) return;
@@ -147,18 +108,18 @@ export function Automations() {
     if (input === null) return;
     try {
       await saveSchedule(schedule, { name, cron_expression: expression, timezone: zone, input: parseInput(input) });
-      setMessage("Schedule updated.");
+      setMessage("Automation updated. Its knowledge folder is unchanged.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not update schedule");
+      setMessage(error instanceof Error ? error.message : "Could not update automation");
     }
   };
 
   return <main className="content-page automations-page">
-    <header><div><span className="eyebrow">Portable agent work</span><h1>Automations</h1><p>Context Use owns the schedules, skills, and run history. Connected agents only claim and execute ready work.</p></div><button onClick={() => load().catch(() => undefined)}>Refresh</button></header>
+    <header><div><span className="eyebrow">Scheduled agent work</span><h1>Automations</h1><p>Each automation combines a reusable skill with a cron trigger, durable run history, and an isolated generated-knowledge folder.</p></div><button onClick={() => load().catch(() => undefined)}>Refresh</button></header>
     {message && <div className="automation-message">{message}</div>}
 
     <section className="worker-card">
-      <div><span className="eyebrow">Generic agent cron</span><h2>Worker prompt</h2><p>Schedule this same prompt on any connected agent, for example every 30 minutes.</p></div>
+      <div><span className="eyebrow">Generic worker</span><h2>Worker prompt</h2><p>Schedule this same polling prompt on any connected agent.</p></div>
       <pre>{WORKER_PROMPT}</pre>
       <button onClick={() => navigator.clipboard.writeText(WORKER_PROMPT)
         .then(() => setMessage("Worker prompt copied."))
@@ -173,25 +134,26 @@ export function Automations() {
     </div>
 
     <section>
-      <div className="section-heading"><div><h2>Ready and claimed runs</h2><p>Due schedules appear here until an agent reports their outcome.</p></div></div>
-      {loading ? <p>Loading runs…</p> : activeRuns.length === 0 ? <p className="empty-note">Nothing is waiting for an agent.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Schedule</th><th>Skill</th><th>Scheduled</th><th>Agent</th></tr></thead><tbody>{activeRuns.map((run) => <tr key={run.id}><td><span className={`run-status ${run.status}`}>{run.status}</span></td><td>{run.schedule_name}</td><td>{run.skill_name} <small>v{run.skill_version_number}</small></td><td>{formatDate(run.scheduled_for)}</td><td>{run.claimed_by ?? "—"}</td></tr>)}</tbody></table></div>}
+      <div className="section-heading"><div><h2>Ready and claimed runs</h2><p>Due automations appear here until an agent reports their outcome.</p></div></div>
+      {loading ? <p>Loading runs…</p> : activeRuns.length === 0 ? <p className="empty-note">Nothing is waiting for an agent.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Skill</th><th>Scheduled</th><th>Agent</th></tr></thead><tbody>{activeRuns.map((run) => <tr key={run.id}><td><span className={`run-status ${run.status}`}>{run.status}</span></td><td>{run.schedule_name}</td><td>{run.skill_name} <small>v{run.skill_version_number}</small></td><td>{formatDate(run.scheduled_for)}</td><td>{run.claimed_by ?? "—"}</td></tr>)}</tbody></table></div>}
     </section>
 
     <section>
-      <div className="section-heading"><div><h2>Cron schedules</h2><p>Five-field cron expressions are evaluated in the selected time zone.</p></div></div>
-      {schedules.length === 0 ? <p className="empty-note">Create a skill, then attach its first schedule.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Schedule</th><th>Skill</th><th>Cron</th><th>Next run</th><th>State</th><th></th></tr></thead><tbody>{schedules.map((schedule) => <tr key={schedule.id}><td><strong>{schedule.name}</strong></td><td>{schedule.skill_name} <small>v{schedule.skill_version_number}</small></td><td><code>{schedule.cron_expression}</code><small>{schedule.timezone}</small></td><td>{formatDate(schedule.next_run_at)}</td><td><span className={`run-status ${schedule.enabled ? "succeeded" : "disabled"}`}>{schedule.enabled ? "enabled" : "paused"}</span></td><td><div className="table-actions"><button onClick={() => editSchedule(schedule)}>Edit</button><button onClick={() => saveSchedule(schedule, { enabled: !schedule.enabled }).catch((error: Error) => setMessage(error.message))}>{schedule.enabled ? "Pause" : "Enable"}</button></div></td></tr>)}</tbody></table></div>}
-      <details className="automation-form"><summary>New cron schedule</summary><form onSubmit={createSchedule}><label>Name<input required maxLength={160} value={scheduleName} onChange={(event) => setScheduleName(event.target.value)} placeholder="Morning context review" /></label><label>Skill<select required value={scheduleSkill} onChange={(event) => setScheduleSkill(event.target.value)}><option value="" disabled>Select a skill</option>{skills.map((skill) => <option key={skill.id} value={skill.current_version_id}>{skill.name} · v{skill.version_number}</option>)}</select></label><div className="form-row"><label>Cron expression<input required value={cronExpression} onChange={(event) => setCronExpression(event.target.value)} /></label><label>Time zone<input required value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label></div><label>Input JSON<textarea rows={4} value={scheduleInput} onChange={(event) => setScheduleInput(event.target.value)} /></label><button className="primary" disabled={!skills.length}>Create schedule</button></form></details>
-    </section>
-
-    <section>
-      <div className="section-heading"><div><h2>Skills</h2><p>Each edit creates an immutable version. Existing runs keep the version they started with.</p></div></div>
-      <div className="skill-grid">{skills.map((skill) => <article key={skill.id}><div><strong>{skill.name}</strong><span>Version {skill.version_number} · {skill.schedule_count} schedule{skill.schedule_count === 1 ? "" : "s"}</span></div><p>{skill.instructions_markdown}</p><footer><small>{skill.commit_message}</small><button onClick={() => updateSkill(skill)}>New version</button></footer></article>)}</div>
-      <details className="automation-form"><summary>New skill</summary><form onSubmit={createSkill}><label>Name<input required maxLength={160} value={skillName} onChange={(event) => setSkillName(event.target.value)} placeholder="Review project context" /></label><label>Skill instructions<textarea required rows={10} value={instructions} onChange={(event) => setInstructions(event.target.value)} placeholder="Describe the outcome, context to inspect, tools to use, and what should be persisted…" /></label><button className="primary">Create skill</button></form></details>
+      <div className="section-heading"><div><h2>Automations</h2><p>Cron is the trigger; every row also owns one immutable knowledge location.</p></div></div>
+      {schedules.length === 0 ? <p className="empty-note">Create a skill first, then create an automation here.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Automation</th><th>Skill</th><th>Schedule</th><th>Generated knowledge</th><th>Next run</th><th>State</th><th></th></tr></thead><tbody>{schedules.map((schedule) => <tr key={schedule.id}><td><strong>{schedule.name}</strong></td><td>{schedule.skill_name} <small>v{schedule.skill_version_number}</small></td><td><code>{schedule.cron_expression}</code><small>{schedule.timezone}</small></td><td className="knowledge-location"><code>{schedule.knowledge_path}</code><small>{schedule.generated_page_count} page{schedule.generated_page_count === 1 ? "" : "s"}</small></td><td>{formatDate(schedule.next_run_at)}</td><td><span className={`run-status ${schedule.enabled ? "succeeded" : "disabled"}`}>{schedule.enabled ? "enabled" : "paused"}</span></td><td><div className="table-actions"><button onClick={() => editSchedule(schedule)}>Edit</button><button onClick={() => saveSchedule(schedule, { enabled: !schedule.enabled }).catch((error: Error) => setMessage(error.message))}>{schedule.enabled ? "Pause" : "Enable"}</button></div></td></tr>)}</tbody></table></div>}
+      <details className="automation-form"><summary>New automation</summary><form onSubmit={createSchedule}>
+        <label>Name<input required maxLength={160} value={scheduleName} onChange={(event) => setScheduleName(event.target.value)} placeholder="Morning context review" /></label>
+        <label>Skill<select required value={scheduleSkill} onChange={(event) => setScheduleSkill(event.target.value)}><option value="" disabled>Select a skill</option>{skills.map((skill) => <option key={skill.id} value={skill.current_version_id}>{skill.name} · v{skill.version_number}</option>)}</select>{selectedSkill && <small>{selectedSkill.description}</small>}</label>
+        <div className="form-row"><label>Cron expression<input required value={cronExpression} onChange={(event) => setCronExpression(event.target.value)} /></label><label>Time zone<input required value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label></div>
+        <label>Input JSON<textarea rows={4} value={scheduleInput} onChange={(event) => setScheduleInput(event.target.value)} /></label>
+        <p className="form-note">Context Use assigns a stable folder under <code>generated/automations/</code> when this automation is created.</p>
+        <button className="primary" disabled={!skills.length}>Create automation</button>
+      </form></details>
     </section>
 
     <section>
       <div className="section-heading"><div><h2>Recent runs</h2><p>Completed outcomes remain in Context Use even when the executing agent changes.</p></div></div>
-      {recentRuns.length === 0 ? <p className="empty-note">No completed runs yet.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Schedule</th><th>Skill</th><th>Completed</th><th>Outcome</th></tr></thead><tbody>{recentRuns.map((run) => <tr key={run.id}><td><span className={`run-status ${run.status}`}>{run.status}</span></td><td>{run.schedule_name}</td><td>{run.skill_name} <small>v{run.skill_version_number}</small></td><td>{formatDate(run.completed_at)}</td><td className="run-outcome">{run.result_summary ?? run.error_message ?? "—"}</td></tr>)}</tbody></table></div>}
+      {recentRuns.length === 0 ? <p className="empty-note">No completed runs yet.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Skill</th><th>Completed</th><th>Outcome</th></tr></thead><tbody>{recentRuns.map((run) => <tr key={run.id}><td><span className={`run-status ${run.status}`}>{run.status}</span></td><td>{run.schedule_name}</td><td>{run.skill_name} <small>v{run.skill_version_number}</small></td><td>{formatDate(run.completed_at)}</td><td className="run-outcome">{run.result_summary ?? run.error_message ?? "—"}</td></tr>)}</tbody></table></div>}
     </section>
   </main>;
 }

@@ -1,10 +1,13 @@
 import { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
 import {
+  archiveAutomationPageSchema,
   archivePageSchema,
+  createAutomationPageSchema,
   createAutomationSkillSchema,
   createCronScheduleSchema,
   createPageSchema,
   type McpScope,
+  updateAutomationPageSchema,
   updatePageSchema,
 } from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -133,17 +136,42 @@ export function createMcpServer(
     return jsonContent({ ...metadata, download_url, expires_in: 300 });
   });
 
-  server.registerTool("create_automation_skill", {
-    description: "Create a private, versioned automation skill. Returns the skill and its current skill version ID for scheduling.",
+  server.registerTool("list_skills", {
+    description: "List skill names and short descriptions for discovery without loading full instructions.",
+    inputSchema: z.object({}).strict(),
+    annotations: { readOnlyHint: true },
+  }, async () => {
+    requireScope(context, "skills:read");
+    const skills = await automations.listSkills();
+    return jsonContent(skills.map(({ id, name, description, current_version_id, version_number }) => ({
+      id,
+      name,
+      description,
+      current_version_id,
+      version_number,
+    })));
+  });
+
+  server.registerTool("get_skill", {
+    description: "Load one current, standard SKILL.md document after its metadata indicates that it is relevant.",
+    inputSchema: z.object({ skill_id: z.string().uuid() }).strict(),
+    annotations: { readOnlyHint: true },
+  }, async ({ skill_id }) => {
+    requireScope(context, "skills:read");
+    return jsonContent(await automations.getSkill(skill_id));
+  });
+
+  server.registerTool("create_skill", {
+    description: "Create a private, versioned Agent Skill with standard name and description metadata.",
     inputSchema: createAutomationSkillSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
-    requireScope(context, "automations:write");
+    requireScope(context, "skills:write");
     return jsonContent(await automations.createSkill(input, actor));
   });
 
-  server.registerTool("create_cron_schedule", {
-    description: "Create a cron schedule for an automation skill version. Enabled schedules become eligible when claim_due_run is polled.",
+  server.registerTool("create_automation", {
+    description: "Create a scheduled automation for a skill version. The automation receives a dedicated generated-knowledge folder.",
     inputSchema: createCronScheduleSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -152,12 +180,39 @@ export function createMcpServer(
   });
 
   server.registerTool("claim_due_run", {
-    description: "Claim the oldest due automation run. Returns the exact persisted skill instructions and inputs, or null when no work is ready. The claim is leased for six hours.",
+    description: "Claim the oldest due automation run. Returns its standard SKILL.md, input, dedicated knowledge path, and a six-hour write capability, or null.",
     inputSchema: z.object({}).strict(),
     annotations: { destructiveHint: false },
   }, async () => {
     requireScope(context, "automations:claim");
     return jsonContent(await automations.claimDueRun(context.clientId));
+  });
+
+  server.registerTool("create_automation_page", {
+    description: "Create generated knowledge inside the claimed automation's dedicated folder. The server resolves the relative path and rejects every other location.",
+    inputSchema: createAutomationPageSchema,
+    annotations: { destructiveHint: false },
+  }, async (input) => {
+    requireScope(context, "automations:execute");
+    return jsonContent(await pages.createForAutomation(input, actor));
+  });
+
+  server.registerTool("update_automation_page", {
+    description: "Update a page owned by the claimed automation while keeping it inside that automation's dedicated folder.",
+    inputSchema: updateAutomationPageSchema,
+    annotations: { destructiveHint: false },
+  }, async (input) => {
+    requireScope(context, "automations:execute");
+    return jsonContent(await pages.updateForAutomation(input, actor));
+  });
+
+  server.registerTool("archive_automation_page", {
+    description: "Archive a page owned by the claimed automation. Pages outside the automation's folder cannot be targeted.",
+    inputSchema: archiveAutomationPageSchema,
+    annotations: { destructiveHint: true },
+  }, async (input) => {
+    requireScope(context, "automations:execute");
+    return jsonContent(await pages.archiveForAutomation(input, actor));
   });
 
   server.registerTool("complete_run", {

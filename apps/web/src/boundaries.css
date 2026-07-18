@@ -1,0 +1,101 @@
+.sidebar-section-nav {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.automation-owned-notice {
+  margin: 20px 42px 0;
+  padding: 13px 14px;
+  background: #edf4ef;
+  color: #3b5348;
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.automation-owned-notice span,
+.automation-form small,
+.automation-form .form-note {
+  font-size: 12px;
+}
+
+.automation-form small,
+.automation-form .form-note {
+  color: #6c6f66;
+  margin: 0;
+}
+
+.knowledge-location {
+  max-width: 280px;
+}
+
+.automation-table .knowledge-location code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.skill-standard-note {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(320px, 2fr);
+  gap: 18px;
+  align-items: center;
+  background: #f0f6f2 !important;
+}
+
+.skill-standard-note h2,
+.skill-standard-note p {
+  margin: 4px 0;
+}
+
+.skill-standard-note p {
+  color: #627067;
+  font-size: 13px;
+}
+
+.skill-grid article {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skill-grid article .skill-description {
+  margin: 0;
+  color: #4f514b;
+  font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif;
+  white-space: normal;
+  max-height: none;
+}
+
+.skill-grid details summary {
+  cursor: pointer;
+  color: #315e4e;
+  font-size: 12px;
+}
+
+.skill-grid details pre {
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f3f3ef;
+  color: #3f413b;
+  font: 11px/1.55 ui-monospace, SFMono-Regular, monospace;
+}
+
+.skill-grid article footer {
+  margin-top: auto;
+}
+
+@media (max-width: 1000px) {
+  .skill-standard-note {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .automation-owned-notice {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+}

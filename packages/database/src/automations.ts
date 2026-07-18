@@ -11,6 +11,24 @@ import type { Pool, PoolClient } from "pg";
 
 const RUN_LEASE_HOURS = 6;
 
+function skillMarkdown(name: string, description: string, instructions: string): string {
+  return `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${instructions}`;
+}
+
+function withSkillMarkdown<T extends {
+  name?: string;
+  skill_name?: string;
+  description: string;
+  instructions_markdown: string;
+}>(skill: T) {
+  const name = skill.name ?? skill.skill_name;
+  if (!name) throw new Error("Skill name is missing");
+  return {
+    ...skill,
+    skill_markdown: skillMarkdown(name, skill.description, skill.instructions_markdown),
+  };
+}
+
 export class AutomationValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -99,7 +117,8 @@ async function materializeDueRuns(client: PoolClient, now: Date): Promise<void> 
 
 const SKILL_SELECT = `
   SELECT skill.id,skill.name,skill.current_version_id,skill.created_at,skill.updated_at,
-    version.version_number,version.instructions_markdown,version.commit_message,version.created_at AS version_created_at,
+    version.version_number,version.description,version.instructions_markdown,version.commit_message,
+    version.created_at AS version_created_at,
     (SELECT count(*)::integer FROM cron_schedules schedule WHERE schedule.skill_version_id=version.id) AS schedule_count
   FROM automation_skills skill
   JOIN automation_skill_versions version ON version.id=skill.current_version_id AND version.skill_id=skill.id
@@ -110,7 +129,12 @@ export class AutomationRepository {
 
   async listSkills() {
     const result = await this.pool.query(`${SKILL_SELECT} ORDER BY lower(skill.name)`);
-    return result.rows;
+    return result.rows.map(withSkillMarkdown);
+  }
+
+  async getSkill(skillId: string) {
+    const result = await this.pool.query(`${SKILL_SELECT} WHERE skill.id=$1`, [skillId]);
+    return result.rows[0] ? withSkillMarkdown(result.rows[0]) : null;
   }
 
   async createSkill(input: CreateAutomationSkillInput, actor: Actor) {
@@ -123,12 +147,12 @@ export class AutomationRepository {
       );
       await client.query(
         `INSERT INTO automation_skill_versions(
-           id,skill_id,version_number,instructions_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,$3,$4,$5,$6)`,
-        [versionId, skillId, input.instructions_markdown, input.commit_message, actor.kind, actor.subject],
+           id,skill_id,version_number,description,instructions_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,$3,$4,$5,$6,$7)`,
+        [versionId, skillId, input.description, input.instructions_markdown, input.commit_message, actor.kind, actor.subject],
       );
       const result = await client.query(`${SKILL_SELECT} WHERE skill.id=$1`, [skillId]);
-      return result.rows[0];
+      return withSkillMarkdown(result.rows[0]);
     });
   }
 
@@ -149,9 +173,9 @@ export class AutomationRepository {
       const versionId = randomUUID();
       await client.query(
         `INSERT INTO automation_skill_versions(
-           id,skill_id,version_number,instructions_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [versionId, skillId, row.version_number + 1, input.instructions_markdown, input.commit_message, actor.kind, actor.subject],
+           id,skill_id,version_number,description,instructions_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [versionId, skillId, row.version_number + 1, input.description, input.instructions_markdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE automation_skills SET current_version_id=$2,updated_at=now() WHERE id=$1`,
@@ -163,18 +187,20 @@ export class AutomationRepository {
         [row.current_version_id, versionId],
       );
       const result = await client.query(`${SKILL_SELECT} WHERE skill.id=$1`, [skillId]);
-      return result.rows[0];
+      return withSkillMarkdown(result.rows[0]);
     });
   }
 
   async listSchedules() {
     const result = await this.pool.query(
       `SELECT schedule.id,schedule.name,schedule.skill_version_id,schedule.cron_expression,schedule.timezone,
-        schedule.input,schedule.enabled,schedule.next_run_at,schedule.created_at,schedule.updated_at,
+        schedule.input,schedule.enabled,schedule.next_run_at,schedule.knowledge_path,schedule.created_at,schedule.updated_at,
         skill.id AS skill_id,skill.name AS skill_name,version.version_number AS skill_version_number,
         count(run.id) FILTER (WHERE run.status='ready')::integer AS ready_count,
         count(run.id) FILTER (WHERE run.status='claimed')::integer AS claimed_count,
-        max(run.completed_at) FILTER (WHERE run.status IN ('succeeded','failed')) AS last_completed_at
+        max(run.completed_at) FILTER (WHERE run.status IN ('succeeded','failed')) AS last_completed_at,
+        (SELECT count(*)::integer FROM knowledge_pages page
+         WHERE page.automation_id=schedule.id AND page.archived_at IS NULL) AS generated_page_count
        FROM cron_schedules schedule
        JOIN automation_skill_versions version ON version.id=schedule.skill_version_id
        JOIN automation_skills skill ON skill.id=version.skill_id
@@ -253,11 +279,12 @@ export class AutomationRepository {
          WHERE run.id=$1 AND schedule.id=run.schedule_id AND version.id=run.skill_version_id AND skill.id=version.skill_id
          RETURNING run.id AS run_id,run.schedule_id,run.scheduled_for,run.input,run.attempt_count,
            run.claim_token,run.lease_expires_at,schedule.name AS schedule_name,
+           schedule.knowledge_path,
            skill.id AS skill_id,skill.name AS skill_name,version.id AS skill_version_id,
-           version.version_number AS skill_version_number,version.instructions_markdown`,
+           version.version_number AS skill_version_number,version.description,version.instructions_markdown`,
         [candidate.rows[0]!.id, clientId, claimToken, now, RUN_LEASE_HOURS],
       );
-      return claimed.rows[0];
+      return claimed.rows[0] ? withSkillMarkdown(claimed.rows[0]) : null;
     });
   }
 

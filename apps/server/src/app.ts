@@ -107,6 +107,7 @@ function routeError(error: unknown): Response {
     const code = String((error as Error & { code: unknown }).code);
     if (code === "23505") return problem("A unique value is already in use", 409, "conflict");
     if (code === "42501") return problem("Operation denied by the database security policy", 403, "forbidden");
+    if (code === "23514") return problem("Write violates a knowledge ownership boundary", 422, "ownership_boundary");
   }
   console.error("request_failed", error instanceof Error ? { name: error.name, message: error.message } : { type: typeof error });
   return problem("Internal server error", 500, "internal_error");
@@ -306,16 +307,16 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     }
     return json({ revoked: true });
   })
-  .get("/api/dashboard/automations/skills", async ({ request }) => {
+  .get("/api/dashboard/skills", async ({ request }) => {
     await ownerRequest(request);
     return json(await dashboardAutomations.listSkills());
   })
-  .post("/api/dashboard/automations/skills", async ({ request }) => {
+  .post("/api/dashboard/skills", async ({ request }) => {
     const principal = await ownerRequest(request, true);
     const input = createAutomationSkillSchema.parse(await bodyJson(request));
     return json(await dashboardAutomations.createSkill(input, { kind: "dashboard", subject: principal.userId }), 201);
   })
-  .put("/api/dashboard/automations/skills/:id", async ({ request, params }) => {
+  .put("/api/dashboard/skills/:id", async ({ request, params }) => {
     const principal = await ownerRequest(request, true);
     const input = updateAutomationSkillSchema.parse(await bodyJson(request));
     const skill = await dashboardAutomations.updateSkill(
@@ -323,7 +324,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       input,
       { kind: "dashboard", subject: principal.userId },
     );
-    return skill ? json(skill) : problem("Automation skill not found", 404, "not_found");
+    return skill ? json(skill) : problem("Skill not found", 404, "not_found");
   })
   .get("/api/dashboard/automations/schedules", async ({ request }) => {
     await ownerRequest(request);
@@ -514,6 +515,9 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     if (input.target_kind === "page") {
       const page = await dashboardPages.get(input.target_id);
       if (!page) return problem("Page not found", 404, "not_found");
+      if (page.automation_id && input.action !== "unpublish") {
+        return problem("Automation-generated pages remain private", 403, "automation_page_private");
+      }
       if (input.action !== "unpublish") {
         if (!input.version_id || !input.public_slug) return problem("Page version and public slug are required", 422);
         const history = await dashboardPages.history(input.target_id);

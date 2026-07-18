@@ -2,8 +2,11 @@ import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type {
   Actor,
+  ArchiveAutomationPageInput,
   ArchivePageInput,
+  CreateAutomationPageInput,
   CreatePageInput,
+  UpdateAutomationPageInput,
   UpdatePageInput,
 } from "@context-use/shared";
 import { extractAssetLinks } from "./links.ts";
@@ -20,6 +23,17 @@ export class PublicationStateError extends Error {
     super("Published pages must be explicitly unpublished before they can be archived");
     this.name = "PublicationStateError";
   }
+}
+
+export class AutomationContentAccessError extends Error {
+  constructor(message = "The automation run cannot write this page") {
+    super(message);
+    this.name = "AutomationContentAccessError";
+  }
+}
+
+export function automationKnowledgePath(automationId: string, relativePath: string): string {
+  return `generated/automations/${automationId}/${relativePath}`;
 }
 
 async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -55,7 +69,7 @@ async function insertAssetLinks(
 
 const CURRENT_PAGE_SELECT = `
   SELECT p.id, p.current_path, p.current_version_id, p.published_version_id,
-    p.public_slug, p.archived_at, p.created_at, p.updated_at,
+    p.public_slug, p.automation_id, p.archived_at, p.created_at, p.updated_at,
     v.version_number, v.title, v.body_markdown
   FROM knowledge_pages p
   JOIN knowledge_page_versions v ON v.id = p.current_version_id AND v.page_id = p.id
@@ -64,8 +78,41 @@ const CURRENT_PAGE_SELECT = `
 export class PageRepository {
   constructor(private readonly pool: Pool) {}
 
+  private async assertNoActiveAutomationClaim(client: PoolClient, actor: Actor): Promise<void> {
+    if (actor.kind !== "mcp") return;
+    const result = await client.query(
+      `SELECT 1 FROM automation_runs
+       WHERE claimed_by=$1 AND status='claimed' AND lease_expires_at > now()
+       LIMIT 1`,
+      [actor.subject],
+    );
+    if (result.rowCount) {
+      throw new AutomationContentAccessError(
+        "A client with an active automation claim must use the automation page tools",
+      );
+    }
+  }
+
+  private async claimedAutomationId(
+    client: PoolClient,
+    runId: string,
+    claimToken: string,
+    clientId: string,
+  ): Promise<string> {
+    const result = await client.query<{ schedule_id: string }>(
+      `SELECT schedule_id FROM automation_runs
+       WHERE id=$1 AND claim_token=$2 AND claimed_by=$3
+         AND status='claimed' AND lease_expires_at > now()
+       FOR SHARE`,
+      [runId, claimToken, clientId],
+    );
+    if (!result.rowCount) throw new AutomationContentAccessError();
+    return result.rows[0]!.schedule_id;
+  }
+
   async create(input: CreatePageInput, actor: Actor) {
     return transaction(this.pool, async (client) => {
+      await this.assertNoActiveAutomationClaim(client, actor);
       const pageId = randomUUID();
       const versionId = randomUUID();
       await client.query(
@@ -85,10 +132,34 @@ export class PageRepository {
     });
   }
 
+  async createForAutomation(input: CreateAutomationPageInput, actor: Actor) {
+    return transaction(this.pool, async (client) => {
+      const automationId = await this.claimedAutomationId(client, input.run_id, input.claim_token, actor.subject);
+      const path = automationKnowledgePath(automationId, input.relative_path);
+      const pageId = randomUUID();
+      const versionId = randomUUID();
+      await client.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,automation_id)
+         VALUES ($1,$2,$3,$4)`,
+        [pageId, path, versionId, automationId],
+      );
+      await client.query(
+        `INSERT INTO knowledge_page_versions(
+          id,page_id,version_number,path,title,body_markdown,
+          commit_message,actor_kind,actor_subject
+        ) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8)`,
+        [versionId, pageId, path, input.title, input.body_markdown, input.commit_message, actor.kind, actor.subject],
+      );
+      await insertAssetLinks(client, versionId, input.body_markdown);
+      return this.getWith(client, pageId);
+    });
+  }
+
   async update(pageId: string, input: UpdatePageInput, actor: Actor) {
     return transaction(this.pool, async (client) => {
+      await this.assertNoActiveAutomationClaim(client, actor);
       const current = await client.query<{ version_number: number }>(
-        `${CURRENT_PAGE_SELECT} WHERE p.id = $1 FOR UPDATE OF p`,
+        `${CURRENT_PAGE_SELECT} WHERE p.id = $1 AND p.automation_id IS NULL FOR UPDATE OF p`,
         [pageId],
       );
       if (!current.rowCount) return null;
@@ -114,15 +185,45 @@ export class PageRepository {
     });
   }
 
+  async updateForAutomation(input: UpdateAutomationPageInput, actor: Actor) {
+    return transaction(this.pool, async (client) => {
+      const automationId = await this.claimedAutomationId(client, input.run_id, input.claim_token, actor.subject);
+      const current = await client.query<{ version_number: number }>(
+        `${CURRENT_PAGE_SELECT} WHERE p.id=$1 AND p.automation_id=$2 FOR UPDATE OF p`,
+        [input.page_id, automationId],
+      );
+      if (!current.rowCount) throw new AutomationContentAccessError();
+      const currentVersion = current.rows[0]!.version_number;
+      if (currentVersion !== input.expected_version_number) throw new VersionConflictError(currentVersion);
+      const path = automationKnowledgePath(automationId, input.relative_path);
+      const versionId = randomUUID();
+      await client.query(
+        `INSERT INTO knowledge_page_versions(
+          id,page_id,version_number,path,title,body_markdown,
+          commit_message,actor_kind,actor_subject
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [versionId, input.page_id, currentVersion + 1, path, input.title, input.body_markdown, input.commit_message, actor.kind, actor.subject],
+      );
+      await client.query(
+        `UPDATE knowledge_pages SET current_path=$2,current_version_id=$3,updated_at=now()
+         WHERE id=$1`,
+        [input.page_id, path, versionId],
+      );
+      await insertAssetLinks(client, versionId, input.body_markdown);
+      return this.getWith(client, input.page_id);
+    });
+  }
+
   async archive(pageId: string, input: ArchivePageInput, actor: Actor) {
     return transaction(this.pool, async (client) => {
+      await this.assertNoActiveAutomationClaim(client, actor);
       const current = await client.query<{
         version_number: number;
         current_path: string;
         title: string;
         body_markdown: string;
         published_version_id: string | null;
-      }>(`${CURRENT_PAGE_SELECT} WHERE p.id = $1 FOR UPDATE OF p`, [pageId]);
+      }>(`${CURRENT_PAGE_SELECT} WHERE p.id = $1 AND p.automation_id IS NULL FOR UPDATE OF p`, [pageId]);
       if (!current.rowCount) return null;
       const row = current.rows[0]!;
       if (row.version_number !== input.expected_version_number) throw new VersionConflictError(row.version_number);
@@ -140,6 +241,36 @@ export class PageRepository {
       );
       await insertAssetLinks(client, versionId, row.body_markdown);
       return this.getWith(client, pageId);
+    });
+  }
+
+  async archiveForAutomation(input: ArchiveAutomationPageInput, actor: Actor) {
+    return transaction(this.pool, async (client) => {
+      const automationId = await this.claimedAutomationId(client, input.run_id, input.claim_token, actor.subject);
+      const current = await client.query<{
+        version_number: number;
+        current_path: string;
+        title: string;
+        body_markdown: string;
+        published_version_id: string | null;
+      }>(`${CURRENT_PAGE_SELECT} WHERE p.id=$1 AND p.automation_id=$2 FOR UPDATE OF p`, [input.page_id, automationId]);
+      if (!current.rowCount) throw new AutomationContentAccessError();
+      const row = current.rows[0]!;
+      if (row.version_number !== input.expected_version_number) throw new VersionConflictError(row.version_number);
+      if (row.published_version_id) throw new PublicationStateError();
+      const versionId = randomUUID();
+      await client.query(
+        `INSERT INTO knowledge_page_versions(
+          id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [versionId, input.page_id, row.version_number + 1, row.current_path, row.title, row.body_markdown, input.commit_message, actor.kind, actor.subject],
+      );
+      await client.query(
+        `UPDATE knowledge_pages SET current_version_id=$2,archived_at=now(),updated_at=now() WHERE id=$1`,
+        [input.page_id, versionId],
+      );
+      await insertAssetLinks(client, versionId, row.body_markdown);
+      return this.getWith(client, input.page_id);
     });
   }
 

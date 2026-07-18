@@ -88,6 +88,9 @@ describeDatabase("PostgreSQL security roles", () => {
       "SELECT has_column_privilege('context_use_mcp','automation_skill_versions','instructions_markdown','INSERT') AS allowed",
     )).rows[0]?.allowed).toBe(true);
     expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp','automation_skill_versions','description','INSERT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','INSERT') AS allowed",
     )).rows[0]?.allowed).toBe(true);
     expect((await admin.query<{ allowed: boolean }>(
@@ -101,6 +104,12 @@ describeDatabase("PostgreSQL security roles", () => {
     )).rows[0]?.allowed).toBe(true);
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_dashboard','automation_runs','status','UPDATE') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp','knowledge_pages','automation_id','INSERT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp','knowledge_pages','automation_id','UPDATE') AS allowed",
     )).rows[0]?.allowed).toBe(false);
   });
 

@@ -1,9 +1,11 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { Pool } from "pg";
 import {
+  AutomationContentAccessError,
   AutomationClaimError,
   AutomationRepository,
   AutomationVersionConflictError,
+  PageRepository,
 } from "../src/index.ts";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -14,9 +16,17 @@ const describeMcpDatabase = databaseUrl && mcpDatabaseUrl ? describe : describe.
 describeDatabase("persisted automation lifecycle", () => {
   const pool = new Pool({ connectionString: databaseUrl });
   const automations = new AutomationRepository(pool);
+  const pages = new PageRepository(pool);
   const skillIds: string[] = [];
+  const pageIds: string[] = [];
 
   afterAll(async () => {
+    for (const pageId of pageIds) {
+      await pool.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
+      await pool.query("DELETE FROM knowledge_pages WHERE id=$1", [pageId]);
+      await pool.query("ALTER TABLE knowledge_pages ENABLE TRIGGER ALL");
+      await pool.query("DELETE FROM knowledge_page_versions WHERE page_id=$1", [pageId]);
+    }
     for (const skillId of skillIds) {
       await pool.query("DELETE FROM automation_runs WHERE skill_version_id IN (SELECT id FROM automation_skill_versions WHERE skill_id=$1)", [skillId]);
       await pool.query("DELETE FROM cron_schedules WHERE skill_version_id IN (SELECT id FROM automation_skill_versions WHERE skill_id=$1)", [skillId]);
@@ -31,7 +41,8 @@ describeDatabase("persisted automation lifecycle", () => {
   test("versions a skill, materializes a due run, and binds completion to the claimant", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     const skill = await automations.createSkill({
-      name: `Review context ${suffix}`,
+      name: `review-context-${suffix}`,
+      description: "Reviews current project context. Use for a scheduled project health check.",
       instructions_markdown: "Read the current project page and persist a short review.",
       commit_message: "Create review skill",
     }, { kind: "dashboard", subject: "integration-test-owner" });
@@ -50,19 +61,85 @@ describeDatabase("persisted automation lifecycle", () => {
     const claimed = await automations.claimDueRun("agent-one");
     expect(claimed).toMatchObject({
       schedule_name: `Morning review ${suffix}`,
-      skill_name: `Review context ${suffix}`,
+      skill_name: `review-context-${suffix}`,
       skill_version_number: 1,
+      description: "Reviews current project context. Use for a scheduled project health check.",
       instructions_markdown: "Read the current project page and persist a short review.",
       input: { project: "context-use" },
       attempt_count: 1,
     });
+    expect(claimed.skill_markdown).toBe(`---
+name: review-context-${suffix}
+description: "Reviews current project context. Use for a scheduled project health check."
+---
+
+Read the current project page and persist a short review.`);
     expect(await automations.claimDueRun("agent-two")).toBeNull();
+
+    const generated = await pages.createForAutomation({
+      run_id: claimed.run_id,
+      claim_token: claimed.claim_token,
+      relative_path: "reviews/latest",
+      title: "Latest project review",
+      body_markdown: "Related to [[projects/context-use]].",
+      commit_message: "Create generated review",
+    }, { kind: "mcp", subject: "agent-one" });
+    pageIds.push(generated.id);
+    expect(generated).toMatchObject({
+      automation_id: schedule.id,
+      current_path: `generated/automations/${schedule.id}/reviews/latest`,
+    });
+    await expect(pages.create({
+      path: "notes/outside-automation-folder",
+      title: "Outside automation folder",
+      body_markdown: "Must fail while the client holds a run claim.",
+      commit_message: "Attempt generic run output",
+    }, { kind: "mcp", subject: "agent-one" })).rejects.toBeInstanceOf(AutomationContentAccessError);
+    await expect(pages.update(generated.id, {
+      path: generated.current_path,
+      title: generated.title,
+      body_markdown: "Attempt a generic update.",
+      commit_message: "Attempt generic update",
+      expected_version_number: generated.version_number,
+    }, { kind: "mcp", subject: "agent-one" })).rejects.toBeInstanceOf(AutomationContentAccessError);
+    await expect(pool.query(
+      `INSERT INTO publication_intents(
+        id,action,target_kind,target_id,version_id,public_slug,owner_user_id,
+        session_id,challenge,payload_hash,expires_at
+       ) VALUES ($1,'publish','page',$2,$3,'generated-review','owner','session',$4,$5,now()+interval '5 minutes')`,
+      [crypto.randomUUID(), generated.id, generated.current_version_id, `challenge-${crypto.randomUUID()}`, "a".repeat(64)],
+    )).rejects.toThrow();
+
     await expect(automations.completeRun(claimed.run_id, claimed.claim_token, "agent-two", "spoofed"))
       .rejects.toBeInstanceOf(AutomationClaimError);
     expect(await automations.completeRun(claimed.run_id, claimed.claim_token, "agent-one", "Review saved"))
       .toMatchObject({ status: "succeeded", result_summary: "Review saved" });
+    expect(await pages.update(generated.id, {
+      path: generated.current_path,
+      title: generated.title,
+      body_markdown: "Attempt a generic update after completion.",
+      commit_message: "Attempt generic update",
+      expected_version_number: generated.version_number,
+    }, { kind: "mcp", subject: "agent-one" })).toBeNull();
+    await expect(pages.create({
+      path: `generated/automations/${schedule.id}/unowned`,
+      title: "Unowned generated page",
+      body_markdown: "Must fail.",
+      commit_message: "Attempt reserved path",
+    }, { kind: "mcp", subject: "agent-one" })).rejects.toThrow();
+    await expect(pages.updateForAutomation({
+      run_id: claimed.run_id,
+      claim_token: claimed.claim_token,
+      page_id: generated.id,
+      relative_path: "reviews/latest",
+      title: "Expired update",
+      body_markdown: "Must fail after completion.",
+      commit_message: "Attempt expired update",
+      expected_version_number: generated.version_number,
+    }, { kind: "mcp", subject: "agent-one" })).rejects.toBeInstanceOf(AutomationContentAccessError);
 
     const updated = await automations.updateSkill(skill.id, {
+      description: "Reviews project context and records decisions. Use for a scheduled project health check.",
       instructions_markdown: "Read the project page, review it, and persist decisions.",
       commit_message: "Persist review decisions",
       expected_version_number: 1,
@@ -78,6 +155,7 @@ describeDatabase("persisted automation lifecycle", () => {
     expect((await automations.listRuns()).find((run) => run.id === secondClaim.run_id))
       .toMatchObject({ status: "failed", error_message: "Required tool unavailable" });
     await expect(automations.updateSkill(skill.id, {
+      description: "Attempts a stale update. Use only in this test.",
       instructions_markdown: "Stale edit",
       commit_message: "Attempt stale edit",
       expected_version_number: 1,
@@ -107,7 +185,8 @@ describeMcpDatabase("MCP automation authoring role", () => {
   test("creates a skill and cron schedule without definition update privileges", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     const skill = await automations.createSkill({
-      name: `MCP review ${suffix}`,
+      name: `mcp-review-${suffix}`,
+      description: "Reviews project context. Use for an MCP-created scheduled review.",
       instructions_markdown: "Review the current project and record decisions.",
       commit_message: "Create MCP review skill",
     }, { kind: "mcp", subject: "integration-test-client" });
@@ -128,6 +207,7 @@ describeMcpDatabase("MCP automation authoring role", () => {
       timezone: "Europe/London",
     });
     await expect(automations.updateSkill(skill.id, {
+      description: "Attempts an MCP update. Use only in this test.",
       instructions_markdown: "Attempt an update.",
       commit_message: "Attempt MCP skill update",
       expected_version_number: 1,
