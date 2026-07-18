@@ -12,7 +12,7 @@ The public site is deliberately separate: a page or asset becomes public only af
 - Passkey-protected publishing, republishing, slug changes, and unpublishing with the same immutable credential.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
 - Stateless Streamable HTTP MCP at `/mcp` with knowledge, asset-read, and automation execution tools.
-- Versioned Markdown automation skills, time-zone-aware cron schedules, durable run history, and leased agent execution.
+- Versioned, discoverable Agent Skills; time-zone-aware automations; isolated generated knowledge; durable run history; and leased agent execution.
 - Exact published snapshots at `/p/:slug` and independently published assets on a cookieless hostname.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
 
@@ -81,21 +81,26 @@ Point an OAuth-capable MCP client at:
 https://YOUR_HOST/mcp
 ```
 
-The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
+The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `skills:read`, `skills:write`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
 
-Skills and schedules can be created in the owner dashboard under **Automations** or through the MCP `create_automation_skill` and `create_cron_schedule` tools. Creating a skill returns its current version ID, which is the `skill_version_id` required to create a schedule. Context Use does not require a resident scheduler process: loading the dashboard or calling `claim_due_run` transactionally materializes elapsed schedules. The first version creates one catch-up run per schedule and skips additional occurrences missed while nobody was polling.
+Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification): a standard name and short description form the discovery layer, while instructions load only after selection. MCP agents use `list_skills`, `get_skill`, and `create_skill`. Automations live separately under **Automations** and can also be created with `create_automation`. Creating a skill returns its current version ID, which is the `skill_version_id` required by an automation.
+
+Every automation owns one stable virtual folder at `generated/automations/<automation-id>`. While an MCP client holds an active run claim, its generic page writes are disabled; run output requires the automation page tools and the valid run ID and claim token. The server resolves relative paths inside that folder. Database constraints reject ordinary pages in the reserved tree, automation pages outside their owner folder, generic edits to generated pages, and publication of generated pages.
+
+Context Use does not require a resident scheduler process: loading the dashboard or calling `claim_due_run` transactionally materializes elapsed schedules. The first version creates one catch-up run per automation and skips additional occurrences missed while nobody was polling.
 
 Any connected agent can use the same generic external cron prompt:
 
 ```text
 Check Context Use for scheduled work. Call claim_due_run. If it returns a run,
-follow the supplied skill instructions using the supplied input. When finished,
-call complete_run with the run ID and claim token; if the work cannot be
-completed, call fail_run with a concise error. Continue until claim_due_run
+follow its SKILL.md using the supplied input. Persist run output only with the
+automation page tools and the supplied run ID and claim token; those tools
+confine writes to the returned knowledge path. When finished, call complete_run;
+if the work cannot be completed, call fail_run. Continue until claim_due_run
 returns null.
 ```
 
-Claims are atomic and leased for six hours. Runs, inputs, skill versions, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
+Claims are atomic and leased for six hours. Runs, inputs, skill versions, knowledge ownership, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
 
 ## Development
 

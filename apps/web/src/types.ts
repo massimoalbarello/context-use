@@ -4,6 +4,7 @@ export type Page = {
   current_version_id: string;
   published_version_id: string | null;
   public_slug: string | null;
+  automation_id: string | null;
   archived_at: string | null;
   version_number: number;
   title: string;
@@ -62,7 +63,9 @@ export type AutomationSkill = {
   name: string;
   current_version_id: string;
   version_number: number;
+  description: string;
   instructions_markdown: string;
+  skill_markdown: string;
   commit_message: string;
   version_created_at: string;
   schedule_count: number;
@@ -82,6 +85,8 @@ export type CronSchedule = {
   input: Record<string, unknown>;
   enabled: boolean;
   next_run_at: string;
+  knowledge_path: string;
+  generated_page_count: number;
   ready_count: number;
   claimed_count: number;
   last_completed_at: string | null;

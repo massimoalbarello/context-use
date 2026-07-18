@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
+  createAutomationPageSchema,
+  createAutomationSkillSchema,
   AssetPath,
   createCronScheduleSchema,
   createPageSchema,
@@ -57,6 +59,40 @@ describe("strict mutation schemas", () => {
       cron_expression: "0 9 * * *",
       timezone: "Europe/London",
       capabilities: ["browser"],
+    }).success).toBe(false);
+  });
+
+  test("skills require standard discovery metadata", () => {
+    expect(createAutomationSkillSchema.safeParse({
+      name: "review-project-context",
+      description: "Reviews project context. Use when preparing a project health check.",
+      instructions_markdown: "Inspect the project and record the result.",
+      commit_message: "Create review skill",
+    }).success).toBe(true);
+    expect(createAutomationSkillSchema.safeParse({
+      name: "Review Project Context",
+      description: "Too display-like",
+      instructions_markdown: "Inspect the project.",
+      commit_message: "Create invalid skill",
+    }).success).toBe(false);
+  });
+
+  test("automation page writes accept relative paths rather than arbitrary knowledge paths", () => {
+    expect(createAutomationPageSchema.safeParse({
+      run_id: pageId,
+      claim_token: versionId,
+      relative_path: "reports/weekly-review",
+      title: "Weekly review",
+      body_markdown: "Linked to [[projects/context-use]].",
+      commit_message: "Create weekly review",
+    }).success).toBe(true);
+    expect(createAutomationPageSchema.safeParse({
+      run_id: pageId,
+      claim_token: versionId,
+      relative_path: "../projects/context-use",
+      title: "Escape",
+      body_markdown: "No",
+      commit_message: "Attempt path escape",
     }).success).toBe(false);
   });
 });

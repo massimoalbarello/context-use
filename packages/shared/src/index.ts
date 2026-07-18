@@ -16,9 +16,22 @@ export const PublicSlug = z
   .max(160)
   .regex(/^[a-z0-9][a-z0-9-]*$/);
 export const AutomationName = z.string().trim().min(1).max(160);
+export const SkillName = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and single hyphens only");
+export const SkillDescription = z.string().trim().min(1).max(1024);
 export const CronExpression = z.string().trim().min(9).max(160);
 export const TimeZone = z.string().trim().min(1).max(100);
 export const AutomationInput = z.record(z.string(), z.unknown());
+export const AutomationRelativePath = z
+  .string()
+  .min(1)
+  .max(430)
+  .regex(/^[a-z0-9][a-z0-9/_-]*$/, "Use lowercase path segments only")
+  .refine((value) => !value.includes("//") && !value.endsWith("/"), "Invalid relative path");
 
 export const createPageSchema = z
   .object({
@@ -68,12 +81,14 @@ export const publicationIntentSchema = z
   });
 
 export const createAutomationSkillSchema = z.object({
-  name: AutomationName,
+  name: SkillName,
+  description: SkillDescription,
   instructions_markdown: z.string().trim().min(1).max(2_000_000),
   commit_message: CommitMessage,
 }).strict();
 
 export const updateAutomationSkillSchema = z.object({
+  description: SkillDescription,
   instructions_markdown: z.string().trim().min(1).max(2_000_000),
   commit_message: CommitMessage,
   expected_version_number: z.number().int().positive(),
@@ -92,6 +107,29 @@ export const updateCronScheduleSchema = createCronScheduleSchema.extend({
   enabled: z.boolean(),
 }).strict();
 
+const automationRunAccessSchema = z.object({
+  run_id: UUID,
+  claim_token: UUID,
+}).strict();
+
+export const createAutomationPageSchema = automationRunAccessSchema.extend({
+  relative_path: AutomationRelativePath,
+  title: z.string().trim().min(1).max(240),
+  body_markdown: z.string().max(2_000_000),
+  commit_message: CommitMessage,
+}).strict();
+
+export const updateAutomationPageSchema = createAutomationPageSchema.extend({
+  page_id: UUID,
+  expected_version_number: z.number().int().positive(),
+}).strict();
+
+export const archiveAutomationPageSchema = automationRunAccessSchema.extend({
+  page_id: UUID,
+  commit_message: CommitMessage,
+  expected_version_number: z.number().int().positive(),
+}).strict();
+
 export type CreatePageInput = z.infer<typeof createPageSchema>;
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
@@ -100,6 +138,9 @@ export type CreateAutomationSkillInput = z.infer<typeof createAutomationSkillSch
 export type UpdateAutomationSkillInput = z.infer<typeof updateAutomationSkillSchema>;
 export type CreateCronScheduleInput = z.infer<typeof createCronScheduleSchema>;
 export type UpdateCronScheduleInput = z.infer<typeof updateCronScheduleSchema>;
+export type CreateAutomationPageInput = z.infer<typeof createAutomationPageSchema>;
+export type UpdateAutomationPageInput = z.infer<typeof updateAutomationPageSchema>;
+export type ArchiveAutomationPageInput = z.infer<typeof archiveAutomationPageSchema>;
 
 export type Actor = {
   kind: "dashboard" | "mcp";
@@ -112,6 +153,7 @@ export type Page = {
   current_version_id: string;
   published_version_id: string | null;
   public_slug: string | null;
+  automation_id: string | null;
   archived_at: string | null;
   version_number: number;
   title: string;
@@ -136,6 +178,8 @@ export const MCP_SCOPES = [
   "kb:read",
   "kb:write",
   "assets:read",
+  "skills:read",
+  "skills:write",
   "automations:write",
   "automations:claim",
   "automations:execute",

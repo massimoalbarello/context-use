@@ -16,6 +16,7 @@ function page(id: string, currentPath: string, title: string): Page {
     current_version_id: `version-${id}`,
     published_version_id: null,
     public_slug: null,
+    automation_id: null,
     archived_at: null,
     version_number: 1,
     title,

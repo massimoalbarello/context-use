@@ -40,6 +40,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   const publishedVersion = history.find((version) => version.id === page.published_version_id);
   const publishedVersionNumber = publishedVersion?.version_number;
   const hasUnpublishedChanges = Boolean(page.published_version_id && page.published_version_id !== page.current_version_id);
+  const automationOwned = Boolean(page.automation_id);
 
   const edit = () => {
     setDraft({ path: page.current_path, title: page.title, body_markdown: page.body_markdown });
@@ -94,21 +95,22 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     <header className="editor-header">
       <div><span className="path">{page.current_path}</span><h1>{page.title}</h1></div>
       <div className="button-row">
-        <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_slug}` : "Private"}</span>
-        {!page.archived_at && !page.published_version_id && <button onClick={archive}>Archive</button>}
-        {!page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
-        {!page.archived_at && page.published_version_id && hasUnpublishedChanges && publishedVersionNumber && <button onClick={() => setPublishingVersion(publishedVersionNumber)}>Manage public v{publishedVersionNumber}</button>}
-        {!page.archived_at && page.published_version_id && hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish latest</button>}
-        {!page.archived_at && page.published_version_id && !hasUnpublishedChanges && <button onClick={() => setPublishingVersion(page.version_number)}>Manage publication</button>}
+        <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : automationOwned ? "Automation-owned" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_slug}` : "Private"}</span>
+        {!automationOwned && !page.archived_at && !page.published_version_id && <button onClick={archive}>Archive</button>}
+        {!automationOwned && !page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
+        {!automationOwned && !page.archived_at && page.published_version_id && hasUnpublishedChanges && publishedVersionNumber && <button onClick={() => setPublishingVersion(publishedVersionNumber)}>Manage public v{publishedVersionNumber}</button>}
+        {!automationOwned && !page.archived_at && page.published_version_id && hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish latest</button>}
+        {!automationOwned && !page.archived_at && page.published_version_id && !hasUnpublishedChanges && <button onClick={() => setPublishingVersion(page.version_number)}>Manage publication</button>}
       </div>
     </header>
     {!isEditing && <nav className="tabs">
       <div>{(["preview", "history"] as const).map((item) => <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
-      {tab === "preview" && <button className="edit-page-button" onClick={edit} aria-label="Edit page">
+      {tab === "preview" && !automationOwned && <button className="edit-page-button" onClick={edit} aria-label="Edit page">
         <svg aria-hidden="true" viewBox="0 0 16 16"><path d="M11.7 2.3a1 1 0 0 1 1.4 0l.6.6a1 1 0 0 1 0 1.4l-8 8-3.2.7.7-3.2 8-8Z" /><path d="m9.8 4.2 2 2" /></svg>
         Edit
       </button>}
     </nav>}
+    {!isEditing && automationOwned && <div className="automation-owned-notice"><strong>Managed by an automation</strong><span>This page is private and read-only here. Only a valid run claim for its owning automation can update or archive it.</span></div>}
     {isEditing && <section className="edit-grid">
       <div className="edit-top">
         {page.published_version_id && <div className={`publication-notice${hasUnpublishedChanges ? " pending" : ""}`}>
@@ -135,7 +137,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
             <span className="commit-message">{version.commit_message}</span>
             <span>{version.actor_kind} · {new Date(version.created_at).toLocaleString()}</span>
           </div>
-          {!page.archived_at && <div className="version-actions">
+          {!automationOwned && !page.archived_at && <div className="version-actions">
             {isPublished && page.public_slug && <a className="button" href={`/p/${page.public_slug}`} target="_blank" rel="noreferrer">View public</a>}
             {isPublished
               ? <button onClick={() => setPublishingVersion(version.version_number)}>Manage</button>
