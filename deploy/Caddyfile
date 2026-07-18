@@ -63,5 +63,10 @@
 		Referrer-Policy no-referrer
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 	}
-	reverse_proxy app:3000
+	handle /api/public/assets/*/content {
+		reverse_proxy app:3000
+	}
+	handle {
+		respond "Not found" 404
+	}
 }

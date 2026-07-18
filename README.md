@@ -7,7 +7,7 @@ The public site is deliberately separate: a page or asset becomes public only af
 ## What v1 includes
 
 - Hierarchical Markdown pages with immutable versions, commit messages, history, and full-text search.
-- Private S3 assets with application-routed, checksum-bound uploads and five-minute authorized downloads.
+- Private S3 assets whose bytes are always streamed through scope-specific API routes, with checksum-bound uploads and revocation-aware downloads.
 - Passkey-only owner signup and sign-in, bound to the configured owner email through a one-time setup link.
 - Passkey-protected publishing, republishing, slug changes, and unpublishing with the same immutable credential.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
@@ -28,7 +28,8 @@ External ingestion, vault migration, approval queues, collaboration, and semanti
 | Owner publishing | Session + CSRF + exact origin + action-bound passkey assertion | Publication confirmation only |
 | Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
 | Agent asset upload | Short-lived, object-specific capability returned by authenticated MCP | Exact returned `/api/mcp/assets/:id/content` URL only |
-| Public visitor | None | `/p/*` and independently published assets |
+| Agent asset read | Five-minute, object-specific capability returned with `assets:read` | Exact returned `/api/mcp/assets/:id/content` URL only |
+| Public visitor | None | `/p/*` and independently published `/api/public/assets/:id/content` URLs on the asset hostname |
 | Public MCP client | None; credentials are rejected | `https://public.YOUR_HOST/mcp` only |
 | Deployment administrator | Local AWS identity | `context-use` CLI |
 
@@ -90,7 +91,9 @@ https://YOUR_HOST/mcp
 
 The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `assets:write`, `skills:read`, `skills:write`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
 
-With `assets:write`, `create_asset_upload` records private asset metadata and returns a fifteen-minute upload capability bound to that asset and OAuth grant. The agent then sends the exact raw bytes to the returned URL and headers. Size, content type, and SHA-256 are verified before storage; the capability cannot read, edit, delete, or publish anything. Existing OAuth grants must be reauthorized before they include the new scope.
+With `assets:write`, `create_asset_upload` records private asset metadata and returns a fifteen-minute upload capability bound to that asset and OAuth grant. The agent then sends the exact raw bytes to the returned API URL and headers. Size, content type, and SHA-256 are verified before storage; the capability cannot read, edit, delete, or publish anything. Existing OAuth grants must be reauthorized before they include the new scope.
+
+With `assets:read`, `get_asset` returns metadata plus a five-minute API download request bound to that exact asset, MCP client, owner, and live grant. The download route rechecks the grant and supports byte ranges for large media. It never returns or redirects to an S3 URL. Dashboard reads use the owner-session API route, while anonymous reads use the asset-host API route and resolve through the published-assets database view only.
 
 ### Public access
 
