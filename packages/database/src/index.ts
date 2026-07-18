@@ -31,3 +31,8 @@ export {
   wikiLinkCandidatePaths,
   type WikiLink,
 } from "./links.ts";
+export {
+  InboxRepository,
+  PublicMessageRepository,
+  type InboundMessage,
+} from "./messages.ts";

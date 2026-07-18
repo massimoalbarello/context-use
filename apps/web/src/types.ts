@@ -58,6 +58,13 @@ export type ConnectedClient = {
   last_used_at: string | null;
 };
 
+export type InboundMessage = {
+  id: string;
+  reply_to: string;
+  message: string;
+  created_at: string;
+};
+
 export type AutomationSkill = {
   id: string;
   name: string;

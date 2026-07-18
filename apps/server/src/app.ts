@@ -8,6 +8,7 @@ import {
   AutomationRepository,
   AutomationValidationError,
   AutomationVersionConflictError,
+  InboxRepository,
   PageRepository,
   PublicationRepository,
   PublicRepository,
@@ -58,6 +59,7 @@ const publisherPool = createPool(config.PUBLISHER_DATABASE_URL);
 const dashboardPages = new PageRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
 const dashboardAutomations = new AutomationRepository(dashboardPool);
+const dashboardInbox = new InboxRepository(dashboardPool);
 const mcpPages = new PageRepository(mcpPool);
 const mcpAssets = new AssetRepository(mcpPool);
 const mcpAutomations = new AutomationRepository(mcpPool);
@@ -275,6 +277,10 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       [principal.userId],
     );
     return json(result.rows);
+  })
+  .get("/api/dashboard/messages", async ({ request }) => {
+    const principal = await ownerRequest(request);
+    return json(await dashboardInbox.listForOwner(principal.userId));
   })
   .get("/api/dashboard/oauth-client-preview", async ({ request, query }) => {
     await ownerRequest(request);

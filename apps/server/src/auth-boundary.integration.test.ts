@@ -46,6 +46,8 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   test("anonymous private access is rejected while malformed public identifiers are indistinguishable", async () => {
     const dashboard = await application!.handle(new Request("http://localhost:3000/api/dashboard/pages"));
     expect(dashboard.status).toBe(401);
+    const inbox = await application!.handle(new Request("http://localhost:3000/api/dashboard/messages"));
+    expect(inbox.status).toBe(401);
     const malformedPage = await application!.handle(new Request("http://localhost:3000/p/INVALID"));
     const missingPage = await application!.handle(new Request("http://localhost:3000/p/missing-page"));
     expect(malformedPage.status).toBe(404);
