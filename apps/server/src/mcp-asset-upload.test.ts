@@ -42,7 +42,7 @@ function fixture(grantActive = true) {
 }
 
 function uploadRequest(token: string, body: Uint8Array = bytes, headers: Record<string, string> = {}) {
-  return new Request(`https://context.example.com/api/mcp/assets/${assetId}/content`, {
+  return new Request(`http://localhost:3000/api/mcp/assets/${assetId}/content`, {
     method: "PUT",
     headers: {
       "content-type": "application/pdf",
@@ -96,5 +96,19 @@ describe("MCP asset upload capabilities", () => {
     const capability = createAssetUploadCapability({ assetId, clientId: "mcp-client", userId: "owner" });
     expect((await fixture().handler(uploadRequest(capability.token, bytes, { cookie: "session=forged" }), assetId)).status).toBe(401);
     expect((await fixture().handler(uploadRequest(capability.token, bytes, { authorization: "Bearer oauth-token" }), assetId)).status).toBe(401);
+  });
+
+  test("does not accept the capability on another origin", async () => {
+    const capability = createAssetUploadCapability({ assetId, clientId: "mcp-client", userId: "owner" });
+    const request = new Request(`https://assets.example.com/api/mcp/assets/${assetId}/content`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/pdf",
+        "content-length": String(bytes.byteLength),
+        "x-context-use-upload-token": capability.token,
+      },
+      body: new Blob([bytes.buffer]),
+    });
+    expect((await fixture().handler(request, assetId)).status).toBe(401);
   });
 });

@@ -12,7 +12,6 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "./config.ts";
 
 export type StoredAsset = {
@@ -24,19 +23,26 @@ export type StoredAsset = {
   contentHash: string;
 };
 
+export type ByteRange = { start: number; end: number };
+
 export interface ObjectStorage {
   write(asset: StoredAsset, body: ReadableStream<Uint8Array> | null): Promise<void>;
-  createDownload(asset: Pick<StoredAsset, "objectKey" | "filename" | "contentType">, inline?: boolean): Promise<string>;
   delete(objectKey: string): Promise<void>;
-  read(objectKey: string): Promise<BodyInit>;
+  read(objectKey: string, range?: ByteRange): Promise<BodyInit>;
   verify(objectKey: string, sizeBytes: number, contentHash: string): Promise<boolean>;
-  localFile?(objectKey: string): Bun.BunFile;
 }
 
 export class AssetIntegrityError extends Error {
   constructor(message = "Asset bytes failed integrity verification") {
     super(message);
     this.name = "AssetIntegrityError";
+  }
+}
+
+export class AssetNotFoundError extends Error {
+  constructor(message = "Asset bytes are missing") {
+    super(message);
+    this.name = "AssetNotFoundError";
   }
 }
 
@@ -81,30 +87,26 @@ class S3Storage implements ObjectStorage {
     }
   }
 
-  async createDownload(
-    asset: Pick<StoredAsset, "objectKey" | "filename" | "contentType">,
-    inline = false,
-  ): Promise<string> {
-    return getSignedUrl(
-      this.client,
-      new GetObjectCommand({
-        Bucket: config.ASSET_BUCKET,
-        Key: asset.objectKey,
-        ResponseContentType: asset.contentType,
-        ResponseContentDisposition: contentDisposition(asset.filename, inline && mayRenderInline(asset.contentType)),
-      }),
-      { expiresIn: 300 },
-    );
-  }
-
   async delete(objectKey: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: config.ASSET_BUCKET, Key: objectKey }));
   }
 
-  async read(objectKey: string): Promise<BodyInit> {
-    const result = await this.client.send(new GetObjectCommand({ Bucket: config.ASSET_BUCKET, Key: objectKey }));
-    if (!result.Body) throw new Error("Asset bytes are missing");
-    return result.Body.transformToWebStream() as BodyInit;
+  async read(objectKey: string, range?: ByteRange): Promise<BodyInit> {
+    try {
+      const result = await this.client.send(new GetObjectCommand({
+        Bucket: config.ASSET_BUCKET,
+        Key: objectKey,
+        ...(range ? { Range: `bytes=${range.start}-${range.end}` } : {}),
+      }));
+      if (!result.Body) throw new AssetNotFoundError();
+      return result.Body.transformToWebStream() as BodyInit;
+    } catch (error) {
+      if (error instanceof AssetNotFoundError) throw error;
+      if (error instanceof Error && ["NoSuchKey", "NotFound"].includes(error.name)) {
+        throw new AssetNotFoundError();
+      }
+      throw error;
+    }
   }
 
   async verify(objectKey: string, sizeBytes: number, contentHash: string): Promise<boolean> {
@@ -128,10 +130,6 @@ export class FilesystemStorage implements ObjectStorage {
     const path = resolve(this.root, objectKey);
     if (!path.startsWith(`${this.root}/`)) throw new Error("Invalid object key");
     return path;
-  }
-
-  async createDownload(asset: Pick<StoredAsset, "objectKey">): Promise<string> {
-    return `${config.APP_ORIGIN}/api/dashboard/assets/object/${encodeURIComponent(asset.objectKey)}`;
   }
 
   async write(asset: StoredAsset, body: ReadableStream<Uint8Array> | null): Promise<void> {
@@ -164,10 +162,10 @@ export class FilesystemStorage implements ObjectStorage {
     if (await file.exists()) await file.delete();
   }
 
-  async read(objectKey: string): Promise<BodyInit> {
+  async read(objectKey: string, range?: ByteRange): Promise<BodyInit> {
     const file = Bun.file(this.path(objectKey));
-    if (!(await file.exists())) throw new Error("Asset bytes are missing");
-    return file;
+    if (!(await file.exists())) throw new AssetNotFoundError();
+    return range ? file.slice(range.start, range.end + 1) : file;
   }
 
   async verify(objectKey: string, sizeBytes: number, contentHash: string): Promise<boolean> {
@@ -176,10 +174,6 @@ export class FilesystemStorage implements ObjectStorage {
     const hash = createHash("sha256");
     for await (const chunk of createReadStream(file.name!)) hash.update(chunk);
     return hash.digest("hex") === contentHash;
-  }
-
-  localFile(objectKey: string): Bun.BunFile {
-    return Bun.file(this.path(objectKey));
   }
 }
 

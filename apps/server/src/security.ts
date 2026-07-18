@@ -4,6 +4,16 @@ import type { DashboardPrincipal } from "./auth.ts";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+export function requestMatchesOrigin(request: Request, expectedOrigin: string): boolean {
+  const actual = new URL(request.url);
+  const expected = new URL(expectedOrigin);
+  if (actual.host !== expected.host) return false;
+  if (actual.protocol === expected.protocol) return true;
+  return actual.protocol === "http:"
+    && expected.protocol === "https:"
+    && request.headers.get("x-forwarded-proto") === "https";
+}
+
 function constantTimeTextEqual(left: string, right: string): boolean {
   const a = Buffer.from(left);
   const b = Buffer.from(right);

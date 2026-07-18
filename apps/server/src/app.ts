@@ -37,19 +37,23 @@ import type { AuthenticationResponseJSON, AuthenticatorTransportFuture } from "@
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { auth, authPool, dashboardPrincipal } from "./auth.ts";
+import { assetContentResponse } from "./asset-content.ts";
 import { config, production } from "./config.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
 import { createMcpRequestHandler, isMcpGrantActive } from "./mcp.ts";
+import { createMcpAssetDownloadHandler } from "./mcp-asset-download.ts";
 import { createMcpAssetUploadHandler } from "./mcp-asset-upload.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
+import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import {
   SecurityError,
   assertDashboardRequestSecurity,
   assertDashboardUploadSecurity,
   csrfToken,
+  requestMatchesOrigin,
   securityHeaders,
 } from "./security.ts";
-import { AssetIntegrityError, contentDisposition, mayRenderInline, storage } from "./storage.ts";
+import { AssetIntegrityError, storage } from "./storage.ts";
 import { requireAuthenticationUserVerification } from "./webauthn-policy.ts";
 
 const dashboardPool = createPool(config.DATABASE_URL);
@@ -66,8 +70,10 @@ const mcpAssets = new AssetRepository(mcpPool);
 const mcpAutomations = new AutomationRepository(mcpPool);
 const publicData = new PublicRepository(publicPool);
 const publications = new PublicationRepository(dashboardPool, publisherPool);
-const mcp = createMcpRequestHandler(mcpPages, mcpAssets, mcpAutomations, storage);
+const mcp = createMcpRequestHandler(mcpPages, mcpAssets, mcpAutomations);
 const mcpAssetUpload = createMcpAssetUploadHandler(mcpAssets, storage, isMcpGrantActive);
+const mcpAssetDownload = createMcpAssetDownloadHandler(mcpAssets, storage, isMcpGrantActive);
+const publicAssetContent = createPublicAssetContentHandler(publicData, storage, config.ASSET_ORIGIN);
 
 const authServerMetadata = oauthProviderAuthServerMetadata(auth as never);
 const openIdMetadata = oauthProviderOpenIdConfigMetadata(auth as never);
@@ -90,6 +96,7 @@ async function bodyJson(request: Request): Promise<unknown> {
 }
 
 async function ownerRequest(request: Request, mutation = false) {
+  if (!requestMatchesOrigin(request, config.APP_ORIGIN)) throw new SecurityError("Not found", 404);
   const principal = await dashboardPrincipal(request);
   if (!principal) throw new SecurityError("Dashboard session required", 401);
   if (mutation) assertDashboardRequestSecurity(request, principal);
@@ -155,7 +162,9 @@ function publicPageResolvers(sourcePath: string) {
     },
     asset: async (id: string) => {
       const asset = await publicData.asset(id);
-      return asset ? { available: true as const, href: `${config.ASSET_ORIGIN}/${id}` } : { available: false as const };
+      return asset
+        ? { available: true as const, href: `${config.ASSET_ORIGIN}/api/public/assets/${id}/content` }
+        : { available: false as const };
     },
   };
 }
@@ -227,6 +236,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .post("/mcp", ({ request }) => mcp(request))
   .delete("/mcp", ({ request }) => mcp(request))
   .put("/api/mcp/assets/:id/content", ({ request, params }) => mcpAssetUpload(request, params.id))
+  .get("/api/mcp/assets/:id/content", ({ request, params }) => mcpAssetDownload(request, params.id))
 
   .get("/app", async () => {
     const file = webFile("index.html");
@@ -492,17 +502,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     await ownerRequest(request);
     const asset = await dashboardAssets.get(z.string().uuid().parse(params.id), true);
     if (!asset) return problem("Asset not found", 404, "not_found");
-    if (storage.localFile) {
-      const file = storage.localFile(asset.s3_object_key);
-      if (!(await file.exists())) return problem("Asset bytes not found", 404, "not_found");
-      return new Response(file, { headers: { ...securityHeaders, "content-type": asset.content_type } });
-    }
-    const location = await storage.createDownload({
-      objectKey: asset.s3_object_key,
-      filename: asset.filename,
-      contentType: asset.content_type,
-    }, mayRenderInline(asset.content_type));
-    return new Response(null, { status: 302, headers: { ...securityHeaders, location } });
+    return assetContentResponse(request, asset, storage, true);
   })
   .delete("/api/dashboard/assets/:id", async ({ request, params }) => {
     await ownerRequest(request, true);
@@ -612,22 +612,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     "body{margin:0;background:#f7f7f4;color:#20201d;font:17px/1.65 ui-serif,Georgia,serif}.public-page{max-width:760px;margin:8vh auto;padding:0 24px}h1,h2,h3{line-height:1.2}a{color:#315a4a}.private-reference{color:#777;font-style:italic}pre{overflow:auto;padding:16px;background:#ecece7;border-radius:8px}img{max-width:100%;height:auto}",
     { headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" } },
   ))
-  .get("/:assetId", async ({ request, params }) => {
-    if (new URL(request.url).origin !== config.ASSET_ORIGIN) return new Response("Not found", { status: 404, headers: securityHeaders });
-    const assetId = z.string().uuid().safeParse(params.assetId);
-    if (!assetId.success) return new Response("Not found", { status: 404, headers: securityHeaders });
-    const asset = await publicData.asset(assetId.data);
-    if (!asset) return new Response("Not found", { status: 404, headers: securityHeaders });
-    const inline = mayRenderInline(asset.content_type);
-    return new Response(await storage.read(asset.s3_object_key), {
-      headers: {
-        ...securityHeaders,
-        "content-type": asset.content_type,
-        "content-length": String(asset.size_bytes),
-        "content-disposition": contentDisposition(asset.filename, inline),
-      },
-    });
-  });
+  .get("/api/public/assets/:assetId/content", ({ request, params }) => publicAssetContent(request, params.assetId));
 
 if (production) {
   console.info("security_mode", {

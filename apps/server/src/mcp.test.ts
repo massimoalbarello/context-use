@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { verifyAssetDownloadCapability } from "./mcp-asset-download.ts";
 import { createMcpServer } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
-import type { ObjectStorage } from "./storage.ts";
 
 const skillVersionId = "22222222-2222-4222-8222-222222222222";
 
@@ -34,14 +34,12 @@ function serverWith(
   scopes = new Set<string>(["skills:read", "skills:write", "automations:write"]),
   pages = {} as PageRepository,
   assets = {} as AssetRepository,
-  storage = {} as ObjectStorage,
 ) {
   return createMcpServer(
     { clientId: "mcp-client", userId: "owner", scopes },
     pages,
     assets,
     automations,
-    storage,
   );
 }
 
@@ -136,6 +134,49 @@ describe("MCP skill and automation authoring", () => {
     });
     expect(response.result?.isError).toBe(true);
     expect(response.result?.content?.[0]?.text).toContain("insufficient_scope:assets:write");
+  });
+
+  test("returns an API-proxied asset download without exposing storage keys", async () => {
+    const assets = {
+      async get() {
+        return {
+          id: "11111111-1111-4111-8111-111111111111",
+          current_path: "documents/private-pdf",
+          filename: "private.pdf",
+          content_type: "application/pdf",
+          size_bytes: 123,
+          content_hash: "a".repeat(64),
+          s3_object_key: "objects/secret-key",
+        };
+      },
+    } as unknown as AssetRepository;
+    const response = await mcpRequest(serverWith(
+      {} as AutomationRepository,
+      new Set(["assets:read"]),
+      {} as PageRepository,
+      assets,
+    ), {
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/call",
+      params: {
+        name: "get_asset",
+        arguments: { asset_id: "11111111-1111-4111-8111-111111111111" },
+      },
+    });
+
+    const result = JSON.parse(response.result?.content?.[0]?.text ?? "null");
+    expect(result.download).toMatchObject({
+      method: "GET",
+      url: "http://localhost:3000/api/mcp/assets/11111111-1111-4111-8111-111111111111/content",
+    });
+    expect(verifyAssetDownloadCapability(result.download.headers["x-context-use-download-token"])).toMatchObject({
+      assetId: "11111111-1111-4111-8111-111111111111",
+      clientId: "mcp-client",
+      userId: "owner",
+    });
+    expect(JSON.stringify(result)).not.toContain("secret-key");
+    expect(JSON.stringify(result)).not.toContain("amazonaws");
   });
 
   test("creates skills with MCP attribution and schedules their returned version", async () => {

@@ -5,6 +5,7 @@ import {
   assertDashboardRequestSecurity,
   assertDashboardUploadSecurity,
   csrfToken,
+  requestMatchesOrigin,
 } from "./security.ts";
 
 const principal: DashboardPrincipal = { userId: "owner", sessionId: "session", email: "owner@example.com" };
@@ -18,6 +19,21 @@ function mutation(headers: Record<string, string>) {
 }
 
 describe("dashboard mutation boundary", () => {
+  test("matches the configured host through the trusted TLS reverse proxy", () => {
+    expect(requestMatchesOrigin(
+      new Request("http://context.example/api/dashboard/pages", { headers: { "x-forwarded-proto": "https" } }),
+      "https://context.example",
+    )).toBe(true);
+    expect(requestMatchesOrigin(
+      new Request("http://assets.context.example/api/dashboard/pages", { headers: { "x-forwarded-proto": "https" } }),
+      "https://context.example",
+    )).toBe(false);
+    expect(requestMatchesOrigin(
+      new Request("http://context.example/api/dashboard/pages"),
+      "https://context.example",
+    )).toBe(false);
+  });
+
   test("accepts the same session's CSRF token with exact browser metadata", () => {
     expect(() => assertDashboardRequestSecurity(mutation({
       origin: "http://localhost:3000",

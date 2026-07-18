@@ -5,7 +5,7 @@ import { config } from "./config.ts";
 import { createMcpServer, type McpContext } from "./mcp-server.ts";
 import { createStatelessMcpTransport, unsupportedMcpMethodResponse } from "./mcp-transport.ts";
 import { ownerUserId } from "./owner.ts";
-import type { ObjectStorage } from "./storage.ts";
+import { requestMatchesOrigin } from "./security.ts";
 
 function mcpUnauthorized(message: string): Response {
   return new Response(message, {
@@ -63,11 +63,13 @@ export function createMcpRequestHandler(
   pages: PageRepository,
   assets: AssetRepository,
   automations: AutomationRepository,
-  storage: ObjectStorage,
 ) {
   const jwks = createRemoteJWKSet(new URL(`${config.APP_ORIGIN}/api/auth/jwks`));
 
   return async (request: Request): Promise<Response> => {
+    if (!requestMatchesOrigin(request, config.APP_ORIGIN)) {
+      return new Response("Not found", { status: 404, headers: { "cache-control": "no-store" } });
+    }
     if (request.headers.has("cookie")) return mcpUnauthorized("Cookie credentials are not accepted by MCP");
     const authorization = request.headers.get("authorization");
     const match = authorization?.match(/^Bearer ([A-Za-z0-9._~-]+)$/);
@@ -92,7 +94,7 @@ export function createMcpRequestHandler(
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();
-    const server = createMcpServer(context, pages, assets, automations, storage);
+    const server = createMcpServer(context, pages, assets, automations);
     await server.connect(transport);
     try {
       return await transport.handleRequest(request);

@@ -14,8 +14,8 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { config } from "./config.ts";
+import { createAssetDownloadCapability } from "./mcp-asset-download.ts";
 import { createAssetUploadCapability } from "./mcp-asset-upload.ts";
-import type { ObjectStorage } from "./storage.ts";
 
 export type McpContext = {
   clientId: string;
@@ -36,7 +36,6 @@ export function createMcpServer(
   pages: PageRepository,
   assets: AssetRepository,
   automations: AutomationRepository,
-  storage: ObjectStorage,
 ): McpServer {
   const server = new McpServer({ name: "context-use", version: "0.1.15" });
   const actor = { kind: "mcp" as const, subject: context.clientId };
@@ -123,20 +122,28 @@ export function createMcpServer(
   });
 
   server.registerTool("get_asset", {
-    description: "Get asset metadata and a five-minute authorized download URL.",
+    description: "Get asset metadata and a five-minute, API-proxied download request. Send every returned header to the exact URL before expires_at.",
     inputSchema: z.object({ asset_id: z.string().uuid() }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ asset_id }) => {
     requireScope(context, "assets:read");
     const asset = await assets.get(asset_id, true);
     if (!asset) return jsonContent(null);
-    const download_url = await storage.createDownload({
-      objectKey: asset.s3_object_key,
-      filename: asset.filename,
-      contentType: asset.content_type,
+    const capability = createAssetDownloadCapability({
+      assetId: asset.id,
+      clientId: context.clientId,
+      userId: context.userId,
     });
     const { s3_object_key: _hidden, ...metadata } = asset;
-    return jsonContent({ ...metadata, download_url, expires_in: 300 });
+    return jsonContent({
+      ...metadata,
+      download: {
+        method: "GET",
+        url: `${config.APP_ORIGIN}/api/mcp/assets/${encodeURIComponent(asset.id)}/content`,
+        headers: { "x-context-use-download-token": capability.token },
+        expires_at: capability.expiresAt,
+      },
+    });
   });
 
   server.registerTool("create_asset_upload", {
