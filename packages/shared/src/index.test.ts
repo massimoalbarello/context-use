@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  assetUploadSchema,
   createAutomationPageSchema,
   createAutomationSkillSchema,
   AssetPath,
@@ -17,6 +18,26 @@ describe("strict mutation schemas", () => {
     expect(AssetPath.safeParse("projects/acme/site-photo").success).toBe(true);
     expect(AssetPath.safeParse("Projects/acme/site-photo.jpg").success).toBe(false);
     expect(AssetPath.safeParse("projects//site-photo").success).toBe(false);
+  });
+
+  test("asset uploads bind private metadata to an exact checksum and size", () => {
+    expect(assetUploadSchema.safeParse({
+      path: "projects/acme/site-photo",
+      filename: "site-photo.jpg",
+      content_type: "image/jpeg",
+      size_bytes: 123,
+      sha256: "a".repeat(64),
+      width: 800,
+      height: 600,
+    }).success).toBe(true);
+    expect(assetUploadSchema.safeParse({
+      path: "projects/acme/site-photo",
+      filename: "site-photo.jpg",
+      content_type: "image/jpeg",
+      size_bytes: 123,
+      sha256: "A".repeat(64),
+      published_at: new Date().toISOString(),
+    }).success).toBe(false);
   });
 
   test("ordinary page writes reject publication fields", () => {

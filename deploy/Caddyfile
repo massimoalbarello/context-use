@@ -17,6 +17,12 @@
 		}
 		reverse_proxy app:3000
 	}
+	handle /api/mcp/assets/*/content {
+		request_body {
+			max_size 5GB
+		}
+		reverse_proxy app:3000
+	}
 	handle {
 		request_body {
 			max_size 3MB

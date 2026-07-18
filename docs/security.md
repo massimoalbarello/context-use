@@ -23,7 +23,7 @@ An agent cannot substitute its OAuth token for any step:
 - The dedicated public MCP origin's `/mcp` rejects both cookies and bearer credentials and has no network or routing path into the private origin's `/mcp`.
 - CSRF, exact `Origin`, same-site Fetch Metadata, JSON content type, and the dashboard session are required for mutations.
 - The agent never receives the host-only session cookie or passkey private key.
-- OAuth scopes separate knowledge, skill discovery/authoring, asset-read, and automation authoring/execution capabilities; none grants publication or dashboard access.
+- OAuth scopes separate knowledge, skill discovery/authoring, asset read/write, and automation authoring/execution capabilities; none grants publication or dashboard access.
 - MCP schemas are strict and have no visibility fields.
 - The MCP database role cannot update publication columns or execute the publication function.
 - The dashboard role can create an intent but cannot change publication columns.
@@ -35,7 +35,7 @@ The application opens independent pools using independent SCRAM credentials:
 
 - `context_use_auth`: Better Auth, passkeys, OAuth clients, grants, and sessions.
 - `context_use_dashboard`: private page, asset, and owner-filtered inbox reads; no inbox writes or direct publication updates.
-- `context_use_mcp`: page reads/writes, asset metadata reads, narrowly column-scoped skill and automation creation, and automation claiming/completion; no skill or automation definition updates, asset mutation, or publication.
+- `context_use_mcp`: page reads/writes, asset metadata reads, insert-only asset upload intents, narrowly column-scoped skill and automation creation, and automation claiming/completion; no asset update/delete, skill or automation definition updates, or publication.
 - `context_use_public`: `SELECT` only on `published_pages` and `published_assets` security-barrier views.
 - `context_use_public_mcp`: `SELECT` only on the lossy `public_mcp_pages` security-barrier view plus column-scoped `INSERT` on confidential inbound messages; no message reads, owner selection, other base-table, webpage-view, asset, or application-function capability.
 - `context_use_publisher`: execute-only publication capability.
@@ -50,6 +50,8 @@ Initial enrollment requires both a random installation setup capability and the 
 The owner passkey must be discoverable and WebAuthn user verification is enforced during both registration and authentication. Successful authentication creates a database-backed, revocable, uncached dashboard session lasting at most seven days with a twelve-hour idle limit. Production cookies are secure, HTTP-only, host-only, `SameSite=Lax`, and have no `Domain` attribute. The server rejects every additional registration, update, and deletion; the credential is immutable for the lifetime of the installation.
 
 MCP OAuth uses authorization code with mandatory PKCE. Access tokens expire after fifteen minutes and are bound to the canonical `/mcp` audience and client identifier. Offline access requires separate consent. Refresh tokens rotate; reuse invalidates the token family. MCP also verifies the current client and consent record on every request, so dashboard revocation takes effect before a JWT expires.
+
+`assets:write` can create private asset metadata and a fifteen-minute, HMAC-authenticated upload capability bound to the exact asset, MCP client, owner, and active OAuth grant. The streaming upload route accepts neither cookies nor OAuth bearer credentials, rechecks the live grant, and validates content type, byte length, and SHA-256 against immutable metadata. The capability cannot select another asset or perform reads, updates, deletion, or publication.
 
 The `skills:read` scope exposes only names and descriptions during discovery; `get_skill` loads a complete standard `SKILL.md` after selection. `skills:write` creates versioned skills, while `automations:write` creates cron-triggered automations. MCP agents cannot update existing skill or automation definitions. They may read the exact skill version attached to a claimed run, advance an automation's next occurrence, create due run records, and update only run lifecycle columns.
 

@@ -2,6 +2,7 @@ import { AssetRepository, AutomationRepository, PageRepository } from "@context-
 import {
   archiveAutomationPageSchema,
   archivePageSchema,
+  assetUploadSchema,
   createAutomationPageSchema,
   createAutomationSkillSchema,
   createCronScheduleSchema,
@@ -12,6 +13,8 @@ import {
 } from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { config } from "./config.ts";
+import { createAssetUploadCapability } from "./mcp-asset-upload.ts";
 import type { ObjectStorage } from "./storage.ts";
 
 export type McpContext = {
@@ -134,6 +137,44 @@ export function createMcpServer(
     });
     const { s3_object_key: _hidden, ...metadata } = asset;
     return jsonContent({ ...metadata, download_url, expires_in: 300 });
+  });
+
+  server.registerTool("create_asset_upload", {
+    description: "Create a private, checksum-bound asset upload. PUT the exact raw bytes to the returned URL with every returned header before expires_at. The upload credential cannot read, edit, delete, or publish assets.",
+    inputSchema: assetUploadSchema,
+    annotations: { destructiveHint: false },
+  }, async (input) => {
+    requireScope(context, "assets:write");
+    const created = await assets.create({
+      currentPath: input.path,
+      filename: input.filename,
+      contentType: input.content_type,
+      sizeBytes: input.size_bytes,
+      contentHash: input.sha256,
+      ...(input.width ? { width: input.width } : {}),
+      ...(input.height ? { height: input.height } : {}),
+      ...(input.duration_seconds !== undefined ? { durationSeconds: input.duration_seconds } : {}),
+    });
+    const capability = createAssetUploadCapability({
+      assetId: created.id,
+      clientId: context.clientId,
+      userId: context.userId,
+    });
+    const { objectKey: _hidden, ...asset } = created;
+    return jsonContent({
+      asset,
+      reference: `context-use://asset/${created.id}`,
+      upload: {
+        method: "PUT",
+        url: `${config.APP_ORIGIN}/api/mcp/assets/${encodeURIComponent(created.id)}/content`,
+        headers: {
+          "content-type": created.content_type,
+          "content-length": String(created.size_bytes),
+          "x-context-use-upload-token": capability.token,
+        },
+        expires_at: capability.expiresAt,
+      },
+    });
   });
 
   server.registerTool("list_skills", {

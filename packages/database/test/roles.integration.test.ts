@@ -175,13 +175,24 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("MCP cannot mutate assets", async () => {
-    for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
-      const result = await admin.query<{ allowed: boolean }>(
+  test("MCP can create asset upload intents without editing or deleting assets", async () => {
+    for (const column of ["id", "current_path", "filename", "content_type", "size_bytes", "content_hash", "s3_object_key", "width", "height", "duration_seconds"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege('context_use_mcp', 'assets', $1, 'INSERT') AS allowed",
+        [column],
+      )).rows[0]?.allowed).toBe(true);
+    }
+    for (const column of ["published_at", "deleted_at"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege('context_use_mcp', 'assets', $1, 'INSERT') AS allowed",
+        [column],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    for (const privilege of ["UPDATE", "DELETE"]) {
+      expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_mcp', 'assets', $1) AS allowed",
         [privilege],
-      );
-      expect(result.rows[0]?.allowed).toBe(false);
+      )).rows[0]?.allowed).toBe(false);
     }
   });
 

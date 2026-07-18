@@ -80,6 +80,17 @@ export const publicationIntentSchema = z
     }
   });
 
+export const assetUploadSchema = z.object({
+  path: AssetPath,
+  filename: z.string().trim().min(1).max(1024),
+  content_type: z.string().trim().min(1).max(255),
+  size_bytes: z.number().int().min(0).max(5_000_000_000),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  duration_seconds: z.number().nonnegative().optional(),
+}).strict();
+
 export const createAutomationSkillSchema = z.object({
   name: SkillName,
   description: SkillDescription,
@@ -134,6 +145,7 @@ export type CreatePageInput = z.infer<typeof createPageSchema>;
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
 export type PublicationIntentInput = z.infer<typeof publicationIntentSchema>;
+export type AssetUploadInput = z.infer<typeof assetUploadSchema>;
 export type CreateAutomationSkillInput = z.infer<typeof createAutomationSkillSchema>;
 export type UpdateAutomationSkillInput = z.infer<typeof updateAutomationSkillSchema>;
 export type CreateCronScheduleInput = z.infer<typeof createCronScheduleSchema>;
@@ -178,6 +190,7 @@ export const MCP_SCOPES = [
   "kb:read",
   "kb:write",
   "assets:read",
+  "assets:write",
   "skills:read",
   "skills:write",
   "automations:write",
