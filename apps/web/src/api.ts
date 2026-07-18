@@ -39,3 +39,24 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   return response.json() as Promise<T>;
 }
+
+export async function uploadAssetContent(assetId: string, file: File, contentType: string): Promise<void> {
+  if (!csrfToken) await refreshCsrf();
+  const response = await fetch(`/api/dashboard/assets/${assetId}/content`, {
+    method: "PUT",
+    headers: {
+      "content-type": contentType,
+      "x-csrf-token": csrfToken,
+    },
+    body: file,
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "upload_failed", message: response.statusText })) as {
+      error?: string;
+      message?: string;
+    };
+    throw new ApiError(response.status, error.error ?? "upload_failed", error.message ?? response.statusText);
+  }
+}

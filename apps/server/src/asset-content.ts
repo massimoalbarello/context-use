@@ -38,13 +38,21 @@ export async function assetContentResponse(
 ): Promise<Response> {
   const sizeBytes = Number(asset.size_bytes);
   const range = parseAssetRange(request.headers.get("range"), sizeBytes);
+  const rendersInline = inline && mayRenderInline(asset.content_type);
+  const responseSecurityHeaders = rendersInline
+    ? {
+        ...securityHeaders,
+        "content-security-policy": "default-src 'none'; frame-ancestors 'self'",
+        "x-frame-options": "SAMEORIGIN",
+      }
+    : securityHeaders;
   const baseHeaders = {
-    ...securityHeaders,
+    ...responseSecurityHeaders,
     "accept-ranges": "bytes",
     "content-type": asset.content_type,
     "content-disposition": contentDisposition(
       asset.filename,
-      inline && mayRenderInline(asset.content_type),
+      rendersInline,
     ),
   };
   if (range === "unsatisfiable") {

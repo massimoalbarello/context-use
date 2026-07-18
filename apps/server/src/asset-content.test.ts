@@ -46,6 +46,8 @@ describe("API-proxied asset content", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-length")).toBe("10");
     expect(response.headers.get("content-disposition")).toBe('inline; filename="private video.mp4"');
+    expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+    expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'self'");
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
     expect(reads).toEqual([{ objectKey: "objects/private-object" }]);
   });
@@ -77,6 +79,7 @@ describe("API-proxied asset content", () => {
       true,
     );
     expect(response.headers.get("content-disposition")).toBe('attachment; filename="unsafe.svg"');
+    expect(response.headers.get("x-frame-options")).toBe("DENY");
     expect(response.headers.has("location")).toBe(false);
 
     const missing = await assetContentResponse(

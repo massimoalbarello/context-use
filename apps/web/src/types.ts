@@ -36,6 +36,11 @@ export type Asset = {
   created_at: string;
 };
 
+export type AssetStatus = {
+  content_available: boolean;
+  public_url: string;
+};
+
 export type PublicationPreview = {
   page_id: string;
   version_id: string;
