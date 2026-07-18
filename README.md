@@ -89,7 +89,7 @@ https://YOUR_HOST/mcp
 
 The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `skills:read`, `skills:write`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
 
-### Public readers
+### Public access
 
 Anyone can connect an MCP client without authentication at:
 
@@ -102,10 +102,11 @@ The public server deliberately exposes tools rather than MCP resources for broad
 - `get_main_page` returns the published `home` page, when present, and a complete nested index of all published pages.
 - `get_public_page` reads one page by its public slug and includes published breadcrumbs and children.
 - `search_public_pages` searches only the sanitized published-page projection.
+- `send_message_to_owner` privately delivers a message plus the sender's required email or phone loopback address.
 
 For example, a dashboard at `https://context.example.com` exposes its anonymous MCP at `https://public.context.example.com/mcp`. The dedicated origin serves no OAuth or OpenID metadata and has no route to the private application.
 
-The public MCP runs in a separate read-only container with a separate database credential. Its database role can select only `public_mcp_pages`, a lossy security-barrier view with public slugs, titles, sanitized Markdown, and published-parent slugs. It cannot read the webpage views, base tables, asset metadata, internal paths, UUIDs, page versions, private reference targets, or S3 keys. Unpublished intermediate folders are omitted; a page attaches to its closest published ancestor.
+The public MCP runs in a separate isolated container with a separate database credential. Its role can select only `public_mcp_pages`, a lossy security-barrier view with public slugs, titles, sanitized Markdown, and published-parent slugs. It also has column-scoped insert access for message IDs, reply addresses, and bodies, but it cannot select messages, set their owner, or use `RETURNING` to read stored data. The authenticated dashboard filters the inbox by owner ID. The public role cannot read webpage views, other base tables, asset metadata, internal paths, UUIDs, page versions, private reference targets, or S3 keys. Unpublished intermediate folders are omitted; a page attaches to its closest published ancestor.
 
 Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification): a standard name and short description form the discovery layer, while instructions load only after selection. MCP agents use `list_skills`, `get_skill`, and `create_skill`. Automations live separately under **Automations** and can also be created with `create_automation`. Creating a skill returns its current version ID, which is the `skill_version_id` required by an automation.
 

@@ -34,10 +34,10 @@ An agent cannot substitute its OAuth token for any step:
 The application opens independent pools using independent SCRAM credentials:
 
 - `context_use_auth`: Better Auth, passkeys, OAuth clients, grants, and sessions.
-- `context_use_dashboard`: private page and asset operations; no direct publication updates.
+- `context_use_dashboard`: private page, asset, and owner-filtered inbox reads; no inbox writes or direct publication updates.
 - `context_use_mcp`: page reads/writes, asset metadata reads, narrowly column-scoped skill and automation creation, and automation claiming/completion; no skill or automation definition updates, asset mutation, or publication.
 - `context_use_public`: `SELECT` only on `published_pages` and `published_assets` security-barrier views.
-- `context_use_public_mcp`: `SELECT` only on the lossy `public_mcp_pages` security-barrier view; no base-table, webpage-view, asset, or application-function capability.
+- `context_use_public_mcp`: `SELECT` only on the lossy `public_mcp_pages` security-barrier view plus column-scoped `INSERT` on confidential inbound messages; no message reads, owner selection, other base-table, webpage-view, asset, or application-function capability.
 - `context_use_publisher`: execute-only publication capability.
 - `context_use_backup`: read-only database backup access.
 
@@ -65,6 +65,12 @@ Raw HTML and remote inline media are removed from Markdown. Rendered HTML is san
 
 Private and public content use `Cache-Control: no-store` in v1. Unpublication prevents future access through context-use but cannot retract copies already made by third parties.
 
+## Inbound message isolation
+
+`send_message_to_owner` validates and trims a sender-supplied message and requires either an email address or phone number for replies. Its success response contains only a random receipt ID and never echoes the message or loopback address. The public MCP database role can insert the ID, reply address, and message body, but column privileges prevent it from setting `owner_user_id`; the table default binds every delivery to the installation's single owner. That role has no `SELECT` privilege on the inbox, including the privileges PostgreSQL requires for `RETURNING`.
+
+The dashboard role can read the inbox but cannot write it. `/api/dashboard/messages` rejects bearer credentials and anonymous requests through the same cookie-only owner boundary as every private dashboard route, then filters the query by the authenticated owner's user ID. The dashboard renders message bodies as plain React text and constructs only fixed `mailto:` or `tel:` links from the validated reply address.
+
 ## Infrastructure and secrets
 
 The EC2 security group exposes only HTTP/HTTPS; administration uses SSM and IMDSv2 is mandatory. PostgreSQL is reachable only on an internal Docker network. Persistent PostgreSQL data resides on a KMS-encrypted EBS volume. Assets, backups, and Terraform state use private, encrypted, versioned S3 buckets.
@@ -73,7 +79,7 @@ Each installation derives a unique identifier from the AWS account, region, and 
 
 Secrets are generated locally in memory, sent directly to SSM `SecureString`, fetched on-instance into a root-only file, and mounted only where required. They are neither Terraform variables nor outputs. Images are deployed by immutable digest from a checksum-verified release bundle.
 
-The anonymous MCP runs as a separate read-only container with no dashboard, auth, publisher, private MCP, storage, owner-identity, or AWS configuration. Its two Docker networks are internal and dedicated: one connects only it and PostgreSQL, while the other connects only it and Caddy. It shares no network with the private application or outbound gateway. Its dedicated public hostname serves only the exact `/mcp` route; OAuth/OpenID discovery and every other path return `404`, while the old same-origin `/public/mcp` route is absent. The container drops all Linux capabilities, enables `no-new-privileges`, and receives only the dedicated public MCP database URL and public origins.
+The anonymous MCP runs as a separate isolated container with no dashboard, auth, publisher, private MCP, storage, owner-identity, or AWS configuration. Its database credential can insert only the sender-supplied reply address and body under a database-assigned owner default; it cannot read the inbox or override its owner. Its two Docker networks are internal and dedicated: one connects only it and PostgreSQL, while the other connects only it and Caddy. It shares no network with the private application or outbound gateway. Its dedicated public hostname serves only the exact `/mcp` route; OAuth/OpenID discovery and every other path return `404`, while the old same-origin `/public/mcp` route is absent. The container drops all Linux capabilities, enables `no-new-privileges`, and receives only the dedicated public MCP database URL and public origins.
 
 ## Passkey permanence
 

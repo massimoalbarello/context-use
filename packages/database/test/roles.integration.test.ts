@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Client, type Pool } from "pg";
 import { randomUUID } from "node:crypto";
-import { PublicMcpRepository } from "../src/index.ts";
+import { InboxRepository, PublicMcpRepository, PublicMessageRepository } from "../src/index.ts";
 
 const adminUrl = process.env.TEST_DATABASE_URL;
 const describeDatabase = adminUrl ? describe : describe.skip;
@@ -104,6 +104,75 @@ describeDatabase("PostgreSQL security roles", () => {
     expect(columns.rows.map(({ column_name }) => column_name)).toEqual([
       "public_slug", "title", "body_markdown", "parent_slug",
     ]);
+  });
+
+  test("public MCP can deliver messages but cannot read them or choose their owner", async () => {
+    await admin.query("BEGIN");
+    try {
+      await admin.query(
+        `INSERT INTO "user"(id,name,email,"emailVerified")
+         VALUES ('context-use-owner','Owner','message-role-test@example.invalid',true)
+         ON CONFLICT (id) DO NOTHING`,
+      );
+
+      for (const column of ["id", "reply_to", "message"]) {
+        expect((await admin.query<{ allowed: boolean }>(
+          "SELECT has_column_privilege('context_use_public_mcp','inbound_messages',$1,'INSERT') AS allowed",
+          [column],
+        )).rows[0]?.allowed).toBe(true);
+      }
+      for (const column of ["owner_user_id", "created_at"]) {
+        expect((await admin.query<{ allowed: boolean }>(
+          "SELECT has_column_privilege('context_use_public_mcp','inbound_messages',$1,'INSERT') AS allowed",
+          [column],
+        )).rows[0]?.allowed).toBe(false);
+      }
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege('context_use_public_mcp','inbound_messages','SELECT') AS allowed",
+      )).rows[0]?.allowed).toBe(false);
+      for (const role of ["context_use_auth", "context_use_mcp", "context_use_public", "context_use_publisher"]) {
+        expect((await admin.query<{ allowed: boolean }>(
+          "SELECT has_table_privilege($1,'inbound_messages','SELECT') AS allowed",
+          [role],
+        )).rows[0]?.allowed).toBe(false);
+      }
+
+      await admin.query("SET LOCAL ROLE context_use_public_mcp");
+      const publicMessages = new PublicMessageRepository(admin as unknown as Pool);
+      const receipt = await publicMessages.create("sender@example.com", "PRIVATE-INBOX-CANARY");
+      await expectDenied("SELECT * FROM inbound_messages");
+      await expectDenied(
+        "INSERT INTO inbound_messages(id,reply_to,message) VALUES ($1,'sender@example.com','returning probe') RETURNING id",
+        [randomUUID()],
+      );
+      await expectDenied(
+        "INSERT INTO inbound_messages(id,owner_user_id,reply_to,message) VALUES ($1,'attacker','sender@example.com','wrong owner')",
+        [randomUUID()],
+      );
+      await admin.query("RESET ROLE");
+
+      const stored = await admin.query(
+        "SELECT owner_user_id,reply_to,message FROM inbound_messages WHERE id=$1",
+        [receipt.id],
+      );
+      expect(stored.rows[0]).toEqual({
+        owner_user_id: "context-use-owner",
+        reply_to: "sender@example.com",
+        message: "PRIVATE-INBOX-CANARY",
+      });
+
+      await admin.query("SET LOCAL ROLE context_use_dashboard");
+      const inbox = new InboxRepository(admin as unknown as Pool);
+      expect((await inbox.listForOwner("context-use-owner")).some(({ id }) => id === receipt.id)).toBe(true);
+      expect(await inbox.listForOwner("not-the-owner")).toEqual([]);
+      await expectDenied(
+        "INSERT INTO inbound_messages(id,reply_to,message) VALUES ($1,'sender@example.com','dashboard write')",
+        [randomUUID()],
+      );
+      await admin.query("RESET ROLE");
+    } finally {
+      await admin.query("ROLLBACK");
+    }
   });
 
   test("MCP cannot mutate assets", async () => {
