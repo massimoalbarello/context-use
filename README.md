@@ -31,6 +31,8 @@ External ingestion, vault migration, approval queues, collaboration, and semanti
 
 These credentials are intentionally non-interchangeable. Dashboard endpoints reject `Authorization`; MCP rejects cookies. Application roles mirror that boundary in PostgreSQL, and public requests query security-barrier views rather than base tables. Publishing a page never publishes linked pages or assets.
 
+Internal page links are stored independently of either presentation route. Use `[[path|label]]` or `[label](context-use://page/<page-uuid>)`, never a hard-coded `/app/pages/*` or `/p/*` URL. Authorized dashboard rendering resolves a reference to `/app/pages/:id`; anonymous public rendering resolves it to `/p/:slug` only when the target page is independently published. References to private targets are rendered as inert text without target metadata or identifiers.
+
 See [Security architecture](docs/security.md) and [Operations](docs/operations.md) for the complete boundary and operating model.
 
 ## Deploy on AWS

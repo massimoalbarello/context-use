@@ -19,6 +19,7 @@ export {
   extractAssetLinks,
   extractPageLinks,
   extractWikiLinks,
+  normalizeInternalPageLinks,
   wikiLinkCandidatePaths,
   type WikiLink,
 } from "./links.ts";

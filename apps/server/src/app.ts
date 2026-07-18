@@ -113,24 +113,36 @@ function routeError(error: unknown): Response {
   return problem("Internal server error", 500, "internal_error");
 }
 
-async function pageResolvers(privateMode: boolean, sourcePath: string) {
+function privatePageResolvers(sourcePath: string) {
   return {
     page: async (id: string) => {
-      if (privateMode) {
-        const page = await dashboardPages.get(id);
-        return page ? { available: true as const, href: `/app/pages/${id}` } : { available: false as const };
+      const page = await dashboardPages.get(id);
+      return page ? { available: true as const, href: `/app/pages/${id}` } : { available: false as const };
+    },
+    pagePath: async (path: string) => {
+      for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
+        const page = await dashboardPages.getByPath(candidate);
+        if (page) return { available: true as const, href: `/app/pages/${page.id}` };
       }
+      return { available: false as const };
+    },
+    asset: async (id: string) => {
+      const asset = await dashboardAssets.get(id);
+      return asset ? { available: true as const, href: `/api/dashboard/assets/${id}/content` } : { available: false as const };
+    },
+  };
+}
+
+// This resolver intentionally has no dashboard repository fallback. Public
+// rendering can observe only the security-barrier views available to the
+// context_use_public database role.
+function publicPageResolvers(sourcePath: string) {
+  return {
+    page: async (id: string) => {
       const page = await publicData.pageById(id);
       return page ? { available: true as const, href: `/p/${page.public_slug}` } : { available: false as const };
     },
     pagePath: async (path: string) => {
-      if (privateMode) {
-        for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
-          const page = await dashboardPages.getByPath(candidate);
-          if (page) return { available: true as const, href: `/app/pages/${page.id}` };
-        }
-        return { available: false as const };
-      }
       for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
         const page = await publicData.pageByPath(candidate);
         if (page) return { available: true as const, href: `/p/${page.public_slug}` };
@@ -138,10 +150,6 @@ async function pageResolvers(privateMode: boolean, sourcePath: string) {
       return { available: false as const };
     },
     asset: async (id: string) => {
-      if (privateMode) {
-        const asset = await dashboardAssets.get(id);
-        return asset ? { available: true as const, href: `/api/dashboard/assets/${id}/content` } : { available: false as const };
-      }
       const asset = await publicData.asset(id);
       return asset ? { available: true as const, href: `${config.ASSET_ORIGIN}/${id}` } : { available: false as const };
     },
@@ -360,7 +368,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     await ownerRequest(request);
     const page = await dashboardPages.get(z.string().uuid().parse(params.id));
     if (!page) return problem("Page not found", 404, "not_found");
-    const html = await renderMarkdown(page.body_markdown, await pageResolvers(true, page.current_path));
+    const html = await renderMarkdown(page.body_markdown, privatePageResolvers(page.current_path));
     return json({ ...page, rendered_html: html });
   })
   .put("/api/dashboard/pages/:id", async ({ request, params }) => {
@@ -395,7 +403,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const versionNumber = query.version ? z.coerce.number().int().positive().parse(query.version) : page.version_number;
     const version = await dashboardPages.version(pageId, versionNumber);
     if (!version) return problem("Version not found", 404, "not_found");
-    const html = await renderMarkdown(version.body_markdown, await pageResolvers(false, version.path));
+    const html = await renderMarkdown(version.body_markdown, publicPageResolvers(version.path));
     const references = await Promise.all([
       ...extractPageLinks(version.body_markdown).map(async (id) => {
         const target = await dashboardPages.get(id);
@@ -592,7 +600,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const slug = parsedSlug.data;
     const page = await publicData.pageBySlug(slug);
     if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
-    const content = await renderMarkdown(page.body_markdown, await pageResolvers(false, page.path));
+    const content = await renderMarkdown(page.body_markdown, publicPageResolvers(page.path));
     const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(page.title)}</title><link rel="stylesheet" href="/public.css"></head><body><main class="public-page"><article>${content}</article></main></body></html>`;
     return new Response(html, { headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" } });
   })
