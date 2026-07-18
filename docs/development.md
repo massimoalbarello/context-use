@@ -2,13 +2,15 @@
 
 ## Docker Compose development environment
 
-Start PostgreSQL, run the migrations, and launch the API and Vite development servers:
+Start PostgreSQL, run the migrations, and launch the API, public MCP, and Vite development servers:
 
 ```sh
 docker compose up --build
 ```
 
-The root Compose file includes `compose.dev.yml`. The source tree is bind-mounted into the API and web containers, so both servers reload as files change. PostgreSQL data, uploaded assets, and container dependencies live in named Docker volumes.
+The root Compose file includes `compose.dev.yml`. The source tree is bind-mounted into the application containers, so the servers reload as files change. PostgreSQL data, uploaded assets, and container dependencies live in named Docker volumes.
+
+The anonymous tools-only MCP endpoint is `http://localhost:5173/public/mcp`. Its `get_main_page` tool is the starting point and returns the public `home` content plus the complete published-page hierarchy.
 
 Open the one-time local owner enrollment page:
 
@@ -36,10 +38,11 @@ docker compose run --rm migrate
 bun install --frozen-lockfile
 cp .env.example .env
 bun run dev:server
+bun --cwd apps/public-mcp dev
 bun run dev:web
 ```
 
-The Vite development server proxies application requests to the API server. Filesystem asset storage is used locally. The development setup token is fixed; production setup always generates a random token.
+The Vite development server proxies private/application requests to the API server and `/public/mcp` to the isolated public MCP process. Filesystem asset storage is used locally. The development setup token is fixed; production setup always generates a random token.
 
 ## Verification
 
@@ -49,4 +52,4 @@ Run the fast suite with `bun test`. Database privilege tests require `TEST_DATAB
 TEST_DATABASE_URL="$MIGRATOR_DATABASE_URL" bun run db:test:roles
 ```
 
-CI additionally builds both container images, validates the Caddy configuration, validates both Terraform roots, and tests migrations against a clean PostgreSQL service.
+CI additionally builds the application workspaces and both container images, validates the Caddy configuration, validates both Terraform roots, and tests migrations and the anonymous database role against a clean PostgreSQL service.

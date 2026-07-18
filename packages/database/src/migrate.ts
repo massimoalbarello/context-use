@@ -42,6 +42,7 @@ try {
     context_use_dashboard: process.env.DB_DASHBOARD_PASSWORD,
     context_use_mcp: process.env.DB_MCP_PASSWORD,
     context_use_public: process.env.DB_PUBLIC_PASSWORD,
+    context_use_public_mcp: process.env.DB_PUBLIC_MCP_PASSWORD,
     context_use_publisher: process.env.DB_PUBLISHER_PASSWORD,
     context_use_backup: process.env.DB_BACKUP_PASSWORD,
   };

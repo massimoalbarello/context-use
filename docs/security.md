@@ -20,6 +20,7 @@ An agent cannot substitute its OAuth token for any step:
 
 - `/api/dashboard/*` rejects every request containing `Authorization`, before handler logic.
 - `/mcp` rejects session cookies.
+- `/public/mcp` rejects both cookies and bearer credentials and has no authentication path into `/mcp`.
 - CSRF, exact `Origin`, same-site Fetch Metadata, JSON content type, and the dashboard session are required for mutations.
 - The agent never receives the host-only session cookie or passkey private key.
 - OAuth scopes separate knowledge, skill discovery/authoring, asset-read, and automation authoring/execution capabilities; none grants publication or dashboard access.
@@ -36,6 +37,7 @@ The application opens independent pools using independent SCRAM credentials:
 - `context_use_dashboard`: private page and asset operations; no direct publication updates.
 - `context_use_mcp`: page reads/writes, asset metadata reads, narrowly column-scoped skill and automation creation, and automation claiming/completion; no skill or automation definition updates, asset mutation, or publication.
 - `context_use_public`: `SELECT` only on `published_pages` and `published_assets` security-barrier views.
+- `context_use_public_mcp`: `SELECT` only on the lossy `public_mcp_pages` security-barrier view; no base-table, webpage-view, asset, or application-function capability.
 - `context_use_publisher`: execute-only publication capability.
 - `context_use_backup`: read-only database backup access.
 
@@ -57,6 +59,8 @@ Every automation has an immutable `generated/automations/<automation-id>` knowle
 
 Public views select the exact published page version, not the current private version. Page and asset publication states are independent. Public rendering resolves only targets visible through public views, so a link to a private object reveals no title, path, filename, MIME type, size, or S3 key.
 
+The anonymous MCP uses a second projection rather than serializing the webpage views. That projection exposes only public slug, title, sanitized Markdown, and the slug of the closest published ancestor. Database-side redaction removes Context Use page/asset UUIDs, wikilink targets, HTML comments, script/style blocks, and raw HTML tags before the MCP process can read them. Hierarchy nodes are published pages only, so unpublished folder names and intermediate pages do not appear. The MCP process never receives raw paths, version identifiers, timestamps, asset metadata, or S3 object keys.
+
 Raw HTML and remote inline media are removed from Markdown. Rendered HTML is sanitized and served under a restrictive CSP. Active file formats, including HTML and SVG, are forced to download. S3 buckets have all public-access blocks enabled, require TLS, and use KMS encryption. Upload bytes pass through the authenticated application origin and are checksum-validated by S3; short-lived, object-specific signed URLs are used only for authorized private downloads.
 
 Private and public content use `Cache-Control: no-store` in v1. Unpublication prevents future access through context-use but cannot retract copies already made by third parties.
@@ -68,6 +72,8 @@ The EC2 security group exposes only HTTP/HTTPS; administration uses SSM and IMDS
 Each installation derives a unique identifier from the AWS account, region, and hostname. It namespaces bucket names, IAM resources, logs, SSM parameters, and Terraform state so installations cannot collide.
 
 Secrets are generated locally in memory, sent directly to SSM `SecureString`, fetched on-instance into a root-only file, and mounted only where required. They are neither Terraform variables nor outputs. Images are deployed by immutable digest from a checksum-verified release bundle.
+
+The anonymous MCP runs as a separate read-only container with no dashboard, auth, publisher, private MCP, storage, owner-identity, or AWS configuration. Its two Docker networks are internal and dedicated: one connects only it and PostgreSQL, while the other connects only it and Caddy. It shares no network with the private application or outbound gateway. The container drops all Linux capabilities, enables `no-new-privileges`, and receives only the dedicated public MCP database URL and public origins.
 
 ## Passkey permanence
 

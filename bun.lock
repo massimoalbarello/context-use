@@ -24,6 +24,19 @@
         "@parshjs/codegen": "0.0.5",
       },
     },
+    "apps/public-mcp": {
+      "name": "@context-use/public-mcp",
+      "version": "0.1.11",
+      "dependencies": {
+        "@context-use/database": "workspace:*",
+        "@modelcontextprotocol/sdk": "1.29.0",
+        "pg": "8.22.0",
+        "zod": "4.4.3",
+      },
+      "devDependencies": {
+        "@types/pg": "8.20.0",
+      },
+    },
     "apps/server": {
       "name": "@context-use/server",
       "version": "0.1.11",
@@ -202,6 +215,8 @@
     "@context-use/cli": ["@context-use/cli@workspace:apps/cli"],
 
     "@context-use/database": ["@context-use/database@workspace:packages/database"],
+
+    "@context-use/public-mcp": ["@context-use/public-mcp@workspace:apps/public-mcp"],
 
     "@context-use/server": ["@context-use/server@workspace:apps/server"],
 
