@@ -329,28 +329,6 @@ button:disabled {
 
 .archive-toggle input { accent-color: var(--accent); }
 
-.knowledge-actions {
-  margin-top: 8px;
-  display: grid;
-  grid-template-columns: 1.15fr .85fr;
-  gap: 6px;
-}
-
-.knowledge-actions > * {
-  min-height: 35px;
-  padding: 7px 9px;
-  font-size: 11px;
-  font-weight: 620;
-}
-
-.knowledge-actions .upload-button {
-  background: rgba(255, 255, 255, .6);
-  color: #59554e;
-}
-
-.upload-button input,
-.button input[type="file"] { display: none; }
-
 .sidebar-section-summary {
   min-height: 0;
   flex: 1;
@@ -563,12 +541,6 @@ button:disabled {
   color: #736f68;
   font-size: 15px;
   line-height: 1.65;
-}
-
-.empty-actions {
-  margin-top: 28px;
-  display: flex;
-  gap: 8px;
 }
 
 .empty-details {
@@ -1214,7 +1186,6 @@ button:disabled {
   .knowledge-filter,
   .archive-toggle,
   .page-tree,
-  .knowledge-actions,
   .sidebar-section-summary,
   .sidebar footer { display: none; }
 

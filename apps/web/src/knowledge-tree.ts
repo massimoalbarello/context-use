@@ -114,6 +114,15 @@ export function allDirectoryPaths(directory: PageTreeDirectory): string[] {
   return directory.directories.flatMap((child) => [child.path, ...allDirectoryPaths(child)]);
 }
 
+export function expandedPathsForDisplay(
+  persistedPaths: Set<string>,
+  directory: PageTreeDirectory,
+  query: string,
+): Set<string> {
+  if (!query.trim()) return persistedPaths;
+  return new Set([...persistedPaths, ...allDirectoryPaths(directory)]);
+}
+
 export function parseExpandedPaths(value: string | null): Set<string> | null {
   if (value === null) return null;
   try {

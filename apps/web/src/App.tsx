@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, refreshCsrf, uploadFile } from "./api.ts";
+import { api, refreshCsrf } from "./api.ts";
 import { authClient } from "./auth-client.ts";
 import { AssetDetails } from "./components/Assets.tsx";
 import { Automations } from "./components/Automations.tsx";
@@ -31,11 +31,6 @@ function sectionFromLocation(): Section {
   if (window.location.pathname === "/app/skills") return "skills";
   if (window.location.pathname === "/app/automations") return "automations";
   return "knowledge";
-}
-
-async function sha256(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export function App() {
@@ -109,33 +104,6 @@ export function App() {
   if (!session) return <main className="center-card">Verifying owner session…</main>;
   if (session.passkey_count === 0) return <main className="center-card"><h1>Owner passkey missing</h1><p>This session cannot access an installation without its permanent owner passkey.</p></main>;
 
-  const createPage = async () => {
-    const path = window.prompt("Page path (lowercase, e.g. notes/new-page)");
-    if (!path) return;
-    const title = window.prompt("Page title") ?? path.split("/").at(-1) ?? path;
-    const page = await api<Page>("/api/dashboard/pages", { method: "POST", body: JSON.stringify({ path, title, body_markdown: "", commit_message: "Create page" }) });
-    setSelected({ kind: "page", id: page.id }); setSection("knowledge"); await loadPages();
-    history.pushState({}, "", `/app/pages/${page.id}`);
-  };
-
-  const uploadAsset = async (file: File) => {
-    const path = window.prompt("Asset path (lowercase, e.g. projects/acme/site-photo)");
-    if (!path) return;
-    setMessage("Hashing and preparing upload…");
-    try {
-      const created = await api<{ asset: Asset }>("/api/dashboard/assets/upload-intent", {
-        method: "POST",
-        body: JSON.stringify({ path, filename: file.name, content_type: file.type || "application/octet-stream", size_bytes: file.size, sha256: await sha256(file) }),
-      });
-      await uploadFile(`/api/dashboard/assets/${created.asset.id}/content`, file, created.asset.content_type);
-      await loadAssets();
-      setSelected({ kind: "asset", id: created.asset.id });
-      setSection("knowledge");
-      history.pushState({}, "", `/app/assets/${created.asset.id}`);
-      setMessage("Asset uploaded privately.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Upload failed"); }
-  };
-
   const selectKnowledge = (selection: KnowledgeSelection) => {
     setSelected(selection);
     setSection("knowledge");
@@ -173,14 +141,13 @@ export function App() {
       {section === "knowledge" ? <><label className="sidebar-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5" /><path d="m12.25 12.25 4 4" /></svg><input ref={searchRef} className="search" aria-label="Search knowledge" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘K</kbd></label>
         <div className="knowledge-filter" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>{(["all", "public"] as const).map((filter) => <button className={publicationFilter === filter ? "active" : ""} aria-pressed={publicationFilter === filter} key={filter} onClick={() => setPublicationFilter(filter)}>{filter === "all" ? "All" : "Public"}</button>)}</div>
         <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
-        <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} emptyMessage={publicationFilter === "public" ? "Nothing public yet" : "No knowledge yet"} />
-        <div className="knowledge-actions"><button className="primary" onClick={createPage}><span>＋</span>New page</button><label className="button upload-button"><span>↑</span>Upload<input type="file" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadAsset(file); }} /></label></div></> : <div className="sidebar-section-summary"><span className="summary-index">0{section === "skills" ? "2" : section === "automations" ? "3" : "4"}</span><strong>{section === "automations" ? "Scheduled work" : section === "skills" ? "Reusable capabilities" : "Owner controls"}</strong><p>{section === "automations" ? "Cron triggers, isolated generated knowledge, and durable run history." : section === "skills" ? "Discoverable SKILL.md definitions shared by manual work and automations." : "Manage the permanent passkey and connected agents."}</p></div>}
+        <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} emptyMessage={publicationFilter === "public" ? "Nothing public yet" : "No knowledge yet"} /></> : <div className="sidebar-section-summary"><span className="summary-index">0{section === "skills" ? "2" : section === "automations" ? "3" : "4"}</span><strong>{section === "automations" ? "Scheduled work" : section === "skills" ? "Reusable capabilities" : "Owner controls"}</strong><p>{section === "automations" ? "Cron triggers, isolated generated knowledge, and durable run history." : section === "skills" ? "Discoverable SKILL.md definitions shared by manual work and automations." : "Manage the permanent passkey and connected agents."}</p></div>}
       <footer>
         <button className={section === "settings" ? "settings-button active" : "settings-button"} onClick={openSettings}><SectionIcon section="settings" /><span>Settings</span></button>
         <div className="sidebar-account"><span className="user-avatar">{session.owner.email.slice(0, 1).toUpperCase()}</span><span className="sidebar-user"><strong>{session.owner.email}</strong><small>{session.passkey_count} secure passkey{session.passkey_count === 1 ? "" : "s"}</small></span><button className="sign-out-button" aria-label="Sign out" title="Sign out" onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}>↗</button></div>
       </footer>
     </aside>
-    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "skills" ? <Skills /> : section === "automations" ? <Automations /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Capture durable knowledge for you and your agents. Nothing becomes public until you explicitly publish it.</p><div className="empty-actions"><button className="primary" onClick={createPage}>Create a page</button><label className="button">Upload an asset<input type="file" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadAsset(file); }} /></label></div><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-ready</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
+    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "skills" ? <Skills /> : section === "automations" ? <Automations /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Browse durable knowledge managed through your authenticated MCP connection. Nothing becomes public until you explicitly publish it.</p><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-managed</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
     {message && <div className="toast">{message}</div>}
   </div>;
 }

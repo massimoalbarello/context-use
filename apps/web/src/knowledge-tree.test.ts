@@ -4,6 +4,7 @@ import {
   buildKnowledgeTree,
   buildPageTree,
   directoryPathsForPage,
+  expandedPathsForDisplay,
   parseExpandedPaths,
   serializeExpandedPaths,
 } from "./knowledge-tree.ts";
@@ -96,5 +97,18 @@ describe("knowledge tree", () => {
       "me/learnings/science",
     ]);
     expect(parseExpandedPaths("not json")).toBeNull();
+  });
+
+  test("reveals search results without changing persisted folder state", () => {
+    const persisted = new Set(["me"]);
+    const visible = expandedPathsForDisplay(persisted, buildPageTree(pages), "physics");
+
+    expect([...persisted]).toEqual(["me"]);
+    expect(visible).toEqual(new Set([
+      "me",
+      "me/learnings",
+      "me/learnings/entrepreneurship",
+      "me/learnings/science",
+    ]));
   });
 });
