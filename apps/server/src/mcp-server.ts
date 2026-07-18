@@ -35,7 +35,7 @@ export function createMcpServer(
   automations: AutomationRepository,
   storage: ObjectStorage,
 ): McpServer {
-  const server = new McpServer({ name: "context-use", version: "0.1.10" });
+  const server = new McpServer({ name: "context-use", version: "0.1.11" });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
   server.registerTool("list_pages", {
