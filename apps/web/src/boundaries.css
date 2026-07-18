@@ -1,101 +1,477 @@
-.sidebar-section-nav {
-  grid-template-columns: repeat(3, 1fr);
-}
-
 .automation-owned-notice {
   margin: 20px 42px 0;
   padding: 13px 14px;
-  background: #edf4ef;
-  color: #3b5348;
-  border-radius: 9px;
   display: flex;
   flex-direction: column;
   gap: 3px;
+  border-radius: 9px;
+  background: var(--blue-soft);
+  color: #3f487e;
 }
 
 .automation-owned-notice span,
 .automation-form small,
-.automation-form .form-note {
-  font-size: 12px;
-}
+.automation-form .form-note { font-size: 11px; }
 
 .automation-form small,
 .automation-form .form-note {
-  color: #6c6f66;
   margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
-.knowledge-location {
-  max-width: 280px;
-}
+.automations-page { display: block; }
 
-.automation-table .knowledge-location code {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.skill-standard-note {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(320px, 2fr);
-  gap: 18px;
-  align-items: center;
-  background: #f0f6f2 !important;
-}
-
-.skill-standard-note h2,
-.skill-standard-note p {
-  margin: 4px 0;
-}
-
-.skill-standard-note p {
-  color: #627067;
-  font-size: 13px;
-}
-
-.skill-grid article {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.skill-grid article .skill-description {
-  margin: 0;
-  color: #4f514b;
-  font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif;
-  white-space: normal;
-  max-height: none;
-}
-
-.skill-grid details summary {
-  cursor: pointer;
-  color: #315e4e;
+.automation-message {
+  width: min(1120px, 100%);
+  margin: 0 auto 20px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  background: var(--green-soft);
+  color: var(--green);
   font-size: 12px;
 }
 
-.skill-grid details pre {
-  max-height: 260px;
+.automations-page > section {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 30px 0 34px;
+  border-top: 1px solid var(--line);
+}
+
+.worker-card {
+  margin-bottom: 10px !important;
+  padding: 23px !important;
+  display: grid;
+  grid-template-columns: minmax(170px, .75fr) minmax(330px, 1.65fr) auto;
+  align-items: center;
+  gap: 22px;
+  border: 0 !important;
+  border-radius: 13px;
+  background: #ece5da;
+}
+
+.worker-card h2 {
+  margin: 7px 0 5px;
+  color: #312e29;
+  font: 500 24px/1.05 ui-serif, "Iowan Old Style", Georgia, serif;
+  letter-spacing: -.025em;
+}
+
+.worker-card p {
+  margin: 0;
+  color: #726b62;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.worker-card pre {
+  max-height: 142px;
+  margin: 0;
+  padding: 14px;
   overflow: auto;
+  border-radius: 9px;
+  background: #282521;
+  color: #f0ece3;
   white-space: pre-wrap;
-  padding: 12px;
+  font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.automation-stats {
+  width: min(1120px, 100%);
+  margin: 0 auto 10px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  overflow: hidden;
+  border-radius: 13px;
+  background: #282521;
+  color: #fff;
+}
+
+.automation-stats article {
+  min-height: 100px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-left: 1px solid rgba(255, 255, 255, .09);
+}
+
+.automation-stats article:first-child { border-left: 0; }
+
+.automation-stats strong {
+  color: #fff;
+  font: 500 34px/1 ui-serif, "Iowan Old Style", Georgia, serif;
+}
+
+.automation-stats article:first-child strong { color: #ff8268; }
+
+.automation-stats span {
+  color: #aaa49b;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  color: #2e2b27;
+  font: 600 19px/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -.025em;
+}
+
+.section-heading p,
+.empty-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.automation-table-wrap {
+  margin: 17px 0 0;
+  overflow: auto;
+}
+
+.automation-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #393631;
+  font-size: 12px;
+}
+
+.automation-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-strong);
+  color: #928d84;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .1em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.automation-table td {
+  padding: 14px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.automation-table tbody tr { transition: background 120ms ease; }
+
+.automation-table tbody tr:hover { background: rgba(238, 233, 224, .45); }
+
+.automation-table td small {
+  display: block;
+  margin-top: 4px;
+  color: #8a857d;
+  font-size: 9px;
+}
+
+.automation-table code {
+  color: #56514a;
+  font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+}
+
+.knowledge-location { max-width: 280px; }
+
+.automation-table .knowledge-location code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.table-actions button {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 9px;
+}
+
+.run-status {
+  display: inline-flex;
+  padding: 4px 7px;
+  border-radius: 99px;
+  background: #eae7e0;
+  color: #716c64;
+  font-size: 8px;
+  font-weight: 720;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.run-status.ready { background: #fff0d8; color: #795414; }
+.run-status.claimed { background: var(--blue-soft); color: #46528f; }
+.run-status.succeeded { background: var(--green-soft); color: var(--green); }
+.run-status.failed { background: #f6dfdb; color: #92392f; }
+.run-status.disabled { background: #eae7e0; color: #716c64; }
+
+.run-outcome {
+  max-width: 420px;
+  white-space: pre-wrap;
+}
+
+.automation-form {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.automation-form summary {
+  color: #46423c;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.automation-form[open] summary { color: var(--accent-hover); }
+
+.automation-form form {
+  max-width: 760px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.automation-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #6f6a63;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.automation-form input,
+.automation-form textarea,
+.automation-form select {
+  padding: 9px 10px;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
-  background: #f3f3ef;
-  color: #3f413b;
-  font: 11px/1.55 ui-monospace, SFMono-Regular, monospace;
+  background: #fff;
+  color: var(--ink);
+}
+
+.automation-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.automation-form button { align-self: flex-start; }
+
+.skill-standard-note {
+  width: min(1120px, 100%);
+  margin: 0 auto 10px;
+  padding: 22px 24px;
+  display: grid;
+  grid-template-columns: 40px minmax(220px, .85fr) minmax(280px, 1.35fr);
+  align-items: center;
+  gap: 18px;
+  border-radius: 13px;
+  background: #ece5da;
+}
+
+.skill-note-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 17px;
+}
+
+.skill-standard-note h2,
+.skill-standard-note p { margin: 5px 0 0; }
+
+.skill-standard-note h2 {
+  color: #312e29;
+  font: 500 23px/1.05 ui-serif, "Iowan Old Style", Georgia, serif;
+  letter-spacing: -.025em;
+}
+
+.skill-standard-note p {
+  color: #716a61;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.skill-grid {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line-strong);
+}
+
+.skill-grid article {
+  min-width: 0;
+  padding: 17px 5px;
+  display: grid;
+  grid-template-columns: 34px minmax(170px, .72fr) minmax(260px, 1.4fr) auto;
+  align-items: start;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.skill-glyph {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-size: 11px;
+}
+
+.skill-grid article > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skill-grid article > div strong {
+  overflow: hidden;
+  color: #35322e;
+  font-size: 12px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-grid article > div span {
+  color: #918c84;
+  font-size: 9px;
+}
+
+.skill-grid article .skill-description {
+  max-height: none;
+  margin: 0;
+  overflow: visible;
+  color: #68635c;
+  font: 12px/1.55 Inter, ui-sans-serif, system-ui, sans-serif;
+  white-space: normal;
+}
+
+.skill-grid details {
+  grid-column: 2 / 4;
+}
+
+.skill-grid details summary {
+  color: #8a857d;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.skill-grid details[open] summary { color: var(--accent-hover); }
+
+.skill-grid details pre {
+  max-height: 290px;
+  margin: 10px 0 0;
+  padding: 14px;
+  overflow: auto;
+  border-radius: 9px;
+  background: #282521;
+  color: #eeeae1;
+  white-space: pre-wrap;
+  font: 10px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .skill-grid article footer {
-  margin-top: auto;
+  grid-column: 4;
+  grid-row: 1 / 3;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.skill-grid article footer small {
+  max-width: 120px;
+  overflow: hidden;
+  color: #918c84;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-grid article footer button {
+  min-height: 29px;
+  flex-shrink: 0;
+  padding: 5px 8px;
+  font-size: 9px;
 }
 
 @media (max-width: 1000px) {
-  .skill-standard-note {
-    grid-template-columns: 1fr;
+  .worker-card { grid-template-columns: 1fr; }
+  .worker-card button { justify-self: start; }
+  .skill-standard-note { grid-template-columns: 40px 1fr; }
+  .skill-standard-note > p { grid-column: 2; }
+
+  .skill-grid article {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
   }
+
+  .skill-grid article .skill-description { grid-column: 2; }
+  .skill-grid details { grid-column: 2 / -1; }
+  .skill-grid article footer { grid-column: 3; }
 }
 
 @media (max-width: 800px) {
   .automation-owned-notice {
     margin-left: 20px;
     margin-right: 20px;
+  }
+
+  .automation-stats { grid-template-columns: repeat(2, 1fr); }
+  .automation-stats article:nth-child(3) { border-left: 0; border-top: 1px solid rgba(255, 255, 255, .09); }
+  .automation-stats article:nth-child(4) { border-top: 1px solid rgba(255, 255, 255, .09); }
+  .form-row { grid-template-columns: 1fr; }
+
+  .skill-standard-note {
+    padding: 19px;
+    grid-template-columns: 36px 1fr;
+  }
+
+  .skill-note-mark { width: 36px; height: 36px; }
+
+  .skill-grid article {
+    padding-block: 16px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .skill-grid article .skill-description,
+  .skill-grid details,
+  .skill-grid article footer {
+    grid-column: 2;
+  }
+
+  .skill-grid article footer {
+    grid-row: auto;
+    justify-content: space-between;
   }
 }

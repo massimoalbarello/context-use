@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, refreshCsrf, uploadFile } from "./api.ts";
 import { authClient } from "./auth-client.ts";
 import { AssetDetails } from "./components/Assets.tsx";
@@ -13,6 +13,13 @@ import type { Asset, Page } from "./types.ts";
 
 type SessionInfo = { owner: { id: string; email: string }; passkey_count: number; passkeys: PasskeySummary[] };
 type Section = "knowledge" | "skills" | "automations" | "settings";
+
+function SectionIcon({ section }: { section: Section }) {
+  if (section === "knowledge") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 3.5h8a3 3 0 0 1 3 3v10h-8a3 3 0 0 1-3-3v-10Z" /><path d="M7.5 6.5h5M7.5 9.5h5M7.5 12.5h3" /></svg>;
+  if (section === "skills") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 1.25 4.25L15.5 7.5l-4.25 1.25L10 13l-1.25-4.25L4.5 7.5l4.25-1.25L10 2Z" /><path d="m15.5 12 .65 2.35L18.5 15l-2.35.65L15.5 18l-.65-2.35L12.5 15l2.35-.65L15.5 12Z" /></svg>;
+  if (section === "automations") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.25A6.75 6.75 0 1 0 16.75 10" /><path d="M10 6v4l2.75 1.5M14 3.25h2.75V6" /></svg>;
+  return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.5" /><path d="M16.5 11.5v-3l-2-.5a5.1 5.1 0 0 0-.7-1.2l.55-2-2.6-1.5-1.45 1.45a5.3 5.3 0 0 0-1.4 0L7.45 3.3l-2.6 1.5.55 2A5.1 5.1 0 0 0 4.7 8l-2 .5v3l2 .5c.18.43.42.84.7 1.2l-.55 2 2.6 1.5 1.45-1.45a5.3 5.3 0 0 0 1.4 0l1.45 1.45 2.6-1.5-.55-2c.28-.36.52-.77.7-1.2l2-.5Z" /></svg>;
+}
 
 function selectionFromLocation(): KnowledgeSelection | null {
   const match = window.location.pathname.match(/^\/app\/(pages|assets)\/([0-9a-f-]+)/);
@@ -42,6 +49,7 @@ export function App() {
   const [publicationFilter, setPublicationFilter] = useState<"all" | "public">("all");
   const [showArchived, setShowArchived] = useState(false);
   const [message, setMessage] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const consent = window.location.pathname === "/app/oauth/consent";
 
   const loadSession = async () => {
@@ -67,6 +75,19 @@ export function App() {
     window.addEventListener("popstate", syncLocation);
     return () => window.removeEventListener("popstate", syncLocation);
   }, []);
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k") return;
+      event.preventDefault();
+      if (section !== "knowledge") {
+        setSection("knowledge");
+        history.pushState({}, "", selected ? `/app/${selected.kind === "page" ? "pages" : "assets"}/${selected.id}` : "/app");
+      }
+      window.setTimeout(() => { searchRef.current?.focus(); searchRef.current?.select(); });
+    };
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, [section, selected]);
 
   const visibleAssets = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -143,25 +164,23 @@ export function App() {
 
   return <div className="shell">
     <aside className="sidebar">
-      <div className="sidebar-brand"><div className="brand-mark small">cu</div><strong>context-use</strong></div>
-      <nav className="sidebar-section-nav"><button className={section === "knowledge" ? "active" : ""} onClick={openKnowledge}>Knowledge</button><button className={section === "skills" ? "active" : ""} onClick={openSkills}>Skills</button><button className={section === "automations" ? "active" : ""} onClick={openAutomations}>Automations</button></nav>
-      {section === "knowledge" ? <><input className="search" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} />
+      <div className="sidebar-brand"><div className="brand-mark small">cu</div><div><strong>context-use</strong><span>Private workspace</span></div></div>
+      <nav className="sidebar-section-nav">
+        <button className={section === "knowledge" ? "active" : ""} onClick={openKnowledge}><SectionIcon section="knowledge" /><span>Knowledge</span></button>
+        <button className={section === "skills" ? "active" : ""} onClick={openSkills}><SectionIcon section="skills" /><span>Skills</span></button>
+        <button className={section === "automations" ? "active" : ""} onClick={openAutomations}><SectionIcon section="automations" /><span>Automations</span></button>
+      </nav>
+      {section === "knowledge" ? <><label className="sidebar-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5" /><path d="m12.25 12.25 4 4" /></svg><input ref={searchRef} className="search" aria-label="Search knowledge" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘K</kbd></label>
         <div className="knowledge-filter" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>{(["all", "public"] as const).map((filter) => <button className={publicationFilter === filter ? "active" : ""} aria-pressed={publicationFilter === filter} key={filter} onClick={() => setPublicationFilter(filter)}>{filter === "all" ? "All" : "Public"}</button>)}</div>
         <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
         <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} emptyMessage={publicationFilter === "public" ? "Nothing public yet" : "No knowledge yet"} />
-        <div className="knowledge-actions"><button onClick={createPage}>＋ New page</button><label className="button upload-button">↑ Upload asset<input type="file" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadAsset(file); }} /></label></div></> : <div className="sidebar-section-summary"><strong>{section === "automations" ? "Scheduled work" : section === "skills" ? "Reusable capabilities" : "Owner controls"}</strong><p>{section === "automations" ? "Cron triggers, isolated generated knowledge, and durable run history." : section === "skills" ? "Discoverable SKILL.md definitions shared by manual work and automations." : "Manage the permanent passkey and connected agents."}</p></div>}
+        <div className="knowledge-actions"><button className="primary" onClick={createPage}><span>＋</span>New page</button><label className="button upload-button"><span>↑</span>Upload<input type="file" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadAsset(file); }} /></label></div></> : <div className="sidebar-section-summary"><span className="summary-index">0{section === "skills" ? "2" : section === "automations" ? "3" : "4"}</span><strong>{section === "automations" ? "Scheduled work" : section === "skills" ? "Reusable capabilities" : "Owner controls"}</strong><p>{section === "automations" ? "Cron triggers, isolated generated knowledge, and durable run history." : section === "skills" ? "Discoverable SKILL.md definitions shared by manual work and automations." : "Manage the permanent passkey and connected agents."}</p></div>}
       <footer>
-        <span className="sidebar-user">{session.owner.email} · {session.passkey_count} passkey{session.passkey_count === 1 ? "" : "s"}</span>
-        <div className="sidebar-footer-actions">
-          <button className={section === "settings" ? "settings-button active" : "settings-button"} onClick={openSettings} aria-label="Open settings">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.94 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.57 15 1.7 1.7 0 0 0 3 14H3v-4h.08A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.57 1.7 1.7 0 0 0 10 3h4v.08a1.7 1.7 0 0 0 1.06 1.52 1.7 1.7 0 0 0 1.88-.34L17 4.2 19.83 7l-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 21 10h.08v4H21a1.7 1.7 0 0 0-1.6 1Z" /></svg>
-            Settings
-          </button>
-          <button onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}>Sign out</button>
-        </div>
+        <button className={section === "settings" ? "settings-button active" : "settings-button"} onClick={openSettings}><SectionIcon section="settings" /><span>Settings</span></button>
+        <div className="sidebar-account"><span className="user-avatar">{session.owner.email.slice(0, 1).toUpperCase()}</span><span className="sidebar-user"><strong>{session.owner.email}</strong><small>{session.passkey_count} secure passkey{session.passkey_count === 1 ? "" : "s"}</small></span><button className="sign-out-button" aria-label="Sign out" title="Sign out" onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}>↗</button></div>
       </footer>
     </aside>
-    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "skills" ? <Skills /> : section === "automations" ? <Automations /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="brand-mark">cu</div><h2>Select or create knowledge</h2><p>Pages and assets remain private until you explicitly publish them.</p></main>}
+    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "skills" ? <Skills /> : section === "automations" ? <Automations /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Capture durable knowledge for you and your agents. Nothing becomes public until you explicitly publish it.</p><div className="empty-actions"><button className="primary" onClick={createPage}>Create a page</button><label className="button">Upload an asset<input type="file" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) uploadAsset(file); }} /></label></div><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-ready</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
     {message && <div className="toast">{message}</div>}
   </div>;
 }
