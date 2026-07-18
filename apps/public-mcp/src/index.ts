@@ -15,7 +15,7 @@ const server = Bun.serve({
   async fetch(request) {
     const pathname = new URL(request.url).pathname;
     if (pathname === "/health") {
-      return Response.json({ status: "ok", version: "0.1.13" }, {
+      return Response.json({ status: "ok", version: "0.1.14" }, {
         headers: { "cache-control": "no-store", "x-content-type-options": "nosniff" },
       });
     }
