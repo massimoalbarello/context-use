@@ -28,7 +28,7 @@ async function mcpRequest(server: McpServer, body: Record<string, unknown>) {
   const transport = createPublicMcpTransport();
   await server.connect(transport);
   try {
-    const response = await transport.handleRequest(new Request("https://context.example.com/public/mcp", {
+    const response = await transport.handleRequest(new Request("https://public.context.example.com/mcp", {
       method: "POST",
       headers: {
         accept: "application/json, text/event-stream",

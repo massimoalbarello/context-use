@@ -174,3 +174,12 @@ resource "aws_route53_record" "assets" {
   ttl     = 60
   records = [aws_eip.app.public_ip]
 }
+
+resource "aws_route53_record" "public_mcp" {
+  count   = var.route53_zone_id == "" ? 0 : 1
+  zone_id = var.route53_zone_id
+  name    = var.public_mcp_hostname
+  type    = "A"
+  ttl     = 60
+  records = [aws_eip.app.public_ip]
+}

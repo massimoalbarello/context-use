@@ -78,6 +78,7 @@ jobs:
           DB_BACKUP_PASSWORD: test
           APP_HOSTNAME: context.example.com
           ASSET_HOSTNAME: assets.context.example.com
+          PUBLIC_MCP_HOSTNAME: public.context.example.com
           OWNER_EMAIL: owner@example.com
           OWNER_SETUP_TOKEN_HASH: 0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cfa864a96a0efe17b1694
           BETTER_AUTH_SECRET: test-test-test-test-test-test-test-test
@@ -88,6 +89,6 @@ jobs:
           CLOUDWATCH_LOG_GROUP: test
         run: |
           docker compose -f deploy/docker-compose.yml config --quiet
-          docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" -e APP_HOSTNAME=context.example.com -e ASSET_HOSTNAME=assets.context.example.com caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
+          docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" -e APP_HOSTNAME=context.example.com -e ASSET_HOSTNAME=assets.context.example.com -e PUBLIC_MCP_HOSTNAME=public.context.example.com caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
       - run: docker build -t context-use:test .
       - run: docker build -f deploy/backup/Dockerfile -t context-use-backup:test .

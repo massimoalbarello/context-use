@@ -1,3 +1,4 @@
+import { resolve4 } from "node:dns/promises";
 import { resolve } from "node:path";
 import {
   generateSecret,
@@ -11,18 +12,21 @@ import type { DeploymentConfig, ReleaseManifest } from "./types.ts";
 
 export async function deploy(config: DeploymentConfig, manifest: ReleaseManifest): Promise<void> {
   if (!config.computeOutputs) throw new Error("Compute infrastructure outputs are missing");
+  const expectPublicMcp = manifest.version === currentVersion;
+  if (expectPublicMcp) await assertPublicMcpDns(config);
   await ensureRuntimeParameterUpgrades(config);
   await waitForSsm(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id);
   const deployScript = await Bun.file(resolve(await deploymentRoot(manifest), "deploy/deploy.sh")).text();
   const command = deploymentCommands(config, manifest, deployScript);
   await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, command);
-  await verifyDeployment(config.hostname, manifest.version, manifest.version === currentVersion);
+  await verifyDeployment(config, manifest.version, expectPublicMcp);
   await verifyRemoteSecurity(config);
 }
 
 async function ensureRuntimeParameterUpgrades(config: DeploymentConfig): Promise<void> {
   if (!config.dataOutputs) throw new Error("Data infrastructure outputs are missing");
-  const name = `/context-use/${config.installationId}/${config.environment}/DB_PUBLIC_MCP_PASSWORD`;
+  const prefix = `/context-use/${config.installationId}/${config.environment}`;
+  const name = `${prefix}/DB_PUBLIC_MCP_PASSWORD`;
   try {
     await getSecureParameter(config.awsProfile, config.awsRegion, name);
   } catch (error) {
@@ -35,6 +39,42 @@ async function ensureRuntimeParameterUpgrades(config: DeploymentConfig): Promise
       config.dataOutputs.kms_key_arn,
     );
   }
+  const hostnameName = `${prefix}/PUBLIC_MCP_HOSTNAME`;
+  let currentHostname: string | null = null;
+  try {
+    currentHostname = await getSecureParameter(config.awsProfile, config.awsRegion, hostnameName);
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("ParameterNotFound")) throw error;
+  }
+  if (currentHostname !== config.publicMcpHostname) {
+    await putSecureParameter(
+      config.awsProfile,
+      config.awsRegion,
+      hostnameName,
+      config.publicMcpHostname,
+      config.dataOutputs.kms_key_arn,
+    );
+  }
+}
+
+export async function publicMcpDnsMatches(
+  config: DeploymentConfig,
+  resolver: (hostname: string) => Promise<string[]> = resolve4,
+): Promise<boolean> {
+  if (config.dnsMode !== "manual") return true;
+  if (!config.computeOutputs) return false;
+  try {
+    return (await resolver(config.publicMcpHostname)).includes(config.computeOutputs.public_ip);
+  } catch {
+    return false;
+  }
+}
+
+async function assertPublicMcpDns(config: DeploymentConfig): Promise<void> {
+  if (await publicMcpDnsMatches(config)) return;
+  throw new Error(
+    `Create an A record for ${config.publicMcpHostname} pointing to ${config.computeOutputs?.public_ip ?? "the deployment IP"}, wait for DNS propagation, then rerun the command`,
+  );
 }
 
 export function deploymentCommands(config: DeploymentConfig, manifest: ReleaseManifest, deployScript: string): string[] {
@@ -100,8 +140,8 @@ export function healthMatchesVersion(health: unknown, releaseVersion: string): b
   return health.version === releaseVersion.replace(/^v/, "");
 }
 
-async function verifyDeployment(hostname: string, releaseVersion: string, expectPublicMcp: boolean): Promise<void> {
-  const origin = `https://${hostname}`;
+async function verifyDeployment(config: DeploymentConfig, releaseVersion: string, expectPublicMcp: boolean): Promise<void> {
+  const origin = `https://${config.hostname}`;
   let lastError = "health check did not complete";
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
@@ -126,7 +166,14 @@ async function verifyDeployment(hostname: string, releaseVersion: string, expect
   const cookieMcp = await fetch(`${origin}/mcp`, { method: "POST", headers: { Cookie: "better-auth.session_token=invalid", "Content-Type": "application/json" }, body: "{}" });
   if (cookieMcp.status !== 401) throw new Error("Security check failed: MCP did not reject browser cookies");
   if (!expectPublicMcp) return;
-  const publicMcp = await fetch(`${origin}/public/mcp`, {
+  const publicOrigin = `https://${config.publicMcpHostname}`;
+  for (const path of ["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"]) {
+    const discovery = await fetch(`${publicOrigin}${path}`, { redirect: "error" });
+    if (discovery.status !== 404 || discovery.headers.has("www-authenticate")) {
+      throw new Error("Security check failed: public MCP hostname advertised authentication");
+    }
+  }
+  const publicMcp = await fetch(`${publicOrigin}/mcp`, {
     method: "POST",
     headers: { Accept: "application/json, text/event-stream", "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -141,10 +188,18 @@ async function verifyDeployment(hostname: string, releaseVersion: string, expect
     }),
   });
   if (!publicMcp.ok) throw new Error("Public MCP endpoint is unavailable");
-  const publicWithCookie = await fetch(`${origin}/public/mcp`, {
+  const publicWithCookie = await fetch(`${publicOrigin}/mcp`, {
     method: "POST",
     headers: { Cookie: "better-auth.session_token=invalid", "Content-Type": "application/json" },
     body: "{}",
   });
   if (publicWithCookie.status !== 400) throw new Error("Security check failed: public MCP accepted browser cookies");
+  const legacyPublicMcp = await fetch(`${origin}/public/mcp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (legacyPublicMcp.status !== 404 || legacyPublicMcp.headers.has("www-authenticate")) {
+    throw new Error("Security check failed: legacy public MCP route remains reachable");
+  }
 }

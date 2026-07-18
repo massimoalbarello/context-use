@@ -6,13 +6,13 @@
 
 The selected AWS CLI profile remains the source of authentication. Before each Terraform operation, the CLI uses `aws configure export-credentials` to pass short-lived credentials through the child-process environment. This supports `aws login`, SSO, credential-process, role, and conventional profiles without persisting exported credentials or embedding them in Terraform backend configuration.
 
-`context-use resume` is idempotent across infrastructure phases. If interruption occurred before SSM secrets were complete, it regenerates and stores the installation secrets before continuing. A resumed manual-DNS installation pauses after compute and secrets are ready, prints both required A records, and deploys only after the next `resume`.
+`context-use resume` is idempotent across infrastructure phases. If interruption occurred before SSM secrets were complete, it regenerates and stores the installation secrets before continuing. A resumed manual-DNS installation pauses after compute and secrets are ready, prints the dashboard, asset, and public-MCP A records, and deploys only after the next `resume`.
 
 After deployment, the CLI prints an owner-enrollment URL containing a random setup capability in its fragment. The browser removes the fragment from its address bar, asks for the configured owner email, and sends both values only as part of the same-origin passkey ceremony. Enrollment closes permanently after the first credential is stored. The email labels the owner account but is not an authentication or recovery factor.
 
 `context-use update` downloads and verifies the target release's CLI, atomically replaces the installed CLI when its version differs, and continues the update with that exact binary. The target CLI takes a database backup, creates any newly introduced runtime secret such as the independent public MCP database password, applies compatible Terraform changes, runs migrations, deploys images pinned by digest, then verifies health and credential separation. Failed application health checks redeploy the previous image release; the target CLI remains installed so it can safely operate on any partially updated state.
 
-Production runs the anonymous MCP in its own read-only container. It has no outbound network, network path to the private application, private application secrets, storage configuration, or owner identity. Caddy routes only the exact `/public/mcp` path to it and limits request bodies to 128 KiB.
+Production runs the anonymous MCP in its own read-only container. It has no outbound network, network path to the private application, private application secrets, storage configuration, or owner identity. Caddy serves it on `public.<dashboard-host>` and routes only the exact `/mcp` path to it, limits request bodies to 128 KiB, and returns `404` for OAuth discovery and every other path. For manual DNS, the public hostname must resolve to the deployment IP before an update can proceed.
 
 ## Backups and restore
 
