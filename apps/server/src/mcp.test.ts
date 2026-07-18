@@ -33,13 +33,15 @@ function serverWith(
   automations: AutomationRepository,
   scopes = new Set<string>(["skills:read", "skills:write", "automations:write"]),
   pages = {} as PageRepository,
+  assets = {} as AssetRepository,
+  storage = {} as ObjectStorage,
 ) {
   return createMcpServer(
     { clientId: "mcp-client", userId: "owner", scopes },
     pages,
-    {} as AssetRepository,
+    assets,
     automations,
-    {} as ObjectStorage,
+    storage,
   );
 }
 
@@ -58,7 +60,82 @@ describe("MCP skill and automation authoring", () => {
       "create_skill",
       "create_automation",
       "create_automation_page",
+      "create_asset_upload",
     ]));
+  });
+
+  test("creates checksum-bound asset uploads without exposing storage keys", async () => {
+    const calls: unknown[] = [];
+    const assets = {
+      async create(input: unknown) {
+        calls.push(input);
+        return {
+          id: "11111111-1111-4111-8111-111111111111",
+          current_path: "documents/private-pdf",
+          filename: "private.pdf",
+          content_type: "application/pdf",
+          size_bytes: 123,
+          content_hash: "a".repeat(64),
+          objectKey: "objects/secret-key",
+        };
+      },
+    } as unknown as AssetRepository;
+    const response = await mcpRequest(serverWith(
+      {} as AutomationRepository,
+      new Set(["assets:write"]),
+      {} as PageRepository,
+      assets,
+    ), {
+      jsonrpc: "2.0",
+      id: 6,
+      method: "tools/call",
+      params: {
+        name: "create_asset_upload",
+        arguments: {
+          path: "documents/private-pdf",
+          filename: "private.pdf",
+          content_type: "application/pdf",
+          size_bytes: 123,
+          sha256: "a".repeat(64),
+        },
+      },
+    });
+
+    const result = JSON.parse(response.result?.content?.[0]?.text ?? "null");
+    expect(calls).toEqual([{
+      currentPath: "documents/private-pdf",
+      filename: "private.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 123,
+      contentHash: "a".repeat(64),
+    }]);
+    expect(result.reference).toBe("context-use://asset/11111111-1111-4111-8111-111111111111");
+    expect(result.upload).toMatchObject({
+      method: "PUT",
+      headers: { "content-type": "application/pdf", "content-length": "123" },
+    });
+    expect(typeof result.upload.headers["x-context-use-upload-token"]).toBe("string");
+    expect(JSON.stringify(result)).not.toContain("secret-key");
+  });
+
+  test("requires the assets write scope to create an upload", async () => {
+    const response = await mcpRequest(serverWith({} as AutomationRepository, new Set()), {
+      jsonrpc: "2.0",
+      id: 7,
+      method: "tools/call",
+      params: {
+        name: "create_asset_upload",
+        arguments: {
+          path: "documents/denied",
+          filename: "denied.pdf",
+          content_type: "application/pdf",
+          size_bytes: 0,
+          sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        },
+      },
+    });
+    expect(response.result?.isError).toBe(true);
+    expect(response.result?.content?.[0]?.text).toContain("insufficient_scope:assets:write");
   });
 
   test("creates skills with MCP attribution and schedules their returned version", async () => {

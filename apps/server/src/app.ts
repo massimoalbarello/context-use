@@ -21,7 +21,7 @@ import {
   wikiLinkCandidatePaths,
 } from "@context-use/database";
 import {
-  AssetPath,
+  assetUploadSchema,
   archivePageSchema,
   createAutomationSkillSchema,
   createCronScheduleSchema,
@@ -39,7 +39,8 @@ import { z } from "zod";
 import { auth, authPool, dashboardPrincipal } from "./auth.ts";
 import { config, production } from "./config.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
-import { createMcpRequestHandler } from "./mcp.ts";
+import { createMcpRequestHandler, isMcpGrantActive } from "./mcp.ts";
+import { createMcpAssetUploadHandler } from "./mcp-asset-upload.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import {
   SecurityError,
@@ -66,6 +67,7 @@ const mcpAutomations = new AutomationRepository(mcpPool);
 const publicData = new PublicRepository(publicPool);
 const publications = new PublicationRepository(dashboardPool, publisherPool);
 const mcp = createMcpRequestHandler(mcpPages, mcpAssets, mcpAutomations, storage);
+const mcpAssetUpload = createMcpAssetUploadHandler(mcpAssets, storage, isMcpGrantActive);
 
 const authServerMetadata = oauthProviderAuthServerMetadata(auth as never);
 const openIdMetadata = oauthProviderOpenIdConfigMetadata(auth as never);
@@ -190,17 +192,6 @@ function webFile(path: string): Bun.BunFile | null {
   return Bun.file(resolved);
 }
 
-const assetUploadSchema = z.object({
-  path: AssetPath,
-  filename: z.string().trim().min(1).max(1024),
-  content_type: z.string().trim().min(1).max(255),
-  size_bytes: z.number().int().min(0).max(5_000_000_000),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/),
-  width: z.number().int().positive().optional(),
-  height: z.number().int().positive().optional(),
-  duration_seconds: z.number().nonnegative().optional(),
-}).strict();
-
 export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
@@ -235,6 +226,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .get("/mcp", ({ request }) => mcp(request))
   .post("/mcp", ({ request }) => mcp(request))
   .delete("/mcp", ({ request }) => mcp(request))
+  .put("/api/mcp/assets/:id/content", ({ request, params }) => mcpAssetUpload(request, params.id))
 
   .get("/app", async () => {
     const file = webFile("index.html");

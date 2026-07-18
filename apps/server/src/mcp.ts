@@ -30,6 +30,21 @@ async function contextFromJwt(jwt: JWTPayload): Promise<McpContext | null> {
   const userId = typeof jwt.sub === "string" ? jwt.sub : null;
   if (!clientId || !userId || jwt.principal_type !== "mcp_agent") return null;
   const scopes = scopesFromJwt(jwt);
+  if (!(await isMcpGrantActive(clientId, userId, scopes))) return null;
+
+  await authPool.query(
+    `INSERT INTO mcp_client_usage(client_id,user_id,last_used_at) VALUES ($1,$2,now())
+     ON CONFLICT (client_id,user_id) DO UPDATE SET last_used_at=excluded.last_used_at`,
+    [clientId, userId],
+  );
+  return { clientId, userId, scopes };
+}
+
+export async function isMcpGrantActive(
+  clientId: string,
+  userId: string,
+  scopes: ReadonlySet<string>,
+): Promise<boolean> {
   const result = await authPool.query(
     `SELECT 1
      FROM "oauthClient" client
@@ -41,14 +56,7 @@ async function contextFromJwt(jwt: JWTPayload): Promise<McpContext | null> {
        AND consent.scopes @> $5::jsonb`,
     [clientId, userId, ownerUserId, config.OWNER_EMAIL, JSON.stringify([...scopes])],
   );
-  if (!result.rowCount) return null;
-
-  await authPool.query(
-    `INSERT INTO mcp_client_usage(client_id,user_id,last_used_at) VALUES ($1,$2,now())
-     ON CONFLICT (client_id,user_id) DO UPDATE SET last_used_at=excluded.last_used_at`,
-    [clientId, userId],
-  );
-  return { clientId, userId, scopes };
+  return Boolean(result.rowCount);
 }
 
 export function createMcpRequestHandler(

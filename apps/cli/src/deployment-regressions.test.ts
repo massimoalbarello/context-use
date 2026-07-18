@@ -200,6 +200,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployScript).toContain("/data/context-use/.volume-id");
   expect(caddy).not.toContain("email off");
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
+  expect(caddy).toContain("handle /api/mcp/assets/*/content");
   expect(caddy).not.toContain("handle /public/mcp");
   expect(caddy).toContain("{$PUBLIC_MCP_HOSTNAME}");
   expect(caddy).toContain("handle /mcp");

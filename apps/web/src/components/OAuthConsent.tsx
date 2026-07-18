@@ -6,6 +6,7 @@ const SCOPE_DESCRIPTIONS: Record<string, string> = {
   "kb:read": "Read private knowledge pages and their history",
   "kb:write": "Create, update, and archive private pages",
   "assets:read": "Read private asset metadata and download assets",
+  "assets:write": "Create private assets and upload checksum-bound content",
   "skills:read": "Discover skill names and descriptions, then load relevant instructions",
   "skills:write": "Create versioned Agent Skills",
   "automations:write": "Create scheduled automations",

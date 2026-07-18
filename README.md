@@ -11,7 +11,7 @@ The public site is deliberately separate: a page or asset becomes public only af
 - Passkey-only owner signup and sign-in, bound to the configured owner email through a one-time setup link.
 - Passkey-protected publishing, republishing, slug changes, and unpublishing with the same immutable credential.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
-- Stateless Streamable HTTP MCP at `/mcp` with knowledge, asset-read, and automation execution tools.
+- Stateless Streamable HTTP MCP at `/mcp` with knowledge, checksum-bound asset upload/download, and automation execution tools.
 - Anonymous, tools-only MCP on a dedicated `public.` hostname with a hierarchical index, page reads, and full-text search over published snapshots only.
 - Versioned, discoverable Agent Skills; time-zone-aware automations; isolated generated knowledge; durable run history; and leased agent execution.
 - Exact published snapshots at `/p/:slug` and independently published assets on a cookieless hostname.
@@ -27,6 +27,7 @@ External ingestion, vault migration, approval queues, collaboration, and semanti
 | Owner | Host-only secure session cookie | `/api/dashboard/*` |
 | Owner publishing | Session + CSRF + exact origin + action-bound passkey assertion | Publication confirmation only |
 | Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
+| Agent asset upload | Short-lived, object-specific capability returned by authenticated MCP | Exact returned `/api/mcp/assets/:id/content` URL only |
 | Public visitor | None | `/p/*` and independently published assets |
 | Public MCP client | None; credentials are rejected | `https://public.YOUR_HOST/mcp` only |
 | Deployment administrator | Local AWS identity | `context-use` CLI |
@@ -87,7 +88,9 @@ Point an OAuth-capable MCP client at:
 https://YOUR_HOST/mcp
 ```
 
-The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `skills:read`, `skills:write`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
+The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `assets:write`, `skills:read`, `skills:write`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
+
+With `assets:write`, `create_asset_upload` records private asset metadata and returns a fifteen-minute upload capability bound to that asset and OAuth grant. The agent then sends the exact raw bytes to the returned URL and headers. Size, content type, and SHA-256 are verified before storage; the capability cannot read, edit, delete, or publish anything. Existing OAuth grants must be reauthorized before they include the new scope.
 
 ### Public access
 
