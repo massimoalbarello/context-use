@@ -28,7 +28,7 @@ export function Messages() {
   useEffect(() => { load().catch(() => undefined); }, []);
 
   return <main className="content-page messages-page">
-    <header><div><span className="eyebrow">Confidential inbox</span><h1>Messages</h1><p>Private outreach sent through your public MCP context. Message contents and sender contact details are available only to your authenticated owner session.</p></div><button onClick={() => load().catch(() => undefined)}>Refresh inbox</button></header>
+    <header><div><span className="eyebrow">Confidential inbox</span><h1>Messages</h1><p>Private outreach sent through your public MCP context. Message contents and sender contact details are available only to your authenticated owner session.</p></div></header>
     <section className="messages-section">
       <div className="section-heading"><div><h2>Received</h2><p>{messages.length} confidential {messages.length === 1 ? "message" : "messages"}, newest first.</p></div><span className="private-inbox-badge"><i />Owner only</span></div>
       {error && <div className="inbox-error" role="alert">{error}</div>}

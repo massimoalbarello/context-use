@@ -101,7 +101,7 @@ export function Skills() {
   };
 
   return <main className="content-page automations-page skills-page">
-    <header><div><span className="eyebrow">Capability library</span><h1>Skills</h1><p>Reusable instructions that give connected agents a dependable way to work with your context.</p></div><button onClick={() => load().catch(() => undefined)}>Refresh library</button></header>
+    <header><div><span className="eyebrow">Capability library</span><h1>Skills</h1><p>Reusable instructions that give connected agents a dependable way to work with your context.</p></div></header>
     {message && <div className="automation-message">{message}</div>}
 
     <aside className="skill-standard-note">
