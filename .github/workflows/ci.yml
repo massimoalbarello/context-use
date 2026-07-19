@@ -86,7 +86,6 @@ jobs:
           BETTER_AUTH_SECRET: test-test-test-test-test-test-test-test
           MCP_ASSET_CAPABILITY_SECRET: test-test-test-test-test-test-mcp-secret
           CONFIRMATION_GATEWAY_TOKEN: test-test-test-test-confirmation-gateway
-          AUTH_EDGE_TOKEN: test-test-test-test-auth-edge-ingress
           AUTH_DASHBOARD_TOKEN: test-test-test-test-dashboard-auth-gateway
           AUTH_MCP_TOKEN: test-test-test-test-private-mcp-auth-gateway
           CONFIRMATION_DASHBOARD_TOKEN: test-test-test-dashboard-confirmation
