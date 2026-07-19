@@ -114,6 +114,11 @@ export function allDirectoryPaths(directory: PageTreeDirectory): string[] {
   return directory.directories.flatMap((child) => [child.path, ...allDirectoryPaths(child)]);
 }
 
+export function countPublicPages(directory: PageTreeDirectory): number {
+  return directory.pages.filter(({ page }) => Boolean(page.published_version_id)).length
+    + directory.directories.reduce((total, child) => total + countPublicPages(child), 0);
+}
+
 export function expandedPathsForDisplay(
   persistedPaths: Set<string>,
   directory: PageTreeDirectory,
