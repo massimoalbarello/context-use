@@ -47,6 +47,11 @@ import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import {
+  publicPageStyles,
+  renderPublicLandingDocument,
+  renderPublicPageDocument,
+} from "./public-page.ts";
+import {
   SecurityError,
   assertDashboardRequestSecurity,
   assertDashboardUploadSecurity,
@@ -168,10 +173,6 @@ function publicPageResolvers(sourcePath: string) {
         : { available: false as const };
     },
   };
-}
-
-function escapeHtml(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
 
 async function getOwnerPasskeys(userId: string) {
@@ -563,6 +564,22 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       if (page.automation_id && input.action !== "unpublish") {
         return problem("Automation-generated pages remain private", 403, "automation_page_private");
       }
+      if (page.required_public_slug) {
+        if (input.action === "unpublish") {
+          return problem(
+            `The required /p/${page.required_public_slug} page cannot be unpublished`,
+            409,
+            "required_public_page",
+          );
+        }
+        if (input.public_slug !== page.required_public_slug) {
+          return problem(
+            `The required public page must remain at /p/${page.required_public_slug}`,
+            422,
+            "required_public_page",
+          );
+        }
+      }
       if (input.action !== "unpublish") {
         if (!input.version_id || !input.public_slug) return problem("Page version and public slug are required", 422);
         const history = await dashboardPages.history(input.target_id);
@@ -638,17 +655,15 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const page = await publicData.pageBySlug(slug);
     if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
     const content = await renderMarkdown(page.body_markdown, publicPageResolvers(page.path));
-    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(page.title)}</title><link rel="stylesheet" href="/public.css"></head><body><main class="public-page"><article>${content}</article></main></body></html>`;
+    const html = renderPublicPageDocument(page.title, content);
     return new Response(html, { headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" } });
   })
-  .get("/", async () => {
-    const home = await publicData.pageBySlug("home");
-    return home
-      ? new Response(null, { status: 302, headers: { ...securityHeaders, location: `${config.APP_ORIGIN}/p/home` } })
-      : new Response("context-use", { headers: securityHeaders });
-  })
+  .get("/", () => new Response(
+    renderPublicLandingDocument(config.PUBLIC_MCP_ENDPOINT),
+    { headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" } },
+  ))
   .get("/public.css", () => new Response(
-    "body{margin:0;background:#f7f7f4;color:#20201d;font:17px/1.65 ui-serif,Georgia,serif}.public-page{max-width:760px;margin:8vh auto;padding:0 24px}h1,h2,h3{line-height:1.2}a{color:#315a4a}.private-reference{color:#777;font-style:italic}pre{overflow:auto;padding:16px;background:#ecece7;border-radius:8px}img{max-width:100%;height:auto}",
+    publicPageStyles,
     { headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" } },
   ))
   .get("/api/public/assets/:assetId/content", ({ request, params }) => publicAssetContent(request, params.assetId));

@@ -74,27 +74,29 @@ describe("public MCP tools", () => {
     });
 
     expect(response.result?.tools?.map(({ name }) => name)).toEqual([
-      "get_main_page",
+      "get_about_page",
       "get_public_page",
       "search_public_pages",
-      "send_message_to_owner",
+      "send_message",
     ]);
   });
 
-  test("returns home content and a complete nested index from the main page", async () => {
+  test("returns the required about content and a complete nested index from the main page", async () => {
     const response = await mcpRequest(publicServer(), {
       jsonrpc: "2.0",
       id: 2,
       method: "tools/call",
-      params: { name: "get_main_page", arguments: {} },
+      params: { name: "get_about_page", arguments: {} },
     });
     const result = parseContent(response) as {
+      canonical_url: string;
       introduction_markdown: string;
       page_count: number;
       pages: Array<{ slug: string; children: Array<{ slug: string; children: Array<{ slug: string }> }> }>;
     };
 
-    expect(result.introduction_markdown).toBe("Home public content");
+    expect(result.canonical_url).toBe("https://context.example.com/p/about");
+    expect(result.introduction_markdown).toBe("About public content");
     expect(result.page_count).toBe(4);
     expect(result.pages.find(({ slug }) => slug === "about")?.children[0]?.children[0]?.slug).toBe("context-use");
   });
@@ -140,7 +142,7 @@ describe("public MCP tools", () => {
       id: 5,
       method: "tools/call",
       params: {
-        name: "send_message_to_owner",
+        name: "send_message",
         arguments: { message: "I would like to discuss your work.", reply_to: "anonymous" },
       },
     });
@@ -152,7 +154,7 @@ describe("public MCP tools", () => {
       id: 6,
       method: "tools/call",
       params: {
-        name: "send_message_to_owner",
+        name: "send_message",
         arguments: {
           message: "  Your context-use work overlaps with our research.  ",
           reply_to: "  sender@example.com  ",
@@ -181,7 +183,7 @@ describe("public MCP tools", () => {
       id: 7,
       method: "tools/call",
       params: {
-        name: "send_message_to_owner",
+        name: "send_message",
         arguments: { message: "Please call me.", reply_to: "+44 (0)20 7946 0958" },
       },
     });
@@ -203,7 +205,7 @@ describe("public MCP tools", () => {
       jsonrpc: "2.0",
       id: 8,
       method: "tools/call",
-      params: { name: "get_main_page", arguments: {} },
+      params: { name: "get_about_page", arguments: {} },
     });
 
     expect(response.result?.isError).toBe(true);
@@ -222,7 +224,7 @@ describe("public MCP tools", () => {
         id: 9,
         method: "tools/call",
         params: {
-          name: "send_message_to_owner",
+          name: "send_message",
           arguments: { message: "Hello", reply_to: "sender@example.com" },
         },
       },

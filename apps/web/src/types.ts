@@ -4,6 +4,7 @@ export type Page = {
   current_version_id: string;
   published_version_id: string | null;
   public_slug: string | null;
+  required_public_slug: string | null;
   automation_id: string | null;
   archived_at: string | null;
   version_number: number;

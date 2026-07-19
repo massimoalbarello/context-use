@@ -2,7 +2,7 @@
 
 `context-use` is a private-by-default, single-owner knowledge base. It keeps Markdown pages in PostgreSQL, immutable asset bytes in S3, exposes an owner dashboard, and gives a trusted personal agent narrowly scoped access through MCP.
 
-The public site is deliberately separate: a page or asset becomes public only after the signed-in owner reviews an exact publication intent and confirms it with a passkey. Agent OAuth tokens cannot call dashboard routes, have no publication scope, and use a PostgreSQL role that cannot alter publication state.
+The public site is deliberately separate. Each installation starts with one required `/p/about` page whose initial published body is empty; every owner-authored page version or asset becomes public only after the signed-in owner reviews an exact publication intent and confirms it with a passkey. Agent OAuth tokens cannot call dashboard routes, have no publication scope, and use a PostgreSQL role that cannot alter publication state.
 
 ## What v1 includes
 
@@ -15,6 +15,7 @@ The public site is deliberately separate: a page or asset becomes public only af
 - Anonymous, tools-only MCP on a dedicated `public.` hostname with a hierarchical index, page reads, and full-text search over published snapshots only.
 - Versioned, discoverable Agent Skills; time-zone-aware automations; isolated generated knowledge; durable run history; and leased agent execution.
 - Exact published snapshots at `/p/:slug` and independently published assets on a cookieless hostname.
+- A built-in public billboard at `/` that directs people to the required `/p/about` page and agents to the installation-specific anonymous MCP endpoint.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
 
 External ingestion, vault migration, approval queues, collaboration, and semantic search are intentionally outside v1.
@@ -105,10 +106,10 @@ https://public.YOUR_HOST/mcp
 
 The public server deliberately exposes tools rather than MCP resources for broad client compatibility:
 
-- `get_main_page` returns the published `home` page, when present, and a complete nested index of all published pages.
+- `get_about_page` returns the required public `about` page and a complete nested index of all published pages.
 - `get_public_page` reads one page by its public slug and includes published breadcrumbs and children.
 - `search_public_pages` searches only the sanitized published-page projection.
-- `send_message_to_owner` privately delivers a message plus the sender's required email or phone loopback address.
+- `send_message` privately delivers a message plus the sender's required email or phone loopback address.
 
 For example, a dashboard at `https://context.example.com` exposes its anonymous MCP at `https://public.context.example.com/mcp`. The dedicated origin serves no OAuth or OpenID metadata and has no route to the private application.
 
