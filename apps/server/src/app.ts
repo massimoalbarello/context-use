@@ -6,6 +6,7 @@ import {
 import {
   AssetRepository,
   AutomationRepository,
+  AutomationSkillInUseError,
   AutomationValidationError,
   AutomationVersionConflictError,
   InboxRepository,
@@ -109,6 +110,9 @@ function routeError(error: unknown): Response {
     return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
   }
   if (error instanceof PublicationStateError) return problem(error.message, 409, "publication_state");
+  if (error instanceof AutomationSkillInUseError) {
+    return json({ error: "skill_in_use", message: error.message, schedule_count: error.scheduleCount }, 409);
+  }
   if (error instanceof AutomationValidationError) return problem(error.message, 422, "automation_validation");
   if (error instanceof AutomationVersionConflictError) {
     return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
@@ -348,6 +352,11 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     );
     return skill ? json(skill) : problem("Skill not found", 404, "not_found");
   })
+  .delete("/api/dashboard/skills/:id", async ({ request, params }) => {
+    await ownerRequest(request, true);
+    const skill = await dashboardAutomations.deleteSkill(z.string().uuid().parse(params.id));
+    return skill ? json({ deleted: true }) : problem("Skill not found", 404, "not_found");
+  })
   .get("/api/dashboard/automations/schedules", async ({ request }) => {
     await ownerRequest(request);
     return json(await dashboardAutomations.listSchedules());
@@ -362,6 +371,11 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const input = updateCronScheduleSchema.parse(await bodyJson(request));
     const schedule = await dashboardAutomations.updateSchedule(z.string().uuid().parse(params.id), input);
     return schedule ? json(schedule) : problem("Cron schedule not found", 404, "not_found");
+  })
+  .delete("/api/dashboard/automations/schedules/:id", async ({ request, params }) => {
+    await ownerRequest(request, true);
+    const schedule = await dashboardAutomations.deleteSchedule(z.string().uuid().parse(params.id));
+    return schedule ? json({ deleted: true }) : problem("Cron schedule not found", 404, "not_found");
   })
   .get("/api/dashboard/automations/runs", async ({ request, query }) => {
     await ownerRequest(request);

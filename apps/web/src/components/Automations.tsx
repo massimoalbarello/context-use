@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { api } from "../api.ts";
 import type { AutomationRun, AutomationSkill, CronSchedule } from "../types.ts";
 
@@ -25,6 +25,14 @@ export function Automations() {
   const [cronExpression, setCronExpression] = useState("0 9 * * *");
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const [scheduleInput, setScheduleInput] = useState("{}");
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [editScheduleName, setEditScheduleName] = useState("");
+  const [editScheduleSkill, setEditScheduleSkill] = useState("");
+  const [editCronExpression, setEditCronExpression] = useState("");
+  const [editTimezone, setEditTimezone] = useState("");
+  const [editScheduleInput, setEditScheduleInput] = useState("{}");
+  const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
+  const [savingScheduleId, setSavingScheduleId] = useState<string | null>(null);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -97,20 +105,50 @@ export function Automations() {
     await load(true);
   };
 
-  const editSchedule = async (schedule: CronSchedule) => {
-    const name = window.prompt("Automation name", schedule.name);
-    if (!name) return;
-    const expression = window.prompt("Five-field cron expression", schedule.cron_expression);
-    if (!expression) return;
-    const zone = window.prompt("IANA time zone", schedule.timezone);
-    if (!zone) return;
-    const input = window.prompt("JSON input", JSON.stringify(schedule.input, null, 2));
-    if (input === null) return;
+  const startEditing = (schedule: CronSchedule) => {
+    setDeletingScheduleId(null);
+    setEditingScheduleId(schedule.id);
+    setEditScheduleName(schedule.name);
+    setEditScheduleSkill(schedule.skill_version_id);
+    setEditCronExpression(schedule.cron_expression);
+    setEditTimezone(schedule.timezone);
+    setEditScheduleInput(JSON.stringify(schedule.input, null, 2));
+    setMessage("");
+  };
+
+  const updateSchedule = async (event: React.FormEvent, schedule: CronSchedule) => {
+    event.preventDefault();
+    setSavingScheduleId(schedule.id);
+    setMessage("");
     try {
-      await saveSchedule(schedule, { name, cron_expression: expression, timezone: zone, input: parseInput(input) });
+      await saveSchedule(schedule, {
+        name: editScheduleName,
+        skill_version_id: editScheduleSkill,
+        cron_expression: editCronExpression,
+        timezone: editTimezone,
+        input: parseInput(editScheduleInput),
+      });
+      setEditingScheduleId(null);
       setMessage("Automation updated. Its knowledge folder is unchanged.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not update automation");
+    } finally {
+      setSavingScheduleId(null);
+    }
+  };
+
+  const deleteSchedule = async (schedule: CronSchedule) => {
+    setSavingScheduleId(schedule.id);
+    setMessage("");
+    try {
+      await api(`/api/dashboard/automations/schedules/${schedule.id}`, { method: "DELETE" });
+      setDeletingScheduleId(null);
+      setMessage(`Automation “${schedule.name}” deleted. Its generated knowledge remains available.`);
+      await load(true);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not delete automation");
+    } finally {
+      setSavingScheduleId(null);
     }
   };
 
@@ -140,7 +178,21 @@ export function Automations() {
 
     <section>
       <div className="section-heading"><div><h2>Automations</h2><p>Cron is the trigger; every row also owns one immutable knowledge location.</p></div></div>
-      {schedules.length === 0 ? <p className="empty-note">Create a skill first, then create an automation here.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Automation</th><th>Skill</th><th>Schedule</th><th>Generated knowledge</th><th>Next run</th><th>State</th><th></th></tr></thead><tbody>{schedules.map((schedule) => <tr key={schedule.id}><td><strong>{schedule.name}</strong></td><td>{schedule.skill_name} <small>v{schedule.skill_version_number}</small></td><td><code>{schedule.cron_expression}</code><small>{schedule.timezone}</small></td><td className="knowledge-location"><code>{schedule.knowledge_path}</code><small>{schedule.generated_page_count} page{schedule.generated_page_count === 1 ? "" : "s"}</small></td><td>{formatDate(schedule.next_run_at)}</td><td><span className={`run-status ${schedule.enabled ? "succeeded" : "disabled"}`}>{schedule.enabled ? "enabled" : "paused"}</span></td><td><div className="table-actions"><button onClick={() => editSchedule(schedule)}>Edit</button><button onClick={() => saveSchedule(schedule, { enabled: !schedule.enabled }).catch((error: Error) => setMessage(error.message))}>{schedule.enabled ? "Pause" : "Enable"}</button></div></td></tr>)}</tbody></table></div>}
+      {schedules.length === 0 ? <p className="empty-note">{skills.length ? "No automations yet." : "Create a skill first, then create an automation here."}</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Automation</th><th>Skill</th><th>Schedule</th><th>Generated knowledge</th><th>Next run</th><th>State</th><th></th></tr></thead><tbody>{schedules.map((schedule) => <Fragment key={schedule.id}>
+        <tr><td><strong>{schedule.name}</strong></td><td>{schedule.skill_name} <small>v{schedule.skill_version_number}</small></td><td><code>{schedule.cron_expression}</code><small>{schedule.timezone}</small></td><td className="knowledge-location"><code>{schedule.knowledge_path}</code><small>{schedule.generated_page_count} page{schedule.generated_page_count === 1 ? "" : "s"}</small></td><td>{formatDate(schedule.next_run_at)}</td><td><span className={`run-status ${schedule.enabled ? "succeeded" : "disabled"}`}>{schedule.enabled ? "enabled" : "paused"}</span></td><td><div className="table-actions"><button onClick={() => startEditing(schedule)}>Edit</button><button onClick={() => saveSchedule(schedule, { enabled: !schedule.enabled }).then(() => setMessage(schedule.enabled ? "Automation paused." : "Automation enabled.")).catch((error: Error) => setMessage(error.message))}>{schedule.enabled ? "Pause" : "Enable"}</button><button className="danger-text" onClick={() => { setEditingScheduleId(null); setDeletingScheduleId(schedule.id); setMessage(""); }}>Delete</button></div></td></tr>
+        {editingScheduleId === schedule.id && <tr className="automation-action-row"><td colSpan={7}><form className="inline-dashboard-form automation-inline-editor" onSubmit={(event) => updateSchedule(event, schedule)}>
+          <div className="inline-form-heading"><div><strong>Edit {schedule.name}</strong><span>The generated-knowledge location will not change.</span></div></div>
+          <label>Name<input required maxLength={160} value={editScheduleName} onChange={(event) => setEditScheduleName(event.target.value)} /></label>
+          <label>Skill<select required value={editScheduleSkill} onChange={(event) => setEditScheduleSkill(event.target.value)}>{skills.map((skill) => <option key={skill.id} value={skill.current_version_id}>{skill.name} · v{skill.version_number}</option>)}</select></label>
+          <div className="form-row"><label>Cron expression<input required value={editCronExpression} onChange={(event) => setEditCronExpression(event.target.value)} /></label><label>Time zone<input required value={editTimezone} onChange={(event) => setEditTimezone(event.target.value)} /></label></div>
+          <label>Input JSON<textarea rows={5} value={editScheduleInput} onChange={(event) => setEditScheduleInput(event.target.value)} /></label>
+          <div className="inline-form-actions"><button type="button" onClick={() => setEditingScheduleId(null)}>Cancel</button><button className="primary" disabled={savingScheduleId === schedule.id}>Save changes</button></div>
+        </form></td></tr>}
+        {deletingScheduleId === schedule.id && <tr className="automation-action-row"><td colSpan={7}><div className="inline-confirmation automation-delete-confirmation">
+          <div><strong>Delete {schedule.name}?</strong><span>Future runs will stop. Run records and {schedule.generated_page_count ? `${schedule.generated_page_count} generated ${schedule.generated_page_count === 1 ? "page" : "pages"}` : "its generated-knowledge location"} will be retained.</span></div>
+          <div className="inline-form-actions"><button onClick={() => setDeletingScheduleId(null)}>Cancel</button><button className="danger" disabled={savingScheduleId === schedule.id} onClick={() => deleteSchedule(schedule)}>Delete automation</button></div>
+        </div></td></tr>}
+      </Fragment>)}</tbody></table></div>}
       <details className="automation-form"><summary>New automation</summary><form onSubmit={createSchedule}>
         <label>Name<input required maxLength={160} value={scheduleName} onChange={(event) => setScheduleName(event.target.value)} placeholder="Morning context review" /></label>
         <label>Skill<select required value={scheduleSkill} onChange={(event) => setScheduleSkill(event.target.value)}><option value="" disabled>Select a skill</option>{skills.map((skill) => <option key={skill.id} value={skill.current_version_id}>{skill.name} · v{skill.version_number}</option>)}</select>{selectedSkill && <small>{selectedSkill.description}</small>}</label>
