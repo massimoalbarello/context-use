@@ -216,6 +216,15 @@ describeDatabase("PostgreSQL security roles", () => {
       "SELECT has_column_privilege('context_use_mcp','automation_skills','name','UPDATE') AS allowed",
     )).rows[0]?.allowed).toBe(false);
     expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp','automation_skills','deleted_at','UPDATE') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_dashboard','automation_skills','deleted_at','UPDATE') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_dashboard','cron_schedules','deleted_at','UPDATE') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_mcp','automation_runs','status','UPDATE') AS allowed",
     )).rows[0]?.allowed).toBe(true);
     expect((await admin.query<{ allowed: boolean }>(

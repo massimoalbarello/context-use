@@ -4,6 +4,7 @@ import {
   AutomationContentAccessError,
   AutomationClaimError,
   AutomationRepository,
+  AutomationSkillInUseError,
   AutomationVersionConflictError,
   PageRepository,
 } from "../src/index.ts";
@@ -160,6 +161,18 @@ Read the current project page and persist a short review.`);
       commit_message: "Attempt stale edit",
       expected_version_number: 1,
     }, { kind: "dashboard", subject: "integration-test-owner" })).rejects.toBeInstanceOf(AutomationVersionConflictError);
+
+    await expect(automations.deleteSkill(skill.id)).rejects.toBeInstanceOf(AutomationSkillInUseError);
+    expect(await automations.deleteSchedule(schedule.id)).toMatchObject({ id: schedule.id });
+    expect((await automations.listSchedules()).some((item) => item.id === schedule.id)).toBe(false);
+    expect((await automations.listRuns()).some((run) => run.schedule_id === schedule.id)).toBe(false);
+    expect((await pool.query("SELECT enabled,deleted_at FROM cron_schedules WHERE id=$1", [schedule.id])).rows[0])
+      .toMatchObject({ enabled: false, deleted_at: expect.any(Date) });
+
+    expect(await automations.deleteSkill(skill.id)).toMatchObject({ id: skill.id });
+    expect((await automations.listSkills()).some((item) => item.id === skill.id)).toBe(false);
+    expect((await pool.query("SELECT count(*)::integer AS count FROM automation_skill_versions WHERE skill_id=$1", [skill.id])).rows[0]?.count)
+      .toBe(2);
   });
 });
 

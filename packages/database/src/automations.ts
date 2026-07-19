@@ -43,6 +43,13 @@ export class AutomationVersionConflictError extends Error {
   }
 }
 
+export class AutomationSkillInUseError extends Error {
+  constructor(readonly scheduleCount: number) {
+    super(`Delete ${scheduleCount === 1 ? "its automation" : `its ${scheduleCount} automations`} before deleting this skill`);
+    this.name = "AutomationSkillInUseError";
+  }
+}
+
 export class AutomationClaimError extends Error {
   constructor() {
     super("The automation run is no longer claimed by this agent");
@@ -92,7 +99,7 @@ async function materializeDueRuns(client: PoolClient, now: Date): Promise<void> 
   }>(
     `SELECT id,skill_version_id,cron_expression,timezone,input,next_run_at
      FROM cron_schedules
-     WHERE enabled=true AND next_run_at <= $1
+     WHERE enabled=true AND deleted_at IS NULL AND next_run_at <= $1
      ORDER BY next_run_at
      FOR UPDATE`,
     [now],
@@ -119,7 +126,10 @@ const SKILL_SELECT = `
   SELECT skill.id,skill.name,skill.current_version_id,skill.created_at,skill.updated_at,
     version.version_number,version.description,version.instructions_markdown,version.commit_message,
     version.created_at AS version_created_at,
-    (SELECT count(*)::integer FROM cron_schedules schedule WHERE schedule.skill_version_id=version.id) AS schedule_count
+    (SELECT count(*)::integer
+     FROM cron_schedules schedule
+     JOIN automation_skill_versions scheduled_version ON scheduled_version.id=schedule.skill_version_id
+     WHERE scheduled_version.skill_id=skill.id AND schedule.deleted_at IS NULL) AS schedule_count
   FROM automation_skills skill
   JOIN automation_skill_versions version ON version.id=skill.current_version_id AND version.skill_id=skill.id
 `;
@@ -128,12 +138,12 @@ export class AutomationRepository {
   constructor(private readonly pool: Pool) {}
 
   async listSkills() {
-    const result = await this.pool.query(`${SKILL_SELECT} ORDER BY lower(skill.name)`);
+    const result = await this.pool.query(`${SKILL_SELECT} WHERE skill.deleted_at IS NULL ORDER BY lower(skill.name)`);
     return result.rows.map(withSkillMarkdown);
   }
 
   async getSkill(skillId: string) {
-    const result = await this.pool.query(`${SKILL_SELECT} WHERE skill.id=$1`, [skillId]);
+    const result = await this.pool.query(`${SKILL_SELECT} WHERE skill.id=$1 AND skill.deleted_at IS NULL`, [skillId]);
     return result.rows[0] ? withSkillMarkdown(result.rows[0]) : null;
   }
 
@@ -162,7 +172,7 @@ export class AutomationRepository {
         `SELECT skill.current_version_id,version.version_number
          FROM automation_skills skill
          JOIN automation_skill_versions version ON version.id=skill.current_version_id
-         WHERE skill.id=$1 FOR UPDATE OF skill`,
+         WHERE skill.id=$1 AND skill.deleted_at IS NULL FOR UPDATE OF skill`,
         [skillId],
       );
       if (!current.rowCount) return null;
@@ -183,11 +193,40 @@ export class AutomationRepository {
       );
       // Updating a skill advances its schedules, while already-created runs remain pinned.
       await client.query(
-        `UPDATE cron_schedules SET skill_version_id=$2,updated_at=now() WHERE skill_version_id=$1`,
+        `UPDATE cron_schedules SET skill_version_id=$2,updated_at=now()
+         WHERE skill_version_id=$1 AND deleted_at IS NULL`,
         [row.current_version_id, versionId],
       );
       const result = await client.query(`${SKILL_SELECT} WHERE skill.id=$1`, [skillId]);
       return withSkillMarkdown(result.rows[0]);
+    });
+  }
+
+  async deleteSkill(skillId: string) {
+    return transaction(this.pool, async (client) => {
+      const skill = await client.query<{ id: string }>(
+        `SELECT id FROM automation_skills
+         WHERE id=$1 AND deleted_at IS NULL
+         FOR UPDATE`,
+        [skillId],
+      );
+      if (!skill.rowCount) return null;
+      const schedules = await client.query<{ count: number }>(
+        `SELECT count(*)::integer AS count
+         FROM cron_schedules schedule
+         JOIN automation_skill_versions version ON version.id=schedule.skill_version_id
+         WHERE version.skill_id=$1 AND schedule.deleted_at IS NULL`,
+        [skillId],
+      );
+      const scheduleCount = schedules.rows[0]?.count ?? 0;
+      if (scheduleCount) throw new AutomationSkillInUseError(scheduleCount);
+      const deleted = await client.query(
+        `UPDATE automation_skills SET deleted_at=now(),updated_at=now()
+         WHERE id=$1 AND deleted_at IS NULL
+         RETURNING id,deleted_at`,
+        [skillId],
+      );
+      return deleted.rows[0] ?? null;
     });
   }
 
@@ -205,6 +244,7 @@ export class AutomationRepository {
        JOIN automation_skill_versions version ON version.id=schedule.skill_version_id
        JOIN automation_skills skill ON skill.id=version.skill_id
        LEFT JOIN automation_runs run ON run.schedule_id=schedule.id
+       WHERE schedule.deleted_at IS NULL AND skill.deleted_at IS NULL
        GROUP BY schedule.id,skill.id,skill.name,version.version_number
        ORDER BY lower(schedule.name)`,
     );
@@ -216,21 +256,45 @@ export class AutomationRepository {
     const result = await this.pool.query(
       `INSERT INTO cron_schedules(
          id,name,skill_version_id,cron_expression,timezone,input,enabled,next_run_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       )
+       SELECT $1,$2,version.id,$4,$5,$6,$7,$8
+       FROM automation_skill_versions version
+       JOIN automation_skills skill ON skill.id=version.skill_id
+       WHERE version.id=$3 AND skill.deleted_at IS NULL
        RETURNING *`,
       [randomUUID(), input.name, input.skill_version_id, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt],
     );
+    if (!result.rowCount) throw new AutomationValidationError("Selected skill is not available");
     return result.rows[0];
   }
 
   async updateSchedule(scheduleId: string, input: UpdateCronScheduleInput) {
     const nextRunAt = nextCronOccurrence(input.cron_expression, input.timezone);
+    const skill = await this.pool.query(
+      `SELECT 1
+       FROM automation_skill_versions version
+       JOIN automation_skills skill ON skill.id=version.skill_id
+       WHERE version.id=$1 AND skill.deleted_at IS NULL`,
+      [input.skill_version_id],
+    );
+    if (!skill.rowCount) throw new AutomationValidationError("Selected skill is not available");
     const result = await this.pool.query(
       `UPDATE cron_schedules SET
          name=$2,skill_version_id=$3,cron_expression=$4,timezone=$5,input=$6,enabled=$7,
          next_run_at=$8,updated_at=now()
-       WHERE id=$1 RETURNING *`,
+       WHERE id=$1 AND deleted_at IS NULL RETURNING *`,
       [scheduleId, input.name, input.skill_version_id, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async deleteSchedule(scheduleId: string) {
+    const result = await this.pool.query(
+      `UPDATE cron_schedules
+       SET enabled=false,deleted_at=now(),updated_at=now()
+       WHERE id=$1 AND deleted_at IS NULL
+       RETURNING id,knowledge_path,deleted_at`,
+      [scheduleId],
     );
     return result.rows[0] ?? null;
   }
@@ -248,6 +312,7 @@ export class AutomationRepository {
          JOIN cron_schedules schedule ON schedule.id=run.schedule_id
          JOIN automation_skill_versions version ON version.id=run.skill_version_id
          JOIN automation_skills skill ON skill.id=version.skill_id
+         WHERE schedule.deleted_at IS NULL AND skill.deleted_at IS NULL
          ORDER BY run.scheduled_for DESC
          LIMIT $1`,
         [limit],
@@ -261,8 +326,12 @@ export class AutomationRepository {
       const now = new Date();
       await materializeDueRuns(client, now);
       const candidate = await client.query<{ id: string }>(
-        `SELECT id FROM automation_runs
-         WHERE status='ready' OR (status='claimed' AND lease_expires_at <= $1)
+        `SELECT run.id FROM automation_runs run
+         JOIN cron_schedules schedule ON schedule.id=run.schedule_id
+         JOIN automation_skill_versions version ON version.id=run.skill_version_id
+         JOIN automation_skills skill ON skill.id=version.skill_id
+         WHERE schedule.deleted_at IS NULL AND skill.deleted_at IS NULL
+           AND (run.status='ready' OR (run.status='claimed' AND run.lease_expires_at <= $1))
          ORDER BY scheduled_for
          FOR UPDATE SKIP LOCKED
          LIMIT 1`,
@@ -276,7 +345,8 @@ export class AutomationRepository {
            claimed_at=$4::timestamptz,lease_expires_at=$4::timestamptz + ($5 * interval '1 hour'),completed_at=NULL,
            result_summary=NULL,error_message=NULL
          FROM cron_schedules schedule,automation_skill_versions version,automation_skills skill
-         WHERE run.id=$1 AND schedule.id=run.schedule_id AND version.id=run.skill_version_id AND skill.id=version.skill_id
+         WHERE run.id=$1 AND schedule.id=run.schedule_id AND schedule.deleted_at IS NULL
+           AND version.id=run.skill_version_id AND skill.id=version.skill_id AND skill.deleted_at IS NULL
          RETURNING run.id AS run_id,run.schedule_id,run.scheduled_for,run.input,run.attempt_count,
            run.claim_token,run.lease_expires_at,schedule.name AS schedule_name,
            schedule.knowledge_path,
