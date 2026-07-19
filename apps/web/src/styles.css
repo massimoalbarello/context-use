@@ -328,7 +328,8 @@ button:disabled {
 }
 
 .archive-toggle {
-  padding: 3px 5px 8px;
+  min-height: 28px;
+  padding: 4px 7px;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1375,14 +1376,6 @@ button:disabled {
   font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.publication-current {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--green-soft);
-  color: var(--green);
-  font-size: 12px;
-}
-
 .reference-review {
   margin: 12px 0;
   padding: 12px;
@@ -1405,7 +1398,18 @@ button:disabled {
 
 .check {
   flex-direction: row !important;
-  align-items: flex-start !important;
+  align-items: center !important;
+  gap: 9px !important;
+}
+
+.modal .check input {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 16px;
+  accent-color: var(--accent);
 }
 
 .login-form {
