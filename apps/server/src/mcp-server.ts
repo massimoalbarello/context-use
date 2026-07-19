@@ -219,7 +219,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_automation", {
-    description: "Create a scheduled automation for a skill version. The automation receives a dedicated generated-knowledge folder.",
+    description: "Create a scheduled automation for a skill version. Supply an immutable semantic automation_key; its private pages will live under automations/<automation-key>.",
     inputSchema: createCronScheduleSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {

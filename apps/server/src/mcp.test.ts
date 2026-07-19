@@ -220,6 +220,7 @@ describe("MCP skill and automation authoring", () => {
         name: "create_automation",
         arguments: {
           name: "Weekday review",
+          automation_key: "weekday-review",
           skill_version_id: skillVersionId,
           cron_expression: "0 9 * * 1-5",
           timezone: "Europe/London",
@@ -229,7 +230,7 @@ describe("MCP skill and automation authoring", () => {
     expect(JSON.parse(schedule.result?.content?.[0]?.text ?? "null")).toMatchObject({ skill_version_id: skillVersionId });
     expect(calls[1]).toMatchObject({
       operation: "schedule",
-      input: { skill_version_id: skillVersionId, input: {}, enabled: true },
+      input: { automation_key: "weekday-review", skill_version_id: skillVersionId, input: {}, enabled: true },
     });
   });
 

@@ -5,6 +5,7 @@ import {
   AutomationClaimError,
   AutomationRepository,
   AutomationSkillInUseError,
+  AutomationValidationError,
   AutomationVersionConflictError,
   PageRepository,
 } from "../src/index.ts";
@@ -51,17 +52,36 @@ describeDatabase("persisted automation lifecycle", () => {
 
     const schedule = await automations.createSchedule({
       name: `Morning review ${suffix}`,
+      automation_key: `morning-review-${suffix}`,
       skill_version_id: skill.current_version_id,
       cron_expression: "0 9 * * *",
       timezone: "UTC",
       input: { project: "context-use" },
       enabled: true,
     });
+    expect(schedule).toMatchObject({
+      automation_key: `morning-review-${suffix}`,
+      knowledge_path: `automations/morning-review-${suffix}`,
+    });
+    await expect(automations.createSchedule({
+      name: `Duplicate key ${suffix}`,
+      automation_key: `morning-review-${suffix}`,
+      skill_version_id: skill.current_version_id,
+      cron_expression: "0 10 * * *",
+      timezone: "UTC",
+      input: {},
+      enabled: true,
+    })).rejects.toBeInstanceOf(AutomationValidationError);
+    await expect(pool.query(
+      "UPDATE cron_schedules SET automation_key=$2 WHERE id=$1",
+      [schedule.id, `changed-review-${suffix}`],
+    )).rejects.toThrow();
     await pool.query("UPDATE cron_schedules SET next_run_at=now()-interval '1 minute' WHERE id=$1", [schedule.id]);
 
     const claimed = await automations.claimDueRun("agent-one");
     expect(claimed).toMatchObject({
       schedule_name: `Morning review ${suffix}`,
+      knowledge_path: `automations/morning-review-${suffix}`,
       skill_name: `review-context-${suffix}`,
       skill_version_number: 1,
       description: "Reviews current project context. Use for a scheduled project health check.",
@@ -88,7 +108,7 @@ Read the current project page and persist a short review.`);
     pageIds.push(generated.id);
     expect(generated).toMatchObject({
       automation_id: schedule.id,
-      current_path: `generated/automations/${schedule.id}/reviews/latest`,
+      current_path: `automations/morning-review-${suffix}/reviews/latest`,
     });
     await expect(pages.create({
       path: "notes/outside-automation-folder",
@@ -123,7 +143,7 @@ Read the current project page and persist a short review.`);
       expected_version_number: generated.version_number,
     }, { kind: "mcp", subject: "agent-one" })).toBeNull();
     await expect(pages.create({
-      path: `generated/automations/${schedule.id}/unowned`,
+      path: `automations/morning-review-${suffix}/unowned`,
       title: "Unowned generated page",
       body_markdown: "Must fail.",
       commit_message: "Attempt reserved path",
@@ -207,6 +227,7 @@ describeMcpDatabase("MCP automation authoring role", () => {
 
     const schedule = await automations.createSchedule({
       name: `MCP schedule ${suffix}`,
+      automation_key: `mcp-schedule-${suffix}`,
       skill_version_id: skill.current_version_id,
       cron_expression: "0 9 * * 1-5",
       timezone: "Europe/London",

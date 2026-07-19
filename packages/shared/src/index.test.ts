@@ -7,6 +7,7 @@ import {
   createCronScheduleSchema,
   createPageSchema,
   publicationIntentSchema,
+  updateCronScheduleSchema,
   updatePageSchema,
 } from "./index.ts";
 
@@ -68,6 +69,7 @@ describe("strict mutation schemas", () => {
   test("cron schedules accept only the persisted first-version fields", () => {
     expect(createCronScheduleSchema.safeParse({
       name: "Morning review",
+      automation_key: "morning-review",
       skill_version_id: versionId,
       cron_expression: "0 9 * * *",
       timezone: "Europe/London",
@@ -76,10 +78,34 @@ describe("strict mutation schemas", () => {
     }).success).toBe(true);
     expect(createCronScheduleSchema.safeParse({
       name: "Advertises capabilities",
+      automation_key: "Advertises capabilities",
       skill_version_id: versionId,
       cron_expression: "0 9 * * *",
       timezone: "Europe/London",
       capabilities: ["browser"],
+    }).success).toBe(false);
+    expect(createCronScheduleSchema.safeParse({
+      name: "Missing semantic key",
+      skill_version_id: versionId,
+      cron_expression: "0 9 * * *",
+      timezone: "Europe/London",
+    }).success).toBe(false);
+    expect(updateCronScheduleSchema.safeParse({
+      name: "Renamed review",
+      skill_version_id: versionId,
+      cron_expression: "0 10 * * *",
+      timezone: "Europe/London",
+      input: {},
+      enabled: true,
+    }).success).toBe(true);
+    expect(updateCronScheduleSchema.safeParse({
+      name: "Attempts key change",
+      automation_key: "changed-key",
+      skill_version_id: versionId,
+      cron_expression: "0 10 * * *",
+      timezone: "Europe/London",
+      input: {},
+      enabled: true,
     }).success).toBe(false);
   });
 

@@ -32,8 +32,8 @@ export class AutomationContentAccessError extends Error {
   }
 }
 
-export function automationKnowledgePath(automationId: string, relativePath: string): string {
-  return `generated/automations/${automationId}/${relativePath}`;
+export function automationKnowledgePath(automationKey: string, relativePath: string): string {
+  return `automations/${automationKey}/${relativePath}`;
 }
 
 async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -93,21 +93,23 @@ export class PageRepository {
     }
   }
 
-  private async claimedAutomationId(
+  private async claimedAutomation(
     client: PoolClient,
     runId: string,
     claimToken: string,
     clientId: string,
-  ): Promise<string> {
-    const result = await client.query<{ schedule_id: string }>(
-      `SELECT schedule_id FROM automation_runs
-       WHERE id=$1 AND claim_token=$2 AND claimed_by=$3
-         AND status='claimed' AND lease_expires_at > now()
+  ): Promise<{ id: string; key: string }> {
+    const result = await client.query<{ schedule_id: string; automation_key: string }>(
+      `SELECT run.schedule_id,schedule.automation_key
+       FROM automation_runs run
+       JOIN cron_schedules schedule ON schedule.id=run.schedule_id
+       WHERE run.id=$1 AND run.claim_token=$2 AND run.claimed_by=$3
+         AND run.status='claimed' AND run.lease_expires_at > now()
        FOR SHARE`,
       [runId, claimToken, clientId],
     );
     if (!result.rowCount) throw new AutomationContentAccessError();
-    return result.rows[0]!.schedule_id;
+    return { id: result.rows[0]!.schedule_id, key: result.rows[0]!.automation_key };
   }
 
   async create(input: CreatePageInput, actor: Actor) {
@@ -135,15 +137,15 @@ export class PageRepository {
 
   async createForAutomation(input: CreateAutomationPageInput, actor: Actor) {
     return transaction(this.pool, async (client) => {
-      const automationId = await this.claimedAutomationId(client, input.run_id, input.claim_token, actor.subject);
-      const path = automationKnowledgePath(automationId, input.relative_path);
+      const automation = await this.claimedAutomation(client, input.run_id, input.claim_token, actor.subject);
+      const path = automationKnowledgePath(automation.key, input.relative_path);
       const pageId = randomUUID();
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,automation_id)
          VALUES ($1,$2,$3,$4)`,
-        [pageId, path, versionId, automationId],
+        [pageId, path, versionId, automation.id],
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
@@ -190,15 +192,15 @@ export class PageRepository {
 
   async updateForAutomation(input: UpdateAutomationPageInput, actor: Actor) {
     return transaction(this.pool, async (client) => {
-      const automationId = await this.claimedAutomationId(client, input.run_id, input.claim_token, actor.subject);
+      const automation = await this.claimedAutomation(client, input.run_id, input.claim_token, actor.subject);
       const current = await client.query<{ version_number: number }>(
         `${CURRENT_PAGE_SELECT} WHERE p.id=$1 AND p.automation_id=$2 FOR UPDATE OF p`,
-        [input.page_id, automationId],
+        [input.page_id, automation.id],
       );
       if (!current.rowCount) throw new AutomationContentAccessError();
       const currentVersion = current.rows[0]!.version_number;
       if (currentVersion !== input.expected_version_number) throw new VersionConflictError(currentVersion);
-      const path = automationKnowledgePath(automationId, input.relative_path);
+      const path = automationKnowledgePath(automation.key, input.relative_path);
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
@@ -251,14 +253,14 @@ export class PageRepository {
 
   async archiveForAutomation(input: ArchiveAutomationPageInput, actor: Actor) {
     return transaction(this.pool, async (client) => {
-      const automationId = await this.claimedAutomationId(client, input.run_id, input.claim_token, actor.subject);
+      const automation = await this.claimedAutomation(client, input.run_id, input.claim_token, actor.subject);
       const current = await client.query<{
         version_number: number;
         current_path: string;
         title: string;
         body_markdown: string;
         published_version_id: string | null;
-      }>(`${CURRENT_PAGE_SELECT} WHERE p.id=$1 AND p.automation_id=$2 FOR UPDATE OF p`, [input.page_id, automationId]);
+      }>(`${CURRENT_PAGE_SELECT} WHERE p.id=$1 AND p.automation_id=$2 FOR UPDATE OF p`, [input.page_id, automation.id]);
       if (!current.rowCount) throw new AutomationContentAccessError();
       const row = current.rows[0]!;
       if (row.version_number !== input.expected_version_number) throw new VersionConflictError(row.version_number);

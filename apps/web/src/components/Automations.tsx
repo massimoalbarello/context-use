@@ -14,6 +14,15 @@ function parseInput(value: string): Record<string, unknown> {
   return parsed as Record<string, unknown>;
 }
 
+function automationKeyFromName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64)
+    .replace(/-+$/g, "");
+}
+
 export function Automations() {
   const [skills, setSkills] = useState<AutomationSkill[]>([]);
   const [schedules, setSchedules] = useState<CronSchedule[]>([]);
@@ -21,6 +30,8 @@ export function Automations() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [scheduleName, setScheduleName] = useState("");
+  const [automationKey, setAutomationKey] = useState("");
+  const [automationKeyEdited, setAutomationKeyEdited] = useState(false);
   const [scheduleSkill, setScheduleSkill] = useState("");
   const [cronExpression, setCronExpression] = useState("0 9 * * *");
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
@@ -73,6 +84,7 @@ export function Automations() {
         method: "POST",
         body: JSON.stringify({
           name: scheduleName,
+          automation_key: automationKey,
           skill_version_id: scheduleSkill,
           cron_expression: cronExpression,
           timezone,
@@ -81,6 +93,8 @@ export function Automations() {
         }),
       });
       setScheduleName("");
+      setAutomationKey("");
+      setAutomationKeyEdited(false);
       setScheduleInput("{}");
       setMessage(`Automation created. Generated pages are confined to ${created.knowledge_path}.`);
       await load(true);
@@ -153,7 +167,7 @@ export function Automations() {
   };
 
   return <main className="content-page automations-page">
-    <header><div><span className="eyebrow">Scheduled agent work</span><h1>Automations</h1><p>Each automation combines a reusable skill with a cron trigger, durable run history, and an isolated generated-knowledge folder.</p></div><button onClick={() => load().catch(() => undefined)}>Refresh</button></header>
+    <header><div><span className="eyebrow">Scheduled agent work</span><h1>Automations</h1><p>Each automation combines a reusable skill with a cron trigger, durable run history, and an isolated semantic knowledge folder.</p></div><button onClick={() => load().catch(() => undefined)}>Refresh</button></header>
     {message && <div className="automation-message">{message}</div>}
 
     <section className="worker-card">
@@ -178,7 +192,7 @@ export function Automations() {
 
     <section>
       <div className="section-heading"><div><h2>Automations</h2><p>Cron is the trigger; every row also owns one immutable knowledge location.</p></div></div>
-      {schedules.length === 0 ? <p className="empty-note">{skills.length ? "No automations yet." : "Create a skill first, then create an automation here."}</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Automation</th><th>Skill</th><th>Schedule</th><th>Generated knowledge</th><th>Next run</th><th>State</th><th></th></tr></thead><tbody>{schedules.map((schedule) => <Fragment key={schedule.id}>
+      {schedules.length === 0 ? <p className="empty-note">{skills.length ? "No automations yet." : "Create a skill first, then create an automation here."}</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Automation</th><th>Skill</th><th>Schedule</th><th>Knowledge location</th><th>Next run</th><th>State</th><th></th></tr></thead><tbody>{schedules.map((schedule) => <Fragment key={schedule.id}>
         <tr><td><strong>{schedule.name}</strong></td><td>{schedule.skill_name} <small>v{schedule.skill_version_number}</small></td><td><code>{schedule.cron_expression}</code><small>{schedule.timezone}</small></td><td className="knowledge-location"><code>{schedule.knowledge_path}</code><small>{schedule.generated_page_count} page{schedule.generated_page_count === 1 ? "" : "s"}</small></td><td>{formatDate(schedule.next_run_at)}</td><td><span className={`run-status ${schedule.enabled ? "succeeded" : "disabled"}`}>{schedule.enabled ? "enabled" : "paused"}</span></td><td><div className="table-actions"><button onClick={() => startEditing(schedule)}>Edit</button><button onClick={() => saveSchedule(schedule, { enabled: !schedule.enabled }).then(() => setMessage(schedule.enabled ? "Automation paused." : "Automation enabled.")).catch((error: Error) => setMessage(error.message))}>{schedule.enabled ? "Pause" : "Enable"}</button><button className="danger-text" onClick={() => { setEditingScheduleId(null); setDeletingScheduleId(schedule.id); setMessage(""); }}>Delete</button></div></td></tr>
         {editingScheduleId === schedule.id && <tr className="automation-action-row"><td colSpan={7}><form className="inline-dashboard-form automation-inline-editor" onSubmit={(event) => updateSchedule(event, schedule)}>
           <div className="inline-form-heading"><div><strong>Edit {schedule.name}</strong><span>The generated-knowledge location will not change.</span></div></div>
@@ -194,11 +208,19 @@ export function Automations() {
         </div></td></tr>}
       </Fragment>)}</tbody></table></div>}
       <details className="automation-form"><summary>New automation</summary><form onSubmit={createSchedule}>
-        <label>Name<input required maxLength={160} value={scheduleName} onChange={(event) => setScheduleName(event.target.value)} placeholder="Morning context review" /></label>
+        <label>Name<input required maxLength={160} value={scheduleName} onChange={(event) => {
+          const nextName = event.target.value;
+          setScheduleName(nextName);
+          if (!automationKeyEdited) setAutomationKey(automationKeyFromName(nextName));
+        }} placeholder="Morning context review" /></label>
+        <label>Knowledge key<input required maxLength={64} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={automationKey} onChange={(event) => {
+          setAutomationKey(event.target.value);
+          setAutomationKeyEdited(true);
+        }} placeholder="morning-context-review" /><small>Pages will live under <code>automations/{automationKey || "your-key"}</code>. This key cannot be changed later.</small></label>
         <label>Skill<select required value={scheduleSkill} onChange={(event) => setScheduleSkill(event.target.value)}><option value="" disabled>Select a skill</option>{skills.map((skill) => <option key={skill.id} value={skill.current_version_id}>{skill.name} · v{skill.version_number}</option>)}</select>{selectedSkill && <small>{selectedSkill.description}</small>}</label>
         <div className="form-row"><label>Cron expression<input required value={cronExpression} onChange={(event) => setCronExpression(event.target.value)} /></label><label>Time zone<input required value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label></div>
         <label>Input JSON<textarea rows={4} value={scheduleInput} onChange={(event) => setScheduleInput(event.target.value)} /></label>
-        <p className="form-note">Context Use assigns a stable folder under <code>generated/automations/</code> when this automation is created.</p>
+        <p className="form-note">The semantic knowledge key is permanent; the automation UUID remains internal ownership metadata.</p>
         <button className="primary" disabled={!skills.length}>Create automation</button>
       </form></details>
     </section>

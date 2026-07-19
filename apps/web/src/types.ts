@@ -88,6 +88,7 @@ export type AutomationSkill = {
 export type CronSchedule = {
   id: string;
   name: string;
+  automation_key: string;
   skill_id: string;
   skill_name: string;
   skill_version_id: string;

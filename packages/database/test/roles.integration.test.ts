@@ -210,6 +210,12 @@ describeDatabase("PostgreSQL security roles", () => {
       "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','INSERT') AS allowed",
     )).rows[0]?.allowed).toBe(true);
     expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp','cron_schedules','automation_key','INSERT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp','cron_schedules','automation_key','UPDATE') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+    expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','UPDATE') AS allowed",
     )).rows[0]?.allowed).toBe(false);
     expect((await admin.query<{ allowed: boolean }>(
