@@ -135,6 +135,8 @@ test("remote verification avoids shell-quoting SQL and passes the database passw
   expect(script).not.toContain("confirm_publication_intent");
   expect(script).not.toContain("sh -c");
   expect(sql).toContain("tgname='knowledge_pages_automation_path'");
+  expect(sql).toContain("'agent_skills'");
+  expect(sql).toContain("'automation_versions'");
   expect(sql).not.toContain("conname='knowledge_pages_automation_path_boundary'");
 });
 

@@ -4,7 +4,7 @@ import {
   archivePageSchema,
   assetUploadSchema,
   createAutomationPageSchema,
-  createAutomationSkillSchema,
+  createSkillSchema,
   createCronScheduleSchema,
   createPageSchema,
   type McpScope,
@@ -201,7 +201,7 @@ export function createMcpServer(
   });
 
   server.registerTool("get_skill", {
-    description: "Load one current, standard SKILL.md document after its metadata indicates that it is relevant.",
+    description: "Load one current, reusable SKILL.md document after its metadata indicates that it is relevant.",
     inputSchema: z.object({ skill_id: z.string().uuid() }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ skill_id }) => {
@@ -211,7 +211,7 @@ export function createMcpServer(
 
   server.registerTool("create_skill", {
     description: "Create a private, versioned Agent Skill with standard name and description metadata.",
-    inputSchema: createAutomationSkillSchema,
+    inputSchema: createSkillSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
     requireScope(context, "skills:write");
@@ -219,16 +219,16 @@ export function createMcpServer(
   });
 
   server.registerTool("create_automation", {
-    description: "Create a scheduled automation for a skill version. Supply an immutable semantic automation_key; its private pages will live under automations/<automation-key>.",
+    description: "Create a scheduled automation with its own versioned instructions. Supply an immutable semantic automation_key; its private pages will live under automations/<automation-key>.",
     inputSchema: createCronScheduleSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
     requireScope(context, "automations:write");
-    return jsonContent(await automations.createSchedule(input));
+    return jsonContent(await automations.createSchedule(input, actor));
   });
 
   server.registerTool("claim_due_run", {
-    description: "Claim the oldest due automation run. Returns its standard SKILL.md, input, dedicated knowledge path, and a six-hour write capability, or null.",
+    description: "Claim the oldest due automation run. Returns its versioned instructions with shared execution context, input, dedicated knowledge path, and a six-hour write capability, or null.",
     inputSchema: z.object({}).strict(),
     annotations: { destructiveHint: false },
   }, async () => {

@@ -114,7 +114,9 @@ For example, a dashboard at `https://context.example.com` exposes its anonymous 
 
 The public MCP runs in a separate isolated container with a separate database credential. Its role can select only `public_mcp_pages`, a lossy security-barrier view with public slugs, titles, sanitized Markdown, and published-parent slugs. It also has column-scoped insert access for message IDs, reply addresses, and bodies, but it cannot select messages, set their owner, or use `RETURNING` to read stored data. The authenticated dashboard filters the inbox by owner ID. The public role cannot read webpage views, other base tables, asset metadata, internal paths, UUIDs, page versions, private reference targets, or S3 keys. Unpublished intermediate folders are omitted; a page attaches to its closest published ancestor.
 
-Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification): a standard name and short description form the discovery layer, while instructions load only after selection. MCP agents use `list_skills`, `get_skill`, and `create_skill`. Automations live separately under **Automations** and can also be created with `create_automation`. Creating a skill returns its current version ID, which is the `skill_version_id` required by an automation.
+Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification): a standard name and short description form the discovery layer, while instructions load only after selection. MCP agents use `list_skills`, `get_skill`, and `create_skill`. They are reusable capabilities selected by an agent and are never attached to scheduled work.
+
+Automations live separately under **Automations** and can also be created with `create_automation`. Each automation owns immutable, versioned instructions plus its schedule and input parameters. Updating those instructions creates a new automation version; already-created runs remain pinned to the exact version they received. Existing installations migrate each attached skill version into the automation that used it and retire previously attached skill definitions from discovery without deleting their immutable history.
 
 Every automation owns one stable virtual folder at `automations/<automation-key>`. The owner chooses the unique semantic key at creation and it cannot later change; the automation UUID remains internal ownership metadata. While an MCP client holds an active run claim, its generic page writes are disabled; run output requires the automation page tools and the valid run ID and claim token. The server resolves relative paths inside that folder. Database constraints reject ordinary pages in the reserved tree, automation pages outside their owner folder, generic edits to generated pages, and publication of generated pages.
 
@@ -124,14 +126,13 @@ Any connected agent can use the same generic external cron prompt:
 
 ```text
 Check Context Use for scheduled work. Call claim_due_run. If it returns a run,
-follow its SKILL.md using the supplied input. Persist run output only with the
-automation page tools and the supplied run ID and claim token; those tools
-confine writes to the returned knowledge path. When finished, call complete_run;
-if the work cannot be completed, call fail_run. Continue until claim_due_run
-returns null.
+follow its instructions using the supplied input. Continue until claim_due_run returns
+null.
 ```
 
-Claims are atomic and leased for six hours. Runs, inputs, skill versions, knowledge ownership, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
+For claimed runs, Context Use appends the shared execution contract to the returned `instructions_markdown`: read `[[me/intro]]`, use the claim-scoped automation page tools inside the dedicated knowledge path, and finish with `complete_run` or `fail_run`. This happens only in the `claim_due_run` response. Skills and ordinary `get_skill` calls never receive automation execution context. While migrated instructions still contain a legacy `## Execution context` section, Context Use recognizes it and does not inject a duplicate.
+
+Claims are atomic and leased for six hours. Runs, inputs, automation instruction versions, knowledge ownership, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
 
 ## Development
 

@@ -179,15 +179,15 @@ describe("MCP skill and automation authoring", () => {
     expect(JSON.stringify(result)).not.toContain("amazonaws");
   });
 
-  test("creates skills with MCP attribution and schedules their returned version", async () => {
+  test("creates independent skills and automation-owned instructions with MCP attribution", async () => {
     const calls: Array<{ operation: string; input: unknown; actor?: unknown }> = [];
     const automations = {
       async createSkill(input: unknown, actor: unknown) {
         calls.push({ operation: "skill", input, actor });
         return { id: "11111111-1111-4111-8111-111111111111", current_version_id: skillVersionId };
       },
-      async createSchedule(input: unknown) {
-        calls.push({ operation: "schedule", input });
+      async createSchedule(input: unknown, actor: unknown) {
+        calls.push({ operation: "schedule", input, actor });
         return { id: "33333333-3333-4333-8333-333333333333", ...input as object };
       },
     } as unknown as AutomationRepository;
@@ -221,16 +221,25 @@ describe("MCP skill and automation authoring", () => {
         arguments: {
           name: "Weekday review",
           automation_key: "weekday-review",
-          skill_version_id: skillVersionId,
+          instructions_markdown: "Review the current project and record decisions.",
           cron_expression: "0 9 * * 1-5",
           timezone: "Europe/London",
         },
       },
     });
-    expect(JSON.parse(schedule.result?.content?.[0]?.text ?? "null")).toMatchObject({ skill_version_id: skillVersionId });
+    expect(JSON.parse(schedule.result?.content?.[0]?.text ?? "null")).toMatchObject({
+      instructions_markdown: "Review the current project and record decisions.",
+    });
     expect(calls[1]).toMatchObject({
       operation: "schedule",
-      input: { automation_key: "weekday-review", skill_version_id: skillVersionId, input: {}, enabled: true },
+      input: {
+        automation_key: "weekday-review",
+        instructions_markdown: "Review the current project and record decisions.",
+        commit_message: "Create automation",
+        input: {},
+        enabled: true,
+      },
+      actor: { kind: "mcp", subject: "mcp-client" },
     });
   });
 
