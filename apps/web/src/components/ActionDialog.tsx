@@ -55,16 +55,18 @@ export function ActionDialog({
   }}>
     <section className="modal action-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId}>
       <button className="icon-button modal-close" disabled={working} onClick={onCancel} aria-label="Close">×</button>
-      <span className="eyebrow">{eyebrow}</span>
-      <h2 id={titleId}>{title}</h2>
-      <div className="action-dialog-copy" id={descriptionId}>{description}</div>
-      {children}
-      {error && <p className="error action-dialog-error" role="alert">{error}</p>}
-      <div className="button-row action-dialog-actions">
-        <button ref={cancelRef} disabled={working} onClick={onCancel}>Cancel</button>
-        <button className={confirmTone} disabled={working || confirmDisabled} onClick={onConfirm}>
-          {working ? workingLabel ?? "Working…" : confirmLabel}
-        </button>
+      <div className="action-dialog-content">
+        <span className="eyebrow">{eyebrow}</span>
+        <h2 id={titleId}>{title}</h2>
+        <div className="action-dialog-copy" id={descriptionId}>{description}</div>
+        {children}
+        {error && <p className="error action-dialog-error" role="alert">{error}</p>}
+        <div className="button-row action-dialog-actions">
+          <button ref={cancelRef} disabled={working} onClick={onCancel}>Cancel</button>
+          <button className={confirmTone} disabled={working || confirmDisabled} onClick={onConfirm}>
+            {working ? workingLabel ?? "Working…" : confirmLabel}
+          </button>
+        </div>
       </div>
     </section>
   </div>;
