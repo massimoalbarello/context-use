@@ -169,7 +169,7 @@ export function Automations() {
   };
 
   return <main className="content-page automations-page">
-    <header><div><span className="eyebrow">Scheduled agent work</span><h1>Automations</h1><p>Each automation owns its instructions, cron trigger, durable versioned run history, and isolated semantic knowledge folder.</p></div><button onClick={() => load().catch(() => undefined)}>Refresh</button></header>
+    <header><div><span className="eyebrow">Scheduled agent work</span><h1>Automations</h1><p>Each automation owns its instructions, cron trigger, durable versioned run history, and isolated semantic knowledge folder.</p></div></header>
     {message && <div className="automation-message">{message}</div>}
 
     <section className="worker-card">
