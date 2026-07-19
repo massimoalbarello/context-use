@@ -59,6 +59,7 @@ services:
       ASSET_ORIGIN: http://localhost:5173
       OAUTH_ISSUER: http://localhost:5173
       MCP_RESOURCE: http://localhost:5173/mcp
+      PUBLIC_MCP_ENDPOINT: http://localhost:5173/public/mcp
       WEBAUTHN_RP_ID: localhost
       WEBAUTHN_RP_NAME: context-use
       OWNER_EMAIL: ${OWNER_EMAIL:-you@example.com}

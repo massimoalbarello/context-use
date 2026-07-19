@@ -137,6 +137,8 @@ test("remote verification avoids shell-quoting SQL and passes the database passw
   expect(sql).toContain("tgname='knowledge_pages_automation_path'");
   expect(sql).toContain("'agent_skills'");
   expect(sql).toContain("'automation_versions'");
+  expect(sql).toContain("required_public_slug='about'");
+  expect(sql).toContain("tgname='publication_intents_protect_required_public_page'");
   expect(sql).not.toContain("conname='knowledge_pages_automation_path_boundary'");
 });
 
@@ -240,6 +242,11 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(publicMcpService).not.toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(publicMcpService).not.toContain("OWNER_EMAIL");
   expect(publicMcpService).not.toContain("AWS_REGION:");
+  const appService = deployCompose.slice(
+    deployCompose.indexOf("  app:"),
+    deployCompose.indexOf("  public-mcp:"),
+  );
+  expect(appService).toContain("PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp");
   expect(caddy).toContain("max_size 5GB");
   expect(caddy).toContain("max_size 3MB");
   expect(compute).toContain("s3:AbortMultipartUpload");

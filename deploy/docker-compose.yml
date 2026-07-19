@@ -54,6 +54,7 @@ services:
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
       OAUTH_ISSUER: https://${APP_HOSTNAME}
       MCP_RESOURCE: https://${APP_HOSTNAME}/mcp
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       WEBAUTHN_RP_ID: ${APP_HOSTNAME}
       WEBAUTHN_RP_NAME: context-use
       OWNER_EMAIL: ${OWNER_EMAIL}

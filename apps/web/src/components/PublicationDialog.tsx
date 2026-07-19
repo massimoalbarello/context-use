@@ -11,7 +11,7 @@ export function PublicationDialog({ page, versionNumber, publishedVersionNumber,
   onChanged: (action: "publish" | "republish" | "unpublish") => void | Promise<void>;
 }) {
   const [preview, setPreview] = useState<PublicationPreview | null>(null);
-  const [slug, setSlug] = useState(page.public_slug ?? page.current_path.split("/").at(-1)?.replaceAll("_", "-") ?? "page");
+  const [slug, setSlug] = useState(page.required_public_slug ?? page.public_slug ?? page.current_path.split("/").at(-1)?.replaceAll("_", "-") ?? "page");
   const [confirmed, setConfirmed] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
@@ -25,6 +25,7 @@ export function PublicationDialog({ page, versionNumber, publishedVersionNumber,
 
   const targetIsPublished = Boolean(page.published_version_id && publishedVersionNumber === versionNumber);
   const targetIsLatest = page.version_number === versionNumber;
+  const requiredSlug = page.required_public_slug;
   const slugChanged = slug !== page.public_slug;
   const canPublish = Boolean(preview && (!targetIsPublished || slugChanged));
 
@@ -71,14 +72,16 @@ export function PublicationDialog({ page, versionNumber, publishedVersionNumber,
     <span className="eyebrow">Exact, immutable snapshot</span>
     <h2 id="publication-title">{title}</h2>
     {preview && <p className="publication-explanation">
-      {targetIsPublished
-        ? "This exact version is public. You can change its URL or unpublish it."
-        : page.published_version_id
-          ? `This will replace public v${publishedVersionNumber ?? "?"} with v${preview.version_number}.`
-          : `This will make v${preview.version_number} public.`}
+      {requiredSlug
+        ? `This is the required personal landing page at /p/${requiredSlug}. You can publish another version, but it cannot be moved or unpublished.`
+        : targetIsPublished
+          ? "This exact version is public. You can change its URL or unpublish it."
+          : page.published_version_id
+            ? `This will replace public v${publishedVersionNumber ?? "?"} with v${preview.version_number}.`
+            : `This will make v${preview.version_number} public.`}
       {!targetIsLatest && " Your latest editable version will not change."}
     </p>}
-    <label>Public slug<input value={slug} onChange={(event) => setSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} /></label>
+    <label>Public slug<input value={slug} disabled={Boolean(requiredSlug)} onChange={(event) => setSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} /></label>
     <p className="public-url">Public URL: {location.origin}/p/{slug || "…"}</p>
     {preview?.warnings.map((warning) => <div className="warning" key={warning}>{warning}</div>)}
     {preview?.references.length ? <section className="reference-review"><strong>Linked content has independent visibility</strong>{preview.references.map((reference) => <div key={`${reference.kind}-${reference.id}`}><span>{reference.kind} · {reference.label}{reference.path ? ` · ${reference.path}` : ""}</span><i className={reference.public ? "visible" : "private"}>{reference.public ? "Public" : "Private / missing"}</i></div>)}</section> : null}
@@ -87,7 +90,7 @@ export function PublicationDialog({ page, versionNumber, publishedVersionNumber,
     {targetIsPublished && !slugChanged && <div className="publication-current">v{versionNumber} is already the version at this public URL.</div>}
     {error && <p className="error">{error}</p>}
     <div className="button-row">
-      {targetIsPublished && <button className="danger" disabled={working} onClick={() => changeVisibility("unpublish")}>Unpublish with passkey</button>}
+      {targetIsPublished && !requiredSlug && <button className="danger" disabled={working} onClick={() => changeVisibility("unpublish")}>Unpublish with passkey</button>}
       {canPublish && <button className="primary" disabled={!confirmed || working || !preview || !slug} onClick={() => changeVisibility(page.published_version_id ? "republish" : "publish")}>{working ? "Waiting for passkey…" : `Publish v${versionNumber} with passkey`}</button>}
     </div>
   </section></div>;

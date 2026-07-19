@@ -73,30 +73,30 @@ export function createPublicMcpServer(
   publicSiteOrigin: string,
 ): McpServer {
   const server = new McpServer({ name: "context-use-public", version: "0.1.20" }, {
-    instructions: "Anonymous access to intentionally published pages. Call get_main_page first for the complete hierarchical index, then get_public_page or search_public_pages as needed. The send_message_to_owner tool can deliver confidential outreach to the owner, but messages can never be read through this server.",
+    instructions: "Anonymous access to the owner's public pages. Call get_about_page first for the About page and complete hierarchical index, then get_public_page or search_public_pages as needed. The send_message tool can deliver confidential outreach to the owner, but messages can never be read through this server.",
   });
 
-  server.registerTool("get_main_page", {
-    description: "Start here. Return the public home page, when published, plus a complete hierarchical index of every public page.",
+  server.registerTool("get_about_page", {
+    description: "Start here. Return the owner's required public About page plus a complete hierarchical index of every public page.",
     inputSchema: z.object({}).strict(),
     annotations,
   }, async () => {
     try {
-      const [pages, home] = await Promise.all([reader.listPages(), reader.getPage("home")]);
+      const [pages, about] = await Promise.all([reader.listPages(), reader.getPage("about")]);
       return jsonContent({
-        title: home?.title ?? "Public pages",
-        canonical_url: home ? new URL("/p/home", publicSiteOrigin).href : publicSiteOrigin,
-        introduction_markdown: home?.body_markdown ?? null,
+        title: about?.title ?? "About",
+        canonical_url: new URL("/p/about", publicSiteOrigin).href,
+        introduction_markdown: about?.body_markdown ?? "",
         page_count: pages.length,
         pages: buildPublicPageTree(pages, publicSiteOrigin),
       });
     } catch (error) {
-      return unavailable("get_main_page", error);
+      return unavailable("get_about_page", error);
     }
   });
 
   server.registerTool("get_public_page", {
-    description: "Read one public page by the slug shown in get_main_page or search_public_pages. Returns its published hierarchy context and Markdown content.",
+    description: "Read one public page by the slug shown in get_about_page or search_public_pages. Returns its published hierarchy context and Markdown content.",
     inputSchema: z.object({
       slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,159}$/),
     }).strict(),
@@ -146,7 +146,7 @@ export function createPublicMcpServer(
     }
   });
 
-  server.registerTool("send_message_to_owner", {
+  server.registerTool("send_message", {
     description: "Send a confidential message to the owner after reviewing their public context. A valid sender email or phone number is required so the owner can reply. The message is visible only in the authenticated owner dashboard and cannot be retrieved through this public MCP server.",
     inputSchema: z.object({
       message: z.string().trim().min(1).max(10_000).describe("The message for the owner, ideally grounded in the public context you reviewed."),
@@ -162,7 +162,7 @@ export function createPublicMcpServer(
         privacy: "The message can only be viewed by the authenticated owner.",
       });
     } catch (error) {
-      return unavailable("send_message_to_owner", error, "The message could not be delivered right now.");
+      return unavailable("send_message", error, "The message could not be delivered right now.");
     }
   });
 

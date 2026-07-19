@@ -18,6 +18,7 @@ const schema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32).default(developmentSecret),
   OAUTH_ISSUER: z.string().url().default("http://localhost:3000"),
   MCP_RESOURCE: z.string().url().default("http://localhost:3000/mcp"),
+  PUBLIC_MCP_ENDPOINT: z.string().url().default("http://localhost:3001/mcp"),
   WEBAUTHN_RP_ID: z.string().min(1).default("localhost"),
   WEBAUTHN_RP_NAME: z.string().min(1).default("context-use"),
   STORAGE_DRIVER: z.enum(["filesystem", "s3"]).default("filesystem"),
@@ -39,12 +40,15 @@ if (production) {
   const insecure: string[] = [];
   const app = new URL(config.APP_ORIGIN);
   const assets = new URL(config.ASSET_ORIGIN);
+  const publicMcp = new URL(config.PUBLIC_MCP_ENDPOINT);
   const isBareOrigin = (url: URL) => url.pathname === "/" && !url.search && !url.hash && !url.username && !url.password;
   if (app.protocol !== "https:" || !isBareOrigin(app)) insecure.push("APP_ORIGIN must be an exact bare HTTPS origin");
   if (assets.protocol !== "https:" || !isBareOrigin(assets)) insecure.push("ASSET_ORIGIN must be an exact bare HTTPS origin");
   if (assets.hostname !== `assets.${app.hostname}`) insecure.push("ASSET_ORIGIN must use the dedicated assets subdomain");
   if (config.OAUTH_ISSUER !== config.APP_ORIGIN) insecure.push("OAUTH_ISSUER must equal APP_ORIGIN");
   if (config.MCP_RESOURCE !== `${config.APP_ORIGIN}/mcp`) insecure.push("MCP_RESOURCE must be the canonical /mcp URI");
+  if (publicMcp.protocol !== "https:" || publicMcp.search || publicMcp.hash) insecure.push("PUBLIC_MCP_ENDPOINT must be an HTTPS URL without a query or fragment");
+  if (publicMcp.origin === app.origin) insecure.push("PUBLIC_MCP_ENDPOINT must use the dedicated public MCP origin");
   if (config.WEBAUTHN_RP_ID !== app.hostname) insecure.push("WEBAUTHN_RP_ID must equal the application hostname");
   if (config.BETTER_AUTH_SECRET === developmentSecret) insecure.push("BETTER_AUTH_SECRET must be changed");
   if (config.OWNER_EMAIL === "owner@example.com") insecure.push("OWNER_EMAIL must be configured");

@@ -60,6 +60,46 @@ describeDatabase("PostgreSQL security roles", () => {
     expect(publisher.rows[0]?.allowed).toBe(true);
   });
 
+  test("the required public about page exists and cannot be moved or unpublished", async () => {
+    const required = await admin.query<{
+      id: string;
+      current_version_id: string;
+      published_version_id: string;
+      public_slug: string;
+      required_public_slug: string;
+    }>(
+      `SELECT id,current_version_id,published_version_id,public_slug,required_public_slug
+       FROM knowledge_pages WHERE required_public_slug='about'`,
+    );
+    expect(required.rowCount).toBe(1);
+    expect(required.rows[0]).toMatchObject({
+      public_slug: "about",
+      required_public_slug: "about",
+    });
+    expect((await admin.query("SELECT 1 FROM published_pages WHERE public_slug='about'")).rowCount).toBe(1);
+
+    await admin.query("BEGIN");
+    try {
+      const page = required.rows[0]!;
+      await expectDenied(
+        `INSERT INTO publication_intents(
+           id,action,target_kind,target_id,owner_user_id,session_id,challenge,
+           payload_hash,expires_at
+         ) VALUES ($1,'unpublish','page',$2,'owner','session',$3,$4,now()+interval '5 minutes')`,
+        [randomUUID(), page.id, `unpublish-about-${randomUUID()}`, "a".repeat(64)],
+      );
+      await expectDenied(
+        `INSERT INTO publication_intents(
+           id,action,target_kind,target_id,version_id,public_slug,owner_user_id,
+           session_id,challenge,payload_hash,expires_at
+         ) VALUES ($1,'republish','page',$2,$3,'moved-about','owner','session',$4,$5,now()+interval '5 minutes')`,
+        [randomUUID(), page.id, page.current_version_id, `move-about-${randomUUID()}`, "b".repeat(64)],
+      );
+    } finally {
+      await admin.query("ROLLBACK");
+    }
+  });
+
   test("public role can see views but not private base tables", async () => {
     const privateTable = await admin.query<{ allowed: boolean }>(
       "SELECT has_table_privilege('context_use_public', 'knowledge_pages', 'SELECT') AS allowed",
@@ -305,36 +345,36 @@ describeDatabase("PostgreSQL security roles", () => {
     try {
       await admin.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id)
-         VALUES ($1,'about/work',$2)`,
+         VALUES ($1,'profile/work',$2)`,
         [privatePageId, privateVersionId],
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
            id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'about/work','PRIVATE-CANARY title','PRIVATE-CANARY body','Create private page','dashboard','owner')`,
+         ) VALUES ($1,$2,1,'profile/work','PRIVATE-CANARY title','PRIVATE-CANARY body','Create private page','dashboard','owner')`,
         [privateVersionId, privatePageId],
       );
       await admin.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_slug)
-         VALUES ($1,'about',$2,$2,'about')`,
+         VALUES ($1,'profile',$2,$2,'profile')`,
         [parentPageId, parentVersionId],
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
            id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'about','About','Public parent','Create public parent','dashboard','owner')`,
+         ) VALUES ($1,$2,1,'profile','Profile','Public parent','Create public parent','dashboard','owner')`,
         [parentVersionId, parentPageId],
       );
       await admin.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_slug)
-         VALUES ($1,'about/work/project',$2,$2,'project')`,
+         VALUES ($1,'profile/work/project',$2,$2,'project')`,
         [childPageId, childVersionId],
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
            id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
          ) VALUES (
-           $1,$2,1,'about/work/project','Project',
+           $1,$2,1,'profile/work/project','Project',
            $3,'Create public child','dashboard','owner'
          )`,
         [
@@ -365,15 +405,15 @@ describeDatabase("PostgreSQL security roles", () => {
         body_markdown: string;
         parent_slug: string | null;
       }>("SELECT public_slug,title,body_markdown,parent_slug FROM public_mcp_pages ORDER BY public_slug");
-      expect((await repository.listPages()).map(({ slug }) => slug)).toEqual(["about", "project"]);
-      expect(await repository.getPage("project")).toMatchObject({ slug: "project", parent_slug: "about" });
+      expect((await repository.listPages()).map(({ slug }) => slug)).toEqual(["about", "profile", "project"]);
+      expect(await repository.getPage("project")).toMatchObject({ slug: "project", parent_slug: "profile" });
       expect((await repository.searchPages("content", 10)).map(({ slug }) => slug)).toEqual(["project"]);
       await expectDenied("SELECT * FROM published_pages");
       await admin.query("RESET ROLE");
 
-      expect(projected.rows.map(({ public_slug }) => public_slug)).toEqual(["about", "project"]);
+      expect(projected.rows.map(({ public_slug }) => public_slug)).toEqual(["about", "profile", "project"]);
       const child = projected.rows.find(({ public_slug }) => public_slug === "project");
-      expect(child).toMatchObject({ title: "Project", parent_slug: "about" });
+      expect(child).toMatchObject({ title: "Project", parent_slug: "profile" });
       expect(child?.body_markdown).toContain("PUBLIC-CANARY content");
       expect(child?.body_markdown).toContain("Private label");
       expect(child?.body_markdown).toContain("Authored label");
@@ -387,7 +427,7 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(child?.body_markdown).not.toContain("ATTRIBUTE-CANARY");
       expect(child?.body_markdown).toContain("Visible span text");
       expect(JSON.stringify(projected.rows)).not.toContain("PRIVATE-CANARY");
-      expect(JSON.stringify(projected.rows)).not.toContain("about/work");
+      expect(JSON.stringify(projected.rows)).not.toContain("profile/work");
     } finally {
       await admin.query("ROLLBACK");
     }

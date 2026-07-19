@@ -16,6 +16,8 @@ user-verified owner passkey
 
 The confirmation request carries only the intent identifier and authenticator response. The stored intent binds the operation, target UUID, page version, public slug, dashboard session, random challenge, owner, and expiry. Consuming it and changing visibility happen in one database transaction.
 
+The sole bootstrap exception contains no owner data: migrations create the required `/p/about` page with an empty published body. Database constraints keep that route present and prevent moving, archiving, or unpublishing it. Editing About creates a new private version; publishing any owner-authored content still requires the complete passkey flow above.
+
 An agent cannot substitute its OAuth token for any step:
 
 - `/api/dashboard/*` rejects every request containing `Authorization`, before handler logic.
@@ -71,7 +73,7 @@ Private and public content use `Cache-Control: no-store` in v1. Unpublication pr
 
 ## Inbound message isolation
 
-`send_message_to_owner` validates and trims a sender-supplied message and requires either an email address or phone number for replies. Its success response contains only a random receipt ID and never echoes the message or loopback address. The public MCP database role can insert the ID, reply address, and message body, but column privileges prevent it from setting `owner_user_id`; the table default binds every delivery to the installation's single owner. That role has no `SELECT` privilege on the inbox, including the privileges PostgreSQL requires for `RETURNING`.
+`send_message` validates and trims a sender-supplied message and requires either an email address or phone number for replies. Its success response contains only a random receipt ID and never echoes the message or loopback address. The public MCP database role can insert the ID, reply address, and message body, but column privileges prevent it from setting `owner_user_id`; the table default binds every delivery to the installation's single owner. That role has no `SELECT` privilege on the inbox, including the privileges PostgreSQL requires for `RETURNING`.
 
 The dashboard role can read the inbox but cannot write it. `/api/dashboard/messages` rejects bearer credentials and anonymous requests through the same cookie-only owner boundary as every private dashboard route, then filters the query by the authenticated owner's user ID. The dashboard renders message bodies as plain React text and constructs only fixed `mailto:` or `tel:` links from the validated reply address.
 

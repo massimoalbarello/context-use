@@ -100,6 +100,7 @@ export function remoteSecurityCommands(): string[] {
     "SELECT CASE WHEN",
     "NOT has_column_privilege('context_use_mcp','knowledge_pages','published_version_id','UPDATE')",
     "AND NOT has_column_privilege('context_use_dashboard','knowledge_pages','public_slug','UPDATE')",
+    "AND NOT has_column_privilege('context_use_dashboard','knowledge_pages','required_public_slug','UPDATE')",
     "AND NOT has_function_privilege('context_use_mcp','confirm_publication_intent(uuid,text,text,text)','EXECUTE')",
     "AND has_function_privilege('context_use_publisher','confirm_publication_intent(uuid,text,text,text)','EXECUTE')",
     "AND NOT has_table_privilege('context_use_public','knowledge_pages','SELECT')",
@@ -127,9 +128,11 @@ export function remoteSecurityCommands(): string[] {
     "AND NOT has_column_privilege('context_use_dashboard','automation_runs','status','UPDATE')",
     "AND has_column_privilege('context_use_mcp','knowledge_pages','automation_id','INSERT')",
     "AND NOT has_column_privilege('context_use_mcp','knowledge_pages','automation_id','UPDATE')",
+    "AND EXISTS (SELECT 1 FROM knowledge_pages WHERE required_public_slug='about' AND public_slug='about' AND published_version_id IS NOT NULL AND archived_at IS NULL)",
     "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='knowledge_pages_automation_path' AND NOT tgisinternal)",
     "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='knowledge_page_versions_automation_path' AND NOT tgisinternal)",
     "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='publication_intents_keep_automation_pages_private' AND NOT tgisinternal)",
+    "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='publication_intents_protect_required_public_page' AND NOT tgisinternal)",
     "THEN 'ok' ELSE 'denied' END",
   ].join(" ");
   const encodedSql = Buffer.from(sql).toString("base64");
@@ -177,6 +180,16 @@ async function verifyDeployment(config: DeploymentConfig, releaseVersion: string
   if (cookieMcp.status !== 401) throw new Error("Security check failed: MCP did not reject browser cookies");
   if (!expectPublicMcp) return;
   const publicOrigin = `https://${config.publicMcpHostname}`;
+  const landing = await fetch(origin);
+  const landingHtml = await landing.text();
+  if (!landing.ok
+      || !landingHtml.includes('href="/p/about"')
+      || !landingHtml.includes(`${publicOrigin}/mcp`)
+      || !landingHtml.includes("send_message")) {
+    throw new Error("The public billboard is unavailable or incomplete");
+  }
+  const about = await fetch(`${origin}/p/about`);
+  if (!about.ok) throw new Error("The required public About page is unavailable");
   for (const path of ["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"]) {
     const discovery = await fetch(`${publicOrigin}${path}`, { redirect: "error" });
     if (discovery.status !== 404 || discovery.headers.has("www-authenticate")) {
