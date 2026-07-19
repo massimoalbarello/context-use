@@ -1,8 +1,12 @@
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
+import { makeSignature } from "better-auth/crypto";
 import { Client } from "pg";
+import { config } from "./config.ts";
 
 const enabled = process.env.TEST_APP_DATABASE_URL === "1";
-const application = enabled ? (await import("./app.ts")).app : null;
+const application = enabled ? (await import("./combined-app.ts")).combinedApp : null;
+const authentication = enabled ? (await import("./auth-app.ts")).authApp : null;
+const confirmation = enabled ? (await import("./confirmation-app.ts")).confirmationApp : null;
 const describeApplication = enabled ? describe : describe.skip;
 const createdClients: string[] = [];
 
@@ -22,6 +26,13 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       body: "{}",
     }));
     expect(response.status).toBe(401);
+
+    const confirm = await application!.handle(new Request("http://localhost:3000/api/dashboard/publications/confirm", {
+      method: "POST",
+      headers: { authorization: "Bearer forged", "content-type": "application/json" },
+      body: "{}",
+    }));
+    expect(confirm.status).toBe(401);
   });
 
   test("bearer and anonymous credentials cannot reach knowledge export APIs", async () => {
@@ -36,6 +47,58 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       { headers: { "sec-fetch-site": "same-origin" } },
     ));
     expect(download.status).toBe(401);
+    const confirm = await application!.handle(new Request("http://localhost:3000/api/dashboard/knowledge-exports/confirm", {
+      method: "POST",
+      headers: { authorization: "Bearer forged", "content-type": "application/json" },
+      body: "{}",
+    }));
+    expect(confirm.status).toBe(401);
+  });
+
+  test("confirmation browser handlers are internal and require the auth gateway capability", async () => {
+    const response = await confirmation!.handle(new Request(
+      "http://confirmation:3004/internal/browser-confirmation/publication",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          principal: { owner_user_id: "context-use-owner", session_id: "forged" },
+          confirmation: {
+            intent_id: "11111111-1111-4111-8111-111111111111",
+            response: {},
+          },
+        }),
+      },
+    ));
+    expect(response.status).toBe(404);
+    expect(await response.text()).not.toContain("gateway");
+  });
+
+  test("every non-browser internal endpoint requires its pairwise service capability", async () => {
+    const authResponse = await authentication!.handle(new Request(
+      "http://auth:3002/internal/authorize-dashboard",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          method: "GET",
+          pathname: "/api/dashboard/pages",
+          kind: "read",
+          headers: {},
+        }),
+      },
+    ));
+    expect(authResponse.status).toBe(404);
+    const jwksWithoutCapability = await authentication!.handle(new Request(
+      "http://auth:3002/internal/jwks",
+    ));
+    expect(jwksWithoutCapability.status).toBe(404);
+
+    const confirmationResponse = await confirmation!.handle(new Request(
+      "http://confirmation:3004/internal/confirmation/publication/11111111-1111-4111-8111-111111111111/options",
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+    ));
+    expect(confirmationResponse.status).toBe(404);
   });
 
   test("cookie credentials are rejected by MCP with discovery metadata", async () => {
@@ -212,10 +275,109 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(response.headers.get("location")).toContain("error_description=pkce+is+required+for+public+clients");
   });
 
+  test("idle and absolute session deadlines cannot be refreshed before authorization", async () => {
+    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const sessions = [
+      {
+        id: crypto.randomUUID(),
+        token: `idle-${crypto.randomUUID()}`,
+        created: "-2 days",
+        updated: "-13 hours",
+        expires: "+5 days",
+        expectedStatus: 401,
+      },
+      {
+        id: crypto.randomUUID(),
+        token: `absolute-${crypto.randomUUID()}`,
+        created: "-8 days",
+        updated: "-1 hour",
+        expires: "+1 day",
+        expectedStatus: 401,
+      },
+      {
+        id: crypto.randomUUID(),
+        token: `active-${crypto.randomUUID()}`,
+        created: "-1 day",
+        updated: "-2 hours",
+        expires: "+5 days",
+        expectedStatus: 200,
+      },
+    ];
+    let createdOwner = false;
+    await client.connect();
+    try {
+      const owner = await client.query(
+        `INSERT INTO "user"(id,name,email,"emailVerified")
+         VALUES ('context-use-owner','Owner',$1,true)
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id`,
+        [config.OWNER_EMAIL],
+      );
+      createdOwner = Boolean(owner.rowCount);
+      for (const session of sessions) {
+        await client.query(
+          `INSERT INTO "session"(
+             id,"expiresAt",token,"createdAt","updatedAt","userId"
+           ) VALUES (
+             $1,now()+$2::interval,$3,now()+$4::interval,now()+$5::interval,'context-use-owner'
+           )`,
+          [session.id, session.expires, session.token, session.created, session.updated],
+        );
+      }
+
+      for (const session of sessions) {
+        const signature = await makeSignature(session.token, config.BETTER_AUTH_SECRET);
+        const before = await client.query<{ updatedAt: Date; expiresAt: Date }>(
+          `SELECT "updatedAt","expiresAt" FROM "session" WHERE id=$1`,
+          [session.id],
+        );
+        const response = await application!.handle(new Request("http://localhost:3000/api/dashboard/session", {
+          headers: { cookie: `context-use.session_token=${session.token}.${signature}` },
+        }));
+        expect(response.status).toBe(session.expectedStatus);
+        const after = await client.query<{ updatedAt: Date; expiresAt: Date }>(
+          `SELECT "updatedAt","expiresAt" FROM "session" WHERE id=$1`,
+          [session.id],
+        );
+        expect(after.rows[0]!.expiresAt.getTime()).toBe(before.rows[0]!.expiresAt.getTime());
+        if (session.expectedStatus === 401) {
+          expect(after.rows[0]!.updatedAt.getTime()).toBe(before.rows[0]!.updatedAt.getTime());
+        } else {
+          expect(after.rows[0]!.updatedAt.getTime()).toBeGreaterThan(before.rows[0]!.updatedAt.getTime());
+        }
+      }
+    } finally {
+      await client.query(
+        `DELETE FROM "session" WHERE id=ANY($1::text[])`,
+        [sessions.map(({ id }) => id)],
+      ).catch(() => undefined);
+      if (createdOwner) {
+        await client.query('ALTER TABLE "user" DISABLE TRIGGER user_protect_owner_identity');
+        try {
+          await client.query(
+            `DELETE FROM "user"
+             WHERE id='context-use-owner'
+               AND NOT EXISTS (SELECT 1 FROM passkey WHERE "userId"='context-use-owner')`,
+          );
+        } finally {
+          await client.query('ALTER TABLE "user" ENABLE TRIGGER user_protect_owner_identity');
+        }
+      }
+      await client.end();
+    }
+  });
+
   test("JWKS endpoint can provision the configured signing key", async () => {
     const response = await application!.handle(new Request("http://localhost:3000/api/auth/jwks"));
     expect(response.status).toBe(200);
     const body = await response.json() as { keys: Array<{ alg: string; crv: string }> };
     expect(body.keys).toContainEqual(expect.objectContaining({ alg: "EdDSA", crv: "Ed25519" }));
+
+    const internal = await authentication!.handle(new Request("http://auth:3002/internal/jwks", {
+      headers: { authorization: `Bearer ${config.AUTH_MCP_TOKEN}` },
+    }));
+    expect(internal.status).toBe(200);
+    expect((await internal.json() as { keys: unknown[] }).keys.length).toBeGreaterThan(0);
   });
 });

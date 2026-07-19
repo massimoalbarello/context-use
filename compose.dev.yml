@@ -9,13 +9,22 @@ x-code-service: &code-service
     - .:/app
     - dependencies:/app/node_modules
 
+x-common: &common
+  NODE_ENV: development
+  APP_ORIGIN: http://localhost:5173
+  ASSET_ORIGIN: http://localhost:5173
+  OAUTH_ISSUER: http://localhost:5173
+  MCP_RESOURCE: http://localhost:5173/mcp
+  PUBLIC_MCP_ENDPOINT: http://localhost:5173/public/mcp
+
 x-role-passwords: &role-passwords
   DB_AUTH_PASSWORD: development-only
   DB_DASHBOARD_PASSWORD: development-only
   DB_MCP_PASSWORD: development-only
   DB_PUBLIC_PASSWORD: development-only
   DB_PUBLIC_MCP_PASSWORD: development-only
-  DB_PUBLISHER_PASSWORD: development-only
+  DB_CONFIRMATION_PASSWORD: development-only
+  DB_STORAGE_PASSWORD: development-only
   DB_BACKUP_PASSWORD: development-only
 
 services:
@@ -26,10 +35,8 @@ services:
       POSTGRES_DB: context_use
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+    ports: ["5432:5432"]
+    volumes: [postgres-data:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d context_use"]
       interval: 2s
@@ -39,59 +46,188 @@ services:
   migrate:
     <<: *code-service
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
     environment:
       <<: *role-passwords
       MIGRATOR_DATABASE_URL: postgres://postgres:postgres@postgres:5432/context_use
     command: ["bun", "run", "db:migrate"]
     restart: "no"
 
-  server:
+  storage-socket-init:
+    <<: *code-service
+    user: "0:0"
+    network_mode: none
+    command: ["sh", "-c", "chown bun:bun /run/context-use-storage && chmod 0700 /run/context-use-storage"]
+    volumes: [storage-socket:/run/context-use-storage]
+    restart: "no"
+
+  storage:
     <<: *code-service
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      migrate: { condition: service_completed_successfully }
+      storage-socket-init: { condition: service_completed_successfully }
     environment:
-      NODE_ENV: development
-      PORT: "3000"
-      APP_ORIGIN: http://localhost:5173
-      ASSET_ORIGIN: http://localhost:5173
-      OAUTH_ISSUER: http://localhost:5173
-      MCP_RESOURCE: http://localhost:5173/mcp
-      PUBLIC_MCP_ENDPOINT: http://localhost:5173/public/mcp
+      <<: *common
+      SERVICE_MODE: storage
+      STORAGE_DATABASE_URL: postgres://context_use_storage:development-only@postgres:5432/context_use
+      STORAGE_DRIVER: filesystem
+      STORAGE_PATH: /app/data/assets
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_DASHBOARD_TOKEN: development-storage-dashboard-token
+      STORAGE_MCP_TOKEN: development-storage-private-mcp-token
+      STORAGE_PUBLIC_TOKEN: development-storage-public-web-token
+    command: ["bun", "apps/server/src/storage-index.ts"]
+    volumes:
+      - .:/app
+      - dependencies:/app/node_modules
+      - asset-data:/app/data/assets
+      - storage-socket:/run/context-use-storage
+    restart: unless-stopped
+
+  auth:
+    <<: *code-service
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    environment:
+      <<: *common
+      SERVICE_MODE: auth
+      PORT: "3002"
       WEBAUTHN_RP_ID: localhost
       WEBAUTHN_RP_NAME: context-use
       OWNER_EMAIL: ${OWNER_EMAIL:-you@example.com}
       OWNER_SETUP_TOKEN_HASH: 0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cfa864a96a0efe17b1694
       BETTER_AUTH_SECRET: development-only-secret-that-is-long-enough
-      DATABASE_URL: postgres://context_use_dashboard:development-only@postgres:5432/context_use
+      AUTH_DASHBOARD_TOKEN: development-auth-dashboard-internal-token
+      AUTH_MCP_TOKEN: development-auth-private-mcp-internal-token
+      CONFIRMATION_INTERNAL_URL: http://confirmation:3004
+      CONFIRMATION_GATEWAY_TOKEN: development-confirmation-gateway-token
       AUTH_DATABASE_URL: postgres://context_use_auth:development-only@postgres:5432/context_use
-      MCP_DATABASE_URL: postgres://context_use_mcp:development-only@postgres:5432/context_use
-      PUBLIC_DATABASE_URL: postgres://context_use_public:development-only@postgres:5432/context_use
-      PUBLISHER_DATABASE_URL: postgres://context_use_publisher:development-only@postgres:5432/context_use
-      STORAGE_DRIVER: filesystem
-      STORAGE_PATH: /app/data/assets
+    command: ["bun", "--watch", "apps/server/src/auth-index.ts"]
+    restart: unless-stopped
+
+  auth-edge:
+    <<: *code-service
+    depends_on:
+      auth: { condition: service_started }
+    environment:
+      <<: *common
+      SERVICE_MODE: auth-edge
+      PORT: "3006"
+      AUTH_AUTHORITY_URL: http://auth:3002
+    command: ["bun", "--watch", "apps/server/src/auth-edge-index.ts"]
+    restart: unless-stopped
+
+  dashboard-edge:
+    <<: *code-service
+    depends_on:
+      server: { condition: service_started }
+    environment:
+      <<: *common
+      SERVICE_MODE: dashboard-edge
+      PORT: "3007"
+      DASHBOARD_AUTHORITY_URL: http://server:3000
+    command: ["bun", "--watch", "apps/server/src/dashboard-edge-index.ts"]
+    restart: unless-stopped
+
+  server:
+    <<: *code-service
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      auth: { condition: service_started }
+      confirmation: { condition: service_started }
+      storage: { condition: service_started }
+    environment:
+      <<: *common
+      SERVICE_MODE: dashboard
+      PORT: "3000"
+      DATABASE_URL: postgres://context_use_dashboard:development-only@postgres:5432/context_use
+      AUTH_INTERNAL_URL: http://auth:3002
+      CONFIRMATION_INTERNAL_URL: http://confirmation:3004
+      AUTH_DASHBOARD_TOKEN: development-auth-dashboard-internal-token
+      CONFIRMATION_DASHBOARD_TOKEN: development-confirmation-dashboard-token
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_DASHBOARD_TOKEN: development-storage-dashboard-token
       WEB_DIST: /app/apps/web/dist
-    command: ["bun", "run", "dev:server"]
+    command: ["bun", "--watch", "apps/server/src/dashboard-index.ts"]
     volumes:
       - .:/app
       - dependencies:/app/node_modules
-      - asset-data:/app/data/assets
-    ports:
-      - "3000:3000"
+      - storage-socket:/run/context-use-storage:ro
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3000/api/health'); if (!response.ok) process.exit(1)"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+
+  private-mcp:
+    <<: *code-service
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      auth: { condition: service_started }
+      storage: { condition: service_started }
+    environment:
+      <<: *common
+      SERVICE_MODE: mcp
+      PORT: "3003"
+      MCP_DATABASE_URL: postgres://context_use_mcp:development-only@postgres:5432/context_use
+      AUTH_INTERNAL_URL: http://auth:3002
+      AUTH_MCP_TOKEN: development-auth-private-mcp-internal-token
+      MCP_ASSET_CAPABILITY_SECRET: development-only-mcp-capability-secret
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_MCP_TOKEN: development-storage-private-mcp-token
+    command: ["bun", "--watch", "apps/server/src/mcp-index.ts"]
+    volumes:
+      - .:/app
+      - dependencies:/app/node_modules
+      - storage-socket:/run/context-use-storage:ro
+    restart: unless-stopped
+
+  private-mcp-edge:
+    <<: *code-service
+    depends_on:
+      private-mcp: { condition: service_started }
+    environment:
+      <<: *common
+      SERVICE_MODE: mcp-edge
+      PORT: "3008"
+      MCP_AUTHORITY_URL: http://private-mcp:3003
+    command: ["bun", "--watch", "apps/server/src/mcp-edge-index.ts"]
+    restart: unless-stopped
+
+  confirmation:
+    <<: *code-service
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    environment:
+      <<: *common
+      SERVICE_MODE: confirmation
+      PORT: "3004"
+      WEBAUTHN_RP_ID: localhost
+      CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:development-only@postgres:5432/context_use
+      CONFIRMATION_GATEWAY_TOKEN: development-confirmation-gateway-token
+      CONFIRMATION_DASHBOARD_TOKEN: development-confirmation-dashboard-token
+    command: ["bun", "--watch", "apps/server/src/confirmation-index.ts"]
+    restart: unless-stopped
+
+  public-web:
+    <<: *code-service
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      storage: { condition: service_started }
+    environment:
+      <<: *common
+      SERVICE_MODE: public
+      PORT: "3005"
+      PUBLIC_DATABASE_URL: postgres://context_use_public:development-only@postgres:5432/context_use
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_PUBLIC_TOKEN: development-storage-public-web-token
+    command: ["bun", "--watch", "apps/server/src/public-index.ts"]
+    volumes:
+      - .:/app
+      - dependencies:/app/node_modules
+      - storage-socket:/run/context-use-storage:ro
+    restart: unless-stopped
 
   public-mcp:
     <<: *code-service
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      migrate: { condition: service_completed_successfully }
     environment:
       NODE_ENV: development
       PORT: "3001"
@@ -99,31 +235,28 @@ services:
       PUBLIC_SITE_ORIGIN: http://localhost:5173
       PUBLIC_MCP_DATABASE_URL: postgres://context_use_public_mcp:development-only@postgres:5432/context_use
     command: ["bun", "--cwd", "apps/public-mcp", "dev"]
-    ports:
-      - "3001:3001"
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3001/health'); if (!response.ok) process.exit(1)"]
-      interval: 2s
-      timeout: 3s
-      retries: 30
+
+  gateway:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    depends_on: [dashboard-edge, auth-edge, private-mcp-edge, public-web]
+    volumes: [./deploy/Caddyfile.dev:/etc/caddy/Caddyfile:ro]
+    restart: unless-stopped
 
   web:
     <<: *code-service
     depends_on:
-      server:
-        condition: service_healthy
-      public-mcp:
-        condition: service_healthy
+      gateway: { condition: service_started }
+      public-mcp: { condition: service_started }
     environment:
-      VITE_API_PROXY_TARGET: http://server:3000
+      VITE_API_PROXY_TARGET: http://gateway:8080
       VITE_PUBLIC_MCP_PROXY_TARGET: http://public-mcp:3001
     command: ["bun", "--cwd", "apps/web", "dev", "--host", "0.0.0.0"]
-    ports:
-      - "5173:5173"
+    ports: ["5173:5173"]
     restart: unless-stopped
 
 volumes:
   postgres-data:
   dependencies:
   asset-data:
+  storage-socket:

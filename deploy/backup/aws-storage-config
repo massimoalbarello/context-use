@@ -1,0 +1,2 @@
+[profile context-use-storage]
+credential_process = /bin/cat /run/context-use-aws-storage/credentials.json

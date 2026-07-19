@@ -1,3 +1,0 @@
-ALTER TABLE "jwks"
-  ADD COLUMN IF NOT EXISTS "alg" text,
-  ADD COLUMN IF NOT EXISTS "crv" text;

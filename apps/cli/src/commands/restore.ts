@@ -13,7 +13,7 @@ export function restoreCommands(bucket: string, key: string): string[] {
     `trap '${compose} up -d app backup >/dev/null 2>&1 || true' EXIT`,
     `${compose} run --rm backup once`,
     `${compose} stop app backup`,
-    `aws s3 cp 's3://${bucket}/${key}' - --only-show-errors | gunzip | ${compose} exec -T -e PGPASSWORD postgres psql -v ON_ERROR_STOP=1 -U postgres -d context_use`,
+    `${compose} run --rm -T -e BACKUP_BUCKET='${bucket}' backup fetch '${key}' | gunzip | ${compose} exec -T -e PGPASSWORD postgres psql -v ON_ERROR_STOP=1 -U postgres -d context_use`,
     `${compose} up -d app backup`,
     "trap - EXIT",
   ];

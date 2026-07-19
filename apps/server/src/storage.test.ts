@@ -12,7 +12,7 @@ import {
   UploadPartCommand,
 } from "@aws-sdk/client-s3";
 import { afterEach, describe, expect, test } from "bun:test";
-import { AssetIntegrityError, FilesystemStorage, mayRenderInline, S3Storage, type StoredAsset } from "./storage.ts";
+import { AssetIntegrityError, credentialsFromFile, FilesystemStorage, mayRenderInline, S3Storage, type StoredAsset } from "./storage.ts";
 
 const temporaryDirectories: string[] = [];
 
@@ -82,6 +82,32 @@ class FakeS3Client {
 }
 
 describe("application-routed asset storage", () => {
+  test("loads only unexpired scoped process credentials", async () => {
+    const root = await mkdtemp(join(tmpdir(), "context-use-credentials-"));
+    temporaryDirectories.push(root);
+    const path = join(root, "credentials.json");
+    await Bun.write(path, JSON.stringify({
+      Version: 1,
+      AccessKeyId: "ASIAEXAMPLEACCESSKEY",
+      SecretAccessKey: "example-secret-access-key-that-is-long-enough",
+      SessionToken: "example-session-token-that-is-long-enough",
+      Expiration: new Date(Date.now() + 60_000).toISOString(),
+    }));
+    expect(await credentialsFromFile(path)()).toMatchObject({
+      accessKeyId: "ASIAEXAMPLEACCESSKEY",
+      sessionToken: "example-session-token-that-is-long-enough",
+    });
+
+    await Bun.write(path, JSON.stringify({
+      Version: 1,
+      AccessKeyId: "ASIAEXAMPLEACCESSKEY",
+      SecretAccessKey: "example-secret-access-key-that-is-long-enough",
+      SessionToken: "example-session-token-that-is-long-enough",
+      Expiration: new Date(Date.now() - 1).toISOString(),
+    }));
+    await expect(credentialsFromFile(path)()).rejects.toThrow("expired");
+  });
+
   test("inlines passive preview formats without allowing active images", () => {
     expect(mayRenderInline("image/avif")).toBe(true);
     expect(mayRenderInline("video/quicktime")).toBe(true);

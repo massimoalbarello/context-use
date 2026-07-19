@@ -1,0 +1,43 @@
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	handle /api/auth/* {
+		reverse_proxy auth-edge:3006
+	}
+	handle /.well-known/oauth-authorization-server {
+		reverse_proxy auth-edge:3006
+	}
+	handle /.well-known/openid-configuration {
+		reverse_proxy auth-edge:3006
+	}
+	handle /.well-known/oauth-protected-resource* {
+		reverse_proxy private-mcp-edge:3008
+	}
+	handle /mcp {
+		reverse_proxy private-mcp-edge:3008
+	}
+	handle /api/mcp/* {
+		reverse_proxy private-mcp-edge:3008
+	}
+	handle /api/dashboard/* {
+		reverse_proxy dashboard-edge:3007
+	}
+	handle /api/health {
+		reverse_proxy dashboard-edge:3007
+	}
+	handle /p/* {
+		reverse_proxy public-web:3005
+	}
+	handle /public.css {
+		reverse_proxy public-web:3005
+	}
+	handle /content.css {
+		reverse_proxy public-web:3005
+	}
+	handle {
+		reverse_proxy public-web:3005
+	}
+}

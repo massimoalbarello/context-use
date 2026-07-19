@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { config } from "./config.ts";
-import type { DashboardPrincipal } from "./auth.ts";
+import type { DashboardPrincipal } from "./auth-client.ts";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 

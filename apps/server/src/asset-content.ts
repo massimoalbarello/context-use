@@ -2,12 +2,13 @@ import type { ObjectStorage } from "./storage.ts";
 import { AssetNotFoundError, contentDisposition, mayRenderInline } from "./storage.ts";
 import { securityHeaders } from "./security.ts";
 
-type AssetContent = {
-  s3_object_key: string;
+type AssetMetadata = {
   filename: string;
   content_type: string;
   size_bytes: number | string;
 };
+
+type AssetContent = AssetMetadata & { s3_object_key: string };
 
 type ParsedRange = { start: number; end: number } | "unsatisfiable" | undefined;
 
@@ -42,11 +43,25 @@ export function parseAssetRange(value: string | null, sizeBytes: number): Parsed
   return { start, end: Math.min(requestedEnd, sizeBytes - 1) };
 }
 
-export async function assetContentResponse(
+export function assetContentResponse(
   request: Request,
   asset: AssetContent,
   storage: ObjectStorage,
   inline: boolean,
+): Promise<Response>;
+export function assetContentResponse(
+  request: Request,
+  asset: AssetMetadata,
+  storage: ObjectStorage,
+  inline: boolean,
+  storageReference: string,
+): Promise<Response>;
+export async function assetContentResponse(
+  request: Request,
+  asset: AssetMetadata | AssetContent,
+  storage: ObjectStorage,
+  inline: boolean,
+  storageReference?: string,
 ): Promise<Response> {
   const sizeBytes = Number(asset.size_bytes);
   const range = parseAssetRange(request.headers.get("range"), sizeBytes);
@@ -78,7 +93,9 @@ export async function assetContentResponse(
   }
 
   try {
-    const body = await storage.read(asset.s3_object_key, range);
+    const reference = storageReference ?? ("s3_object_key" in asset ? asset.s3_object_key : null);
+    if (!reference) throw new AssetNotFoundError();
+    const body = await storage.read(reference, range);
     if (range) {
       return new Response(body, {
         status: 206,

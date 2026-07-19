@@ -89,25 +89,92 @@ resource "aws_iam_role_policy_attachment" "ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-resource "aws_iam_role_policy" "data" {
-  name = "${local.prefix}-data"
-  role = aws_iam_role.instance.id
+resource "aws_iam_role" "storage" {
+  name = "${local.prefix}-storage"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = aws_iam_role.instance.arn }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "storage" {
+  name = "${local.prefix}-storage"
+  role = aws_iam_role.storage.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
         Effect = "Allow"
         Action = [
-          "s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload", "s3:DeleteObject", "s3:ListBucket", "s3:GetObjectVersion",
-          "s3:GetEncryptionConfiguration", "s3:GetBucketPublicAccessBlock"
+          "s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload",
+          "s3:DeleteObject", "s3:ListBucket", "s3:GetEncryptionConfiguration",
+          "s3:GetBucketPublicAccessBlock"
         ]
         Resource = [
-          "arn:aws:s3:::${var.asset_bucket}", "arn:aws:s3:::${var.asset_bucket}/*",
-          "arn:aws:s3:::${var.backup_bucket}", "arn:aws:s3:::${var.backup_bucket}/*"
+          "arn:aws:s3:::${var.asset_bucket}",
+          "arn:aws:s3:::${var.asset_bucket}/*"
         ]
       },
-      { Effect = "Allow", Action = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"], Resource = [var.kms_key_arn] },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"]
+        Resource = [var.kms_key_arn]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "backup" {
+  name = "${local.prefix}-backup"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = aws_iam_role.instance.arn }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "backup" {
+  name = "${local.prefix}-backup"
+  role = aws_iam_role.backup.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject", "s3:PutObject", "s3:DeleteObject",
+          "s3:AbortMultipartUpload", "s3:ListBucket", "s3:GetObjectVersion"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.backup_bucket}",
+          "arn:aws:s3:::${var.backup_bucket}/*"
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"]
+        Resource = [var.kms_key_arn]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "data" {
+  name = "${local.prefix}-data"
+  role = aws_iam_role.instance.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      { Effect = "Allow", Action = ["kms:Decrypt"], Resource = [var.kms_key_arn] },
       { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"], Resource = ["arn:aws:ssm:${var.aws_region}:*:parameter${var.ssm_parameter_prefix}/*"] },
+      { Effect = "Allow", Action = ["sts:AssumeRole"], Resource = [aws_iam_role.storage.arn, aws_iam_role.backup.arn] },
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"], Resource = ["${aws_cloudwatch_log_group.app.arn}:*"] }
     ]
   })
@@ -130,9 +197,12 @@ resource "aws_instance" "app" {
     volume_id = replace(var.data_volume_id, "-", "")
   })
   metadata_options {
-    http_endpoint               = "enabled"
-    http_tokens                 = "required"
-    http_put_response_hop_limit = 2
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+    # Bridge-network containers are one additional hop away and therefore
+    # cannot obtain the instance role. Only the input-free host credential
+    # broker can reach IMDSv2; it emits bucket-scoped temporary credentials.
+    http_put_response_hop_limit = 1
     instance_metadata_tags      = "enabled"
   }
   root_block_device {

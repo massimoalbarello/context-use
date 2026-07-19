@@ -1,4 +1,6 @@
 export { createPool } from "./pool.ts";
+export { ConfirmationRepository } from "./confirmation.ts";
+export type { ConfirmationIntentKind, ConfirmationPasskey, VerifiedPasskey } from "./confirmation.ts";
 export {
   AutomationContentAccessError,
   PageRepository,
@@ -18,6 +20,7 @@ export {
   PublicationRepository,
   PublicMcpRepository,
   PublicRepository,
+  StoragePublicationRepository,
   hashPublicationPayload,
   type PublicMcpPage,
   type PublicMcpPageSummary,
