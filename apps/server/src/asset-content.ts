@@ -11,6 +11,18 @@ type AssetContent = {
 
 type ParsedRange = { start: number; end: number } | "unsatisfiable" | undefined;
 
+function inlineContentSecurityPolicy(contentType: string): string {
+  const normalized = contentType.toLowerCase();
+  const resourceDirective = normalized.startsWith("image/")
+    ? "img-src 'self'"
+    : normalized.startsWith("video/") || normalized.startsWith("audio/")
+      ? "media-src 'self'"
+      : null;
+  return ["default-src 'none'", resourceDirective, "frame-ancestors 'self'"]
+    .filter((directive): directive is string => directive !== null)
+    .join("; ");
+}
+
 export function parseAssetRange(value: string | null, sizeBytes: number): ParsedRange {
   if (!value) return undefined;
   const match = value.match(/^bytes=(\d*)-(\d*)$/);
@@ -42,7 +54,10 @@ export async function assetContentResponse(
   const responseSecurityHeaders = rendersInline
     ? {
         ...securityHeaders,
-        "content-security-policy": "default-src 'none'; frame-ancestors 'self'",
+        // Top-level image/media navigation creates a browser-owned wrapper that
+        // reloads this same URL. Permit only that same-origin subresource; the
+        // nested request must still pass the route's authentication/publication gate.
+        "content-security-policy": inlineContentSecurityPolicy(asset.content_type),
         "x-frame-options": "SAMEORIGIN",
       }
     : securityHeaders;

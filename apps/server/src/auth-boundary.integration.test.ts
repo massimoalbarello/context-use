@@ -43,13 +43,23 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     }
   });
 
-  test("anonymous private access is rejected while malformed public identifiers are indistinguishable", async () => {
+  test("private asset access requires a dashboard session on the dashboard origin", async () => {
     const dashboard = await application!.handle(new Request("http://localhost:3000/api/dashboard/pages"));
     expect(dashboard.status).toBe(401);
-    const privateAsset = await application!.handle(new Request(
-      "http://localhost:3000/api/dashboard/assets/11111111-1111-4111-8111-111111111111/content",
+    for (const headers of [{}, { authorization: "Bearer forged" }]) {
+      const privateAsset = await application!.handle(new Request(
+        "http://localhost:3000/api/dashboard/assets/11111111-1111-4111-8111-111111111111/content",
+        { headers },
+      ));
+      expect(privateAsset.status).toBe(401);
+    }
+    const wrongOrigin = await application!.handle(new Request(
+      "http://assets.localhost:3000/api/dashboard/assets/11111111-1111-4111-8111-111111111111/content",
     ));
-    expect(privateAsset.status).toBe(401);
+    expect(wrongOrigin.status).toBe(404);
+  });
+
+  test("malformed public identifiers are indistinguishable", async () => {
     const inbox = await application!.handle(new Request("http://localhost:3000/api/dashboard/messages"));
     expect(inbox.status).toBe(401);
     const malformedPage = await application!.handle(new Request("http://localhost:3000/p/INVALID"));
