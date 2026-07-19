@@ -708,6 +708,11 @@ button:disabled {
   color: #785313;
 }
 
+.publication-alert {
+  width: min(1016px, calc(100% - 104px));
+  margin: 0 auto 24px;
+}
+
 .publication-notice > div {
   display: flex;
   flex-direction: column;
@@ -1449,6 +1454,7 @@ button:disabled {
 
   .editor-fields { grid-template-columns: 1fr; }
   .publication-notice { margin-inline: 20px; }
+  .publication-alert { width: auto; }
 
   .history-list article {
     align-items: flex-start;

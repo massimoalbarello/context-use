@@ -9,6 +9,7 @@ import {
   type PageTreeDirectory,
   type PageTreePage,
 } from "../knowledge-tree.ts";
+import { isPublishedPageOutdated } from "../publication-status.ts";
 import type { Asset, Page } from "../types.ts";
 
 export type KnowledgeSelection = { kind: "page" | "asset"; id: string };
@@ -83,6 +84,7 @@ function KnowledgeItems({
     const active = selected?.kind === item.kind && selected.id === entity.id;
     const archived = item.kind === "page" && Boolean(item.page.archived_at);
     const isPublic = item.kind === "page" ? Boolean(item.page.published_version_id) : Boolean(item.asset.published_at);
+    const publicationOutdated = item.kind === "page" && isPublishedPageOutdated(item.page);
 
     return <button
       type="button"
@@ -90,7 +92,7 @@ function KnowledgeItems({
       style={{ "--tree-depth": depth } as CSSProperties}
       role="treeitem"
       aria-selected={active}
-      title={`${label}\n${entity.current_path}`}
+      title={`${label}\n${entity.current_path}${publicationOutdated ? "\nPublished version is out of date" : ""}`}
       key={`${item.kind}-${entity.id}`}
       onClick={() => onSelect({ kind: item.kind, id: entity.id })}
     >
@@ -99,7 +101,9 @@ function KnowledgeItems({
       <span className="tree-label">{label}</span>
       {archived
         ? <span className="tree-status">archived</span>
-        : isPublic && <span className="tree-status public">public</span>}
+        : publicationOutdated
+          ? <span className="tree-status update">update</span>
+          : isPublic && <span className="tree-status public">public</span>}
     </button>;
   })}</>;
 }

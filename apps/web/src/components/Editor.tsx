@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.ts";
+import { isPublishedPageOutdated } from "../publication-status.ts";
 import type { Page, Version } from "../types.ts";
 import { PublicationDialog } from "./PublicationDialog.tsx";
 
@@ -39,7 +40,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
 
   const publishedVersion = history.find((version) => version.id === page.published_version_id);
   const publishedVersionNumber = publishedVersion?.version_number;
-  const hasUnpublishedChanges = Boolean(page.published_version_id && page.published_version_id !== page.current_version_id);
+  const hasUnpublishedChanges = isPublishedPageOutdated(page);
   const automationOwned = Boolean(page.automation_id);
 
   const edit = () => {
@@ -103,6 +104,13 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         {!automationOwned && !page.archived_at && page.published_version_id && !hasUnpublishedChanges && <button onClick={() => setPublishingVersion(page.version_number)}>Manage publication</button>}
       </div>
     </header>
+    {hasUnpublishedChanges && <div className="publication-notice pending publication-alert" role="status">
+      <div>
+        <strong>Published page is not up to date</strong>
+        <span>v{publishedVersionNumber ?? "?"} is public, while v{page.version_number} is the latest version available.</span>
+      </div>
+      {!automationOwned && !page.archived_at && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Review and publish latest</button>}
+    </div>}
     {!isEditing && <nav className="tabs">
       <div>{(["preview", "history"] as const).map((item) => <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
       {tab === "preview" && !automationOwned && <button className="edit-page-button" onClick={edit} aria-label="Edit page">
@@ -113,12 +121,11 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     {!isEditing && automationOwned && <div className="automation-owned-notice"><strong>Managed by an automation</strong><span>This page is private and read-only here. Only a valid run claim for its owning automation can update or archive it.</span></div>}
     {isEditing && <section className="edit-grid">
       <div className="edit-top">
-        {page.published_version_id && <div className={`publication-notice${hasUnpublishedChanges ? " pending" : ""}`}>
+        {page.published_version_id && !hasUnpublishedChanges && <div className="publication-notice">
           <div>
-            <strong>{hasUnpublishedChanges ? `The public page is still v${publishedVersionNumber ?? "?"}.` : `v${publishedVersionNumber ?? page.version_number} is currently public.`}</strong>
-            <span>{hasUnpublishedChanges ? `Your latest version, v${page.version_number}, remains private until you publish it.` : "Saving edits creates a new private version. The published page will not update automatically."}</span>
+            <strong>v{publishedVersionNumber ?? page.version_number} is currently public.</strong>
+            <span>Saving edits creates a new private version. The published page will not update automatically.</span>
           </div>
-          {hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish v{page.version_number}</button>}
         </div>}
         <div className="editor-fields"><label>Path<input value={draft.path} onChange={(event) => setDraft({ ...draft, path: event.target.value })} /></label><label>Title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label></div>
       </div>

@@ -135,6 +135,11 @@
   color: var(--green);
 }
 
+.page-tree .tree-status.update {
+  background: #fff0d9;
+  color: #785313;
+}
+
 .tree-children { position: relative; }
 
 .tree-children::before {
