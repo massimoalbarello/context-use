@@ -233,7 +233,7 @@ export class AutomationRepository {
   async listSchedules() {
     const result = await this.pool.query(
       `SELECT schedule.id,schedule.name,schedule.skill_version_id,schedule.cron_expression,schedule.timezone,
-        schedule.input,schedule.enabled,schedule.next_run_at,schedule.knowledge_path,schedule.created_at,schedule.updated_at,
+        schedule.automation_key,schedule.input,schedule.enabled,schedule.next_run_at,schedule.knowledge_path,schedule.created_at,schedule.updated_at,
         skill.id AS skill_id,skill.name AS skill_name,version.version_number AS skill_version_number,
         count(run.id) FILTER (WHERE run.status='ready')::integer AS ready_count,
         count(run.id) FILTER (WHERE run.status='claimed')::integer AS claimed_count,
@@ -253,16 +253,21 @@ export class AutomationRepository {
 
   async createSchedule(input: CreateCronScheduleInput) {
     const nextRunAt = nextCronOccurrence(input.cron_expression, input.timezone);
+    const existingKey = await this.pool.query(
+      "SELECT 1 FROM cron_schedules WHERE automation_key=$1",
+      [input.automation_key],
+    );
+    if (existingKey.rowCount) throw new AutomationValidationError("Automation key is already in use");
     const result = await this.pool.query(
       `INSERT INTO cron_schedules(
-         id,name,skill_version_id,cron_expression,timezone,input,enabled,next_run_at
+         id,name,automation_key,skill_version_id,cron_expression,timezone,input,enabled,next_run_at
        )
-       SELECT $1,$2,version.id,$4,$5,$6,$7,$8
+       SELECT $1,$2,$3,version.id,$5,$6,$7,$8,$9
        FROM automation_skill_versions version
        JOIN automation_skills skill ON skill.id=version.skill_id
-       WHERE version.id=$3 AND skill.deleted_at IS NULL
+       WHERE version.id=$4 AND skill.deleted_at IS NULL
        RETURNING *`,
-      [randomUUID(), input.name, input.skill_version_id, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt],
+      [randomUUID(), input.name, input.automation_key, input.skill_version_id, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt],
     );
     if (!result.rowCount) throw new AutomationValidationError("Selected skill is not available");
     return result.rows[0];

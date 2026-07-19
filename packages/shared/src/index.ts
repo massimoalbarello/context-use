@@ -16,6 +16,12 @@ export const PublicSlug = z
   .max(160)
   .regex(/^[a-z0-9][a-z0-9-]*$/);
 export const AutomationName = z.string().trim().min(1).max(160);
+export const AutomationKey = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and single hyphens only");
 export const SkillName = z
   .string()
   .trim()
@@ -107,6 +113,7 @@ export const updateAutomationSkillSchema = z.object({
 
 export const createCronScheduleSchema = z.object({
   name: AutomationName,
+  automation_key: AutomationKey,
   skill_version_id: UUID,
   cron_expression: CronExpression,
   timezone: TimeZone,
@@ -114,9 +121,10 @@ export const createCronScheduleSchema = z.object({
   enabled: z.boolean().default(true),
 }).strict();
 
-export const updateCronScheduleSchema = createCronScheduleSchema.extend({
-  enabled: z.boolean(),
-}).strict();
+export const updateCronScheduleSchema = createCronScheduleSchema
+  .omit({ automation_key: true })
+  .extend({ enabled: z.boolean() })
+  .strict();
 
 const automationRunAccessSchema = z.object({
   run_id: UUID,
