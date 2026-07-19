@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { api, uploadAssetContent } from "../api.ts";
 import type { Asset, AssetStatus } from "../types.ts";
+import { ActionDialog } from "./ActionDialog.tsx";
 
 type ContentState = "checking" | "available" | "missing";
 type PreviewKind = "image" | "video" | "pdf" | null;
@@ -37,6 +38,8 @@ export function AssetDetails({
   const [publicUrl, setPublicUrl] = useState("");
   const [busy, setBusy] = useState<"publish" | "unpublish" | "upload" | "delete" | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"publish" | "unpublish" | "delete" | null>(null);
+  const [actionError, setActionError] = useState("");
 
   const refreshStatus = async () => {
     const status = await api<AssetStatus>(`/api/dashboard/assets/${asset.id}/status`);
@@ -47,6 +50,8 @@ export function AssetDetails({
 
   useEffect(() => {
     setContentState("checking");
+    setPendingAction(null);
+    setActionError("");
     refreshStatus().catch((error: unknown) => {
       setContentState("missing");
       setMessage(error instanceof Error ? error.message : "Could not check asset content");
@@ -54,11 +59,9 @@ export function AssetDetails({
   }, [asset.id]);
 
   const visibility = async (action: "publish" | "unpublish") => {
-    if (!window.confirm(action === "publish"
-      ? `Publish the exact original bytes of ${asset.filename} (${asset.content_type}, ${(asset.size_bytes / 1024).toFixed(1)} KB)? Embedded EXIF, author, location, or document metadata may become public and is not removed.`
-      : "Unpublish this asset? Existing third-party copies cannot be retracted.")) return;
     setBusy(action);
     setMessage("");
+    setActionError("");
     try {
       const created = await api<{ intent: { id: string }; authentication_options: Parameters<typeof startAuthentication>[0]["optionsJSON"] }>("/api/dashboard/publication-intents", {
         method: "POST",
@@ -68,8 +71,9 @@ export function AssetDetails({
       await api("/api/dashboard/publications/confirm", { method: "POST", body: JSON.stringify({ intent_id: created.intent.id, response }) });
       setMessage(action === "publish" ? "Published. The public URL below is now live." : "The asset is now private.");
       await onChanged();
+      setPendingAction(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Publication failed");
+      setActionError(error instanceof Error ? error.message : "Publication failed");
     } finally {
       setBusy(null);
     }
@@ -104,15 +108,22 @@ export function AssetDetails({
   };
 
   const remove = async () => {
-    if (!window.confirm(`Permanently delete ${asset.filename}? Published assets must be unpublished first, and assets referenced by a public page are protected.`)) return;
     setBusy("delete");
+    setActionError("");
     try {
       await api(`/api/dashboard/assets/${asset.id}`, { method: "DELETE" });
+      setPendingAction(null);
       await onDeleted();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Deletion failed");
+      setActionError(error instanceof Error ? error.message : "Deletion failed");
+    } finally {
       setBusy(null);
     }
+  };
+
+  const openAction = (action: "publish" | "unpublish" | "delete") => {
+    setActionError("");
+    setPendingAction(action);
   };
 
   return <main className="content-page asset-details"><header><div><span className="path">{asset.current_path}</span><h1>{asset.filename}</h1></div><span className={asset.published_at ? "status public" : "status"}>{asset.published_at ? "Public" : "Private"}</span></header>
@@ -128,9 +139,46 @@ export function AssetDetails({
       <div className="button-row">
         {contentState === "available" && <a className="button" href={`/api/dashboard/assets/${asset.id}/content`} target="_blank" rel="noreferrer">Open original</a>}
         {asset.published_at && publicUrl && <a className="button primary" href={publicUrl} target="_blank" rel="noreferrer">Open public link</a>}
-        <button disabled={busy !== null || (!asset.published_at && contentState !== "available")} title={!asset.published_at && contentState === "missing" ? "Finish the content upload before publishing" : undefined} onClick={() => visibility(asset.published_at ? "unpublish" : "publish")}>{busy === "publish" ? "Publishing…" : busy === "unpublish" ? "Unpublishing…" : asset.published_at ? "Unpublish" : "Publish with passkey"}</button>
-        {!asset.published_at && <button className="danger" disabled={busy !== null} onClick={remove}>{busy === "delete" ? "Deleting…" : "Delete"}</button>}
+        <button disabled={busy !== null || (!asset.published_at && contentState !== "available")} title={!asset.published_at && contentState === "missing" ? "Finish the content upload before publishing" : undefined} onClick={() => openAction(asset.published_at ? "unpublish" : "publish")}>{asset.published_at ? "Unpublish" : "Publish with passkey"}</button>
+        {!asset.published_at && <button className="danger" disabled={busy !== null} onClick={() => openAction("delete")}>Delete</button>}
       </div>
     </section>
+    {pendingAction === "publish" && <ActionDialog
+      eyebrow="Public asset"
+      title={`Publish ${asset.filename}?`}
+      description={<>The exact original file will become public at a stable URL. Any embedded EXIF, author, location, or document metadata will remain in the file.</>}
+      confirmLabel="Publish with passkey"
+      workingLabel="Waiting for passkey…"
+      working={busy === "publish"}
+      error={actionError}
+      onCancel={() => setPendingAction(null)}
+      onConfirm={() => void visibility("publish")}
+    >
+      <dl className="action-dialog-details"><div><dt>Type</dt><dd>{asset.content_type}</dd></div><div><dt>Size</dt><dd>{(asset.size_bytes / 1024).toFixed(1)} KB</dd></div></dl>
+    </ActionDialog>}
+    {pendingAction === "unpublish" && <ActionDialog
+      eyebrow="Public asset"
+      title={`Unpublish ${asset.filename}?`}
+      description="The public URL will stop serving this file. Copies already downloaded or shared by third parties cannot be retracted."
+      confirmLabel="Unpublish with passkey"
+      workingLabel="Waiting for passkey…"
+      confirmTone="danger"
+      working={busy === "unpublish"}
+      error={actionError}
+      onCancel={() => setPendingAction(null)}
+      onConfirm={() => void visibility("unpublish")}
+    />}
+    {pendingAction === "delete" && <ActionDialog
+      eyebrow="Permanent action"
+      title={`Delete ${asset.filename}?`}
+      description="This permanently removes the asset record and its original file. Assets referenced by a public page are protected and cannot be deleted."
+      confirmLabel="Delete permanently"
+      workingLabel="Deleting…"
+      confirmTone="danger"
+      working={busy === "delete"}
+      error={actionError}
+      onCancel={() => setPendingAction(null)}
+      onConfirm={() => void remove()}
+    />}
   </main>;
 }

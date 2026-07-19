@@ -1308,6 +1308,64 @@ button:disabled {
   font-size: 22px;
 }
 
+.action-dialog {
+  width: min(520px, 100%);
+  padding: 30px;
+}
+
+.action-dialog h2 {
+  margin: 10px 38px 10px 0;
+  font: 500 30px/1.1 ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  letter-spacing: -.025em;
+}
+
+.action-dialog-copy {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.action-dialog > label { margin-top: 20px; }
+
+.action-dialog-details {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-strong);
+}
+
+.action-dialog-details > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.action-dialog-details dt {
+  color: var(--faint);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.action-dialog-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.action-dialog-error { margin: 16px 0 0; font-size: 12px; }
+
+.action-dialog-actions {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
 .publication-preview {
   max-height: 330px;
   margin: 18px 0;
