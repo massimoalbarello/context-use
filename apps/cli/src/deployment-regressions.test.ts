@@ -126,12 +126,16 @@ test("deployment waits for cloud-init and always removes its temporary script", 
 test("remote verification avoids shell-quoting SQL and passes the database password through the environment", () => {
   const commands = remoteSecurityCommands();
   const script = commands.join("\n");
+  const encodedSql = script.match(/printf %s ([A-Za-z0-9+/=]+) \| base64 -d/)?.[1];
+  const sql = Buffer.from(encodedSql ?? "", "base64").toString();
 
   expect(script).toContain("base64 -d");
   expect(script).toContain("export PGPASSWORD=\"$POSTGRES_PASSWORD\"");
   expect(script).toContain("exec -T -e PGPASSWORD postgres psql");
   expect(script).not.toContain("confirm_publication_intent");
   expect(script).not.toContain("sh -c");
+  expect(sql).toContain("tgname='knowledge_pages_automation_path'");
+  expect(sql).not.toContain("conname='knowledge_pages_automation_path_boundary'");
 });
 
 test("restore sources the database password and restarts services after errors", () => {
