@@ -13,9 +13,9 @@ user-verified owner passkey
 → execute-only publication procedure
 ```
 
-The confirmation request carries only the intent identifier and authenticator response. The stored intent binds the operation, target UUID, page version, knowledge-derived public path, dashboard session, random challenge, owner, and expiry. Consuming it and changing visibility happen in one database transaction. The caller cannot choose a separate public alias: the server derives a page path from the reviewed immutable version and an asset path from its knowledge-base record, and the publication procedure verifies that match again.
+The confirmation request carries only the intent identifier and authenticator response. The stored intent binds the operation, target UUID, page version, server-derived public path, dashboard session, random challenge, owner, and expiry. Consuming it and changing visibility happen in one database transaction. The caller cannot choose a public alias: ordinary page and asset paths come from the reviewed knowledge record, while the framework alone assigns the required `about/intro` page its fixed `/p/about` alias. The publication procedure verifies either the exact path or that single required alias again.
 
-The sole bootstrap exception contains no owner data: migrations create the required `/p/about` page with an empty published body. Database constraints keep that route present and prevent moving, archiving, or unpublishing it. Editing About creates a new private version; publishing any owner-authored content still requires the complete passkey flow above.
+The sole bootstrap exception contains no owner data: migrations create the required `about/intro` page with an empty body published at `/p/about`, plus a private root `AGENTS.md` structure guide. Database constraints reserve bare `about` as a folder and prevent moving, archiving, or unpublishing the intro page. Editing the intro creates a new private version; publishing any owner-authored content still requires the complete passkey flow above.
 
 An agent cannot substitute its OAuth token for any step:
 

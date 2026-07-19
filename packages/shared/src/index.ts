@@ -9,6 +9,10 @@ export const KnowledgePath = z
   .refine((value) => !value.includes("//") && !value.endsWith("/"), "Invalid path");
 export const PagePath = KnowledgePath;
 export const AssetPath = KnowledgePath;
+const WritablePagePath = PagePath.refine(
+  (value) => value !== "about",
+  "about is a folder; store its introduction at about/intro",
+);
 export const CommitMessage = z.string().trim().min(3).max(240);
 export const AutomationName = z.string().trim().min(1).max(160);
 export const AutomationKey = z
@@ -36,7 +40,7 @@ export const AutomationRelativePath = z
 
 export const createPageSchema = z
   .object({
-    path: PagePath,
+    path: WritablePagePath,
     title: z.string().trim().min(1).max(240),
     body_markdown: z.string().max(2_000_000),
     commit_message: CommitMessage,
@@ -45,7 +49,7 @@ export const createPageSchema = z
 
 export const updatePageSchema = z
   .object({
-    path: PagePath,
+    path: WritablePagePath,
     title: z.string().trim().min(1).max(240),
     body_markdown: z.string().max(2_000_000),
     commit_message: CommitMessage,

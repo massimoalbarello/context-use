@@ -31,14 +31,27 @@ const jsonContent = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
 
+export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Store information whose subject is the owner under about/, beginning with about/intro. Keep other entities such as people, companies, and events in separate top-level folders outside about/.";
+
 export function createMcpServer(
   context: McpContext,
   pages: PageRepository,
   assets: AssetRepository,
   automations: AutomationRepository,
 ): McpServer {
-  const server = new McpServer({ name: "context-use", version: "0.1.21" });
+  const server = new McpServer({ name: "context-use", version: "0.1.21" }, {
+    instructions: KNOWLEDGE_BASE_INSTRUCTIONS,
+  });
   const actor = { kind: "mcp" as const, subject: context.clientId };
+
+  server.registerTool("get_knowledge_base_guide", {
+    description: "Call before managing knowledge. Read the root AGENTS.md page that defines this knowledge base's structure.",
+    inputSchema: z.object({}).strict(),
+    annotations: { readOnlyHint: true },
+  }, async () => {
+    requireScope(context, "kb:read");
+    return jsonContent(await pages.getByPath("agents"));
+  });
 
   server.registerTool("list_pages", {
     description: "List current knowledge pages. Archived pages are excluded unless requested.",
@@ -86,7 +99,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_page", {
-    description: "Create a private Markdown page and its first immutable version. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
+    description: "Create a private Markdown page and its first immutable version. Follow the root AGENTS.md structure: owner information goes under about/; separate entities stay outside it. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
     inputSchema: createPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -95,7 +108,7 @@ export function createMcpServer(
   });
 
   server.registerTool("update_page", {
-    description: "Create a new private page version using optimistic concurrency. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
+    description: "Create a new private page version using optimistic concurrency while preserving the root AGENTS.md structure. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
     inputSchema: updatePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ page_id, ...input }) => {

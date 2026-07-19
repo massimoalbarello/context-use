@@ -13,7 +13,7 @@ const RUN_LEASE_HOURS = 1;
 
 export const AUTOMATION_RUN_EXECUTION_CONTEXT = `## Execution context
 
-You are executing this as a **claimed Context Use automation run**. \`claim_due_run\` gave you a \`run_id\`, \`claim_token\`, and this automation's **dedicated knowledge path**. Persist the digest with \`create_automation_page\` (or \`update_automation_page\` if today's page exists), passing \`run_id\`, \`claim_token\`, and relative path \`YYYY-MM-DD\`. Generic writes are disabled during the claim. Finish with \`complete_run\` (or \`fail_run\`). Read [[me/intro]] first; hold as context.`;
+You are executing this as a **claimed Context Use automation run**. \`claim_due_run\` gave you a \`run_id\`, \`claim_token\`, and this automation's **dedicated knowledge path**. Persist the digest with \`create_automation_page\` (or \`update_automation_page\` if today's page exists), passing \`run_id\`, \`claim_token\`, and relative path \`YYYY-MM-DD\`. Generic writes are disabled during the claim. Finish with \`complete_run\` (or \`fail_run\`). Read [[about/intro]] first; hold as context.`;
 
 function skillMarkdown(name: string, description: string, instructions: string): string {
   return `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${instructions}`;
