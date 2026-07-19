@@ -47,9 +47,33 @@ describe("API-proxied asset content", () => {
     expect(response.headers.get("content-length")).toBe("10");
     expect(response.headers.get("content-disposition")).toBe('inline; filename="private video.mp4"');
     expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
-    expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'self'");
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; media-src 'self'; frame-ancestors 'self'",
+    );
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
     expect(reads).toEqual([{ objectKey: "objects/private-object" }]);
+  });
+
+  test("grants browser-generated inline viewers only the resource type they need", async () => {
+    const image = await assetContentResponse(
+      new Request("https://context.example/api/dashboard/assets/id/content"),
+      { ...asset, filename: "private image.png", content_type: "image/png" },
+      storageFixture().storage,
+      true,
+    );
+    expect(image.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; img-src 'self'; frame-ancestors 'self'",
+    );
+
+    const pdf = await assetContentResponse(
+      new Request("https://context.example/api/dashboard/assets/id/content"),
+      { ...asset, filename: "private document.pdf", content_type: "application/pdf" },
+      storageFixture().storage,
+      true,
+    );
+    expect(pdf.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; frame-ancestors 'self'",
+    );
   });
 
   test("passes range requests to storage for efficient video reads", async () => {

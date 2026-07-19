@@ -100,15 +100,21 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("public role can see views but not private base tables", async () => {
-    const privateTable = await admin.query<{ allowed: boolean }>(
-      "SELECT has_table_privilege('context_use_public', 'knowledge_pages', 'SELECT') AS allowed",
-    );
-    const publicView = await admin.query<{ allowed: boolean }>(
-      "SELECT has_table_privilege('context_use_public', 'published_pages', 'SELECT') AS allowed",
-    );
-    expect(privateTable.rows[0]?.allowed).toBe(false);
-    expect(publicView.rows[0]?.allowed).toBe(true);
+  test("public role can see publication views but not private base tables", async () => {
+    for (const relation of ["knowledge_pages", "assets"]) {
+      const result = await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege('context_use_public', $1, 'SELECT') AS allowed",
+        [relation],
+      );
+      expect(result.rows[0]?.allowed).toBe(false);
+    }
+    for (const relation of ["published_pages", "published_assets"]) {
+      const result = await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege('context_use_public', $1, 'SELECT') AS allowed",
+        [relation],
+      );
+      expect(result.rows[0]?.allowed).toBe(true);
+    }
   });
 
   test("public MCP role can read only its lossy page projection", async () => {
