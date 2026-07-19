@@ -374,4 +374,42 @@ describe("MCP skill and automation authoring", () => {
       actor: { kind: "mcp", subject: "mcp-client" },
     }]);
   });
+
+  test("accepts only concise automation completion summaries", async () => {
+    const calls: string[] = [];
+    const automations = {
+      async completeRun(_runId: string, _claimToken: string, _clientId: string, summary?: string) {
+        calls.push(summary ?? "");
+        return { status: "succeeded", result_summary: summary };
+      },
+    } as unknown as AutomationRepository;
+    const argumentsBase = {
+      run_id: "55555555-5555-4555-8555-555555555555",
+      claim_token: "66666666-6666-4666-8666-666666666666",
+    };
+
+    const concise = await mcpRequest(serverWith(automations, new Set(["automations:execute"])), {
+      jsonrpc: "2.0",
+      id: 7,
+      method: "tools/call",
+      params: {
+        name: "complete_run",
+        arguments: { ...argumentsBase, result_summary: "Saved the digest to today's knowledge page." },
+      },
+    });
+    expect(concise.result?.isError).not.toBe(true);
+    expect(calls).toEqual(["Saved the digest to today's knowledge page."]);
+
+    const verbose = await mcpRequest(serverWith(automations, new Set(["automations:execute"])), {
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/call",
+      params: {
+        name: "complete_run",
+        arguments: { ...argumentsBase, result_summary: "x".repeat(501) },
+      },
+    });
+    expect(verbose.result?.isError).toBe(true);
+    expect(calls).toHaveLength(1);
+  });
 });

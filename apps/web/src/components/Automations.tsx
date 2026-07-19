@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.ts";
 import { automationRunDisplayStatus } from "../automation-run-status.ts";
 import type { AutomationRun, CronSchedule } from "../types.ts";
@@ -24,9 +24,66 @@ function automationKeyFromName(value: string): string {
     .replace(/-+$/g, "");
 }
 
+const COLLAPSED_RUN_OUTCOME_CHARACTERS = 180;
+const COLLAPSED_RUN_OUTCOME_LINES = 3;
+const COMPLETED_RUN_PAGE_SIZE = 10;
+
+type CompletedRunPage = {
+  items: AutomationRun[];
+  next_cursor: string | null;
+  totals: { succeeded: number; failed: number };
+};
+
+function completedRunsUrl(cursor?: string): string {
+  const parameters = new URLSearchParams({ limit: String(COMPLETED_RUN_PAGE_SIZE) });
+  if (cursor) parameters.set("cursor", cursor);
+  return `/api/dashboard/automations/runs/completed?${parameters}`;
+}
+
+export function appendUniqueRuns(current: AutomationRun[], older: AutomationRun[]): AutomationRun[] {
+  const seen = new Set(current.map((run) => run.id));
+  return [...current, ...older.filter((run) => !seen.has(run.id))];
+}
+
+function prependUniqueRuns(current: AutomationRun[], newer: AutomationRun[]): AutomationRun[] {
+  const newerIds = new Set(newer.map((run) => run.id));
+  return [...newer, ...current.filter((run) => !newerIds.has(run.id))];
+}
+
+export function isLongRunOutcome(value: string): boolean {
+  return value.length > COLLAPSED_RUN_OUTCOME_CHARACTERS
+    || value.split(/\r?\n/).length > COLLAPSED_RUN_OUTCOME_LINES;
+}
+
+function RunOutcome({ run }: { run: AutomationRun }) {
+  const [expanded, setExpanded] = useState(false);
+  const value = run.result_summary ?? run.error_message ?? "—";
+  const isLong = isLongRunOutcome(value);
+  const contentId = `run-outcome-${run.id}`;
+
+  return <td className="run-outcome">
+    <div
+      id={contentId}
+      className={`run-outcome-text${isLong && !expanded ? " is-collapsed" : ""}`}
+    >{value}</div>
+    {isLong && <button
+      type="button"
+      className="run-outcome-toggle"
+      aria-controls={contentId}
+      aria-expanded={expanded}
+      onClick={() => setExpanded((current) => !current)}
+    >{expanded ? "Collapse" : "Expand"}</button>}
+  </td>;
+}
+
 export function Automations() {
   const [schedules, setSchedules] = useState<CronSchedule[]>([]);
-  const [runs, setRuns] = useState<AutomationRun[]>([]);
+  const [activeRuns, setActiveRuns] = useState<AutomationRun[]>([]);
+  const [recentRuns, setRecentRuns] = useState<AutomationRun[]>([]);
+  const [completedRunTotals, setCompletedRunTotals] = useState({ succeeded: 0, failed: 0 });
+  const [nextCompletedRunCursor, setNextCompletedRunCursor] = useState<string | null>(null);
+  const [loadingOlderRuns, setLoadingOlderRuns] = useState(false);
+  const [olderRunsError, setOlderRunsError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [scheduleName, setScheduleName] = useState("");
@@ -45,14 +102,28 @@ export function Automations() {
   const [editScheduleInput, setEditScheduleInput] = useState("{}");
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
   const [savingScheduleId, setSavingScheduleId] = useState<string | null>(null);
+  const completedRunsInitialized = useRef(false);
+  const loadingOlderRunsRef = useRef(false);
+  const olderRunsSentinel = useRef<HTMLDivElement>(null);
 
   const load = async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const nextRuns = await api<AutomationRun[]>("/api/dashboard/automations/runs");
-      const nextSchedules = await api<CronSchedule[]>("/api/dashboard/automations/schedules");
-      setRuns(nextRuns);
+      const [nextActiveRuns, nextSchedules, nextCompletedRuns] = await Promise.all([
+        api<AutomationRun[]>("/api/dashboard/automations/runs/active"),
+        api<CronSchedule[]>("/api/dashboard/automations/schedules"),
+        api<CompletedRunPage>(completedRunsUrl()),
+      ]);
+      const preserveLoadedHistory = quiet && completedRunsInitialized.current;
+      setActiveRuns(nextActiveRuns);
       setSchedules(nextSchedules);
+      setRecentRuns((current) => preserveLoadedHistory
+        ? prependUniqueRuns(current, nextCompletedRuns.items)
+        : nextCompletedRuns.items);
+      setCompletedRunTotals(nextCompletedRuns.totals);
+      if (!preserveLoadedHistory) setNextCompletedRunCursor(nextCompletedRuns.next_cursor);
+      completedRunsInitialized.current = true;
+      if (!quiet) setOlderRunsError("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load automations");
     } finally {
@@ -60,14 +131,40 @@ export function Automations() {
     }
   };
 
+  const loadOlderRuns = useCallback(async () => {
+    if (!nextCompletedRunCursor || loadingOlderRunsRef.current) return;
+    loadingOlderRunsRef.current = true;
+    setLoadingOlderRuns(true);
+    setOlderRunsError("");
+    try {
+      const page = await api<CompletedRunPage>(completedRunsUrl(nextCompletedRunCursor));
+      setRecentRuns((current) => appendUniqueRuns(current, page.items));
+      setNextCompletedRunCursor(page.next_cursor);
+      setCompletedRunTotals(page.totals);
+    } catch (error) {
+      setOlderRunsError(error instanceof Error ? error.message : "Could not load older runs");
+    } finally {
+      loadingOlderRunsRef.current = false;
+      setLoadingOlderRuns(false);
+    }
+  }, [nextCompletedRunCursor]);
+
   useEffect(() => {
     load().catch(() => undefined);
     const interval = window.setInterval(() => load(true).catch(() => undefined), 30_000);
     return () => window.clearInterval(interval);
   }, []);
 
-  const activeRuns = useMemo(() => runs.filter((run) => run.status === "ready" || run.status === "claimed"), [runs]);
-  const recentRuns = useMemo(() => runs.filter((run) => run.status === "succeeded" || run.status === "failed"), [runs]);
+  useEffect(() => {
+    const sentinel = olderRunsSentinel.current;
+    if (!sentinel || !nextCompletedRunCursor || olderRunsError || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) loadOlderRuns().catch(() => undefined);
+    }, { rootMargin: "240px 0px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadOlderRuns, nextCompletedRunCursor, olderRunsError]);
+
   const availableRunCount = useMemo(
     () => activeRuns.filter((run) => automationRunDisplayStatus(run) !== "claimed").length,
     [activeRuns],
@@ -183,8 +280,8 @@ export function Automations() {
     <div className="automation-stats">
       <article><strong>{availableRunCount}</strong><span>Available</span></article>
       <article><strong>{claimedRunCount}</strong><span>Claimed</span></article>
-      <article><strong>{runs.filter((run) => run.status === "succeeded").length}</strong><span>Succeeded</span></article>
-      <article><strong>{runs.filter((run) => run.status === "failed").length}</strong><span>Failed</span></article>
+      <article><strong>{completedRunTotals.succeeded}</strong><span>Succeeded</span></article>
+      <article><strong>{completedRunTotals.failed}</strong><span>Failed</span></article>
     </div>
 
     <section>
@@ -232,8 +329,19 @@ export function Automations() {
     </section>
 
     <section>
-      <div className="section-heading"><div><h2>Recent runs</h2><p>Completed outcomes remain in Context Use even when the executing agent changes.</p></div></div>
-      {recentRuns.length === 0 ? <p className="empty-note">No completed runs yet.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Instructions</th><th>Completed</th><th>Outcome</th></tr></thead><tbody>{recentRuns.map((run) => <tr key={run.id}><td><span className={`run-status ${run.status}`}>{run.status}</span></td><td>{run.schedule_name}</td><td>v{run.automation_version_number}</td><td>{formatDate(run.completed_at)}</td><td className="run-outcome">{run.result_summary ?? run.error_message ?? "—"}</td></tr>)}</tbody></table></div>}
+      <div className="section-heading"><div><h2>Recent runs</h2><p>An outcome is a short completion note or failure reason. Full generated content stays in the automation’s knowledge pages.</p></div></div>
+      {loading && recentRuns.length === 0 ? <p className="empty-note">Loading completed runs…</p> : recentRuns.length === 0 ? <p className="empty-note">No completed runs yet.</p> : <>
+        <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Instructions</th><th>Completed</th><th>Outcome</th></tr></thead><tbody>{recentRuns.map((run) => <tr key={run.id}><td><span className={`run-status ${run.status}`}>{run.status}</span></td><td>{run.schedule_name}</td><td>v{run.automation_version_number}</td><td>{formatDate(run.completed_at)}</td><RunOutcome run={run} /></tr>)}</tbody></table></div>
+        <div className="recent-runs-pagination" ref={olderRunsSentinel} aria-live="polite">
+          {nextCompletedRunCursor ? <>
+            <span>Showing {recentRuns.length} of {completedRunTotals.succeeded + completedRunTotals.failed} completed runs.</span>
+            <button type="button" disabled={loadingOlderRuns} onClick={() => loadOlderRuns().catch(() => undefined)}>
+              {loadingOlderRuns ? "Loading older runs…" : olderRunsError ? "Retry loading older runs" : "Load older runs"}
+            </button>
+            {olderRunsError && <span className="recent-runs-error" role="alert">{olderRunsError}</span>}
+          </> : <span>All {recentRuns.length} completed run{recentRuns.length === 1 ? " is" : "s are"} shown.</span>}
+        </div>
+      </>}
     </section>
   </main>;
 }

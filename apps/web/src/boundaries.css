@@ -314,8 +314,57 @@
 
 .run-outcome {
   max-width: 420px;
+}
+
+.run-outcome-text {
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+.run-outcome-text.is-collapsed {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.run-outcome-toggle {
+  min-height: auto;
+  margin-top: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--accent-hover);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.run-outcome-toggle:hover {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+}
+
+.recent-runs-pagination {
+  min-height: 58px;
+  padding: 14px 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.recent-runs-pagination button {
+  min-height: 28px;
+  padding: 5px 9px;
+  font-size: 9px;
+}
+
+.recent-runs-error { color: #92392f; }
 
 .automation-form {
   margin-top: 20px;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AutomationValidationError, nextCronOccurrence } from "../src/index.ts";
+import { AutomationRepository, AutomationValidationError, nextCronOccurrence } from "../src/index.ts";
 import {
   AUTOMATION_RUN_EXECUTION_CONTEXT,
   automationRunInstructionsMarkdown,
@@ -48,6 +48,8 @@ Example content
     expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("`complete_run`");
     expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("`fail_run`");
     expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("[[about/intro]]");
+    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("knowledge page is the canonical output");
+    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("Never copy the page contents into the summary");
   });
 
   test("injects the canonical context section into claimed-run instructions when absent", () => {
@@ -77,5 +79,29 @@ Legacy run handling instructions.`;
     expect(markdown).toEndWith(instructions);
     expect(markdown.match(/## Execution context/g)).toHaveLength(1);
     expect(markdown).not.toContain("`claim_due_run`");
+  });
+});
+
+describe("completed automation run pagination", () => {
+  test("returns one bounded page and a cursor made from the last visible row", async () => {
+    const completedAt = [
+      new Date("2026-07-19T18:03:00.000Z"),
+      new Date("2026-07-19T18:02:00.000Z"),
+      new Date("2026-07-19T18:01:00.000Z"),
+    ];
+    const pool = {
+      async query(sql: string, parameters?: unknown[]) {
+        if (sql.includes("count(*) FILTER")) return { rows: [{ succeeded: 12, failed: 3 }] };
+        expect(parameters).toEqual([3]);
+        return { rows: completedAt.map((value, index) => ({ id: `run-${index + 1}`, completed_at: value })) };
+      },
+    };
+    const repository = new AutomationRepository(pool as never);
+
+    const page = await repository.listCompletedRuns(2);
+
+    expect(page.items.map(({ id }) => id)).toEqual(["run-1", "run-2"]);
+    expect(page.nextCursor).toEqual({ completedAt: completedAt[1]!, id: "run-2" });
+    expect(page.totals).toEqual({ succeeded: 12, failed: 3 });
   });
 });

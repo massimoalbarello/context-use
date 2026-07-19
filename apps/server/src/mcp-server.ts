@@ -1,4 +1,9 @@
-import { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
+import {
+  AUTOMATION_RESULT_SUMMARY_MAX_LENGTH,
+  AssetRepository,
+  AutomationRepository,
+  PageRepository,
+} from "@context-use/database";
 import {
   archiveAutomationPageSchema,
   archivePageSchema,
@@ -277,11 +282,13 @@ export function createMcpServer(
   });
 
   server.registerTool("complete_run", {
-    description: "Mark a claimed automation run as successfully completed. Use the run ID and claim token returned by claim_due_run.",
+    description: "Mark a claimed automation run as successfully completed. The knowledge page is the canonical output; use result_summary only for an optional short dashboard note, never to repeat the page contents.",
     inputSchema: z.object({
       run_id: z.string().uuid(),
       claim_token: z.string().uuid(),
-      result_summary: z.string().trim().min(1).max(10_000).optional(),
+      result_summary: z.string().trim().min(1).max(AUTOMATION_RESULT_SUMMARY_MAX_LENGTH)
+        .describe("Optional one- or two-sentence note saying what changed and where. Omit it when the run status and knowledge page are sufficient; never paste the page contents here.")
+        .optional(),
     }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ run_id, claim_token, result_summary }) => {
