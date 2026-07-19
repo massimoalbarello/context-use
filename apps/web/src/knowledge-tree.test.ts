@@ -3,6 +3,7 @@ import {
   allDirectoryPaths,
   buildKnowledgeTree,
   buildPageTree,
+  countPublicPages,
   directoryPathsForPage,
   expandedPathsForDisplay,
   parseExpandedPaths,
@@ -88,6 +89,15 @@ describe("knowledge tree", () => {
       "me/learnings/entrepreneurship",
       "me/learnings/science",
     ]);
+  });
+
+  test("counts public descendant pages in a directory", () => {
+    const publicIntro = { ...page("intro", "me/intro", "Intro"), published_version_id: "published-intro" };
+    const publicPhysics = { ...page("physics", "me/science/physics", "Physics"), published_version_id: "published-physics" };
+    const tree = buildPageTree([publicIntro, publicPhysics, page("draft", "me/science/draft", "Draft")]);
+
+    expect(countPublicPages(tree.directories[0]!)).toBe(2);
+    expect(countPublicPages(tree.directories[0]!.directories[0]!)).toBe(1);
   });
 
   test("round-trips the expanded directory state for reloads", () => {

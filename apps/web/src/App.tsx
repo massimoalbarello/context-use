@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { api, refreshCsrf } from "./api.ts";
 import { authClient } from "./auth-client.ts";
 import { AssetDetails } from "./components/Assets.tsx";
@@ -10,11 +10,26 @@ import { Messages } from "./components/Messages.tsx";
 import { OAuthConsent } from "./components/OAuthConsent.tsx";
 import { Settings, type PasskeySummary } from "./components/Settings.tsx";
 import { Skills } from "./components/Skills.tsx";
-import { filterPagesByPublication, isPublishedPageOutdated, type PublicationFilter } from "./publication-status.ts";
 import type { Asset, Page } from "./types.ts";
 
 type SessionInfo = { owner: { id: string; email: string }; passkey_count: number; passkeys: PasskeySummary[] };
 type Section = "knowledge" | "messages" | "skills" | "automations" | "settings";
+
+const SIDEBAR_WIDTH_STORAGE_KEY = "context-use.sidebar.width.v1";
+const DEFAULT_SIDEBAR_WIDTH = 258;
+const MIN_SIDEBAR_WIDTH = 220;
+const MAX_SIDEBAR_WIDTH = 520;
+
+const clampSidebarWidth = (width: number) => Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width));
+
+function restoredSidebarWidth() {
+  try {
+    const stored = Number(window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY));
+    return Number.isFinite(stored) && stored > 0 ? clampSidebarWidth(stored) : DEFAULT_SIDEBAR_WIDTH;
+  } catch {
+    return DEFAULT_SIDEBAR_WIDTH;
+  }
+}
 
 function SectionIcon({ section }: { section: Section }) {
   if (section === "knowledge") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 3.5h8a3 3 0 0 1 3 3v10h-8a3 3 0 0 1-3-3v-10Z" /><path d="M7.5 6.5h5M7.5 9.5h5M7.5 12.5h3" /></svg>;
@@ -45,10 +60,12 @@ export function App() {
   const [selected, setSelected] = useState<KnowledgeSelection | null>(selectionFromLocation);
   const [section, setSection] = useState<Section>(sectionFromLocation);
   const [query, setQuery] = useState("");
-  const [publicationFilter, setPublicationFilter] = useState<PublicationFilter>("all");
   const [showArchived, setShowArchived] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(restoredSidebarWidth);
+  const [resizingSidebar, setResizingSidebar] = useState(false);
   const [message, setMessage] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  const sidebarResizeStart = useRef({ pointerX: 0, width: DEFAULT_SIDEBAR_WIDTH });
   const consent = window.location.pathname === "/app/oauth/consent";
 
   const loadSession = async () => {
@@ -78,27 +95,45 @@ export function App() {
     const focusSearch = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k") return;
       event.preventDefault();
-      if (section !== "knowledge") {
-        setSection("knowledge");
-        history.pushState({}, "", selected ? `/app/${selected.kind === "page" ? "pages" : "assets"}/${selected.id}` : "/app");
-      }
       window.setTimeout(() => { searchRef.current?.focus(); searchRef.current?.select(); });
     };
     window.addEventListener("keydown", focusSearch);
     return () => window.removeEventListener("keydown", focusSearch);
-  }, [section, selected]);
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
+    } catch {
+      // Resizing still works when browser storage is unavailable.
+    }
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (!resizingSidebar) return;
+    const resize = (event: PointerEvent) => {
+      const delta = event.clientX - sidebarResizeStart.current.pointerX;
+      setSidebarWidth(clampSidebarWidth(sidebarResizeStart.current.width + delta));
+    };
+    const stop = () => setResizingSidebar(false);
+    document.body.classList.add("resizing-sidebar");
+    window.addEventListener("pointermove", resize);
+    window.addEventListener("pointerup", stop, { once: true });
+    window.addEventListener("pointercancel", stop, { once: true });
+    return () => {
+      document.body.classList.remove("resizing-sidebar");
+      window.removeEventListener("pointermove", resize);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+  }, [resizingSidebar]);
 
   const visibleAssets = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
-    const matchingAssets = normalized
+    return normalized
       ? assets.filter((asset) => `${asset.current_path} ${asset.filename}`.toLocaleLowerCase().includes(normalized))
       : assets;
-    return publicationFilter === "public"
-      ? matchingAssets.filter((asset) => Boolean(asset.published_at))
-      : publicationFilter === "updates" ? [] : matchingAssets;
-  }, [assets, query, publicationFilter]);
-  const visiblePages = useMemo(() => filterPagesByPublication(pages, publicationFilter), [pages, publicationFilter]);
-  const outdatedPublicationCount = useMemo(() => pages.filter(isPublishedPageOutdated).length, [pages]);
+  }, [assets, query]);
   const selectedAsset = selected?.kind === "asset" ? assets.find((asset) => asset.id === selected.id) ?? null : null;
 
   if (isPending) return <main className="center-card">Loading…</main>;
@@ -138,24 +173,52 @@ export function App() {
     history.pushState({}, "", selected ? `/app/${selected.kind === "page" ? "pages" : "assets"}/${selected.id}` : "/app");
   };
 
-  return <div className="shell">
+  const startSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    sidebarResizeStart.current = { pointerX: event.clientX, width: sidebarWidth };
+    setResizingSidebar(true);
+    event.preventDefault();
+  };
+
+  const resizeSidebarWithKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? 30 : 10;
+    if (event.key === "ArrowLeft") setSidebarWidth((width) => clampSidebarWidth(width - step));
+    else if (event.key === "ArrowRight") setSidebarWidth((width) => clampSidebarWidth(width + step));
+    else if (event.key === "Home") setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    else return;
+    event.preventDefault();
+  };
+
+  return <div className="shell" style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
     <aside className="sidebar">
       <div className="sidebar-brand"><div className="brand-mark small">cu</div><div><strong>context-use</strong><span>Private workspace</span></div></div>
       <nav className="sidebar-section-nav">
-        <button className={section === "knowledge" ? "active" : ""} onClick={openKnowledge}><SectionIcon section="knowledge" /><span>Knowledge</span></button>
+        <button className={`mobile-knowledge-nav${section === "knowledge" ? " active" : ""}`} onClick={openKnowledge}><SectionIcon section="knowledge" /><span>Knowledge</span></button>
         <button className={section === "messages" ? "active" : ""} onClick={openMessages}><SectionIcon section="messages" /><span>Messages</span></button>
         <button className={section === "skills" ? "active" : ""} onClick={openSkills}><SectionIcon section="skills" /><span>Skills</span></button>
         <button className={section === "automations" ? "active" : ""} onClick={openAutomations}><SectionIcon section="automations" /><span>Automations</span></button>
       </nav>
-      {section === "knowledge" ? <><label className="sidebar-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5" /><path d="m12.25 12.25 4 4" /></svg><input ref={searchRef} className="search" aria-label="Search knowledge" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘K</kbd></label>
-        <div className="knowledge-filter" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>{(["all", "public", "updates"] as const).map((filter) => <button className={publicationFilter === filter ? "active" : ""} aria-pressed={publicationFilter === filter} key={filter} onClick={() => setPublicationFilter(filter)}>{filter === "all" ? "All" : filter === "public" ? "Public" : `Updates${outdatedPublicationCount ? ` (${outdatedPublicationCount})` : ""}`}</button>)}</div>
-        <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
-        <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} emptyMessage={publicationFilter === "public" ? "Nothing public yet" : publicationFilter === "updates" ? "Published pages are up to date" : "No knowledge yet"} /></> : <div className="sidebar-section-summary"><span className="summary-index">0{section === "messages" ? "2" : section === "skills" ? "3" : section === "automations" ? "4" : "5"}</span><strong>{section === "messages" ? "Private outreach" : section === "automations" ? "Scheduled work" : section === "skills" ? "Reusable capabilities" : "Owner controls"}</strong><p>{section === "messages" ? "Confidential messages and sender loopback details from your public MCP." : section === "automations" ? "Versioned instructions, cron triggers, isolated generated knowledge, and durable run history." : section === "skills" ? "Discoverable SKILL.md definitions for agent-selected work." : "Manage the permanent passkey and connected agents."}</p></div>}
+      <label className="sidebar-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5" /><path d="m12.25 12.25 4 4" /></svg><input ref={searchRef} className="search" aria-label="Search knowledge" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘K</kbd></label>
+      <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
+      <KnowledgeTree pages={pages} assets={visibleAssets} query={query} selected={section === "knowledge" ? selected : null} onSelect={selectKnowledge} />
       <footer>
         <button className={section === "settings" ? "settings-button active" : "settings-button"} onClick={openSettings}><SectionIcon section="settings" /><span>Settings</span></button>
         <div className="sidebar-account"><span className="user-avatar">{session.owner.email.slice(0, 1).toUpperCase()}</span><span className="sidebar-user"><strong>{session.owner.email}</strong><small>{session.passkey_count} secure passkey{session.passkey_count === 1 ? "" : "s"}</small></span><button className="sign-out-button" aria-label="Sign out" title="Sign out" onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}>↗</button></div>
       </footer>
     </aside>
+    <div
+      className="sidebar-resizer"
+      role="separator"
+      aria-label="Resize sidebar"
+      aria-orientation="vertical"
+      aria-valuemin={MIN_SIDEBAR_WIDTH}
+      aria-valuemax={MAX_SIDEBAR_WIDTH}
+      aria-valuenow={sidebarWidth}
+      tabIndex={0}
+      onPointerDown={startSidebarResize}
+      onKeyDown={resizeSidebarWithKeyboard}
+      onDoubleClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
+    />
     {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "messages" ? <Messages /> : section === "skills" ? <Skills /> : section === "automations" ? <Automations /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Browse durable knowledge managed through your authenticated MCP connection. Your content stays private until you explicitly publish an exact version.</p><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-managed</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
     {message && <div className="toast">{message}</div>}
   </div>;

@@ -122,6 +122,9 @@
 .page-tree .tree-status {
   margin-left: auto;
   padding: 2px 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   border-radius: 4px;
   background: rgba(63, 58, 50, .07);
   color: #817c74;
@@ -135,9 +138,26 @@
   color: var(--green);
 }
 
-.page-tree .tree-status.update {
-  background: #fff0d9;
-  color: #785313;
+.page-tree .tree-status.public.outdated::after {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #c27b16;
+  content: "";
+}
+
+.page-tree .tree-public-count {
+  min-width: 17px;
+  height: 17px;
+  margin-left: auto;
+  padding: 0 4px;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 99px;
+  background: var(--green-soft);
+  color: var(--green);
+  font: 700 8px/1 Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 .tree-children { position: relative; }
