@@ -70,19 +70,22 @@ function authorized(token: string, path: string, init: RequestInit = {}): Reques
 }
 
 describe("storage broker capabilities", () => {
-  test("public capability reads only an exactly published object key", async () => {
+  test("public capability resolves only an exactly published path without receiving an object key", async () => {
     const storage = new MemoryStorage();
     const app = createStorageBrokerApp({
       storage,
       privateAssets: privateAssets({}),
-      publicAssets: { assetByObjectKey: async (key) => key === publishedKey ? { id: "published" } : null },
+      publicAssets: {
+        assetByPublicPath: async (path) => path === "public/asset" ? { s3_object_key: publishedKey } : null,
+      },
       tokens,
     });
 
-    const published = await app.handle(authorized(tokens.public, `/public/object?key=${publishedKey}`));
+    const published = await app.handle(authorized(tokens.public, "/public/object?path=public%2Fasset"));
     expect(published.status).toBe(200);
     expect(await published.text()).toBe("published");
-    expect((await app.handle(authorized(tokens.public, `/public/object?key=${privateKey}`))).status).toBe(404);
+    expect((await app.handle(authorized(tokens.public, "/public/object?path=private%2Fasset"))).status).toBe(404);
+    expect((await app.handle(authorized(tokens.public, `/public/object?key=${publishedKey}`))).status).toBe(404);
     expect((await app.handle(authorized(tokens.public, `/private/object?key=${privateKey}`))).status).toBe(404);
   });
 
@@ -98,7 +101,7 @@ describe("storage broker capabilities", () => {
           filename: "new.txt", contentType: "text/plain", bytes: "new",
         },
       }),
-      publicAssets: { assetByObjectKey: async () => null },
+      publicAssets: { assetByPublicPath: async () => null },
       tokens,
     });
 
@@ -146,7 +149,7 @@ describe("storage broker capabilities", () => {
     const app = createStorageBrokerApp({
       storage,
       privateAssets: privateAssets({}),
-      publicAssets: { assetByObjectKey: async () => null },
+      publicAssets: { assetByPublicPath: async () => null },
       tokens,
     });
 

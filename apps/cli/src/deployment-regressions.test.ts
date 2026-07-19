@@ -148,6 +148,9 @@ test("remote verification avoids shell-quoting SQL and passes the database passw
   expect(sql).toContain("context_use_boundary_owner");
   expect(sql).toContain("context_use_confirmation");
   expect(sql).toContain("context_use_storage");
+  expect(sql).toContain("array_agg(column_name::text ORDER BY ordinal_position)");
+  expect(sql).toContain("ARRAY['public_path','title','body_markdown']");
+  expect(sql).toContain("ARRAY['public_path','filename','content_type','size_bytes']");
   expect(sql).toContain("issue_confirmation_challenge");
   expect(sql).toContain("passkey_protect_credential");
   expect(sql).toContain("user_protect_owner_identity");
@@ -233,15 +236,11 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
   expect(caddy).toContain("handle /api/mcp/assets/*/content");
   expect(caddy).toContain("handle /content.css");
-  expect(caddy).toContain("handle /api/dashboard/publications/confirm");
-  const confirmationRoutes = caddy.slice(
-    caddy.indexOf("handle /api/dashboard/publications/confirm"),
-    caddy.indexOf("handle /api/dashboard/session"),
-  );
-  expect(confirmationRoutes).toContain("reverse_proxy auth:3002");
-  expect(confirmationRoutes).not.toContain("confirmation:3004");
+  expect(caddy).not.toContain("handle /api/dashboard/publications/confirm");
+  expect(caddy).not.toContain("handle /api/dashboard/session");
   expect(caddy).toContain("handle /api/auth/*");
-  expect(caddy).toContain("reverse_proxy auth:3002");
+  expect(caddy).toContain("reverse_proxy auth-edge:3006");
+  expect(caddy).not.toContain("reverse_proxy auth:3002");
   expect(caddy).not.toContain("handle /api/public/assets/*/content");
   expect(caddy).not.toContain("handle /public/mcp");
   expect(caddy).toContain("{$PUBLIC_MCP_HOSTNAME}");
@@ -280,7 +279,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(publicMcpService).not.toContain("AWS_REGION:");
   const appService = deployCompose.slice(
     deployCompose.indexOf("\n  app:\n"),
-    deployCompose.indexOf("\n  auth:\n"),
+    deployCompose.indexOf("\n  auth-edge:\n"),
   );
   expect(appService).toContain("PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp");
   expect(appService).toContain("DATABASE_URL: postgres://context_use_dashboard");
@@ -297,12 +296,27 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(appService).toContain("storage-socket:/run/context-use-storage:ro");
   expect(appService).toContain("networks: [dashboard_data, dashboard_web, auth_dashboard_internal, confirmation_internal]");
 
+  const authEdgeService = deployCompose.slice(
+    deployCompose.indexOf("\n  auth-edge:\n"),
+    deployCompose.indexOf("\n  auth:\n"),
+  );
+  expect(authEdgeService).toContain("SERVICE_MODE: auth-edge");
+  expect(authEdgeService).toContain("AUTH_AUTHORITY_URL: http://auth:3002");
+  expect(authEdgeService).toContain("AUTH_EDGE_TOKEN");
+  expect(authEdgeService).toContain("networks: [auth_web, auth_edge_internal]");
+  expect(authEdgeService).not.toContain("AUTH_DATABASE_URL");
+  expect(authEdgeService).not.toContain("BETTER_AUTH_SECRET");
+  expect(authEdgeService).not.toContain("AUTH_DASHBOARD_TOKEN");
+  expect(authEdgeService).not.toContain("AUTH_MCP_TOKEN");
+  expect(authEdgeService).not.toContain("CONFIRMATION_GATEWAY_TOKEN");
+
   const authService = deployCompose.slice(
     deployCompose.indexOf("\n  auth:\n"),
     deployCompose.indexOf("\n  private-mcp:\n"),
   );
   expect(authService).toContain("AUTH_DATABASE_URL: postgres://context_use_auth");
   expect(authService).toContain("BETTER_AUTH_SECRET");
+  expect(authService).toContain("AUTH_EDGE_TOKEN");
   expect(authService).toContain("CONFIRMATION_GATEWAY_TOKEN");
   expect(authService).toContain("AUTH_DASHBOARD_TOKEN");
   expect(authService).toContain("AUTH_MCP_TOKEN");
@@ -311,7 +325,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(authService).not.toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(authService).not.toContain("STORAGE_");
   expect(authService).not.toContain("AWS_REGION:");
-  expect(authService).toContain("networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]");
+  expect(authService).toContain("networks: [auth_data, auth_edge_internal, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]");
 
   const privateMcpService = deployCompose.slice(
     deployCompose.indexOf("\n  private-mcp:\n"),

@@ -97,12 +97,26 @@ services:
       OWNER_EMAIL: ${OWNER_EMAIL:-you@example.com}
       OWNER_SETUP_TOKEN_HASH: 0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cfa864a96a0efe17b1694
       BETTER_AUTH_SECRET: development-only-secret-that-is-long-enough
+      AUTH_EDGE_TOKEN: development-auth-edge-ingress-token
       AUTH_DASHBOARD_TOKEN: development-auth-dashboard-internal-token
       AUTH_MCP_TOKEN: development-auth-private-mcp-internal-token
       CONFIRMATION_INTERNAL_URL: http://confirmation:3004
       CONFIRMATION_GATEWAY_TOKEN: development-confirmation-gateway-token
       AUTH_DATABASE_URL: postgres://context_use_auth:development-only@postgres:5432/context_use
     command: ["bun", "--watch", "apps/server/src/auth-index.ts"]
+    restart: unless-stopped
+
+  auth-edge:
+    <<: *code-service
+    depends_on:
+      auth: { condition: service_started }
+    environment:
+      <<: *common
+      SERVICE_MODE: auth-edge
+      PORT: "3006"
+      AUTH_AUTHORITY_URL: http://auth:3002
+      AUTH_EDGE_TOKEN: development-auth-edge-ingress-token
+    command: ["bun", "--watch", "apps/server/src/auth-edge-index.ts"]
     restart: unless-stopped
 
   server:
@@ -203,7 +217,7 @@ services:
 
   gateway:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
-    depends_on: [server, auth, private-mcp, confirmation, public-web]
+    depends_on: [server, auth-edge, private-mcp, confirmation, public-web]
     volumes: [./deploy/Caddyfile.dev:/etc/caddy/Caddyfile:ro]
     restart: unless-stopped
 

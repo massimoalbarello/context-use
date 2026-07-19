@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import { chmod } from "node:fs/promises";
-import { AssetRepository, createPool, PublicRepository } from "@context-use/database";
+import { AssetRepository, createPool, StoragePublicationRepository } from "@context-use/database";
+import { AssetPath } from "@context-use/shared";
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { config } from "./config.ts";
@@ -28,7 +29,7 @@ function bearer(request: Request): string {
 type StorageBrokerTokens = { dashboard: string; mcp: string; public: string };
 
 type PublishedAssetLookup = {
-  assetByObjectKey(objectKey: string): Promise<unknown>;
+  assetByPublicPath(publicPath: string): Promise<{ s3_object_key: string } | null>;
 };
 
 type PrivateAssetLookup = {
@@ -76,7 +77,7 @@ const defaultStorage: ObjectStorageBackend = config.STORAGE_DRIVER === "s3"
 
 const storagePool = createPool(config.STORAGE_DATABASE_URL, { application_name: "context-use-storage-boundary" });
 const defaultPrivateAssets = new AssetRepository(storagePool);
-const defaultPublicAssets = new PublicRepository(storagePool);
+const defaultPublicAssets = new StoragePublicationRepository(storagePool);
 const defaultTokens: StorageBrokerTokens = {
   dashboard: config.STORAGE_DASHBOARD_TOKEN,
   mcp: config.STORAGE_MCP_TOKEN,
@@ -160,9 +161,10 @@ export function createStorageBrokerApp(input: {
   })
   .get("/public/object", async ({ request, query }) => {
     if (!publicAuthorized(request, tokens)) return denied();
-    const objectKey = objectKeySchema.parse(query.key);
-    if (!await publicAssets.assetByObjectKey(objectKey)) return denied();
-    return readObject(storage, objectKey, parseRange(request.headers.get("range")));
+    const publicPath = AssetPath.parse(query.path);
+    const asset = await publicAssets.assetByPublicPath(publicPath);
+    if (!asset) return denied();
+    return readObject(storage, objectKeySchema.parse(asset.s3_object_key), parseRange(request.headers.get("range")));
   });
 }
 

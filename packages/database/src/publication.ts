@@ -53,37 +53,29 @@ export class PublicRepository {
   constructor(private readonly pool: Pool) {}
 
   async pageByPublicPath(path: string) {
-    const result = await this.pool.query("SELECT * FROM published_pages WHERE public_path=$1", [path]);
-    return result.rows[0] ?? null;
-  }
-
-  async pageById(id: string) {
-    const result = await this.pool.query("SELECT * FROM published_pages WHERE id=$1", [id]);
-    return result.rows[0] ?? null;
-  }
-
-  async pageByPath(path: string) {
     const result = await this.pool.query(
-      "SELECT * FROM published_pages WHERE path=$1 ORDER BY version_created_at DESC LIMIT 1",
+      "SELECT public_path,title,body_markdown FROM published_pages WHERE public_path=$1",
       [path],
     );
     return result.rows[0] ?? null;
   }
 
-  async assetById(id: string) {
-    const result = await this.pool.query("SELECT * FROM published_assets WHERE id=$1", [id]);
+  async assetByPublicPath(path: string) {
+    const result = await this.pool.query(
+      "SELECT public_path,filename,content_type,size_bytes FROM published_assets WHERE public_path=$1",
+      [path],
+    );
     return result.rows[0] ?? null;
   }
+}
+
+export class StoragePublicationRepository {
+  constructor(private readonly pool: Pool) {}
 
   async assetByPublicPath(path: string) {
-    const result = await this.pool.query("SELECT * FROM published_assets WHERE public_path=$1", [path]);
-    return result.rows[0] ?? null;
-  }
-
-  async assetByObjectKey(objectKey: string) {
     const result = await this.pool.query(
-      "SELECT * FROM published_assets WHERE s3_object_key=$1",
-      [objectKey],
+      "SELECT public_path,s3_object_key FROM storage_published_assets WHERE public_path=$1",
+      [path],
     );
     return result.rows[0] ?? null;
   }

@@ -45,7 +45,9 @@ export function createMcpRequestHandler(
   // Fetch keys over the private service network. The token issuer and audience
   // remain the public canonical URLs, but the isolated MCP container does not
   // need internet access merely to validate a signature.
-  const jwks = createRemoteJWKSet(new URL(`${config.AUTH_INTERNAL_URL}/api/auth/jwks`));
+  const jwks = createRemoteJWKSet(new URL(`${config.AUTH_INTERNAL_URL}/internal/jwks`), {
+    headers: { authorization: `Bearer ${config.AUTH_MCP_TOKEN}` },
+  });
 
   return async (request: Request): Promise<Response> => {
     if (!requestMatchesOrigin(request, config.APP_ORIGIN)) {

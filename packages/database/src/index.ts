@@ -20,6 +20,7 @@ export {
   PublicationRepository,
   PublicMcpRepository,
   PublicRepository,
+  StoragePublicationRepository,
   hashPublicationPayload,
   type PublicMcpPage,
   type PublicMcpPageSummary,

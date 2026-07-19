@@ -10,6 +10,10 @@ const common = {
 };
 
 const validByService: Record<string, Record<string, string>> = {
+  "auth-edge": {
+    AUTH_AUTHORITY_URL: "http://auth:3002",
+    AUTH_EDGE_TOKEN: "auth-edge-ingress-token-that-has-no-private-power",
+  },
   dashboard: {
     DATABASE_URL: "postgres://context_use_dashboard:secret@postgres:5432/context_use",
     AUTH_INTERNAL_URL: "http://auth:3002",
@@ -28,6 +32,7 @@ const validByService: Record<string, Record<string, string>> = {
     OWNER_EMAIL: "owner@context.example.com",
     OWNER_SETUP_TOKEN_HASH: "a".repeat(64),
     BETTER_AUTH_SECRET: "authentication-secret-that-is-not-shared",
+    AUTH_EDGE_TOKEN: "auth-edge-ingress-token-that-has-no-private-power",
     AUTH_DASHBOARD_TOKEN: "dashboard-to-auth-token-that-is-not-shared",
     AUTH_MCP_TOKEN: "private-mcp-to-auth-token-that-is-not-shared",
   },
@@ -99,6 +104,18 @@ describe("production process credential boundaries", () => {
     expect(load("dashboard", {
       STORAGE_DATABASE_URL: "postgres://context_use_storage:secret@postgres:5432/context_use",
     }).exitCode).not.toBe(0);
+  });
+
+  test("authentication edge rejects every private credential", () => {
+    for (const [name, value] of Object.entries({
+      AUTH_DATABASE_URL: "postgres://context_use_auth:secret@postgres:5432/context_use",
+      BETTER_AUTH_SECRET: "leaked-authentication-secret-that-is-long",
+      AUTH_DASHBOARD_TOKEN: "leaked-dashboard-auth-token-that-is-long",
+      AUTH_MCP_TOKEN: "leaked-private-mcp-auth-token-that-is-long",
+      CONFIRMATION_GATEWAY_TOKEN: "leaked-confirmation-token-that-is-long",
+    })) {
+      expect(load("auth-edge", { [name]: value }).exitCode).not.toBe(0);
+    }
   });
 
   test("each database URL must name exactly the service role", () => {

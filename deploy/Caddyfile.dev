@@ -5,13 +5,13 @@
 
 :8080 {
 	handle /api/auth/* {
-		reverse_proxy auth:3002
+		reverse_proxy auth-edge:3006
 	}
 	handle /.well-known/oauth-authorization-server {
-		reverse_proxy auth:3002
+		reverse_proxy auth-edge:3006
 	}
 	handle /.well-known/openid-configuration {
-		reverse_proxy auth:3002
+		reverse_proxy auth-edge:3006
 	}
 	handle /.well-known/oauth-protected-resource* {
 		reverse_proxy private-mcp:3003
@@ -21,21 +21,6 @@
 	}
 	handle /api/mcp/* {
 		reverse_proxy private-mcp:3003
-	}
-	handle /api/dashboard/publications/confirm {
-		reverse_proxy auth:3002
-	}
-	handle /api/dashboard/knowledge-exports/confirm {
-		reverse_proxy auth:3002
-	}
-	handle /api/dashboard/session {
-		reverse_proxy auth:3002
-	}
-	handle /api/dashboard/csrf {
-		reverse_proxy auth:3002
-	}
-	handle /api/dashboard/oauth-client* {
-		reverse_proxy auth:3002
 	}
 	handle /api/dashboard/* {
 		reverse_proxy server:3000

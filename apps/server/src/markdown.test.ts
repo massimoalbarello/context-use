@@ -82,6 +82,23 @@ describe("safe Markdown rendering", () => {
     expect(formatted).toContain(`<img src="${publicHref}" alt="Formatted" loading="lazy">`);
   });
 
+  test("renders the UUID-free published-asset projection without private lookup capability", async () => {
+    const publicHref = `${config.ASSET_ORIGIN}/p/media/published-photo`;
+    const html = await renderMarkdown(
+      "![Projected](context-use://public-asset/media/published-photo){shape=square}",
+      {
+        ...privateResolvers,
+        publicAssetPath: async (path) => path === "media/published-photo"
+          ? { available: true as const, href: publicHref, contentType: "image/webp" }
+          : { available: false as const },
+      },
+    );
+
+    expect(html).toContain(`<img src="${publicHref}" alt="Projected" loading="lazy">`);
+    expect(html).not.toContain("context-use://");
+    expect(html).not.toMatch(/[0-9a-f]{8}-[0-9a-f-]{27}/i);
+  });
+
   test("uses predictable defaults and leaves invalid formatting visible for review", async () => {
     const imageId = "11111111-1111-4111-8111-111111111111";
     const resolver = {

@@ -26,6 +26,7 @@ import {
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { authorizeDashboardRequest } from "./auth-client.ts";
+import { forwardDashboardAuthRoute } from "./auth-dashboard-gateway.ts";
 import { decodeCompletedRunCursor, encodeCompletedRunCursor } from "./automation-run-pagination.ts";
 import { assetContentResponse } from "./asset-content.ts";
 import { config, production } from "./config.ts";
@@ -148,6 +149,13 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
   .get("/api/health", () => json({ status: "ok", version: "0.1.21", service: "dashboard" }))
+  .get("/api/dashboard/session", ({ request }) => forwardDashboardAuthRoute(request))
+  .get("/api/dashboard/csrf", ({ request }) => forwardDashboardAuthRoute(request))
+  .post("/api/dashboard/publications/confirm", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })
+  .post("/api/dashboard/knowledge-exports/confirm", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })
+  .get("/api/dashboard/oauth-clients", ({ request }) => forwardDashboardAuthRoute(request))
+  .get("/api/dashboard/oauth-client-preview", ({ request }) => forwardDashboardAuthRoute(request))
+  .delete("/api/dashboard/oauth-clients/:clientId", ({ request }) => forwardDashboardAuthRoute(request))
 
   .get("/app", async () => {
     const file = webFile("index.html");

@@ -5,11 +5,13 @@ import {
 import { MCP_SCOPES } from "@context-use/shared";
 import { Elysia } from "elysia";
 import { z } from "zod";
-import { auth, authPool, dashboardPrincipal } from "./auth.ts";
-import { config } from "./config.ts";
+import { auth, authPathRequiresOwnerSession, authPool, dashboardPrincipal } from "./auth.ts";
+import { dashboardGatewayHeader } from "./auth-dashboard-gateway.ts";
+import { publicAuthRequestAllowed } from "./auth-protocol.ts";
+import { config, production } from "./config.ts";
 import { forwardBrowserConfirmation } from "./confirmation-gateway.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
-import { hasInternalCapability } from "./internal-capability.ts";
+import { hasHeaderCapability, hasInternalCapability } from "./internal-capability.ts";
 import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
 import { ownerUserId } from "./owner.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
@@ -38,12 +40,35 @@ const grantSchema = z.object({
   userId: z.string().min(1).max(512),
   scopes: z.array(z.string().min(1).max(128)).max(64),
 }).strict();
+const authEdgeHeader = "x-context-use-auth-edge";
+
+function fromAuthenticationEdge(request: Request): boolean {
+  return !production || config.SERVICE_MODE !== "auth"
+    || hasHeaderCapability(request, authEdgeHeader, config.AUTH_EDGE_TOKEN);
+}
+
+function browserAuthRequest(request: Request, removeCookie = false): Request {
+  const headers = new Headers(request.headers);
+  headers.delete(authEdgeHeader);
+  if (removeCookie) headers.delete("cookie");
+  return new Request(request, { headers });
+}
 
 async function ownerRequest(request: Request, mutation = false) {
-  if (!requestMatchesOrigin(request, config.APP_ORIGIN)) throw new SecurityError("Not found", 404);
-  const principal = await dashboardPrincipal(request);
+  const fromDashboard = hasHeaderCapability(request, dashboardGatewayHeader, config.AUTH_DASHBOARD_TOKEN);
+  if (production && config.SERVICE_MODE === "auth" && !fromDashboard) {
+    throw new SecurityError("Not found", 404);
+  }
+  const browserRequest = fromDashboard
+    ? new Request(new URL(`${new URL(request.url).pathname}${new URL(request.url).search}`, config.APP_ORIGIN), {
+        method: request.method,
+        headers: request.headers,
+      })
+    : request;
+  if (!requestMatchesOrigin(browserRequest, config.APP_ORIGIN)) throw new SecurityError("Not found", 404);
+  const principal = await dashboardPrincipal(browserRequest);
   if (!principal) throw new SecurityError("Dashboard session required", 401);
-  if (mutation) assertDashboardRequestSecurity(request, principal);
+  if (mutation) assertDashboardRequestSecurity(browserRequest, principal);
   return principal;
 }
 
@@ -53,21 +78,37 @@ export const authApp = new Elysia()
     : routeError(error))
   .get("/health", () => json({ status: "ok", service: "auth" }))
   .all("/api/auth/*", async ({ request }) => {
-    const boundary = await authorizePasskeyAuthRequest(request);
+    if (!publicAuthRequestAllowed(request)) return problem("Not found", 404, "not_found");
+    if (!fromAuthenticationEdge(request)) return problem("Not found", 404, "not_found");
+    const sanitized = browserAuthRequest(request);
+    const pathname = new URL(sanitized.url).pathname;
+
+    if (pathname === "/api/auth/get-session") {
+      if (!await dashboardPrincipal(sanitized)) return json(null);
+    } else if (pathname === "/api/auth/oauth2/authorize") {
+      // Preserve Better Auth's normal unauthenticated login redirect, but never
+      // let an idle/over-age cookie reach its OAuth authorization handler.
+      if (!await dashboardPrincipal(sanitized)) {
+        return auth.handler(browserAuthRequest(sanitized, true));
+      }
+    } else if (authPathRequiresOwnerSession(pathname) && !await dashboardPrincipal(sanitized)) {
+      return problem("Owner session required", 401, "owner_session_required");
+    }
+
+    const boundary = await authorizePasskeyAuthRequest(sanitized);
     if (boundary.denied) return boundary.denied;
     try {
-      const pathname = new URL(request.url).pathname;
-      return await requireAuthenticationUserVerification(pathname, await auth.handler(request));
+      return await requireAuthenticationUserVerification(pathname, await auth.handler(sanitized));
     } finally {
       await boundary.release?.();
     }
   })
-  .get("/.well-known/oauth-authorization-server", ({ request }) => (
-    withCodexIssuerCompatibility(authServerMetadata(request))
-  ))
-  .get("/.well-known/openid-configuration", ({ request }) => (
-    withCodexIssuerCompatibility(openIdMetadata(request))
-  ))
+  .get("/.well-known/oauth-authorization-server", ({ request }) => fromAuthenticationEdge(request)
+    ? withCodexIssuerCompatibility(authServerMetadata(browserAuthRequest(request)))
+    : problem("Not found", 404, "not_found"))
+  .get("/.well-known/openid-configuration", ({ request }) => fromAuthenticationEdge(request)
+    ? withCodexIssuerCompatibility(openIdMetadata(browserAuthRequest(request)))
+    : problem("Not found", 404, "not_found"))
   .post("/internal/authorize-dashboard", async ({ request }) => {
     if (!hasInternalCapability(request, config.AUTH_DASHBOARD_TOKEN)) return problem("Not found", 404, "not_found");
     const input = internalAuthorization.parse(await bodyJson(request));
@@ -104,6 +145,10 @@ export const authApp = new Elysia()
       );
     }
     return json({ active: Boolean(result.rowCount) });
+  })
+  .get("/internal/jwks", ({ request }) => {
+    if (!hasInternalCapability(request, config.AUTH_MCP_TOKEN)) return problem("Not found", 404, "not_found");
+    return auth.handler(new Request(`${config.APP_ORIGIN}/api/auth/jwks`));
   })
   .get("/api/dashboard/session", async ({ request }) => {
     const principal = await ownerRequest(request);

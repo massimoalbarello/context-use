@@ -9,27 +9,32 @@ const bytes = new TextEncoder().encode("published bytes");
 function fixture(published = true) {
   let metadataReads = 0;
   let objectReads = 0;
+  let storageReference = "";
   const assets = {
     async assetByPublicPath(path: string) {
       metadataReads += 1;
       return published && path === assetPath ? {
-        id: "11111111-1111-4111-8111-111111111111",
         public_path: path,
         filename: "published.png",
         content_type: "image/png",
         size_bytes: bytes.byteLength,
-        s3_object_key: "objects/11111111-1111-4111-8111-111111111111",
       } : null;
     },
   } as Pick<PublicRepository, "assetByPublicPath">;
   const storage = {
-    async read() {
+    async read(reference: string) {
       objectReads += 1;
+      storageReference = reference;
       return new Blob([bytes]);
     },
   } as unknown as ObjectStorage;
   const handler = createPublicAssetContentHandler(assets, storage, "https://assets.context.example");
-  return { handler, metadataReads: () => metadataReads, objectReads: () => objectReads };
+  return {
+    handler,
+    metadataReads: () => metadataReads,
+    objectReads: () => objectReads,
+    storageReference: () => storageReference,
+  };
 }
 
 describe("public asset API boundary", () => {
@@ -43,6 +48,7 @@ describe("public asset API boundary", () => {
     expect(response.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
     expect(published.metadataReads()).toBe(1);
     expect(published.objectReads()).toBe(1);
+    expect(published.storageReference()).toBe(assetPath);
 
     const privateAsset = fixture(false);
     const denied = await privateAsset.handler(new Request(

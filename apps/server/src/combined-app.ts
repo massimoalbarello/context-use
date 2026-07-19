@@ -19,13 +19,6 @@ function target(request: Request) {
     path.startsWith("/api/auth/")
     || path === "/.well-known/oauth-authorization-server"
     || path === "/.well-known/openid-configuration"
-    || path === "/api/dashboard/session"
-    || path === "/api/dashboard/csrf"
-    || path.startsWith("/api/dashboard/oauth-client")
-  ) return authApp;
-  if (
-    path === "/api/dashboard/publications/confirm"
-    || path === "/api/dashboard/knowledge-exports/confirm"
   ) return authApp;
   if (
     path === "/mcp"

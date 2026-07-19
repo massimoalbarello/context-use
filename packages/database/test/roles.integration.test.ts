@@ -219,14 +219,32 @@ describeDatabase("PostgreSQL security roles", () => {
       `SELECT relname,pg_get_userbyid(relowner) AS owner
        FROM pg_class
        WHERE relnamespace='public'::regnamespace
-         AND relname IN ('published_pages','published_assets','public_mcp_pages')
+         AND relname IN (
+           'published_page_sources','published_pages','published_assets',
+           'storage_published_assets','public_mcp_pages'
+         )
        ORDER BY relname`,
     );
     expect(views.rows).toEqual([
       { relname: "public_mcp_pages", owner: "context_use_projection_owner" },
       { relname: "published_assets", owner: "context_use_projection_owner" },
+      { relname: "published_page_sources", owner: "context_use_projection_owner" },
       { relname: "published_pages", owner: "context_use_projection_owner" },
+      { relname: "storage_published_assets", owner: "context_use_projection_owner" },
     ]);
+
+    for (const role of ["context_use_public", "context_use_public_mcp"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,'project_public_markdown(text,text)','EXECUTE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(true);
+    }
+    for (const role of ["context_use_auth", "context_use_dashboard", "context_use_mcp", "context_use_confirmation", "context_use_storage", "context_use_backup"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,'project_public_markdown(text,text)','EXECUTE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+    }
 
     const procedures = await admin.query<{ proname: string; owner: string; security_definer: boolean }>(
       `SELECT proname,pg_get_userbyid(proowner) AS owner,prosecdef AS security_definer
@@ -237,7 +255,8 @@ describeDatabase("PostgreSQL security roles", () => {
            'consume_confirmation_challenge',
            'confirm_publication_intent',
            'confirm_knowledge_export_intent',
-           'claim_knowledge_export_download'
+           'claim_knowledge_export_download',
+           'project_public_markdown'
          )
        ORDER BY proname`,
     );
@@ -247,6 +266,7 @@ describeDatabase("PostgreSQL security roles", () => {
       { proname: "confirm_publication_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "consume_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "issue_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
+      { proname: "project_public_markdown", owner: "context_use_projection_owner", security_definer: true },
     ]);
 
     for (const [relation, column] of [
@@ -357,7 +377,7 @@ describeDatabase("PostgreSQL security roles", () => {
       public_path: "about",
       required_public_path: "about",
     });
-    expect((await admin.query("SELECT 1 FROM published_pages WHERE public_path='about' AND path='about/intro'")).rowCount).toBe(1);
+    expect((await admin.query("SELECT 1 FROM published_page_sources WHERE public_path='about' AND path='about/intro'")).rowCount).toBe(1);
     expect((await admin.query(
       `SELECT 1
        FROM knowledge_pages page
@@ -403,7 +423,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [republishIntent],
       );
       expect((await admin.query(
-        "SELECT 1 FROM published_pages WHERE public_path='about' AND path='about/intro'",
+        "SELECT 1 FROM published_page_sources WHERE public_path='about' AND path='about/intro'",
       )).rowCount).toBe(1);
     } finally {
       await admin.query("ROLLBACK");
@@ -425,6 +445,28 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       expect(result.rows[0]?.allowed).toBe(true);
     }
+    for (const relation of ["published_page_sources", "storage_published_assets"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege('context_use_public',$1,'SELECT') AS allowed",
+        [relation],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    const publicPageColumns = await admin.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='published_pages'
+       ORDER BY ordinal_position`,
+    );
+    expect(publicPageColumns.rows.map(({ column_name }) => column_name)).toEqual([
+      "public_path", "title", "body_markdown",
+    ]);
+    const publicAssetColumns = await admin.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='published_assets'
+       ORDER BY ordinal_position`,
+    );
+    expect(publicAssetColumns.rows.map(({ column_name }) => column_name)).toEqual([
+      "public_path", "filename", "content_type", "size_bytes",
+    ]);
   });
 
   test("storage role can validate asset bytes but cannot read knowledge or mutate metadata", async () => {
@@ -446,8 +488,11 @@ describeDatabase("PostgreSQL security roles", () => {
       "SELECT has_table_privilege('context_use_storage','assets','SELECT') AS allowed",
     )).rows[0]?.allowed).toBe(false);
     expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_table_privilege('context_use_storage','published_assets','SELECT') AS allowed",
+      "SELECT has_table_privilege('context_use_storage','storage_published_assets','SELECT') AS allowed",
     )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_table_privilege('context_use_storage','published_assets','SELECT') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
     for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_storage','assets',$1) AS allowed",
@@ -494,8 +539,8 @@ describeDatabase("PostgreSQL security roles", () => {
 
       await admin.query("SET LOCAL ROLE context_use_public");
       expect(await publicAssets.assetByPublicPath(publishedPath)).toMatchObject({
-        id: publishedAssetId,
         public_path: publishedPath,
+        filename: "public.png",
       });
       expect(await publicAssets.assetByPublicPath(privatePath)).toBeNull();
       await expectDenied("SELECT * FROM assets");
@@ -523,7 +568,10 @@ describeDatabase("PostgreSQL security roles", () => {
         [role],
       )).rows[0]?.allowed).toBe(false);
     }
-    for (const relation of ["knowledge_pages", "knowledge_page_versions", "assets", "published_pages", "published_assets"]) {
+    for (const relation of [
+      "knowledge_pages", "knowledge_page_versions", "assets",
+      "published_page_sources", "published_pages", "published_assets", "storage_published_assets",
+    ]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_public_mcp',$1,'SELECT') AS allowed",
         [relation],
@@ -885,7 +933,8 @@ describeDatabase("PostgreSQL security roles", () => {
     const parentVersionId = randomUUID();
     const childPageId = randomUUID();
     const childVersionId = randomUUID();
-    const assetId = randomUUID();
+    const privateAssetId = randomUUID();
+    const publishedAssetId = randomUUID();
     await admin.query("BEGIN");
     try {
       await admin.query(
@@ -928,7 +977,9 @@ describeDatabase("PostgreSQL security roles", () => {
           [
             "PUBLIC-CANARY content",
             `[Private label](context-use://page/${privatePageId})`,
-            `![Private image](context-use://asset/${assetId}){size=medium align=center shape=square}`,
+            `[Public parent](context-use://page/${parentPageId})`,
+            `![Private image](context-use://asset/${privateAssetId}){size=medium align=center shape=square}`,
+            `![Public image](context-use://asset/${publishedAssetId}){size=medium align=center shape=square}`,
             "[[private/strategy]]",
             "[[private/strategy|Authored label]]",
             `context-use://page/${privatePageId}`,
@@ -941,6 +992,32 @@ describeDatabase("PostgreSQL security roles", () => {
           ].join("\n\n"),
         ],
       );
+      await admin.query(
+        `INSERT INTO assets(
+           id,current_path,public_path,filename,content_type,size_bytes,
+           content_hash,s3_object_key,published_at
+         ) VALUES (
+           $1,'media/public-image','media/public-image','public.png','image/png',1,
+           $2,$3,now()
+         )`,
+        [publishedAssetId, "a".repeat(64), `objects/${publishedAssetId}`],
+      );
+
+      await admin.query("SET LOCAL ROLE context_use_public");
+      const webpage = await admin.query<{
+        public_path: string;
+        title: string;
+        body_markdown: string;
+      }>(
+        "SELECT public_path,title,body_markdown FROM published_pages WHERE public_path='profile/work/project'",
+      );
+      await admin.query("RESET ROLE");
+      expect(Object.keys(webpage.rows[0]!).sort()).toEqual(["body_markdown", "public_path", "title"]);
+      expect(webpage.rows[0]?.body_markdown).toContain("[Public parent](/p/profile)");
+      expect(webpage.rows[0]?.body_markdown).toContain("context-use://public-asset/media/public-image");
+      expect(webpage.rows[0]?.body_markdown).not.toContain(privatePageId);
+      expect(webpage.rows[0]?.body_markdown).not.toContain(privateAssetId);
+      expect(webpage.rows[0]?.body_markdown).not.toContain(publishedAssetId);
 
       await admin.query("SET LOCAL ROLE context_use_public_mcp");
       const repository = new PublicMcpRepository(admin as unknown as Pool);
@@ -964,7 +1041,8 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(child?.body_markdown).toContain("Private label");
       expect(child?.body_markdown).toContain("Authored label");
       expect(child?.body_markdown).not.toContain(privatePageId);
-      expect(child?.body_markdown).not.toContain(assetId);
+      expect(child?.body_markdown).not.toContain(privateAssetId);
+      expect(child?.body_markdown).not.toContain(publishedAssetId);
       expect(child?.body_markdown).not.toContain("private/strategy");
       expect(child?.body_markdown).not.toContain("context-use://");
       expect(child?.body_markdown).not.toContain("{size=medium");
@@ -1036,7 +1114,7 @@ describeDatabase("PostgreSQL security roles", () => {
       await expectDenied("UPDATE knowledge_pages SET current_path='confirmation-cannot-edit' WHERE id=$1", [pageId]);
       await admin.query("RESET ROLE");
 
-      const published = await admin.query("SELECT 1 FROM published_pages WHERE id=$1 AND published_version_id=$2", [pageId, versionId]);
+      const published = await admin.query("SELECT 1 FROM published_page_sources WHERE id=$1 AND published_version_id=$2", [pageId, versionId]);
       expect(published.rowCount).toBe(1);
       await expect(admin.query("SELECT confirm_publication_intent($1,'context-use-owner','session','test-credential',1,2)", [intentId])).rejects.toThrow();
     } finally {

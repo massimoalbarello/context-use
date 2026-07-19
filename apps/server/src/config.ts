@@ -5,6 +5,7 @@ const developmentSetupTokenHash = "0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cf
 const developmentMcpCapabilitySecret = "development-only-mcp-capability-secret";
 const developmentConfirmationGatewayToken = "development-confirmation-gateway-token";
 const developmentInternalTokens = {
+  authEdge: "development-auth-edge-ingress-token",
   authDashboard: "development-auth-dashboard-internal-token",
   authMcp: "development-auth-private-mcp-internal-token",
   confirmationDashboard: "development-confirmation-dashboard-token",
@@ -17,7 +18,7 @@ const developmentStorageTokens = {
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  SERVICE_MODE: z.enum(["all", "dashboard", "auth", "mcp", "public", "confirmation", "storage"]).default("all"),
+  SERVICE_MODE: z.enum(["all", "dashboard", "auth-edge", "auth", "mcp", "public", "confirmation", "storage"]).default("all"),
   PORT: z.coerce.number().int().positive().default(3000),
   APP_ORIGIN: z.string().url().default("http://localhost:3000"),
   ASSET_ORIGIN: z.string().url().default("http://localhost:3000"),
@@ -28,8 +29,10 @@ const schema = z.object({
   CONFIRMATION_DATABASE_URL: z.string().min(1).default("postgres://context_use_confirmation:development-only@localhost:5432/context_use"),
   STORAGE_DATABASE_URL: z.string().min(1).default("postgres://context_use_storage:development-only@localhost:5432/context_use"),
   AUTH_INTERNAL_URL: z.string().url().default("http://localhost:3002"),
+  AUTH_AUTHORITY_URL: z.string().url().default("http://localhost:3002"),
   CONFIRMATION_INTERNAL_URL: z.string().url().default("http://localhost:3004"),
   CONFIRMATION_GATEWAY_TOKEN: z.string().min(32).default(developmentConfirmationGatewayToken),
+  AUTH_EDGE_TOKEN: z.string().min(32).default(developmentInternalTokens.authEdge),
   AUTH_DASHBOARD_TOKEN: z.string().min(32).default(developmentInternalTokens.authDashboard),
   AUTH_MCP_TOKEN: z.string().min(32).default(developmentInternalTokens.authMcp),
   CONFIRMATION_DASHBOARD_TOKEN: z.string().min(32).default(developmentInternalTokens.confirmationDashboard),
@@ -81,6 +84,7 @@ if (production) {
   if (config.SERVICE_MODE === "auth" && config.BETTER_AUTH_SECRET === developmentSecret) insecure.push("BETTER_AUTH_SECRET must be changed");
   if (config.SERVICE_MODE === "auth" && config.OWNER_EMAIL === "owner@example.com") insecure.push("OWNER_EMAIL must be configured");
   if (config.SERVICE_MODE === "auth" && config.OWNER_SETUP_TOKEN_HASH === developmentSetupTokenHash) insecure.push("OWNER_SETUP_TOKEN_HASH must be changed");
+  if (["auth-edge", "auth"].includes(config.SERVICE_MODE) && config.AUTH_EDGE_TOKEN === developmentInternalTokens.authEdge) insecure.push("AUTH_EDGE_TOKEN must be changed");
   if (config.SERVICE_MODE === "mcp" && config.MCP_ASSET_CAPABILITY_SECRET === developmentMcpCapabilitySecret) insecure.push("MCP_ASSET_CAPABILITY_SECRET must be changed");
   if (["auth", "confirmation"].includes(config.SERVICE_MODE) && config.CONFIRMATION_GATEWAY_TOKEN === developmentConfirmationGatewayToken) insecure.push("CONFIRMATION_GATEWAY_TOKEN must be changed");
   if (["auth", "dashboard"].includes(config.SERVICE_MODE) && config.AUTH_DASHBOARD_TOKEN === developmentInternalTokens.authDashboard) insecure.push("AUTH_DASHBOARD_TOKEN must be changed");
@@ -111,6 +115,7 @@ if (production) {
   const allowedByService: Record<typeof config.SERVICE_MODE, string[]> = {
     all: [...databaseRoles.keys()],
     dashboard: ["DATABASE_URL"],
+    "auth-edge": [],
     auth: ["AUTH_DATABASE_URL"],
     mcp: ["MCP_DATABASE_URL"],
     public: ["PUBLIC_DATABASE_URL"],
@@ -133,6 +138,9 @@ if (production) {
   if (["dashboard", "mcp"].includes(config.SERVICE_MODE) && config.AUTH_INTERNAL_URL !== "http://auth:3002") {
     insecure.push("AUTH_INTERNAL_URL must use the dedicated auth service network");
   }
+  if (config.SERVICE_MODE === "auth-edge" && config.AUTH_AUTHORITY_URL !== "http://auth:3002") {
+    insecure.push("AUTH_AUTHORITY_URL must use the isolated auth authority network");
+  }
   if (["dashboard", "auth"].includes(config.SERVICE_MODE) && config.CONFIRMATION_INTERNAL_URL !== "http://confirmation:3004") {
     insecure.push("CONFIRMATION_INTERNAL_URL must use the dedicated confirmation service network");
   }
@@ -141,6 +149,7 @@ if (production) {
     BETTER_AUTH_SECRET: ["auth"],
     OWNER_EMAIL: ["auth"],
     OWNER_SETUP_TOKEN_HASH: ["auth"],
+    AUTH_EDGE_TOKEN: ["auth-edge", "auth"],
     MCP_ASSET_CAPABILITY_SECRET: ["mcp"],
     CONFIRMATION_GATEWAY_TOKEN: ["auth", "confirmation"],
     AUTH_DASHBOARD_TOKEN: ["auth", "dashboard"],

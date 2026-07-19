@@ -81,8 +81,13 @@ export class BrokeredStorage implements ObjectStorage {
   }
 
   async read(objectKey: string, range?: ByteRange): Promise<BodyInit> {
-    const prefix = this.options.publicOnly ? "/public/object" : "/private/object";
-    const response = await this.request(`${prefix}?key=${encodeURIComponent(objectKey)}`, {
+    // Public callers pass an already-public knowledge path; only the broker can
+    // translate it into an object key. Private callers continue to pass the
+    // immutable object key selected by their private metadata repository.
+    const query = this.options.publicOnly
+      ? `/public/object?path=${encodeURIComponent(objectKey)}`
+      : `/private/object?key=${encodeURIComponent(objectKey)}`;
+    const response = await this.request(query, {
       headers: range ? { range: `bytes=${range.start}-${range.end}` } : {},
     });
     if (response.status === 404) throw new AssetNotFoundError();

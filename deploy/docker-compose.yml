@@ -94,6 +94,33 @@ services:
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
         awslogs-stream: dashboard
 
+  auth-edge:
+    <<: *locked-service
+    depends_on:
+      auth: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      SERVICE_MODE: auth-edge
+      PORT: "3006"
+      APP_ORIGIN: https://${APP_HOSTNAME}
+      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
+      AUTH_AUTHORITY_URL: http://auth:3002
+      AUTH_EDGE_TOKEN: ${AUTH_EDGE_TOKEN}
+    command: ["bun", "apps/server/src/auth-edge-index.ts"]
+    networks: [auth_web, auth_edge_internal]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3006/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: auth-edge
+
   auth:
     <<: *locked-service
     depends_on:
@@ -112,13 +139,14 @@ services:
       OWNER_EMAIL: ${OWNER_EMAIL}
       OWNER_SETUP_TOKEN_HASH: ${OWNER_SETUP_TOKEN_HASH}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      AUTH_EDGE_TOKEN: ${AUTH_EDGE_TOKEN}
       AUTH_DASHBOARD_TOKEN: ${AUTH_DASHBOARD_TOKEN}
       AUTH_MCP_TOKEN: ${AUTH_MCP_TOKEN}
       CONFIRMATION_INTERNAL_URL: http://confirmation:3004
       CONFIRMATION_GATEWAY_TOKEN: ${CONFIRMATION_GATEWAY_TOKEN}
       AUTH_DATABASE_URL: postgres://context_use_auth:${DB_AUTH_PASSWORD}@postgres:5432/context_use
     command: ["bun", "apps/server/src/auth-index.ts"]
-    networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]
+    networks: [auth_data, auth_edge_internal, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]
     healthcheck:
       test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3002/health'); if (!response.ok) process.exit(1)"]
       interval: 5s
@@ -341,7 +369,7 @@ services:
   caddy:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
-    depends_on: [app, auth, private-mcp, public-web, confirmation, public-mcp]
+    depends_on: [app, auth-edge, private-mcp, public-web, confirmation, public-mcp]
     environment:
       APP_HOSTNAME: ${APP_HOSTNAME}
       ASSET_HOSTNAME: ${ASSET_HOSTNAME}
@@ -402,6 +430,7 @@ networks:
   edge: {}
   dashboard_web: { internal: true }
   auth_web: { internal: true }
+  auth_edge_internal: { internal: true }
   mcp_web: { internal: true }
   public_web: { internal: true }
   auth_dashboard_internal: { internal: true }

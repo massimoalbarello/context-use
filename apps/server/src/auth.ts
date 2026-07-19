@@ -60,6 +60,10 @@ export const auth = betterAuth({
   session: {
     expiresIn: config.SESSION_MAX_SECONDS,
     updateAge: 3_600,
+    // Better Auth's default refresh is sliding and mutates updatedAt before an
+    // application policy can inspect it. Context Use keeps expiry absolute and
+    // advances activity only after its own idle/owner checks succeed.
+    disableSessionRefresh: true,
     cookieCache: { enabled: false },
   },
   rateLimit: {
@@ -188,17 +192,46 @@ export type DashboardPrincipal = {
 
 export async function dashboardPrincipal(request: Request): Promise<DashboardPrincipal | null> {
   if (request.headers.has("authorization")) return null;
-  const result = await auth.api.getSession({ headers: request.headers });
+  const result = await auth.api.getSession({
+    headers: request.headers,
+    query: { disableCookieCache: true, disableRefresh: true },
+  });
   if (!result || result.user.id !== ownerUserId || !isVerifiedOwner(result.user.email, result.user.emailVerified)) return null;
 
   const createdAt = new Date(result.session.createdAt).getTime();
   const updatedAt = new Date(result.session.updatedAt).getTime();
+  const expiresAt = new Date(result.session.expiresAt).getTime();
   const now = Date.now();
   if (now - createdAt > config.SESSION_MAX_SECONDS * 1_000) return null;
   if (now - updatedAt > config.SESSION_IDLE_SECONDS * 1_000) return null;
+  if (expiresAt <= now) return null;
+
+  // Recheck every bound in the write itself. Concurrent requests cannot revive
+  // a session that crossed the idle/absolute boundary after the read above,
+  // and expiresAt is never extended.
+  const touched = await authPool.query(
+    `UPDATE "session"
+     SET "updatedAt"=now()
+     WHERE id=$1 AND "userId"=$2
+       AND "createdAt">=now()-make_interval(secs=>$3::int)
+       AND "updatedAt">=now()-make_interval(secs=>$4::int)
+       AND "expiresAt">now()
+     RETURNING id`,
+    [result.session.id, ownerUserId, config.SESSION_MAX_SECONDS, config.SESSION_IDLE_SECONDS],
+  );
+  if (!touched.rowCount) return null;
   return {
     userId: result.user.id,
     sessionId: result.session.id,
     email: result.user.email,
   };
+}
+
+const OWNER_SESSION_AUTH_PATHS = new Set([
+  "/api/auth/oauth2/consent",
+  "/api/auth/oauth2/continue",
+]);
+
+export function authPathRequiresOwnerSession(pathname: string): boolean {
+  return OWNER_SESSION_AUTH_PATHS.has(pathname);
 }

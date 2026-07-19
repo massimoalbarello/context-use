@@ -47,6 +47,7 @@ export async function storeRuntimeParameters(config: DeploymentConfig): Promise<
     DB_BACKUP_PASSWORD: generateSecret(36),
     MCP_ASSET_CAPABILITY_SECRET: generateSecret(48),
     CONFIRMATION_GATEWAY_TOKEN: generateSecret(48),
+    AUTH_EDGE_TOKEN: generateSecret(48),
     AUTH_DASHBOARD_TOKEN: generateSecret(48),
     AUTH_MCP_TOKEN: generateSecret(48),
     CONFIRMATION_DASHBOARD_TOKEN: generateSecret(48),

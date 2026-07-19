@@ -883,8 +883,9 @@ BEGIN
 END;
 $$;
 
--- Public webpage projections expose only independently published snapshots.
--- They intentionally run with this non-login owner's narrowly scoped SELECTs.
+-- Projection sources are private implementation details owned by a non-login
+-- role. Anonymous application roles never receive these views because they
+-- contain the internal identifiers needed to construct the safe projections.
 GRANT SELECT (id,public_path,published_version_id,archived_at)
   ON knowledge_pages TO context_use_projection_owner;
 GRANT SELECT (id,page_id,path,title,body_markdown,created_at)
@@ -894,7 +895,7 @@ GRANT SELECT (
   width,height,duration_seconds,published_at,deleted_at
 ) ON assets TO context_use_projection_owner;
 
-CREATE VIEW published_pages
+CREATE VIEW published_page_sources
 WITH (security_barrier=true,security_invoker=false)
 AS
 SELECT
@@ -912,118 +913,216 @@ WHERE page.published_version_id IS NOT NULL
   AND page.public_path IS NOT NULL
   AND page.archived_at IS NULL;
 
+-- Resolve references inside the database boundary. Published targets become
+-- public paths; private targets become inert labels. Neither anonymous role
+-- nor the public renderer ever receives a UUID or private knowledge path.
+CREATE FUNCTION project_public_markdown(p_body text,p_source_path text)
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $$
+DECLARE
+  projected text;
+  matched text[];
+  target_path text;
+  label text;
+  source_directory text;
+BEGIN
+  projected := regexp_replace(
+    regexp_replace(coalesce(p_body,''),'<!--.*?-->','','gis'),
+    '<!--.*$','','gis'
+  );
+  projected := regexp_replace(
+    regexp_replace(projected,'<script([[:space:]][^>]*)?>.*?</script[[:space:]]*>','','gis'),
+    '<script([[:space:]][^>]*)?>.*$','','gis'
+  );
+  projected := regexp_replace(
+    regexp_replace(projected,'<style([[:space:]][^>]*)?>.*?</style[[:space:]]*>','','gis'),
+    '<style([[:space:]][^>]*)?>.*$','','gis'
+  );
+  projected := regexp_replace(projected,'<[a-z!?/][^>]*(>|$)','','gis');
+
+  FOR matched IN
+    SELECT regexp_matches(
+      projected,
+      '(!\[([^]]*)\]\(context-use://asset/([0-9a-f-]{36})\)(\{[^}\r\n]*\})?)',
+      'gi'
+    )
+  LOOP
+    SELECT asset.public_path INTO target_path
+    FROM assets asset
+    WHERE asset.id=matched[3]::uuid
+      AND asset.published_at IS NOT NULL
+      AND asset.public_path IS NOT NULL
+      AND asset.deleted_at IS NULL;
+    projected := replace(
+      projected,
+      matched[1],
+      CASE WHEN target_path IS NULL THEN matched[2]
+           ELSE format(
+             '![%s](context-use://public-asset/%s)%s',
+             matched[2],target_path,coalesce(matched[4],'')
+           )
+      END
+    );
+  END LOOP;
+
+  FOR matched IN
+    SELECT regexp_matches(
+      projected,
+      '(\[([^]]*)\]\(context-use://page/([0-9a-f-]{36})\))',
+      'gi'
+    )
+  LOOP
+    SELECT page.public_path INTO target_path
+    FROM published_page_sources page
+    WHERE page.id=matched[3]::uuid;
+    projected := replace(
+      projected,
+      matched[1],
+      CASE WHEN target_path IS NULL THEN matched[2]
+           ELSE format('[%s](/p/%s)',matched[2],target_path)
+      END
+    );
+  END LOOP;
+
+  FOR matched IN
+    SELECT regexp_matches(
+      projected,
+      '(\[([^]]*)\]\(/app/pages/([0-9a-f-]{36})\))',
+      'gi'
+    )
+  LOOP
+    SELECT page.public_path INTO target_path
+    FROM published_page_sources page
+    WHERE page.id=matched[3]::uuid;
+    projected := replace(
+      projected,
+      matched[1],
+      CASE WHEN target_path IS NULL THEN matched[2]
+           ELSE format('[%s](/p/%s)',matched[2],target_path)
+      END
+    );
+  END LOOP;
+
+  source_directory := regexp_replace(lower(p_source_path),'(^|/)[^/]+$','','');
+  FOR matched IN
+    SELECT regexp_matches(
+      projected,
+      '(\[\[([a-z0-9][a-z0-9/_-]*)(\|([^]\r\n]+))?\]\])',
+      'gi'
+    )
+  LOOP
+    SELECT page.public_path INTO target_path
+    FROM published_page_sources page
+    WHERE page.path=lower(matched[2])
+       OR page.path=concat_ws('/',nullif(source_directory,''),lower(matched[2]))
+    ORDER BY
+      CASE WHEN page.path=concat_ws('/',nullif(source_directory,''),lower(matched[2])) THEN 0 ELSE 1 END,
+      page.path
+    LIMIT 1;
+    label := coalesce(
+      nullif(btrim(matched[4]),''),
+      CASE WHEN target_path IS NULL THEN 'Private page'
+           ELSE regexp_replace(matched[2],'^.*/','')
+      END
+    );
+    projected := replace(
+      projected,
+      matched[1],
+      CASE WHEN target_path IS NULL THEN label
+           ELSE format('[%s](/p/%s)',label,target_path)
+      END
+    );
+  END LOOP;
+
+  projected := regexp_replace(
+    projected,'context-use://(page|asset)/[0-9a-f-]{36}',
+    '[private reference]','gi'
+  );
+  projected := regexp_replace(
+    projected,'/app/pages/[0-9a-f-]{36}',
+    '[private reference]','gi'
+  );
+  projected := regexp_replace(
+    projected,'/api/(dashboard|public)/assets/[0-9a-f-]{36}/content',
+    '[private reference]','gi'
+  );
+  RETURN projected;
+END;
+$$;
+
+-- The webpage role gets rendered source only: no UUIDs, version metadata,
+-- private knowledge paths, hidden HTML, or unresolved stable references. A
+-- compromise of that credential therefore cannot bypass the same disclosure
+-- boundary enforced by the public HTTP renderer.
+CREATE VIEW published_pages
+WITH (security_barrier=true,security_invoker=false)
+AS
+SELECT
+  page.public_path,
+  page.title,
+  project_public_markdown(page.body_markdown,page.path) AS body_markdown
+FROM published_page_sources page;
+
+-- Public HTTP metadata contains only values observable while downloading an
+-- independently published object. Integrity hashes, UUIDs, object keys,
+-- dimensions, timestamps, and other storage metadata remain private.
 CREATE VIEW published_assets
 WITH (security_barrier=true,security_invoker=false)
 AS
 SELECT
-  id,public_path,filename,content_type,size_bytes,content_hash,s3_object_key,
-  width,height,duration_seconds,published_at
+  public_path,filename,content_type,size_bytes
 FROM assets
 WHERE published_at IS NOT NULL
   AND public_path IS NOT NULL
   AND deleted_at IS NULL;
 
--- Anonymous MCP gets a deliberately lossy projection: no internal UUIDs,
--- version metadata, asset metadata, raw HTML, or private reference targets.
+-- Only the storage broker can translate a public path into an object key.
+CREATE VIEW storage_published_assets
+WITH (security_barrier=true,security_invoker=false)
+AS
+SELECT public_path,s3_object_key
+FROM assets
+WHERE published_at IS NOT NULL
+  AND public_path IS NOT NULL
+  AND deleted_at IS NULL;
+
+-- Anonymous MCP reuses the already-lossy webpage projection and adds public
+-- hierarchy only. It cannot select either private projection source.
 CREATE VIEW public_mcp_pages
 WITH (security_barrier=true,security_invoker=false)
 AS
-WITH without_comments AS (
-  SELECT
-    page.public_path,
-    page.title,
-    page.version_created_at,
-    regexp_replace(
-      regexp_replace(page.body_markdown,'<!--.*?-->','','gis'),
-      '<!--.*$','','gis'
-    ) AS body_markdown
-  FROM published_pages page
-),
-without_scripts AS (
-  SELECT
-    page.public_path,
-    page.title,
-    page.version_created_at,
-    regexp_replace(
-      regexp_replace(
-        page.body_markdown,
-        '<script([[:space:]][^>]*)?>.*?</script[[:space:]]*>','','gis'
-      ),
-      '<script([[:space:]][^>]*)?>.*$','','gis'
-    ) AS body_markdown
-  FROM without_comments page
-),
-without_styles AS (
-  SELECT
-    page.public_path,
-    page.title,
-    page.version_created_at,
-    regexp_replace(
-      regexp_replace(
-        page.body_markdown,
-        '<style([[:space:]][^>]*)?>.*?</style[[:space:]]*>','','gis'
-      ),
-      '<style([[:space:]][^>]*)?>.*$','','gis'
-    ) AS body_markdown
-  FROM without_scripts page
-),
-without_hidden_html AS (
-  SELECT
-    page.public_path,
-    page.title,
-    page.version_created_at,
-    regexp_replace(page.body_markdown,'<[a-z!?/][^>]*(>|$)','','gis') AS body_markdown
-  FROM without_styles page
-),
-safe_pages AS (
-  SELECT
-    page.public_path,
-    page.title,
-    page.version_created_at,
-    regexp_replace(
-      regexp_replace(
-        regexp_replace(
-          regexp_replace(
-            regexp_replace(
-              page.body_markdown,
-              '!\[([^]]*)\]\(context-use://asset/[0-9a-f-]{36}\)(\{[^}\r\n]*\})?',
-              '\1','gi'
-            ),
-            '\[([^]]*)\]\(context-use://page/[0-9a-f-]{36}\)',
-            '\1','gi'
-          ),
-          '\[\[[a-z0-9][a-z0-9/_-]*\|([^]\r\n]+)\]\]',
-          '\1','gi'
-        ),
-        '\[\[[a-z0-9][a-z0-9/_-]*\]\]',
-        '[linked page]','gi'
-      ),
-      'context-use://(page|asset)/[0-9a-f-]{36}',
-      '[private reference]','gi'
-    ) AS body_markdown
-  FROM without_hidden_html page
-)
 SELECT
   child.public_path,
   child.title,
-  child.body_markdown,
+  regexp_replace(
+    child.body_markdown,
+    '!\[([^]]*)\]\(context-use://public-asset/[a-z0-9][a-z0-9/_-]*\)(\{[^}\r\n]*\})?',
+    '\1','gi'
+  ) AS body_markdown,
   parent.public_path AS parent_path
-FROM safe_pages child
+FROM published_pages child
 LEFT JOIN LATERAL (
   SELECT candidate.public_path
-  FROM safe_pages candidate
+  FROM published_pages candidate
   WHERE left(child.public_path,length(candidate.public_path)+1)=candidate.public_path || '/'
   ORDER BY length(candidate.public_path) DESC,
-           candidate.version_created_at DESC,
            candidate.public_path
   LIMIT 1
 ) parent ON true;
 
 GRANT CREATE ON SCHEMA public TO context_use_projection_owner;
+ALTER VIEW published_page_sources OWNER TO context_use_projection_owner;
+ALTER FUNCTION project_public_markdown(text,text) OWNER TO context_use_projection_owner;
 ALTER VIEW published_pages OWNER TO context_use_projection_owner;
 ALTER VIEW published_assets OWNER TO context_use_projection_owner;
+ALTER VIEW storage_published_assets OWNER TO context_use_projection_owner;
 ALTER VIEW public_mcp_pages OWNER TO context_use_projection_owner;
 REVOKE CREATE ON SCHEMA public FROM context_use_projection_owner;
+REVOKE ALL ON FUNCTION project_public_markdown(text,text) FROM PUBLIC;
 
 -- These procedures are the only application-accessible private-to-public and
 -- passkey-confirmed export transitions. Their owner is deliberately not the
@@ -1524,6 +1623,8 @@ GRANT UPDATE (
 ) ON automation_runs TO context_use_mcp;
 
 GRANT SELECT ON published_pages,published_assets TO context_use_public;
+GRANT EXECUTE ON FUNCTION project_public_markdown(text,text)
+  TO context_use_public;
 
 -- The storage broker already controls every asset byte. This metadata-only
 -- capability lets it authorize an immutable write against the database row
@@ -1531,9 +1632,11 @@ GRANT SELECT ON published_pages,published_assets TO context_use_public;
 GRANT SELECT (
   id,s3_object_key,filename,content_type,size_bytes,content_hash,deleted_at
 ) ON assets TO context_use_storage;
-GRANT SELECT ON published_assets TO context_use_storage;
+GRANT SELECT ON storage_published_assets TO context_use_storage;
 
 GRANT SELECT ON public_mcp_pages TO context_use_public_mcp;
+GRANT EXECUTE ON FUNCTION project_public_markdown(text,text)
+  TO context_use_public_mcp;
 GRANT INSERT (id,reply_to,message) ON inbound_messages TO context_use_public_mcp;
 
 GRANT SELECT ON

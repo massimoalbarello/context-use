@@ -1,5 +1,5 @@
-import { PublicRepository, createPool, wikiLinkCandidatePaths } from "@context-use/database";
-import { PagePath } from "@context-use/shared";
+import { PublicRepository, createPool } from "@context-use/database";
+import { AssetPath, PagePath } from "@context-use/shared";
 import { Elysia } from "elysia";
 import { config } from "./config.ts";
 import { json, routeError } from "./http.ts";
@@ -22,32 +22,23 @@ const storage = new BrokeredStorage({
   publicOnly: true,
 });
 const publicAssetContent = createPublicAssetContentHandler(publicData, storage, config.ASSET_ORIGIN);
-
-function resolvers(sourcePath: string) {
-  return {
-    page: async (id: string) => {
-      const page = await publicData.pageById(id);
-      return page ? { available: true as const, href: `/p/${page.public_path}` } : { available: false as const };
-    },
-    pagePath: async (path: string) => {
-      for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
-        const page = await publicData.pageByPath(candidate);
-        if (page) return { available: true as const, href: `/p/${page.public_path}` };
-      }
-      return { available: false as const };
-    },
-    asset: async (id: string) => {
-      const asset = await publicData.assetById(id);
-      return asset
-        ? {
-            available: true as const,
-            href: `${config.ASSET_ORIGIN}/p/${asset.public_path}`,
-            contentType: asset.content_type,
-          }
-        : { available: false as const };
-    },
-  };
-}
+const unavailableResolvers = {
+  page: async () => ({ available: false as const }),
+  pagePath: async () => ({ available: false as const }),
+  asset: async () => ({ available: false as const }),
+  publicAssetPath: async (path: string) => {
+    const parsed = AssetPath.safeParse(path);
+    if (!parsed.success) return { available: false as const };
+    const asset = await publicData.assetByPublicPath(parsed.data);
+    return asset
+      ? {
+          available: true as const,
+          href: `${config.ASSET_ORIGIN}/p/${asset.public_path}`,
+          contentType: asset.content_type,
+        }
+      : { available: false as const };
+  },
+};
 
 export const publicApp = new Elysia()
   .onError(({ error, code }) => code === "NOT_FOUND"
@@ -64,7 +55,10 @@ export const publicApp = new Elysia()
     const page = await publicData.pageByPublicPath(publicPath);
     if (!page && matchesAssetOrigin) return publicAssetContent(request, publicPath);
     if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
-    const content = await renderMarkdown(page.body_markdown, resolvers(page.path));
+    // The database projection has already removed every private identifier and
+    // replaced independently public targets with public paths. The renderer can
+    // resolve a published asset path but has no UUID/private-path capability.
+    const content = await renderMarkdown(page.body_markdown, unavailableResolvers);
     return new Response(renderPublicPageDocument(page.title, content), {
       headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
     });
