@@ -749,14 +749,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
         const history = await dashboardPages.history(input.target_id);
         const version = history.find((candidate) => candidate.id === input.version_id);
         if (!version) return problem("Version does not belong to page", 422);
-        publicPath = version.path;
-        if (page.required_public_path && publicPath !== page.required_public_path) {
-          return problem(
-            `The required public page must remain at /p/${page.required_public_path}`,
-            422,
-            "required_public_page",
-          );
-        }
+        publicPath = page.required_public_path ?? version.path;
       }
     } else {
       const asset = await dashboardAssets.get(input.target_id, true);

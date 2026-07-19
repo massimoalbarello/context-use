@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { verifyAssetDownloadCapability } from "./mcp-asset-download.ts";
-import { createMcpServer } from "./mcp-server.ts";
+import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
 
 const skillVersionId = "22222222-2222-4222-8222-222222222222";
@@ -21,7 +21,12 @@ async function mcpRequest(server: McpServer, body: Record<string, unknown>) {
       body: JSON.stringify(body),
     }));
     return await response.json() as {
-      result?: { tools?: Array<{ name: string }>; content?: Array<{ type: string; text: string }>; isError?: boolean };
+      result?: {
+        tools?: Array<{ name: string }>;
+        content?: Array<{ type: string; text: string }>;
+        instructions?: string;
+        isError?: boolean;
+      };
     };
   } finally {
     await transport.close();
@@ -44,6 +49,47 @@ function serverWith(
 }
 
 describe("MCP skill and automation authoring", () => {
+  test("gives clients the canonical knowledge structure during initialization", async () => {
+    const response = await mcpRequest(serverWith({} as AutomationRepository), {
+      jsonrpc: "2.0",
+      id: 0,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "test-client", version: "1.0.0" },
+      },
+    });
+
+    expect(response.result?.instructions).toBe(KNOWLEDGE_BASE_INSTRUCTIONS);
+    expect(response.result?.instructions).toContain("about/intro");
+    expect(response.result?.instructions).toContain("AGENTS.md");
+  });
+
+  test("reads the root AGENTS.md guide through a dedicated discovery tool", async () => {
+    const pages = {
+      async getByPath(path: string) {
+        expect(path).toBe("agents");
+        return { current_path: "agents", title: "AGENTS.md", body_markdown: "Guide" };
+      },
+    } as unknown as PageRepository;
+    const response = await mcpRequest(serverWith(
+      {} as AutomationRepository,
+      new Set(["kb:read"]),
+      pages,
+    ), {
+      jsonrpc: "2.0",
+      id: 9,
+      method: "tools/call",
+      params: { name: "get_knowledge_base_guide", arguments: {} },
+    });
+
+    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
+      current_path: "agents",
+      title: "AGENTS.md",
+    });
+  });
+
   test("advertises progressive skill discovery and scoped automation tools", async () => {
     const response = await mcpRequest(serverWith({} as AutomationRepository), {
       jsonrpc: "2.0",
@@ -54,6 +100,7 @@ describe("MCP skill and automation authoring", () => {
 
     expect(response.result?.tools?.map(({ name }) => name)).toEqual(expect.arrayContaining([
       "list_skills",
+      "get_knowledge_base_guide",
       "get_skill",
       "create_skill",
       "create_automation",

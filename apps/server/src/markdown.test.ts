@@ -72,10 +72,10 @@ describe("safe Markdown rendering", () => {
 
   test("renders Obsidian wikilinks with aliases and safe internal targets", async () => {
     const html = await renderMarkdown(
-      "[[me/intro|My intro]] [[missing/page|Missing page]] [[me/intro|<img src=x onerror=alert(1)>]]",
+      "[[about/intro|My intro]] [[missing/page|Missing page]] [[about/intro|<img src=x onerror=alert(1)>]]",
       {
         ...privateResolvers,
-        pagePath: async (path) => path === "me/intro"
+        pagePath: async (path) => path === "about/intro"
           ? { available: true as const, href: "/app/pages/11111111-1111-4111-8111-111111111111" }
           : { available: false as const },
       },

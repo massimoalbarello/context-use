@@ -101,7 +101,7 @@ describeDatabase("persisted automation lifecycle", () => {
     expect(claimed.instructions_markdown).toStartWith("Read the current project page and persist a short review.");
     expect(claimed.instructions_markdown.match(/## Execution context/g)).toHaveLength(1);
     expect(claimed.instructions_markdown).toContain("`claim_due_run`");
-    expect(claimed.instructions_markdown).toContain("[[me/intro]]");
+    expect(claimed.instructions_markdown).toContain("[[about/intro]]");
     expect(claimed).not.toHaveProperty("skill_markdown");
     const lease = await pool.query<{ lease_seconds: number }>(
       `SELECT extract(epoch FROM (lease_expires_at-claimed_at))::integer AS lease_seconds

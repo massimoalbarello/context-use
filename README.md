@@ -2,7 +2,7 @@
 
 `context-use` is a private-by-default, single-owner knowledge base. It keeps Markdown pages in PostgreSQL, immutable asset bytes in S3, exposes an owner dashboard, and gives a trusted personal agent narrowly scoped access through MCP.
 
-The public site is deliberately separate. Each installation starts with one required `/p/about` page whose initial published body is empty; every owner-authored page version or asset becomes public only after the signed-in owner reviews an exact publication intent and confirms it with a passkey. A portable full-knowledge export likewise requires a fresh, action-bound passkey assertion. Agent OAuth tokens cannot call dashboard routes, have no publication or export scope, and use a PostgreSQL role that cannot alter publication state.
+The public site is deliberately separate. Each installation starts with a private `about/` folder whose required `about/intro` page has the stable public alias `/p/about` and an initially empty published body. A root `AGENTS.md` page tells connected agents to keep owner-specific information under `about/` and other entities in separate top-level folders. Every owner-authored page version or asset becomes public only after the signed-in owner reviews an exact publication intent and confirms it with a passkey. A portable full-knowledge export likewise requires a fresh, action-bound passkey assertion. Agent OAuth tokens cannot call dashboard routes, have no publication or export scope, and use a PostgreSQL role that cannot alter publication state.
 
 ## What v1 includes
 
@@ -15,7 +15,7 @@ The public site is deliberately separate. Each installation starts with one requ
 - Stateless Streamable HTTP MCP at `/mcp` with knowledge, checksum-bound asset upload/download, and automation execution tools.
 - Anonymous, tools-only MCP on a dedicated `public.` hostname with a hierarchical index, page reads, and full-text search over published snapshots only.
 - Versioned, discoverable Agent Skills; time-zone-aware automations; isolated generated knowledge; durable run history; and leased agent execution.
-- Exact published snapshots at `/p/<knowledge-path>` and independently published assets at the same `/p/<knowledge-path>` route on a cookieless hostname.
+- Exact published snapshots at `/p/<knowledge-path>`—with `/p/about` reserved as the alias for `about/intro`—and independently published assets at the same route on a cookieless hostname.
 - A built-in public billboard at `/` that directs people to the required `/p/about` page and agents to the installation-specific anonymous MCP endpoint.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
 
@@ -96,6 +96,8 @@ https://YOUR_HOST/mcp
 
 The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `assets:write`, `skills:read`, `skills:write`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
 
+MCP initialization tells the client to call `get_knowledge_base_guide` before managing pages. That tool reads the editable root `AGENTS.md` page. The initial guide reserves `about/` for information whose subject is the owner, starts that context at `about/intro`, and keeps entities such as people, companies, and events in their own top-level folders. The database reserves bare `about` as a folder and prevents the required intro page from being moved; semantic placement is guided because the database cannot reliably infer a page's subject from Markdown.
+
 With `assets:write`, `create_asset_upload` records private asset metadata and returns a fifteen-minute upload capability bound to that asset and OAuth grant. The agent then sends the exact raw bytes to the returned API URL and headers. Size, content type, and SHA-256 are verified before storage; the capability cannot read, edit, delete, or publish anything. Existing OAuth grants must be reauthorized before they include the new scope.
 
 With `assets:read`, `get_asset` returns metadata plus a five-minute API download request bound to that exact asset, MCP client, owner, and live grant. The download route rechecks the grant and supports byte ranges for large media. It never returns or redirects to an S3 URL. Dashboard reads use the owner-session API route, while anonymous reads use `/p/<knowledge-path>` on the asset host and resolve through the published-assets database view only.
@@ -135,7 +137,7 @@ follow its instructions using the supplied input. Continue until claim_due_run r
 null.
 ```
 
-For claimed runs, Context Use appends the shared execution contract to the returned `instructions_markdown`: read `[[me/intro]]`, use the claim-scoped automation page tools inside the dedicated knowledge path, and finish with `complete_run` or `fail_run`. This happens only in the `claim_due_run` response. Skills and ordinary `get_skill` calls never receive automation execution context. While migrated instructions still contain a legacy `## Execution context` section, Context Use recognizes it and does not inject a duplicate.
+For claimed runs, Context Use appends the shared execution contract to the returned `instructions_markdown`: read `[[about/intro]]`, use the claim-scoped automation page tools inside the dedicated knowledge path, and finish with `complete_run` or `fail_run`. This happens only in the `claim_due_run` response. Skills and ordinary `get_skill` calls never receive automation execution context. While migrated instructions still contain a legacy `## Execution context` section, Context Use recognizes it and does not inject a duplicate.
 
 Claims are atomic and leased for one hour. Expired claims are automatically available to the next polling agent. Runs, inputs, automation instruction versions, knowledge ownership, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
 

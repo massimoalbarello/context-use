@@ -45,7 +45,7 @@ function asset(id: string, currentPath: string, filename: string): Asset {
 describe("knowledge tree", () => {
   const pages = [
     page("claude", "me/learnings/claude", "Learnings"),
-    page("intro", "me/intro", "Intro"),
+    page("intro", "about/intro", "Intro"),
     page("airbyte", "me/learnings/entrepreneurship/airbyte", "Airbyte's Origin Story"),
     page("root", "conduct", "Conduct"),
     page("science", "me/learnings/science/physics", "Physics"),
@@ -55,10 +55,10 @@ describe("knowledge tree", () => {
     const tree = buildPageTree(pages);
 
     expect(tree.pages.map(({ name }) => name)).toEqual(["conduct"]);
-    expect(tree.directories.map(({ path }) => path)).toEqual(["me"]);
+    expect(tree.directories.map(({ path }) => path)).toEqual(["about", "me"]);
     expect(tree.directories[0]!.pages.map(({ name }) => name)).toEqual(["intro"]);
-    expect(tree.directories[0]!.directories.map(({ path }) => path)).toEqual(["me/learnings"]);
-    expect(tree.directories[0]!.directories[0]!.directories.map(({ name }) => name)).toEqual([
+    expect(tree.directories[1]!.directories.map(({ path }) => path)).toEqual(["me/learnings"]);
+    expect(tree.directories[1]!.directories[0]!.directories.map(({ name }) => name)).toEqual([
       "entrepreneurship",
       "science",
     ]);
@@ -96,6 +96,7 @@ describe("knowledge tree", () => {
 
   test("returns every directory path so search results can be revealed", () => {
     expect(allDirectoryPaths(buildPageTree(pages))).toEqual([
+      "about",
       "me",
       "me/learnings",
       "me/learnings/entrepreneurship",
@@ -104,12 +105,12 @@ describe("knowledge tree", () => {
   });
 
   test("counts public descendant pages in a directory", () => {
-    const publicIntro = { ...page("intro", "me/intro", "Intro"), published_version_id: "published-intro" };
+    const publicIntro = { ...page("intro", "about/intro", "Intro"), published_version_id: "published-intro" };
     const publicPhysics = { ...page("physics", "me/science/physics", "Physics"), published_version_id: "published-physics" };
     const tree = buildPageTree([publicIntro, publicPhysics, page("draft", "me/science/draft", "Draft")]);
 
-    expect(countPublicPages(tree.directories[0]!)).toBe(2);
-    expect(countPublicPages(tree.directories[0]!.directories[0]!)).toBe(1);
+    expect(countPublicPages(tree)).toBe(2);
+    expect(countPublicPages(tree.directories[1]!)).toBe(1);
   });
 
   test("round-trips the expanded directory state for reloads", () => {
@@ -130,6 +131,7 @@ describe("knowledge tree", () => {
     expect([...persisted]).toEqual(["me"]);
     expect(visible).toEqual(new Set([
       "me",
+      "about",
       "me/learnings",
       "me/learnings/entrepreneurship",
       "me/learnings/science",

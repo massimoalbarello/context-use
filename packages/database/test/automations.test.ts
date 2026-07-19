@@ -47,7 +47,7 @@ Example content
     expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("`update_automation_page`");
     expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("`complete_run`");
     expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("`fail_run`");
-    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("[[me/intro]]");
+    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("[[about/intro]]");
   });
 
   test("injects the canonical context section into claimed-run instructions when absent", () => {

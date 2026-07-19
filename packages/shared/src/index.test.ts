@@ -51,6 +51,21 @@ describe("strict mutation schemas", () => {
     }).success).toBe(false);
   });
 
+  test("ordinary page writes reserve about as a folder", () => {
+    expect(createPageSchema.safeParse({
+      path: "about",
+      title: "About",
+      body_markdown: "",
+      commit_message: "Create about page",
+    }).success).toBe(false);
+    expect(createPageSchema.safeParse({
+      path: "about/intro",
+      title: "Intro",
+      body_markdown: "",
+      commit_message: "Create intro page",
+    }).success).toBe(true);
+  });
+
   test("publication intents bind valid fields to the exact action", () => {
     expect(publicationIntentSchema.safeParse({
       action: "publish", target_kind: "page", target_id: pageId, version_id: versionId,

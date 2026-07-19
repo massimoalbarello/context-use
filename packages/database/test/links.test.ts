@@ -28,10 +28,10 @@ describe("hypermedia links", () => {
 
   test("extracts Obsidian wikilinks with aliases and ignores embeds", () => {
     expect(extractWikiLinks(
-      "[[me/intro|My intro]] [[me/learnings/claude]] [[me/intro|Duplicate]] ![[assets/photo]]",
+      "[[about/intro|My intro]] [[about/learnings/claude]] [[about/intro|Duplicate]] ![[assets/photo]]",
     )).toEqual([
-      { path: "me/intro", label: "My intro" },
-      { path: "me/learnings/claude", label: "claude" },
+      { path: "about/intro", label: "My intro" },
+      { path: "about/learnings/claude", label: "claude" },
     ]);
   });
 
@@ -40,6 +40,6 @@ describe("hypermedia links", () => {
       "me/learnings/claude",
       "claude",
     ]);
-    expect(wikiLinkCandidatePaths("fabric/intro", "me/intro")).toEqual(["fabric/intro"]);
+    expect(wikiLinkCandidatePaths("fabric/intro", "about/intro")).toEqual(["fabric/intro"]);
   });
 });

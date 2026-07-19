@@ -107,20 +107,29 @@ describeDatabase("PostgreSQL security roles", () => {
   test("the required public about page exists and cannot be moved or unpublished", async () => {
     const required = await admin.query<{
       id: string;
+      current_path: string;
       current_version_id: string;
       published_version_id: string;
       public_path: string;
       required_public_path: string;
     }>(
-      `SELECT id,current_version_id,published_version_id,public_path,required_public_path
+      `SELECT id,current_path,current_version_id,published_version_id,public_path,required_public_path
        FROM knowledge_pages WHERE required_public_path='about'`,
     );
     expect(required.rowCount).toBe(1);
     expect(required.rows[0]).toMatchObject({
+      current_path: "about/intro",
       public_path: "about",
       required_public_path: "about",
     });
-    expect((await admin.query("SELECT 1 FROM published_pages WHERE public_path='about'")).rowCount).toBe(1);
+    expect((await admin.query("SELECT 1 FROM published_pages WHERE public_path='about' AND path='about/intro'")).rowCount).toBe(1);
+    expect((await admin.query(
+      `SELECT 1
+       FROM knowledge_pages page
+       JOIN knowledge_page_versions version ON version.id=page.current_version_id
+       WHERE page.current_path='agents' AND page.archived_at IS NULL
+         AND version.title='AGENTS.md' AND version.body_markdown LIKE '%about/intro%'`,
+    )).rowCount).toBe(1);
 
     await admin.query("BEGIN");
     try {
@@ -139,6 +148,26 @@ describeDatabase("PostgreSQL security roles", () => {
          ) VALUES ($1,'republish','page',$2,$3,'moved-about','owner','session',$4,$5,now()+interval '5 minutes')`,
         [randomUUID(), page.id, page.current_version_id, `move-about-${randomUUID()}`, "b".repeat(64)],
       );
+      await expectDenied(
+        "UPDATE knowledge_pages SET current_path='about' WHERE id=$1",
+        [page.id],
+      );
+
+      const republishIntent = randomUUID();
+      await admin.query(
+        `INSERT INTO publication_intents(
+           id,action,target_kind,target_id,version_id,public_path,owner_user_id,
+           session_id,challenge,payload_hash,expires_at
+         ) VALUES ($1,'republish','page',$2,$3,'about','owner','session',$4,$5,now()+interval '5 minutes')`,
+        [republishIntent, page.id, page.current_version_id, `republish-about-${randomUUID()}`, "c".repeat(64)],
+      );
+      await admin.query(
+        "SELECT confirm_publication_intent($1,'owner','session','test-credential')",
+        [republishIntent],
+      );
+      expect((await admin.query(
+        "SELECT 1 FROM published_pages WHERE public_path='about' AND path='about/intro'",
+      )).rowCount).toBe(1);
     } finally {
       await admin.query("ROLLBACK");
     }
