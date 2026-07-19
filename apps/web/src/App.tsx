@@ -10,6 +10,7 @@ import { Messages } from "./components/Messages.tsx";
 import { OAuthConsent } from "./components/OAuthConsent.tsx";
 import { Settings, type PasskeySummary } from "./components/Settings.tsx";
 import { Skills } from "./components/Skills.tsx";
+import { filterPagesByPublication, isPublishedPageOutdated, type PublicationFilter } from "./publication-status.ts";
 import type { Asset, Page } from "./types.ts";
 
 type SessionInfo = { owner: { id: string; email: string }; passkey_count: number; passkeys: PasskeySummary[] };
@@ -44,7 +45,7 @@ export function App() {
   const [selected, setSelected] = useState<KnowledgeSelection | null>(selectionFromLocation);
   const [section, setSection] = useState<Section>(sectionFromLocation);
   const [query, setQuery] = useState("");
-  const [publicationFilter, setPublicationFilter] = useState<"all" | "public">("all");
+  const [publicationFilter, setPublicationFilter] = useState<PublicationFilter>("all");
   const [showArchived, setShowArchived] = useState(false);
   const [message, setMessage] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -94,11 +95,10 @@ export function App() {
       : assets;
     return publicationFilter === "public"
       ? matchingAssets.filter((asset) => Boolean(asset.published_at))
-      : matchingAssets;
+      : publicationFilter === "updates" ? [] : matchingAssets;
   }, [assets, query, publicationFilter]);
-  const visiblePages = useMemo(() => publicationFilter === "public"
-    ? pages.filter((page) => Boolean(page.published_version_id))
-    : pages, [pages, publicationFilter]);
+  const visiblePages = useMemo(() => filterPagesByPublication(pages, publicationFilter), [pages, publicationFilter]);
+  const outdatedPublicationCount = useMemo(() => pages.filter(isPublishedPageOutdated).length, [pages]);
   const selectedAsset = selected?.kind === "asset" ? assets.find((asset) => asset.id === selected.id) ?? null : null;
 
   if (isPending) return <main className="center-card">Loading…</main>;
@@ -148,9 +148,9 @@ export function App() {
         <button className={section === "automations" ? "active" : ""} onClick={openAutomations}><SectionIcon section="automations" /><span>Automations</span></button>
       </nav>
       {section === "knowledge" ? <><label className="sidebar-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5" /><path d="m12.25 12.25 4 4" /></svg><input ref={searchRef} className="search" aria-label="Search knowledge" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘K</kbd></label>
-        <div className="knowledge-filter" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>{(["all", "public"] as const).map((filter) => <button className={publicationFilter === filter ? "active" : ""} aria-pressed={publicationFilter === filter} key={filter} onClick={() => setPublicationFilter(filter)}>{filter === "all" ? "All" : "Public"}</button>)}</div>
+        <div className="knowledge-filter" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>{(["all", "public", "updates"] as const).map((filter) => <button className={publicationFilter === filter ? "active" : ""} aria-pressed={publicationFilter === filter} key={filter} onClick={() => setPublicationFilter(filter)}>{filter === "all" ? "All" : filter === "public" ? "Public" : `Updates${outdatedPublicationCount ? ` (${outdatedPublicationCount})` : ""}`}</button>)}</div>
         <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
-        <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} emptyMessage={publicationFilter === "public" ? "Nothing public yet" : "No knowledge yet"} /></> : <div className="sidebar-section-summary"><span className="summary-index">0{section === "messages" ? "2" : section === "skills" ? "3" : section === "automations" ? "4" : "5"}</span><strong>{section === "messages" ? "Private outreach" : section === "automations" ? "Scheduled work" : section === "skills" ? "Reusable capabilities" : "Owner controls"}</strong><p>{section === "messages" ? "Confidential messages and sender loopback details from your public MCP." : section === "automations" ? "Versioned instructions, cron triggers, isolated generated knowledge, and durable run history." : section === "skills" ? "Discoverable SKILL.md definitions for agent-selected work." : "Manage the permanent passkey and connected agents."}</p></div>}
+        <KnowledgeTree pages={visiblePages} assets={visibleAssets} query={query} selected={selected} onSelect={selectKnowledge} emptyMessage={publicationFilter === "public" ? "Nothing public yet" : publicationFilter === "updates" ? "Published pages are up to date" : "No knowledge yet"} /></> : <div className="sidebar-section-summary"><span className="summary-index">0{section === "messages" ? "2" : section === "skills" ? "3" : section === "automations" ? "4" : "5"}</span><strong>{section === "messages" ? "Private outreach" : section === "automations" ? "Scheduled work" : section === "skills" ? "Reusable capabilities" : "Owner controls"}</strong><p>{section === "messages" ? "Confidential messages and sender loopback details from your public MCP." : section === "automations" ? "Versioned instructions, cron triggers, isolated generated knowledge, and durable run history." : section === "skills" ? "Discoverable SKILL.md definitions for agent-selected work." : "Manage the permanent passkey and connected agents."}</p></div>}
       <footer>
         <button className={section === "settings" ? "settings-button active" : "settings-button"} onClick={openSettings}><SectionIcon section="settings" /><span>Settings</span></button>
         <div className="sidebar-account"><span className="user-avatar">{session.owner.email.slice(0, 1).toUpperCase()}</span><span className="sidebar-user"><strong>{session.owner.email}</strong><small>{session.passkey_count} secure passkey{session.passkey_count === 1 ? "" : "s"}</small></span><button className="sign-out-button" aria-label="Sign out" title="Sign out" onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}>↗</button></div>
