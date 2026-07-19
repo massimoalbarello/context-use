@@ -44,6 +44,7 @@ import { publicationWarnings, renderMarkdown } from "./markdown.ts";
 import { createMcpRequestHandler, isMcpGrantActive } from "./mcp.ts";
 import { createMcpAssetDownloadHandler } from "./mcp-asset-download.ts";
 import { createMcpAssetUploadHandler } from "./mcp-asset-upload.ts";
+import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import {
@@ -221,8 +222,12 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       await boundary.release?.();
     }
   })
-  .get("/.well-known/oauth-authorization-server", ({ request }) => authServerMetadata(request))
-  .get("/.well-known/openid-configuration", ({ request }) => openIdMetadata(request))
+  .get("/.well-known/oauth-authorization-server", ({ request }) => (
+    withCodexIssuerCompatibility(authServerMetadata(request))
+  ))
+  .get("/.well-known/openid-configuration", ({ request }) => (
+    withCodexIssuerCompatibility(openIdMetadata(request))
+  ))
   .get("/.well-known/oauth-protected-resource", () => json({
     resource: config.MCP_RESOURCE,
     authorization_servers: [config.OAUTH_ISSUER],
