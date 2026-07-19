@@ -24,6 +24,10 @@ export function createPublicAssetContentHandler(
     if (!assetId.success) return notFound();
     const asset = await assets.asset(assetId.data);
     if (!asset) return notFound();
-    return assetContentResponse(request, asset, storage, true);
+    const response = await assetContentResponse(request, asset, storage, true);
+    // Published assets are deliberately hosted on a separate origin, but are
+    // embedded by public pages on the application origin.
+    response.headers.set("cross-origin-resource-policy", "cross-origin");
+    return response;
   };
 }

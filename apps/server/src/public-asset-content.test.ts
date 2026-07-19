@@ -39,6 +39,7 @@ describe("public asset API boundary", () => {
     ), assetId);
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("published bytes");
+    expect(response.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
     expect(published.metadataReads()).toBe(1);
     expect(published.objectReads()).toBe(1);
 

@@ -61,7 +61,7 @@ export const securityHeaders = {
     "frame-ancestors 'none'",
     "form-action 'self'",
     `img-src 'self' data: ${config.ASSET_ORIGIN}`,
-    "media-src 'self' blob:",
+    `media-src 'self' blob: ${config.ASSET_ORIGIN}`,
     "object-src 'none'",
     "script-src 'self'",
     "style-src 'self'",

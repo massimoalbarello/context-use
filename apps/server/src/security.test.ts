@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { DashboardPrincipal } from "./auth.ts";
+import { config } from "./config.ts";
 import {
   SecurityError,
   assertDashboardRequestSecurity,
   assertDashboardUploadSecurity,
   csrfToken,
   requestMatchesOrigin,
+  securityHeaders,
 } from "./security.ts";
 
 const principal: DashboardPrincipal = { userId: "owner", sessionId: "session", email: "owner@example.com" };
@@ -19,6 +21,10 @@ function mutation(headers: Record<string, string>) {
 }
 
 describe("dashboard mutation boundary", () => {
+  test("allows published media from the dedicated asset origin", () => {
+    expect(securityHeaders["content-security-policy"]).toContain(`media-src 'self' blob: ${config.ASSET_ORIGIN}`);
+  });
+
   test("matches the configured host through the trusted TLS reverse proxy", () => {
     expect(requestMatchesOrigin(
       new Request("http://context.example/api/dashboard/pages", { headers: { "x-forwarded-proto": "https" } }),
