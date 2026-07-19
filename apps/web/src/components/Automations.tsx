@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { api } from "../api.ts";
+import { automationRunDisplayStatus } from "../automation-run-status.ts";
 import type { AutomationRun, CronSchedule } from "../types.ts";
 
 const WORKER_PROMPT = `Check Context Use for scheduled work. Call claim_due_run. If it returns a run, follow its instructions using the supplied input. Continue until claim_due_run returns null.`;
@@ -67,6 +68,11 @@ export function Automations() {
 
   const activeRuns = useMemo(() => runs.filter((run) => run.status === "ready" || run.status === "claimed"), [runs]);
   const recentRuns = useMemo(() => runs.filter((run) => run.status === "succeeded" || run.status === "failed"), [runs]);
+  const availableRunCount = useMemo(
+    () => activeRuns.filter((run) => automationRunDisplayStatus(run) !== "claimed").length,
+    [activeRuns],
+  );
+  const claimedRunCount = activeRuns.length - availableRunCount;
 
   const createSchedule = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -175,15 +181,18 @@ export function Automations() {
     </section>
 
     <div className="automation-stats">
-      <article><strong>{runs.filter((run) => run.status === "ready").length}</strong><span>Ready</span></article>
-      <article><strong>{runs.filter((run) => run.status === "claimed").length}</strong><span>Claimed</span></article>
+      <article><strong>{availableRunCount}</strong><span>Available</span></article>
+      <article><strong>{claimedRunCount}</strong><span>Claimed</span></article>
       <article><strong>{runs.filter((run) => run.status === "succeeded").length}</strong><span>Succeeded</span></article>
       <article><strong>{runs.filter((run) => run.status === "failed").length}</strong><span>Failed</span></article>
     </div>
 
     <section>
-      <div className="section-heading"><div><h2>Ready and claimed runs</h2><p>Due automations appear here until an agent reports their outcome.</p></div></div>
-      {loading ? <p>Loading runs…</p> : activeRuns.length === 0 ? <p className="empty-note">Nothing is waiting for an agent.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Instructions</th><th>Scheduled</th><th>Agent</th></tr></thead><tbody>{activeRuns.map((run) => <tr key={run.id}><td><span className={`run-status ${run.status}`}>{run.status}</span></td><td>{run.schedule_name}</td><td>v{run.automation_version_number}</td><td>{formatDate(run.scheduled_for)}</td><td>{run.claimed_by ?? "—"}</td></tr>)}</tbody></table></div>}
+      <div className="section-heading"><div><h2>Available and claimed runs</h2><p>Expired claims remain available for the next polling agent.</p></div></div>
+      {loading ? <p>Loading runs…</p> : activeRuns.length === 0 ? <p className="empty-note">Nothing is waiting for an agent.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Instructions</th><th>Scheduled</th><th>Lease expires</th><th>Agent</th></tr></thead><tbody>{activeRuns.map((run) => {
+        const displayStatus = automationRunDisplayStatus(run);
+        return <tr key={run.id}><td><span className={`run-status ${displayStatus}`}>{displayStatus === "expired" ? "claim expired" : displayStatus}</span>{displayStatus === "expired" && <small>Available for reclaim</small>}</td><td>{run.schedule_name}</td><td>v{run.automation_version_number}</td><td>{formatDate(run.scheduled_for)}</td><td>{formatDate(run.lease_expires_at)}</td><td>{run.claimed_by ?? "—"}</td></tr>;
+      })}</tbody></table></div>}
     </section>
 
     <section>

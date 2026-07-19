@@ -307,6 +307,7 @@
 
 .run-status.ready { background: #fff0d8; color: #795414; }
 .run-status.claimed { background: var(--blue-soft); color: #46528f; }
+.run-status.expired { background: #fde8d7; color: #93491f; }
 .run-status.succeeded { background: var(--green-soft); color: var(--green); }
 .run-status.failed { background: #f6dfdb; color: #92392f; }
 .run-status.disabled { background: #eae7e0; color: #716c64; }

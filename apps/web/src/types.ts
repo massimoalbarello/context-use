@@ -122,6 +122,7 @@ export type AutomationRun = {
   claimed_by: string | null;
   claimed_at: string | null;
   lease_expires_at: string | null;
+  claim_expired: boolean;
   completed_at: string | null;
   result_summary: string | null;
   error_message: string | null;

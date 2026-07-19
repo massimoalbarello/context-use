@@ -103,6 +103,12 @@ describeDatabase("persisted automation lifecycle", () => {
     expect(claimed.instructions_markdown).toContain("`claim_due_run`");
     expect(claimed.instructions_markdown).toContain("[[me/intro]]");
     expect(claimed).not.toHaveProperty("skill_markdown");
+    const lease = await pool.query<{ lease_seconds: number }>(
+      `SELECT extract(epoch FROM (lease_expires_at-claimed_at))::integer AS lease_seconds
+       FROM automation_runs WHERE id=$1`,
+      [claimed.run_id],
+    );
+    expect(lease.rows[0]?.lease_seconds).toBe(3600);
     expect(await automations.claimDueRun("agent-two")).toBeNull();
 
     const generated = await pages.createForAutomation({
@@ -195,7 +201,15 @@ describeDatabase("persisted automation lifecycle", () => {
     const secondClaim = await automations.claimDueRun("agent-two");
     expect(secondClaim).toMatchObject({ automation_version_number: 2, attempt_count: 1 });
     expect(secondClaim.instructions_markdown).toStartWith("Read the project page, review it, and persist decisions.");
-    expect(await automations.failRun(secondClaim.run_id, secondClaim.claim_token, "agent-two", "Required tool unavailable"))
+    await pool.query("UPDATE automation_runs SET lease_expires_at=now()-interval '1 second' WHERE id=$1", [secondClaim.run_id]);
+    expect((await automations.listRuns()).find((run) => run.id === secondClaim.run_id))
+      .toMatchObject({ status: "claimed", claim_expired: true });
+    const reclaimed = await automations.claimDueRun("agent-three");
+    expect(reclaimed).toMatchObject({ run_id: secondClaim.run_id, attempt_count: 2 });
+    expect(reclaimed.claim_token).not.toBe(secondClaim.claim_token);
+    await expect(automations.failRun(secondClaim.run_id, secondClaim.claim_token, "agent-two", "Stale claimant"))
+      .rejects.toBeInstanceOf(AutomationClaimError);
+    expect(await automations.failRun(reclaimed.run_id, reclaimed.claim_token, "agent-three", "Required tool unavailable"))
       .toMatchObject({ status: "failed", error_message: "Required tool unavailable" });
     expect((await automations.listRuns()).find((run) => run.id === secondClaim.run_id))
       .toMatchObject({ status: "failed", error_message: "Required tool unavailable" });
@@ -256,7 +270,7 @@ describeMcpDatabase("MCP automation authoring role", () => {
     await adminPool.end();
   });
 
-  test("creates a skill and cron schedule without definition update privileges", async () => {
+  test("creates and claims an automation without definition update privileges", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     const skill = await automations.createSkill({
       name: `mcp-review-${suffix}`,
@@ -300,5 +314,19 @@ describeMcpDatabase("MCP automation authoring role", () => {
       enabled: true,
       expected_version_number: 1,
     }, { kind: "mcp", subject: "integration-test-client" })).rejects.toThrow();
+
+    await adminPool.query("UPDATE cron_schedules SET next_run_at=now()-interval '1 minute' WHERE id=$1", [schedule.id]);
+    const claimed = await automations.claimDueRun("integration-test-client");
+    expect(claimed).toMatchObject({
+      schedule_id: schedule.id,
+      automation_version_number: 1,
+      instructions_markdown: expect.stringContaining("Review the current project and record decisions."),
+    });
+    expect(await automations.completeRun(
+      claimed.run_id,
+      claimed.claim_token,
+      "integration-test-client",
+      "Restricted role claimed and completed the run",
+    )).toMatchObject({ status: "succeeded" });
   });
 });
