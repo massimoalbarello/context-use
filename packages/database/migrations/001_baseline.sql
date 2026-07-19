@@ -916,7 +916,7 @@ WHERE page.published_version_id IS NOT NULL
 -- Resolve references inside the database boundary. Published targets become
 -- public paths; private targets become inert labels. Neither anonymous role
 -- nor the public renderer ever receives a UUID or private knowledge path.
-CREATE FUNCTION project_public_markdown(p_body text,p_source_path text)
+CREATE FUNCTION project_public_markdown(p_public_path text)
 RETURNS text
 LANGUAGE plpgsql
 STABLE
@@ -924,12 +924,23 @@ SECURITY DEFINER
 SET search_path=pg_catalog,public
 AS $$
 DECLARE
+  p_body text;
+  p_source_path text;
   projected text;
   matched text[];
   target_path text;
   label text;
   source_directory text;
 BEGIN
+  -- The executor can name only a page that is already public. Loading the raw
+  -- body and private source path internally prevents the public EXECUTE grant
+  -- required by the views from becoming an arbitrary private-path oracle.
+  SELECT page.body_markdown,page.path
+  INTO p_body,p_source_path
+  FROM published_page_sources page
+  WHERE page.public_path=p_public_path;
+  IF NOT FOUND THEN RETURN ''; END IF;
+
   projected := regexp_replace(
     regexp_replace(coalesce(p_body,''),'<!--.*?-->','','gis'),
     '<!--.*$','','gis'
@@ -1064,7 +1075,7 @@ AS
 SELECT
   page.public_path,
   page.title,
-  project_public_markdown(page.body_markdown,page.path) AS body_markdown
+  project_public_markdown(page.public_path) AS body_markdown
 FROM published_page_sources page;
 
 -- Public HTTP metadata contains only values observable while downloading an
@@ -1116,13 +1127,13 @@ LEFT JOIN LATERAL (
 
 GRANT CREATE ON SCHEMA public TO context_use_projection_owner;
 ALTER VIEW published_page_sources OWNER TO context_use_projection_owner;
-ALTER FUNCTION project_public_markdown(text,text) OWNER TO context_use_projection_owner;
+ALTER FUNCTION project_public_markdown(text) OWNER TO context_use_projection_owner;
 ALTER VIEW published_pages OWNER TO context_use_projection_owner;
 ALTER VIEW published_assets OWNER TO context_use_projection_owner;
 ALTER VIEW storage_published_assets OWNER TO context_use_projection_owner;
 ALTER VIEW public_mcp_pages OWNER TO context_use_projection_owner;
 REVOKE CREATE ON SCHEMA public FROM context_use_projection_owner;
-REVOKE ALL ON FUNCTION project_public_markdown(text,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION project_public_markdown(text) FROM PUBLIC;
 
 -- These procedures are the only application-accessible private-to-public and
 -- passkey-confirmed export transitions. Their owner is deliberately not the
@@ -1623,7 +1634,7 @@ GRANT UPDATE (
 ) ON automation_runs TO context_use_mcp;
 
 GRANT SELECT ON published_pages,published_assets TO context_use_public;
-GRANT EXECUTE ON FUNCTION project_public_markdown(text,text)
+GRANT EXECUTE ON FUNCTION project_public_markdown(text)
   TO context_use_public;
 
 -- The storage broker already controls every asset byte. This metadata-only
@@ -1635,7 +1646,7 @@ GRANT SELECT (
 GRANT SELECT ON storage_published_assets TO context_use_storage;
 
 GRANT SELECT ON public_mcp_pages TO context_use_public_mcp;
-GRANT EXECUTE ON FUNCTION project_public_markdown(text,text)
+GRANT EXECUTE ON FUNCTION project_public_markdown(text)
   TO context_use_public_mcp;
 GRANT INSERT (id,reply_to,message) ON inbound_messages TO context_use_public_mcp;
 

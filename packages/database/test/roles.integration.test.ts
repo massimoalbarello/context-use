@@ -235,13 +235,13 @@ describeDatabase("PostgreSQL security roles", () => {
 
     for (const role of ["context_use_public", "context_use_public_mcp"]) {
       expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_function_privilege($1,'project_public_markdown(text,text)','EXECUTE') AS allowed",
+        "SELECT has_function_privilege($1,'project_public_markdown(text)','EXECUTE') AS allowed",
         [role],
       )).rows[0]?.allowed).toBe(true);
     }
     for (const role of ["context_use_auth", "context_use_dashboard", "context_use_mcp", "context_use_confirmation", "context_use_storage", "context_use_backup"]) {
       expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_function_privilege($1,'project_public_markdown(text,text)','EXECUTE') AS allowed",
+        "SELECT has_function_privilege($1,'project_public_markdown(text)','EXECUTE') AS allowed",
         [role],
       )).rows[0]?.allowed).toBe(false);
     }
@@ -1011,6 +1011,12 @@ describeDatabase("PostgreSQL security roles", () => {
       }>(
         "SELECT public_path,title,body_markdown FROM published_pages WHERE public_path='profile/work/project'",
       );
+      const directProjection = await admin.query<{ body_markdown: string }>(
+        "SELECT project_public_markdown('profile/work/project') AS body_markdown",
+      );
+      const unavailableProjection = await admin.query<{ body_markdown: string }>(
+        "SELECT project_public_markdown('profile/work') AS body_markdown",
+      );
       await admin.query("RESET ROLE");
       expect(Object.keys(webpage.rows[0]!).sort()).toEqual(["body_markdown", "public_path", "title"]);
       expect(webpage.rows[0]?.body_markdown).toContain("[Public parent](/p/profile)");
@@ -1018,6 +1024,8 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(webpage.rows[0]?.body_markdown).not.toContain(privatePageId);
       expect(webpage.rows[0]?.body_markdown).not.toContain(privateAssetId);
       expect(webpage.rows[0]?.body_markdown).not.toContain(publishedAssetId);
+      expect(directProjection.rows[0]?.body_markdown).toBe(webpage.rows[0]?.body_markdown);
+      expect(unavailableProjection.rows[0]?.body_markdown).toBe("");
 
       await admin.query("SET LOCAL ROLE context_use_public_mcp");
       const repository = new PublicMcpRepository(admin as unknown as Pool);
