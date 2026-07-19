@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.ts";
+import { confirmPublicationChange } from "../publication-auth.ts";
 import { isPublishedPageOutdated } from "../publication-status.ts";
 import type { Page, Version } from "../types.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
@@ -18,6 +19,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   const [archiveCommit, setArchiveCommit] = useState("");
   const [archiveWorking, setArchiveWorking] = useState(false);
   const [archiveError, setArchiveError] = useState("");
+  const [unpublishWorking, setUnpublishWorking] = useState(false);
 
   const load = async (preserveDraft = false) => {
     const [next, versions] = await Promise.all([
@@ -39,6 +41,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     setArchiveOpen(false);
     setArchiveCommit("");
     setArchiveError("");
+    setUnpublishWorking(false);
     setTab("preview");
     setIsEditing(false);
     load().catch((error: Error) => setMessage(error.message));
@@ -108,6 +111,24 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     setMessage(action === "unpublish" ? "The page is now private." : `v${published} is now published.`);
   };
 
+  const unpublish = async () => {
+    setUnpublishWorking(true);
+    setMessage("");
+    try {
+      await confirmPublicationChange({
+        action: "unpublish",
+        targetKind: "page",
+        targetId: page.id,
+        versionId: null,
+      });
+      await publicationChanged("unpublish");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unpublishing failed");
+    } finally {
+      setUnpublishWorking(false);
+    }
+  };
+
   return <main className="editor">
     <header className="editor-header">
       <div><span className="path">{page.current_path}</span><h1>{page.title}</h1></div>
@@ -116,9 +137,8 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         {page.published_version_id && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public ↗</a>}
         {!automationOwned && !page.archived_at && !page.published_version_id && <button onClick={() => { setArchiveCommit(""); setArchiveError(""); setArchiveOpen(true); }}>Archive</button>}
         {!automationOwned && !page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
-        {!automationOwned && !page.archived_at && page.published_version_id && hasUnpublishedChanges && publishedVersionNumber && <button onClick={() => setPublishingVersion(publishedVersionNumber)}>Manage public v{publishedVersionNumber}</button>}
+        {!automationOwned && !page.archived_at && page.published_version_id && !page.required_public_path && <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>}
         {!automationOwned && !page.archived_at && page.published_version_id && hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish latest</button>}
-        {!automationOwned && !page.archived_at && page.published_version_id && !hasUnpublishedChanges && <button onClick={() => setPublishingVersion(page.version_number)}>Manage publication</button>}
       </div>
     </header>
     {hasUnpublishedChanges && <div className="publication-notice pending publication-alert" role="status">
@@ -126,7 +146,6 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         <strong>Published page is not up to date</strong>
         <span>v{publishedVersionNumber ?? "?"} is public, while v{page.version_number} is the latest version available.</span>
       </div>
-      {!automationOwned && !page.archived_at && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Review and publish latest</button>}
     </div>}
     {!isEditing && <nav className="tabs">
       <div>{(["preview", "history"] as const).map((item) => <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
@@ -164,7 +183,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
           {!automationOwned && !page.archived_at && <div className="version-actions">
             {isPublished && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public</a>}
             {isPublished
-              ? <button onClick={() => setPublishingVersion(version.version_number)}>Manage</button>
+              ? !page.required_public_path && <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>
               : <button className={isLatest ? "primary" : ""} onClick={() => setPublishingVersion(version.version_number)}>Publish this version</button>}
           </div>}
         </article>;

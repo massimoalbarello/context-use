@@ -199,11 +199,11 @@ export function App() {
         <button className={section === "automations" ? "active" : ""} onClick={openAutomations}><SectionIcon section="automations" /><span>Automations</span></button>
       </nav>
       <label className="sidebar-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5" /><path d="m12.25 12.25 4 4" /></svg><input ref={searchRef} className="search" aria-label="Search knowledge" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘K</kbd></label>
-      <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
       <KnowledgeTree pages={pages} assets={visibleAssets} query={query} selected={section === "knowledge" ? selected : null} onSelect={selectKnowledge} />
       <footer>
         <button className={section === "settings" ? "settings-button active" : "settings-button"} onClick={openSettings}><SectionIcon section="settings" /><span>Settings</span></button>
         <div className="sidebar-account"><span className="user-avatar">{session.owner.email.slice(0, 1).toUpperCase()}</span><span className="sidebar-user"><strong>{session.owner.email}</strong><small>{session.passkey_count} secure passkey{session.passkey_count === 1 ? "" : "s"}</small></span><button className="sign-out-button" aria-label="Sign out" title="Sign out" onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}>↗</button></div>
+        <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
       </footer>
     </aside>
     <div
