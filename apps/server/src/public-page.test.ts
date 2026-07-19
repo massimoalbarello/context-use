@@ -42,6 +42,8 @@ describe("public page presentation", () => {
   test("styles the footnote, billboard, and long MCP URLs", () => {
     expect(publicPageStyles).toContain(".context-use-footnote{");
     expect(publicPageStyles).toContain(".public-landing{");
+    expect(publicPageStyles).toContain("img,video{max-width:100%");
+    expect(publicPageStyles).toContain("video,audio{width:100%}");
     expect(publicPageStyles).toContain("overflow-wrap:anywhere");
   });
 });

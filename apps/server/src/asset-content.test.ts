@@ -70,6 +70,18 @@ describe("API-proxied asset content", () => {
     expect(reads).toEqual([{ objectKey: "objects/private-object", range: { start: 2, end: 5 } }]);
   });
 
+  test("serves PDFs inline so browser navigation previews instead of downloading", async () => {
+    const response = await assetContentResponse(
+      new Request("https://context.example/api/dashboard/assets/id/content"),
+      { ...asset, filename: "notes.pdf", content_type: "application/pdf" },
+      storageFixture().storage,
+      true,
+    );
+
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(response.headers.get("content-disposition")).toBe('inline; filename="notes.pdf"');
+  });
+
   test("forces active formats to download and reports missing bytes without a storage redirect", async () => {
     const activeAsset = { ...asset, filename: "unsafe.svg", content_type: "image/svg+xml" };
     const response = await assetContentResponse(

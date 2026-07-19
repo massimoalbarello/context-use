@@ -801,9 +801,18 @@ button:disabled {
 }
 
 .rendered img,
-.publication-preview img {
+.rendered video,
+.publication-preview img,
+.publication-preview video {
   max-width: 100%;
   border-radius: 8px;
+}
+
+.rendered video,
+.publication-preview video,
+.rendered audio,
+.publication-preview audio {
+  width: 100%;
 }
 
 .rendered code,

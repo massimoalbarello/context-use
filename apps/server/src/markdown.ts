@@ -9,14 +9,42 @@ import sanitizeHtml from "sanitize-html";
 import { config } from "./config.ts";
 
 export type LinkResolution = { available: true; href: string } | { available: false };
+export type AssetResolution = { available: true; href: string; contentType: string } | { available: false };
 export type MarkdownResolvers = {
   page: (id: string) => Promise<LinkResolution>;
   pagePath: (path: string) => Promise<LinkResolution>;
-  asset: (id: string) => Promise<LinkResolution>;
+  asset: (id: string) => Promise<AssetResolution>;
 };
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+type AssetRenderKind = "image" | "video" | "link";
+
+function assetRenderKind(contentType: string): AssetRenderKind {
+  const normalized = contentType.split(";", 1)[0]!.trim().toLowerCase();
+  if (/^image\/(?:png|jpeg|gif|webp|avif)$/.test(normalized)) return "image";
+  if (/^video\/(?:mp4|webm|quicktime)$/.test(normalized)) return "video";
+  return "link";
+}
+
+function isAllowedAssetSource(src: string): boolean {
+  if (!src) return false;
+  try {
+    const url = new URL(src, config.APP_ORIGIN);
+    const appOrigin = new URL(config.APP_ORIGIN).origin;
+    const assetOrigin = new URL(config.ASSET_ORIGIN).origin;
+    if (/^\/api\/dashboard\/assets\/[0-9a-f-]{36}\/content$/i.test(url.pathname)) {
+      return url.origin === appOrigin;
+    }
+    if (/^\/api\/public\/assets\/[0-9a-f-]{36}\/content$/i.test(url.pathname)) {
+      return url.origin === assetOrigin;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export async function renderMarkdown(markdown: string, resolvers: MarkdownResolvers): Promise<string> {
@@ -25,7 +53,7 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
   const normalizedMarkdown = normalizeInternalPageLinks(markdown);
   const pages = new Map<string, LinkResolution>();
   const wikiPages = new Map<string, LinkResolution>();
-  const assets = new Map<string, LinkResolution>();
+  const assets = new Map<string, AssetResolution>();
   await Promise.all(extractPageLinks(normalizedMarkdown).map(async (id) => pages.set(id, await resolvers.page(id))));
   await Promise.all(extractWikiLinks(normalizedMarkdown).map(async ({ path }) => wikiPages.set(path, await resolvers.pagePath(path))));
   await Promise.all(extractAssetLinks(normalizedMarkdown).map(async (id) => assets.set(id, await resolvers.asset(id))));
@@ -43,9 +71,15 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
     /!\[([^\]]*)\]\(context-use:\/\/asset\/([0-9a-f-]{36})\)/gi,
     (_match, label: string, id: string) => {
       const target = assets.get(id.toLowerCase());
-      return target?.available
-        ? `![${label}](${target.href})`
-        : `<span class="private-reference">Private asset unavailable</span>`;
+      if (!target?.available) return `<span class="private-reference">Private asset unavailable</span>`;
+      const kind = assetRenderKind(target.contentType);
+      if (kind === "image") return `![${label}](${target.href})`;
+      if (kind === "video") {
+        const accessibleLabel = label.trim() || "Embedded video";
+        return `<video src="${escapeHtml(target.href)}" controls preload="metadata" aria-label="${escapeHtml(accessibleLabel)}">${escapeHtml(accessibleLabel)}</video>`;
+      }
+      const linkLabel = label.trim() || (target.contentType.toLowerCase() === "application/pdf" ? "Open PDF" : "Open asset");
+      return `<a href="${escapeHtml(target.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkLabel)}</a>`;
     },
   );
   source = source.replace(
@@ -65,13 +99,16 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
     allowedTags: [
       "p", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote",
       "ul", "ol", "li", "strong", "em", "del", "code", "pre", "a", "span",
-      "table", "thead", "tbody", "tr", "th", "td", "img",
+      "table", "thead", "tbody", "tr", "th", "td", "img", "video", "audio", "source",
     ],
     allowedAttributes: {
       a: ["href", "rel", "target"],
       span: ["class"],
       code: ["class"],
       img: ["src", "alt", "title", "loading"],
+      video: ["src", "controls", "preload", "aria-label", "playsinline"],
+      audio: ["src", "controls", "preload", "aria-label"],
+      source: ["src", "type"],
       th: ["align"],
       td: ["align"],
     },
@@ -91,11 +128,20 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
         tagName: "img",
         attribs: { ...attributes, loading: "lazy" },
       }),
+      video: (_tag, attributes) => ({
+        tagName: "video",
+        attribs: { ...attributes, controls: "", preload: "metadata" },
+      }),
+      audio: (_tag, attributes) => ({
+        tagName: "audio",
+        attribs: { ...attributes, controls: "", preload: "metadata" },
+      }),
     },
     exclusiveFilter: (frame) => {
-      if (frame.tag !== "img") return false;
+      if (!(["img", "video", "audio", "source"] as string[]).includes(frame.tag)) return false;
       const src = frame.attribs.src ?? "";
-      return !(src.startsWith(config.ASSET_ORIGIN) || src.startsWith("/api/dashboard/assets/"));
+      if (!src && (frame.tag === "video" || frame.tag === "audio")) return false;
+      return !isAllowedAssetSource(src);
     },
   });
 }

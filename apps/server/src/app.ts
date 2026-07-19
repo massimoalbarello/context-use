@@ -145,7 +145,9 @@ function privatePageResolvers(sourcePath: string) {
     },
     asset: async (id: string) => {
       const asset = await dashboardAssets.get(id);
-      return asset ? { available: true as const, href: `/api/dashboard/assets/${id}/content` } : { available: false as const };
+      return asset
+        ? { available: true as const, href: `/api/dashboard/assets/${id}/content`, contentType: asset.content_type }
+        : { available: false as const };
     },
   };
 }
@@ -169,7 +171,11 @@ function publicPageResolvers(sourcePath: string) {
     asset: async (id: string) => {
       const asset = await publicData.asset(id);
       return asset
-        ? { available: true as const, href: `${config.ASSET_ORIGIN}/api/public/assets/${id}/content` }
+        ? {
+            available: true as const,
+            href: `${config.ASSET_ORIGIN}/api/public/assets/${id}/content`,
+            contentType: asset.content_type,
+          }
         : { available: false as const };
     },
   };
