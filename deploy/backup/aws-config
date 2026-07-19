@@ -1,0 +1,2 @@
+[profile context-use-backup]
+credential_process = /bin/cat /run/context-use-aws-backup/credentials.json

@@ -17,26 +17,22 @@ export function hashPublicationPayload(input: PublicationIntentInput, publicPath
 }
 
 export class PublicationRepository {
-  constructor(
-    private readonly dashboardPool: Pool,
-    private readonly publisherPool: Pool,
-  ) {}
+  constructor(private readonly dashboardPool: Pool) {}
 
   async createIntent(
     input: PublicationIntentInput,
     principal: { ownerUserId: string; sessionId: string },
-    challenge: string,
     publicPath: string | null,
   ) {
     const id = randomUUID();
     const result = await this.dashboardPool.query(
       `INSERT INTO publication_intents(
         id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-        session_id,challenge,payload_hash,expires_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now()+interval '5 minutes')
-      RETURNING id,action,target_kind,target_id,version_id,public_path,challenge,expires_at`,
+        session_id,payload_hash,expires_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now()+interval '5 minutes')
+      RETURNING id,action,target_kind,target_id,version_id,public_path,expires_at`,
       [id, input.action, input.target_kind, input.target_id, input.version_id ?? null,
-        publicPath, principal.ownerUserId, principal.sessionId, challenge,
+        publicPath, principal.ownerUserId, principal.sessionId,
         hashPublicationPayload(input, publicPath)],
     );
     return result.rows[0];
@@ -50,13 +46,6 @@ export class PublicationRepository {
       [id],
     );
     return result.rows[0] ?? null;
-  }
-
-  async confirm(intentId: string, ownerUserId: string, sessionId: string, credentialId: string) {
-    await this.publisherPool.query(
-      "SELECT confirm_publication_intent($1,$2,$3,$4)",
-      [intentId, ownerUserId, sessionId, credentialId],
-    );
   }
 }
 
@@ -88,6 +77,14 @@ export class PublicRepository {
 
   async assetByPublicPath(path: string) {
     const result = await this.pool.query("SELECT * FROM published_assets WHERE public_path=$1", [path]);
+    return result.rows[0] ?? null;
+  }
+
+  async assetByObjectKey(objectKey: string) {
+    const result = await this.pool.query(
+      "SELECT * FROM published_assets WHERE s3_object_key=$1",
+      [objectKey],
+    );
     return result.rows[0] ?? null;
   }
 }

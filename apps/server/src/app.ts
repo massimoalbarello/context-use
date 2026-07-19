@@ -1,20 +1,11 @@
 import { resolve } from "node:path";
 import {
-  oauthProviderAuthServerMetadata,
-  oauthProviderOpenIdConfigMetadata,
-} from "@better-auth/oauth-provider";
-import {
   AssetRepository,
   AutomationRepository,
-  AutomationValidationError,
-  AutomationVersionConflictError,
   InboxRepository,
   KnowledgeExportRepository,
   PageRepository,
   PublicationRepository,
-  PublicRepository,
-  PublicationStateError,
-  VersionConflictError,
   createPool,
   extractAssetLinks,
   extractPageLinks,
@@ -27,116 +18,47 @@ import {
   createSkillSchema,
   createCronScheduleSchema,
   createPageSchema,
-  MCP_SCOPES,
-  PagePath,
   publicationIntentSchema,
   updateSkillSchema,
   updateCronScheduleSchema,
   updatePageSchema,
 } from "@context-use/shared";
-import { generateAuthenticationOptions, verifyAuthenticationResponse } from "@simplewebauthn/server";
-import type { AuthenticationResponseJSON, AuthenticatorTransportFuture } from "@simplewebauthn/server";
 import { Elysia } from "elysia";
 import { z } from "zod";
-import { auth, authPool, dashboardPrincipal } from "./auth.ts";
+import { authorizeDashboardRequest } from "./auth-client.ts";
 import { decodeCompletedRunCursor, encodeCompletedRunCursor } from "./automation-run-pagination.ts";
 import { assetContentResponse } from "./asset-content.ts";
 import { config, production } from "./config.ts";
+import { claimConfirmedExport, issueConfirmationOptions } from "./confirmation-client.ts";
+import { bodyJson, json, problem, routeError } from "./http.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
-import { createMcpRequestHandler, isMcpGrantActive } from "./mcp.ts";
-import { createMcpAssetDownloadHandler } from "./mcp-asset-download.ts";
-import { createMcpAssetUploadHandler } from "./mcp-asset-upload.ts";
-import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
-import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
-import { createPublicAssetContentHandler } from "./public-asset-content.ts";
-import {
-  IMAGE_LAYOUT_STYLES,
-  publicPageStyles,
-  renderPublicLandingDocument,
-  renderPublicPageDocument,
-} from "./public-page.ts";
 import {
   SecurityError,
-  assertDashboardDownloadSecurity,
-  assertDashboardRequestSecurity,
-  assertDashboardUploadSecurity,
-  csrfToken,
   requestMatchesOrigin,
   securityHeaders,
 } from "./security.ts";
-import { AssetIntegrityError, storage } from "./storage.ts";
+import { AssetIntegrityError } from "./storage.ts";
+import { BrokeredStorage } from "./storage-client.ts";
 import { MAX_KNOWLEDGE_EXPORT_BYTES, streamKnowledgeExport } from "./knowledge-export.ts";
-import { requireAuthenticationUserVerification } from "./webauthn-policy.ts";
 
 const dashboardPool = createPool(config.DATABASE_URL);
-const mcpPool = createPool(config.MCP_DATABASE_URL);
-const publicPool = createPool(config.PUBLIC_DATABASE_URL);
-const publisherPool = createPool(config.PUBLISHER_DATABASE_URL);
+const storage = new BrokeredStorage({
+  socketPath: config.STORAGE_SOCKET_PATH,
+  token: config.STORAGE_DASHBOARD_TOKEN,
+});
 
 const dashboardPages = new PageRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
 const dashboardAutomations = new AutomationRepository(dashboardPool);
 const dashboardInbox = new InboxRepository(dashboardPool);
-const mcpPages = new PageRepository(mcpPool);
-const mcpAssets = new AssetRepository(mcpPool);
-const mcpAutomations = new AutomationRepository(mcpPool);
-const publicData = new PublicRepository(publicPool);
-const publications = new PublicationRepository(dashboardPool, publisherPool);
-const knowledgeExports = new KnowledgeExportRepository(dashboardPool, publisherPool);
-const mcp = createMcpRequestHandler(mcpPages, mcpAssets, mcpAutomations);
-const mcpAssetUpload = createMcpAssetUploadHandler(mcpAssets, storage, isMcpGrantActive);
-const mcpAssetDownload = createMcpAssetDownloadHandler(mcpAssets, storage, isMcpGrantActive);
-const publicAssetContent = createPublicAssetContentHandler(publicData, storage, config.ASSET_ORIGIN);
-
-const authServerMetadata = oauthProviderAuthServerMetadata(auth as never);
-const openIdMetadata = oauthProviderOpenIdConfigMetadata(auth as never);
-
-function json(value: unknown, status = 200, headers: HeadersInit = {}): Response {
-  return Response.json(value, {
-    status,
-    headers: { ...securityHeaders, ...headers },
-  });
-}
-
-function problem(message: string, status = 400, code = "bad_request"): Response {
-  return json({ error: code, message }, status);
-}
-
-async function bodyJson(request: Request): Promise<unknown> {
-  const length = Number(request.headers.get("content-length") ?? "0");
-  if (length > 2_100_000) throw new SecurityError("Request body too large", 413);
-  return request.json();
-}
+const publications = new PublicationRepository(dashboardPool);
+const knowledgeExports = new KnowledgeExportRepository(dashboardPool);
 
 async function ownerRequest(request: Request, mutation = false) {
   if (!requestMatchesOrigin(request, config.APP_ORIGIN)) throw new SecurityError("Not found", 404);
-  const principal = await dashboardPrincipal(request);
+  const principal = await authorizeDashboardRequest(request, mutation ? "json" : "read");
   if (!principal) throw new SecurityError("Dashboard session required", 401);
-  if (mutation) assertDashboardRequestSecurity(request, principal);
   return principal;
-}
-
-function routeError(error: unknown): Response {
-  if (error instanceof SecurityError) return problem(error.message, error.status, "security_error");
-  if (error instanceof VersionConflictError) {
-    return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
-  }
-  if (error instanceof PublicationStateError) return problem(error.message, 409, "publication_state");
-  if (error instanceof AutomationValidationError) return problem(error.message, 422, "automation_validation");
-  if (error instanceof AutomationVersionConflictError) {
-    return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
-  }
-  if (error instanceof z.ZodError) return json({ error: "validation_error", issues: error.issues }, 422);
-  if (error instanceof Error && "code" in error) {
-    const code = String((error as Error & { code: unknown }).code);
-    if (code === "23505") return problem("A unique value is already in use", 409, "conflict");
-    if (code === "42501") return problem("Operation denied by the database security policy", 403, "forbidden");
-    if (code === "23514") return problem("Write violates a knowledge ownership boundary", 422, "ownership_boundary");
-    if (code === "P0002") return problem("Requested action not found", 404, "not_found");
-    if (code === "22023") return problem("Requested action is expired or invalid", 409, "intent_inactive");
-  }
-  console.error("request_failed", error instanceof Error ? { name: error.name, message: error.message } : { type: typeof error });
-  return problem("Internal server error", 500, "internal_error");
 }
 
 function privatePageResolvers(sourcePath: string) {
@@ -161,25 +83,29 @@ function privatePageResolvers(sourcePath: string) {
   };
 }
 
-// This resolver intentionally has no dashboard repository fallback. Public
-// rendering can observe only the security-barrier views available to the
-// context_use_public database role.
-function publicPageResolvers(sourcePath: string) {
+// Publication previews are owner-authenticated. They resolve links using the
+// dashboard pool but expose a public URL only when the target is already
+// independently published.
+function publishedPreviewResolvers(sourcePath: string) {
   return {
     page: async (id: string) => {
-      const page = await publicData.pageById(id);
-      return page ? { available: true as const, href: `/p/${page.public_path}` } : { available: false as const };
+      const page = await dashboardPages.get(id);
+      return page?.published_version_id && page.public_path
+        ? { available: true as const, href: `/p/${page.public_path}` }
+        : { available: false as const };
     },
     pagePath: async (path: string) => {
       for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
-        const page = await publicData.pageByPath(candidate);
-        if (page) return { available: true as const, href: `/p/${page.public_path}` };
+        const page = await dashboardPages.getByPath(candidate);
+        if (page?.published_version_id && page.public_path) {
+          return { available: true as const, href: `/p/${page.public_path}` };
+        }
       }
       return { available: false as const };
     },
     asset: async (id: string) => {
-      const asset = await publicData.assetById(id);
-      return asset
+      const asset = await dashboardAssets.get(id, true);
+      return asset?.published_at && asset.public_path
         ? {
             available: true as const,
             href: `${config.ASSET_ORIGIN}/p/${asset.public_path}`,
@@ -188,73 +114,6 @@ function publicPageResolvers(sourcePath: string) {
         : { available: false as const };
     },
   };
-}
-
-async function getOwnerPasskeys(userId: string) {
-  const result = await authPool.query<{
-    id: string;
-    name: string | null;
-    publicKey: string;
-    credentialID: string;
-    counter: number;
-    transports: string | null;
-    createdAt: Date;
-  }>(
-    `SELECT id,name,"publicKey","credentialID",counter,transports,"createdAt" FROM passkey WHERE "userId"=$1 ORDER BY "createdAt"`,
-    [userId],
-  );
-  return result.rows;
-}
-
-async function ownerPasskeyCeremony(userId: string) {
-  const passkeys = await getOwnerPasskeys(userId);
-  if (!passkeys.length) return null;
-  const options = await generateAuthenticationOptions({
-    rpID: config.WEBAUTHN_RP_ID,
-    userVerification: "required",
-    timeout: 300_000,
-    allowCredentials: passkeys.map((key) => ({
-      id: key.credentialID,
-      ...(key.transports
-        ? { transports: key.transports.split(",").filter(Boolean) as AuthenticatorTransportFuture[] }
-        : {}),
-    })),
-  });
-  return { options };
-}
-
-async function verifyOwnerPasskey(
-  userId: string,
-  response: AuthenticationResponseJSON,
-  expectedChallenge: string,
-): Promise<string | null> {
-  const passkey = (await getOwnerPasskeys(userId)).find((key) => key.credentialID === response.id);
-  if (!passkey) return null;
-  try {
-    const verification = await verifyAuthenticationResponse({
-      response,
-      expectedChallenge,
-      expectedOrigin: config.APP_ORIGIN,
-      expectedRPID: config.WEBAUTHN_RP_ID,
-      credential: {
-        id: passkey.credentialID,
-        publicKey: Buffer.from(passkey.publicKey, "base64"),
-        counter: passkey.counter,
-        ...(passkey.transports
-          ? { transports: passkey.transports.split(",").filter(Boolean) as AuthenticatorTransportFuture[] }
-          : {}),
-      },
-      requireUserVerification: true,
-    });
-    if (!verification.verified || !verification.authenticationInfo.userVerified) return null;
-    await authPool.query("UPDATE passkey SET counter=$2 WHERE id=$1 AND counter<=$2", [
-      passkey.id,
-      verification.authenticationInfo.newCounter,
-    ]);
-    return passkey.credentialID;
-  } catch {
-    return null;
-  }
 }
 
 async function unavailableExportAssets(intentId: string): Promise<string[]> {
@@ -275,10 +134,6 @@ async function unavailableExportAssets(intentId: string): Promise<string[]> {
   return missing;
 }
 
-const confirmSchema = z.object({
-  intent_id: z.string().uuid(),
-  response: z.custom<AuthenticationResponseJSON>((value) => Boolean(value && typeof value === "object")),
-}).strict();
 const emptyObjectSchema = z.object({}).strict();
 
 const webRoot = resolve(config.WEB_DIST);
@@ -292,48 +147,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
-  .get("/api/health", () => json({ status: "ok", version: "0.1.21" }))
-  .all("/api/auth/*", async ({ request }) => {
-    const boundary = await authorizePasskeyAuthRequest(request);
-    if (boundary.denied) return boundary.denied;
-    try {
-      const pathname = new URL(request.url).pathname;
-      const response = await requireAuthenticationUserVerification(pathname, await auth.handler(request));
-      return response;
-    } finally {
-      await boundary.release?.();
-    }
-  })
-  .get("/.well-known/oauth-authorization-server", ({ request }) => (
-    withCodexIssuerCompatibility(authServerMetadata(request))
-  ))
-  .get("/.well-known/openid-configuration", ({ request }) => (
-    withCodexIssuerCompatibility(openIdMetadata(request))
-  ))
-  .get("/.well-known/oauth-protected-resource", () => json({
-    resource: config.MCP_RESOURCE,
-    authorization_servers: [config.OAUTH_ISSUER],
-    scopes_supported: [...MCP_SCOPES],
-    bearer_methods_supported: ["header"],
-    resource_name: "context-use personal knowledge base",
-  }))
-  .get("/.well-known/oauth-protected-resource/mcp", () => json({
-    resource: config.MCP_RESOURCE,
-    authorization_servers: [config.OAUTH_ISSUER],
-    scopes_supported: [...MCP_SCOPES],
-    bearer_methods_supported: ["header"],
-  }))
-  .get("/mcp", ({ request }) => mcp(request))
-  .post("/mcp", ({ request }) => mcp(request))
-  .delete("/mcp", ({ request }) => mcp(request))
-  .put(
-    "/api/mcp/assets/:id/content",
-    ({ request, params }) => mcpAssetUpload(request, params.id),
-    // Asset bytes are integrity-checked while streaming to storage. Never let
-    // Elysia's content-type parser buffer or apply its ordinary body limit.
-    { parse: "none" },
-  )
-  .get("/api/mcp/assets/:id/content", ({ request, params }) => mcpAssetDownload(request, params.id))
+  .get("/api/health", () => json({ status: "ok", version: "0.1.21", service: "dashboard" }))
 
   .get("/app", async () => {
     const file = webFile("index.html");
@@ -350,26 +164,11 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     return new Response(file, { headers: { ...securityHeaders, "cache-control": "public, max-age=31536000, immutable" } });
   })
 
-  .get("/api/dashboard/session", async ({ request }) => {
-    const principal = await ownerRequest(request);
-    const passkeys = await getOwnerPasskeys(principal.userId);
-    return json({
-      owner: { id: principal.userId, email: principal.email },
-      passkey_count: passkeys.length,
-      passkeys: passkeys.map((key) => ({ id: key.id, name: key.name, created_at: key.createdAt })),
-    });
-  })
-  .get("/api/dashboard/csrf", async ({ request }) => {
-    const principal = await ownerRequest(request);
-    return json({ csrf_token: csrfToken(principal) });
-  })
   .post("/api/dashboard/knowledge-export-intents", async ({ request }) => {
     const principal = await ownerRequest(request, true);
     emptyObjectSchema.parse(await bodyJson(request));
-    const ceremony = await ownerPasskeyCeremony(principal.userId);
-    if (!ceremony) return problem("Register a passkey before exporting knowledge", 409, "passkey_required");
     const exportPrincipal = { ownerUserId: principal.userId, sessionId: principal.sessionId };
-    const intent = await knowledgeExports.createIntent(exportPrincipal, ceremony.options.challenge);
+    const intent = await knowledgeExports.createIntent(exportPrincipal);
     if (intent.total_bytes > MAX_KNOWLEDGE_EXPORT_BYTES) {
       await knowledgeExports.discard(intent.id, exportPrincipal);
       return problem(
@@ -395,6 +194,13 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
         "asset_incomplete",
       );
     }
+    let authenticationOptions: unknown;
+    try {
+      authenticationOptions = await issueConfirmationOptions("knowledge_export", intent.id);
+    } catch (error) {
+      await knowledgeExports.discard(intent.id, exportPrincipal);
+      throw error;
+    }
     return json({
       intent: { id: intent.id, expires_at: intent.expires_at },
       summary: {
@@ -402,33 +208,13 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
         asset_count: intent.asset_count,
         total_bytes: intent.total_bytes,
       },
-      authentication_options: ceremony.options,
+      authentication_options: authenticationOptions,
     }, 201);
   })
-  .post("/api/dashboard/knowledge-exports/confirm", async ({ request }) => {
-    const principal = await ownerRequest(request, true);
-    const input = confirmSchema.parse(await bodyJson(request));
-    const intent = await knowledgeExports.getIntent(input.intent_id);
-    if (!intent || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
-      return problem("Knowledge export intent not found", 404, "not_found");
-    }
-    if (intent.confirmed_at || intent.download_started_at || new Date(intent.expires_at).getTime() <= Date.now()) {
-      return problem("Knowledge export intent is expired or already used", 409, "intent_inactive");
-    }
-    const credentialId = await verifyOwnerPasskey(principal.userId, input.response, intent.challenge);
-    if (!credentialId) return problem("Passkey verification failed", 403, "passkey_invalid");
-    await knowledgeExports.confirm(
-      intent.id,
-      { ownerUserId: principal.userId, sessionId: principal.sessionId },
-      credentialId,
-    );
-    return json({
-      download_url: `/api/dashboard/knowledge-exports/${encodeURIComponent(intent.id)}/download`,
-    });
-  })
   .get("/api/dashboard/knowledge-exports/:id/download", async ({ request, params }) => {
-    const principal = await ownerRequest(request);
-    assertDashboardDownloadSecurity(request);
+    if (!requestMatchesOrigin(request, config.APP_ORIGIN)) throw new SecurityError("Not found", 404);
+    const principal = await authorizeDashboardRequest(request, "download");
+    if (!principal) throw new SecurityError("Dashboard session required", 401);
     const intentId = z.string().uuid().parse(params.id);
     const intent = await knowledgeExports.getIntent(intentId);
     if (!intent || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
@@ -437,10 +223,8 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     if (!intent.confirmed_at || intent.download_started_at || new Date(intent.expires_at).getTime() <= Date.now()) {
       return problem("A fresh passkey confirmation is required", 403, "passkey_required");
     }
-    const snapshot = await knowledgeExports.claim(
-      intentId,
-      { ownerUserId: principal.userId, sessionId: principal.sessionId },
-    );
+    await claimConfirmedExport(intentId, principal);
+    const snapshot = await knowledgeExports.snapshotAndDiscard(intentId);
     const date = new Date().toISOString().slice(0, 10);
     return new Response(streamKnowledgeExport(snapshot, storage), {
       headers: {
@@ -450,62 +234,9 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       },
     });
   })
-  .get("/api/dashboard/oauth-clients", async ({ request }) => {
-    const principal = await ownerRequest(request);
-    const result = await authPool.query(
-      `SELECT client."clientId" AS client_id,client.name,client.uri,client."createdAt" AS created_at,
-              consent.scopes,consent."updatedAt" AS approved_at,usage.last_used_at
-       FROM "oauthConsent" consent
-       JOIN "oauthClient" client ON client."clientId"=consent."clientId"
-       LEFT JOIN mcp_client_usage usage ON usage.client_id=client."clientId" AND usage.user_id=consent."userId"
-       WHERE consent."userId"=$1
-       ORDER BY consent."updatedAt" DESC`,
-      [principal.userId],
-    );
-    return json(result.rows);
-  })
   .get("/api/dashboard/messages", async ({ request }) => {
     const principal = await ownerRequest(request);
     return json(await dashboardInbox.listForOwner(principal.userId));
-  })
-  .get("/api/dashboard/oauth-client-preview", async ({ request, query }) => {
-    await ownerRequest(request);
-    const clientId = z.string().min(1).max(512).parse(query.client_id);
-    const result = await authPool.query(
-      `SELECT "clientId" AS client_id,name,uri,"redirectUris" AS redirect_uris,"softwareId" AS software_id,"softwareVersion" AS software_version
-       FROM "oauthClient" WHERE "clientId"=$1 AND coalesce(disabled,false)=false`,
-      [clientId],
-    );
-    return result.rows[0] ? json(result.rows[0]) : problem("OAuth client not found", 404, "not_found");
-  })
-  .delete("/api/dashboard/oauth-clients/:clientId", async ({ request, params }) => {
-    const principal = await ownerRequest(request, true);
-    const clientId = z.string().min(1).max(512).parse(params.clientId);
-    const authClient = await authPool.connect();
-    try {
-      await authClient.query("BEGIN");
-      const removed = await authClient.query(
-        `DELETE FROM "oauthConsent" WHERE "clientId"=$1 AND "userId"=$2 RETURNING id`,
-        [clientId, principal.userId],
-      );
-      if (!removed.rowCount) throw new SecurityError("Connected client not found", 404);
-      await authClient.query(
-        `UPDATE "oauthRefreshToken" SET revoked=now()
-         WHERE "clientId"=$1 AND "userId"=$2 AND revoked IS NULL`,
-        [clientId, principal.userId],
-      );
-      await authClient.query(
-        `DELETE FROM "oauthAccessToken" WHERE "clientId"=$1 AND "userId"=$2`,
-        [clientId, principal.userId],
-      );
-      await authClient.query("COMMIT");
-    } catch (error) {
-      await authClient.query("ROLLBACK");
-      throw error;
-    } finally {
-      authClient.release();
-    }
-    return json({ revoked: true });
   })
   .get("/api/dashboard/skills", async ({ request }) => {
     await ownerRequest(request);
@@ -625,7 +356,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const versionNumber = query.version ? z.coerce.number().int().positive().parse(query.version) : page.version_number;
     const version = await dashboardPages.version(pageId, versionNumber);
     if (!version) return problem("Version not found", 404, "not_found");
-    const html = await renderMarkdown(version.body_markdown, publicPageResolvers(version.path));
+    const html = await renderMarkdown(version.body_markdown, publishedPreviewResolvers(version.path));
     const references = await Promise.all([
       ...extractPageLinks(version.body_markdown).map(async (id) => {
         const target = await dashboardPages.get(id);
@@ -685,8 +416,9 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   })
   // Keep large dashboard recovery uploads on the raw streaming path too.
   .put("/api/dashboard/assets/:id/content", async ({ request, params }) => {
-    const principal = await ownerRequest(request);
-    assertDashboardUploadSecurity(request, principal);
+    if (!requestMatchesOrigin(request, config.APP_ORIGIN)) throw new SecurityError("Not found", 404);
+    const principal = await authorizeDashboardRequest(request, "upload");
+    if (!principal) throw new SecurityError("Dashboard session required", 401);
     const asset = await dashboardAssets.get(z.string().uuid().parse(params.id), true);
     if (!asset) return problem("Asset not found", 404, "not_found");
     const expectedSize = Number(asset.size_bytes);
@@ -743,8 +475,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .post("/api/dashboard/publication-intents", async ({ request }) => {
     const principal = await ownerRequest(request, true);
     const input = publicationIntentSchema.parse(await bodyJson(request));
-    const ceremony = await ownerPasskeyCeremony(principal.userId);
-    if (!ceremony) return problem("Register a passkey before changing visibility", 409, "passkey_required");
 
     let publicPath: string | null = null;
     if (input.target_kind === "page") {
@@ -781,60 +511,14 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const intent = await publications.createIntent(input, {
       ownerUserId: principal.userId,
       sessionId: principal.sessionId,
-    }, ceremony.options.challenge, publicPath);
-    return json({ intent, authentication_options: ceremony.options }, 201);
-  })
-  .post("/api/dashboard/publications/confirm", async ({ request }) => {
-    const principal = await ownerRequest(request, true);
-    const input = confirmSchema.parse(await bodyJson(request));
-    const intent = await publications.getIntent(input.intent_id);
-    if (!intent || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
-      return problem("Publication intent not found", 404, "not_found");
-    }
-    if (intent.consumed_at || new Date(intent.expires_at).getTime() <= Date.now()) {
-      return problem("Publication intent is expired or already used", 409, "intent_inactive");
-    }
-    const credentialId = await verifyOwnerPasskey(principal.userId, input.response, intent.challenge);
-    if (!credentialId) return problem("Passkey verification failed", 403, "passkey_invalid");
-    await publications.confirm(input.intent_id, principal.userId, principal.sessionId, credentialId);
-    return json({ published: intent.action !== "unpublish", action: intent.action, target_kind: intent.target_kind, target_id: intent.target_id });
-  })
-
-  .get("/p/*", async ({ request, params }) => {
-    const parsedPath = PagePath.safeParse(params["*"]);
-    if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
-    const publicPath = parsedPath.data;
-    const matchesAssetOrigin = requestMatchesOrigin(request, config.ASSET_ORIGIN);
-    const matchesAppOrigin = requestMatchesOrigin(request, config.APP_ORIGIN);
-    if (matchesAssetOrigin && !matchesAppOrigin) {
-      return publicAssetContent(request, publicPath);
-    }
-    const page = await publicData.pageByPublicPath(publicPath);
-    if (!page && matchesAssetOrigin) {
-      return publicAssetContent(request, publicPath);
-    }
-    if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
-    const content = await renderMarkdown(page.body_markdown, publicPageResolvers(page.path));
-    const html = renderPublicPageDocument(page.title, content);
-    return new Response(html, { headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" } });
-  })
-  .get("/", () => new Response(
-    renderPublicLandingDocument(config.PUBLIC_MCP_ENDPOINT),
-    { headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" } },
-  ))
-  .get("/public.css", () => new Response(
-    publicPageStyles,
-    { headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" } },
-  ))
-  .get("/content.css", () => new Response(
-    IMAGE_LAYOUT_STYLES,
-    { headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" } },
-  ));
+    }, publicPath);
+    const authenticationOptions = await issueConfirmationOptions("publication", intent.id);
+    return json({ intent, authentication_options: authenticationOptions }, 201);
+  });
 
 if (production) {
   console.info("security_mode", {
     dashboard_auth: "cookie-only",
-    mcp_auth: "bearer-only",
-    publication: "webauthn-required",
+    publication_confirmation: "separate-service",
   });
 }

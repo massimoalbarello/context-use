@@ -1,10 +1,9 @@
 import { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
-import { authPool } from "./auth.ts";
+import { validateMcpGrant } from "./auth-client.ts";
 import { config } from "./config.ts";
 import { createMcpServer, type McpContext } from "./mcp-server.ts";
 import { createStatelessMcpTransport, unsupportedMcpMethodResponse } from "./mcp-transport.ts";
-import { ownerUserId } from "./owner.ts";
 import { requestMatchesOrigin } from "./security.ts";
 
 function mcpUnauthorized(message: string): Response {
@@ -25,46 +24,28 @@ function scopesFromJwt(jwt: JWTPayload): Set<string> {
   return new Set(Array.isArray(plural) ? plural.filter((item): item is string => typeof item === "string") : []);
 }
 
-async function contextFromJwt(jwt: JWTPayload): Promise<McpContext | null> {
+async function contextFromJwt(
+  jwt: JWTPayload,
+  grantValidator: typeof validateMcpGrant,
+): Promise<McpContext | null> {
   const clientId = typeof jwt.azp === "string" ? jwt.azp : null;
   const userId = typeof jwt.sub === "string" ? jwt.sub : null;
   if (!clientId || !userId || jwt.principal_type !== "mcp_agent") return null;
   const scopes = scopesFromJwt(jwt);
-  if (!(await isMcpGrantActive(clientId, userId, scopes))) return null;
-
-  await authPool.query(
-    `INSERT INTO mcp_client_usage(client_id,user_id,last_used_at) VALUES ($1,$2,now())
-     ON CONFLICT (client_id,user_id) DO UPDATE SET last_used_at=excluded.last_used_at`,
-    [clientId, userId],
-  );
+  if (!(await grantValidator({ clientId, userId, scopes: [...scopes] }))) return null;
   return { clientId, userId, scopes };
-}
-
-export async function isMcpGrantActive(
-  clientId: string,
-  userId: string,
-  scopes: ReadonlySet<string>,
-): Promise<boolean> {
-  const result = await authPool.query(
-    `SELECT 1
-     FROM "oauthClient" client
-     JOIN "oauthConsent" consent ON consent."clientId"=client."clientId"
-     JOIN "user" owner ON owner.id=consent."userId"
-     WHERE client."clientId"=$1 AND consent."userId"=$2
-       AND coalesce(client.disabled,false)=false
-       AND owner.id=$3 AND lower(owner.email)=lower($4) AND owner."emailVerified"=true
-       AND consent.scopes @> $5::jsonb`,
-    [clientId, userId, ownerUserId, config.OWNER_EMAIL, JSON.stringify([...scopes])],
-  );
-  return Boolean(result.rowCount);
 }
 
 export function createMcpRequestHandler(
   pages: PageRepository,
   assets: AssetRepository,
   automations: AutomationRepository,
+  grantCheck: typeof validateMcpGrant = validateMcpGrant,
 ) {
-  const jwks = createRemoteJWKSet(new URL(`${config.APP_ORIGIN}/api/auth/jwks`));
+  // Fetch keys over the private service network. The token issuer and audience
+  // remain the public canonical URLs, but the isolated MCP container does not
+  // need internet access merely to validate a signature.
+  const jwks = createRemoteJWKSet(new URL(`${config.AUTH_INTERNAL_URL}/api/auth/jwks`));
 
   return async (request: Request): Promise<Response> => {
     if (!requestMatchesOrigin(request, config.APP_ORIGIN)) {
@@ -89,7 +70,7 @@ export function createMcpRequestHandler(
     if (!audiences || audiences.length !== 1 || audiences[0] !== config.MCP_RESOURCE || typeof jwt.exp !== "number") {
       return mcpUnauthorized("Bearer token is not bound exclusively to this MCP resource");
     }
-    const context = await contextFromJwt(jwt);
+    const context = await contextFromJwt(jwt, grantCheck);
     if (!context) return mcpUnauthorized("OAuth grant is inactive");
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;

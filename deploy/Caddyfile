@@ -11,23 +11,97 @@
 		-Server
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 	}
+
+	handle /api/auth/* {
+		request_body {
+			max_size 3MB
+		}
+		reverse_proxy auth:3002
+	}
+	handle /.well-known/oauth-authorization-server {
+		reverse_proxy auth:3002
+	}
+	handle /.well-known/openid-configuration {
+		reverse_proxy auth:3002
+	}
+	handle /.well-known/oauth-protected-resource* {
+		reverse_proxy private-mcp:3003
+	}
+	handle /mcp {
+		request_body {
+			max_size 3MB
+		}
+		reverse_proxy private-mcp:3003
+	}
+	handle /api/mcp/assets/*/content {
+		request_body {
+			max_size 5GB
+		}
+		reverse_proxy private-mcp:3003
+	}
+
+	handle /api/dashboard/publications/confirm {
+		request_body {
+			max_size 3MB
+		}
+		reverse_proxy auth:3002
+	}
+	handle /api/dashboard/knowledge-exports/confirm {
+		request_body {
+			max_size 3MB
+		}
+		reverse_proxy auth:3002
+	}
+
+	handle /api/dashboard/session {
+		reverse_proxy auth:3002
+	}
+	handle /api/dashboard/csrf {
+		reverse_proxy auth:3002
+	}
+	handle /api/dashboard/oauth-client* {
+		request_body {
+			max_size 3MB
+		}
+		reverse_proxy auth:3002
+	}
+
 	handle /api/dashboard/assets/*/content {
 		request_body {
 			max_size 5GB
 		}
 		reverse_proxy app:3000
 	}
-	handle /api/mcp/assets/*/content {
-		request_body {
-			max_size 5GB
-		}
-		reverse_proxy app:3000
-	}
-	handle {
+	handle /api/dashboard/* {
 		request_body {
 			max_size 3MB
 		}
 		reverse_proxy app:3000
+	}
+	handle /api/health {
+		reverse_proxy app:3000
+	}
+	handle /app* {
+		reverse_proxy app:3000
+	}
+	handle /assets/* {
+		reverse_proxy app:3000
+	}
+
+	handle /p/* {
+		reverse_proxy public-web:3005
+	}
+	handle /public.css {
+		reverse_proxy public-web:3005
+	}
+	handle /content.css {
+		reverse_proxy public-web:3005
+	}
+	handle {
+		request_body {
+			max_size 64KB
+		}
+		reverse_proxy public-web:3005
 	}
 }
 
@@ -64,7 +138,7 @@
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 	}
 	handle /p/* {
-		reverse_proxy app:3000
+		reverse_proxy public-web:3005
 	}
 	handle {
 		respond "Not found" 404

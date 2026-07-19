@@ -1,0 +1,58 @@
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	handle /api/auth/* {
+		reverse_proxy auth:3002
+	}
+	handle /.well-known/oauth-authorization-server {
+		reverse_proxy auth:3002
+	}
+	handle /.well-known/openid-configuration {
+		reverse_proxy auth:3002
+	}
+	handle /.well-known/oauth-protected-resource* {
+		reverse_proxy private-mcp:3003
+	}
+	handle /mcp {
+		reverse_proxy private-mcp:3003
+	}
+	handle /api/mcp/* {
+		reverse_proxy private-mcp:3003
+	}
+	handle /api/dashboard/publications/confirm {
+		reverse_proxy auth:3002
+	}
+	handle /api/dashboard/knowledge-exports/confirm {
+		reverse_proxy auth:3002
+	}
+	handle /api/dashboard/session {
+		reverse_proxy auth:3002
+	}
+	handle /api/dashboard/csrf {
+		reverse_proxy auth:3002
+	}
+	handle /api/dashboard/oauth-client* {
+		reverse_proxy auth:3002
+	}
+	handle /api/dashboard/* {
+		reverse_proxy server:3000
+	}
+	handle /api/health {
+		reverse_proxy server:3000
+	}
+	handle /p/* {
+		reverse_proxy public-web:3005
+	}
+	handle /public.css {
+		reverse_proxy public-web:3005
+	}
+	handle /content.css {
+		reverse_proxy public-web:3005
+	}
+	handle {
+		reverse_proxy public-web:3005
+	}
+}

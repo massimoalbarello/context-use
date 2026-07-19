@@ -2,7 +2,9 @@ import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { Client } from "pg";
 
 const enabled = process.env.TEST_APP_DATABASE_URL === "1";
-const application = enabled ? (await import("./app.ts")).app : null;
+const application = enabled ? (await import("./combined-app.ts")).combinedApp : null;
+const authentication = enabled ? (await import("./auth-app.ts")).authApp : null;
+const confirmation = enabled ? (await import("./confirmation-app.ts")).confirmationApp : null;
 const describeApplication = enabled ? describe : describe.skip;
 const createdClients: string[] = [];
 
@@ -22,6 +24,13 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       body: "{}",
     }));
     expect(response.status).toBe(401);
+
+    const confirm = await application!.handle(new Request("http://localhost:3000/api/dashboard/publications/confirm", {
+      method: "POST",
+      headers: { authorization: "Bearer forged", "content-type": "application/json" },
+      body: "{}",
+    }));
+    expect(confirm.status).toBe(401);
   });
 
   test("bearer and anonymous credentials cannot reach knowledge export APIs", async () => {
@@ -36,6 +45,54 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       { headers: { "sec-fetch-site": "same-origin" } },
     ));
     expect(download.status).toBe(401);
+    const confirm = await application!.handle(new Request("http://localhost:3000/api/dashboard/knowledge-exports/confirm", {
+      method: "POST",
+      headers: { authorization: "Bearer forged", "content-type": "application/json" },
+      body: "{}",
+    }));
+    expect(confirm.status).toBe(401);
+  });
+
+  test("confirmation browser handlers are internal and require the auth gateway capability", async () => {
+    const response = await confirmation!.handle(new Request(
+      "http://confirmation:3004/internal/browser-confirmation/publication",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          principal: { owner_user_id: "context-use-owner", session_id: "forged" },
+          confirmation: {
+            intent_id: "11111111-1111-4111-8111-111111111111",
+            response: {},
+          },
+        }),
+      },
+    ));
+    expect(response.status).toBe(404);
+    expect(await response.text()).not.toContain("gateway");
+  });
+
+  test("every non-browser internal endpoint requires its pairwise service capability", async () => {
+    const authResponse = await authentication!.handle(new Request(
+      "http://auth:3002/internal/authorize-dashboard",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          method: "GET",
+          pathname: "/api/dashboard/pages",
+          kind: "read",
+          headers: {},
+        }),
+      },
+    ));
+    expect(authResponse.status).toBe(404);
+
+    const confirmationResponse = await confirmation!.handle(new Request(
+      "http://confirmation:3004/internal/confirmation/publication/11111111-1111-4111-8111-111111111111/options",
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+    ));
+    expect(confirmationResponse.status).toBe(404);
   });
 
   test("cookie credentials are rejected by MCP with discovery metadata", async () => {

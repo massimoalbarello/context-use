@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, rename, unlink } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -16,7 +16,6 @@ import {
   S3Client,
   UploadPartCommand,
 } from "@aws-sdk/client-s3";
-import { config } from "./config.ts";
 
 export type StoredAsset = {
   id: string;
@@ -34,6 +33,47 @@ export interface ObjectStorage {
   delete(objectKey: string): Promise<void>;
   read(objectKey: string, range?: ByteRange): Promise<BodyInit>;
   verify(objectKey: string, sizeBytes: number, contentHash: string): Promise<boolean>;
+}
+
+export interface ObjectStorageBackend extends ObjectStorage {
+  exists(objectKey: string): Promise<boolean>;
+}
+
+export type S3StorageConfig = {
+  region: string;
+  bucket: string;
+  kmsKeyId: string;
+};
+
+type ProcessCredentials = {
+  Version?: unknown;
+  AccessKeyId?: unknown;
+  SecretAccessKey?: unknown;
+  SessionToken?: unknown;
+  Expiration?: unknown;
+};
+
+export function credentialsFromFile(path: string) {
+  return async () => {
+    const parsed = JSON.parse(await readFile(path, "utf8")) as ProcessCredentials;
+    if (parsed.Version !== 1
+        || typeof parsed.AccessKeyId !== "string" || parsed.AccessKeyId.length<16
+        || typeof parsed.SecretAccessKey !== "string" || parsed.SecretAccessKey.length<32
+        || typeof parsed.SessionToken !== "string" || parsed.SessionToken.length<16
+        || typeof parsed.Expiration !== "string") {
+      throw new Error("Scoped AWS credential file is invalid");
+    }
+    const expiration = new Date(parsed.Expiration);
+    if (!Number.isFinite(expiration.getTime()) || expiration.getTime()<=Date.now()) {
+      throw new Error("Scoped AWS credential file is expired");
+    }
+    return {
+      accessKeyId: parsed.AccessKeyId,
+      secretAccessKey: parsed.SecretAccessKey,
+      sessionToken: parsed.SessionToken,
+      expiration,
+    };
+  };
 }
 
 export class AssetIntegrityError extends Error {
@@ -132,8 +172,20 @@ export function mayRenderInline(contentType: string): boolean {
   return INLINE_TYPES.test(contentType.toLowerCase());
 }
 
-export class S3Storage implements ObjectStorage {
-  constructor(private readonly client = new S3Client({ region: config.AWS_REGION })) {}
+export class S3Storage implements ObjectStorageBackend {
+  constructor(
+    private readonly client = new S3Client({
+      region: process.env.AWS_REGION ?? "eu-west-2",
+      ...(process.env.AWS_CREDENTIALS_FILE
+        ? { credentials: credentialsFromFile(process.env.AWS_CREDENTIALS_FILE) }
+        : {}),
+    }),
+    private readonly options: S3StorageConfig = {
+      region: process.env.AWS_REGION ?? "eu-west-2",
+      bucket: process.env.ASSET_BUCKET ?? "",
+      kmsKeyId: process.env.KMS_KEY_ID ?? "",
+    },
+  ) {}
 
   async write(asset: StoredAsset, body: ReadableStream<Uint8Array> | null): Promise<void> {
     const checksum = Buffer.from(asset.contentHash, "hex").toString("base64");
@@ -142,7 +194,7 @@ export class S3Storage implements ObjectStorage {
         const buffered = new ChunkAccumulator();
         await consumeVerifiedBody(asset, body, (chunk) => buffered.push(chunk));
         await this.client.send(new PutObjectCommand({
-          Bucket: config.ASSET_BUCKET,
+          Bucket: this.options.bucket,
           Key: asset.objectKey,
           Body: buffered.take(),
           ContentType: asset.contentType,
@@ -150,19 +202,19 @@ export class S3Storage implements ObjectStorage {
           ChecksumSHA256: checksum,
           Metadata: { sha256: asset.contentHash },
           ServerSideEncryption: "aws:kms",
-          SSEKMSKeyId: config.KMS_KEY_ID,
+          SSEKMSKeyId: this.options.kmsKeyId,
         }));
         return;
       }
 
       const created = await this.client.send(new CreateMultipartUploadCommand({
-        Bucket: config.ASSET_BUCKET,
+        Bucket: this.options.bucket,
         Key: asset.objectKey,
         ContentType: asset.contentType,
         ChecksumAlgorithm: "SHA256",
         Metadata: { sha256: asset.contentHash },
         ServerSideEncryption: "aws:kms",
-        SSEKMSKeyId: config.KMS_KEY_ID,
+        SSEKMSKeyId: this.options.kmsKeyId,
       }));
       if (!created.UploadId) throw new Error("S3 did not create an asset multipart upload");
       const uploadId = created.UploadId;
@@ -173,7 +225,7 @@ export class S3Storage implements ObjectStorage {
         const partNumber = parts.length + 1;
         const partChecksum = createHash("sha256").update(bytes).digest("base64");
         const uploaded = await this.client.send(new UploadPartCommand({
-          Bucket: config.ASSET_BUCKET,
+          Bucket: this.options.bucket,
           Key: asset.objectKey,
           UploadId: uploadId,
           PartNumber: partNumber,
@@ -193,7 +245,7 @@ export class S3Storage implements ObjectStorage {
         });
         if (buffered.byteLength) await uploadPart(buffered.take());
         await this.client.send(new CompleteMultipartUploadCommand({
-          Bucket: config.ASSET_BUCKET,
+          Bucket: this.options.bucket,
           Key: asset.objectKey,
           UploadId: uploadId,
           MultipartUpload: { Parts: parts },
@@ -202,7 +254,7 @@ export class S3Storage implements ObjectStorage {
       } finally {
         if (!completed) {
           await this.client.send(new AbortMultipartUploadCommand({
-            Bucket: config.ASSET_BUCKET,
+            Bucket: this.options.bucket,
             Key: asset.objectKey,
             UploadId: uploadId,
           })).catch(() => undefined);
@@ -217,13 +269,23 @@ export class S3Storage implements ObjectStorage {
   }
 
   async delete(objectKey: string): Promise<void> {
-    await this.client.send(new DeleteObjectCommand({ Bucket: config.ASSET_BUCKET, Key: objectKey }));
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.options.bucket, Key: objectKey }));
+  }
+
+  async exists(objectKey: string): Promise<boolean> {
+    try {
+      await this.client.send(new HeadObjectCommand({ Bucket: this.options.bucket, Key: objectKey }));
+      return true;
+    } catch (error) {
+      if (error instanceof Error && ["NoSuchKey", "NotFound"].includes(error.name)) return false;
+      throw error;
+    }
   }
 
   async read(objectKey: string, range?: ByteRange): Promise<BodyInit> {
     try {
       const result = await this.client.send(new GetObjectCommand({
-        Bucket: config.ASSET_BUCKET,
+        Bucket: this.options.bucket,
         Key: objectKey,
         ...(range ? { Range: `bytes=${range.start}-${range.end}` } : {}),
       }));
@@ -240,7 +302,7 @@ export class S3Storage implements ObjectStorage {
 
   async verify(objectKey: string, sizeBytes: number, contentHash: string): Promise<boolean> {
     try {
-      const result = await this.client.send(new HeadObjectCommand({ Bucket: config.ASSET_BUCKET, Key: objectKey, ChecksumMode: "ENABLED" }));
+      const result = await this.client.send(new HeadObjectCommand({ Bucket: this.options.bucket, Key: objectKey, ChecksumMode: "ENABLED" }));
       const checksumMatches = result.ChecksumSHA256 === Buffer.from(contentHash, "hex").toString("base64")
         || result.Metadata?.sha256 === contentHash;
       return result.ContentLength === sizeBytes && checksumMatches;
@@ -250,10 +312,10 @@ export class S3Storage implements ObjectStorage {
   }
 }
 
-export class FilesystemStorage implements ObjectStorage {
+export class FilesystemStorage implements ObjectStorageBackend {
   private readonly root: string;
 
-  constructor(root = config.STORAGE_PATH) {
+  constructor(root = process.env.STORAGE_PATH ?? "./data/assets") {
     this.root = resolve(root);
   }
 
@@ -293,6 +355,10 @@ export class FilesystemStorage implements ObjectStorage {
     if (await file.exists()) await file.delete();
   }
 
+  async exists(objectKey: string): Promise<boolean> {
+    return Bun.file(this.path(objectKey)).exists();
+  }
+
   async read(objectKey: string, range?: ByteRange): Promise<BodyInit> {
     const file = Bun.file(this.path(objectKey));
     if (!(await file.exists())) throw new AssetNotFoundError();
@@ -307,5 +373,3 @@ export class FilesystemStorage implements ObjectStorage {
     return hash.digest("hex") === contentHash;
   }
 }
-
-export const storage: ObjectStorage = config.STORAGE_DRIVER === "s3" ? new S3Storage() : new FilesystemStorage();

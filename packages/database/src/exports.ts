@@ -41,12 +41,9 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
 }
 
 export class KnowledgeExportRepository {
-  constructor(
-    private readonly dashboardPool: Pool,
-    private readonly publisherPool: Pool,
-  ) {}
+  constructor(private readonly dashboardPool: Pool) {}
 
-  async createIntent(principal: KnowledgeExportPrincipal, challenge: string) {
+  async createIntent(principal: KnowledgeExportPrincipal) {
     return transaction(this.dashboardPool, async (client) => {
       await client.query(
         `DELETE FROM knowledge_export_intents
@@ -57,10 +54,10 @@ export class KnowledgeExportRepository {
       const id = randomUUID();
       const inserted = await client.query<{ id: string; expires_at: Date }>(
         `INSERT INTO knowledge_export_intents(
-           id,owner_user_id,session_id,challenge,expires_at
-         ) VALUES ($1,$2,$3,$4,now()+interval '5 minutes')
+           id,owner_user_id,session_id,expires_at
+         ) VALUES ($1,$2,$3,now()+interval '5 minutes')
          RETURNING id,expires_at`,
-        [id, principal.ownerUserId, principal.sessionId, challenge],
+        [id, principal.ownerUserId, principal.sessionId],
       );
       await client.query(
         `INSERT INTO knowledge_export_pages(intent_id,page_id,version_id)
@@ -149,18 +146,7 @@ export class KnowledgeExportRepository {
     );
   }
 
-  async confirm(id: string, principal: KnowledgeExportPrincipal, credentialId: string): Promise<void> {
-    await this.publisherPool.query(
-      "SELECT confirm_knowledge_export_intent($1,$2,$3,$4)",
-      [id, principal.ownerUserId, principal.sessionId, credentialId],
-    );
-  }
-
-  async claim(id: string, principal: KnowledgeExportPrincipal): Promise<KnowledgeExportSnapshot> {
-    await this.publisherPool.query(
-      "SELECT claim_knowledge_export_download($1,$2,$3)",
-      [id, principal.ownerUserId, principal.sessionId],
-    );
+  async snapshotAndDiscard(id: string): Promise<KnowledgeExportSnapshot> {
     const [pages, assets] = await Promise.all([
       this.dashboardPool.query<KnowledgeExportPage>(
         `SELECT page.page_id AS id,version.path AS current_path,version.title,version.body_markdown

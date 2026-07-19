@@ -1,0 +1,80 @@
+import { PublicRepository, createPool, wikiLinkCandidatePaths } from "@context-use/database";
+import { PagePath } from "@context-use/shared";
+import { Elysia } from "elysia";
+import { config } from "./config.ts";
+import { json, routeError } from "./http.ts";
+import { renderMarkdown } from "./markdown.ts";
+import { createPublicAssetContentHandler } from "./public-asset-content.ts";
+import {
+  IMAGE_LAYOUT_STYLES,
+  publicPageStyles,
+  renderPublicLandingDocument,
+  renderPublicPageDocument,
+} from "./public-page.ts";
+import { requestMatchesOrigin, securityHeaders } from "./security.ts";
+import { BrokeredStorage } from "./storage-client.ts";
+
+const pool = createPool(config.PUBLIC_DATABASE_URL, { application_name: "context-use-public-web" });
+const publicData = new PublicRepository(pool);
+const storage = new BrokeredStorage({
+  socketPath: config.STORAGE_SOCKET_PATH,
+  token: config.STORAGE_PUBLIC_TOKEN,
+  publicOnly: true,
+});
+const publicAssetContent = createPublicAssetContentHandler(publicData, storage, config.ASSET_ORIGIN);
+
+function resolvers(sourcePath: string) {
+  return {
+    page: async (id: string) => {
+      const page = await publicData.pageById(id);
+      return page ? { available: true as const, href: `/p/${page.public_path}` } : { available: false as const };
+    },
+    pagePath: async (path: string) => {
+      for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
+        const page = await publicData.pageByPath(candidate);
+        if (page) return { available: true as const, href: `/p/${page.public_path}` };
+      }
+      return { available: false as const };
+    },
+    asset: async (id: string) => {
+      const asset = await publicData.assetById(id);
+      return asset
+        ? {
+            available: true as const,
+            href: `${config.ASSET_ORIGIN}/p/${asset.public_path}`,
+            contentType: asset.content_type,
+          }
+        : { available: false as const };
+    },
+  };
+}
+
+export const publicApp = new Elysia()
+  .onError(({ error, code }) => code === "NOT_FOUND"
+    ? new Response("Not found", { status: 404, headers: securityHeaders })
+    : routeError(error))
+  .get("/health", () => json({ status: "ok", service: "public-web" }))
+  .get("/p/*", async ({ request, params }) => {
+    const parsedPath = PagePath.safeParse(params["*"]);
+    if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
+    const publicPath = parsedPath.data;
+    const matchesAssetOrigin = requestMatchesOrigin(request, config.ASSET_ORIGIN);
+    const matchesAppOrigin = requestMatchesOrigin(request, config.APP_ORIGIN);
+    if (matchesAssetOrigin && !matchesAppOrigin) return publicAssetContent(request, publicPath);
+    const page = await publicData.pageByPublicPath(publicPath);
+    if (!page && matchesAssetOrigin) return publicAssetContent(request, publicPath);
+    if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
+    const content = await renderMarkdown(page.body_markdown, resolvers(page.path));
+    return new Response(renderPublicPageDocument(page.title, content), {
+      headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
+    });
+  })
+  .get("/", () => new Response(renderPublicLandingDocument(config.PUBLIC_MCP_ENDPOINT), {
+    headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
+  }))
+  .get("/public.css", () => new Response(publicPageStyles, {
+    headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" },
+  }))
+  .get("/content.css", () => new Response(IMAGE_LAYOUT_STYLES, {
+    headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" },
+  }));

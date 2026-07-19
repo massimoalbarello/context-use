@@ -19,7 +19,7 @@ const capabilityPayloadSchema = z.object({
 type CapabilityPayload = z.infer<typeof capabilityPayloadSchema>;
 
 function signature(encodedPayload: string): Buffer {
-  return createHmac("sha256", config.BETTER_AUTH_SECRET)
+  return createHmac("sha256", config.MCP_ASSET_CAPABILITY_SECRET)
     .update("context-use:mcp-asset-upload:v1\0")
     .update(encodedPayload)
     .digest();

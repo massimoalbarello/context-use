@@ -104,7 +104,7 @@ describe("safe Markdown rendering", () => {
     expect(valid).toContain("cu-image--size-medium cu-image--align-center cu-image--shape-landscape cu-image--layout-block");
     expect(invalid).toContain("{algin=center style=display:none}");
     expect(invalid).not.toContain("cu-image");
-    expect(invalid).not.toContain("display:none\"");
+    expect(invalid).not.toContain('display:none"');
   });
 
   test("keeps consecutive half-width images as sibling elements for responsive columns", async () => {

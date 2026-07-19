@@ -26,18 +26,32 @@ export async function deploy(config: DeploymentConfig, manifest: ReleaseManifest
 async function ensureRuntimeParameterUpgrades(config: DeploymentConfig): Promise<void> {
   if (!config.dataOutputs) throw new Error("Data infrastructure outputs are missing");
   const prefix = `/context-use/${config.installationId}/${config.environment}`;
-  const name = `${prefix}/DB_PUBLIC_MCP_PASSWORD`;
-  try {
-    await getSecureParameter(config.awsProfile, config.awsRegion, name);
-  } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("ParameterNotFound")) throw error;
-    await putSecureParameter(
-      config.awsProfile,
-      config.awsRegion,
-      name,
-      generateSecret(36),
-      config.dataOutputs.kms_key_arn,
-    );
+  for (const [parameter, length] of [
+    ["DB_PUBLIC_MCP_PASSWORD", 36],
+    ["DB_CONFIRMATION_PASSWORD", 36],
+    ["DB_STORAGE_PASSWORD", 36],
+    ["MCP_ASSET_CAPABILITY_SECRET", 48],
+    ["CONFIRMATION_GATEWAY_TOKEN", 48],
+    ["AUTH_DASHBOARD_TOKEN", 48],
+    ["AUTH_MCP_TOKEN", 48],
+    ["CONFIRMATION_DASHBOARD_TOKEN", 48],
+    ["STORAGE_DASHBOARD_TOKEN", 48],
+    ["STORAGE_MCP_TOKEN", 48],
+    ["STORAGE_PUBLIC_TOKEN", 48],
+  ] as const) {
+    const name = `${prefix}/${parameter}`;
+    try {
+      await getSecureParameter(config.awsProfile, config.awsRegion, name);
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes("ParameterNotFound")) throw error;
+      await putSecureParameter(
+        config.awsProfile,
+        config.awsRegion,
+        name,
+        generateSecret(length),
+        config.dataOutputs.kms_key_arn,
+      );
+    }
   }
   const hostnameName = `${prefix}/PUBLIC_MCP_HOSTNAME`;
   let currentHostname: string | null = null;
@@ -79,12 +93,15 @@ async function assertPublicMcpDns(config: DeploymentConfig): Promise<void> {
 
 export function deploymentCommands(config: DeploymentConfig, manifest: ReleaseManifest, deployScript: string): string[] {
   const encoded = Buffer.from(deployScript).toString("base64");
+  const rolePrefix = `context-use-${config.installationId}-${config.environment}`;
+  const storageRoleArn = `arn:aws:iam::${config.accountId}:role/${rolePrefix}-storage`;
+  const backupRoleArn = `arn:aws:iam::${config.accountId}:role/${rolePrefix}-backup`;
   return [
     "trap 'rm -f /tmp/context-use-deploy.sh' EXIT",
     "cloud-init status --wait",
     `echo '${encoded}' | base64 -d > /tmp/context-use-deploy.sh`,
     "chmod 0700 /tmp/context-use-deploy.sh",
-    `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' /tmp/context-use-deploy.sh`,
+    `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' CONTEXT_USE_STORAGE_ROLE_ARN='${storageRoleArn}' CONTEXT_USE_BACKUP_ROLE_ARN='${backupRoleArn}' /tmp/context-use-deploy.sh`,
   ];
 }
 
@@ -101,10 +118,42 @@ export function remoteSecurityCommands(): string[] {
     "NOT has_column_privilege('context_use_mcp','knowledge_pages','published_version_id','UPDATE')",
     "AND NOT has_column_privilege('context_use_dashboard','knowledge_pages','public_path','UPDATE')",
     "AND NOT has_column_privilege('context_use_dashboard','knowledge_pages','required_public_path','UPDATE')",
-    "AND NOT has_function_privilege('context_use_mcp','confirm_publication_intent(uuid,text,text,text)','EXECUTE')",
-    "AND has_function_privilege('context_use_publisher','confirm_publication_intent(uuid,text,text,text)','EXECUTE')",
+    "AND NOT has_function_privilege('context_use_mcp','confirm_publication_intent(uuid,text,text,text,integer,integer)','EXECUTE')",
+    "AND NOT has_function_privilege('context_use_dashboard','issue_confirmation_challenge(confirmation_intent_kind,uuid,text)','EXECUTE')",
+    "AND has_function_privilege('context_use_confirmation','issue_confirmation_challenge(confirmation_intent_kind,uuid,text)','EXECUTE')",
+    "AND has_function_privilege('context_use_confirmation','confirm_publication_intent(uuid,text,text,text,integer,integer)','EXECUTE')",
+    "AND has_function_privilege('context_use_confirmation','confirm_knowledge_export_intent(uuid,text,text,text,integer,integer)','EXECUTE')",
+    "AND NOT has_table_privilege('context_use_confirmation','publication_intents','SELECT')",
+    "AND NOT has_table_privilege('context_use_confirmation','knowledge_pages','SELECT')",
+    "AND NOT has_table_privilege('context_use_confirmation','confirmation_challenges','SELECT')",
+    "AND NOT has_column_privilege('context_use_dashboard','publication_intents','challenge','INSERT')",
+    "AND NOT has_column_privilege('context_use_dashboard','publication_intents','challenge','UPDATE')",
+    "AND has_column_privilege('context_use_confirmation','passkey','publicKey','SELECT')",
+    "AND has_column_privilege('context_use_confirmation','passkey','counter','SELECT')",
+    "AND has_column_privilege('context_use_auth','passkey','counter','UPDATE')",
+    "AND NOT has_column_privilege('context_use_auth','passkey','publicKey','UPDATE')",
+    "AND NOT has_table_privilege('context_use_auth','passkey','DELETE')",
+    "AND NOT has_column_privilege('context_use_auth','user','email','UPDATE')",
+    "AND NOT has_table_privilege('context_use_auth','user','DELETE')",
+    "AND NOT has_database_privilege('context_use_public_mcp',current_database(),'TEMPORARY')",
+    "AND NOT has_schema_privilege('context_use_public_mcp','public','CREATE')",
+    "AND NOT pg_has_role('context_use_public_mcp','context_use_projection_owner','MEMBER')",
+    "AND NOT pg_has_role('context_use_public_mcp','context_use_boundary_owner','MEMBER')",
+    "AND (SELECT NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolinherit AND NOT rolbypassrls FROM pg_roles WHERE rolname='context_use_projection_owner')",
+    "AND (SELECT NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolinherit AND NOT rolbypassrls FROM pg_roles WHERE rolname='context_use_boundary_owner')",
+    "AND (SELECT pg_get_userbyid(relowner)='context_use_projection_owner' FROM pg_class WHERE oid='published_pages'::regclass)",
+    "AND (SELECT pg_get_userbyid(relowner)='context_use_projection_owner' FROM pg_class WHERE oid='published_assets'::regclass)",
+    "AND (SELECT pg_get_userbyid(relowner)='context_use_projection_owner' FROM pg_class WHERE oid='public_mcp_pages'::regclass)",
+    "AND (SELECT pg_get_userbyid(proowner)='context_use_boundary_owner' AND prosecdef FROM pg_proc WHERE oid='issue_confirmation_challenge(confirmation_intent_kind,uuid,text)'::regprocedure)",
+    "AND (SELECT pg_get_userbyid(proowner)='context_use_boundary_owner' AND prosecdef FROM pg_proc WHERE oid='confirm_publication_intent(uuid,text,text,text,integer,integer)'::regprocedure)",
+    "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='user_protect_owner_identity' AND NOT tgisinternal)",
+    "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='passkey_protect_credential' AND NOT tgisinternal)",
     "AND NOT has_table_privilege('context_use_public','knowledge_pages','SELECT')",
     "AND has_table_privilege('context_use_public','published_pages','SELECT')",
+    "AND has_column_privilege('context_use_storage','assets','s3_object_key','SELECT')",
+    "AND has_column_privilege('context_use_storage','assets','content_hash','SELECT')",
+    "AND NOT has_table_privilege('context_use_storage','knowledge_pages','SELECT')",
+    "AND has_table_privilege('context_use_storage','published_assets','SELECT')",
     "AND NOT has_table_privilege('context_use_public_mcp','published_pages','SELECT')",
     "AND NOT has_table_privilege('context_use_public_mcp','knowledge_pages','SELECT')",
     "AND has_table_privilege('context_use_public_mcp','public_mcp_pages','SELECT')",
@@ -115,7 +164,8 @@ export function remoteSecurityCommands(): string[] {
     "AND NOT has_column_privilege('context_use_public_mcp','inbound_messages','owner_user_id','INSERT')",
     "AND has_table_privilege('context_use_dashboard','inbound_messages','SELECT')",
     "AND NOT has_table_privilege('context_use_dashboard','inbound_messages','INSERT')",
-    "AND NOT has_schema_privilege('context_use_public_mcp','public','CREATE')",
+    "AND NOT has_table_privilege('context_use_dashboard','knowledge_asset_links','DELETE')",
+    "AND NOT has_table_privilege('context_use_mcp','knowledge_asset_links','DELETE')",
     "AND has_column_privilege('context_use_mcp','agent_skills','name','INSERT')",
     "AND has_column_privilege('context_use_mcp','agent_skill_versions','instructions_markdown','INSERT')",
     "AND has_column_privilege('context_use_mcp','agent_skill_versions','description','INSERT')",
@@ -141,9 +191,9 @@ export function remoteSecurityCommands(): string[] {
     `set -a; . ${envFile}; set +a`,
     "export PGPASSWORD=\"$POSTGRES_PASSWORD\"",
     `test "$(printf %s ${encodedSql} | base64 -d | ${compose} exec -T -e PGPASSWORD postgres psql -U postgres -d context_use -Atq)" = ok`,
-    "test \"$(aws s3api get-bucket-encryption --bucket \"$ASSET_BUCKET\" --query \"ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm\" --output text)\" = aws:kms",
-    "test \"$(aws s3api get-public-access-block --bucket \"$ASSET_BUCKET\" --query \"PublicAccessBlockConfiguration.[BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets]\" --output text | tr -d \"[:space:]\")\" = TrueTrueTrueTrue",
-    "aws s3api head-bucket --bucket \"$BACKUP_BUCKET\"",
+    `${compose} exec -T -e AWS_CONFIG_FILE=/etc/context-use/aws-storage-config -e AWS_PROFILE=context-use-storage -e AWS_EC2_METADATA_DISABLED=true aws-credential-broker aws s3api get-bucket-encryption --bucket "$ASSET_BUCKET" --query "ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm" --output text | grep -qx aws:kms`,
+    `${compose} exec -T -e AWS_CONFIG_FILE=/etc/context-use/aws-storage-config -e AWS_PROFILE=context-use-storage -e AWS_EC2_METADATA_DISABLED=true aws-credential-broker aws s3api get-public-access-block --bucket "$ASSET_BUCKET" --query "PublicAccessBlockConfiguration.[BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets]" --output text | tr -d "[:space:]" | grep -qx TrueTrueTrueTrue`,
+    `${compose} exec -T backup aws s3api head-bucket --bucket "$BACKUP_BUCKET"`,
     `${compose} run --rm backup once`,
   ];
 }

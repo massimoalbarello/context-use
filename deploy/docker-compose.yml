@@ -1,5 +1,20 @@
 name: context-use
 
+x-locked-service: &locked-service
+  image: ${APP_IMAGE}
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp:size=32m,mode=1777]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 128
+
+x-logging: &logging
+  driver: awslogs
+  options:
+    awslogs-region: ${AWS_REGION}
+    awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+
 services:
   postgres:
     image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
@@ -10,16 +25,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
     command: ["postgres", "-c", "password_encryption=scram-sha-256", "-c", "listen_addresses=*"]
-    volumes:
-      - /data/context-use/postgres:/var/lib/postgresql/data
+    volumes: [/data/context-use/postgres:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d context_use"]
       interval: 5s
       timeout: 3s
       retries: 30
-    networks: [data, public_mcp_data]
-    logging: &logging
-      driver: awslogs
+    networks: [migration_data, dashboard_data, auth_data, mcp_data, public_data, confirmation_data, storage_data, backup_data, public_mcp_data]
+    logging:
+      <<: *logging
       options:
         awslogs-region: ${AWS_REGION}
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
@@ -37,19 +51,57 @@ services:
       DB_MCP_PASSWORD: ${DB_MCP_PASSWORD}
       DB_PUBLIC_PASSWORD: ${DB_PUBLIC_PASSWORD}
       DB_PUBLIC_MCP_PASSWORD: ${DB_PUBLIC_MCP_PASSWORD}
-      DB_PUBLISHER_PASSWORD: ${DB_PUBLISHER_PASSWORD}
+      DB_CONFIRMATION_PASSWORD: ${DB_CONFIRMATION_PASSWORD}
+      DB_STORAGE_PASSWORD: ${DB_STORAGE_PASSWORD}
       DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD}
     command: ["bun", "packages/database/src/migrate.ts"]
-    networks: [data]
+    networks: [migration_data]
 
   app:
-    image: ${APP_IMAGE}
-    restart: unless-stopped
+    <<: *locked-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      auth: { condition: service_healthy }
+      confirmation: { condition: service_healthy }
+      storage: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      SERVICE_MODE: dashboard
+      PORT: "3000"
+      APP_ORIGIN: https://${APP_HOSTNAME}
+      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
+      DATABASE_URL: postgres://context_use_dashboard:${DB_DASHBOARD_PASSWORD}@postgres:5432/context_use
+      AUTH_INTERNAL_URL: http://auth:3002
+      CONFIRMATION_INTERNAL_URL: http://confirmation:3004
+      AUTH_DASHBOARD_TOKEN: ${AUTH_DASHBOARD_TOKEN}
+      CONFIRMATION_DASHBOARD_TOKEN: ${CONFIRMATION_DASHBOARD_TOKEN}
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_DASHBOARD_TOKEN: ${STORAGE_DASHBOARD_TOKEN}
+      WEB_DIST: /app/apps/web/dist
+    command: ["bun", "apps/server/src/dashboard-index.ts"]
+    volumes: [storage-socket:/run/context-use-storage:ro]
+    networks: [dashboard_data, dashboard_web, auth_dashboard_internal, confirmation_internal]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3000/api/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: dashboard
+
+  auth:
+    <<: *locked-service
     depends_on:
       postgres: { condition: service_healthy }
     environment:
       NODE_ENV: production
-      PORT: "3000"
+      SERVICE_MODE: auth
+      PORT: "3002"
       APP_ORIGIN: https://${APP_HOSTNAME}
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
       OAUTH_ISSUER: https://${APP_HOSTNAME}
@@ -60,26 +112,210 @@ services:
       OWNER_EMAIL: ${OWNER_EMAIL}
       OWNER_SETUP_TOKEN_HASH: ${OWNER_SETUP_TOKEN_HASH}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      DATABASE_URL: postgres://context_use_dashboard:${DB_DASHBOARD_PASSWORD}@postgres:5432/context_use
+      AUTH_DASHBOARD_TOKEN: ${AUTH_DASHBOARD_TOKEN}
+      AUTH_MCP_TOKEN: ${AUTH_MCP_TOKEN}
+      CONFIRMATION_INTERNAL_URL: http://confirmation:3004
+      CONFIRMATION_GATEWAY_TOKEN: ${CONFIRMATION_GATEWAY_TOKEN}
       AUTH_DATABASE_URL: postgres://context_use_auth:${DB_AUTH_PASSWORD}@postgres:5432/context_use
-      MCP_DATABASE_URL: postgres://context_use_mcp:${DB_MCP_PASSWORD}@postgres:5432/context_use
-      PUBLIC_DATABASE_URL: postgres://context_use_public:${DB_PUBLIC_PASSWORD}@postgres:5432/context_use
-      PUBLISHER_DATABASE_URL: postgres://context_use_publisher:${DB_PUBLISHER_PASSWORD}@postgres:5432/context_use
-      STORAGE_DRIVER: s3
-      AWS_REGION: ${AWS_REGION}
-      ASSET_BUCKET: ${ASSET_BUCKET}
-      KMS_KEY_ID: ${KMS_KEY_ID}
-    networks: [data, web]
+    command: ["bun", "apps/server/src/auth-index.ts"]
+    networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3002/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
     logging:
       <<: *logging
       options:
         awslogs-region: ${AWS_REGION}
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
-        awslogs-stream: app
+        awslogs-stream: auth
 
-  public-mcp:
+  private-mcp:
+    <<: *locked-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      auth: { condition: service_healthy }
+      storage: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      SERVICE_MODE: mcp
+      PORT: "3003"
+      APP_ORIGIN: https://${APP_HOSTNAME}
+      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      OAUTH_ISSUER: https://${APP_HOSTNAME}
+      MCP_RESOURCE: https://${APP_HOSTNAME}/mcp
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
+      MCP_DATABASE_URL: postgres://context_use_mcp:${DB_MCP_PASSWORD}@postgres:5432/context_use
+      AUTH_INTERNAL_URL: http://auth:3002
+      AUTH_MCP_TOKEN: ${AUTH_MCP_TOKEN}
+      MCP_ASSET_CAPABILITY_SECRET: ${MCP_ASSET_CAPABILITY_SECRET}
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_MCP_TOKEN: ${STORAGE_MCP_TOKEN}
+    command: ["bun", "apps/server/src/mcp-index.ts"]
+    volumes: [storage-socket:/run/context-use-storage:ro]
+    networks: [mcp_data, mcp_web, auth_mcp_internal]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3003/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: private-mcp
+
+  public-web:
+    <<: *locked-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      storage: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      SERVICE_MODE: public
+      PORT: "3005"
+      APP_ORIGIN: https://${APP_HOSTNAME}
+      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
+      PUBLIC_DATABASE_URL: postgres://context_use_public:${DB_PUBLIC_PASSWORD}@postgres:5432/context_use
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_PUBLIC_TOKEN: ${STORAGE_PUBLIC_TOKEN}
+    command: ["bun", "apps/server/src/public-index.ts"]
+    volumes: [storage-socket:/run/context-use-storage:ro]
+    networks: [public_data, public_web]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3005/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: public-web
+
+  confirmation:
+    <<: *locked-service
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      SERVICE_MODE: confirmation
+      PORT: "3004"
+      APP_ORIGIN: https://${APP_HOSTNAME}
+      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
+      WEBAUTHN_RP_ID: ${APP_HOSTNAME}
+      CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:${DB_CONFIRMATION_PASSWORD}@postgres:5432/context_use
+      CONFIRMATION_GATEWAY_TOKEN: ${CONFIRMATION_GATEWAY_TOKEN}
+      CONFIRMATION_DASHBOARD_TOKEN: ${CONFIRMATION_DASHBOARD_TOKEN}
+    command: ["bun", "apps/server/src/confirmation-index.ts"]
+    networks: [confirmation_data, auth_confirmation_internal, confirmation_internal]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3004/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: confirmation
+
+  storage-socket-init:
+    image: ${APP_IMAGE}
+    user: "0:0"
+    restart: "no"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+    security_opt: [no-new-privileges:true]
+    command: ["sh", "-c", "chown bun:bun /run/context-use-storage && chmod 0700 /run/context-use-storage"]
+    volumes: [storage-socket:/run/context-use-storage]
+
+  aws-credential-broker:
+    image: ${BACKUP_IMAGE}
+    restart: unless-stopped
+    network_mode: host
+    entrypoint: ["/usr/local/bin/context-use-aws-credential-broker"]
+    environment:
+      AWS_REGION: ${AWS_REGION}
+      STORAGE_ROLE_ARN: ${STORAGE_ROLE_ARN}
+      BACKUP_ROLE_ARN: ${BACKUP_ROLE_ARN}
+    volumes:
+      - storage-aws-credentials:/run/context-use-aws-storage
+      - backup-aws-credentials:/run/context-use-aws-backup
+    read_only: true
+    tmpfs: [/tmp:size=8m,mode=1777]
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /run/context-use-aws-storage/credentials.json && test -s /run/context-use-aws-backup/credentials.json"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: aws-credential-broker
+
+  storage:
     image: ${APP_IMAGE}
     restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      storage-socket-init: { condition: service_completed_successfully }
+      aws-credential-broker: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      SERVICE_MODE: storage
+      APP_ORIGIN: https://${APP_HOSTNAME}
+      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
+      STORAGE_DATABASE_URL: postgres://context_use_storage:${DB_STORAGE_PASSWORD}@postgres:5432/context_use
+      STORAGE_DRIVER: s3
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_DASHBOARD_TOKEN: ${STORAGE_DASHBOARD_TOKEN}
+      STORAGE_MCP_TOKEN: ${STORAGE_MCP_TOKEN}
+      STORAGE_PUBLIC_TOKEN: ${STORAGE_PUBLIC_TOKEN}
+      AWS_REGION: ${AWS_REGION}
+      AWS_CREDENTIALS_FILE: /run/context-use-aws-storage/credentials.json
+      AWS_EC2_METADATA_DISABLED: "true"
+      ASSET_BUCKET: ${ASSET_BUCKET}
+      KMS_KEY_ID: ${KMS_KEY_ID}
+    command: ["bun", "apps/server/src/storage-index.ts"]
+    volumes:
+      - storage-socket:/run/context-use-storage
+      - storage-aws-credentials:/run/context-use-aws-storage:ro
+    networks: [storage_data, storage_egress]
+    read_only: true
+    tmpfs: [/tmp:size=32m,mode=1777]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const http=require('node:http');const request=http.request({socketPath:'/run/context-use-storage/storage.sock',path:'/health'},response=>process.exit(response.statusCode===200?0:1));request.on('error',()=>process.exit(1));request.end()"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: storage
+
+  public-mcp:
+    <<: *locked-service
     depends_on:
       postgres: { condition: service_healthy }
     environment:
@@ -89,12 +325,6 @@ services:
       PUBLIC_SITE_ORIGIN: https://${APP_HOSTNAME}
       PUBLIC_MCP_DATABASE_URL: postgres://context_use_public_mcp:${DB_PUBLIC_MCP_PASSWORD}@postgres:5432/context_use
     command: ["bun", "apps/public-mcp/src/index.ts"]
-    read_only: true
-    tmpfs:
-      - /tmp:size=16m,mode=1777
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    pids_limit: 100
     networks: [public_mcp_data, public_mcp]
     healthcheck:
       test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3001/health'); if (!response.ok) process.exit(1)"]
@@ -111,20 +341,17 @@ services:
   caddy:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
-    depends_on: [app, public-mcp]
+    depends_on: [app, auth, private-mcp, public-web, confirmation, public-mcp]
     environment:
       APP_HOSTNAME: ${APP_HOSTNAME}
       ASSET_HOSTNAME: ${ASSET_HOSTNAME}
       PUBLIC_MCP_HOSTNAME: ${PUBLIC_MCP_HOSTNAME}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+    ports: ["80:80", "443:443", "443:443/udp"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /data/context-use/caddy/data:/data
       - /data/context-use/caddy/config:/config
-    networks: [web, public_mcp]
+    networks: [edge, dashboard_web, auth_web, mcp_web, public_web, public_mcp]
     logging:
       <<: *logging
       options:
@@ -137,6 +364,7 @@ services:
     restart: unless-stopped
     depends_on:
       postgres: { condition: service_healthy }
+      aws-credential-broker: { condition: service_healthy }
     environment:
       PGHOST: postgres
       PGPORT: "5432"
@@ -146,8 +374,18 @@ services:
       BACKUP_BUCKET: ${BACKUP_BUCKET}
       KMS_KEY_ID: ${KMS_KEY_ID}
       AWS_REGION: ${AWS_REGION}
+      AWS_CONFIG_FILE: /etc/context-use/aws-config
+      AWS_PROFILE: context-use-backup
+      AWS_EC2_METADATA_DISABLED: "true"
       RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
-    networks: [data, outbound]
+    volumes:
+      - backup-aws-credentials:/run/context-use-aws-backup:ro
+      - /data/context-use/backup-tmp:/tmp
+    networks: [backup_data, backup_egress]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
     logging:
       <<: *logging
       options:
@@ -155,12 +393,30 @@ services:
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
         awslogs-stream: backup
 
+volumes:
+  storage-socket:
+  storage-aws-credentials:
+  backup-aws-credentials:
+
 networks:
-  web: {}
-  public_mcp:
-    internal: true
-  public_mcp_data:
-    internal: true
-  outbound: {}
-  data:
-    internal: true
+  edge: {}
+  dashboard_web: { internal: true }
+  auth_web: { internal: true }
+  mcp_web: { internal: true }
+  public_web: { internal: true }
+  auth_dashboard_internal: { internal: true }
+  auth_mcp_internal: { internal: true }
+  auth_confirmation_internal: { internal: true }
+  confirmation_internal: { internal: true }
+  public_mcp: { internal: true }
+  public_mcp_data: { internal: true }
+  migration_data: { internal: true }
+  dashboard_data: { internal: true }
+  auth_data: { internal: true }
+  mcp_data: { internal: true }
+  public_data: { internal: true }
+  confirmation_data: { internal: true }
+  storage_data: { internal: true }
+  backup_data: { internal: true }
+  storage_egress: {}
+  backup_egress: {}

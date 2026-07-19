@@ -2,7 +2,7 @@ import * as p from "@clack/prompts";
 import { createHash } from "node:crypto";
 import { accountId, bootstrapStateBucket, configureStateBucketKms, createStateKmsKey, generateSecret, getSecureParameter, putSecureParameter } from "./aws.ts";
 import { deploy } from "./deploy.ts";
-import { configPath, defaultPublicMcpHostname, saveConfig } from "./paths.ts";
+import { configPath, defaultPublicMcpHostname, readConfig, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
 import { deploymentRoot, releaseManifest } from "./release.ts";
 import { applyCompute, applyData, assertTerraformVersion } from "./terraform.ts";
@@ -42,8 +42,17 @@ export async function storeRuntimeParameters(config: DeploymentConfig): Promise<
     DB_MCP_PASSWORD: generateSecret(36),
     DB_PUBLIC_PASSWORD: generateSecret(36),
     DB_PUBLIC_MCP_PASSWORD: generateSecret(36),
-    DB_PUBLISHER_PASSWORD: generateSecret(36),
+    DB_CONFIRMATION_PASSWORD: generateSecret(36),
+    DB_STORAGE_PASSWORD: generateSecret(36),
     DB_BACKUP_PASSWORD: generateSecret(36),
+    MCP_ASSET_CAPABILITY_SECRET: generateSecret(48),
+    CONFIRMATION_GATEWAY_TOKEN: generateSecret(48),
+    AUTH_DASHBOARD_TOKEN: generateSecret(48),
+    AUTH_MCP_TOKEN: generateSecret(48),
+    CONFIRMATION_DASHBOARD_TOKEN: generateSecret(48),
+    STORAGE_DASHBOARD_TOKEN: generateSecret(48),
+    STORAGE_MCP_TOKEN: generateSecret(48),
+    STORAGE_PUBLIC_TOKEN: generateSecret(48),
     AWS_REGION: config.awsRegion,
     ASSET_BUCKET: config.dataOutputs.asset_bucket,
     BACKUP_BUCKET: config.dataOutputs.backup_bucket,
@@ -72,6 +81,10 @@ export function shouldPauseForManualDns(config: DeploymentConfig): boolean {
   return config.dnsMode === "manual" && ["new", "data_ready", "compute_ready"].includes(config.phase);
 }
 
+export function canReplaceDeploymentConfig(config: DeploymentConfig): boolean {
+  return config.phase === "purged";
+}
+
 export async function pauseForManualDns(config: DeploymentConfig): Promise<boolean> {
   if (!shouldPauseForManualDns(config)) return false;
   if (!config.computeOutputs) throw new Error("Compute infrastructure outputs are missing");
@@ -84,7 +97,10 @@ export async function pauseForManualDns(config: DeploymentConfig): Promise<boole
 export async function setup(): Promise<void> {
   p.intro("context-use · private knowledge infrastructure");
   if (await Bun.file(configPath).exists()) {
-    throw new Error(`A deployment config already exists at ${configPath}. Use resume/status/destroy instead of overwriting it.`);
+    const existing = await readConfig();
+    if (!canReplaceDeploymentConfig(existing)) {
+      throw new Error(`A deployment config already exists at ${configPath}. Use resume/status/destroy instead of overwriting it.`);
+    }
   }
   if (!(await commandExists("aws")) || !(await commandExists("terraform")) || !(await commandExists("gh"))) {
     throw new Error("AWS CLI, Terraform, and GitHub CLI are required. Install them and try again.");

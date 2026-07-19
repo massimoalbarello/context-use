@@ -44,11 +44,11 @@ bun --cwd apps/public-mcp dev
 bun run dev:web
 ```
 
-The Vite development server proxies private/application requests to the API server and `/public/mcp` to the isolated public MCP process. Filesystem asset storage is used locally. The development setup token is fixed; production setup always generates a random token.
+The host API command is a development-only combined process and starts its local filesystem storage socket as well. Production refuses combined mode and always uses the split services. The Vite development server proxies private/application requests to that local API and `/public/mcp` to the isolated public MCP process. The development setup token is fixed; production setup always generates a random token.
 
 ## Verification
 
-Run the fast suite with `bun test`. Database privilege tests require `TEST_DATABASE_ADMIN_URL` and the role passwords shown above:
+Run the fast suite with `bun test`. Database privilege tests require `TEST_DATABASE_URL` and the role passwords shown above:
 
 ```sh
 TEST_DATABASE_URL="$MIGRATOR_DATABASE_URL" bun run db:test:roles

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+file=""
+trap 'if [ -n "${file}" ]; then rm -f "${file}"; fi' EXIT
+
 backup_once() {
   timestamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
   file="/tmp/context-use-${timestamp}.sql.gz"
@@ -10,6 +13,7 @@ backup_once() {
   aws s3 cp "${file}" "s3://${BACKUP_BUCKET}/postgres/${timestamp}.sql.gz" \
     --sse aws:kms --sse-kms-key-id "${KMS_KEY_ID}" --only-show-errors
   rm -f "${file}"
+  file=""
   cutoff="$(date -u -d "-${RETENTION_DAYS:-30} days" +%s 2>/dev/null || date -u -v-30d +%s)"
   aws s3api list-objects-v2 --bucket "${BACKUP_BUCKET}" --prefix postgres/ --output json \
     | jq -r '.Contents[]? | [.Key,.LastModified] | @tsv' 2>/dev/null \
@@ -23,6 +27,16 @@ backup_once() {
 
 if [ "${1:-}" = "once" ]; then
   backup_once
+  exit 0
+fi
+
+if [ "${1:-}" = "fetch" ]; then
+  key="${2:-}"
+  if [[ ! "${key}" =~ ^postgres/[0-9TZ-]+\.sql\.gz$ ]]; then
+    echo "Invalid backup key" >&2
+    exit 2
+  fi
+  aws s3 cp "s3://${BACKUP_BUCKET}/${key}" - --only-show-errors
   exit 0
 fi
 
