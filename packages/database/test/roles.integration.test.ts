@@ -558,6 +558,66 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
+  test("service roles cannot archive or delete an object while it is published", async () => {
+    const pageId = randomUUID();
+    const versionId = randomUUID();
+    const assetId = randomUUID();
+    const suffix = randomUUID().slice(0, 8);
+    await admin.query("BEGIN");
+    try {
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_path)
+         VALUES ($1,$2,$3,$3,$2)`,
+        [pageId, `tests/${suffix}/published-page`, versionId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,$3,'Published lifecycle','Public','Create','dashboard','owner')`,
+        [versionId, pageId, `tests/${suffix}/published-page`],
+      );
+      await admin.query(
+        `INSERT INTO assets(
+           id,current_path,public_path,filename,content_type,size_bytes,
+           content_hash,s3_object_key,published_at
+         ) VALUES ($1,$2,$2,'published.txt','text/plain',1,$3,$4,now())`,
+        [assetId, `tests/${suffix}/published-asset`, "b".repeat(64), `objects/${assetId}`],
+      );
+
+      for (const role of ["context_use_dashboard", "context_use_mcp"]) {
+        await admin.query(`SET LOCAL ROLE ${role}`);
+        await expectDenied("UPDATE knowledge_pages SET archived_at=now() WHERE id=$1", [pageId]);
+        await admin.query("RESET ROLE");
+      }
+      await admin.query("SET LOCAL ROLE context_use_dashboard");
+      await expectDenied("UPDATE assets SET deleted_at=now() WHERE id=$1", [assetId]);
+      await admin.query("RESET ROLE");
+
+      // Once the passkey-owned visibility fields have been cleared, ordinary
+      // private lifecycle operations are valid again.
+      await admin.query(
+        "UPDATE knowledge_pages SET published_version_id=NULL,public_path=NULL WHERE id=$1",
+        [pageId],
+      );
+      await admin.query(
+        "UPDATE assets SET published_at=NULL,public_path=NULL WHERE id=$1",
+        [assetId],
+      );
+      await admin.query("SET LOCAL ROLE context_use_dashboard");
+      expect((await admin.query(
+        "UPDATE knowledge_pages SET archived_at=now() WHERE id=$1",
+        [pageId],
+      )).rowCount).toBe(1);
+      expect((await admin.query(
+        "UPDATE assets SET deleted_at=now() WHERE id=$1",
+        [assetId],
+      )).rowCount).toBe(1);
+      await admin.query("RESET ROLE");
+    } finally {
+      await admin.query("ROLLBACK");
+    }
+  });
+
   test("public MCP role can read only its lossy page projection", async () => {
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_table_privilege('context_use_public_mcp','public_mcp_pages','SELECT') AS allowed",
@@ -992,6 +1052,10 @@ describeDatabase("PostgreSQL security roles", () => {
             "[[private/strategy]]",
             "[[private/strategy|Authored label]]",
             `context-use://page/${privatePageId}`,
+            `/api/mcp/assets/${privateAssetId}/content`,
+            `https://context.example/api/mcp/assets/${privateAssetId}/content`,
+            `/api/dashboard/assets/${privateAssetId}/status`,
+            `unrecognized-private-id:${privateVersionId}`,
             "<!-- COMMENT-CANARY -->",
             "<script>SCRIPT-CANARY</script>",
             "<style>STYLE-CANARY</style>",
@@ -1033,6 +1097,9 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(webpage.rows[0]?.body_markdown).not.toContain(privatePageId);
       expect(webpage.rows[0]?.body_markdown).not.toContain(privateAssetId);
       expect(webpage.rows[0]?.body_markdown).not.toContain(publishedAssetId);
+      expect(webpage.rows[0]?.body_markdown).not.toContain(privateVersionId);
+      expect(webpage.rows[0]?.body_markdown).not.toContain("/api/mcp/assets/");
+      expect(webpage.rows[0]?.body_markdown).not.toContain("/api/dashboard/assets/");
       expect(directProjection.rows[0]?.body_markdown).toBe(webpage.rows[0]?.body_markdown);
       expect(unavailableProjection.rows[0]?.body_markdown).toBe("");
 
@@ -1065,6 +1132,9 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(child?.body_markdown).not.toContain(privatePageId);
       expect(child?.body_markdown).not.toContain(privateAssetId);
       expect(child?.body_markdown).not.toContain(publishedAssetId);
+      expect(child?.body_markdown).not.toContain(privateVersionId);
+      expect(child?.body_markdown).not.toContain("/api/mcp/assets/");
+      expect(child?.body_markdown).not.toContain("/api/dashboard/assets/");
       expect(child?.body_markdown).not.toContain("private/strategy");
       expect(child?.body_markdown).not.toContain("context-use://");
       expect(child?.body_markdown).not.toContain("{size=medium");

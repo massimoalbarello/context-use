@@ -156,6 +156,8 @@ test("remote verification avoids shell-quoting SQL and passes the database passw
   expect(sql).toContain("issue_confirmation_challenge");
   expect(sql).toContain("passkey_protect_credential");
   expect(sql).toContain("user_protect_owner_identity");
+  expect(sql).toContain("knowledge_pages_published_active");
+  expect(sql).toContain("assets_published_active");
   expect(sql).toContain("current_database(),'TEMPORARY'");
   expect(sql).toContain("knowledge_asset_links','DELETE'");
   expect(sql).not.toContain("conname='knowledge_pages_automation_path_boundary'");
@@ -242,7 +244,11 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).not.toContain("handle /api/dashboard/session");
   expect(caddy).toContain("handle /api/auth/*");
   expect(caddy).toContain("reverse_proxy auth-edge:3006");
+  expect(caddy).toContain("reverse_proxy dashboard-edge:3007");
+  expect(caddy).toContain("reverse_proxy private-mcp-edge:3008");
   expect(caddy).not.toContain("reverse_proxy auth:3002");
+  expect(caddy).not.toContain("reverse_proxy app:3000");
+  expect(caddy).not.toContain("reverse_proxy private-mcp:3003");
   expect(caddy).not.toContain("handle /api/public/assets/*/content");
   expect(caddy).not.toContain("handle /public/mcp");
   expect(caddy).toContain("{$PUBLIC_MCP_HOSTNAME}");
@@ -296,7 +302,18 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(appService).not.toContain("AUTH_MCP_TOKEN");
   expect(appService).not.toContain("CONFIRMATION_GATEWAY_TOKEN");
   expect(appService).toContain("storage-socket:/run/context-use-storage:ro");
-  expect(appService).toContain("networks: [dashboard_data, dashboard_web, auth_dashboard_internal, confirmation_internal]");
+  expect(appService).toContain("networks: [dashboard_data, dashboard_edge_internal, auth_dashboard_internal, confirmation_internal]");
+
+  const dashboardEdgeService = deployCompose.slice(
+    deployCompose.indexOf("\n  dashboard-edge:\n"),
+    deployCompose.indexOf("\n  app:\n"),
+  );
+  expect(dashboardEdgeService).toContain("SERVICE_MODE: dashboard-edge");
+  expect(dashboardEdgeService).toContain("DASHBOARD_AUTHORITY_URL: http://app:3000");
+  expect(dashboardEdgeService).toContain("networks: [dashboard_web, dashboard_edge_internal]");
+  expect(dashboardEdgeService).not.toContain("DATABASE_URL");
+  expect(dashboardEdgeService).not.toContain("TOKEN");
+  expect(dashboardEdgeService).not.toContain("SECRET");
 
   const authEdgeService = deployCompose.slice(
     deployCompose.indexOf("\n  auth-edge:\n"),
@@ -314,7 +331,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
 
   const authService = deployCompose.slice(
     deployCompose.indexOf("\n  auth:\n"),
-    deployCompose.indexOf("\n  private-mcp:\n"),
+    deployCompose.indexOf("\n  private-mcp-edge:\n"),
   );
   expect(authService).toContain("AUTH_DATABASE_URL: postgres://context_use_auth");
   expect(authService).toContain("BETTER_AUTH_SECRET");
@@ -329,6 +346,17 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(authService).not.toContain("AWS_REGION:");
   expect(authService).toContain("networks: [auth_data, auth_edge_internal, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]");
 
+  const privateMcpEdgeService = deployCompose.slice(
+    deployCompose.indexOf("\n  private-mcp-edge:\n"),
+    deployCompose.indexOf("\n  private-mcp:\n"),
+  );
+  expect(privateMcpEdgeService).toContain("SERVICE_MODE: mcp-edge");
+  expect(privateMcpEdgeService).toContain("MCP_AUTHORITY_URL: http://private-mcp:3003");
+  expect(privateMcpEdgeService).toContain("networks: [mcp_web, mcp_edge_internal]");
+  expect(privateMcpEdgeService).not.toContain("DATABASE_URL");
+  expect(privateMcpEdgeService).not.toContain("TOKEN");
+  expect(privateMcpEdgeService).not.toContain("SECRET");
+
   const privateMcpService = deployCompose.slice(
     deployCompose.indexOf("\n  private-mcp:\n"),
     deployCompose.indexOf("\n  public-web:\n"),
@@ -342,7 +370,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(privateMcpService).not.toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(privateMcpService).not.toContain("AUTH_DATABASE_URL");
   expect(privateMcpService).not.toContain("AWS_REGION:");
-  expect(privateMcpService).toContain("networks: [mcp_data, mcp_web, auth_mcp_internal]");
+  expect(privateMcpService).toContain("networks: [mcp_data, mcp_edge_internal, auth_mcp_internal]");
 
   const publicWebService = deployCompose.slice(
     deployCompose.indexOf("\n  public-web:\n"),

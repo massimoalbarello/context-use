@@ -25,41 +25,41 @@
 		reverse_proxy auth-edge:3006
 	}
 	handle /.well-known/oauth-protected-resource* {
-		reverse_proxy private-mcp:3003
+		reverse_proxy private-mcp-edge:3008
 	}
 	handle /mcp {
 		request_body {
 			max_size 3MB
 		}
-		reverse_proxy private-mcp:3003
+		reverse_proxy private-mcp-edge:3008
 	}
 	handle /api/mcp/assets/*/content {
 		request_body {
 			max_size 5GB
 		}
-		reverse_proxy private-mcp:3003
+		reverse_proxy private-mcp-edge:3008
 	}
 
 	handle /api/dashboard/assets/*/content {
 		request_body {
 			max_size 5GB
 		}
-		reverse_proxy app:3000
+		reverse_proxy dashboard-edge:3007
 	}
 	handle /api/dashboard/* {
 		request_body {
 			max_size 3MB
 		}
-		reverse_proxy app:3000
+		reverse_proxy dashboard-edge:3007
 	}
 	handle /api/health {
-		reverse_proxy app:3000
+		reverse_proxy dashboard-edge:3007
 	}
 	handle /app* {
-		reverse_proxy app:3000
+		reverse_proxy dashboard-edge:3007
 	}
 	handle /assets/* {
-		reverse_proxy app:3000
+		reverse_proxy dashboard-edge:3007
 	}
 
 	handle /p/* {

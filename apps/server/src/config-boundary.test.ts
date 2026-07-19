@@ -10,6 +10,9 @@ const common = {
 };
 
 const validByService: Record<string, Record<string, string>> = {
+  "dashboard-edge": {
+    DASHBOARD_AUTHORITY_URL: "http://app:3000",
+  },
   "auth-edge": {
     AUTH_AUTHORITY_URL: "http://auth:3002",
     AUTH_EDGE_TOKEN: "auth-edge-ingress-token-that-has-no-private-power",
@@ -35,6 +38,9 @@ const validByService: Record<string, Record<string, string>> = {
     AUTH_EDGE_TOKEN: "auth-edge-ingress-token-that-has-no-private-power",
     AUTH_DASHBOARD_TOKEN: "dashboard-to-auth-token-that-is-not-shared",
     AUTH_MCP_TOKEN: "private-mcp-to-auth-token-that-is-not-shared",
+  },
+  "mcp-edge": {
+    MCP_AUTHORITY_URL: "http://private-mcp:3003",
   },
   mcp: {
     MCP_DATABASE_URL: "postgres://context_use_mcp:secret@postgres:5432/context_use",
@@ -115,6 +121,35 @@ describe("production process credential boundaries", () => {
       CONFIRMATION_GATEWAY_TOKEN: "leaked-confirmation-token-that-is-long",
     })) {
       expect(load("auth-edge", { [name]: value }).exitCode).not.toBe(0);
+    }
+  });
+
+  test("dashboard and MCP edges reject every private credential", () => {
+    const privateCredentials = {
+      DATABASE_URL: "postgres://context_use_dashboard:secret@postgres:5432/context_use",
+      AUTH_DATABASE_URL: "postgres://context_use_auth:secret@postgres:5432/context_use",
+      MCP_DATABASE_URL: "postgres://context_use_mcp:secret@postgres:5432/context_use",
+      PUBLIC_DATABASE_URL: "postgres://context_use_public:secret@postgres:5432/context_use",
+      PUBLIC_MCP_DATABASE_URL: "postgres://context_use_public_mcp:secret@postgres:5432/context_use",
+      CONFIRMATION_DATABASE_URL: "postgres://context_use_confirmation:secret@postgres:5432/context_use",
+      STORAGE_DATABASE_URL: "postgres://context_use_storage:secret@postgres:5432/context_use",
+      MIGRATOR_DATABASE_URL: "postgres://postgres:secret@postgres:5432/context_use",
+      BETTER_AUTH_SECRET: "leaked-authentication-secret-that-is-long",
+      AUTH_DASHBOARD_TOKEN: "leaked-dashboard-auth-token-that-is-long",
+      AUTH_MCP_TOKEN: "leaked-private-mcp-auth-token-that-is-long",
+      MCP_ASSET_CAPABILITY_SECRET: "leaked-private-mcp-asset-secret-that-is-long",
+      CONFIRMATION_GATEWAY_TOKEN: "leaked-confirmation-gateway-token-that-is-long",
+      CONFIRMATION_DASHBOARD_TOKEN: "leaked-confirmation-dashboard-token-that-is-long",
+      STORAGE_DASHBOARD_TOKEN: "leaked-dashboard-storage-token-that-is-long",
+      STORAGE_MCP_TOKEN: "leaked-mcp-storage-token-that-is-long",
+      STORAGE_PUBLIC_TOKEN: "leaked-public-storage-token-that-is-long",
+      AWS_ACCESS_KEY_ID: "leaked-aws-access-key",
+      AWS_CREDENTIALS_FILE: "/run/leaked-credentials.json",
+    };
+    for (const service of ["dashboard-edge", "mcp-edge"]) {
+      for (const [name, value] of Object.entries(privateCredentials)) {
+        expect(load(service, { [name]: value }).exitCode).not.toBe(0);
+      }
     }
   });
 

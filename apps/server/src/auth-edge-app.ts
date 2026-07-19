@@ -2,24 +2,15 @@ import { Elysia } from "elysia";
 import { config } from "./config.ts";
 import { publicAuthRequestAllowed } from "./auth-protocol.ts";
 import { json, routeError } from "./http.ts";
+import { internalProxyRequest } from "./internal-proxy.ts";
 import { securityHeaders } from "./security.ts";
 
 const AUTH_EDGE_HEADER = "x-context-use-auth-edge";
 
 function upstreamRequest(request: Request): Request {
-  const incoming = new URL(request.url);
-  const upstream = new URL(`${incoming.pathname}${incoming.search}`, config.AUTH_AUTHORITY_URL);
-  const headers = new Headers(request.headers);
-  headers.delete("host");
-  headers.delete("connection");
-  headers.delete("transfer-encoding");
-  // Never trust a caller-supplied ingress capability.
-  headers.set(AUTH_EDGE_HEADER, config.AUTH_EDGE_TOKEN);
-  return new Request(upstream, {
-    method: request.method,
-    headers,
-    body: request.method === "GET" || request.method === "HEAD" ? null : request.body,
-    redirect: "manual",
+  return internalProxyRequest(request, config.AUTH_AUTHORITY_URL, (headers) => {
+    // Never trust a caller-supplied ingress capability.
+    headers.set(AUTH_EDGE_HEADER, config.AUTH_EDGE_TOKEN);
   });
 }
 

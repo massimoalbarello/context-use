@@ -47,6 +47,15 @@ export class AssetRepository {
     return result.rows[0] ?? null;
   }
 
+  async getDeletedForStorage(id: string) {
+    const result = await this.pool.query(
+      `SELECT id,s3_object_key
+       FROM assets WHERE id=$1 AND deleted_at IS NOT NULL`,
+      [id],
+    );
+    return result.rows[0] ?? null;
+  }
+
   async list() {
     const result = await this.pool.query(
       `SELECT id,current_path,public_path,filename,content_type,size_bytes,content_hash,width,height,duration_seconds,

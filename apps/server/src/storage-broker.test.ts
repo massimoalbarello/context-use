@@ -12,7 +12,11 @@ const publishedKey = "objects/11111111-1111-4111-8111-111111111111";
 const privateKey = "objects/22222222-2222-4222-8222-222222222222";
 const newKey = "objects/33333333-3333-4333-8333-333333333333";
 
-function privateAssets(rows: Record<string, { filename: string; contentType: string; bytes: string }>) {
+function privateAssets(
+  rows: Record<string, { filename: string; contentType: string; bytes: string }>,
+  deletedIds: string[] = [],
+) {
+  const deleted = new Set(deletedIds);
   return {
     getForStorage: async (id: string) => {
       const row = rows[id];
@@ -27,6 +31,9 @@ function privateAssets(rows: Record<string, { filename: string; contentType: str
         content_hash: createHash("sha256").update(bytes).digest("hex"),
       };
     },
+    getDeletedForStorage: async (id: string) => deleted.has(id)
+      ? { id, s3_object_key: `objects/${id}` }
+      : null,
   };
 }
 
@@ -144,15 +151,22 @@ describe("storage broker capabilities", () => {
     }))).status).toBe(404);
   });
 
-  test("dashboard alone receives destructive storage capability", async () => {
+  test("dashboard can delete bytes only after metadata authorizes the lifecycle transition", async () => {
     const storage = new MemoryStorage();
+    const privateId = privateKey.slice("objects/".length);
+    const publishedId = publishedKey.slice("objects/".length);
     const app = createStorageBrokerApp({
       storage,
-      privateAssets: privateAssets({}),
+      privateAssets: privateAssets({
+        [privateId]: { filename: "private.txt", contentType: "text/plain", bytes: "private" },
+        [publishedId]: { filename: "published.txt", contentType: "text/plain", bytes: "published" },
+      }, [privateId]),
       publicAssets: { assetByPublicPath: async () => null },
       tokens,
     });
 
+    expect((await app.handle(authorized(tokens.dashboard, `/private/object?key=${publishedKey}`, { method: "DELETE" }))).status).toBe(404);
+    expect(storage.objects.has(publishedKey)).toBe(true);
     expect((await app.handle(authorized(tokens.dashboard, `/private/object?key=${privateKey}`, { method: "DELETE" }))).status).toBe(204);
     expect(storage.objects.has(privateKey)).toBe(false);
     expect((await app.handle(authorized("invalid-token-that-is-long-enough-for-parser", `/private/object?key=${publishedKey}`))).status).toBe(404);

@@ -153,6 +153,8 @@ export function remoteSecurityCommands(): string[] {
     "AND (SELECT pg_get_userbyid(proowner)='context_use_boundary_owner' AND prosecdef FROM pg_proc WHERE oid='confirm_publication_intent(uuid,text,text,text,integer,integer)'::regprocedure)",
     "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='user_protect_owner_identity' AND NOT tgisinternal)",
     "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='passkey_protect_credential' AND NOT tgisinternal)",
+    "AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='knowledge_pages_published_active' AND convalidated)",
+    "AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='assets_published_active' AND convalidated)",
     "AND NOT has_table_privilege('context_use_public','knowledge_pages','SELECT')",
     "AND has_table_privilege('context_use_public','published_pages','SELECT')",
     "AND has_function_privilege('context_use_public','project_public_markdown(text)','EXECUTE')",

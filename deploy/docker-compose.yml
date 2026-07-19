@@ -57,6 +57,32 @@ services:
     command: ["bun", "packages/database/src/migrate.ts"]
     networks: [migration_data]
 
+  dashboard-edge:
+    <<: *locked-service
+    depends_on:
+      app: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      SERVICE_MODE: dashboard-edge
+      PORT: "3007"
+      APP_ORIGIN: https://${APP_HOSTNAME}
+      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
+      DASHBOARD_AUTHORITY_URL: http://app:3000
+    command: ["bun", "apps/server/src/dashboard-edge-index.ts"]
+    networks: [dashboard_web, dashboard_edge_internal]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3007/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: dashboard-edge
+
   app:
     <<: *locked-service
     depends_on:
@@ -81,7 +107,7 @@ services:
       WEB_DIST: /app/apps/web/dist
     command: ["bun", "apps/server/src/dashboard-index.ts"]
     volumes: [storage-socket:/run/context-use-storage:ro]
-    networks: [dashboard_data, dashboard_web, auth_dashboard_internal, confirmation_internal]
+    networks: [dashboard_data, dashboard_edge_internal, auth_dashboard_internal, confirmation_internal]
     healthcheck:
       test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3000/api/health'); if (!response.ok) process.exit(1)"]
       interval: 5s
@@ -159,6 +185,32 @@ services:
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
         awslogs-stream: auth
 
+  private-mcp-edge:
+    <<: *locked-service
+    depends_on:
+      private-mcp: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      SERVICE_MODE: mcp-edge
+      PORT: "3008"
+      APP_ORIGIN: https://${APP_HOSTNAME}
+      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
+      MCP_AUTHORITY_URL: http://private-mcp:3003
+    command: ["bun", "apps/server/src/mcp-edge-index.ts"]
+    networks: [mcp_web, mcp_edge_internal]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3008/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: private-mcp-edge
+
   private-mcp:
     <<: *locked-service
     depends_on:
@@ -182,7 +234,7 @@ services:
       STORAGE_MCP_TOKEN: ${STORAGE_MCP_TOKEN}
     command: ["bun", "apps/server/src/mcp-index.ts"]
     volumes: [storage-socket:/run/context-use-storage:ro]
-    networks: [mcp_data, mcp_web, auth_mcp_internal]
+    networks: [mcp_data, mcp_edge_internal, auth_mcp_internal]
     healthcheck:
       test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3003/health'); if (!response.ok) process.exit(1)"]
       interval: 5s
@@ -369,7 +421,7 @@ services:
   caddy:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
-    depends_on: [app, auth-edge, private-mcp, public-web, confirmation, public-mcp]
+    depends_on: [dashboard-edge, auth-edge, private-mcp-edge, public-web, public-mcp]
     environment:
       APP_HOSTNAME: ${APP_HOSTNAME}
       ASSET_HOSTNAME: ${ASSET_HOSTNAME}
@@ -429,9 +481,11 @@ volumes:
 networks:
   edge: {}
   dashboard_web: { internal: true }
+  dashboard_edge_internal: { internal: true }
   auth_web: { internal: true }
   auth_edge_internal: { internal: true }
   mcp_web: { internal: true }
+  mcp_edge_internal: { internal: true }
   public_web: { internal: true }
   auth_dashboard_internal: { internal: true }
   auth_mcp_internal: { internal: true }

@@ -14,19 +14,19 @@
 		reverse_proxy auth-edge:3006
 	}
 	handle /.well-known/oauth-protected-resource* {
-		reverse_proxy private-mcp:3003
+		reverse_proxy private-mcp-edge:3008
 	}
 	handle /mcp {
-		reverse_proxy private-mcp:3003
+		reverse_proxy private-mcp-edge:3008
 	}
 	handle /api/mcp/* {
-		reverse_proxy private-mcp:3003
+		reverse_proxy private-mcp-edge:3008
 	}
 	handle /api/dashboard/* {
-		reverse_proxy server:3000
+		reverse_proxy dashboard-edge:3007
 	}
 	handle /api/health {
-		reverse_proxy server:3000
+		reverse_proxy dashboard-edge:3007
 	}
 	handle /p/* {
 		reverse_proxy public-web:3005

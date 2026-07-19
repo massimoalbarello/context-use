@@ -41,6 +41,10 @@ type PrivateAssetLookup = {
     size_bytes: number | string;
     content_hash: string;
   } | null>;
+  getDeletedForStorage(id: string): Promise<{
+    id: string;
+    s3_object_key: string;
+  } | null>;
 };
 
 function privateCapability(
@@ -149,7 +153,14 @@ export function createStorageBrokerApp(input: {
   })
   .delete("/private/object", async ({ request, query }) => {
     if (privateCapability(request, tokens) !== "dashboard") return denied();
-    await storage.delete(objectKeySchema.parse(query.key));
+    const objectKey = objectKeySchema.parse(query.key);
+    const id = z.string().uuid().parse(objectKey.slice("objects/".length));
+    const deleted = await privateAssets.getDeletedForStorage(id);
+    // Metadata is the lifecycle authority. A published row cannot become
+    // deleted until passkey-confirmed unpublication clears its visibility, so
+    // a bare dashboard storage capability cannot hide public bytes.
+    if (!deleted || deleted.s3_object_key !== objectKey) return denied();
+    await storage.delete(objectKey);
     return new Response(null, { status: 204 });
   })
   .post("/private/verify", async ({ request }) => {

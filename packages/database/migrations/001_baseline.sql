@@ -368,6 +368,9 @@ CREATE TABLE knowledge_pages (
     (published_version_id IS NULL AND public_path IS NULL)
     OR (published_version_id IS NOT NULL AND public_path IS NOT NULL)
   ),
+  CONSTRAINT knowledge_pages_published_active CHECK (
+    published_version_id IS NULL OR archived_at IS NULL
+  ),
   CONSTRAINT knowledge_pages_required_public_path CHECK (
     required_public_path IS NULL OR (
       required_public_path='about'
@@ -459,6 +462,9 @@ CREATE TABLE assets (
   CONSTRAINT assets_publication_pair CHECK (
     (published_at IS NULL AND public_path IS NULL)
     OR (published_at IS NOT NULL AND public_path IS NOT NULL)
+  ),
+  CONSTRAINT assets_published_active CHECK (
+    published_at IS NULL OR deleted_at IS NULL
   )
 );
 CREATE UNIQUE INDEX assets_active_path_unique
@@ -1058,8 +1064,14 @@ BEGIN
     '[private reference]','gi'
   );
   projected := regexp_replace(
-    projected,'/api/(dashboard|public)/assets/[0-9a-f-]{36}/content',
-    '[private reference]','gi'
+    projected,'/api/(dashboard|mcp|public)/assets/[0-9a-f-]{36}(/(content|status))?',
+    '[private asset reference]','gi'
+  );
+  -- Last-resort identifier minimization covers legacy/absolute URL shapes and
+  -- malformed references that do not match any supported Markdown construct.
+  projected := regexp_replace(
+    projected,'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+    '[private identifier]','gi'
   );
   RETURN projected;
 END;

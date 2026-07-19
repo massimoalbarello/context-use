@@ -18,7 +18,10 @@ const developmentStorageTokens = {
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  SERVICE_MODE: z.enum(["all", "dashboard", "auth-edge", "auth", "mcp", "public", "confirmation", "storage"]).default("all"),
+  SERVICE_MODE: z.enum([
+    "all", "dashboard-edge", "dashboard", "auth-edge", "auth",
+    "mcp-edge", "mcp", "public", "confirmation", "storage",
+  ]).default("all"),
   PORT: z.coerce.number().int().positive().default(3000),
   APP_ORIGIN: z.string().url().default("http://localhost:3000"),
   ASSET_ORIGIN: z.string().url().default("http://localhost:3000"),
@@ -28,8 +31,10 @@ const schema = z.object({
   PUBLIC_DATABASE_URL: z.string().min(1).default("postgres://context_use_public:development-only@localhost:5432/context_use"),
   CONFIRMATION_DATABASE_URL: z.string().min(1).default("postgres://context_use_confirmation:development-only@localhost:5432/context_use"),
   STORAGE_DATABASE_URL: z.string().min(1).default("postgres://context_use_storage:development-only@localhost:5432/context_use"),
+  DASHBOARD_AUTHORITY_URL: z.string().url().default("http://localhost:3000"),
   AUTH_INTERNAL_URL: z.string().url().default("http://localhost:3002"),
   AUTH_AUTHORITY_URL: z.string().url().default("http://localhost:3002"),
+  MCP_AUTHORITY_URL: z.string().url().default("http://localhost:3003"),
   CONFIRMATION_INTERNAL_URL: z.string().url().default("http://localhost:3004"),
   CONFIRMATION_GATEWAY_TOKEN: z.string().min(32).default(developmentConfirmationGatewayToken),
   AUTH_EDGE_TOKEN: z.string().min(32).default(developmentInternalTokens.authEdge),
@@ -57,8 +62,6 @@ const schema = z.object({
   AWS_EC2_METADATA_DISABLED: z.enum(["true", "false"]).default("false"),
   ASSET_BUCKET: z.string().default(""),
   KMS_KEY_ID: z.string().default(""),
-  MCP_INTROSPECTION_CLIENT_ID: z.string().default(""),
-  MCP_INTROSPECTION_CLIENT_SECRET: z.string().default(""),
   SESSION_IDLE_SECONDS: z.coerce.number().int().positive().default(43_200),
   SESSION_MAX_SECONDS: z.coerce.number().int().positive().default(604_800),
 });
@@ -114,9 +117,11 @@ if (production) {
   ]);
   const allowedByService: Record<typeof config.SERVICE_MODE, string[]> = {
     all: [...databaseRoles.keys()],
+    "dashboard-edge": [],
     dashboard: ["DATABASE_URL"],
     "auth-edge": [],
     auth: ["AUTH_DATABASE_URL"],
+    "mcp-edge": [],
     mcp: ["MCP_DATABASE_URL"],
     public: ["PUBLIC_DATABASE_URL"],
     confirmation: ["CONFIRMATION_DATABASE_URL"],
@@ -138,14 +143,33 @@ if (production) {
   if (["dashboard", "mcp"].includes(config.SERVICE_MODE) && config.AUTH_INTERNAL_URL !== "http://auth:3002") {
     insecure.push("AUTH_INTERNAL_URL must use the dedicated auth service network");
   }
+  if (config.SERVICE_MODE === "dashboard-edge" && config.DASHBOARD_AUTHORITY_URL !== "http://app:3000") {
+    insecure.push("DASHBOARD_AUTHORITY_URL must use the isolated dashboard authority network");
+  }
   if (config.SERVICE_MODE === "auth-edge" && config.AUTH_AUTHORITY_URL !== "http://auth:3002") {
     insecure.push("AUTH_AUTHORITY_URL must use the isolated auth authority network");
+  }
+  if (config.SERVICE_MODE === "mcp-edge" && config.MCP_AUTHORITY_URL !== "http://private-mcp:3003") {
+    insecure.push("MCP_AUTHORITY_URL must use the isolated private MCP authority network");
   }
   if (["dashboard", "auth"].includes(config.SERVICE_MODE) && config.CONFIRMATION_INTERNAL_URL !== "http://confirmation:3004") {
     insecure.push("CONFIRMATION_INTERNAL_URL must use the dedicated confirmation service network");
   }
 
   const sensitiveByService: Record<string, string[]> = {
+    MIGRATOR_DATABASE_URL: [],
+    DATABASE_ADMIN_URL: [],
+    PUBLIC_MCP_DATABASE_URL: [],
+    POSTGRES_PASSWORD: [],
+    PGPASSWORD: [],
+    DB_AUTH_PASSWORD: [],
+    DB_DASHBOARD_PASSWORD: [],
+    DB_MCP_PASSWORD: [],
+    DB_PUBLIC_PASSWORD: [],
+    DB_PUBLIC_MCP_PASSWORD: [],
+    DB_CONFIRMATION_PASSWORD: [],
+    DB_STORAGE_PASSWORD: [],
+    DB_BACKUP_PASSWORD: [],
     BETTER_AUTH_SECRET: ["auth"],
     OWNER_EMAIL: ["auth"],
     OWNER_SETUP_TOKEN_HASH: ["auth"],
@@ -161,6 +185,7 @@ if (production) {
     AWS_ACCESS_KEY_ID: [],
     AWS_SECRET_ACCESS_KEY: [],
     AWS_SESSION_TOKEN: [],
+    AWS_CREDENTIALS_FILE: ["storage"],
     ASSET_BUCKET: ["storage"],
     KMS_KEY_ID: ["storage"],
   };
