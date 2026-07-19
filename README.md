@@ -40,6 +40,16 @@ These credentials are intentionally non-interchangeable. Dashboard endpoints rej
 
 Internal page links are stored independently of either presentation route. Use `[[path|label]]` or `[label](context-use://page/<page-uuid>)`, never a hard-coded `/app/pages/*` or `/p/*` URL. Authorized dashboard rendering resolves a reference to `/app/pages/:id`; anonymous public rendering resolves it to `/p/<knowledge-path>` only when the target page is independently published. References to private targets are rendered as inert text without target metadata or identifiers.
 
+Image assets use the same stable-reference model. A plain `![Alt text](context-use://asset/<asset-uuid>)` keeps its natural aspect ratio and is constrained to the content width. A small, sanitization-safe attribute block may immediately follow the reference:
+
+```markdown
+![Portrait](context-use://asset/<asset-uuid>){size=medium align=center shape=square}
+```
+
+The supported values are `size=small|medium|large|full`, `align=left|center|right`, `shape=auto|square|portrait|landscape`, and `layout=block|half|third`. Omitted values default to medium, centered, automatic aspect ratio, and block layout. Use `layout=half` on two consecutive images or `layout=third` on three consecutive images for equal responsive columns; the columns collapse on narrow screens. Enforced shapes crop with `object-fit: cover`. No arbitrary CSS is accepted, and unsupported or misspelled attributes remain visible in the rendered page for review. Assets remain independently private until the owner publishes them.
+
+Authenticated MCP agents receive this syntax automatically in the `body_markdown` schema used by `create_page` and `update_page`; no separate discovery call is required. Successful image upload creation also returns ready-to-paste default and formatted Markdown examples.
+
 The Settings export contains only the latest version of each non-archived page and every non-deleted asset. It mirrors knowledge folders, uses the friendly page titles and asset filenames, and rewrites Context Use UUID references and wikilinks to relative, URL-encoded Markdown links. It contains no manifest, history, publication state, account data, or database identifiers. Asset integrity is checked before the passkey prompt, and the Zip64 response streams through the application without exposing storage URLs or buffering the archive in browser memory.
 
 See [Security architecture](docs/security.md) and [Operations](docs/operations.md) for the complete boundary and operating model.

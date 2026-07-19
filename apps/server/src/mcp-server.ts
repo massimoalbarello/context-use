@@ -104,7 +104,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_page", {
-    description: "Create a private Markdown page and its first immutable version. Follow the root AGENTS.md structure: owner information goes under about/; separate entities stay outside it. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
+    description: "Create a private Markdown page and its first immutable version. Follow the root AGENTS.md structure: owner information goes under about/; separate entities stay outside it. The body_markdown schema documents supported image layouts. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
     inputSchema: createPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -113,7 +113,7 @@ export function createMcpServer(
   });
 
   server.registerTool("update_page", {
-    description: "Create a new private page version using optimistic concurrency while preserving the root AGENTS.md structure. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
+    description: "Create a new private page version using optimistic concurrency while preserving the root AGENTS.md structure. The body_markdown schema documents supported image layouts. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
     inputSchema: updatePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ page_id, ...input }) => {
@@ -165,7 +165,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_asset_upload", {
-    description: "Create a private, checksum-bound asset upload. PUT the exact raw bytes to the returned URL with every returned header before expires_at. The upload credential cannot read, edit, delete, or publish assets.",
+    description: "Create a private, checksum-bound asset upload. PUT the exact raw bytes to the returned URL with every returned header before expires_at. Image uploads return ready-to-paste page Markdown and a safe formatting example. The upload credential cannot read, edit, delete, or publish assets.",
     inputSchema: assetUploadSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -186,9 +186,20 @@ export function createMcpServer(
       userId: context.userId,
     });
     const { objectKey: _hidden, ...asset } = created;
+    const reference = `context-use://asset/${created.id}`;
+    const markdownAlt = created.filename.replace(/[\[\]\r\n]+/g, " ").replace(/\s+/g, " ").trim() || "Image";
+    const imageMarkdown = `![${markdownAlt}](${reference})`;
     return jsonContent({
       asset,
-      reference: `context-use://asset/${created.id}`,
+      reference,
+      ...(/^image\/(?:png|jpeg|gif|webp|avif)(?:;|$)/i.test(created.content_type)
+        ? {
+            page_markdown: {
+              default: imageMarkdown,
+              formatted_example: `${imageMarkdown}{size=medium align=center shape=auto}`,
+            },
+          }
+        : {}),
       upload: {
         method: "PUT",
         url: `${config.APP_ORIGIN}/api/mcp/assets/${encodeURIComponent(created.id)}/content`,

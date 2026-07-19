@@ -214,7 +214,7 @@ safe_pages AS (
           regexp_replace(
             regexp_replace(
               page.body_markdown,
-              '!\[([^]]*)\]\(context-use://asset/[0-9a-f-]{36}\)',
+              '!\[([^]]*)\]\(context-use://asset/[0-9a-f-]{36}\)(\{[^}\r\n]*\})?',
               '\1','gi'
             ),
             '\[([^]]*)\]\(context-use://page/[0-9a-f-]{36}\)',

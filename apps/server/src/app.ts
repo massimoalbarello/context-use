@@ -50,6 +50,7 @@ import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import {
+  IMAGE_LAYOUT_STYLES,
   publicPageStyles,
   renderPublicLandingDocument,
   renderPublicPageDocument,
@@ -823,6 +824,10 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   ))
   .get("/public.css", () => new Response(
     publicPageStyles,
+    { headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" } },
+  ))
+  .get("/content.css", () => new Response(
+    IMAGE_LAYOUT_STYLES,
     { headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" } },
   ));
 

@@ -22,7 +22,11 @@ async function mcpRequest(server: McpServer, body: Record<string, unknown>) {
     }));
     return await response.json() as {
       result?: {
-        tools?: Array<{ name: string }>;
+        tools?: Array<{
+          name: string;
+          description?: string;
+          inputSchema?: { properties?: Record<string, { description?: string }> };
+        }>;
         content?: Array<{ type: string; text: string }>;
         instructions?: string;
         isError?: boolean;
@@ -107,6 +111,51 @@ describe("MCP skill and automation authoring", () => {
       "create_automation_page",
       "create_asset_upload",
     ]));
+    const createPage = response.result?.tools?.find(({ name }) => name === "create_page");
+    expect(createPage?.description).toContain("body_markdown schema");
+    expect(createPage?.inputSchema?.properties?.body_markdown?.description).toContain("layout=half");
+    expect(response.result?.tools?.some(({ name }) => name === "get_markdown_guide")).toBe(false);
+  });
+
+  test("returns ready-to-paste formatting Markdown for image uploads", async () => {
+    const assets = {
+      async create() {
+        return {
+          id: "11111111-1111-4111-8111-111111111111",
+          current_path: "photos/portrait",
+          filename: "Portrait.jpg",
+          content_type: "image/jpeg",
+          size_bytes: 123,
+          content_hash: "a".repeat(64),
+          objectKey: "objects/secret-key",
+        };
+      },
+    } as unknown as AssetRepository;
+    const response = await mcpRequest(serverWith(
+      {} as AutomationRepository,
+      new Set(["assets:write"]),
+      {} as PageRepository,
+      assets,
+    ), {
+      jsonrpc: "2.0",
+      id: 10,
+      method: "tools/call",
+      params: {
+        name: "create_asset_upload",
+        arguments: {
+          path: "photos/portrait",
+          filename: "Portrait.jpg",
+          content_type: "image/jpeg",
+          size_bytes: 123,
+          sha256: "a".repeat(64),
+        },
+      },
+    });
+
+    const result = JSON.parse(response.result?.content?.[0]?.text ?? "null");
+    expect(result.page_markdown.default).toBe("![Portrait.jpg](context-use://asset/11111111-1111-4111-8111-111111111111)");
+    expect(result.page_markdown.formatted_example).toContain("{size=medium align=center shape=auto}");
+    expect(result.page_markdown.help_tool).toBeUndefined();
   });
 
   test("creates checksum-bound asset uploads without exposing storage keys", async () => {

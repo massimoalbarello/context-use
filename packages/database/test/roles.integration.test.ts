@@ -508,7 +508,7 @@ describeDatabase("PostgreSQL security roles", () => {
           [
             "PUBLIC-CANARY content",
             `[Private label](context-use://page/${privatePageId})`,
-            `![Private image](context-use://asset/${assetId})`,
+            `![Private image](context-use://asset/${assetId}){size=medium align=center shape=square}`,
             "[[private/strategy]]",
             "[[private/strategy|Authored label]]",
             `context-use://page/${privatePageId}`,
@@ -547,6 +547,7 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(child?.body_markdown).not.toContain(assetId);
       expect(child?.body_markdown).not.toContain("private/strategy");
       expect(child?.body_markdown).not.toContain("context-use://");
+      expect(child?.body_markdown).not.toContain("{size=medium");
       expect(child?.body_markdown).not.toContain("COMMENT-CANARY");
       expect(child?.body_markdown).not.toContain("SCRIPT-CANARY");
       expect(child?.body_markdown).not.toContain("STYLE-CANARY");

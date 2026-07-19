@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { config } from "./config.ts";
 import { renderMarkdown } from "./markdown.ts";
 
 const privateResolvers = {
@@ -43,6 +44,98 @@ describe("safe Markdown rendering", () => {
     expect(html).toContain(`<a href="/api/dashboard/assets/${pdfId}/content" target="_blank" rel="noopener noreferrer">Open PDF</a>`);
     expect(html).not.toContain(`<img src="/api/dashboard/assets/${videoId}/content"`);
     expect(html).not.toContain(`<img src="/api/dashboard/assets/${pdfId}/content"`);
+  });
+
+  test("renders only the supported image formatting attributes as safe classes", async () => {
+    const imageId = "11111111-1111-4111-8111-111111111111";
+    const html = await renderMarkdown(
+      `![A <portrait>](context-use://asset/${imageId}){size=small align=right shape=square layout=half}`,
+      {
+        ...privateResolvers,
+        asset: async () => ({
+          available: true as const,
+          href: `/api/dashboard/assets/${imageId}/content`,
+          contentType: "image/jpeg",
+        }),
+      },
+    );
+
+    expect(html).toContain('<span class="cu-image cu-image--size-small cu-image--align-right cu-image--shape-square cu-image--layout-half">');
+    expect(html).toContain(`src="/api/dashboard/assets/${imageId}/content" alt="A &lt;portrait&gt;" loading="lazy"`);
+    expect(html).not.toContain("context-use://");
+  });
+
+  test("keeps canonical published-asset paths for plain and formatted public images", async () => {
+    const imageId = "11111111-1111-4111-8111-111111111111";
+    const publicHref = `${config.ASSET_ORIGIN}/p/photos/portrait`;
+    const resolver = {
+      ...privateResolvers,
+      asset: async () => ({ available: true as const, href: publicHref, contentType: "image/avif" }),
+    };
+    const plain = await renderMarkdown(`![Plain](context-use://asset/${imageId})`, resolver);
+    const formatted = await renderMarkdown(
+      `![Formatted](context-use://asset/${imageId}){size=large align=center}`,
+      resolver,
+    );
+
+    expect(plain).toContain(`<img src="${publicHref}" alt="Plain" loading="lazy"`);
+    expect(formatted).toContain(`<img src="${publicHref}" alt="Formatted" loading="lazy">`);
+  });
+
+  test("uses predictable defaults and leaves invalid formatting visible for review", async () => {
+    const imageId = "11111111-1111-4111-8111-111111111111";
+    const resolver = {
+      ...privateResolvers,
+      asset: async () => ({
+        available: true as const,
+        href: `/api/dashboard/assets/${imageId}/content`,
+        contentType: "image/png",
+      }),
+    };
+    const valid = await renderMarkdown(
+      `![Centered](context-use://asset/${imageId}){shape=landscape}`,
+      resolver,
+    );
+    const invalid = await renderMarkdown(
+      `![Typo](context-use://asset/${imageId}){algin=center style=display:none}`,
+      resolver,
+    );
+
+    expect(valid).toContain("cu-image--size-medium cu-image--align-center cu-image--shape-landscape cu-image--layout-block");
+    expect(invalid).toContain("{algin=center style=display:none}");
+    expect(invalid).not.toContain("cu-image");
+    expect(invalid).not.toContain("display:none\"");
+  });
+
+  test("keeps consecutive half-width images as sibling elements for responsive columns", async () => {
+    const firstId = "11111111-1111-4111-8111-111111111111";
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    const html = await renderMarkdown(
+      `![First](context-use://asset/${firstId}){layout=half shape=square}\n![Second](context-use://asset/${secondId}){layout=half shape=square}`,
+      {
+        ...privateResolvers,
+        asset: async (id) => ({
+          available: true as const,
+          href: `/api/dashboard/assets/${id}/content`,
+          contentType: "image/webp",
+        }),
+      },
+    );
+
+    expect(html.match(/<span class="[^"]*cu-image--layout-half[^"]*">/g)).toHaveLength(2);
+    expect(html).toContain("<p><span");
+  });
+
+  test("does not allow authored HTML to opt into arbitrary layout classes", async () => {
+    const imageId = "11111111-1111-4111-8111-111111111111";
+    const html = await renderMarkdown(
+      `<span class="cu-image cu-image--shape-square attacker"><img src="/api/dashboard/assets/${imageId}/content"></span>`,
+      privateResolvers,
+    );
+
+    expect(html).not.toContain("attacker");
+    expect(html).not.toContain("cu-image");
+    expect(html).toContain("<img");
   });
 
   test("keeps hand-written media only for canonical asset URLs", async () => {

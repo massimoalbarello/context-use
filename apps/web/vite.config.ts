@@ -15,6 +15,7 @@ export default defineConfig({
       "/p": apiProxyTarget,
       "/.well-known": apiProxyTarget,
       "/public.css": apiProxyTarget,
+      "/content.css": apiProxyTarget,
     },
   },
   build: { outDir: "dist", sourcemap: true },
