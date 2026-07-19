@@ -6,6 +6,7 @@ import {
   countPublicPages,
   directoryPathsForPage,
   expandedPathsForDisplay,
+  knowledgeTreeItemLabel,
   parseExpandedPaths,
   serializeExpandedPaths,
 } from "./knowledge-tree.ts";
@@ -72,6 +73,17 @@ describe("knowledge tree", () => {
 
     expect(acme.pages.map(({ name }) => name)).toEqual(["brief"]);
     expect(acme.assets.map(({ name }) => name)).toEqual(["site-photo"]);
+  });
+
+  test("uses the page path filename as its tree label independently of the page title", () => {
+    const tree = buildKnowledgeTree(
+      [page("intro", "me/intro", "Massimo Albarello")],
+      [asset("photo", "me/profile-photo", "massimo.jpg")],
+    );
+    const me = tree.directories[0]!;
+
+    expect(knowledgeTreeItemLabel(me.pages[0]!)).toBe("intro");
+    expect(knowledgeTreeItemLabel(me.assets[0]!)).toBe("massimo.jpg");
   });
 
   test("returns the ancestors needed to reveal a selected page", () => {

@@ -4,6 +4,7 @@ import {
   countPublicPages,
   EXPANDED_PATHS_STORAGE_KEY,
   expandedPathsForDisplay,
+  knowledgeTreeItemLabel,
   parseExpandedPaths,
   serializeExpandedPaths,
   type AssetTreeAsset,
@@ -81,7 +82,7 @@ function KnowledgeItems({
 
   return <>{items.map((item) => {
     const entity = item.kind === "page" ? item.page : item.asset;
-    const label = item.kind === "page" ? item.page.title || item.name : item.asset.filename || item.name;
+    const label = knowledgeTreeItemLabel(item);
     const active = selected?.kind === item.kind && selected.id === entity.id;
     const archived = item.kind === "page" && Boolean(item.page.archived_at);
     const isPublic = item.kind === "page" ? Boolean(item.page.published_version_id) : Boolean(item.asset.published_at);
