@@ -11,7 +11,7 @@
     },
     "apps/cli": {
       "name": "@context-use/cli",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "bin": {
         "context-use": "./src/main.ts",
       },
@@ -26,7 +26,7 @@
     },
     "apps/public-mcp": {
       "name": "@context-use/public-mcp",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "dependencies": {
         "@context-use/database": "workspace:*",
         "@modelcontextprotocol/sdk": "1.29.0",
@@ -39,7 +39,7 @@
     },
     "apps/server": {
       "name": "@context-use/server",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1088.0",
         "@better-auth/oauth-provider": "1.7.0-rc.1",
@@ -65,7 +65,7 @@
     },
     "apps/web": {
       "name": "@context-use/web",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "dependencies": {
         "@better-auth/oauth-provider": "1.7.0-rc.1",
         "@better-auth/passkey": "1.7.0-rc.1",
@@ -86,7 +86,7 @@
     },
     "packages/database": {
       "name": "@context-use/database",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "dependencies": {
         "@context-use/shared": "workspace:*",
         "croner": "10.0.1",
@@ -98,7 +98,7 @@
     },
     "packages/shared": {
       "name": "@context-use/shared",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "dependencies": {
         "zod": "4.4.3",
       },
