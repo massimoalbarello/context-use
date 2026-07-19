@@ -124,7 +124,7 @@ export function remoteSecurityCommands(): string[] {
     "AND NOT has_column_privilege('context_use_dashboard','automation_runs','status','UPDATE')",
     "AND has_column_privilege('context_use_mcp','knowledge_pages','automation_id','INSERT')",
     "AND NOT has_column_privilege('context_use_mcp','knowledge_pages','automation_id','UPDATE')",
-    "AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='knowledge_pages_automation_path_boundary')",
+    "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='knowledge_pages_automation_path' AND NOT tgisinternal)",
     "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='knowledge_page_versions_automation_path' AND NOT tgisinternal)",
     "AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='publication_intents_keep_automation_pages_private' AND NOT tgisinternal)",
     "THEN 'ok' ELSE 'denied' END",
