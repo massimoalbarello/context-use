@@ -13,7 +13,7 @@ import {
 
 export type PublicPageReader = {
   listPages(): Promise<PublicMcpPageSummary[]>;
-  getPage(slug: string): Promise<PublicMcpPage | null>;
+  getPage(path: string): Promise<PublicMcpPage | null>;
   searchPages(query: string, limit: number): Promise<PublicMcpSearchResult[]>;
 };
 
@@ -96,23 +96,24 @@ export function createPublicMcpServer(
   });
 
   server.registerTool("get_public_page", {
-    description: "Read one public page by the slug shown in get_about_page or search_public_pages. Returns its published hierarchy context and Markdown content.",
+    description: "Read one public page by the knowledge path shown in get_about_page or search_public_pages. Returns its published hierarchy context and Markdown content.",
     inputSchema: z.object({
-      slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,159}$/),
+      path: z.string().min(1).max(512).regex(/^[a-z0-9][a-z0-9/_-]*$/)
+        .refine((value) => !value.includes("//") && !value.endsWith("/")),
     }).strict(),
     annotations,
-  }, async ({ slug }) => {
+  }, async ({ path }) => {
     try {
-      const [page, pages] = await Promise.all([reader.getPage(slug), reader.listPages()]);
+      const [page, pages] = await Promise.all([reader.getPage(path), reader.listPages()]);
       if (!page) return jsonContent({ found: false });
       return jsonContent({
         found: true,
         page: {
-          slug: page.slug,
+          path: page.path,
           title: page.title,
-          url: new URL(`/p/${encodeURIComponent(page.slug)}`, publicSiteOrigin).href,
-          breadcrumbs: publicBreadcrumbs(page.slug, pages, publicSiteOrigin),
-          children: publicChildren(page.slug, pages, publicSiteOrigin),
+          url: new URL(`/p/${page.path}`, publicSiteOrigin).href,
+          breadcrumbs: publicBreadcrumbs(page.path, pages, publicSiteOrigin),
+          children: publicChildren(page.path, pages, publicSiteOrigin),
           content_markdown: page.body_markdown,
         },
       });
@@ -134,10 +135,10 @@ export function createPublicMcpServer(
       return jsonContent({
         query,
         results: results.map((result) => ({
-          slug: result.slug,
+          path: result.path,
           title: result.title,
-          url: new URL(`/p/${encodeURIComponent(result.slug)}`, publicSiteOrigin).href,
-          breadcrumbs: publicBreadcrumbs(result.slug, pages, publicSiteOrigin),
+          url: new URL(`/p/${result.path}`, publicSiteOrigin).href,
+          breadcrumbs: publicBreadcrumbs(result.path, pages, publicSiteOrigin),
           excerpt_markdown: result.excerpt,
         })),
       });

@@ -27,6 +27,7 @@ import {
   createCronScheduleSchema,
   createPageSchema,
   MCP_SCOPES,
+  PagePath,
   publicationIntentSchema,
   updateSkillSchema,
   updateCronScheduleSchema,
@@ -159,21 +160,21 @@ function publicPageResolvers(sourcePath: string) {
   return {
     page: async (id: string) => {
       const page = await publicData.pageById(id);
-      return page ? { available: true as const, href: `/p/${page.public_slug}` } : { available: false as const };
+      return page ? { available: true as const, href: `/p/${page.public_path}` } : { available: false as const };
     },
     pagePath: async (path: string) => {
       for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
         const page = await publicData.pageByPath(candidate);
-        if (page) return { available: true as const, href: `/p/${page.public_slug}` };
+        if (page) return { available: true as const, href: `/p/${page.public_path}` };
       }
       return { available: false as const };
     },
     asset: async (id: string) => {
-      const asset = await publicData.asset(id);
+      const asset = await publicData.assetById(id);
       return asset
         ? {
             available: true as const,
-            href: `${config.ASSET_ORIGIN}/api/public/assets/${id}/content`,
+            href: `${config.ASSET_ORIGIN}/p/${asset.public_path}`,
             contentType: asset.content_type,
           }
         : { available: false as const };
@@ -475,7 +476,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       title: version.title,
       path: version.path,
       rendered_html: html,
-      current_slug: page.public_slug,
+      current_public_path: page.public_path,
       warnings: publicationWarnings(version.body_markdown),
       references,
     });
@@ -541,7 +542,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
         Number(asset.size_bytes),
         asset.content_hash,
       ),
-      public_url: `${config.ASSET_ORIGIN}/api/public/assets/${asset.id}/content`,
+      public_url: `${config.ASSET_ORIGIN}/p/${asset.public_path ?? asset.current_path}`,
     });
   })
   .get("/api/dashboard/assets/:id/content", async ({ request, params }) => {
@@ -564,32 +565,35 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const passkeys = await getOwnerPasskeys(principal.userId);
     if (!passkeys.length) return problem("Register a passkey before changing visibility", 409, "passkey_required");
 
+    let publicPath: string | null = null;
     if (input.target_kind === "page") {
       const page = await dashboardPages.get(input.target_id);
       if (!page) return problem("Page not found", 404, "not_found");
       if (page.automation_id && input.action !== "unpublish") {
         return problem("Automation-generated pages remain private", 403, "automation_page_private");
       }
-      if (page.required_public_slug) {
+      if (page.required_public_path) {
         if (input.action === "unpublish") {
           return problem(
-            `The required /p/${page.required_public_slug} page cannot be unpublished`,
+            `The required /p/${page.required_public_path} page cannot be unpublished`,
             409,
-            "required_public_page",
-          );
-        }
-        if (input.public_slug !== page.required_public_slug) {
-          return problem(
-            `The required public page must remain at /p/${page.required_public_slug}`,
-            422,
             "required_public_page",
           );
         }
       }
       if (input.action !== "unpublish") {
-        if (!input.version_id || !input.public_slug) return problem("Page version and public slug are required", 422);
+        if (!input.version_id) return problem("Page version is required", 422);
         const history = await dashboardPages.history(input.target_id);
-        if (!history.some((version) => version.id === input.version_id)) return problem("Version does not belong to page", 422);
+        const version = history.find((candidate) => candidate.id === input.version_id);
+        if (!version) return problem("Version does not belong to page", 422);
+        publicPath = version.path;
+        if (page.required_public_path && publicPath !== page.required_public_path) {
+          return problem(
+            `The required public page must remain at /p/${page.required_public_path}`,
+            422,
+            "required_public_page",
+          );
+        }
       }
     } else {
       const asset = await dashboardAssets.get(input.target_id, true);
@@ -597,6 +601,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       if (input.action !== "unpublish" && !(await storage.verify(asset.s3_object_key, Number(asset.size_bytes), asset.content_hash))) {
         return problem("Asset upload is incomplete or failed integrity verification", 409, "asset_incomplete");
       }
+      if (input.action !== "unpublish") publicPath = asset.current_path;
     }
 
     const options = await generateAuthenticationOptions({
@@ -613,7 +618,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const intent = await publications.createIntent(input, {
       ownerUserId: principal.userId,
       sessionId: principal.sessionId,
-    }, options.challenge);
+    }, options.challenge, publicPath);
     return json({ intent, authentication_options: options }, 201);
   })
   .post("/api/dashboard/publications/confirm", async ({ request }) => {
@@ -654,11 +659,19 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     return json({ published: intent.action !== "unpublish", action: intent.action, target_kind: intent.target_kind, target_id: intent.target_id });
   })
 
-  .get("/p/:slug", async ({ params }) => {
-    const parsedSlug = z.string().regex(/^[a-z0-9][a-z0-9-]{0,159}$/).safeParse(params.slug);
-    if (!parsedSlug.success) return new Response("Not found", { status: 404, headers: securityHeaders });
-    const slug = parsedSlug.data;
-    const page = await publicData.pageBySlug(slug);
+  .get("/p/*", async ({ request, params }) => {
+    const parsedPath = PagePath.safeParse(params["*"]);
+    if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
+    const publicPath = parsedPath.data;
+    const matchesAssetOrigin = requestMatchesOrigin(request, config.ASSET_ORIGIN);
+    const matchesAppOrigin = requestMatchesOrigin(request, config.APP_ORIGIN);
+    if (matchesAssetOrigin && !matchesAppOrigin) {
+      return publicAssetContent(request, publicPath);
+    }
+    const page = await publicData.pageByPublicPath(publicPath);
+    if (!page && matchesAssetOrigin) {
+      return publicAssetContent(request, publicPath);
+    }
     if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
     const content = await renderMarkdown(page.body_markdown, publicPageResolvers(page.path));
     const html = renderPublicPageDocument(page.title, content);
@@ -671,8 +684,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .get("/public.css", () => new Response(
     publicPageStyles,
     { headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" } },
-  ))
-  .get("/api/public/assets/:assetId/content", ({ request, params }) => publicAssetContent(request, params.assetId));
+  ));
 
 if (production) {
   console.info("security_mode", {

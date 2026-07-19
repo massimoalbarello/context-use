@@ -133,10 +133,10 @@ describeDatabase("persisted automation lifecycle", () => {
     }, { kind: "mcp", subject: "agent-one" })).rejects.toBeInstanceOf(AutomationContentAccessError);
     await expect(pool.query(
       `INSERT INTO publication_intents(
-        id,action,target_kind,target_id,version_id,public_slug,owner_user_id,
+        id,action,target_kind,target_id,version_id,public_path,owner_user_id,
         session_id,challenge,payload_hash,expires_at
-       ) VALUES ($1,'publish','page',$2,$3,'generated-review','owner','session',$4,$5,now()+interval '5 minutes')`,
-      [crypto.randomUUID(), generated.id, generated.current_version_id, `challenge-${crypto.randomUUID()}`, "a".repeat(64)],
+       ) VALUES ($1,'publish','page',$2,$3,$6,'owner','session',$4,$5,now()+interval '5 minutes')`,
+      [crypto.randomUUID(), generated.id, generated.current_version_id, `challenge-${crypto.randomUUID()}`, "a".repeat(64), generated.current_path],
     )).rejects.toThrow();
 
     await expect(automations.completeRun(claimed.run_id, claimed.claim_token, "agent-two", "spoofed"))

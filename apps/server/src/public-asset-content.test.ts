@@ -3,24 +3,25 @@ import type { PublicRepository } from "@context-use/database";
 import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import type { ObjectStorage } from "./storage.ts";
 
-const assetId = "11111111-1111-4111-8111-111111111111";
+const assetPath = "projects/acme/published-image";
 const bytes = new TextEncoder().encode("published bytes");
 
 function fixture(published = true) {
   let metadataReads = 0;
   let objectReads = 0;
   const assets = {
-    async asset(id: string) {
+    async assetByPublicPath(path: string) {
       metadataReads += 1;
-      return published && id === assetId ? {
-        id,
+      return published && path === assetPath ? {
+        id: "11111111-1111-4111-8111-111111111111",
+        public_path: path,
         filename: "published.png",
         content_type: "image/png",
         size_bytes: bytes.byteLength,
-        s3_object_key: `objects/${assetId}`,
+        s3_object_key: "objects/11111111-1111-4111-8111-111111111111",
       } : null;
     },
-  } as Pick<PublicRepository, "asset">;
+  } as Pick<PublicRepository, "assetByPublicPath">;
   const storage = {
     async read() {
       objectReads += 1;
@@ -35,8 +36,8 @@ describe("public asset API boundary", () => {
   test("streams only metadata selected by the published-assets repository", async () => {
     const published = fixture();
     const response = await published.handler(new Request(
-      `https://assets.context.example/api/public/assets/${assetId}/content`,
-    ), assetId);
+      `https://assets.context.example/p/${assetPath}`,
+    ), assetPath);
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("published bytes");
     expect(response.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
@@ -45,8 +46,8 @@ describe("public asset API boundary", () => {
 
     const privateAsset = fixture(false);
     const denied = await privateAsset.handler(new Request(
-      `https://assets.context.example/api/public/assets/${assetId}/content`,
-    ), assetId);
+      `https://assets.context.example/p/${assetPath}`,
+    ), assetPath);
     expect(denied.status).toBe(404);
     expect(privateAsset.metadataReads()).toBe(1);
     expect(privateAsset.objectReads()).toBe(0);
@@ -54,16 +55,16 @@ describe("public asset API boundary", () => {
 
   test("rejects private credentials and requests on the dashboard origin before metadata access", async () => {
     for (const request of [
-      new Request(`https://assets.context.example/api/public/assets/${assetId}/content`, {
+      new Request(`https://assets.context.example/p/${assetPath}`, {
         headers: { cookie: "private-session" },
       }),
-      new Request(`https://assets.context.example/api/public/assets/${assetId}/content`, {
+      new Request(`https://assets.context.example/p/${assetPath}`, {
         headers: { authorization: "Bearer private-token" },
       }),
-      new Request(`https://context.example/api/public/assets/${assetId}/content`),
+      new Request(`https://context.example/p/${assetPath}`),
     ]) {
       const denied = fixture();
-      expect((await denied.handler(request, assetId)).status).toBe(404);
+      expect((await denied.handler(request, assetPath)).status).toBe(404);
       expect(denied.metadataReads()).toBe(0);
       expect(denied.objectReads()).toBe(0);
     }

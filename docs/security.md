@@ -14,7 +14,7 @@ user-verified owner passkey
 → append-only publication event
 ```
 
-The confirmation request carries only the intent identifier and authenticator response. The stored intent binds the operation, target UUID, page version, public slug, dashboard session, random challenge, owner, and expiry. Consuming it and changing visibility happen in one database transaction.
+The confirmation request carries only the intent identifier and authenticator response. The stored intent binds the operation, target UUID, page version, knowledge-derived public path, dashboard session, random challenge, owner, and expiry. Consuming it and changing visibility happen in one database transaction. The caller cannot choose a separate public alias: the server derives a page path from the reviewed immutable version and an asset path from its knowledge-base record, and the publication procedure verifies that match again.
 
 The sole bootstrap exception contains no owner data: migrations create the required `/p/about` page with an empty published body. Database constraints keep that route present and prevent moving, archiving, or unpublishing it. Editing About creates a new private version; publishing any owner-authored content still requires the complete passkey flow above.
 
@@ -63,9 +63,9 @@ Every automation has an immutable `automations/<automation-key>` knowledge prefi
 
 ## Content isolation
 
-Public views select the exact published page version, not the current private version. Page and asset publication states are independent. Public rendering resolves only targets visible through public views, so a link to a private object reveals no title, path, filename, MIME type, size, or S3 key.
+Public views select the exact published page version, not the current private version. Page and asset publication states are independent. Every anonymous page or asset route is under `/p/` and resolves only through those views, so guessing a private path returns the same `404` as a missing path. Public rendering resolves only targets visible through public views, so a link to a private object reveals no title, filename, MIME type, size, or S3 key.
 
-The anonymous MCP uses a second projection rather than serializing the webpage views. That projection exposes only public slug, title, sanitized Markdown, and the slug of the closest published ancestor. Database-side redaction removes Context Use page/asset UUIDs, wikilink targets, HTML comments, script/style blocks, and raw HTML tags before the MCP process can read them. Hierarchy nodes are published pages only, so unpublished folder names and intermediate pages do not appear. The MCP process never receives raw paths, version identifiers, timestamps, asset metadata, or S3 object keys.
+The anonymous MCP uses a second projection rather than serializing the webpage views. That projection exposes only each published knowledge path, title, sanitized Markdown, and the path of the closest published ancestor. Database-side redaction removes Context Use page/asset UUIDs, wikilink targets, HTML comments, script/style blocks, and raw HTML tags before the MCP process can read them. Hierarchy nodes are published pages only; private pages are not returned or resolvable, even when a public descendant necessarily reveals shared folder segments. The MCP process never receives version identifiers, timestamps, asset metadata, or S3 object keys.
 
 Raw HTML and remote inline media are removed from Markdown. Rendered HTML is sanitized and served under a restrictive CSP. Active file formats, including HTML and SVG, are forced to download. S3 buckets have all public-access blocks enabled, require TLS, and use KMS encryption. Upload and download bytes always pass through the appropriate application API boundary; S3 URLs are never exposed to dashboard users, MCP clients, or public visitors. Uploads are checksum-validated by S3, and large downloads support bounded byte ranges without buffering the full object in the application.
 
@@ -89,6 +89,6 @@ The anonymous MCP runs as a separate isolated container with no dashboard, auth,
 
 ## Passkey permanence
 
-There is no passkey recovery or rotation path in v1. Losing every copy of the credential permanently removes dashboard access and prevents publishing, republishing, slug changes, and unpublishing. The configured email cannot be used to bypass or replace the passkey.
+There is no passkey recovery or rotation path in v1. Losing every copy of the credential permanently removes dashboard access and prevents publishing, republishing, and unpublishing. The configured email cannot be used to bypass or replace the passkey.
 
 Security issues should be reported as described in [SECURITY.md](../SECURITY.md), not in a public issue.

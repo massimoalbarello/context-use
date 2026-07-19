@@ -3,8 +3,8 @@ export type Page = {
   current_path: string;
   current_version_id: string;
   published_version_id: string | null;
-  public_slug: string | null;
-  required_public_slug: string | null;
+  public_path: string | null;
+  required_public_path: string | null;
   automation_id: string | null;
   archived_at: string | null;
   version_number: number;
@@ -29,6 +29,7 @@ export type Version = {
 export type Asset = {
   id: string;
   current_path: string;
+  public_path: string | null;
   filename: string;
   content_type: string;
   size_bytes: number;
@@ -49,7 +50,7 @@ export type PublicationPreview = {
   title: string;
   path: string;
   rendered_html: string;
-  current_slug: string | null;
+  current_public_path: string | null;
   warnings: string[];
   references: Array<{ kind: "page" | "asset"; id: string; label: string; path: string | null; public: boolean }>;
 };

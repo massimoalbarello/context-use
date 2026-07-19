@@ -69,7 +69,7 @@ async function insertAssetLinks(
 
 const CURRENT_PAGE_SELECT = `
   SELECT p.id, p.current_path, p.current_version_id, p.published_version_id,
-    p.public_slug, p.required_public_slug, p.automation_id, p.archived_at,
+    p.public_path, p.required_public_path, p.automation_id, p.archived_at,
     p.created_at, p.updated_at,
     v.version_number, v.title, v.body_markdown
   FROM knowledge_pages p

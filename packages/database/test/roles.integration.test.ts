@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Client, type Pool } from "pg";
 import { randomUUID } from "node:crypto";
-import { InboxRepository, PublicMcpRepository, PublicMessageRepository } from "../src/index.ts";
+import { InboxRepository, PublicMcpRepository, PublicMessageRepository, PublicRepository } from "../src/index.ts";
 
 const adminUrl = process.env.TEST_DATABASE_URL;
 const describeDatabase = adminUrl ? describe : describe.skip;
@@ -38,11 +38,11 @@ describeDatabase("PostgreSQL security roles", () => {
         [role],
       );
       expect(privilege.rows[0]?.allowed).toBe(false);
-      const slug = await admin.query<{ allowed: boolean }>(
-        "SELECT has_column_privilege($1, 'knowledge_pages', 'public_slug', 'UPDATE') AS allowed",
+      const path = await admin.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege($1, 'knowledge_pages', 'public_path', 'UPDATE') AS allowed",
         [role],
       );
-      expect(slug.rows[0]?.allowed).toBe(false);
+      expect(path.rows[0]?.allowed).toBe(false);
     }
   });
 
@@ -65,18 +65,18 @@ describeDatabase("PostgreSQL security roles", () => {
       id: string;
       current_version_id: string;
       published_version_id: string;
-      public_slug: string;
-      required_public_slug: string;
+      public_path: string;
+      required_public_path: string;
     }>(
-      `SELECT id,current_version_id,published_version_id,public_slug,required_public_slug
-       FROM knowledge_pages WHERE required_public_slug='about'`,
+      `SELECT id,current_version_id,published_version_id,public_path,required_public_path
+       FROM knowledge_pages WHERE required_public_path='about'`,
     );
     expect(required.rowCount).toBe(1);
     expect(required.rows[0]).toMatchObject({
-      public_slug: "about",
-      required_public_slug: "about",
+      public_path: "about",
+      required_public_path: "about",
     });
-    expect((await admin.query("SELECT 1 FROM published_pages WHERE public_slug='about'")).rowCount).toBe(1);
+    expect((await admin.query("SELECT 1 FROM published_pages WHERE public_path='about'")).rowCount).toBe(1);
 
     await admin.query("BEGIN");
     try {
@@ -90,7 +90,7 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await expectDenied(
         `INSERT INTO publication_intents(
-           id,action,target_kind,target_id,version_id,public_slug,owner_user_id,
+           id,action,target_kind,target_id,version_id,public_path,owner_user_id,
            session_id,challenge,payload_hash,expires_at
          ) VALUES ($1,'republish','page',$2,$3,'moved-about','owner','session',$4,$5,now()+interval '5 minutes')`,
         [randomUUID(), page.id, page.current_version_id, `move-about-${randomUUID()}`, "b".repeat(64)],
@@ -114,6 +114,52 @@ describeDatabase("PostgreSQL security roles", () => {
         [relation],
       );
       expect(result.rows[0]?.allowed).toBe(true);
+    }
+  });
+
+  test("published assets resolve by knowledge path while private assets stay absent", async () => {
+    const publishedAssetId = randomUUID();
+    const privateAssetId = randomUUID();
+    const intentId = randomUUID();
+    const suffix = randomUUID().slice(0, 8);
+    const publishedPath = `tests/${suffix}/nested/public-asset`;
+    const privatePath = `tests/${suffix}/nested/private-asset`;
+    await admin.query("BEGIN");
+    try {
+      await admin.query(
+        `INSERT INTO assets(id,current_path,filename,content_type,size_bytes,content_hash,s3_object_key)
+         VALUES
+           ($1,$2,'public.png','image/png',1,$3,$4),
+           ($5,$6,'private.png','image/png',1,$3,$7)`,
+        [publishedAssetId, publishedPath, "a".repeat(64), `objects/${publishedAssetId}`, privateAssetId, privatePath, `objects/${privateAssetId}`],
+      );
+      await admin.query(
+        `INSERT INTO publication_intents(
+           id,action,target_kind,target_id,public_path,owner_user_id,session_id,
+           challenge,payload_hash,expires_at
+         ) VALUES ($1,'publish','asset',$2,$3,'owner','session',$4,$5,now()+interval '5 minutes')`,
+        [intentId, publishedAssetId, publishedPath, `asset-${intentId}`, "a".repeat(64)],
+      );
+
+      await admin.query("SET LOCAL ROLE context_use_public");
+      const publicAssets = new PublicRepository(admin as unknown as Pool);
+      expect(await publicAssets.assetByPublicPath(publishedPath)).toBeNull();
+      expect(await publicAssets.assetByPublicPath(privatePath)).toBeNull();
+      await admin.query("RESET ROLE");
+
+      await admin.query("SET LOCAL ROLE context_use_publisher");
+      await admin.query("SELECT confirm_publication_intent($1,'owner','session','verified-credential')", [intentId]);
+      await admin.query("RESET ROLE");
+
+      await admin.query("SET LOCAL ROLE context_use_public");
+      expect(await publicAssets.assetByPublicPath(publishedPath)).toMatchObject({
+        id: publishedAssetId,
+        public_path: publishedPath,
+      });
+      expect(await publicAssets.assetByPublicPath(privatePath)).toBeNull();
+      await expectDenied("SELECT * FROM assets");
+    } finally {
+      await admin.query("ROLLBACK");
     }
   });
 
@@ -148,7 +194,7 @@ describeDatabase("PostgreSQL security roles", () => {
        ORDER BY ordinal_position`,
     );
     expect(columns.rows.map(({ column_name }) => column_name)).toEqual([
-      "public_slug", "title", "body_markdown", "parent_slug",
+      "public_path", "title", "body_markdown", "parent_path",
     ]);
   });
 
@@ -361,7 +407,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [privateVersionId, privatePageId],
       );
       await admin.query(
-        `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_slug)
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_path)
          VALUES ($1,'profile',$2,$2,'profile')`,
         [parentPageId, parentVersionId],
       );
@@ -372,8 +418,8 @@ describeDatabase("PostgreSQL security roles", () => {
         [parentVersionId, parentPageId],
       );
       await admin.query(
-        `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_slug)
-         VALUES ($1,'profile/work/project',$2,$2,'project')`,
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_path)
+         VALUES ($1,'profile/work/project',$2,$2,'profile/work/project')`,
         [childPageId, childVersionId],
       );
       await admin.query(
@@ -406,20 +452,21 @@ describeDatabase("PostgreSQL security roles", () => {
       await admin.query("SET LOCAL ROLE context_use_public_mcp");
       const repository = new PublicMcpRepository(admin as unknown as Pool);
       const projected = await admin.query<{
-        public_slug: string;
+        public_path: string;
         title: string;
         body_markdown: string;
-        parent_slug: string | null;
-      }>("SELECT public_slug,title,body_markdown,parent_slug FROM public_mcp_pages ORDER BY public_slug");
-      expect((await repository.listPages()).map(({ slug }) => slug)).toEqual(["about", "profile", "project"]);
-      expect(await repository.getPage("project")).toMatchObject({ slug: "project", parent_slug: "profile" });
-      expect((await repository.searchPages("content", 10)).map(({ slug }) => slug)).toEqual(["project"]);
+        parent_path: string | null;
+      }>("SELECT public_path,title,body_markdown,parent_path FROM public_mcp_pages ORDER BY public_path");
+      expect((await repository.listPages()).map(({ path }) => path)).toEqual(["about", "profile", "profile/work/project"]);
+      expect(await repository.getPage("profile/work/project")).toMatchObject({ path: "profile/work/project", parent_path: "profile" });
+      expect(await repository.getPage("profile/work")).toBeNull();
+      expect((await repository.searchPages("content", 10)).map(({ path }) => path)).toEqual(["profile/work/project"]);
       await expectDenied("SELECT * FROM published_pages");
       await admin.query("RESET ROLE");
 
-      expect(projected.rows.map(({ public_slug }) => public_slug)).toEqual(["about", "profile", "project"]);
-      const child = projected.rows.find(({ public_slug }) => public_slug === "project");
-      expect(child).toMatchObject({ title: "Project", parent_slug: "profile" });
+      expect(projected.rows.map(({ public_path }) => public_path)).toEqual(["about", "profile", "profile/work/project"]);
+      const child = projected.rows.find(({ public_path }) => public_path === "profile/work/project");
+      expect(child).toMatchObject({ title: "Project", parent_path: "profile" });
       expect(child?.body_markdown).toContain("PUBLIC-CANARY content");
       expect(child?.body_markdown).toContain("Private label");
       expect(child?.body_markdown).toContain("Authored label");
@@ -433,7 +480,6 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(child?.body_markdown).not.toContain("ATTRIBUTE-CANARY");
       expect(child?.body_markdown).toContain("Visible span text");
       expect(JSON.stringify(projected.rows)).not.toContain("PRIVATE-CANARY");
-      expect(JSON.stringify(projected.rows)).not.toContain("profile/work");
     } finally {
       await admin.query("ROLLBACK");
     }
@@ -443,6 +489,7 @@ describeDatabase("PostgreSQL security roles", () => {
     const pageId = randomUUID();
     const versionId = randomUUID();
     const intentId = randomUUID();
+    const mismatchedIntentId = randomUUID();
     await admin.query("BEGIN");
     try {
       await admin.query(
@@ -455,18 +502,27 @@ describeDatabase("PostgreSQL security roles", () => {
         [versionId, pageId],
       );
       await admin.query(
-        `INSERT INTO publication_intents(id,action,target_kind,target_id,version_id,public_slug,owner_user_id,session_id,challenge,payload_hash,expires_at)
-         VALUES ($1,'publish','page',$2,$3,'security-boundary','owner','session',$5,$4,now()+interval '5 minutes')`,
+        `INSERT INTO publication_intents(id,action,target_kind,target_id,version_id,public_path,owner_user_id,session_id,challenge,payload_hash,expires_at)
+         VALUES ($1,'publish','page',$2,$3,'test/security-boundary','owner','session',$5,$4,now()+interval '5 minutes')`,
         [intentId, pageId, versionId, "a".repeat(64), `challenge-${intentId}`],
+      );
+      await admin.query(
+        `INSERT INTO publication_intents(id,action,target_kind,target_id,version_id,public_path,owner_user_id,session_id,challenge,payload_hash,expires_at)
+         VALUES ($1,'publish','page',$2,$3,'test/forged-path','owner','session',$5,$4,now()+interval '5 minutes')`,
+        [mismatchedIntentId, pageId, versionId, "b".repeat(64), `challenge-${mismatchedIntentId}`],
       );
 
       for (const role of ["context_use_dashboard", "context_use_mcp"]) {
         await admin.query(`SET LOCAL ROLE ${role}`);
-        await expectDenied("UPDATE knowledge_pages SET public_slug='bypass' WHERE id=$1", [pageId]);
+        await expectDenied("UPDATE knowledge_pages SET public_path='bypass' WHERE id=$1", [pageId]);
         await admin.query("RESET ROLE");
       }
 
       await admin.query("SET LOCAL ROLE context_use_publisher");
+      await expectDenied(
+        "SELECT confirm_publication_intent($1,'owner','session','verified-credential')",
+        [mismatchedIntentId],
+      );
       await admin.query("SELECT confirm_publication_intent($1,'owner','session','verified-credential')", [intentId]);
       await expectDenied("UPDATE knowledge_pages SET current_path='publisher-cannot-edit' WHERE id=$1", [pageId]);
       await admin.query("RESET ROLE");

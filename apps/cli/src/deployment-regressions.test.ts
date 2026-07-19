@@ -137,7 +137,7 @@ test("remote verification avoids shell-quoting SQL and passes the database passw
   expect(sql).toContain("tgname='knowledge_pages_automation_path'");
   expect(sql).toContain("'agent_skills'");
   expect(sql).toContain("'automation_versions'");
-  expect(sql).toContain("required_public_slug='about'");
+  expect(sql).toContain("required_public_path='about'");
   expect(sql).toContain("tgname='publication_intents_protect_required_public_page'");
   expect(sql).not.toContain("conname='knowledge_pages_automation_path_boundary'");
 });
@@ -210,7 +210,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).not.toContain("email off");
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
   expect(caddy).toContain("handle /api/mcp/assets/*/content");
-  expect(caddy).toContain("handle /api/public/assets/*/content");
+  expect(caddy).not.toContain("handle /api/public/assets/*/content");
   expect(caddy).not.toContain("handle /public/mcp");
   expect(caddy).toContain("{$PUBLIC_MCP_HOSTNAME}");
   expect(caddy).toContain("handle /mcp");
@@ -223,7 +223,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(publicMcpSite).not.toContain("reverse_proxy app:3000");
   expect(publicMcpSite).not.toContain("oauth-protected-resource");
   const assetSite = caddy.slice(caddy.indexOf("{$ASSET_HOSTNAME}"));
-  expect(assetSite).toContain("handle /api/public/assets/*/content");
+  expect(assetSite).toContain("handle /p/*");
   expect(assetSite).toContain('respond "Not found" 404');
   expect(assetSite).not.toContain("/api/dashboard");
   expect(assetSite).not.toContain("/api/mcp");
