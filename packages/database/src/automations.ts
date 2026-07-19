@@ -9,7 +9,7 @@ import type {
 import { Cron } from "croner";
 import type { Pool, PoolClient } from "pg";
 
-const RUN_LEASE_HOURS = 6;
+const RUN_LEASE_HOURS = 1;
 
 export const AUTOMATION_RUN_EXECUTION_CONTEXT = `## Execution context
 
@@ -356,6 +356,7 @@ export class AutomationRepository {
       const result = await client.query(
         `SELECT run.id,run.schedule_id,run.automation_version_id,run.scheduled_for,run.input,run.status,
           run.attempt_count,run.claimed_by,run.claimed_at,run.lease_expires_at,run.completed_at,
+          (run.status='claimed' AND run.lease_expires_at <= now()) AS claim_expired,
           run.result_summary,run.error_message,run.created_at,
           schedule.name AS schedule_name,version.version_number AS automation_version_number
          FROM automation_runs run
@@ -381,7 +382,7 @@ export class AutomationRepository {
          WHERE schedule.deleted_at IS NULL
            AND (run.status='ready' OR (run.status='claimed' AND run.lease_expires_at <= $1))
          ORDER BY scheduled_for
-         FOR UPDATE SKIP LOCKED
+         FOR UPDATE OF run SKIP LOCKED
          LIMIT 1`,
         [now],
       );

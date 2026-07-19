@@ -137,7 +137,7 @@ null.
 
 For claimed runs, Context Use appends the shared execution contract to the returned `instructions_markdown`: read `[[me/intro]]`, use the claim-scoped automation page tools inside the dedicated knowledge path, and finish with `complete_run` or `fail_run`. This happens only in the `claim_due_run` response. Skills and ordinary `get_skill` calls never receive automation execution context. While migrated instructions still contain a legacy `## Execution context` section, Context Use recognizes it and does not inject a duplicate.
 
-Claims are atomic and leased for six hours. Runs, inputs, automation instruction versions, knowledge ownership, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
+Claims are atomic and leased for one hour. Expired claims are automatically available to the next polling agent. Runs, inputs, automation instruction versions, knowledge ownership, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
 
 ## Development
 

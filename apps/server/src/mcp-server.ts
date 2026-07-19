@@ -228,7 +228,7 @@ export function createMcpServer(
   });
 
   server.registerTool("claim_due_run", {
-    description: "Claim the oldest due automation run. Returns its versioned instructions with shared execution context, input, dedicated knowledge path, and a six-hour write capability, or null.",
+    description: "Claim the oldest due automation run. Returns its versioned instructions with shared execution context, input, dedicated knowledge path, and a one-hour write capability, or null.",
     inputSchema: z.object({}).strict(),
     annotations: { destructiveHint: false },
   }, async () => {
