@@ -14,6 +14,10 @@ export type AssetTreeAsset = {
   asset: Asset;
 };
 
+export function knowledgeTreeItemLabel(item: PageTreePage | AssetTreeAsset): string {
+  return item.kind === "page" ? item.name : item.asset.filename || item.name;
+}
+
 export type PageTreeDirectory = {
   kind: "directory";
   name: string;
