@@ -8,6 +8,13 @@ export {
 } from "./pages.ts";
 export { AssetRepository, type NewAsset } from "./assets.ts";
 export {
+  KnowledgeExportRepository,
+  type KnowledgeExportAsset,
+  type KnowledgeExportPage,
+  type KnowledgeExportPrincipal,
+  type KnowledgeExportSnapshot,
+} from "./exports.ts";
+export {
   PublicationRepository,
   PublicMcpRepository,
   PublicRepository,

@@ -24,6 +24,20 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(response.status).toBe(401);
   });
 
+  test("bearer and anonymous credentials cannot reach knowledge export APIs", async () => {
+    const intent = await application!.handle(new Request("http://localhost:3000/api/dashboard/knowledge-export-intents", {
+      method: "POST",
+      headers: { authorization: "Bearer forged", "content-type": "application/json" },
+      body: "{}",
+    }));
+    expect(intent.status).toBe(401);
+    const download = await application!.handle(new Request(
+      "http://localhost:3000/api/dashboard/knowledge-exports/11111111-1111-4111-8111-111111111111/download",
+      { headers: { "sec-fetch-site": "same-origin" } },
+    ));
+    expect(download.status).toBe(401);
+  });
+
   test("cookie credentials are rejected by MCP with discovery metadata", async () => {
     const response = await application!.handle(new Request("http://localhost:3000/mcp", {
       method: "POST",

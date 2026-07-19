@@ -2,7 +2,7 @@
 
 `context-use` is a private-by-default, single-owner knowledge base. It keeps Markdown pages in PostgreSQL, immutable asset bytes in S3, exposes an owner dashboard, and gives a trusted personal agent narrowly scoped access through MCP.
 
-The public site is deliberately separate. Each installation starts with one required `/p/about` page whose initial published body is empty; every owner-authored page version or asset becomes public only after the signed-in owner reviews an exact publication intent and confirms it with a passkey. Agent OAuth tokens cannot call dashboard routes, have no publication scope, and use a PostgreSQL role that cannot alter publication state.
+The public site is deliberately separate. Each installation starts with one required `/p/about` page whose initial published body is empty; every owner-authored page version or asset becomes public only after the signed-in owner reviews an exact publication intent and confirms it with a passkey. A portable full-knowledge export likewise requires a fresh, action-bound passkey assertion. Agent OAuth tokens cannot call dashboard routes, have no publication or export scope, and use a PostgreSQL role that cannot alter publication state.
 
 ## What v1 includes
 
@@ -10,6 +10,7 @@ The public site is deliberately separate. Each installation starts with one requ
 - Private S3 assets whose bytes are always streamed through scope-specific API routes, with checksum-bound uploads and revocation-aware downloads.
 - Passkey-only owner signup and sign-in, bound to the configured owner email through a one-time setup link.
 - Passkey-protected publishing, republishing, and unpublishing with the same immutable credential.
+- Passkey-protected streaming Zip64 export of current active pages and assets as a navigable Markdown vault with local links.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
 - Stateless Streamable HTTP MCP at `/mcp` with knowledge, checksum-bound asset upload/download, and automation execution tools.
 - Anonymous, tools-only MCP on a dedicated `public.` hostname with a hierarchical index, page reads, and full-text search over published snapshots only.
@@ -18,7 +19,7 @@ The public site is deliberately separate. Each installation starts with one requ
 - A built-in public billboard at `/` that directs people to the required `/p/about` page and agents to the installation-specific anonymous MCP endpoint.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
 
-External ingestion, vault migration, approval queues, collaboration, and semantic search are intentionally outside v1.
+External ingestion, vault import, approval queues, collaboration, and semantic search are intentionally outside v1.
 
 ## Security model
 
@@ -27,6 +28,7 @@ External ingestion, vault migration, approval queues, collaboration, and semanti
 | Owner sign-in | Discoverable, user-verified passkey | Session creation |
 | Owner | Host-only secure session cookie | `/api/dashboard/*` |
 | Owner publishing | Session + CSRF + exact origin + action-bound passkey assertion | Publication confirmation only |
+| Owner export | Same session + CSRF + exact origin + action-bound passkey assertion | One exact, single-use knowledge snapshot download |
 | Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
 | Agent asset upload | Short-lived, object-specific capability returned by authenticated MCP | Exact returned `/api/mcp/assets/:id/content` URL only |
 | Agent asset read | Five-minute, object-specific capability returned with `assets:read` | Exact returned `/api/mcp/assets/:id/content` URL only |
@@ -37,6 +39,8 @@ External ingestion, vault migration, approval queues, collaboration, and semanti
 These credentials are intentionally non-interchangeable. Dashboard endpoints reject `Authorization`; MCP rejects cookies. Application roles mirror that boundary in PostgreSQL, and public requests query security-barrier views rather than base tables. Publishing a page never publishes linked pages or assets.
 
 Internal page links are stored independently of either presentation route. Use `[[path|label]]` or `[label](context-use://page/<page-uuid>)`, never a hard-coded `/app/pages/*` or `/p/*` URL. Authorized dashboard rendering resolves a reference to `/app/pages/:id`; anonymous public rendering resolves it to `/p/<knowledge-path>` only when the target page is independently published. References to private targets are rendered as inert text without target metadata or identifiers.
+
+The Settings export contains only the latest version of each non-archived page and every non-deleted asset. It mirrors knowledge folders, uses the friendly page titles and asset filenames, and rewrites Context Use UUID references and wikilinks to relative, URL-encoded Markdown links. It contains no manifest, history, publication state, account data, or database identifiers. Asset integrity is checked before the passkey prompt, and the Zip64 response streams through the application without exposing storage URLs or buffering the archive in browser memory.
 
 See [Security architecture](docs/security.md) and [Operations](docs/operations.md) for the complete boundary and operating model.
 

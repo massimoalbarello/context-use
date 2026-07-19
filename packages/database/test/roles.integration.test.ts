@@ -60,6 +60,50 @@ describeDatabase("PostgreSQL security roles", () => {
     expect(publisher.rows[0]?.allowed).toBe(true);
   });
 
+  test("only the passkey-confirmation role can authorize or claim a knowledge export", async () => {
+    const functions = [
+      "confirm_knowledge_export_intent(uuid,text,text,text)",
+      "claim_knowledge_export_download(uuid,text,text)",
+    ];
+    for (const fn of functions) {
+      for (const role of ["context_use_auth", "context_use_dashboard", "context_use_mcp", "context_use_public", "context_use_public_mcp", "context_use_backup"]) {
+        expect((await admin.query<{ allowed: boolean }>(
+          "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed",
+          [role, fn],
+        )).rows[0]?.allowed).toBe(false);
+      }
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege('context_use_publisher',$1,'EXECUTE') AS allowed",
+        [fn],
+      )).rows[0]?.allowed).toBe(true);
+    }
+    for (const column of ["confirmed_at", "credential_id", "download_started_at"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege('context_use_dashboard','knowledge_export_intents',$1,'INSERT') AS allowed",
+        [column],
+      )).rows[0]?.allowed).toBe(false);
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege('context_use_dashboard','knowledge_export_intents',$1,'UPDATE') AS allowed",
+        [column],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    for (const table of ["knowledge_export_intents", "knowledge_export_pages", "knowledge_export_assets"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege('context_use_publisher',$1,'SELECT') AS allowed",
+        [table],
+      )).rows[0]?.allowed).toBe(false);
+      for (const role of ["context_use_auth", "context_use_mcp", "context_use_public", "context_use_public_mcp"]) {
+        expect((await admin.query<{ allowed: boolean }>(
+          "SELECT has_table_privilege($1,$2,'SELECT') AS allowed",
+          [role, table],
+        )).rows[0]?.allowed).toBe(false);
+      }
+    }
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_table_privilege('context_use_publisher','publication_intents','SELECT') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+  });
+
   test("the required public about page exists and cannot be moved or unpublished", async () => {
     const required = await admin.query<{
       id: string;

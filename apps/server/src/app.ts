@@ -9,6 +9,7 @@ import {
   AutomationValidationError,
   AutomationVersionConflictError,
   InboxRepository,
+  KnowledgeExportRepository,
   PageRepository,
   PublicationRepository,
   PublicRepository,
@@ -54,6 +55,7 @@ import {
 } from "./public-page.ts";
 import {
   SecurityError,
+  assertDashboardDownloadSecurity,
   assertDashboardRequestSecurity,
   assertDashboardUploadSecurity,
   csrfToken,
@@ -61,6 +63,7 @@ import {
   securityHeaders,
 } from "./security.ts";
 import { AssetIntegrityError, storage } from "./storage.ts";
+import { MAX_KNOWLEDGE_EXPORT_BYTES, streamKnowledgeExport } from "./knowledge-export.ts";
 import { requireAuthenticationUserVerification } from "./webauthn-policy.ts";
 
 const dashboardPool = createPool(config.DATABASE_URL);
@@ -77,6 +80,7 @@ const mcpAssets = new AssetRepository(mcpPool);
 const mcpAutomations = new AutomationRepository(mcpPool);
 const publicData = new PublicRepository(publicPool);
 const publications = new PublicationRepository(dashboardPool, publisherPool);
+const knowledgeExports = new KnowledgeExportRepository(dashboardPool, publisherPool);
 const mcp = createMcpRequestHandler(mcpPages, mcpAssets, mcpAutomations);
 const mcpAssetUpload = createMcpAssetUploadHandler(mcpAssets, storage, isMcpGrantActive);
 const mcpAssetDownload = createMcpAssetDownloadHandler(mcpAssets, storage, isMcpGrantActive);
@@ -126,6 +130,8 @@ function routeError(error: unknown): Response {
     if (code === "23505") return problem("A unique value is already in use", 409, "conflict");
     if (code === "42501") return problem("Operation denied by the database security policy", 403, "forbidden");
     if (code === "23514") return problem("Write violates a knowledge ownership boundary", 422, "ownership_boundary");
+    if (code === "P0002") return problem("Requested action not found", 404, "not_found");
+    if (code === "22023") return problem("Requested action is expired or invalid", 409, "intent_inactive");
   }
   console.error("request_failed", error instanceof Error ? { name: error.name, message: error.message } : { type: typeof error });
   return problem("Internal server error", 500, "internal_error");
@@ -198,10 +204,80 @@ async function getOwnerPasskeys(userId: string) {
   return result.rows;
 }
 
+async function ownerPasskeyCeremony(userId: string) {
+  const passkeys = await getOwnerPasskeys(userId);
+  if (!passkeys.length) return null;
+  const options = await generateAuthenticationOptions({
+    rpID: config.WEBAUTHN_RP_ID,
+    userVerification: "required",
+    timeout: 300_000,
+    allowCredentials: passkeys.map((key) => ({
+      id: key.credentialID,
+      ...(key.transports
+        ? { transports: key.transports.split(",").filter(Boolean) as AuthenticatorTransportFuture[] }
+        : {}),
+    })),
+  });
+  return { options };
+}
+
+async function verifyOwnerPasskey(
+  userId: string,
+  response: AuthenticationResponseJSON,
+  expectedChallenge: string,
+): Promise<string | null> {
+  const passkey = (await getOwnerPasskeys(userId)).find((key) => key.credentialID === response.id);
+  if (!passkey) return null;
+  try {
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge,
+      expectedOrigin: config.APP_ORIGIN,
+      expectedRPID: config.WEBAUTHN_RP_ID,
+      credential: {
+        id: passkey.credentialID,
+        publicKey: Buffer.from(passkey.publicKey, "base64"),
+        counter: passkey.counter,
+        ...(passkey.transports
+          ? { transports: passkey.transports.split(",").filter(Boolean) as AuthenticatorTransportFuture[] }
+          : {}),
+      },
+      requireUserVerification: true,
+    });
+    if (!verification.verified || !verification.authenticationInfo.userVerified) return null;
+    await authPool.query("UPDATE passkey SET counter=$2 WHERE id=$1 AND counter<=$2", [
+      passkey.id,
+      verification.authenticationInfo.newCounter,
+    ]);
+    return passkey.credentialID;
+  } catch {
+    return null;
+  }
+}
+
+async function unavailableExportAssets(intentId: string): Promise<string[]> {
+  const assets = await knowledgeExports.assets(intentId);
+  const missing: string[] = [];
+  const concurrency = 8;
+  for (let index = 0; index < assets.length; index += concurrency) {
+    const batch = assets.slice(index, index + concurrency);
+    const verified = await Promise.all(batch.map((asset) => storage.verify(
+      asset.s3_object_key,
+      Number(asset.size_bytes),
+      asset.content_hash,
+    )));
+    verified.forEach((available, offset) => {
+      if (!available) missing.push(batch[offset]!.current_path);
+    });
+  }
+  return missing;
+}
+
 const confirmSchema = z.object({
   intent_id: z.string().uuid(),
   response: z.custom<AuthenticationResponseJSON>((value) => Boolean(value && typeof value === "object")),
 }).strict();
+const emptyObjectSchema = z.object({}).strict();
 
 const webRoot = resolve(config.WEB_DIST);
 function webFile(path: string): Bun.BunFile | null {
@@ -284,6 +360,93 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .get("/api/dashboard/csrf", async ({ request }) => {
     const principal = await ownerRequest(request);
     return json({ csrf_token: csrfToken(principal) });
+  })
+  .post("/api/dashboard/knowledge-export-intents", async ({ request }) => {
+    const principal = await ownerRequest(request, true);
+    emptyObjectSchema.parse(await bodyJson(request));
+    const ceremony = await ownerPasskeyCeremony(principal.userId);
+    if (!ceremony) return problem("Register a passkey before exporting knowledge", 409, "passkey_required");
+    const exportPrincipal = { ownerUserId: principal.userId, sessionId: principal.sessionId };
+    const intent = await knowledgeExports.createIntent(exportPrincipal, ceremony.options.challenge);
+    if (intent.total_bytes > MAX_KNOWLEDGE_EXPORT_BYTES) {
+      await knowledgeExports.discard(intent.id, exportPrincipal);
+      return problem(
+        "Knowledge exports are limited to 5 GiB. Remove some active assets and try again.",
+        413,
+        "export_too_large",
+      );
+    }
+    let missing: string[];
+    try {
+      missing = await unavailableExportAssets(intent.id);
+    } catch (error) {
+      await knowledgeExports.discard(intent.id, exportPrincipal);
+      throw error;
+    }
+    if (missing.length) {
+      await knowledgeExports.discard(intent.id, exportPrincipal);
+      const examples = missing.slice(0, 3).join(", ");
+      const remaining = missing.length > 3 ? ` and ${missing.length - 3} more` : "";
+      return problem(
+        `Export stopped because ${missing.length} asset file${missing.length === 1 ? " is" : "s are"} missing or failed integrity verification: ${examples}${remaining}`,
+        409,
+        "asset_incomplete",
+      );
+    }
+    return json({
+      intent: { id: intent.id, expires_at: intent.expires_at },
+      summary: {
+        page_count: intent.page_count,
+        asset_count: intent.asset_count,
+        total_bytes: intent.total_bytes,
+      },
+      authentication_options: ceremony.options,
+    }, 201);
+  })
+  .post("/api/dashboard/knowledge-exports/confirm", async ({ request }) => {
+    const principal = await ownerRequest(request, true);
+    const input = confirmSchema.parse(await bodyJson(request));
+    const intent = await knowledgeExports.getIntent(input.intent_id);
+    if (!intent || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
+      return problem("Knowledge export intent not found", 404, "not_found");
+    }
+    if (intent.confirmed_at || intent.download_started_at || new Date(intent.expires_at).getTime() <= Date.now()) {
+      return problem("Knowledge export intent is expired or already used", 409, "intent_inactive");
+    }
+    const credentialId = await verifyOwnerPasskey(principal.userId, input.response, intent.challenge);
+    if (!credentialId) return problem("Passkey verification failed", 403, "passkey_invalid");
+    await knowledgeExports.confirm(
+      intent.id,
+      { ownerUserId: principal.userId, sessionId: principal.sessionId },
+      credentialId,
+    );
+    return json({
+      download_url: `/api/dashboard/knowledge-exports/${encodeURIComponent(intent.id)}/download`,
+    });
+  })
+  .get("/api/dashboard/knowledge-exports/:id/download", async ({ request, params }) => {
+    const principal = await ownerRequest(request);
+    assertDashboardDownloadSecurity(request);
+    const intentId = z.string().uuid().parse(params.id);
+    const intent = await knowledgeExports.getIntent(intentId);
+    if (!intent || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
+      return problem("Knowledge export intent not found", 404, "not_found");
+    }
+    if (!intent.confirmed_at || intent.download_started_at || new Date(intent.expires_at).getTime() <= Date.now()) {
+      return problem("A fresh passkey confirmation is required", 403, "passkey_required");
+    }
+    const snapshot = await knowledgeExports.claim(
+      intentId,
+      { ownerUserId: principal.userId, sessionId: principal.sessionId },
+    );
+    const date = new Date().toISOString().slice(0, 10);
+    return new Response(streamKnowledgeExport(snapshot, storage), {
+      headers: {
+        ...securityHeaders,
+        "content-type": "application/zip",
+        "content-disposition": `attachment; filename="context-use-export-${date}.zip"`,
+      },
+    });
   })
   .get("/api/dashboard/oauth-clients", async ({ request }) => {
     const principal = await ownerRequest(request);
@@ -562,8 +725,8 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .post("/api/dashboard/publication-intents", async ({ request }) => {
     const principal = await ownerRequest(request, true);
     const input = publicationIntentSchema.parse(await bodyJson(request));
-    const passkeys = await getOwnerPasskeys(principal.userId);
-    if (!passkeys.length) return problem("Register a passkey before changing visibility", 409, "passkey_required");
+    const ceremony = await ownerPasskeyCeremony(principal.userId);
+    if (!ceremony) return problem("Register a passkey before changing visibility", 409, "passkey_required");
 
     let publicPath: string | null = null;
     if (input.target_kind === "page") {
@@ -604,22 +767,11 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       if (input.action !== "unpublish") publicPath = asset.current_path;
     }
 
-    const options = await generateAuthenticationOptions({
-      rpID: config.WEBAUTHN_RP_ID,
-      userVerification: "required",
-      timeout: 300_000,
-      allowCredentials: passkeys.map((key) => ({
-        id: key.credentialID,
-        ...(key.transports
-          ? { transports: key.transports.split(",").filter(Boolean) as AuthenticatorTransportFuture[] }
-          : {}),
-      })),
-    });
     const intent = await publications.createIntent(input, {
       ownerUserId: principal.userId,
       sessionId: principal.sessionId,
-    }, options.challenge, publicPath);
-    return json({ intent, authentication_options: options }, 201);
+    }, ceremony.options.challenge, publicPath);
+    return json({ intent, authentication_options: ceremony.options }, 201);
   })
   .post("/api/dashboard/publications/confirm", async ({ request }) => {
     const principal = await ownerRequest(request, true);
@@ -631,31 +783,9 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     if (intent.consumed_at || new Date(intent.expires_at).getTime() <= Date.now()) {
       return problem("Publication intent is expired or already used", 409, "intent_inactive");
     }
-    const passkey = (await getOwnerPasskeys(principal.userId)).find((key) => key.credentialID === input.response.id);
-    if (!passkey) return problem("Passkey is not registered to the owner", 403, "passkey_invalid");
-    const verification = await verifyAuthenticationResponse({
-      response: input.response,
-      expectedChallenge: intent.challenge,
-      expectedOrigin: config.APP_ORIGIN,
-      expectedRPID: config.WEBAUTHN_RP_ID,
-      credential: {
-        id: passkey.credentialID,
-        publicKey: Buffer.from(passkey.publicKey, "base64"),
-        counter: passkey.counter,
-        ...(passkey.transports
-          ? { transports: passkey.transports.split(",").filter(Boolean) as AuthenticatorTransportFuture[] }
-          : {}),
-      },
-      requireUserVerification: true,
-    });
-    if (!verification.verified || !verification.authenticationInfo.userVerified) {
-      return problem("Passkey verification failed", 403, "passkey_invalid");
-    }
-    await authPool.query("UPDATE passkey SET counter=$2 WHERE id=$1 AND counter<=$2", [
-      passkey.id,
-      verification.authenticationInfo.newCounter,
-    ]);
-    await publications.confirm(input.intent_id, principal.userId, principal.sessionId, passkey.credentialID);
+    const credentialId = await verifyOwnerPasskey(principal.userId, input.response, intent.challenge);
+    if (!credentialId) return problem("Passkey verification failed", 403, "passkey_invalid");
+    await publications.confirm(input.intent_id, principal.userId, principal.sessionId, credentialId);
     return json({ published: intent.action !== "unpublish", action: intent.action, target_kind: intent.target_kind, target_id: intent.target_id });
   })
 
