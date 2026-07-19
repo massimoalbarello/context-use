@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+export const PAGE_MARKDOWN_BODY_DESCRIPTION = [
+  "Markdown page body.",
+  "Embed an asset with ![Alt](context-use://asset/<uuid>).",
+  "Optional safe image attributes immediately follow it: {size=small|medium|large|full align=left|center|right shape=auto|square|portrait|landscape layout=block|half|third}.",
+  "Use layout=half or layout=third on consecutive images for responsive columns.",
+  "Example: ![Portrait](context-use://asset/<uuid>){size=medium align=center shape=square}.",
+  "Images with enforced shapes crop with object-fit: cover; assets must be published independently before public pages can render them.",
+].join(" ");
+
+export const IMAGE_LAYOUT_STYLES = `.cu-image{box-sizing:border-box;display:block;margin:1rem 0;vertical-align:top}.cu-image>img{display:block;width:100%;max-width:none;height:auto}.cu-image--size-small{width:min(100%,240px)}.cu-image--size-medium{width:min(100%,420px)}.cu-image--size-large{width:min(100%,640px)}.cu-image--size-full{width:100%}.cu-image--align-left{margin-right:auto}.cu-image--align-center{margin-right:auto;margin-left:auto}.cu-image--align-right{margin-left:auto}.cu-image--shape-square,.cu-image--shape-portrait,.cu-image--shape-landscape{overflow:hidden}.cu-image--shape-square{aspect-ratio:1/1}.cu-image--shape-portrait{aspect-ratio:4/5}.cu-image--shape-landscape{aspect-ratio:16/9}.cu-image--shape-square>img,.cu-image--shape-portrait>img,.cu-image--shape-landscape>img{height:100%;object-fit:cover}.cu-image--layout-half,.cu-image--layout-third{display:inline-block;margin:.5rem .5rem .5rem 0}.cu-image--layout-half{width:calc(50% - 1rem)}.cu-image--layout-third{width:calc(33.333% - 1rem)}@media(max-width:640px){.cu-image--layout-half,.cu-image--layout-third{display:block;width:100%;margin:1rem 0}}`;
+
 export const UUID = z.string().uuid();
 export const KnowledgePath = z
   .string()
@@ -38,11 +49,13 @@ export const AutomationRelativePath = z
   .regex(/^[a-z0-9][a-z0-9/_-]*$/, "Use lowercase path segments only")
   .refine((value) => !value.includes("//") && !value.endsWith("/"), "Invalid relative path");
 
+const PageBodyMarkdown = z.string().max(2_000_000).describe(PAGE_MARKDOWN_BODY_DESCRIPTION);
+
 export const createPageSchema = z
   .object({
     path: WritablePagePath,
     title: z.string().trim().min(1).max(240),
-    body_markdown: z.string().max(2_000_000),
+    body_markdown: PageBodyMarkdown,
     commit_message: CommitMessage,
   })
   .strict();
@@ -51,7 +64,7 @@ export const updatePageSchema = z
   .object({
     path: WritablePagePath,
     title: z.string().trim().min(1).max(240),
-    body_markdown: z.string().max(2_000_000),
+    body_markdown: PageBodyMarkdown,
     commit_message: CommitMessage,
     expected_version_number: z.number().int().positive(),
   })
@@ -137,7 +150,7 @@ const automationRunAccessSchema = z.object({
 export const createAutomationPageSchema = automationRunAccessSchema.extend({
   relative_path: AutomationRelativePath,
   title: z.string().trim().min(1).max(240),
-  body_markdown: z.string().max(2_000_000),
+  body_markdown: PageBodyMarkdown,
   commit_message: CommitMessage,
 }).strict();
 

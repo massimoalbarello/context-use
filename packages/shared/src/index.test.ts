@@ -7,6 +7,7 @@ import {
   createCronScheduleSchema,
   createPageSchema,
   publicationIntentSchema,
+  PAGE_MARKDOWN_BODY_DESCRIPTION,
   updateCronScheduleSchema,
   updatePageSchema,
 } from "./index.ts";
@@ -15,6 +16,13 @@ const pageId = "11111111-1111-4111-8111-111111111111";
 const versionId = "22222222-2222-4222-8222-222222222222";
 
 describe("strict mutation schemas", () => {
+  test("describes the safe image formatting contract at the page authoring boundary", () => {
+    expect(createPageSchema.shape.body_markdown.description).toBe(PAGE_MARKDOWN_BODY_DESCRIPTION);
+    expect(updatePageSchema.shape.body_markdown.description).toContain("layout=half");
+    expect(createPageSchema.shape.body_markdown.description).toContain("shape=auto|square|portrait|landscape");
+    expect(createPageSchema.shape.body_markdown.description).toContain("Example: ![Portrait]");
+  });
+
   test("asset paths use the same hierarchical format as page paths", () => {
     expect(AssetPath.safeParse("projects/acme/site-photo").success).toBe(true);
     expect(AssetPath.safeParse("Projects/acme/site-photo.jpg").success).toBe(false);

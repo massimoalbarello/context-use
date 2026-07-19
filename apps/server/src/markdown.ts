@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   extractAssetLinks,
   extractPageLinks,
@@ -18,6 +19,49 @@ export type MarkdownResolvers = {
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+type ImageFormatting = {
+  size: "small" | "medium" | "large" | "full";
+  align: "left" | "center" | "right";
+  shape: "auto" | "square" | "portrait" | "landscape";
+  layout: "block" | "half" | "third";
+};
+
+const IMAGE_FORMAT_VALUES = {
+  size: new Set<ImageFormatting["size"]>(["small", "medium", "large", "full"]),
+  align: new Set<ImageFormatting["align"]>(["left", "center", "right"]),
+  shape: new Set<ImageFormatting["shape"]>(["auto", "square", "portrait", "landscape"]),
+  layout: new Set<ImageFormatting["layout"]>(["block", "half", "third"]),
+};
+
+function parseImageFormatting(raw: string): ImageFormatting | null {
+  const formatting: ImageFormatting = { size: "medium", align: "center", shape: "auto", layout: "block" };
+  const seen = new Set<string>();
+  const tokens = raw.trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return null;
+  for (const token of tokens) {
+    const match = /^([a-z]+)=([a-z]+)$/.exec(token);
+    if (!match) return null;
+    const [, key, value] = match;
+    if (!key || !value || seen.has(key) || !(key in IMAGE_FORMAT_VALUES)) return null;
+    const allowed = IMAGE_FORMAT_VALUES[key as keyof typeof IMAGE_FORMAT_VALUES] as ReadonlySet<string>;
+    if (!allowed.has(value)) return null;
+    seen.add(key);
+    (formatting as unknown as Record<string, string>)[key] = value;
+  }
+  return formatting;
+}
+
+function formattedImageHtml(label: string, href: string, formatting: ImageFormatting): string {
+  const classes = [
+    "cu-image",
+    `cu-image--size-${formatting.size}`,
+    `cu-image--align-${formatting.align}`,
+    `cu-image--shape-${formatting.shape}`,
+    `cu-image--layout-${formatting.layout}`,
+  ].join(" ");
+  return `<span class="${classes}"><img src="${escapeHtml(href)}" alt="${escapeHtml(label)}" loading="lazy"></span>`;
 }
 
 type AssetRenderKind = "image" | "video" | "link";
@@ -41,6 +85,9 @@ function isAllowedAssetSource(src: string): boolean {
     if (/^\/api\/public\/assets\/[0-9a-f-]{36}\/content$/i.test(url.pathname)) {
       return url.origin === assetOrigin;
     }
+    if (/^\/p\/[a-z0-9][a-z0-9\/_-]*$/i.test(url.pathname)) {
+      return url.origin === assetOrigin;
+    }
     return false;
   } catch {
     return false;
@@ -54,6 +101,7 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
   const pages = new Map<string, LinkResolution>();
   const wikiPages = new Map<string, LinkResolution>();
   const assets = new Map<string, AssetResolution>();
+  const formattedImages = new Map<string, string>();
   await Promise.all(extractPageLinks(normalizedMarkdown).map(async (id) => pages.set(id, await resolvers.page(id))));
   await Promise.all(extractWikiLinks(normalizedMarkdown).map(async ({ path }) => wikiPages.set(path, await resolvers.pagePath(path))));
   await Promise.all(extractAssetLinks(normalizedMarkdown).map(async (id) => assets.set(id, await resolvers.asset(id))));
@@ -68,12 +116,20 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
     },
   );
   source = source.replace(
-    /!\[([^\]]*)\]\(context-use:\/\/asset\/([0-9a-f-]{36})\)/gi,
-    (_match, label: string, id: string) => {
+    /!\[([^\]\n]*)\]\(context-use:\/\/asset\/([0-9a-f-]{36})\)(?:\{([^}\n]+)\})?/gi,
+    (_match, label: string, id: string, rawFormatting: string | undefined) => {
       const target = assets.get(id.toLowerCase());
       if (!target?.available) return `<span class="private-reference">Private asset unavailable</span>`;
       const kind = assetRenderKind(target.contentType);
-      if (kind === "image") return `![${label}](${target.href})`;
+      if (kind === "image") {
+        if (rawFormatting === undefined) return `![${label}](${target.href})`;
+        const formatting = parseImageFormatting(rawFormatting);
+        if (!formatting) return `![${label}](${target.href}){${rawFormatting}}`;
+        if (!isAllowedAssetSource(target.href)) return `<span class="private-reference">Private asset unavailable</span>`;
+        const placeholder = `CUIMAGE${randomUUID().replaceAll("-", "")}${formattedImages.size}`;
+        formattedImages.set(placeholder, formattedImageHtml(label, target.href, formatting));
+        return placeholder;
+      }
       if (kind === "video") {
         const accessibleLabel = label.trim() || "Embedded video";
         return `<video src="${escapeHtml(target.href)}" controls preload="metadata" aria-label="${escapeHtml(accessibleLabel)}">${escapeHtml(accessibleLabel)}</video>`;
@@ -95,7 +151,7 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
   );
 
   const unsafe = await marked.parse(source, { gfm: true, breaks: false, async: true });
-  return sanitizeHtml(unsafe, {
+  const sanitized = sanitizeHtml(unsafe, {
     allowedTags: [
       "p", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote",
       "ul", "ol", "li", "strong", "em", "del", "code", "pre", "a", "span",
@@ -144,6 +200,10 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
       return !isAllowedAssetSource(src);
     },
   });
+  return [...formattedImages].reduce(
+    (html, [placeholder, image]) => html.replaceAll(placeholder, image),
+    sanitized,
+  );
 }
 
 export function publicationWarnings(markdown: string): string[] {

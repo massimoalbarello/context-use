@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  IMAGE_LAYOUT_STYLES,
   publicPageStyles,
   renderPublicLandingDocument,
   renderPublicPageDocument,
@@ -23,6 +24,7 @@ describe("public page presentation", () => {
 
     expect(html).toContain("<title>Notes &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</title>");
     expect(html).toContain("<p>Already sanitized content</p>");
+    expect(html).toContain('<link rel="stylesheet" href="/content.css">');
   });
 
   test("renders the first-person billboard with the configured MCP endpoint", () => {
@@ -45,5 +47,8 @@ describe("public page presentation", () => {
     expect(publicPageStyles).toContain("img,video{max-width:100%");
     expect(publicPageStyles).toContain("video,audio{width:100%}");
     expect(publicPageStyles).toContain("overflow-wrap:anywhere");
+    expect(IMAGE_LAYOUT_STYLES).toContain(".cu-image--layout-half{");
+    expect(IMAGE_LAYOUT_STYLES).toContain("object-fit:cover");
+    expect(IMAGE_LAYOUT_STYLES).toContain("@media(max-width:640px)");
   });
 });
