@@ -11,7 +11,6 @@ user-verified owner passkey
 → session-bound, five-minute publication intent
 → WebAuthn user verification
 → execute-only publication procedure
-→ append-only publication event
 ```
 
 The confirmation request carries only the intent identifier and authenticator response. The stored intent binds the operation, target UUID, page version, knowledge-derived public path, dashboard session, random challenge, owner, and expiry. Consuming it and changing visibility happen in one database transaction. The caller cannot choose a separate public alias: the server derives a page path from the reviewed immutable version and an asset path from its knowledge-base record, and the publication procedure verifies that match again.
@@ -29,7 +28,26 @@ An agent cannot substitute its OAuth token for any step:
 - MCP schemas are strict and have no visibility fields.
 - The MCP database role cannot update publication columns or execute the publication function.
 - The dashboard role can create an intent but cannot change publication columns.
-- The publisher role can only read intents/events and execute the narrowly defined function; it cannot edit content.
+- The publisher role can execute only the narrowly defined confirmation functions; it cannot read or edit content.
+
+## Non-bypassable knowledge export boundary
+
+A complete current-knowledge export requires a separate action-bound ceremony:
+
+```text
+user-verified owner passkey
+→ revocable dashboard session + same-origin CSRF-protected snapshot request
+→ immutable list of active current page versions and active asset metadata
+→ session-bound, five-minute random challenge
+→ WebAuthn user verification
+→ execute-only confirmation procedure
+→ same-session, same-origin, single-use download claim
+→ streamed Zip64 response
+```
+
+Snapshot creation reveals no content outside the already authenticated dashboard. The dashboard role can insert and read snapshot rows but cannot set confirmation or download fields and cannot execute the confirmation or claim functions. Only the publisher role can execute those functions, and it cannot read the snapshot tables. Both procedures recheck the exact owner, session, expiry, and state. The HTTP confirmation additionally requires exact origin, same-origin Fetch Metadata, CSRF, JSON, and a valid assertion from the installation's owner credential. The download route accepts no bearer token, rejects missing or non-same-origin Fetch Metadata, rechecks the same dashboard session, atomically consumes the authorization before streaming, and cannot be replayed.
+
+The export contains current non-archived page Markdown and current non-deleted asset bytes only. It excludes UUIDs, history, archived pages, publication state, auth data, OAuth data, and operational metadata. Context Use references are resolved against the captured snapshot and rewritten to collision-safe relative Markdown links. Assets are integrity-checked before the passkey ceremony. Exports whose uncompressed snapshot exceeds 5 GiB are rejected before verification. Zip64 generation reads asset bytes through the private storage API with bounded stream backpressure; it never exposes an S3 URL or builds the archive in browser memory. The resulting local ZIP is deliberately unencrypted, and the confirmation dialog warns the owner before invoking WebAuthn.
 
 ## Database roles
 
@@ -40,7 +58,7 @@ The application opens independent pools using independent SCRAM credentials:
 - `context_use_mcp`: page reads/writes, asset metadata reads, insert-only asset upload intents, narrowly column-scoped skill and automation creation, and automation claiming/completion; no asset update/delete, skill or automation definition updates, or publication.
 - `context_use_public`: `SELECT` only on `published_pages` and `published_assets` security-barrier views.
 - `context_use_public_mcp`: `SELECT` only on the lossy `public_mcp_pages` security-barrier view plus column-scoped `INSERT` on confidential inbound messages; no message reads, owner selection, other base-table, webpage-view, asset, or application-function capability.
-- `context_use_publisher`: execute-only publication capability.
+- `context_use_publisher`: execute-only publication and passkey-confirmed export capabilities; no content or snapshot reads.
 - `context_use_backup`: read-only database backup access.
 
 The migration container alone uses the database administrator. The long-running app never receives that credential.
@@ -89,6 +107,6 @@ The anonymous MCP runs as a separate isolated container with no dashboard, auth,
 
 ## Passkey permanence
 
-There is no passkey recovery or rotation path in v1. Losing every copy of the credential permanently removes dashboard access and prevents publishing, republishing, and unpublishing. The configured email cannot be used to bypass or replace the passkey.
+There is no passkey recovery or rotation path in v1. Losing every copy of the credential permanently removes dashboard access and prevents publishing, republishing, unpublishing, and portable knowledge export. The configured email cannot be used to bypass or replace the passkey.
 
 Security issues should be reported as described in [SECURITY.md](../SECURITY.md), not in a public issue.

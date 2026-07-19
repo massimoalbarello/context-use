@@ -22,6 +22,8 @@ The backup companion creates a compressed, integrity-checked, logically restorab
 
 Assets are protected independently through S3 versioning. PostgreSQL backups contain asset metadata and object keys, not asset bytes.
 
+The dashboard's **Export knowledge** action is intentionally different from backup and restore. After checking every active asset's size and SHA-256, it snapshots the latest non-archived pages and non-deleted assets, shows the owner a count and approximate uncompressed size, and requires a fresh passkey assertion. Snapshots larger than 5 GiB uncompressed are rejected before verification. The resulting one-time Zip64 download is a portable Markdown vault with friendly filenames and local links. It contains no history, archived pages, publication state, manifest, credentials, or operational metadata and cannot restore a complete Context Use instance. The downloaded ZIP is not encrypted; protect it using the local computer's storage controls.
+
 ## Destroy semantics
 
 `context-use destroy` removes EC2, networking, DNS managed by the compute stack, the Elastic IP, and replaceable logs/IAM resources. It deliberately retains EBS, asset and backup buckets, SSM secrets, KMS protection, and Terraform state so a future `resume` can reconstruct compute.
@@ -32,4 +34,4 @@ Assets are protected independently through S3 versioning. PostgreSQL backups con
 
 The one-time owner-enrollment link creates one discoverable, user-verified passkey. After enrollment, the installation does not allow that credential to be added, replaced, or removed through the dashboard, CLI, or an administrative endpoint.
 
-Losing the passkey permanently prevents dashboard sign-in and every future publication change, including unpublishing. Email cannot recover access, and backups cannot recreate a lost private credential. Use a synced credential manager or a durable authenticator that you expect to retain before enrolling.
+Losing the passkey permanently prevents dashboard sign-in, portable knowledge export, and every future publication change, including unpublishing. Email cannot recover access, and backups cannot recreate a lost private credential. Use a synced credential manager or a durable authenticator that you expect to retain before enrolling.

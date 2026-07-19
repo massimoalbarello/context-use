@@ -19,6 +19,7 @@
     "@elysiajs/static": "1.4.10",
     "@modelcontextprotocol/sdk": "1.29.0",
     "@simplewebauthn/server": "13.3.2",
+    "@zip.js/zip.js": "2.8.31",
     "better-auth": "1.7.0-rc.1",
     "elysia": "1.4.29",
     "jose": "6.2.3",

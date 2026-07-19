@@ -3,6 +3,7 @@ import type { DashboardPrincipal } from "./auth.ts";
 import { config } from "./config.ts";
 import {
   SecurityError,
+  assertDashboardDownloadSecurity,
   assertDashboardRequestSecurity,
   assertDashboardUploadSecurity,
   csrfToken,
@@ -74,5 +75,18 @@ describe("dashboard mutation boundary", () => {
       body: "pdf bytes",
     });
     expect(() => assertDashboardUploadSecurity(request, principal)).not.toThrow();
+  });
+
+  test("allows an authorized download only from the same-origin dashboard", () => {
+    expect(() => assertDashboardDownloadSecurity(new Request(
+      "http://localhost:3000/api/dashboard/knowledge-exports/id/download",
+      { headers: { "sec-fetch-site": "same-origin" } },
+    ))).not.toThrow();
+    for (const site of [null, "cross-site", "same-site", "none"]) {
+      expect(() => assertDashboardDownloadSecurity(new Request(
+        "http://localhost:3000/api/dashboard/knowledge-exports/id/download",
+        site ? { headers: { "sec-fetch-site": site } } : {},
+      ))).toThrow(SecurityError);
+    }
   });
 });
