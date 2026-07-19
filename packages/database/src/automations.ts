@@ -10,10 +10,16 @@ import { Cron } from "croner";
 import type { Pool, PoolClient } from "pg";
 
 const RUN_LEASE_HOURS = 1;
+export const AUTOMATION_RESULT_SUMMARY_MAX_LENGTH = 500;
+
+export type CompletedAutomationRunCursor = {
+  completedAt: Date;
+  id: string;
+};
 
 export const AUTOMATION_RUN_EXECUTION_CONTEXT = `## Execution context
 
-You are executing this as a **claimed Context Use automation run**. \`claim_due_run\` gave you a \`run_id\`, \`claim_token\`, and this automation's **dedicated knowledge path**. Persist the digest with \`create_automation_page\` (or \`update_automation_page\` if today's page exists), passing \`run_id\`, \`claim_token\`, and relative path \`YYYY-MM-DD\`. Generic writes are disabled during the claim. Finish with \`complete_run\` (or \`fail_run\`). Read [[about/intro]] first; hold as context.`;
+You are executing this as a **claimed Context Use automation run**. \`claim_due_run\` gave you a \`run_id\`, \`claim_token\`, and this automation's **dedicated knowledge path**. Persist the digest with \`create_automation_page\` (or \`update_automation_page\` if today's page exists), passing \`run_id\`, \`claim_token\`, and relative path \`YYYY-MM-DD\`. Generic writes are disabled during the claim. The knowledge page is the canonical output: when calling \`complete_run\`, omit \`result_summary\` if the status and page are sufficient; otherwise use one or two sentences only to say what changed and where. Never copy the page contents into the summary. Finish with \`complete_run\` (or \`fail_run\`). Read [[about/intro]] first; hold as context.`;
 
 function skillMarkdown(name: string, description: string, instructions: string): string {
   return `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${instructions}`;
@@ -371,6 +377,68 @@ export class AutomationRepository {
     });
   }
 
+  async listActiveRuns() {
+    return transaction(this.pool, async (client) => {
+      await materializeDueRuns(client, new Date());
+      const result = await client.query(
+        `SELECT run.id,run.schedule_id,run.automation_version_id,run.scheduled_for,run.input,run.status,
+          run.attempt_count,run.claimed_by,run.claimed_at,run.lease_expires_at,run.completed_at,
+          (run.status='claimed' AND run.lease_expires_at <= now()) AS claim_expired,
+          run.result_summary,run.error_message,run.created_at,
+          schedule.name AS schedule_name,version.version_number AS automation_version_number
+         FROM automation_runs run
+         JOIN cron_schedules schedule ON schedule.id=run.schedule_id
+         JOIN automation_versions version ON version.id=run.automation_version_id AND version.automation_id=run.schedule_id
+         WHERE schedule.deleted_at IS NULL AND run.status IN ('ready','claimed')
+         ORDER BY run.scheduled_for DESC,run.id DESC`,
+      );
+      return result.rows;
+    });
+  }
+
+  async listCompletedRuns(limit = 10, cursor?: CompletedAutomationRunCursor) {
+    const pageParameters: unknown[] = [limit + 1];
+    const cursorPredicate = cursor
+      ? "AND (run.completed_at,run.id) < ($2::timestamptz,$3::uuid)"
+      : "";
+    if (cursor) pageParameters.push(cursor.completedAt, cursor.id);
+
+    const [page, totals] = await Promise.all([
+      this.pool.query(
+        `SELECT run.id,run.schedule_id,run.automation_version_id,run.scheduled_for,run.input,run.status,
+          run.attempt_count,run.claimed_by,run.claimed_at,run.lease_expires_at,run.completed_at,
+          false AS claim_expired,run.result_summary,run.error_message,run.created_at,
+          schedule.name AS schedule_name,version.version_number AS automation_version_number
+         FROM automation_runs run
+         JOIN cron_schedules schedule ON schedule.id=run.schedule_id
+         JOIN automation_versions version ON version.id=run.automation_version_id AND version.automation_id=run.schedule_id
+         WHERE run.status IN ('succeeded','failed')
+         ${cursorPredicate}
+         ORDER BY run.completed_at DESC,run.id DESC
+         LIMIT $1`,
+        pageParameters,
+      ),
+      this.pool.query<{ succeeded: number; failed: number }>(
+        `SELECT
+          count(*) FILTER (WHERE run.status='succeeded')::integer AS succeeded,
+          count(*) FILTER (WHERE run.status='failed')::integer AS failed
+         FROM automation_runs run
+         WHERE run.status IN ('succeeded','failed')`,
+      ),
+    ]);
+
+    const hasMore = page.rows.length > limit;
+    const items = hasMore ? page.rows.slice(0, limit) : page.rows;
+    const last = items.at(-1);
+    return {
+      items,
+      nextCursor: hasMore && last
+        ? { completedAt: new Date(last.completed_at), id: String(last.id) }
+        : null,
+      totals: totals.rows[0] ?? { succeeded: 0, failed: 0 },
+    };
+  }
+
   async claimDueRun(clientId: string) {
     return transaction(this.pool, async (client) => {
       const now = new Date();
@@ -408,6 +476,11 @@ export class AutomationRepository {
   }
 
   async completeRun(runId: string, claimToken: string, clientId: string, resultSummary?: string) {
+    if (resultSummary && resultSummary.length > AUTOMATION_RESULT_SUMMARY_MAX_LENGTH) {
+      throw new AutomationValidationError(
+        `Automation run summaries cannot exceed ${AUTOMATION_RESULT_SUMMARY_MAX_LENGTH} characters`,
+      );
+    }
     const result = await this.pool.query(
       `UPDATE automation_runs SET status='succeeded',completed_at=now(),result_summary=$4,error_message=NULL
        WHERE id=$1 AND claim_token=$2 AND claimed_by=$3 AND status='claimed' AND lease_expires_at > now()

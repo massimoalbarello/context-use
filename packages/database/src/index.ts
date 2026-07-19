@@ -24,11 +24,13 @@ export {
   type PublicMcpSearchResult,
 } from "./publication.ts";
 export {
+  AUTOMATION_RESULT_SUMMARY_MAX_LENGTH,
   AutomationClaimError,
   AutomationRepository,
   AutomationValidationError,
   AutomationVersionConflictError,
   nextCronOccurrence,
+  type CompletedAutomationRunCursor,
 } from "./automations.ts";
 export {
   extractAssetLinks,

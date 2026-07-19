@@ -39,6 +39,7 @@ import type { AuthenticationResponseJSON, AuthenticatorTransportFuture } from "@
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { auth, authPool, dashboardPrincipal } from "./auth.ts";
+import { decodeCompletedRunCursor, encodeCompletedRunCursor } from "./automation-run-pagination.ts";
 import { assetContentResponse } from "./asset-content.ts";
 import { config, production } from "./config.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
@@ -552,6 +553,22 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     await ownerRequest(request, true);
     const schedule = await dashboardAutomations.deleteSchedule(z.string().uuid().parse(params.id));
     return schedule ? json({ deleted: true }) : problem("Cron schedule not found", 404, "not_found");
+  })
+  .get("/api/dashboard/automations/runs/active", async ({ request }) => {
+    await ownerRequest(request);
+    return json(await dashboardAutomations.listActiveRuns());
+  })
+  .get("/api/dashboard/automations/runs/completed", async ({ request, query }) => {
+    await ownerRequest(request);
+    const limit = z.coerce.number().int().min(1).max(50).default(10).parse(query.limit);
+    const encodedCursor = z.string().max(500).optional().parse(query.cursor);
+    const cursor = encodedCursor ? decodeCompletedRunCursor(encodedCursor) : undefined;
+    const page = await dashboardAutomations.listCompletedRuns(limit, cursor);
+    return json({
+      items: page.items,
+      next_cursor: page.nextCursor ? encodeCompletedRunCursor(page.nextCursor) : null,
+      totals: page.totals,
+    });
   })
   .get("/api/dashboard/automations/runs", async ({ request, query }) => {
     await ownerRequest(request);
