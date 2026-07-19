@@ -1299,7 +1299,14 @@ button:disabled {
 
 .action-dialog {
   width: min(520px, 100%);
-  padding: 30px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.action-dialog-content {
+  max-height: 90vh;
+  padding: 32px 36px;
+  overflow: auto;
 }
 
 .action-dialog h2 {
@@ -1314,7 +1321,7 @@ button:disabled {
   line-height: 1.55;
 }
 
-.action-dialog > label { margin-top: 20px; }
+.action-dialog-content > label { margin-top: 20px; }
 
 .action-dialog-details {
   margin: 20px 0 0;
@@ -1523,6 +1530,8 @@ button:disabled {
 
   .content-page > header h1 { font-size: 40px; }
   .asset-card dl { grid-template-columns: 1fr; }
+
+  .action-dialog-content { padding: 28px 24px 24px; }
 
   .message-list article { padding: 18px; }
 
