@@ -132,7 +132,6 @@ services:
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
       PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       AUTH_AUTHORITY_URL: http://auth:3002
-      AUTH_EDGE_TOKEN: ${AUTH_EDGE_TOKEN}
     command: ["bun", "apps/server/src/auth-edge-index.ts"]
     networks: [auth_web, auth_edge_internal]
     healthcheck:
@@ -165,7 +164,6 @@ services:
       OWNER_EMAIL: ${OWNER_EMAIL}
       OWNER_SETUP_TOKEN_HASH: ${OWNER_SETUP_TOKEN_HASH}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      AUTH_EDGE_TOKEN: ${AUTH_EDGE_TOKEN}
       AUTH_DASHBOARD_TOKEN: ${AUTH_DASHBOARD_TOKEN}
       AUTH_MCP_TOKEN: ${AUTH_MCP_TOKEN}
       CONFIRMATION_INTERNAL_URL: http://confirmation:3004

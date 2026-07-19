@@ -12,7 +12,7 @@ Context Use has one owner, but several callers with very different trust levels.
 | Owner-authorized private MCP client | Private context allowed by its OAuth scopes | Author private pages/assets/skills/automations and execute automations within its scopes | Read auth or inbox data, publish, export, or obtain any anonymous-server-only capability |
 | Dashboard edge | Browser dashboard/static requests and owner cookies in transit | Forward only dashboard/static route families to the authority | Hold any database URL, pairwise/storage capability, signing secret, AWS access, or network route to another private authority |
 | Dashboard authority | Owner-authorized private requests | Apply session/origin/CSRF checks, private CRUD, and narrowly delegated auth/confirmation/storage calls | Attach to Caddy or accept the edge connection as authorization |
-| Authentication edge | Public authentication protocol requests and browser cookies in transit | Forward only allowlisted sign-in/session/OAuth routes to the authority | Hold any database URL, signing/bootstrap secret, private-service capability, storage access, or private-service network |
+| Authentication edge | Public authentication protocol requests and browser cookies in transit | Forward only allowlisted sign-in/session/OAuth routes to the authority | Hold any database URL, reusable credential, signing/bootstrap secret, private-service capability, storage access, or private-service network |
 | Authentication authority | The single-owner account, passkey, sessions, OAuth clients, grants, and tokens | Maintain authentication and authorization state | Attach to Caddy, hold a knowledge database credential, read knowledge/inbox data, or publish/export content |
 | Private MCP edge | OAuth bearer or exact asset capability requests in transit | Forward only MCP protocol and exact asset-capability routes | Hold any database URL, OAuth-validation/pairwise/storage capability, signing secret, AWS access, or network route to another private authority |
 | Private MCP authority | Owner-approved scoped MCP requests | Revalidate every bearer scope or exact short-lived asset capability and perform only that operation | Attach to Caddy or accept the edge connection as authorization |
@@ -105,8 +105,8 @@ The migration container alone uses the database administrator. No long-running s
 |---|---|---|---|
 | Dashboard edge | None | None | Dashboard/static route allowlist forwarding only |
 | Dashboard authority | `context_use_dashboard` | Dashboard-only storage, dashboard→auth, and dashboard→confirmation capabilities | None directly; owner-session/origin/CSRF-gated private CRUD over an isolated edge network |
-| Auth edge | None | Auth-edge ingress capability only | Allowlisted passkey/session/OAuth protocol forwarding |
-| Auth authority | `context_use_auth` | Better Auth secret, owner bootstrap configuration, edge/dashboard/MCP inbound capabilities, and confirmation-gateway capability | None directly; receives capability-scoped calls over isolated internal networks |
+| Auth edge | None | None | Allowlisted passkey/session/OAuth protocol forwarding |
+| Auth authority | `context_use_auth` | Better Auth secret, owner bootstrap configuration, dashboard/MCP inbound capabilities, and confirmation-gateway capability | None directly; public routes are allowlisted and private calls are capability-scoped over isolated internal networks |
 | Private MCP edge | None | None | MCP protocol and exact asset-capability route allowlist forwarding only |
 | Private MCP authority | `context_use_mcp` | MCP capability-signing, MCP-only storage, and MCP→auth capabilities | None directly; revalidates OAuth scopes or an exact asset capability over an isolated edge network |
 | Confirmation | `context_use_confirmation` | Auth-gateway and dashboard-caller verifiers | None; internal publication/export WebAuthn verification only |

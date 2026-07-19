@@ -1,13 +1,12 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { authEdgeApp } from "./auth-edge-app.ts";
-import { config } from "./config.ts";
 
 describe("unprivileged authentication edge", () => {
   afterEach(() => {
     spyOn(globalThis, "fetch").mockRestore();
   });
 
-  test("forwards only the public authentication protocol with its ingress capability", async () => {
+  test("forwards only the public authentication protocol without a reusable capability", async () => {
     const forwarded: Request[] = [];
     const fetchSpy = spyOn(globalThis, "fetch").mockImplementation((async (request: RequestInfo | URL) => {
       forwarded.push(request as Request);
@@ -26,7 +25,7 @@ describe("unprivileged authentication edge", () => {
     expect(response.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(forwarded[0]!.url).toBe("http://localhost:3002/api/auth/get-session?disableCookieCache=true");
-    expect(forwarded[0]!.headers.get("x-context-use-auth-edge")).toBe(config.AUTH_EDGE_TOKEN);
+    expect(forwarded[0]!.headers.has("x-context-use-auth-edge")).toBe(false);
     expect(forwarded[0]!.headers.get("cookie")).toBe("context-use.session_token=browser-cookie");
   });
 

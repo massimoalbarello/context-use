@@ -235,6 +235,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(userData).not.toContain("if ! blkid");
   expect(deployScript).toContain("mountpoint -q /data");
   expect(deployScript).toContain("/data/context-use/.volume-id");
+  expect(deployScript).not.toContain("AUTH_EDGE_TOKEN");
   expect(deployScript.indexOf("up -d --remove-orphans")).toBeLessThan(deployScript.indexOf("up -d --force-recreate --no-deps caddy"));
   expect(caddy).not.toContain("email off");
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
@@ -321,8 +322,9 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   );
   expect(authEdgeService).toContain("SERVICE_MODE: auth-edge");
   expect(authEdgeService).toContain("AUTH_AUTHORITY_URL: http://auth:3002");
-  expect(authEdgeService).toContain("AUTH_EDGE_TOKEN");
   expect(authEdgeService).toContain("networks: [auth_web, auth_edge_internal]");
+  expect(authEdgeService).not.toContain("TOKEN");
+  expect(authEdgeService).not.toContain("SECRET");
   expect(authEdgeService).not.toContain("AUTH_DATABASE_URL");
   expect(authEdgeService).not.toContain("BETTER_AUTH_SECRET");
   expect(authEdgeService).not.toContain("AUTH_DASHBOARD_TOKEN");
@@ -335,7 +337,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   );
   expect(authService).toContain("AUTH_DATABASE_URL: postgres://context_use_auth");
   expect(authService).toContain("BETTER_AUTH_SECRET");
-  expect(authService).toContain("AUTH_EDGE_TOKEN");
+  expect(authService).not.toContain("AUTH_EDGE_TOKEN");
   expect(authService).toContain("CONFIRMATION_GATEWAY_TOKEN");
   expect(authService).toContain("AUTH_DASHBOARD_TOKEN");
   expect(authService).toContain("AUTH_MCP_TOKEN");

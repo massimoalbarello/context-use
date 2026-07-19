@@ -40,16 +40,9 @@ const grantSchema = z.object({
   userId: z.string().min(1).max(512),
   scopes: z.array(z.string().min(1).max(128)).max(64),
 }).strict();
-const authEdgeHeader = "x-context-use-auth-edge";
-
-function fromAuthenticationEdge(request: Request): boolean {
-  return !production || config.SERVICE_MODE !== "auth"
-    || hasHeaderCapability(request, authEdgeHeader, config.AUTH_EDGE_TOKEN);
-}
-
 function browserAuthRequest(request: Request, removeCookie = false): Request {
   const headers = new Headers(request.headers);
-  headers.delete(authEdgeHeader);
+  headers.delete("x-context-use-auth-edge");
   if (removeCookie) headers.delete("cookie");
   return new Request(request, { headers });
 }
@@ -79,7 +72,6 @@ export const authApp = new Elysia()
   .get("/health", () => json({ status: "ok", service: "auth" }))
   .all("/api/auth/*", async ({ request }) => {
     if (!publicAuthRequestAllowed(request)) return problem("Not found", 404, "not_found");
-    if (!fromAuthenticationEdge(request)) return problem("Not found", 404, "not_found");
     const sanitized = browserAuthRequest(request);
     const pathname = new URL(sanitized.url).pathname;
 
@@ -103,12 +95,10 @@ export const authApp = new Elysia()
       await boundary.release?.();
     }
   })
-  .get("/.well-known/oauth-authorization-server", ({ request }) => fromAuthenticationEdge(request)
-    ? withCodexIssuerCompatibility(authServerMetadata(browserAuthRequest(request)))
-    : problem("Not found", 404, "not_found"))
-  .get("/.well-known/openid-configuration", ({ request }) => fromAuthenticationEdge(request)
-    ? withCodexIssuerCompatibility(openIdMetadata(browserAuthRequest(request)))
-    : problem("Not found", 404, "not_found"))
+  .get("/.well-known/oauth-authorization-server", ({ request }) =>
+    withCodexIssuerCompatibility(authServerMetadata(browserAuthRequest(request))))
+  .get("/.well-known/openid-configuration", ({ request }) =>
+    withCodexIssuerCompatibility(openIdMetadata(browserAuthRequest(request))))
   .post("/internal/authorize-dashboard", async ({ request }) => {
     if (!hasInternalCapability(request, config.AUTH_DASHBOARD_TOKEN)) return problem("Not found", 404, "not_found");
     const input = internalAuthorization.parse(await bodyJson(request));

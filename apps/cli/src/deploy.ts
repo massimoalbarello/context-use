@@ -32,7 +32,6 @@ async function ensureRuntimeParameterUpgrades(config: DeploymentConfig): Promise
     ["DB_STORAGE_PASSWORD", 36],
     ["MCP_ASSET_CAPABILITY_SECRET", 48],
     ["CONFIRMATION_GATEWAY_TOKEN", 48],
-    ["AUTH_EDGE_TOKEN", 48],
     ["AUTH_DASHBOARD_TOKEN", 48],
     ["AUTH_MCP_TOKEN", 48],
     ["CONFIRMATION_DASHBOARD_TOKEN", 48],

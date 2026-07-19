@@ -5,12 +5,11 @@ import { json, routeError } from "./http.ts";
 import { internalProxyRequest } from "./internal-proxy.ts";
 import { securityHeaders } from "./security.ts";
 
-const AUTH_EDGE_HEADER = "x-context-use-auth-edge";
-
 function upstreamRequest(request: Request): Request {
   return internalProxyRequest(request, config.AUTH_AUTHORITY_URL, (headers) => {
-    // Never trust a caller-supplied ingress capability.
-    headers.set(AUTH_EDGE_HEADER, config.AUTH_EDGE_TOKEN);
+    // The edge carries no credential. The authority independently reapplies
+    // the public protocol allowlist and every route-specific auth policy.
+    headers.delete("x-context-use-auth-edge");
   });
 }
 
