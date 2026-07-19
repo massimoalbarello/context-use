@@ -226,9 +226,13 @@ async function writeKnowledgeExport(
   signal: AbortSignal,
 ): Promise<void> {
   const zip = new ZipWriter(writable, {
-    zip64: true,
     useWebWorkers: false,
     keepOrder: true,
+  });
+  await zip.add(`${EXPORT_ROOT}/`, undefined, {
+    directory: true,
+    lastModDate: ZIP_DATE,
+    signal,
   });
   for (const page of planned.pages) {
     await zip.add(`${EXPORT_ROOT}/${page.vaultPath}`, new TextReader(page.body), {
@@ -236,20 +240,23 @@ async function writeKnowledgeExport(
       level: 6,
       lastModDate: ZIP_DATE,
       signal,
-      zip64: true,
     });
   }
   for (const asset of planned.assets) {
     const content = new Response(await storage.read(asset.s3_object_key)).body;
     if (!content) throw new Error(`Asset content is missing for ${asset.current_path}`);
-    await zip.add(`${EXPORT_ROOT}/${asset.vaultPath}`, content, {
+    // zip.js promotes unknown-length streams to Zip64, which macOS Archive Utility
+    // rejects in some cases. The captured size keeps ordinary exports as classic ZIP.
+    await zip.add(`${EXPORT_ROOT}/${asset.vaultPath}`, {
+      readable: content,
+      size: Number(asset.size_bytes),
+    }, {
       compressionMethod: 0,
       lastModDate: ZIP_DATE,
       signal,
-      zip64: true,
     });
   }
-  await zip.close(undefined, { zip64: true });
+  await zip.close();
 }
 
 export function streamKnowledgeExport(

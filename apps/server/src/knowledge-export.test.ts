@@ -96,7 +96,7 @@ describe("portable knowledge export", () => {
     for (const path of paths) expect(path).not.toMatch(/[0-9a-f]{8}-[0-9a-f-]{27}/i);
   });
 
-  test("streams a readable Zip64 vault containing page text and original asset bytes", async () => {
+  test("streams a standard ZIP vault containing page text and original asset bytes", async () => {
     const assetBytes = new TextEncoder().encode("asset-bytes");
     const storage: ObjectStorage = {
       write: async () => undefined,
@@ -108,9 +108,17 @@ describe("portable knowledge export", () => {
       },
     };
     const archive = await new Response(streamKnowledgeExport(snapshot(), storage)).blob();
+    const archiveBytes = new Uint8Array(await archive.arrayBuffer());
+    expect(archiveBytes.findIndex((byte, index) => (
+      byte === 0x50
+      && archiveBytes[index + 1] === 0x4b
+      && archiveBytes[index + 2] === 0x06
+      && archiveBytes[index + 3] === 0x06
+    ))).toBe(-1);
     const reader = new ZipReader(new BlobReader(archive), { useWebWorkers: false });
     const entries = await reader.getEntries();
     expect(entries.map(({ filename }) => filename)).toEqual([
+      "context-use-export/",
       "context-use-export/projects/acme/Q3 Brief.md",
       "context-use-export/notes/Other Note.md",
       "context-use-export/projects/acme/site photo.jpg",
@@ -134,7 +142,10 @@ describe("portable knowledge export", () => {
     };
     const archive = await new Response(streamKnowledgeExport({ pages: [], assets: [] }, storage)).blob();
     const reader = new ZipReader(new BlobReader(archive), { useWebWorkers: false });
-    expect(await reader.getEntries()).toEqual([]);
+    const entries = await reader.getEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.filename).toBe("context-use-export/");
+    expect(entries[0]?.directory).toBe(true);
     await reader.close();
   });
 });
