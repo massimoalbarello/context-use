@@ -145,6 +145,8 @@ test("remote verification avoids shell-quoting SQL and passes the database passw
   expect(sql).toContain("current_path='about/intro'");
   expect(sql).toContain("tgname='publication_intents_protect_required_public_page'");
   expect(sql).toContain("context_use_projection_owner");
+  expect(sql).toContain("project_public_markdown(text)");
+  expect(sql).toContain("project_public_mcp_markdown(text)");
   expect(sql).toContain("context_use_boundary_owner");
   expect(sql).toContain("context_use_confirmation");
   expect(sql).toContain("context_use_storage");

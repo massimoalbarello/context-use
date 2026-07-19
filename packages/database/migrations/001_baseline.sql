@@ -1078,6 +1078,21 @@ SELECT
   project_public_markdown(page.public_path) AS body_markdown
 FROM published_page_sources page;
 
+-- The anonymous MCP role has no asset capability. Its separately executable
+-- projector returns the same published page text but removes public asset
+-- tokens, without granting that role the richer webpage projector.
+CREATE FUNCTION project_public_mcp_markdown(p_public_path text)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path=pg_catalog,public
+RETURN regexp_replace(
+  project_public_markdown(p_public_path),
+  '!\[([^]]*)\]\(context-use://public-asset/[a-z0-9][a-z0-9/_-]*\)(\{[^}\r\n]*\})?',
+  '\1','gi'
+);
+
 -- Public HTTP metadata contains only values observable while downloading an
 -- independently published object. Integrity hashes, UUIDs, object keys,
 -- dimensions, timestamps, and other storage metadata remain private.
@@ -1109,16 +1124,12 @@ AS
 SELECT
   child.public_path,
   child.title,
-  regexp_replace(
-    child.body_markdown,
-    '!\[([^]]*)\]\(context-use://public-asset/[a-z0-9][a-z0-9/_-]*\)(\{[^}\r\n]*\})?',
-    '\1','gi'
-  ) AS body_markdown,
+  project_public_mcp_markdown(child.public_path) AS body_markdown,
   parent.public_path AS parent_path
-FROM published_pages child
+FROM published_page_sources child
 LEFT JOIN LATERAL (
   SELECT candidate.public_path
-  FROM published_pages candidate
+  FROM published_page_sources candidate
   WHERE left(child.public_path,length(candidate.public_path)+1)=candidate.public_path || '/'
   ORDER BY length(candidate.public_path) DESC,
            candidate.public_path
@@ -1128,12 +1139,14 @@ LEFT JOIN LATERAL (
 GRANT CREATE ON SCHEMA public TO context_use_projection_owner;
 ALTER VIEW published_page_sources OWNER TO context_use_projection_owner;
 ALTER FUNCTION project_public_markdown(text) OWNER TO context_use_projection_owner;
+ALTER FUNCTION project_public_mcp_markdown(text) OWNER TO context_use_projection_owner;
 ALTER VIEW published_pages OWNER TO context_use_projection_owner;
 ALTER VIEW published_assets OWNER TO context_use_projection_owner;
 ALTER VIEW storage_published_assets OWNER TO context_use_projection_owner;
 ALTER VIEW public_mcp_pages OWNER TO context_use_projection_owner;
 REVOKE CREATE ON SCHEMA public FROM context_use_projection_owner;
 REVOKE ALL ON FUNCTION project_public_markdown(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION project_public_mcp_markdown(text) FROM PUBLIC;
 
 -- These procedures are the only application-accessible private-to-public and
 -- passkey-confirmed export transitions. Their owner is deliberately not the
@@ -1646,7 +1659,7 @@ GRANT SELECT (
 GRANT SELECT ON storage_published_assets TO context_use_storage;
 
 GRANT SELECT ON public_mcp_pages TO context_use_public_mcp;
-GRANT EXECUTE ON FUNCTION project_public_markdown(text)
+GRANT EXECUTE ON FUNCTION project_public_mcp_markdown(text)
   TO context_use_public_mcp;
 GRANT INSERT (id,reply_to,message) ON inbound_messages TO context_use_public_mcp;
 

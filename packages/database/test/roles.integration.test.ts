@@ -233,17 +233,24 @@ describeDatabase("PostgreSQL security roles", () => {
       { relname: "storage_published_assets", owner: "context_use_projection_owner" },
     ]);
 
-    for (const role of ["context_use_public", "context_use_public_mcp"]) {
+    for (const [role, procedure, allowed] of [
+      ["context_use_public", "project_public_markdown(text)", true],
+      ["context_use_public", "project_public_mcp_markdown(text)", false],
+      ["context_use_public_mcp", "project_public_markdown(text)", false],
+      ["context_use_public_mcp", "project_public_mcp_markdown(text)", true],
+    ] as const) {
       expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_function_privilege($1,'project_public_markdown(text)','EXECUTE') AS allowed",
-        [role],
-      )).rows[0]?.allowed).toBe(true);
+        "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed",
+        [role, procedure],
+      )).rows[0]?.allowed).toBe(allowed);
     }
     for (const role of ["context_use_auth", "context_use_dashboard", "context_use_mcp", "context_use_confirmation", "context_use_storage", "context_use_backup"]) {
-      expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_function_privilege($1,'project_public_markdown(text)','EXECUTE') AS allowed",
-        [role],
-      )).rows[0]?.allowed).toBe(false);
+      for (const procedure of ["project_public_markdown(text)", "project_public_mcp_markdown(text)"]) {
+        expect((await admin.query<{ allowed: boolean }>(
+          "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed",
+          [role, procedure],
+        )).rows[0]?.allowed).toBe(false);
+      }
     }
 
     const procedures = await admin.query<{ proname: string; owner: string; security_definer: boolean }>(
@@ -256,7 +263,8 @@ describeDatabase("PostgreSQL security roles", () => {
            'confirm_publication_intent',
            'confirm_knowledge_export_intent',
            'claim_knowledge_export_download',
-           'project_public_markdown'
+           'project_public_markdown',
+           'project_public_mcp_markdown'
          )
        ORDER BY proname`,
     );
@@ -267,6 +275,7 @@ describeDatabase("PostgreSQL security roles", () => {
       { proname: "consume_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "issue_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "project_public_markdown", owner: "context_use_projection_owner", security_definer: true },
+      { proname: "project_public_mcp_markdown", owner: "context_use_projection_owner", security_definer: true },
     ]);
 
     for (const [relation, column] of [
@@ -1035,6 +1044,10 @@ describeDatabase("PostgreSQL security roles", () => {
         body_markdown: string;
         parent_path: string | null;
       }>("SELECT public_path,title,body_markdown,parent_path FROM public_mcp_pages ORDER BY public_path");
+      const directMcpProjection = await admin.query<{ body_markdown: string }>(
+        "SELECT project_public_mcp_markdown('profile/work/project') AS body_markdown",
+      );
+      await expectDenied("SELECT project_public_markdown('profile/work/project')");
       expect((await repository.listPages()).map(({ path }) => path)).toEqual(["about", "profile", "profile/work/project"]);
       expect(await repository.getPage("profile/work/project")).toMatchObject({ path: "profile/work/project", parent_path: "profile" });
       expect(await repository.getPage("profile/work")).toBeNull();
@@ -1045,6 +1058,7 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(projected.rows.map(({ public_path }) => public_path)).toEqual(["about", "profile", "profile/work/project"]);
       const child = projected.rows.find(({ public_path }) => public_path === "profile/work/project");
       expect(child).toMatchObject({ title: "Project", parent_path: "profile" });
+      expect(directMcpProjection.rows[0]?.body_markdown).toBe(child?.body_markdown);
       expect(child?.body_markdown).toContain("PUBLIC-CANARY content");
       expect(child?.body_markdown).toContain("Private label");
       expect(child?.body_markdown).toContain("Authored label");
