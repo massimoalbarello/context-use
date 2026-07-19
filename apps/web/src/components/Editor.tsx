@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.ts";
 import { isPublishedPageOutdated } from "../publication-status.ts";
 import type { Page, Version } from "../types.ts";
+import { ActionDialog } from "./ActionDialog.tsx";
 import { PublicationDialog } from "./PublicationDialog.tsx";
 
 export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () => void }) {
@@ -13,6 +14,10 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   const [isEditing, setIsEditing] = useState(false);
   const [publishingVersion, setPublishingVersion] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveCommit, setArchiveCommit] = useState("");
+  const [archiveWorking, setArchiveWorking] = useState(false);
+  const [archiveError, setArchiveError] = useState("");
 
   const load = async (preserveDraft = false) => {
     const [next, versions] = await Promise.all([
@@ -31,6 +36,9 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     setCommit("");
     setMessage("");
     setPublishingVersion(null);
+    setArchiveOpen(false);
+    setArchiveCommit("");
+    setArchiveError("");
     setTab("preview");
     setIsEditing(false);
     load().catch((error: Error) => setMessage(error.message));
@@ -74,15 +82,23 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   };
 
   const archive = async () => {
-    const commitMessage = window.prompt("Commit message for archiving this page");
-    if (!commitMessage) return;
+    setArchiveWorking(true);
+    setArchiveError("");
     try {
       await api(`/api/dashboard/pages/${page.id}/archive`, {
         method: "POST",
-        body: JSON.stringify({ commit_message: commitMessage, expected_version_number: page.version_number }),
+        body: JSON.stringify({ commit_message: archiveCommit.trim(), expected_version_number: page.version_number }),
       });
-      await load(); onChanged(); setMessage("Page archived as a new immutable version.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Archive failed"); }
+      await load();
+      onChanged();
+      setArchiveOpen(false);
+      setArchiveCommit("");
+      setMessage("Page archived as a new immutable version.");
+    } catch (error) {
+      setArchiveError(error instanceof Error ? error.message : "Archive failed");
+    } finally {
+      setArchiveWorking(false);
+    }
   };
 
   const publicationChanged = async (action: "publish" | "republish" | "unpublish") => {
@@ -97,7 +113,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
       <div><span className="path">{page.current_path}</span><h1>{page.title}</h1></div>
       <div className="button-row">
         <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : automationOwned ? "Automation-owned" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_slug}` : "Private"}</span>
-        {!automationOwned && !page.archived_at && !page.published_version_id && <button onClick={archive}>Archive</button>}
+        {!automationOwned && !page.archived_at && !page.published_version_id && <button onClick={() => { setArchiveCommit(""); setArchiveError(""); setArchiveOpen(true); }}>Archive</button>}
         {!automationOwned && !page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
         {!automationOwned && !page.archived_at && page.published_version_id && hasUnpublishedChanges && publishedVersionNumber && <button onClick={() => setPublishingVersion(publishedVersionNumber)}>Manage public v{publishedVersionNumber}</button>}
         {!automationOwned && !page.archived_at && page.published_version_id && hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish latest</button>}
@@ -154,6 +170,23 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
       })}
     </section>}
     {message && <div className="toast">{message}</div>}
+    {archiveOpen && <ActionDialog
+      eyebrow="Immutable version"
+      title={`Archive ${page.title}?`}
+      description="Archiving creates one final immutable version and removes this page from the active knowledge tree."
+      confirmLabel="Archive page"
+      workingLabel="Archiving…"
+      working={archiveWorking}
+      confirmDisabled={archiveCommit.trim().length < 3}
+      focusCancel={false}
+      error={archiveError}
+      onCancel={() => setArchiveOpen(false)}
+      onConfirm={() => void archive()}
+    >
+      <label>Commit message<input autoFocus value={archiveCommit} onChange={(event) => setArchiveCommit(event.target.value)} placeholder="Why is this page being archived?" onKeyDown={(event) => {
+        if (event.key === "Enter" && archiveCommit.trim().length >= 3 && !archiveWorking) void archive();
+      }} /></label>
+    </ActionDialog>}
     {publishingVersion != null && <PublicationDialog page={page} versionNumber={publishingVersion} publishedVersionNumber={publishedVersionNumber} onClose={() => setPublishingVersion(null)} onChanged={publicationChanged} />}
   </main>;
 }
