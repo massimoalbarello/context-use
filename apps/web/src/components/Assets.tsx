@@ -146,7 +146,7 @@ export function AssetDetails({
     {pendingAction === "publish" && <ActionDialog
       eyebrow="Public asset"
       title={`Publish ${asset.filename}?`}
-      description={<>The exact original file will become public at a stable URL. Any embedded EXIF, author, location, or document metadata will remain in the file.</>}
+      description={<>The exact original file will become public at <code>/p/{asset.current_path}</code>. Any embedded EXIF, author, location, or document metadata will remain in the file.</>}
       confirmLabel="Publish with passkey"
       workingLabel="Waiting for passkey…"
       working={busy === "publish"}

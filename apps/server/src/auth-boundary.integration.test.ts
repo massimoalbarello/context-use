@@ -69,6 +69,52 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(await malformedPage.text()).toBe(await missingPage.text());
   });
 
+  test("nested /p paths resolve every published page and no private page", async () => {
+    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const publicPageId = crypto.randomUUID();
+    const publicVersionId = crypto.randomUUID();
+    const privatePageId = crypto.randomUUID();
+    const privateVersionId = crypto.randomUUID();
+    const publicPath = `tests/${suffix}/nested/public-page`;
+    const privatePath = `tests/${suffix}/nested/private-page`;
+    await client.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_path)
+         VALUES ($1,$2,$3,$3,$2),($4,$5,$6,NULL,NULL)`,
+        [publicPageId, publicPath, publicVersionId, privatePageId, privatePath, privateVersionId],
+      );
+      await client.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES
+           ($1,$2,1,$3,'Nested public page','PUBLIC-NESTED-CANARY','Create public fixture','dashboard','test'),
+           ($4,$5,1,$6,'Nested private page','PRIVATE-NESTED-CANARY','Create private fixture','dashboard','test')`,
+        [publicVersionId, publicPageId, publicPath, privateVersionId, privatePageId, privatePath],
+      );
+      await client.query("COMMIT");
+
+      const published = await application!.handle(new Request(`http://localhost:3000/p/${publicPath}`));
+      const privatePage = await application!.handle(new Request(`http://localhost:3000/p/${privatePath}`));
+      const missing = await application!.handle(new Request(`http://localhost:3000/p/tests/${suffix}/nested/missing-page`));
+
+      expect(published.status).toBe(200);
+      expect(await published.text()).toContain("PUBLIC-NESTED-CANARY");
+      expect(privatePage.status).toBe(404);
+      expect(await privatePage.text()).toBe(await missing.text());
+    } finally {
+      await client.query("ROLLBACK").catch(() => undefined);
+      await client.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
+      await client.query("DELETE FROM knowledge_pages WHERE id=ANY($1::uuid[])", [[publicPageId, privatePageId]]);
+      await client.query("ALTER TABLE knowledge_pages ENABLE TRIGGER ALL");
+      await client.query("DELETE FROM knowledge_page_versions WHERE page_id=ANY($1::uuid[])", [[publicPageId, privatePageId]]);
+      await client.end();
+    }
+  });
+
   test("audit history endpoint is absent", async () => {
     const response = await application!.handle(new Request("http://localhost:3000/api/dashboard/audit"));
     expect(response.status).toBe(404);

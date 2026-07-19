@@ -112,7 +112,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     <header className="editor-header">
       <div><span className="path">{page.current_path}</span><h1>{page.title}</h1></div>
       <div className="button-row">
-        <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : automationOwned ? "Automation-owned" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_slug}` : "Private"}</span>
+        <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : automationOwned ? "Automation-owned" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_path}` : "Private"}</span>
         {!automationOwned && !page.archived_at && !page.published_version_id && <button onClick={() => { setArchiveCommit(""); setArchiveError(""); setArchiveOpen(true); }}>Archive</button>}
         {!automationOwned && !page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
         {!automationOwned && !page.archived_at && page.published_version_id && hasUnpublishedChanges && publishedVersionNumber && <button onClick={() => setPublishingVersion(publishedVersionNumber)}>Manage public v{publishedVersionNumber}</button>}
@@ -161,7 +161,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
             <span>{version.actor_kind} · {new Date(version.created_at).toLocaleString()}</span>
           </div>
           {!automationOwned && !page.archived_at && <div className="version-actions">
-            {isPublished && page.public_slug && <a className="button" href={`/p/${page.public_slug}`} target="_blank" rel="noreferrer">View public</a>}
+            {isPublished && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public</a>}
             {isPublished
               ? <button onClick={() => setPublishingVersion(version.version_number)}>Manage</button>
               : <button className={isLatest ? "primary" : ""} onClick={() => setPublishingVersion(version.version_number)}>Publish this version</button>}

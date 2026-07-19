@@ -10,11 +10,6 @@ export const KnowledgePath = z
 export const PagePath = KnowledgePath;
 export const AssetPath = KnowledgePath;
 export const CommitMessage = z.string().trim().min(3).max(240);
-export const PublicSlug = z
-  .string()
-  .min(1)
-  .max(160)
-  .regex(/^[a-z0-9][a-z0-9-]*$/);
 export const AutomationName = z.string().trim().min(1).max(160);
 export const AutomationKey = z
   .string()
@@ -71,18 +66,17 @@ export const publicationIntentSchema = z
     target_kind: z.enum(["page", "asset"]),
     target_id: UUID,
     version_id: UUID.nullable().optional(),
-    public_slug: PublicSlug.nullable().optional(),
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.target_kind === "asset" && (value.version_id != null || value.public_slug != null)) {
-      context.addIssue({ code: "custom", message: "Asset publication cannot include page fields" });
+    if (value.target_kind === "asset" && value.version_id != null) {
+      context.addIssue({ code: "custom", message: "Asset publication cannot include a page version" });
     }
-    if (value.target_kind === "page" && value.action === "unpublish" && (value.version_id != null || value.public_slug != null)) {
-      context.addIssue({ code: "custom", message: "Unpublication cannot change a version or slug" });
+    if (value.action === "unpublish" && value.version_id != null) {
+      context.addIssue({ code: "custom", message: "Unpublication cannot select a version" });
     }
-    if (value.target_kind === "page" && value.action !== "unpublish" && (!value.version_id || !value.public_slug)) {
-      context.addIssue({ code: "custom", message: "Page publication requires an exact version and slug" });
+    if (value.target_kind === "page" && value.action !== "unpublish" && !value.version_id) {
+      context.addIssue({ code: "custom", message: "Page publication requires an exact version" });
     }
   });
 
@@ -177,8 +171,8 @@ export type Page = {
   current_path: string;
   current_version_id: string;
   published_version_id: string | null;
-  public_slug: string | null;
-  required_public_slug: string | null;
+  public_path: string | null;
+  required_public_path: string | null;
   automation_id: string | null;
   archived_at: string | null;
   version_number: number;
@@ -191,6 +185,7 @@ export type Page = {
 export type Asset = {
   id: string;
   current_path: string;
+  public_path: string | null;
   filename: string;
   content_type: string;
   size_bytes: number;

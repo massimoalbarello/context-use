@@ -5,18 +5,18 @@ import { createPublicMcpServer } from "./mcp-server.ts";
 import { createPublicMcpTransport } from "./transport.ts";
 
 const summaries = [
-  { slug: "home", title: "Home", parent_slug: null },
-  { slug: "about", title: "About", parent_slug: null },
-  { slug: "work", title: "Work", parent_slug: "about" },
-  { slug: "context-use", title: "Context Use", parent_slug: "work" },
+  { path: "home", title: "Home", parent_path: null },
+  { path: "about", title: "About", parent_path: null },
+  { path: "about/work", title: "Work", parent_path: "about" },
+  { path: "about/work/context-use", title: "Context Use", parent_path: "about/work" },
 ];
 
 const reader: PublicPageReader = {
   async listPages() {
     return summaries;
   },
-  async getPage(slug) {
-    const page = summaries.find((candidate) => candidate.slug === slug);
+  async getPage(path) {
+    const page = summaries.find((candidate) => candidate.path === path);
     return page ? { ...page, body_markdown: `${page.title} public content` } : null;
   },
   async searchPages() {
@@ -92,13 +92,13 @@ describe("public MCP tools", () => {
       canonical_url: string;
       introduction_markdown: string;
       page_count: number;
-      pages: Array<{ slug: string; children: Array<{ slug: string; children: Array<{ slug: string }> }> }>;
+      pages: Array<{ path: string; children: Array<{ path: string; children: Array<{ path: string }> }> }>;
     };
 
     expect(result.canonical_url).toBe("https://context.example.com/p/about");
     expect(result.introduction_markdown).toBe("About public content");
     expect(result.page_count).toBe(4);
-    expect(result.pages.find(({ slug }) => slug === "about")?.children[0]?.children[0]?.slug).toBe("context-use");
+    expect(result.pages.find(({ path }) => path === "about")?.children[0]?.children[0]?.path).toBe("about/work/context-use");
   });
 
   test("returns published breadcrumbs, children, and content for one page", async () => {
@@ -106,14 +106,14 @@ describe("public MCP tools", () => {
       jsonrpc: "2.0",
       id: 3,
       method: "tools/call",
-      params: { name: "get_public_page", arguments: { slug: "work" } },
+      params: { name: "get_public_page", arguments: { path: "about/work" } },
     });
     const result = parseContent(response) as {
-      page: { breadcrumbs: Array<{ slug: string }>; children: Array<{ slug: string }>; content_markdown: string };
+      page: { breadcrumbs: Array<{ path: string }>; children: Array<{ path: string }>; content_markdown: string };
     };
 
-    expect(result.page.breadcrumbs.map(({ slug }) => slug)).toEqual(["about", "work"]);
-    expect(result.page.children.map(({ slug }) => slug)).toEqual(["context-use"]);
+    expect(result.page.breadcrumbs.map(({ path }) => path)).toEqual(["about", "about/work"]);
+    expect(result.page.children.map(({ path }) => path)).toEqual(["about/work/context-use"]);
     expect(result.page.content_markdown).toBe("Work public content");
   });
 
@@ -125,14 +125,14 @@ describe("public MCP tools", () => {
       params: { name: "search_public_pages", arguments: { query: "knowledge" } },
     });
     const result = parseContent(response) as {
-      results: Array<{ slug: string; breadcrumbs: Array<{ slug: string }>; excerpt_markdown: string }>;
+      results: Array<{ path: string; breadcrumbs: Array<{ path: string }>; excerpt_markdown: string }>;
     };
 
     expect(result.results[0]).toMatchObject({
-      slug: "context-use",
+      path: "about/work/context-use",
       excerpt_markdown: "A **public** personal knowledge base",
     });
-    expect(result.results[0]?.breadcrumbs.map(({ slug }) => slug)).toEqual(["about", "work", "context-use"]);
+    expect(result.results[0]?.breadcrumbs.map(({ path }) => path)).toEqual(["about", "about/work", "about/work/context-use"]);
   });
 
   test("requires a valid sender email or phone and returns no submitted content", async () => {

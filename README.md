@@ -9,12 +9,12 @@ The public site is deliberately separate. Each installation starts with one requ
 - Hierarchical Markdown pages with immutable versions, commit messages, history, and full-text search.
 - Private S3 assets whose bytes are always streamed through scope-specific API routes, with checksum-bound uploads and revocation-aware downloads.
 - Passkey-only owner signup and sign-in, bound to the configured owner email through a one-time setup link.
-- Passkey-protected publishing, republishing, slug changes, and unpublishing with the same immutable credential.
+- Passkey-protected publishing, republishing, and unpublishing with the same immutable credential.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
 - Stateless Streamable HTTP MCP at `/mcp` with knowledge, checksum-bound asset upload/download, and automation execution tools.
 - Anonymous, tools-only MCP on a dedicated `public.` hostname with a hierarchical index, page reads, and full-text search over published snapshots only.
 - Versioned, discoverable Agent Skills; time-zone-aware automations; isolated generated knowledge; durable run history; and leased agent execution.
-- Exact published snapshots at `/p/:slug` and independently published assets on a cookieless hostname.
+- Exact published snapshots at `/p/<knowledge-path>` and independently published assets at the same `/p/<knowledge-path>` route on a cookieless hostname.
 - A built-in public billboard at `/` that directs people to the required `/p/about` page and agents to the installation-specific anonymous MCP endpoint.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
 
@@ -30,13 +30,13 @@ External ingestion, vault migration, approval queues, collaboration, and semanti
 | Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
 | Agent asset upload | Short-lived, object-specific capability returned by authenticated MCP | Exact returned `/api/mcp/assets/:id/content` URL only |
 | Agent asset read | Five-minute, object-specific capability returned with `assets:read` | Exact returned `/api/mcp/assets/:id/content` URL only |
-| Public visitor | None | `/p/*` and independently published `/api/public/assets/:id/content` URLs on the asset hostname |
+| Public visitor | None | Published pages at `/p/*`; independently published assets at `/p/*` on the asset hostname |
 | Public MCP client | None; credentials are rejected | `https://public.YOUR_HOST/mcp` only |
 | Deployment administrator | Local AWS identity | `context-use` CLI |
 
 These credentials are intentionally non-interchangeable. Dashboard endpoints reject `Authorization`; MCP rejects cookies. Application roles mirror that boundary in PostgreSQL, and public requests query security-barrier views rather than base tables. Publishing a page never publishes linked pages or assets.
 
-Internal page links are stored independently of either presentation route. Use `[[path|label]]` or `[label](context-use://page/<page-uuid>)`, never a hard-coded `/app/pages/*` or `/p/*` URL. Authorized dashboard rendering resolves a reference to `/app/pages/:id`; anonymous public rendering resolves it to `/p/:slug` only when the target page is independently published. References to private targets are rendered as inert text without target metadata or identifiers.
+Internal page links are stored independently of either presentation route. Use `[[path|label]]` or `[label](context-use://page/<page-uuid>)`, never a hard-coded `/app/pages/*` or `/p/*` URL. Authorized dashboard rendering resolves a reference to `/app/pages/:id`; anonymous public rendering resolves it to `/p/<knowledge-path>` only when the target page is independently published. References to private targets are rendered as inert text without target metadata or identifiers.
 
 See [Security architecture](docs/security.md) and [Operations](docs/operations.md) for the complete boundary and operating model.
 
@@ -94,7 +94,7 @@ The server publishes protected-resource and authorization-server metadata. New d
 
 With `assets:write`, `create_asset_upload` records private asset metadata and returns a fifteen-minute upload capability bound to that asset and OAuth grant. The agent then sends the exact raw bytes to the returned API URL and headers. Size, content type, and SHA-256 are verified before storage; the capability cannot read, edit, delete, or publish anything. Existing OAuth grants must be reauthorized before they include the new scope.
 
-With `assets:read`, `get_asset` returns metadata plus a five-minute API download request bound to that exact asset, MCP client, owner, and live grant. The download route rechecks the grant and supports byte ranges for large media. It never returns or redirects to an S3 URL. Dashboard reads use the owner-session API route, while anonymous reads use the asset-host API route and resolve through the published-assets database view only.
+With `assets:read`, `get_asset` returns metadata plus a five-minute API download request bound to that exact asset, MCP client, owner, and live grant. The download route rechecks the grant and supports byte ranges for large media. It never returns or redirects to an S3 URL. Dashboard reads use the owner-session API route, while anonymous reads use `/p/<knowledge-path>` on the asset host and resolve through the published-assets database view only.
 
 ### Public access
 
@@ -107,13 +107,13 @@ https://public.YOUR_HOST/mcp
 The public server deliberately exposes tools rather than MCP resources for broad client compatibility:
 
 - `get_about_page` returns the required public `about` page and a complete nested index of all published pages.
-- `get_public_page` reads one page by its public slug and includes published breadcrumbs and children.
+- `get_public_page` reads one page by its knowledge path and includes published breadcrumbs and children.
 - `search_public_pages` searches only the sanitized published-page projection.
 - `send_message` privately delivers a message plus the sender's required email or phone loopback address.
 
 For example, a dashboard at `https://context.example.com` exposes its anonymous MCP at `https://public.context.example.com/mcp`. The dedicated origin serves no OAuth or OpenID metadata and has no route to the private application.
 
-The public MCP runs in a separate isolated container with a separate database credential. Its role can select only `public_mcp_pages`, a lossy security-barrier view with public slugs, titles, sanitized Markdown, and published-parent slugs. It also has column-scoped insert access for message IDs, reply addresses, and bodies, but it cannot select messages, set their owner, or use `RETURNING` to read stored data. The authenticated dashboard filters the inbox by owner ID. The public role cannot read webpage views, other base tables, asset metadata, internal paths, UUIDs, page versions, private reference targets, or S3 keys. Unpublished intermediate folders are omitted; a page attaches to its closest published ancestor.
+The public MCP runs in a separate isolated container with a separate database credential. Its role can select only `public_mcp_pages`, a lossy security-barrier view with published knowledge paths, titles, sanitized Markdown, and published-parent paths. It also has column-scoped insert access for message IDs, reply addresses, and bodies, but it cannot select messages, set their owner, or use `RETURNING` to read stored data. The authenticated dashboard filters the inbox by owner ID. The public role cannot read webpage views, other base tables, asset metadata, UUIDs, page versions, private reference targets, or S3 keys. Only published pages become hierarchy nodes or resolve through `/p/*`; an unpublished page remains unavailable even when its path is a prefix of a public descendant.
 
 Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification): a standard name and short description form the discovery layer, while instructions load only after selection. MCP agents use `list_skills`, `get_skill`, and `create_skill`. They are reusable capabilities selected by an agent and are never attached to scheduled work.
 

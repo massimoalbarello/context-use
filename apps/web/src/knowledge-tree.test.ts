@@ -16,8 +16,8 @@ function page(id: string, currentPath: string, title: string): Page {
     current_path: currentPath,
     current_version_id: `version-${id}`,
     published_version_id: null,
-    public_slug: null,
-    required_public_slug: null,
+    public_path: null,
+    required_public_path: null,
     automation_id: null,
     archived_at: null,
     version_number: 1,
@@ -30,6 +30,7 @@ function asset(id: string, currentPath: string, filename: string): Asset {
   return {
     id,
     current_path: currentPath,
+    public_path: null,
     filename,
     content_type: "image/jpeg",
     size_bytes: 123,

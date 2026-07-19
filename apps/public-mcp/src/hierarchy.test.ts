@@ -7,37 +7,37 @@ import {
 } from "./hierarchy.ts";
 
 const pages: PublicMcpPageSummary[] = [
-  { slug: "project", title: "Project", parent_slug: "work" },
-  { slug: "home", title: "Home", parent_slug: null },
-  { slug: "work", title: "Work", parent_slug: "about" },
-  { slug: "about", title: "About", parent_slug: null },
-  { slug: "orphan", title: "Orphan", parent_slug: "unpublished-parent" },
+  { path: "about/work/project", title: "Project", parent_path: "about/work" },
+  { path: "home", title: "Home", parent_path: null },
+  { path: "about/work", title: "Work", parent_path: "about" },
+  { path: "about", title: "About", parent_path: null },
+  { path: "orphan/page", title: "Orphan", parent_path: "unpublished-parent" },
 ];
 
 describe("public page hierarchy", () => {
   test("nests only explicitly published parents and keeps every public page", () => {
     const tree = buildPublicPageTree(pages, "https://context.example.com");
 
-    expect(tree.map(({ slug }) => slug)).toEqual(["about", "home", "orphan"]);
-    expect(tree[0]?.children[0]?.slug).toBe("work");
-    expect(tree[0]?.children[0]?.children[0]?.slug).toBe("project");
+    expect(tree.map(({ path }) => path)).toEqual(["about", "home", "orphan/page"]);
+    expect(tree[0]?.children[0]?.path).toBe("about/work");
+    expect(tree[0]?.children[0]?.children[0]?.path).toBe("about/work/project");
     expect(JSON.stringify(tree)).not.toContain("unpublished-parent");
   });
 
   test("returns published-title breadcrumbs and direct children", () => {
-    expect(publicBreadcrumbs("project", pages, "https://context.example.com").map(({ slug }) => slug))
-      .toEqual(["about", "work", "project"]);
+    expect(publicBreadcrumbs("about/work/project", pages, "https://context.example.com").map(({ path }) => path))
+      .toEqual(["about", "about/work", "about/work/project"]);
     expect(publicChildren("about", pages, "https://context.example.com"))
-      .toEqual([{ slug: "work", title: "Work", url: "https://context.example.com/p/work" }]);
+      .toEqual([{ path: "about/work", title: "Work", url: "https://context.example.com/p/about/work" }]);
   });
 
   test("bounds malformed cycles instead of recursing indefinitely", () => {
     const cyclic = [
-      { slug: "one", title: "One", parent_slug: "two" },
-      { slug: "two", title: "Two", parent_slug: "one" },
+      { path: "one", title: "One", parent_path: "two" },
+      { path: "two", title: "Two", parent_path: "one" },
     ];
     expect(buildPublicPageTree(cyclic, "https://context.example.com")).toEqual([]);
-    expect(publicBreadcrumbs("one", cyclic, "https://context.example.com").map(({ slug }) => slug))
+    expect(publicBreadcrumbs("one", cyclic, "https://context.example.com").map(({ path }) => path))
       .toEqual(["two", "one"]);
   });
 });

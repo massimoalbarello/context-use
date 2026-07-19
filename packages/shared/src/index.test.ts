@@ -43,7 +43,7 @@ describe("strict mutation schemas", () => {
 
   test("ordinary page writes reject publication fields", () => {
     expect(createPageSchema.safeParse({
-      path: "private/page", title: "Private", body_markdown: "Body", commit_message: "Create page", public_slug: "leak",
+      path: "private/page", title: "Private", body_markdown: "Body", commit_message: "Create page", public_path: "leak",
     }).success).toBe(false);
     expect(updatePageSchema.safeParse({
       path: "private/page", title: "Private", body_markdown: "Body", commit_message: "Update page",
@@ -53,16 +53,19 @@ describe("strict mutation schemas", () => {
 
   test("publication intents bind valid fields to the exact action", () => {
     expect(publicationIntentSchema.safeParse({
-      action: "publish", target_kind: "page", target_id: pageId, version_id: versionId, public_slug: "public-page",
+      action: "publish", target_kind: "page", target_id: pageId, version_id: versionId,
     }).success).toBe(true);
     expect(publicationIntentSchema.safeParse({
-      action: "publish", target_kind: "page", target_id: pageId, public_slug: "missing-version",
+      action: "publish", target_kind: "page", target_id: pageId,
     }).success).toBe(false);
     expect(publicationIntentSchema.safeParse({
-      action: "unpublish", target_kind: "page", target_id: pageId, version_id: versionId, public_slug: "change-on-unpublish",
+      action: "unpublish", target_kind: "page", target_id: pageId, version_id: versionId,
     }).success).toBe(false);
     expect(publicationIntentSchema.safeParse({
-      action: "publish", target_kind: "asset", target_id: pageId, public_slug: "asset-has-no-slug",
+      action: "publish", target_kind: "asset", target_id: pageId,
+    }).success).toBe(true);
+    expect(publicationIntentSchema.safeParse({
+      action: "publish", target_kind: "page", target_id: pageId, version_id: versionId, public_path: "caller-chosen",
     }).success).toBe(false);
   });
 
