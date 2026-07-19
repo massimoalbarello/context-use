@@ -70,7 +70,7 @@ export type InboundMessage = {
   created_at: string;
 };
 
-export type AutomationSkill = {
+export type AgentSkill = {
   id: string;
   name: string;
   current_version_id: string;
@@ -80,7 +80,6 @@ export type AutomationSkill = {
   skill_markdown: string;
   commit_message: string;
   version_created_at: string;
-  schedule_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -89,10 +88,11 @@ export type CronSchedule = {
   id: string;
   name: string;
   automation_key: string;
-  skill_id: string;
-  skill_name: string;
-  skill_version_id: string;
-  skill_version_number: number;
+  automation_version_id: string;
+  automation_version_number: number;
+  instructions_markdown: string;
+  commit_message: string;
+  version_created_at: string;
   cron_expression: string;
   timezone: string;
   input: Record<string, unknown>;
@@ -111,10 +111,8 @@ export type AutomationRun = {
   id: string;
   schedule_id: string;
   schedule_name: string;
-  skill_id: string;
-  skill_name: string;
-  skill_version_id: string;
-  skill_version_number: number;
+  automation_version_id: string;
+  automation_version_number: number;
   scheduled_for: string;
   input: Record<string, unknown>;
   status: "ready" | "claimed" | "succeeded" | "failed";

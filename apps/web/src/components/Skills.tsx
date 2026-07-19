@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.ts";
-import type { AutomationSkill } from "../types.ts";
+import type { AgentSkill } from "../types.ts";
 
 export function Skills() {
-  const [skills, setSkills] = useState<AutomationSkill[]>([]);
+  const [skills, setSkills] = useState<AgentSkill[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [name, setName] = useState("");
@@ -19,7 +19,7 @@ export function Skills() {
   const load = async () => {
     setLoading(true);
     try {
-      setSkills(await api<AutomationSkill[]>("/api/dashboard/skills"));
+      setSkills(await api<AgentSkill[]>("/api/dashboard/skills"));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load skills");
     } finally {
@@ -52,7 +52,7 @@ export function Skills() {
     }
   };
 
-  const startEditing = (skill: AutomationSkill) => {
+  const startEditing = (skill: AgentSkill) => {
     setDeletingSkillId(null);
     setEditingSkillId(skill.id);
     setEditDescription(skill.description);
@@ -61,7 +61,7 @@ export function Skills() {
     setMessage("");
   };
 
-  const updateSkill = async (event: React.FormEvent, skill: AutomationSkill) => {
+  const updateSkill = async (event: React.FormEvent, skill: AgentSkill) => {
     event.preventDefault();
     setSavingSkillId(skill.id);
     setMessage("");
@@ -85,7 +85,7 @@ export function Skills() {
     }
   };
 
-  const deleteSkill = async (skill: AutomationSkill) => {
+  const deleteSkill = async (skill: AgentSkill) => {
     setSavingSkillId(skill.id);
     setMessage("");
     try {
@@ -114,26 +114,26 @@ export function Skills() {
       <div className="section-heading"><div><h2>Available skills</h2><p>{skills.length} reusable {skills.length === 1 ? "capability" : "capabilities"} in this workspace.</p></div></div>
       {loading ? <p>Loading skills…</p> : skills.length === 0 ? <p className="empty-note">No skills are available yet.</p> : <div className="skill-grid">{skills.map((skill) => <article className={editingSkillId === skill.id || deletingSkillId === skill.id ? "is-expanded" : ""} key={skill.id}>
         <span className="skill-glyph" aria-hidden="true">✦</span>
-        <div><strong>{skill.name}</strong><span>Version {skill.version_number} · {skill.schedule_count} automation{skill.schedule_count === 1 ? "" : "s"}</span></div>
+        <div><strong>{skill.name}</strong><span>Version {skill.version_number}</span></div>
         <p className="skill-description">{skill.description}</p>
         <details><summary>View SKILL.md</summary><pre>{skill.skill_markdown}</pre></details>
         <footer><small>{skill.commit_message}</small><button onClick={() => startEditing(skill)}>Edit</button><button className="danger-text" onClick={() => { setEditingSkillId(null); setDeletingSkillId(skill.id); setMessage(""); }}>Delete</button></footer>
         {editingSkillId === skill.id && <form className="inline-dashboard-form skill-inline-editor" onSubmit={(event) => updateSkill(event, skill)}>
-          <div className="inline-form-heading"><div><strong>Edit {skill.name}</strong><span>Saving creates version {skill.version_number + 1} and updates its automations.</span></div></div>
+          <div className="inline-form-heading"><div><strong>Edit {skill.name}</strong><span>Saving creates immutable version {skill.version_number + 1}.</span></div></div>
           <label>Short description<textarea required maxLength={1024} rows={3} value={editDescription} onChange={(event) => setEditDescription(event.target.value)} /></label>
           <label>Instruction body<textarea required rows={10} value={editInstructions} onChange={(event) => setEditInstructions(event.target.value)} /></label>
           <label>Change note<input required minLength={3} maxLength={240} value={editCommitMessage} onChange={(event) => setEditCommitMessage(event.target.value)} /></label>
           <div className="inline-form-actions"><button type="button" onClick={() => setEditingSkillId(null)}>Cancel</button><button className="primary" disabled={savingSkillId === skill.id}>Save new version</button></div>
         </form>}
         {deletingSkillId === skill.id && <div className="inline-confirmation skill-delete-confirmation">
-          <div><strong>Delete {skill.name}?</strong><span>{skill.schedule_count > 0 ? `Delete ${skill.schedule_count === 1 ? "the attached automation" : `the ${skill.schedule_count} attached automations`} first.` : "It will disappear from agent discovery. Existing versions and run records are retained."}</span></div>
-          <div className="inline-form-actions"><button onClick={() => setDeletingSkillId(null)}>Cancel</button><button className="danger" disabled={skill.schedule_count > 0 || savingSkillId === skill.id} onClick={() => deleteSkill(skill)}>Delete skill</button></div>
+          <div><strong>Delete {skill.name}?</strong><span>It will disappear from agent discovery. Existing versions are retained.</span></div>
+          <div className="inline-form-actions"><button onClick={() => setDeletingSkillId(null)}>Cancel</button><button className="danger" disabled={savingSkillId === skill.id} onClick={() => deleteSkill(skill)}>Delete skill</button></div>
         </div>}
       </article>)}</div>}
       <details className="automation-form"><summary>New skill</summary><form onSubmit={createSkill}>
         <label>Name<input required minLength={1} maxLength={64} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value={name} onChange={(event) => setName(event.target.value)} placeholder="review-project-context" /><small>Lowercase letters, numbers, and single hyphens; maximum 64 characters.</small></label>
         <label>Short description<textarea required maxLength={1024} rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Reviews current project context and records decisions. Use when preparing a periodic project health check." /></label>
-        <label>Instruction body<textarea required rows={10} value={instructions} onChange={(event) => setInstructions(event.target.value)} placeholder="Describe the workflow, context to inspect, tools to use, and expected result…" /></label>
+        <label>Instruction body<textarea required rows={10} value={instructions} onChange={(event) => setInstructions(event.target.value)} placeholder="Describe the reusable workflow, context to inspect, tools to use, and expected result…" /></label>
         <button className="primary">Create skill</button>
       </form></details>
     </section>

@@ -97,14 +97,14 @@ export const assetUploadSchema = z.object({
   duration_seconds: z.number().nonnegative().optional(),
 }).strict();
 
-export const createAutomationSkillSchema = z.object({
+export const createSkillSchema = z.object({
   name: SkillName,
   description: SkillDescription,
   instructions_markdown: z.string().trim().min(1).max(2_000_000),
   commit_message: CommitMessage,
 }).strict();
 
-export const updateAutomationSkillSchema = z.object({
+export const updateSkillSchema = z.object({
   description: SkillDescription,
   instructions_markdown: z.string().trim().min(1).max(2_000_000),
   commit_message: CommitMessage,
@@ -114,7 +114,8 @@ export const updateAutomationSkillSchema = z.object({
 export const createCronScheduleSchema = z.object({
   name: AutomationName,
   automation_key: AutomationKey,
-  skill_version_id: UUID,
+  instructions_markdown: z.string().trim().min(1).max(2_000_000),
+  commit_message: CommitMessage.default("Create automation"),
   cron_expression: CronExpression,
   timezone: TimeZone,
   input: AutomationInput.default({}),
@@ -123,7 +124,11 @@ export const createCronScheduleSchema = z.object({
 
 export const updateCronScheduleSchema = createCronScheduleSchema
   .omit({ automation_key: true })
-  .extend({ enabled: z.boolean() })
+  .extend({
+    commit_message: CommitMessage.default("Update automation"),
+    enabled: z.boolean(),
+    expected_version_number: z.number().int().positive(),
+  })
   .strict();
 
 const automationRunAccessSchema = z.object({
@@ -154,8 +159,8 @@ export type UpdatePageInput = z.infer<typeof updatePageSchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
 export type PublicationIntentInput = z.infer<typeof publicationIntentSchema>;
 export type AssetUploadInput = z.infer<typeof assetUploadSchema>;
-export type CreateAutomationSkillInput = z.infer<typeof createAutomationSkillSchema>;
-export type UpdateAutomationSkillInput = z.infer<typeof updateAutomationSkillSchema>;
+export type CreateSkillInput = z.infer<typeof createSkillSchema>;
+export type UpdateSkillInput = z.infer<typeof updateSkillSchema>;
 export type CreateCronScheduleInput = z.infer<typeof createCronScheduleSchema>;
 export type UpdateCronScheduleInput = z.infer<typeof updateCronScheduleSchema>;
 export type CreateAutomationPageInput = z.infer<typeof createAutomationPageSchema>;

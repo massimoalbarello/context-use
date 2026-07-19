@@ -19,7 +19,6 @@ export {
 export {
   AutomationClaimError,
   AutomationRepository,
-  AutomationSkillInUseError,
   AutomationValidationError,
   AutomationVersionConflictError,
   nextCronOccurrence,

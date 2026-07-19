@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   assetUploadSchema,
   createAutomationPageSchema,
-  createAutomationSkillSchema,
+  createSkillSchema,
   AssetPath,
   createCronScheduleSchema,
   createPageSchema,
@@ -66,11 +66,11 @@ describe("strict mutation schemas", () => {
     }).success).toBe(false);
   });
 
-  test("cron schedules accept only the persisted first-version fields", () => {
+  test("automations accept owned instructions rather than skill references", () => {
     expect(createCronScheduleSchema.safeParse({
       name: "Morning review",
       automation_key: "morning-review",
-      skill_version_id: versionId,
+      instructions_markdown: "Review current context and save the daily digest.",
       cron_expression: "0 9 * * *",
       timezone: "Europe/London",
       input: { project: "context-use" },
@@ -79,44 +79,54 @@ describe("strict mutation schemas", () => {
     expect(createCronScheduleSchema.safeParse({
       name: "Advertises capabilities",
       automation_key: "Advertises capabilities",
-      skill_version_id: versionId,
+      instructions_markdown: "Review current context.",
       cron_expression: "0 9 * * *",
       timezone: "Europe/London",
       capabilities: ["browser"],
     }).success).toBe(false);
     expect(createCronScheduleSchema.safeParse({
       name: "Missing semantic key",
-      skill_version_id: versionId,
+      instructions_markdown: "Review current context.",
       cron_expression: "0 9 * * *",
       timezone: "Europe/London",
     }).success).toBe(false);
     expect(updateCronScheduleSchema.safeParse({
       name: "Renamed review",
-      skill_version_id: versionId,
+      instructions_markdown: "Review current context and save the daily digest.",
       cron_expression: "0 10 * * *",
       timezone: "Europe/London",
       input: {},
       enabled: true,
+      expected_version_number: 1,
     }).success).toBe(true);
     expect(updateCronScheduleSchema.safeParse({
       name: "Attempts key change",
       automation_key: "changed-key",
-      skill_version_id: versionId,
+      instructions_markdown: "Review current context.",
       cron_expression: "0 10 * * *",
       timezone: "Europe/London",
       input: {},
       enabled: true,
+      expected_version_number: 1,
+    }).success).toBe(false);
+    expect(createCronScheduleSchema.safeParse({
+      name: "Attempts skill attachment",
+      automation_key: "attempts-skill-attachment",
+      instructions_markdown: "Review current context.",
+      skill_version_id: versionId,
+      cron_expression: "0 9 * * *",
+      timezone: "Europe/London",
     }).success).toBe(false);
   });
 
   test("skills require standard discovery metadata", () => {
-    expect(createAutomationSkillSchema.safeParse({
+    expect(createSkillSchema.safeParse({
       name: "review-project-context",
       description: "Reviews project context. Use when preparing a project health check.",
       instructions_markdown: "Inspect the project and record the result.",
       commit_message: "Create review skill",
     }).success).toBe(true);
-    expect(createAutomationSkillSchema.safeParse({
+    expect(createSkillSchema.safeParse({
       name: "Review Project Context",
       description: "Too display-like",
       instructions_markdown: "Inspect the project.",

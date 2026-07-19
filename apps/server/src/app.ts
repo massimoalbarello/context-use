@@ -6,7 +6,6 @@ import {
 import {
   AssetRepository,
   AutomationRepository,
-  AutomationSkillInUseError,
   AutomationValidationError,
   AutomationVersionConflictError,
   InboxRepository,
@@ -24,12 +23,12 @@ import {
 import {
   assetUploadSchema,
   archivePageSchema,
-  createAutomationSkillSchema,
+  createSkillSchema,
   createCronScheduleSchema,
   createPageSchema,
   MCP_SCOPES,
   publicationIntentSchema,
-  updateAutomationSkillSchema,
+  updateSkillSchema,
   updateCronScheduleSchema,
   updatePageSchema,
 } from "@context-use/shared";
@@ -111,9 +110,6 @@ function routeError(error: unknown): Response {
     return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
   }
   if (error instanceof PublicationStateError) return problem(error.message, 409, "publication_state");
-  if (error instanceof AutomationSkillInUseError) {
-    return json({ error: "skill_in_use", message: error.message, schedule_count: error.scheduleCount }, 409);
-  }
   if (error instanceof AutomationValidationError) return problem(error.message, 422, "automation_validation");
   if (error instanceof AutomationVersionConflictError) {
     return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
@@ -344,12 +340,12 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   })
   .post("/api/dashboard/skills", async ({ request }) => {
     const principal = await ownerRequest(request, true);
-    const input = createAutomationSkillSchema.parse(await bodyJson(request));
+    const input = createSkillSchema.parse(await bodyJson(request));
     return json(await dashboardAutomations.createSkill(input, { kind: "dashboard", subject: principal.userId }), 201);
   })
   .put("/api/dashboard/skills/:id", async ({ request, params }) => {
     const principal = await ownerRequest(request, true);
-    const input = updateAutomationSkillSchema.parse(await bodyJson(request));
+    const input = updateSkillSchema.parse(await bodyJson(request));
     const skill = await dashboardAutomations.updateSkill(
       z.string().uuid().parse(params.id),
       input,
@@ -367,14 +363,18 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     return json(await dashboardAutomations.listSchedules());
   })
   .post("/api/dashboard/automations/schedules", async ({ request }) => {
-    await ownerRequest(request, true);
+    const principal = await ownerRequest(request, true);
     const input = createCronScheduleSchema.parse(await bodyJson(request));
-    return json(await dashboardAutomations.createSchedule(input), 201);
+    return json(await dashboardAutomations.createSchedule(input, { kind: "dashboard", subject: principal.userId }), 201);
   })
   .put("/api/dashboard/automations/schedules/:id", async ({ request, params }) => {
-    await ownerRequest(request, true);
+    const principal = await ownerRequest(request, true);
     const input = updateCronScheduleSchema.parse(await bodyJson(request));
-    const schedule = await dashboardAutomations.updateSchedule(z.string().uuid().parse(params.id), input);
+    const schedule = await dashboardAutomations.updateSchedule(
+      z.string().uuid().parse(params.id),
+      input,
+      { kind: "dashboard", subject: principal.userId },
+    );
     return schedule ? json(schedule) : problem("Cron schedule not found", 404, "not_found");
   })
   .delete("/api/dashboard/automations/schedules/:id", async ({ request, params }) => {
