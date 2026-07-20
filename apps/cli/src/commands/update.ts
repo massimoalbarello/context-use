@@ -4,7 +4,7 @@ import { z } from "zod";
 import { sendSsmCommands } from "../aws.ts";
 import { continueUpdateWithCli, installCliRelease } from "../cli-update.ts";
 import { deploy } from "../deploy.ts";
-import { readConfig, saveConfig } from "../paths.ts";
+import { readConfigIfPresent, saveConfig } from "../paths.ts";
 import { currentVersion, deploymentRoot, releaseManifest } from "../release.ts";
 import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs } from "../terraform.ts";
 
@@ -25,8 +25,12 @@ export const command = defineCommand("update", {
       return;
     }
 
-    const config = await readConfig();
-    if (!config.computeOutputs) throw new Error("No active compute deployment");
+    const config = await readConfigIfPresent();
+    if (!config?.computeOutputs) {
+      p.log.info("No active context-use deployment; skipping deployment update");
+      p.outro(`CLI is at ${manifest.version}`);
+      return;
+    }
     await assertTerraformVersion(manifest);
     const root = await deploymentRoot(manifest);
 

@@ -21,10 +21,16 @@ export function normalizeDeploymentConfig(config: StoredDeploymentConfig): Deplo
   };
 }
 
-export async function readConfig(): Promise<DeploymentConfig> {
+export async function readConfigIfPresent(): Promise<DeploymentConfig | null> {
   const file = Bun.file(configPath);
-  if (!(await file.exists())) throw new Error("No context-use deployment found. Run `context-use setup` first.");
+  if (!(await file.exists())) return null;
   return normalizeDeploymentConfig(await file.json() as StoredDeploymentConfig);
+}
+
+export async function readConfig(): Promise<DeploymentConfig> {
+  const config = await readConfigIfPresent();
+  if (!config) throw new Error("No context-use deployment found. Run `context-use setup` first.");
+  return config;
 }
 
 export async function saveConfig(config: DeploymentConfig): Promise<void> {
