@@ -263,6 +263,7 @@ test("remote verification avoids shell-quoting SQL and passes the database passw
   expect(script).toContain("base64 -d");
   expect(script).toContain("export PGPASSWORD=\"$POSTGRES_PASSWORD\"");
   expect(script).toContain("exec -T -e PGPASSWORD postgres psql");
+  expect(script.match(/exec -T --user 1000:1000/g)?.length).toBe(2);
   expect(script).toContain("AWS_PROFILE=context-use-storage");
   expect(script).toContain("AWS_EC2_METADATA_DISABLED=true");
   expect(script).not.toContain("confirm_publication_intent");
@@ -559,6 +560,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   );
   expect(storageSocketInitService).toContain("cap_add: [CHOWN]");
   expect(storageSocketInitService).not.toContain("FOWNER");
+  expect(storageSocketInitService.indexOf("chown root:root")).toBeLessThan(storageSocketInitService.indexOf("chmod 0700"));
   expect(storageSocketInitService.indexOf("chmod 0700")).toBeLessThan(storageSocketInitService.indexOf("chown bun:bun"));
 
   const storageService = deployCompose.slice(
