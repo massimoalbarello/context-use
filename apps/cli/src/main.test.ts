@@ -95,6 +95,39 @@ test("update succeeds without an active deployment", async () => {
   }
 });
 
+test("update accepts the pinned continuation used by older CLIs", async () => {
+  const home = await mkdtemp(join(tmpdir(), "context-use-cli-legacy-continuation-"));
+  const manifestPath = join(home, "release-manifest.json");
+  const manifest = {
+    version: currentVersion,
+    terraform: { minimum: "1.11.0", maximum_exclusive: "2.0.0" },
+    deployment_bundle: {
+      url: `https://github.com/massimoalbarello/context-use/releases/download/${currentVersion}/deployment.tar.gz`,
+      sha256: "a".repeat(64),
+    },
+    images: {
+      app: `ghcr.io/massimoalbarello/context-use@sha256:${"b".repeat(64)}`,
+      backup: `ghcr.io/massimoalbarello/context-use-backup@sha256:${"c".repeat(64)}`,
+    },
+  };
+
+  try {
+    await Bun.write(manifestPath, JSON.stringify(manifest));
+    const result = await executeCli(["update", "--version", currentVersion], {
+      ...process.env,
+      HOME: home,
+      CONTEXT_USE_RELEASE_MANIFEST: manifestPath,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("No active context-use deployment; skipping deployment update");
+    expect(result.stdout).toContain(`CLI is at ${currentVersion}`);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
 test("updated-CLI continuation cannot substitute another release manifest", async () => {
   const home = await mkdtemp(join(tmpdir(), "context-use-cli-continuation-"));
   const manifestPath = join(home, "release-manifest.json");
