@@ -411,6 +411,13 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     deployCompose.indexOf("x-locked-service:"),
     deployCompose.indexOf("x-logging:"),
   );
+  const parsedCompose = Bun.YAML.parse(deployCompose) as {
+    "x-locked-service": { tmpfs: string[] };
+    services: Record<string, { tmpfs?: string[] }>;
+  };
+  expect(parsedCompose["x-locked-service"].tmpfs).toEqual(["/tmp:size=32m,mode=1777"]);
+  expect(parsedCompose.services["aws-credential-broker"]?.tmpfs).toEqual(["/tmp:size=8m,mode=1777"]);
+  expect(parsedCompose.services.storage?.tmpfs).toEqual(["/tmp:size=32m,mode=1777"]);
   expect(lockedService).toContain("read_only: true");
   expect(lockedService).toContain("cap_drop: [ALL]");
   expect(publicMcpService).toContain("networks: [public_mcp_data, public_mcp]");
