@@ -44,7 +44,7 @@ export function createMcpServer(
   assets: AssetRepository,
   automations: AutomationRepository,
 ): McpServer {
-  const server = new McpServer({ name: "context-use", version: "0.1.23" }, {
+  const server = new McpServer({ name: "context-use", version: "0.1.24" }, {
     instructions: KNOWLEDGE_BASE_INSTRUCTIONS,
   });
   const actor = { kind: "mcp" as const, subject: context.clientId };
