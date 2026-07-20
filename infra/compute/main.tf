@@ -55,13 +55,6 @@ resource "aws_security_group" "app" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  ingress {
-    description = "HTTP3"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -149,8 +142,7 @@ resource "aws_iam_role_policy" "backup" {
       {
         Effect = "Allow"
         Action = [
-          "s3:GetObject", "s3:PutObject", "s3:DeleteObject",
-          "s3:AbortMultipartUpload", "s3:ListBucket", "s3:GetObjectVersion"
+          "s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload"
         ]
         Resource = [
           "arn:aws:s3:::${var.backup_bucket}",
