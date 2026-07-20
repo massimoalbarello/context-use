@@ -113,7 +113,6 @@ export async function setup(): Promise<void> {
   const dnsMode = value(await p.select({ message: "DNS management", options: [{ value: "route53", label: "Route 53 (automatic)" }, { value: "manual", label: "Manual DNS" }] })) as "route53" | "manual";
   const route53ZoneId = dnsMode === "route53" ? required(await p.text({ message: "Route 53 hosted zone ID" }), "Route 53 zone ID") : "";
   const ownerEmail = required(await p.text({ message: "Owner email", validate: (input) => input && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input) ? undefined : "Enter a valid email" }), "Owner email").trim().toLowerCase();
-  p.note("context-use has no analytics or telemetry. No identity provider receives authentication traffic; the certificate authority receives the three configured hostnames.", "External services");
   const manifest = await releaseManifest(process.env.CONTEXT_USE_VERSION ?? "latest");
   const config: DeploymentConfig = {
     schemaVersion: 1, releaseVersion: manifest.version, phase: "new", environment: "production",
