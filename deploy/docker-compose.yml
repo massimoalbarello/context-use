@@ -31,7 +31,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
-    networks: [migration_data, dashboard_data, auth_data, mcp_data, public_data, confirmation_data, storage_data, backup_data, public_mcp_data]
+    networks: [migration_data, dashboard_data, auth_data, mcp_data, public_data, confirmation_data, storage_data, backup_data]
     logging:
       <<: *logging
       options:
@@ -50,7 +50,6 @@ services:
       DB_DASHBOARD_PASSWORD: ${DB_DASHBOARD_PASSWORD}
       DB_MCP_PASSWORD: ${DB_MCP_PASSWORD}
       DB_PUBLIC_PASSWORD: ${DB_PUBLIC_PASSWORD}
-      DB_PUBLIC_MCP_PASSWORD: ${DB_PUBLIC_MCP_PASSWORD}
       DB_CONFIRMATION_PASSWORD: ${DB_CONFIRMATION_PASSWORD}
       DB_STORAGE_PASSWORD: ${DB_STORAGE_PASSWORD}
       DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD}
@@ -67,7 +66,6 @@ services:
       PORT: "3007"
       APP_ORIGIN: https://${APP_HOSTNAME}
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       DASHBOARD_AUTHORITY_URL: http://app:3000
     command: ["bun", "apps/server/src/dashboard-edge-index.ts"]
     networks: [dashboard_web, dashboard_edge_internal]
@@ -96,7 +94,6 @@ services:
       PORT: "3000"
       APP_ORIGIN: https://${APP_HOSTNAME}
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       DATABASE_URL: postgres://context_use_dashboard:${DB_DASHBOARD_PASSWORD}@postgres:5432/context_use
       AUTH_INTERNAL_URL: http://auth:3002
       CONFIRMATION_INTERNAL_URL: http://confirmation:3004
@@ -130,7 +127,6 @@ services:
       PORT: "3006"
       APP_ORIGIN: https://${APP_HOSTNAME}
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       AUTH_AUTHORITY_URL: http://auth:3002
     command: ["bun", "apps/server/src/auth-edge-index.ts"]
     networks: [auth_web, auth_edge_internal]
@@ -158,7 +154,6 @@ services:
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
       OAUTH_ISSUER: https://${APP_HOSTNAME}
       MCP_RESOURCE: https://${APP_HOSTNAME}/mcp
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       WEBAUTHN_RP_ID: ${APP_HOSTNAME}
       WEBAUTHN_RP_NAME: context-use
       OWNER_EMAIL: ${OWNER_EMAIL}
@@ -193,7 +188,6 @@ services:
       PORT: "3008"
       APP_ORIGIN: https://${APP_HOSTNAME}
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       MCP_AUTHORITY_URL: http://private-mcp:3003
     command: ["bun", "apps/server/src/mcp-edge-index.ts"]
     networks: [mcp_web, mcp_edge_internal]
@@ -223,7 +217,6 @@ services:
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
       OAUTH_ISSUER: https://${APP_HOSTNAME}
       MCP_RESOURCE: https://${APP_HOSTNAME}/mcp
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       MCP_DATABASE_URL: postgres://context_use_mcp:${DB_MCP_PASSWORD}@postgres:5432/context_use
       AUTH_INTERNAL_URL: http://auth:3002
       AUTH_MCP_TOKEN: ${AUTH_MCP_TOKEN}
@@ -256,7 +249,6 @@ services:
       PORT: "3005"
       APP_ORIGIN: https://${APP_HOSTNAME}
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       PUBLIC_DATABASE_URL: postgres://context_use_public:${DB_PUBLIC_PASSWORD}@postgres:5432/context_use
       STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
       STORAGE_PUBLIC_TOKEN: ${STORAGE_PUBLIC_TOKEN}
@@ -285,7 +277,6 @@ services:
       PORT: "3004"
       APP_ORIGIN: https://${APP_HOSTNAME}
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       WEBAUTHN_RP_ID: ${APP_HOSTNAME}
       CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:${DB_CONFIRMATION_PASSWORD}@postgres:5432/context_use
       CONFIRMATION_GATEWAY_TOKEN: ${CONFIRMATION_GATEWAY_TOKEN}
@@ -358,7 +349,6 @@ services:
       SERVICE_MODE: storage
       APP_ORIGIN: https://${APP_HOSTNAME}
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
       STORAGE_DATABASE_URL: postgres://context_use_storage:${DB_STORAGE_PASSWORD}@postgres:5432/context_use
       STORAGE_DRIVER: s3
       STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
@@ -392,44 +382,19 @@ services:
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
         awslogs-stream: storage
 
-  public-mcp:
-    <<: *locked-service
-    depends_on:
-      postgres: { condition: service_healthy }
-    environment:
-      NODE_ENV: production
-      PORT: "3001"
-      PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp
-      PUBLIC_SITE_ORIGIN: https://${APP_HOSTNAME}
-      PUBLIC_MCP_DATABASE_URL: postgres://context_use_public_mcp:${DB_PUBLIC_MCP_PASSWORD}@postgres:5432/context_use
-    command: ["bun", "apps/public-mcp/src/index.ts"]
-    networks: [public_mcp_data, public_mcp]
-    healthcheck:
-      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3001/health'); if (!response.ok) process.exit(1)"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-    logging:
-      <<: *logging
-      options:
-        awslogs-region: ${AWS_REGION}
-        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
-        awslogs-stream: public-mcp
-
   caddy:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
-    depends_on: [dashboard-edge, auth-edge, private-mcp-edge, public-web, public-mcp]
+    depends_on: [dashboard-edge, auth-edge, private-mcp-edge, public-web]
     environment:
       APP_HOSTNAME: ${APP_HOSTNAME}
       ASSET_HOSTNAME: ${ASSET_HOSTNAME}
-      PUBLIC_MCP_HOSTNAME: ${PUBLIC_MCP_HOSTNAME}
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /data/context-use/caddy/data:/data
       - /data/context-use/caddy/config:/config
-    networks: [edge, dashboard_web, auth_web, mcp_web, public_web, public_mcp]
+    networks: [edge, dashboard_web, auth_web, mcp_web, public_web]
     logging:
       <<: *logging
       options:
@@ -452,7 +417,7 @@ services:
       BACKUP_BUCKET: ${BACKUP_BUCKET}
       KMS_KEY_ID: ${KMS_KEY_ID}
       VERSION: ${VERSION}
-      SCHEMA_VERSION: 001_baseline.sql
+      SCHEMA_VERSION: 002_remove_public_mcp.sql
       AWS_REGION: ${AWS_REGION}
       AWS_CONFIG_FILE: /etc/context-use/aws-config
       AWS_PROFILE: context-use-backup
@@ -490,8 +455,6 @@ networks:
   auth_mcp_internal: { internal: true }
   auth_confirmation_internal: { internal: true }
   confirmation_internal: { internal: true }
-  public_mcp: { internal: true }
-  public_mcp_data: { internal: true }
   migration_data: { internal: true }
   dashboard_data: { internal: true }
   auth_data: { internal: true }

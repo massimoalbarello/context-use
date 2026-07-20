@@ -44,7 +44,6 @@ APP_IMAGE=${CONTEXT_USE_APP_IMAGE}
 BACKUP_IMAGE=${CONTEXT_USE_BACKUP_IMAGE}
 APP_HOSTNAME=$(get_secret APP_HOSTNAME)
 ASSET_HOSTNAME=$(get_secret ASSET_HOSTNAME)
-PUBLIC_MCP_HOSTNAME=$(get_secret PUBLIC_MCP_HOSTNAME)
 OWNER_EMAIL=$(get_secret OWNER_EMAIL)
 OWNER_SETUP_TOKEN_HASH=$(get_secret OWNER_SETUP_TOKEN_HASH)
 BETTER_AUTH_SECRET=$(get_secret BETTER_AUTH_SECRET)
@@ -53,7 +52,6 @@ DB_AUTH_PASSWORD=$(get_secret DB_AUTH_PASSWORD)
 DB_DASHBOARD_PASSWORD=$(get_secret DB_DASHBOARD_PASSWORD)
 DB_MCP_PASSWORD=$(get_secret DB_MCP_PASSWORD)
 DB_PUBLIC_PASSWORD=$(get_secret DB_PUBLIC_PASSWORD)
-DB_PUBLIC_MCP_PASSWORD=$(get_secret DB_PUBLIC_MCP_PASSWORD)
 DB_CONFIRMATION_PASSWORD=$(get_secret DB_CONFIRMATION_PASSWORD)
 DB_STORAGE_PASSWORD=$(get_secret DB_STORAGE_PASSWORD)
 DB_BACKUP_PASSWORD=$(get_secret DB_BACKUP_PASSWORD)
@@ -80,10 +78,19 @@ docker compose --env-file "${secrets}/runtime.env" --profile migration run --rm 
 if [ -n "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" ]; then
   export PGPASSWORD="$(get_secret POSTGRES_PASSWORD)"
   docker compose --env-file "${secrets}/runtime.env" up -d postgres aws-credential-broker
+  # Historical dumps contain grants to this retired role. Recreate it without
+  # login authority only for the stopped restore, then let the cleanup
+  # migration remove it before any application service starts.
+  docker compose --env-file "${secrets}/runtime.env" exec -T -e PGPASSWORD postgres \
+    psql -v ON_ERROR_STOP=1 -U postgres -d context_use \
+    -c 'DROP ROLE IF EXISTS context_use_public_mcp; CREATE ROLE context_use_public_mcp NOLOGIN'
   docker compose --env-file "${secrets}/runtime.env" run --rm -T backup fetch "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" \
     | gunzip \
     | docker compose --env-file "${secrets}/runtime.env" exec -T -e PGPASSWORD postgres psql --single-transaction -v ON_ERROR_STOP=1 -U postgres -d context_use
   docker compose --env-file "${secrets}/runtime.env" --profile migration run --rm migrate
+  docker compose --env-file "${secrets}/runtime.env" exec -T -e PGPASSWORD postgres \
+    psql -v ON_ERROR_STOP=1 -U postgres -d context_use \
+    -c 'DROP ROLE IF EXISTS context_use_public_mcp'
 fi
 docker compose --env-file "${secrets}/runtime.env" up -d --remove-orphans
 # Compose does not recreate a service when only bind-mounted file contents

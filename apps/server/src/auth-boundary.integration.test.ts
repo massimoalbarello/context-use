@@ -111,7 +111,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource/mcp");
   });
 
-  test("MCP transport methods take precedence over the public asset route", async () => {
+  test("MCP transport methods always use the private MCP boundary", async () => {
     for (const method of ["GET", "DELETE"]) {
       const response = await application!.handle(new Request("http://localhost:3000/mcp", { method }));
 

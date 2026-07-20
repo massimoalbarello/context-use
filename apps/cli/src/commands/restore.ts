@@ -8,19 +8,25 @@ import type { DataOutputs, DeploymentConfig } from "../types.ts";
 export function restoreCommands(bucket: string, key: string): string[] {
   if (!/^postgres\/[0-9TZ-]+\.sql\.gz$/.test(key)) throw new Error("Invalid backup key");
   const compose = "docker compose --env-file /data/context-use/secrets/runtime.env";
-  const clients = "caddy dashboard-edge auth-edge private-mcp-edge app auth private-mcp public-web confirmation storage public-mcp backup";
+  const database = `${compose} exec -T -e PGPASSWORD postgres psql -v ON_ERROR_STOP=1 -U postgres -d context_use`;
+  // Plain historical dumps retain GRANT statements. This no-login placeholder
+  // exists only while traffic is stopped and is removed after migrations.
+  const compatibilityRole = "context_use_public_mcp";
+  const clients = "caddy dashboard-edge auth-edge private-mcp-edge app auth private-mcp public-web confirmation storage backup";
   return [
     "set -euo pipefail",
     "cd /opt/context-use/deploy",
     "set -a; . /data/context-use/secrets/runtime.env; set +a",
     "export PGPASSWORD=\"$POSTGRES_PASSWORD\"",
-    `restore_failed() { ${compose} up -d postgres aws-credential-broker backup >/dev/null 2>&1 || true; }`,
+    `restore_failed() { ${database} -c 'DROP ROLE IF EXISTS ${compatibilityRole}' >/dev/null 2>&1 || true; ${compose} up -d postgres aws-credential-broker backup >/dev/null 2>&1 || true; }`,
     "trap restore_failed EXIT",
     `${compose} run --rm backup once`,
     `${compose} stop ${clients}`,
     `${compose} up -d postgres aws-credential-broker`,
-    `${compose} run --rm -T -e BACKUP_BUCKET='${bucket}' backup fetch '${key}' | gunzip | ${compose} exec -T -e PGPASSWORD postgres psql --single-transaction -v ON_ERROR_STOP=1 -U postgres -d context_use`,
+    `${database} -c 'DROP ROLE IF EXISTS ${compatibilityRole}; CREATE ROLE ${compatibilityRole} NOLOGIN'`,
+    `${compose} run --rm -T -e BACKUP_BUCKET='${bucket}' backup fetch '${key}' | gunzip | ${database} --single-transaction`,
     `${compose} --profile migration run --rm migrate`,
+    `${database} -c 'DROP ROLE IF EXISTS ${compatibilityRole}'`,
     `${compose} up -d --remove-orphans`,
     "trap - EXIT",
   ];

@@ -15,14 +15,12 @@ x-common: &common
   ASSET_ORIGIN: http://localhost:5173
   OAUTH_ISSUER: http://localhost:5173
   MCP_RESOURCE: http://localhost:5173/mcp
-  PUBLIC_MCP_ENDPOINT: http://localhost:5173/public/mcp
 
 x-role-passwords: &role-passwords
   DB_AUTH_PASSWORD: development-only
   DB_DASHBOARD_PASSWORD: development-only
   DB_MCP_PASSWORD: development-only
   DB_PUBLIC_PASSWORD: development-only
-  DB_PUBLIC_MCP_PASSWORD: development-only
   DB_CONFIRMATION_PASSWORD: development-only
   DB_STORAGE_PASSWORD: development-only
   DB_BACKUP_PASSWORD: development-only
@@ -224,19 +222,6 @@ services:
       - storage-socket:/run/context-use-storage:ro
     restart: unless-stopped
 
-  public-mcp:
-    <<: *code-service
-    depends_on:
-      migrate: { condition: service_completed_successfully }
-    environment:
-      NODE_ENV: development
-      PORT: "3001"
-      PUBLIC_MCP_ENDPOINT: http://localhost:5173/public/mcp
-      PUBLIC_SITE_ORIGIN: http://localhost:5173
-      PUBLIC_MCP_DATABASE_URL: postgres://context_use_public_mcp:development-only@postgres:5432/context_use
-    command: ["bun", "--cwd", "apps/public-mcp", "dev"]
-    restart: unless-stopped
-
   gateway:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     depends_on: [dashboard-edge, auth-edge, private-mcp-edge, public-web]
@@ -247,10 +232,8 @@ services:
     <<: *code-service
     depends_on:
       gateway: { condition: service_started }
-      public-mcp: { condition: service_started }
     environment:
       VITE_API_PROXY_TARGET: http://gateway:8080
-      VITE_PUBLIC_MCP_PROXY_TARGET: http://public-mcp:3001
     command: ["bun", "--cwd", "apps/web", "dev", "--host", "0.0.0.0"]
     ports: ["5173:5173"]
     restart: unless-stopped

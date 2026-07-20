@@ -6,7 +6,6 @@ const common = {
   NODE_ENV: "production",
   APP_ORIGIN: "https://context.example.com",
   ASSET_ORIGIN: "https://assets.context.example.com",
-  PUBLIC_MCP_ENDPOINT: "https://public.context.example.com/mcp",
 };
 
 const validByService: Record<string, Record<string, string>> = {
@@ -129,7 +128,6 @@ describe("production process credential boundaries", () => {
       AUTH_DATABASE_URL: "postgres://context_use_auth:secret@postgres:5432/context_use",
       MCP_DATABASE_URL: "postgres://context_use_mcp:secret@postgres:5432/context_use",
       PUBLIC_DATABASE_URL: "postgres://context_use_public:secret@postgres:5432/context_use",
-      PUBLIC_MCP_DATABASE_URL: "postgres://context_use_public_mcp:secret@postgres:5432/context_use",
       CONFIRMATION_DATABASE_URL: "postgres://context_use_confirmation:secret@postgres:5432/context_use",
       STORAGE_DATABASE_URL: "postgres://context_use_storage:secret@postgres:5432/context_use",
       MIGRATOR_DATABASE_URL: "postgres://postgres:secret@postgres:5432/context_use",

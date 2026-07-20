@@ -79,25 +79,6 @@
 	}
 }
 
-{$PUBLIC_MCP_HOSTNAME} {
-	header {
-		-Server
-		-Set-Cookie
-		Strict-Transport-Security "max-age=63072000; includeSubDomains"
-		X-Content-Type-Options nosniff
-		Referrer-Policy no-referrer
-	}
-	handle /mcp {
-		request_body {
-			max_size 128KB
-		}
-		reverse_proxy public-mcp:3001
-	}
-	handle {
-		respond "Not found" 404
-	}
-}
-
 {$ASSET_HOSTNAME} {
 	request_body {
 		max_size 64KB
@@ -111,7 +92,7 @@
 		Referrer-Policy no-referrer
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 	}
-	handle /p/* {
+	handle /a/* {
 		reverse_proxy public-web:3005
 	}
 	handle {

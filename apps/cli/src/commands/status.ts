@@ -31,7 +31,6 @@ export const command = defineCommand("status", {
       state,
       version: config.releaseVersion,
       url: `https://${config.hostname}/app`,
-      publicMcp: `https://${config.publicMcpHostname}/mcp`,
       instance: compute?.instance_id,
       publicIp: compute?.public_ip,
       dataVolume: data?.data_volume_id,

@@ -4,7 +4,6 @@ WORKDIR /app
 
 COPY package.json bun.lock tsconfig.json ./
 COPY apps/cli/package.json apps/cli/package.json
-COPY apps/public-mcp/package.json apps/public-mcp/package.json
 COPY apps/server/package.json apps/server/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/database/package.json packages/database/package.json

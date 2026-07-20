@@ -2,7 +2,7 @@ import * as p from "@clack/prompts";
 import { createHash } from "node:crypto";
 import { accountId, bootstrapStateBucket, generateSecret, getSecureParameter, getSecureParameterIfPresent, putSecureParameter } from "./aws.ts";
 import { deploy, manualDnsMismatches, prepareCompute } from "./deploy.ts";
-import { configPath, defaultPublicMcpHostname, saveConfig } from "./paths.ts";
+import { configPath, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
 import { deploymentRoot, releaseManifest } from "./release.ts";
 import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs } from "./terraform.ts";
@@ -29,7 +29,6 @@ export async function ensureRuntimeParameters(config: DeploymentConfig, data: Da
   const fixed: Record<string, string> = {
     APP_HOSTNAME: config.hostname,
     ASSET_HOSTNAME: config.assetHostname,
-    PUBLIC_MCP_HOSTNAME: config.publicMcpHostname,
     OWNER_EMAIL: config.ownerEmail,
     AWS_REGION: config.awsRegion,
     ASSET_BUCKET: data.asset_bucket,
@@ -44,7 +43,6 @@ export async function ensureRuntimeParameters(config: DeploymentConfig, data: Da
     DB_DASHBOARD_PASSWORD: 36,
     DB_MCP_PASSWORD: 36,
     DB_PUBLIC_PASSWORD: 36,
-    DB_PUBLIC_MCP_PASSWORD: 36,
     DB_CONFIRMATION_PASSWORD: 36,
     DB_STORAGE_PASSWORD: 36,
     DB_BACKUP_PASSWORD: 36,
@@ -125,7 +123,6 @@ export async function setup(): Promise<void> {
     awsProfile, awsRegion, availabilityZone: `${awsRegion}a`, accountId: identity,
     hostname,
     assetHostname: `assets.${hostname}`,
-    publicMcpHostname: defaultPublicMcpHostname(hostname),
     dnsMode,
     route53ZoneId,
     ownerEmail,
