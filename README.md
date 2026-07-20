@@ -86,9 +86,10 @@ Useful commands:
 ```text
 context-use status
 context-use doctor
-context-use update [--version vX.Y.Z]
+context-use update
 context-use backup
 context-use restore
+context-use recover
 context-use open
 context-use destroy
 context-use destroy --purge-data

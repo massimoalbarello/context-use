@@ -2,27 +2,36 @@
 set -euo pipefail
 
 file=""
-trap 'if [ -n "${file}" ]; then rm -f "${file}"; fi' EXIT
+metadata=""
+trap 'rm -f "${file}" "${metadata}"' EXIT
 
 backup_once() {
-  timestamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+  timestamp="$(date -u +%Y-%m-%dT%H-%M-%S-%NZ)"
   file="/tmp/context-use-${timestamp}.sql.gz"
+  metadata="/tmp/context-use-${timestamp}.json"
+  key="postgres/${timestamp}.sql.gz"
   pg_dump --format=plain --clean --if-exists --no-owner | gzip -9 > "${file}"
   test -s "${file}"
   gzip -t "${file}"
-  aws s3 cp "${file}" "s3://${BACKUP_BUCKET}/postgres/${timestamp}.sql.gz" \
+  sha256="$(sha256sum "${file}" | cut -d ' ' -f 1)"
+  size="$(wc -c < "${file}" | tr -d ' ')"
+  jq -n \
+    --arg format context-use-postgres-v1 \
+    --arg objectKey "${key}" \
+    --arg releaseVersion "${VERSION}" \
+    --arg schemaVersion "${SCHEMA_VERSION}" \
+    --arg createdAt "${timestamp}" \
+    --arg sha256 "${sha256}" \
+    --argjson sizeBytes "${size}" \
+    '{format:$format,objectKey:$objectKey,releaseVersion:$releaseVersion,schemaVersion:$schemaVersion,createdAt:$createdAt,sha256:$sha256,sizeBytes:$sizeBytes}' \
+    > "${metadata}"
+  aws s3 cp "${metadata}" "s3://${BACKUP_BUCKET}/${key%.sql.gz}.json" \
     --sse aws:kms --sse-kms-key-id "${KMS_KEY_ID}" --only-show-errors
-  rm -f "${file}"
+  aws s3 cp "${file}" "s3://${BACKUP_BUCKET}/${key}" \
+    --sse aws:kms --sse-kms-key-id "${KMS_KEY_ID}" --only-show-errors
+  rm -f "${file}" "${metadata}"
   file=""
-  cutoff="$(date -u -d "-${RETENTION_DAYS:-30} days" +%s 2>/dev/null || date -u -v-30d +%s)"
-  aws s3api list-objects-v2 --bucket "${BACKUP_BUCKET}" --prefix postgres/ --output json \
-    | jq -r '.Contents[]? | [.Key,.LastModified] | @tsv' 2>/dev/null \
-    | while IFS=$'\t' read -r key modified; do
-        modified_epoch="$(date -u -d "${modified}" +%s 2>/dev/null || echo 0)"
-        if [ "${modified_epoch}" -gt 0 ] && [ "${modified_epoch}" -lt "${cutoff}" ]; then
-          aws s3api delete-object --bucket "${BACKUP_BUCKET}" --key "${key}" >/dev/null
-        fi
-      done
+  metadata=""
 }
 
 if [ "${1:-}" = "once" ]; then
@@ -36,7 +45,18 @@ if [ "${1:-}" = "fetch" ]; then
     echo "Invalid backup key" >&2
     exit 2
   fi
-  aws s3 cp "s3://${BACKUP_BUCKET}/${key}" - --only-show-errors
+  file="/tmp/context-use-restore.sql.gz"
+  metadata="/tmp/context-use-restore.json"
+  aws s3 cp "s3://${BACKUP_BUCKET}/${key}" "${file}" --only-show-errors
+  aws s3 cp "s3://${BACKUP_BUCKET}/${key%.sql.gz}.json" "${metadata}" --only-show-errors
+  jq -e \
+    --arg key "${key}" \
+    '.format == "context-use-postgres-v1" and .objectKey == $key and (.releaseVersion | type == "string" and length > 0) and (.schemaVersion | type == "string" and length > 0) and (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes | type == "number" and . > 0)' \
+    "${metadata}" >/dev/null
+  test "$(wc -c < "${file}" | tr -d ' ')" = "$(jq -r .sizeBytes "${metadata}")"
+  echo "$(jq -r .sha256 "${metadata}")  ${file}" | sha256sum -c - >/dev/null
+  gzip -t "${file}"
+  cat "${file}"
   exit 0
 fi
 

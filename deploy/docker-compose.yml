@@ -451,11 +451,12 @@ services:
       PGPASSWORD: ${DB_BACKUP_PASSWORD}
       BACKUP_BUCKET: ${BACKUP_BUCKET}
       KMS_KEY_ID: ${KMS_KEY_ID}
+      VERSION: ${VERSION}
+      SCHEMA_VERSION: 001_baseline.sql
       AWS_REGION: ${AWS_REGION}
       AWS_CONFIG_FILE: /etc/context-use/aws-config
       AWS_PROFILE: context-use-backup
       AWS_EC2_METADATA_DISABLED: "true"
-      RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
     volumes:
       - backup-aws-credentials:/run/context-use-aws-backup:ro
       - /data/context-use/backup-tmp:/tmp

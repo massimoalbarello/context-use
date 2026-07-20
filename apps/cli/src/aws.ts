@@ -20,6 +20,17 @@ export async function accountId(profile: string, region: string): Promise<string
   return identity.Account;
 }
 
+export async function bucketExists(profile: string, region: string, bucket: string): Promise<boolean> {
+  try {
+    await run(awsArgs(profile, region, ["s3api", "head-bucket", "--bucket", bucket]), { quiet: true });
+    return true;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    if (/Not Found|NoSuchBucket|\(404\)|status code: 404/i.test(detail)) return false;
+    throw error;
+  }
+}
+
 export async function bootstrapStateBucket(
   profile: string,
   region: string,
@@ -29,7 +40,9 @@ export async function bootstrapStateBucket(
   let exists = true;
   try {
     await execute(awsArgs(profile, region, ["s3api", "head-bucket", "--bucket", bucket]), { quiet: true });
-  } catch {
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    if (!/Not Found|NoSuchBucket|\(404\)|status code: 404/i.test(detail)) throw error;
     exists = false;
   }
   if (!exists && process.env.CONTEXT_USE_DRY_RUN !== "1") {
@@ -40,92 +53,51 @@ export async function bootstrapStateBucket(
   }
   await execute(awsArgs(profile, region, ["s3api", "put-public-access-block", "--bucket", bucket, "--public-access-block-configuration", "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"]), { quiet: true });
   await execute(awsArgs(profile, region, ["s3api", "put-bucket-versioning", "--bucket", bucket, "--versioning-configuration", "Status=Enabled"]), { quiet: true });
-  if (!exists) {
-    await execute(awsArgs(profile, region, ["s3api", "put-bucket-encryption", "--bucket", bucket, "--server-side-encryption-configuration", '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"},"BucketKeyEnabled":true}]}']), { quiet: true });
-  }
-}
-
-export async function createStateKmsKey(profile: string, region: string, installationId: string): Promise<{ arn: string; id: string }> {
-  const alias = `alias/context-use-${installationId}-terraform-state`;
-  try {
-    const existing = await awsJson<{ KeyMetadata: { Arn: string; KeyId: string } }>(profile, region, ["kms", "describe-key", "--key-id", alias]);
-    if (existing.KeyMetadata?.Arn && existing.KeyMetadata?.KeyId) return { arn: existing.KeyMetadata.Arn, id: existing.KeyMetadata.KeyId };
-  } catch {
-    // The installation-scoped alias is absent, so a new key is required.
-  }
-  const created = await awsJson<{ KeyMetadata: { Arn: string; KeyId: string } }>(profile, region, [
-    "kms", "create-key", "--description", `context-use ${installationId} Terraform state`,
-    "--tags", `TagKey=Project,TagValue=context-use`, `TagKey=Installation,TagValue=${installationId}`,
-  ]);
-  const arn = created.KeyMetadata?.Arn;
-  const id = created.KeyMetadata?.KeyId;
-  if (!arn || !id) throw new Error("AWS did not return the Terraform-state KMS key");
-  await run(awsArgs(profile, region, ["kms", "enable-key-rotation", "--key-id", arn]), { quiet: true });
-  await run(awsArgs(profile, region, ["kms", "create-alias", "--alias-name", alias, "--target-key-id", arn]), { quiet: true });
-  return { arn, id };
-}
-
-export async function scheduleStateKmsKeyDeletion(profile: string, region: string, installationId: string, keyArn: string): Promise<void> {
-  await run(awsArgs(profile, region, ["kms", "delete-alias", "--alias-name", `alias/context-use-${installationId}-terraform-state`]), { quiet: true });
-  await run(awsArgs(profile, region, ["kms", "schedule-key-deletion", "--key-id", keyArn, "--pending-window-in-days", "30"]), { quiet: true });
-}
-
-export async function configureStateBucketKms(profile: string, region: string, bucket: string, kmsKeyArn: string): Promise<void> {
-  const encryptionPath = resolve(cacheDirectory, `state-encryption-${randomBytes(8).toString("hex")}.json`);
-  const policyPath = resolve(cacheDirectory, `state-policy-${randomBytes(8).toString("hex")}.json`);
-  const encryption = {
-    Rules: [{ ApplyServerSideEncryptionByDefault: { SSEAlgorithm: "aws:kms", KMSMasterKeyID: kmsKeyArn }, BucketKeyEnabled: true }],
-  };
-  const policy = {
-    Version: "2012-10-17",
-    Statement: [
-      {
+  await execute(awsArgs(profile, region, [
+    "s3api", "put-bucket-policy", "--bucket", bucket, "--policy", JSON.stringify({
+      Version: "2012-10-17",
+      Statement: [{
         Sid: "DenyInsecureTransport", Effect: "Deny", Principal: "*", Action: "s3:*",
         Resource: [`arn:aws:s3:::${bucket}`, `arn:aws:s3:::${bucket}/*`],
         Condition: { Bool: { "aws:SecureTransport": "false" } },
-      },
-      {
-        Sid: "DenyStateWithoutInstallationKMS", Effect: "Deny", Principal: "*", Action: "s3:PutObject",
-        Resource: `arn:aws:s3:::${bucket}/*`,
-        Condition: { StringNotEquals: { "s3:x-amz-server-side-encryption": "aws:kms" } },
-      },
-      {
-        Sid: "DenyStateWithAnotherKMSKey", Effect: "Deny", Principal: "*", Action: "s3:PutObject",
-        Resource: `arn:aws:s3:::${bucket}/*`,
-        Condition: { StringNotEquals: { "s3:x-amz-server-side-encryption-aws-kms-key-id": kmsKeyArn } },
-      },
-    ],
-  };
-  await Bun.write(encryptionPath, JSON.stringify(encryption), { createPath: true, mode: 0o600 });
-  await Bun.write(policyPath, JSON.stringify(policy), { createPath: true, mode: 0o600 });
+      }],
+    }),
+  ]), { quiet: true });
+  await execute(awsArgs(profile, region, [
+    "s3api", "put-bucket-encryption", "--bucket", bucket,
+    "--server-side-encryption-configuration", '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}',
+  ]), { quiet: true });
+
+  // Existing installations used a custom KMS key. Rewrite only current state
+  // objects to SSE-S3; the old key remains available for historical versions
+  // until the installation is purged.
+  const listed = await execute(awsArgs(profile, region, ["s3api", "list-objects-v2", "--bucket", bucket, "--output", "json"]), { quiet: true });
+  const objects = JSON.parse(listed || "{}") as { Contents?: Array<{ Key: string }> };
+  for (const object of objects.Contents ?? []) {
+    const headed = await execute(awsArgs(profile, region, [
+      "s3api", "head-object", "--bucket", bucket, "--key", object.Key, "--output", "json",
+    ]), { quiet: true });
+    const current = JSON.parse(headed || "{}") as { ServerSideEncryption?: string };
+    if (current.ServerSideEncryption !== "AES256") {
+      await execute(awsArgs(profile, region, [
+        "s3api", "copy-object", "--bucket", bucket, "--key", object.Key,
+        "--copy-source", `${bucket}/${object.Key}`, "--metadata-directive", "COPY",
+        "--server-side-encryption", "AES256",
+      ]), { quiet: true });
+    }
+  }
+}
+
+export async function scheduleStateKmsKeyDeletion(profile: string, region: string, installationId: string, keyArn: string): Promise<void> {
   try {
-    await run(awsArgs(profile, region, ["s3api", "put-bucket-encryption", "--bucket", bucket, "--server-side-encryption-configuration", `file://${encryptionPath}`]), { quiet: true });
-    const objects = await awsJson<{ Contents?: Array<{ Key: string }> }>(profile, region, ["s3api", "list-objects-v2", "--bucket", bucket]);
-    for (const object of objects.Contents ?? []) {
-      const current = await awsJson<{ ServerSideEncryption?: string; SSEKMSKeyId?: string }>(profile, region, [
-        "s3api", "head-object", "--bucket", bucket, "--key", object.Key,
-      ]);
-      if (current.ServerSideEncryption !== "aws:kms" || current.SSEKMSKeyId !== kmsKeyArn) {
-        await run(awsArgs(profile, region, [
-          "s3api", "copy-object", "--bucket", bucket, "--key", object.Key,
-          "--copy-source", `${bucket}/${object.Key}`, "--metadata-directive", "COPY",
-          "--server-side-encryption", "aws:kms", "--ssekms-key-id", kmsKeyArn,
-        ]), { quiet: true });
-      }
-    }
-    const versions = await awsJson<{ Versions?: Array<{ Key: string; VersionId: string }> }>(profile, region, ["s3api", "list-object-versions", "--bucket", bucket]);
-    for (const version of versions.Versions ?? []) {
-      const head = await awsJson<{ ServerSideEncryption?: string; SSEKMSKeyId?: string }>(profile, region, [
-        "s3api", "head-object", "--bucket", bucket, "--key", version.Key, "--version-id", version.VersionId,
-      ]);
-      if (head.ServerSideEncryption !== "aws:kms" || head.SSEKMSKeyId !== kmsKeyArn) {
-        await run(awsArgs(profile, region, ["s3api", "delete-object", "--bucket", bucket, "--key", version.Key, "--version-id", version.VersionId]), { quiet: true });
-      }
-    }
-    await run(awsArgs(profile, region, ["s3api", "put-bucket-policy", "--bucket", bucket, "--policy", `file://${policyPath}`]), { quiet: true });
-  } finally {
-    await Bun.file(encryptionPath).delete();
-    await Bun.file(policyPath).delete();
+    await run(awsArgs(profile, region, ["kms", "delete-alias", "--alias-name", `alias/context-use-${installationId}-terraform-state`]), { quiet: true });
+  } catch (error) {
+    if (!(error instanceof Error) || !/NotFoundException|not found/i.test(error.message)) throw error;
+  }
+  try {
+    await run(awsArgs(profile, region, ["kms", "schedule-key-deletion", "--key-id", keyArn, "--pending-window-in-days", "30"]), { quiet: true });
+  } catch (error) {
+    if (!(error instanceof Error) || !/KMSInvalidStateException|pending deletion/i.test(error.message)) throw error;
   }
 }
 
@@ -148,6 +120,15 @@ export async function getSecureParameter(profile: string, region: string, name: 
   return value;
 }
 
+export async function getSecureParameterIfPresent(profile: string, region: string, name: string): Promise<string | null> {
+  try {
+    return await getSecureParameter(profile, region, name);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("ParameterNotFound")) return null;
+    throw error;
+  }
+}
+
 export async function deleteParameterPath(profile: string, region: string, prefix: string): Promise<void> {
   const result = await awsJson<{ Parameters?: Array<{ Name: string }> }>(profile, region, [
     "ssm", "get-parameters-by-path", "--path", prefix, "--recursive",
@@ -159,10 +140,16 @@ export async function deleteParameterPath(profile: string, region: string, prefi
 }
 
 export async function emptyVersionedBucket(profile: string, region: string, bucket: string): Promise<void> {
-  const versions = await awsJson<{
+  let versions: {
     Versions?: Array<{ Key: string; VersionId: string }>;
     DeleteMarkers?: Array<{ Key: string; VersionId: string }>;
-  }>(profile, region, ["s3api", "list-object-versions", "--bucket", bucket]);
+  };
+  try {
+    versions = await awsJson(profile, region, ["s3api", "list-object-versions", "--bucket", bucket]);
+  } catch (error) {
+    if (error instanceof Error && /NoSuchBucket|Not Found|\(404\)/i.test(error.message)) return;
+    throw error;
+  }
   const objects = [...(versions.Versions ?? []), ...(versions.DeleteMarkers ?? [])]
     .map(({ Key, VersionId }) => ({ Key, VersionId }));
   for (let index = 0; index < objects.length; index += 1_000) {
@@ -178,7 +165,11 @@ export async function emptyVersionedBucket(profile: string, region: string, buck
 
 export async function deleteStateBucket(profile: string, region: string, bucket: string): Promise<void> {
   await emptyVersionedBucket(profile, region, bucket);
-  await run(awsArgs(profile, region, ["s3api", "delete-bucket", "--bucket", bucket]), { quiet: true });
+  try {
+    await run(awsArgs(profile, region, ["s3api", "delete-bucket", "--bucket", bucket]), { quiet: true });
+  } catch (error) {
+    if (!(error instanceof Error) || !/NoSuchBucket|Not Found|\(404\)/i.test(error.message)) throw error;
+  }
 }
 
 export async function listBackups(profile: string, region: string, bucket: string): Promise<Array<{ key: string; modified: string; size: number }>> {

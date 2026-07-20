@@ -20,7 +20,11 @@ export async function releaseManifest(version = "latest"): Promise<ReleaseManife
     throw new Error("Release version must look like v1.2.3");
   }
   if (process.env.CONTEXT_USE_RELEASE_MANIFEST) {
-    return manifestSchema.parse(await Bun.file(process.env.CONTEXT_USE_RELEASE_MANIFEST).json()) as ReleaseManifest;
+    const manifest = manifestSchema.parse(await Bun.file(process.env.CONTEXT_USE_RELEASE_MANIFEST).json()) as ReleaseManifest;
+    if (version !== "latest" && manifest.version !== version) {
+      throw new Error(`Release manifest reported ${manifest.version}; expected ${version}`);
+    }
+    return manifest;
   }
   const url = version === "latest"
     ? `https://github.com/${repository}/releases/latest/download/release-manifest.json`
@@ -30,6 +34,9 @@ export async function releaseManifest(version = "latest"): Promise<ReleaseManife
     if (!response.ok) throw new Error(`Unable to download release manifest (${response.status})`);
     const rawManifest = await response.text();
     const manifest = manifestSchema.parse(JSON.parse(rawManifest)) as ReleaseManifest;
+    if (version !== "latest" && manifest.version !== version) {
+      throw new Error(`Release manifest reported ${manifest.version}; expected ${version}`);
+    }
     const path = resolve(cacheDirectory, `release-${manifest.version}.json`);
     await Bun.write(path, rawManifest, { createPath: true, mode: 0o600 });
     try {
@@ -42,7 +49,10 @@ export async function releaseManifest(version = "latest"): Promise<ReleaseManife
   } catch (error) {
     if (version !== "latest") {
       const cached = Bun.file(resolve(cacheDirectory, `release-${version}.json`));
-      if (await cached.exists()) return manifestSchema.parse(await cached.json()) as ReleaseManifest;
+      if (await cached.exists()) {
+        const manifest = manifestSchema.parse(await cached.json()) as ReleaseManifest;
+        if (manifest.version === version) return manifest;
+      }
     }
     throw error;
   }

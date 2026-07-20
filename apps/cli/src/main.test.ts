@@ -48,18 +48,19 @@ test("root help lists the operational commands", async () => {
   expect(result.stderr).toBe("");
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("setup");
+  expect(result.stdout).toContain("recover");
   expect(result.stdout).not.toContain("recover-passkey");
   expect(result.stdout).toContain("destroy");
 });
 
-test("command help preserves release and purge options", async () => {
+test("command help exposes only the permanent purge option", async () => {
   const [update, destroy] = await Promise.all([
     runCli("update", "--help"),
     runCli("destroy", "--help"),
   ]);
 
   expect(update.exitCode).toBe(0);
-  expect(update.stdout).toContain("--version");
+  expect(update.stdout).not.toContain("--version");
   expect(destroy.exitCode).toBe(0);
   expect(destroy.stdout).toContain("--purge-data");
 });
@@ -84,21 +85,40 @@ test("update succeeds without an active deployment", async () => {
     await Bun.write(manifestPath, JSON.stringify(manifest));
     const env = { ...process.env, HOME: home, CONTEXT_USE_RELEASE_MANIFEST: manifestPath };
 
-    const withoutConfig = await executeCli(["update", "--version", currentVersion], env);
+    const withoutConfig = await executeCli(["update"], env);
     expect(withoutConfig.exitCode).toBe(0);
     expect(withoutConfig.stderr).toBe("");
     expect(withoutConfig.stdout).toContain("No active context-use deployment; skipping deployment update");
     expect(withoutConfig.stdout).toContain(`CLI is at ${currentVersion}`);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
 
-    await Bun.write(join(home, ".config/context-use/config.json"), JSON.stringify({
-      hostname: "context.example.com",
-      phase: "destroyed",
-    }), { createPath: true });
-    const withoutCompute = await executeCli(["update", "--version", currentVersion], env);
-    expect(withoutCompute.exitCode).toBe(0);
-    expect(withoutCompute.stderr).toBe("");
-    expect(withoutCompute.stdout).toContain("No active context-use deployment; skipping deployment update");
-    expect(withoutCompute.stdout).toContain(`CLI is at ${currentVersion}`);
+test("updated-CLI continuation cannot substitute another release manifest", async () => {
+  const home = await mkdtemp(join(tmpdir(), "context-use-cli-continuation-"));
+  const manifestPath = join(home, "release-manifest.json");
+  try {
+    await Bun.write(manifestPath, JSON.stringify({
+      version: "v9.9.9",
+      terraform: { minimum: "1.11.0", maximum_exclusive: "2.0.0" },
+      deployment_bundle: {
+        url: "https://github.com/massimoalbarello/context-use/releases/download/v9.9.9/deployment.tar.gz",
+        sha256: "a".repeat(64),
+      },
+      images: {
+        app: `ghcr.io/massimoalbarello/context-use@sha256:${"b".repeat(64)}`,
+        backup: `ghcr.io/massimoalbarello/context-use-backup@sha256:${"c".repeat(64)}`,
+      },
+    }));
+    const result = await executeCli(["update"], {
+      ...process.env,
+      HOME: home,
+      CONTEXT_USE_RELEASE_MANIFEST: manifestPath,
+      CONTEXT_USE_UPDATE_CONTINUATION: "1",
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain(`expected ${currentVersion}`);
   } finally {
     await rm(home, { recursive: true, force: true });
   }

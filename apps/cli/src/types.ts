@@ -1,9 +1,28 @@
-export type DeploymentPhase = "new" | "data_ready" | "compute_ready" | "awaiting_dns" | "deployed" | "destroyed" | "purged";
+export type DataOutputs = {
+  kms_key_arn: string;
+  kms_key_id: string;
+  data_volume_id: string;
+  asset_bucket: string;
+  backup_bucket: string;
+};
+
+export type ComputeOutputs = {
+  instance_id: string;
+  public_ip: string;
+  app_url: string;
+  asset_url: string;
+  public_mcp_url: string;
+  cloudwatch_log_group: string;
+};
+
+export type RecoveryIntent = {
+  backupKey: string;
+  previousVolumeId: string;
+};
 
 export type DeploymentConfig = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   releaseVersion: string;
-  phase: DeploymentPhase;
   environment: string;
   installationId: string;
   awsProfile: string;
@@ -16,28 +35,12 @@ export type DeploymentConfig = {
   dnsMode: "route53" | "manual";
   route53ZoneId: string;
   ownerEmail: string;
-  parametersReady: boolean;
   stateBucket: string;
-  stateKmsKeyArn?: string;
-  stateKmsKeyId?: string;
+  legacyStateKmsKeyArn?: string;
   instanceType: string;
   dataVolumeSizeGb: number;
   backupRetentionDays: number;
-  dataOutputs?: {
-    kms_key_arn: string;
-    kms_key_id: string;
-    data_volume_id: string;
-    asset_bucket: string;
-    backup_bucket: string;
-  };
-  computeOutputs?: {
-    instance_id: string;
-    public_ip: string;
-    app_url: string;
-    asset_url: string;
-    public_mcp_url: string;
-    cloudwatch_log_group: string;
-  };
+  recovery?: RecoveryIntent;
 };
 
 export type ReleaseManifest = {

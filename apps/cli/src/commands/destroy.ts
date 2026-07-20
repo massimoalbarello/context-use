@@ -2,14 +2,15 @@ import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { z } from "zod";
 import {
+  bucketExists,
   deleteParameterPath,
   deleteStateBucket,
   emptyVersionedBucket,
   scheduleStateKmsKeyDeletion,
 } from "../aws.ts";
-import { configPath, readConfig, saveConfig } from "../paths.ts";
-import { deploymentRoot, releaseManifest } from "../release.ts";
-import { assertTerraformVersion, destroyCompute, destroyData } from "../terraform.ts";
+import { readInfrastructure } from "../lifecycle.ts";
+import { configPath, deleteConfig } from "../paths.ts";
+import { destroyCompute, destroyData } from "../terraform.ts";
 
 export const command = defineCommand("destroy", {
   description: "Remove compute while preserving data by default.",
@@ -21,21 +22,17 @@ export const command = defineCommand("destroy", {
   },
   handler: async ({ options }) => {
     const purgeData = options["purge-data"];
-    const config = await readConfig();
-    if (config.phase === "purged") throw new Error("This installation has already been permanently purged");
+    const { config, root, data, compute } = await readInfrastructure();
     const typed = await p.text({
       message: purgeData
         ? `Type ${config.hostname} to permanently destroy all data`
         : `Type ${config.hostname} to destroy compute while preserving data`,
     });
     if (p.isCancel(typed) || typed !== config.hostname) throw new Error("Confirmation did not match");
-    const manifest = await releaseManifest(config.releaseVersion);
-    await assertTerraformVersion(manifest);
-    const root = await deploymentRoot(manifest);
-    if (config.computeOutputs) await destroyCompute(root, config);
-    delete config.computeOutputs;
-    config.phase = "destroyed";
-    await saveConfig(config);
+    if (compute) {
+      if (!data) throw new Error("Retained data outputs are missing; refusing to destroy dependent compute");
+      await destroyCompute(root, config, data);
+    }
     if (purgeData) {
       const confirmed = await p.confirm({
         message: "Final confirmation: permanently delete every page, asset, backup, secret, and encryption key?",
@@ -44,19 +41,21 @@ export const command = defineCommand("destroy", {
       if (p.isCancel(confirmed) || !confirmed) {
         throw new Error("Permanent purge cancelled; compute was removed but data is retained");
       }
-      if (!config.dataOutputs) throw new Error("Data outputs are missing; refusing an unverifiable purge");
-      await emptyVersionedBucket(config.awsProfile, config.awsRegion, config.dataOutputs.asset_bucket);
-      await emptyVersionedBucket(config.awsProfile, config.awsRegion, config.dataOutputs.backup_bucket);
-      await deleteParameterPath(config.awsProfile, config.awsRegion, `/context-use/${config.installationId}/${config.environment}`);
-      await destroyData(root, config);
-      await deleteStateBucket(config.awsProfile, config.awsRegion, config.stateBucket);
-      if (config.stateKmsKeyArn) {
-        await scheduleStateKmsKeyDeletion(config.awsProfile, config.awsRegion, config.installationId, config.stateKmsKeyArn);
+      const bucketPrefix = `cu-${config.accountId}-${config.awsRegion}-${config.installationId}`;
+      if (!data && (await bucketExists(config.awsProfile, config.awsRegion, `${bucketPrefix}-assets`)
+        || await bucketExists(config.awsProfile, config.awsRegion, `${bucketPrefix}-backups`))) {
+        throw new Error("Retained resources still exist but their Terraform outputs are missing; refusing an unverifiable purge");
       }
-      delete config.dataOutputs;
-      config.phase = "purged";
-      await saveConfig(config);
-      p.outro("All context-use infrastructure and retained data were destroyed. The KMS key is scheduled for deletion after its safety window.");
+      await emptyVersionedBucket(config.awsProfile, config.awsRegion, data?.asset_bucket ?? `${bucketPrefix}-assets`);
+      await emptyVersionedBucket(config.awsProfile, config.awsRegion, data?.backup_bucket ?? `${bucketPrefix}-backups`);
+      await deleteParameterPath(config.awsProfile, config.awsRegion, `/context-use/${config.installationId}/${config.environment}`);
+      if (data) await destroyData(root, config);
+      await deleteStateBucket(config.awsProfile, config.awsRegion, config.stateBucket);
+      if (config.legacyStateKmsKeyArn) {
+        await scheduleStateKmsKeyDeletion(config.awsProfile, config.awsRegion, config.installationId, config.legacyStateKmsKeyArn);
+      }
+      await deleteConfig();
+      p.outro("All context-use infrastructure and retained data were destroyed. KMS keys are scheduled for deletion after their safety windows.");
       return;
     }
     p.outro(`Compute destroyed. Encrypted data and state remain in AWS. Config: ${configPath}`);

@@ -104,8 +104,8 @@ export async function installCliRelease(
 }
 
 export async function continueUpdateWithCli(executable: string, version: string): Promise<void> {
-  const subprocess = Bun.spawn([executable, "update", "--version", version], {
-    env: process.env,
+  const subprocess = Bun.spawn([executable, "update"], {
+    env: { ...process.env, CONTEXT_USE_UPDATE_CONTINUATION: "1" },
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",

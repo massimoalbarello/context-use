@@ -10,6 +10,12 @@ set -euo pipefail
 : "${CONTEXT_USE_PARAMETER_PREFIX:?CONTEXT_USE_PARAMETER_PREFIX is required}"
 : "${CONTEXT_USE_STORAGE_ROLE_ARN:?CONTEXT_USE_STORAGE_ROLE_ARN is required}"
 : "${CONTEXT_USE_BACKUP_ROLE_ARN:?CONTEXT_USE_BACKUP_ROLE_ARN is required}"
+: "${CONTEXT_USE_RECOVERY_BACKUP_KEY:=}"
+
+if [ -n "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" ] && [[ ! "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" =~ ^postgres/[0-9TZ-]+\.sql\.gz$ ]]; then
+  echo "Invalid recovery backup key" >&2
+  exit 2
+fi
 
 root=/opt/context-use
 secrets=/data/context-use/secrets
@@ -64,7 +70,6 @@ ASSET_BUCKET=$(get_secret ASSET_BUCKET)
 BACKUP_BUCKET=$(get_secret BACKUP_BUCKET)
 KMS_KEY_ID=$(get_secret KMS_KEY_ID)
 CLOUDWATCH_LOG_GROUP=$(get_secret CLOUDWATCH_LOG_GROUP)
-BACKUP_RETENTION_DAYS=$(get_secret BACKUP_RETENTION_DAYS)
 STORAGE_ROLE_ARN=${CONTEXT_USE_STORAGE_ROLE_ARN}
 BACKUP_ROLE_ARN=${CONTEXT_USE_BACKUP_ROLE_ARN}
 EOF
@@ -72,6 +77,14 @@ EOF
 cd "${root}/deploy"
 docker compose --env-file "${secrets}/runtime.env" pull --quiet
 docker compose --env-file "${secrets}/runtime.env" --profile migration run --rm migrate
+if [ -n "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" ]; then
+  export PGPASSWORD="$(get_secret POSTGRES_PASSWORD)"
+  docker compose --env-file "${secrets}/runtime.env" up -d postgres aws-credential-broker
+  docker compose --env-file "${secrets}/runtime.env" run --rm -T backup fetch "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" \
+    | gunzip \
+    | docker compose --env-file "${secrets}/runtime.env" exec -T -e PGPASSWORD postgres psql --single-transaction -v ON_ERROR_STOP=1 -U postgres -d context_use
+  docker compose --env-file "${secrets}/runtime.env" --profile migration run --rm migrate
+fi
 docker compose --env-file "${secrets}/runtime.env" up -d --remove-orphans
 # Compose does not recreate a service when only bind-mounted file contents
 # change. Recreate Caddy so every release loads the newly extracted Caddyfile.
