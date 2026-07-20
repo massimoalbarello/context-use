@@ -313,7 +313,7 @@ services:
     cap_drop: [ALL]
     cap_add: [CHOWN]
     security_opt: [no-new-privileges:true]
-    command: ["sh", "-c", "chown bun:bun /run/context-use-storage && chmod 0700 /run/context-use-storage"]
+    command: ["sh", "-c", "chmod 0700 /run/context-use-storage && chown bun:bun /run/context-use-storage"]
     volumes: [storage-socket:/run/context-use-storage]
 
   aws-credential-broker:

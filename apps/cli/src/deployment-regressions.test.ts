@@ -553,6 +553,14 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(confirmationService).toContain("networks: [confirmation_data, auth_confirmation_internal, confirmation_internal]");
   expect(deployCompose).not.toContain("confirmation_web");
 
+  const storageSocketInitService = deployCompose.slice(
+    deployCompose.indexOf("\n  storage-socket-init:\n"),
+    deployCompose.indexOf("\n  aws-credential-broker:\n"),
+  );
+  expect(storageSocketInitService).toContain("cap_add: [CHOWN]");
+  expect(storageSocketInitService).not.toContain("FOWNER");
+  expect(storageSocketInitService.indexOf("chmod 0700")).toBeLessThan(storageSocketInitService.indexOf("chown bun:bun"));
+
   const storageService = deployCompose.slice(
     deployCompose.indexOf("\n  storage:\n"),
     deployCompose.indexOf("\n  public-mcp:\n"),
