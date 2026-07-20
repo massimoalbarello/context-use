@@ -1146,8 +1146,7 @@ button:disabled {
 }
 
 .mcp-clients-page {
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 .mcp-clients-page > section {
