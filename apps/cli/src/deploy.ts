@@ -235,8 +235,8 @@ export function remoteSecurityCommands(): string[] {
     `set -a; . ${envFile}; set +a`,
     "export PGPASSWORD=\"$POSTGRES_PASSWORD\"",
     `test "$(printf %s ${encodedSql} | base64 -d | ${compose} exec -T -e PGPASSWORD postgres psql -U postgres -d context_use -Atq)" = ok`,
-    `${compose} exec -T -e AWS_CONFIG_FILE=/etc/context-use/aws-storage-config -e AWS_PROFILE=context-use-storage -e AWS_EC2_METADATA_DISABLED=true aws-credential-broker aws s3api get-bucket-encryption --bucket "$ASSET_BUCKET" --query "ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm" --output text | grep -qx aws:kms`,
-    `${compose} exec -T -e AWS_CONFIG_FILE=/etc/context-use/aws-storage-config -e AWS_PROFILE=context-use-storage -e AWS_EC2_METADATA_DISABLED=true aws-credential-broker aws s3api get-public-access-block --bucket "$ASSET_BUCKET" --query "PublicAccessBlockConfiguration.[BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets]" --output text | tr -d "[:space:]" | grep -qx TrueTrueTrueTrue`,
+    `${compose} exec -T --user 1000:1000 -e AWS_CONFIG_FILE=/etc/context-use/aws-storage-config -e AWS_PROFILE=context-use-storage -e AWS_EC2_METADATA_DISABLED=true aws-credential-broker aws s3api get-bucket-encryption --bucket "$ASSET_BUCKET" --query "ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm" --output text | grep -qx aws:kms`,
+    `${compose} exec -T --user 1000:1000 -e AWS_CONFIG_FILE=/etc/context-use/aws-storage-config -e AWS_PROFILE=context-use-storage -e AWS_EC2_METADATA_DISABLED=true aws-credential-broker aws s3api get-public-access-block --bucket "$ASSET_BUCKET" --query "PublicAccessBlockConfiguration.[BlockPublicAcls,IgnorePublicAcls,BlockPublicPolicy,RestrictPublicBuckets]" --output text | tr -d "[:space:]" | grep -qx TrueTrueTrueTrue`,
     `${compose} exec -T backup aws s3api head-bucket --bucket "$BACKUP_BUCKET"`,
     `${compose} run --rm backup once`,
   ];
