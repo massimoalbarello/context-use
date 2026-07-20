@@ -6,6 +6,7 @@ import { Automations } from "./components/Automations.tsx";
 import { Editor } from "./components/Editor.tsx";
 import { KnowledgeTree, type KnowledgeSelection } from "./components/KnowledgeTree.tsx";
 import { Login } from "./components/Login.tsx";
+import { McpClients } from "./components/McpClients.tsx";
 import { Messages } from "./components/Messages.tsx";
 import { OAuthConsent } from "./components/OAuthConsent.tsx";
 import { Settings, type PasskeySummary } from "./components/Settings.tsx";
@@ -13,7 +14,7 @@ import { Skills } from "./components/Skills.tsx";
 import type { Asset, Page } from "./types.ts";
 
 type SessionInfo = { owner: { id: string; email: string }; passkey_count: number; passkeys: PasskeySummary[] };
-type Section = "knowledge" | "messages" | "skills" | "automations" | "settings";
+type Section = "knowledge" | "messages" | "skills" | "automations" | "mcp" | "settings";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "context-use.sidebar.width.v1";
 const DEFAULT_SIDEBAR_WIDTH = 258;
@@ -36,7 +37,12 @@ function SectionIcon({ section }: { section: Section }) {
   if (section === "messages") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 4.5h13v9h-8l-3.5 3v-3H3.5v-9Z" /><path d="M6.5 7.5h7M6.5 10.5h4.5" /></svg>;
   if (section === "skills") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 1.25 4.25L15.5 7.5l-4.25 1.25L10 13l-1.25-4.25L4.5 7.5l4.25-1.25L10 2Z" /><path d="m15.5 12 .65 2.35L18.5 15l-2.35.65L15.5 18l-.65-2.35L12.5 15l2.35-.65L15.5 12Z" /></svg>;
   if (section === "automations") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.25A6.75 6.75 0 1 0 16.75 10" /><path d="M10 6v4l2.75 1.5M14 3.25h2.75V6" /></svg>;
+  if (section === "mcp") return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="6" r="2" /><circle cx="15" cy="6" r="2" /><circle cx="10" cy="15" r="2" /><path d="m6.75 7 2.2 5.25M13.25 7l-2.2 5.25M7 6h6" /></svg>;
   return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.5" /><path d="M16.5 11.5v-3l-2-.5a5.1 5.1 0 0 0-.7-1.2l.55-2-2.6-1.5-1.45 1.45a5.3 5.3 0 0 0-1.4 0L7.45 3.3l-2.6 1.5.55 2A5.1 5.1 0 0 0 4.7 8l-2 .5v3l2 .5c.18.43.42.84.7 1.2l-.55 2 2.6 1.5 1.45-1.45a5.3 5.3 0 0 0 1.4 0l1.45 1.45 2.6-1.5-.55-2c.28-.36.52-.77.7-1.2l2-.5Z" /></svg>;
+}
+
+function SignOutIcon() {
+  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3.5H4.5v13H8" /><path d="M11.5 6.5 15 10l-3.5 3.5M7 10h8" /></svg>;
 }
 
 function selectionFromLocation(): KnowledgeSelection | null {
@@ -49,6 +55,7 @@ function sectionFromLocation(): Section {
   if (window.location.pathname === "/app/messages") return "messages";
   if (window.location.pathname === "/app/skills") return "skills";
   if (window.location.pathname === "/app/automations") return "automations";
+  if (window.location.pathname === "/app/mcp") return "mcp";
   return "knowledge";
 }
 
@@ -168,6 +175,11 @@ export function App() {
     history.pushState({}, "", "/app/skills");
   };
 
+  const openMcpClients = () => {
+    setSection("mcp");
+    history.pushState({}, "", "/app/mcp");
+  };
+
   const openKnowledge = () => {
     setSection("knowledge");
     history.pushState({}, "", selected ? `/app/${selected.kind === "page" ? "pages" : "assets"}/${selected.id}` : "/app");
@@ -197,13 +209,14 @@ export function App() {
         <button className={section === "messages" ? "active" : ""} onClick={openMessages}><SectionIcon section="messages" /><span>Messages</span></button>
         <button className={section === "skills" ? "active" : ""} onClick={openSkills}><SectionIcon section="skills" /><span>Skills</span></button>
         <button className={section === "automations" ? "active" : ""} onClick={openAutomations}><SectionIcon section="automations" /><span>Automations</span></button>
+        <button className={section === "mcp" ? "active" : ""} onClick={openMcpClients}><SectionIcon section="mcp" /><span>MCP clients</span></button>
       </nav>
       <label className="sidebar-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5" /><path d="m12.25 12.25 4 4" /></svg><input ref={searchRef} className="search" aria-label="Search knowledge" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘K</kbd></label>
       <KnowledgeTree pages={pages} assets={visibleAssets} query={query} selected={section === "knowledge" ? selected : null} onSelect={selectKnowledge} />
+      <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
       <footer>
         <button className={section === "settings" ? "settings-button active" : "settings-button"} onClick={openSettings}><SectionIcon section="settings" /><span>Settings</span></button>
-        <div className="sidebar-account"><span className="user-avatar">{session.owner.email.slice(0, 1).toUpperCase()}</span><span className="sidebar-user"><strong>{session.owner.email}</strong><small>{session.passkey_count} secure passkey{session.passkey_count === 1 ? "" : "s"}</small></span><button className="sign-out-button" aria-label="Sign out" title="Sign out" onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}>↗</button></div>
-        <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
+        <div className="sidebar-account"><span className="user-avatar">{session.owner.email.slice(0, 1).toUpperCase()}</span><span className="sidebar-user"><strong>{session.owner.email}</strong><small>{session.passkey_count} secure passkey{session.passkey_count === 1 ? "" : "s"}</small></span><button type="button" className="sign-out-button" onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => location.assign("/app") } })}><SignOutIcon /><span>Sign out</span></button></div>
       </footer>
     </aside>
     <div
@@ -219,7 +232,7 @@ export function App() {
       onKeyDown={resizeSidebarWithKeyboard}
       onDoubleClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
     />
-    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "messages" ? <Messages /> : section === "skills" ? <Skills /> : section === "automations" ? <Automations /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Browse durable knowledge managed through your authenticated MCP connection. Your content stays private until you explicitly publish an exact version.</p><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-managed</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
+    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "messages" ? <Messages /> : section === "skills" ? <Skills /> : section === "automations" ? <Automations /> : section === "mcp" ? <McpClients /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Browse durable knowledge managed through your authenticated MCP connection. Your content stays private until you explicitly publish an exact version.</p><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-managed</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
     {message && <div className="toast">{message}</div>}
   </div>;
 }

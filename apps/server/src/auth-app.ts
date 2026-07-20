@@ -40,6 +40,8 @@ const grantSchema = z.object({
   userId: z.string().min(1).max(512),
   scopes: z.array(z.string().min(1).max(128)).max(64),
 }).strict();
+const clientPageNumber = z.coerce.number().int().min(1).default(1);
+const clientPageSize = z.coerce.number().int().min(1).max(50).default(10);
 function browserAuthRequest(request: Request, removeCookie = false): Request {
   const headers = new Headers(request.headers);
   headers.delete("x-context-use-auth-edge");
@@ -177,6 +179,39 @@ export const authApp = new Elysia()
       [principal.userId],
     );
     return json(result.rows);
+  })
+  .get("/api/dashboard/private-mcp-clients", async ({ request, query }) => {
+    const principal = await ownerRequest(request);
+    const page = clientPageNumber.parse(query.page);
+    const pageSize = clientPageSize.parse(query.page_size);
+    const offset = (page - 1) * pageSize;
+    const [clients, count] = await Promise.all([
+      authPool.query(
+        `SELECT client."clientId" AS client_id,client.name,client.uri,
+                client."softwareVersion" AS version,client."createdAt" AS created_at,
+                consent.scopes,consent."updatedAt" AS approved_at,usage.last_used_at
+         FROM "oauthConsent" consent
+         JOIN "oauthClient" client ON client."clientId"=consent."clientId"
+         LEFT JOIN mcp_client_usage usage
+           ON usage.client_id=client."clientId" AND usage.user_id=consent."userId"
+         WHERE consent."userId"=$1
+         ORDER BY coalesce(usage.last_used_at,consent."updatedAt") DESC,client."clientId" DESC
+         LIMIT $2 OFFSET $3`,
+        [principal.userId, pageSize, offset],
+      ),
+      authPool.query<{ total: string }>(
+        `SELECT count(*) AS total FROM "oauthConsent" WHERE "userId"=$1`,
+        [principal.userId],
+      ),
+    ]);
+    const total = Number(count.rows[0]?.total ?? 0);
+    return json({
+      items: clients.rows,
+      page,
+      page_size: pageSize,
+      total,
+      total_pages: Math.ceil(total / pageSize),
+    });
   })
   .get("/api/dashboard/oauth-client-preview", async ({ request, query }) => {
     await ownerRequest(request);

@@ -154,8 +154,14 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .post("/api/dashboard/publications/confirm", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })
   .post("/api/dashboard/knowledge-exports/confirm", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })
   .get("/api/dashboard/oauth-clients", ({ request }) => forwardDashboardAuthRoute(request))
+  .get("/api/dashboard/private-mcp-clients", ({ request }) => forwardDashboardAuthRoute(request))
   .get("/api/dashboard/oauth-client-preview", ({ request }) => forwardDashboardAuthRoute(request))
   .delete("/api/dashboard/oauth-clients/:clientId", ({ request }) => forwardDashboardAuthRoute(request))
+
+  .get("/api/dashboard/mcp-endpoint", async ({ request }) => {
+    await ownerRequest(request);
+    return json({ url: config.MCP_RESOURCE });
+  })
 
   .get("/app", async () => {
     const file = webFile("index.html");
