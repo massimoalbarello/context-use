@@ -13,10 +13,9 @@ The public site is deliberately separate. Each installation starts with a privat
 - Passkey-protected streaming Zip64 export of current active pages and assets as a navigable Markdown vault with local links.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
 - Stateless Streamable HTTP MCP at `/mcp` with knowledge, checksum-bound asset upload/download, and automation execution tools.
-- Anonymous, tools-only MCP on a dedicated `public.` hostname with a hierarchical index, page reads, and full-text search over published snapshots only.
 - Versioned, discoverable Agent Skills; time-zone-aware automations; isolated generated knowledge; durable run history; and leased agent execution.
-- Exact published snapshots at `/p/<knowledge-path>` and independently published assets at the same route on a cookieless hostname.
-- A built-in public billboard at `/` that directs people to optional `/p/about/intro` content and agents to the installation-specific anonymous MCP endpoint.
+- Exact published snapshots at `/p/<knowledge-path>` and independently published assets at `/a/<knowledge-path>` on a cookieless hostname.
+- A built-in public billboard at `/` that directs visitors to optional `/p/about/intro` content.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
 
 External ingestion, vault import, approval queues, collaboration, and semantic search are intentionally outside v1.
@@ -32,15 +31,14 @@ External ingestion, vault import, approval queues, collaboration, and semantic s
 | Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
 | Agent asset upload | Short-lived, object-specific capability returned by authenticated MCP | Exact returned `/api/mcp/assets/:id/content` URL only |
 | Agent asset read | Five-minute, object-specific capability returned with `assets:read` | Exact returned `/api/mcp/assets/:id/content` URL only |
-| Public visitor | None | Published pages at `/p/*`; independently published assets at `/p/*` on the asset hostname |
-| Public MCP client | None; credentials are rejected | `https://public.YOUR_HOST/mcp` only |
+| Public visitor | None | Published pages at `/p/*`; independently published assets at `/a/*` on the asset hostname |
 | Deployment administrator | Local AWS identity | `context-use` CLI |
 
 These credentials are intentionally non-interchangeable. Dashboard endpoints reject `Authorization`; MCP rejects cookies. Application roles mirror that boundary in PostgreSQL, and public requests query security-barrier views rather than base tables. Publishing a page never publishes linked pages or assets.
 
-Production also enforces the boundary at the process level. Caddy reaches only credentialless dashboard, authentication, and private-MCP ingress processes; each has an exact route allowlist, no reusable capability or database/storage/signing/AWS credential, and one isolated network to its private authority. The dashboard authority, authentication authority, private MCP authority, passkey confirmation, public rendering, anonymous MCP, and object storage are separate services, each with one database identity and only narrowly scoped additional capabilities. Every authority revalidates the owner session/origin/CSRF, OAuth scopes, or exact short-lived asset capability before touching private state; an ingress connection is never authorization. The dashboard authority does not receive auth/MCP/confirmation/storage/public/backup/admin pool credentials or AWS access. A Unix-socket storage broker is the only asset process: every write must match immutable database integrity metadata, public reads are authorized by public path and translated to an object key only inside the broker, and deletion requires an already-deleted database row—which cannot exist while the asset is published. Private MCP cannot delete objects. The IMDS hop limit blocks every bridge container from the EC2 instance role; only an input-free host credential broker can reach it, and storage/backup receive separate short-lived, bucket-scoped role credentials.
+Production also enforces the boundary at the process level. Caddy reaches only credentialless dashboard, authentication, and private-MCP ingress processes plus the public renderer; each private edge has an exact route allowlist, no reusable capability or database/storage/signing/AWS credential, and one isolated network to its private authority. The dashboard authority, authentication authority, private MCP authority, passkey confirmation, public rendering, and object storage are separate services, each with one database identity and only narrowly scoped additional capabilities. Every authority revalidates the owner session/origin/CSRF, OAuth scopes, or exact short-lived asset capability before touching private state; an ingress connection is never authorization. The dashboard authority does not receive auth/MCP/confirmation/storage/public/backup/admin pool credentials or AWS access. A Unix-socket storage broker is the only asset process: every write must match immutable database integrity metadata, public reads are authorized by public path and translated to an object key only inside the broker, and deletion requires an already-deleted database row—which cannot exist while the asset is published. Private MCP cannot delete objects. The IMDS hop limit blocks every bridge container from the EC2 instance role; only an input-free host credential broker can reach it, and storage/backup receive separate short-lived, bucket-scoped role credentials.
 
-Internal page links are stored independently of either presentation route. Use `[[path|label]]` or `[label](context-use://page/<page-uuid>)`, never a hard-coded `/app/pages/*` or `/p/*` URL. Authorized dashboard rendering resolves a reference to `/app/pages/:id`. Before anonymous code can read a published document, the database projection replaces references to independently published targets with public paths and turns private targets into inert labels. The public processes therefore never receive the underlying UUID or private knowledge path.
+Internal page links are stored independently of either presentation route. Use `[[path|label]]` or `[label](context-use://page/<page-uuid>)`, never a hard-coded `/app/pages/*` or `/p/*` URL. Authorized dashboard rendering resolves a reference to `/app/pages/:id`. Before anonymous code can read a published document, the database projection replaces references to independently published targets with public paths and turns private targets into inert labels. The public renderer therefore never receives the underlying UUID or private knowledge path.
 
 Image assets use the same stable-reference model. A plain `![Alt text](context-use://asset/<asset-uuid>)` keeps its natural aspect ratio and is constrained to the content width. A small, sanitization-safe attribute block may immediately follow the reference:
 
@@ -113,25 +111,11 @@ MCP initialization tells the client to call `get_knowledge_base_guide` before ma
 
 With `assets:write`, `create_asset_upload` records private asset metadata and returns a fifteen-minute upload capability bound to that asset and OAuth grant. The agent then sends the exact raw bytes to the returned API URL and headers. Size, content type, and SHA-256 are verified before storage; the capability cannot read, edit, delete, or publish anything. Existing OAuth grants must be reauthorized before they include the new scope.
 
-With `assets:read`, `get_asset` returns metadata plus a five-minute API download request bound to that exact asset, MCP client, owner, and live grant. The download route rechecks the grant and supports byte ranges for large media. It never returns or redirects to an S3 URL. Dashboard reads use the owner-session API route, while anonymous reads use `/p/<knowledge-path>` on the asset host. The public web credential sees only safe download metadata; the object key is resolved from a separate storage-only projection inside the broker.
+With `assets:read`, `get_asset` returns metadata plus a five-minute API download request bound to that exact asset, MCP client, owner, and live grant. The download route rechecks the grant and supports byte ranges for large media. It never returns or redirects to an S3 URL. Dashboard reads use the owner-session API route, while anonymous reads use `/a/<knowledge-path>` on the asset host. The public web credential sees only safe download metadata; the object key is resolved from a separate storage-only projection inside the broker.
 
 ### Public access
 
-Anyone can connect an MCP client without authentication at:
-
-```text
-https://public.YOUR_HOST/mcp
-```
-
-The public server deliberately exposes tools rather than MCP resources for broad client compatibility:
-
-- `get_about_page` returns the owner's introduction when it has been published, an explicit unpublished state otherwise, and a complete nested index of all published pages.
-- `get_public_page` reads one page by its knowledge path and includes published breadcrumbs and children.
-- `search_public_pages` searches only the sanitized published-page projection.
-
-For example, a dashboard at `https://context.example.com` exposes its anonymous MCP at `https://public.context.example.com/mcp`. The dedicated origin serves no OAuth or OpenID metadata and has no route to the private application.
-
-The public MCP runs in a separate isolated container with a separate database credential. Its role can select only `public_mcp_pages`, a lossy security-barrier view with published knowledge paths, titles, sanitized Markdown, and published-parent paths. It cannot read webpage views, base tables, asset metadata, UUIDs, page versions, private reference targets, or S3 keys, and it has no write privileges. Only published pages become hierarchy nodes or resolve through `/p/*`; an unpublished page remains unavailable even when its path is a prefix of a public descendant.
+The dashboard hostname serves the public billboard and exact owner-published page snapshots. Pages resolve at `/p/<knowledge-path>`. Independently published asset bytes resolve only at `/a/<knowledge-path>` on the dedicated cookieless asset hostname. Neither route can read current drafts, private link targets, private asset metadata, UUIDs, page versions, or S3 object keys.
 
 Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification): a standard name and short description form the discovery layer, while instructions load only after selection. MCP agents use `list_skills`, `get_skill`, and `create_skill`. They are reusable capabilities selected by an agent and are never attached to scheduled work.
 

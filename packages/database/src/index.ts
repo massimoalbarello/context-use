@@ -18,12 +18,8 @@ export {
 } from "./exports.ts";
 export {
   PublicationRepository,
-  PublicMcpRepository,
   PublicRepository,
   StoragePublicationRepository,
-  type PublicMcpPage,
-  type PublicMcpPageSummary,
-  type PublicMcpSearchResult,
 } from "./publication.ts";
 export {
   AUTOMATION_RESULT_SUMMARY_MAX_LENGTH,

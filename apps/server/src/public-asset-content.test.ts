@@ -41,7 +41,7 @@ describe("public asset API boundary", () => {
   test("streams only metadata selected by the published-assets repository", async () => {
     const published = fixture();
     const response = await published.handler(new Request(
-      `https://assets.context.example/p/${assetPath}`,
+      `https://assets.context.example/a/${assetPath}`,
     ), assetPath);
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("published bytes");
@@ -52,7 +52,7 @@ describe("public asset API boundary", () => {
 
     const privateAsset = fixture(false);
     const denied = await privateAsset.handler(new Request(
-      `https://assets.context.example/p/${assetPath}`,
+      `https://assets.context.example/a/${assetPath}`,
     ), assetPath);
     expect(denied.status).toBe(404);
     expect(privateAsset.metadataReads()).toBe(1);
@@ -61,13 +61,13 @@ describe("public asset API boundary", () => {
 
   test("rejects private credentials and requests on the dashboard origin before metadata access", async () => {
     for (const request of [
-      new Request(`https://assets.context.example/p/${assetPath}`, {
+      new Request(`https://assets.context.example/a/${assetPath}`, {
         headers: { cookie: "private-session" },
       }),
-      new Request(`https://assets.context.example/p/${assetPath}`, {
+      new Request(`https://assets.context.example/a/${assetPath}`, {
         headers: { authorization: "Bearer private-token" },
       }),
-      new Request(`https://context.example/p/${assetPath}`),
+      new Request(`https://context.example/a/${assetPath}`),
     ]) {
       const denied = fixture();
       expect((await denied.handler(request, assetPath)).status).toBe(404);

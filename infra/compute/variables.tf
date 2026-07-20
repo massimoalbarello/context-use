@@ -21,9 +21,6 @@ variable "app_hostname" {
 variable "asset_hostname" {
   type = string
 }
-variable "public_mcp_hostname" {
-  type = string
-}
 variable "route53_zone_id" {
   type    = string
   default = ""

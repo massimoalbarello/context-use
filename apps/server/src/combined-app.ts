@@ -25,7 +25,7 @@ function target(request: Request) {
     || path.startsWith("/api/mcp/")
     || path.startsWith("/.well-known/oauth-protected-resource")
   ) return mcpApp;
-  if (path === "/" || path === "/public.css" || path === "/content.css" || path.startsWith("/p/")) return publicApp;
+  if (path === "/" || path === "/public.css" || path === "/content.css" || path.startsWith("/p/") || path.startsWith("/a/")) return publicApp;
   return dashboardApp;
 }
 

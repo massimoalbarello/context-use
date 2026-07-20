@@ -11,7 +11,7 @@ import {
   renderPublicLandingDocument,
   renderPublicPageDocument,
 } from "./public-page.ts";
-import { requestMatchesOrigin, securityHeaders } from "./security.ts";
+import { securityHeaders } from "./security.ts";
 import { BrokeredStorage } from "./storage-client.ts";
 
 const pool = createPool(config.PUBLIC_DATABASE_URL, { application_name: "context-use-public-web" });
@@ -33,7 +33,7 @@ const unavailableResolvers = {
     return asset
       ? {
           available: true as const,
-          href: `${config.ASSET_ORIGIN}/p/${asset.public_path}`,
+          href: `${config.ASSET_ORIGIN}/a/${asset.public_path}`,
           contentType: asset.content_type,
         }
       : { available: false as const };
@@ -45,15 +45,13 @@ export const publicApp = new Elysia()
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
   .get("/health", () => json({ status: "ok", service: "public-web" }))
-  .get("/p/*", async ({ request, params }) => {
+  .get("/a/*", ({ request, params }) => publicAssetContent(request, params["*"]))
+  .get("/p/*", async ({ params }) => {
     const parsedPath = PagePath.safeParse(params["*"]);
     if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
     const publicPath = parsedPath.data;
-    const matchesAssetOrigin = requestMatchesOrigin(request, config.ASSET_ORIGIN);
-    const matchesAppOrigin = requestMatchesOrigin(request, config.APP_ORIGIN);
-    if (matchesAssetOrigin && !matchesAppOrigin) return publicAssetContent(request, publicPath);
     const page = await publicData.pageByPublicPath(publicPath);
-    if (!page && matchesAppOrigin && publicPath === "about/intro") {
+    if (!page && publicPath === "about/intro") {
       return new Response(renderPublicPageDocument(
         "Nothing published yet",
         "<p>The owner has not published an introduction yet. Please check back later.</p>",
@@ -61,7 +59,6 @@ export const publicApp = new Elysia()
         headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
       });
     }
-    if (!page && matchesAssetOrigin) return publicAssetContent(request, publicPath);
     if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
     // The database projection has already removed every private identifier and
     // replaced independently public targets with public paths. The renderer can
@@ -71,7 +68,7 @@ export const publicApp = new Elysia()
       headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
     });
   })
-  .get("/", () => new Response(renderPublicLandingDocument(config.PUBLIC_MCP_ENDPOINT), {
+  .get("/", () => new Response(renderPublicLandingDocument(), {
     headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
   }))
   .get("/public.css", () => new Response(publicPageStyles, {

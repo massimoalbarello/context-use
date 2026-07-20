@@ -67,7 +67,7 @@ describe("safe Markdown rendering", () => {
 
   test("keeps canonical published-asset paths for plain and formatted public images", async () => {
     const imageId = "11111111-1111-4111-8111-111111111111";
-    const publicHref = `${config.ASSET_ORIGIN}/p/photos/portrait`;
+    const publicHref = `${config.ASSET_ORIGIN}/a/photos/portrait`;
     const resolver = {
       ...privateResolvers,
       asset: async () => ({ available: true as const, href: publicHref, contentType: "image/avif" }),
@@ -83,7 +83,7 @@ describe("safe Markdown rendering", () => {
   });
 
   test("renders the UUID-free published-asset projection without private lookup capability", async () => {
-    const publicHref = `${config.ASSET_ORIGIN}/p/media/published-photo`;
+    const publicHref = `${config.ASSET_ORIGIN}/a/media/published-photo`;
     const html = await renderMarkdown(
       "![Projected](context-use://public-asset/media/published-photo){shape=square}",
       {

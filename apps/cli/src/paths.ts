@@ -7,9 +7,8 @@ export const configDirectory = resolve(homedir(), ".config/context-use");
 export const cacheDirectory = resolve(homedir(), ".cache/context-use");
 export const configPath = resolve(configDirectory, "config.json");
 
-type StoredDeploymentConfig = Omit<DeploymentConfig, "schemaVersion" | "publicMcpHostname"> & {
+type StoredDeploymentConfig = Omit<DeploymentConfig, "schemaVersion"> & {
   schemaVersion?: 1 | 2;
-  publicMcpHostname?: string;
   stateKmsKeyArn?: string;
   phase?: string;
   parametersReady?: boolean;
@@ -17,26 +16,28 @@ type StoredDeploymentConfig = Omit<DeploymentConfig, "schemaVersion" | "publicMc
   computeOutputs?: unknown;
 };
 
-export function defaultPublicMcpHostname(hostname: string): string {
-  return `public.${hostname}`;
-}
-
 export function normalizeDeploymentConfig(config: StoredDeploymentConfig): DeploymentConfig {
-  const {
-    schemaVersion: _schemaVersion,
-    stateKmsKeyArn,
-    phase: _phase,
-    parametersReady: _parametersReady,
-    dataOutputs: _dataOutputs,
-    computeOutputs: _computeOutputs,
-    ...stored
-  } = config;
-  const legacyStateKmsKeyArn = config.legacyStateKmsKeyArn ?? stateKmsKeyArn;
+  const legacyStateKmsKeyArn = config.legacyStateKmsKeyArn ?? config.stateKmsKeyArn;
   return {
-    ...stored,
     schemaVersion: 2,
-    publicMcpHostname: config.publicMcpHostname ?? defaultPublicMcpHostname(config.hostname),
+    releaseVersion: config.releaseVersion,
+    environment: config.environment,
+    installationId: config.installationId,
+    awsProfile: config.awsProfile,
+    awsRegion: config.awsRegion,
+    availabilityZone: config.availabilityZone,
+    accountId: config.accountId,
+    hostname: config.hostname,
+    assetHostname: config.assetHostname,
+    dnsMode: config.dnsMode,
+    route53ZoneId: config.route53ZoneId,
+    ownerEmail: config.ownerEmail,
+    stateBucket: config.stateBucket,
+    instanceType: config.instanceType,
+    dataVolumeSizeGb: config.dataVolumeSizeGb,
+    backupRetentionDays: config.backupRetentionDays,
     ...(legacyStateKmsKeyArn ? { legacyStateKmsKeyArn } : {}),
+    ...(config.recovery ? { recovery: config.recovery } : {}),
   };
 }
 

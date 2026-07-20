@@ -4,8 +4,8 @@ import { bootstrapStateBucket, strictSsmCommands, waitForSsmInvocation } from ".
 import {
   computeBootstrapCommands,
   deploymentCommands,
+  dnsMismatches,
   healthMatchesVersion,
-  publicMcpDnsMatches,
 } from "./deploy.ts";
 import {
   DATA_VOLUME_INITIALIZATION_TAG,
@@ -31,7 +31,6 @@ function deploymentConfig(overrides: Partial<DeploymentConfig> = {}): Deployment
     accountId: "123456789012",
     hostname: "context.example.com",
     assetHostname: "assets.context.example.com",
-    publicMcpHostname: "public.context.example.com",
     dnsMode: "manual",
     route53ZoneId: "",
     ownerEmail: "owner@example.com",
@@ -241,7 +240,6 @@ const computeOutputs: ComputeOutputs = {
   public_ip: "192.0.2.10",
   app_url: "https://context.example.com",
   asset_url: "https://assets.context.example.com",
-  public_mcp_url: "https://public.context.example.com/mcp",
   cloudwatch_log_group: "test",
 };
 
@@ -349,7 +347,11 @@ test("restore verifies the backup, keeps traffic down on failure, migrates, and 
   expect(script).toContain("stop caddy dashboard-edge auth-edge private-mcp-edge");
   expect(script).toContain("trap restore_failed EXIT");
   expect(script).toContain("up -d postgres aws-credential-broker backup");
+  expect(script).toContain("CREATE ROLE context_use_public_mcp NOLOGIN");
+  expect(script.match(/DROP ROLE IF EXISTS context_use_public_mcp/g)?.length).toBe(3);
   expect(script).toContain("--profile migration run --rm migrate");
+  expect(script.indexOf("CREATE ROLE context_use_public_mcp NOLOGIN")).toBeLessThan(script.indexOf("backup fetch"));
+  expect(script.lastIndexOf("DROP ROLE IF EXISTS context_use_public_mcp")).toBeGreaterThan(script.indexOf("--profile migration run --rm migrate"));
   expect(script).toContain("up -d --remove-orphans");
   expect(script).not.toContain("POSTGRES_PASSWORD=");
 });
@@ -360,10 +362,9 @@ test("deployment health must report the requested release version", () => {
   expect(healthMatchesVersion({ status: "ok" }, "v0.1.4")).toBe(false);
 });
 
-test("legacy configs derive a dedicated public MCP hostname", () => {
+test("legacy configs retain durable state coordinates without derived lifecycle fields", () => {
   const {
     schemaVersion: _schemaVersion,
-    publicMcpHostname: _publicMcpHostname,
     legacyStateKmsKeyArn: _legacyStateKmsKeyArn,
     ...legacy
   } = deploymentConfig();
@@ -375,17 +376,17 @@ test("legacy configs derive a dedicated public MCP hostname", () => {
     parametersReady: true,
   })).toMatchObject({
     hostname: "context.example.com",
-    publicMcpHostname: "public.context.example.com",
     legacyStateKmsKeyArn: "arn:aws:kms:eu-west-2:123456789012:key/state",
   });
 });
 
-test("manual public MCP DNS must resolve to the deployment IP", async () => {
+test("manual dashboard and asset DNS must resolve to the deployment IP", async () => {
   const config = deploymentConfig();
-  expect(await publicMcpDnsMatches(config, computeOutputs, async () => ["192.0.2.10"])).toBe(true);
-  expect(await publicMcpDnsMatches(config, computeOutputs, async () => ["192.0.2.11"])).toBe(false);
-  expect(await publicMcpDnsMatches(config, computeOutputs, async () => { throw new Error("NXDOMAIN"); })).toBe(false);
-  expect(await publicMcpDnsMatches({ ...config, dnsMode: "route53" }, computeOutputs, async () => [])).toBe(true);
+  expect(await dnsMismatches(config, computeOutputs, async () => ["192.0.2.10"])).toEqual([]);
+  expect(await dnsMismatches(config, computeOutputs, async (hostname) => hostname.startsWith("assets.") ? ["192.0.2.11"] : ["192.0.2.10"]))
+    .toEqual(["assets.context.example.com"]);
+  expect(await dnsMismatches(config, computeOutputs, async () => { throw new Error("NXDOMAIN"); }))
+    .toEqual(["context.example.com", "assets.context.example.com"]);
 });
 
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
@@ -416,6 +417,9 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployScript).toContain("mountpoint -q /data");
   expect(deployScript).toContain("/data/context-use/.volume-id");
   expect(deployScript).not.toContain("AUTH_EDGE_TOKEN");
+  expect(deployScript).not.toContain("PUBLIC_MCP");
+  expect(deployScript).toContain("CREATE ROLE context_use_public_mcp NOLOGIN");
+  expect(deployScript).toContain("DROP ROLE IF EXISTS context_use_public_mcp");
   expect(deployScript.indexOf("CONTEXT_USE_RECOVERY_BACKUP_KEY")).toBeLessThan(deployScript.indexOf("up -d --remove-orphans"));
   expect(deployScript).toContain("psql --single-transaction -v ON_ERROR_STOP=1");
   expect(deployScript.indexOf("up -d --remove-orphans")).toBeLessThan(deployScript.indexOf("up -d --force-recreate --no-deps caddy"));
@@ -434,25 +438,14 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).not.toContain("reverse_proxy private-mcp:3003");
   expect(caddy).not.toContain("handle /api/public/assets/*/content");
   expect(caddy).not.toContain("handle /public/mcp");
-  expect(caddy).toContain("{$PUBLIC_MCP_HOSTNAME}");
-  expect(caddy).toContain("handle /mcp");
-  expect(caddy).toContain("reverse_proxy public-mcp:3001");
-  const publicMcpSite = caddy.slice(
-    caddy.indexOf("{$PUBLIC_MCP_HOSTNAME}"),
-    caddy.indexOf("{$ASSET_HOSTNAME}"),
-  );
-  expect(publicMcpSite).toContain('respond "Not found" 404');
-  expect(publicMcpSite).not.toContain("reverse_proxy app:3000");
-  expect(publicMcpSite).not.toContain("oauth-protected-resource");
+  expect(caddy).not.toContain("PUBLIC_MCP");
+  expect(caddy).not.toContain("public-mcp");
   const assetSite = caddy.slice(caddy.indexOf("{$ASSET_HOSTNAME}"));
-  expect(assetSite).toContain("handle /p/*");
+  expect(assetSite).toContain("handle /a/*");
+  expect(assetSite).not.toContain("handle /p/*");
   expect(assetSite).toContain('respond "Not found" 404');
   expect(assetSite).not.toContain("/api/dashboard");
   expect(assetSite).not.toContain("/api/mcp");
-  const publicMcpService = deployCompose.slice(
-    deployCompose.indexOf("\n  public-mcp:\n"),
-    deployCompose.indexOf("\n  caddy:\n"),
-  );
   const lockedService = deployCompose.slice(
     deployCompose.indexOf("x-locked-service:"),
     deployCompose.indexOf("x-logging:"),
@@ -464,22 +457,16 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(parsedCompose["x-locked-service"].tmpfs).toEqual(["/tmp:size=32m,mode=1777"]);
   expect(parsedCompose.services["aws-credential-broker"]?.tmpfs).toEqual(["/tmp:size=8m,mode=1777"]);
   expect(parsedCompose.services.storage?.tmpfs).toEqual(["/tmp:size=32m,mode=1777"]);
+  expect(parsedCompose.services["public-mcp"]).toBeUndefined();
   expect(lockedService).toContain("read_only: true");
   expect(lockedService).toContain("cap_drop: [ALL]");
-  expect(publicMcpService).toContain("networks: [public_mcp_data, public_mcp]");
-  expect(publicMcpService).not.toContain("networks: [data");
-  expect(publicMcpService).not.toContain("web");
-  expect(publicMcpService).not.toContain("outbound");
-  expect(publicMcpService).toContain("PUBLIC_MCP_DATABASE_URL");
-  expect(publicMcpService).toContain("PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp");
-  expect(publicMcpService).not.toContain("DATABASE_URL: postgres://context_use_dashboard");
-  expect(publicMcpService).not.toContain("OWNER_EMAIL");
-  expect(publicMcpService).not.toContain("AWS_REGION:");
+  expect(deployCompose).not.toContain("PUBLIC_MCP");
+  expect(deployCompose).not.toContain("public_mcp_data");
+  expect(deployCompose).not.toContain("context_use_public_mcp:");
   const appService = deployCompose.slice(
     deployCompose.indexOf("\n  app:\n"),
     deployCompose.indexOf("\n  auth-edge:\n"),
   );
-  expect(appService).toContain("PUBLIC_MCP_ENDPOINT: https://${PUBLIC_MCP_HOSTNAME}/mcp");
   expect(appService).toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(appService).not.toContain("AUTH_DATABASE_URL");
   expect(appService).not.toContain("MCP_DATABASE_URL");
@@ -602,7 +589,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
 
   const storageService = deployCompose.slice(
     deployCompose.indexOf("\n  storage:\n"),
-    deployCompose.indexOf("\n  public-mcp:\n"),
+    deployCompose.indexOf("\n  caddy:\n"),
   );
   expect(storageService).not.toContain("network_mode: host");
   expect(storageService).toContain("STORAGE_DATABASE_URL: postgres://context_use_storage");
@@ -633,7 +620,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(backupService).toContain("AWS_PROFILE: context-use-backup");
   expect(backupService).toContain("backup-aws-credentials:/run/context-use-aws-backup:ro");
   expect(backupService).toContain("networks: [backup_data, backup_egress]");
-  expect(backupService).toContain("SCHEMA_VERSION: 001_baseline.sql");
+  expect(backupService).toContain("SCHEMA_VERSION: 002_remove_public_mcp.sql");
   expect(backupService).not.toContain("RETENTION_DAYS");
   expect(backupScript).toContain("context-use-postgres-v1");
   expect(backupScript).toContain("sha256sum -c");
@@ -659,7 +646,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(instancePolicy).not.toContain("kms:GenerateDataKey");
   expect(compute).toContain("http_put_response_hop_limit = 1");
   expect(compute).not.toContain("http_put_response_hop_limit = 2");
-  expect(compute).toContain('resource "aws_route53_record" "public_mcp"');
+  expect(compute).not.toContain("public_mcp");
   expect(compute).toContain('data_volume_policy     = file("${path.module}/data-volume-policy.sh")');
   expect(update.indexOf("installCliRelease")).toBeLessThan(update.indexOf("readConfig"));
   expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("run --rm backup once"));

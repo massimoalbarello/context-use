@@ -2,7 +2,7 @@ import { resolve4 } from "node:dns/promises";
 import { resolve } from "node:path";
 import { sendSsmCommands, waitForSsm } from "./aws.ts";
 import { markDataVolumeInitialized } from "./data-volume.ts";
-import { currentVersion, deploymentRoot } from "./release.ts";
+import { deploymentRoot } from "./release.ts";
 import type { ComputeOutputs, DataOutputs, DeploymentConfig, ReleaseManifest } from "./types.ts";
 
 export async function deploy(
@@ -11,12 +11,11 @@ export async function deploy(
   manifest: ReleaseManifest,
   recoveryBackupKey?: string,
 ): Promise<void> {
-  const expectPublicMcp = manifest.version === currentVersion;
   await assertManualDns(config, compute);
   const deployScript = await Bun.file(resolve(await deploymentRoot(manifest), "deploy/deploy.sh")).text();
   const command = deploymentCommands(config, manifest, deployScript, recoveryBackupKey);
   await sendSsmCommands(config.awsProfile, config.awsRegion, compute.instance_id, command);
-  await verifyDeployment(config, manifest.version, expectPublicMcp);
+  await verifyDeployment(config, manifest.version);
 }
 
 export function computeBootstrapCommands(): string[] {
@@ -39,14 +38,6 @@ export async function prepareCompute(config: DeploymentConfig, data: DataOutputs
   await markDataVolumeInitialized(config, data);
 }
 
-export async function publicMcpDnsMatches(
-  config: DeploymentConfig,
-  compute: ComputeOutputs,
-  resolver: (hostname: string) => Promise<string[]> = resolve4,
-): Promise<boolean> {
-  return !(await manualDnsMismatches(config, compute, resolver)).includes(config.publicMcpHostname);
-}
-
 export async function manualDnsMismatches(
   config: DeploymentConfig,
   compute: ComputeOutputs,
@@ -61,7 +52,7 @@ export async function dnsMismatches(
   compute: ComputeOutputs,
   resolver: (hostname: string) => Promise<string[]> = resolve4,
 ): Promise<string[]> {
-  const hostnames = [config.hostname, config.assetHostname, config.publicMcpHostname];
+  const hostnames = [config.hostname, config.assetHostname];
   const matches = await Promise.all(hostnames.map(async (hostname) => {
     try {
       return (await resolver(hostname)).includes(compute.public_ip);
@@ -113,7 +104,7 @@ export function healthMatchesVersion(health: unknown, releaseVersion: string): b
   return health.version === releaseVersion.replace(/^v/, "");
 }
 
-export async function verifyDeployment(config: DeploymentConfig, releaseVersion: string, expectPublicMcp = true): Promise<void> {
+export async function verifyDeployment(config: DeploymentConfig, releaseVersion: string): Promise<void> {
   const origin = `https://${config.hostname}`;
   let lastError = "health check did not complete";
   for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -138,50 +129,12 @@ export async function verifyDeployment(config: DeploymentConfig, releaseVersion:
   if (bearerDashboard.status !== 401) throw new Error("Security check failed: dashboard did not reject bearer authentication");
   const cookieMcp = await fetch(`${origin}/mcp`, { method: "POST", headers: { Cookie: "better-auth.session_token=invalid", "Content-Type": "application/json" }, body: "{}" });
   if (cookieMcp.status !== 401) throw new Error("Security check failed: MCP did not reject browser cookies");
-  if (!expectPublicMcp) return;
-  const publicOrigin = `https://${config.publicMcpHostname}`;
   const landing = await fetch(origin);
   const landingHtml = await landing.text();
   if (!landing.ok
-      || !landingHtml.includes('href="/p/about/intro"')
-      || !landingHtml.includes(`${publicOrigin}/mcp`)) {
+      || !landingHtml.includes('href="/p/about/intro"')) {
     throw new Error("The public billboard is unavailable or incomplete");
   }
   const about = await fetch(`${origin}/p/about/intro`);
   if (!about.ok) throw new Error("The public About empty state is unavailable");
-  for (const path of ["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"]) {
-    const discovery = await fetch(`${publicOrigin}${path}`, { redirect: "error" });
-    if (discovery.status !== 404 || discovery.headers.has("www-authenticate")) {
-      throw new Error("Security check failed: public MCP hostname advertised authentication");
-    }
-  }
-  const publicMcp = await fetch(`${publicOrigin}/mcp`, {
-    method: "POST",
-    headers: { Accept: "application/json, text/event-stream", "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-06-18",
-        capabilities: {},
-        clientInfo: { name: "context-use-deployer", version: releaseVersion.replace(/^v/, "") },
-      },
-    }),
-  });
-  if (!publicMcp.ok) throw new Error("Public MCP endpoint is unavailable");
-  const publicWithCookie = await fetch(`${publicOrigin}/mcp`, {
-    method: "POST",
-    headers: { Cookie: "better-auth.session_token=invalid", "Content-Type": "application/json" },
-    body: "{}",
-  });
-  if (publicWithCookie.status !== 400) throw new Error("Security check failed: public MCP accepted browser cookies");
-  const legacyPublicMcp = await fetch(`${origin}/public/mcp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}",
-  });
-  if (legacyPublicMcp.status !== 404 || legacyPublicMcp.headers.has("www-authenticate")) {
-    throw new Error("Security check failed: legacy public MCP route remains reachable");
-  }
 }

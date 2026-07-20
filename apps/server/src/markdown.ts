@@ -83,10 +83,7 @@ function isAllowedAssetSource(src: string): boolean {
     if (/^\/api\/dashboard\/assets\/[0-9a-f-]{36}\/content$/i.test(url.pathname)) {
       return url.origin === appOrigin;
     }
-    if (/^\/api\/public\/assets\/[0-9a-f-]{36}\/content$/i.test(url.pathname)) {
-      return url.origin === assetOrigin;
-    }
-    if (/^\/p\/[a-z0-9][a-z0-9\/_-]*$/i.test(url.pathname)) {
+    if (/^\/a\/[a-z0-9][a-z0-9\/_-]*$/i.test(url.pathname)) {
       return url.origin === assetOrigin;
     }
     return false;

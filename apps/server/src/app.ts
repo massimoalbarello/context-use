@@ -109,7 +109,7 @@ function publishedPreviewResolvers(sourcePath: string) {
       return asset?.public_path
         ? {
             available: true as const,
-            href: `${config.ASSET_ORIGIN}/p/${asset.public_path}`,
+            href: `${config.ASSET_ORIGIN}/a/${asset.public_path}`,
             contentType: asset.content_type,
           }
         : { available: false as const };
@@ -486,7 +486,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
         Number(asset.size_bytes),
         asset.content_hash,
       ),
-      public_url: `${config.ASSET_ORIGIN}/p/${asset.public_path ?? asset.current_path}`,
+      public_url: `${config.ASSET_ORIGIN}/a/${asset.public_path ?? asset.current_path}`,
     });
   })
   .get("/api/dashboard/assets/:id/content", async ({ request, params }) => {
