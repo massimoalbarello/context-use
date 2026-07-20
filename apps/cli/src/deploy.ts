@@ -7,6 +7,7 @@ import {
   sendSsmCommands,
   waitForSsm,
 } from "./aws.ts";
+import { markDataVolumeInitialized } from "./data-volume.ts";
 import { currentVersion, deploymentRoot } from "./release.ts";
 import type { DeploymentConfig, ReleaseManifest } from "./types.ts";
 
@@ -15,12 +16,33 @@ export async function deploy(config: DeploymentConfig, manifest: ReleaseManifest
   const expectPublicMcp = manifest.version === currentVersion;
   if (expectPublicMcp) await assertPublicMcpDns(config);
   await ensureRuntimeParameterUpgrades(config);
-  await waitForSsm(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id);
+  await prepareCompute(config);
   const deployScript = await Bun.file(resolve(await deploymentRoot(manifest), "deploy/deploy.sh")).text();
   const command = deploymentCommands(config, manifest, deployScript);
   await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, command);
   await verifyDeployment(config, manifest.version, expectPublicMcp);
   await verifyRemoteSecurity(config);
+}
+
+export function computeBootstrapCommands(): string[] {
+  return [
+    "if cloud-init status --wait; then exit 0; fi",
+    "cloud-init status --long || true",
+    "tail -n 100 /var/log/cloud-init-output.log >&2 || true",
+    "exit 1",
+  ];
+}
+
+export async function prepareCompute(config: DeploymentConfig): Promise<void> {
+  if (!config.computeOutputs) throw new Error("Compute infrastructure outputs are missing");
+  await waitForSsm(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id);
+  await sendSsmCommands(
+    config.awsProfile,
+    config.awsRegion,
+    config.computeOutputs.instance_id,
+    computeBootstrapCommands(),
+  );
+  await markDataVolumeInitialized(config);
 }
 
 async function ensureRuntimeParameterUpgrades(config: DeploymentConfig): Promise<void> {
@@ -98,7 +120,6 @@ export function deploymentCommands(config: DeploymentConfig, manifest: ReleaseMa
   const backupRoleArn = `arn:aws:iam::${config.accountId}:role/${rolePrefix}-backup`;
   return [
     "trap 'rm -f /tmp/context-use-deploy.sh' EXIT",
-    "cloud-init status --wait",
     `echo '${encoded}' | base64 -d > /tmp/context-use-deploy.sh`,
     "chmod 0700 /tmp/context-use-deploy.sh",
     `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' CONTEXT_USE_STORAGE_ROLE_ARN='${storageRoleArn}' CONTEXT_USE_BACKUP_ROLE_ARN='${backupRoleArn}' /tmp/context-use-deploy.sh`,

@@ -31,6 +31,11 @@ variable "route53_zone_id" {
 variable "data_volume_id" {
   type = string
 }
+variable "initialize_data_volume" {
+  type        = bool
+  default     = false
+  description = "One-time authorization to initialize the retained data volume during a new installation."
+}
 variable "kms_key_arn" {
   type = string
 }

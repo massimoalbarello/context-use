@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+${data_volume_policy}
+
 dnf update -y --security
 dnf install -y docker
 systemctl enable --now docker
@@ -20,33 +22,82 @@ fi
 
 device="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_${volume_id}"
 for _ in $(seq 1 60); do [ -e "$${device}" ] && break; sleep 2; done
-if [ ! -e "$${device}" ]; then device=/dev/xvdf; fi
-for _ in $(seq 1 30); do [ -e "$${device}" ] && break; sleep 2; done
-
 if [ ! -b "$${device}" ]; then echo "Retained data volume is unavailable" >&2; exit 1; fi
 udevadm settle
+volume_id='${volume_id}'
+initialize_data_volume='${initialize_data_volume}'
+initialization_record=/var/lib/context-use/data-volume-initialized
+initialization_recorded=false
+if [ -e "$${initialization_record}" ]; then
+  [ -s "$${initialization_record}" ] || { echo "Data-volume initialization record is empty" >&2; exit 1; }
+  recorded_volume_id="$(cat "$${initialization_record}")"
+  [ "$${recorded_volume_id}" = "$${volume_id}" ] || { echo "Data-volume initialization record belongs to another volume" >&2; exit 1; }
+  initialization_recorded=true
+fi
+
 filesystem=""
 for _ in $(seq 1 10); do
   filesystem="$(blkid -s TYPE -o value "$${device}" 2>/dev/null || true)"
   [ -n "$${filesystem}" ] && break
   sleep 2
 done
-if [ -z "$${filesystem}" ]; then
-  if ! cmp -n 16777216 "$${device}" /dev/zero >/dev/null 2>&1; then
-    echo "Refusing to format non-blank retained data volume" >&2
+volume_action="$(context_use_data_volume_action "$${filesystem}" "$${initialize_data_volume}" "$${initialization_recorded}")"
+case "$${volume_action}" in
+  initialize)
+    mkfs.xfs "$${device}"
+    filesystem=xfs
+    ;;
+  use-existing) ;;
+  reject-filesystem)
+    echo "Retained data volume must use XFS; found $${filesystem}" >&2
     exit 1
-  fi
-  mkfs.xfs "$${device}"
-  filesystem=xfs
-fi
-if [ "$${filesystem}" != xfs ]; then echo "Retained data volume must use XFS; found $${filesystem}" >&2; exit 1; fi
+    ;;
+  reject-reinitialization)
+    echo "Refusing to reinitialize the retained data volume after one-time initialization was consumed" >&2
+    exit 1
+    ;;
+  reject-uninitialized)
+    echo "Refusing to initialize the retained data volume without explicit first-install authorization" >&2
+    exit 1
+    ;;
+  *)
+    echo "Invalid retained data volume policy decision" >&2
+    exit 1
+    ;;
+esac
+
 mkdir -p /data
 uuid="$(blkid -s UUID -o value "$${device}")"
 [ -n "$${uuid}" ] || { echo "Retained data volume has no filesystem UUID" >&2; exit 1; }
-grep -q "UUID=$${uuid}" /etc/fstab || echo "UUID=$${uuid} /data xfs defaults,nofail,nodev,nosuid 0 2" >> /etc/fstab
-mount /data
+fstab_entry="UUID=$${uuid} /data xfs defaults,nofail,nodev,nosuid 0 2"
+if ! grep -Fqx "$${fstab_entry}" /etc/fstab; then
+  if grep -Eq '^[^#]+[[:space:]]+/data[[:space:]]' /etc/fstab; then
+    echo "Refusing to replace a conflicting /data mount" >&2
+    exit 1
+  fi
+  printf '%s\n' "$${fstab_entry}" >> /etc/fstab
+fi
+mountpoint -q /data || mount /data
 mountpoint -q /data || { echo "Retained data volume is not mounted" >&2; exit 1; }
+mounted_uuid="$(findmnt -nro UUID --target /data)"
+[ "$${mounted_uuid}" = "$${uuid}" ] || { echo "A different filesystem is mounted at /data" >&2; exit 1; }
 mkdir -p /data/context-use
 chmod 0700 /data/context-use
-printf '%s\n' '${volume_id}' > /data/context-use/.volume-id
-chmod 0600 /data/context-use/.volume-id
+volume_marker=/data/context-use/.volume-id
+if [ -e "$${volume_marker}" ]; then
+  [ -s "$${volume_marker}" ] || { echo "Retained data volume marker is empty" >&2; exit 1; }
+  recorded_volume_id="$(cat "$${volume_marker}")"
+  [ "$${recorded_volume_id}" = "$${volume_id}" ] || { echo "Retained data volume marker belongs to another volume" >&2; exit 1; }
+else
+  [ "$${initialize_data_volume}" = true ] || { echo "Refusing to adopt an unmarked retained data volume" >&2; exit 1; }
+  marker_tmp="$${volume_marker}.tmp"
+  printf '%s\n' "$${volume_id}" > "$${marker_tmp}"
+  chmod 0600 "$${marker_tmp}"
+  mv -f "$${marker_tmp}" "$${volume_marker}"
+fi
+
+install -d -m 0700 /var/lib/context-use
+record_tmp="$${initialization_record}.tmp"
+printf '%s\n' "$${volume_id}" > "$${record_tmp}"
+chmod 0600 "$${record_tmp}"
+mv -f "$${record_tmp}" "$${initialization_record}"

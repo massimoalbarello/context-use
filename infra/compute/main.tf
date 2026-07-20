@@ -194,7 +194,9 @@ resource "aws_instance" "app" {
   associate_public_ip_address = true
   user_data_replace_on_change = true
   user_data = templatefile("${path.module}/user-data.sh.tftpl", {
-    volume_id = replace(var.data_volume_id, "-", "")
+    volume_id              = replace(var.data_volume_id, "-", "")
+    initialize_data_volume = var.initialize_data_volume ? "true" : "false"
+    data_volume_policy     = file("${path.module}/data-volume-policy.sh")
   })
   metadata_options {
     http_endpoint = "enabled"
