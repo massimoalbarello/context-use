@@ -14,6 +14,7 @@ import {
   markDataVolumeInitialized,
 } from "./data-volume.ts";
 import { restoreCommands } from "./commands/restore.ts";
+import { updateProtectsExistingRelease } from "./commands/update.ts";
 import { normalizeDeploymentConfig } from "./paths.ts";
 import { redactSensitiveText } from "./process.ts";
 import { canReplaceDeploymentConfig, shouldPauseForManualDns } from "./setup.ts";
@@ -338,6 +339,13 @@ test("an interrupted manual-DNS setup pauses once before deployment", () => {
   expect(shouldPauseForManualDns(deploymentConfig({ phase: "awaiting_dns" }))).toBe(false);
   expect(shouldPauseForManualDns(deploymentConfig({ phase: "deployed" }))).toBe(false);
   expect(shouldPauseForManualDns(deploymentConfig({ phase: "compute_ready", dnsMode: "route53" }))).toBe(false);
+});
+
+test("updates protect only an already deployed release", () => {
+  for (const phase of ["new", "data_ready", "compute_ready", "awaiting_dns", "destroyed", "purged"] as const) {
+    expect(updateProtectsExistingRelease(phase)).toBe(false);
+  }
+  expect(updateProtectsExistingRelease("deployed")).toBe(true);
 });
 
 test("setup can replace only a fully purged deployment record", () => {

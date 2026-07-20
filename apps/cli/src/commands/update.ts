@@ -7,6 +7,11 @@ import { deploy } from "../deploy.ts";
 import { readConfigIfPresent, saveConfig } from "../paths.ts";
 import { currentVersion, deploymentRoot, releaseManifest } from "../release.ts";
 import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs } from "../terraform.ts";
+import type { DeploymentPhase } from "../types.ts";
+
+export function updateProtectsExistingRelease(phase: DeploymentPhase): boolean {
+  return phase === "deployed";
+}
 
 export const command = defineCommand("update", {
   description: "Update the CLI and deployed release.",
@@ -33,12 +38,15 @@ export const command = defineCommand("update", {
     }
     await assertTerraformVersion(manifest);
     const root = await deploymentRoot(manifest);
+    const protectExistingRelease = updateProtectsExistingRelease(config.phase);
 
     config.computeOutputs = await currentComputeOutputs(root, config);
     await saveConfig(config);
-    await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, [
-      "cd /opt/context-use/deploy && docker compose --env-file /data/context-use/secrets/runtime.env run --rm backup once",
-    ]);
+    if (protectExistingRelease) {
+      await sendSsmCommands(config.awsProfile, config.awsRegion, config.computeOutputs.instance_id, [
+        "cd /opt/context-use/deploy && docker compose --env-file /data/context-use/secrets/runtime.env run --rm backup once",
+      ]);
+    }
 
     config.dataOutputs = await applyData(root, config);
     await saveConfig(config);
@@ -47,6 +55,7 @@ export const command = defineCommand("update", {
     try {
       await deploy(config, manifest);
     } catch (error) {
+      if (!protectExistingRelease) throw error;
       p.log.error("Update health checks failed; rolling back the application images");
       const previous = await releaseManifest(config.releaseVersion);
       await deploy(config, previous);
