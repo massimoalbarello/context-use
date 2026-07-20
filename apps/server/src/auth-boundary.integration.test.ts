@@ -120,6 +120,17 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     }
   });
 
+  test("both protected-resource discovery paths advertise the single MCP grant", async () => {
+    for (const path of ["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"]) {
+      const response = await application!.handle(new Request(`http://localhost:3000${path}`));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        resource: "http://localhost:3000/mcp",
+        scopes_supported: ["mcp:access"],
+      });
+    }
+  });
+
   test("private asset access requires a dashboard session on the dashboard origin", async () => {
     const dashboard = await application!.handle(new Request("http://localhost:3000/api/dashboard/pages"));
     expect(dashboard.status).toBe(401);
@@ -248,7 +259,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     }
   });
 
-  test("dynamic clients default to all MCP tool scopes and public clients cannot omit PKCE", async () => {
+  test("dynamic clients default to the private MCP grant and public clients cannot omit PKCE", async () => {
     const registration = await application!.handle(new Request("http://localhost:3000/api/auth/oauth2/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -263,14 +274,14 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(registration.status).toBe(201);
     const client = await registration.json() as { client_id: string; scope: string };
     createdClients.push(client.client_id);
-    expect(client.scope).toBe("kb:read kb:write assets:read assets:write skills:read skills:write automations:write automations:claim automations:execute");
+    expect(client.scope).toBe("mcp:access");
 
     const authorization = new URL("http://localhost:3000/api/auth/oauth2/authorize");
     authorization.search = new URLSearchParams({
       client_id: client.client_id,
       redirect_uri: "http://127.0.0.1:49321/callback",
       response_type: "code",
-      scope: "kb:read kb:write assets:read assets:write skills:read skills:write automations:write automations:claim automations:execute",
+      scope: "mcp:access",
       resource: "http://localhost:3000/mcp",
       state: "test-state",
     }).toString();

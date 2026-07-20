@@ -90,7 +90,7 @@ export function McpClients() {
       <div className="mcp-client-heading"><div><h2>Connected clients</h2><p>Clients you authorized to access private tools.</p></div></div>
 
       {loading ? <p className="mcp-empty">Loading clients…</p> : clients.length === 0 ? <p className="mcp-empty">No MCP client has connected yet.</p> : <div className="mcp-client-list">{clients.map((client) => <article key={client.client_id}>
-        <div className="mcp-client-main"><div className="mcp-client-title"><strong>{client.name || client.client_id}</strong><span className="mcp-access-badge private">Private</span></div><span>{client.version ? `Version ${client.version} · ` : ""}Approved {formatDate(client.approved_at)}</span><span>Last used {formatDate(client.last_used_at)}</span><div className="mcp-scope-list">{client.scopes.map((scope) => <code key={scope}>{scope}</code>)}</div></div>
+        <div className="mcp-client-main"><div className="mcp-client-title"><strong>{client.name || client.client_id}</strong><span className="mcp-access-badge private">Private</span></div><span>{client.version ? `Version ${client.version} · ` : ""}Approved {formatDate(client.approved_at)}</span><span>Last connected {formatDate(client.last_connected_at)}</span></div>
         <button type="button" className="danger" onClick={() => { setRevokeError(""); setRevoking(client); }}>Revoke</button>
       </article>)}</div>}
 
@@ -103,7 +103,7 @@ export function McpClients() {
     {revoking && <ActionDialog
       eyebrow="Private MCP client"
       title={`Revoke ${revoking.name ?? revoking.client_id}?`}
-      description="Its consent and refresh tokens will stop working immediately. The client will need to connect and be authorized again to regain access."
+      description="Its consent and refresh tokens will stop working immediately. An access token or asset transfer link already issued to it can continue for up to 15 minutes. The client must be authorized again to regain access."
       confirmLabel="Revoke access"
       workingLabel="Revoking…"
       confirmTone="danger"

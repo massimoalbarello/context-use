@@ -12,25 +12,17 @@ import {
   createSkillSchema,
   createCronScheduleSchema,
   createPageSchema,
-  type McpScope,
   updateAutomationPageSchema,
   updatePageSchema,
 } from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { config } from "./config.ts";
-import { createAssetDownloadCapability } from "./mcp-asset-download.ts";
-import { createAssetUploadCapability } from "./mcp-asset-upload.ts";
+import { createAssetCapability } from "./mcp-asset-capability.ts";
 
 export type McpContext = {
   clientId: string;
-  userId: string;
-  scopes: Set<string>;
 };
-
-function requireScope(context: McpContext, scope: McpScope): void {
-  if (!context.scopes.has(scope)) throw new Error(`insufficient_scope:${scope}`);
-}
 
 const jsonContent = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
@@ -54,7 +46,6 @@ export function createMcpServer(
     inputSchema: z.object({}).strict(),
     annotations: { readOnlyHint: true },
   }, async () => {
-    requireScope(context, "kb:read");
     return jsonContent(await pages.getByPath("agents"));
   });
 
@@ -63,7 +54,6 @@ export function createMcpServer(
     inputSchema: z.object({ include_archived: z.boolean().default(false) }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ include_archived }) => {
-    requireScope(context, "kb:read");
     return jsonContent(await pages.list(include_archived));
   });
 
@@ -72,7 +62,6 @@ export function createMcpServer(
     inputSchema: z.object({ page_id: z.string().uuid() }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ page_id }) => {
-    requireScope(context, "kb:read");
     return jsonContent(await pages.get(page_id));
   });
 
@@ -81,7 +70,6 @@ export function createMcpServer(
     inputSchema: z.object({ query: z.string().min(1).max(500), limit: z.number().int().min(1).max(100).default(30) }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ query, limit }) => {
-    requireScope(context, "kb:read");
     return jsonContent(await pages.search(query, limit));
   });
 
@@ -90,7 +78,6 @@ export function createMcpServer(
     inputSchema: z.object({ page_id: z.string().uuid() }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ page_id }) => {
-    requireScope(context, "kb:read");
     return jsonContent(await pages.history(page_id));
   });
 
@@ -99,7 +86,6 @@ export function createMcpServer(
     inputSchema: z.object({ page_id: z.string().uuid(), version_number: z.number().int().positive() }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ page_id, version_number }) => {
-    requireScope(context, "kb:read");
     return jsonContent(await pages.version(page_id, version_number));
   });
 
@@ -108,7 +94,6 @@ export function createMcpServer(
     inputSchema: createPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
-    requireScope(context, "kb:write");
     return jsonContent(await pages.create(input, actor));
   });
 
@@ -117,7 +102,6 @@ export function createMcpServer(
     inputSchema: updatePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ page_id, ...input }) => {
-    requireScope(context, "kb:write");
     return jsonContent(await pages.update(page_id, input, actor));
   });
 
@@ -126,7 +110,6 @@ export function createMcpServer(
     inputSchema: archivePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: true },
   }, async ({ page_id, ...input }) => {
-    requireScope(context, "kb:write");
     return jsonContent(await pages.archive(page_id, input, actor));
   });
 
@@ -135,7 +118,6 @@ export function createMcpServer(
     inputSchema: z.object({}).strict(),
     annotations: { readOnlyHint: true },
   }, async () => {
-    requireScope(context, "assets:read");
     return jsonContent(await assets.list());
   });
 
@@ -144,14 +126,9 @@ export function createMcpServer(
     inputSchema: z.object({ asset_id: z.string().uuid() }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ asset_id }) => {
-    requireScope(context, "assets:read");
     const asset = await assets.get(asset_id, true);
     if (!asset) return jsonContent(null);
-    const capability = createAssetDownloadCapability({
-      assetId: asset.id,
-      clientId: context.clientId,
-      userId: context.userId,
-    });
+    const capability = createAssetCapability("download", asset.id);
     const { s3_object_key: _hidden, ...metadata } = asset;
     return jsonContent({
       ...metadata,
@@ -169,7 +146,6 @@ export function createMcpServer(
     inputSchema: assetUploadSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
-    requireScope(context, "assets:write");
     const created = await assets.create({
       currentPath: input.path,
       filename: input.filename,
@@ -180,11 +156,7 @@ export function createMcpServer(
       ...(input.height ? { height: input.height } : {}),
       ...(input.duration_seconds !== undefined ? { durationSeconds: input.duration_seconds } : {}),
     });
-    const capability = createAssetUploadCapability({
-      assetId: created.id,
-      clientId: context.clientId,
-      userId: context.userId,
-    });
+    const capability = createAssetCapability("upload", created.id);
     const { objectKey: _hidden, ...asset } = created;
     const reference = `context-use://asset/${created.id}`;
     const markdownAlt = created.filename.replace(/[\[\]\r\n]+/g, " ").replace(/\s+/g, " ").trim() || "Image";
@@ -218,7 +190,6 @@ export function createMcpServer(
     inputSchema: z.object({}).strict(),
     annotations: { readOnlyHint: true },
   }, async () => {
-    requireScope(context, "skills:read");
     const skills = await automations.listSkills();
     return jsonContent(skills.map(({ id, name, description, current_version_id, version_number }) => ({
       id,
@@ -234,7 +205,6 @@ export function createMcpServer(
     inputSchema: z.object({ skill_id: z.string().uuid() }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ skill_id }) => {
-    requireScope(context, "skills:read");
     return jsonContent(await automations.getSkill(skill_id));
   });
 
@@ -243,7 +213,6 @@ export function createMcpServer(
     inputSchema: createSkillSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
-    requireScope(context, "skills:write");
     return jsonContent(await automations.createSkill(input, actor));
   });
 
@@ -252,7 +221,6 @@ export function createMcpServer(
     inputSchema: createCronScheduleSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
-    requireScope(context, "automations:write");
     return jsonContent(await automations.createSchedule(input, actor));
   });
 
@@ -261,7 +229,6 @@ export function createMcpServer(
     inputSchema: z.object({}).strict(),
     annotations: { destructiveHint: false },
   }, async () => {
-    requireScope(context, "automations:claim");
     return jsonContent(await automations.claimDueRun(context.clientId));
   });
 
@@ -270,7 +237,6 @@ export function createMcpServer(
     inputSchema: createAutomationPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
-    requireScope(context, "automations:execute");
     return jsonContent(await pages.createForAutomation(input, actor));
   });
 
@@ -279,7 +245,6 @@ export function createMcpServer(
     inputSchema: updateAutomationPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
-    requireScope(context, "automations:execute");
     return jsonContent(await pages.updateForAutomation(input, actor));
   });
 
@@ -288,7 +253,6 @@ export function createMcpServer(
     inputSchema: archiveAutomationPageSchema,
     annotations: { destructiveHint: true },
   }, async (input) => {
-    requireScope(context, "automations:execute");
     return jsonContent(await pages.archiveForAutomation(input, actor));
   });
 
@@ -303,7 +267,6 @@ export function createMcpServer(
     }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ run_id, claim_token, result_summary }) => {
-    requireScope(context, "automations:execute");
     return jsonContent(await automations.completeRun(run_id, claim_token, context.clientId, result_summary));
   });
 
@@ -316,7 +279,6 @@ export function createMcpServer(
     }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ run_id, claim_token, error_message }) => {
-    requireScope(context, "automations:execute");
     return jsonContent(await automations.failRun(run_id, claim_token, context.clientId, error_message));
   });
 

@@ -3,22 +3,14 @@ import { api } from "../api.ts";
 import { authClient } from "../auth-client.ts";
 
 const SCOPE_DESCRIPTIONS: Record<string, string> = {
-  "kb:read": "Read private knowledge pages and their history",
-  "kb:write": "Create, update, and archive private pages",
-  "assets:read": "Read private asset metadata and download assets",
-  "assets:write": "Create private assets and upload checksum-bound content",
-  "skills:read": "Discover skill names and descriptions, then load relevant instructions",
-  "skills:write": "Create versioned Agent Skills",
-  "automations:write": "Create scheduled automations with versioned instructions",
-  "automations:claim": "Claim due automation runs and receive their persisted instructions",
-  "automations:execute": "Write within a claimed automation's folder and record its outcome",
+  "mcp:access": "Read and manage private knowledge, assets, skills, and automations through MCP",
   offline_access: "Remain connected when you are away",
   openid: "Identify your owner account",
 };
 
 export function OAuthConsent() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
-  const requested = (params.get("scope") ?? "kb:read").split(/\s+/).filter(Boolean);
+  const requested = (params.get("scope") ?? "mcp:access").split(/\s+/).filter(Boolean);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [client, setClient] = useState<{ client_id: string; name: string | null; uri: string | null; software_id: string | null; software_version: string | null } | null>(null);

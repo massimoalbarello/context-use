@@ -331,13 +331,6 @@ CREATE TABLE "oauthClientAssertion" (
   "expiresAt" timestamptz NOT NULL
 );
 
-CREATE TABLE mcp_client_usage (
-  client_id text NOT NULL REFERENCES "oauthClient"("clientId") ON DELETE CASCADE,
-  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-  last_used_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (client_id,user_id)
-);
-
 -- Private knowledge and immutable history.
 CREATE TABLE knowledge_pages (
   id uuid PRIMARY KEY,
@@ -1424,8 +1417,7 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON
   "oauthConsent",
   "oauthResource",
   "oauthClientResource",
-  "oauthClientAssertion",
-  mcp_client_usage
+  "oauthClientAssertion"
 TO context_use_auth;
 
 GRANT SELECT ON
@@ -1554,7 +1546,6 @@ GRANT SELECT ON
   "oauthResource",
   "oauthClientResource",
   "oauthClientAssertion",
-  mcp_client_usage,
   knowledge_pages,
   knowledge_page_versions,
   assets,

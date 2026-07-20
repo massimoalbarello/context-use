@@ -12,6 +12,8 @@ import {
   ownerUserId,
 } from "./owner.ts";
 
+const OAUTH_SCOPES = ["openid", "offline_access", ...MCP_SCOPES];
+
 export const authPool = new Pool({
   connectionString: config.AUTH_DATABASE_URL,
   max: 10,
@@ -155,13 +157,13 @@ export const auth = betterAuth({
     oauthProvider({
       loginPage: "/app/login",
       consentPage: "/app/oauth/consent",
-      scopes: ["openid", "offline_access", ...MCP_SCOPES],
+      scopes: OAUTH_SCOPES,
       resources: [{
         identifier: config.MCP_RESOURCE,
         name: "context-use MCP",
         accessTokenTtl: 900,
         refreshTokenTtl: 2_592_000,
-        allowedScopes: ["openid", "offline_access", ...MCP_SCOPES],
+        allowedScopes: OAUTH_SCOPES,
       }],
       resourceSeedMode: "overwrite",
       enforcePerClientResources: false,
@@ -175,9 +177,8 @@ export const auth = betterAuth({
       clientRegistrationAllowedScopes: ["offline_access", "openid"],
       clientRegistrationClientSecretExpiration: "30 days",
       silenceWarnings: { oauthAuthServerConfig: true, openidConfig: true },
-      customAccessTokenClaims: ({ resources }) => ({
+      customAccessTokenClaims: () => ({
         principal_type: "mcp_agent",
-        resource: resources?.[0] ?? config.MCP_RESOURCE,
       }),
       clientPrivileges: ({ user }) => user?.id === ownerUserId && isVerifiedOwner(user.email, user.emailVerified) ? true : undefined,
     }) as unknown as BetterAuthPlugin,

@@ -58,10 +58,9 @@ export type ConnectedClient = {
   name: string | null;
   uri: string | null;
   version: string | null;
-  scopes: string[];
   created_at: string;
   approved_at: string;
-  last_used_at: string | null;
+  last_connected_at: string | null;
 };
 
 export type PaginatedResponse<T> = {

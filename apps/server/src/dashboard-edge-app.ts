@@ -19,7 +19,6 @@ function forward(request: Request): Promise<Response> | Response {
   return forwardInternalRequest(request, config.DASHBOARD_AUTHORITY_URL, (headers) => {
     // Browser input can never supply a pairwise service capability to the
     // credential-holding dashboard authority.
-    headers.delete("x-context-use-auth-edge");
     headers.delete("x-context-use-dashboard-gateway");
   });
 }

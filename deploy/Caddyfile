@@ -16,28 +16,28 @@
 		request_body {
 			max_size 3MB
 		}
-		reverse_proxy auth-edge:3006
+		reverse_proxy auth:3002
 	}
 	handle /.well-known/oauth-authorization-server {
-		reverse_proxy auth-edge:3006
+		reverse_proxy auth:3002
 	}
 	handle /.well-known/openid-configuration {
-		reverse_proxy auth-edge:3006
+		reverse_proxy auth:3002
 	}
 	handle /.well-known/oauth-protected-resource* {
-		reverse_proxy private-mcp-edge:3008
+		reverse_proxy private-mcp:3003
 	}
 	handle /mcp {
 		request_body {
 			max_size 3MB
 		}
-		reverse_proxy private-mcp-edge:3008
+		reverse_proxy private-mcp:3003
 	}
 	handle /api/mcp/assets/*/content {
 		request_body {
 			max_size 5GB
 		}
-		reverse_proxy private-mcp-edge:3008
+		reverse_proxy private-mcp:3003
 	}
 
 	handle /api/dashboard/assets/*/content {

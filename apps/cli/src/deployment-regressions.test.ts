@@ -344,7 +344,7 @@ test("restore verifies the backup, keeps traffic down on failure, migrates, and 
   expect(script).toContain("--single-transaction");
   expect(script).toContain("backup fetch 'postgres/2026-07-17T10-39-47Z.sql.gz'");
   expect(script).not.toContain("aws s3 cp");
-  expect(script).toContain("stop caddy dashboard-edge auth-edge private-mcp-edge");
+  expect(script).toContain("stop caddy dashboard-edge app auth private-mcp");
   expect(script).toContain("trap restore_failed EXIT");
   expect(script).toContain("up -d postgres aws-credential-broker backup");
   expect(script).toContain("CREATE ROLE context_use_public_mcp NOLOGIN");
@@ -434,12 +434,12 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).not.toContain("handle /api/dashboard/publications/confirm");
   expect(caddy).not.toContain("handle /api/dashboard/session");
   expect(caddy).toContain("handle /api/auth/*");
-  expect(caddy).toContain("reverse_proxy auth-edge:3006");
+  expect(caddy).toContain("reverse_proxy auth:3002");
   expect(caddy).toContain("reverse_proxy dashboard-edge:3007");
-  expect(caddy).toContain("reverse_proxy private-mcp-edge:3008");
-  expect(caddy).not.toContain("reverse_proxy auth:3002");
+  expect(caddy).toContain("reverse_proxy private-mcp:3003");
+  expect(caddy).not.toContain("auth-edge");
+  expect(caddy).not.toContain("private-mcp-edge");
   expect(caddy).not.toContain("reverse_proxy app:3000");
-  expect(caddy).not.toContain("reverse_proxy private-mcp:3003");
   expect(caddy).not.toContain("handle /api/public/assets/*/content");
   expect(caddy).not.toContain("handle /public/mcp");
   expect(caddy).not.toContain("PUBLIC_MCP");
@@ -462,6 +462,8 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(parsedCompose.services["aws-credential-broker"]?.tmpfs).toEqual(["/tmp:size=8m,mode=1777"]);
   expect(parsedCompose.services.storage?.tmpfs).toEqual(["/tmp:size=32m,mode=1777"]);
   expect(parsedCompose.services["public-mcp"]).toBeUndefined();
+  expect(parsedCompose.services["auth-edge"]).toBeUndefined();
+  expect(parsedCompose.services["private-mcp-edge"]).toBeUndefined();
   expect(lockedService).toContain("read_only: true");
   expect(lockedService).toContain("cap_drop: [ALL]");
   expect(deployCompose).not.toContain("PUBLIC_MCP");
@@ -469,7 +471,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployCompose).not.toContain("context_use_public_mcp:");
   const appService = deployCompose.slice(
     deployCompose.indexOf("\n  app:\n"),
-    deployCompose.indexOf("\n  auth-edge:\n"),
+    deployCompose.indexOf("\n  auth:\n"),
   );
   expect(appService).toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(appService).not.toContain("AUTH_DATABASE_URL");
@@ -496,24 +498,9 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(dashboardEdgeService).not.toContain("TOKEN");
   expect(dashboardEdgeService).not.toContain("SECRET");
 
-  const authEdgeService = deployCompose.slice(
-    deployCompose.indexOf("\n  auth-edge:\n"),
-    deployCompose.indexOf("\n  auth:\n"),
-  );
-  expect(authEdgeService).toContain("SERVICE_MODE: auth-edge");
-  expect(authEdgeService).toContain("AUTH_AUTHORITY_URL: http://auth:3002");
-  expect(authEdgeService).toContain("networks: [auth_web, auth_edge_internal]");
-  expect(authEdgeService).not.toContain("TOKEN");
-  expect(authEdgeService).not.toContain("SECRET");
-  expect(authEdgeService).not.toContain("AUTH_DATABASE_URL");
-  expect(authEdgeService).not.toContain("BETTER_AUTH_SECRET");
-  expect(authEdgeService).not.toContain("AUTH_DASHBOARD_TOKEN");
-  expect(authEdgeService).not.toContain("AUTH_MCP_TOKEN");
-  expect(authEdgeService).not.toContain("CONFIRMATION_GATEWAY_TOKEN");
-
   const authService = deployCompose.slice(
     deployCompose.indexOf("\n  auth:\n"),
-    deployCompose.indexOf("\n  private-mcp-edge:\n"),
+    deployCompose.indexOf("\n  private-mcp:\n"),
   );
   expect(authService).toContain("AUTH_DATABASE_URL: postgres://context_use_auth");
   expect(authService).toContain("BETTER_AUTH_SECRET");
@@ -526,18 +513,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(authService).not.toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(authService).not.toContain("STORAGE_");
   expect(authService).not.toContain("AWS_REGION:");
-  expect(authService).toContain("networks: [auth_data, auth_edge_internal, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]");
-
-  const privateMcpEdgeService = deployCompose.slice(
-    deployCompose.indexOf("\n  private-mcp-edge:\n"),
-    deployCompose.indexOf("\n  private-mcp:\n"),
-  );
-  expect(privateMcpEdgeService).toContain("SERVICE_MODE: mcp-edge");
-  expect(privateMcpEdgeService).toContain("MCP_AUTHORITY_URL: http://private-mcp:3003");
-  expect(privateMcpEdgeService).toContain("networks: [mcp_web, mcp_edge_internal]");
-  expect(privateMcpEdgeService).not.toContain("DATABASE_URL");
-  expect(privateMcpEdgeService).not.toContain("TOKEN");
-  expect(privateMcpEdgeService).not.toContain("SECRET");
+  expect(authService).toContain("networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]");
 
   const privateMcpService = deployCompose.slice(
     deployCompose.indexOf("\n  private-mcp:\n"),
@@ -552,7 +528,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(privateMcpService).not.toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(privateMcpService).not.toContain("AUTH_DATABASE_URL");
   expect(privateMcpService).not.toContain("AWS_REGION:");
-  expect(privateMcpService).toContain("networks: [mcp_data, mcp_edge_internal, auth_mcp_internal]");
+  expect(privateMcpService).toContain("networks: [mcp_data, mcp_web, auth_mcp_internal]");
 
   const publicWebService = deployCompose.slice(
     deployCompose.indexOf("\n  public-web:\n"),
@@ -624,7 +600,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(backupService).toContain("AWS_PROFILE: context-use-backup");
   expect(backupService).toContain("backup-aws-credentials:/run/context-use-aws-backup:ro");
   expect(backupService).toContain("networks: [backup_data, backup_egress]");
-  expect(backupService).toContain("SCHEMA_VERSION: 002_remove_public_mcp.sql");
+  expect(backupService).toContain("SCHEMA_VERSION: 003_collapse_mcp_authorization.sql");
   expect(backupService).not.toContain("RETENTION_DAYS");
   expect(backupScript).toContain("context-use-postgres-v1");
   expect(backupScript).toContain("sha256sum -c");

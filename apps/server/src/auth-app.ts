@@ -2,7 +2,6 @@ import {
   oauthProviderAuthServerMetadata,
   oauthProviderOpenIdConfigMetadata,
 } from "@better-auth/oauth-provider";
-import { MCP_SCOPES } from "@context-use/shared";
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { auth, authPathRequiresOwnerSession, authPool, dashboardPrincipal } from "./auth.ts";
@@ -13,7 +12,6 @@ import { forwardBrowserConfirmation } from "./confirmation-gateway.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
 import { hasHeaderCapability, hasInternalCapability } from "./internal-capability.ts";
 import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
-import { ownerUserId } from "./owner.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import {
   SecurityError,
@@ -35,16 +33,10 @@ const internalAuthorization = z.object({
   kind: z.enum(["read", "json", "upload", "download"]),
   headers: internalHeaders,
 }).strict();
-const grantSchema = z.object({
-  clientId: z.string().min(1).max(512),
-  userId: z.string().min(1).max(512),
-  scopes: z.array(z.string().min(1).max(128)).max(64),
-}).strict();
 const clientPageNumber = z.coerce.number().int().min(1).default(1);
 const clientPageSize = z.coerce.number().int().min(1).max(50).default(10);
 function browserAuthRequest(request: Request, removeCookie = false): Request {
   const headers = new Headers(request.headers);
-  headers.delete("x-context-use-auth-edge");
   if (removeCookie) headers.delete("cookie");
   return new Request(request, { headers });
 }
@@ -115,29 +107,6 @@ export const authApp = new Elysia()
     if (input.kind === "download") assertDashboardDownloadSecurity(reconstructed);
     return json(principal);
   })
-  .post("/internal/validate-mcp-grant", async ({ request }) => {
-    if (!hasInternalCapability(request, config.AUTH_MCP_TOKEN)) return problem("Not found", 404, "not_found");
-    const input = grantSchema.parse(await bodyJson(request));
-    const result = await authPool.query(
-      `SELECT 1
-       FROM "oauthClient" client
-       JOIN "oauthConsent" consent ON consent."clientId"=client."clientId"
-       JOIN "user" owner ON owner.id=consent."userId"
-       WHERE client."clientId"=$1 AND consent."userId"=$2
-         AND coalesce(client.disabled,false)=false
-         AND owner.id=$3 AND lower(owner.email)=lower($4) AND owner."emailVerified"=true
-         AND consent.scopes @> $5::jsonb`,
-      [input.clientId, input.userId, ownerUserId, config.OWNER_EMAIL, JSON.stringify(input.scopes)],
-    );
-    if (result.rowCount) {
-      await authPool.query(
-        `INSERT INTO mcp_client_usage(client_id,user_id,last_used_at) VALUES ($1,$2,now())
-         ON CONFLICT (client_id,user_id) DO UPDATE SET last_used_at=excluded.last_used_at`,
-        [input.clientId, input.userId],
-      );
-    }
-    return json({ active: Boolean(result.rowCount) });
-  })
   .get("/internal/jwks", ({ request }) => {
     if (!hasInternalCapability(request, config.AUTH_MCP_TOKEN)) return problem("Not found", 404, "not_found");
     return auth.handler(new Request(`${config.APP_ORIGIN}/api/auth/jwks`));
@@ -166,20 +135,6 @@ export const authApp = new Elysia()
     const principal = await ownerRequest(request, true);
     return forwardBrowserConfirmation("knowledge_export", await bodyJson(request), principal);
   })
-  .get("/api/dashboard/oauth-clients", async ({ request }) => {
-    const principal = await ownerRequest(request);
-    const result = await authPool.query(
-      `SELECT client."clientId" AS client_id,client.name,client.uri,client."createdAt" AS created_at,
-              consent.scopes,consent."updatedAt" AS approved_at,usage.last_used_at
-       FROM "oauthConsent" consent
-       JOIN "oauthClient" client ON client."clientId"=consent."clientId"
-       LEFT JOIN mcp_client_usage usage ON usage.client_id=client."clientId" AND usage.user_id=consent."userId"
-       WHERE consent."userId"=$1
-       ORDER BY consent."updatedAt" DESC`,
-      [principal.userId],
-    );
-    return json(result.rows);
-  })
   .get("/api/dashboard/private-mcp-clients", async ({ request, query }) => {
     const principal = await ownerRequest(request);
     const page = clientPageNumber.parse(query.page);
@@ -189,13 +144,16 @@ export const authApp = new Elysia()
       authPool.query(
         `SELECT client."clientId" AS client_id,client.name,client.uri,
                 client."softwareVersion" AS version,client."createdAt" AS created_at,
-                consent.scopes,consent."updatedAt" AS approved_at,usage.last_used_at
+                consent."updatedAt" AS approved_at,tokens.last_connected_at
          FROM "oauthConsent" consent
          JOIN "oauthClient" client ON client."clientId"=consent."clientId"
-         LEFT JOIN mcp_client_usage usage
-           ON usage.client_id=client."clientId" AND usage.user_id=consent."userId"
+         LEFT JOIN (
+           SELECT "clientId","userId",max("createdAt") AS last_connected_at
+           FROM "oauthAccessToken"
+           GROUP BY "clientId","userId"
+         ) tokens ON tokens."clientId"=client."clientId" AND tokens."userId"=consent."userId"
          WHERE consent."userId"=$1
-         ORDER BY coalesce(usage.last_used_at,consent."updatedAt") DESC,client."clientId" DESC
+         ORDER BY coalesce(tokens.last_connected_at,consent."updatedAt") DESC,client."clientId" DESC
          LIMIT $2 OFFSET $3`,
         [principal.userId, pageSize, offset],
       ),
@@ -252,11 +210,4 @@ export const authApp = new Elysia()
       client.release();
     }
     return json({ revoked: true });
-  })
-  .get("/.well-known/oauth-protected-resource", () => json({
-    resource: config.MCP_RESOURCE,
-    authorization_servers: [config.OAUTH_ISSUER],
-    scopes_supported: [...MCP_SCOPES],
-    bearer_methods_supported: ["header"],
-    resource_name: "context-use personal knowledge base",
-  }));
+  });

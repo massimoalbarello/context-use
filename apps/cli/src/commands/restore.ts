@@ -12,7 +12,7 @@ export function restoreCommands(bucket: string, key: string): string[] {
   // Plain historical dumps retain GRANT statements. This no-login placeholder
   // exists only while traffic is stopped and is removed after migrations.
   const compatibilityRole = "context_use_public_mcp";
-  const clients = "caddy dashboard-edge auth-edge private-mcp-edge app auth private-mcp public-web confirmation storage backup";
+  const clients = "caddy dashboard-edge app auth private-mcp public-web confirmation storage backup";
   return [
     "set -euo pipefail",
     "cd /opt/context-use/deploy",
