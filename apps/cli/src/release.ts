@@ -5,7 +5,7 @@ import { run } from "./process.ts";
 import type { ReleaseManifest } from "./types.ts";
 
 export const repository = "massimoalbarello/context-use";
-export const currentVersion = "v0.1.22";
+export const currentVersion = "v0.1.23";
 
 const digestImage = z.string().regex(/^ghcr\.io\/[a-z0-9_.-]+\/[a-z0-9_.-]+@sha256:[a-f0-9]{64}$/);
 const manifestSchema = z.object({
