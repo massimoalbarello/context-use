@@ -1,12 +1,12 @@
 import * as p from "@clack/prompts";
 import { createHash } from "node:crypto";
-import { accountId, bootstrapStateBucket, configureStateBucketKms, createStateKmsKey, generateSecret, getSecureParameter, putSecureParameter } from "./aws.ts";
-import { deploy, prepareCompute } from "./deploy.ts";
-import { configPath, defaultPublicMcpHostname, readConfig, saveConfig } from "./paths.ts";
+import { accountId, bootstrapStateBucket, generateSecret, getSecureParameter, getSecureParameterIfPresent, putSecureParameter } from "./aws.ts";
+import { deploy, manualDnsMismatches, prepareCompute } from "./deploy.ts";
+import { configPath, defaultPublicMcpHostname, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
 import { deploymentRoot, releaseManifest } from "./release.ts";
-import { applyCompute, applyData, assertTerraformVersion } from "./terraform.ts";
-import type { DeploymentConfig } from "./types.ts";
+import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs } from "./terraform.ts";
+import type { ComputeOutputs, DataOutputs, DeploymentConfig } from "./types.ts";
 
 function value<T>(result: T | symbol): T {
   if (p.isCancel(result)) { p.cancel("Setup cancelled"); process.exit(0); }
@@ -24,51 +24,69 @@ function validHostname(input: string | undefined): boolean {
   return input.split(".").every((label) => label.length > 0 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label));
 }
 
-export async function storeRuntimeParameters(config: DeploymentConfig): Promise<void> {
-  if (!config.dataOutputs || !config.computeOutputs) throw new Error("Infrastructure outputs missing");
+export async function ensureRuntimeParameters(config: DeploymentConfig, data: DataOutputs, compute: ComputeOutputs): Promise<void> {
   const prefix = `/context-use/${config.installationId}/${config.environment}`;
-  const ownerSetupToken = generateSecret(32);
-  const generated: Record<string, string> = {
+  const fixed: Record<string, string> = {
     APP_HOSTNAME: config.hostname,
     ASSET_HOSTNAME: config.assetHostname,
     PUBLIC_MCP_HOSTNAME: config.publicMcpHostname,
     OWNER_EMAIL: config.ownerEmail,
-    OWNER_SETUP_TOKEN: ownerSetupToken,
-    OWNER_SETUP_TOKEN_HASH: createHash("sha256").update(ownerSetupToken).digest("hex"),
-    BETTER_AUTH_SECRET: generateSecret(48),
-    POSTGRES_PASSWORD: generateSecret(36),
-    DB_AUTH_PASSWORD: generateSecret(36),
-    DB_DASHBOARD_PASSWORD: generateSecret(36),
-    DB_MCP_PASSWORD: generateSecret(36),
-    DB_PUBLIC_PASSWORD: generateSecret(36),
-    DB_PUBLIC_MCP_PASSWORD: generateSecret(36),
-    DB_CONFIRMATION_PASSWORD: generateSecret(36),
-    DB_STORAGE_PASSWORD: generateSecret(36),
-    DB_BACKUP_PASSWORD: generateSecret(36),
-    MCP_ASSET_CAPABILITY_SECRET: generateSecret(48),
-    CONFIRMATION_GATEWAY_TOKEN: generateSecret(48),
-    AUTH_DASHBOARD_TOKEN: generateSecret(48),
-    AUTH_MCP_TOKEN: generateSecret(48),
-    CONFIRMATION_DASHBOARD_TOKEN: generateSecret(48),
-    STORAGE_DASHBOARD_TOKEN: generateSecret(48),
-    STORAGE_MCP_TOKEN: generateSecret(48),
-    STORAGE_PUBLIC_TOKEN: generateSecret(48),
     AWS_REGION: config.awsRegion,
-    ASSET_BUCKET: config.dataOutputs.asset_bucket,
-    BACKUP_BUCKET: config.dataOutputs.backup_bucket,
-    KMS_KEY_ID: config.dataOutputs.kms_key_arn,
-    CLOUDWATCH_LOG_GROUP: config.computeOutputs.cloudwatch_log_group,
-    BACKUP_RETENTION_DAYS: String(config.backupRetentionDays),
+    ASSET_BUCKET: data.asset_bucket,
+    BACKUP_BUCKET: data.backup_bucket,
+    KMS_KEY_ID: data.kms_key_arn,
+    CLOUDWATCH_LOG_GROUP: compute.cloudwatch_log_group,
   };
-  const progress = p.progress({ max: Object.keys(generated).length });
+  const secrets = {
+    BETTER_AUTH_SECRET: 48,
+    POSTGRES_PASSWORD: 36,
+    DB_AUTH_PASSWORD: 36,
+    DB_DASHBOARD_PASSWORD: 36,
+    DB_MCP_PASSWORD: 36,
+    DB_PUBLIC_PASSWORD: 36,
+    DB_PUBLIC_MCP_PASSWORD: 36,
+    DB_CONFIRMATION_PASSWORD: 36,
+    DB_STORAGE_PASSWORD: 36,
+    DB_BACKUP_PASSWORD: 36,
+    MCP_ASSET_CAPABILITY_SECRET: 48,
+    CONFIRMATION_GATEWAY_TOKEN: 48,
+    AUTH_DASHBOARD_TOKEN: 48,
+    AUTH_MCP_TOKEN: 48,
+    CONFIRMATION_DASHBOARD_TOKEN: 48,
+    STORAGE_DASHBOARD_TOKEN: 48,
+    STORAGE_MCP_TOKEN: 48,
+    STORAGE_PUBLIC_TOKEN: 48,
+  } as const;
+  const progress = p.progress({ max: Object.keys(fixed).length + Object.keys(secrets).length + 2 });
   progress.start("Storing encrypted runtime parameters");
-  for (const [name, secret] of Object.entries(generated)) {
-    await putSecureParameter(config.awsProfile, config.awsRegion, `${prefix}/${name}`, secret, config.dataOutputs.kms_key_arn);
+  for (const [name, value] of Object.entries(fixed)) {
+    const parameter = `${prefix}/${name}`;
+    if (await getSecureParameterIfPresent(config.awsProfile, config.awsRegion, parameter) !== value) {
+      await putSecureParameter(config.awsProfile, config.awsRegion, parameter, value, data.kms_key_arn);
+    }
     progress.advance(1);
   }
+  for (const [name, length] of Object.entries(secrets)) {
+    const parameter = `${prefix}/${name}`;
+    if (!await getSecureParameterIfPresent(config.awsProfile, config.awsRegion, parameter)) {
+      await putSecureParameter(config.awsProfile, config.awsRegion, parameter, generateSecret(length), data.kms_key_arn);
+    }
+    progress.advance(1);
+  }
+  const tokenName = `${prefix}/OWNER_SETUP_TOKEN`;
+  const storedOwnerSetupToken = await getSecureParameterIfPresent(config.awsProfile, config.awsRegion, tokenName);
+  const ownerSetupToken = storedOwnerSetupToken ?? generateSecret(32);
+  if (!storedOwnerSetupToken) {
+    await putSecureParameter(config.awsProfile, config.awsRegion, tokenName, ownerSetupToken, data.kms_key_arn);
+  }
+  progress.advance(1);
+  const tokenHashName = `${prefix}/OWNER_SETUP_TOKEN_HASH`;
+  const tokenHash = createHash("sha256").update(ownerSetupToken).digest("hex");
+  if (await getSecureParameterIfPresent(config.awsProfile, config.awsRegion, tokenHashName) !== tokenHash) {
+    await putSecureParameter(config.awsProfile, config.awsRegion, tokenHashName, tokenHash, data.kms_key_arn);
+  }
+  progress.advance(1);
   progress.stop("Encrypted runtime parameters stored");
-  config.parametersReady = true;
-  await saveConfig(config);
 }
 
 export async function ownerSetupUrl(config: DeploymentConfig): Promise<string> {
@@ -77,30 +95,17 @@ export async function ownerSetupUrl(config: DeploymentConfig): Promise<string> {
   return `https://${config.hostname}/app#setup=${encodeURIComponent(token)}`;
 }
 
-export function shouldPauseForManualDns(config: DeploymentConfig): boolean {
-  return config.dnsMode === "manual" && ["new", "data_ready", "compute_ready"].includes(config.phase);
-}
-
-export function canReplaceDeploymentConfig(config: DeploymentConfig): boolean {
-  return config.phase === "purged";
-}
-
-export async function pauseForManualDns(config: DeploymentConfig): Promise<boolean> {
-  if (!shouldPauseForManualDns(config)) return false;
-  if (!config.computeOutputs) throw new Error("Compute infrastructure outputs are missing");
-  config.phase = "awaiting_dns";
-  await saveConfig(config);
-  p.note(`Create these A records pointing to ${config.computeOutputs.public_ip}:\n${config.hostname}\n${config.assetHostname}\n${config.publicMcpHostname}\n\nThen run: context-use resume`, "DNS required");
+export async function pauseForManualDns(config: DeploymentConfig, compute: ComputeOutputs, nextCommand = "resume"): Promise<boolean> {
+  const missing = await manualDnsMismatches(config, compute);
+  if (missing.length === 0) return false;
+  p.note(`Create these A records pointing to ${compute.public_ip}:\n${missing.join("\n")}\n\nThen run: context-use ${nextCommand}`, "DNS required");
   return true;
 }
 
 export async function setup(): Promise<void> {
   p.intro("context-use · private knowledge infrastructure");
   if (await Bun.file(configPath).exists()) {
-    const existing = await readConfig();
-    if (!canReplaceDeploymentConfig(existing)) {
-      throw new Error(`A deployment config already exists at ${configPath}. Use resume/status/destroy instead of overwriting it.`);
-    }
+    throw new Error(`A deployment config already exists at ${configPath}. Use resume/status/destroy instead of overwriting it.`);
   }
   if (!(await commandExists("aws")) || !(await commandExists("terraform")) || !(await commandExists("gh"))) {
     throw new Error("AWS CLI, Terraform, and GitHub CLI are required. Install them and try again.");
@@ -115,7 +120,7 @@ export async function setup(): Promise<void> {
   const ownerEmail = required(await p.text({ message: "Owner email", validate: (input) => input && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input) ? undefined : "Enter a valid email" }), "Owner email").trim().toLowerCase();
   const manifest = await releaseManifest(process.env.CONTEXT_USE_VERSION ?? "latest");
   const config: DeploymentConfig = {
-    schemaVersion: 1, releaseVersion: manifest.version, phase: "new", environment: "production",
+    schemaVersion: 2, releaseVersion: manifest.version, environment: "production",
     installationId: createHash("sha256").update(`${identity}:${awsRegion}:${hostname}`).digest("hex").slice(0, 12),
     awsProfile, awsRegion, availabilityZone: `${awsRegion}a`, accountId: identity,
     hostname,
@@ -124,7 +129,6 @@ export async function setup(): Promise<void> {
     dnsMode,
     route53ZoneId,
     ownerEmail,
-    parametersReady: false,
     stateBucket: `context-use-${identity}-${awsRegion}-${createHash("sha256").update(hostname).digest("hex").slice(0, 10)}-tfstate`, instanceType: "t3.small",
     dataVolumeSizeGb: 50, backupRetentionDays: 30,
   };
@@ -132,19 +136,11 @@ export async function setup(): Promise<void> {
   const root = await deploymentRoot(manifest);
   await saveConfig(config);
   await bootstrapStateBucket(awsProfile, awsRegion, config.stateBucket);
-  const stateKey = await createStateKmsKey(awsProfile, awsRegion, config.installationId);
-  config.stateKmsKeyArn = stateKey.arn;
-  config.stateKmsKeyId = stateKey.id;
-  await saveConfig(config);
-  await configureStateBucketKms(config.awsProfile, config.awsRegion, config.stateBucket, stateKey.arn);
-  config.dataOutputs = await applyData(root, config);
-  config.phase = "data_ready"; await saveConfig(config);
-  config.computeOutputs = await applyCompute(root, config);
-  config.phase = "compute_ready"; await saveConfig(config);
-  await prepareCompute(config);
-  await storeRuntimeParameters(config);
-  if (await pauseForManualDns(config)) return;
-  await deploy(config, manifest);
-  config.phase = "deployed"; await saveConfig(config);
+  const data = await applyData(root, config);
+  const compute = await currentComputeOutputs(root, config) ?? await applyCompute(root, config, data, true);
+  await prepareCompute(config, data, compute);
+  await ensureRuntimeParameters(config, data, compute);
+  if (await pauseForManualDns(config, compute)) return;
+  await deploy(config, compute, manifest);
   p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}`);
 }

@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { awsArgs } from "./aws.ts";
 import { dataVolumeInitializationAuthorized } from "./data-volume.ts";
-import type { DeploymentConfig } from "./types.ts";
+import type { ComputeOutputs, DataOutputs, DeploymentConfig } from "./types.ts";
 import { run, type RunOptions } from "./process.ts";
 import type { ReleaseManifest } from "./types.ts";
 
@@ -38,7 +38,6 @@ export function backendArgs(config: DeploymentConfig, key: string): string[] {
     `-backend-config=region=${config.awsRegion}`,
     "-backend-config=encrypt=true",
     "-backend-config=use_lockfile=true",
-    ...(config.stateKmsKeyArn ? [`-backend-config=kms_key_id=${config.stateKmsKeyArn}`] : []),
   ];
 }
 
@@ -89,7 +88,7 @@ function stateKey(config: DeploymentConfig, component: string): string {
   return `${config.installationId}/${config.environment}/${component}.tfstate`;
 }
 
-export async function applyData(root: string, config: DeploymentConfig): Promise<NonNullable<DeploymentConfig["dataOutputs"]>> {
+export async function applyData(root: string, config: DeploymentConfig): Promise<DataOutputs> {
   const directory = resolve(root, "infra/data");
   const env = await terraformEnvironment(config);
   console.log("Applying retained, encrypted data infrastructure…");
@@ -105,14 +104,18 @@ export async function applyData(root: string, config: DeploymentConfig): Promise
   return terraformOutputs(directory, env);
 }
 
-export async function applyCompute(root: string, config: DeploymentConfig): Promise<NonNullable<DeploymentConfig["computeOutputs"]>> {
-  if (!config.dataOutputs) throw new Error("Data infrastructure outputs are missing");
+export async function applyCompute(
+  root: string,
+  config: DeploymentConfig,
+  data: DataOutputs,
+  allowDataVolumeInitialization = false,
+): Promise<ComputeOutputs> {
   const directory = resolve(root, "infra/compute");
   const env = await terraformEnvironment(config);
   console.log("Applying single-instance compute infrastructure…");
   await initializeTerraformBackend(directory, config, stateKey(config, "compute"), env);
   const publicMcpArgs = await publicMcpHostnameArgs(directory, config);
-  const initializeDataVolume = await dataVolumeInitializationAuthorized(config);
+  const initializeDataVolume = await dataVolumeInitializationAuthorized(config, data, allowDataVolumeInitialization);
   await run(["terraform", "apply", "-input=false", "-auto-approve",
     `-var=aws_region=${config.awsRegion}`,
     `-var=availability_zone=${config.availabilityZone}`,
@@ -123,26 +126,37 @@ export async function applyCompute(root: string, config: DeploymentConfig): Prom
     `-var=asset_hostname=${config.assetHostname}`,
     ...publicMcpArgs,
     `-var=route53_zone_id=${config.route53ZoneId}`,
-    `-var=data_volume_id=${config.dataOutputs.data_volume_id}`,
+    `-var=data_volume_id=${data.data_volume_id}`,
     `-var=initialize_data_volume=${initializeDataVolume}`,
-    `-var=kms_key_arn=${config.dataOutputs.kms_key_arn}`,
-    `-var=asset_bucket=${config.dataOutputs.asset_bucket}`,
-    `-var=backup_bucket=${config.dataOutputs.backup_bucket}`,
+    `-var=kms_key_arn=${data.kms_key_arn}`,
+    `-var=asset_bucket=${data.asset_bucket}`,
+    `-var=backup_bucket=${data.backup_bucket}`,
     `-var=ssm_parameter_prefix=/context-use/${config.installationId}/${config.environment}`,
   ], { cwd: directory, env });
   return terraformOutputs(directory, env);
 }
 
-export async function currentComputeOutputs(root: string, config: DeploymentConfig): Promise<NonNullable<DeploymentConfig["computeOutputs"]>> {
-  const directory = resolve(root, "infra/compute");
-  const env = await terraformEnvironment(config);
-  await initializeTerraformBackend(directory, config, stateKey(config, "compute"), env);
-  const outputs = await terraformOutputs<NonNullable<DeploymentConfig["computeOutputs"]>>(directory, env);
-  if (!outputs.instance_id) throw new Error("Terraform state has no active compute deployment");
-  return outputs;
+export async function currentDataOutputs(root: string, config: DeploymentConfig): Promise<DataOutputs | null> {
+  return currentOutputs<DataOutputs>(resolve(root, "infra/data"), config, "data", "data_volume_id");
 }
 
-export async function destroyCompute(root: string, config: DeploymentConfig): Promise<void> {
+export async function currentComputeOutputs(root: string, config: DeploymentConfig): Promise<ComputeOutputs | null> {
+  return currentOutputs<ComputeOutputs>(resolve(root, "infra/compute"), config, "compute", "instance_id");
+}
+
+async function currentOutputs<T extends object>(
+  directory: string,
+  config: DeploymentConfig,
+  component: string,
+  requiredOutput: keyof T,
+): Promise<T | null> {
+  const env = await terraformEnvironment(config);
+  await initializeTerraformBackend(directory, config, stateKey(config, component), env);
+  const outputs = await terraformOutputs<T>(directory, env);
+  return outputs[requiredOutput] ? outputs : null;
+}
+
+export async function destroyCompute(root: string, config: DeploymentConfig, data: DataOutputs): Promise<void> {
   const directory = resolve(root, "infra/compute");
   const env = await terraformEnvironment(config);
   await initializeTerraformBackend(directory, config, stateKey(config, "compute"), env);
@@ -152,9 +166,9 @@ export async function destroyCompute(root: string, config: DeploymentConfig): Pr
     `-var=environment=${config.environment}`, `-var=installation_id=${config.installationId}`, `-var=instance_type=${config.instanceType}`,
     `-var=app_hostname=${config.hostname}`, `-var=asset_hostname=${config.assetHostname}`,
     ...publicMcpArgs,
-    `-var=route53_zone_id=${config.route53ZoneId}`, `-var=data_volume_id=${config.dataOutputs?.data_volume_id}`,
-    `-var=kms_key_arn=${config.dataOutputs?.kms_key_arn}`, `-var=asset_bucket=${config.dataOutputs?.asset_bucket}`,
-    `-var=backup_bucket=${config.dataOutputs?.backup_bucket}`, `-var=ssm_parameter_prefix=/context-use/${config.installationId}/${config.environment}`,
+    `-var=route53_zone_id=${config.route53ZoneId}`, `-var=data_volume_id=${data.data_volume_id}`,
+    `-var=kms_key_arn=${data.kms_key_arn}`, `-var=asset_bucket=${data.asset_bucket}`,
+    `-var=backup_bucket=${data.backup_bucket}`, `-var=ssm_parameter_prefix=/context-use/${config.installationId}/${config.environment}`,
   ], { cwd: directory, env });
 }
 
@@ -166,7 +180,6 @@ async function publicMcpHostnameArgs(directory: string, config: DeploymentConfig
 }
 
 export async function destroyData(root: string, config: DeploymentConfig): Promise<void> {
-  if (!config.dataOutputs) throw new Error("Data infrastructure outputs are missing");
   const directory = resolve(root, "infra/data");
   const env = await terraformEnvironment(config);
   await initializeTerraformBackend(directory, config, stateKey(config, "data"), env);

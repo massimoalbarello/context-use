@@ -6,26 +6,23 @@ import {
   deploymentCommands,
   healthMatchesVersion,
   publicMcpDnsMatches,
-  remoteSecurityCommands,
 } from "./deploy.ts";
 import {
   DATA_VOLUME_INITIALIZATION_TAG,
   dataVolumeInitializationAuthorized,
   markDataVolumeInitialized,
+  retainedDataVolumeExists,
 } from "./data-volume.ts";
 import { restoreCommands } from "./commands/restore.ts";
-import { updateProtectsExistingRelease } from "./commands/update.ts";
 import { normalizeDeploymentConfig } from "./paths.ts";
 import { redactSensitiveText } from "./process.ts";
-import { canReplaceDeploymentConfig, shouldPauseForManualDns } from "./setup.ts";
 import { backendArgs, initializeTerraformBackend, terraformEnvironment } from "./terraform.ts";
-import type { DeploymentConfig, ReleaseManifest } from "./types.ts";
+import type { ComputeOutputs, DataOutputs, DeploymentConfig, ReleaseManifest } from "./types.ts";
 
 function deploymentConfig(overrides: Partial<DeploymentConfig> = {}): DeploymentConfig {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     releaseVersion: "v0.1.2",
-    phase: "new",
     environment: "production",
     installationId: "abcdef123456",
     awsProfile: "default",
@@ -38,9 +35,7 @@ function deploymentConfig(overrides: Partial<DeploymentConfig> = {}): Deployment
     dnsMode: "manual",
     route53ZoneId: "",
     ownerEmail: "owner@example.com",
-    parametersReady: false,
     stateBucket: "context-use-state",
-    stateKmsKeyArn: "arn:aws:kms:eu-west-2:123456789012:key/state",
     instanceType: "t3.small",
     dataVolumeSizeGb: 50,
     backupRetentionDays: 30,
@@ -77,6 +72,7 @@ test("Terraform receives exported short-lived credentials without a backend prof
     AWS_EC2_METADATA_DISABLED: "true",
   });
   expect(backendArgs(config, "installation/production/data.tfstate").some((argument) => argument.includes("profile="))).toBe(false);
+  expect(backendArgs(config, "installation/production/data.tfstate").some((argument) => argument.includes("kms_key_id="))).toBe(false);
 });
 
 test("a newly created state bucket is awaited before it is configured", async () => {
@@ -94,8 +90,33 @@ test("a newly created state bucket is awaited before it is configured", async ()
     "s3api wait bucket-exists",
     "s3api put-public-access-block --bucket",
     "s3api put-bucket-versioning --bucket",
+    "s3api put-bucket-policy --bucket",
     "s3api put-bucket-encryption --bucket",
+    "s3api list-objects-v2 --bucket",
   ]);
+});
+
+test("state bootstrap fails closed on access errors and rewrites only non-SSE-S3 current objects", async () => {
+  await expect(bootstrapStateBucket("default", "eu-west-2", "context-use-state", async (command) => {
+    if (command.includes("head-bucket")) throw new Error("AccessDenied");
+    return "";
+  })).rejects.toThrow("AccessDenied");
+
+  const commands: string[][] = [];
+  await bootstrapStateBucket("default", "eu-west-2", "context-use-state", async (command) => {
+    commands.push(command);
+    if (command.includes("list-objects-v2")) {
+      return JSON.stringify({ Contents: [{ Key: "install/data.tfstate" }, { Key: "install/compute.tfstate" }] });
+    }
+    if (command.includes("head-object")) {
+      return JSON.stringify({ ServerSideEncryption: command.some((part) => part.endsWith("data.tfstate")) ? "aws:kms" : "AES256" });
+    }
+    return "";
+  });
+  const copies = commands.filter((command) => command.includes("copy-object"));
+  expect(copies).toHaveLength(1);
+  expect(copies[0]).toContain("install/data.tfstate");
+  expect(copies[0]).toContain("AES256");
 });
 
 test("Terraform backend initialization retries a newly created bucket propagation error", async () => {
@@ -191,21 +212,38 @@ test("deployment diagnoses cloud-init separately and always removes its temporar
   ]);
   expect(commands.at(-1)).toContain("arn:aws:iam::123456789012:role/context-use-abcdef123456-production-storage");
   expect(commands.at(-1)).toContain("arn:aws:iam::123456789012:role/context-use-abcdef123456-production-backup");
+
+  const recovery = deploymentCommands(
+    deploymentConfig(),
+    manifest,
+    "#!/bin/sh\nexit 0\n",
+    "postgres/2026-07-20T10-20-30-123456789Z.sql.gz",
+  );
+  expect(recovery.at(-1)).toContain("CONTEXT_USE_RECOVERY_BACKUP_KEY='postgres/2026-07-20T10-20-30-123456789Z.sql.gz'");
+  expect(() => deploymentCommands(deploymentConfig(), manifest, "", "../other.sql.gz"))
+    .toThrow("Invalid recovery backup key");
 });
 
 function dataReadyConfig(overrides: Partial<DeploymentConfig> = {}): DeploymentConfig {
-  return deploymentConfig({
-    phase: "data_ready",
-    dataOutputs: {
-      kms_key_arn: "arn:aws:kms:eu-west-2:123456789012:key/data",
-      kms_key_id: "data-key",
-      data_volume_id: "vol-0123456789abcdef0",
-      asset_bucket: "assets",
-      backup_bucket: "backups",
-    },
-    ...overrides,
-  });
+  return deploymentConfig(overrides);
 }
+
+const dataOutputs: DataOutputs = {
+  kms_key_arn: "arn:aws:kms:eu-west-2:123456789012:key/data",
+  kms_key_id: "data-key",
+  data_volume_id: "vol-0123456789abcdef0",
+  asset_bucket: "assets",
+  backup_bucket: "backups",
+};
+
+const computeOutputs: ComputeOutputs = {
+  instance_id: "i-test",
+  public_ip: "192.0.2.10",
+  app_url: "https://context.example.com",
+  asset_url: "https://assets.context.example.com",
+  public_mcp_url: "https://public.context.example.com/mcp",
+  cloudwatch_log_group: "test",
+};
 
 function describedVolume(initialization: string | null = "pending") {
   return {
@@ -226,41 +264,39 @@ function describedVolume(initialization: string | null = "pending") {
 
 test("only a Terraform-tagged fresh data volume receives initialization authorization", async () => {
   const config = dataReadyConfig();
-  expect(await dataVolumeInitializationAuthorized(config, async () => describedVolume())).toBe(true);
-  expect(await dataVolumeInitializationAuthorized(config, async () => describedVolume("complete"))).toBe(false);
-  expect(await dataVolumeInitializationAuthorized(config, async () => describedVolume(null))).toBe(false);
-  expect(await dataVolumeInitializationAuthorized({ ...config, phase: "destroyed" }, async () => describedVolume())).toBe(false);
-  expect(await dataVolumeInitializationAuthorized({ ...config, parametersReady: true }, async () => describedVolume())).toBe(false);
-  expect(await dataVolumeInitializationAuthorized({
-    ...config,
-    computeOutputs: {
-      instance_id: "i-existing",
-      public_ip: "192.0.2.10",
-      app_url: "https://context.example.com",
-      asset_url: "https://assets.context.example.com",
-      public_mcp_url: "https://public.context.example.com/mcp",
-      cloudwatch_log_group: "test",
-    },
-  }, async () => describedVolume())).toBe(false);
+  expect(await dataVolumeInitializationAuthorized(config, dataOutputs, true, async () => describedVolume())).toBe(true);
+  expect(await dataVolumeInitializationAuthorized(config, dataOutputs, true, async () => describedVolume("complete"))).toBe(false);
+  expect(await dataVolumeInitializationAuthorized(config, dataOutputs, true, async () => describedVolume(null))).toBe(false);
+  expect(await dataVolumeInitializationAuthorized(config, dataOutputs, false, async () => describedVolume())).toBe(false);
 
-  await expect(dataVolumeInitializationAuthorized(config, async () => ({
+  await expect(dataVolumeInitializationAuthorized(config, dataOutputs, true, async () => ({
     ...describedVolume(),
     SnapshotId: "snap-existing-data",
   }))).rejects.toThrow("identity or provenance is unexpected");
-  await expect(dataVolumeInitializationAuthorized(config, async () => ({
+  await expect(dataVolumeInitializationAuthorized(config, dataOutputs, true, async () => ({
     ...describedVolume(),
     KmsKeyId: "arn:aws:kms:eu-west-2:123456789012:key/other",
   }))).rejects.toThrow("identity or provenance is unexpected");
-  await expect(dataVolumeInitializationAuthorized(config, async () => ({
+  await expect(dataVolumeInitializationAuthorized(config, dataOutputs, true, async () => ({
     ...describedVolume(),
     Tags: describedVolume().Tags.map((tag) => tag.Key === "Installation" ? { ...tag, Value: "other-installation" } : tag),
   }))).rejects.toThrow("identity or provenance is unexpected");
 });
 
+test("lost-volume detection distinguishes an explicit AWS not-found response from other failures", async () => {
+  expect(await retainedDataVolumeExists(dataReadyConfig(), dataOutputs, async () => describedVolume())).toBe(true);
+  expect(await retainedDataVolumeExists(dataReadyConfig(), dataOutputs, async () => {
+    throw new Error("InvalidVolume.NotFound");
+  })).toBe(false);
+  await expect(retainedDataVolumeExists(dataReadyConfig(), dataOutputs, async () => {
+    throw new Error("AccessDenied");
+  })).rejects.toThrow("AccessDenied");
+});
+
 test("successful bootstrap consumes the durable AWS initialization authorization", async () => {
   const config = dataReadyConfig();
   let command: string[] = [];
-  await markDataVolumeInitialized(config, async () => describedVolume(), async (observed) => {
+  await markDataVolumeInitialized(config, dataOutputs, async () => describedVolume(), async (observed) => {
     command = observed;
     return "";
   });
@@ -268,7 +304,7 @@ test("successful bootstrap consumes the durable AWS initialization authorization
   expect(command).toContain(`Key=${DATA_VOLUME_INITIALIZATION_TAG},Value=complete`);
 
   let called = false;
-  await markDataVolumeInitialized(config, async () => describedVolume("complete"), async () => {
+  await markDataVolumeInitialized(config, dataOutputs, async () => describedVolume("complete"), async () => {
     called = true;
     return "";
   });
@@ -301,54 +337,20 @@ test("data-volume policy initializes only a first-install volume and fails close
   expect(await dataVolumePolicyAction("ext4", true, false)).toBe("reject-filesystem");
 });
 
-test("remote verification avoids shell-quoting SQL and passes the database password through the environment", () => {
-  const commands = remoteSecurityCommands();
-  const script = commands.join("\n");
-  const encodedSql = script.match(/printf %s ([A-Za-z0-9+/=]+) \| base64 -d/)?.[1];
-  const sql = Buffer.from(encodedSql ?? "", "base64").toString();
-
-  expect(script).toContain("base64 -d");
-  expect(script).toContain("export PGPASSWORD=\"$POSTGRES_PASSWORD\"");
-  expect(script).toContain("exec -T -e PGPASSWORD postgres psql");
-  expect(script.match(/exec -T --user 1000:1000/g)?.length).toBe(2);
-  expect(script).toContain("AWS_PROFILE=context-use-storage");
-  expect(script).toContain("AWS_EC2_METADATA_DISABLED=true");
-  expect(script).not.toContain("confirm_publication_intent");
-  expect(script).not.toContain("sh -c");
-  expect(sql).toContain("tgname='knowledge_pages_automation_path'");
-  expect(sql).toContain("'agent_skills'");
-  expect(sql).toContain("'automation_versions'");
-  expect(sql).toContain("required_public_path='about'");
-  expect(sql).toContain("current_path='about/intro'");
-  expect(sql).toContain("tgname='publication_intents_protect_required_public_page'");
-  expect(sql).toContain("context_use_projection_owner");
-  expect(sql).toContain("project_public_markdown(text)");
-  expect(sql).toContain("project_public_mcp_markdown(text)");
-  expect(sql).toContain("context_use_boundary_owner");
-  expect(sql).toContain("context_use_confirmation");
-  expect(sql).toContain("context_use_storage");
-  expect(sql).toContain("array_agg(column_name::text ORDER BY ordinal_position)");
-  expect(sql).toContain("ARRAY['public_path','title','body_markdown']");
-  expect(sql).toContain("ARRAY['public_path','filename','content_type','size_bytes']");
-  expect(sql).toContain("issue_confirmation_challenge");
-  expect(sql).toContain("passkey_protect_credential");
-  expect(sql).toContain("user_protect_owner_identity");
-  expect(sql).toContain("knowledge_pages_published_active");
-  expect(sql).toContain("assets_published_active");
-  expect(sql).toContain("current_database(),'TEMPORARY'");
-  expect(sql).toContain("knowledge_asset_links','DELETE'");
-  expect(sql).not.toContain("conname='knowledge_pages_automation_path_boundary'");
-});
-
-test("restore sources the database password and restarts services after errors", () => {
+test("restore verifies the backup, keeps traffic down on failure, migrates, and restarts on success", () => {
   const script = restoreCommands("backup-bucket", "postgres/2026-07-17T10-39-47Z.sql.gz").join("\n");
 
   expect(script).toContain(". /data/context-use/secrets/runtime.env");
   expect(script).toContain("export PGPASSWORD=\"$POSTGRES_PASSWORD\"");
   expect(script).toContain("exec -T -e PGPASSWORD postgres psql");
+  expect(script).toContain("--single-transaction");
   expect(script).toContain("backup fetch 'postgres/2026-07-17T10-39-47Z.sql.gz'");
   expect(script).not.toContain("aws s3 cp");
-  expect(script).toContain("trap 'docker compose");
+  expect(script).toContain("stop caddy dashboard-edge auth-edge private-mcp-edge");
+  expect(script).toContain("trap restore_failed EXIT");
+  expect(script).toContain("up -d postgres aws-credential-broker backup");
+  expect(script).toContain("--profile migration run --rm migrate");
+  expect(script).toContain("up -d --remove-orphans");
   expect(script).not.toContain("POSTGRES_PASSWORD=");
 });
 
@@ -359,51 +361,35 @@ test("deployment health must report the requested release version", () => {
 });
 
 test("legacy configs derive a dedicated public MCP hostname", () => {
-  const { publicMcpHostname: _publicMcpHostname, ...legacy } = deploymentConfig();
-  expect(normalizeDeploymentConfig(legacy)).toMatchObject({
+  const {
+    schemaVersion: _schemaVersion,
+    publicMcpHostname: _publicMcpHostname,
+    legacyStateKmsKeyArn: _legacyStateKmsKeyArn,
+    ...legacy
+  } = deploymentConfig();
+  expect(normalizeDeploymentConfig({
+    ...legacy,
+    schemaVersion: 1,
+    stateKmsKeyArn: "arn:aws:kms:eu-west-2:123456789012:key/state",
+    phase: "deployed",
+    parametersReady: true,
+  })).toMatchObject({
     hostname: "context.example.com",
     publicMcpHostname: "public.context.example.com",
+    legacyStateKmsKeyArn: "arn:aws:kms:eu-west-2:123456789012:key/state",
   });
 });
 
 test("manual public MCP DNS must resolve to the deployment IP", async () => {
-  const config = deploymentConfig({ computeOutputs: {
-    instance_id: "i-test",
-    public_ip: "192.0.2.10",
-    app_url: "https://context.example.com",
-    asset_url: "https://assets.context.example.com",
-    public_mcp_url: "https://public.context.example.com/mcp",
-    cloudwatch_log_group: "test",
-  } });
-  expect(await publicMcpDnsMatches(config, async () => ["192.0.2.10"])).toBe(true);
-  expect(await publicMcpDnsMatches(config, async () => ["192.0.2.11"])).toBe(false);
-  expect(await publicMcpDnsMatches(config, async () => { throw new Error("NXDOMAIN"); })).toBe(false);
-  expect(await publicMcpDnsMatches({ ...config, dnsMode: "route53" }, async () => [])).toBe(true);
-});
-
-test("an interrupted manual-DNS setup pauses once before deployment", () => {
-  expect(shouldPauseForManualDns(deploymentConfig({ phase: "new" }))).toBe(true);
-  expect(shouldPauseForManualDns(deploymentConfig({ phase: "compute_ready" }))).toBe(true);
-  expect(shouldPauseForManualDns(deploymentConfig({ phase: "awaiting_dns" }))).toBe(false);
-  expect(shouldPauseForManualDns(deploymentConfig({ phase: "deployed" }))).toBe(false);
-  expect(shouldPauseForManualDns(deploymentConfig({ phase: "compute_ready", dnsMode: "route53" }))).toBe(false);
-});
-
-test("updates protect only an already deployed release", () => {
-  for (const phase of ["new", "data_ready", "compute_ready", "awaiting_dns", "destroyed", "purged"] as const) {
-    expect(updateProtectsExistingRelease(phase)).toBe(false);
-  }
-  expect(updateProtectsExistingRelease("deployed")).toBe(true);
-});
-
-test("setup can replace only a fully purged deployment record", () => {
-  expect(canReplaceDeploymentConfig(deploymentConfig({ phase: "purged" }))).toBe(true);
-  expect(canReplaceDeploymentConfig(deploymentConfig({ phase: "destroyed" }))).toBe(false);
-  expect(canReplaceDeploymentConfig(deploymentConfig({ phase: "deployed" }))).toBe(false);
+  const config = deploymentConfig();
+  expect(await publicMcpDnsMatches(config, computeOutputs, async () => ["192.0.2.10"])).toBe(true);
+  expect(await publicMcpDnsMatches(config, computeOutputs, async () => ["192.0.2.11"])).toBe(false);
+  expect(await publicMcpDnsMatches(config, computeOutputs, async () => { throw new Error("NXDOMAIN"); })).toBe(false);
+  expect(await publicMcpDnsMatches({ ...config, dnsMode: "route53" }, computeOutputs, async () => [])).toBe(true);
 });
 
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
-  const [userData, deployScript, caddy, compute, update, setup, resume, data, deployCompose] = await Promise.all([
+  const [userData, deployScript, caddy, compute, update, setup, resume, data, deployCompose, backupScript, cliUpdate] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/deploy.sh", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile", import.meta.url)).text(),
@@ -413,6 +399,8 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     Bun.file(new URL("./commands/resume.ts", import.meta.url)).text(),
     Bun.file(new URL("../../../infra/data/main.tf", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/docker-compose.yml", import.meta.url)).text(),
+    Bun.file(new URL("../../../deploy/backup/backup.sh", import.meta.url)).text(),
+    Bun.file(new URL("./cli-update.ts", import.meta.url)).text(),
   ]);
 
   expect(userData.indexOf("install -d -m 0755 /usr/local/lib/docker/cli-plugins")).toBeLessThan(userData.indexOf("docker-compose-linux-"));
@@ -428,6 +416,8 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployScript).toContain("mountpoint -q /data");
   expect(deployScript).toContain("/data/context-use/.volume-id");
   expect(deployScript).not.toContain("AUTH_EDGE_TOKEN");
+  expect(deployScript.indexOf("CONTEXT_USE_RECOVERY_BACKUP_KEY")).toBeLessThan(deployScript.indexOf("up -d --remove-orphans"));
+  expect(deployScript).toContain("psql --single-transaction -v ON_ERROR_STOP=1");
   expect(deployScript.indexOf("up -d --remove-orphans")).toBeLessThan(deployScript.indexOf("up -d --force-recreate --no-deps caddy"));
   expect(caddy).not.toContain("email off");
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
@@ -643,6 +633,13 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(backupService).toContain("AWS_PROFILE: context-use-backup");
   expect(backupService).toContain("backup-aws-credentials:/run/context-use-aws-backup:ro");
   expect(backupService).toContain("networks: [backup_data, backup_egress]");
+  expect(backupService).toContain("SCHEMA_VERSION: 001_baseline.sql");
+  expect(backupService).not.toContain("RETENTION_DAYS");
+  expect(backupScript).toContain("context-use-postgres-v1");
+  expect(backupScript).toContain("sha256sum -c");
+  expect(backupScript).toContain("gzip -t");
+  expect(backupScript.indexOf('aws s3 cp "${metadata}"')).toBeLessThan(backupScript.indexOf('aws s3 cp "${file}"'));
+  expect(backupScript).not.toContain("delete-object");
   expect(deployCompose).toContain("storage-socket-init: { condition: service_completed_successfully }");
   expect(deployCompose).toContain("storage: { condition: service_healthy }");
   expect(caddy).toContain("max_size 5GB");
@@ -666,11 +663,15 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(compute).toContain('data_volume_policy     = file("${path.module}/data-volume-policy.sh")');
   expect(update.indexOf("installCliRelease")).toBeLessThan(update.indexOf("readConfig"));
   expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("run --rm backup once"));
-  expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(4);
-  expect(setup.indexOf("await prepareCompute(config)")).toBeLessThan(setup.indexOf("await storeRuntimeParameters(config)"));
-  expect(setup.indexOf("await prepareCompute(config)")).toBeLessThan(setup.indexOf("await pauseForManualDns(config)"));
-  expect(resume.indexOf("await prepareCompute(config)")).toBeLessThan(resume.indexOf("await storeRuntimeParameters(config)"));
-  expect(resume.indexOf("await prepareCompute(config)")).toBeLessThan(resume.indexOf("await pauseForManualDns(config)"));
+  expect(update.indexOf("retainedDataVolumeExists(config")).toBeLessThan(update.indexOf("await applyData"));
+  expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(1);
+  expect(update).not.toContain("fallback");
+  expect(cliUpdate).not.toContain('"--version"');
+  expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await ensureRuntimeParameters(config, data, compute)"));
+  expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await pauseForManualDns(config, compute)"));
+  expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await ensureRuntimeParameters(config, data, compute)"));
+  expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await pauseForManualDns(config, compute)"));
+  expect(resume.indexOf("retainedDataVolumeExists(config")).toBeLessThan(resume.indexOf("await applyData"));
   expect(data).toContain('ContextUseInitialization = "pending"');
   expect(data).toContain('ignore_changes = [tags["ContextUseInitialization"]]');
   expect(data).not.toContain("aws_s3_bucket_cors_configuration");

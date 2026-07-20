@@ -1,13 +1,20 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { rm } from "node:fs/promises";
 import type { DeploymentConfig } from "./types.ts";
 
 export const configDirectory = resolve(homedir(), ".config/context-use");
 export const cacheDirectory = resolve(homedir(), ".cache/context-use");
 export const configPath = resolve(configDirectory, "config.json");
 
-type StoredDeploymentConfig = Omit<DeploymentConfig, "publicMcpHostname"> & {
+type StoredDeploymentConfig = Omit<DeploymentConfig, "schemaVersion" | "publicMcpHostname"> & {
+  schemaVersion?: 1 | 2;
   publicMcpHostname?: string;
+  stateKmsKeyArn?: string;
+  phase?: string;
+  parametersReady?: boolean;
+  dataOutputs?: unknown;
+  computeOutputs?: unknown;
 };
 
 export function defaultPublicMcpHostname(hostname: string): string {
@@ -15,9 +22,21 @@ export function defaultPublicMcpHostname(hostname: string): string {
 }
 
 export function normalizeDeploymentConfig(config: StoredDeploymentConfig): DeploymentConfig {
+  const {
+    schemaVersion: _schemaVersion,
+    stateKmsKeyArn,
+    phase: _phase,
+    parametersReady: _parametersReady,
+    dataOutputs: _dataOutputs,
+    computeOutputs: _computeOutputs,
+    ...stored
+  } = config;
+  const legacyStateKmsKeyArn = config.legacyStateKmsKeyArn ?? stateKmsKeyArn;
   return {
-    ...config,
+    ...stored,
+    schemaVersion: 2,
     publicMcpHostname: config.publicMcpHostname ?? defaultPublicMcpHostname(config.hostname),
+    ...(legacyStateKmsKeyArn ? { legacyStateKmsKeyArn } : {}),
   };
 }
 
@@ -35,4 +54,8 @@ export async function readConfig(): Promise<DeploymentConfig> {
 
 export async function saveConfig(config: DeploymentConfig): Promise<void> {
   await Bun.write(configPath, `${JSON.stringify(config, null, 2)}\n`, { createPath: true, mode: 0o600 });
+}
+
+export async function deleteConfig(): Promise<void> {
+  await rm(configPath, { force: true });
 }

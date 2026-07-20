@@ -5,6 +5,7 @@ import type { command as backupCmd } from './commands/backup.ts';
 import type { command as destroyCmd } from './commands/destroy.ts';
 import type { command as doctorCmd } from './commands/doctor.ts';
 import type { command as openCmd } from './commands/open.ts';
+import type { command as recoverCmd } from './commands/recover.ts';
 import type { command as restoreCmd } from './commands/restore.ts';
 import type { command as resumeCmd } from './commands/resume.ts';
 import type { command as rootCmd } from './commands/_root.ts';
@@ -28,6 +29,10 @@ declare module '@parshjs/core' {
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
     'open': {
+      parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'recover': {
       parents: {};
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
@@ -83,6 +88,12 @@ export const commandTree: RuntimeNode = {
     'open': {
       segment: { kind: 'literal', value: 'open' },
       command: { path: 'open', load: () => import('./commands/open.ts').then((m) => m.command) },
+      literalChildren: {},
+      paramChild: null,
+    },
+    'recover': {
+      segment: { kind: 'literal', value: 'recover' },
+      command: { path: 'recover', load: () => import('./commands/recover.ts').then((m) => m.command) },
       literalChildren: {},
       paramChild: null,
     },
