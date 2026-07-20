@@ -424,6 +424,10 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployScript).toContain("psql --single-transaction -v ON_ERROR_STOP=1");
   expect(deployScript.indexOf("up -d --remove-orphans")).toBeLessThan(deployScript.indexOf("up -d --force-recreate --no-deps caddy"));
   expect(caddy).not.toContain("email off");
+  expect(caddy).toContain("protocols h1 h2");
+  expect(caddy).not.toContain("protocols h1 h2 h3");
+  expect(deployCompose).not.toContain('"443:443/udp"');
+  expect(compute).not.toContain('description = "HTTP3"');
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
   expect(caddy).toContain("handle /api/mcp/assets/*/content");
   expect(caddy).toContain("handle /content.css");
@@ -636,6 +640,16 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(compute).toContain("s3:GetBucketPublicAccessBlock");
   expect(compute).toContain('resource "aws_iam_role" "storage"');
   expect(compute).toContain('resource "aws_iam_role" "backup"');
+  const backupPolicy = compute.slice(
+    compute.indexOf('resource "aws_iam_role_policy" "backup"'),
+    compute.indexOf('resource "aws_iam_role_policy" "data"'),
+  );
+  expect(backupPolicy).toContain("s3:GetObject");
+  expect(backupPolicy).toContain("s3:PutObject");
+  expect(backupPolicy).toContain("s3:AbortMultipartUpload");
+  expect(backupPolicy).not.toContain("s3:DeleteObject");
+  expect(backupPolicy).not.toContain("s3:ListBucket");
+  expect(backupPolicy).not.toContain("s3:GetObjectVersion");
   expect(compute).toContain('Action = ["sts:AssumeRole"]');
   const instancePolicy = compute.slice(
     compute.indexOf('resource "aws_iam_role_policy" "data"'),

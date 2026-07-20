@@ -1,7 +1,7 @@
 {
 	admin off
 	servers {
-		protocols h1 h2 h3
+		protocols h1 h2
 	}
 }
 
