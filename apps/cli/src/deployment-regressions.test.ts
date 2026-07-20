@@ -1,6 +1,18 @@
 import { expect, test } from "bun:test";
+import { fileURLToPath } from "node:url";
 import { strictSsmCommands, waitForSsmInvocation } from "./aws.ts";
-import { deploymentCommands, healthMatchesVersion, publicMcpDnsMatches, remoteSecurityCommands } from "./deploy.ts";
+import {
+  computeBootstrapCommands,
+  deploymentCommands,
+  healthMatchesVersion,
+  publicMcpDnsMatches,
+  remoteSecurityCommands,
+} from "./deploy.ts";
+import {
+  DATA_VOLUME_INITIALIZATION_TAG,
+  dataVolumeInitializationAuthorized,
+  markDataVolumeInitialized,
+} from "./data-volume.ts";
 import { restoreCommands } from "./commands/restore.ts";
 import { normalizeDeploymentConfig } from "./paths.ts";
 import { redactSensitiveText } from "./process.ts";
@@ -112,17 +124,133 @@ test("SSM polling returns terminal failures and bounds the wait", async () => {
     .rejects.toThrow("within one hour");
 });
 
-test("deployment waits for cloud-init and always removes its temporary script", () => {
+test("deployment diagnoses cloud-init separately and always removes its temporary script", () => {
+  expect(strictSsmCommands(computeBootstrapCommands())).toEqual([
+    "set -euo pipefail",
+    "if cloud-init status --wait; then exit 0; fi",
+    "cloud-init status --long || true",
+    "tail -n 100 /var/log/cloud-init-output.log >&2 || true",
+    "exit 1",
+  ]);
+
   const commands = strictSsmCommands(deploymentCommands(deploymentConfig(), manifest, "#!/bin/sh\nexit 0\n"));
 
   expect(commands.slice(0, 4)).toEqual([
     "set -euo pipefail",
     "trap 'rm -f /tmp/context-use-deploy.sh' EXIT",
-    "cloud-init status --wait",
     expect.stringContaining("base64 -d"),
+    "chmod 0700 /tmp/context-use-deploy.sh",
   ]);
   expect(commands.at(-1)).toContain("arn:aws:iam::123456789012:role/context-use-abcdef123456-production-storage");
   expect(commands.at(-1)).toContain("arn:aws:iam::123456789012:role/context-use-abcdef123456-production-backup");
+});
+
+function dataReadyConfig(overrides: Partial<DeploymentConfig> = {}): DeploymentConfig {
+  return deploymentConfig({
+    phase: "data_ready",
+    dataOutputs: {
+      kms_key_arn: "arn:aws:kms:eu-west-2:123456789012:key/data",
+      kms_key_id: "data-key",
+      data_volume_id: "vol-0123456789abcdef0",
+      asset_bucket: "assets",
+      backup_bucket: "backups",
+    },
+    ...overrides,
+  });
+}
+
+function describedVolume(initialization: string | null = "pending") {
+  return {
+    VolumeId: "vol-0123456789abcdef0",
+    AvailabilityZone: "eu-west-2a",
+    Encrypted: true,
+    KmsKeyId: "arn:aws:kms:eu-west-2:123456789012:key/data",
+    SnapshotId: "",
+    Tags: [
+      { Key: "Project", Value: "context-use" },
+      { Key: "Environment", Value: "production" },
+      { Key: "Installation", Value: "abcdef123456" },
+      { Key: "ManagedBy", Value: "context-use-cli" },
+      ...(initialization === null ? [] : [{ Key: DATA_VOLUME_INITIALIZATION_TAG, Value: initialization }]),
+    ],
+  };
+}
+
+test("only a Terraform-tagged fresh data volume receives initialization authorization", async () => {
+  const config = dataReadyConfig();
+  expect(await dataVolumeInitializationAuthorized(config, async () => describedVolume())).toBe(true);
+  expect(await dataVolumeInitializationAuthorized(config, async () => describedVolume("complete"))).toBe(false);
+  expect(await dataVolumeInitializationAuthorized(config, async () => describedVolume(null))).toBe(false);
+  expect(await dataVolumeInitializationAuthorized({ ...config, phase: "destroyed" }, async () => describedVolume())).toBe(false);
+  expect(await dataVolumeInitializationAuthorized({ ...config, parametersReady: true }, async () => describedVolume())).toBe(false);
+  expect(await dataVolumeInitializationAuthorized({
+    ...config,
+    computeOutputs: {
+      instance_id: "i-existing",
+      public_ip: "192.0.2.10",
+      app_url: "https://context.example.com",
+      asset_url: "https://assets.context.example.com",
+      public_mcp_url: "https://public.context.example.com/mcp",
+      cloudwatch_log_group: "test",
+    },
+  }, async () => describedVolume())).toBe(false);
+
+  await expect(dataVolumeInitializationAuthorized(config, async () => ({
+    ...describedVolume(),
+    SnapshotId: "snap-existing-data",
+  }))).rejects.toThrow("identity or provenance is unexpected");
+  await expect(dataVolumeInitializationAuthorized(config, async () => ({
+    ...describedVolume(),
+    KmsKeyId: "arn:aws:kms:eu-west-2:123456789012:key/other",
+  }))).rejects.toThrow("identity or provenance is unexpected");
+  await expect(dataVolumeInitializationAuthorized(config, async () => ({
+    ...describedVolume(),
+    Tags: describedVolume().Tags.map((tag) => tag.Key === "Installation" ? { ...tag, Value: "other-installation" } : tag),
+  }))).rejects.toThrow("identity or provenance is unexpected");
+});
+
+test("successful bootstrap consumes the durable AWS initialization authorization", async () => {
+  const config = dataReadyConfig();
+  let command: string[] = [];
+  await markDataVolumeInitialized(config, async () => describedVolume(), async (observed) => {
+    command = observed;
+    return "";
+  });
+  expect(command).toContain("create-tags");
+  expect(command).toContain(`Key=${DATA_VOLUME_INITIALIZATION_TAG},Value=complete`);
+
+  let called = false;
+  await markDataVolumeInitialized(config, async () => describedVolume("complete"), async () => {
+    called = true;
+    return "";
+  });
+  expect(called).toBe(false);
+});
+
+async function dataVolumePolicyAction(filesystem: string, authorized: boolean, recorded: boolean): Promise<string> {
+  const policy = fileURLToPath(new URL("../../../infra/compute/data-volume-policy.sh", import.meta.url));
+  const process = Bun.spawn([
+    "bash", "-c",
+    'source "$1"; context_use_data_volume_action "$2" "$3" "$4"',
+    "context-use-volume-policy",
+    policy,
+    filesystem,
+    String(authorized),
+    String(recorded),
+  ], { stdout: "pipe", stderr: "pipe" });
+  const output = await new Response(process.stdout).text();
+  const error = await new Response(process.stderr).text();
+  const status = await process.exited;
+  if (status !== 0) throw new Error(error || `Volume policy exited ${status}`);
+  return output.trim();
+}
+
+test("data-volume policy initializes only a first-install volume and fails closed otherwise", async () => {
+  expect(await dataVolumePolicyAction("", true, false)).toBe("initialize");
+  expect(await dataVolumePolicyAction("xfs", false, false)).toBe("use-existing");
+  expect(await dataVolumePolicyAction("", false, false)).toBe("reject-uninitialized");
+  expect(await dataVolumePolicyAction("", true, true)).toBe("reject-reinitialization");
+  expect(await dataVolumePolicyAction("ext4", true, false)).toBe("reject-filesystem");
 });
 
 test("remote verification avoids shell-quoting SQL and passes the database password through the environment", () => {
@@ -219,19 +347,27 @@ test("setup can replace only a fully purged deployment record", () => {
 });
 
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
-  const [userData, deployScript, caddy, compute, update, data, deployCompose] = await Promise.all([
+  const [userData, deployScript, caddy, compute, update, setup, resume, data, deployCompose] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/deploy.sh", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile", import.meta.url)).text(),
     Bun.file(new URL("../../../infra/compute/main.tf", import.meta.url)).text(),
     Bun.file(new URL("./commands/update.ts", import.meta.url)).text(),
+    Bun.file(new URL("./setup.ts", import.meta.url)).text(),
+    Bun.file(new URL("./commands/resume.ts", import.meta.url)).text(),
     Bun.file(new URL("../../../infra/data/main.tf", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/docker-compose.yml", import.meta.url)).text(),
   ]);
 
   expect(userData.indexOf("install -d -m 0755 /usr/local/lib/docker/cli-plugins")).toBeLessThan(userData.indexOf("docker-compose-linux-"));
-  expect(userData).toContain("Refusing to format non-blank retained data volume");
-  expect(userData).toContain("cmp -n 16777216");
+  expect(userData).toContain("context_use_data_volume_action");
+  expect(userData).toContain("Refusing to initialize the retained data volume without explicit first-install authorization");
+  expect(userData).toContain("Refusing to reinitialize the retained data volume after one-time initialization was consumed");
+  expect(userData).toContain("Refusing to adopt an unmarked retained data volume");
+  expect(userData).toContain("Data-volume initialization record belongs to another volume");
+  expect(userData).not.toContain("cmp -n");
+  expect(userData).not.toContain("/dev/zero");
+  expect(userData).not.toContain("/dev/xvdf");
   expect(userData).not.toContain("if ! blkid");
   expect(deployScript).toContain("mountpoint -q /data");
   expect(deployScript).toContain("/data/context-use/.volume-id");
@@ -455,8 +591,15 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(compute).toContain("http_put_response_hop_limit = 1");
   expect(compute).not.toContain("http_put_response_hop_limit = 2");
   expect(compute).toContain('resource "aws_route53_record" "public_mcp"');
+  expect(compute).toContain('data_volume_policy     = file("${path.module}/data-volume-policy.sh")');
   expect(update.indexOf("installCliRelease")).toBeLessThan(update.indexOf("readConfig"));
   expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("run --rm backup once"));
   expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(4);
+  expect(setup.indexOf("await prepareCompute(config)")).toBeLessThan(setup.indexOf("await storeRuntimeParameters(config)"));
+  expect(setup.indexOf("await prepareCompute(config)")).toBeLessThan(setup.indexOf("await pauseForManualDns(config)"));
+  expect(resume.indexOf("await prepareCompute(config)")).toBeLessThan(resume.indexOf("await storeRuntimeParameters(config)"));
+  expect(resume.indexOf("await prepareCompute(config)")).toBeLessThan(resume.indexOf("await pauseForManualDns(config)"));
+  expect(data).toContain('ContextUseInitialization = "pending"');
+  expect(data).toContain('ignore_changes = [tags["ContextUseInitialization"]]');
   expect(data).not.toContain("aws_s3_bucket_cors_configuration");
 });

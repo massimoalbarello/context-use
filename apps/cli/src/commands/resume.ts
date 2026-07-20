@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { bootstrapStateBucket, configureStateBucketKms, createStateKmsKey } from "../aws.ts";
-import { deploy } from "../deploy.ts";
+import { deploy, prepareCompute } from "../deploy.ts";
 import { readConfig, saveConfig } from "../paths.ts";
 import { deploymentRoot, releaseManifest } from "../release.ts";
 import { ownerSetupUrl, pauseForManualDns, storeRuntimeParameters } from "../setup.ts";
@@ -29,6 +29,7 @@ export const command = defineCommand("resume", {
       config.phase = "compute_ready";
       await saveConfig(config);
     }
+    await prepareCompute(config);
     if (!config.parametersReady) {
       await storeRuntimeParameters(config);
     }

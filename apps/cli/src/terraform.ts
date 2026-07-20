@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { awsArgs } from "./aws.ts";
+import { dataVolumeInitializationAuthorized } from "./data-volume.ts";
 import type { DeploymentConfig } from "./types.ts";
 import { run, type RunOptions } from "./process.ts";
 import type { ReleaseManifest } from "./types.ts";
@@ -87,6 +88,7 @@ export async function applyCompute(root: string, config: DeploymentConfig): Prom
   console.log("Applying single-instance compute infrastructure…");
   await init(directory, config, stateKey(config, "compute"), env);
   const publicMcpArgs = await publicMcpHostnameArgs(directory, config);
+  const initializeDataVolume = await dataVolumeInitializationAuthorized(config);
   await run(["terraform", "apply", "-input=false", "-auto-approve",
     `-var=aws_region=${config.awsRegion}`,
     `-var=availability_zone=${config.availabilityZone}`,
@@ -98,6 +100,7 @@ export async function applyCompute(root: string, config: DeploymentConfig): Prom
     ...publicMcpArgs,
     `-var=route53_zone_id=${config.route53ZoneId}`,
     `-var=data_volume_id=${config.dataOutputs.data_volume_id}`,
+    `-var=initialize_data_volume=${initializeDataVolume}`,
     `-var=kms_key_arn=${config.dataOutputs.kms_key_arn}`,
     `-var=asset_bucket=${config.dataOutputs.asset_bucket}`,
     `-var=backup_bucket=${config.dataOutputs.backup_bucket}`,

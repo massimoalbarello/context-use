@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts";
 import { createHash } from "node:crypto";
 import { accountId, bootstrapStateBucket, configureStateBucketKms, createStateKmsKey, generateSecret, getSecureParameter, putSecureParameter } from "./aws.ts";
-import { deploy } from "./deploy.ts";
+import { deploy, prepareCompute } from "./deploy.ts";
 import { configPath, defaultPublicMcpHostname, readConfig, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
 import { deploymentRoot, releaseManifest } from "./release.ts";
@@ -142,6 +142,7 @@ export async function setup(): Promise<void> {
   config.phase = "data_ready"; await saveConfig(config);
   config.computeOutputs = await applyCompute(root, config);
   config.phase = "compute_ready"; await saveConfig(config);
+  await prepareCompute(config);
   await storeRuntimeParameters(config);
   if (await pauseForManualDns(config)) return;
   await deploy(config, manifest);
