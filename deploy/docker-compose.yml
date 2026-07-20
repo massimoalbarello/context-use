@@ -4,7 +4,7 @@ x-locked-service: &locked-service
   image: ${APP_IMAGE}
   restart: unless-stopped
   read_only: true
-  tmpfs: [/tmp:size=32m,mode=1777]
+  tmpfs: ["/tmp:size=32m,mode=1777"]
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
   pids_limit: 128
@@ -329,7 +329,7 @@ services:
       - storage-aws-credentials:/run/context-use-aws-storage
       - backup-aws-credentials:/run/context-use-aws-backup
     read_only: true
-    tmpfs: [/tmp:size=8m,mode=1777]
+    tmpfs: ["/tmp:size=8m,mode=1777"]
     cap_drop: [ALL]
     cap_add: [CHOWN]
     security_opt: [no-new-privileges:true]
@@ -376,7 +376,7 @@ services:
       - storage-aws-credentials:/run/context-use-aws-storage:ro
     networks: [storage_data, storage_egress]
     read_only: true
-    tmpfs: [/tmp:size=32m,mode=1777]
+    tmpfs: ["/tmp:size=32m,mode=1777"]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     pids_limit: 128
