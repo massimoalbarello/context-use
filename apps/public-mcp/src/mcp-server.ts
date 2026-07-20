@@ -72,7 +72,7 @@ export function createPublicMcpServer(
   messages: PublicMessageWriter,
   publicSiteOrigin: string,
 ): McpServer {
-  const server = new McpServer({ name: "context-use-public", version: "0.1.25" }, {
+  const server = new McpServer({ name: "context-use-public", version: "0.1.26" }, {
     instructions: "Anonymous access to the owner's public pages. Call get_about_page first for the About page and complete hierarchical index, then get_public_page or search_public_pages as needed. The send_message tool can deliver confidential outreach to the owner, but messages can never be read through this server.",
   });
 
