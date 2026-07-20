@@ -1,7 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { resolve } from "node:path";
 import { cacheDirectory } from "./paths.ts";
-import { redactSensitiveText, run } from "./process.ts";
+import { redactSensitiveText, run, type RunOptions } from "./process.ts";
+
+type CommandRunner = (command: string[], options?: RunOptions) => Promise<string>;
 
 export function awsArgs(profile: string, region: string, args: string[]): string[] {
   return ["aws", "--profile", profile, "--region", region, ...args];
@@ -18,22 +20,28 @@ export async function accountId(profile: string, region: string): Promise<string
   return identity.Account;
 }
 
-export async function bootstrapStateBucket(profile: string, region: string, bucket: string): Promise<void> {
+export async function bootstrapStateBucket(
+  profile: string,
+  region: string,
+  bucket: string,
+  execute: CommandRunner = run,
+): Promise<void> {
   let exists = true;
   try {
-    await run(awsArgs(profile, region, ["s3api", "head-bucket", "--bucket", bucket]), { quiet: true });
+    await execute(awsArgs(profile, region, ["s3api", "head-bucket", "--bucket", bucket]), { quiet: true });
   } catch {
     exists = false;
   }
   if (!exists && process.env.CONTEXT_USE_DRY_RUN !== "1") {
     const create = ["s3api", "create-bucket", "--bucket", bucket];
     if (region !== "us-east-1") create.push("--create-bucket-configuration", `LocationConstraint=${region}`);
-    await run(awsArgs(profile, region, create), { quiet: true });
+    await execute(awsArgs(profile, region, create), { quiet: true });
+    await execute(awsArgs(profile, region, ["s3api", "wait", "bucket-exists", "--bucket", bucket]), { quiet: true });
   }
-  await run(awsArgs(profile, region, ["s3api", "put-public-access-block", "--bucket", bucket, "--public-access-block-configuration", "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"]), { quiet: true });
-  await run(awsArgs(profile, region, ["s3api", "put-bucket-versioning", "--bucket", bucket, "--versioning-configuration", "Status=Enabled"]), { quiet: true });
+  await execute(awsArgs(profile, region, ["s3api", "put-public-access-block", "--bucket", bucket, "--public-access-block-configuration", "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"]), { quiet: true });
+  await execute(awsArgs(profile, region, ["s3api", "put-bucket-versioning", "--bucket", bucket, "--versioning-configuration", "Status=Enabled"]), { quiet: true });
   if (!exists) {
-    await run(awsArgs(profile, region, ["s3api", "put-bucket-encryption", "--bucket", bucket, "--server-side-encryption-configuration", '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"},"BucketKeyEnabled":true}]}']), { quiet: true });
+    await execute(awsArgs(profile, region, ["s3api", "put-bucket-encryption", "--bucket", bucket, "--server-side-encryption-configuration", '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"},"BucketKeyEnabled":true}]}']), { quiet: true });
   }
 }
 

@@ -6,6 +6,7 @@ import { run, type RunOptions } from "./process.ts";
 import type { ReleaseManifest } from "./types.ts";
 
 type CommandRunner = (command: string[], options?: RunOptions) => Promise<string>;
+type Pause = () => Promise<void>;
 
 type ProcessCredentials = {
   AccessKeyId?: string;
@@ -57,8 +58,31 @@ export async function terraformEnvironment(config: DeploymentConfig, execute: Co
   };
 }
 
-async function init(directory: string, config: DeploymentConfig, key: string, env: Record<string, string>): Promise<void> {
-  await run(["terraform", "init", "-input=false", "-reconfigure", ...backendArgs(config, key)], { cwd: directory, env, quiet: true });
+function stateBucketIsPropagating(error: unknown): boolean {
+  const detail = error instanceof Error ? error.message : String(error);
+  return /S3 bucket ["'][^"']+["'] does not exist/i.test(detail) || /\bNoSuchBucket\b/i.test(detail);
+}
+
+export async function initializeTerraformBackend(
+  directory: string,
+  config: DeploymentConfig,
+  key: string,
+  env: Record<string, string>,
+  execute: CommandRunner = run,
+  pause: Pause = () => Bun.sleep(5_000),
+  maxAttempts = 13,
+): Promise<void> {
+  const command = ["terraform", "init", "-input=false", "-reconfigure", ...backendArgs(config, key)];
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      await execute(command, { cwd: directory, env, quiet: true });
+      return;
+    } catch (error) {
+      if (!stateBucketIsPropagating(error) || attempt === maxAttempts - 1) throw error;
+      if (attempt === 0) console.log("Terraform state bucket is still propagating; retrying…");
+      await pause();
+    }
+  }
 }
 
 function stateKey(config: DeploymentConfig, component: string): string {
@@ -69,7 +93,7 @@ export async function applyData(root: string, config: DeploymentConfig): Promise
   const directory = resolve(root, "infra/data");
   const env = await terraformEnvironment(config);
   console.log("Applying retained, encrypted data infrastructure…");
-  await init(directory, config, stateKey(config, "data"), env);
+  await initializeTerraformBackend(directory, config, stateKey(config, "data"), env);
   await run(["terraform", "apply", "-input=false", "-auto-approve",
     `-var=aws_region=${config.awsRegion}`,
     `-var=availability_zone=${config.availabilityZone}`,
@@ -86,7 +110,7 @@ export async function applyCompute(root: string, config: DeploymentConfig): Prom
   const directory = resolve(root, "infra/compute");
   const env = await terraformEnvironment(config);
   console.log("Applying single-instance compute infrastructure…");
-  await init(directory, config, stateKey(config, "compute"), env);
+  await initializeTerraformBackend(directory, config, stateKey(config, "compute"), env);
   const publicMcpArgs = await publicMcpHostnameArgs(directory, config);
   const initializeDataVolume = await dataVolumeInitializationAuthorized(config);
   await run(["terraform", "apply", "-input=false", "-auto-approve",
@@ -112,7 +136,7 @@ export async function applyCompute(root: string, config: DeploymentConfig): Prom
 export async function currentComputeOutputs(root: string, config: DeploymentConfig): Promise<NonNullable<DeploymentConfig["computeOutputs"]>> {
   const directory = resolve(root, "infra/compute");
   const env = await terraformEnvironment(config);
-  await init(directory, config, stateKey(config, "compute"), env);
+  await initializeTerraformBackend(directory, config, stateKey(config, "compute"), env);
   const outputs = await terraformOutputs<NonNullable<DeploymentConfig["computeOutputs"]>>(directory, env);
   if (!outputs.instance_id) throw new Error("Terraform state has no active compute deployment");
   return outputs;
@@ -121,7 +145,7 @@ export async function currentComputeOutputs(root: string, config: DeploymentConf
 export async function destroyCompute(root: string, config: DeploymentConfig): Promise<void> {
   const directory = resolve(root, "infra/compute");
   const env = await terraformEnvironment(config);
-  await init(directory, config, stateKey(config, "compute"), env);
+  await initializeTerraformBackend(directory, config, stateKey(config, "compute"), env);
   const publicMcpArgs = await publicMcpHostnameArgs(directory, config);
   await run(["terraform", "destroy", "-input=false", "-auto-approve",
     `-var=aws_region=${config.awsRegion}`, `-var=availability_zone=${config.availabilityZone}`,
@@ -145,7 +169,7 @@ export async function destroyData(root: string, config: DeploymentConfig): Promi
   if (!config.dataOutputs) throw new Error("Data infrastructure outputs are missing");
   const directory = resolve(root, "infra/data");
   const env = await terraformEnvironment(config);
-  await init(directory, config, stateKey(config, "data"), env);
+  await initializeTerraformBackend(directory, config, stateKey(config, "data"), env);
   await run(["terraform", "destroy", "-input=false", "-auto-approve",
     `-var=aws_region=${config.awsRegion}`, `-var=availability_zone=${config.availabilityZone}`,
     `-var=environment=${config.environment}`, `-var=installation_id=${config.installationId}`,
