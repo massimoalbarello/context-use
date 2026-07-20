@@ -59,10 +59,19 @@ export type ConnectedClient = {
   client_id: string;
   name: string | null;
   uri: string | null;
+  version: string | null;
   scopes: string[];
   created_at: string;
   approved_at: string;
   last_used_at: string | null;
+};
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
 };
 
 export type InboundMessage = {
