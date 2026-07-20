@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { PublicMessageWriter, PublicPageReader } from "./mcp-server.ts";
+import type { PublicPageReader } from "./mcp-server.ts";
 import { createPublicMcpRequestHandler } from "./handler.ts";
 
 const reader: PublicPageReader = {
@@ -7,11 +7,8 @@ const reader: PublicPageReader = {
   async getPage() { return null; },
   async searchPages() { return []; },
 };
-const messages: PublicMessageWriter = {
-  async create() { return { id: crypto.randomUUID() }; },
-};
 const endpoint = new URL("https://public.context.example.com/mcp");
-const handler = createPublicMcpRequestHandler(reader, messages, endpoint, "https://context.example.com");
+const handler = createPublicMcpRequestHandler(reader, endpoint, "https://context.example.com");
 
 function request(init: RequestInit = {}, path = "/mcp"): Request {
   return new Request(`https://public.context.example.com${path}`, {

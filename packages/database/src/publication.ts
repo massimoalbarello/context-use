@@ -1,20 +1,6 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { PublicationIntentInput } from "@context-use/shared";
-
-function canonicalPayload(input: PublicationIntentInput, publicPath: string | null): string {
-  return JSON.stringify({
-    action: input.action,
-    target_kind: input.target_kind,
-    target_id: input.target_id,
-    version_id: input.version_id ?? null,
-    public_path: publicPath,
-  });
-}
-
-export function hashPublicationPayload(input: PublicationIntentInput, publicPath: string | null): string {
-  return createHash("sha256").update(canonicalPayload(input, publicPath)).digest("hex");
-}
 
 export class PublicationRepository {
   constructor(private readonly dashboardPool: Pool) {}
@@ -28,25 +14,15 @@ export class PublicationRepository {
     const result = await this.dashboardPool.query(
       `INSERT INTO publication_intents(
         id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-        session_id,payload_hash,expires_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now()+interval '5 minutes')
+        session_id,expires_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now()+interval '5 minutes')
       RETURNING id,action,target_kind,target_id,version_id,public_path,expires_at`,
       [id, input.action, input.target_kind, input.target_id, input.version_id ?? null,
-        publicPath, principal.ownerUserId, principal.sessionId,
-        hashPublicationPayload(input, publicPath)],
+        publicPath, principal.ownerUserId, principal.sessionId],
     );
     return result.rows[0];
   }
 
-  async getIntent(id: string) {
-    const result = await this.dashboardPool.query(
-      `SELECT id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-        session_id,challenge,payload_hash,expires_at,consumed_at
-       FROM publication_intents WHERE id=$1`,
-      [id],
-    );
-    return result.rows[0] ?? null;
-  }
 }
 
 export class PublicRepository {

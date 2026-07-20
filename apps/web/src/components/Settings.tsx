@@ -71,7 +71,7 @@ export function Settings({ passkeys }: { passkeys: PasskeySummary[] }) {
     {exportIntent && <ActionDialog
       eyebrow="Private knowledge export"
       title="Download your knowledge base?"
-      description="The ZIP contains every active private and public page and asset. It will be unencrypted on this computer. A fresh owner-passkey verification is required, and this authorization can be downloaded only once from this dashboard session."
+      description="The ZIP contains all private and public knowledge that is current when the download starts. It will be unencrypted on this computer. A fresh owner-passkey verification is required, and this authorization can be used only once from this dashboard session."
       confirmLabel="Verify passkey and download"
       workingLabel="Waiting for passkey…"
       working={exportWorking}
@@ -80,9 +80,9 @@ export function Settings({ passkeys }: { passkeys: PasskeySummary[] }) {
       onConfirm={() => void downloadExport()}
     >
       <dl className="action-dialog-details">
-        <div><dt>Pages</dt><dd>{exportIntent.summary.page_count}</dd></div>
-        <div><dt>Assets</dt><dd>{exportIntent.summary.asset_count}</dd></div>
-        <div><dt>Uncompressed size</dt><dd>about {formatExportBytes(exportIntent.summary.total_bytes)}</dd></div>
+        <div><dt>Current pages</dt><dd>about {exportIntent.summary.page_count}</dd></div>
+        <div><dt>Current assets</dt><dd>about {exportIntent.summary.asset_count}</dd></div>
+        <div><dt>Current size</dt><dd>about {formatExportBytes(exportIntent.summary.total_bytes)}</dd></div>
       </dl>
     </ActionDialog>}
   </main>;

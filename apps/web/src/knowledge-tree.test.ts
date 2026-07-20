@@ -19,7 +19,6 @@ function page(id: string, currentPath: string, title: string): Page {
     current_version_id: `version-${id}`,
     published_version_id: null,
     public_path: null,
-    required_public_path: null,
     automation_id: null,
     archived_at: null,
     version_number: 1,
@@ -37,7 +36,6 @@ function asset(id: string, currentPath: string, filename: string): Asset {
     content_type: "image/jpeg",
     size_bytes: 123,
     content_hash: "a".repeat(64),
-    published_at: null,
     created_at: "2026-01-01T00:00:00.000Z",
   };
 }

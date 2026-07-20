@@ -108,7 +108,7 @@ export const confirmationApp = new Elysia()
     if (!intent || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
       return problem("Publication intent not found", 404, "not_found");
     }
-    if (!intent.challenge || intent.consumed_at || new Date(intent.expires_at).getTime()<=Date.now()) {
+    if (!intent.challenge || new Date(intent.expires_at).getTime()<=Date.now()) {
       return problem("Publication intent is inactive", 409, "intent_inactive");
     }
     const verified = await verifiedPasskey(input.confirmation.response, intent.challenge);

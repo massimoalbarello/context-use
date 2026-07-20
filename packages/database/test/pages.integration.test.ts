@@ -38,6 +38,11 @@ describeDatabase("immutable page history", () => {
       commit_message: "Rename and update", expected_version_number: 1,
     }, actor);
     expect(updated?.version_number).toBe(2);
+    await expect(pool.query(
+      "UPDATE knowledge_pages SET current_path=$2 WHERE id=$1",
+      [created.id, `tests/${suffix}/divergent-cache`],
+    )).rejects.toThrow();
+    expect((await pages.get(created.id))?.current_path).toBe(`tests/${suffix}/renamed`);
     await expect(pages.update(created.id, {
       path: `tests/${suffix}/stale`, title: "Stale", body_markdown: "Stale",
       commit_message: "Stale update", expected_version_number: 1,

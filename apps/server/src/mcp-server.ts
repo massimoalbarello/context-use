@@ -36,7 +36,7 @@ const jsonContent = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
 
-export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Store information whose subject is the owner under about/, beginning with about/intro. Keep other entities such as people, companies, and events in separate top-level folders outside about/.";
+export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Store information whose subject is the owner under about/; create about/intro if it is missing so it can become the concise public introduction. Keep it private by default and ask the owner to review and publish it if they want the landing page to introduce them, because agents cannot publish. Keep other entities such as people, companies, and events in separate top-level folders outside about/.";
 
 export function createMcpServer(
   context: McpContext,

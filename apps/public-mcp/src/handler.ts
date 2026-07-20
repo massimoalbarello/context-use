@@ -1,4 +1,4 @@
-import type { PublicMessageWriter, PublicPageReader } from "./mcp-server.ts";
+import type { PublicPageReader } from "./mcp-server.ts";
 import { createPublicMcpServer } from "./mcp-server.ts";
 import { createPublicMcpTransport } from "./transport.ts";
 
@@ -14,7 +14,6 @@ function response(body: BodyInit | null, status: number, headers: HeadersInit = 
 
 export function createPublicMcpRequestHandler(
   reader: PublicPageReader,
-  messages: PublicMessageWriter,
   endpoint: URL,
   publicSiteOrigin: string,
 ) {
@@ -29,7 +28,7 @@ export function createPublicMcpRequestHandler(
     if (origin && origin !== endpoint.origin) return response("Untrusted origin", 403);
 
     const transport = createPublicMcpTransport();
-    const server = createPublicMcpServer(reader, messages, publicSiteOrigin);
+    const server = createPublicMcpServer(reader, publicSiteOrigin);
     try {
       await server.connect(transport);
       const handled = await transport.handleRequest(request);

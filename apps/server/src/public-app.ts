@@ -53,6 +53,14 @@ export const publicApp = new Elysia()
     const matchesAppOrigin = requestMatchesOrigin(request, config.APP_ORIGIN);
     if (matchesAssetOrigin && !matchesAppOrigin) return publicAssetContent(request, publicPath);
     const page = await publicData.pageByPublicPath(publicPath);
+    if (!page && matchesAppOrigin && publicPath === "about/intro") {
+      return new Response(renderPublicPageDocument(
+        "Nothing published yet",
+        "<p>The owner has not published an introduction yet. Please check back later.</p>",
+      ), {
+        headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
+      });
+    }
     if (!page && matchesAssetOrigin) return publicAssetContent(request, publicPath);
     if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
     // The database projection has already removed every private identifier and

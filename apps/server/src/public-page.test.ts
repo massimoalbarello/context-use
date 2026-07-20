@@ -33,11 +33,10 @@ describe("public page presentation", () => {
 
     expect(html).toContain("A public billboard<br>for people and agents");
     expect(html).toContain("what I choose to share");
-    expect(html).toContain('href="/p/about"');
+    expect(html).toContain('href="/p/about/intro"');
     expect(html).toContain("Explore my knowledge base");
-    expect(html).toContain("send_message");
-    expect(html).not.toContain("send_message_to_owner");
-    expect(html).toContain("It lands in my private inbox");
+    expect(html).not.toContain("send_message");
+    expect(html).not.toContain("private inbox");
     expect(html).toContain("https://agents.example.net/custom-mcp?label=a&amp;b=&quot;quoted&quot;");
   });
 

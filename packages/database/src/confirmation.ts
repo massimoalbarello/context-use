@@ -40,9 +40,12 @@ export class ConfirmationRepository {
 
   async publicationIntent(id: string) {
     const result = await this.pool.query(
-      `SELECT id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-        session_id,challenge,payload_hash,expires_at,consumed_at
-       FROM publication_intents WHERE id=$1`,
+      `SELECT intent.id,intent.action,intent.target_kind,intent.target_id,intent.version_id,
+        intent.public_path,intent.owner_user_id,intent.session_id,ledger.challenge,intent.expires_at
+       FROM publication_intents intent
+       LEFT JOIN confirmation_challenges ledger
+         ON ledger.intent_kind='publication' AND ledger.intent_id=intent.id
+       WHERE intent.id=$1`,
       [id],
     );
     return result.rows[0] ?? null;
@@ -50,9 +53,12 @@ export class ConfirmationRepository {
 
   async exportIntent(id: string) {
     const result = await this.pool.query(
-      `SELECT id,owner_user_id,session_id,challenge,expires_at,confirmed_at,
-        credential_id,download_started_at
-       FROM knowledge_export_intents WHERE id=$1`,
+      `SELECT intent.id,intent.owner_user_id,intent.session_id,ledger.challenge,
+        intent.expires_at,intent.confirmed_at,intent.download_started_at
+       FROM knowledge_export_intents intent
+       LEFT JOIN confirmation_challenges ledger
+         ON ledger.intent_kind='knowledge_export' AND ledger.intent_id=intent.id
+       WHERE intent.id=$1`,
       [id],
     );
     return result.rows[0] ?? null;

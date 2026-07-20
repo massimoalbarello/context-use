@@ -8,7 +8,7 @@ export function PublicationDialog({ page, versionNumber, publishedVersionNumber,
   versionNumber: number;
   publishedVersionNumber: number | undefined;
   onClose: () => void;
-  onChanged: (action: "publish" | "republish") => void | Promise<void>;
+  onChanged: (action: "publish") => void | Promise<void>;
 }) {
   const [preview, setPreview] = useState<PublicationPreview | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -23,21 +23,20 @@ export function PublicationDialog({ page, versionNumber, publishedVersionNumber,
   }, [page.id, versionNumber]);
 
   const targetIsLatest = page.version_number === versionNumber;
-  const requiredPath = page.required_public_path;
   const canPublish = Boolean(preview);
 
-  const changeVisibility = async (action: "publish" | "republish") => {
+  const changeVisibility = async () => {
     if (!preview) return;
     setWorking(true);
     setError("");
     try {
       await confirmPublicationChange({
-        action,
+        action: "publish",
         targetKind: "page",
         targetId: page.id,
         versionId: preview.version_id,
       });
-      await onChanged(action);
+      await onChanged("publish");
       onClose();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Publication change failed");
@@ -55,11 +54,9 @@ export function PublicationDialog({ page, versionNumber, publishedVersionNumber,
     <span className="eyebrow">Exact, immutable snapshot</span>
     <h2 id="publication-title">{title}</h2>
     {preview && <p className="publication-explanation">
-      {requiredPath
-        ? `This is the required personal landing page at /p/${requiredPath}. You can publish another version, but it cannot be moved or unpublished.`
-        : page.published_version_id
-          ? `This will replace public v${publishedVersionNumber ?? "?"} with v${preview.version_number}.`
-          : `This will make v${preview.version_number} public.`}
+      {page.published_version_id
+        ? `This will replace public v${publishedVersionNumber ?? "?"} with v${preview.version_number}.`
+        : `This will make v${preview.version_number} public.`}
       {!targetIsLatest && " Your latest editable version will not change."}
     </p>}
     <p className="public-url">Public URL: {location.origin}/p/{preview?.path ?? "…"}</p>
@@ -69,7 +66,7 @@ export function PublicationDialog({ page, versionNumber, publishedVersionNumber,
     {canPublish && <label className="check"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />I reviewed v{preview?.version_number} and understand that this exact version will be public.</label>}
     {error && <p className="error">{error}</p>}
     <div className="button-row">
-      {canPublish && <button className="primary" disabled={!confirmed || working || !preview} onClick={() => changeVisibility(page.published_version_id ? "republish" : "publish")}>{working ? "Waiting for passkey…" : `Publish v${versionNumber} with passkey`}</button>}
+      {canPublish && <button className="primary" disabled={!confirmed || working || !preview} onClick={() => changeVisibility()}>{working ? "Waiting for passkey…" : `Publish v${versionNumber} with passkey`}</button>}
     </div>
   </section></div>;
 }

@@ -2,8 +2,9 @@ import { resolve } from "node:path";
 import {
   AssetRepository,
   AutomationRepository,
-  InboxRepository,
   KnowledgeExportRepository,
+  type KnowledgeExportAsset,
+  type KnowledgeExportSnapshot,
   PageRepository,
   PublicationRepository,
   createPool,
@@ -51,7 +52,6 @@ const storage = new BrokeredStorage({
 const dashboardPages = new PageRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
 const dashboardAutomations = new AutomationRepository(dashboardPool);
-const dashboardInbox = new InboxRepository(dashboardPool);
 const publications = new PublicationRepository(dashboardPool);
 const knowledgeExports = new KnowledgeExportRepository(dashboardPool);
 
@@ -106,7 +106,7 @@ function publishedPreviewResolvers(sourcePath: string) {
     },
     asset: async (id: string) => {
       const asset = await dashboardAssets.get(id, true);
-      return asset?.published_at && asset.public_path
+      return asset?.public_path
         ? {
             available: true as const,
             href: `${config.ASSET_ORIGIN}/p/${asset.public_path}`,
@@ -117,8 +117,7 @@ function publishedPreviewResolvers(sourcePath: string) {
   };
 }
 
-async function unavailableExportAssets(intentId: string): Promise<string[]> {
-  const assets = await knowledgeExports.assets(intentId);
+async function unavailableExportAssets(assets: KnowledgeExportAsset[]): Promise<string[]> {
   const missing: string[] = [];
   const concurrency = 8;
   for (let index = 0; index < assets.length; index += concurrency) {
@@ -133,6 +132,11 @@ async function unavailableExportAssets(intentId: string): Promise<string[]> {
     });
   }
   return missing;
+}
+
+function exportSize(snapshot: KnowledgeExportSnapshot): number {
+  return snapshot.pages.reduce((total, page) => total + Buffer.byteLength(page.body_markdown), 0)
+    + snapshot.assets.reduce((total, asset) => total + Number(asset.size_bytes), 0);
 }
 
 const emptyObjectSchema = z.object({}).strict();
@@ -193,7 +197,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     }
     let missing: string[];
     try {
-      missing = await unavailableExportAssets(intent.id);
+      missing = await unavailableExportAssets(await knowledgeExports.assets());
     } catch (error) {
       await knowledgeExports.discard(intent.id, exportPrincipal);
       throw error;
@@ -238,7 +242,24 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       return problem("A fresh passkey confirmation is required", 403, "passkey_required");
     }
     await claimConfirmedExport(intentId, principal);
-    const snapshot = await knowledgeExports.snapshotAndDiscard(intentId);
+    const snapshot = await knowledgeExports.currentSnapshot();
+    if (exportSize(snapshot) > MAX_KNOWLEDGE_EXPORT_BYTES) {
+      return problem(
+        "Knowledge changed after confirmation and the current export is now larger than 5 GiB. Remove some active assets and try again.",
+        413,
+        "export_too_large",
+      );
+    }
+    const missing = await unavailableExportAssets(snapshot.assets);
+    if (missing.length) {
+      const examples = missing.slice(0, 3).join(", ");
+      const remaining = missing.length > 3 ? ` and ${missing.length - 3} more` : "";
+      return problem(
+        `Export stopped because current knowledge includes ${missing.length} asset file${missing.length === 1 ? " that is" : "s that are"} missing or failed integrity verification: ${examples}${remaining}`,
+        409,
+        "asset_incomplete",
+      );
+    }
     const date = new Date().toISOString().slice(0, 10);
     return new Response(streamKnowledgeExport(snapshot, storage), {
       headers: {
@@ -247,10 +268,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
         "content-disposition": `attachment; filename="context-use-export-${date}.zip"`,
       },
     });
-  })
-  .get("/api/dashboard/messages", async ({ request }) => {
-    const principal = await ownerRequest(request);
-    return json(await dashboardInbox.listForOwner(principal.userId));
   })
   .get("/api/dashboard/skills", async ({ request }) => {
     await ownerRequest(request);
@@ -392,7 +409,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       }),
       ...extractAssetLinks(version.body_markdown).map(async (id) => {
         const target = await dashboardAssets.get(id);
-        return { kind: "asset" as const, id, label: target?.filename ?? "Missing asset", path: target?.current_path ?? null, public: Boolean(target?.published_at) };
+        return { kind: "asset" as const, id, label: target?.filename ?? "Missing asset", path: target?.current_path ?? null, public: Boolean(target?.public_path) };
       }),
     ]);
     return json({
@@ -497,21 +514,12 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       if (page.automation_id && input.action !== "unpublish") {
         return problem("Automation-generated pages remain private", 403, "automation_page_private");
       }
-      if (page.required_public_path) {
-        if (input.action === "unpublish") {
-          return problem(
-            `The required /p/${page.required_public_path} page cannot be unpublished`,
-            409,
-            "required_public_page",
-          );
-        }
-      }
       if (input.action !== "unpublish") {
         if (!input.version_id) return problem("Page version is required", 422);
         const history = await dashboardPages.history(input.target_id);
         const version = history.find((candidate) => candidate.id === input.version_id);
         if (!version) return problem("Version does not belong to page", 422);
-        publicPath = page.required_public_path ?? version.path;
+        publicPath = version.path;
       }
     } else {
       const asset = await dashboardAssets.get(input.target_id, true);

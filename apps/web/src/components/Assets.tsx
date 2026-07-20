@@ -126,7 +126,7 @@ export function AssetDetails({
     setPendingAction(action);
   };
 
-  return <main className="content-page asset-details"><header><div><span className="path">{asset.current_path}</span><h1>{asset.filename}</h1></div><span className={asset.published_at ? "status public" : "status"}>{asset.published_at ? "Public" : "Private"}</span></header>
+  return <main className="content-page asset-details"><header><div><span className="path">{asset.current_path}</span><h1>{asset.filename}</h1></div><span className={asset.public_path ? "status public" : "status"}>{asset.public_path ? "Public" : "Private"}</span></header>
     {message && <p className="asset-message" role="status">{message}</p>}
     <section className="asset-card">
       {contentState === "checking" && <div className="asset-preview-state">Checking asset content…</div>}
@@ -135,12 +135,12 @@ export function AssetDetails({
       {contentState === "available" && previewFailed && <div className="asset-preview-state"><strong>Preview unavailable</strong><span>The content is stored correctly, but this browser could not display the format. You can still open the original file.</span></div>}
       <dl><div><dt>Path</dt><dd>{asset.current_path}</dd></div><div><dt>Type</dt><dd>{asset.content_type}</dd></div><div><dt>Size</dt><dd>{(asset.size_bytes / 1024).toFixed(1)} KB</dd></div><div><dt>{contentState === "available" ? "Uploaded" : "Record created"}</dt><dd>{new Date(asset.created_at).toLocaleString()}</dd></div></dl>
       <div className="asset-reference"><span>Private reference</span><code>context-use://asset/{asset.id}</code></div>
-      {asset.published_at && publicUrl && <div className="asset-reference public"><span>Public URL</span><div><code>{publicUrl}</code><button onClick={copyPublicUrl}>Copy</button></div></div>}
+      {asset.public_path && publicUrl && <div className="asset-reference public"><span>Public URL</span><div><code>{publicUrl}</code><button onClick={copyPublicUrl}>Copy</button></div></div>}
       <div className="button-row">
         {contentState === "available" && <a className="button" href={`/api/dashboard/assets/${asset.id}/content`} target="_blank" rel="noreferrer">Open original</a>}
-        {asset.published_at && publicUrl && <a className="button primary" href={publicUrl} target="_blank" rel="noreferrer">Open public link</a>}
-        <button disabled={busy !== null || (!asset.published_at && contentState !== "available")} title={!asset.published_at && contentState === "missing" ? "Finish the content upload before publishing" : undefined} onClick={() => openAction(asset.published_at ? "unpublish" : "publish")}>{asset.published_at ? "Unpublish" : "Publish with passkey"}</button>
-        {!asset.published_at && <button className="danger" disabled={busy !== null} onClick={() => openAction("delete")}>Delete</button>}
+        {asset.public_path && publicUrl && <a className="button primary" href={publicUrl} target="_blank" rel="noreferrer">Open public link</a>}
+        <button disabled={busy !== null || (!asset.public_path && contentState !== "available")} title={!asset.public_path && contentState === "missing" ? "Finish the content upload before publishing" : undefined} onClick={() => openAction(asset.public_path ? "unpublish" : "publish")}>{asset.public_path ? "Unpublish" : "Publish with passkey"}</button>
+        {!asset.public_path && <button className="danger" disabled={busy !== null} onClick={() => openAction("delete")}>Delete</button>}
       </div>
     </section>
     {pendingAction === "publish" && <ActionDialog

@@ -1,7 +1,7 @@
 import { startAuthentication } from "@simplewebauthn/browser";
 import { api } from "./api.ts";
 
-export type PublicationAction = "publish" | "republish" | "unpublish";
+export type PublicationAction = "publish" | "unpublish";
 
 export async function confirmPublicationChange({
   action,
