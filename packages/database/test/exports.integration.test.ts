@@ -6,7 +6,7 @@ import { AssetRepository, ConfirmationRepository, KnowledgeExportRepository, Pag
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeDatabase = databaseUrl ? describe : describe.skip;
 
-describeDatabase("passkey-bound knowledge export snapshots", () => {
+describeDatabase("passkey-bound current knowledge exports", () => {
   const pool = new Pool({ connectionString: databaseUrl, max: 1 });
   const pages = new PageRepository(pool);
   const assets = new AssetRepository(pool);
@@ -36,8 +36,6 @@ describeDatabase("passkey-bound knowledge export snapshots", () => {
     try {
       await pool.query("SET LOCAL session_replication_role=replica");
       if (fixtureIntentId) {
-        await pool.query("DELETE FROM knowledge_export_pages WHERE intent_id=$1", [fixtureIntentId]);
-        await pool.query("DELETE FROM knowledge_export_assets WHERE intent_id=$1", [fixtureIntentId]);
         await pool.query("DELETE FROM confirmation_challenges WHERE intent_id=$1", [fixtureIntentId]);
         await pool.query("DELETE FROM knowledge_export_intents WHERE id=$1", [fixtureIntentId]);
       }
@@ -72,7 +70,7 @@ describeDatabase("passkey-bound knowledge export snapshots", () => {
     await pool.end();
   });
 
-  test("snapshots only active current knowledge and permits one same-session claimed download", async () => {
+  test("exports active knowledge as of download and permits one same-session claim", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     fixtureRoot = `tests/export-${suffix}`;
     const active = await pages.create({
@@ -114,15 +112,23 @@ describeDatabase("passkey-bound knowledge export snapshots", () => {
     });
     await expect(confirmations.claimExport(intent.id, { ...principal, sessionId: "wrong-session" })).rejects.toThrow();
 
+    await pages.update(active.id, {
+      path: `${fixtureRoot}/active`,
+      title: "Active export page",
+      body_markdown: "Current body at download",
+      commit_message: "Update after export authorization",
+      expected_version_number: 1,
+    }, actor);
+
     await confirmations.claimExport(intent.id, principal);
-    const snapshot = await exports.snapshotAndDiscard(intent.id);
-    expect(snapshot.pages.find(({ id }) => id === active.id)?.body_markdown).toBe("Latest active body");
+    const snapshot = await exports.currentSnapshot();
+    expect(snapshot.pages.find(({ id }) => id === active.id)?.body_markdown).toBe("Current body at download");
     expect(snapshot.pages.some(({ id }) => id === archived.id)).toBe(false);
     expect(snapshot.assets.find(({ id }) => id === asset.id)).toMatchObject({
       filename: "friendly.pdf",
       current_path: `${fixtureRoot}/asset`,
     });
-    expect(await exports.getIntent(intent.id)).toBeNull();
+    expect(await exports.getIntent(intent.id)).toMatchObject({ download_started_at: expect.any(Date) });
     await expect(confirmations.claimExport(intent.id, principal)).rejects.toThrow();
   });
 });

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Client, type Pool } from "pg";
 import { randomBytes, randomUUID } from "node:crypto";
-import { InboxRepository, PublicMcpRepository, PublicMessageRepository, PublicRepository } from "../src/index.ts";
+import { PublicMcpRepository, PublicRepository } from "../src/index.ts";
 
 const adminUrl = process.env.TEST_DATABASE_URL;
 const describeDatabase = adminUrl ? describe : describe.skip;
@@ -119,7 +119,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [fn],
       )).rows[0]?.allowed).toBe(true);
     }
-    for (const column of ["confirmed_at", "credential_id", "download_started_at"]) {
+    for (const column of ["confirmed_at", "download_started_at"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_column_privilege('context_use_dashboard','knowledge_export_intents',$1,'INSERT') AS allowed",
         [column],
@@ -129,7 +129,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [column],
       )).rows[0]?.allowed).toBe(false);
     }
-    for (const table of ["knowledge_export_intents", "knowledge_export_pages", "knowledge_export_assets"]) {
+    for (const table of ["knowledge_export_intents"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_confirmation',$1,'SELECT') AS allowed",
         [table],
@@ -282,8 +282,6 @@ describeDatabase("PostgreSQL security roles", () => {
       ["knowledge_page_versions", "body_markdown"],
       ["knowledge_page_versions", "title"],
       ["assets", "s3_object_key"],
-      ["knowledge_export_pages", "version_id"],
-      ["knowledge_export_assets", "s3_object_key"],
     ]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_column_privilege('context_use_boundary_owner',$1,$2,'SELECT') AS allowed",
@@ -291,9 +289,9 @@ describeDatabase("PostgreSQL security roles", () => {
       )).rows[0]?.allowed).toBe(false);
     }
     for (const [relation, column] of [
-      ["publication_intents", "challenge"],
+      ["confirmation_challenges", "challenge"],
       ["knowledge_page_versions", "path"],
-      ["knowledge_pages", "required_public_path"],
+      ["knowledge_pages", "archived_at"],
       ["assets", "current_path"],
       ["knowledge_export_intents", "expires_at"],
       ["passkey", "counter"],
@@ -353,90 +351,34 @@ describeDatabase("PostgreSQL security roles", () => {
     try {
       await expectDenied(
         `INSERT INTO knowledge_export_intents(
-           id,owner_user_id,session_id,challenge,expires_at
-         ) VALUES ($1,'not-the-owner','session',$2,now()+interval '5 minutes')`,
-        [randomUUID(), `wrong-owner-${randomUUID()}`],
+           id,owner_user_id,session_id,expires_at
+         ) VALUES ($1,'not-the-owner','session',now()+interval '5 minutes')`,
+        [randomUUID()],
       );
       await expectDenied(
         `INSERT INTO knowledge_export_intents(
-           id,owner_user_id,session_id,challenge,expires_at
-         ) VALUES ($1,'context-use-owner','session',$2,now()+interval '5 minutes 1 second')`,
-        [randomUUID(), `long-lived-${randomUUID()}`],
+           id,owner_user_id,session_id,expires_at
+         ) VALUES ($1,'context-use-owner','session',now()+interval '5 minutes 1 second')`,
+        [randomUUID()],
       );
     } finally {
       await admin.query("ROLLBACK");
     }
   });
 
-  test("the required public about page exists and cannot be moved or unpublished", async () => {
-    const required = await admin.query<{
-      id: string;
-      current_path: string;
-      current_version_id: string;
-      published_version_id: string;
-      public_path: string;
-      required_public_path: string;
-    }>(
-      `SELECT id,current_path,current_version_id,published_version_id,public_path,required_public_path
-       FROM knowledge_pages WHERE required_public_path='about'`,
-    );
-    expect(required.rowCount).toBe(1);
-    expect(required.rows[0]).toMatchObject({
-      current_path: "about/intro",
-      public_path: "about",
-      required_public_path: "about",
-    });
-    expect((await admin.query("SELECT 1 FROM published_page_sources WHERE public_path='about' AND path='about/intro'")).rowCount).toBe(1);
+  test("about is optional and the private guide tells agents how to create it", async () => {
+    expect((await admin.query(
+      "SELECT 1 FROM knowledge_pages WHERE current_path='about/intro'",
+    )).rowCount).toBe(0);
     expect((await admin.query(
       `SELECT 1
        FROM knowledge_pages page
        JOIN knowledge_page_versions version ON version.id=page.current_version_id
        WHERE page.current_path='agents' AND page.archived_at IS NULL
-         AND version.title='AGENTS.md' AND version.body_markdown LIKE '%about/intro%'`,
+         AND version.title='AGENTS.md'
+         AND version.body_markdown LIKE '%Create %about/intro%if it is missing%'
+         AND version.body_markdown LIKE '%ask them to review and publish %about/intro%'`,
     )).rowCount).toBe(1);
-
-    await admin.query("BEGIN");
-    try {
-      await ensureOwnerPasskey();
-      const page = required.rows[0]!;
-      await expectDenied(
-        `INSERT INTO publication_intents(
-           id,action,target_kind,target_id,owner_user_id,session_id,
-           payload_hash,expires_at
-         ) VALUES ($1,'unpublish','page',$2,'context-use-owner','session',$3,now()+interval '5 minutes')`,
-        [randomUUID(), page.id, "a".repeat(64)],
-      );
-      await expectDenied(
-        `INSERT INTO publication_intents(
-           id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-           session_id,payload_hash,expires_at
-         ) VALUES ($1,'republish','page',$2,$3,'moved-about','context-use-owner','session',$4,now()+interval '5 minutes')`,
-        [randomUUID(), page.id, page.current_version_id, "b".repeat(64)],
-      );
-      await expectDenied(
-        "UPDATE knowledge_pages SET current_path='about' WHERE id=$1",
-        [page.id],
-      );
-
-      const republishIntent = randomUUID();
-      await admin.query(
-        `INSERT INTO publication_intents(
-           id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-           session_id,payload_hash,expires_at
-         ) VALUES ($1,'republish','page',$2,$3,'about','context-use-owner','session',$4,now()+interval '5 minutes')`,
-        [republishIntent, page.id, page.current_version_id, "c".repeat(64)],
-      );
-      await issueChallenge("publication", republishIntent);
-      await admin.query(
-        "SELECT confirm_publication_intent($1,'context-use-owner','session','test-credential',0,1)",
-        [republishIntent],
-      );
-      expect((await admin.query(
-        "SELECT 1 FROM published_page_sources WHERE public_path='about' AND path='about/intro'",
-      )).rowCount).toBe(1);
-    } finally {
-      await admin.query("ROLLBACK");
-    }
   });
 
   test("public role can see publication views but not private base tables", async () => {
@@ -487,7 +429,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [column],
       )).rows[0]?.allowed).toBe(true);
     }
-    for (const relation of ["knowledge_pages", "knowledge_page_versions", "inbound_messages"]) {
+    for (const relation of ["knowledge_pages", "knowledge_page_versions"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_storage',$1,'SELECT') AS allowed",
         [relation],
@@ -530,9 +472,9 @@ describeDatabase("PostgreSQL security roles", () => {
       await admin.query(
         `INSERT INTO publication_intents(
            id,action,target_kind,target_id,public_path,owner_user_id,session_id,
-           payload_hash,expires_at
-         ) VALUES ($1,'publish','asset',$2,$3,'context-use-owner','session',$4,now()+interval '5 minutes')`,
-        [intentId, publishedAssetId, publishedPath, "a".repeat(64)],
+           expires_at
+         ) VALUES ($1,'publish','asset',$2,$3,'context-use-owner','session',now()+interval '5 minutes')`,
+        [intentId, publishedAssetId, publishedPath],
       );
 
       await admin.query("SET LOCAL ROLE context_use_public");
@@ -579,8 +521,8 @@ describeDatabase("PostgreSQL security roles", () => {
       await admin.query(
         `INSERT INTO assets(
            id,current_path,public_path,filename,content_type,size_bytes,
-           content_hash,s3_object_key,published_at
-         ) VALUES ($1,$2,$2,'published.txt','text/plain',1,$3,$4,now())`,
+           content_hash,s3_object_key
+         ) VALUES ($1,$2,$2,'published.txt','text/plain',1,$3,$4)`,
         [assetId, `tests/${suffix}/published-asset`, "b".repeat(64), `objects/${assetId}`],
       );
 
@@ -600,7 +542,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [pageId],
       );
       await admin.query(
-        "UPDATE assets SET published_at=NULL,public_path=NULL WHERE id=$1",
+        "UPDATE assets SET public_path=NULL WHERE id=$1",
         [assetId],
       );
       await admin.query("SET LOCAL ROLE context_use_dashboard");
@@ -654,74 +596,17 @@ describeDatabase("PostgreSQL security roles", () => {
     expect(columns.rows.map(({ column_name }) => column_name)).toEqual([
       "public_path", "title", "body_markdown", "parent_path",
     ]);
-  });
-
-  test("public MCP can deliver messages but cannot read them or choose their owner", async () => {
-    await admin.query("BEGIN");
-    try {
-      await admin.query(
-        `INSERT INTO "user"(id,name,email,"emailVerified")
-         VALUES ('context-use-owner','Owner','message-role-test@example.invalid',true)
-         ON CONFLICT (id) DO NOTHING`,
-      );
-
-      for (const column of ["id", "reply_to", "message"]) {
+    const baseTables = await admin.query<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema='public' AND table_type='BASE TABLE'`,
+    );
+    for (const { table_name } of baseTables.rows) {
+      for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
         expect((await admin.query<{ allowed: boolean }>(
-          "SELECT has_column_privilege('context_use_public_mcp','inbound_messages',$1,'INSERT') AS allowed",
-          [column],
-        )).rows[0]?.allowed).toBe(true);
-      }
-      for (const column of ["owner_user_id", "created_at"]) {
-        expect((await admin.query<{ allowed: boolean }>(
-          "SELECT has_column_privilege('context_use_public_mcp','inbound_messages',$1,'INSERT') AS allowed",
-          [column],
+          "SELECT has_table_privilege('context_use_public_mcp',format('%I',$1::text),$2) AS allowed",
+          [table_name, privilege],
         )).rows[0]?.allowed).toBe(false);
       }
-      expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_table_privilege('context_use_public_mcp','inbound_messages','SELECT') AS allowed",
-      )).rows[0]?.allowed).toBe(false);
-      for (const role of ["context_use_auth", "context_use_mcp", "context_use_public", "context_use_confirmation"]) {
-        expect((await admin.query<{ allowed: boolean }>(
-          "SELECT has_table_privilege($1,'inbound_messages','SELECT') AS allowed",
-          [role],
-        )).rows[0]?.allowed).toBe(false);
-      }
-
-      await admin.query("SET LOCAL ROLE context_use_public_mcp");
-      const publicMessages = new PublicMessageRepository(admin as unknown as Pool);
-      const receipt = await publicMessages.create("sender@example.com", "PRIVATE-INBOX-CANARY");
-      await expectDenied("SELECT * FROM inbound_messages");
-      await expectDenied(
-        "INSERT INTO inbound_messages(id,reply_to,message) VALUES ($1,'sender@example.com','returning probe') RETURNING id",
-        [randomUUID()],
-      );
-      await expectDenied(
-        "INSERT INTO inbound_messages(id,owner_user_id,reply_to,message) VALUES ($1,'attacker','sender@example.com','wrong owner')",
-        [randomUUID()],
-      );
-      await admin.query("RESET ROLE");
-
-      const stored = await admin.query(
-        "SELECT owner_user_id,reply_to,message FROM inbound_messages WHERE id=$1",
-        [receipt.id],
-      );
-      expect(stored.rows[0]).toEqual({
-        owner_user_id: "context-use-owner",
-        reply_to: "sender@example.com",
-        message: "PRIVATE-INBOX-CANARY",
-      });
-
-      await admin.query("SET LOCAL ROLE context_use_dashboard");
-      const inbox = new InboxRepository(admin as unknown as Pool);
-      expect((await inbox.listForOwner("context-use-owner")).some(({ id }) => id === receipt.id)).toBe(true);
-      expect(await inbox.listForOwner("not-the-owner")).toEqual([]);
-      await expectDenied(
-        "INSERT INTO inbound_messages(id,reply_to,message) VALUES ($1,'sender@example.com','dashboard write')",
-        [randomUUID()],
-      );
-      await admin.query("RESET ROLE");
-    } finally {
-      await admin.query("ROLLBACK");
     }
   });
 
@@ -732,7 +617,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [column],
       )).rows[0]?.allowed).toBe(true);
     }
-    for (const column of ["published_at", "deleted_at"]) {
+    for (const column of ["public_path", "deleted_at"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_column_privilege('context_use_mcp', 'assets', $1, 'INSERT') AS allowed",
         [column],
@@ -897,12 +782,12 @@ describeDatabase("PostgreSQL security roles", () => {
       await admin.query(
         `INSERT INTO publication_intents(
            id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-           session_id,payload_hash,expires_at
+           session_id,expires_at
          ) VALUES (
            $1,'publish','page',$2,$3,'test/challenge-isolation',
-           'context-use-owner','session',$4,now()+interval '5 minutes'
+           'context-use-owner','session',now()+interval '5 minutes'
          )`,
-        [sharedId, pageId, versionId, "a".repeat(64)],
+        [sharedId, pageId, versionId],
       );
       await admin.query(
         `INSERT INTO knowledge_export_intents(id,owner_user_id,session_id,expires_at)
@@ -916,7 +801,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [sharedId, publicationChallenge],
       );
       await expectDenied(
-        "UPDATE publication_intents SET challenge=$2 WHERE id=$1",
+        "INSERT INTO confirmation_challenges(intent_kind,intent_id,challenge) VALUES ('publication',$1,$2)",
         [sharedId, publicationChallenge],
       );
       await admin.query("RESET ROLE");
@@ -958,13 +843,9 @@ describeDatabase("PostgreSQL security roles", () => {
       await admin.query("RESET ROLE");
 
       expect((await admin.query(
-        `SELECT intent_kind,consumed_at IS NOT NULL AS consumed
-         FROM confirmation_challenges WHERE intent_id=$1 ORDER BY intent_kind`,
+        "SELECT 1 FROM confirmation_challenges WHERE intent_id=$1",
         [sharedId],
-      )).rows).toEqual([
-        { intent_kind: "publication", consumed: true },
-        { intent_kind: "knowledge_export", consumed: true },
-      ]);
+      )).rowCount).toBe(0);
       expect((await admin.query("SELECT counter FROM passkey WHERE id='test-passkey'")).rows[0]?.counter).toBe(2);
     } finally {
       await admin.query("ROLLBACK");
@@ -1068,10 +949,10 @@ describeDatabase("PostgreSQL security roles", () => {
       await admin.query(
         `INSERT INTO assets(
            id,current_path,public_path,filename,content_type,size_bytes,
-           content_hash,s3_object_key,published_at
+           content_hash,s3_object_key
          ) VALUES (
            $1,'media/public-image','media/public-image','public.png','image/png',1,
-           $2,$3,now()
+           $2,$3
          )`,
         [publishedAssetId, "a".repeat(64), `objects/${publishedAssetId}`],
       );
@@ -1115,14 +996,14 @@ describeDatabase("PostgreSQL security roles", () => {
         "SELECT project_public_mcp_markdown('profile/work/project') AS body_markdown",
       );
       await expectDenied("SELECT project_public_markdown('profile/work/project')");
-      expect((await repository.listPages()).map(({ path }) => path)).toEqual(["about", "profile", "profile/work/project"]);
+      expect((await repository.listPages()).map(({ path }) => path)).toEqual(["profile", "profile/work/project"]);
       expect(await repository.getPage("profile/work/project")).toMatchObject({ path: "profile/work/project", parent_path: "profile" });
       expect(await repository.getPage("profile/work")).toBeNull();
       expect((await repository.searchPages("content", 10)).map(({ path }) => path)).toEqual(["profile/work/project"]);
       await expectDenied("SELECT * FROM published_pages");
       await admin.query("RESET ROLE");
 
-      expect(projected.rows.map(({ public_path }) => public_path)).toEqual(["about", "profile", "profile/work/project"]);
+      expect(projected.rows.map(({ public_path }) => public_path)).toEqual(["profile", "profile/work/project"]);
       const child = projected.rows.find(({ public_path }) => public_path === "profile/work/project");
       expect(child).toMatchObject({ title: "Project", parent_path: "profile" });
       expect(directMcpProjection.rows[0]?.body_markdown).toBe(child?.body_markdown);
@@ -1167,14 +1048,14 @@ describeDatabase("PostgreSQL security roles", () => {
         [versionId, pageId],
       );
       await admin.query(
-        `INSERT INTO publication_intents(id,action,target_kind,target_id,version_id,public_path,owner_user_id,session_id,payload_hash,expires_at)
-         VALUES ($1,'publish','page',$2,$3,'test/security-boundary','context-use-owner','session',$4,now()+interval '5 minutes')`,
-        [intentId, pageId, versionId, "a".repeat(64)],
+        `INSERT INTO publication_intents(id,action,target_kind,target_id,version_id,public_path,owner_user_id,session_id,expires_at)
+         VALUES ($1,'publish','page',$2,$3,'test/security-boundary','context-use-owner','session',now()+interval '5 minutes')`,
+        [intentId, pageId, versionId],
       );
       await admin.query(
-        `INSERT INTO publication_intents(id,action,target_kind,target_id,version_id,public_path,owner_user_id,session_id,payload_hash,expires_at)
-         VALUES ($1,'publish','page',$2,$3,'test/forged-path','context-use-owner','session',$4,now()+interval '5 minutes')`,
-        [mismatchedIntentId, pageId, versionId, "b".repeat(64)],
+        `INSERT INTO publication_intents(id,action,target_kind,target_id,version_id,public_path,owner_user_id,session_id,expires_at)
+         VALUES ($1,'publish','page',$2,$3,'test/forged-path','context-use-owner','session',now()+interval '5 minutes')`,
+        [mismatchedIntentId, pageId, versionId],
       );
 
       for (const role of ["context_use_dashboard", "context_use_mcp"]) {

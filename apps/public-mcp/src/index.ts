@@ -1,4 +1,4 @@
-import { PublicMcpRepository, PublicMessageRepository, createPool } from "@context-use/database";
+import { PublicMcpRepository, createPool } from "@context-use/database";
 import { config, publicMcpEndpoint, publicSiteOrigin } from "./config.ts";
 import { createPublicMcpRequestHandler } from "./handler.ts";
 
@@ -7,8 +7,7 @@ const pool = createPool(config.PUBLIC_MCP_DATABASE_URL, {
   max: 5,
 });
 const reader = new PublicMcpRepository(pool);
-const messages = new PublicMessageRepository(pool);
-const mcp = createPublicMcpRequestHandler(reader, messages, publicMcpEndpoint, publicSiteOrigin);
+const mcp = createPublicMcpRequestHandler(reader, publicMcpEndpoint, publicSiteOrigin);
 
 const server = Bun.serve({
   port: config.PORT,

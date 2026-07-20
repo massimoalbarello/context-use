@@ -85,7 +85,7 @@ function KnowledgeItems({
     const label = knowledgeTreeItemLabel(item);
     const active = selected?.kind === item.kind && selected.id === entity.id;
     const archived = item.kind === "page" && Boolean(item.page.archived_at);
-    const isPublic = item.kind === "page" ? Boolean(item.page.published_version_id) : Boolean(item.asset.published_at);
+    const isPublic = item.kind === "page" ? Boolean(item.page.published_version_id) : Boolean(item.asset.public_path);
     const publicationOutdated = item.kind === "page" && isPublishedPageOutdated(item.page);
 
     return <button

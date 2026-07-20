@@ -68,7 +68,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 CREATE TYPE actor_kind AS ENUM ('dashboard','mcp');
-CREATE TYPE publication_action AS ENUM ('publish','republish','unpublish');
+CREATE TYPE publication_action AS ENUM ('publish','unpublish');
 CREATE TYPE publication_target AS ENUM ('page','asset');
 CREATE TYPE confirmation_intent_kind AS ENUM ('publication','knowledge_export');
 
@@ -351,7 +351,6 @@ CREATE TABLE knowledge_pages (
   updated_at timestamptz NOT NULL DEFAULT now(),
   archived_at timestamptz,
   automation_id uuid,
-  required_public_path text,
   CONSTRAINT knowledge_pages_path_format CHECK (
     current_path ~ '^[a-z0-9][a-z0-9/_-]*$'
     AND current_path !~ '//'
@@ -371,15 +370,6 @@ CREATE TABLE knowledge_pages (
   CONSTRAINT knowledge_pages_published_active CHECK (
     published_version_id IS NULL OR archived_at IS NULL
   ),
-  CONSTRAINT knowledge_pages_required_public_path CHECK (
-    required_public_path IS NULL OR (
-      required_public_path='about'
-      AND current_path='about/intro'
-      AND public_path=required_public_path
-      AND published_version_id IS NOT NULL
-      AND archived_at IS NULL
-    )
-  ),
   CONSTRAINT knowledge_pages_about_is_folder CHECK (
     archived_at IS NOT NULL OR current_path<>'about'
   )
@@ -388,8 +378,6 @@ CREATE UNIQUE INDEX knowledge_pages_active_path_unique
   ON knowledge_pages(current_path) WHERE archived_at IS NULL;
 CREATE UNIQUE INDEX knowledge_pages_public_path_unique
   ON knowledge_pages(public_path) WHERE public_path IS NOT NULL;
-CREATE UNIQUE INDEX knowledge_pages_required_public_path_unique
-  ON knowledge_pages(required_public_path) WHERE required_public_path IS NOT NULL;
 CREATE INDEX knowledge_pages_automation_idx
   ON knowledge_pages(automation_id,current_path) WHERE automation_id IS NOT NULL;
 
@@ -432,6 +420,30 @@ ALTER TABLE knowledge_pages
   REFERENCES knowledge_page_versions(id,page_id)
   DEFERRABLE INITIALLY DEFERRED;
 
+CREATE FUNCTION enforce_current_page_version_path()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $$
+DECLARE
+  version_path text;
+BEGIN
+  SELECT path INTO version_path
+  FROM knowledge_page_versions
+  WHERE id=NEW.current_version_id AND page_id=NEW.id;
+  IF FOUND AND version_path IS DISTINCT FROM NEW.current_path THEN
+    RAISE EXCEPTION 'current page path must match its current version path'
+      USING ERRCODE='23514';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER knowledge_pages_current_version_path
+AFTER INSERT OR UPDATE OF current_path,current_version_id ON knowledge_pages
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION enforce_current_page_version_path();
+
 CREATE TABLE assets (
   id uuid PRIMARY KEY,
   current_path text NOT NULL,
@@ -444,7 +456,6 @@ CREATE TABLE assets (
   width integer CHECK (width IS NULL OR width>0),
   height integer CHECK (height IS NULL OR height>0),
   duration_seconds numeric CHECK (duration_seconds IS NULL OR duration_seconds>=0),
-  published_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   deleted_at timestamptz,
   CONSTRAINT assets_path_format CHECK (
@@ -459,12 +470,8 @@ CREATE TABLE assets (
       AND right(public_path,1)<>'/'
     )
   ),
-  CONSTRAINT assets_publication_pair CHECK (
-    (published_at IS NULL AND public_path IS NULL)
-    OR (published_at IS NOT NULL AND public_path IS NOT NULL)
-  ),
   CONSTRAINT assets_published_active CHECK (
-    published_at IS NULL OR deleted_at IS NULL
+    public_path IS NULL OR deleted_at IS NULL
   )
 );
 CREATE UNIQUE INDEX assets_active_path_unique
@@ -619,13 +626,8 @@ CREATE TABLE publication_intents (
   public_path text,
   owner_user_id text NOT NULL,
   session_id text NOT NULL CHECK (length(session_id) BETWEEN 1 AND 512),
-  challenge text UNIQUE CHECK (
-    challenge IS NULL OR challenge ~ '^[A-Za-z0-9_-]{43,128}$'
-  ),
-  payload_hash text NOT NULL CHECK (payload_hash ~ '^[a-f0-9]{64}$'),
   created_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
-  consumed_at timestamptz,
   CONSTRAINT publication_intents_owner CHECK (owner_user_id='context-use-owner'),
   CONSTRAINT publication_intents_expiry CHECK (
     expires_at>created_at AND expires_at<=created_at+interval '5 minutes'
@@ -640,7 +642,7 @@ CREATE TABLE publication_intents (
   CONSTRAINT publication_intents_target_fields CHECK (
     (action='unpublish' AND version_id IS NULL AND public_path IS NULL)
     OR (
-      action IN ('publish','republish') AND public_path IS NOT NULL
+      action='publish' AND public_path IS NOT NULL
       AND (
         (target_kind='page' AND version_id IS NOT NULL)
         OR (target_kind='asset' AND version_id IS NULL)
@@ -649,42 +651,22 @@ CREATE TABLE publication_intents (
   )
 );
 CREATE INDEX publication_intents_expiry_idx
-  ON publication_intents(expires_at) WHERE consumed_at IS NULL;
-
-CREATE TABLE inbound_messages (
-  id uuid PRIMARY KEY,
-  owner_user_id text NOT NULL DEFAULT 'context-use-owner'
-    REFERENCES "user"(id) ON DELETE CASCADE,
-  reply_to text NOT NULL CHECK (length(reply_to) BETWEEN 3 AND 320),
-  message text NOT NULL CHECK (length(trim(message)) BETWEEN 1 AND 10000),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT inbound_messages_owner CHECK (owner_user_id='context-use-owner')
-);
-CREATE INDEX inbound_messages_owner_created_idx
-  ON inbound_messages(owner_user_id,created_at DESC,id DESC);
+  ON publication_intents(expires_at);
 
 CREATE TABLE knowledge_export_intents (
   id uuid PRIMARY KEY,
   owner_user_id text NOT NULL,
   session_id text NOT NULL CHECK (length(session_id) BETWEEN 1 AND 512),
-  challenge text UNIQUE CHECK (
-    challenge IS NULL OR challenge ~ '^[A-Za-z0-9_-]{43,128}$'
-  ),
   created_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
   confirmed_at timestamptz,
-  credential_id text,
   download_started_at timestamptz,
   CONSTRAINT knowledge_export_intents_owner CHECK (owner_user_id='context-use-owner'),
   CONSTRAINT knowledge_export_intents_expiry CHECK (
     expires_at>created_at AND expires_at<=created_at+interval '5 minutes'
   ),
   CONSTRAINT knowledge_export_intents_confirmation CHECK (
-    (confirmed_at IS NULL AND credential_id IS NULL AND download_started_at IS NULL)
-    OR (confirmed_at IS NOT NULL AND credential_id IS NOT NULL)
-  ),
-  CONSTRAINT knowledge_export_intents_download CHECK (
-    download_started_at IS NULL OR confirmed_at IS NOT NULL
+    confirmed_at IS NOT NULL OR download_started_at IS NULL
   )
 );
 CREATE INDEX knowledge_export_intents_expiry_idx ON knowledge_export_intents(expires_at);
@@ -697,29 +679,7 @@ CREATE TABLE confirmation_challenges (
   intent_id uuid NOT NULL,
   challenge text NOT NULL UNIQUE CHECK (challenge ~ '^[A-Za-z0-9_-]{43,128}$'),
   created_at timestamptz NOT NULL DEFAULT now(),
-  consumed_at timestamptz,
   PRIMARY KEY (intent_kind,intent_id)
-);
-
-CREATE TABLE knowledge_export_pages (
-  intent_id uuid NOT NULL REFERENCES knowledge_export_intents(id) ON DELETE CASCADE,
-  page_id uuid NOT NULL REFERENCES knowledge_pages(id) ON DELETE RESTRICT,
-  version_id uuid NOT NULL,
-  PRIMARY KEY (intent_id,page_id),
-  FOREIGN KEY (version_id,page_id)
-    REFERENCES knowledge_page_versions(id,page_id) ON DELETE RESTRICT
-);
-
-CREATE TABLE knowledge_export_assets (
-  intent_id uuid NOT NULL REFERENCES knowledge_export_intents(id) ON DELETE CASCADE,
-  asset_id uuid NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
-  current_path text NOT NULL,
-  filename text NOT NULL,
-  content_type text NOT NULL,
-  size_bytes bigint NOT NULL,
-  content_hash text NOT NULL,
-  s3_object_key text NOT NULL,
-  PRIMARY KEY (intent_id,asset_id)
 );
 
 -- Database-enforced ownership and reserved-path invariants.
@@ -811,7 +771,7 @@ SET search_path=pg_catalog,public
 AS $$
 BEGIN
   IF NEW.target_kind='page'
-     AND NEW.action IN ('publish','republish')
+     AND NEW.action='publish'
      AND EXISTS (
        SELECT 1 FROM knowledge_pages
        WHERE id=NEW.target_id AND automation_id IS NOT NULL
@@ -827,55 +787,13 @@ CREATE TRIGGER publication_intents_keep_automation_pages_private
 BEFORE INSERT ON publication_intents
 FOR EACH ROW EXECUTE FUNCTION keep_automation_pages_private();
 
-CREATE FUNCTION protect_required_public_page_intent()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path=pg_catalog,public
-AS $$
-DECLARE
-  required_path text;
-BEGIN
-  IF NEW.target_kind<>'page' THEN RETURN NEW; END IF;
-
-  SELECT required_public_path INTO required_path
-  FROM knowledge_pages
-  WHERE id=NEW.target_id;
-
-  IF required_path IS NOT NULL
-     AND (NEW.action='unpublish' OR NEW.public_path IS DISTINCT FROM required_path) THEN
-    RAISE EXCEPTION 'the required /p/% page cannot be moved or unpublished',required_path
-      USING ERRCODE='23514';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER publication_intents_protect_required_public_page
-BEFORE INSERT ON publication_intents
-FOR EACH ROW EXECUTE FUNCTION protect_required_public_page_intent();
-
--- The sole bootstrap publication contains no owner data. Every later public
--- version still requires a publication intent and a user-verified passkey.
+-- The bootstrap guide tells agents how to structure owner context. It remains
+-- private until the owner chooses to publish an independently created page.
 DO $$
 DECLARE
-  about_page_id uuid := gen_random_uuid();
-  about_version_id uuid := gen_random_uuid();
   agents_page_id uuid := gen_random_uuid();
   agents_version_id uuid := gen_random_uuid();
 BEGIN
-  INSERT INTO knowledge_pages(
-    id,current_path,current_version_id,published_version_id,public_path,required_public_path
-  ) VALUES (
-    about_page_id,'about/intro',about_version_id,about_version_id,'about','about'
-  );
-
-  INSERT INTO knowledge_page_versions(
-    id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-  ) VALUES (
-    about_version_id,about_page_id,1,'about/intro','Intro','',
-    'Create required public about page','dashboard','context-use-bootstrap'
-  );
-
   INSERT INTO knowledge_pages(id,current_path,current_version_id)
   VALUES (agents_page_id,'agents',agents_version_id);
 
@@ -883,7 +801,7 @@ BEGIN
     id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
   ) VALUES (
     agents_version_id,agents_page_id,1,'agents','AGENTS.md',
-    E'# Knowledge base structure\n\n- Store information whose subject is the owner in `about/`. Start with `about/intro`.\n- Store other entities in separate top-level folders, such as `people/`, `companies/`, and `events/`.\n- Link related pages instead of nesting other entities under `about/`.\n',
+    E'# Knowledge base structure\n\n- Store information whose subject is the owner in `about/`. Create `about/intro` if it is missing and keep it as the concise introduction people and agents should read first.\n- Store other entities in separate top-level folders, such as `people/`, `companies/`, and `events/`.\n- Link related pages instead of nesting other entities under `about/`.\n- Knowledge is private by default. If the owner wants the landing page to introduce them, ask them to review and publish `about/intro`; an agent cannot publish it.\n',
     'Create knowledge base guide','dashboard','context-use-bootstrap'
   );
 END;
@@ -898,7 +816,7 @@ GRANT SELECT (id,page_id,path,title,body_markdown,created_at)
   ON knowledge_page_versions TO context_use_projection_owner;
 GRANT SELECT (
   id,public_path,filename,content_type,size_bytes,content_hash,s3_object_key,
-  width,height,duration_seconds,published_at,deleted_at
+  width,height,duration_seconds,deleted_at
 ) ON assets TO context_use_projection_owner;
 
 CREATE VIEW published_page_sources
@@ -971,7 +889,6 @@ BEGIN
     SELECT asset.public_path INTO target_path
     FROM assets asset
     WHERE asset.id=matched[3]::uuid
-      AND asset.published_at IS NOT NULL
       AND asset.public_path IS NOT NULL
       AND asset.deleted_at IS NULL;
     projected := replace(
@@ -1114,8 +1031,7 @@ AS
 SELECT
   public_path,filename,content_type,size_bytes
 FROM assets
-WHERE published_at IS NOT NULL
-  AND public_path IS NOT NULL
+WHERE public_path IS NOT NULL
   AND deleted_at IS NULL;
 
 -- Only the storage broker can translate a public path into an object key.
@@ -1124,8 +1040,7 @@ WITH (security_barrier=true,security_invoker=false)
 AS
 SELECT public_path,s3_object_key
 FROM assets
-WHERE published_at IS NOT NULL
-  AND public_path IS NOT NULL
+WHERE public_path IS NOT NULL
   AND deleted_at IS NULL;
 
 -- Anonymous MCP reuses the already-lossy webpage projection and adds public
@@ -1173,7 +1088,6 @@ SECURITY DEFINER
 SET search_path=pg_catalog,public
 AS $$
 DECLARE
-  intent_challenge text;
   intent_expires_at timestamptz;
   intent_inactive boolean;
 BEGIN
@@ -1182,35 +1096,35 @@ BEGIN
     RAISE EXCEPTION 'valid confirmation challenge required' USING ERRCODE='22023';
   END IF;
 
+  DELETE FROM publication_intents WHERE expires_at<=now();
+  DELETE FROM knowledge_export_intents WHERE expires_at<=now();
+  DELETE FROM confirmation_challenges challenge
+  WHERE (
+    challenge.intent_kind='publication'
+    AND NOT EXISTS (SELECT 1 FROM publication_intents intent WHERE intent.id=challenge.intent_id)
+  ) OR (
+    challenge.intent_kind='knowledge_export'
+    AND NOT EXISTS (SELECT 1 FROM knowledge_export_intents intent WHERE intent.id=challenge.intent_id)
+  );
+
   IF p_intent_kind='publication' THEN
-    SELECT challenge,expires_at,consumed_at IS NOT NULL
-    INTO intent_challenge,intent_expires_at,intent_inactive
+    SELECT expires_at,false
+    INTO intent_expires_at,intent_inactive
     FROM publication_intents
-    WHERE id=p_intent_id
-    FOR UPDATE;
+    WHERE id=p_intent_id;
   ELSE
-    SELECT challenge,expires_at,confirmed_at IS NOT NULL OR download_started_at IS NOT NULL
-    INTO intent_challenge,intent_expires_at,intent_inactive
+    SELECT expires_at,confirmed_at IS NOT NULL OR download_started_at IS NOT NULL
+    INTO intent_expires_at,intent_inactive
     FROM knowledge_export_intents
-    WHERE id=p_intent_id
-    FOR UPDATE;
+    WHERE id=p_intent_id;
   END IF;
 
   IF NOT FOUND THEN RAISE EXCEPTION 'confirmation intent not found' USING ERRCODE='P0002'; END IF;
   IF intent_inactive OR intent_expires_at<=now() THEN
     RAISE EXCEPTION 'confirmation intent is inactive' USING ERRCODE='22023';
   END IF;
-  IF intent_challenge IS NOT NULL THEN
-    RAISE EXCEPTION 'confirmation challenge already issued' USING ERRCODE='23505';
-  END IF;
-
   INSERT INTO confirmation_challenges(intent_kind,intent_id,challenge)
   VALUES (p_intent_kind,p_intent_id,p_challenge);
-  IF p_intent_kind='publication' THEN
-    UPDATE publication_intents SET challenge=p_challenge WHERE id=p_intent_id;
-  ELSE
-    UPDATE knowledge_export_intents SET challenge=p_challenge WHERE id=p_intent_id;
-  END IF;
 END;
 $$;
 
@@ -1247,10 +1161,9 @@ BEGIN
     RAISE EXCEPTION 'passkey counter did not advance' USING ERRCODE='42501';
   END IF;
 
-  UPDATE confirmation_challenges
-  SET consumed_at=now()
+  DELETE FROM confirmation_challenges
   WHERE intent_kind=p_intent_kind AND intent_id=p_intent_id
-    AND challenge=p_challenge AND consumed_at IS NULL;
+    AND challenge=p_challenge;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'confirmation challenge is missing or consumed' USING ERRCODE='23505';
   END IF;
@@ -1274,6 +1187,7 @@ SET search_path=pg_catalog,public
 AS $$
 DECLARE
   intent record;
+  intent_challenge text;
 BEGIN
   IF p_owner_user_id IS NULL OR p_session_id IS NULL
      OR p_credential_id IS NULL OR length(trim(p_credential_id))<1
@@ -1283,16 +1197,12 @@ BEGIN
 
   SELECT
     id,action,target_kind,target_id,version_id,public_path,
-    owner_user_id,session_id,challenge,expires_at,consumed_at
+    owner_user_id,session_id,expires_at
   INTO intent
   FROM publication_intents
-  WHERE id=p_intent_id
-  FOR UPDATE;
+  WHERE id=p_intent_id;
 
   IF NOT FOUND THEN RAISE EXCEPTION 'publication intent not found' USING ERRCODE='P0002'; END IF;
-  IF intent.consumed_at IS NOT NULL THEN
-    RAISE EXCEPTION 'publication intent already consumed' USING ERRCODE='23505';
-  END IF;
   IF intent.expires_at<=now() THEN
     RAISE EXCEPTION 'publication intent expired' USING ERRCODE='22023';
   END IF;
@@ -1300,27 +1210,27 @@ BEGIN
      OR intent.session_id IS DISTINCT FROM p_session_id THEN
     RAISE EXCEPTION 'publication intent principal mismatch' USING ERRCODE='42501';
   END IF;
-  IF intent.challenge IS NULL THEN
+  SELECT challenge INTO intent_challenge
+  FROM confirmation_challenges
+  WHERE intent_kind='publication' AND intent_id=intent.id;
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'publication challenge not issued' USING ERRCODE='42501';
   END IF;
 
   PERFORM consume_confirmation_challenge(
-    'publication',intent.id,intent.challenge,intent.owner_user_id,
+    'publication',intent.id,intent_challenge,intent.owner_user_id,
     p_credential_id,p_expected_counter,p_new_counter
   );
 
   IF intent.target_kind='page' THEN
-    IF intent.action IN ('publish','republish') THEN
+    IF intent.action='publish' THEN
       IF NOT EXISTS (
         SELECT 1
         FROM knowledge_page_versions version
         JOIN knowledge_pages page ON page.id=version.page_id
         WHERE version.id=intent.version_id
           AND version.page_id=intent.target_id
-          AND (
-            version.path=intent.public_path
-            OR page.required_public_path=intent.public_path
-          )
+          AND version.path=intent.public_path
       ) THEN
         RAISE EXCEPTION 'page version or public path mismatch' USING ERRCODE='23503';
       END IF;
@@ -1335,21 +1245,21 @@ BEGIN
       WHERE id=intent.target_id;
     END IF;
   ELSE
-    IF intent.action IN ('publish','republish') THEN
+    IF intent.action='publish' THEN
       UPDATE assets
-      SET published_at=now(),public_path=intent.public_path
+      SET public_path=intent.public_path
       WHERE id=intent.target_id
         AND deleted_at IS NULL
         AND current_path=intent.public_path;
     ELSE
       UPDATE assets
-      SET published_at=NULL,public_path=NULL
+      SET public_path=NULL
       WHERE id=intent.target_id;
     END IF;
   END IF;
 
   IF NOT FOUND THEN RAISE EXCEPTION 'publication target not found' USING ERRCODE='P0002'; END IF;
-  UPDATE publication_intents SET consumed_at=now() WHERE id=intent.id;
+  DELETE FROM publication_intents WHERE id=intent.id;
 END;
 $$;
 
@@ -1367,6 +1277,7 @@ SET search_path=pg_catalog,public
 AS $$
 DECLARE
   intent record;
+  intent_challenge text;
 BEGIN
   IF p_owner_user_id IS NULL OR p_session_id IS NULL
      OR p_credential_id IS NULL OR length(trim(p_credential_id))<1
@@ -1375,12 +1286,11 @@ BEGIN
   END IF;
 
   SELECT
-    id,owner_user_id,session_id,challenge,expires_at,
+    id,owner_user_id,session_id,expires_at,
     confirmed_at,download_started_at
   INTO intent
   FROM knowledge_export_intents
-  WHERE id=p_intent_id
-  FOR UPDATE;
+  WHERE id=p_intent_id;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'knowledge export intent not found' USING ERRCODE='P0002';
@@ -1395,17 +1305,20 @@ BEGIN
      OR intent.session_id IS DISTINCT FROM p_session_id THEN
     RAISE EXCEPTION 'knowledge export principal mismatch' USING ERRCODE='42501';
   END IF;
-  IF intent.challenge IS NULL THEN
+  SELECT challenge INTO intent_challenge
+  FROM confirmation_challenges
+  WHERE intent_kind='knowledge_export' AND intent_id=intent.id;
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'knowledge export challenge not issued' USING ERRCODE='42501';
   END IF;
 
   PERFORM consume_confirmation_challenge(
-    'knowledge_export',intent.id,intent.challenge,intent.owner_user_id,
+    'knowledge_export',intent.id,intent_challenge,intent.owner_user_id,
     p_credential_id,p_expected_counter,p_new_counter
   );
 
   UPDATE knowledge_export_intents
-  SET confirmed_at=now(),credential_id=p_credential_id
+  SET confirmed_at=now()
   WHERE id=p_intent_id;
 END;
 $$;
@@ -1458,32 +1371,31 @@ $$;
 
 GRANT SELECT (
   id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-  session_id,challenge,expires_at,consumed_at
+  session_id,expires_at
 ) ON publication_intents TO context_use_boundary_owner;
-GRANT UPDATE (challenge,consumed_at)
-  ON publication_intents TO context_use_boundary_owner;
+GRANT DELETE ON publication_intents TO context_use_boundary_owner;
 GRANT SELECT (id,page_id,path)
   ON knowledge_page_versions TO context_use_boundary_owner;
-GRANT SELECT (id,required_public_path,archived_at)
+GRANT SELECT (id,archived_at)
   ON knowledge_pages TO context_use_boundary_owner;
 GRANT UPDATE (published_version_id,public_path,updated_at)
   ON knowledge_pages TO context_use_boundary_owner;
 GRANT SELECT (id,current_path,deleted_at)
   ON assets TO context_use_boundary_owner;
-GRANT UPDATE (published_at,public_path)
+GRANT UPDATE (public_path)
   ON assets TO context_use_boundary_owner;
 GRANT SELECT (
-  id,owner_user_id,session_id,challenge,expires_at,confirmed_at,
+  id,owner_user_id,session_id,expires_at,confirmed_at,
   download_started_at
 ) ON knowledge_export_intents TO context_use_boundary_owner;
-GRANT UPDATE (challenge,confirmed_at,credential_id,download_started_at)
+GRANT UPDATE (confirmed_at,download_started_at)
   ON knowledge_export_intents TO context_use_boundary_owner;
-GRANT SELECT (intent_kind,intent_id,challenge,consumed_at)
+GRANT DELETE ON knowledge_export_intents TO context_use_boundary_owner;
+GRANT SELECT (intent_kind,intent_id,challenge)
   ON confirmation_challenges TO context_use_boundary_owner;
 GRANT INSERT (intent_kind,intent_id,challenge)
   ON confirmation_challenges TO context_use_boundary_owner;
-GRANT UPDATE (consumed_at)
-  ON confirmation_challenges TO context_use_boundary_owner;
+GRANT DELETE ON confirmation_challenges TO context_use_boundary_owner;
 GRANT SELECT ("userId","credentialID",counter)
   ON passkey TO context_use_boundary_owner;
 GRANT UPDATE (counter) ON passkey TO context_use_boundary_owner;
@@ -1520,22 +1432,24 @@ GRANT SELECT (
 ) ON passkey TO context_use_confirmation;
 GRANT SELECT (
   id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-  session_id,challenge,payload_hash,expires_at,consumed_at
+  session_id,expires_at
 ) ON publication_intents TO context_use_confirmation;
 GRANT SELECT (
-  id,owner_user_id,session_id,challenge,expires_at,confirmed_at,
-  credential_id,download_started_at
+  id,owner_user_id,session_id,expires_at,confirmed_at,
+  download_started_at
 ) ON knowledge_export_intents TO context_use_confirmation;
+GRANT SELECT (intent_kind,intent_id,challenge)
+  ON confirmation_challenges TO context_use_confirmation;
 
 -- Application-role capability manifest. Keep grants column-scoped wherever a
 -- role mutates state so a future column is private until explicitly reviewed.
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
+REVOKE ALL ON FUNCTION enforce_current_page_version_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION enforce_automation_page_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION enforce_automation_page_version_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION keep_automation_key_immutable() FROM PUBLIC;
 REVOKE ALL ON FUNCTION keep_automation_pages_private() FROM PUBLIC;
-REVOKE ALL ON FUNCTION protect_required_public_page_intent() FROM PUBLIC;
 
 GRANT SELECT,INSERT,UPDATE (name,image,"updatedAt") ON "user" TO context_use_auth;
 GRANT SELECT,INSERT,UPDATE (counter) ON passkey TO context_use_auth;
@@ -1565,10 +1479,7 @@ GRANT SELECT ON
   cron_schedules,
   automation_versions,
   automation_runs,
-  inbound_messages,
-  knowledge_export_intents,
-  knowledge_export_pages,
-  knowledge_export_assets
+  knowledge_export_intents
 TO context_use_dashboard;
 GRANT INSERT (id,current_path,current_version_id)
   ON knowledge_pages TO context_use_dashboard;
@@ -1582,10 +1493,10 @@ GRANT INSERT (
   id,current_path,filename,content_type,size_bytes,content_hash,s3_object_key,
   width,height,duration_seconds
 ) ON assets TO context_use_dashboard;
-GRANT UPDATE (current_path,filename,deleted_at) ON assets TO context_use_dashboard;
+GRANT UPDATE (deleted_at) ON assets TO context_use_dashboard;
 GRANT INSERT (
   id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-  session_id,payload_hash,expires_at
+  session_id,expires_at
 ) ON publication_intents TO context_use_dashboard;
 GRANT INSERT (id,name,current_version_id) ON agent_skills TO context_use_dashboard;
 GRANT UPDATE (current_version_id,updated_at,deleted_at)
@@ -1610,8 +1521,6 @@ GRANT INSERT (id,schedule_id,automation_version_id,scheduled_for,input)
   ON automation_runs TO context_use_dashboard;
 GRANT INSERT (id,owner_user_id,session_id,expires_at)
   ON knowledge_export_intents TO context_use_dashboard;
-GRANT INSERT ON knowledge_export_pages,knowledge_export_assets
-  TO context_use_dashboard;
 GRANT DELETE ON knowledge_export_intents TO context_use_dashboard;
 
 GRANT SELECT ON
@@ -1673,7 +1582,6 @@ GRANT SELECT ON storage_published_assets TO context_use_storage;
 GRANT SELECT ON public_mcp_pages TO context_use_public_mcp;
 GRANT EXECUTE ON FUNCTION project_public_mcp_markdown(text)
   TO context_use_public_mcp;
-GRANT INSERT (id,reply_to,message) ON inbound_messages TO context_use_public_mcp;
 
 GRANT SELECT ON
   schema_migrations,
@@ -1701,11 +1609,8 @@ GRANT SELECT ON
   cron_schedules,
   automation_versions,
   automation_runs,
-  inbound_messages,
   knowledge_export_intents,
   confirmation_challenges,
-  knowledge_export_pages,
-  knowledge_export_assets,
   published_pages,
   published_assets,
   public_mcp_pages

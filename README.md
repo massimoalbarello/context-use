@@ -2,21 +2,21 @@
 
 `context-use` is a private-by-default, single-owner knowledge base. It keeps Markdown pages in PostgreSQL, immutable asset bytes in S3, exposes an owner dashboard, and gives a trusted personal agent narrowly scoped access through MCP.
 
-The public site is deliberately separate. Each installation starts with a private `about/` folder whose required `about/intro` page has the stable public alias `/p/about` and an initially empty published body. A root `AGENTS.md` page tells connected agents to keep owner-specific information under `about/` and other entities in separate top-level folders. Every owner-authored page version or asset becomes public only after the signed-in owner reviews an exact publication intent and confirms it with a passkey. A portable full-knowledge export likewise requires a fresh, action-bound passkey assertion. Agent OAuth tokens cannot call dashboard routes, have no publication or export scope, and use a PostgreSQL role that cannot alter publication state.
+The public site is deliberately separate. Each installation starts with a private root `AGENTS.md` page that tells connected agents to create `about/intro` for a concise owner introduction, keep it private by default, and ask the owner to review and publish it when they want the landing page to introduce them. Until then, `/p/about/intro` shows an empty state. Every owner-authored page version or asset becomes public only after the signed-in owner reviews an exact publication intent and confirms it with a passkey. A portable export of all current knowledge likewise requires a fresh, action-bound passkey assertion. Agent OAuth tokens cannot call dashboard routes, have no publication or export scope, and use a PostgreSQL role that cannot alter publication state.
 
 ## What v1 includes
 
 - Hierarchical Markdown pages with immutable versions, commit messages, history, and full-text search.
 - Private S3 assets whose bytes are always streamed through scope-specific API routes, with checksum-bound uploads and revocation-aware downloads.
 - Passkey-only owner signup and sign-in, bound to the configured owner email through a one-time setup link.
-- Passkey-protected publishing, republishing, and unpublishing with the same immutable credential.
+- Passkey-protected publishing, publication updates, and unpublishing with the same immutable credential.
 - Passkey-protected streaming Zip64 export of current active pages and assets as a navigable Markdown vault with local links.
 - OAuth 2.1 authorization code + PKCE for MCP, short-lived audience-bound access tokens, rotating refresh tokens, and live consent checks.
 - Stateless Streamable HTTP MCP at `/mcp` with knowledge, checksum-bound asset upload/download, and automation execution tools.
 - Anonymous, tools-only MCP on a dedicated `public.` hostname with a hierarchical index, page reads, and full-text search over published snapshots only.
 - Versioned, discoverable Agent Skills; time-zone-aware automations; isolated generated knowledge; durable run history; and leased agent execution.
-- Exact published snapshots at `/p/<knowledge-path>`—with `/p/about` reserved as the alias for `about/intro`—and independently published assets at the same route on a cookieless hostname.
-- A built-in public billboard at `/` that directs people to the required `/p/about` page and agents to the installation-specific anonymous MCP endpoint.
+- Exact published snapshots at `/p/<knowledge-path>` and independently published assets at the same route on a cookieless hostname.
+- A built-in public billboard at `/` that directs people to optional `/p/about/intro` content and agents to the installation-specific anonymous MCP endpoint.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
 
 External ingestion, vault import, approval queues, collaboration, and semantic search are intentionally outside v1.
@@ -28,7 +28,7 @@ External ingestion, vault import, approval queues, collaboration, and semantic s
 | Owner sign-in | Discoverable, user-verified passkey | Session creation |
 | Owner | Host-only secure session cookie | `/api/dashboard/*` |
 | Owner publishing | Session + CSRF + exact origin + action-bound passkey assertion | Publication confirmation only |
-| Owner export | Same session + CSRF + exact origin + action-bound passkey assertion | One exact, single-use knowledge snapshot download |
+| Owner export | Same session + CSRF + exact origin + action-bound passkey assertion | One single-use export of all knowledge current when download starts |
 | Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
 | Agent asset upload | Short-lived, object-specific capability returned by authenticated MCP | Exact returned `/api/mcp/assets/:id/content` URL only |
 | Agent asset read | Five-minute, object-specific capability returned with `assets:read` | Exact returned `/api/mcp/assets/:id/content` URL only |
@@ -109,7 +109,7 @@ https://YOUR_HOST/mcp
 
 The server publishes protected-resource and authorization-server metadata. New dynamic clients can request all MCP tool scopes (`kb:read`, `kb:write`, `assets:read`, `assets:write`, `skills:read`, `skills:write`, `automations:write`, `automations:claim`, and `automations:execute`) so general-purpose clients can complete discovery, and the owner must approve the requested grant. `offline_access` requires explicit client request and owner consent; no publication or dashboard scope exists.
 
-MCP initialization tells the client to call `get_knowledge_base_guide` before managing pages. That tool reads the editable root `AGENTS.md` page. The initial guide reserves `about/` for information whose subject is the owner, starts that context at `about/intro`, and keeps entities such as people, companies, and events in their own top-level folders. The database reserves bare `about` as a folder and prevents the required intro page from being moved; semantic placement is guided because the database cannot reliably infer a page's subject from Markdown.
+MCP initialization tells the client to call `get_knowledge_base_guide` before managing pages. That tool reads the editable root `AGENTS.md` page. The initial guide reserves `about/` for information whose subject is the owner, asks the agent to create `about/intro` if missing, and keeps entities such as people, companies, and events in their own top-level folders. The database reserves bare `about` as a folder, but the intro page is an ordinary private page until the owner chooses to publish it; semantic placement is guided because the database cannot reliably infer a page's subject from Markdown.
 
 With `assets:write`, `create_asset_upload` records private asset metadata and returns a fifteen-minute upload capability bound to that asset and OAuth grant. The agent then sends the exact raw bytes to the returned API URL and headers. Size, content type, and SHA-256 are verified before storage; the capability cannot read, edit, delete, or publish anything. Existing OAuth grants must be reauthorized before they include the new scope.
 
@@ -125,14 +125,13 @@ https://public.YOUR_HOST/mcp
 
 The public server deliberately exposes tools rather than MCP resources for broad client compatibility:
 
-- `get_about_page` returns the required public `about` page and a complete nested index of all published pages.
+- `get_about_page` returns the owner's introduction when it has been published, an explicit unpublished state otherwise, and a complete nested index of all published pages.
 - `get_public_page` reads one page by its knowledge path and includes published breadcrumbs and children.
 - `search_public_pages` searches only the sanitized published-page projection.
-- `send_message` privately delivers a message plus the sender's required email or phone loopback address.
 
 For example, a dashboard at `https://context.example.com` exposes its anonymous MCP at `https://public.context.example.com/mcp`. The dedicated origin serves no OAuth or OpenID metadata and has no route to the private application.
 
-The public MCP runs in a separate isolated container with a separate database credential. Its role can select only `public_mcp_pages`, a lossy security-barrier view with published knowledge paths, titles, sanitized Markdown, and published-parent paths. It also has column-scoped insert access for message IDs, reply addresses, and bodies, but it cannot select messages, set their owner, or use `RETURNING` to read stored data. The authenticated dashboard filters the inbox by owner ID. The public role cannot read webpage views, other base tables, asset metadata, UUIDs, page versions, private reference targets, or S3 keys. Only published pages become hierarchy nodes or resolve through `/p/*`; an unpublished page remains unavailable even when its path is a prefix of a public descendant.
+The public MCP runs in a separate isolated container with a separate database credential. Its role can select only `public_mcp_pages`, a lossy security-barrier view with published knowledge paths, titles, sanitized Markdown, and published-parent paths. It cannot read webpage views, base tables, asset metadata, UUIDs, page versions, private reference targets, or S3 keys, and it has no write privileges. Only published pages become hierarchy nodes or resolve through `/p/*`; an unpublished page remains unavailable even when its path is a prefix of a public descendant.
 
 Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification): a standard name and short description form the discovery layer, while instructions load only after selection. MCP agents use `list_skills`, `get_skill`, and `create_skill`. They are reusable capabilities selected by an agent and are never attached to scheduled work.
 

@@ -104,7 +104,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     }
   };
 
-  const publicationChanged = async (action: "publish" | "republish" | "unpublish") => {
+  const publicationChanged = async (action: "publish" | "unpublish") => {
     const published = publishingVersion;
     await load(true);
     onChanged();
@@ -137,7 +137,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         {page.published_version_id && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public ↗</a>}
         {!automationOwned && !page.archived_at && !page.published_version_id && <button onClick={() => { setArchiveCommit(""); setArchiveError(""); setArchiveOpen(true); }}>Archive</button>}
         {!automationOwned && !page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
-        {!automationOwned && !page.archived_at && page.published_version_id && !page.required_public_path && <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>}
+        {!automationOwned && !page.archived_at && page.published_version_id && <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>}
         {!automationOwned && !page.archived_at && page.published_version_id && hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish latest</button>}
       </div>
     </header>
@@ -183,7 +183,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
           {!automationOwned && !page.archived_at && <div className="version-actions">
             {isPublished && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public</a>}
             {isPublished
-              ? !page.required_public_path && <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>
+              ? <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>
               : <button className={isLatest ? "primary" : ""} onClick={() => setPublishingVersion(version.version_number)}>Publish this version</button>}
           </div>}
         </article>;

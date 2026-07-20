@@ -45,7 +45,7 @@ describe("strict mutation schemas", () => {
       content_type: "image/jpeg",
       size_bytes: 123,
       sha256: "A".repeat(64),
-      published_at: new Date().toISOString(),
+      public_path: "projects/acme/site-photo",
     }).success).toBe(false);
   });
 

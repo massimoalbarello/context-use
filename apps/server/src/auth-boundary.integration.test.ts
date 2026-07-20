@@ -137,13 +137,17 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("malformed public identifiers are indistinguishable", async () => {
-    const inbox = await application!.handle(new Request("http://localhost:3000/api/dashboard/messages"));
-    expect(inbox.status).toBe(401);
     const malformedPage = await application!.handle(new Request("http://localhost:3000/p/INVALID"));
     const missingPage = await application!.handle(new Request("http://localhost:3000/p/missing-page"));
     expect(malformedPage.status).toBe(404);
     expect(missingPage.status).toBe(404);
     expect(await malformedPage.text()).toBe(await missingPage.text());
+  });
+
+  test("the optional introduction has a public empty state until it is published", async () => {
+    const response = await application!.handle(new Request("http://localhost:3000/p/about/intro"));
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("The owner has not published an introduction yet.");
   });
 
   test("nested /p paths resolve every published page and no private page", async () => {

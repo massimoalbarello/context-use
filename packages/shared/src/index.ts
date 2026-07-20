@@ -79,7 +79,7 @@ export const archivePageSchema = z
 
 export const publicationIntentSchema = z
   .object({
-    action: z.enum(["publish", "republish", "unpublish"]),
+    action: z.enum(["publish", "unpublish"]),
     target_kind: z.enum(["page", "asset"]),
     target_id: UUID,
     version_id: UUID.nullable().optional(),
@@ -189,7 +189,6 @@ export type Page = {
   current_version_id: string;
   published_version_id: string | null;
   public_path: string | null;
-  required_public_path: string | null;
   automation_id: string | null;
   archived_at: string | null;
   version_number: number;
@@ -207,7 +206,6 @@ export type Asset = {
   content_type: string;
   size_bytes: number;
   content_hash: string;
-  published_at: string | null;
   created_at: string;
   deleted_at: string | null;
 };

@@ -10,9 +10,9 @@ docker compose up --build
 
 The root Compose file includes `compose.dev.yml`. The source tree is bind-mounted into the application containers, so the servers reload as files change. PostgreSQL data, uploaded assets, and container dependencies live in named Docker volumes.
 
-The public root is a built-in first-person billboard for people and agents. Every installation has a protected `about/intro` knowledge page with the stable public alias `/p/about` and an initially empty published snapshot; owner edits create private versions until one is explicitly republished with the passkey. A private root `AGENTS.md` page provides the authenticated MCP client's concise knowledge-structure guide.
+The public root is a built-in first-person billboard for people and agents. A private root `AGENTS.md` page guides the authenticated MCP client to create `about/intro` if missing and ask the owner to review and publish it when they want a public introduction. Until it is published, `/p/about/intro` shows an empty state.
 
-The anonymous tools-only MCP endpoint is `http://localhost:5173/public/mcp`. Its `get_about_page` tool is the starting point and returns the required public `about` content plus the complete published-page hierarchy. `send_message` accepts a private message only when the sender supplies a valid email or phone number; delivered messages appear in the authenticated dashboard's **Messages** tab.
+The anonymous tools-only MCP endpoint is `http://localhost:5173/public/mcp`. Its `get_about_page` tool is the starting point and returns the optional public introduction (or an explicit unpublished state) plus the complete published-page hierarchy.
 
 Open the one-time local owner enrollment page:
 

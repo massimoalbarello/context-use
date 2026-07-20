@@ -140,9 +140,9 @@ describeDatabase("persisted automation lifecycle", () => {
     await expect(pool.query(
       `INSERT INTO publication_intents(
         id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-        session_id,challenge,payload_hash,expires_at
-       ) VALUES ($1,'publish','page',$2,$3,$6,'context-use-owner','session',$4,$5,now()+interval '5 minutes')`,
-      [crypto.randomUUID(), generated.id, generated.current_version_id, `challenge-${crypto.randomUUID()}`, "a".repeat(64), generated.current_path],
+        session_id,expires_at
+       ) VALUES ($1,'publish','page',$2,$3,$4,'context-use-owner','session',now()+interval '5 minutes')`,
+      [crypto.randomUUID(), generated.id, generated.current_version_id, generated.current_path],
     )).rejects.toThrow();
 
     await expect(automations.completeRun(claimed.run_id, claimed.claim_token, "agent-two", "spoofed"))

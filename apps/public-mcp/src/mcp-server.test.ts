@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { PublicMessageWriter, PublicPageReader } from "./mcp-server.ts";
+import type { PublicPageReader } from "./mcp-server.ts";
 import { createPublicMcpServer } from "./mcp-server.ts";
 import { createPublicMcpTransport } from "./transport.ts";
 
 const summaries = [
   { path: "home", title: "Home", parent_path: null },
-  { path: "about", title: "About", parent_path: null },
-  { path: "about/work", title: "Work", parent_path: "about" },
-  { path: "about/work/context-use", title: "Context Use", parent_path: "about/work" },
+  { path: "about/intro", title: "About", parent_path: null },
+  { path: "work", title: "Work", parent_path: null },
+  { path: "work/context-use", title: "Context Use", parent_path: "work" },
 ];
 
 const reader: PublicPageReader = {
@@ -24,15 +24,7 @@ const reader: PublicPageReader = {
   },
 };
 
-const deliveredMessages: Array<{ replyTo: string; message: string }> = [];
-const messages: PublicMessageWriter = {
-  async create(replyTo, message) {
-    deliveredMessages.push({ replyTo, message });
-    return { id: "0195f7c3-3f14-7ed1-95f7-93c91ee04e61" };
-  },
-};
-
-const publicServer = () => createPublicMcpServer(reader, messages, "https://context.example.com");
+const publicServer = () => createPublicMcpServer(reader, "https://context.example.com");
 
 async function mcpRequest(server: McpServer, body: Record<string, unknown>) {
   const transport = createPublicMcpTransport();
@@ -65,7 +57,7 @@ function parseContent(response: Awaited<ReturnType<typeof mcpRequest>>): unknown
 }
 
 describe("public MCP tools", () => {
-  test("advertises the three public readers and confidential message delivery", async () => {
+  test("advertises only the three public readers", async () => {
     const response = await mcpRequest(publicServer(), {
       jsonrpc: "2.0",
       id: 1,
@@ -77,11 +69,10 @@ describe("public MCP tools", () => {
       "get_about_page",
       "get_public_page",
       "search_public_pages",
-      "send_message",
     ]);
   });
 
-  test("returns the required about content and a complete nested index from the main page", async () => {
+  test("returns optional about content and a complete nested index from the main page", async () => {
     const response = await mcpRequest(publicServer(), {
       jsonrpc: "2.0",
       id: 2,
@@ -95,10 +86,30 @@ describe("public MCP tools", () => {
       pages: Array<{ path: string; children: Array<{ path: string; children: Array<{ path: string }> }> }>;
     };
 
-    expect(result.canonical_url).toBe("https://context.example.com/p/about");
+    expect(result.canonical_url).toBe("https://context.example.com/p/about/intro");
     expect(result.introduction_markdown).toBe("About public content");
     expect(result.page_count).toBe(4);
-    expect(result.pages.find(({ path }) => path === "about")?.children[0]?.children[0]?.path).toBe("about/work/context-use");
+    expect(result.pages.find(({ path }) => path === "work")?.children[0]?.path).toBe("work/context-use");
+  });
+
+  test("explains an unpublished introduction without requiring an about page", async () => {
+    const emptyReader: PublicPageReader = {
+      async listPages() { return []; },
+      async getPage() { return null; },
+      async searchPages() { return []; },
+    };
+    const response = await mcpRequest(createPublicMcpServer(emptyReader, "https://context.example.com"), {
+      jsonrpc: "2.0",
+      id: 20,
+      method: "tools/call",
+      params: { name: "get_about_page", arguments: {} },
+    });
+
+    expect(parseContent(response)).toMatchObject({
+      published: false,
+      canonical_url: "https://context.example.com/p/about/intro",
+      page_count: 0,
+    });
   });
 
   test("returns published breadcrumbs, children, and content for one page", async () => {
@@ -106,14 +117,14 @@ describe("public MCP tools", () => {
       jsonrpc: "2.0",
       id: 3,
       method: "tools/call",
-      params: { name: "get_public_page", arguments: { path: "about/work" } },
+      params: { name: "get_public_page", arguments: { path: "work" } },
     });
     const result = parseContent(response) as {
       page: { breadcrumbs: Array<{ path: string }>; children: Array<{ path: string }>; content_markdown: string };
     };
 
-    expect(result.page.breadcrumbs.map(({ path }) => path)).toEqual(["about", "about/work"]);
-    expect(result.page.children.map(({ path }) => path)).toEqual(["about/work/context-use"]);
+    expect(result.page.breadcrumbs.map(({ path }) => path)).toEqual(["work"]);
+    expect(result.page.children.map(({ path }) => path)).toEqual(["work/context-use"]);
     expect(result.page.content_markdown).toBe("Work public content");
   });
 
@@ -129,70 +140,10 @@ describe("public MCP tools", () => {
     };
 
     expect(result.results[0]).toMatchObject({
-      path: "about/work/context-use",
+      path: "work/context-use",
       excerpt_markdown: "A **public** personal knowledge base",
     });
-    expect(result.results[0]?.breadcrumbs.map(({ path }) => path)).toEqual(["about", "about/work", "about/work/context-use"]);
-  });
-
-  test("requires a valid sender email or phone and returns no submitted content", async () => {
-    deliveredMessages.length = 0;
-    const invalid = await mcpRequest(publicServer(), {
-      jsonrpc: "2.0",
-      id: 5,
-      method: "tools/call",
-      params: {
-        name: "send_message",
-        arguments: { message: "I would like to discuss your work.", reply_to: "anonymous" },
-      },
-    });
-    expect(invalid.result?.isError).toBe(true);
-    expect(deliveredMessages).toEqual([]);
-
-    const response = await mcpRequest(publicServer(), {
-      jsonrpc: "2.0",
-      id: 6,
-      method: "tools/call",
-      params: {
-        name: "send_message",
-        arguments: {
-          message: "  Your context-use work overlaps with our research.  ",
-          reply_to: "  sender@example.com  ",
-        },
-      },
-    });
-    const result = parseContent(response) as Record<string, unknown>;
-
-    expect(deliveredMessages).toEqual([{
-      replyTo: "sender@example.com",
-      message: "Your context-use work overlaps with our research.",
-    }]);
-    expect(result).toEqual({
-      delivered: true,
-      receipt_id: "0195f7c3-3f14-7ed1-95f7-93c91ee04e61",
-      privacy: "The message can only be viewed by the authenticated owner.",
-    });
-    expect(JSON.stringify(result)).not.toContain("sender@example.com");
-    expect(JSON.stringify(result)).not.toContain("research");
-  });
-
-  test("accepts a phone number as the required loopback address", async () => {
-    deliveredMessages.length = 0;
-    const response = await mcpRequest(publicServer(), {
-      jsonrpc: "2.0",
-      id: 7,
-      method: "tools/call",
-      params: {
-        name: "send_message",
-        arguments: { message: "Please call me.", reply_to: "+44 (0)20 7946 0958" },
-      },
-    });
-
-    expect(response.result?.isError).not.toBe(true);
-    expect(deliveredMessages[0]).toEqual({
-      replyTo: "+44 (0)20 7946 0958",
-      message: "Please call me.",
-    });
+    expect(result.results[0]?.breadcrumbs.map(({ path }) => path)).toEqual(["work", "work/context-use"]);
   });
 
   test("does not echo database diagnostics through tool errors", async () => {
@@ -201,7 +152,7 @@ describe("public MCP tools", () => {
       async getPage() { throw new Error("PRIVATE-CANARY database detail"); },
       async searchPages() { throw new Error("PRIVATE-CANARY database detail"); },
     };
-    const response = await mcpRequest(createPublicMcpServer(failing, messages, "https://context.example.com"), {
+    const response = await mcpRequest(createPublicMcpServer(failing, "https://context.example.com"), {
       jsonrpc: "2.0",
       id: 8,
       method: "tools/call",
@@ -213,25 +164,4 @@ describe("public MCP tools", () => {
     expect(JSON.stringify(response)).not.toContain("PRIVATE-CANARY");
   });
 
-  test("does not expose message database failures", async () => {
-    const failingMessages: PublicMessageWriter = {
-      async create() { throw new Error("PRIVATE-MESSAGE-DATABASE-CANARY"); },
-    };
-    const response = await mcpRequest(
-      createPublicMcpServer(reader, failingMessages, "https://context.example.com"),
-      {
-        jsonrpc: "2.0",
-        id: 9,
-        method: "tools/call",
-        params: {
-          name: "send_message",
-          arguments: { message: "Hello", reply_to: "sender@example.com" },
-        },
-      },
-    );
-
-    expect(response.result?.isError).toBe(true);
-    expect(response.result?.content?.[0]?.text).toBe("The message could not be delivered right now.");
-    expect(JSON.stringify(response)).not.toContain("PRIVATE-MESSAGE-DATABASE-CANARY");
-  });
 });
