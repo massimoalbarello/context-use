@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { fileURLToPath } from "node:url";
-import { strictSsmCommands, waitForSsmInvocation } from "./aws.ts";
+import { bootstrapStateBucket, strictSsmCommands, waitForSsmInvocation } from "./aws.ts";
 import {
   computeBootstrapCommands,
   deploymentCommands,
@@ -18,7 +18,7 @@ import { updateProtectsExistingRelease } from "./commands/update.ts";
 import { normalizeDeploymentConfig } from "./paths.ts";
 import { redactSensitiveText } from "./process.ts";
 import { canReplaceDeploymentConfig, shouldPauseForManualDns } from "./setup.ts";
-import { backendArgs, terraformEnvironment } from "./terraform.ts";
+import { backendArgs, initializeTerraformBackend, terraformEnvironment } from "./terraform.ts";
 import type { DeploymentConfig, ReleaseManifest } from "./types.ts";
 
 function deploymentConfig(overrides: Partial<DeploymentConfig> = {}): DeploymentConfig {
@@ -77,6 +77,53 @@ test("Terraform receives exported short-lived credentials without a backend prof
     AWS_EC2_METADATA_DISABLED: "true",
   });
   expect(backendArgs(config, "installation/production/data.tfstate").some((argument) => argument.includes("profile="))).toBe(false);
+});
+
+test("a newly created state bucket is awaited before it is configured", async () => {
+  const commands: string[][] = [];
+  await bootstrapStateBucket("default", "eu-west-2", "context-use-state", async (command) => {
+    commands.push(command);
+    if (command.includes("head-bucket")) throw new Error("Not Found");
+    return "";
+  });
+
+  const operation = (command: string[]) => command.slice(5, 8).join(" ");
+  expect(commands.map(operation)).toEqual([
+    "s3api head-bucket --bucket",
+    "s3api create-bucket --bucket",
+    "s3api wait bucket-exists",
+    "s3api put-public-access-block --bucket",
+    "s3api put-bucket-versioning --bucket",
+    "s3api put-bucket-encryption --bucket",
+  ]);
+});
+
+test("Terraform backend initialization retries a newly created bucket propagation error", async () => {
+  const errors = [
+    new Error('terraform failed (1): Error: error loading state: S3 bucket "context-use-state" does not exist.'),
+    new Error("terraform failed (1): operation error S3: ListObjectsV2, api error NoSuchBucket"),
+  ];
+  let attempts = 0;
+  let pauses = 0;
+  await initializeTerraformBackend("/tmp/data", deploymentConfig(), "installation/production/data.tfstate", {}, async () => {
+    attempts += 1;
+    const error = errors.shift();
+    if (error) throw error;
+    return "";
+  }, async () => { pauses += 1; }, 3);
+
+  expect(attempts).toBe(3);
+  expect(pauses).toBe(2);
+});
+
+test("Terraform backend initialization does not retry non-propagation failures", async () => {
+  let attempts = 0;
+  await expect(initializeTerraformBackend("/tmp/data", deploymentConfig(), "installation/production/data.tfstate", {}, async () => {
+    attempts += 1;
+    throw new Error("terraform failed (1): AccessDenied");
+  }, async () => {}, 3)).rejects.toThrow("AccessDenied");
+
+  expect(attempts).toBe(1);
 });
 
 test("diagnostics retain credential-source errors while removing actual secret values", () => {
