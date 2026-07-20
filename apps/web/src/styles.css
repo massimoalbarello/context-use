@@ -1283,21 +1283,6 @@ button:disabled {
   font-size: 10px;
 }
 
-.mcp-scope-list {
-  margin-top: 5px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.mcp-scope-list code {
-  padding: 3px 5px;
-  border-radius: 4px;
-  background: #ece9e2;
-  color: #6e6961;
-  font-size: 8px;
-}
-
 .mcp-client-list .danger {
   min-height: 30px;
   padding: 6px 10px;

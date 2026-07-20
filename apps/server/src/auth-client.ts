@@ -48,25 +48,3 @@ export async function authorizeDashboardRequest(
   if (!response.ok) throw new Error(`Authentication service rejected authorization (${response.status})`);
   return principalSchema.parse(await response.json());
 }
-
-export async function validateMcpGrant(input: {
-  clientId: string;
-  userId: string;
-  scopes: string[];
-}): Promise<boolean> {
-  const endpoint = config.AUTH_INTERNAL_URL;
-  const internalRequest = new Request(`${endpoint}/internal/validate-mcp-grant`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${config.AUTH_MCP_TOKEN}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(input),
-  });
-  const local = (globalThis as typeof globalThis & {
-    __contextUseAuthHandler?: (request: Request) => Promise<Response> | Response;
-  }).__contextUseAuthHandler;
-  const response = local ? await local(internalRequest) : await fetch(internalRequest);
-  if (!response.ok) return false;
-  return (await response.json() as { active?: boolean }).active === true;
-}

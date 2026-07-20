@@ -103,18 +103,6 @@ services:
     command: ["bun", "--watch", "apps/server/src/auth-index.ts"]
     restart: unless-stopped
 
-  auth-edge:
-    <<: *code-service
-    depends_on:
-      auth: { condition: service_started }
-    environment:
-      <<: *common
-      SERVICE_MODE: auth-edge
-      PORT: "3006"
-      AUTH_AUTHORITY_URL: http://auth:3002
-    command: ["bun", "--watch", "apps/server/src/auth-edge-index.ts"]
-    restart: unless-stopped
-
   dashboard-edge:
     <<: *code-service
     depends_on:
@@ -176,18 +164,6 @@ services:
       - storage-socket:/run/context-use-storage:ro
     restart: unless-stopped
 
-  private-mcp-edge:
-    <<: *code-service
-    depends_on:
-      private-mcp: { condition: service_started }
-    environment:
-      <<: *common
-      SERVICE_MODE: mcp-edge
-      PORT: "3008"
-      MCP_AUTHORITY_URL: http://private-mcp:3003
-    command: ["bun", "--watch", "apps/server/src/mcp-edge-index.ts"]
-    restart: unless-stopped
-
   confirmation:
     <<: *code-service
     depends_on:
@@ -224,7 +200,7 @@ services:
 
   gateway:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
-    depends_on: [dashboard-edge, auth-edge, private-mcp-edge, public-web]
+    depends_on: [dashboard-edge, auth, private-mcp, public-web]
     volumes: [./deploy/Caddyfile.dev:/etc/caddy/Caddyfile:ro]
     restart: unless-stopped
 

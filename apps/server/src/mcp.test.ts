@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { verifyAssetDownloadCapability } from "./mcp-asset-download.ts";
+import { verifyAssetCapability } from "./mcp-asset-capability.ts";
 import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
 
@@ -40,12 +40,11 @@ async function mcpRequest(server: McpServer, body: Record<string, unknown>) {
 
 function serverWith(
   automations: AutomationRepository,
-  scopes = new Set<string>(["skills:read", "skills:write", "automations:write"]),
   pages = {} as PageRepository,
   assets = {} as AssetRepository,
 ) {
   return createMcpServer(
-    { clientId: "mcp-client", userId: "owner", scopes },
+    { clientId: "mcp-client" },
     pages,
     assets,
     automations,
@@ -79,7 +78,6 @@ describe("MCP skill and automation authoring", () => {
     } as unknown as PageRepository;
     const response = await mcpRequest(serverWith(
       {} as AutomationRepository,
-      new Set(["kb:read"]),
       pages,
     ), {
       jsonrpc: "2.0",
@@ -94,7 +92,7 @@ describe("MCP skill and automation authoring", () => {
     });
   });
 
-  test("advertises progressive skill discovery and scoped automation tools", async () => {
+  test("advertises progressive skill discovery and automation tools", async () => {
     const response = await mcpRequest(serverWith({} as AutomationRepository), {
       jsonrpc: "2.0",
       id: 1,
@@ -133,7 +131,6 @@ describe("MCP skill and automation authoring", () => {
     } as unknown as AssetRepository;
     const response = await mcpRequest(serverWith(
       {} as AutomationRepository,
-      new Set(["assets:write"]),
       {} as PageRepository,
       assets,
     ), {
@@ -176,7 +173,6 @@ describe("MCP skill and automation authoring", () => {
     } as unknown as AssetRepository;
     const response = await mcpRequest(serverWith(
       {} as AutomationRepository,
-      new Set(["assets:write"]),
       {} as PageRepository,
       assets,
     ), {
@@ -212,26 +208,6 @@ describe("MCP skill and automation authoring", () => {
     expect(JSON.stringify(result)).not.toContain("secret-key");
   });
 
-  test("requires the assets write scope to create an upload", async () => {
-    const response = await mcpRequest(serverWith({} as AutomationRepository, new Set()), {
-      jsonrpc: "2.0",
-      id: 7,
-      method: "tools/call",
-      params: {
-        name: "create_asset_upload",
-        arguments: {
-          path: "documents/denied",
-          filename: "denied.pdf",
-          content_type: "application/pdf",
-          size_bytes: 0,
-          sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        },
-      },
-    });
-    expect(response.result?.isError).toBe(true);
-    expect(response.result?.content?.[0]?.text).toContain("insufficient_scope:assets:write");
-  });
-
   test("returns an API-proxied asset download without exposing storage keys", async () => {
     const assets = {
       async get() {
@@ -248,7 +224,6 @@ describe("MCP skill and automation authoring", () => {
     } as unknown as AssetRepository;
     const response = await mcpRequest(serverWith(
       {} as AutomationRepository,
-      new Set(["assets:read"]),
       {} as PageRepository,
       assets,
     ), {
@@ -266,10 +241,9 @@ describe("MCP skill and automation authoring", () => {
       method: "GET",
       url: "http://localhost:3000/api/mcp/assets/11111111-1111-4111-8111-111111111111/content",
     });
-    expect(verifyAssetDownloadCapability(result.download.headers["x-context-use-download-token"])).toMatchObject({
+    expect(verifyAssetCapability(result.download.headers["x-context-use-download-token"], "download")).toMatchObject({
       assetId: "11111111-1111-4111-8111-111111111111",
-      clientId: "mcp-client",
-      userId: "owner",
+      action: "download",
     });
     expect(JSON.stringify(result)).not.toContain("secret-key");
     expect(JSON.stringify(result)).not.toContain("amazonaws");
@@ -339,26 +313,6 @@ describe("MCP skill and automation authoring", () => {
     });
   });
 
-  test("requires the skills write scope", async () => {
-    const response = await mcpRequest(serverWith({} as AutomationRepository, new Set()), {
-      jsonrpc: "2.0",
-      id: 4,
-      method: "tools/call",
-      params: {
-        name: "create_skill",
-        arguments: {
-          name: "denied-skill",
-          description: "Tests denied creation. Use only in the authorization test.",
-          instructions_markdown: "This must not be created.",
-          commit_message: "Attempt denied creation",
-        },
-      },
-    });
-
-    expect(response.result?.isError).toBe(true);
-    expect(response.result?.content?.[0]?.text).toContain("insufficient_scope:skills:write");
-  });
-
   test("lists only skill discovery metadata", async () => {
     const automations = {
       async listSkills() {
@@ -373,7 +327,7 @@ describe("MCP skill and automation authoring", () => {
         }];
       },
     } as unknown as AutomationRepository;
-    const response = await mcpRequest(serverWith(automations, new Set(["skills:read"])), {
+    const response = await mcpRequest(serverWith(automations), {
       jsonrpc: "2.0",
       id: 5,
       method: "tools/call",
@@ -399,7 +353,6 @@ describe("MCP skill and automation authoring", () => {
     } as unknown as PageRepository;
     const response = await mcpRequest(serverWith(
       {} as AutomationRepository,
-      new Set(["automations:execute"]),
       pages,
     ), {
       jsonrpc: "2.0",
@@ -437,7 +390,7 @@ describe("MCP skill and automation authoring", () => {
       claim_token: "66666666-6666-4666-8666-666666666666",
     };
 
-    const concise = await mcpRequest(serverWith(automations, new Set(["automations:execute"])), {
+    const concise = await mcpRequest(serverWith(automations), {
       jsonrpc: "2.0",
       id: 7,
       method: "tools/call",
@@ -449,7 +402,7 @@ describe("MCP skill and automation authoring", () => {
     expect(concise.result?.isError).not.toBe(true);
     expect(calls).toEqual(["Saved the digest to today's knowledge page."]);
 
-    const verbose = await mcpRequest(serverWith(automations, new Set(["automations:execute"])), {
+    const verbose = await mcpRequest(serverWith(automations), {
       jsonrpc: "2.0",
       id: 8,
       method: "tools/call",

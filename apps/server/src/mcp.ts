@@ -1,6 +1,6 @@
 import { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
+import { MCP_SCOPE } from "@context-use/shared";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
-import { validateMcpGrant } from "./auth-client.ts";
 import { config } from "./config.ts";
 import { createMcpServer, type McpContext } from "./mcp-server.ts";
 import { createStatelessMcpTransport, unsupportedMcpMethodResponse } from "./mcp-transport.ts";
@@ -24,23 +24,19 @@ function scopesFromJwt(jwt: JWTPayload): Set<string> {
   return new Set(Array.isArray(plural) ? plural.filter((item): item is string => typeof item === "string") : []);
 }
 
-async function contextFromJwt(
-  jwt: JWTPayload,
-  grantValidator: typeof validateMcpGrant,
-): Promise<McpContext | null> {
+function contextFromJwt(jwt: JWTPayload): McpContext | null {
   const clientId = typeof jwt.azp === "string" ? jwt.azp : null;
   const userId = typeof jwt.sub === "string" ? jwt.sub : null;
   if (!clientId || !userId || jwt.principal_type !== "mcp_agent") return null;
   const scopes = scopesFromJwt(jwt);
-  if (!(await grantValidator({ clientId, userId, scopes: [...scopes] }))) return null;
-  return { clientId, userId, scopes };
+  if (!scopes.has(MCP_SCOPE)) return null;
+  return { clientId };
 }
 
 export function createMcpRequestHandler(
   pages: PageRepository,
   assets: AssetRepository,
   automations: AutomationRepository,
-  grantCheck: typeof validateMcpGrant = validateMcpGrant,
 ) {
   // Fetch keys over the private service network. The token issuer and audience
   // remain the public canonical URLs, but the isolated MCP container does not
@@ -72,8 +68,8 @@ export function createMcpRequestHandler(
     if (!audiences || audiences.length !== 1 || audiences[0] !== config.MCP_RESOURCE || typeof jwt.exp !== "number") {
       return mcpUnauthorized("Bearer token is not bound exclusively to this MCP resource");
     }
-    const context = await contextFromJwt(jwt, grantCheck);
-    if (!context) return mcpUnauthorized("OAuth grant is inactive");
+    const context = contextFromJwt(jwt);
+    if (!context) return mcpUnauthorized(`Bearer token lacks ${MCP_SCOPE}`);
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();

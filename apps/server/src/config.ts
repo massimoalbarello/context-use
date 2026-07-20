@@ -18,8 +18,7 @@ const developmentStorageTokens = {
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   SERVICE_MODE: z.enum([
-    "all", "dashboard-edge", "dashboard", "auth-edge", "auth",
-    "mcp-edge", "mcp", "public", "confirmation", "storage",
+    "all", "dashboard-edge", "dashboard", "auth", "mcp", "public", "confirmation", "storage",
   ]).default("all"),
   PORT: z.coerce.number().int().positive().default(3000),
   APP_ORIGIN: z.string().url().default("http://localhost:3000"),
@@ -32,8 +31,6 @@ const schema = z.object({
   STORAGE_DATABASE_URL: z.string().min(1).default("postgres://context_use_storage:development-only@localhost:5432/context_use"),
   DASHBOARD_AUTHORITY_URL: z.string().url().default("http://localhost:3000"),
   AUTH_INTERNAL_URL: z.string().url().default("http://localhost:3002"),
-  AUTH_AUTHORITY_URL: z.string().url().default("http://localhost:3002"),
-  MCP_AUTHORITY_URL: z.string().url().default("http://localhost:3003"),
   CONFIRMATION_INTERNAL_URL: z.string().url().default("http://localhost:3004"),
   CONFIRMATION_GATEWAY_TOKEN: z.string().min(32).default(developmentConfirmationGatewayToken),
   AUTH_DASHBOARD_TOKEN: z.string().min(32).default(developmentInternalTokens.authDashboard),
@@ -112,9 +109,7 @@ if (production) {
     all: [...databaseRoles.keys()],
     "dashboard-edge": [],
     dashboard: ["DATABASE_URL"],
-    "auth-edge": [],
     auth: ["AUTH_DATABASE_URL"],
-    "mcp-edge": [],
     mcp: ["MCP_DATABASE_URL"],
     public: ["PUBLIC_DATABASE_URL"],
     confirmation: ["CONFIRMATION_DATABASE_URL"],
@@ -138,12 +133,6 @@ if (production) {
   }
   if (config.SERVICE_MODE === "dashboard-edge" && config.DASHBOARD_AUTHORITY_URL !== "http://app:3000") {
     insecure.push("DASHBOARD_AUTHORITY_URL must use the isolated dashboard authority network");
-  }
-  if (config.SERVICE_MODE === "auth-edge" && config.AUTH_AUTHORITY_URL !== "http://auth:3002") {
-    insecure.push("AUTH_AUTHORITY_URL must use the isolated auth authority network");
-  }
-  if (config.SERVICE_MODE === "mcp-edge" && config.MCP_AUTHORITY_URL !== "http://private-mcp:3003") {
-    insecure.push("MCP_AUTHORITY_URL must use the isolated private MCP authority network");
   }
   if (["dashboard", "auth"].includes(config.SERVICE_MODE) && config.CONFIRMATION_INTERNAL_URL !== "http://confirmation:3004") {
     insecure.push("CONFIRMATION_INTERNAL_URL must use the dedicated confirmation service network");

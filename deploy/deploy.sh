@@ -74,6 +74,7 @@ EOF
 
 cd "${root}/deploy"
 docker compose --env-file "${secrets}/runtime.env" pull --quiet
+docker compose --env-file "${secrets}/runtime.env" stop caddy
 docker compose --env-file "${secrets}/runtime.env" --profile migration run --rm migrate
 if [ -n "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" ]; then
   export PGPASSWORD="$(get_secret POSTGRES_PASSWORD)"

@@ -117,31 +117,6 @@ services:
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
         awslogs-stream: dashboard
 
-  auth-edge:
-    <<: *locked-service
-    depends_on:
-      auth: { condition: service_healthy }
-    environment:
-      NODE_ENV: production
-      SERVICE_MODE: auth-edge
-      PORT: "3006"
-      APP_ORIGIN: https://${APP_HOSTNAME}
-      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
-      AUTH_AUTHORITY_URL: http://auth:3002
-    command: ["bun", "apps/server/src/auth-edge-index.ts"]
-    networks: [auth_web, auth_edge_internal]
-    healthcheck:
-      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3006/health'); if (!response.ok) process.exit(1)"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-    logging:
-      <<: *logging
-      options:
-        awslogs-region: ${AWS_REGION}
-        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
-        awslogs-stream: auth-edge
-
   auth:
     <<: *locked-service
     depends_on:
@@ -165,7 +140,7 @@ services:
       CONFIRMATION_GATEWAY_TOKEN: ${CONFIRMATION_GATEWAY_TOKEN}
       AUTH_DATABASE_URL: postgres://context_use_auth:${DB_AUTH_PASSWORD}@postgres:5432/context_use
     command: ["bun", "apps/server/src/auth-index.ts"]
-    networks: [auth_data, auth_edge_internal, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]
+    networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]
     healthcheck:
       test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3002/health'); if (!response.ok) process.exit(1)"]
       interval: 5s
@@ -177,31 +152,6 @@ services:
         awslogs-region: ${AWS_REGION}
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
         awslogs-stream: auth
-
-  private-mcp-edge:
-    <<: *locked-service
-    depends_on:
-      private-mcp: { condition: service_healthy }
-    environment:
-      NODE_ENV: production
-      SERVICE_MODE: mcp-edge
-      PORT: "3008"
-      APP_ORIGIN: https://${APP_HOSTNAME}
-      ASSET_ORIGIN: https://${ASSET_HOSTNAME}
-      MCP_AUTHORITY_URL: http://private-mcp:3003
-    command: ["bun", "apps/server/src/mcp-edge-index.ts"]
-    networks: [mcp_web, mcp_edge_internal]
-    healthcheck:
-      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3008/health'); if (!response.ok) process.exit(1)"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-    logging:
-      <<: *logging
-      options:
-        awslogs-region: ${AWS_REGION}
-        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
-        awslogs-stream: private-mcp-edge
 
   private-mcp:
     <<: *locked-service
@@ -225,7 +175,7 @@ services:
       STORAGE_MCP_TOKEN: ${STORAGE_MCP_TOKEN}
     command: ["bun", "apps/server/src/mcp-index.ts"]
     volumes: [storage-socket:/run/context-use-storage:ro]
-    networks: [mcp_data, mcp_edge_internal, auth_mcp_internal]
+    networks: [mcp_data, mcp_web, auth_mcp_internal]
     healthcheck:
       test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3003/health'); if (!response.ok) process.exit(1)"]
       interval: 5s
@@ -385,7 +335,7 @@ services:
   caddy:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
-    depends_on: [dashboard-edge, auth-edge, private-mcp-edge, public-web]
+    depends_on: [dashboard-edge, auth, private-mcp, public-web]
     environment:
       APP_HOSTNAME: ${APP_HOSTNAME}
       ASSET_HOSTNAME: ${ASSET_HOSTNAME}
@@ -417,7 +367,7 @@ services:
       BACKUP_BUCKET: ${BACKUP_BUCKET}
       KMS_KEY_ID: ${KMS_KEY_ID}
       VERSION: ${VERSION}
-      SCHEMA_VERSION: 002_remove_public_mcp.sql
+      SCHEMA_VERSION: 003_collapse_mcp_authorization.sql
       AWS_REGION: ${AWS_REGION}
       AWS_CONFIG_FILE: /etc/context-use/aws-config
       AWS_PROFILE: context-use-backup
@@ -447,9 +397,7 @@ networks:
   dashboard_web: { internal: true }
   dashboard_edge_internal: { internal: true }
   auth_web: { internal: true }
-  auth_edge_internal: { internal: true }
   mcp_web: { internal: true }
-  mcp_edge_internal: { internal: true }
   public_web: { internal: true }
   auth_dashboard_internal: { internal: true }
   auth_mcp_internal: { internal: true }

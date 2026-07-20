@@ -6,7 +6,6 @@ import {
 } from "@context-use/database";
 import { MCP_SCOPES } from "@context-use/shared";
 import { Elysia } from "elysia";
-import { validateMcpGrant } from "./auth-client.ts";
 import { config } from "./config.ts";
 import { json, routeError } from "./http.ts";
 import { createMcpRequestHandler } from "./mcp.ts";
@@ -23,31 +22,24 @@ const storage = new BrokeredStorage({
   socketPath: config.STORAGE_SOCKET_PATH,
   token: config.STORAGE_MCP_TOKEN,
 });
-const mcp = createMcpRequestHandler(pages, assets, automations, validateMcpGrant);
-const grantActive = async (clientId: string, userId: string, scopes: ReadonlySet<string>) => (
-  validateMcpGrant({ clientId, userId, scopes: [...scopes] })
-);
-const upload = createMcpAssetUploadHandler(assets, storage, grantActive);
-const download = createMcpAssetDownloadHandler(assets, storage, grantActive);
+const mcp = createMcpRequestHandler(pages, assets, automations);
+const upload = createMcpAssetUploadHandler(assets, storage);
+const download = createMcpAssetDownloadHandler(assets, storage);
+const protectedResourceMetadata = () => json({
+  resource: config.MCP_RESOURCE,
+  authorization_servers: [config.OAUTH_ISSUER],
+  scopes_supported: [...MCP_SCOPES],
+  bearer_methods_supported: ["header"],
+  resource_name: "context-use personal knowledge base",
+});
 
 export const mcpApp = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
   .get("/health", () => json({ status: "ok", service: "private-mcp" }))
-  .get("/.well-known/oauth-protected-resource", () => json({
-    resource: config.MCP_RESOURCE,
-    authorization_servers: [config.OAUTH_ISSUER],
-    scopes_supported: [...MCP_SCOPES],
-    bearer_methods_supported: ["header"],
-    resource_name: "context-use personal knowledge base",
-  }))
-  .get("/.well-known/oauth-protected-resource/mcp", () => json({
-    resource: config.MCP_RESOURCE,
-    authorization_servers: [config.OAUTH_ISSUER],
-    scopes_supported: [...MCP_SCOPES],
-    bearer_methods_supported: ["header"],
-  }))
+  .get("/.well-known/oauth-protected-resource", protectedResourceMetadata)
+  .get("/.well-known/oauth-protected-resource/mcp", protectedResourceMetadata)
   .get("/mcp", ({ request }) => mcp(request))
   .post("/mcp", ({ request }) => mcp(request))
   .delete("/mcp", ({ request }) => mcp(request))
