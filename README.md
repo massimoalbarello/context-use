@@ -1,160 +1,61 @@
 # context-use
 
-`context-use` is a private-by-default, single-owner knowledge base. It keeps Markdown pages in PostgreSQL, immutable asset bytes in S3, exposes an owner dashboard, and gives a trusted personal agent owner-authorized access through MCP.
+**A self-hosted brain for you. A public billboard for everyone else.**
 
-The public site is deliberately separate. Each installation starts with a private root `AGENTS.md` page that tells connected agents to create `about/intro` for a concise owner introduction, keep it private by default, and ask the owner to review and publish it when they want the landing page to introduce them. Until then, `/p/about/intro` shows an empty state. Every owner-authored page version or asset becomes public only after the signed-in owner reviews an exact publication intent and confirms it with a passkey. A portable export of all current knowledge likewise requires a fresh, action-bound passkey assertion. Agent OAuth tokens cannot call dashboard routes, have no publication or export scope, and use a PostgreSQL role that cannot alter publication state.
+Context Use gives your AI agents a private place to remember what they learn about you: who you are, what you care about, what you are working on, and how you like things done. Connect an agent over MCP and it can build and use this knowledge across conversations without handing control of it to someone else.
 
-## What v1 includes
+The same knowledge base can power a public version of you. Publish an introduction, ideas, projects, or anything else you want people to see while everything else stays private. Agents can help write and maintain the content, but only you can decide what becomes public.
 
-- Hierarchical Markdown pages with immutable versions, commit messages, history, and full-text search.
-- Private S3 assets whose bytes are always streamed through short-lived, object-specific API capabilities with checksum-bound uploads.
-- Passkey-only owner signup and sign-in, bound to the configured owner email through a one-time setup link.
-- Passkey-protected publishing, publication updates, and unpublishing with the same immutable credential.
-- Passkey-protected streaming Zip64 export of current active pages and assets as a navigable Markdown vault with local links.
-- OAuth 2.1 authorization code + PKCE for MCP, fifteen-minute audience-bound access tokens, rotating refresh tokens, and owner revocation.
-- Stateless Streamable HTTP MCP at `/mcp` with knowledge, checksum-bound asset upload/download, and automation execution tools.
-- Discoverable Agent Skills stored as versioned Markdown pages; time-zone-aware automations; private-by-default page output; durable run history; and leased agent execution.
-- Exact published snapshots at `/p/<knowledge-path>` and independently published assets at `/a/<knowledge-path>` on a cookieless hostname.
-- A built-in public billboard at `/` that directs visitors to optional `/p/about/intro` content.
-- One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
+The longer-term vision is an autobiography that writes itself. As Context Use connects to more of your personal data, it will turn your activity across the digital and physical world into an evolving life record. You choose which parts remain private and which parts become part of your public story.
 
-External ingestion, vault import, approval queues, collaboration, and semantic search are intentionally outside v1.
+## What it does
 
-## Security model
+- Stores private, versioned Markdown pages and assets you control.
+- Gives personal agents read and write access through OAuth-protected MCP.
+- Publishes only the exact pages and assets you approve.
+- Provides a public profile at `about/intro`, plus public pages for anything else you choose to share.
+- Runs locally or on your own AWS account.
 
-| Principal | Credential | Accepted surface |
-|---|---|---|
-| Owner sign-in | Discoverable, user-verified passkey | Session creation |
-| Owner | Host-only secure session cookie | `/api/dashboard/*` |
-| Owner publishing | Session + CSRF + exact origin + action-bound passkey assertion | Publication confirmation only |
-| Owner export | Same session + CSRF + exact origin + action-bound passkey assertion | One single-use export of all knowledge current when download starts |
-| Personal agent | OAuth bearer token for the canonical MCP audience | `/mcp` only |
-| Agent asset upload | Short-lived, object-specific capability returned by authenticated MCP | Exact returned `/api/mcp/assets/:id/content` URL only |
-| Agent asset read | Five-minute, object-specific capability returned by authenticated MCP | Exact returned `/api/mcp/assets/:id/content` URL only |
-| Public visitor | None | Published pages at `/p/*`; independently published assets at `/a/*` on the asset hostname |
-| Deployment administrator | Local AWS identity | `context-use` CLI |
+## Run locally
 
-These credentials are intentionally non-interchangeable. Dashboard endpoints reject `Authorization`; MCP rejects cookies. Application roles mirror that boundary in PostgreSQL, and public requests query security-barrier views rather than base tables. Publishing a page never publishes linked pages or assets.
+You only need Docker:
 
-Production also enforces the boundary at the process level. Caddy routes only exact public path families to the credentialless dashboard edge, authentication authority, private MCP authority, and public renderer. Auth reapplies its OAuth/passkey route allowlist and requires pairwise capabilities on internal/dashboard routes; private MCP independently requires a signed audience-bound token or exact short-lived asset capability. The dashboard authority, authentication authority, private MCP authority, passkey confirmation, public rendering, and object storage are separate services, each with one database identity and only narrowly scoped additional capabilities. A routed connection is never authorization. The dashboard authority does not receive auth/MCP/confirmation/storage/public/backup/admin pool credentials or AWS access. A Unix-socket storage broker is the only asset process: every write must match immutable database integrity metadata, public reads are authorized by public path and translated to an object key only inside the broker, and deletion requires an already-deleted database row—which cannot exist while the asset is published. Private MCP cannot delete objects. The IMDS hop limit blocks every bridge container from the EC2 instance role; only an input-free host credential broker can reach it, and storage/backup receive separate short-lived, bucket-scoped role credentials.
-
-Internal page links are stored independently of either presentation route. Use `[[path|label]]` or `[label](context-use://page/<page-uuid>)`, never a hard-coded `/app/pages/*` or `/p/*` URL. Authorized dashboard rendering resolves a reference to `/app/pages/:id`. Before anonymous code can read a published document, the database projection replaces references to independently published targets with public paths and turns private targets into inert labels. The public renderer therefore never receives the underlying UUID or private knowledge path.
-
-Image assets use the same stable-reference model. A plain `![Alt text](context-use://asset/<asset-uuid>)` keeps its natural aspect ratio and is constrained to the content width. A small, sanitization-safe attribute block may immediately follow the reference:
-
-```markdown
-![Portrait](context-use://asset/<asset-uuid>){size=medium align=center shape=square}
+```sh
+git clone https://github.com/massimoalbarello/context-use.git
+cd context-use
+docker compose up --build
 ```
 
-The supported values are `size=small|medium|large|full`, `align=left|center|right`, `shape=auto|square|portrait|landscape`, and `layout=block|half|third`. Omitted values default to medium, centered, automatic aspect ratio, and block layout. Use `layout=half` on two consecutive images or `layout=third` on three consecutive images for equal responsive columns; the columns collapse on narrow screens. Enforced shapes crop with `object-fit: cover`. No arbitrary CSS is accepted, and unsupported or misspelled attributes remain visible in the rendered page for review. Assets remain independently private until the owner publishes them.
+Then open the [local setup page](http://localhost:5173/app#setup=development-owner-setup-token-0000000000000). The default owner email is `you@example.com`.
 
-Authenticated MCP agents receive this syntax automatically in the `body_markdown` schema used by `create_page` and `update_page`; no separate discovery call is required. Successful image upload creation also returns ready-to-paste default and formatted Markdown examples.
+To use another email on a fresh installation:
 
-The Settings export contains only the latest version of each non-archived page and every non-deleted asset. It mirrors knowledge folders, uses the friendly page titles and asset filenames, and rewrites Context Use UUID references and wikilinks to relative, URL-encoded Markdown links. It contains no manifest, history, publication state, account data, or database identifiers. Asset integrity is checked before the passkey prompt, and the Zip64 response streams through the application without exposing storage URLs or buffering the archive in browser memory.
+```sh
+OWNER_EMAIL=me@example.com docker compose up --build
+```
 
-See [Security architecture](docs/security.md) and [Operations](docs/operations.md) for the complete boundary and operating model.
+## Self-host on AWS
 
-## Deploy on AWS
-
-Prerequisites:
-
-- macOS or Linux on ARM64 or x86-64.
-- An authenticated AWS CLI v2 profile with permission to create the documented resources. Browser sessions created by `aws login` are supported.
-- Terraform `>= 1.11, < 2.0`.
-- A hostname you control.
-- GitHub CLI for release-provenance verification during installation.
-
-Install the signed release artifact:
+The CLI provisions and manages Context Use in your AWS account. You need an authenticated AWS CLI profile, Terraform 1.11+, GitHub CLI, and a hostname you control.
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL \
   https://github.com/massimoalbarello/context-use/releases/latest/download/install.sh | sh
+
+~/.local/bin/context-use setup
 ```
 
-Ensure `~/.local/bin` is on `PATH`, then run:
+Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use status`, `context-use update`, or `context-use doctor` to manage the installation later.
 
-```sh
-context-use setup
-```
+## Connect an agent
 
-The CLI asks for the AWS profile, region, hostname, DNS mode, and owner email. It exports short-lived credentials from that profile to Terraform without storing access keys, creates everything else, stores secrets only as KMS-encrypted SSM parameters, deploys through Systems Manager, waits for TLS, and prints a one-time owner-enrollment link. The link asks for the configured email and creates the installation's permanent passkey; email is an identity label, not a sign-in or recovery method. Manual DNS setup pauses safely and continues with `context-use resume`.
-
-Useful commands:
-
-```text
-context-use status
-context-use doctor
-context-use update
-context-use backup
-context-use restore
-context-use recover
-context-use open
-context-use destroy
-context-use destroy --purge-data
-```
-
-Ordinary `destroy` removes replaceable compute but retains encrypted data and Terraform state. `--purge-data` requires the hostname and a second destructive confirmation.
-
-## Agent connection
-
-### Private agent
-
-Point an OAuth-capable MCP client at:
+Point any OAuth-capable MCP client at:
 
 ```text
 https://YOUR_HOST/mcp
 ```
 
-The server publishes protected-resource and authorization-server metadata. Dynamic clients receive the single `mcp:access` application scope, and the owner must approve that full private-MCP grant. `offline_access` requires an explicit client request and owner consent; no MCP grant can publish, export knowledge, or call dashboard routes.
-
-MCP initialization tells the client to call `get_knowledge_base_guide` before managing pages. That tool reads the editable root `AGENTS.md` page. The initial guide reserves `about/` for information whose subject is the owner, asks the agent to create `about/intro` if missing, keeps entities such as people, companies, and events in their own top-level folders, and defines `skills/<skill-name>` as the location for reusable Agent Skills. The database reserves bare `about` as a folder, but the intro page is an ordinary private page until the owner chooses to publish it; semantic placement is guided because the database cannot reliably infer a page's subject from Markdown.
-
-`create_asset_upload` records private asset metadata and returns a fifteen-minute upload capability bound to that asset and the upload action. The agent then sends the exact raw bytes to the returned API URL and headers. Size, content type, and SHA-256 are verified before storage; the capability cannot read, edit, delete, or publish anything.
-
-`get_asset` returns metadata plus a five-minute API download request bound to that exact asset and the download action. The capability supports byte ranges for large media and cannot be substituted for an upload capability. It never returns or redirects to an S3 URL. Dashboard reads use the owner-session API route, while anonymous reads use `/a/<knowledge-path>` on the asset host. The public web credential sees only safe download metadata; the object key is resolved from a separate storage-only projection inside the broker.
-
-### Public access
-
-The dashboard hostname serves the public billboard and exact owner-published page snapshots. Pages resolve at `/p/<knowledge-path>`. Independently published asset bytes resolve only at `/a/<knowledge-path>` on the dedicated cookieless asset hostname. Neither route can read current drafts, private link targets, private asset metadata, UUIDs, page versions, or S3 object keys.
-
-Skills are ordinary knowledge pages at `skills/<skill-name>` and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification). The complete page body contains standard YAML frontmatter with `name` and `description`, followed by the instructions. Agents discover the folder and use the ordinary page tools to read, create, update, or archive skills; the knowledge system supplies stable semantic paths, immutable versions, commit messages, dashboard editing, and MCP access.
-
-Automations live separately under **Automations** and can also be created with `create_automation`. Each automation stores its instructions in the private, versioned knowledge page `automations/<automation-key>/instructions`, so the workflow can link to any other knowledge page. A claimed run receives the instruction page's current Markdown.
-
-Every automation owns one stable virtual folder at `automations/<automation-key>`. The owner chooses the unique semantic key at creation and it cannot later change; the automation UUID remains provenance metadata. The schedule holds the instruction page's stable ID rather than its path, so renaming the page does not break claims. While an MCP client holds an active run claim, its generic page writes are disabled; optional page output and run-scoped instruction edits require the automation page tools and the valid run ID and claim token. The server resolves relative paths inside that folder, and database constraints prevent unrelated pages from impersonating automation content in the reserved tree.
-
-An automation creates an output page only when its instructions call for persistent page output. Output starts private, then follows the ordinary page lifecycle: the dashboard and MCP can edit or archive it, an edit can move it out of the automation folder, and the owner may publish an exact version after fresh passkey confirmation. The instruction page also has ordinary editing and history, but it is permanently private. MCP has no publication capability for either kind of page.
-
-Context Use does not require a resident scheduler process: loading the dashboard or calling `claim_due_run` transactionally materializes elapsed schedules. The first version creates one catch-up run per automation and skips additional occurrences missed while nobody was polling.
-
-Any connected agent can use the same generic external cron prompt:
-
-```text
-Check Context Use for scheduled work. Call claim_due_run. If it returns a run,
-follow its instructions using the supplied input. Continue until claim_due_run returns
-null.
-```
-
-For claimed runs, Context Use appends the shared execution contract to the returned `instructions_markdown`: read `[[about/intro]]`, use the claim-scoped automation page tools inside the dedicated knowledge path only when the automation calls for page output, and finish with `complete_run` or `fail_run`. When created, the page is the canonical output. `complete_run.result_summary` is an optional one- or two-sentence dashboard note about what changed and where, not a copy of the page. This happens only in the `claim_due_run` response. While migrated instructions still contain a legacy `## Execution context` section, Context Use recognizes it and does not inject a duplicate.
-
-Claims are atomic and leased for one hour. Expired claims are automatically available to the next polling agent. Runs, inputs, current instructions, knowledge ownership, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
-
-## Development
-
-The repository uses Bun 1.3, TypeScript, PostgreSQL 17, React, Elysia, Better Auth, the MCP TypeScript SDK, Terraform, Docker Compose, and Caddy.
-
-```sh
-bun install --frozen-lockfile
-bun run typecheck
-bun test
-bun --cwd apps/web build
-terraform -chdir=infra/data init -backend=false
-terraform -chdir=infra/data validate
-terraform -chdir=infra/compute init -backend=false
-terraform -chdir=infra/compute validate
-```
-
-Local database and application setup is documented in [Development](docs/development.md).
+The agent can manage your private knowledge, but it cannot publish it. Public access always remains an owner decision.
 
 ## License
 
