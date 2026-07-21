@@ -4,12 +4,13 @@ import { authClient } from "./auth-client.ts";
 import { AssetDetails } from "./components/Assets.tsx";
 import { Automations } from "./components/Automations.tsx";
 import { Editor } from "./components/Editor.tsx";
+import { DirectoryEditor } from "./components/DirectoryEditor.tsx";
 import { KnowledgeTree, type KnowledgeSelection } from "./components/KnowledgeTree.tsx";
 import { Login } from "./components/Login.tsx";
 import { McpClients } from "./components/McpClients.tsx";
 import { OAuthConsent } from "./components/OAuthConsent.tsx";
 import { Settings, type PasskeySummary } from "./components/Settings.tsx";
-import type { Asset, Page } from "./types.ts";
+import type { Asset, Directory, Page } from "./types.ts";
 
 type SessionInfo = { owner: { id: string; email: string }; passkey_count: number; passkeys: PasskeySummary[] };
 type Section = "knowledge" | "automations" | "mcp" | "settings";
@@ -42,8 +43,9 @@ function SignOutIcon() {
 }
 
 function selectionFromLocation(): KnowledgeSelection | null {
-  const match = window.location.pathname.match(/^\/app\/(pages|assets)\/([0-9a-f-]+)/);
-  return match ? { kind: match[1] === "pages" ? "page" : "asset", id: match[2]! } : null;
+  const match = window.location.pathname.match(/^\/app\/(pages|directories|assets)\/([0-9a-f-]+)/);
+  if (!match) return null;
+  return { kind: match[1] === "pages" ? "page" : match[1] === "directories" ? "directory" : "asset", id: match[2]! };
 }
 
 function sectionFromLocation(): Section {
@@ -57,6 +59,7 @@ export function App() {
   const { data: authSession, isPending } = authClient.useSession();
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [pages, setPages] = useState<Page[]>([]);
+  const [directories, setDirectories] = useState<Directory[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selected, setSelected] = useState<KnowledgeSelection | null>(selectionFromLocation);
   const [section, setSection] = useState<Section>(sectionFromLocation);
@@ -81,9 +84,15 @@ export function App() {
     setPages(await api<Page[]>(`/api/dashboard/pages${parameters.size ? `?${parameters}` : ""}`));
   };
   const loadAssets = async () => setAssets(await api<Asset[]>("/api/dashboard/assets"));
+  const loadDirectories = async () => {
+    const parameters = new URLSearchParams();
+    if (query) parameters.set("q", query);
+    setDirectories(await api<Directory[]>(`/api/dashboard/directories${parameters.size ? `?${parameters}` : ""}`));
+  };
   useEffect(() => { if (authSession) loadSession().catch(() => setSession(null)); }, [authSession]);
   useEffect(() => { if (session) loadPages().catch(() => undefined); }, [session, query, showArchived]);
   useEffect(() => { if (session) loadAssets().catch(() => undefined); }, [session]);
+  useEffect(() => { if (session) loadDirectories().catch(() => undefined); }, [session, query]);
   useEffect(() => {
     const syncLocation = () => {
       setSelected(selectionFromLocation());
@@ -146,7 +155,8 @@ export function App() {
   const selectKnowledge = (selection: KnowledgeSelection) => {
     setSelected(selection);
     setSection("knowledge");
-    history.pushState({}, "", `/app/${selection.kind === "page" ? "pages" : "assets"}/${selection.id}`);
+    const collection = selection.kind === "page" ? "pages" : selection.kind === "directory" ? "directories" : "assets";
+    history.pushState({}, "", `/app/${collection}/${selection.id}`);
   };
 
   const openSettings = () => {
@@ -166,7 +176,8 @@ export function App() {
 
   const openKnowledge = () => {
     setSection("knowledge");
-    history.pushState({}, "", selected ? `/app/${selected.kind === "page" ? "pages" : "assets"}/${selected.id}` : "/app");
+    const collection = selected?.kind === "page" ? "pages" : selected?.kind === "directory" ? "directories" : "assets";
+    history.pushState({}, "", selected ? `/app/${collection}/${selected.id}` : "/app");
   };
 
   const startSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -194,7 +205,7 @@ export function App() {
         <button className={section === "mcp" ? "active" : ""} onClick={openMcpClients}><SectionIcon section="mcp" /><span>MCP clients</span></button>
       </nav>
       <label className="sidebar-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5" /><path d="m12.25 12.25 4 4" /></svg><input ref={searchRef} className="search" aria-label="Search knowledge" placeholder="Search knowledge…" value={query} onChange={(event) => setQuery(event.target.value)} /><kbd>⌘K</kbd></label>
-      <KnowledgeTree pages={pages} assets={visibleAssets} query={query} selected={section === "knowledge" ? selected : null} onSelect={selectKnowledge} />
+      <KnowledgeTree pages={pages} directories={directories} assets={visibleAssets} query={query} selected={section === "knowledge" ? selected : null} onSelect={selectKnowledge} />
       <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />Include archived pages</label>
       <footer>
         <button className={section === "settings" ? "settings-button active" : "settings-button"} onClick={openSettings}><SectionIcon section="settings" /><span>Settings</span></button>
@@ -214,7 +225,7 @@ export function App() {
       onKeyDown={resizeSidebarWithKeyboard}
       onDoubleClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
     />
-    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "automations" ? <Automations /> : section === "mcp" ? <McpClients /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadPages(); setMessage("Page and retained version history permanently deleted from the live knowledge base."); }} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Browse durable knowledge managed through your authenticated MCP connection. Your content stays private until you explicitly publish an exact version.</p><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-managed</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
+    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "automations" ? <Automations /> : section === "mcp" ? <McpClients /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadPages(); setMessage("Page and retained version history permanently deleted from the live knowledge base."); }} /> : selected?.kind === "directory" ? <DirectoryEditor directoryId={selected.id} onChanged={loadDirectories} onSelect={selectKnowledge} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Browse durable knowledge managed through your authenticated MCP connection. Your content stays private until you explicitly publish an exact version.</p><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-managed</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
     {message && <div className="toast">{message}</div>}
   </div>;
 }

@@ -2,6 +2,7 @@ import {
   AUTOMATION_RESULT_SUMMARY_MAX_LENGTH,
   AssetRepository,
   AutomationRepository,
+  DirectoryRepository,
   PageRepository,
 } from "@context-use/database";
 import {
@@ -10,10 +11,13 @@ import {
   assetUploadSchema,
   createAutomationPageSchema,
   createCronScheduleSchema,
+  createDirectorySchema,
   createPageSchema,
   updateAutomationPageSchema,
+  updateDirectorySchema,
   updatePageSchema,
 } from "@context-use/shared";
+import { DirectoryPath } from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { config } from "./config.ts";
@@ -27,11 +31,12 @@ const jsonContent = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
 
-export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Store information whose subject is the owner under about/; create about/intro if it is missing so it can become the concise public introduction. Keep it private by default and ask the owner to review and publish it if they want the landing page to introduce them, because agents cannot publish. Keep other entities such as people, companies, and events in separate top-level folders outside about/. Discover reusable Agent Skills by listing pages under skills/; each skills/<skill-name> page is a complete standard SKILL.md document.";
+export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Explore progressively with get_directory, beginning at the root path. Create directory metadata before adding pages beneath a new path. Every page and directory requires a concise one-sentence summary used by generated indexes. Link pages and directory indexes alike with [[path|label]]; stable directory references use context-use://directory/<uuid>. Store owner information under about/ and create about/intro as its concise introduction; keep other entities in separate top-level directories. Reusable skills live at skills/<skill-name>. Keep knowledge private unless the owner explicitly publishes a page.";
 
 export function createMcpServer(
   context: McpContext,
   pages: PageRepository,
+  directories: DirectoryRepository,
   assets: AssetRepository,
   automations: AutomationRepository,
 ): McpServer {
@@ -47,6 +52,45 @@ export function createMcpServer(
   }, async () => {
     return jsonContent(await pages.getByPath("agents"));
   });
+
+  server.registerTool("get_directory", {
+    description: "Read a linkable directory index by path or stable UUID. Returns the directory metadata and its generated list of immediate child directories and active pages with summaries. Use the empty path for the root index.",
+    inputSchema: z.object({
+      path: DirectoryPath.optional(),
+      directory_id: z.string().uuid().optional(),
+    }).strict().superRefine((value, context) => {
+      if ((value.path === undefined) === (value.directory_id === undefined)) {
+        context.addIssue({ code: "custom", message: "Provide exactly one of path or directory_id" });
+      }
+    }),
+    annotations: { readOnlyHint: true },
+  }, async ({ path, directory_id }) => {
+    const directory = directory_id
+      ? await directories.indexById(directory_id)
+      : await directories.indexByPath(path!);
+    return jsonContent(directory ? {
+      ...directory,
+      reference: `context-use://directory/${directory.id}`,
+    } : null);
+  });
+
+  server.registerTool("list_directories", {
+    description: "List directory metadata. Prefer get_directory for progressive exploration.",
+    inputSchema: z.object({ query: z.string().trim().min(1).max(500).optional() }).strict(),
+    annotations: { readOnlyHint: true },
+  }, async ({ query }) => jsonContent(await directories.list(query)));
+
+  server.registerTool("create_directory", {
+    description: "Create a first-class directory beneath an existing directory. Its generated index becomes immediately linkable by path or stable directory reference.",
+    inputSchema: createDirectorySchema,
+    annotations: { destructiveHint: false },
+  }, async (input) => jsonContent(await directories.create(input)));
+
+  server.registerTool("update_directory", {
+    description: "Edit a directory index title, required summary, and optional Markdown introduction. The generated child listing is maintained by the framework.",
+    inputSchema: updateDirectorySchema.extend({ directory_id: z.string().uuid() }).strict(),
+    annotations: { destructiveHint: false },
+  }, async ({ directory_id, ...input }) => jsonContent(await directories.update(directory_id, input)));
 
   server.registerTool("list_pages", {
     description: "List current knowledge pages. Archived pages are excluded unless requested.",
@@ -89,7 +133,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_page", {
-    description: "Create a private Markdown page and its first immutable version. Follow the root AGENTS.md structure: owner information goes under about/; separate entities stay outside it. The body_markdown schema documents supported image layouts. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
+    description: "Create a private Markdown page and its first immutable version beneath an existing directory. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or use context-use://page/<uuid> and context-use://directory/<uuid>; never store dashboard or public URLs.",
     inputSchema: createPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -97,7 +141,7 @@ export function createMcpServer(
   });
 
   server.registerTool("update_page", {
-    description: "Create a new private page version, including for an automation-created page, using optimistic concurrency while preserving the root AGENTS.md structure. The body_markdown schema documents supported image layouts. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
+    description: "Create a new private page version, including for an automation-created page, using optimistic concurrency. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or use stable context-use references; never store dashboard or public URLs.",
     inputSchema: updatePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ page_id, ...input }) => {

@@ -1,9 +1,14 @@
 const UUID_PATTERN = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
 const PAGE_LINK = new RegExp(`(?:!?)\\[[^\\]]*\\]\\(context-use:\\/\\/page\\/${UUID_PATTERN}\\)`, "gi");
+const DIRECTORY_LINK = new RegExp(`\\[[^\\]]*\\]\\(context-use:\\/\\/directory\\/${UUID_PATTERN}\\)`, "gi");
 const ASSET_LINK = new RegExp(`!\\[[^\\]]*\\]\\(context-use:\\/\\/asset\\/${UUID_PATTERN}\\)`, "gi");
 const WIKI_LINK = /(?<!!)\[\[([a-z0-9][a-z0-9/_-]*)(?:\|([^\]\n]+))?\]\]/gi;
 const LEGACY_PRIVATE_PAGE_LINK = new RegExp(
   `(\\[[^\\]\\n]*\\]\\()\\/app\\/pages\\/${UUID_PATTERN}(\\))`,
+  "gi",
+);
+const LEGACY_PRIVATE_DIRECTORY_LINK = new RegExp(
+  `(\\[[^\\]\\n]*\\]\\()\\/app\\/directories\\/${UUID_PATTERN}(\\))`,
   "gi",
 );
 
@@ -18,11 +23,18 @@ export function normalizeInternalPageLinks(markdown: string): string {
   return markdown.replace(
     LEGACY_PRIVATE_PAGE_LINK,
     (_match, prefix: string, id: string, suffix: string) => `${prefix}context-use://page/${id.toLowerCase()}${suffix}`,
+  ).replace(
+    LEGACY_PRIVATE_DIRECTORY_LINK,
+    (_match, prefix: string, id: string, suffix: string) => `${prefix}context-use://directory/${id.toLowerCase()}${suffix}`,
   );
 }
 
 export function extractPageLinks(markdown: string): string[] {
   return [...new Set(Array.from(normalizeInternalPageLinks(markdown).matchAll(PAGE_LINK), (match) => match[1]!.toLowerCase()))];
+}
+
+export function extractDirectoryLinks(markdown: string): string[] {
+  return [...new Set(Array.from(normalizeInternalPageLinks(markdown).matchAll(DIRECTORY_LINK), (match) => match[1]!.toLowerCase()))];
 }
 
 export function extractAssetLinks(markdown: string): string[] {

@@ -126,6 +126,7 @@ describeDatabase("persisted automation lifecycle", () => {
       claim_token: claimed.claim_token,
       relative_path: "reviews/latest",
       title: "Latest project review",
+      summary: "The latest project review produced by the automation.",
       body_markdown: "Related to [[projects/context-use]].",
       commit_message: "Create generated review",
     }, { kind: "mcp", subject: "agent-one" });
@@ -141,6 +142,7 @@ describeDatabase("persisted automation lifecycle", () => {
       page_id: instructionsPage.id,
       relative_path: "instructions",
       title: instructionsPage.title,
+      summary: instructionsPage.summary,
       body_markdown: "Read [[projects/context-use]] and use the latest decisions.",
       commit_message: "Refresh automation instructions",
       expected_version_number: instructionsPage.version_number,
@@ -152,12 +154,14 @@ describeDatabase("persisted automation lifecycle", () => {
     await expect(pages.create({
       path: "notes/outside-automation-folder",
       title: "Outside automation folder",
+      summary: "A write that should be rejected during an automation claim.",
       body_markdown: "Must fail while the client holds a run claim.",
       commit_message: "Attempt generic run output",
     }, { kind: "mcp", subject: "agent-one" })).rejects.toBeInstanceOf(AutomationContentAccessError);
     await expect(pages.update(generated.id, {
       path: generated.current_path,
       title: generated.title,
+      summary: generated.summary,
       body_markdown: "Attempt a generic update.",
       commit_message: "Attempt generic update",
       expected_version_number: generated.version_number,
@@ -166,9 +170,18 @@ describeDatabase("persisted automation lifecycle", () => {
       .rejects.toBeInstanceOf(AutomationClaimError);
     expect(await automations.completeRun(claimed.run_id, claimed.claim_token, "agent-one", "Review saved"))
       .toMatchObject({ status: "succeeded", result_summary: "Review saved" });
+    await pool.query(
+      `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+       VALUES
+         ($1,'reports','Reports','Test reports.','',directory_search_vector('reports','Reports','Test reports.','')),
+         ($2,$3,'Automation reports','Reports moved out of an automation.','',directory_search_vector($3,'Automation reports','Reports moved out of an automation.',''))
+       ON CONFLICT (current_path) DO NOTHING`,
+      [crypto.randomUUID(), crypto.randomUUID(), `reports/${suffix}`],
+    );
     const updatedGenerated = await pages.update(generated.id, {
       path: `reports/${suffix}/latest-review`,
       title: generated.title,
+      summary: generated.summary,
       body_markdown: "Owner-reviewed automation output.",
       commit_message: "Review generated output",
       expected_version_number: generated.version_number,
@@ -202,6 +215,7 @@ describeDatabase("persisted automation lifecycle", () => {
     await expect(pages.create({
       path: `automations/morning-review-${suffix}/unowned`,
       title: "Unowned generated page",
+      summary: "An unowned page that should be rejected.",
       body_markdown: "Must fail.",
       commit_message: "Attempt reserved path",
     }, { kind: "mcp", subject: "agent-one" })).rejects.toThrow();
@@ -211,6 +225,7 @@ describeDatabase("persisted automation lifecycle", () => {
       page_id: generated.id,
       relative_path: "reviews/latest",
       title: "Expired update",
+      summary: "An expired automation update that should be rejected.",
       body_markdown: "Must fail after completion.",
       commit_message: "Attempt expired update",
       expected_version_number: archivedGenerated!.version_number,

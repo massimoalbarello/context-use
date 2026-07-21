@@ -1,4 +1,4 @@
-import { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
+import { AssetRepository, AutomationRepository, DirectoryRepository, PageRepository } from "@context-use/database";
 import { MCP_SCOPE } from "@context-use/shared";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { config } from "./config.ts";
@@ -35,6 +35,7 @@ function contextFromJwt(jwt: JWTPayload): McpContext | null {
 
 export function createMcpRequestHandler(
   pages: PageRepository,
+  directories: DirectoryRepository,
   assets: AssetRepository,
   automations: AutomationRepository,
 ) {
@@ -73,7 +74,7 @@ export function createMcpRequestHandler(
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();
-    const server = createMcpServer(context, pages, assets, automations);
+    const server = createMcpServer(context, pages, directories, assets, automations);
     await server.connect(transport);
     try {
       return await transport.handleRequest(request);

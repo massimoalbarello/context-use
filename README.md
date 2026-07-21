@@ -11,9 +11,11 @@ The longer-term vision is an autobiography that writes itself. As Context Use co
 ## What it does
 
 - Stores private Markdown pages with the five latest versions, plus any older snapshot that is still published.
+- Organizes pages beneath first-class, linkable directories whose private and public indexes are generated from required one-sentence summaries; public indexes include only published knowledge.
 - Gives personal agents read and write access through OAuth-protected MCP.
 - Publishes only the exact pages and assets you approve.
 - Lets only the dashboard owner permanently delete an archived page after fresh passkey confirmation.
+- Exports a portable Markdown vault with page metadata, directory metadata, generated `index.md` files, and local links.
 - Provides a public profile at `about/intro`, plus public pages for anything else you choose to share.
 - Runs locally or on your own AWS account.
 
@@ -47,6 +49,8 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ```
 
 Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use status`, `context-use update`, or `context-use doctor` to manage the installation later.
+
+> **Schema compatibility:** the directory/index release intentionally replaces the pre-release migration history with one checksummed baseline. Existing installations must be destroyed with retained data and recreated; the migrator rejects older or modified schemas instead of starting against an incompatible database.
 
 ## Connect an agent
 

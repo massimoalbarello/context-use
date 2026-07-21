@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { AssetRepository, AutomationRepository, PageRepository } from "@context-use/database";
+import type { AssetRepository, AutomationRepository, DirectoryRepository, PageRepository } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
 import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS } from "./mcp-server.ts";
@@ -40,10 +40,12 @@ function serverWith(
   automations: AutomationRepository,
   pages = {} as PageRepository,
   assets = {} as AssetRepository,
+  directories = {} as DirectoryRepository,
 ) {
   return createMcpServer(
     { clientId: "mcp-client" },
     pages,
+    directories,
     assets,
     automations,
   );
@@ -91,6 +93,42 @@ describe("MCP knowledge and automation authoring", () => {
     });
   });
 
+  test("explores a generated directory index progressively", async () => {
+    const directories = {
+      async indexByPath(path: string) {
+        expect(path).toBe("about/chapters");
+        return {
+          id: "11111111-1111-4111-8111-111111111111",
+          current_path: path,
+          title: "Chapters",
+          summary: "The major chapters in the owner's life.",
+          children: [{
+            kind: "page",
+            id: "22222222-2222-4222-8222-222222222222",
+            path: "about/chapters/como",
+            title: "Como",
+            summary: "Growing up at the foot of the Alps.",
+          }],
+        };
+      },
+    } as unknown as DirectoryRepository;
+    const response = await mcpRequest(serverWith(
+      {} as AutomationRepository,
+      {} as PageRepository,
+      {} as AssetRepository,
+      directories,
+    ), {
+      jsonrpc: "2.0",
+      id: 10,
+      method: "tools/call",
+      params: { name: "get_directory", arguments: { path: "about/chapters" } },
+    });
+    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
+      reference: "context-use://directory/11111111-1111-4111-8111-111111111111",
+      children: [{ title: "Como", summary: "Growing up at the foot of the Alps." }],
+    });
+  });
+
   test("advertises ordinary page tools for skills and separate automation tools", async () => {
     const response = await mcpRequest(serverWith({} as AutomationRepository), {
       jsonrpc: "2.0",
@@ -101,6 +139,8 @@ describe("MCP knowledge and automation authoring", () => {
 
     expect(response.result?.tools?.map(({ name }) => name)).toEqual(expect.arrayContaining([
       "get_knowledge_base_guide",
+      "get_directory",
+      "create_directory",
       "list_pages",
       "get_page",
       "create_page",
@@ -282,6 +322,7 @@ describe("MCP knowledge and automation authoring", () => {
         arguments: {
           path: "skills/daily-review",
           title: "SKILL.md",
+          summary: "A reusable skill for reviewing project context each day.",
           body_markdown: "---\nname: daily-review\ndescription: Reviews current project context. Use for a daily project health check.\n---\n\nReview the current project and record decisions.",
           commit_message: "Create daily review skill",
         },
@@ -296,6 +337,7 @@ describe("MCP knowledge and automation authoring", () => {
       input: {
         path: "skills/daily-review",
         title: "SKILL.md",
+        summary: "A reusable skill for reviewing project context each day.",
         body_markdown: expect.stringContaining("name: daily-review"),
         commit_message: "Create daily review skill",
       },
@@ -355,6 +397,7 @@ describe("MCP knowledge and automation authoring", () => {
           claim_token: "66666666-6666-4666-8666-666666666666",
           relative_path: "reports/daily-review",
           title: "Daily review",
+          summary: "The daily review produced by the automation.",
           body_markdown: "Review body",
           commit_message: "Create daily review",
         },

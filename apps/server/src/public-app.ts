@@ -1,5 +1,5 @@
 import { PublicRepository, createPool } from "@context-use/database";
-import { AssetPath, PagePath } from "@context-use/shared";
+import { AssetPath, DirectoryPath, PagePath } from "@context-use/shared";
 import { Elysia } from "elysia";
 import { config } from "./config.ts";
 import { json, routeError } from "./http.ts";
@@ -8,6 +8,7 @@ import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import {
   IMAGE_LAYOUT_STYLES,
   publicPageStyles,
+  renderPublicIndexDocument,
   renderPublicLandingDocument,
   renderPublicPageDocument,
 } from "./public-page.ts";
@@ -22,8 +23,10 @@ const storage = new BrokeredStorage({
   publicOnly: true,
 });
 const publicAssetContent = createPublicAssetContentHandler(publicData, storage, config.ASSET_ORIGIN);
+const htmlHeaders = { ...securityHeaders, "content-type": "text/html; charset=utf-8" };
 const unavailableResolvers = {
   page: async () => ({ available: false as const }),
+  directory: async () => ({ available: false as const }),
   pagePath: async () => ({ available: false as const }),
   asset: async () => ({ available: false as const }),
   publicAssetPath: async (path: string) => {
@@ -39,6 +42,14 @@ const unavailableResolvers = {
       : { available: false as const };
   },
 };
+
+async function publicDirectoryResponse(rawPath: string): Promise<Response> {
+  const parsedPath = DirectoryPath.safeParse(rawPath);
+  if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
+  const index = await publicData.directoryIndex(parsedPath.data);
+  if (!index) return new Response("Not found", { status: 404, headers: securityHeaders });
+  return new Response(renderPublicIndexDocument(index), { headers: htmlHeaders });
+}
 
 export const publicApp = new Elysia()
   .onError(({ error, code }) => code === "NOT_FOUND"
@@ -64,12 +75,12 @@ export const publicApp = new Elysia()
     // replaced independently public targets with public paths. The renderer can
     // resolve a published asset path but has no UUID/private-path capability.
     const content = await renderMarkdown(page.body_markdown, unavailableResolvers);
-    return new Response(renderPublicPageDocument(page.title, content), {
-      headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
-    });
+    return new Response(renderPublicPageDocument(page.title, content, page.public_path), { headers: htmlHeaders });
   })
+  .get("/i", () => publicDirectoryResponse(""))
+  .get("/i/*", ({ params }) => publicDirectoryResponse(params["*"]))
   .get("/", () => new Response(renderPublicLandingDocument(), {
-    headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
+    headers: htmlHeaders,
   }))
   .get("/public.css", () => new Response(publicPageStyles, {
     headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" },

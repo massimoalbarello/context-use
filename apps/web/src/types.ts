@@ -9,6 +9,7 @@ export type Page = {
   archived_at: string | null;
   version_number: number;
   title: string;
+  summary: string;
   body_markdown: string;
   rendered_html?: string;
 };
@@ -19,11 +20,36 @@ export type Version = {
   version_number: number;
   path: string;
   title: string;
+  summary: string;
   body_markdown?: string;
   commit_message: string;
   actor_kind: "dashboard" | "mcp";
   actor_subject: string;
   created_at: string;
+};
+
+export type Directory = {
+  id: string;
+  current_path: string;
+  version_number: number;
+  title: string;
+  summary: string;
+  intro_markdown: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DirectoryIndexEntry = {
+  kind: "directory" | "page";
+  id: string;
+  path: string;
+  title: string;
+  summary: string;
+};
+
+export type DirectoryIndex = Directory & {
+  children: DirectoryIndexEntry[];
+  rendered_intro_html?: string;
 };
 
 export type Asset = {
@@ -47,11 +73,12 @@ export type PublicationPreview = {
   version_id: string;
   version_number: number;
   title: string;
+  summary: string;
   path: string;
   rendered_html: string;
   current_public_path: string | null;
   warnings: string[];
-  references: Array<{ kind: "page" | "asset"; id: string; label: string; path: string | null; public: boolean }>;
+  references: Array<{ kind: "page" | "directory" | "asset"; id: string; label: string; path: string | null; public: boolean }>;
 };
 
 export type ConnectedClient = {

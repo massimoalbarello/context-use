@@ -12,12 +12,13 @@ import {
   type PageTreePage,
 } from "../knowledge-tree.ts";
 import { isPublishedPageOutdated } from "../publication-status.ts";
-import type { Asset, Page } from "../types.ts";
+import type { Asset, Directory, Page } from "../types.ts";
 
-export type KnowledgeSelection = { kind: "page" | "asset"; id: string };
+export type KnowledgeSelection = { kind: "page" | "directory" | "asset"; id: string };
 
 type KnowledgeTreeProps = {
   pages: Page[];
+  directories: Directory[];
   assets: Asset[];
   query: string;
   selected: KnowledgeSelection | null;
@@ -57,6 +58,33 @@ function AssetIcon() {
   return <svg className="tree-icon tree-asset-icon" viewBox="0 0 16 16" aria-hidden="true">
     <path d="M2.25 2.25h11.5v11.5H2.25z" /><path d="m3.75 11 2.5-2.75 2 2 1.5-1.5 2.5 2.25" /><circle cx="10.75" cy="5.25" r="1" />
   </svg>;
+}
+
+function DirectoryIndexRow({
+  directory,
+  depth,
+  selected,
+  onSelect,
+}: {
+  directory: Directory;
+  depth: number;
+  selected: KnowledgeSelection | null;
+  onSelect: (selection: KnowledgeSelection) => void;
+}) {
+  const active = selected?.kind === "directory" && selected.id === directory.id;
+  return <button
+    type="button"
+    className={`tree-row tree-page-row tree-index-row${active ? " selected" : ""}`}
+    style={{ "--tree-depth": depth } as CSSProperties}
+    role="treeitem"
+    aria-selected={active}
+    title={`${directory.title}\n${directory.current_path || "/"}`}
+    onClick={() => onSelect({ kind: "directory", id: directory.id })}
+  >
+    <span className="tree-chevron-spacer" aria-hidden="true" />
+    <PageIcon />
+    <span className="tree-label">index</span>
+  </button>;
 }
 
 type TreeItem = PageTreePage | AssetTreeAsset;
@@ -148,6 +176,7 @@ function DirectoryBranch({
       role="group"
       style={{ "--tree-depth": depth } as CSSProperties}
     >
+      {directory.directory && <DirectoryIndexRow directory={directory.directory} depth={depth + 1} selected={selected} onSelect={onSelect} />}
       {directory.directories.map((child) => <DirectoryBranch
         key={child.path}
         directory={child}
@@ -162,8 +191,8 @@ function DirectoryBranch({
   </div>;
 }
 
-export function KnowledgeTree({ pages, assets, query, selected, onSelect, emptyMessage }: KnowledgeTreeProps) {
-  const tree = useMemo(() => buildKnowledgeTree(pages, assets), [pages, assets]);
+export function KnowledgeTree({ pages, directories, assets, query, selected, onSelect, emptyMessage }: KnowledgeTreeProps) {
+  const tree = useMemo(() => buildKnowledgeTree(pages, assets, directories), [pages, assets, directories]);
   const restoredPaths = useRef<Set<string> | null>(restoredExpandedPaths());
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => restoredPaths.current ?? new Set(),
@@ -195,9 +224,10 @@ export function KnowledgeTree({ pages, assets, query, selected, onSelect, emptyM
     return next;
   });
 
-  if (!pages.length && !assets.length) return <div className="tree-empty">{query ? "No matching knowledge" : emptyMessage ?? "No knowledge yet"}</div>;
+  if (!pages.length && !assets.length && !directories.length) return <div className="tree-empty">{query ? "No matching knowledge" : emptyMessage ?? "No knowledge yet"}</div>;
 
   return <div className="page-tree" role="tree" aria-label="Knowledge pages and assets">
+    {tree.directory && <DirectoryIndexRow directory={tree.directory} depth={0} selected={selected} onSelect={onSelect} />}
     {tree.directories.map((directory) => <DirectoryBranch
       key={directory.path}
       directory={directory}

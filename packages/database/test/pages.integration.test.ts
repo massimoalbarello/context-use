@@ -15,6 +15,17 @@ describeDatabase("immutable page history", () => {
   const createdIds: string[] = [];
   const actor = { kind: "dashboard" as const, subject: "integration-test-owner" };
 
+  const createDirectory = async (path: string) => {
+    const parent = path.split("/").slice(0, -1).join("/");
+    if (parent) await createDirectory(parent);
+    await pool.query(
+      `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+       VALUES ($1,$2,$3,$4,'',directory_search_vector($2,$3,$4,''))
+       ON CONFLICT (current_path) DO NOTHING`,
+      [crypto.randomUUID(), path, path.split("/").at(-1), `Test directory for ${path}.`],
+    );
+  };
+
   afterAll(async () => {
     for (const id of createdIds) {
       await pool.query("DELETE FROM knowledge_asset_links WHERE source_version_id IN (SELECT id FROM knowledge_page_versions WHERE page_id=$1)", [id]);
@@ -28,9 +39,11 @@ describeDatabase("immutable page history", () => {
 
   test("create, update, conflict, and archive always preserve immutable versions", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
+    await createDirectory(`tests/${suffix}`);
     const linkedPageId = crypto.randomUUID();
     const created = await pages.create({
       path: `tests/${suffix}/page`, title: "Original",
+      summary: "The original test page.",
       body_markdown: `[Related](/app/pages/${linkedPageId})`, commit_message: "Create test page",
     }, actor);
     createdIds.push(created.id);
@@ -38,7 +51,7 @@ describeDatabase("immutable page history", () => {
     expect(created.body_markdown).toBe(`[Related](context-use://page/${linkedPageId})`);
 
     const updated = await pages.update(created.id, {
-      path: `tests/${suffix}/renamed`, title: "Updated", body_markdown: "Searchable updated body",
+      path: `tests/${suffix}/renamed`, title: "Updated", summary: "The updated test page.", body_markdown: "Searchable updated body",
       commit_message: "Rename and update", expected_version_number: 1,
     }, actor);
     expect(updated?.version_number).toBe(2);
@@ -48,7 +61,7 @@ describeDatabase("immutable page history", () => {
     )).rejects.toThrow();
     expect((await pages.get(created.id))?.current_path).toBe(`tests/${suffix}/renamed`);
     await expect(pages.update(created.id, {
-      path: `tests/${suffix}/stale`, title: "Stale", body_markdown: "Stale",
+      path: `tests/${suffix}/stale`, title: "Stale", summary: "A stale test update.", body_markdown: "Stale",
       commit_message: "Stale update", expected_version_number: 1,
     }, actor)).rejects.toBeInstanceOf(VersionConflictError);
 
@@ -67,11 +80,13 @@ describeDatabase("immutable page history", () => {
 
   test("retains five recent versions plus an older published snapshot and searches only current content", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
+    await createDirectory(`tests/${suffix}`);
     const oldSearchTerm = `retentionold${suffix}`;
     const currentSearchTerm = `retentioncurrent${suffix}`;
     const created = await pages.create({
       path: `tests/${suffix}/retention`,
       title: "Retention test",
+      summary: "A page used to test version retention.",
       body_markdown: oldSearchTerm,
       commit_message: "Create retention test",
     }, actor);
@@ -89,6 +104,7 @@ describeDatabase("immutable page history", () => {
       const updated = await pages.update(created.id, {
         path: created.current_path,
         title: "Retention test",
+        summary: "A page used to test version retention.",
         body_markdown: index === PAGE_VERSION_RETENTION_LIMIT + 1 ? currentSearchTerm : `Intermediate ${index}`,
         commit_message: `Update retention ${index}`,
         expected_version_number: versionNumber,
@@ -109,6 +125,7 @@ describeDatabase("immutable page history", () => {
     await pages.update(created.id, {
       path: created.current_path,
       title: "Retention test",
+      summary: "A page used to test version retention.",
       body_markdown: currentSearchTerm,
       commit_message: "Prune former publication",
       expected_version_number: versionNumber,

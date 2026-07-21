@@ -1,6 +1,7 @@
 import {
   AssetRepository,
   AutomationRepository,
+  DirectoryRepository,
   PageRepository,
   createPool,
 } from "@context-use/database";
@@ -16,13 +17,14 @@ import { BrokeredStorage } from "./storage-client.ts";
 
 const pool = createPool(config.MCP_DATABASE_URL, { application_name: "context-use-private-mcp" });
 const pages = new PageRepository(pool);
+const directories = new DirectoryRepository(pool);
 const assets = new AssetRepository(pool);
 const automations = new AutomationRepository(pool);
 const storage = new BrokeredStorage({
   socketPath: config.STORAGE_SOCKET_PATH,
   token: config.STORAGE_MCP_TOKEN,
 });
-const mcp = createMcpRequestHandler(pages, assets, automations);
+const mcp = createMcpRequestHandler(pages, directories, assets, automations);
 const upload = createMcpAssetUploadHandler(assets, storage);
 const download = createMcpAssetDownloadHandler(assets, storage);
 const protectedResourceMetadata = () => json({

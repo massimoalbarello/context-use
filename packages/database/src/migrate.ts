@@ -1,7 +1,9 @@
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { Client } from "pg";
+import { assertMigrationState } from "./migration-state.ts";
 
 const migrationUrl = process.env.MIGRATOR_DATABASE_URL ?? process.env.DATABASE_ADMIN_URL;
 if (!migrationUrl) {
@@ -15,13 +17,25 @@ try {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version text PRIMARY KEY,
+      checksum text NOT NULL,
       applied_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  await client.query("ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum text");
 
   const migrationsDirectory = join(dirname(fileURLToPath(import.meta.url)), "../migrations");
   const files = (await readdir(migrationsDirectory)).filter((file) => file.endsWith(".sql")).sort();
-  const applied = await client.query<{ version: string }>("SELECT version FROM schema_migrations ORDER BY version");
+  const migrations = await Promise.all(files.map(async (version) => {
+    const sql = await readFile(join(migrationsDirectory, version), "utf8");
+    return {
+      version,
+      sql,
+      checksum: createHash("sha256").update(sql).digest("hex"),
+    };
+  }));
+  const applied = await client.query<{ version: string; checksum: string | null }>(
+    "SELECT version,checksum FROM schema_migrations ORDER BY version",
+  );
   const baseline = "001_baseline.sql";
   const existingRelations = await client.query<{ relation: string }>(
     `SELECT relname AS relation
@@ -31,28 +45,25 @@ try {
        AND relname<>'schema_migrations'
      ORDER BY relname`,
   );
-  if (
-    files.includes(baseline)
-    && !applied.rows.some(({ version }) => version === baseline)
-    && (applied.rowCount || existingRelations.rowCount)
-  ) {
-    const reason = applied.rowCount
-      ? `legacy migrations: ${applied.rows.map(({ version }) => version).join(", ")}`
-      : `existing relations: ${existingRelations.rows.map(({ relation }) => relation).join(", ")}`;
-    throw new Error(
-      `${baseline} can only be applied to a fresh database; found ${reason}`,
-    );
-  }
-  for (const file of files) {
-    const existing = await client.query("SELECT 1 FROM schema_migrations WHERE version = $1", [file]);
+  assertMigrationState(
+    migrations,
+    applied.rows,
+    existingRelations.rows.map(({ relation }) => relation),
+    baseline,
+  );
+  await client.query("ALTER TABLE schema_migrations ALTER COLUMN checksum SET NOT NULL");
+  for (const migration of migrations) {
+    const existing = await client.query("SELECT 1 FROM schema_migrations WHERE version = $1", [migration.version]);
     if (existing.rowCount) continue;
-    const sql = await readFile(join(migrationsDirectory, file), "utf8");
     await client.query("BEGIN");
     try {
-      await client.query(sql);
-      await client.query("INSERT INTO schema_migrations(version) VALUES ($1)", [file]);
+      await client.query(migration.sql);
+      await client.query(
+        "INSERT INTO schema_migrations(version,checksum) VALUES ($1,$2)",
+        [migration.version, migration.checksum],
+      );
       await client.query("COMMIT");
-      console.info(`Applied ${file}`);
+      console.info(`Applied ${migration.version}`);
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

@@ -30,10 +30,59 @@ export class PublicRepository {
 
   async pageByPublicPath(path: string) {
     const result = await this.pool.query(
-      "SELECT public_path,title,body_markdown FROM published_pages WHERE public_path=$1",
+      "SELECT public_path,title,summary,body_markdown FROM published_pages WHERE public_path=$1",
       [path],
     );
     return result.rows[0] ?? null;
+  }
+
+  async directoryIndex(path: string) {
+    const result = await this.pool.query<{
+      kind: "directory" | "page";
+      path: string;
+      title: string | null;
+      summary: string | null;
+      published_count: string;
+    }>(
+      `WITH descendants AS (
+         SELECT public_path,title,summary,
+           CASE WHEN $1='' THEN public_path
+                ELSE substr(public_path,length($1)+2)
+           END AS relative_path
+         FROM published_pages
+         WHERE $1='' OR left(public_path,length($1)+1)=$1||'/'
+       ), direct_pages AS (
+         SELECT 'page'::text AS kind,public_path AS path,title,summary,
+           1::bigint AS published_count
+         FROM descendants
+         WHERE strpos(relative_path,'/')=0
+       ), child_directories AS (
+         SELECT 'directory'::text AS kind,
+           CASE WHEN $1='' THEN split_part(relative_path,'/',1)
+                ELSE $1||'/'||split_part(relative_path,'/',1)
+           END AS path,
+           NULL::text AS title,NULL::text AS summary,count(*) AS published_count
+         FROM descendants
+         WHERE strpos(relative_path,'/')>0
+         GROUP BY 2
+       )
+       SELECT kind,path,title,summary,published_count FROM child_directories
+       UNION ALL
+       SELECT kind,path,title,summary,published_count FROM direct_pages
+       ORDER BY kind,path`,
+      [path],
+    );
+    if (!result.rowCount) return null;
+    return {
+      path,
+      entries: result.rows.map((row) => ({
+        kind: row.kind,
+        path: row.path,
+        title: row.title,
+        summary: row.summary,
+        published_count: Number(row.published_count),
+      })),
+    };
   }
 
   async assetByPublicPath(path: string) {
