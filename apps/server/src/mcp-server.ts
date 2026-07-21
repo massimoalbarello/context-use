@@ -185,7 +185,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_automation", {
-    description: "Create a scheduled automation with its own versioned instructions. Supply an immutable semantic automation_key; its private pages will live under automations/<automation-key>.",
+    description: "Create a scheduled automation whose instructions live in a private page at automations/<automation-key>/instructions and may link to other knowledge pages. The semantic automation_key is immutable.",
     inputSchema: createCronScheduleSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -193,7 +193,7 @@ export function createMcpServer(
   });
 
   server.registerTool("claim_due_run", {
-    description: "Claim the oldest due automation run. Returns its versioned instructions with shared execution context, input, dedicated knowledge path, and a one-hour write capability, or null.",
+    description: "Claim the oldest due automation run. Returns the instruction page's current Markdown with shared execution context, input, dedicated knowledge path, and a one-hour write capability, or null.",
     inputSchema: z.object({}).strict(),
     annotations: { destructiveHint: false },
   }, async () => {

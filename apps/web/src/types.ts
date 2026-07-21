@@ -5,6 +5,7 @@ export type Page = {
   published_version_id: string | null;
   public_path: string | null;
   automation_id: string | null;
+  automation_instructions: boolean;
   archived_at: string | null;
   version_number: number;
   title: string;
@@ -84,6 +85,10 @@ export type CronSchedule = {
   automation_key: string;
   automation_version_id: string;
   automation_version_number: number;
+  instructions_page_id: string;
+  instructions_path: string;
+  instructions_version_id: string;
+  instructions_version_number: number;
   instructions_markdown: string;
   commit_message: string;
   version_created_at: string;

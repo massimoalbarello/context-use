@@ -167,6 +167,7 @@ export type Page = {
   published_version_id: string | null;
   public_path: string | null;
   automation_id: string | null;
+  automation_instructions: boolean;
   archived_at: string | null;
   version_number: number;
   title: string;

@@ -6,6 +6,7 @@ import type {
 } from "@context-use/shared";
 import { Cron } from "croner";
 import type { Pool, PoolClient } from "pg";
+import { extractAssetLinks, normalizeInternalPageLinks } from "./links.ts";
 
 const RUN_LEASE_HOURS = 1;
 export const AUTOMATION_RESULT_SUMMARY_MAX_LENGTH = 500;
@@ -89,6 +90,21 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
   }
 }
 
+async function insertInstructionAssetLinks(
+  client: PoolClient,
+  versionId: string,
+  markdown: string,
+): Promise<void> {
+  for (const targetId of extractAssetLinks(markdown)) {
+    await client.query(
+      `INSERT INTO knowledge_asset_links(source_version_id,target_asset_id)
+       SELECT $1,id FROM assets WHERE id=$2 AND deleted_at IS NULL
+       ON CONFLICT DO NOTHING`,
+      [versionId, targetId],
+    );
+  }
+}
+
 export function nextCronOccurrence(expression: string, timezone: string, after = new Date()): Date {
   if (expression.trim().split(/\s+/).length !== 5) {
     throw new AutomationValidationError("Cron expressions must contain exactly five fields: minute hour day month weekday");
@@ -146,18 +162,28 @@ export class AutomationRepository {
       `SELECT schedule.id,schedule.name,schedule.current_version_id AS automation_version_id,
         schedule.cron_expression,schedule.timezone,
         schedule.automation_key,schedule.input,schedule.enabled,schedule.next_run_at,schedule.knowledge_path,schedule.created_at,schedule.updated_at,
-        version.version_number AS automation_version_number,version.instructions_markdown,
+        version.version_number AS automation_version_number,
         version.commit_message,version.created_at AS version_created_at,
+        instructions_page.id AS instructions_page_id,
+        instructions_page.current_path AS instructions_path,
+        instructions_page.current_version_id AS instructions_version_id,
+        instructions.version_number AS instructions_version_number,
+        instructions.body_markdown AS instructions_markdown,
         count(run.id) FILTER (WHERE run.status='ready')::integer AS ready_count,
         count(run.id) FILTER (WHERE run.status='claimed')::integer AS claimed_count,
         max(run.completed_at) FILTER (WHERE run.status IN ('succeeded','failed')) AS last_completed_at,
         (SELECT count(*)::integer FROM knowledge_pages page
-         WHERE page.automation_id=schedule.id AND page.archived_at IS NULL) AS generated_page_count
+         WHERE page.automation_id=schedule.id AND page.archived_at IS NULL
+           AND page.id<>schedule.instructions_page_id) AS generated_page_count
        FROM cron_schedules schedule
        JOIN automation_versions version ON version.id=schedule.current_version_id AND version.automation_id=schedule.id
+       JOIN knowledge_pages instructions_page ON instructions_page.id=schedule.instructions_page_id
+       JOIN knowledge_page_versions instructions
+         ON instructions.id=instructions_page.current_version_id
+        AND instructions.page_id=instructions_page.id
        LEFT JOIN automation_runs run ON run.schedule_id=schedule.id
        WHERE schedule.deleted_at IS NULL
-       GROUP BY schedule.id,version.id
+       GROUP BY schedule.id,version.id,instructions_page.id,instructions.id
        ORDER BY lower(schedule.name)`,
     );
     return result.rows;
@@ -173,24 +199,48 @@ export class AutomationRepository {
       if (existingKey.rowCount) throw new AutomationValidationError("Automation key is already in use");
       const scheduleId = randomUUID();
       const versionId = randomUUID();
+      const instructionsPageId = randomUUID();
+      const instructionsVersionId = randomUUID();
+      const instructionsPath = `automations/${input.automation_key}/instructions`;
+      const instructionsMarkdown = normalizeInternalPageLinks(input.instructions_markdown);
       await client.query(
         `INSERT INTO cron_schedules(
-           id,name,automation_key,current_version_id,cron_expression,timezone,input,enabled,next_run_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [scheduleId, input.name, input.automation_key, versionId, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt],
+           id,name,automation_key,current_version_id,instructions_page_id,
+           cron_expression,timezone,input,enabled,next_run_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [scheduleId, input.name, input.automation_key, versionId, instructionsPageId, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt],
       );
       await client.query(
         `INSERT INTO automation_versions(
            id,automation_id,version_number,instructions_markdown,commit_message,actor_kind,actor_subject
          ) VALUES ($1,$2,1,$3,$4,$5,$6)`,
-        [versionId, scheduleId, input.instructions_markdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, scheduleId, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
       );
+      await client.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,automation_id)
+         VALUES ($1,$2,$3,$4)`,
+        [instructionsPageId, instructionsPath, instructionsVersionId, scheduleId],
+      );
+      await client.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,body_markdown,
+           commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8)`,
+        [instructionsVersionId, instructionsPageId, instructionsPath, `${input.name} instructions`, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
+      );
+      await insertInstructionAssetLinks(client, instructionsVersionId, instructionsMarkdown);
       const result = await client.query(
         `SELECT schedule.*,schedule.current_version_id AS automation_version_id,
-           version.version_number AS automation_version_number,version.instructions_markdown,
-           version.commit_message,version.created_at AS version_created_at
+           version.version_number AS automation_version_number,
+           version.commit_message,version.created_at AS version_created_at,
+           instructions_page.current_path AS instructions_path,
+           instructions_page.current_version_id AS instructions_version_id,
+           instructions.version_number AS instructions_version_number,
+           instructions.body_markdown AS instructions_markdown
          FROM cron_schedules schedule
          JOIN automation_versions version ON version.id=schedule.current_version_id
+         JOIN knowledge_pages instructions_page ON instructions_page.id=schedule.instructions_page_id
+         JOIN knowledge_page_versions instructions ON instructions.id=instructions_page.current_version_id
          WHERE schedule.id=$1`,
         [scheduleId],
       );
@@ -204,16 +254,27 @@ export class AutomationRepository {
       const current = await client.query<{
         current_version_id: string;
         version_number: number;
-        instructions_markdown: string;
         next_version_number: number;
+        instructions_page_id: string;
+        instructions_path: string;
+        instructions_title: string;
+        instructions_markdown: string;
+        instructions_version_number: number;
       }>(
-        `SELECT schedule.current_version_id,version.version_number,version.instructions_markdown,
+        `SELECT schedule.current_version_id,version.version_number,
            (SELECT max(candidate.version_number)+1 FROM automation_versions candidate
-            WHERE candidate.automation_id=schedule.id)::integer AS next_version_number
+            WHERE candidate.automation_id=schedule.id)::integer AS next_version_number,
+           instructions_page.id AS instructions_page_id,
+           instructions_page.current_path AS instructions_path,
+           instructions.title AS instructions_title,
+           instructions.body_markdown AS instructions_markdown,
+           instructions.version_number AS instructions_version_number
          FROM cron_schedules schedule
          JOIN automation_versions version ON version.id=schedule.current_version_id
+         JOIN knowledge_pages instructions_page ON instructions_page.id=schedule.instructions_page_id
+         JOIN knowledge_page_versions instructions ON instructions.id=instructions_page.current_version_id
          WHERE schedule.id=$1 AND schedule.deleted_at IS NULL
-         FOR UPDATE OF schedule`,
+         FOR UPDATE OF schedule,instructions_page`,
         [scheduleId],
       );
       if (!current.rowCount) return null;
@@ -221,14 +282,31 @@ export class AutomationRepository {
       if (row.version_number !== input.expected_version_number) {
         throw new AutomationVersionConflictError(row.version_number);
       }
+      const instructionsMarkdown = normalizeInternalPageLinks(input.instructions_markdown);
+      const instructionsTitle = `${input.name} instructions`;
+      if (row.instructions_markdown !== instructionsMarkdown || row.instructions_title !== instructionsTitle) {
+        const instructionsVersionId = randomUUID();
+        await client.query(
+          `INSERT INTO knowledge_page_versions(
+             id,page_id,version_number,path,title,body_markdown,
+             commit_message,actor_kind,actor_subject
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [instructionsVersionId, row.instructions_page_id, row.instructions_version_number + 1, row.instructions_path, instructionsTitle, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
+        );
+        await client.query(
+          `UPDATE knowledge_pages SET current_version_id=$2,updated_at=now() WHERE id=$1`,
+          [row.instructions_page_id, instructionsVersionId],
+        );
+        await insertInstructionAssetLinks(client, instructionsVersionId, instructionsMarkdown);
+      }
       let versionId = row.current_version_id;
-      if (row.instructions_markdown !== input.instructions_markdown) {
+      if (row.instructions_markdown !== instructionsMarkdown) {
         versionId = randomUUID();
         await client.query(
           `INSERT INTO automation_versions(
              id,automation_id,version_number,instructions_markdown,commit_message,actor_kind,actor_subject
            ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          [versionId, scheduleId, row.next_version_number, input.instructions_markdown, input.commit_message, actor.kind, actor.subject],
+          [versionId, scheduleId, row.next_version_number, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
         );
       }
       await client.query(
@@ -240,10 +318,16 @@ export class AutomationRepository {
       );
       const result = await client.query(
         `SELECT schedule.*,schedule.current_version_id AS automation_version_id,
-           version.version_number AS automation_version_number,version.instructions_markdown,
-           version.commit_message,version.created_at AS version_created_at
+           version.version_number AS automation_version_number,
+           version.commit_message,version.created_at AS version_created_at,
+           instructions_page.current_path AS instructions_path,
+           instructions_page.current_version_id AS instructions_version_id,
+           instructions.version_number AS instructions_version_number,
+           instructions.body_markdown AS instructions_markdown
          FROM cron_schedules schedule
          JOIN automation_versions version ON version.id=schedule.current_version_id
+         JOIN knowledge_pages instructions_page ON instructions_page.id=schedule.instructions_page_id
+         JOIN knowledge_page_versions instructions ON instructions.id=instructions_page.current_version_id
          WHERE schedule.id=$1`,
         [scheduleId],
       );
@@ -367,14 +451,23 @@ export class AutomationRepository {
            status='claimed',attempt_count=attempt_count+1,claimed_by=$2,claim_token=$3,
            claimed_at=$4::timestamptz,lease_expires_at=$4::timestamptz + ($5 * interval '1 hour'),completed_at=NULL,
            result_summary=NULL,error_message=NULL
-         FROM cron_schedules schedule,automation_versions version
+         FROM cron_schedules schedule,automation_versions version,
+           knowledge_pages instructions_page,knowledge_page_versions instructions
          WHERE run.id=$1 AND schedule.id=run.schedule_id AND schedule.deleted_at IS NULL
            AND version.id=run.automation_version_id AND version.automation_id=schedule.id
+           AND instructions_page.id=schedule.instructions_page_id
+           AND instructions.id=instructions_page.current_version_id
+           AND instructions.page_id=instructions_page.id
          RETURNING run.id AS run_id,run.schedule_id,run.scheduled_for,run.input,run.attempt_count,
            run.claim_token,run.lease_expires_at,schedule.name AS schedule_name,
            schedule.knowledge_path,
            version.id AS automation_version_id,
-           version.version_number AS automation_version_number,version.instructions_markdown`,
+           version.version_number AS automation_version_number,
+           instructions_page.id AS instructions_page_id,
+           instructions_page.current_path AS instructions_path,
+           instructions.id AS instructions_version_id,
+           instructions.version_number AS instructions_version_number,
+           instructions.body_markdown AS instructions_markdown`,
         [candidate.rows[0]!.id, clientId, claimToken, now, RUN_LEASE_HOURS],
       );
       return claimed.rows[0] ? withAutomationRunInstructions(claimed.rows[0]) : null;

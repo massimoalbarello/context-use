@@ -29,11 +29,21 @@ describeDatabase("persisted automation lifecycle", () => {
       await pool.query("DELETE FROM knowledge_page_versions WHERE page_id=$1", [pageId]);
     }
     for (const scheduleId of scheduleIds) {
+      const instructionsPageId = (await pool.query<{ instructions_page_id: string }>(
+        "SELECT instructions_page_id FROM cron_schedules WHERE id=$1",
+        [scheduleId],
+      )).rows[0]?.instructions_page_id;
       await pool.query("DELETE FROM automation_runs WHERE schedule_id=$1", [scheduleId]);
       await pool.query("ALTER TABLE cron_schedules DISABLE TRIGGER ALL");
       await pool.query("DELETE FROM cron_schedules WHERE id=$1", [scheduleId]);
       await pool.query("ALTER TABLE cron_schedules ENABLE TRIGGER ALL");
       await pool.query("DELETE FROM automation_versions WHERE automation_id=$1", [scheduleId]);
+      if (instructionsPageId) {
+        await pool.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
+        await pool.query("DELETE FROM knowledge_pages WHERE id=$1", [instructionsPageId]);
+        await pool.query("ALTER TABLE knowledge_pages ENABLE TRIGGER ALL");
+        await pool.query("DELETE FROM knowledge_page_versions WHERE page_id=$1", [instructionsPageId]);
+      }
     }
     await pool.end();
   });
@@ -55,8 +65,26 @@ describeDatabase("persisted automation lifecycle", () => {
       automation_key: `morning-review-${suffix}`,
       knowledge_path: `automations/morning-review-${suffix}`,
       automation_version_number: 1,
+      instructions_path: `automations/morning-review-${suffix}/instructions`,
+      instructions_version_number: 1,
       instructions_markdown: "Read the current project page and persist a short review.",
     });
+    const instructionsPage = await pages.get(schedule.instructions_page_id);
+    if (!instructionsPage) throw new Error("Automation instruction page was not created");
+    expect(instructionsPage).toMatchObject({
+      id: schedule.instructions_page_id,
+      automation_id: schedule.id,
+      automation_instructions: true,
+      current_path: `automations/morning-review-${suffix}/instructions`,
+      body_markdown: "Read the current project page and persist a short review.",
+    });
+    await expect(pool.query(
+      `INSERT INTO publication_intents(
+        id,action,target_kind,target_id,version_id,public_path,owner_user_id,
+        session_id,expires_at
+       ) VALUES ($1,'publish','page',$2,$3,$4,'context-use-owner','session',now()+interval '5 minutes')`,
+      [crypto.randomUUID(), instructionsPage.id, instructionsPage.current_version_id, instructionsPage.current_path],
+    )).rejects.toThrow();
     await expect(automations.createSchedule({
       name: `Duplicate key ${suffix}`,
       automation_key: `morning-review-${suffix}`,
@@ -104,7 +132,22 @@ describeDatabase("persisted automation lifecycle", () => {
     pageIds.push(generated.id);
     expect(generated).toMatchObject({
       automation_id: schedule.id,
+      automation_instructions: false,
       current_path: `automations/morning-review-${suffix}/reviews/latest`,
+    });
+    const workerUpdatedInstructions = await pages.updateForAutomation({
+      run_id: claimed.run_id,
+      claim_token: claimed.claim_token,
+      page_id: instructionsPage.id,
+      relative_path: "instructions",
+      title: instructionsPage.title,
+      body_markdown: "Read [[projects/context-use]] and use the latest decisions.",
+      commit_message: "Refresh automation instructions",
+      expected_version_number: instructionsPage.version_number,
+    }, { kind: "mcp", subject: "agent-one" });
+    expect(workerUpdatedInstructions).toMatchObject({
+      version_number: 2,
+      body_markdown: "Read [[projects/context-use]] and use the latest decisions.",
     });
     await expect(pages.create({
       path: "notes/outside-automation-folder",
@@ -174,7 +217,17 @@ describeDatabase("persisted automation lifecycle", () => {
     }, { kind: "mcp", subject: "agent-one" })).rejects.toBeInstanceOf(AutomationContentAccessError);
 
     expect((await automations.listSchedules()).find((item) => item.id === schedule.id))
-      .toMatchObject({ automation_version_number: 1, instructions_markdown: "Read the current project page and persist a short review." });
+      .toMatchObject({
+        automation_version_number: 1,
+        instructions_version_number: 2,
+        instructions_markdown: "Read [[projects/context-use]] and use the latest decisions.",
+        generated_page_count: 0,
+      });
+
+    // A run may already exist when the instruction page changes. Claims deliberately
+    // resolve the stable page ID to its current version rather than replaying a snapshot.
+    await pool.query("UPDATE cron_schedules SET next_run_at=now()-interval '1 minute' WHERE id=$1", [schedule.id]);
+    expect((await automations.listActiveRuns()).some((run) => run.schedule_id === schedule.id)).toBe(true);
 
     const updatedAutomation = await automations.updateSchedule(schedule.id, {
       name: `Morning review ${suffix}`,
@@ -188,11 +241,16 @@ describeDatabase("persisted automation lifecycle", () => {
     }, { kind: "dashboard", subject: "integration-test-owner" });
     expect(updatedAutomation).toMatchObject({
       automation_version_number: 2,
+      instructions_version_number: 3,
       instructions_markdown: "Read the project page, review it, and persist decisions.",
     });
-    await pool.query("UPDATE cron_schedules SET next_run_at=now()-interval '1 minute' WHERE id=$1", [schedule.id]);
     const secondClaim = await automations.claimDueRun("agent-two");
-    expect(secondClaim).toMatchObject({ automation_version_number: 2, attempt_count: 1 });
+    expect(secondClaim).toMatchObject({
+      automation_version_number: 1,
+      instructions_page_id: schedule.instructions_page_id,
+      instructions_version_number: 3,
+      attempt_count: 1,
+    });
     expect(secondClaim.instructions_markdown).toStartWith("Read the project page, review it, and persist decisions.");
     await pool.query("UPDATE automation_runs SET lease_expires_at=now()-interval '1 second' WHERE id=$1", [secondClaim.run_id]);
     expect((await automations.listRuns()).find((run) => run.id === secondClaim.run_id))
@@ -236,11 +294,21 @@ describeMcpDatabase("MCP automation authoring role", () => {
 
   afterAll(async () => {
     if (scheduleId) {
+      const instructionsPageId = (await adminPool.query<{ instructions_page_id: string }>(
+        "SELECT instructions_page_id FROM cron_schedules WHERE id=$1",
+        [scheduleId],
+      )).rows[0]?.instructions_page_id;
       await adminPool.query("DELETE FROM automation_runs WHERE schedule_id=$1", [scheduleId]);
       await adminPool.query("ALTER TABLE cron_schedules DISABLE TRIGGER ALL");
       await adminPool.query("DELETE FROM cron_schedules WHERE id=$1", [scheduleId]);
       await adminPool.query("ALTER TABLE cron_schedules ENABLE TRIGGER ALL");
       await adminPool.query("DELETE FROM automation_versions WHERE automation_id=$1", [scheduleId]);
+      if (instructionsPageId) {
+        await adminPool.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
+        await adminPool.query("DELETE FROM knowledge_pages WHERE id=$1", [instructionsPageId]);
+        await adminPool.query("ALTER TABLE knowledge_pages ENABLE TRIGGER ALL");
+        await adminPool.query("DELETE FROM knowledge_page_versions WHERE page_id=$1", [instructionsPageId]);
+      }
     }
     await mcpPool.end();
     await adminPool.end();
@@ -262,6 +330,8 @@ describeMcpDatabase("MCP automation authoring role", () => {
 
     expect(schedule).toMatchObject({
       automation_version_number: 1,
+      instructions_path: `automations/mcp-schedule-${suffix}/instructions`,
+      instructions_version_number: 1,
       instructions_markdown: "Review the current project and record decisions.",
       cron_expression: "0 9 * * 1-5",
       timezone: "Europe/London",
