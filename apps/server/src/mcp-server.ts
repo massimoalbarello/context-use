@@ -98,7 +98,7 @@ export function createMcpServer(
   });
 
   server.registerTool("update_page", {
-    description: "Create a new private page version using optimistic concurrency while preserving the root AGENTS.md structure. The body_markdown schema documents supported image layouts. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
+    description: "Create a new private page version, including for an automation-created page, using optimistic concurrency while preserving the root AGENTS.md structure. The body_markdown schema documents supported image layouts. Link to other knowledge pages with [[path|label]] or context-use://page/<uuid>, never /app/pages or /p URLs; rendering selects an authorized private or public route.",
     inputSchema: updatePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ page_id, ...input }) => {
@@ -106,7 +106,7 @@ export function createMcpServer(
   });
 
   server.registerTool("archive_page", {
-    description: "Archive an unpublished page. Published pages must be manually unpublished in the dashboard first.",
+    description: "Archive an unpublished page, including one created by an automation. Published pages must be manually unpublished in the dashboard first.",
     inputSchema: archivePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: true },
   }, async ({ page_id, ...input }) => {
@@ -233,7 +233,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_automation_page", {
-    description: "Create generated knowledge inside the claimed automation's dedicated folder. The server resolves the relative path and rejects every other location.",
+    description: "When the automation instructions call for page output, create a private page inside the claimed automation's dedicated folder. After creation it follows the ordinary page lifecycle. The server resolves the relative path and rejects every other location.",
     inputSchema: createAutomationPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -249,7 +249,7 @@ export function createMcpServer(
   });
 
   server.registerTool("archive_automation_page", {
-    description: "Archive a page owned by the claimed automation. Pages outside the automation's folder cannot be targeted.",
+    description: "Archive an unpublished page created by the claimed automation. The run claim and automation provenance scope access even if an ordinary edit previously moved the page.",
     inputSchema: archiveAutomationPageSchema,
     annotations: { destructiveHint: true },
   }, async (input) => {
@@ -257,7 +257,7 @@ export function createMcpServer(
   });
 
   server.registerTool("complete_run", {
-    description: "Mark a claimed automation run as successfully completed. The knowledge page is the canonical output; use result_summary only for an optional short dashboard note, never to repeat the page contents.",
+    description: "Mark a claimed automation run as successfully completed. Page output is optional; when present, the page is the canonical output. Use result_summary only for an optional short dashboard note, never to repeat page contents.",
     inputSchema: z.object({
       run_id: z.string().uuid(),
       claim_token: z.string().uuid(),

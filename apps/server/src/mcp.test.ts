@@ -112,6 +112,10 @@ describe("MCP skill and automation authoring", () => {
     const createPage = response.result?.tools?.find(({ name }) => name === "create_page");
     expect(createPage?.description).toContain("body_markdown schema");
     expect(createPage?.inputSchema?.properties?.body_markdown?.description).toContain("layout=half");
+    expect(response.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("automation-created page");
+    expect(response.result?.tools?.find(({ name }) => name === "archive_page")?.description).toContain("created by an automation");
+    expect(response.result?.tools?.find(({ name }) => name === "create_automation_page")?.description).toContain("private page");
+    expect(response.result?.tools?.some(({ name }) => name.includes("publish"))).toBe(false);
     expect(response.result?.tools?.some(({ name }) => name === "get_markdown_guide")).toBe(false);
   });
 
@@ -249,7 +253,7 @@ describe("MCP skill and automation authoring", () => {
     expect(JSON.stringify(result)).not.toContain("amazonaws");
   });
 
-  test("creates independent skills and automation-owned instructions with MCP attribution", async () => {
+  test("creates independent skills and versioned automation instructions with MCP attribution", async () => {
     const calls: Array<{ operation: string; input: unknown; actor?: unknown }> = [];
     const automations = {
       async createSkill(input: unknown, actor: unknown) {

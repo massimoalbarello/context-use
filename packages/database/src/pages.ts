@@ -164,7 +164,7 @@ export class PageRepository {
     return transaction(this.pool, async (client) => {
       await this.assertNoActiveAutomationClaim(client, actor);
       const current = await client.query<{ version_number: number }>(
-        `${CURRENT_PAGE_SELECT} WHERE p.id = $1 AND p.automation_id IS NULL FOR UPDATE OF p`,
+        `${CURRENT_PAGE_SELECT} WHERE p.id = $1 FOR UPDATE OF p`,
         [pageId],
       );
       if (!current.rowCount) return null;
@@ -230,7 +230,7 @@ export class PageRepository {
         title: string;
         body_markdown: string;
         published_version_id: string | null;
-      }>(`${CURRENT_PAGE_SELECT} WHERE p.id = $1 AND p.automation_id IS NULL FOR UPDATE OF p`, [pageId]);
+      }>(`${CURRENT_PAGE_SELECT} WHERE p.id = $1 FOR UPDATE OF p`, [pageId]);
       if (!current.rowCount) return null;
       const row = current.rows[0]!;
       if (row.version_number !== input.expected_version_number) throw new VersionConflictError(row.version_number);

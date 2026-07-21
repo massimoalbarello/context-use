@@ -510,9 +510,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     if (input.target_kind === "page") {
       const page = await dashboardPages.get(input.target_id);
       if (!page) return problem("Page not found", 404, "not_found");
-      if (page.automation_id && input.action !== "unpublish") {
-        return problem("Automation-generated pages remain private", 403, "automation_page_private");
-      }
       if (input.action !== "unpublish") {
         if (!input.version_id) return problem("Page version is required", 422);
         const history = await dashboardPages.history(input.target_id);

@@ -45,7 +45,7 @@ describeDatabase("persisted automation lifecycle", () => {
     await pool.end();
   });
 
-  test("versions automation-owned instructions, materializes a due run, and binds completion to the claimant", async () => {
+  test("versions automation instructions, materializes a due run, and binds completion to the claimant", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     const skill = await automations.createSkill({
       name: `review-context-${suffix}`,
@@ -137,25 +137,43 @@ describeDatabase("persisted automation lifecycle", () => {
       commit_message: "Attempt generic update",
       expected_version_number: generated.version_number,
     }, { kind: "mcp", subject: "agent-one" })).rejects.toBeInstanceOf(AutomationContentAccessError);
-    await expect(pool.query(
-      `INSERT INTO publication_intents(
-        id,action,target_kind,target_id,version_id,public_path,owner_user_id,
-        session_id,expires_at
-       ) VALUES ($1,'publish','page',$2,$3,$4,'context-use-owner','session',now()+interval '5 minutes')`,
-      [crypto.randomUUID(), generated.id, generated.current_version_id, generated.current_path],
-    )).rejects.toThrow();
-
     await expect(automations.completeRun(claimed.run_id, claimed.claim_token, "agent-two", "spoofed"))
       .rejects.toBeInstanceOf(AutomationClaimError);
     expect(await automations.completeRun(claimed.run_id, claimed.claim_token, "agent-one", "Review saved"))
       .toMatchObject({ status: "succeeded", result_summary: "Review saved" });
-    expect(await pages.update(generated.id, {
-      path: generated.current_path,
+    const updatedGenerated = await pages.update(generated.id, {
+      path: `reports/${suffix}/latest-review`,
       title: generated.title,
-      body_markdown: "Attempt a generic update after completion.",
-      commit_message: "Attempt generic update",
+      body_markdown: "Owner-reviewed automation output.",
+      commit_message: "Review generated output",
       expected_version_number: generated.version_number,
-    }, { kind: "mcp", subject: "agent-one" })).toBeNull();
+    }, { kind: "dashboard", subject: "integration-test-owner" });
+    expect(updatedGenerated).toMatchObject({
+      automation_id: schedule.id,
+      current_path: `reports/${suffix}/latest-review`,
+      version_number: 2,
+    });
+
+    const publicationIntentId = crypto.randomUUID();
+    expect((await pool.query(
+      `INSERT INTO publication_intents(
+        id,action,target_kind,target_id,version_id,public_path,owner_user_id,
+        session_id,expires_at
+       ) VALUES ($1,'publish','page',$2,$3,$4,'context-use-owner','session',now()+interval '5 minutes')
+       RETURNING id`,
+      [publicationIntentId, generated.id, updatedGenerated!.current_version_id, updatedGenerated!.current_path],
+    )).rows[0]).toEqual({ id: publicationIntentId });
+    await pool.query("DELETE FROM publication_intents WHERE id=$1", [publicationIntentId]);
+
+    const archivedGenerated = await pages.archive(generated.id, {
+      commit_message: "Archive generated output",
+      expected_version_number: updatedGenerated!.version_number,
+    }, { kind: "mcp", subject: "agent-one" });
+    expect(archivedGenerated).toMatchObject({
+      automation_id: schedule.id,
+      archived_at: expect.any(Date),
+      version_number: 3,
+    });
     await expect(pages.create({
       path: `automations/morning-review-${suffix}/unowned`,
       title: "Unowned generated page",
@@ -170,7 +188,7 @@ describeDatabase("persisted automation lifecycle", () => {
       title: "Expired update",
       body_markdown: "Must fail after completion.",
       commit_message: "Attempt expired update",
-      expected_version_number: generated.version_number,
+      expected_version_number: archivedGenerated!.version_number,
     }, { kind: "mcp", subject: "agent-one" })).rejects.toBeInstanceOf(AutomationContentAccessError);
 
     const updated = await automations.updateSkill(skill.id, {

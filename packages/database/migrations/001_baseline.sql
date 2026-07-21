@@ -693,8 +693,13 @@ BEGIN
   FROM cron_schedules
   WHERE id=NEW.automation_id;
 
-  IF owner_automation_key IS NULL
-     OR NEW.current_path NOT LIKE ('automations/' || owner_automation_key || '/%') THEN
+  IF owner_automation_key IS NULL THEN
+    RAISE EXCEPTION 'automation page has no owning automation'
+      USING ERRCODE='23514';
+  END IF;
+
+  IF NEW.current_path ~ '^automations(/|$)'
+     AND NEW.current_path NOT LIKE ('automations/' || owner_automation_key || '/%') THEN
     RAISE EXCEPTION 'automation page path is outside its owned folder'
       USING ERRCODE='23514';
   END IF;
@@ -725,8 +730,11 @@ BEGIN
     IF NEW.path ~ '^automations(/|$)' THEN
       RAISE EXCEPTION 'reserved automation knowledge path' USING ERRCODE='23514';
     END IF;
-  ELSIF owner_automation_key IS NULL
-     OR NEW.path NOT LIKE ('automations/' || owner_automation_key || '/%') THEN
+  ELSIF owner_automation_key IS NULL THEN
+    RAISE EXCEPTION 'automation page has no owning automation'
+      USING ERRCODE='23514';
+  ELSIF NEW.path ~ '^automations(/|$)'
+     AND NEW.path NOT LIKE ('automations/' || owner_automation_key || '/%') THEN
     RAISE EXCEPTION 'automation page path is outside its owned folder'
       USING ERRCODE='23514';
   END IF;
@@ -754,29 +762,6 @@ $$;
 CREATE TRIGGER cron_schedules_keep_automation_key
 BEFORE UPDATE OF automation_key ON cron_schedules
 FOR EACH ROW EXECUTE FUNCTION keep_automation_key_immutable();
-
-CREATE FUNCTION keep_automation_pages_private()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path=pg_catalog,public
-AS $$
-BEGIN
-  IF NEW.target_kind='page'
-     AND NEW.action='publish'
-     AND EXISTS (
-       SELECT 1 FROM knowledge_pages
-       WHERE id=NEW.target_id AND automation_id IS NOT NULL
-     ) THEN
-    RAISE EXCEPTION 'automation-generated pages cannot be published'
-      USING ERRCODE='23514';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER publication_intents_keep_automation_pages_private
-BEFORE INSERT ON publication_intents
-FOR EACH ROW EXECUTE FUNCTION keep_automation_pages_private();
 
 -- The bootstrap guide tells agents how to structure owner context. It remains
 -- private until the owner chooses to publish an independently created page.
@@ -1402,7 +1387,6 @@ REVOKE ALL ON FUNCTION enforce_current_page_version_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION enforce_automation_page_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION enforce_automation_page_version_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION keep_automation_key_immutable() FROM PUBLIC;
-REVOKE ALL ON FUNCTION keep_automation_pages_private() FROM PUBLIC;
 
 GRANT SELECT,INSERT,UPDATE (name,image,"updatedAt") ON "user" TO context_use_auth;
 GRANT SELECT,INSERT,UPDATE (counter) ON passkey TO context_use_auth;
