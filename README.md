@@ -10,9 +10,10 @@ The longer-term vision is an autobiography that writes itself. As Context Use co
 
 ## What it does
 
-- Stores private, versioned Markdown pages and assets you control.
+- Stores private Markdown pages with the five latest versions, plus any older snapshot that is still published.
 - Gives personal agents read and write access through OAuth-protected MCP.
 - Publishes only the exact pages and assets you approve.
+- Lets only the dashboard owner permanently delete an archived page after fresh passkey confirmation.
 - Provides a public profile at `about/intro`, plus public pages for anything else you choose to share.
 - Runs locally or on your own AWS account.
 

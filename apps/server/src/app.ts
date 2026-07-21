@@ -6,6 +6,7 @@ import {
   type KnowledgeExportAsset,
   type KnowledgeExportSnapshot,
   PageRepository,
+  PageDeletionRepository,
   PublicationRepository,
   createPool,
   extractAssetLinks,
@@ -48,6 +49,7 @@ const storage = new BrokeredStorage({
 });
 
 const dashboardPages = new PageRepository(dashboardPool);
+const pageDeletions = new PageDeletionRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
 const dashboardAutomations = new AutomationRepository(dashboardPool);
 const publications = new PublicationRepository(dashboardPool);
@@ -155,6 +157,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .get("/api/dashboard/csrf", ({ request }) => forwardDashboardAuthRoute(request))
   .post("/api/dashboard/publications/confirm", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })
   .post("/api/dashboard/knowledge-exports/confirm", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })
+  .post("/api/dashboard/page-deletions/confirm", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })
   .get("/api/dashboard/private-mcp-clients", ({ request }) => forwardDashboardAuthRoute(request))
   .get("/api/dashboard/oauth-client-preview", ({ request }) => forwardDashboardAuthRoute(request))
   .delete("/api/dashboard/oauth-clients/:clientId", ({ request }) => forwardDashboardAuthRoute(request))
@@ -339,6 +342,23 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const input = archivePageSchema.parse(await bodyJson(request));
     const page = await dashboardPages.archive(z.string().uuid().parse(params.id), input, { kind: "dashboard", subject: principal.userId });
     return page ? json(page) : problem("Page not found", 404, "not_found");
+  })
+  .post("/api/dashboard/pages/:id/deletion-intents", async ({ request, params }) => {
+    const principal = await ownerRequest(request, true);
+    emptyObjectSchema.parse(await bodyJson(request));
+    const pageId = z.string().uuid().parse(params.id);
+    const page = await dashboardPages.get(pageId);
+    if (!page) return problem("Page not found", 404, "not_found");
+    if (!page.archived_at || page.published_version_id || page.automation_instructions) {
+      return problem("Only archived, unpublished pages can be permanently deleted", 409, "page_not_deletable");
+    }
+    const intent = await pageDeletions.createIntent(pageId, {
+      ownerUserId: principal.userId,
+      sessionId: principal.sessionId,
+    });
+    if (!intent) return problem("Page is no longer eligible for permanent deletion", 409, "page_not_deletable");
+    const authenticationOptions = await issueConfirmationOptions("page_deletion", intent.id);
+    return json({ intent, authentication_options: authenticationOptions }, 201);
   })
   .get("/api/dashboard/pages/:id/history", async ({ request, params }) => {
     await ownerRequest(request);

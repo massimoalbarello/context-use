@@ -55,6 +55,25 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(confirm.status).toBe(401);
   });
 
+  test("bearer credentials cannot create or confirm permanent page deletions", async () => {
+    const intent = await application!.handle(new Request(
+      "http://localhost:3000/api/dashboard/pages/11111111-1111-4111-8111-111111111111/deletion-intents",
+      {
+        method: "POST",
+        headers: { authorization: "Bearer forged", "content-type": "application/json" },
+        body: "{}",
+      },
+    ));
+    expect(intent.status).toBe(401);
+
+    const confirm = await application!.handle(new Request("http://localhost:3000/api/dashboard/page-deletions/confirm", {
+      method: "POST",
+      headers: { authorization: "Bearer forged", "content-type": "application/json" },
+      body: "{}",
+    }));
+    expect(confirm.status).toBe(401);
+  });
+
   test("confirmation browser handlers are internal and require the auth gateway capability", async () => {
     const response = await confirmation!.handle(new Request(
       "http://confirmation:3004/internal/browser-confirmation/publication",
@@ -72,6 +91,22 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     ));
     expect(response.status).toBe(404);
     expect(await response.text()).not.toContain("gateway");
+
+    const deletion = await confirmation!.handle(new Request(
+      "http://confirmation:3004/internal/browser-confirmation/page_deletion",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          principal: { owner_user_id: "context-use-owner", session_id: "forged" },
+          confirmation: {
+            intent_id: "11111111-1111-4111-8111-111111111111",
+            response: {},
+          },
+        }),
+      },
+    ));
+    expect(deletion.status).toBe(404);
   });
 
   test("every non-browser internal endpoint requires its pairwise service capability", async () => {

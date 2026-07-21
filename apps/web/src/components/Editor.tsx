@@ -1,12 +1,21 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.ts";
+import { confirmPageDeletion } from "../page-deletion-auth.ts";
 import { confirmPublicationChange } from "../publication-auth.ts";
 import { isPublishedPageOutdated } from "../publication-status.ts";
 import type { Page, Version } from "../types.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
 import { PublicationDialog } from "./PublicationDialog.tsx";
 
-export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () => void }) {
+export function Editor({
+  pageId,
+  onChanged,
+  onDeleted,
+}: {
+  pageId: string;
+  onChanged: () => Promise<void> | void;
+  onDeleted: () => Promise<void> | void;
+}) {
   const [page, setPage] = useState<Page | null>(null);
   const [history, setHistory] = useState<Version[]>([]);
   const [draft, setDraft] = useState({ path: "", title: "", body_markdown: "" });
@@ -20,6 +29,9 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   const [archiveWorking, setArchiveWorking] = useState(false);
   const [archiveError, setArchiveError] = useState("");
   const [unpublishWorking, setUnpublishWorking] = useState(false);
+  const [deletionOpen, setDeletionOpen] = useState(false);
+  const [deletionWorking, setDeletionWorking] = useState(false);
+  const [deletionError, setDeletionError] = useState("");
 
   const load = async (preserveDraft = false) => {
     const [next, versions] = await Promise.all([
@@ -42,6 +54,9 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     setArchiveCommit("");
     setArchiveError("");
     setUnpublishWorking(false);
+    setDeletionOpen(false);
+    setDeletionWorking(false);
+    setDeletionError("");
     setTab("preview");
     setIsEditing(false);
     load().catch((error: Error) => setMessage(error.message));
@@ -130,6 +145,20 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     }
   };
 
+  const remove = async () => {
+    setDeletionWorking(true);
+    setDeletionError("");
+    try {
+      await confirmPageDeletion(page.id);
+      setDeletionOpen(false);
+      await onDeleted();
+    } catch (error) {
+      setDeletionError(error instanceof Error ? error.message : "Page deletion failed");
+    } finally {
+      setDeletionWorking(false);
+    }
+  };
+
   return <main className="editor">
     <header className="editor-header">
       <div><span className="path">{page.current_path}</span><h1>{page.title}</h1></div>
@@ -137,6 +166,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_path}` : automationInstructions ? "Private · Automation instructions" : automationCreated ? "Private · Automation-created" : "Private"}</span>
         {page.published_version_id && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public ↗</a>}
         {!page.archived_at && !page.published_version_id && <button onClick={() => { setArchiveCommit(""); setArchiveError(""); setArchiveOpen(true); }}>Archive</button>}
+        {page.archived_at && !automationInstructions && <button className="danger" onClick={() => { setDeletionError(""); setDeletionOpen(true); }}>Delete permanently</button>}
         {!automationInstructions && !page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
         {!automationInstructions && !page.archived_at && page.published_version_id && <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>}
         {!automationInstructions && !page.archived_at && page.published_version_id && hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish latest</button>}
@@ -209,6 +239,18 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         if (event.key === "Enter" && archiveCommit.trim().length >= 3 && !archiveWorking) void archive();
       }} /></label>
     </ActionDialog>}
+    {deletionOpen && <ActionDialog
+      eyebrow="Permanent action"
+      title={`Delete ${page.title}?`}
+      description={`This permanently deletes the page and all ${history.length} retained version${history.length === 1 ? "" : "s"} from the live knowledge base. It cannot be undone from the dashboard; existing encrypted backups expire under the configured retention policy. A fresh owner-passkey verification is required.`}
+      confirmLabel="Delete permanently with passkey"
+      workingLabel="Waiting for passkey…"
+      confirmTone="danger"
+      working={deletionWorking}
+      error={deletionError}
+      onCancel={() => setDeletionOpen(false)}
+      onConfirm={() => void remove()}
+    />}
     {publishingVersion != null && <PublicationDialog page={page} versionNumber={publishingVersion} publishedVersionNumber={publishedVersionNumber} onClose={() => setPublishingVersion(null)} onChanged={publicationChanged} />}
   </main>;
 }

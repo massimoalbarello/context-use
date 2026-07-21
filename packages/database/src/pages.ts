@@ -10,6 +10,7 @@ import type {
   UpdatePageInput,
 } from "@context-use/shared";
 import { extractAssetLinks, normalizeInternalPageLinks } from "./links.ts";
+import { prunePageVersions } from "./page-retention.ts";
 
 export class VersionConflictError extends Error {
   constructor(readonly currentVersion: number) {
@@ -124,9 +125,9 @@ export class PageRepository {
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
-        `INSERT INTO knowledge_pages(id, current_path, current_version_id)
-         VALUES ($1, $2, $3)`,
-        [pageId, input.path, versionId],
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,search_vector)
+         VALUES ($1,$2,$3,page_search_vector($2,$4,$5))`,
+        [pageId, input.path, versionId, input.title, bodyMarkdown],
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
@@ -148,9 +149,10 @@ export class PageRepository {
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
-        `INSERT INTO knowledge_pages(id,current_path,current_version_id,automation_id)
-         VALUES ($1,$2,$3,$4)`,
-        [pageId, path, versionId, automation.id],
+        `INSERT INTO knowledge_pages(
+           id,current_path,current_version_id,automation_id,search_vector
+         ) VALUES ($1,$2,$3,$4,page_search_vector($2,$5,$6))`,
+        [pageId, path, versionId, automation.id, input.title, bodyMarkdown],
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
@@ -186,11 +188,13 @@ export class PageRepository {
       );
       await client.query(
         `UPDATE knowledge_pages
-         SET current_path = $2, current_version_id = $3, updated_at = now()
+         SET current_path=$2,current_version_id=$3,
+             search_vector=page_search_vector($2,$4,$5),updated_at=now()
          WHERE id = $1`,
-        [pageId, input.path, versionId],
+        [pageId, input.path, versionId, input.title, bodyMarkdown],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
+      await prunePageVersions(client, pageId);
       return this.getWith(client, pageId);
     });
   }
@@ -216,11 +220,14 @@ export class PageRepository {
         [versionId, input.page_id, currentVersion + 1, path, input.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
-        `UPDATE knowledge_pages SET current_path=$2,current_version_id=$3,updated_at=now()
+        `UPDATE knowledge_pages
+         SET current_path=$2,current_version_id=$3,
+             search_vector=page_search_vector($2,$4,$5),updated_at=now()
          WHERE id=$1`,
-        [input.page_id, path, versionId],
+        [input.page_id, path, versionId, input.title, bodyMarkdown],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
+      await prunePageVersions(client, input.page_id);
       return this.getWith(client, input.page_id);
     });
   }
@@ -252,6 +259,7 @@ export class PageRepository {
         [pageId, versionId],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
+      await prunePageVersions(client, pageId);
       return this.getWith(client, pageId);
     });
   }
@@ -283,6 +291,7 @@ export class PageRepository {
         [input.page_id, versionId],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
+      await prunePageVersions(client, input.page_id);
       return this.getWith(client, input.page_id);
     });
   }
@@ -316,8 +325,8 @@ export class PageRepository {
     const result = await this.pool.query(
       `${CURRENT_PAGE_SELECT}
        WHERE p.archived_at IS NULL
-         AND v.search_vector @@ websearch_to_tsquery('english', $1)
-       ORDER BY ts_rank(v.search_vector, websearch_to_tsquery('english', $1)) DESC
+         AND p.search_vector @@ websearch_to_tsquery('english', $1)
+       ORDER BY ts_rank(p.search_vector, websearch_to_tsquery('english', $1)) DESC
        LIMIT $2`,
       [query, Math.min(Math.max(limit, 1), 100)],
     );

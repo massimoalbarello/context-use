@@ -1,6 +1,10 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { Pool } from "pg";
-import { PageRepository, VersionConflictError } from "../src/index.ts";
+import {
+  PAGE_VERSION_RETENTION_LIMIT,
+  PageRepository,
+  VersionConflictError,
+} from "../src/index.ts";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeDatabase = databaseUrl ? describe : describe.skip;
@@ -58,6 +62,59 @@ describeDatabase("immutable page history", () => {
     expect(history.map((version) => version.version_number)).toEqual([3, 2, 1]);
     expect(history.map((version) => version.commit_message)).toEqual([
       "Archive test page", "Rename and update", "Create test page",
+    ]);
+  });
+
+  test("retains five recent versions plus an older published snapshot and searches only current content", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const oldSearchTerm = `retentionold${suffix}`;
+    const currentSearchTerm = `retentioncurrent${suffix}`;
+    const created = await pages.create({
+      path: `tests/${suffix}/retention`,
+      title: "Retention test",
+      body_markdown: oldSearchTerm,
+      commit_message: "Create retention test",
+    }, actor);
+    createdIds.push(created.id);
+
+    await pool.query(
+      `UPDATE knowledge_pages
+       SET published_version_id=current_version_id,public_path=current_path
+       WHERE id=$1`,
+      [created.id],
+    );
+
+    let versionNumber = created.version_number;
+    for (let index = 0; index < PAGE_VERSION_RETENTION_LIMIT + 2; index += 1) {
+      const updated = await pages.update(created.id, {
+        path: created.current_path,
+        title: "Retention test",
+        body_markdown: index === PAGE_VERSION_RETENTION_LIMIT + 1 ? currentSearchTerm : `Intermediate ${index}`,
+        commit_message: `Update retention ${index}`,
+        expected_version_number: versionNumber,
+      }, actor);
+      versionNumber = updated!.version_number;
+    }
+
+    expect((await pages.history(created.id)).map(({ version_number }) => version_number)).toEqual([
+      8, 7, 6, 5, 4, 1,
+    ]);
+    expect((await pages.search(oldSearchTerm)).some(({ id }) => id === created.id)).toBe(false);
+    expect((await pages.search(currentSearchTerm)).some(({ id }) => id === created.id)).toBe(true);
+
+    await pool.query(
+      "UPDATE knowledge_pages SET published_version_id=NULL,public_path=NULL WHERE id=$1",
+      [created.id],
+    );
+    await pages.update(created.id, {
+      path: created.current_path,
+      title: "Retention test",
+      body_markdown: currentSearchTerm,
+      commit_message: "Prune former publication",
+      expected_version_number: versionNumber,
+    }, actor);
+    expect((await pages.history(created.id)).map(({ version_number }) => version_number)).toEqual([
+      9, 8, 7, 6, 5,
     ]);
   });
 });
