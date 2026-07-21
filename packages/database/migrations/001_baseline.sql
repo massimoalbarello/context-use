@@ -68,7 +68,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLI
 CREATE TYPE actor_kind AS ENUM ('dashboard','mcp');
 CREATE TYPE publication_action AS ENUM ('publish','unpublish');
 CREATE TYPE publication_target AS ENUM ('page','asset');
-CREATE TYPE confirmation_intent_kind AS ENUM ('publication','knowledge_export');
+CREATE TYPE confirmation_intent_kind AS ENUM ('publication','knowledge_export','page_deletion');
 
 -- Better Auth and OAuth provider state. Only context_use_auth receives access.
 CREATE TABLE "user" (
@@ -331,10 +331,80 @@ CREATE TABLE "oauthClientAssertion" (
   "expiresAt" timestamptz NOT NULL
 );
 
--- Private knowledge and immutable history.
+-- Directories are first-class, linkable resources. Their rendered index is a
+-- live projection of direct child directories and pages rather than stored
+-- Markdown that can become stale.
+CREATE FUNCTION directory_search_vector(
+  p_path text,p_title text,p_summary text,p_intro_markdown text
+) RETURNS tsvector
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+SET search_path=pg_catalog
+RETURN (
+  setweight(to_tsvector('simple',coalesce(p_path,'')),'A')
+  || setweight(to_tsvector('simple',coalesce(p_title,'')),'A')
+  || setweight(to_tsvector('english',coalesce(p_summary,'')),'A')
+  || setweight(to_tsvector('english',coalesce(p_intro_markdown,'')),'B')
+);
+
+CREATE TABLE knowledge_directories (
+  id uuid PRIMARY KEY,
+  current_path text NOT NULL UNIQUE,
+  parent_path text GENERATED ALWAYS AS (
+    CASE
+      WHEN current_path='' THEN NULL
+      WHEN strpos(current_path,'/')=0 THEN ''
+      ELSE regexp_replace(current_path,'/[^/]+$','')
+    END
+  ) STORED,
+  version_number integer NOT NULL DEFAULT 1 CHECK (version_number>0),
+  title text NOT NULL CHECK (length(trim(title)) BETWEEN 1 AND 240),
+  summary text NOT NULL CHECK (
+    length(trim(summary)) BETWEEN 1 AND 320 AND summary !~ E'[\r\n]'
+  ),
+  intro_markdown text NOT NULL DEFAULT '' CHECK (octet_length(intro_markdown)<=4000000),
+  search_vector tsvector NOT NULL DEFAULT ''::tsvector,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT knowledge_directories_path_format CHECK (
+    current_path='' OR (
+      current_path ~ '^[a-z0-9][a-z0-9/_-]*$'
+      AND current_path !~ '//'
+      AND right(current_path,1)<>'/'
+    )
+  ),
+  CONSTRAINT knowledge_directories_parent_fk
+    FOREIGN KEY (parent_path) REFERENCES knowledge_directories(current_path)
+    ON DELETE RESTRICT
+);
+CREATE INDEX knowledge_directories_parent_idx ON knowledge_directories(parent_path);
+CREATE INDEX knowledge_directories_search_idx ON knowledge_directories USING gin(search_vector);
+
+CREATE FUNCTION page_search_vector(
+  p_path text,p_title text,p_summary text,p_body_markdown text
+) RETURNS tsvector
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+SET search_path=pg_catalog
+RETURN (
+  setweight(to_tsvector('simple',coalesce(p_path,'')),'A')
+  || setweight(to_tsvector('simple',coalesce(p_title,'')),'A')
+  || setweight(to_tsvector('english',coalesce(p_summary,'')),'A')
+  || setweight(to_tsvector('english',coalesce(p_body_markdown,'')),'B')
+);
+
+-- Private knowledge and immutable page history.
 CREATE TABLE knowledge_pages (
   id uuid PRIMARY KEY,
   current_path text NOT NULL,
+  parent_path text GENERATED ALWAYS AS (
+    CASE
+      WHEN strpos(current_path,'/')=0 THEN ''
+      ELSE regexp_replace(current_path,'/[^/]+$','')
+    END
+  ) STORED,
   current_version_id uuid NOT NULL,
   published_version_id uuid,
   public_path text,
@@ -342,6 +412,7 @@ CREATE TABLE knowledge_pages (
   updated_at timestamptz NOT NULL DEFAULT now(),
   archived_at timestamptz,
   automation_id uuid,
+  search_vector tsvector NOT NULL DEFAULT ''::tsvector,
   CONSTRAINT knowledge_pages_path_format CHECK (
     current_path ~ '^[a-z0-9][a-z0-9/_-]*$'
     AND current_path !~ '//'
@@ -361,9 +432,9 @@ CREATE TABLE knowledge_pages (
   CONSTRAINT knowledge_pages_published_active CHECK (
     published_version_id IS NULL OR archived_at IS NULL
   ),
-  CONSTRAINT knowledge_pages_about_is_folder CHECK (
-    archived_at IS NOT NULL OR current_path<>'about'
-  )
+  CONSTRAINT knowledge_pages_parent_fk
+    FOREIGN KEY (parent_path) REFERENCES knowledge_directories(current_path)
+    ON DELETE RESTRICT
 );
 CREATE UNIQUE INDEX knowledge_pages_active_path_unique
   ON knowledge_pages(current_path) WHERE archived_at IS NULL;
@@ -371,6 +442,10 @@ CREATE UNIQUE INDEX knowledge_pages_public_path_unique
   ON knowledge_pages(public_path) WHERE public_path IS NOT NULL;
 CREATE INDEX knowledge_pages_automation_idx
   ON knowledge_pages(automation_id,current_path) WHERE automation_id IS NOT NULL;
+CREATE INDEX knowledge_pages_parent_idx
+  ON knowledge_pages(parent_path) WHERE archived_at IS NULL;
+CREATE INDEX knowledge_pages_search_idx
+  ON knowledge_pages USING gin(search_vector);
 
 CREATE TABLE knowledge_page_versions (
   id uuid PRIMARY KEY,
@@ -378,16 +453,14 @@ CREATE TABLE knowledge_page_versions (
   version_number integer NOT NULL CHECK (version_number>0),
   path text NOT NULL,
   title text NOT NULL CHECK (length(title) BETWEEN 1 AND 240),
+  summary text NOT NULL CHECK (
+    length(trim(summary)) BETWEEN 1 AND 320 AND summary !~ E'[\r\n]'
+  ),
   body_markdown text NOT NULL CHECK (octet_length(body_markdown)<=4000000),
   commit_message text NOT NULL CHECK (length(trim(commit_message)) BETWEEN 3 AND 240),
   actor_kind actor_kind NOT NULL,
   actor_subject text NOT NULL CHECK (length(actor_subject) BETWEEN 1 AND 512),
   created_at timestamptz NOT NULL DEFAULT now(),
-  search_vector tsvector GENERATED ALWAYS AS (
-    setweight(to_tsvector('simple',coalesce(path,'')),'A')
-    || setweight(to_tsvector('simple',coalesce(title,'')),'A')
-    || setweight(to_tsvector('english',coalesce(body_markdown,'')),'B')
-  ) STORED,
   CONSTRAINT knowledge_page_versions_path_format CHECK (
     path ~ '^[a-z0-9][a-z0-9/_-]*$'
     AND path !~ '//'
@@ -396,8 +469,6 @@ CREATE TABLE knowledge_page_versions (
   UNIQUE (page_id,version_number),
   UNIQUE (id,page_id)
 );
-CREATE INDEX knowledge_page_versions_search_idx
-  ON knowledge_page_versions USING gin(search_vector);
 CREATE INDEX knowledge_page_versions_page_created_idx
   ON knowledge_page_versions(page_id,created_at DESC);
 
@@ -434,6 +505,69 @@ CREATE CONSTRAINT TRIGGER knowledge_pages_current_version_path
 AFTER INSERT OR UPDATE OF current_path,current_version_id ON knowledge_pages
 DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION enforce_current_page_version_path();
+
+CREATE FUNCTION prevent_knowledge_path_collision()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $$
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended(NEW.current_path,0));
+  IF TG_TABLE_NAME='knowledge_directories' THEN
+    IF NEW.current_path<>'' AND EXISTS (
+      SELECT 1 FROM knowledge_pages
+      WHERE current_path=NEW.current_path AND archived_at IS NULL
+    ) THEN
+      RAISE EXCEPTION 'knowledge path is already used by a page' USING ERRCODE='23505';
+    END IF;
+  ELSIF NEW.archived_at IS NULL AND EXISTS (
+    SELECT 1 FROM knowledge_directories WHERE current_path=NEW.current_path
+  ) THEN
+    RAISE EXCEPTION 'knowledge path is already used by a directory' USING ERRCODE='23505';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER knowledge_directories_path_collision
+BEFORE INSERT OR UPDATE OF current_path ON knowledge_directories
+FOR EACH ROW EXECUTE FUNCTION prevent_knowledge_path_collision();
+CREATE TRIGGER knowledge_pages_path_collision
+BEFORE INSERT OR UPDATE OF current_path,archived_at ON knowledge_pages
+FOR EACH ROW EXECUTE FUNCTION prevent_knowledge_path_collision();
+
+-- The root guide is the durable entry point for every agent. Its contents are
+-- ordinary versioned knowledge, but the page itself must always remain active
+-- at the stable root path used by get_knowledge_base_guide.
+CREATE FUNCTION protect_root_knowledge_guide()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $$
+BEGIN
+  IF TG_OP='DELETE' THEN
+    IF OLD.current_path='agents' THEN
+      RAISE EXCEPTION 'the root AGENTS.md page cannot be deleted'
+        USING ERRCODE='23514';
+    END IF;
+    RETURN OLD;
+  END IF;
+
+  IF OLD.current_path='agents'
+     AND (NEW.current_path IS DISTINCT FROM 'agents' OR NEW.archived_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'the root AGENTS.md page must remain active at agents'
+      USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER knowledge_pages_keep_root_guide
+BEFORE UPDATE OF current_path,archived_at ON knowledge_pages
+FOR EACH ROW EXECUTE FUNCTION protect_root_knowledge_guide();
+CREATE TRIGGER knowledge_pages_prevent_root_guide_deletion
+BEFORE DELETE ON knowledge_pages
+FOR EACH ROW EXECUTE FUNCTION protect_root_knowledge_guide();
 
 CREATE TABLE assets (
   id uuid PRIMARY KEY,
@@ -759,6 +893,20 @@ CREATE TRIGGER cron_schedules_keep_automation_key
 BEFORE UPDATE OF automation_key ON cron_schedules
 FOR EACH ROW EXECUTE FUNCTION keep_automation_key_immutable();
 
+INSERT INTO knowledge_directories(
+  id,current_path,title,summary,intro_markdown,search_vector
+) VALUES
+  (
+    gen_random_uuid(),'','Knowledge',
+    'The root of the owner''s private, progressively discoverable knowledge base.','',
+    directory_search_vector('','Knowledge','The root of the owner''s private, progressively discoverable knowledge base.','')
+  ),
+  (
+    gen_random_uuid(),'automations','Automations',
+    'Private instructions and durable outputs created by scheduled automations.','',
+    directory_search_vector('automations','Automations','Private instructions and durable outputs created by scheduled automations.','')
+  );
+
 -- The bootstrap guide tells agents how to structure owner context. It remains
 -- private until the owner chooses to publish an independently created page.
 DO $$
@@ -766,14 +914,130 @@ DECLARE
   agents_page_id uuid := gen_random_uuid();
   agents_version_id uuid := gen_random_uuid();
 BEGIN
-  INSERT INTO knowledge_pages(id,current_path,current_version_id)
-  VALUES (agents_page_id,'agents',agents_version_id);
+  INSERT INTO knowledge_pages(id,current_path,current_version_id,search_vector)
+  VALUES (
+    agents_page_id,'agents',agents_version_id,
+    page_search_vector(
+      'agents','AGENTS.md',
+      'The global editorial and structural rules for maintaining this knowledge base.',
+      $guide$
+# Knowledge base structure
+
+This knowledge base should develop into a durable hypermedia representation of the owner's life, work, interests, and thinking. Design it from the beginning as though it will eventually contain more than 100,000 pages.
+
+## Organizing knowledge
+
+- Prefer many small, focused pages over long documents that combine unrelated subjects. A page should represent the smallest coherent unit that is useful to read, retrieve, or link independently, not merely an isolated fact.
+- Organize pages into meaningful, multi-level directories. Give each page one canonical location based on its primary subject; use links to express relationships that cross the directory hierarchy.
+- Avoid catch-all pages and directories. When a page begins covering several independently meaningful subjects, split it and connect the resulting pages.
+- Keep pages understandable on their own, but do not leave them isolated. Link related people, places, periods, experiences, projects, ideas, decisions, and works using internal knowledge links.
+- Avoid repeating background information across pages. Preserve it in its own page and link to it from every relevant context.
+- Give every page a concise, one-sentence summary. Summaries are required because the framework uses them to generate directory indexes and search results.
+
+Store information whose subject is the owner under `about/`. Create `about/intro` if it is missing and keep it as the concise introduction people and agents should read first.
+
+Store other entities in separate top-level directories, such as `people/`, `companies/`, `places/`, `events/`, and `works/`. Link those entities to the owner's experiences instead of nesting them under `about/`.
+
+## Preserve the story
+
+The knowledge base should tell a connected story, not merely accumulate facts.
+
+When relevant, record when and where something happened, who or what was involved, what preceded it, why it mattered, and what followed from it. Connect experiences to the work, relationships, places, ideas, books, music, and other influences surrounding them.
+
+Make temporal, spatial, and causal relationships visible through links. Use timelines and authored overview pages to provide narrative paths through the smaller source pages. Do not invent motivations or causal relationships: record them when known and clearly distinguish the owner's account from an agent's inference.
+
+## Progressive discovery
+
+Every directory is a first-class, linkable resource with a title, one-sentence summary, and optional Markdown introduction. Its index is generated automatically from its immediate child directories and active pages.
+
+Indexes describe direct children only. Agents should explore progressively, beginning with the root directory and following increasingly specific directory indexes. Do not create or manually maintain `index` pages; the framework keeps indexes current when knowledge changes.
+
+Generated indexes are navigational aids, not substitutes for authored overview pages, timelines, or other pages that explain narrative and causal relationships.
+
+Publishing a page automatically makes its directory ancestry navigable through framework-generated public indexes. Public indexes use the exact published page titles and summaries, include only branches with published descendants, and never reveal private sibling pages or private directory introductions.
+
+## Local directory guides
+
+The root `AGENTS.md` is required and applies throughout the knowledge base. A directory may contain an `AGENTS.md` page when it needs conventions that cannot be inferred from its name, index, and surrounding structure. Store a local guide at `<directory>/agents` with the title `AGENTS.md`; the URL-safe path omits the extension. Local guides are optional and should refine the root rules rather than repeat them.
+
+Before creating or updating knowledge, read any `AGENTS.md` pages exposed by the directory indexes from the root through the target page's parent directory.
+
+Create a local guide when a directory has special inclusion criteria, naming conventions, page templates, granularity requirements, required relationships, or other rules that agents need in order to add knowledge consistently.
+
+## Privacy
+
+Knowledge is private by default. If the owner wants the landing page to introduce them, ask them to review and publish `about/intro`; an agent cannot publish it.
+
+## Skills
+
+- Discover reusable Agent Skills by exploring the `skills/` directory.
+- Store each skill at the stable semantic path `skills/<skill-name>`.
+- The page body is the complete standard `SKILL.md`: YAML frontmatter with `name` and `description`, followed by the skill instructions. Use the frontmatter to decide whether a skill is relevant before following its instructions.
+- Create, update, and archive skills with the ordinary page tools; page history and commit messages provide versioning.
+$guide$
+    )
+  );
 
   INSERT INTO knowledge_page_versions(
-    id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+    id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
   ) VALUES (
     agents_version_id,agents_page_id,1,'agents','AGENTS.md',
-    E'# Knowledge base structure\n\n- Store information whose subject is the owner in `about/`. Create `about/intro` if it is missing and keep it as the concise introduction people and agents should read first.\n- Store other entities in separate top-level folders, such as `people/`, `companies/`, and `events/`.\n- Link related pages instead of nesting other entities under `about/`.\n- Knowledge is private by default. If the owner wants the landing page to introduce them, ask them to review and publish `about/intro`; an agent cannot publish it.\n\n## Skills\n\n- Discover reusable Agent Skills by listing current pages whose paths begin with `skills/`.\n- Store each skill at the stable semantic path `skills/<skill-name>`.\n- The page body is the complete standard `SKILL.md`: YAML frontmatter with `name` and `description`, followed by the skill instructions. Use the frontmatter to decide whether a skill is relevant before following its instructions.\n- Create, update, and archive skills with the ordinary page tools; page history and commit messages provide versioning.\n',
+    'The global editorial and structural rules for maintaining this knowledge base.',
+    $guide$
+# Knowledge base structure
+
+This knowledge base should develop into a durable hypermedia representation of the owner's life, work, interests, and thinking. Design it from the beginning as though it will eventually contain more than 100,000 pages.
+
+## Organizing knowledge
+
+- Prefer many small, focused pages over long documents that combine unrelated subjects. A page should represent the smallest coherent unit that is useful to read, retrieve, or link independently, not merely an isolated fact.
+- Organize pages into meaningful, multi-level directories. Give each page one canonical location based on its primary subject; use links to express relationships that cross the directory hierarchy.
+- Avoid catch-all pages and directories. When a page begins covering several independently meaningful subjects, split it and connect the resulting pages.
+- Keep pages understandable on their own, but do not leave them isolated. Link related people, places, periods, experiences, projects, ideas, decisions, and works using internal knowledge links.
+- Avoid repeating background information across pages. Preserve it in its own page and link to it from every relevant context.
+- Give every page a concise, one-sentence summary. Summaries are required because the framework uses them to generate directory indexes and search results.
+
+Store information whose subject is the owner under `about/`. Create `about/intro` if it is missing and keep it as the concise introduction people and agents should read first.
+
+Store other entities in separate top-level directories, such as `people/`, `companies/`, `places/`, `events/`, and `works/`. Link those entities to the owner's experiences instead of nesting them under `about/`.
+
+## Preserve the story
+
+The knowledge base should tell a connected story, not merely accumulate facts.
+
+When relevant, record when and where something happened, who or what was involved, what preceded it, why it mattered, and what followed from it. Connect experiences to the work, relationships, places, ideas, books, music, and other influences surrounding them.
+
+Make temporal, spatial, and causal relationships visible through links. Use timelines and authored overview pages to provide narrative paths through the smaller source pages. Do not invent motivations or causal relationships: record them when known and clearly distinguish the owner's account from an agent's inference.
+
+## Progressive discovery
+
+Every directory is a first-class, linkable resource with a title, one-sentence summary, and optional Markdown introduction. Its index is generated automatically from its immediate child directories and active pages.
+
+Indexes describe direct children only. Agents should explore progressively, beginning with the root directory and following increasingly specific directory indexes. Do not create or manually maintain `index` pages; the framework keeps indexes current when knowledge changes.
+
+Generated indexes are navigational aids, not substitutes for authored overview pages, timelines, or other pages that explain narrative and causal relationships.
+
+Publishing a page automatically makes its directory ancestry navigable through framework-generated public indexes. Public indexes use the exact published page titles and summaries, include only branches with published descendants, and never reveal private sibling pages or private directory introductions.
+
+## Local directory guides
+
+The root `AGENTS.md` is required and applies throughout the knowledge base. A directory may contain an `AGENTS.md` page when it needs conventions that cannot be inferred from its name, index, and surrounding structure. Store a local guide at `<directory>/agents` with the title `AGENTS.md`; the URL-safe path omits the extension. Local guides are optional and should refine the root rules rather than repeat them.
+
+Before creating or updating knowledge, read any `AGENTS.md` pages exposed by the directory indexes from the root through the target page's parent directory.
+
+Create a local guide when a directory has special inclusion criteria, naming conventions, page templates, granularity requirements, required relationships, or other rules that agents need in order to add knowledge consistently.
+
+## Privacy
+
+Knowledge is private by default. If the owner wants the landing page to introduce them, ask them to review and publish `about/intro`; an agent cannot publish it.
+
+## Skills
+
+- Discover reusable Agent Skills by exploring the `skills/` directory.
+- Store each skill at the stable semantic path `skills/<skill-name>`.
+- The page body is the complete standard `SKILL.md`: YAML frontmatter with `name` and `description`, followed by the skill instructions. Use the frontmatter to decide whether a skill is relevant before following its instructions.
+- Create, update, and archive skills with the ordinary page tools; page history and commit messages provide versioning.
+$guide$,
     'Create knowledge base guide','dashboard','context-use-bootstrap'
   );
 END;
@@ -784,8 +1048,10 @@ $$;
 -- contain the internal identifiers needed to construct the safe projections.
 GRANT SELECT (id,public_path,published_version_id,archived_at)
   ON knowledge_pages TO context_use_projection_owner;
-GRANT SELECT (id,page_id,path,title,body_markdown,created_at)
+GRANT SELECT (id,page_id,path,title,summary,body_markdown,created_at)
   ON knowledge_page_versions TO context_use_projection_owner;
+GRANT SELECT (id,current_path)
+  ON knowledge_directories TO context_use_projection_owner;
 GRANT SELECT (
   id,public_path,filename,content_type,size_bytes,content_hash,s3_object_key,
   width,height,duration_seconds,deleted_at
@@ -800,6 +1066,7 @@ SELECT
   page.published_version_id,
   version.path,
   version.title,
+  version.summary,
   version.body_markdown,
   version.created_at AS version_created_at
 FROM knowledge_pages page
@@ -825,6 +1092,7 @@ DECLARE
   projected text;
   matched text[];
   target_path text;
+  target_href text;
   label text;
   source_directory text;
 BEGIN
@@ -894,6 +1162,34 @@ BEGIN
     );
   END LOOP;
 
+  -- A directory reference becomes public only when its generated index has at
+  -- least one published descendant. The projection never exposes private
+  -- siblings or mutable directory metadata.
+  FOR matched IN
+    SELECT regexp_matches(
+      projected,
+      '(\[([^]]*)\]\(context-use://directory/([0-9a-f-]{36})\))',
+      'gi'
+    )
+  LOOP
+    SELECT directory.current_path INTO target_path
+    FROM knowledge_directories directory
+    WHERE directory.id=matched[3]::uuid
+      AND EXISTS (
+        SELECT 1 FROM published_page_sources page
+        WHERE directory.current_path=''
+           OR left(page.path,length(directory.current_path)+1)=directory.current_path||'/'
+      );
+    projected := replace(
+      projected,
+      matched[1],
+      CASE WHEN target_path IS NULL THEN matched[2]
+           WHEN target_path='' THEN format('[%s](/i)',matched[2])
+           ELSE format('[%s](/i/%s)',matched[2],target_path)
+      END
+    );
+  END LOOP;
+
   FOR matched IN
     SELECT regexp_matches(
       projected,
@@ -909,6 +1205,31 @@ BEGIN
       matched[1],
       CASE WHEN target_path IS NULL THEN matched[2]
            ELSE format('[%s](/p/%s)',matched[2],target_path)
+      END
+    );
+  END LOOP;
+
+  FOR matched IN
+    SELECT regexp_matches(
+      projected,
+      '(\[([^]]*)\]\(/app/directories/([0-9a-f-]{36})\))',
+      'gi'
+    )
+  LOOP
+    SELECT directory.current_path INTO target_path
+    FROM knowledge_directories directory
+    WHERE directory.id=matched[3]::uuid
+      AND EXISTS (
+        SELECT 1 FROM published_page_sources page
+        WHERE directory.current_path=''
+           OR left(page.path,length(directory.current_path)+1)=directory.current_path||'/'
+      );
+    projected := replace(
+      projected,
+      matched[1],
+      CASE WHEN target_path IS NULL THEN matched[2]
+           WHEN target_path='' THEN format('[%s](/i)',matched[2])
+           ELSE format('[%s](/i/%s)',matched[2],target_path)
       END
     );
   END LOOP;
@@ -929,27 +1250,49 @@ BEGIN
       CASE WHEN page.path=concat_ws('/',nullif(source_directory,''),lower(matched[2])) THEN 0 ELSE 1 END,
       page.path
     LIMIT 1;
+    target_href := CASE WHEN target_path IS NULL THEN NULL ELSE format('/p/%s',target_path) END;
+    IF target_href IS NULL THEN
+      SELECT directory.current_path INTO target_path
+      FROM knowledge_directories directory
+      WHERE (
+          directory.current_path=lower(matched[2])
+          OR directory.current_path=concat_ws('/',nullif(source_directory,''),lower(matched[2]))
+        )
+        AND EXISTS (
+          SELECT 1 FROM published_page_sources page
+          WHERE directory.current_path=''
+             OR left(page.path,length(directory.current_path)+1)=directory.current_path||'/'
+        )
+      ORDER BY
+        CASE WHEN directory.current_path=concat_ws('/',nullif(source_directory,''),lower(matched[2])) THEN 0 ELSE 1 END,
+        directory.current_path
+      LIMIT 1;
+      target_href := CASE WHEN target_path IS NULL THEN NULL
+                          WHEN target_path='' THEN '/i'
+                          ELSE format('/i/%s',target_path)
+                     END;
+    END IF;
     label := coalesce(
       nullif(btrim(matched[4]),''),
-      CASE WHEN target_path IS NULL THEN 'Private page'
+      CASE WHEN target_href IS NULL THEN 'Private page'
            ELSE regexp_replace(matched[2],'^.*/','')
       END
     );
     projected := replace(
       projected,
       matched[1],
-      CASE WHEN target_path IS NULL THEN label
-           ELSE format('[%s](/p/%s)',label,target_path)
+      CASE WHEN target_href IS NULL THEN label
+           ELSE format('[%s](%s)',label,target_href)
       END
     );
   END LOOP;
 
   projected := regexp_replace(
-    projected,'context-use://(page|asset)/[0-9a-f-]{36}',
+    projected,'context-use://(page|directory|asset)/[0-9a-f-]{36}',
     '[private reference]','gi'
   );
   projected := regexp_replace(
-    projected,'/app/pages/[0-9a-f-]{36}',
+    projected,'/app/(pages|directories)/[0-9a-f-]{36}',
     '[private reference]','gi'
   );
   projected := regexp_replace(
@@ -976,6 +1319,7 @@ AS
 SELECT
   page.public_path,
   page.title,
+  page.summary,
   project_public_markdown(page.public_path) AS body_markdown
 FROM published_page_sources page;
 
@@ -1375,11 +1719,246 @@ GRANT SELECT (
 GRANT SELECT (intent_kind,intent_id,challenge)
   ON confirmation_challenges TO context_use_confirmation;
 
+-- Retain the five newest versions, the exact published snapshot, and a version
+-- selected by an unexpired publication confirmation. Callers never receive
+-- arbitrary DELETE access to immutable history.
+CREATE FUNCTION prune_page_versions(p_page_id uuid)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $$
+DECLARE
+  removed_count integer;
+BEGIN
+  IF p_page_id IS NULL THEN
+    RAISE EXCEPTION 'page id required' USING ERRCODE='22023';
+  END IF;
+
+  PERFORM 1 FROM knowledge_pages WHERE id=p_page_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN 0; END IF;
+
+  WITH newest AS (
+    SELECT id
+    FROM knowledge_page_versions
+    WHERE page_id=p_page_id
+    ORDER BY version_number DESC
+    LIMIT 5
+  ), removed AS (
+    DELETE FROM knowledge_page_versions version
+    WHERE version.page_id=p_page_id
+      AND NOT EXISTS (SELECT 1 FROM newest WHERE newest.id=version.id)
+      AND NOT EXISTS (
+        SELECT 1 FROM knowledge_pages page
+        WHERE page.id=p_page_id
+          AND (page.current_version_id=version.id OR page.published_version_id=version.id)
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM publication_intents intent
+        WHERE intent.target_kind='page'
+          AND intent.target_id=p_page_id
+          AND intent.version_id=version.id
+          AND intent.expires_at>now()
+      )
+    RETURNING 1
+  )
+  SELECT count(*)::integer INTO removed_count FROM removed;
+
+  RETURN removed_count;
+END;
+$$;
+
+GRANT DELETE ON knowledge_page_versions TO context_use_boundary_owner;
+GRANT SELECT (id,version_number) ON knowledge_page_versions TO context_use_boundary_owner;
+GRANT SELECT (id,current_version_id,published_version_id)
+  ON knowledge_pages TO context_use_boundary_owner;
+ALTER FUNCTION prune_page_versions(uuid) OWNER TO context_use_boundary_owner;
+REVOKE ALL ON FUNCTION prune_page_versions(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION prune_page_versions(uuid)
+  TO context_use_dashboard,context_use_mcp;
+
+-- Permanent page deletion is staged by the dashboard and can be consumed only
+-- by the isolated passkey-confirmation service.
+CREATE TABLE page_deletion_intents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  page_id uuid NOT NULL REFERENCES knowledge_pages(id) ON DELETE CASCADE,
+  expected_version_id uuid NOT NULL,
+  owner_user_id text NOT NULL,
+  session_id text NOT NULL CHECK (length(session_id) BETWEEN 1 AND 512),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL,
+  CONSTRAINT page_deletion_intents_owner CHECK (owner_user_id='context-use-owner'),
+  CONSTRAINT page_deletion_intents_expiry CHECK (
+    expires_at>created_at AND expires_at<=created_at+interval '5 minutes'
+  )
+);
+CREATE INDEX page_deletion_intents_expiry_idx ON page_deletion_intents(expires_at);
+
+CREATE OR REPLACE FUNCTION issue_confirmation_challenge(
+  p_intent_kind confirmation_intent_kind,
+  p_intent_id uuid,
+  p_challenge text
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $$
+DECLARE
+  intent_expires_at timestamptz;
+  intent_inactive boolean;
+BEGIN
+  IF p_intent_kind IS NULL OR p_intent_id IS NULL OR p_challenge IS NULL
+     OR p_challenge !~ '^[A-Za-z0-9_-]{43,128}$' THEN
+    RAISE EXCEPTION 'valid confirmation challenge required' USING ERRCODE='22023';
+  END IF;
+
+  DELETE FROM publication_intents WHERE expires_at<=now();
+  DELETE FROM knowledge_export_intents WHERE expires_at<=now();
+  DELETE FROM page_deletion_intents WHERE expires_at<=now();
+  DELETE FROM confirmation_challenges challenge
+  WHERE (
+    challenge.intent_kind='publication'
+    AND NOT EXISTS (SELECT 1 FROM publication_intents intent WHERE intent.id=challenge.intent_id)
+  ) OR (
+    challenge.intent_kind='knowledge_export'
+    AND NOT EXISTS (SELECT 1 FROM knowledge_export_intents intent WHERE intent.id=challenge.intent_id)
+  ) OR (
+    challenge.intent_kind='page_deletion'
+    AND NOT EXISTS (SELECT 1 FROM page_deletion_intents intent WHERE intent.id=challenge.intent_id)
+  );
+
+  IF p_intent_kind='publication' THEN
+    SELECT expires_at,false
+    INTO intent_expires_at,intent_inactive
+    FROM publication_intents
+    WHERE id=p_intent_id;
+  ELSIF p_intent_kind='knowledge_export' THEN
+    SELECT expires_at,confirmed_at IS NOT NULL OR download_started_at IS NOT NULL
+    INTO intent_expires_at,intent_inactive
+    FROM knowledge_export_intents
+    WHERE id=p_intent_id;
+  ELSE
+    SELECT expires_at,false
+    INTO intent_expires_at,intent_inactive
+    FROM page_deletion_intents
+    WHERE id=p_intent_id;
+  END IF;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'confirmation intent not found' USING ERRCODE='P0002'; END IF;
+  IF intent_inactive OR intent_expires_at<=now() THEN
+    RAISE EXCEPTION 'confirmation intent is inactive' USING ERRCODE='22023';
+  END IF;
+  INSERT INTO confirmation_challenges(intent_kind,intent_id,challenge)
+  VALUES (p_intent_kind,p_intent_id,p_challenge);
+END;
+$$;
+
+CREATE FUNCTION confirm_page_deletion_intent(
+  p_intent_id uuid,
+  p_owner_user_id text,
+  p_session_id text,
+  p_credential_id text,
+  p_expected_counter integer,
+  p_new_counter integer
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $$
+DECLARE
+  intent record;
+  intent_challenge text;
+  target record;
+BEGIN
+  IF p_owner_user_id IS NULL OR p_session_id IS NULL
+     OR p_credential_id IS NULL OR length(trim(p_credential_id))<1
+     OR p_expected_counter IS NULL OR p_new_counter IS NULL THEN
+    RAISE EXCEPTION 'verified page deletion principal required' USING ERRCODE='42501';
+  END IF;
+
+  SELECT id,page_id,expected_version_id,owner_user_id,session_id,expires_at
+  INTO intent
+  FROM page_deletion_intents
+  WHERE id=p_intent_id;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'page deletion intent not found' USING ERRCODE='P0002'; END IF;
+  IF intent.expires_at<=now() THEN
+    RAISE EXCEPTION 'page deletion intent expired' USING ERRCODE='22023';
+  END IF;
+  IF intent.owner_user_id IS DISTINCT FROM p_owner_user_id
+     OR intent.session_id IS DISTINCT FROM p_session_id THEN
+    RAISE EXCEPTION 'page deletion intent principal mismatch' USING ERRCODE='42501';
+  END IF;
+  SELECT challenge INTO intent_challenge
+  FROM confirmation_challenges
+  WHERE intent_kind='page_deletion' AND intent_id=intent.id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'page deletion challenge not issued' USING ERRCODE='42501';
+  END IF;
+
+  SELECT id,current_version_id,published_version_id,archived_at
+  INTO target
+  FROM knowledge_pages
+  WHERE id=intent.page_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'page not found' USING ERRCODE='P0002'; END IF;
+  IF target.archived_at IS NULL OR target.published_version_id IS NOT NULL
+     OR target.current_version_id IS DISTINCT FROM intent.expected_version_id
+     OR EXISTS (
+       SELECT 1 FROM cron_schedules schedule
+       WHERE schedule.instructions_page_id=target.id
+     ) THEN
+    RAISE EXCEPTION 'page is no longer eligible for permanent deletion' USING ERRCODE='22023';
+  END IF;
+
+  PERFORM consume_confirmation_challenge(
+    'page_deletion',intent.id,intent_challenge,intent.owner_user_id,
+    p_credential_id,p_expected_counter,p_new_counter
+  );
+
+  DELETE FROM publication_intents
+  WHERE target_kind='page' AND target_id=target.id;
+  DELETE FROM knowledge_page_versions WHERE page_id=target.id;
+  DELETE FROM knowledge_pages WHERE id=target.id;
+END;
+$$;
+
+GRANT SELECT ON page_deletion_intents TO context_use_dashboard;
+GRANT INSERT (
+  id,page_id,expected_version_id,owner_user_id,session_id,expires_at
+) ON page_deletion_intents TO context_use_dashboard;
+GRANT SELECT (
+  id,page_id,expected_version_id,owner_user_id,session_id,expires_at
+) ON page_deletion_intents TO context_use_boundary_owner;
+GRANT DELETE ON page_deletion_intents TO context_use_boundary_owner;
+GRANT DELETE ON knowledge_pages TO context_use_boundary_owner;
+GRANT SELECT (id,current_version_id,published_version_id,archived_at)
+  ON knowledge_pages TO context_use_boundary_owner;
+GRANT SELECT (instructions_page_id) ON cron_schedules TO context_use_boundary_owner;
+GRANT SELECT (
+  id,page_id,expected_version_id,owner_user_id,session_id,expires_at
+) ON page_deletion_intents TO context_use_confirmation;
+GRANT SELECT ON page_deletion_intents TO context_use_backup;
+
+ALTER FUNCTION confirm_page_deletion_intent(uuid,text,text,text,integer,integer)
+  OWNER TO context_use_boundary_owner;
+REVOKE ALL ON FUNCTION confirm_page_deletion_intent(uuid,text,text,text,integer,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION confirm_page_deletion_intent(uuid,text,text,text,integer,integer)
+  TO context_use_confirmation;
+
+REVOKE ALL ON FUNCTION issue_confirmation_challenge(confirmation_intent_kind,uuid,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION issue_confirmation_challenge(confirmation_intent_kind,uuid,text)
+  TO context_use_confirmation;
+
 -- Application-role capability manifest. Keep grants column-scoped wherever a
 -- role mutates state so a future column is private until explicitly reviewed.
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON FUNCTION enforce_current_page_version_path() FROM PUBLIC;
+REVOKE ALL ON FUNCTION prevent_knowledge_path_collision() FROM PUBLIC;
+REVOKE ALL ON FUNCTION protect_root_knowledge_guide() FROM PUBLIC;
+REVOKE ALL ON FUNCTION directory_search_vector(text,text,text,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION page_search_vector(text,text,text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION enforce_automation_page_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION enforce_automation_page_version_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION keep_automation_key_immutable() FROM PUBLIC;
@@ -1402,6 +1981,7 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON
 TO context_use_auth;
 
 GRANT SELECT ON
+  knowledge_directories,
   knowledge_pages,
   knowledge_page_versions,
   assets,
@@ -1412,12 +1992,16 @@ GRANT SELECT ON
   automation_runs,
   knowledge_export_intents
 TO context_use_dashboard;
-GRANT INSERT (id,current_path,current_version_id,automation_id)
+GRANT INSERT (id,current_path,title,summary,intro_markdown,search_vector)
+  ON knowledge_directories TO context_use_dashboard;
+GRANT UPDATE (title,summary,intro_markdown,version_number,search_vector,updated_at)
+  ON knowledge_directories TO context_use_dashboard;
+GRANT INSERT (id,current_path,current_version_id,automation_id,search_vector)
   ON knowledge_pages TO context_use_dashboard;
-GRANT UPDATE (current_path,current_version_id,updated_at,archived_at)
+GRANT UPDATE (current_path,current_version_id,search_vector,updated_at,archived_at)
   ON knowledge_pages TO context_use_dashboard;
 GRANT INSERT (
-  id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+  id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
 ) ON knowledge_page_versions TO context_use_dashboard;
 GRANT INSERT ON knowledge_asset_links TO context_use_dashboard;
 GRANT INSERT (
@@ -1446,8 +2030,13 @@ GRANT INSERT (id,schedule_id,automation_version_id,scheduled_for,input)
 GRANT INSERT (id,owner_user_id,session_id,expires_at)
   ON knowledge_export_intents TO context_use_dashboard;
 GRANT DELETE ON knowledge_export_intents TO context_use_dashboard;
+GRANT EXECUTE ON FUNCTION directory_search_vector(text,text,text,text)
+  TO context_use_dashboard;
+GRANT EXECUTE ON FUNCTION page_search_vector(text,text,text,text)
+  TO context_use_dashboard;
 
 GRANT SELECT ON
+  knowledge_directories,
   knowledge_pages,
   knowledge_page_versions,
   assets,
@@ -1456,12 +2045,16 @@ GRANT SELECT ON
   automation_versions,
   automation_runs
 TO context_use_mcp;
-GRANT INSERT (id,current_path,current_version_id,automation_id)
+GRANT INSERT (id,current_path,title,summary,intro_markdown,search_vector)
+  ON knowledge_directories TO context_use_mcp;
+GRANT UPDATE (title,summary,intro_markdown,version_number,search_vector,updated_at)
+  ON knowledge_directories TO context_use_mcp;
+GRANT INSERT (id,current_path,current_version_id,automation_id,search_vector)
   ON knowledge_pages TO context_use_mcp;
-GRANT UPDATE (current_path,current_version_id,updated_at,archived_at)
+GRANT UPDATE (current_path,current_version_id,search_vector,updated_at,archived_at)
   ON knowledge_pages TO context_use_mcp;
 GRANT INSERT (
-  id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+  id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
 ) ON knowledge_page_versions TO context_use_mcp;
 GRANT INSERT ON knowledge_asset_links TO context_use_mcp;
 GRANT INSERT (
@@ -1483,6 +2076,10 @@ GRANT UPDATE (
   status,attempt_count,claimed_by,claim_token,claimed_at,lease_expires_at,
   completed_at,result_summary,error_message
 ) ON automation_runs TO context_use_mcp;
+GRANT EXECUTE ON FUNCTION directory_search_vector(text,text,text,text)
+  TO context_use_mcp;
+GRANT EXECUTE ON FUNCTION page_search_vector(text,text,text,text)
+  TO context_use_mcp;
 
 GRANT SELECT ON published_pages,published_assets TO context_use_public;
 GRANT EXECUTE ON FUNCTION project_public_markdown(text)
@@ -1511,6 +2108,7 @@ GRANT SELECT ON
   "oauthResource",
   "oauthClientResource",
   "oauthClientAssertion",
+  knowledge_directories,
   knowledge_pages,
   knowledge_page_versions,
   assets,

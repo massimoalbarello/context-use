@@ -31,6 +31,12 @@
 	handle /p/* {
 		reverse_proxy public-web:3005
 	}
+	handle /i {
+		reverse_proxy public-web:3005
+	}
+	handle /i/* {
+		reverse_proxy public-web:3005
+	}
 	handle /a/* {
 		reverse_proxy public-web:3005
 	}

@@ -10,7 +10,7 @@ import {
   parseExpandedPaths,
   serializeExpandedPaths,
 } from "./knowledge-tree.ts";
-import type { Asset, Page } from "./types.ts";
+import type { Asset, Directory, Page } from "./types.ts";
 
 function page(id: string, currentPath: string, title: string): Page {
   return {
@@ -24,6 +24,7 @@ function page(id: string, currentPath: string, title: string): Page {
     archived_at: null,
     version_number: 1,
     title,
+    summary: `Summary for ${title}.`,
     body_markdown: "",
   };
 }
@@ -38,6 +39,19 @@ function asset(id: string, currentPath: string, filename: string): Asset {
     size_bytes: 123,
     content_hash: "a".repeat(64),
     created_at: "2026-01-01T00:00:00.000Z",
+  };
+}
+
+function directory(id: string, currentPath: string, title: string): Directory {
+  return {
+    id,
+    current_path: currentPath,
+    version_number: 1,
+    title,
+    summary: `Summary for ${title}.`,
+    intro_markdown: "",
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
   };
 }
 
@@ -72,6 +86,18 @@ describe("knowledge tree", () => {
 
     expect(acme.pages.map(({ name }) => name)).toEqual(["brief"]);
     expect(acme.assets.map(({ name }) => name)).toEqual(["site-photo"]);
+  });
+
+  test("attaches first-class metadata to root and nested directory indexes", () => {
+    const tree = buildKnowledgeTree(pages, [], [
+      directory("root-directory", "", "Knowledge"),
+      directory("about-directory", "about", "About"),
+    ]);
+    expect(tree.directory?.title).toBe("Knowledge");
+    expect(tree.directories.find(({ path }) => path === "about")?.directory).toMatchObject({
+      id: "about-directory",
+      summary: "Summary for About.",
+    });
   });
 
   test("uses the page path filename as its tree label independently of the page title", () => {

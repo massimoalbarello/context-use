@@ -603,6 +603,16 @@ button:disabled {
   letter-spacing: -.035em;
 }
 
+.editor-header > div:first-child { max-width: 720px; }
+
+.knowledge-summary {
+  max-width: 680px;
+  margin: 10px 0 0;
+  color: #777168;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .path {
   color: #8a857d;
   font: 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -725,6 +735,8 @@ button:disabled {
   gap: 16px;
 }
 
+.editor-fields .summary-field { grid-column: 1 / -1; }
+
 .editor-fields label,
 .modal label {
   display: flex;
@@ -786,6 +798,20 @@ button:disabled {
   font: 17px/1.72 ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 }
 
+.publication-metadata,
+.publication-index-note {
+  margin: 1rem 0;
+}
+
+.publication-metadata p,
+.publication-index-note {
+  color: var(--muted);
+}
+
+.publication-metadata p {
+  margin: .35rem 0 0;
+}
+
 .rendered h1,
 .rendered h2,
 .rendered h3,
@@ -831,6 +857,55 @@ button:disabled {
 
 .rendered pre code,
 .publication-preview pre code { background: transparent; }
+
+.directory-edit-grid { min-height: calc(100vh - 170px); }
+
+.directory-intro {
+  padding-bottom: 16px;
+  font-size: 19px;
+}
+
+.directory-index {
+  width: min(780px, 100%);
+  margin: 0 auto;
+  padding: 12px 42px 90px;
+  color: #36332f;
+  font: 17px/1.72 ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+}
+
+.directory-intro + .directory-index { padding-top: 0; }
+
+.directory-index ol {
+  margin: 0;
+  padding-left: 2.25rem;
+}
+
+.directory-index li { padding-left: .25rem; }
+
+.directory-index button {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #777168;
+  font: italic 1em/1.72 ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  text-decoration: underline dotted #aaa59c;
+  text-underline-offset: 4px;
+}
+
+.directory-index button:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent-hover);
+}
+
+.directory-index li > span { margin-left: .35em; }
+
+.directory-empty {
+  color: var(--muted);
+  font-style: italic;
+}
 
 .history-list {
   width: min(930px, 100%);
@@ -1579,6 +1654,7 @@ button:disabled {
   .markdown-editor,
   .save-bar,
   .rendered,
+  .directory-index,
   .history-list {
     padding-left: 22px;
     padding-right: 22px;

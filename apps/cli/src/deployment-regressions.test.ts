@@ -431,12 +431,15 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
   expect(caddy).toContain("handle /api/mcp/assets/*/content");
   expect(caddy).toContain("handle /content.css");
+  expect(caddy).toContain("handle /i {");
+  expect(caddy).toContain("handle /i/* {");
   expect(caddy).not.toContain("handle /api/dashboard/publications/confirm");
   expect(caddy).not.toContain("handle /api/dashboard/session");
   expect(caddy).toContain("handle /api/auth/*");
   expect(caddy).toContain("reverse_proxy auth:3002");
   expect(caddy).toContain("reverse_proxy dashboard-edge:3007");
   expect(caddy).toContain("reverse_proxy private-mcp:3003");
+  expect(caddy).toContain("reverse_proxy public-web:3005");
   expect(caddy).not.toContain("auth-edge");
   expect(caddy).not.toContain("private-mcp-edge");
   expect(caddy).not.toContain("reverse_proxy app:3000");
@@ -601,7 +604,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(backupService).toContain("AWS_PROFILE: context-use-backup");
   expect(backupService).toContain("backup-aws-credentials:/run/context-use-aws-backup:ro");
   expect(backupService).toContain("networks: [backup_data, backup_egress]");
-  expect(backupService).toContain("SCHEMA_VERSION: 007_page_retention_and_deletion.sql");
+  expect(backupService).toContain("SCHEMA_VERSION: 001_baseline.sql");
   expect(backupService).not.toContain("RETENTION_DAYS");
   expect(backupScript).toContain("context-use-postgres-v1");
   expect(backupScript).toContain("sha256sum -c");

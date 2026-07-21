@@ -204,6 +204,14 @@ export class AutomationRepository {
       const instructionsVersionId = randomUUID();
       const instructionsPath = `automations/${input.automation_key}/instructions`;
       const instructionsMarkdown = normalizeInternalPageLinks(input.instructions_markdown);
+      const instructionsSummary = `Instructions that define the ${input.name} automation.`;
+      const directorySummary = `Private instructions and durable outputs for the ${input.name} automation.`;
+      await client.query(
+        `INSERT INTO knowledge_directories(
+           id,current_path,title,summary,intro_markdown,search_vector
+         ) VALUES ($1,$2,$3,$4,'',directory_search_vector($2,$3,$4,''))`,
+        [randomUUID(), `automations/${input.automation_key}`, input.name, directorySummary],
+      );
       await client.query(
         `INSERT INTO cron_schedules(
            id,name,automation_key,current_version_id,instructions_page_id,
@@ -220,15 +228,15 @@ export class AutomationRepository {
       await client.query(
         `INSERT INTO knowledge_pages(
            id,current_path,current_version_id,automation_id,search_vector
-         ) VALUES ($1,$2,$3,$4,page_search_vector($2,$5,$6))`,
-        [instructionsPageId, instructionsPath, instructionsVersionId, scheduleId, `${input.name} instructions`, instructionsMarkdown],
+         ) VALUES ($1,$2,$3,$4,page_search_vector($2,$5,$6,$7))`,
+        [instructionsPageId, instructionsPath, instructionsVersionId, scheduleId, `${input.name} instructions`, instructionsSummary, instructionsMarkdown],
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,
+           id,page_id,version_number,path,title,summary,body_markdown,
            commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8)`,
-        [instructionsVersionId, instructionsPageId, instructionsPath, `${input.name} instructions`, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
+         ) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8,$9)`,
+        [instructionsVersionId, instructionsPageId, instructionsPath, `${input.name} instructions`, instructionsSummary, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await insertInstructionAssetLinks(client, instructionsVersionId, instructionsMarkdown);
       const result = await client.query(
@@ -255,6 +263,7 @@ export class AutomationRepository {
     return transaction(this.pool, async (client) => {
       const current = await client.query<{
         current_version_id: string;
+        automation_key: string;
         version_number: number;
         next_version_number: number;
         instructions_page_id: string;
@@ -263,7 +272,7 @@ export class AutomationRepository {
         instructions_markdown: string;
         instructions_version_number: number;
       }>(
-        `SELECT schedule.current_version_id,version.version_number,
+        `SELECT schedule.current_version_id,schedule.automation_key,version.version_number,
            (SELECT max(candidate.version_number)+1 FROM automation_versions candidate
             WHERE candidate.automation_id=schedule.id)::integer AS next_version_number,
            instructions_page.id AS instructions_page_id,
@@ -286,21 +295,29 @@ export class AutomationRepository {
       }
       const instructionsMarkdown = normalizeInternalPageLinks(input.instructions_markdown);
       const instructionsTitle = `${input.name} instructions`;
+      const instructionsSummary = `Instructions that define the ${input.name} automation.`;
+      await client.query(
+        `UPDATE knowledge_directories
+         SET title=$2,summary=$3,version_number=version_number+1,
+             search_vector=directory_search_vector(current_path,$2,$3,intro_markdown),updated_at=now()
+         WHERE current_path=$1 AND (title IS DISTINCT FROM $2 OR summary IS DISTINCT FROM $3)`,
+        [`automations/${row.automation_key}`, input.name, `Private instructions and durable outputs for the ${input.name} automation.`],
+      );
       if (row.instructions_markdown !== instructionsMarkdown || row.instructions_title !== instructionsTitle) {
         const instructionsVersionId = randomUUID();
         await client.query(
           `INSERT INTO knowledge_page_versions(
-             id,page_id,version_number,path,title,body_markdown,
+             id,page_id,version_number,path,title,summary,body_markdown,
              commit_message,actor_kind,actor_subject
-           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [instructionsVersionId, row.instructions_page_id, row.instructions_version_number + 1, row.instructions_path, instructionsTitle, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [instructionsVersionId, row.instructions_page_id, row.instructions_version_number + 1, row.instructions_path, instructionsTitle, instructionsSummary, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
         );
         await client.query(
           `UPDATE knowledge_pages
            SET current_version_id=$2,
-               search_vector=page_search_vector(current_path,$3,$4),updated_at=now()
+               search_vector=page_search_vector(current_path,$3,$4,$5),updated_at=now()
            WHERE id=$1`,
-          [row.instructions_page_id, instructionsVersionId, instructionsTitle, instructionsMarkdown],
+          [row.instructions_page_id, instructionsVersionId, instructionsTitle, instructionsSummary, instructionsMarkdown],
         );
         await insertInstructionAssetLinks(client, instructionsVersionId, instructionsMarkdown);
         await prunePageVersions(client, row.instructions_page_id);

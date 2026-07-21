@@ -1,4 +1,4 @@
-import type { Asset, Page } from "./types.ts";
+import type { Asset, Directory, Page } from "./types.ts";
 
 export const EXPANDED_PATHS_STORAGE_KEY = "context-use.knowledge-tree.expanded-paths.v1";
 
@@ -22,6 +22,7 @@ export type PageTreeDirectory = {
   kind: "directory";
   name: string;
   path: string;
+  directory: Directory | null;
   directories: PageTreeDirectory[];
   pages: PageTreePage[];
   assets: AssetTreeAsset[];
@@ -41,6 +42,7 @@ function materialize(directory: MutableDirectory): PageTreeDirectory {
     kind: "directory",
     name: directory.name,
     path: directory.path,
+    directory: directory.directory,
     directories: [...directory.directories.values()]
       .sort((left, right) => compareNames(left.name, right.name))
       .map(materialize),
@@ -66,6 +68,7 @@ function directoryForPath(root: MutableDirectory, currentPath: string) {
         kind: "directory",
         name: segment,
         path,
+        directory: null,
         directories: new Map(),
         pages: [],
         assets: [],
@@ -78,15 +81,40 @@ function directoryForPath(root: MutableDirectory, currentPath: string) {
   return { directory, name };
 }
 
-export function buildKnowledgeTree(pages: Page[], assets: Asset[]): PageTreeDirectory {
+export function buildKnowledgeTree(pages: Page[], assets: Asset[], directories: Directory[] = []): PageTreeDirectory {
   const root: MutableDirectory = {
     kind: "directory",
     name: "",
     path: "",
+    directory: directories.find(({ current_path }) => current_path === "") ?? null,
     directories: new Map(),
     pages: [],
     assets: [],
   };
+
+  for (const metadata of directories) {
+    if (!metadata.current_path) continue;
+    const segments = metadata.current_path.split("/");
+    let directory = root;
+    for (const segment of segments) {
+      const path = directory.path ? `${directory.path}/${segment}` : segment;
+      let child = directory.directories.get(segment);
+      if (!child) {
+        child = {
+          kind: "directory",
+          name: segment,
+          path,
+          directory: null,
+          directories: new Map(),
+          pages: [],
+          assets: [],
+        };
+        directory.directories.set(segment, child);
+      }
+      directory = child;
+    }
+    directory.directory = metadata;
+  }
 
   for (const page of pages) {
     const { directory, name } = directoryForPath(root, page.current_path);

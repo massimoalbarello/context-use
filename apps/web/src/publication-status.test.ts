@@ -14,6 +14,7 @@ function page(id: string, publishedVersionId: string | null, currentVersionId = 
     archived_at: null,
     version_number: 2,
     title: id,
+    summary: `Summary for ${id}.`,
     body_markdown: "",
   };
 }

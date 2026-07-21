@@ -1,14 +1,22 @@
 import { describe, expect, test } from "bun:test";
 import { config } from "./config.ts";
-import { renderMarkdown } from "./markdown.ts";
+import { publicationWarnings, renderMarkdown } from "./markdown.ts";
 
 const privateResolvers = {
   page: async () => ({ available: false as const }),
+  directory: async () => ({ available: false as const }),
   pagePath: async () => ({ available: false as const }),
   asset: async () => ({ available: false as const }),
 };
 
 describe("safe Markdown rendering", () => {
+  test("scans public titles and summaries as well as the Markdown body", () => {
+    expect(publicationWarnings("Safe body", ["Safe title", "secret = summary-canary"]))
+      .toContain("Possible secret material detected; review the page carefully");
+    expect(publicationWarnings("Safe body", ["https://example.com", "Safe summary"]))
+      .toContain("1 external URL(s) will become public");
+  });
+
   test("removes scripts, event handlers, unsafe URLs, and remote inline media", async () => {
     const html = await renderMarkdown(
       `<script>alert(1)</script>\n<a href="javascript:alert(1)" onclick="alert(1)">bad</a>\n![remote](https://attacker.example/pixel.png)\n<video src="https://attacker.example/video.mp4" autoplay></video>`,
@@ -178,6 +186,21 @@ describe("safe Markdown rendering", () => {
     expect(html).not.toContain("context-use://");
     expect(html).not.toContain("11111111-1111-4111-8111-111111111111");
     expect(html).not.toContain("22222222-2222-4222-8222-222222222222");
+  });
+
+  test("renders stable directory references as links to generated indexes", async () => {
+    const directoryId = "11111111-1111-4111-8111-111111111111";
+    const html = await renderMarkdown(
+      `[Life chapters](context-use://directory/${directoryId})`,
+      {
+        ...privateResolvers,
+        directory: async (id) => id === directoryId
+          ? { available: true as const, href: `/app/directories/${directoryId}` }
+          : { available: false as const },
+      },
+    );
+    expect(html).toContain(`<a href="/app/directories/${directoryId}">Life chapters</a>`);
+    expect(html).not.toContain("context-use://");
   });
 
   test("renders Obsidian wikilinks with aliases and safe internal targets", async () => {

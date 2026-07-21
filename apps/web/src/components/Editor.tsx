@@ -18,7 +18,7 @@ export function Editor({
 }) {
   const [page, setPage] = useState<Page | null>(null);
   const [history, setHistory] = useState<Version[]>([]);
-  const [draft, setDraft] = useState({ path: "", title: "", body_markdown: "" });
+  const [draft, setDraft] = useState({ path: "", title: "", summary: "", body_markdown: "" });
   const [commit, setCommit] = useState("");
   const [tab, setTab] = useState<"preview" | "history">("preview");
   const [isEditing, setIsEditing] = useState(false);
@@ -39,7 +39,7 @@ export function Editor({
       api<Version[]>(`/api/dashboard/pages/${pageId}/history`),
     ]);
     setPage(next);
-    if (!preserveDraft) setDraft({ path: next.current_path, title: next.title, body_markdown: next.body_markdown });
+    if (!preserveDraft) setDraft({ path: next.current_path, title: next.title, summary: next.summary, body_markdown: next.body_markdown });
     setHistory(versions);
     return { page: next, history: versions };
   };
@@ -71,13 +71,13 @@ export function Editor({
   const automationInstructions = page.automation_instructions;
 
   const edit = () => {
-    setDraft({ path: page.current_path, title: page.title, body_markdown: page.body_markdown });
+    setDraft({ path: page.current_path, title: page.title, summary: page.summary, body_markdown: page.body_markdown });
     setCommit("");
     setIsEditing(true);
   };
 
   const cancelEdit = () => {
-    setDraft({ path: page.current_path, title: page.title, body_markdown: page.body_markdown });
+    setDraft({ path: page.current_path, title: page.title, summary: page.summary, body_markdown: page.body_markdown });
     setCommit("");
     setIsEditing(false);
   };
@@ -161,7 +161,7 @@ export function Editor({
 
   return <main className="editor">
     <header className="editor-header">
-      <div><span className="path">{page.current_path}</span><h1>{page.title}</h1></div>
+      <div><span className="path">{page.current_path}</span><h1>{page.title}</h1><p className="knowledge-summary">{page.summary}</p></div>
       <div className="button-row">
         <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_path}` : automationInstructions ? "Private · Automation instructions" : automationCreated ? "Private · Automation-created" : "Private"}</span>
         {page.published_version_id && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public ↗</a>}
@@ -195,10 +195,10 @@ export function Editor({
             <span>Saving edits creates a new private version. The published page will not update automatically.</span>
           </div>
         </div>}
-        <div className="editor-fields"><label>Path<input value={draft.path} onChange={(event) => setDraft({ ...draft, path: event.target.value })} /></label><label>Title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label></div>
+        <div className="editor-fields"><label>Path<input value={draft.path} onChange={(event) => setDraft({ ...draft, path: event.target.value })} /></label><label>Title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label><label className="summary-field">Summary<input maxLength={320} required value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} /></label></div>
       </div>
       <textarea className="markdown-editor" value={draft.body_markdown} onChange={(event) => setDraft({ ...draft, body_markdown: event.target.value })} spellCheck />
-      <footer className="save-bar"><input placeholder="Describe this change (required)" value={commit} onChange={(event) => setCommit(event.target.value)} /><div className="button-row"><button onClick={cancelEdit}>Cancel</button><button className="primary" disabled={commit.trim().length < 3} onClick={save}>Save version</button></div></footer>
+      <footer className="save-bar"><input placeholder="Describe this change (required)" value={commit} onChange={(event) => setCommit(event.target.value)} /><div className="button-row"><button onClick={cancelEdit}>Cancel</button><button className="primary" disabled={commit.trim().length < 3 || !draft.summary.trim()} onClick={save}>Save version</button></div></footer>
     </section>}
     {!isEditing && tab === "preview" && <article className="rendered" dangerouslySetInnerHTML={{ __html: page.rendered_html ?? "" }} />}
     {!isEditing && tab === "history" && <section className="history-list">

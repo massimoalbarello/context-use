@@ -65,6 +65,12 @@
 	handle /p/* {
 		reverse_proxy public-web:3005
 	}
+	handle /i {
+		reverse_proxy public-web:3005
+	}
+	handle /i/* {
+		reverse_proxy public-web:3005
+	}
 	handle /public.css {
 		reverse_proxy public-web:3005
 	}

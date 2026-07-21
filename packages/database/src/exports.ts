@@ -7,7 +7,16 @@ export type KnowledgeExportPage = {
   id: string;
   current_path: string;
   title: string;
+  summary: string;
   body_markdown: string;
+};
+
+export type KnowledgeExportDirectory = {
+  id: string;
+  current_path: string;
+  title: string;
+  summary: string;
+  intro_markdown: string;
 };
 
 export type KnowledgeExportAsset = {
@@ -21,6 +30,7 @@ export type KnowledgeExportAsset = {
 };
 
 export type KnowledgeExportSnapshot = {
+  directories: KnowledgeExportDirectory[];
   pages: KnowledgeExportPage[];
   assets: KnowledgeExportAsset[];
 };
@@ -69,7 +79,19 @@ export class KnowledgeExportRepository {
            (SELECT count(*)::text FROM assets WHERE deleted_at IS NULL) AS asset_count,
            (
              coalesce((
-               SELECT sum(octet_length(version.body_markdown))
+               SELECT sum(
+                 octet_length(directory.title)
+                 + octet_length(directory.summary)
+                 + octet_length(directory.intro_markdown)
+               )
+               FROM knowledge_directories directory
+             ),0)
+             + coalesce((
+               SELECT sum(
+                 octet_length(version.title)
+                 + octet_length(version.summary)
+                 + octet_length(version.body_markdown)
+               )
                FROM knowledge_pages page
                JOIN knowledge_page_versions version
                  ON version.id=page.current_version_id AND version.page_id=page.id
@@ -130,8 +152,13 @@ export class KnowledgeExportRepository {
   async currentSnapshot(): Promise<KnowledgeExportSnapshot> {
     return transaction(this.dashboardPool, async (client) => {
       await client.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY");
+      const directories = await client.query<KnowledgeExportDirectory>(
+        `SELECT id,current_path,title,summary,intro_markdown
+         FROM knowledge_directories
+         ORDER BY current_path,id`,
+      );
       const pages = await client.query<KnowledgeExportPage>(
-        `SELECT page.id,version.path AS current_path,version.title,version.body_markdown
+        `SELECT page.id,version.path AS current_path,version.title,version.summary,version.body_markdown
          FROM knowledge_pages page
          JOIN knowledge_page_versions version
            ON version.id=page.current_version_id AND version.page_id=page.id
@@ -144,7 +171,7 @@ export class KnowledgeExportRepository {
          WHERE deleted_at IS NULL
          ORDER BY current_path,id`,
       );
-      return { pages: pages.rows, assets: assets.rows };
+      return { directories: directories.rows, pages: pages.rows, assets: assets.rows };
     });
   }
 }

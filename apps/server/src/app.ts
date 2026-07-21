@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import {
   AssetRepository,
   AutomationRepository,
+  DirectoryRepository,
   KnowledgeExportRepository,
   type KnowledgeExportAsset,
   type KnowledgeExportSnapshot,
@@ -10,6 +11,7 @@ import {
   PublicationRepository,
   createPool,
   extractAssetLinks,
+  extractDirectoryLinks,
   extractPageLinks,
   extractWikiLinks,
   wikiLinkCandidatePaths,
@@ -18,9 +20,11 @@ import {
   assetUploadSchema,
   archivePageSchema,
   createCronScheduleSchema,
+  createDirectorySchema,
   createPageSchema,
   publicationIntentSchema,
   updateCronScheduleSchema,
+  updateDirectorySchema,
   updatePageSchema,
 } from "@context-use/shared";
 import { Elysia } from "elysia";
@@ -49,6 +53,7 @@ const storage = new BrokeredStorage({
 });
 
 const dashboardPages = new PageRepository(dashboardPool);
+const dashboardDirectories = new DirectoryRepository(dashboardPool);
 const pageDeletions = new PageDeletionRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
 const dashboardAutomations = new AutomationRepository(dashboardPool);
@@ -68,10 +73,16 @@ function privatePageResolvers(sourcePath: string) {
       const page = await dashboardPages.get(id);
       return page ? { available: true as const, href: `/app/pages/${id}` } : { available: false as const };
     },
+    directory: async (id: string) => {
+      const directory = await dashboardDirectories.get(id);
+      return directory ? { available: true as const, href: `/app/directories/${id}` } : { available: false as const };
+    },
     pagePath: async (path: string) => {
       for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
         const page = await dashboardPages.getByPath(candidate);
         if (page) return { available: true as const, href: `/app/pages/${page.id}` };
+        const directory = await dashboardDirectories.getByPath(candidate);
+        if (directory) return { available: true as const, href: `/app/directories/${directory.id}` };
       }
       return { available: false as const };
     },
@@ -84,22 +95,47 @@ function privatePageResolvers(sourcePath: string) {
   };
 }
 
-// Publication previews are owner-authenticated. They resolve links using the
-// dashboard pool but expose a public URL only when the target is already
-// independently published.
-function publishedPreviewResolvers(sourcePath: string) {
+function isDirectoryAncestor(directoryPath: string, pagePath: string): boolean {
+  return directoryPath === "" || pagePath.startsWith(`${directoryPath}/`);
+}
+
+async function directoryWillBePublic(directoryPath: string, candidatePagePath: string): Promise<boolean> {
+  return isDirectoryAncestor(directoryPath, candidatePagePath)
+    || dashboardDirectories.hasPublishedDescendant(directoryPath);
+}
+
+function publicDirectoryHref(path: string): string {
+  return path ? `/i/${path}` : "/i";
+}
+
+// Publication previews simulate the state after the selected version becomes
+// public, including self-links and generated directory indexes introduced by
+// the candidate page itself.
+function publishedPreviewResolvers(pageId: string, sourcePath: string) {
   return {
     page: async (id: string) => {
+      if (id === pageId) return { available: true as const, href: `/p/${sourcePath}` };
       const page = await dashboardPages.get(id);
       return page?.published_version_id && page.public_path
         ? { available: true as const, href: `/p/${page.public_path}` }
         : { available: false as const };
     },
+    directory: async (id: string) => {
+      const directory = await dashboardDirectories.get(id);
+      return directory && await directoryWillBePublic(directory.current_path, sourcePath)
+        ? { available: true as const, href: publicDirectoryHref(directory.current_path) }
+        : { available: false as const };
+    },
     pagePath: async (path: string) => {
       for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
+        if (candidate === sourcePath) return { available: true as const, href: `/p/${sourcePath}` };
         const page = await dashboardPages.getByPath(candidate);
         if (page?.published_version_id && page.public_path) {
           return { available: true as const, href: `/p/${page.public_path}` };
+        }
+        const directory = await dashboardDirectories.getByPath(candidate);
+        if (directory && await directoryWillBePublic(directory.current_path, sourcePath)) {
+          return { available: true as const, href: publicDirectoryHref(directory.current_path) };
         }
       }
       return { available: false as const };
@@ -135,7 +171,18 @@ async function unavailableExportAssets(assets: KnowledgeExportAsset[]): Promise<
 }
 
 function exportSize(snapshot: KnowledgeExportSnapshot): number {
-  return snapshot.pages.reduce((total, page) => total + Buffer.byteLength(page.body_markdown), 0)
+  return snapshot.directories.reduce((total, directory) => (
+    total
+    + Buffer.byteLength(directory.title)
+    + Buffer.byteLength(directory.summary)
+    + Buffer.byteLength(directory.intro_markdown)
+  ), 0)
+    + snapshot.pages.reduce((total, page) => (
+      total
+      + Buffer.byteLength(page.title)
+      + Buffer.byteLength(page.summary)
+      + Buffer.byteLength(page.body_markdown)
+    ), 0)
     + snapshot.assets.reduce((total, asset) => total + Number(asset.size_bytes), 0);
 }
 
@@ -319,6 +366,28 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     if (typeof query.q === "string" && query.q.trim()) return json(await dashboardPages.search(query.q));
     return json(await dashboardPages.list(query.archived === "true"));
   })
+  .get("/api/dashboard/directories", async ({ request, query }) => {
+    await ownerRequest(request);
+    return json(await dashboardDirectories.list(typeof query.q === "string" ? query.q : undefined));
+  })
+  .post("/api/dashboard/directories", async ({ request }) => {
+    await ownerRequest(request, true);
+    const input = createDirectorySchema.parse(await bodyJson(request));
+    return json(await dashboardDirectories.create(input), 201);
+  })
+  .get("/api/dashboard/directories/:id", async ({ request, params }) => {
+    await ownerRequest(request);
+    const index = await dashboardDirectories.indexById(z.string().uuid().parse(params.id));
+    if (!index) return problem("Directory not found", 404, "not_found");
+    const html = await renderMarkdown(index.intro_markdown, privatePageResolvers(index.current_path ? `${index.current_path}/index` : "index"));
+    return json({ ...index, rendered_intro_html: html });
+  })
+  .put("/api/dashboard/directories/:id", async ({ request, params }) => {
+    await ownerRequest(request, true);
+    const input = updateDirectorySchema.parse(await bodyJson(request));
+    const directory = await dashboardDirectories.update(z.string().uuid().parse(params.id), input);
+    return directory ? json(directory) : problem("Directory not found", 404, "not_found");
+  })
   .post("/api/dashboard/pages", async ({ request }) => {
     const principal = await ownerRequest(request, true);
     const input = createPageSchema.parse(await bodyJson(request));
@@ -380,24 +449,60 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const versionNumber = query.version ? z.coerce.number().int().positive().parse(query.version) : page.version_number;
     const version = await dashboardPages.version(pageId, versionNumber);
     if (!version) return problem("Version not found", 404, "not_found");
-    const html = await renderMarkdown(version.body_markdown, publishedPreviewResolvers(version.path));
+    const html = await renderMarkdown(version.body_markdown, publishedPreviewResolvers(pageId, version.path));
     const references = await Promise.all([
       ...extractPageLinks(version.body_markdown).map(async (id) => {
         const target = await dashboardPages.get(id);
-        return { kind: "page" as const, id, label: target?.title ?? "Missing page", path: target?.current_path ?? null, public: Boolean(target?.published_version_id) };
+        return {
+          kind: "page" as const,
+          id,
+          label: id === pageId ? version.title : target?.title ?? "Missing page",
+          path: id === pageId ? version.path : target?.current_path ?? null,
+          public: id === pageId || Boolean(target?.published_version_id),
+        };
+      }),
+      ...extractDirectoryLinks(version.body_markdown).map(async (id) => {
+        const target = await dashboardDirectories.get(id);
+        return {
+          kind: "directory" as const,
+          id,
+          label: target?.title ?? "Missing directory",
+          path: target?.current_path ?? null,
+          public: target ? await directoryWillBePublic(target.current_path, version.path) : false,
+        };
       }),
       ...extractWikiLinks(version.body_markdown).map(async ({ path, label }) => {
         let target = null;
+        let publishingTarget = false;
         for (const candidate of wikiLinkCandidatePaths(path, version.path)) {
+          if (candidate === version.path) {
+            target = page;
+            publishingTarget = true;
+            break;
+          }
           target = await dashboardPages.getByPath(candidate);
           if (target) break;
+        }
+        if (!target) {
+          let directory = null;
+          for (const candidate of wikiLinkCandidatePaths(path, version.path)) {
+            directory = await dashboardDirectories.getByPath(candidate);
+            if (directory) break;
+          }
+          if (directory) return {
+            kind: "directory" as const,
+            id: directory.id,
+            label: directory.title,
+            path: directory.current_path,
+            public: await directoryWillBePublic(directory.current_path, version.path),
+          };
         }
         return {
           kind: "page" as const,
           id: target?.id ?? `path:${path}`,
-          label: target?.title ?? label,
-          path: target?.current_path ?? path,
-          public: Boolean(target?.published_version_id),
+          label: publishingTarget ? version.title : target?.title ?? label,
+          path: publishingTarget ? version.path : target?.current_path ?? path,
+          public: publishingTarget || Boolean(target?.published_version_id),
         };
       }),
       ...extractAssetLinks(version.body_markdown).map(async (id) => {
@@ -410,10 +515,11 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       version_id: version.id,
       version_number: version.version_number,
       title: version.title,
+      summary: version.summary,
       path: version.path,
       rendered_html: html,
       current_public_path: page.public_path,
-      warnings: publicationWarnings(version.body_markdown),
+      warnings: publicationWarnings(version.body_markdown, [version.title, version.summary]),
       references,
     });
   })

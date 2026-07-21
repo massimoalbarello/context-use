@@ -20,11 +20,19 @@ export const KnowledgePath = z
   .refine((value) => !value.includes("//") && !value.endsWith("/"), "Invalid path");
 export const PagePath = KnowledgePath;
 export const AssetPath = KnowledgePath;
+export const DirectoryPath = z.union([z.literal(""), KnowledgePath]);
 const WritablePagePath = PagePath.refine(
   (value) => value !== "about",
   "about is a folder; store its introduction at about/intro",
 );
 export const CommitMessage = z.string().trim().min(3).max(240);
+export const KnowledgeSummary = z
+  .string()
+  .trim()
+  .min(1)
+  .max(320)
+  .refine((value) => !/[\r\n]/.test(value), "Use a single-line summary")
+  .describe("Required one-sentence summary used in generated directory indexes and search results.");
 export const AutomationName = z.string().trim().min(1).max(160);
 export const AutomationKey = z
   .string()
@@ -48,6 +56,7 @@ export const createPageSchema = z
   .object({
     path: WritablePagePath,
     title: z.string().trim().min(1).max(240),
+    summary: KnowledgeSummary,
     body_markdown: PageBodyMarkdown,
     commit_message: CommitMessage,
   })
@@ -57,11 +66,26 @@ export const updatePageSchema = z
   .object({
     path: WritablePagePath,
     title: z.string().trim().min(1).max(240),
+    summary: KnowledgeSummary,
     body_markdown: PageBodyMarkdown,
     commit_message: CommitMessage,
     expected_version_number: z.number().int().positive(),
   })
   .strict();
+
+export const createDirectorySchema = z.object({
+  path: KnowledgePath,
+  title: z.string().trim().min(1).max(240),
+  summary: KnowledgeSummary,
+  intro_markdown: PageBodyMarkdown.default(""),
+}).strict();
+
+export const updateDirectorySchema = z.object({
+  title: z.string().trim().min(1).max(240),
+  summary: KnowledgeSummary,
+  intro_markdown: PageBodyMarkdown,
+  expected_version_number: z.number().int().positive(),
+}).strict();
 
 export const archivePageSchema = z
   .object({
@@ -129,6 +153,7 @@ const automationRunAccessSchema = z.object({
 export const createAutomationPageSchema = automationRunAccessSchema.extend({
   relative_path: AutomationRelativePath,
   title: z.string().trim().min(1).max(240),
+  summary: KnowledgeSummary,
   body_markdown: PageBodyMarkdown,
   commit_message: CommitMessage,
 }).strict();
@@ -146,6 +171,8 @@ export const archiveAutomationPageSchema = automationRunAccessSchema.extend({
 
 export type CreatePageInput = z.infer<typeof createPageSchema>;
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
+export type CreateDirectoryInput = z.infer<typeof createDirectorySchema>;
+export type UpdateDirectoryInput = z.infer<typeof updateDirectorySchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
 export type PublicationIntentInput = z.infer<typeof publicationIntentSchema>;
 export type AssetUploadInput = z.infer<typeof assetUploadSchema>;
@@ -171,9 +198,33 @@ export type Page = {
   archived_at: string | null;
   version_number: number;
   title: string;
+  summary: string;
   body_markdown: string;
   created_at: string;
   updated_at: string;
+};
+
+export type Directory = {
+  id: string;
+  current_path: string;
+  version_number: number;
+  title: string;
+  summary: string;
+  intro_markdown: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DirectoryIndexEntry = {
+  kind: "directory" | "page";
+  id: string;
+  path: string;
+  title: string;
+  summary: string;
+};
+
+export type DirectoryIndex = Directory & {
+  children: DirectoryIndexEntry[];
 };
 
 export type Asset = {

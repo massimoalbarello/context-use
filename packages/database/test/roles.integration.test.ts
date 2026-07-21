@@ -12,6 +12,14 @@ describeDatabase("PostgreSQL security roles", () => {
   beforeAll(async () => {
     admin = new Client({ connectionString: adminUrl });
     await admin.connect();
+    for (const [path, title] of [["test", "Test"], ["tests", "Tests"], ["profile", "Profile"], ["profile/work", "Work"]]) {
+      await admin.query(
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+         VALUES ($1,$2,$3,$4,'',directory_search_vector($2,$3,$4,''))
+         ON CONFLICT (current_path) DO NOTHING`,
+        [randomUUID(), path, title, `Fixtures under ${path}.`],
+      );
+    }
   });
 
   afterAll(async () => {
@@ -162,8 +170,8 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'test/dashboard-deletion-intent','Delete','Body','Create fixture','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'test/dashboard-deletion-intent','Delete','A page deletion fixture.','Body','Create fixture','dashboard','owner')`,
         [versionId, pageId],
       );
       const insert = `INSERT INTO page_deletion_intents(
@@ -432,8 +440,8 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'test/deletion-intent-constraints','Delete','Body','Create fixture','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'test/deletion-intent-constraints','Delete','A deletion constraint fixture.','Body','Create fixture','dashboard','owner')`,
         [versionId, pageId],
       );
       await expectDenied(
@@ -474,10 +482,10 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
          ) VALUES
-           ($1,$3,1,'test/permanent-page-deletion','Delete me','First','Create fixture','dashboard','owner'),
-           ($2,$3,2,'test/permanent-page-deletion','Delete me','Archived','Archive fixture','dashboard','owner')`,
+           ($1,$3,1,'test/permanent-page-deletion','Delete me','A permanently deleted page fixture.','First','Create fixture','dashboard','owner'),
+           ($2,$3,2,'test/permanent-page-deletion','Delete me','A permanently deleted page fixture.','Archived','Archive fixture','dashboard','owner')`,
         [firstVersionId, currentVersionId, pageId],
       );
       await admin.query(
@@ -527,14 +535,43 @@ describeDatabase("PostgreSQL security roles", () => {
          AND version.title='AGENTS.md'
          AND version.body_markdown LIKE '%Create %about/intro%if it is missing%'
          AND version.body_markdown LIKE '%ask them to review and publish %about/intro%'
-         AND version.body_markdown LIKE '%paths begin with %skills/%'
+         AND version.body_markdown LIKE '%Every directory is a first-class, linkable resource%'
+         AND version.body_markdown LIKE '%Do not create or manually maintain %index%pages%'
+         AND version.body_markdown LIKE '%Local guides are optional%'
          AND version.body_markdown LIKE '%skills/<skill-name>%'
          AND version.body_markdown LIKE '%complete standard %SKILL.md%'`,
     )).rowCount).toBe(1);
   });
 
+  test("the root AGENTS.md page cannot be moved, archived, or permanently deleted", async () => {
+    const guide = await admin.query<{ id: string }>(
+      "SELECT id FROM knowledge_pages WHERE current_path='agents'",
+    );
+    const guideId = guide.rows[0]!.id;
+    await admin.query("BEGIN");
+    try {
+      for (const role of ["context_use_dashboard", "context_use_mcp"]) {
+        await admin.query(`SET LOCAL ROLE ${role}`);
+        await expectDenied(
+          "UPDATE knowledge_pages SET current_path='test/moved-root-guide' WHERE id=$1",
+          [guideId],
+        );
+        await expectDenied(
+          "UPDATE knowledge_pages SET archived_at=now() WHERE id=$1",
+          [guideId],
+        );
+        await admin.query("RESET ROLE");
+      }
+      await admin.query("SET LOCAL ROLE context_use_boundary_owner");
+      await expectDenied("DELETE FROM knowledge_pages WHERE id=$1", [guideId]);
+      await admin.query("RESET ROLE");
+    } finally {
+      await admin.query("ROLLBACK");
+    }
+  });
+
   test("public role can see publication views but not private base tables", async () => {
-    for (const relation of ["knowledge_pages", "assets"]) {
+    for (const relation of ["knowledge_directories", "knowledge_pages", "assets"]) {
       const result = await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_public', $1, 'SELECT') AS allowed",
         [relation],
@@ -560,7 +597,7 @@ describeDatabase("PostgreSQL security roles", () => {
        ORDER BY ordinal_position`,
     );
     expect(publicPageColumns.rows.map(({ column_name }) => column_name)).toEqual([
-      "public_path", "title", "body_markdown",
+      "public_path", "title", "summary", "body_markdown",
     ]);
     const publicAssetColumns = await admin.query<{ column_name: string }>(
       `SELECT column_name FROM information_schema.columns
@@ -581,7 +618,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [column],
       )).rows[0]?.allowed).toBe(true);
     }
-    for (const relation of ["knowledge_pages", "knowledge_page_versions"]) {
+    for (const relation of ["knowledge_directories", "knowledge_pages", "knowledge_page_versions"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_storage',$1,'SELECT') AS allowed",
         [relation],
@@ -660,14 +697,19 @@ describeDatabase("PostgreSQL security roles", () => {
     await admin.query("BEGIN");
     try {
       await admin.query(
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+         VALUES ($1,$2,'Lifecycle fixture','A directory for publication lifecycle tests.','',directory_search_vector($2,'Lifecycle fixture','A directory for publication lifecycle tests.',''))`,
+        [randomUUID(), `tests/${suffix}`],
+      );
+      await admin.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_path)
          VALUES ($1,$2,$3,$3,$2)`,
         [pageId, `tests/${suffix}/published-page`, versionId],
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,$3,'Published lifecycle','Public','Create','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,$3,'Published lifecycle','A published lifecycle fixture.','Public','Create','dashboard','owner')`,
         [versionId, pageId, `tests/${suffix}/published-page`],
       );
       await admin.query(
@@ -871,9 +913,9 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
          ) VALUES (
-           $1,$2,1,'test/challenge-isolation','Challenge isolation','Private',
+           $1,$2,1,'test/challenge-isolation','Challenge isolation','A confirmation challenge isolation fixture.','Private',
            'Create fixture','dashboard','owner'
          )`,
         [versionId, pageId],
@@ -984,26 +1026,29 @@ describeDatabase("PostgreSQL security roles", () => {
     const publishedAssetId = randomUUID();
     await admin.query("BEGIN");
     try {
+      const workDirectory = await admin.query<{ id: string }>(
+        "SELECT id FROM knowledge_directories WHERE current_path='profile/work'",
+      );
       await admin.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id)
-         VALUES ($1,'profile/work',$2)`,
+         VALUES ($1,'profile/private-work',$2)`,
         [privatePageId, privateVersionId],
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'profile/work','PRIVATE-CANARY title','PRIVATE-CANARY body','Create private page','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'profile/private-work','PRIVATE-CANARY title','A private work fixture.','PRIVATE-CANARY body','Create private page','dashboard','owner')`,
         [privateVersionId, privatePageId],
       );
       await admin.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_path)
-         VALUES ($1,'profile',$2,$2,'profile')`,
+         VALUES ($1,'profile-home',$2,$2,'profile')`,
         [parentPageId, parentVersionId],
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'profile','Profile','Public parent','Create public parent','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'profile-home','Profile','A public profile fixture.','Public parent','Create public parent','dashboard','owner')`,
         [parentVersionId, parentPageId],
       );
       await admin.query(
@@ -1013,9 +1058,9 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
          ) VALUES (
-           $1,$2,1,'profile/work/project','Project',
+           $1,$2,1,'profile/work/project','Project','A public project fixture.',
            $3,'Create public child','dashboard','owner'
          )`,
         [
@@ -1025,6 +1070,8 @@ describeDatabase("PostgreSQL security roles", () => {
             "PUBLIC-CANARY content",
             `[Private label](context-use://page/${privatePageId})`,
             `[Public parent](context-use://page/${parentPageId})`,
+            `[Work index](context-use://directory/${workDirectory.rows[0]!.id})`,
+            "[[profile/work|Work wiki index]]",
             `![Private image](context-use://asset/${privateAssetId}){size=medium align=center shape=square}`,
             `![Public image](context-use://asset/${publishedAssetId}){size=medium align=center shape=square}`,
             "[[private/strategy]]",
@@ -1058,9 +1105,10 @@ describeDatabase("PostgreSQL security roles", () => {
       const webpage = await admin.query<{
         public_path: string;
         title: string;
+        summary: string;
         body_markdown: string;
       }>(
-        "SELECT public_path,title,body_markdown FROM published_pages WHERE public_path='profile/work/project'",
+        "SELECT public_path,title,summary,body_markdown FROM published_pages WHERE public_path='profile/work/project'",
       );
       const directProjection = await admin.query<{ body_markdown: string }>(
         "SELECT project_public_markdown('profile/work/project') AS body_markdown",
@@ -1068,9 +1116,16 @@ describeDatabase("PostgreSQL security roles", () => {
       const unavailableProjection = await admin.query<{ body_markdown: string }>(
         "SELECT project_public_markdown('profile/work') AS body_markdown",
       );
+      const publicKnowledge = new PublicRepository(admin as unknown as Pool);
+      const rootIndex = await publicKnowledge.directoryIndex("");
+      const workIndex = await publicKnowledge.directoryIndex("profile/work");
+      const missingIndex = await publicKnowledge.directoryIndex("profile/private");
       await admin.query("RESET ROLE");
-      expect(Object.keys(webpage.rows[0]!).sort()).toEqual(["body_markdown", "public_path", "title"]);
+      expect(Object.keys(webpage.rows[0]!).sort()).toEqual(["body_markdown", "public_path", "summary", "title"]);
+      expect(webpage.rows[0]?.summary).toBe("A public project fixture.");
       expect(webpage.rows[0]?.body_markdown).toContain("[Public parent](/p/profile)");
+      expect(webpage.rows[0]?.body_markdown).toContain("[Work index](/i/profile/work)");
+      expect(webpage.rows[0]?.body_markdown).toContain("[Work wiki index](/i/profile/work)");
       expect(webpage.rows[0]?.body_markdown).toContain("context-use://public-asset/media/public-image");
       expect(webpage.rows[0]?.body_markdown).not.toContain(privatePageId);
       expect(webpage.rows[0]?.body_markdown).not.toContain(privateAssetId);
@@ -1080,6 +1135,21 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(webpage.rows[0]?.body_markdown).not.toContain("/api/dashboard/assets/");
       expect(directProjection.rows[0]?.body_markdown).toBe(webpage.rows[0]?.body_markdown);
       expect(unavailableProjection.rows[0]?.body_markdown).toBe("");
+      expect(rootIndex?.entries).toContainEqual({
+        kind: "directory",
+        path: "profile",
+        title: null,
+        summary: null,
+        published_count: 1,
+      });
+      expect(workIndex?.entries).toEqual([{
+        kind: "page",
+        path: "profile/work/project",
+        title: "Project",
+        summary: "A public project fixture.",
+        published_count: 1,
+      }]);
+      expect(missingIndex).toBeNull();
     } finally {
       await admin.query("ROLLBACK");
     }
@@ -1098,8 +1168,8 @@ describeDatabase("PostgreSQL security roles", () => {
         [pageId, versionId],
       );
       await admin.query(
-        `INSERT INTO knowledge_page_versions(id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject)
-         VALUES ($1,$2,1,'test/security-boundary','Boundary','Private body','Create fixture','dashboard','test-owner')`,
+        `INSERT INTO knowledge_page_versions(id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject)
+         VALUES ($1,$2,1,'test/security-boundary','Boundary','A publication boundary fixture.','Private body','Create fixture','dashboard','test-owner')`,
         [versionId, pageId],
       );
       await admin.query(

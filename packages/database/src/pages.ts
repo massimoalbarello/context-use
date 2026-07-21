@@ -68,6 +68,23 @@ async function insertAssetLinks(
   }
 }
 
+async function ensureAutomationDirectories(client: PoolClient, pagePath: string): Promise<void> {
+  const segments = pagePath.split("/").slice(0, -1);
+  for (let depth = 3; depth <= segments.length; depth += 1) {
+    const path = segments.slice(0, depth).join("/");
+    const leaf = segments[depth - 1]!;
+    const title = leaf.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+    const summary = `Automation output grouped under ${path}.`;
+    await client.query(
+      `INSERT INTO knowledge_directories(
+         id,current_path,title,summary,intro_markdown,search_vector
+       ) VALUES ($1,$2,$3,$4,'',directory_search_vector($2,$3,$4,''))
+       ON CONFLICT (current_path) DO NOTHING`,
+      [randomUUID(), path, title, summary],
+    );
+  }
+}
+
 const CURRENT_PAGE_SELECT = `
   SELECT p.id, p.current_path, p.current_version_id, p.published_version_id,
     p.public_path, p.automation_id, p.archived_at,
@@ -76,7 +93,7 @@ const CURRENT_PAGE_SELECT = `
       WHERE schedule.instructions_page_id=p.id
     ) AS automation_instructions,
     p.created_at, p.updated_at,
-    v.version_number, v.title, v.body_markdown
+    v.version_number, v.title, v.summary, v.body_markdown
   FROM knowledge_pages p
   JOIN knowledge_page_versions v ON v.id = p.current_version_id AND v.page_id = p.id
 `;
@@ -126,15 +143,15 @@ export class PageRepository {
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,search_vector)
-         VALUES ($1,$2,$3,page_search_vector($2,$4,$5))`,
-        [pageId, input.path, versionId, input.title, bodyMarkdown],
+         VALUES ($1,$2,$3,page_search_vector($2,$4,$5,$6))`,
+        [pageId, input.path, versionId, input.title, input.summary, bodyMarkdown],
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-          id, page_id, version_number, path, title, body_markdown,
+          id, page_id, version_number, path, title, summary, body_markdown,
           commit_message, actor_kind, actor_subject
-        ) VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8)`,
-        [versionId, pageId, input.path, input.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
+        ) VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8, $9)`,
+        [versionId, pageId, input.path, input.title, input.summary, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, pageId);
@@ -148,18 +165,19 @@ export class PageRepository {
       const pageId = randomUUID();
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
+      await ensureAutomationDirectories(client, path);
       await client.query(
         `INSERT INTO knowledge_pages(
            id,current_path,current_version_id,automation_id,search_vector
-         ) VALUES ($1,$2,$3,$4,page_search_vector($2,$5,$6))`,
-        [pageId, path, versionId, automation.id, input.title, bodyMarkdown],
+         ) VALUES ($1,$2,$3,$4,page_search_vector($2,$5,$6,$7))`,
+        [pageId, path, versionId, automation.id, input.title, input.summary, bodyMarkdown],
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-          id,page_id,version_number,path,title,body_markdown,
+          id,page_id,version_number,path,title,summary,body_markdown,
           commit_message,actor_kind,actor_subject
-        ) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8)`,
-        [versionId, pageId, path, input.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
+        ) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8,$9)`,
+        [versionId, pageId, path, input.title, input.summary, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, pageId);
@@ -181,17 +199,17 @@ export class PageRepository {
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await client.query(
         `INSERT INTO knowledge_page_versions(
-          id, page_id, version_number, path, title, body_markdown,
+          id, page_id, version_number, path, title, summary, body_markdown,
           commit_message, actor_kind, actor_subject
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [versionId, pageId, nextVersion, input.path, input.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [versionId, pageId, nextVersion, input.path, input.title, input.summary, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages
          SET current_path=$2,current_version_id=$3,
-             search_vector=page_search_vector($2,$4,$5),updated_at=now()
+             search_vector=page_search_vector($2,$4,$5,$6),updated_at=now()
          WHERE id = $1`,
-        [pageId, input.path, versionId, input.title, bodyMarkdown],
+        [pageId, input.path, versionId, input.title, input.summary, bodyMarkdown],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
       await prunePageVersions(client, pageId);
@@ -212,19 +230,20 @@ export class PageRepository {
       const path = automationKnowledgePath(automation.key, input.relative_path);
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
+      await ensureAutomationDirectories(client, path);
       await client.query(
         `INSERT INTO knowledge_page_versions(
-          id,page_id,version_number,path,title,body_markdown,
+          id,page_id,version_number,path,title,summary,body_markdown,
           commit_message,actor_kind,actor_subject
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [versionId, input.page_id, currentVersion + 1, path, input.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [versionId, input.page_id, currentVersion + 1, path, input.title, input.summary, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages
          SET current_path=$2,current_version_id=$3,
-             search_vector=page_search_vector($2,$4,$5),updated_at=now()
+             search_vector=page_search_vector($2,$4,$5,$6),updated_at=now()
          WHERE id=$1`,
-        [input.page_id, path, versionId, input.title, bodyMarkdown],
+        [input.page_id, path, versionId, input.title, input.summary, bodyMarkdown],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
       await prunePageVersions(client, input.page_id);
@@ -239,6 +258,7 @@ export class PageRepository {
         version_number: number;
         current_path: string;
         title: string;
+        summary: string;
         body_markdown: string;
         published_version_id: string | null;
       }>(`${CURRENT_PAGE_SELECT} WHERE p.id = $1 FOR UPDATE OF p`, [pageId]);
@@ -250,9 +270,9 @@ export class PageRepository {
       const bodyMarkdown = normalizeInternalPageLinks(row.body_markdown);
       await client.query(
         `INSERT INTO knowledge_page_versions(
-          id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [versionId, pageId, row.version_number + 1, row.current_path, row.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
+          id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [versionId, pageId, row.version_number + 1, row.current_path, row.title, row.summary, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages SET current_version_id=$2, archived_at=now(),updated_at=now() WHERE id=$1`,
@@ -271,6 +291,7 @@ export class PageRepository {
         version_number: number;
         current_path: string;
         title: string;
+        summary: string;
         body_markdown: string;
         published_version_id: string | null;
       }>(`${CURRENT_PAGE_SELECT} WHERE p.id=$1 AND p.automation_id=$2 FOR UPDATE OF p`, [input.page_id, automation.id]);
@@ -282,9 +303,9 @@ export class PageRepository {
       const bodyMarkdown = normalizeInternalPageLinks(row.body_markdown);
       await client.query(
         `INSERT INTO knowledge_page_versions(
-          id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [versionId, input.page_id, row.version_number + 1, row.current_path, row.title, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
+          id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [versionId, input.page_id, row.version_number + 1, row.current_path, row.title, row.summary, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages SET current_version_id=$2,archived_at=now(),updated_at=now() WHERE id=$1`,
@@ -335,7 +356,7 @@ export class PageRepository {
 
   async history(pageId: string) {
     const result = await this.pool.query(
-      `SELECT id,page_id,version_number,path,title,commit_message,actor_kind,actor_subject,created_at
+      `SELECT id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject,created_at
        FROM knowledge_page_versions WHERE page_id=$1 ORDER BY version_number DESC`,
       [pageId],
     );
@@ -344,7 +365,7 @@ export class PageRepository {
 
   async version(pageId: string, versionNumber: number) {
     const result = await this.pool.query(
-      `SELECT id,page_id,version_number,path,title,body_markdown,commit_message,
+      `SELECT id,page_id,version_number,path,title,summary,body_markdown,commit_message,
         actor_kind,actor_subject,created_at
        FROM knowledge_page_versions WHERE page_id=$1 AND version_number=$2`,
       [pageId, versionNumber],

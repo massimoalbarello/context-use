@@ -4,6 +4,7 @@ export type { ConfirmationIntentKind, ConfirmationPasskey, VerifiedPasskey } fro
 export { PageDeletionRepository } from "./page-deletion.ts";
 export type { PageDeletionPrincipal } from "./page-deletion.ts";
 export { PAGE_VERSION_RETENTION_LIMIT } from "./page-retention.ts";
+export { DirectoryRepository, DirectoryVersionConflictError } from "./directories.ts";
 export {
   AutomationContentAccessError,
   PageRepository,
@@ -15,6 +16,7 @@ export { AssetRepository, type NewAsset } from "./assets.ts";
 export {
   KnowledgeExportRepository,
   type KnowledgeExportAsset,
+  type KnowledgeExportDirectory,
   type KnowledgeExportPage,
   type KnowledgeExportPrincipal,
   type KnowledgeExportSnapshot,
@@ -35,6 +37,7 @@ export {
 } from "./automations.ts";
 export {
   extractAssetLinks,
+  extractDirectoryLinks,
   extractPageLinks,
   extractWikiLinks,
   normalizeInternalPageLinks,

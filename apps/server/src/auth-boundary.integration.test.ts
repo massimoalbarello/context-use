@@ -204,11 +204,28 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     const publicVersionId = crypto.randomUUID();
     const privatePageId = crypto.randomUUID();
     const privateVersionId = crypto.randomUUID();
+    const parentDirectoryId = crypto.randomUUID();
+    const nestedDirectoryId = crypto.randomUUID();
+    const parentPath = `tests/${suffix}`;
+    const nestedPath = `${parentPath}/nested`;
     const publicPath = `tests/${suffix}/nested/public-page`;
     const privatePath = `tests/${suffix}/nested/private-page`;
     await client.connect();
     try {
       await client.query("BEGIN");
+      await client.query(
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+         VALUES ($1,'tests','Tests','Integration test knowledge.','',directory_search_vector('tests','Tests','Integration test knowledge.',''))
+         ON CONFLICT (current_path) DO NOTHING`,
+        [crypto.randomUUID()],
+      );
+      await client.query(
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+         VALUES
+           ($1,$2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY','PRIVATE-DIRECTORY-INTRO-CANARY',directory_search_vector($2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY','PRIVATE-DIRECTORY-INTRO-CANARY')),
+           ($3,$4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY','PRIVATE-NESTED-DIRECTORY-INTRO-CANARY',directory_search_vector($4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY','PRIVATE-NESTED-DIRECTORY-INTRO-CANARY'))`,
+        [parentDirectoryId, parentPath, nestedDirectoryId, nestedPath],
+      );
       await client.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,published_version_id,public_path)
          VALUES ($1,$2,$3,$3,$2),($4,$5,$6,NULL,NULL)`,
@@ -216,10 +233,10 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
          ) VALUES
-           ($1,$2,1,$3,'Nested public page','PUBLIC-NESTED-CANARY','Create public fixture','dashboard','test'),
-           ($4,$5,1,$6,'Nested private page','PRIVATE-NESTED-CANARY','Create private fixture','dashboard','test')`,
+           ($1,$2,1,$3,'Nested public page','PUBLIC-SUMMARY-CANARY','PUBLIC-NESTED-CANARY','Create public fixture','dashboard','test'),
+           ($4,$5,1,$6,'PRIVATE-TITLE-CANARY','PRIVATE-SUMMARY-CANARY','PRIVATE-NESTED-CANARY','Create private fixture','dashboard','test')`,
         [publicVersionId, publicPageId, publicPath, privateVersionId, privatePageId, privatePath],
       );
       await client.query("COMMIT");
@@ -227,17 +244,50 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       const published = await application!.handle(new Request(`http://localhost:3000/p/${publicPath}`));
       const privatePage = await application!.handle(new Request(`http://localhost:3000/p/${privatePath}`));
       const missing = await application!.handle(new Request(`http://localhost:3000/p/tests/${suffix}/nested/missing-page`));
+      const leafIndex = await application!.handle(new Request(`http://localhost:3000/i/${nestedPath}`));
+      const parentIndex = await application!.handle(new Request(`http://localhost:3000/i/${parentPath}`));
 
       expect(published.status).toBe(200);
-      expect(await published.text()).toContain("PUBLIC-NESTED-CANARY");
+      const publishedHtml = await published.text();
+      expect(publishedHtml).toContain("PUBLIC-NESTED-CANARY");
+      expect(publishedHtml).toContain(`href="/i/${nestedPath}"`);
+      expect(publishedHtml).toContain('href="/i"');
       expect(privatePage.status).toBe(404);
       expect(await privatePage.text()).toBe(await missing.text());
+      expect(leafIndex.status).toBe(200);
+      const leafHtml = await leafIndex.text();
+      expect(leafHtml).toContain("Nested public page");
+      expect(leafHtml).toContain("PUBLIC-SUMMARY-CANARY");
+      for (const privateCanary of [
+        "PRIVATE-TITLE-CANARY",
+        "PRIVATE-SUMMARY-CANARY",
+        "PRIVATE-NESTED-CANARY",
+        "PRIVATE-DIRECTORY-TITLE-CANARY",
+        "PRIVATE-DIRECTORY-SUMMARY-CANARY",
+        "PRIVATE-DIRECTORY-INTRO-CANARY",
+        "PRIVATE-NESTED-DIRECTORY-TITLE-CANARY",
+        "PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY",
+        "PRIVATE-NESTED-DIRECTORY-INTRO-CANARY",
+      ]) expect(leafHtml).not.toContain(privateCanary);
+      expect(parentIndex.status).toBe(200);
+      expect(await parentIndex.text()).toContain("1 published page");
+
+      await client.query(
+        "UPDATE knowledge_pages SET published_version_id=NULL,public_path=NULL WHERE id=$1",
+        [publicPageId],
+      );
+      const removedIndex = await application!.handle(new Request(`http://localhost:3000/i/${nestedPath}`));
+      expect(removedIndex.status).toBe(404);
     } finally {
       await client.query("ROLLBACK").catch(() => undefined);
       await client.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
       await client.query("DELETE FROM knowledge_pages WHERE id=ANY($1::uuid[])", [[publicPageId, privatePageId]]);
       await client.query("ALTER TABLE knowledge_pages ENABLE TRIGGER ALL");
       await client.query("DELETE FROM knowledge_page_versions WHERE page_id=ANY($1::uuid[])", [[publicPageId, privatePageId]]);
+      await client.query(
+        "DELETE FROM knowledge_directories WHERE current_path IN ($1,$2)",
+        [nestedPath, parentPath],
+      );
       await client.end();
     }
   });

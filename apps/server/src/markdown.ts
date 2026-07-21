@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   extractAssetLinks,
+  extractDirectoryLinks,
   extractPageLinks,
   extractWikiLinks,
   normalizeInternalPageLinks,
@@ -13,6 +14,7 @@ export type LinkResolution = { available: true; href: string } | { available: fa
 export type AssetResolution = { available: true; href: string; contentType: string } | { available: false };
 export type MarkdownResolvers = {
   page: (id: string) => Promise<LinkResolution>;
+  directory: (id: string) => Promise<LinkResolution>;
   pagePath: (path: string) => Promise<LinkResolution>;
   asset: (id: string) => Promise<AssetResolution>;
   publicAssetPath?: (path: string) => Promise<AssetResolution>;
@@ -122,11 +124,13 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
   // resolution so public output never carries a private route or page UUID.
   const normalizedMarkdown = normalizeInternalPageLinks(markdown);
   const pages = new Map<string, LinkResolution>();
+  const directories = new Map<string, LinkResolution>();
   const wikiPages = new Map<string, LinkResolution>();
   const assets = new Map<string, AssetResolution>();
   const publicAssets = new Map<string, AssetResolution>();
   const formattedImages = new Map<string, string>();
   await Promise.all(extractPageLinks(normalizedMarkdown).map(async (id) => pages.set(id, await resolvers.page(id))));
+  await Promise.all(extractDirectoryLinks(normalizedMarkdown).map(async (id) => directories.set(id, await resolvers.directory(id))));
   await Promise.all(extractWikiLinks(normalizedMarkdown).map(async ({ path }) => wikiPages.set(path, await resolvers.pagePath(path))));
   await Promise.all(extractAssetLinks(normalizedMarkdown).map(async (id) => assets.set(id, await resolvers.asset(id))));
   const publicAssetPaths = [...normalizedMarkdown.matchAll(
@@ -144,6 +148,15 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
       return target?.available
         ? `[${label}](${target.href})`
         : `<span class="private-reference">${escapeHtml(label || "Private page")}</span>`;
+    },
+  );
+  source = source.replace(
+    /\[([^\]]*)\]\(context-use:\/\/directory\/([0-9a-f-]{36})\)/gi,
+    (_match, label: string, id: string) => {
+      const target = directories.get(id.toLowerCase());
+      return target?.available
+        ? `[${label}](${target.href})`
+        : `<span class="private-reference">${escapeHtml(label || "Private directory")}</span>`;
     },
   );
   source = source.replace(
@@ -180,7 +193,7 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
   // separately removes legacy dashboard and asset routes before public code
   // can read them.
   source = source.replace(
-    /context-use:\/\/(?:page|asset)\/[0-9a-f-]{36}/gi,
+    /context-use:\/\/(?:page|directory|asset)\/[0-9a-f-]{36}/gi,
     '<span class="private-reference">Private reference</span>',
   );
 
@@ -240,14 +253,16 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
   );
 }
 
-export function publicationWarnings(markdown: string): string[] {
+export function publicationWarnings(markdown: string, metadata: string[] = []): string[] {
   const warnings: string[] = [];
-  const externalUrls = markdown.match(/https?:\/\/[^\s)>]+/g) ?? [];
+  const publicText = [...metadata, markdown].join("\n");
+  const externalUrls = publicText.match(/https?:\/\/[^\s)>]+/g) ?? [];
   if (externalUrls.length) warnings.push(`${externalUrls.length} external URL(s) will become public`);
-  if (/(?:BEGIN (?:RSA |EC )?PRIVATE KEY|api[_-]?key\s*[:=]|secret\s*[:=]|bearer\s+[a-z0-9._-]{16,})/i.test(markdown)) {
+  if (/(?:BEGIN (?:RSA |EC )?PRIVATE KEY|api[_-]?key\s*[:=]|secret\s*[:=]|bearer\s+[a-z0-9._-]{16,})/i.test(publicText)) {
     warnings.push("Possible secret material detected; review the page carefully");
   }
   const privateReferences = extractPageLinks(markdown).length
+    + extractDirectoryLinks(markdown).length
     + extractWikiLinks(markdown).length
     + extractAssetLinks(markdown).length;
   if (privateReferences) warnings.push(`${privateReferences} context-use reference(s) have independent visibility`);

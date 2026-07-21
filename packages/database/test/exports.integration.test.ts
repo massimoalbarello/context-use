@@ -59,6 +59,7 @@ describeDatabase("passkey-bound current knowledge exports", () => {
         );
         await pool.query("DELETE FROM knowledge_pages WHERE current_path LIKE $1", [`${fixtureRoot}/%`]);
         await pool.query("DELETE FROM assets WHERE current_path LIKE $1", [`${fixtureRoot}/%`]);
+        await pool.query("DELETE FROM knowledge_directories WHERE current_path=$1", [fixtureRoot]);
       }
       await pool.query("DELETE FROM passkey WHERE id='export-test-passkey'");
       await pool.query("DELETE FROM \"user\" WHERE id='context-use-owner'");
@@ -73,15 +74,25 @@ describeDatabase("passkey-bound current knowledge exports", () => {
   test("exports active knowledge as of download and permits one same-session claim", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     fixtureRoot = `tests/export-${suffix}`;
+    await pool.query(
+      `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+       VALUES
+         ($1,'tests','Tests','Integration test knowledge.','',directory_search_vector('tests','Tests','Integration test knowledge.','')),
+         ($2,$3,'Export fixture','Knowledge used to test exports.','',directory_search_vector($3,'Export fixture','Knowledge used to test exports.',''))
+       ON CONFLICT (current_path) DO NOTHING`,
+      [crypto.randomUUID(), crypto.randomUUID(), fixtureRoot],
+    );
     const active = await pages.create({
       path: `${fixtureRoot}/active`,
       title: "Active export page",
+      summary: "The active page included in an export.",
       body_markdown: "Latest active body",
       commit_message: "Create active export fixture",
     }, actor);
     const archived = await pages.create({
       path: `${fixtureRoot}/archived`,
       title: "Archived export page",
+      summary: "An archived page excluded from an export.",
       body_markdown: "Archived body",
       commit_message: "Create archived export fixture",
     }, actor);
@@ -115,6 +126,7 @@ describeDatabase("passkey-bound current knowledge exports", () => {
     await pages.update(active.id, {
       path: `${fixtureRoot}/active`,
       title: "Active export page",
+      summary: "The active page included in an export.",
       body_markdown: "Current body at download",
       commit_message: "Update after export authorization",
       expected_version_number: 1,
@@ -123,7 +135,12 @@ describeDatabase("passkey-bound current knowledge exports", () => {
     await confirmations.claimExport(intent.id, principal);
     const snapshot = await exports.currentSnapshot();
     expect(snapshot.pages.find(({ id }) => id === active.id)?.body_markdown).toBe("Current body at download");
+    expect(snapshot.pages.find(({ id }) => id === active.id)?.summary).toBe("The active page included in an export.");
     expect(snapshot.pages.some(({ id }) => id === archived.id)).toBe(false);
+    expect(snapshot.directories.find(({ current_path }) => current_path === fixtureRoot)).toMatchObject({
+      title: "Export fixture",
+      summary: "Knowledge used to test exports.",
+    });
     expect(snapshot.assets.find(({ id }) => id === asset.id)).toMatchObject({
       filename: "friendly.pdf",
       current_path: `${fixtureRoot}/asset`,

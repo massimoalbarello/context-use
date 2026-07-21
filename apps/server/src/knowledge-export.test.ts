@@ -7,19 +7,55 @@ import type { ObjectStorage } from "./storage.ts";
 const pageOne = "11111111-1111-4111-8111-111111111111";
 const pageTwo = "22222222-2222-4222-8222-222222222222";
 const assetOne = "33333333-3333-4333-8333-333333333333";
+const rootDirectory = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const projectsDirectory = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const acmeDirectory = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const notesDirectory = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
 function snapshot(): KnowledgeExportSnapshot {
   return {
+    directories: [
+      {
+        id: rootDirectory,
+        current_path: "",
+        title: "Knowledge",
+        summary: "The root of the portable knowledge base.",
+        intro_markdown: `[Projects](context-use://directory/${projectsDirectory}) and [[notes|Notes]].`,
+      },
+      {
+        id: projectsDirectory,
+        current_path: "projects",
+        title: "Projects",
+        summary: "Projects and their supporting material.",
+        intro_markdown: "",
+      },
+      {
+        id: acmeDirectory,
+        current_path: "projects/acme",
+        title: "Acme",
+        summary: "Knowledge about the Acme project.",
+        intro_markdown: "",
+      },
+      {
+        id: notesDirectory,
+        current_path: "notes",
+        title: "Notes",
+        summary: "Independent notes.",
+        intro_markdown: "",
+      },
+    ],
     pages: [
       {
         id: pageOne,
         current_path: "projects/acme/brief",
         title: "Q3 Brief",
+        summary: "The current Acme briefing.",
         body_markdown: [
           `[Other](context-use://page/${pageTwo})`,
           `[Legacy](/app/pages/${pageTwo})`,
           "[[notes/other|Wiki label]]",
           `![Site photo](context-use://asset/${assetOne})`,
+          `[Acme index](context-use://directory/${acmeDirectory})`,
           `[Missing](context-use://page/44444444-4444-4444-8444-444444444444)`,
         ].join("\n\n"),
       },
@@ -27,6 +63,7 @@ function snapshot(): KnowledgeExportSnapshot {
         id: pageTwo,
         current_path: "notes/other",
         title: "Other Note",
+        summary: "A note referenced by the Acme brief.",
         body_markdown: "Back to [[projects/acme/brief]].",
       },
     ],
@@ -51,23 +88,34 @@ describe("portable knowledge export", () => {
     expect(brief.vaultPath).toBe("projects/acme/Q3 Brief.md");
     expect(other.vaultPath).toBe("notes/Other Note.md");
     expect(planned.assets[0]?.vaultPath).toBe("projects/acme/site photo.jpg");
-    expect(brief.body).toBe([
-      "[Other](../../notes/Other%20Note.md)",
-      "[Legacy](../../notes/Other%20Note.md)",
-      "[Wiki label](../../notes/Other%20Note.md)",
-      "![Site photo](site%20photo.jpg)",
-      "Missing",
-    ].join("\n\n"));
-    expect(other.body).toBe("Back to [brief](../projects/acme/Q3%20Brief.md).");
-    expect(planned.pages.map(({ body }) => body).join("\n")).not.toContain("context-use://");
+    expect(brief.body).toContain('summary: "The current Acme briefing."');
+    expect(brief.body).toContain("[Other](../../notes/Other%20Note.md)");
+    expect(brief.body).toContain("[Legacy](../../notes/Other%20Note.md)");
+    expect(brief.body).toContain("[Wiki label](../../notes/Other%20Note.md)");
+    expect(brief.body).toContain("![Site photo](site%20photo.jpg)");
+    expect(brief.body).toContain("[Acme index](index.md)");
+    expect(brief.body).toContain("Missing");
+    expect(other.body).toContain("Back to [brief](../projects/acme/Q3%20Brief.md).");
+    const root = planned.directories.find(({ current_path }) => current_path === "")!;
+    expect(root.vaultPath).toBe("index.md");
+    expect(root.body).toContain("[Projects](projects/index.md)");
+    expect(root.body).toContain("[Notes](notes/index.md)");
+    expect(root.body).toContain("## Contents");
+    expect([...planned.directories, ...planned.pages].map(({ body }) => body).join("\n"))
+      .not.toContain("context-use://");
   });
 
   test("resolves friendly-name and directory collisions without database identifiers", () => {
     const planned = planKnowledgeExport({
+      directories: [
+        { id: rootDirectory, current_path: "", title: "Knowledge", summary: "The root index.", intro_markdown: "" },
+        { id: projectsDirectory, current_path: "folder", title: "Folder", summary: "A test folder.", intro_markdown: "" },
+        { id: acmeDirectory, current_path: "folder/sub", title: "Subfolder", summary: "A test subfolder.", intro_markdown: "" },
+      ],
       pages: [
-        { id: pageOne, current_path: "folder/first", title: "Report", body_markdown: "" },
-        { id: pageTwo, current_path: "folder/second", title: "report", body_markdown: "" },
-        { id: "44444444-4444-4444-8444-444444444444", current_path: "folder/sub/page", title: "Nested", body_markdown: "" },
+        { id: pageOne, current_path: "folder/first", title: "Report", summary: "The first report.", body_markdown: "" },
+        { id: pageTwo, current_path: "folder/second", title: "report", summary: "The second report.", body_markdown: "" },
+        { id: "44444444-4444-4444-8444-444444444444", current_path: "folder/sub/page", title: "Nested", summary: "A nested page.", body_markdown: "" },
       ],
       assets: [
         {
@@ -90,7 +138,7 @@ describe("portable knowledge export", () => {
         },
       ],
     });
-    const paths = [...planned.pages, ...planned.assets].map(({ vaultPath }) => vaultPath);
+    const paths = [...planned.directories, ...planned.pages, ...planned.assets].map(({ vaultPath }) => vaultPath);
     expect(new Set(paths.map((path) => path.toLowerCase())).size).toBe(paths.length);
     expect(paths.some((path) => path === "folder/sub")).toBe(false);
     for (const path of paths) expect(path).not.toMatch(/[0-9a-f]{8}-[0-9a-f-]{27}/i);
@@ -119,6 +167,10 @@ describe("portable knowledge export", () => {
     const entries = await reader.getEntries();
     expect(entries.map(({ filename }) => filename)).toEqual([
       "context-use-export/",
+      "context-use-export/index.md",
+      "context-use-export/projects/index.md",
+      "context-use-export/projects/acme/index.md",
+      "context-use-export/notes/index.md",
       "context-use-export/projects/acme/Q3 Brief.md",
       "context-use-export/notes/Other Note.md",
       "context-use-export/projects/acme/site photo.jpg",
@@ -140,12 +192,23 @@ describe("portable knowledge export", () => {
       verify: async () => true,
       read: async () => { throw new Error("No asset read expected"); },
     };
-    const archive = await new Response(streamKnowledgeExport({ pages: [], assets: [] }, storage)).blob();
+    const archive = await new Response(streamKnowledgeExport({
+      directories: [{
+        id: rootDirectory,
+        current_path: "",
+        title: "Knowledge",
+        summary: "The root of an empty knowledge base.",
+        intro_markdown: "",
+      }],
+      pages: [],
+      assets: [],
+    }, storage)).blob();
     const reader = new ZipReader(new BlobReader(archive), { useWebWorkers: false });
     const entries = await reader.getEntries();
-    expect(entries).toHaveLength(1);
+    expect(entries).toHaveLength(2);
     expect(entries[0]?.filename).toBe("context-use-export/");
     expect(entries[0]?.directory).toBe(true);
+    expect(entries[1]?.filename).toBe("context-use-export/index.md");
     await reader.close();
   });
 });

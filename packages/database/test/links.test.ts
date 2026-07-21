@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   extractAssetLinks,
+  extractDirectoryLinks,
   extractPageLinks,
   extractWikiLinks,
   normalizeInternalPageLinks,
@@ -18,6 +19,14 @@ describe("hypermedia links", () => {
     const markdown = `[related](/app/pages/${id})`;
     expect(normalizeInternalPageLinks(markdown)).toBe(`[related](context-use://page/${id})`);
     expect(extractPageLinks(markdown)).toEqual([id]);
+  });
+
+  test("extracts stable directory links and normalizes dashboard index routes", () => {
+    const id = "018f3d6d-4050-7c95-8d5a-001122334455";
+    const markdown = `[chapters](/app/directories/${id})`;
+    expect(normalizeInternalPageLinks(markdown)).toBe(`[chapters](context-use://directory/${id})`);
+    expect(extractDirectoryLinks(`${markdown} [again](context-use://directory/${id})`)).toEqual([id]);
+    expect(extractPageLinks(markdown)).toEqual([]);
   });
 
   test("extracts assets without treating them as pages", () => {

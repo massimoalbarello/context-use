@@ -368,7 +368,7 @@ services:
       BACKUP_BUCKET: ${BACKUP_BUCKET}
       KMS_KEY_ID: ${KMS_KEY_ID}
       VERSION: ${VERSION}
-      SCHEMA_VERSION: 007_page_retention_and_deletion.sql
+      SCHEMA_VERSION: 001_baseline.sql
       AWS_REGION: ${AWS_REGION}
       AWS_CONFIG_FILE: /etc/context-use/aws-config
       AWS_PROFILE: context-use-backup

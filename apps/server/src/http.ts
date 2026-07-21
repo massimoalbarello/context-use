@@ -1,6 +1,7 @@
 import {
   AutomationValidationError,
   AutomationVersionConflictError,
+  DirectoryVersionConflictError,
   PublicationStateError,
   VersionConflictError,
 } from "@context-use/database";
@@ -26,6 +27,9 @@ export function routeError(error: unknown): Response {
   if (error instanceof VersionConflictError) {
     return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
   }
+  if (error instanceof DirectoryVersionConflictError) {
+    return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
+  }
   if (error instanceof PublicationStateError) return problem(error.message, 409, "publication_state");
   if (error instanceof AutomationValidationError) return problem(error.message, 422, "automation_validation");
   if (error instanceof AutomationVersionConflictError) {
@@ -35,6 +39,7 @@ export function routeError(error: unknown): Response {
   if (error instanceof Error && "code" in error) {
     const code = String((error as Error & { code: unknown }).code);
     if (code === "23505") return problem("A unique value is already in use", 409, "conflict");
+    if (code === "23503") return problem("Create the parent directory metadata first", 422, "knowledge_parent_missing");
     if (code === "42501") return problem("Operation denied by the database security policy", 403, "forbidden");
     if (code === "23514") return problem("Write violates a knowledge ownership boundary", 422, "ownership_boundary");
     if (code === "P0002") return problem("Requested action not found", 404, "not_found");
