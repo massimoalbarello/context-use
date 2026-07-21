@@ -11,8 +11,8 @@ describe("public page presentation", () => {
     const html = renderPublicPageDocument("Public notes", "<h1>Hello</h1>");
 
     expect(html).toContain("<article><h1>Hello</h1></article><footer class=\"context-use-footnote\">");
-    expect(html).toContain("Hosted with");
-    expect(html).toContain("Self-hostable · private by default");
+    expect(html).toContain('<p>self-hosted with love using <a href="https://github.com/massimoalbarello/context-use">context-use</a>.</p>');
+    expect(html).not.toContain("private by default");
     expect(html).not.toContain("MCP");
   });
 
