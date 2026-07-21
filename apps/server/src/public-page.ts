@@ -15,7 +15,7 @@ export function renderPublicPageDocument(
   title: string,
   content: string,
 ): string {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="/public.css"><link rel="stylesheet" href="/content.css"></head><body><main class="public-page"><article>${content}</article><footer class="context-use-footnote"><p>self-hosted with love using <a href="${CONTEXT_USE_URL}">context-use</a>.</p></footer></main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="/public.css"><link rel="stylesheet" href="/content.css"></head><body><main class="public-page"><article>${content}</article><footer class="context-use-footnote"><p>self-hosted with ❤️ using <a href="${CONTEXT_USE_URL}">context-use</a>.</p></footer></main></body></html>`;
 }
 
 export function renderPublicLandingDocument(): string {
