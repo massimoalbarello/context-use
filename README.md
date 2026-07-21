@@ -13,7 +13,7 @@ The public site is deliberately separate. Each installation starts with a privat
 - Passkey-protected streaming Zip64 export of current active pages and assets as a navigable Markdown vault with local links.
 - OAuth 2.1 authorization code + PKCE for MCP, fifteen-minute audience-bound access tokens, rotating refresh tokens, and owner revocation.
 - Stateless Streamable HTTP MCP at `/mcp` with knowledge, checksum-bound asset upload/download, and automation execution tools.
-- Versioned, discoverable Agent Skills; time-zone-aware automations; isolated generated knowledge; durable run history; and leased agent execution.
+- Versioned, discoverable Agent Skills; time-zone-aware automations; private-by-default page output; durable run history; and leased agent execution.
 - Exact published snapshots at `/p/<knowledge-path>` and independently published assets at `/a/<knowledge-path>` on a cookieless hostname.
 - A built-in public billboard at `/` that directs visitors to optional `/p/about/intro` content.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
@@ -121,7 +121,9 @@ Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKI
 
 Automations live separately under **Automations** and can also be created with `create_automation`. Each automation owns immutable, versioned instructions plus its schedule and input parameters. Updating those instructions creates a new automation version; already-created runs remain pinned to the exact version they received.
 
-Every automation owns one stable virtual folder at `automations/<automation-key>`. The owner chooses the unique semantic key at creation and it cannot later change; the automation UUID remains internal ownership metadata. While an MCP client holds an active run claim, its generic page writes are disabled; run output requires the automation page tools and the valid run ID and claim token. The server resolves relative paths inside that folder. Database constraints reject ordinary pages in the reserved tree, automation pages outside their owner folder, generic edits to generated pages, and publication of generated pages.
+Every automation owns one stable virtual folder at `automations/<automation-key>`. The owner chooses the unique semantic key at creation and it cannot later change; the automation UUID remains provenance metadata. While an MCP client holds an active run claim, its generic page writes are disabled; optional page output requires the automation page tools and the valid run ID and claim token. The server resolves relative paths inside that folder, and database constraints prevent unrelated pages from impersonating run output in the reserved tree.
+
+An automation creates a page only when its instructions call for persistent page output. That page starts private, then follows the ordinary page lifecycle: the dashboard and MCP can edit or archive it, and an edit can move it out of the automation folder. Publishing remains a dashboard-only owner action over an exact version and always requires fresh passkey confirmation. MCP has no publication capability, whether or not a page originated in an automation.
 
 Context Use does not require a resident scheduler process: loading the dashboard or calling `claim_due_run` transactionally materializes elapsed schedules. The first version creates one catch-up run per automation and skips additional occurrences missed while nobody was polling.
 
@@ -133,7 +135,7 @@ follow its instructions using the supplied input. Continue until claim_due_run r
 null.
 ```
 
-For claimed runs, Context Use appends the shared execution contract to the returned `instructions_markdown`: read `[[about/intro]]`, use the claim-scoped automation page tools inside the dedicated knowledge path, and finish with `complete_run` or `fail_run`. The generated knowledge page is the canonical output. `complete_run.result_summary` is an optional one- or two-sentence dashboard note about what changed and where, not a copy of the page. This happens only in the `claim_due_run` response. Skills and ordinary `get_skill` calls never receive automation execution context. While migrated instructions still contain a legacy `## Execution context` section, Context Use recognizes it and does not inject a duplicate.
+For claimed runs, Context Use appends the shared execution contract to the returned `instructions_markdown`: read `[[about/intro]]`, use the claim-scoped automation page tools inside the dedicated knowledge path only when the automation calls for page output, and finish with `complete_run` or `fail_run`. When created, the page is the canonical output. `complete_run.result_summary` is an optional one- or two-sentence dashboard note about what changed and where, not a copy of the page. This happens only in the `claim_due_run` response. Skills and ordinary `get_skill` calls never receive automation execution context. While migrated instructions still contain a legacy `## Execution context` section, Context Use recognizes it and does not inject a duplicate.
 
 Claims are atomic and leased for one hour. Expired claims are automatically available to the next polling agent. Runs, inputs, automation instruction versions, knowledge ownership, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
 

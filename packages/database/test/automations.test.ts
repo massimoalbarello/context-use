@@ -48,8 +48,10 @@ Example content
     expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("`complete_run`");
     expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("`fail_run`");
     expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("[[about/intro]]");
-    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("knowledge page is the canonical output");
-    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("Never copy the page contents into the summary");
+    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("Do not create a page");
+    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("private by default");
+    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("only the owner can publish");
+    expect(AUTOMATION_RUN_EXECUTION_CONTEXT).toContain("Never copy page contents into the summary");
   });
 
   test("injects the canonical context section into claimed-run instructions when absent", () => {

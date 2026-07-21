@@ -631,6 +631,12 @@ describeDatabase("PostgreSQL security roles", () => {
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_mcp','knowledge_pages','automation_id','UPDATE') AS allowed",
     )).rows[0]?.allowed).toBe(false);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_any_column_privilege('context_use_mcp','publication_intents','INSERT') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_any_column_privilege('context_use_dashboard','publication_intents','INSERT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
   });
 
   test("completed automation history uses concise summaries and keyset pagination storage", async () => {

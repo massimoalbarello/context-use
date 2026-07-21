@@ -256,7 +256,7 @@ export function Automations() {
     try {
       await api(`/api/dashboard/automations/schedules/${schedule.id}`, { method: "DELETE" });
       setDeletingScheduleId(null);
-      setMessage(`Automation “${schedule.name}” deleted. Its generated knowledge remains available.`);
+      setMessage(`Automation “${schedule.name}” deleted. Pages it created remain available.`);
       await load(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not delete automation");
@@ -323,7 +323,7 @@ export function Automations() {
         <label>Instructions<textarea required rows={10} value={scheduleInstructions} onChange={(event) => setScheduleInstructions(event.target.value)} placeholder="Describe the scheduled workflow and expected result…" /><small>These instructions belong only to this automation and are not exposed through skill discovery.</small></label>
         <div className="form-row"><label>Cron expression<input required value={cronExpression} onChange={(event) => setCronExpression(event.target.value)} /></label><label>Time zone<input required value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label></div>
         <label>Input JSON<textarea rows={4} value={scheduleInput} onChange={(event) => setScheduleInput(event.target.value)} /></label>
-        <p className="form-note">The semantic knowledge key is permanent; the automation UUID remains internal ownership metadata.</p>
+        <p className="form-note">The semantic knowledge key is permanent; the automation UUID remains internal provenance metadata.</p>
         <button className="primary">Create automation</button>
       </form></details>
     </section>
