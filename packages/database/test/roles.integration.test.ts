@@ -352,7 +352,7 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("about is optional and the private guide tells agents how to create it", async () => {
+  test("the private guide defines optional owner context and page-backed skill discovery", async () => {
     expect((await admin.query(
       "SELECT 1 FROM knowledge_pages WHERE current_path='about/intro'",
     )).rowCount).toBe(0);
@@ -363,7 +363,10 @@ describeDatabase("PostgreSQL security roles", () => {
        WHERE page.current_path='agents' AND page.archived_at IS NULL
          AND version.title='AGENTS.md'
          AND version.body_markdown LIKE '%Create %about/intro%if it is missing%'
-         AND version.body_markdown LIKE '%ask them to review and publish %about/intro%'`,
+         AND version.body_markdown LIKE '%ask them to review and publish %about/intro%'
+         AND version.body_markdown LIKE '%paths begin with %skills/%'
+         AND version.body_markdown LIKE '%skills/<skill-name>%'
+         AND version.body_markdown LIKE '%complete standard %SKILL.md%'`,
     )).rowCount).toBe(1);
   });
 
@@ -567,16 +570,10 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("automation roles allow independent skill and automation creation without definition updates", async () => {
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','agent_skills','name','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','agent_skill_versions','instructions_markdown','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','agent_skill_versions','description','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
+  test("automation roles allow independent creation without definition updates", async () => {
+    expect((await admin.query<{ removed: boolean }>(
+      "SELECT to_regclass('agent_skills') IS NULL AND to_regclass('agent_skill_versions') IS NULL AS removed",
+    )).rows[0]?.removed).toBe(true);
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_mcp','automation_versions','instructions_markdown','INSERT') AS allowed",
     )).rows[0]?.allowed).toBe(true);
@@ -604,15 +601,6 @@ describeDatabase("PostgreSQL security roles", () => {
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','UPDATE') AS allowed",
     )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','agent_skills','name','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','agent_skills','deleted_at','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','agent_skills','deleted_at','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_dashboard','cron_schedules','deleted_at','UPDATE') AS allowed",
     )).rows[0]?.allowed).toBe(true);

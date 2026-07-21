@@ -480,45 +480,9 @@ CREATE TABLE knowledge_asset_links (
 );
 CREATE INDEX knowledge_asset_links_target_idx ON knowledge_asset_links(target_asset_id);
 
--- Skills and automations are private capabilities available to the owner and
--- owner-authorized private MCP clients only.
-CREATE TABLE agent_skills (
-  id uuid PRIMARY KEY,
-  name text NOT NULL CHECK (
-    length(name) BETWEEN 1 AND 64
-    AND name ~ '^[a-z0-9]+(-[a-z0-9]+)*$'
-  ),
-  current_version_id uuid NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  deleted_at timestamptz
-);
-CREATE UNIQUE INDEX agent_skills_name_unique
-  ON agent_skills(lower(name)) WHERE deleted_at IS NULL;
-
-CREATE TABLE agent_skill_versions (
-  id uuid PRIMARY KEY,
-  skill_id uuid NOT NULL REFERENCES agent_skills(id) ON DELETE RESTRICT,
-  version_number integer NOT NULL CHECK (version_number>0),
-  instructions_markdown text NOT NULL CHECK (
-    length(trim(instructions_markdown))>0
-    AND octet_length(instructions_markdown)<=4000000
-  ),
-  description text NOT NULL CHECK (length(trim(description)) BETWEEN 1 AND 1024),
-  commit_message text NOT NULL CHECK (length(trim(commit_message)) BETWEEN 3 AND 240),
-  actor_kind actor_kind NOT NULL,
-  actor_subject text NOT NULL CHECK (length(actor_subject) BETWEEN 1 AND 512),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (skill_id,version_number),
-  UNIQUE (id,skill_id)
-);
-
-ALTER TABLE agent_skills
-  ADD CONSTRAINT agent_skills_current_version_fk
-  FOREIGN KEY (current_version_id,id)
-  REFERENCES agent_skill_versions(id,skill_id)
-  DEFERRABLE INITIALLY DEFERRED;
-
+-- Automations are private capabilities available to the owner and
+-- owner-authorized private MCP clients only. Skills use ordinary knowledge
+-- pages under skills/<skill-name>.
 CREATE TABLE cron_schedules (
   id uuid PRIMARY KEY,
   name text NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 160),
@@ -777,7 +741,7 @@ BEGIN
     id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
   ) VALUES (
     agents_version_id,agents_page_id,1,'agents','AGENTS.md',
-    E'# Knowledge base structure\n\n- Store information whose subject is the owner in `about/`. Create `about/intro` if it is missing and keep it as the concise introduction people and agents should read first.\n- Store other entities in separate top-level folders, such as `people/`, `companies/`, and `events/`.\n- Link related pages instead of nesting other entities under `about/`.\n- Knowledge is private by default. If the owner wants the landing page to introduce them, ask them to review and publish `about/intro`; an agent cannot publish it.\n',
+    E'# Knowledge base structure\n\n- Store information whose subject is the owner in `about/`. Create `about/intro` if it is missing and keep it as the concise introduction people and agents should read first.\n- Store other entities in separate top-level folders, such as `people/`, `companies/`, and `events/`.\n- Link related pages instead of nesting other entities under `about/`.\n- Knowledge is private by default. If the owner wants the landing page to introduce them, ask them to review and publish `about/intro`; an agent cannot publish it.\n\n## Skills\n\n- Discover reusable Agent Skills by listing current pages whose paths begin with `skills/`.\n- Store each skill at the stable semantic path `skills/<skill-name>`.\n- The page body is the complete standard `SKILL.md`: YAML frontmatter with `name` and `description`, followed by the skill instructions. Use the frontmatter to decide whether a skill is relevant before following its instructions.\n- Create, update, and archive skills with the ordinary page tools; page history and commit messages provide versioning.\n',
     'Create knowledge base guide','dashboard','context-use-bootstrap'
   );
 END;
@@ -1410,8 +1374,6 @@ GRANT SELECT ON
   assets,
   knowledge_asset_links,
   publication_intents,
-  agent_skills,
-  agent_skill_versions,
   cron_schedules,
   automation_versions,
   automation_runs,
@@ -1434,13 +1396,6 @@ GRANT INSERT (
   id,action,target_kind,target_id,version_id,public_path,owner_user_id,
   session_id,expires_at
 ) ON publication_intents TO context_use_dashboard;
-GRANT INSERT (id,name,current_version_id) ON agent_skills TO context_use_dashboard;
-GRANT UPDATE (current_version_id,updated_at,deleted_at)
-  ON agent_skills TO context_use_dashboard;
-GRANT INSERT (
-  id,skill_id,version_number,instructions_markdown,description,
-  commit_message,actor_kind,actor_subject
-) ON agent_skill_versions TO context_use_dashboard;
 GRANT INSERT (
   id,name,cron_expression,timezone,input,enabled,next_run_at,
   automation_key,current_version_id
@@ -1464,8 +1419,6 @@ GRANT SELECT ON
   knowledge_page_versions,
   assets,
   knowledge_asset_links,
-  agent_skills,
-  agent_skill_versions,
   cron_schedules,
   automation_versions,
   automation_runs
@@ -1482,11 +1435,6 @@ GRANT INSERT (
   id,current_path,filename,content_type,size_bytes,content_hash,s3_object_key,
   width,height,duration_seconds
 ) ON assets TO context_use_mcp;
-GRANT INSERT (id,name,current_version_id) ON agent_skills TO context_use_mcp;
-GRANT INSERT (
-  id,skill_id,version_number,instructions_markdown,description,
-  commit_message,actor_kind,actor_subject
-) ON agent_skill_versions TO context_use_mcp;
 GRANT INSERT (
   id,name,cron_expression,timezone,input,enabled,next_run_at,
   automation_key,current_version_id
@@ -1535,8 +1483,6 @@ GRANT SELECT ON
   assets,
   knowledge_asset_links,
   publication_intents,
-  agent_skills,
-  agent_skill_versions,
   cron_schedules,
   automation_versions,
   automation_runs,

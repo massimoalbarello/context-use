@@ -10,7 +10,7 @@ docker compose up --build
 
 The root Compose file includes `compose.dev.yml`. The source tree is bind-mounted into the application containers, so the servers reload as files change. PostgreSQL data, uploaded assets, and container dependencies live in named Docker volumes.
 
-The public root is a built-in first-person billboard for people and agents. A private root `AGENTS.md` page guides the authenticated MCP client to create `about/intro` if missing and ask the owner to review and publish it when they want a public introduction. Until it is published, `/p/about/intro` shows an empty state.
+The public root is a built-in first-person billboard for people and agents. A private root `AGENTS.md` page guides the authenticated MCP client to create `about/intro` if missing, ask the owner to review and publish it when they want a public introduction, and discover reusable skills under `skills/<skill-name>`. Until the intro is published, `/p/about/intro` shows an empty state.
 
 Open the one-time local owner enrollment page:
 

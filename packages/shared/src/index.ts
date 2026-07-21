@@ -32,13 +32,6 @@ export const AutomationKey = z
   .min(1)
   .max(64)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and single hyphens only");
-export const SkillName = z
-  .string()
-  .trim()
-  .min(1)
-  .max(64)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and single hyphens only");
-export const SkillDescription = z.string().trim().min(1).max(1024);
 export const CronExpression = z.string().trim().min(9).max(160);
 export const TimeZone = z.string().trim().min(1).max(100);
 export const AutomationInput = z.record(z.string(), z.unknown());
@@ -108,20 +101,6 @@ export const assetUploadSchema = z.object({
   duration_seconds: z.number().nonnegative().optional(),
 }).strict();
 
-export const createSkillSchema = z.object({
-  name: SkillName,
-  description: SkillDescription,
-  instructions_markdown: z.string().trim().min(1).max(2_000_000),
-  commit_message: CommitMessage,
-}).strict();
-
-export const updateSkillSchema = z.object({
-  description: SkillDescription,
-  instructions_markdown: z.string().trim().min(1).max(2_000_000),
-  commit_message: CommitMessage,
-  expected_version_number: z.number().int().positive(),
-}).strict();
-
 export const createCronScheduleSchema = z.object({
   name: AutomationName,
   automation_key: AutomationKey,
@@ -170,8 +149,6 @@ export type UpdatePageInput = z.infer<typeof updatePageSchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
 export type PublicationIntentInput = z.infer<typeof publicationIntentSchema>;
 export type AssetUploadInput = z.infer<typeof assetUploadSchema>;
-export type CreateSkillInput = z.infer<typeof createSkillSchema>;
-export type UpdateSkillInput = z.infer<typeof updateSkillSchema>;
 export type CreateCronScheduleInput = z.infer<typeof createCronScheduleSchema>;
 export type UpdateCronScheduleInput = z.infer<typeof updateCronScheduleSchema>;
 export type CreateAutomationPageInput = z.infer<typeof createAutomationPageSchema>;

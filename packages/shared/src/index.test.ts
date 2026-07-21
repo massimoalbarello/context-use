@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import {
   assetUploadSchema,
   createAutomationPageSchema,
-  createSkillSchema,
   AssetPath,
   createCronScheduleSchema,
   createPageSchema,
@@ -92,7 +91,7 @@ describe("strict mutation schemas", () => {
     }).success).toBe(false);
   });
 
-  test("automations accept owned instructions rather than skill references", () => {
+  test("automations own versioned instructions and immutable semantic keys", () => {
     expect(createCronScheduleSchema.safeParse({
       name: "Morning review",
       automation_key: "morning-review",
@@ -134,29 +133,6 @@ describe("strict mutation schemas", () => {
       input: {},
       enabled: true,
       expected_version_number: 1,
-    }).success).toBe(false);
-    expect(createCronScheduleSchema.safeParse({
-      name: "Attempts skill attachment",
-      automation_key: "attempts-skill-attachment",
-      instructions_markdown: "Review current context.",
-      skill_version_id: versionId,
-      cron_expression: "0 9 * * *",
-      timezone: "Europe/London",
-    }).success).toBe(false);
-  });
-
-  test("skills require standard discovery metadata", () => {
-    expect(createSkillSchema.safeParse({
-      name: "review-project-context",
-      description: "Reviews project context. Use when preparing a project health check.",
-      instructions_markdown: "Inspect the project and record the result.",
-      commit_message: "Create review skill",
-    }).success).toBe(true);
-    expect(createSkillSchema.safeParse({
-      name: "Review Project Context",
-      description: "Too display-like",
-      instructions_markdown: "Inspect the project.",
-      commit_message: "Create invalid skill",
     }).success).toBe(false);
   });
 

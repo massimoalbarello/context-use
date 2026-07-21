@@ -5,8 +5,6 @@ import { verifyAssetCapability } from "./mcp-asset-capability.ts";
 import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
 
-const skillVersionId = "22222222-2222-4222-8222-222222222222";
-
 async function mcpRequest(server: McpServer, body: Record<string, unknown>) {
   const transport = createStatelessMcpTransport();
   await server.connect(transport);
@@ -51,7 +49,7 @@ function serverWith(
   );
 }
 
-describe("MCP skill and automation authoring", () => {
+describe("MCP knowledge and automation authoring", () => {
   test("gives clients the canonical knowledge structure during initialization", async () => {
     const response = await mcpRequest(serverWith({} as AutomationRepository), {
       jsonrpc: "2.0",
@@ -67,6 +65,7 @@ describe("MCP skill and automation authoring", () => {
     expect(response.result?.instructions).toBe(KNOWLEDGE_BASE_INSTRUCTIONS);
     expect(response.result?.instructions).toContain("about/intro");
     expect(response.result?.instructions).toContain("AGENTS.md");
+    expect(response.result?.instructions).toContain("skills/<skill-name>");
   });
 
   test("reads the root AGENTS.md guide through a dedicated discovery tool", async () => {
@@ -92,7 +91,7 @@ describe("MCP skill and automation authoring", () => {
     });
   });
 
-  test("advertises progressive skill discovery and automation tools", async () => {
+  test("advertises ordinary page tools for skills and separate automation tools", async () => {
     const response = await mcpRequest(serverWith({} as AutomationRepository), {
       jsonrpc: "2.0",
       id: 1,
@@ -101,10 +100,11 @@ describe("MCP skill and automation authoring", () => {
     });
 
     expect(response.result?.tools?.map(({ name }) => name)).toEqual(expect.arrayContaining([
-      "list_skills",
       "get_knowledge_base_guide",
-      "get_skill",
-      "create_skill",
+      "list_pages",
+      "get_page",
+      "create_page",
+      "update_page",
       "create_automation",
       "create_automation_page",
       "create_asset_upload",
@@ -116,6 +116,11 @@ describe("MCP skill and automation authoring", () => {
     expect(response.result?.tools?.find(({ name }) => name === "archive_page")?.description).toContain("created by an automation");
     expect(response.result?.tools?.find(({ name }) => name === "create_automation_page")?.description).toContain("private page");
     expect(response.result?.tools?.some(({ name }) => name.includes("publish"))).toBe(false);
+    expect(response.result?.tools?.map(({ name }) => name)).not.toEqual(expect.arrayContaining([
+      "list_skills",
+      "get_skill",
+      "create_skill",
+    ]));
     expect(response.result?.tools?.some(({ name }) => name === "get_markdown_guide")).toBe(false);
   });
 
@@ -253,40 +258,51 @@ describe("MCP skill and automation authoring", () => {
     expect(JSON.stringify(result)).not.toContain("amazonaws");
   });
 
-  test("creates independent skills and versioned automation instructions with MCP attribution", async () => {
+  test("creates a page-backed skill and independent automation instructions with MCP attribution", async () => {
     const calls: Array<{ operation: string; input: unknown; actor?: unknown }> = [];
     const automations = {
-      async createSkill(input: unknown, actor: unknown) {
-        calls.push({ operation: "skill", input, actor });
-        return { id: "11111111-1111-4111-8111-111111111111", current_version_id: skillVersionId };
-      },
       async createSchedule(input: unknown, actor: unknown) {
         calls.push({ operation: "schedule", input, actor });
         return { id: "33333333-3333-4333-8333-333333333333", ...input as object };
       },
     } as unknown as AutomationRepository;
+    const pages = {
+      async create(input: unknown, actor: unknown) {
+        calls.push({ operation: "page", input, actor });
+        return { id: "11111111-1111-4111-8111-111111111111", ...input as object };
+      },
+    } as unknown as PageRepository;
 
-    const skill = await mcpRequest(serverWith(automations), {
+    const skill = await mcpRequest(serverWith(automations, pages), {
       jsonrpc: "2.0",
       id: 2,
       method: "tools/call",
       params: {
-        name: "create_skill",
+        name: "create_page",
         arguments: {
-          name: "daily-review",
-          description: "Reviews current project context. Use for a daily project health check.",
-          instructions_markdown: "Review the current project and record decisions.",
+          path: "skills/daily-review",
+          title: "SKILL.md",
+          body_markdown: "---\nname: daily-review\ndescription: Reviews current project context. Use for a daily project health check.\n---\n\nReview the current project and record decisions.",
           commit_message: "Create daily review skill",
         },
       },
     });
-    expect(JSON.parse(skill.result?.content?.[0]?.text ?? "null")).toMatchObject({ current_version_id: skillVersionId });
+    expect(JSON.parse(skill.result?.content?.[0]?.text ?? "null")).toMatchObject({
+      path: "skills/daily-review",
+      title: "SKILL.md",
+    });
     expect(calls[0]).toMatchObject({
-      operation: "skill",
+      operation: "page",
+      input: {
+        path: "skills/daily-review",
+        title: "SKILL.md",
+        body_markdown: expect.stringContaining("name: daily-review"),
+        commit_message: "Create daily review skill",
+      },
       actor: { kind: "mcp", subject: "mcp-client" },
     });
 
-    const schedule = await mcpRequest(serverWith(automations), {
+    const schedule = await mcpRequest(serverWith(automations, pages), {
       jsonrpc: "2.0",
       id: 3,
       method: "tools/call",
@@ -315,36 +331,6 @@ describe("MCP skill and automation authoring", () => {
       },
       actor: { kind: "mcp", subject: "mcp-client" },
     });
-  });
-
-  test("lists only skill discovery metadata", async () => {
-    const automations = {
-      async listSkills() {
-        return [{
-          id: "11111111-1111-4111-8111-111111111111",
-          name: "daily-review",
-          description: "Reviews context. Use for daily reviews.",
-          current_version_id: skillVersionId,
-          version_number: 2,
-          instructions_markdown: "Sensitive full instructions",
-          skill_markdown: "Full SKILL.md",
-        }];
-      },
-    } as unknown as AutomationRepository;
-    const response = await mcpRequest(serverWith(automations), {
-      jsonrpc: "2.0",
-      id: 5,
-      method: "tools/call",
-      params: { name: "list_skills", arguments: {} },
-    });
-    const result = JSON.parse(response.result?.content?.[0]?.text ?? "null");
-    expect(result).toEqual([{
-      id: "11111111-1111-4111-8111-111111111111",
-      name: "daily-review",
-      description: "Reviews context. Use for daily reviews.",
-      current_version_id: skillVersionId,
-      version_number: 2,
-    }]);
   });
 
   test("passes automation page writes through the run-scoped repository method", async () => {

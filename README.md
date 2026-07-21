@@ -13,7 +13,7 @@ The public site is deliberately separate. Each installation starts with a privat
 - Passkey-protected streaming Zip64 export of current active pages and assets as a navigable Markdown vault with local links.
 - OAuth 2.1 authorization code + PKCE for MCP, fifteen-minute audience-bound access tokens, rotating refresh tokens, and owner revocation.
 - Stateless Streamable HTTP MCP at `/mcp` with knowledge, checksum-bound asset upload/download, and automation execution tools.
-- Versioned, discoverable Agent Skills; time-zone-aware automations; private-by-default page output; durable run history; and leased agent execution.
+- Discoverable Agent Skills stored as versioned Markdown pages; time-zone-aware automations; private-by-default page output; durable run history; and leased agent execution.
 - Exact published snapshots at `/p/<knowledge-path>` and independently published assets at `/a/<knowledge-path>` on a cookieless hostname.
 - A built-in public billboard at `/` that directs visitors to optional `/p/about/intro` content.
 - One-EC2 AWS deployment, encrypted retained storage, private versioned S3 buckets, SSM administration, daily backups, and a resumable CLI.
@@ -107,7 +107,7 @@ https://YOUR_HOST/mcp
 
 The server publishes protected-resource and authorization-server metadata. Dynamic clients receive the single `mcp:access` application scope, and the owner must approve that full private-MCP grant. `offline_access` requires an explicit client request and owner consent; no MCP grant can publish, export knowledge, or call dashboard routes.
 
-MCP initialization tells the client to call `get_knowledge_base_guide` before managing pages. That tool reads the editable root `AGENTS.md` page. The initial guide reserves `about/` for information whose subject is the owner, asks the agent to create `about/intro` if missing, and keeps entities such as people, companies, and events in their own top-level folders. The database reserves bare `about` as a folder, but the intro page is an ordinary private page until the owner chooses to publish it; semantic placement is guided because the database cannot reliably infer a page's subject from Markdown.
+MCP initialization tells the client to call `get_knowledge_base_guide` before managing pages. That tool reads the editable root `AGENTS.md` page. The initial guide reserves `about/` for information whose subject is the owner, asks the agent to create `about/intro` if missing, keeps entities such as people, companies, and events in their own top-level folders, and defines `skills/<skill-name>` as the location for reusable Agent Skills. The database reserves bare `about` as a folder, but the intro page is an ordinary private page until the owner chooses to publish it; semantic placement is guided because the database cannot reliably infer a page's subject from Markdown.
 
 `create_asset_upload` records private asset metadata and returns a fifteen-minute upload capability bound to that asset and the upload action. The agent then sends the exact raw bytes to the returned API URL and headers. Size, content type, and SHA-256 are verified before storage; the capability cannot read, edit, delete, or publish anything.
 
@@ -117,7 +117,7 @@ MCP initialization tells the client to call `get_knowledge_base_guide` before ma
 
 The dashboard hostname serves the public billboard and exact owner-published page snapshots. Pages resolve at `/p/<knowledge-path>`. Independently published asset bytes resolve only at `/a/<knowledge-path>` on the dedicated cookieless asset hostname. Neither route can read current drafts, private link targets, private asset metadata, UUIDs, page versions, or S3 object keys.
 
-Skills live in the dashboard's **Skills** area and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification): a standard name and short description form the discovery layer, while instructions load only after selection. MCP agents use `list_skills`, `get_skill`, and `create_skill`. They are reusable capabilities selected by an agent and are never attached to scheduled work.
+Skills are ordinary knowledge pages at `skills/<skill-name>` and follow the [Agent Skills `SKILL.md` specification](https://agentskills.io/specification). The complete page body contains standard YAML frontmatter with `name` and `description`, followed by the instructions. Agents discover the folder and use the ordinary page tools to read, create, update, or archive skills; the knowledge system supplies stable semantic paths, immutable versions, commit messages, dashboard editing, and MCP access.
 
 Automations live separately under **Automations** and can also be created with `create_automation`. Each automation owns immutable, versioned instructions plus its schedule and input parameters. Updating those instructions creates a new automation version; already-created runs remain pinned to the exact version they received.
 
@@ -135,7 +135,7 @@ follow its instructions using the supplied input. Continue until claim_due_run r
 null.
 ```
 
-For claimed runs, Context Use appends the shared execution contract to the returned `instructions_markdown`: read `[[about/intro]]`, use the claim-scoped automation page tools inside the dedicated knowledge path only when the automation calls for page output, and finish with `complete_run` or `fail_run`. When created, the page is the canonical output. `complete_run.result_summary` is an optional one- or two-sentence dashboard note about what changed and where, not a copy of the page. This happens only in the `claim_due_run` response. Skills and ordinary `get_skill` calls never receive automation execution context. While migrated instructions still contain a legacy `## Execution context` section, Context Use recognizes it and does not inject a duplicate.
+For claimed runs, Context Use appends the shared execution contract to the returned `instructions_markdown`: read `[[about/intro]]`, use the claim-scoped automation page tools inside the dedicated knowledge path only when the automation calls for page output, and finish with `complete_run` or `fail_run`. When created, the page is the canonical output. `complete_run.result_summary` is an optional one- or two-sentence dashboard note about what changed and where, not a copy of the page. This happens only in the `claim_due_run` response. While migrated instructions still contain a legacy `## Execution context` section, Context Use recognizes it and does not inject a duplicate.
 
 Claims are atomic and leased for one hour. Expired claims are automatically available to the next polling agent. Runs, inputs, automation instruction versions, knowledge ownership, outcomes, and claimant identity remain in Context Use; the agent supplies only reasoning and tool calls for the current run.
 
