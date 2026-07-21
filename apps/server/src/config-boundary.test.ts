@@ -16,6 +16,7 @@ const validByService: Record<string, Record<string, string>> = {
     DATABASE_URL: "postgres://context_use_dashboard:secret@postgres:5432/context_use",
     AUTH_INTERNAL_URL: "http://auth:3002",
     CONFIRMATION_INTERNAL_URL: "http://confirmation:3004",
+    MCP_RESOURCE: `${common.APP_ORIGIN}/mcp`,
     AUTH_DASHBOARD_TOKEN: "dashboard-to-auth-token-that-is-not-shared",
     CONFIRMATION_DASHBOARD_TOKEN: "dashboard-to-confirmation-token-not-shared",
     STORAGE_DASHBOARD_TOKEN: "dashboard-storage-token-that-is-not-shared",

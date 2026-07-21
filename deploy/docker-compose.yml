@@ -94,6 +94,7 @@ services:
       PORT: "3000"
       APP_ORIGIN: https://${APP_HOSTNAME}
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
+      MCP_RESOURCE: https://${APP_HOSTNAME}/mcp
       DATABASE_URL: postgres://context_use_dashboard:${DB_DASHBOARD_PASSWORD}@postgres:5432/context_use
       AUTH_INTERNAL_URL: http://auth:3002
       CONFIRMATION_INTERNAL_URL: http://confirmation:3004
