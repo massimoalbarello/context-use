@@ -474,6 +474,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     deployCompose.indexOf("\n  auth:\n"),
   );
   expect(appService).toContain("DATABASE_URL: postgres://context_use_dashboard");
+  expect(appService).toContain('MCP_RESOURCE: https://${APP_HOSTNAME}/mcp');
   expect(appService).not.toContain("AUTH_DATABASE_URL");
   expect(appService).not.toContain("MCP_DATABASE_URL");
   expect(appService).not.toContain("CONFIRMATION_DATABASE_URL");

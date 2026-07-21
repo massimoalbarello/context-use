@@ -73,7 +73,7 @@ if (production) {
   if (assets.protocol !== "https:" || !isBareOrigin(assets)) insecure.push("ASSET_ORIGIN must be an exact bare HTTPS origin");
   if (assets.hostname !== `assets.${app.hostname}`) insecure.push("ASSET_ORIGIN must use the dedicated assets subdomain");
   if (["auth", "mcp"].includes(config.SERVICE_MODE) && config.OAUTH_ISSUER !== config.APP_ORIGIN) insecure.push("OAUTH_ISSUER must equal APP_ORIGIN");
-  if (["auth", "mcp"].includes(config.SERVICE_MODE) && config.MCP_RESOURCE !== `${config.APP_ORIGIN}/mcp`) insecure.push("MCP_RESOURCE must be the canonical /mcp URI");
+  if (["dashboard", "auth", "mcp"].includes(config.SERVICE_MODE) && config.MCP_RESOURCE !== `${config.APP_ORIGIN}/mcp`) insecure.push("MCP_RESOURCE must be the canonical /mcp URI");
   if (["auth", "confirmation"].includes(config.SERVICE_MODE) && config.WEBAUTHN_RP_ID !== app.hostname) insecure.push("WEBAUTHN_RP_ID must equal the application hostname");
   if (config.SERVICE_MODE === "auth" && config.BETTER_AUTH_SECRET === developmentSecret) insecure.push("BETTER_AUTH_SECRET must be changed");
   if (config.SERVICE_MODE === "auth" && config.OWNER_EMAIL === "owner@example.com") insecure.push("OWNER_EMAIL must be configured");
