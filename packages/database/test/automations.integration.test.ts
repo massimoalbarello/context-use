@@ -18,7 +18,6 @@ describeDatabase("persisted automation lifecycle", () => {
   const pool = new Pool({ connectionString: databaseUrl });
   const automations = new AutomationRepository(pool);
   const pages = new PageRepository(pool);
-  const skillIds: string[] = [];
   const scheduleIds: string[] = [];
   const pageIds: string[] = [];
 
@@ -36,27 +35,11 @@ describeDatabase("persisted automation lifecycle", () => {
       await pool.query("ALTER TABLE cron_schedules ENABLE TRIGGER ALL");
       await pool.query("DELETE FROM automation_versions WHERE automation_id=$1", [scheduleId]);
     }
-    for (const skillId of skillIds) {
-      await pool.query("ALTER TABLE agent_skills DISABLE TRIGGER ALL");
-      await pool.query("DELETE FROM agent_skills WHERE id=$1", [skillId]);
-      await pool.query("ALTER TABLE agent_skills ENABLE TRIGGER ALL");
-      await pool.query("DELETE FROM agent_skill_versions WHERE skill_id=$1", [skillId]);
-    }
     await pool.end();
   });
 
   test("versions automation instructions, materializes a due run, and binds completion to the claimant", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
-    const skill = await automations.createSkill({
-      name: `review-context-${suffix}`,
-      description: "Reviews current project context. Use for a scheduled project health check.",
-      instructions_markdown: "Read the current project page and persist a short review.",
-      commit_message: "Create review skill",
-    }, { kind: "dashboard", subject: "integration-test-owner" });
-    skillIds.push(skill.id);
-    expect(skill.instructions_markdown).toBe("Read the current project page and persist a short review.");
-    expect(skill.skill_markdown).not.toContain("## Execution context");
-
     const schedule = await automations.createSchedule({
       name: `Morning review ${suffix}`,
       automation_key: `morning-review-${suffix}`,
@@ -102,7 +85,6 @@ describeDatabase("persisted automation lifecycle", () => {
     expect(claimed.instructions_markdown.match(/## Execution context/g)).toHaveLength(1);
     expect(claimed.instructions_markdown).toContain("`claim_due_run`");
     expect(claimed.instructions_markdown).toContain("[[about/intro]]");
-    expect(claimed).not.toHaveProperty("skill_markdown");
     const lease = await pool.query<{ lease_seconds: number }>(
       `SELECT extract(epoch FROM (lease_expires_at-claimed_at))::integer AS lease_seconds
        FROM automation_runs WHERE id=$1`,
@@ -191,13 +173,6 @@ describeDatabase("persisted automation lifecycle", () => {
       expected_version_number: archivedGenerated!.version_number,
     }, { kind: "mcp", subject: "agent-one" })).rejects.toBeInstanceOf(AutomationContentAccessError);
 
-    const updated = await automations.updateSkill(skill.id, {
-      description: "Reviews project context and records decisions. Use for a scheduled project health check.",
-      instructions_markdown: "Read the project page, review it, and persist decisions.",
-      commit_message: "Persist review decisions",
-      expected_version_number: 1,
-    }, { kind: "dashboard", subject: "integration-test-owner" });
-    expect(updated.version_number).toBe(2);
     expect((await automations.listSchedules()).find((item) => item.id === schedule.id))
       .toMatchObject({ automation_version_number: 1, instructions_markdown: "Read the current project page and persist a short review." });
 
@@ -231,12 +206,6 @@ describeDatabase("persisted automation lifecycle", () => {
       .toMatchObject({ status: "failed", error_message: "Required tool unavailable" });
     expect((await automations.listRuns()).find((run) => run.id === secondClaim.run_id))
       .toMatchObject({ status: "failed", error_message: "Required tool unavailable" });
-    await expect(automations.updateSkill(skill.id, {
-      description: "Attempts a stale update. Use only in this test.",
-      instructions_markdown: "Stale edit",
-      commit_message: "Attempt stale edit",
-      expected_version_number: 1,
-    }, { kind: "dashboard", subject: "integration-test-owner" })).rejects.toBeInstanceOf(AutomationVersionConflictError);
     await expect(automations.updateSchedule(schedule.id, {
       name: `Stale morning review ${suffix}`,
       instructions_markdown: "Stale automation instructions.",
@@ -248,16 +217,12 @@ describeDatabase("persisted automation lifecycle", () => {
       expected_version_number: 1,
     }, { kind: "dashboard", subject: "integration-test-owner" })).rejects.toBeInstanceOf(AutomationVersionConflictError);
 
-    expect(await automations.deleteSkill(skill.id)).toMatchObject({ id: skill.id });
-    expect((await automations.listSkills()).some((item) => item.id === skill.id)).toBe(false);
     expect(await automations.deleteSchedule(schedule.id)).toMatchObject({ id: schedule.id });
     expect((await automations.listSchedules()).some((item) => item.id === schedule.id)).toBe(false);
     expect((await automations.listRuns()).some((run) => run.schedule_id === schedule.id)).toBe(false);
     expect((await pool.query("SELECT enabled,deleted_at FROM cron_schedules WHERE id=$1", [schedule.id])).rows[0])
       .toMatchObject({ enabled: false, deleted_at: expect.any(Date) });
 
-    expect((await pool.query("SELECT count(*)::integer AS count FROM agent_skill_versions WHERE skill_id=$1", [skill.id])).rows[0]?.count)
-      .toBe(2);
     expect((await pool.query("SELECT count(*)::integer AS count FROM automation_versions WHERE automation_id=$1", [schedule.id])).rows[0]?.count)
       .toBe(2);
   });
@@ -267,7 +232,6 @@ describeMcpDatabase("MCP automation authoring role", () => {
   const adminPool = new Pool({ connectionString: databaseUrl });
   const mcpPool = new Pool({ connectionString: mcpDatabaseUrl });
   const automations = new AutomationRepository(mcpPool);
-  let skillId: string | undefined;
   let scheduleId: string | undefined;
 
   afterAll(async () => {
@@ -278,26 +242,12 @@ describeMcpDatabase("MCP automation authoring role", () => {
       await adminPool.query("ALTER TABLE cron_schedules ENABLE TRIGGER ALL");
       await adminPool.query("DELETE FROM automation_versions WHERE automation_id=$1", [scheduleId]);
     }
-    if (skillId) {
-      await adminPool.query("ALTER TABLE agent_skills DISABLE TRIGGER ALL");
-      await adminPool.query("DELETE FROM agent_skills WHERE id=$1", [skillId]);
-      await adminPool.query("ALTER TABLE agent_skills ENABLE TRIGGER ALL");
-      await adminPool.query("DELETE FROM agent_skill_versions WHERE skill_id=$1", [skillId]);
-    }
     await mcpPool.end();
     await adminPool.end();
   });
 
   test("creates and claims an automation without definition update privileges", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
-    const skill = await automations.createSkill({
-      name: `mcp-review-${suffix}`,
-      description: "Reviews project context. Use for an MCP-created scheduled review.",
-      instructions_markdown: "Review the current project and record decisions.",
-      commit_message: "Create MCP review skill",
-    }, { kind: "mcp", subject: "integration-test-client" });
-    skillId = skill.id;
-
     const schedule = await automations.createSchedule({
       name: `MCP schedule ${suffix}`,
       automation_key: `mcp-schedule-${suffix}`,
@@ -316,12 +266,6 @@ describeMcpDatabase("MCP automation authoring role", () => {
       cron_expression: "0 9 * * 1-5",
       timezone: "Europe/London",
     });
-    await expect(automations.updateSkill(skill.id, {
-      description: "Attempts an MCP update. Use only in this test.",
-      instructions_markdown: "Attempt an update.",
-      commit_message: "Attempt MCP skill update",
-      expected_version_number: 1,
-    }, { kind: "mcp", subject: "integration-test-client" })).rejects.toThrow();
     await expect(automations.updateSchedule(schedule.id, {
       name: `MCP schedule ${suffix}`,
       instructions_markdown: "Attempt an automation update.",

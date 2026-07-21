@@ -367,7 +367,7 @@ services:
       BACKUP_BUCKET: ${BACKUP_BUCKET}
       KMS_KEY_ID: ${KMS_KEY_ID}
       VERSION: ${VERSION}
-      SCHEMA_VERSION: 003_collapse_mcp_authorization.sql
+      SCHEMA_VERSION: 005_skills_as_knowledge.sql
       AWS_REGION: ${AWS_REGION}
       AWS_CONFIG_FILE: /etc/context-use/aws-config
       AWS_PROFILE: context-use-backup

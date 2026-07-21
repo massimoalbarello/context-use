@@ -78,20 +78,6 @@ export type InboundMessage = {
   created_at: string;
 };
 
-export type AgentSkill = {
-  id: string;
-  name: string;
-  current_version_id: string;
-  version_number: number;
-  description: string;
-  instructions_markdown: string;
-  skill_markdown: string;
-  commit_message: string;
-  version_created_at: string;
-  created_at: string;
-  updated_at: string;
-};
-
 export type CronSchedule = {
   id: string;
   name: string;

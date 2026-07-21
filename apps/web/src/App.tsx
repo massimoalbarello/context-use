@@ -9,11 +9,10 @@ import { Login } from "./components/Login.tsx";
 import { McpClients } from "./components/McpClients.tsx";
 import { OAuthConsent } from "./components/OAuthConsent.tsx";
 import { Settings, type PasskeySummary } from "./components/Settings.tsx";
-import { Skills } from "./components/Skills.tsx";
 import type { Asset, Page } from "./types.ts";
 
 type SessionInfo = { owner: { id: string; email: string }; passkey_count: number; passkeys: PasskeySummary[] };
-type Section = "knowledge" | "skills" | "automations" | "mcp" | "settings";
+type Section = "knowledge" | "automations" | "mcp" | "settings";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "context-use.sidebar.width.v1";
 const DEFAULT_SIDEBAR_WIDTH = 258;
@@ -33,7 +32,6 @@ function restoredSidebarWidth() {
 
 function SectionIcon({ section }: { section: Section }) {
   if (section === "knowledge") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 3.5h8a3 3 0 0 1 3 3v10h-8a3 3 0 0 1-3-3v-10Z" /><path d="M7.5 6.5h5M7.5 9.5h5M7.5 12.5h3" /></svg>;
-  if (section === "skills") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 1.25 4.25L15.5 7.5l-4.25 1.25L10 13l-1.25-4.25L4.5 7.5l4.25-1.25L10 2Z" /><path d="m15.5 12 .65 2.35L18.5 15l-2.35.65L15.5 18l-.65-2.35L12.5 15l2.35-.65L15.5 12Z" /></svg>;
   if (section === "automations") return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.25A6.75 6.75 0 1 0 16.75 10" /><path d="M10 6v4l2.75 1.5M14 3.25h2.75V6" /></svg>;
   if (section === "mcp") return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="6" r="2" /><circle cx="15" cy="6" r="2" /><circle cx="10" cy="15" r="2" /><path d="m6.75 7 2.2 5.25M13.25 7l-2.2 5.25M7 6h6" /></svg>;
   return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.5" /><path d="M16.5 11.5v-3l-2-.5a5.1 5.1 0 0 0-.7-1.2l.55-2-2.6-1.5-1.45 1.45a5.3 5.3 0 0 0-1.4 0L7.45 3.3l-2.6 1.5.55 2A5.1 5.1 0 0 0 4.7 8l-2 .5v3l2 .5c.18.43.42.84.7 1.2l-.55 2 2.6 1.5 1.45-1.45a5.3 5.3 0 0 0 1.4 0l1.45 1.45 2.6-1.5-.55-2c.28-.36.52-.77.7-1.2l2-.5Z" /></svg>;
@@ -50,7 +48,6 @@ function selectionFromLocation(): KnowledgeSelection | null {
 
 function sectionFromLocation(): Section {
   if (window.location.pathname === "/app/settings") return "settings";
-  if (window.location.pathname === "/app/skills") return "skills";
   if (window.location.pathname === "/app/automations") return "automations";
   if (window.location.pathname === "/app/mcp") return "mcp";
   return "knowledge";
@@ -162,11 +159,6 @@ export function App() {
     history.pushState({}, "", "/app/automations");
   };
 
-  const openSkills = () => {
-    setSection("skills");
-    history.pushState({}, "", "/app/skills");
-  };
-
   const openMcpClients = () => {
     setSection("mcp");
     history.pushState({}, "", "/app/mcp");
@@ -198,7 +190,6 @@ export function App() {
       <div className="sidebar-brand"><div className="brand-mark small">cu</div><div><strong>context-use</strong><span>Private workspace</span></div></div>
       <nav className="sidebar-section-nav">
         <button className={`mobile-knowledge-nav${section === "knowledge" ? " active" : ""}`} onClick={openKnowledge}><SectionIcon section="knowledge" /><span>Knowledge</span></button>
-        <button className={section === "skills" ? "active" : ""} onClick={openSkills}><SectionIcon section="skills" /><span>Skills</span></button>
         <button className={section === "automations" ? "active" : ""} onClick={openAutomations}><SectionIcon section="automations" /><span>Automations</span></button>
         <button className={section === "mcp" ? "active" : ""} onClick={openMcpClients}><SectionIcon section="mcp" /><span>MCP clients</span></button>
       </nav>
@@ -223,7 +214,7 @@ export function App() {
       onKeyDown={resizeSidebarWithKeyboard}
       onDoubleClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
     />
-    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "skills" ? <Skills /> : section === "automations" ? <Automations /> : section === "mcp" ? <McpClients /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Browse durable knowledge managed through your authenticated MCP connection. Your content stays private until you explicitly publish an exact version.</p><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-managed</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
+    {section === "settings" ? <Settings passkeys={session.passkeys} /> : section === "automations" ? <Automations /> : section === "mcp" ? <McpClients /> : selected?.kind === "page" ? <Editor pageId={selected.id} onChanged={loadPages} /> : selectedAsset ? <AssetDetails key={selectedAsset.id} asset={selectedAsset} onChanged={loadAssets} onDeleted={async () => { setSelected(null); history.pushState({}, "", "/app"); await loadAssets(); setMessage("Asset deleted. S3 versioning retains a recoverable noncurrent copy for the configured safety period."); }} /> : <main className="editor-empty"><div className="empty-content"><span className="empty-kicker"><i />Private by default</span><h1>Your context,<br />ready when you need it.</h1><p>Browse durable knowledge managed through your authenticated MCP connection. Your content stays private until you explicitly publish an exact version.</p><div className="empty-details"><span>Markdown-native</span><span>Versioned history</span><span>Agent-managed</span></div></div><div className="empty-sigil" aria-hidden="true"><span>c</span><span>u</span></div></main>}
     {message && <div className="toast">{message}</div>}
   </div>;
 }

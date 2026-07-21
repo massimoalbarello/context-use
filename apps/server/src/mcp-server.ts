@@ -9,7 +9,6 @@ import {
   archivePageSchema,
   assetUploadSchema,
   createAutomationPageSchema,
-  createSkillSchema,
   createCronScheduleSchema,
   createPageSchema,
   updateAutomationPageSchema,
@@ -28,7 +27,7 @@ const jsonContent = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
 
-export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Store information whose subject is the owner under about/; create about/intro if it is missing so it can become the concise public introduction. Keep it private by default and ask the owner to review and publish it if they want the landing page to introduce them, because agents cannot publish. Keep other entities such as people, companies, and events in separate top-level folders outside about/.";
+export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Store information whose subject is the owner under about/; create about/intro if it is missing so it can become the concise public introduction. Keep it private by default and ask the owner to review and publish it if they want the landing page to introduce them, because agents cannot publish. Keep other entities such as people, companies, and events in separate top-level folders outside about/. Discover reusable Agent Skills by listing pages under skills/; each skills/<skill-name> page is a complete standard SKILL.md document.";
 
 export function createMcpServer(
   context: McpContext,
@@ -183,37 +182,6 @@ export function createMcpServer(
         expires_at: capability.expiresAt,
       },
     });
-  });
-
-  server.registerTool("list_skills", {
-    description: "List skill names and short descriptions for discovery without loading full instructions.",
-    inputSchema: z.object({}).strict(),
-    annotations: { readOnlyHint: true },
-  }, async () => {
-    const skills = await automations.listSkills();
-    return jsonContent(skills.map(({ id, name, description, current_version_id, version_number }) => ({
-      id,
-      name,
-      description,
-      current_version_id,
-      version_number,
-    })));
-  });
-
-  server.registerTool("get_skill", {
-    description: "Load one current, reusable SKILL.md document after its metadata indicates that it is relevant.",
-    inputSchema: z.object({ skill_id: z.string().uuid() }).strict(),
-    annotations: { readOnlyHint: true },
-  }, async ({ skill_id }) => {
-    return jsonContent(await automations.getSkill(skill_id));
-  });
-
-  server.registerTool("create_skill", {
-    description: "Create a private, versioned Agent Skill with standard name and description metadata.",
-    inputSchema: createSkillSchema,
-    annotations: { destructiveHint: false },
-  }, async (input) => {
-    return jsonContent(await automations.createSkill(input, actor));
   });
 
   server.registerTool("create_automation", {

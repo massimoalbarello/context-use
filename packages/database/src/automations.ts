@@ -1,9 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
   Actor,
-  CreateSkillInput,
   CreateCronScheduleInput,
-  UpdateSkillInput,
   UpdateCronScheduleInput,
 } from "@context-use/shared";
 import { Cron } from "croner";
@@ -21,10 +19,6 @@ export const AUTOMATION_RUN_EXECUTION_CONTEXT = `## Execution context
 
 You are executing this as a **claimed Context Use automation run**. \`claim_due_run\` gave you a \`run_id\`, \`claim_token\`, and this automation's **dedicated knowledge path**. If the automation instructions call for a persistent page, create it with \`create_automation_page\` (or use \`update_automation_page\` when the target page already exists), passing the \`run_id\` and \`claim_token\`. Do not create a page when the automation instructions do not call for one. Generic writes are disabled during the claim. Automation-created pages are private by default and can later be edited or archived through the ordinary page tools; only the owner can publish from the dashboard with a passkey. When calling \`complete_run\`, omit \`result_summary\` if the status and any page output are sufficient; otherwise use one or two sentences only to say what changed and where. Never copy page contents into the summary. Finish with \`complete_run\` (or \`fail_run\`). Read [[about/intro]] first; hold as context.`;
 
-function skillMarkdown(name: string, description: string, instructions: string): string {
-  return `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${instructions}`;
-}
-
 export function hasAutomationExecutionContext(instructions: string): boolean {
   let fence: "`" | "~" | null = null;
 
@@ -41,17 +35,6 @@ export function hasAutomationExecutionContext(instructions: string): boolean {
     }
   }
   return false;
-}
-
-function withSkillMarkdown<T extends {
-  name: string;
-  description: string;
-  instructions_markdown: string;
-}>(skill: T) {
-  return {
-    ...skill,
-    skill_markdown: skillMarkdown(skill.name, skill.description, skill.instructions_markdown),
-  };
 }
 
 export function automationRunInstructionsMarkdown(instructions: string): string {
@@ -77,8 +60,8 @@ export class AutomationValidationError extends Error {
 }
 
 export class AutomationVersionConflictError extends Error {
-  constructor(readonly currentVersion: number, entity: "Automation" | "Skill" = "Automation") {
-    super(`${entity} changed; current version is ${currentVersion}`);
+  constructor(readonly currentVersion: number) {
+    super(`Automation changed; current version is ${currentVersion}`);
     this.name = "AutomationVersionConflictError";
   }
 }
@@ -155,85 +138,8 @@ async function materializeDueRuns(client: PoolClient, now: Date): Promise<void> 
   }
 }
 
-const SKILL_SELECT = `
-  SELECT skill.id,skill.name,skill.current_version_id,skill.created_at,skill.updated_at,
-    version.version_number,version.description,version.instructions_markdown,version.commit_message,
-    version.created_at AS version_created_at
-  FROM agent_skills skill
-  JOIN agent_skill_versions version ON version.id=skill.current_version_id AND version.skill_id=skill.id
-`;
-
 export class AutomationRepository {
   constructor(private readonly pool: Pool) {}
-
-  async listSkills() {
-    const result = await this.pool.query(`${SKILL_SELECT} WHERE skill.deleted_at IS NULL ORDER BY lower(skill.name)`);
-    return result.rows.map(withSkillMarkdown);
-  }
-
-  async getSkill(skillId: string) {
-    const result = await this.pool.query(`${SKILL_SELECT} WHERE skill.id=$1 AND skill.deleted_at IS NULL`, [skillId]);
-    return result.rows[0] ? withSkillMarkdown(result.rows[0]) : null;
-  }
-
-  async createSkill(input: CreateSkillInput, actor: Actor) {
-    return transaction(this.pool, async (client) => {
-      const skillId = randomUUID();
-      const versionId = randomUUID();
-      await client.query(
-        `INSERT INTO agent_skills(id,name,current_version_id) VALUES ($1,$2,$3)`,
-        [skillId, input.name, versionId],
-      );
-      await client.query(
-        `INSERT INTO agent_skill_versions(
-           id,skill_id,version_number,description,instructions_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,$3,$4,$5,$6,$7)`,
-        [versionId, skillId, input.description, input.instructions_markdown, input.commit_message, actor.kind, actor.subject],
-      );
-      const result = await client.query(`${SKILL_SELECT} WHERE skill.id=$1`, [skillId]);
-      return withSkillMarkdown(result.rows[0]);
-    });
-  }
-
-  async updateSkill(skillId: string, input: UpdateSkillInput, actor: Actor) {
-    return transaction(this.pool, async (client) => {
-      const current = await client.query<{ current_version_id: string; version_number: number }>(
-        `SELECT skill.current_version_id,version.version_number
-         FROM agent_skills skill
-         JOIN agent_skill_versions version ON version.id=skill.current_version_id
-         WHERE skill.id=$1 AND skill.deleted_at IS NULL FOR UPDATE OF skill`,
-        [skillId],
-      );
-      if (!current.rowCount) return null;
-      const row = current.rows[0]!;
-      if (row.version_number !== input.expected_version_number) {
-        throw new AutomationVersionConflictError(row.version_number, "Skill");
-      }
-      const versionId = randomUUID();
-      await client.query(
-        `INSERT INTO agent_skill_versions(
-           id,skill_id,version_number,description,instructions_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [versionId, skillId, row.version_number + 1, input.description, input.instructions_markdown, input.commit_message, actor.kind, actor.subject],
-      );
-      await client.query(
-        `UPDATE agent_skills SET current_version_id=$2,updated_at=now() WHERE id=$1`,
-        [skillId, versionId],
-      );
-      const result = await client.query(`${SKILL_SELECT} WHERE skill.id=$1`, [skillId]);
-      return withSkillMarkdown(result.rows[0]);
-    });
-  }
-
-  async deleteSkill(skillId: string) {
-    const deleted = await this.pool.query(
-      `UPDATE agent_skills SET deleted_at=now(),updated_at=now()
-       WHERE id=$1 AND deleted_at IS NULL
-       RETURNING id,deleted_at`,
-      [skillId],
-    );
-    return deleted.rows[0] ?? null;
-  }
 
   async listSchedules() {
     const result = await this.pool.query(

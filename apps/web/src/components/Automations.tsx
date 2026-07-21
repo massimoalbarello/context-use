@@ -320,7 +320,7 @@ export function Automations() {
           setAutomationKey(event.target.value);
           setAutomationKeyEdited(true);
         }} placeholder="morning-context-review" /><small>Pages will live under <code>automations/{automationKey || "your-key"}</code>. This key cannot be changed later.</small></label>
-        <label>Instructions<textarea required rows={10} value={scheduleInstructions} onChange={(event) => setScheduleInstructions(event.target.value)} placeholder="Describe the scheduled workflow and expected result…" /><small>These instructions belong only to this automation and are not exposed through skill discovery.</small></label>
+        <label>Instructions<textarea required rows={10} value={scheduleInstructions} onChange={(event) => setScheduleInstructions(event.target.value)} placeholder="Describe the scheduled workflow and expected result…" /><small>Context Use adds claim handling, knowledge persistence, and completion rules only when this automation runs.</small></label>
         <div className="form-row"><label>Cron expression<input required value={cronExpression} onChange={(event) => setCronExpression(event.target.value)} /></label><label>Time zone<input required value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label></div>
         <label>Input JSON<textarea rows={4} value={scheduleInput} onChange={(event) => setScheduleInput(event.target.value)} /></label>
         <p className="form-note">The semantic knowledge key is permanent; the automation UUID remains internal provenance metadata.</p>

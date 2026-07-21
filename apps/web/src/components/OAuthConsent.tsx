@@ -3,7 +3,7 @@ import { api } from "../api.ts";
 import { authClient } from "../auth-client.ts";
 
 const SCOPE_DESCRIPTIONS: Record<string, string> = {
-  "mcp:access": "Read and manage private knowledge, assets, skills, and automations through MCP",
+  "mcp:access": "Read and manage private knowledge, assets, and automations through MCP",
   offline_access: "Remain connected when you are away",
   openid: "Identify your owner account",
 };

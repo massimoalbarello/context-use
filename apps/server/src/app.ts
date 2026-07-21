@@ -16,11 +16,9 @@ import {
 import {
   assetUploadSchema,
   archivePageSchema,
-  createSkillSchema,
   createCronScheduleSchema,
   createPageSchema,
   publicationIntentSchema,
-  updateSkillSchema,
   updateCronScheduleSchema,
   updatePageSchema,
 } from "@context-use/shared";
@@ -267,30 +265,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
         "content-disposition": `attachment; filename="context-use-export-${date}.zip"`,
       },
     });
-  })
-  .get("/api/dashboard/skills", async ({ request }) => {
-    await ownerRequest(request);
-    return json(await dashboardAutomations.listSkills());
-  })
-  .post("/api/dashboard/skills", async ({ request }) => {
-    const principal = await ownerRequest(request, true);
-    const input = createSkillSchema.parse(await bodyJson(request));
-    return json(await dashboardAutomations.createSkill(input, { kind: "dashboard", subject: principal.userId }), 201);
-  })
-  .put("/api/dashboard/skills/:id", async ({ request, params }) => {
-    const principal = await ownerRequest(request, true);
-    const input = updateSkillSchema.parse(await bodyJson(request));
-    const skill = await dashboardAutomations.updateSkill(
-      z.string().uuid().parse(params.id),
-      input,
-      { kind: "dashboard", subject: principal.userId },
-    );
-    return skill ? json(skill) : problem("Skill not found", 404, "not_found");
-  })
-  .delete("/api/dashboard/skills/:id", async ({ request, params }) => {
-    await ownerRequest(request, true);
-    const skill = await dashboardAutomations.deleteSkill(z.string().uuid().parse(params.id));
-    return skill ? json({ deleted: true }) : problem("Skill not found", 404, "not_found");
   })
   .get("/api/dashboard/automations/schedules", async ({ request }) => {
     await ownerRequest(request);
