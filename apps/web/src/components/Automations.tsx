@@ -192,7 +192,7 @@ export function Automations() {
       setAutomationKeyEdited(false);
       setScheduleInstructions("");
       setScheduleInput("{}");
-      setMessage(`Automation created. Generated pages are confined to ${created.knowledge_path}.`);
+      setMessage(`Automation created. Its instructions live at ${created.instructions_path}.`);
       await load(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not create automation");
@@ -266,7 +266,7 @@ export function Automations() {
   };
 
   return <main className="content-page automations-page">
-    <header><div><span className="eyebrow">Scheduled agent work</span><h1>Automations</h1><p>Each automation owns its instructions, cron trigger, durable versioned run history, and isolated semantic knowledge folder.</p></div></header>
+    <header><div><span className="eyebrow">Scheduled agent work</span><h1>Automations</h1><p>Each automation owns a knowledge page for its instructions, a cron trigger, durable run history, and an isolated semantic knowledge folder.</p></div></header>
     {message && <div className="automation-message">{message}</div>}
 
     <section className="worker-card">
@@ -286,20 +286,20 @@ export function Automations() {
 
     <section>
       <div className="section-heading"><div><h2>Available and claimed runs</h2><p>Expired claims remain available for the next polling agent.</p></div></div>
-      {loading ? <p>Loading runs…</p> : activeRuns.length === 0 ? <p className="empty-note">Nothing is waiting for an agent.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Instructions</th><th>Scheduled</th><th>Lease expires</th><th>Agent</th></tr></thead><tbody>{activeRuns.map((run) => {
+      {loading ? <p>Loading runs…</p> : activeRuns.length === 0 ? <p className="empty-note">Nothing is waiting for an agent.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Scheduled</th><th>Lease expires</th><th>Agent</th></tr></thead><tbody>{activeRuns.map((run) => {
         const displayStatus = automationRunDisplayStatus(run);
-        return <tr key={run.id}><td><span className={`run-status ${displayStatus}`}>{displayStatus === "expired" ? "claim expired" : displayStatus}</span>{displayStatus === "expired" && <small>Available for reclaim</small>}</td><td>{run.schedule_name}</td><td>v{run.automation_version_number}</td><td>{formatDate(run.scheduled_for)}</td><td>{formatDate(run.lease_expires_at)}</td><td>{run.claimed_by ?? "—"}</td></tr>;
+        return <tr key={run.id}><td><span className={`run-status ${displayStatus}`}>{displayStatus === "expired" ? "claim expired" : displayStatus}</span>{displayStatus === "expired" && <small>Available for reclaim</small>}</td><td>{run.schedule_name}</td><td>{formatDate(run.scheduled_for)}</td><td>{formatDate(run.lease_expires_at)}</td><td>{run.claimed_by ?? "—"}</td></tr>;
       })}</tbody></table></div>}
     </section>
 
     <section>
       <div className="section-heading"><div><h2>Automations</h2><p>Cron is the trigger; every row also owns one immutable knowledge location.</p></div></div>
       {schedules.length === 0 ? <p className="empty-note">No automations yet.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Automation</th><th>Instructions</th><th>Schedule</th><th>Knowledge location</th><th>Next run</th><th>State</th><th></th></tr></thead><tbody>{schedules.map((schedule) => <Fragment key={schedule.id}>
-        <tr><td><strong>{schedule.name}</strong></td><td>v{schedule.automation_version_number}</td><td><code>{schedule.cron_expression}</code><small>{schedule.timezone}</small></td><td className="knowledge-location"><code>{schedule.knowledge_path}</code><small>{schedule.generated_page_count} page{schedule.generated_page_count === 1 ? "" : "s"}</small></td><td>{formatDate(schedule.next_run_at)}</td><td><span className={`run-status ${schedule.enabled ? "succeeded" : "disabled"}`}>{schedule.enabled ? "enabled" : "paused"}</span></td><td><div className="table-actions"><button onClick={() => startEditing(schedule)}>Edit</button><button onClick={() => saveSchedule(schedule, { enabled: !schedule.enabled }).then(() => setMessage(schedule.enabled ? "Automation paused." : "Automation enabled.")).catch((error: Error) => setMessage(error.message))}>{schedule.enabled ? "Pause" : "Enable"}</button><button className="danger-text" onClick={() => { setEditingScheduleId(null); setDeletingScheduleId(schedule.id); setMessage(""); }}>Delete</button></div></td></tr>
+        <tr><td><strong>{schedule.name}</strong></td><td><a href={`/app/pages/${schedule.instructions_page_id}`}>v{schedule.instructions_version_number}</a><small><code>{schedule.instructions_path}</code></small></td><td><code>{schedule.cron_expression}</code><small>{schedule.timezone}</small></td><td className="knowledge-location"><code>{schedule.knowledge_path}</code><small>{schedule.generated_page_count} generated page{schedule.generated_page_count === 1 ? "" : "s"}</small></td><td>{formatDate(schedule.next_run_at)}</td><td><span className={`run-status ${schedule.enabled ? "succeeded" : "disabled"}`}>{schedule.enabled ? "enabled" : "paused"}</span></td><td><div className="table-actions"><button onClick={() => startEditing(schedule)}>Edit</button><button onClick={() => saveSchedule(schedule, { enabled: !schedule.enabled }).then(() => setMessage(schedule.enabled ? "Automation paused." : "Automation enabled.")).catch((error: Error) => setMessage(error.message))}>{schedule.enabled ? "Pause" : "Enable"}</button><button className="danger-text" onClick={() => { setEditingScheduleId(null); setDeletingScheduleId(schedule.id); setMessage(""); }}>Delete</button></div></td></tr>
         {editingScheduleId === schedule.id && <tr className="automation-action-row"><td colSpan={7}><form className="inline-dashboard-form automation-inline-editor" onSubmit={(event) => updateSchedule(event, schedule)}>
           <div className="inline-form-heading"><div><strong>Edit {schedule.name}</strong><span>The generated-knowledge location will not change.</span></div></div>
           <label>Name<input required maxLength={160} value={editScheduleName} onChange={(event) => setEditScheduleName(event.target.value)} /></label>
-          <label>Instructions<textarea required rows={10} value={editScheduleInstructions} onChange={(event) => setEditScheduleInstructions(event.target.value)} /><small>Context Use adds claim handling, knowledge persistence, and completion rules only when this automation runs.</small></label>
+          <label>Instructions<textarea required rows={10} value={editScheduleInstructions} onChange={(event) => setEditScheduleInstructions(event.target.value)} /><small>Saved as <code>{schedule.instructions_path}</code>. Context Use adds claim handling, knowledge persistence, and completion rules only when this automation runs.</small></label>
           <label>Change note<input required minLength={3} maxLength={240} value={editCommitMessage} onChange={(event) => setEditCommitMessage(event.target.value)} /></label>
           <div className="form-row"><label>Cron expression<input required value={editCronExpression} onChange={(event) => setEditCronExpression(event.target.value)} /></label><label>Time zone<input required value={editTimezone} onChange={(event) => setEditTimezone(event.target.value)} /></label></div>
           <label>Input JSON<textarea rows={5} value={editScheduleInput} onChange={(event) => setEditScheduleInput(event.target.value)} /></label>
@@ -320,7 +320,7 @@ export function Automations() {
           setAutomationKey(event.target.value);
           setAutomationKeyEdited(true);
         }} placeholder="morning-context-review" /><small>Pages will live under <code>automations/{automationKey || "your-key"}</code>. This key cannot be changed later.</small></label>
-        <label>Instructions<textarea required rows={10} value={scheduleInstructions} onChange={(event) => setScheduleInstructions(event.target.value)} placeholder="Describe the scheduled workflow and expected result…" /><small>Context Use adds claim handling, knowledge persistence, and completion rules only when this automation runs.</small></label>
+        <label>Instructions<textarea required rows={10} value={scheduleInstructions} onChange={(event) => setScheduleInstructions(event.target.value)} placeholder="Describe the scheduled workflow and expected result…" /><small>Saved as a permanently private knowledge page at <code>automations/{automationKey || "your-key"}/instructions</code>, where it can link to other knowledge pages. Runtime claim handling is added only when the automation runs.</small></label>
         <div className="form-row"><label>Cron expression<input required value={cronExpression} onChange={(event) => setCronExpression(event.target.value)} /></label><label>Time zone<input required value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label></div>
         <label>Input JSON<textarea rows={4} value={scheduleInput} onChange={(event) => setScheduleInput(event.target.value)} /></label>
         <p className="form-note">The semantic knowledge key is permanent; the automation UUID remains internal provenance metadata.</p>
@@ -331,7 +331,7 @@ export function Automations() {
     <section>
       <div className="section-heading"><div><h2>Recent runs</h2><p>An outcome is a short completion note or failure reason. Full generated content stays in the automation’s knowledge pages.</p></div></div>
       {loading && recentRuns.length === 0 ? <p className="empty-note">Loading completed runs…</p> : recentRuns.length === 0 ? <p className="empty-note">No completed runs yet.</p> : <>
-        <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Instructions</th><th>Completed</th><th>Outcome</th></tr></thead><tbody>{recentRuns.map((run) => <tr key={run.id}><td><span className={`run-status ${run.status}`}>{run.status}</span></td><td>{run.schedule_name}</td><td>v{run.automation_version_number}</td><td>{formatDate(run.completed_at)}</td><RunOutcome run={run} /></tr>)}</tbody></table></div>
+        <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Status</th><th>Automation</th><th>Completed</th><th>Outcome</th></tr></thead><tbody>{recentRuns.map((run) => <tr key={run.id}><td><span className={`run-status ${run.status}`}>{run.status}</span></td><td>{run.schedule_name}</td><td>{formatDate(run.completed_at)}</td><RunOutcome run={run} /></tr>)}</tbody></table></div>
         <div className="recent-runs-pagination" ref={olderRunsSentinel} aria-live="polite">
           {nextCompletedRunCursor ? <>
             <span>Showing {recentRuns.length} of {completedRunTotals.succeeded + completedRunTotals.failed} completed runs.</span>

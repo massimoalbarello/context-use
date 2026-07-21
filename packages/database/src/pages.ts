@@ -70,6 +70,10 @@ async function insertAssetLinks(
 const CURRENT_PAGE_SELECT = `
   SELECT p.id, p.current_path, p.current_version_id, p.published_version_id,
     p.public_path, p.automation_id, p.archived_at,
+    EXISTS (
+      SELECT 1 FROM cron_schedules schedule
+      WHERE schedule.instructions_page_id=p.id
+    ) AS automation_instructions,
     p.created_at, p.updated_at,
     v.version_number, v.title, v.body_markdown
   FROM knowledge_pages p

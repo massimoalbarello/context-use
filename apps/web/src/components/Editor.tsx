@@ -53,6 +53,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
   const publishedVersionNumber = publishedVersion?.version_number;
   const hasUnpublishedChanges = isPublishedPageOutdated(page);
   const automationCreated = Boolean(page.automation_id);
+  const automationInstructions = page.automation_instructions;
 
   const edit = () => {
     setDraft({ path: page.current_path, title: page.title, body_markdown: page.body_markdown });
@@ -133,12 +134,12 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
     <header className="editor-header">
       <div><span className="path">{page.current_path}</span><h1>{page.title}</h1></div>
       <div className="button-row">
-        <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_path}` : automationCreated ? "Private · Automation-created" : "Private"}</span>
+        <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_path}` : automationInstructions ? "Private · Automation instructions" : automationCreated ? "Private · Automation-created" : "Private"}</span>
         {page.published_version_id && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public ↗</a>}
         {!page.archived_at && !page.published_version_id && <button onClick={() => { setArchiveCommit(""); setArchiveError(""); setArchiveOpen(true); }}>Archive</button>}
-        {!page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
-        {!page.archived_at && page.published_version_id && <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>}
-        {!page.archived_at && page.published_version_id && hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish latest</button>}
+        {!automationInstructions && !page.archived_at && !page.published_version_id && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish</button>}
+        {!automationInstructions && !page.archived_at && page.published_version_id && <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>}
+        {!automationInstructions && !page.archived_at && page.published_version_id && hasUnpublishedChanges && <button className="primary" onClick={() => setPublishingVersion(page.version_number)}>Publish latest</button>}
       </div>
     </header>
     {hasUnpublishedChanges && <div className="publication-notice pending publication-alert" role="status">
@@ -154,7 +155,8 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
         Edit
       </button>}
     </nav>}
-    {!isEditing && automationCreated && <div className="automation-owned-notice"><strong>Created by an automation</strong><span>This page now follows the same lifecycle as any other page: edit or archive it here, and publish only after dashboard passkey confirmation.</span></div>}
+    {!isEditing && automationInstructions && <div className="automation-owned-notice"><strong>Automation instructions</strong><span>This page can be edited and versioned like other knowledge, but it is permanently private. It can also be managed from Automations or by a valid run claim.</span></div>}
+    {!isEditing && automationCreated && !automationInstructions && <div className="automation-owned-notice"><strong>Created by an automation</strong><span>This page now follows the same lifecycle as any other page: edit or archive it here, and publish only after dashboard passkey confirmation.</span></div>}
     {isEditing && <section className="edit-grid">
       <div className="edit-top">
         {page.published_version_id && !hasUnpublishedChanges && <div className="publication-notice">
@@ -180,7 +182,7 @@ export function Editor({ pageId, onChanged }: { pageId: string; onChanged: () =>
             <span className="commit-message">{version.commit_message}</span>
             <span>{version.actor_kind} · {new Date(version.created_at).toLocaleString()}</span>
           </div>
-          {!page.archived_at && <div className="version-actions">
+          {!automationInstructions && !page.archived_at && <div className="version-actions">
             {isPublished && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public</a>}
             {isPublished
               ? <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>
