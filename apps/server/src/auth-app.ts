@@ -135,6 +135,10 @@ export const authApp = new Elysia()
     const principal = await ownerRequest(request, true);
     return forwardBrowserConfirmation("knowledge_export", await bodyJson(request), principal);
   })
+  .post("/api/dashboard/page-deletions/confirm", async ({ request }) => {
+    const principal = await ownerRequest(request, true);
+    return forwardBrowserConfirmation("page_deletion", await bodyJson(request), principal);
+  })
   .get("/api/dashboard/private-mcp-clients", async ({ request, query }) => {
     const principal = await ownerRequest(request);
     const page = clientPageNumber.parse(query.page);

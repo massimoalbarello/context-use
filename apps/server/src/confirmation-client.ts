@@ -1,8 +1,9 @@
+import type { ConfirmationIntentKind } from "@context-use/database";
 import type { DashboardPrincipal } from "./auth-client.ts";
 import { config } from "./config.ts";
 
 export async function issueConfirmationOptions(
-  kind: "publication" | "knowledge_export",
+  kind: ConfirmationIntentKind,
   intentId: string,
 ): Promise<unknown> {
   const endpoint = config.CONFIRMATION_INTERNAL_URL;

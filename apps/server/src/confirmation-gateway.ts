@@ -1,8 +1,9 @@
+import type { ConfirmationIntentKind } from "@context-use/database";
 import type { DashboardPrincipal } from "./auth-client.ts";
 import { config } from "./config.ts";
 
 export async function forwardBrowserConfirmation(
-  kind: "publication" | "knowledge_export",
+  kind: ConfirmationIntentKind,
   confirmation: unknown,
   principal: DashboardPrincipal,
 ): Promise<Response> {

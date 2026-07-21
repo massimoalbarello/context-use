@@ -51,7 +51,7 @@ describeDatabase("PostgreSQL security roles", () => {
   }
 
   async function issueChallenge(
-    kind: "publication" | "knowledge_export",
+    kind: "publication" | "knowledge_export" | "page_deletion",
     intentId: string,
     value = challenge(),
   ): Promise<string> {
@@ -79,12 +79,32 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
+  test("full-text search indexes only the current page projection", async () => {
+    const indexes = await admin.query<{ current_index: string | null; historical_index: string | null }>(
+      `SELECT to_regclass('knowledge_pages_search_idx')::text AS current_index,
+              to_regclass('knowledge_page_versions_search_idx')::text AS historical_index`,
+    );
+    expect(indexes.rows[0]).toEqual({
+      current_index: "knowledge_pages_search_idx",
+      historical_index: null,
+    });
+    expect((await admin.query(
+      `SELECT 1 FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='knowledge_pages' AND column_name='search_vector'`,
+    )).rowCount).toBe(1);
+    expect((await admin.query(
+      `SELECT 1 FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='knowledge_page_versions' AND column_name='search_vector'`,
+    )).rowCount).toBe(0);
+  });
+
   test("only confirmation role can issue challenges and execute visibility procedures", async () => {
     const functions = [
       "issue_confirmation_challenge(confirmation_intent_kind,uuid,text)",
       "confirm_publication_intent(uuid,text,text,text,integer,integer)",
+      "confirm_page_deletion_intent(uuid,text,text,text,integer,integer)",
     ];
-    for (const role of ["context_use_mcp", "context_use_dashboard", "context_use_public", "context_use_auth"]) {
+    for (const role of ["context_use_mcp", "context_use_dashboard", "context_use_public", "context_use_auth", "context_use_storage", "context_use_backup"]) {
       for (const fn of functions) {
         const result = await admin.query<{ allowed: boolean }>(
           "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed",
@@ -99,6 +119,64 @@ describeDatabase("PostgreSQL security roles", () => {
         [fn],
       );
       expect(confirmation.rows[0]?.allowed).toBe(true);
+    }
+  });
+
+  test("page writers can invoke fixed retention without receiving history deletion access", async () => {
+    for (const role of ["context_use_dashboard", "context_use_mcp"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,'prune_page_versions(uuid)','EXECUTE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(true);
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege($1,'knowledge_page_versions','DELETE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    for (const role of ["context_use_auth", "context_use_public", "context_use_confirmation", "context_use_storage"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,'prune_page_versions(uuid)','EXECUTE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+    }
+  });
+
+  test("only the dashboard can stage a permanent page deletion", async () => {
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_any_column_privilege('context_use_dashboard','page_deletion_intents','INSERT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    for (const role of ["context_use_auth", "context_use_mcp", "context_use_public", "context_use_confirmation", "context_use_storage", "context_use_backup"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_any_column_privilege($1,'page_deletion_intents','INSERT') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    const pageId = randomUUID();
+    const versionId = randomUUID();
+    await admin.query("BEGIN");
+    try {
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,archived_at)
+         VALUES ($1,'test/dashboard-deletion-intent',$2,now())`,
+        [pageId, versionId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'test/dashboard-deletion-intent','Delete','Body','Create fixture','dashboard','owner')`,
+        [versionId, pageId],
+      );
+      const insert = `INSERT INTO page_deletion_intents(
+          id,page_id,expected_version_id,owner_user_id,session_id,expires_at
+        ) VALUES ($1,$2,$3,'context-use-owner','session',now()+interval '5 minutes')`;
+      await admin.query("SET LOCAL ROLE context_use_dashboard");
+      await admin.query(insert, [randomUUID(), pageId, versionId]);
+      await admin.query("RESET ROLE");
+      await admin.query("SET LOCAL ROLE context_use_mcp");
+      await expectDenied(insert, [randomUUID(), pageId, versionId]);
+      await admin.query("RESET ROLE");
+    } finally {
+      await admin.query("ROLLBACK");
     }
   });
 
@@ -250,7 +328,9 @@ describeDatabase("PostgreSQL security roles", () => {
            'consume_confirmation_challenge',
            'confirm_publication_intent',
            'confirm_knowledge_export_intent',
+           'confirm_page_deletion_intent',
            'claim_knowledge_export_download',
+           'prune_page_versions',
            'project_public_markdown'
          )
        ORDER BY proname`,
@@ -258,10 +338,12 @@ describeDatabase("PostgreSQL security roles", () => {
     expect(procedures.rows).toEqual([
       { proname: "claim_knowledge_export_download", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_knowledge_export_intent", owner: "context_use_boundary_owner", security_definer: true },
+      { proname: "confirm_page_deletion_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_publication_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "consume_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "issue_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "project_public_markdown", owner: "context_use_projection_owner", security_definer: true },
+      { proname: "prune_page_versions", owner: "context_use_boundary_owner", security_definer: true },
     ]);
 
     for (const [relation, column] of [
@@ -341,12 +423,93 @@ describeDatabase("PostgreSQL security roles", () => {
          ) VALUES ($1,'not-the-owner','session',now()+interval '5 minutes')`,
         [randomUUID()],
       );
+      const pageId = randomUUID();
+      const versionId = randomUUID();
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,archived_at)
+         VALUES ($1,'test/deletion-intent-constraints',$2,now())`,
+        [pageId, versionId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'test/deletion-intent-constraints','Delete','Body','Create fixture','dashboard','owner')`,
+        [versionId, pageId],
+      );
+      await expectDenied(
+        `INSERT INTO page_deletion_intents(
+           id,page_id,expected_version_id,owner_user_id,session_id,expires_at
+         ) VALUES ($1,$2,$3,'not-the-owner','session',now()+interval '5 minutes')`,
+        [randomUUID(), pageId, versionId],
+      );
+      await expectDenied(
+        `INSERT INTO page_deletion_intents(
+           id,page_id,expected_version_id,owner_user_id,session_id,expires_at
+         ) VALUES ($1,$2,$3,'context-use-owner','session',now()+interval '5 minutes 1 second')`,
+        [randomUUID(), pageId, versionId],
+      );
       await expectDenied(
         `INSERT INTO knowledge_export_intents(
            id,owner_user_id,session_id,expires_at
          ) VALUES ($1,'context-use-owner','session',now()+interval '5 minutes 1 second')`,
         [randomUUID()],
       );
+    } finally {
+      await admin.query("ROLLBACK");
+    }
+  });
+
+  test("only passkey confirmation can permanently delete an archived page and its versions", async () => {
+    const pageId = randomUUID();
+    const firstVersionId = randomUUID();
+    const currentVersionId = randomUUID();
+    const intentId = randomUUID();
+    await admin.query("BEGIN");
+    try {
+      await ensureOwnerPasskey();
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,archived_at)
+         VALUES ($1,'test/permanent-page-deletion',$2,now())`,
+        [pageId, currentVersionId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,body_markdown,commit_message,actor_kind,actor_subject
+         ) VALUES
+           ($1,$3,1,'test/permanent-page-deletion','Delete me','First','Create fixture','dashboard','owner'),
+           ($2,$3,2,'test/permanent-page-deletion','Delete me','Archived','Archive fixture','dashboard','owner')`,
+        [firstVersionId, currentVersionId, pageId],
+      );
+      await admin.query(
+        `INSERT INTO page_deletion_intents(
+           id,page_id,expected_version_id,owner_user_id,session_id,expires_at
+         ) VALUES ($1,$2,$3,'context-use-owner','session',now()+interval '5 minutes')`,
+        [intentId, pageId, currentVersionId],
+      );
+
+      for (const role of ["context_use_dashboard", "context_use_mcp"]) {
+        await admin.query(`SET LOCAL ROLE ${role}`);
+        await expectDenied("DELETE FROM knowledge_page_versions WHERE page_id=$1", [pageId]);
+        await expectDenied("DELETE FROM knowledge_pages WHERE id=$1", [pageId]);
+        await expectDenied(
+          "SELECT confirm_page_deletion_intent($1,'context-use-owner','session','test-credential',0,1)",
+          [intentId],
+        );
+        await admin.query("RESET ROLE");
+      }
+
+      await issueChallenge("page_deletion", intentId);
+      await admin.query("SET LOCAL ROLE context_use_confirmation");
+      await admin.query(
+        "SELECT confirm_page_deletion_intent($1,'context-use-owner','session','test-credential',0,1)",
+        [intentId],
+      );
+      await admin.query("RESET ROLE");
+
+      expect((await admin.query("SELECT 1 FROM knowledge_pages WHERE id=$1", [pageId])).rowCount).toBe(0);
+      expect((await admin.query("SELECT 1 FROM knowledge_page_versions WHERE page_id=$1", [pageId])).rowCount).toBe(0);
+      expect((await admin.query("SELECT 1 FROM page_deletion_intents WHERE id=$1", [intentId])).rowCount).toBe(0);
+      expect((await admin.query("SELECT counter FROM passkey WHERE id='test-passkey'")).rows[0]?.counter).toBe(1);
     } finally {
       await admin.query("ROLLBACK");
     }

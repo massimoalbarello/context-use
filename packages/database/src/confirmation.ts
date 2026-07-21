@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
 
-export type ConfirmationIntentKind = "publication" | "knowledge_export";
+export type ConfirmationIntentKind = "publication" | "knowledge_export" | "page_deletion";
 
 export type ConfirmationPasskey = {
   id: string;
@@ -64,6 +64,19 @@ export class ConfirmationRepository {
     return result.rows[0] ?? null;
   }
 
+  async pageDeletionIntent(id: string) {
+    const result = await this.pool.query(
+      `SELECT intent.id,intent.page_id,intent.expected_version_id,
+        intent.owner_user_id,intent.session_id,ledger.challenge,intent.expires_at
+       FROM page_deletion_intents intent
+       LEFT JOIN confirmation_challenges ledger
+         ON ledger.intent_kind='page_deletion' AND ledger.intent_id=intent.id
+       WHERE intent.id=$1`,
+      [id],
+    );
+    return result.rows[0] ?? null;
+  }
+
   async confirmPublication(
     intentId: string,
     principal: { ownerUserId: string; sessionId: string },
@@ -83,6 +96,18 @@ export class ConfirmationRepository {
   ): Promise<void> {
     await this.pool.query(
       "SELECT confirm_knowledge_export_intent($1,$2,$3,$4,$5,$6)",
+      [intentId, principal.ownerUserId, principal.sessionId, passkey.credentialId,
+        passkey.expectedCounter, passkey.newCounter],
+    );
+  }
+
+  async confirmPageDeletion(
+    intentId: string,
+    principal: { ownerUserId: string; sessionId: string },
+    passkey: VerifiedPasskey,
+  ): Promise<void> {
+    await this.pool.query(
+      "SELECT confirm_page_deletion_intent($1,$2,$3,$4,$5,$6)",
       [intentId, principal.ownerUserId, principal.sessionId, passkey.credentialId,
         passkey.expectedCounter, passkey.newCounter],
     );

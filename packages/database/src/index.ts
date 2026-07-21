@@ -1,6 +1,9 @@
 export { createPool } from "./pool.ts";
 export { ConfirmationRepository } from "./confirmation.ts";
 export type { ConfirmationIntentKind, ConfirmationPasskey, VerifiedPasskey } from "./confirmation.ts";
+export { PageDeletionRepository } from "./page-deletion.ts";
+export type { PageDeletionPrincipal } from "./page-deletion.ts";
+export { PAGE_VERSION_RETENTION_LIMIT } from "./page-retention.ts";
 export {
   AutomationContentAccessError,
   PageRepository,

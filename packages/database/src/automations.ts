@@ -7,6 +7,7 @@ import type {
 import { Cron } from "croner";
 import type { Pool, PoolClient } from "pg";
 import { extractAssetLinks, normalizeInternalPageLinks } from "./links.ts";
+import { prunePageVersions } from "./page-retention.ts";
 
 const RUN_LEASE_HOURS = 1;
 export const AUTOMATION_RESULT_SUMMARY_MAX_LENGTH = 500;
@@ -217,9 +218,10 @@ export class AutomationRepository {
         [versionId, scheduleId, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
-        `INSERT INTO knowledge_pages(id,current_path,current_version_id,automation_id)
-         VALUES ($1,$2,$3,$4)`,
-        [instructionsPageId, instructionsPath, instructionsVersionId, scheduleId],
+        `INSERT INTO knowledge_pages(
+           id,current_path,current_version_id,automation_id,search_vector
+         ) VALUES ($1,$2,$3,$4,page_search_vector($2,$5,$6))`,
+        [instructionsPageId, instructionsPath, instructionsVersionId, scheduleId, `${input.name} instructions`, instructionsMarkdown],
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
@@ -294,10 +296,14 @@ export class AutomationRepository {
           [instructionsVersionId, row.instructions_page_id, row.instructions_version_number + 1, row.instructions_path, instructionsTitle, instructionsMarkdown, input.commit_message, actor.kind, actor.subject],
         );
         await client.query(
-          `UPDATE knowledge_pages SET current_version_id=$2,updated_at=now() WHERE id=$1`,
-          [row.instructions_page_id, instructionsVersionId],
+          `UPDATE knowledge_pages
+           SET current_version_id=$2,
+               search_vector=page_search_vector(current_path,$3,$4),updated_at=now()
+           WHERE id=$1`,
+          [row.instructions_page_id, instructionsVersionId, instructionsTitle, instructionsMarkdown],
         );
         await insertInstructionAssetLinks(client, instructionsVersionId, instructionsMarkdown);
+        await prunePageVersions(client, row.instructions_page_id);
       }
       let versionId = row.current_version_id;
       if (row.instructions_markdown !== instructionsMarkdown) {
