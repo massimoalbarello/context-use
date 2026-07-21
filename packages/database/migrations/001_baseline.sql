@@ -499,7 +499,8 @@ CREATE TABLE cron_schedules (
     AND automation_key ~ '^[a-z0-9]+(-[a-z0-9]+)*$'
   ),
   knowledge_path text GENERATED ALWAYS AS ('automations/' || automation_key) STORED,
-  current_version_id uuid NOT NULL
+  current_version_id uuid NOT NULL,
+  instructions_page_id uuid NOT NULL
 );
 CREATE UNIQUE INDEX cron_schedules_name_unique
   ON cron_schedules(lower(name)) WHERE deleted_at IS NULL;
@@ -533,6 +534,12 @@ ALTER TABLE cron_schedules
 ALTER TABLE knowledge_pages
   ADD CONSTRAINT knowledge_pages_automation_id_fk
   FOREIGN KEY (automation_id) REFERENCES cron_schedules(id) ON DELETE RESTRICT;
+
+ALTER TABLE cron_schedules
+  ADD CONSTRAINT cron_schedules_instructions_page_fk
+  FOREIGN KEY (instructions_page_id)
+  REFERENCES knowledge_pages(id) ON DELETE RESTRICT
+  DEFERRABLE INITIALLY DEFERRED;
 
 CREATE TABLE automation_runs (
   id uuid PRIMARY KEY,
@@ -607,6 +614,31 @@ CREATE TABLE publication_intents (
 );
 CREATE INDEX publication_intents_expiry_idx
   ON publication_intents(expires_at);
+
+-- Run output remains publishable through the owner's passkey flow. Only the
+-- workflow definition itself is permanently private.
+CREATE FUNCTION keep_automation_instruction_pages_private()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path=pg_catalog,public
+AS $$
+BEGIN
+  IF NEW.target_kind='page'
+     AND NEW.action='publish'
+     AND EXISTS (
+       SELECT 1 FROM cron_schedules
+       WHERE instructions_page_id=NEW.target_id
+     ) THEN
+    RAISE EXCEPTION 'automation instruction pages cannot be published'
+      USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER publication_intents_keep_automation_instructions_private
+BEFORE INSERT ON publication_intents
+FOR EACH ROW EXECUTE FUNCTION keep_automation_instruction_pages_private();
 
 CREATE TABLE knowledge_export_intents (
   id uuid PRIMARY KEY,
@@ -1351,6 +1383,7 @@ REVOKE ALL ON FUNCTION enforce_current_page_version_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION enforce_automation_page_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION enforce_automation_page_version_path() FROM PUBLIC;
 REVOKE ALL ON FUNCTION keep_automation_key_immutable() FROM PUBLIC;
+REVOKE ALL ON FUNCTION keep_automation_instruction_pages_private() FROM PUBLIC;
 
 GRANT SELECT,INSERT,UPDATE (name,image,"updatedAt") ON "user" TO context_use_auth;
 GRANT SELECT,INSERT,UPDATE (counter) ON passkey TO context_use_auth;
@@ -1379,7 +1412,7 @@ GRANT SELECT ON
   automation_runs,
   knowledge_export_intents
 TO context_use_dashboard;
-GRANT INSERT (id,current_path,current_version_id)
+GRANT INSERT (id,current_path,current_version_id,automation_id)
   ON knowledge_pages TO context_use_dashboard;
 GRANT UPDATE (current_path,current_version_id,updated_at,archived_at)
   ON knowledge_pages TO context_use_dashboard;
@@ -1398,7 +1431,7 @@ GRANT INSERT (
 ) ON publication_intents TO context_use_dashboard;
 GRANT INSERT (
   id,name,cron_expression,timezone,input,enabled,next_run_at,
-  automation_key,current_version_id
+  automation_key,current_version_id,instructions_page_id
 ) ON cron_schedules TO context_use_dashboard;
 GRANT UPDATE (
   name,cron_expression,timezone,input,enabled,next_run_at,current_version_id,
@@ -1437,7 +1470,7 @@ GRANT INSERT (
 ) ON assets TO context_use_mcp;
 GRANT INSERT (
   id,name,cron_expression,timezone,input,enabled,next_run_at,
-  automation_key,current_version_id
+  automation_key,current_version_id,instructions_page_id
 ) ON cron_schedules TO context_use_mcp;
 GRANT UPDATE (next_run_at,updated_at) ON cron_schedules TO context_use_mcp;
 GRANT INSERT (

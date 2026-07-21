@@ -150,7 +150,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
-  .get("/api/health", () => json({ status: "ok", version: "0.1.29", service: "dashboard" }))
+  .get("/api/health", () => json({ status: "ok", version: "0.1.30", service: "dashboard" }))
   .get("/api/dashboard/session", ({ request }) => forwardDashboardAuthRoute(request))
   .get("/api/dashboard/csrf", ({ request }) => forwardDashboardAuthRoute(request))
   .post("/api/dashboard/publications/confirm", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })
