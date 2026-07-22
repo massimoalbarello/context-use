@@ -11,6 +11,8 @@ export type Page = {
   title: string;
   summary: string;
   body_markdown: string;
+  created_at: string;
+  updated_at: string;
   rendered_html?: string;
 };
 

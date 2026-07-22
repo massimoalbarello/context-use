@@ -75,7 +75,7 @@ export const publicApp = new Elysia()
     // replaced independently public targets with public paths. The renderer can
     // resolve a published asset path but has no UUID/private-path capability.
     const content = await renderMarkdown(page.body_markdown, unavailableResolvers);
-    return new Response(renderPublicPageDocument(page.title, content, page.public_path), { headers: htmlHeaders });
+    return new Response(renderPublicPageDocument(page.title, content, page.public_path, page.last_edited_at), { headers: htmlHeaders });
   })
   .get("/i", () => publicDirectoryResponse(""))
   .get("/i/*", ({ params }) => publicDirectoryResponse(params["*"]))

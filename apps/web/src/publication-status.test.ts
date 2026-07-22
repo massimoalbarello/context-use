@@ -16,6 +16,8 @@ function page(id: string, publishedVersionId: string | null, currentVersionId = 
     title: id,
     summary: `Summary for ${id}.`,
     body_markdown: "",
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-02T00:00:00.000Z",
   };
 }
 

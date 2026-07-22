@@ -37,6 +37,18 @@ describe("public page presentation", () => {
     expect(rootPage.match(/href="\/i"/g)).toHaveLength(1);
   });
 
+  test("shows the published version edit date after the page content", () => {
+    const html = renderPublicPageDocument(
+      "Public notes",
+      "<h1>Hello</h1>",
+      "notes",
+      "2026-07-21T13:45:00.000Z",
+    );
+
+    expect(html).toContain('<article><h1>Hello</h1></article><footer class="context-use-footnote"><p class="page-last-edited">');
+    expect(html).toContain('<strong>Last edited</strong> <time datetime="2026-07-21T13:45:00.000Z">21 July 2026</time>');
+  });
+
   test("renders generated public indexes from published pages and branches", () => {
     const html = renderPublicIndexDocument({
       path: "about/chapters",

@@ -44,17 +44,31 @@ function renderKnowledgeNavigation(folderPath: string): string {
   return `<nav class="knowledge-navigation" aria-label="Knowledge navigation"><a href="/i">Knowledge index</a>${folder}</nav>`;
 }
 
-function renderFootnote(): string {
-  return `<footer class="context-use-footnote"><p>self-hosted with ❤️ using <a class="external-link" href="${CONTEXT_USE_URL}" target="_blank" rel="noopener noreferrer" title="External link (opens in a new tab)">context-use</a>.</p></footer>`;
+function renderLastEdited(lastEditedAt?: string | Date): string {
+  if (lastEditedAt === undefined) return "";
+  const date = new Date(lastEditedAt);
+  if (Number.isNaN(date.getTime())) return "";
+  const label = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+  return `<p class="page-last-edited"><strong>Last edited</strong> <time datetime="${date.toISOString()}">${label}</time></p>`;
+}
+
+function renderFootnote(lastEditedAt?: string | Date): string {
+  return `<footer class="context-use-footnote">${renderLastEdited(lastEditedAt)}<p>self-hosted with ❤️ using <a class="external-link" href="${CONTEXT_USE_URL}" target="_blank" rel="noopener noreferrer" title="External link (opens in a new tab)">context-use</a>.</p></footer>`;
 }
 
 export function renderPublicPageDocument(
   title: string,
   content: string,
   publicPath?: string,
+  lastEditedAt?: string | Date,
 ): string {
   const navigation = publicPath === undefined ? "" : renderKnowledgeNavigation(parentPath(publicPath));
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="/public.css"><link rel="stylesheet" href="/content.css"></head><body><main class="public-page">${navigation}<article>${content}</article>${renderFootnote()}</main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="/public.css"><link rel="stylesheet" href="/content.css"></head><body><main class="public-page">${navigation}<article>${content}</article>${renderFootnote(lastEditedAt)}</main></body></html>`;
 }
 
 export function renderPublicIndexDocument(index: { path: string; entries: PublicIndexEntry[] }): string {
