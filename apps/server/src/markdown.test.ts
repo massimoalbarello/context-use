@@ -10,6 +10,17 @@ const privateResolvers = {
 };
 
 describe("safe Markdown rendering", () => {
+  test("adds deterministic, duplicate-safe anchors to Markdown headings", async () => {
+    const html = await renderMarkdown(
+      "## A Useful Section\n\n### Résumé & next steps\n\n## A Useful Section",
+      privateResolvers,
+    );
+
+    expect(html).toContain('<h2 id="a-useful-section">A Useful Section</h2>');
+    expect(html).toContain('<h3 id="resume-next-steps">Résumé &amp; next steps</h3>');
+    expect(html).toContain('<h2 id="a-useful-section-2">A Useful Section</h2>');
+  });
+
   test("scans public titles and summaries as well as the Markdown body", () => {
     expect(publicationWarnings("Safe body", ["Safe title", "secret = summary-canary"]))
       .toContain("Possible secret material detected; review the page carefully");
@@ -205,7 +216,7 @@ describe("safe Markdown rendering", () => {
 
   test("renders Obsidian wikilinks with aliases and safe internal targets", async () => {
     const html = await renderMarkdown(
-      "[[about/intro|My intro]] [[missing/page|Missing page]] [[about/intro|<img src=x onerror=alert(1)>]]",
+      "[[about/intro#overview|My intro]] [[missing/page#secret-section|Missing page]] [[about/intro|<img src=x onerror=alert(1)>]]",
       {
         ...privateResolvers,
         pagePath: async (path) => path === "about/intro"
@@ -213,8 +224,9 @@ describe("safe Markdown rendering", () => {
           : { available: false as const },
       },
     );
-    expect(html).toContain('<a href="/app/pages/11111111-1111-4111-8111-111111111111">My intro</a>');
+    expect(html).toContain('<a href="/app/pages/11111111-1111-4111-8111-111111111111#overview">My intro</a>');
     expect(html).toContain('<span class="private-reference">Missing page</span>');
+    expect(html).not.toContain("secret-section");
     expect(html).not.toContain("[[");
     expect(html).not.toContain("<img");
     expect(html).not.toContain('target="_blank"');
@@ -246,7 +258,7 @@ describe("safe Markdown rendering", () => {
     const publicId = "11111111-1111-4111-8111-111111111111";
     const privateId = "22222222-2222-4222-8222-222222222222";
     const html = await renderMarkdown(
-      `[Published](/app/pages/${publicId}) [Owner only](/app/pages/${privateId})`,
+      `[Published](/app/pages/${publicId}#overview) [Owner only](/app/pages/${privateId}#secret-section)`,
       {
         ...privateResolvers,
         page: async (id) => id === publicId
@@ -255,8 +267,9 @@ describe("safe Markdown rendering", () => {
       },
     );
 
-    expect(html).toContain('<a href="/p/published-page">Published</a>');
+    expect(html).toContain('<a href="/p/published-page#overview">Published</a>');
     expect(html).toContain('<span class="private-reference">Owner only</span>');
+    expect(html).not.toContain("secret-section");
     expect(html).not.toContain("/app/pages/");
     expect(html).not.toContain(privateId);
   });

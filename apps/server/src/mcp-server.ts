@@ -31,7 +31,7 @@ const jsonContent = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
 
-export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Explore progressively with get_directory, beginning at the root path. Create directory metadata before adding pages beneath a new path. Every page and directory requires a concise one-sentence summary used by generated indexes. Link pages and directory indexes alike with [[path|label]]; stable directory references use context-use://directory/<uuid>. Store owner information under about/ and create about/intro as its concise introduction; keep other entities in separate top-level directories. Reusable skills live at skills/<skill-name>. Keep knowledge private unless the owner explicitly publishes a page.";
+export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Explore progressively with get_directory, beginning at the root path. Create directory metadata before adding pages beneath a new path. Every page and directory requires a concise one-sentence summary used by generated indexes. Link pages and directory indexes alike with [[path|label]], or a Markdown heading with [[path#heading-slug|label]]; stable directory references use context-use://directory/<uuid>. Store owner information under about/ and create about/intro as its concise introduction; keep other entities in separate top-level directories. Reusable skills live at skills/<skill-name>. Keep knowledge private unless the owner explicitly publishes a page.";
 
 export function createMcpServer(
   context: McpContext,
@@ -133,7 +133,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_page", {
-    description: "Create a private Markdown page and its first immutable version beneath an existing directory. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or use context-use://page/<uuid> and context-use://directory/<uuid>; never store dashboard or public URLs.",
+    description: "Create a private Markdown page and its first immutable version beneath an existing directory. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
     inputSchema: createPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -141,7 +141,7 @@ export function createMcpServer(
   });
 
   server.registerTool("update_page", {
-    description: "Create a new private page version, including for an automation-created page, using optimistic concurrency. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or use stable context-use references; never store dashboard or public URLs.",
+    description: "Create a new private page version, including for an automation-created page, using optimistic concurrency. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
     inputSchema: updatePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ page_id, ...input }) => {

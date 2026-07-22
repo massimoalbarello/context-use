@@ -11,13 +11,13 @@ import {
 describe("hypermedia links", () => {
   test("extracts and deduplicates stable page links", () => {
     const id = "018f3d6d-4050-7c95-8d5a-001122334455";
-    expect(extractPageLinks(`[one](context-use://page/${id}) [two](context-use://page/${id})`)).toEqual([id]);
+    expect(extractPageLinks(`[one](context-use://page/${id}#overview) [two](context-use://page/${id})`)).toEqual([id]);
   });
 
   test("normalizes legacy private routes without changing page content", () => {
     const id = "018f3d6d-4050-7c95-8d5a-001122334455";
-    const markdown = `[related](/app/pages/${id})`;
-    expect(normalizeInternalPageLinks(markdown)).toBe(`[related](context-use://page/${id})`);
+    const markdown = `[related](/app/pages/${id}#useful-section)`;
+    expect(normalizeInternalPageLinks(markdown)).toBe(`[related](context-use://page/${id}#useful-section)`);
     expect(extractPageLinks(markdown)).toEqual([id]);
   });
 
@@ -37,7 +37,7 @@ describe("hypermedia links", () => {
 
   test("extracts Obsidian wikilinks with aliases and ignores embeds", () => {
     expect(extractWikiLinks(
-      "[[about/intro|My intro]] [[about/learnings/claude]] [[about/intro|Duplicate]] ![[assets/photo]]",
+      "[[about/intro#overview|My intro]] [[about/learnings/claude]] [[about/intro#details|Duplicate]] ![[assets/photo]]",
     )).toEqual([
       { path: "about/intro", label: "My intro" },
       { path: "about/learnings/claude", label: "claude" },

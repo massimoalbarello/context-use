@@ -62,6 +62,18 @@ export function Editor({
     load().catch((error: Error) => setMessage(error.message));
   }, [pageId]);
 
+  useEffect(() => {
+    if (!page?.rendered_html || tab !== "preview" || isEditing || !window.location.hash) return;
+    let fragment: string;
+    try {
+      fragment = decodeURIComponent(window.location.hash.slice(1));
+    } catch {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => document.getElementById(fragment)?.scrollIntoView());
+    return () => window.cancelAnimationFrame(frame);
+  }, [page?.rendered_html, tab, isEditing]);
+
   if (!page) return <main className="editor-empty">{message || "Loading page…"}</main>;
 
   const publishedVersion = history.find((version) => version.id === page.published_version_id);

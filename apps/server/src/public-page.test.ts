@@ -68,6 +68,7 @@ describe("public page presentation", () => {
     expect(publicPageStyles).toContain(".knowledge-navigation{");
     expect(publicPageStyles).toContain(".public-index-list{");
     expect(publicPageStyles).toContain(".public-landing{");
+    expect(publicPageStyles).toContain(":is(h1,h2,h3,h4,h5,h6)[id]{scroll-margin-top:1.5rem}");
     expect(publicPageStyles).toContain('.external-link::after{');
     expect(publicPageStyles).toContain('content:"↗"');
     expect(publicPageStyles).toContain("img,video{max-width:100%");

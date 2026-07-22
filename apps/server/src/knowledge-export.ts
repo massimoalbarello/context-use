@@ -14,10 +14,11 @@ export const MAX_KNOWLEDGE_EXPORT_BYTES = 5 * 1024 ** 3;
 const ZIP_DATE = new Date("1980-01-01T00:00:00.000Z");
 const MAX_COMPONENT_BYTES = 180;
 const UUID = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
-const PAGE_REFERENCE = new RegExp(`(!?)\\[([^\\]]*)\\]\\(context-use:\\/\\/page\\/${UUID}\\)`, "gi");
+const FRAGMENT = "(#[a-z0-9][a-z0-9_-]*)?";
+const PAGE_REFERENCE = new RegExp(`(!?)\\[([^\\]]*)\\]\\(context-use:\\/\\/page\\/${UUID}${FRAGMENT}\\)`, "gi");
 const DIRECTORY_REFERENCE = new RegExp(`\\[([^\\]]*)\\]\\(context-use:\\/\\/directory\\/${UUID}\\)`, "gi");
 const ASSET_REFERENCE = new RegExp(`!\\[([^\\]]*)\\]\\(context-use:\\/\\/asset\\/${UUID}\\)`, "gi");
-const WIKI_REFERENCE = /(?<!!)\[\[([a-z0-9][a-z0-9/_-]*)(?:\|([^\]\n]+))?\]\]/gi;
+const WIKI_REFERENCE = /(?<!!)\[\[([a-z0-9][a-z0-9/_-]*)(?:#([a-z0-9][a-z0-9_-]*))?(?:\|([^\]\n]+))?\]\]/gi;
 
 export type PlannedKnowledgeExportPage = KnowledgeExportPage & {
   vaultPath: string;
@@ -157,10 +158,10 @@ function rewriteReferences(
 ): string {
   let body = normalizeInternalPageLinks(markdown).replace(
     PAGE_REFERENCE,
-    (_match, prefix: string, label: string, id: string) => {
+    (_match, prefix: string, label: string, id: string, fragment: string | undefined) => {
       const target = pagePaths.get(id.toLowerCase());
       return target
-        ? `${prefix}[${label}](${markdownTarget(sourceVaultPath, target)})`
+        ? `${prefix}[${label}](${markdownTarget(sourceVaultPath, target)}${fragment?.toLowerCase() ?? ""})`
         : label || "Missing page";
     },
   );
@@ -184,14 +185,16 @@ function rewriteReferences(
   );
   body = body.replace(
     WIKI_REFERENCE,
-    (_match, rawPath: string, rawLabel: string | undefined) => {
+    (_match, rawPath: string, fragment: string | undefined, rawLabel: string | undefined) => {
       const path = rawPath.toLowerCase();
       const candidates = path.includes("/") ? [path] : [sourceDirectory ? `${sourceDirectory}/${path}` : path, path];
       const target = candidates.map((candidate) => (
         pagePathsByKnowledgePath.get(candidate) ?? directoryPathsByKnowledgePath.get(candidate)
       )).find(Boolean);
       const label = rawLabel?.trim() || path.split("/").at(-1) || path;
-      return target ? `[${label}](${markdownTarget(sourceVaultPath, target)})` : label;
+      return target
+        ? `[${label}](${markdownTarget(sourceVaultPath, target)}${fragment ? `#${fragment.toLowerCase()}` : ""})`
+        : label;
     },
   );
   return body;
