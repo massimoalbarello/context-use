@@ -220,6 +220,28 @@ describe("safe Markdown rendering", () => {
     expect(html).not.toContain('target="_blank"');
   });
 
+  test("marks only links that leave the application as external", async () => {
+    const html = await renderMarkdown(
+      `[Knowledge](/p/notes) [Same origin](${config.APP_ORIGIN}/p/about) [External](https://example.com/notes) [Email](mailto:reader@example.com)`,
+      privateResolvers,
+    );
+
+    expect(html).toContain('<a href="/p/notes">Knowledge</a>');
+    expect(html).toContain(`<a href="${config.APP_ORIGIN}/p/about">Same origin</a>`);
+    expect(html).toContain('<a href="https://example.com/notes" class="external-link" rel="noopener noreferrer" target="_blank" title="External link (opens in a new tab)">External</a>');
+    expect(html).toContain('<a href="mailto:reader@example.com" class="external-link" rel="noopener noreferrer" target="_blank" title="External link (opens in a new tab)">Email</a>');
+  });
+
+  test("does not let authored HTML style an internal link as external", async () => {
+    const html = await renderMarkdown(
+      '<a class="external-link" href="/p/notes">Knowledge</a>',
+      privateResolvers,
+    );
+
+    expect(html).toContain('<a href="/p/notes">Knowledge</a>');
+    expect(html).not.toContain('class="external-link"');
+  });
+
   test("rewrites legacy private routes for public targets and hides private targets", async () => {
     const publicId = "11111111-1111-4111-8111-111111111111";
     const privateId = "22222222-2222-4222-8222-222222222222";
