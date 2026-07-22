@@ -823,6 +823,28 @@ button:disabled {
   letter-spacing: -.025em;
 }
 
+.rendered a,
+.publication-preview a {
+  color: var(--accent-hover);
+  text-decoration-thickness: .07em;
+  text-underline-offset: .16em;
+}
+
+.rendered a.external-link,
+.publication-preview a.external-link {
+  text-decoration-style: dotted;
+}
+
+.rendered a.external-link::after,
+.publication-preview a.external-link::after {
+  display: inline-block;
+  margin-left: .16em;
+  font: 650 .68em/1 ui-sans-serif, system-ui, sans-serif;
+  text-decoration: none;
+  vertical-align: .25em;
+  content: "↗";
+}
+
 .rendered img,
 .rendered video,
 .publication-preview img,
