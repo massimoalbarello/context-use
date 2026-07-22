@@ -15,7 +15,7 @@ describeDatabase("first-class directory indexes", () => {
   const pages = new PageRepository(pool);
   const suffix = crypto.randomUUID().slice(0, 8);
   const parentPath = `tests/directory-${suffix}`;
-  const childPath = `${parentPath}/chapters`;
+  const childPath = `${parentPath}/2020-2024_chapters`;
   let pageId: string | undefined;
 
   afterAll(async () => {
@@ -49,7 +49,7 @@ describeDatabase("first-class directory indexes", () => {
       intro_markdown: "",
     });
     const page = await pages.create({
-      path: `${parentPath}/intro`,
+      path: `${parentPath}/1998-2017_intro`,
       title: "Introduction",
       summary: "A concise introduction to this period of the owner's life.",
       body_markdown: "Introduction body.",
@@ -61,8 +61,8 @@ describeDatabase("first-class directory indexes", () => {
       id: parent.id,
       title: "Life",
       children: [
-        { kind: "directory", id: child.id, title: "Chapters", summary: "The major chapters in the owner's life." },
         { kind: "page", id: page.id, title: "Introduction", summary: "A concise introduction to this period of the owner's life." },
+        { kind: "directory", id: child.id, title: "Chapters", summary: "The major chapters in the owner's life." },
       ],
     });
     expect(await directories.hasPublishedDescendant(parentPath)).toBe(false);

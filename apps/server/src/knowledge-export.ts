@@ -291,7 +291,7 @@ export function planKnowledgeExport(snapshot: KnowledgeExportSnapshot): PlannedK
           vaultPath: pagePaths.get(candidate.id.toLowerCase())!,
         }));
       const children = [...childDirectories, ...childPages]
-        .sort((left, right) => left.kind.localeCompare(right.kind) || left.path.localeCompare(right.path));
+        .sort((left, right) => left.path.localeCompare(right.path) || left.kind.localeCompare(right.kind));
       const listing = children.length
         ? children.map((child) => (
           `- [${markdownLabel(child.title)}](${markdownTarget(vaultPath, child.vaultPath)}) — ${child.summary}`
