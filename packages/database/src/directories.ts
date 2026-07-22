@@ -102,7 +102,7 @@ export class DirectoryRepository {
        JOIN knowledge_page_versions version
          ON version.id=page.current_version_id AND version.page_id=page.id
        WHERE page.parent_path=$1 AND page.archived_at IS NULL
-       ORDER BY kind,path`,
+       ORDER BY path,kind`,
       [directory.current_path],
     );
     return { ...directory, children: children.rows } as DirectoryIndex;

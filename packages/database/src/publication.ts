@@ -69,7 +69,7 @@ export class PublicRepository {
        SELECT kind,path,title,summary,published_count FROM child_directories
        UNION ALL
        SELECT kind,path,title,summary,published_count FROM direct_pages
-       ORDER BY kind,path`,
+       ORDER BY path,kind`,
       [path],
     );
     if (!result.rowCount) return null;
