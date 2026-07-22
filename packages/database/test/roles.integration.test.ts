@@ -1068,14 +1068,18 @@ describeDatabase("PostgreSQL security roles", () => {
           childPageId,
           [
             "PUBLIC-CANARY content",
-            `[Private label](context-use://page/${privatePageId})`,
-            `[Public parent](context-use://page/${parentPageId})`,
+            `[Private label](context-use://page/${privatePageId}#secret-section)`,
+            `[Public parent](context-use://page/${parentPageId}#overview)`,
+            `[Legacy private label](/app/pages/${privatePageId}#legacy-secret-section)`,
+            `[Legacy public parent](/app/pages/${parentPageId}#legacy-overview)`,
             `[Work index](context-use://directory/${workDirectory.rows[0]!.id})`,
             "[[profile/work|Work wiki index]]",
             `![Private image](context-use://asset/${privateAssetId}){size=medium align=center shape=square}`,
             `![Public image](context-use://asset/${publishedAssetId}){size=medium align=center shape=square}`,
             "[[private/strategy]]",
             "[[private/strategy|Authored label]]",
+            "[[profile/private-work#private-details|Private section label]]",
+            "[[profile-home#background|Public section label]]",
             `context-use://page/${privatePageId}`,
             `/api/mcp/assets/${privateAssetId}/content`,
             `https://context.example/api/mcp/assets/${privateAssetId}/content`,
@@ -1123,7 +1127,15 @@ describeDatabase("PostgreSQL security roles", () => {
       await admin.query("RESET ROLE");
       expect(Object.keys(webpage.rows[0]!).sort()).toEqual(["body_markdown", "public_path", "summary", "title"]);
       expect(webpage.rows[0]?.summary).toBe("A public project fixture.");
-      expect(webpage.rows[0]?.body_markdown).toContain("[Public parent](/p/profile)");
+      expect(webpage.rows[0]?.body_markdown).toContain("[Public parent](/p/profile#overview)");
+      expect(webpage.rows[0]?.body_markdown).toContain("Private label");
+      expect(webpage.rows[0]?.body_markdown).toContain("Legacy private label");
+      expect(webpage.rows[0]?.body_markdown).toContain("Private section label");
+      expect(webpage.rows[0]?.body_markdown).toContain("[Public section label](/p/profile#background)");
+      expect(webpage.rows[0]?.body_markdown).toContain("[Legacy public parent](/p/profile#legacy-overview)");
+      expect(webpage.rows[0]?.body_markdown).not.toContain("secret-section");
+      expect(webpage.rows[0]?.body_markdown).not.toContain("legacy-secret-section");
+      expect(webpage.rows[0]?.body_markdown).not.toContain("private-details");
       expect(webpage.rows[0]?.body_markdown).toContain("[Work index](/i/profile/work)");
       expect(webpage.rows[0]?.body_markdown).toContain("[Work wiki index](/i/profile/work)");
       expect(webpage.rows[0]?.body_markdown).toContain("context-use://public-asset/media/public-image");

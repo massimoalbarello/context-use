@@ -1,10 +1,11 @@
 const UUID_PATTERN = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
-const PAGE_LINK = new RegExp(`(?:!?)\\[[^\\]]*\\]\\(context-use:\\/\\/page\\/${UUID_PATTERN}\\)`, "gi");
+const FRAGMENT_PATTERN = "(#[a-z0-9][a-z0-9_-]*)?";
+const PAGE_LINK = new RegExp(`(?:!?)\\[[^\\]]*\\]\\(context-use:\\/\\/page\\/${UUID_PATTERN}${FRAGMENT_PATTERN}\\)`, "gi");
 const DIRECTORY_LINK = new RegExp(`\\[[^\\]]*\\]\\(context-use:\\/\\/directory\\/${UUID_PATTERN}\\)`, "gi");
 const ASSET_LINK = new RegExp(`!\\[[^\\]]*\\]\\(context-use:\\/\\/asset\\/${UUID_PATTERN}\\)`, "gi");
-const WIKI_LINK = /(?<!!)\[\[([a-z0-9][a-z0-9/_-]*)(?:\|([^\]\n]+))?\]\]/gi;
+const WIKI_LINK = /(?<!!)\[\[([a-z0-9][a-z0-9/_-]*)(?:#[a-z0-9][a-z0-9_-]*)?(?:\|([^\]\n]+))?\]\]/gi;
 const LEGACY_PRIVATE_PAGE_LINK = new RegExp(
-  `(\\[[^\\]\\n]*\\]\\()\\/app\\/pages\\/${UUID_PATTERN}(\\))`,
+  `(\\[[^\\]\\n]*\\]\\()\\/app\\/pages\\/${UUID_PATTERN}${FRAGMENT_PATTERN}(\\))`,
   "gi",
 );
 const LEGACY_PRIVATE_DIRECTORY_LINK = new RegExp(
@@ -22,7 +23,9 @@ export type WikiLink = { path: string; label: string };
 export function normalizeInternalPageLinks(markdown: string): string {
   return markdown.replace(
     LEGACY_PRIVATE_PAGE_LINK,
-    (_match, prefix: string, id: string, suffix: string) => `${prefix}context-use://page/${id.toLowerCase()}${suffix}`,
+    (_match, prefix: string, id: string, fragment: string | undefined, suffix: string) => (
+      `${prefix}context-use://page/${id.toLowerCase()}${fragment?.toLowerCase() ?? ""}${suffix}`
+    ),
   ).replace(
     LEGACY_PRIVATE_DIRECTORY_LINK,
     (_match, prefix: string, id: string, suffix: string) => `${prefix}context-use://directory/${id.toLowerCase()}${suffix}`,

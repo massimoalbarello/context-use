@@ -51,9 +51,9 @@ function snapshot(): KnowledgeExportSnapshot {
         title: "Q3 Brief",
         summary: "The current Acme briefing.",
         body_markdown: [
-          `[Other](context-use://page/${pageTwo})`,
-          `[Legacy](/app/pages/${pageTwo})`,
-          "[[notes/other|Wiki label]]",
+          `[Other](context-use://page/${pageTwo}#overview)`,
+          `[Legacy](/app/pages/${pageTwo}#details)`,
+          "[[notes/other#next-steps|Wiki label]]",
           `![Site photo](context-use://asset/${assetOne})`,
           `[Acme index](context-use://directory/${acmeDirectory})`,
           `[Missing](context-use://page/44444444-4444-4444-8444-444444444444)`,
@@ -89,9 +89,9 @@ describe("portable knowledge export", () => {
     expect(other.vaultPath).toBe("notes/Other Note.md");
     expect(planned.assets[0]?.vaultPath).toBe("projects/acme/site photo.jpg");
     expect(brief.body).toContain('summary: "The current Acme briefing."');
-    expect(brief.body).toContain("[Other](../../notes/Other%20Note.md)");
-    expect(brief.body).toContain("[Legacy](../../notes/Other%20Note.md)");
-    expect(brief.body).toContain("[Wiki label](../../notes/Other%20Note.md)");
+    expect(brief.body).toContain("[Other](../../notes/Other%20Note.md#overview)");
+    expect(brief.body).toContain("[Legacy](../../notes/Other%20Note.md#details)");
+    expect(brief.body).toContain("[Wiki label](../../notes/Other%20Note.md#next-steps)");
     expect(brief.body).toContain("![Site photo](site%20photo.jpg)");
     expect(brief.body).toContain("[Acme index](index.md)");
     expect(brief.body).toContain("Missing");

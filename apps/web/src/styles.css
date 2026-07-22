@@ -823,6 +823,15 @@ button:disabled {
   letter-spacing: -.025em;
 }
 
+.rendered h1[id],
+.rendered h2[id],
+.rendered h3[id],
+.rendered h4[id],
+.rendered h5[id],
+.rendered h6[id] {
+  scroll-margin-top: 1.5rem;
+}
+
 .rendered a,
 .publication-preview a {
   color: var(--accent-hover);

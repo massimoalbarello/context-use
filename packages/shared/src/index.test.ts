@@ -19,6 +19,7 @@ describe("strict mutation schemas", () => {
   test("describes the safe image formatting contract at the page authoring boundary", () => {
     expect(createPageSchema.shape.body_markdown.description).toBe(PAGE_MARKDOWN_BODY_DESCRIPTION);
     expect(updatePageSchema.shape.body_markdown.description).toContain("layout=half");
+    expect(createPageSchema.shape.body_markdown.description).toContain("[[page/path#heading-slug|label]]");
     expect(createPageSchema.shape.body_markdown.description).toContain("shape=auto|square|portrait|landscape");
     expect(createPageSchema.shape.body_markdown.description).toContain("Example: ![Portrait]");
   });

@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const PAGE_MARKDOWN_BODY_DESCRIPTION = [
   "Markdown page body.",
+  "Use ## or ### headings to create linkable sections; link one with [[page/path#heading-slug|label]].",
+  "Heading slugs are lowercase words joined by hyphens (## Next Steps becomes #next-steps); repeated headings add -2, -3, and so on.",
   "Embed an asset with ![Alt](context-use://asset/<uuid>).",
   "Optional safe image attributes immediately follow it: {size=small|medium|large|full align=left|center|right shape=auto|square|portrait|landscape layout=block|half|third}.",
   "Use layout=half or layout=third on consecutive images for responsive columns.",

@@ -6,7 +6,7 @@ import {
   extractWikiLinks,
   normalizeInternalPageLinks,
 } from "@context-use/database";
-import { marked } from "marked";
+import { marked, type Token } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { config } from "./config.ts";
 
@@ -22,6 +22,31 @@ export type MarkdownResolvers = {
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+function headingText(tokens: Token[]): string {
+  return tokens.map((token) => {
+    if (token.type === "image") return token.text;
+    if ("tokens" in token && Array.isArray(token.tokens)) return headingText(token.tokens);
+    return "text" in token && typeof token.text === "string" ? token.text : "";
+  }).join("");
+}
+
+function headingSlugBase(value: string): string {
+  const slug = value
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s_-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return slug || "section";
+}
+
+function appendFragment(href: string, fragment: string | undefined): string {
+  return fragment ? `${href}#${fragment.toLowerCase()}` : href;
 }
 
 const appOrigin = new URL(config.APP_ORIGIN).origin;
@@ -154,11 +179,11 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
   )));
 
   let source = normalizedMarkdown.replace(
-    /\[([^\]]*)\]\(context-use:\/\/page\/([0-9a-f-]{36})\)/gi,
-    (_match, label: string, id: string) => {
+    /\[([^\]]*)\]\(context-use:\/\/page\/([0-9a-f-]{36})(?:#([a-z0-9][a-z0-9_-]*))?\)/gi,
+    (_match, label: string, id: string, fragment: string | undefined) => {
       const target = pages.get(id.toLowerCase());
       return target?.available
-        ? `[${label}](${target.href})`
+        ? `[${label}](${appendFragment(target.href, fragment)})`
         : `<span class="private-reference">${escapeHtml(label || "Private page")}</span>`;
     },
   );
@@ -187,14 +212,14 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
     ),
   );
   source = source.replace(
-    /(?<!!)\[\[([a-z0-9][a-z0-9/_-]*)(?:\|([^\]\n]+))?\]\]/gi,
-    (_match, rawPath: string, rawLabel: string | undefined) => {
+    /(?<!!)\[\[([a-z0-9][a-z0-9/_-]*)(?:#([a-z0-9][a-z0-9_-]*))?(?:\|([^\]\n]+))?\]\]/gi,
+    (_match, rawPath: string, fragment: string | undefined, rawLabel: string | undefined) => {
       const path = rawPath.toLowerCase();
       const target = wikiPages.get(path);
       const label = rawLabel?.trim()
         || (target?.available ? path.split("/").at(-1) || "Published page" : "Private page");
       return target?.available
-        ? `<a href="${escapeHtml(target.href)}">${escapeHtml(label)}</a>`
+        ? `<a href="${escapeHtml(appendFragment(target.href, fragment))}">${escapeHtml(label)}</a>`
         : `<span class="private-reference">${escapeHtml(label)}</span>`;
     },
   );
@@ -209,7 +234,16 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
     '<span class="private-reference">Private reference</span>',
   );
 
-  const unsafe = await marked.parse(source, { gfm: true, breaks: false, async: true });
+  const headingCounts = new Map<string, number>();
+  const renderer = new marked.Renderer();
+  renderer.heading = function ({ tokens, depth }) {
+    const base = headingSlugBase(headingText(tokens));
+    const count = (headingCounts.get(base) ?? 0) + 1;
+    headingCounts.set(base, count);
+    const id = count === 1 ? base : `${base}-${count}`;
+    return `<h${depth} id="${id}">${this.parser.parseInline(tokens)}</h${depth}>`;
+  };
+  const unsafe = await marked.parse(source, { gfm: true, breaks: false, async: true, renderer });
   const sanitized = sanitizeHtml(unsafe, {
     allowedTags: [
       "p", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote",
@@ -218,6 +252,12 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
     ],
     allowedAttributes: {
       a: ["href", "rel", "target", "class", "title"],
+      h1: ["id"],
+      h2: ["id"],
+      h3: ["id"],
+      h4: ["id"],
+      h5: ["id"],
+      h6: ["id"],
       span: ["class"],
       code: ["class"],
       img: ["src", "alt", "title", "loading"],
