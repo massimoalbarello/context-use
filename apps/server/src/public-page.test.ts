@@ -12,7 +12,7 @@ describe("public page presentation", () => {
     const html = renderPublicPageDocument("Public notes", "<h1>Hello</h1>");
 
     expect(html).toContain("<article><h1>Hello</h1></article><footer class=\"context-use-footnote\">");
-    expect(html).toContain('<p>self-hosted with ❤️ using <a href="https://github.com/massimoalbarello/context-use">context-use</a>.</p>');
+    expect(html).toContain('<p>self-hosted with ❤️ using <a class="external-link" href="https://github.com/massimoalbarello/context-use" target="_blank" rel="noopener noreferrer" title="External link (opens in a new tab)">context-use</a>.</p>');
     expect(html).not.toContain("private by default");
     expect(html).not.toContain("MCP");
   });
@@ -68,6 +68,8 @@ describe("public page presentation", () => {
     expect(publicPageStyles).toContain(".knowledge-navigation{");
     expect(publicPageStyles).toContain(".public-index-list{");
     expect(publicPageStyles).toContain(".public-landing{");
+    expect(publicPageStyles).toContain('.external-link::after{');
+    expect(publicPageStyles).toContain('content:"↗"');
     expect(publicPageStyles).toContain("img,video{max-width:100%");
     expect(publicPageStyles).toContain("video,audio{width:100%}");
     expect(publicPageStyles).toContain("display:flex");

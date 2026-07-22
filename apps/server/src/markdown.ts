@@ -24,6 +24,18 @@ function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
 
+const appOrigin = new URL(config.APP_ORIGIN).origin;
+
+function isExternalLink(href: string): boolean {
+  if (/^mailto:/i.test(href)) return true;
+  try {
+    const url = new URL(href, config.APP_ORIGIN);
+    return (url.protocol === "http:" || url.protocol === "https:") && url.origin !== appOrigin;
+  } catch {
+    return false;
+  }
+}
+
 type ImageFormatting = {
   size: "small" | "medium" | "large" | "full";
   align: "left" | "center" | "right";
@@ -205,7 +217,7 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
       "table", "thead", "tbody", "tr", "th", "td", "img", "video", "audio", "source",
     ],
     allowedAttributes: {
-      a: ["href", "rel", "target"],
+      a: ["href", "rel", "target", "class", "title"],
       span: ["class"],
       code: ["class"],
       img: ["src", "alt", "title", "loading"],
@@ -215,16 +227,23 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
       th: ["align"],
       td: ["align"],
     },
-    allowedClasses: { span: ["private-reference"] },
+    allowedClasses: { a: ["external-link"], span: ["private-reference"] },
     allowedSchemes: ["http", "https", "mailto"],
     transformTags: {
       a: (_tag, attributes) => {
-        const external = /^(?:https?:|mailto:)/i.test(attributes.href ?? "");
+        const { class: _authoredClass, ...safeAttributes } = attributes;
+        const external = isExternalLink(attributes.href ?? "");
         return {
           tagName: "a",
           attribs: external
-            ? { ...attributes, rel: "noopener noreferrer", target: "_blank" }
-            : attributes,
+            ? {
+                ...safeAttributes,
+                class: "external-link",
+                rel: "noopener noreferrer",
+                target: "_blank",
+                title: "External link (opens in a new tab)",
+              }
+            : safeAttributes,
         };
       },
       img: (_tag, attributes) => ({
