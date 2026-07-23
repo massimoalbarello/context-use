@@ -162,6 +162,30 @@ describe("safe Markdown rendering", () => {
     expect(html).toContain("<p><span");
   });
 
+  test("keeps consecutive third-width videos as sibling players for responsive columns", async () => {
+    const videoIds = [
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222",
+      "33333333-3333-4333-8333-333333333333",
+    ];
+    const markdown = videoIds
+      .map((id, index) => `![Demo ${index + 1}](context-use://asset/${id}){layout=third size=small}`)
+      .join("\n");
+    const html = await renderMarkdown(markdown, {
+      ...privateResolvers,
+      asset: async (id) => ({
+        available: true as const,
+        href: `/api/dashboard/assets/${id}/content`,
+        contentType: "video/mp4",
+      }),
+    });
+
+    expect(html.match(/<span class="[^"]*cu-image--layout-third[^"]*">/g)).toHaveLength(3);
+    expect(html.match(/<video [^>]*>/g)).toHaveLength(3);
+    expect(html).toContain("<p><span");
+    expect(html).not.toContain("{layout=third");
+  });
+
   test("does not allow authored HTML to opt into arbitrary layout classes", async () => {
     const imageId = "11111111-1111-4111-8111-111111111111";
     const html = await renderMarkdown(

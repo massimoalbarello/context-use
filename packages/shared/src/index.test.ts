@@ -16,9 +16,10 @@ const pageId = "11111111-1111-4111-8111-111111111111";
 const versionId = "22222222-2222-4222-8222-222222222222";
 
 describe("strict mutation schemas", () => {
-  test("describes the safe image formatting contract at the page authoring boundary", () => {
+  test("describes the safe image and video formatting contract at the page authoring boundary", () => {
     expect(createPageSchema.shape.body_markdown.description).toBe(PAGE_MARKDOWN_BODY_DESCRIPTION);
     expect(updatePageSchema.shape.body_markdown.description).toContain("layout=half");
+    expect(updatePageSchema.shape.body_markdown.description).toContain("consecutive images or videos");
     expect(createPageSchema.shape.body_markdown.description).toContain("[[page/path#heading-slug|label]]");
     expect(createPageSchema.shape.body_markdown.description).toContain("shape=auto|square|portrait|landscape");
     expect(createPageSchema.shape.body_markdown.description).toContain("Example: ![Portrait]");

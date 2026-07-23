@@ -61,22 +61,22 @@ function isExternalLink(href: string): boolean {
   }
 }
 
-type ImageFormatting = {
+type AssetFormatting = {
   size: "small" | "medium" | "large" | "full";
   align: "left" | "center" | "right";
   shape: "auto" | "square" | "portrait" | "landscape";
   layout: "block" | "half" | "third";
 };
 
-const IMAGE_FORMAT_VALUES = {
-  size: new Set<ImageFormatting["size"]>(["small", "medium", "large", "full"]),
-  align: new Set<ImageFormatting["align"]>(["left", "center", "right"]),
-  shape: new Set<ImageFormatting["shape"]>(["auto", "square", "portrait", "landscape"]),
-  layout: new Set<ImageFormatting["layout"]>(["block", "half", "third"]),
+const ASSET_FORMAT_VALUES = {
+  size: new Set<AssetFormatting["size"]>(["small", "medium", "large", "full"]),
+  align: new Set<AssetFormatting["align"]>(["left", "center", "right"]),
+  shape: new Set<AssetFormatting["shape"]>(["auto", "square", "portrait", "landscape"]),
+  layout: new Set<AssetFormatting["layout"]>(["block", "half", "third"]),
 };
 
-function parseImageFormatting(raw: string): ImageFormatting | null {
-  const formatting: ImageFormatting = { size: "medium", align: "center", shape: "auto", layout: "block" };
+function parseAssetFormatting(raw: string): AssetFormatting | null {
+  const formatting: AssetFormatting = { size: "medium", align: "center", shape: "auto", layout: "block" };
   const seen = new Set<string>();
   const tokens = raw.trim().split(/\s+/).filter(Boolean);
   if (!tokens.length) return null;
@@ -84,8 +84,8 @@ function parseImageFormatting(raw: string): ImageFormatting | null {
     const match = /^([a-z]+)=([a-z]+)$/.exec(token);
     if (!match) return null;
     const [, key, value] = match;
-    if (!key || !value || seen.has(key) || !(key in IMAGE_FORMAT_VALUES)) return null;
-    const allowed = IMAGE_FORMAT_VALUES[key as keyof typeof IMAGE_FORMAT_VALUES] as ReadonlySet<string>;
+    if (!key || !value || seen.has(key) || !(key in ASSET_FORMAT_VALUES)) return null;
+    const allowed = ASSET_FORMAT_VALUES[key as keyof typeof ASSET_FORMAT_VALUES] as ReadonlySet<string>;
     if (!allowed.has(value)) return null;
     seen.add(key);
     (formatting as unknown as Record<string, string>)[key] = value;
@@ -93,7 +93,12 @@ function parseImageFormatting(raw: string): ImageFormatting | null {
   return formatting;
 }
 
-function formattedImageHtml(label: string, href: string, formatting: ImageFormatting): string {
+function formattedAssetHtml(
+  label: string,
+  href: string,
+  formatting: AssetFormatting,
+  kind: "image" | "video",
+): string {
   const classes = [
     "cu-image",
     `cu-image--size-${formatting.size}`,
@@ -101,7 +106,10 @@ function formattedImageHtml(label: string, href: string, formatting: ImageFormat
     `cu-image--shape-${formatting.shape}`,
     `cu-image--layout-${formatting.layout}`,
   ].join(" ");
-  return `<span class="${classes}"><img src="${escapeHtml(href)}" alt="${escapeHtml(label)}" loading="lazy"></span>`;
+  const media = kind === "image"
+    ? `<img src="${escapeHtml(href)}" alt="${escapeHtml(label)}" loading="lazy">`
+    : videoHtml(label, href);
+  return `<span class="${classes}">${media}</span>`;
 }
 
 type AssetRenderKind = "image" | "video" | "link";
@@ -131,26 +139,28 @@ function isAllowedAssetSource(src: string): boolean {
   }
 }
 
+function videoHtml(label: string, href: string): string {
+  const accessibleLabel = label.trim() || "Embedded video";
+  return `<video src="${escapeHtml(href)}" controls preload="metadata" aria-label="${escapeHtml(accessibleLabel)}">${escapeHtml(accessibleLabel)}</video>`;
+}
+
 function renderAssetReference(
   label: string,
   target: AssetResolution | undefined,
   rawFormatting: string | undefined,
-  formattedImages: Map<string, string>,
+  formattedAssets: Map<string, string>,
 ): string {
   if (!target?.available) return `<span class="private-reference">Private asset unavailable</span>`;
   const kind = assetRenderKind(target.contentType);
-  if (kind === "image") {
-    if (rawFormatting === undefined) return `![${label}](${target.href})`;
-    const formatting = parseImageFormatting(rawFormatting);
-    if (!formatting) return `![${label}](${target.href}){${rawFormatting}}`;
+  if (kind === "image" || kind === "video") {
+    const plainMedia = kind === "image" ? `![${label}](${target.href})` : videoHtml(label, target.href);
+    if (rawFormatting === undefined) return plainMedia;
+    const formatting = parseAssetFormatting(rawFormatting);
+    if (!formatting) return `${plainMedia}{${rawFormatting}}`;
     if (!isAllowedAssetSource(target.href)) return `<span class="private-reference">Private asset unavailable</span>`;
-    const placeholder = `CUIMAGE${randomUUID().replaceAll("-", "")}${formattedImages.size}`;
-    formattedImages.set(placeholder, formattedImageHtml(label, target.href, formatting));
+    const placeholder = `CUMEDIA${randomUUID().replaceAll("-", "")}${formattedAssets.size}`;
+    formattedAssets.set(placeholder, formattedAssetHtml(label, target.href, formatting, kind));
     return placeholder;
-  }
-  if (kind === "video") {
-    const accessibleLabel = label.trim() || "Embedded video";
-    return `<video src="${escapeHtml(target.href)}" controls preload="metadata" aria-label="${escapeHtml(accessibleLabel)}">${escapeHtml(accessibleLabel)}</video>`;
   }
   const linkLabel = label.trim() || (target.contentType.toLowerCase() === "application/pdf" ? "Open PDF" : "Open asset");
   return `<a href="${escapeHtml(target.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkLabel)}</a>`;
@@ -165,7 +175,7 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
   const wikiPages = new Map<string, LinkResolution>();
   const assets = new Map<string, AssetResolution>();
   const publicAssets = new Map<string, AssetResolution>();
-  const formattedImages = new Map<string, string>();
+  const formattedAssets = new Map<string, string>();
   await Promise.all(extractPageLinks(normalizedMarkdown).map(async (id) => pages.set(id, await resolvers.page(id))));
   await Promise.all(extractDirectoryLinks(normalizedMarkdown).map(async (id) => directories.set(id, await resolvers.directory(id))));
   await Promise.all(extractWikiLinks(normalizedMarkdown).map(async ({ path }) => wikiPages.set(path, await resolvers.pagePath(path))));
@@ -199,7 +209,7 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
   source = source.replace(
     /!\[([^\]\n]*)\]\(context-use:\/\/asset\/([0-9a-f-]{36})\)(?:\{([^}\n]+)\})?/gi,
     (_match, label: string, id: string, rawFormatting: string | undefined) => {
-      return renderAssetReference(label, assets.get(id.toLowerCase()), rawFormatting, formattedImages);
+      return renderAssetReference(label, assets.get(id.toLowerCase()), rawFormatting, formattedAssets);
     },
   );
   source = source.replace(
@@ -208,7 +218,7 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
       label,
       publicAssets.get(path.toLowerCase()),
       rawFormatting,
-      formattedImages,
+      formattedAssets,
     ),
   );
   source = source.replace(
@@ -306,8 +316,8 @@ export async function renderMarkdown(markdown: string, resolvers: MarkdownResolv
       return !isAllowedAssetSource(src);
     },
   });
-  return [...formattedImages].reduce(
-    (html, [placeholder, image]) => html.replaceAll(placeholder, image),
+  return [...formattedAssets].reduce(
+    (html, [placeholder, asset]) => html.replaceAll(placeholder, asset),
     sanitized,
   );
 }
