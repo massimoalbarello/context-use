@@ -87,6 +87,8 @@ describe("public page presentation", () => {
     expect(publicPageStyles).toContain("video,audio{width:100%}");
     expect(publicPageStyles).toContain("display:flex");
     expect(IMAGE_LAYOUT_STYLES).toContain(".cu-image--layout-half{");
+    expect(IMAGE_LAYOUT_STYLES).toContain(".cu-image>img,.cu-image>video{");
+    expect(IMAGE_LAYOUT_STYLES).toContain(".cu-image--shape-square>video");
     expect(IMAGE_LAYOUT_STYLES).toContain("object-fit:cover");
     expect(IMAGE_LAYOUT_STYLES).toContain("@media(max-width:640px)");
   });
