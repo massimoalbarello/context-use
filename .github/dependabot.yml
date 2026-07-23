@@ -3,9 +3,22 @@ updates:
   - package-ecosystem: bun
     directory: /
     schedule: { interval: weekly }
+    groups:
+      react:
+        patterns:
+          - react
+          - react-dom
+      better-auth:
+        patterns:
+          - better-auth
+          - "@better-auth/*"
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    groups:
+      github-actions:
+        patterns:
+          - "*"
   - package-ecosystem: terraform
     directory: /infra/data
     schedule: { interval: weekly }
