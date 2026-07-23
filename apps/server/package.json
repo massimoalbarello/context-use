@@ -22,7 +22,7 @@
     "@zip.js/zip.js": "2.8.31",
     "better-auth": "1.7.0-rc.1",
     "elysia": "1.4.29",
-    "jose": "6.2.3",
+    "jose": "6.2.4",
     "marked": "18.0.6",
     "pg": "8.22.0",
     "sanitize-html": "2.17.6",
