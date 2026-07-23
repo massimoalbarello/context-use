@@ -16,7 +16,7 @@
     "@simplewebauthn/browser": "13.3.0",
     "@tanstack/react-query": "5.101.2",
     "@tanstack/react-router": "1.170.18",
-    "better-auth": "1.7.0-rc.1",
+    "better-auth": "1.7.0-rc.2",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },

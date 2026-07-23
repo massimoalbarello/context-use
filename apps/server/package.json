@@ -20,7 +20,7 @@
     "@modelcontextprotocol/sdk": "1.29.0",
     "@simplewebauthn/server": "13.3.2",
     "@zip.js/zip.js": "2.8.31",
-    "better-auth": "1.7.0-rc.1",
+    "better-auth": "1.7.0-rc.2",
     "elysia": "1.4.29",
     "jose": "6.2.3",
     "marked": "18.0.6",
