@@ -78,6 +78,8 @@ export function Editor({
 
   const publishedVersion = history.find((version) => version.id === page.published_version_id);
   const publishedVersionNumber = publishedVersion?.version_number;
+  const currentVersion = history.find((version) => version.id === page.current_version_id);
+  const lastEditedAt = currentVersion?.created_at ?? page.updated_at;
   const hasUnpublishedChanges = isPublishedPageOutdated(page);
   const automationCreated = Boolean(page.automation_id);
   const automationInstructions = page.automation_instructions;
@@ -173,7 +175,7 @@ export function Editor({
 
   return <main className="editor">
     <header className="editor-header">
-      <div><span className="path">{page.current_path}</span><h1>{page.title}</h1><p className="knowledge-summary">{page.summary}</p></div>
+      <div><span className="path">{page.current_path}</span><h1>{page.title}</h1><p className="knowledge-summary">{page.summary}</p><time className="page-last-edited" dateTime={new Date(lastEditedAt).toISOString()}>Last edited {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(lastEditedAt))}</time></div>
       <div className="button-row">
         <span className={page.published_version_id ? "status public" : "status"}>{page.archived_at ? "Archived" : page.published_version_id ? `Public${publishedVersionNumber ? ` v${publishedVersionNumber}` : ""} · ${page.public_path}` : automationInstructions ? "Private · Automation instructions" : automationCreated ? "Private · Automation-created" : "Private"}</span>
         {page.published_version_id && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public ↗</a>}

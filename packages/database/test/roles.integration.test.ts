@@ -597,7 +597,7 @@ describeDatabase("PostgreSQL security roles", () => {
        ORDER BY ordinal_position`,
     );
     expect(publicPageColumns.rows.map(({ column_name }) => column_name)).toEqual([
-      "public_path", "title", "summary", "body_markdown",
+      "public_path", "title", "summary", "body_markdown", "last_edited_at",
     ]);
     const publicAssetColumns = await admin.query<{ column_name: string }>(
       `SELECT column_name FROM information_schema.columns
@@ -1111,8 +1111,9 @@ describeDatabase("PostgreSQL security roles", () => {
         title: string;
         summary: string;
         body_markdown: string;
+        last_edited_at: Date;
       }>(
-        "SELECT public_path,title,summary,body_markdown FROM published_pages WHERE public_path='profile/work/project'",
+        "SELECT public_path,title,summary,body_markdown,last_edited_at FROM published_pages WHERE public_path='profile/work/project'",
       );
       const directProjection = await admin.query<{ body_markdown: string }>(
         "SELECT project_public_markdown('profile/work/project') AS body_markdown",
@@ -1125,7 +1126,8 @@ describeDatabase("PostgreSQL security roles", () => {
       const workIndex = await publicKnowledge.directoryIndex("profile/work");
       const missingIndex = await publicKnowledge.directoryIndex("profile/private");
       await admin.query("RESET ROLE");
-      expect(Object.keys(webpage.rows[0]!).sort()).toEqual(["body_markdown", "public_path", "summary", "title"]);
+      expect(Object.keys(webpage.rows[0]!).sort()).toEqual(["body_markdown", "last_edited_at", "public_path", "summary", "title"]);
+      expect(webpage.rows[0]?.last_edited_at).toBeInstanceOf(Date);
       expect(webpage.rows[0]?.summary).toBe("A public project fixture.");
       expect(webpage.rows[0]?.body_markdown).toContain("[Public parent](/p/profile#overview)");
       expect(webpage.rows[0]?.body_markdown).toContain("Private label");

@@ -30,7 +30,7 @@ export class PublicRepository {
 
   async pageByPublicPath(path: string) {
     const result = await this.pool.query(
-      "SELECT public_path,title,summary,body_markdown FROM published_pages WHERE public_path=$1",
+      "SELECT public_path,title,summary,body_markdown,last_edited_at FROM published_pages WHERE public_path=$1",
       [path],
     );
     return result.rows[0] ?? null;
