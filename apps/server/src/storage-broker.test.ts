@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createStorageBrokerApp } from "./storage-app.ts";
+import { BrokeredStorage } from "./storage-client.ts";
 import type { ByteRange, ObjectStorageBackend, StoredAsset } from "./storage.ts";
 
 const tokens = {
@@ -13,7 +17,7 @@ const privateKey = "objects/22222222-2222-4222-8222-222222222222";
 const newKey = "objects/33333333-3333-4333-8333-333333333333";
 
 function privateAssets(
-  rows: Record<string, { filename: string; contentType: string; bytes: string }>,
+  rows: Record<string, { filename: string; contentType: string; bytes: string | Uint8Array }>,
   deletedIds: string[] = [],
 ) {
   const deleted = new Set(deletedIds);
@@ -149,6 +153,47 @@ describe("storage broker capabilities", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ object_key: privateKey, size_bytes: 7, content_hash: "a".repeat(64) }),
     }))).status).toBe(404);
+  });
+
+  test("streams multi-chunk video bytes through the Unix storage broker", async () => {
+    const bytes = Uint8Array.from(
+      { length: 2 * 1024 * 1024 + 97 },
+      (_, index) => (index * 31 + Math.floor(index / 65_536)) % 256,
+    );
+    const id = newKey.slice("objects/".length);
+    const asset: StoredAsset = {
+      id,
+      objectKey: newKey,
+      filename: "demo-video.mp4",
+      contentType: "video/mp4",
+      sizeBytes: bytes.byteLength,
+      contentHash: createHash("sha256").update(bytes).digest("hex"),
+    };
+    const storage = new MemoryStorage();
+    const app = createStorageBrokerApp({
+      storage,
+      privateAssets: privateAssets({
+        [id]: {
+          filename: asset.filename,
+          contentType: asset.contentType,
+          bytes,
+        },
+      }),
+      publicAssets: { assetByPublicPath: async () => null },
+      tokens,
+    });
+    const directory = await mkdtemp(join(tmpdir(), "context-use-storage-broker-"));
+    const socketPath = join(directory, "storage.sock");
+    const server = Bun.serve({ unix: socketPath, fetch: app.handle });
+
+    try {
+      const client = new BrokeredStorage({ socketPath, token: tokens.mcp });
+      await client.write(asset, new Blob([bytes]).stream());
+      expect(storage.objects.get(newKey)).toEqual(bytes);
+    } finally {
+      server.stop(true);
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   test("dashboard can delete bytes only after metadata authorizes the lifecycle transition", async () => {

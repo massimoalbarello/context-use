@@ -1,6 +1,3 @@
-import { request as httpRequest } from "node:http";
-import { Readable } from "node:stream";
-import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type { ByteRange, ObjectStorage, StoredAsset } from "./storage.ts";
 import { AssetNotFoundError } from "./storage.ts";
 
@@ -15,31 +12,11 @@ async function socketFetch(
   path: string,
   init: { method?: string; headers?: Record<string, string>; body?: ReadableStream<Uint8Array> | null } = {},
 ): Promise<Response> {
-  return new Promise((resolve, reject) => {
-    const request = httpRequest({
-      socketPath,
-      path,
-      method: init.method ?? "GET",
-      headers: init.headers,
-    }, (response) => {
-      const headers = new Headers();
-      for (const [name, value] of Object.entries(response.headers)) {
-        if (Array.isArray(value)) value.forEach((item) => headers.append(name, item));
-        else if (value !== undefined) headers.set(name, value);
-      }
-      resolve(new Response(Readable.toWeb(response) as unknown as ReadableStream<Uint8Array>, {
-        status: response.statusCode ?? 500,
-        headers,
-      }));
-    });
-    request.on("error", reject);
-    if (init.body) {
-      Readable.fromWeb(init.body as unknown as NodeReadableStream<Uint8Array>)
-        .on("error", reject)
-        .pipe(request);
-    } else {
-      request.end();
-    }
+  return fetch(`http://localhost${path}`, {
+    unix: socketPath,
+    method: init.method ?? "GET",
+    ...(init.headers ? { headers: init.headers } : {}),
+    ...(init.body !== undefined ? { body: init.body as BodyInit | null } : {}),
   });
 }
 
