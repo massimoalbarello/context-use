@@ -45,6 +45,7 @@ import {
 import { AssetIntegrityError } from "./storage.ts";
 import { BrokeredStorage } from "./storage-client.ts";
 import { MAX_KNOWLEDGE_EXPORT_BYTES, streamKnowledgeExport } from "./knowledge-export.ts";
+import { extendLargeResponseIdleTimeout } from "./streaming-timeout.ts";
 
 const dashboardPool = createPool(config.DATABASE_URL);
 const storage = new BrokeredStorage({
@@ -276,7 +277,8 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       authentication_options: authenticationOptions,
     }, 201);
   })
-  .get("/api/dashboard/knowledge-exports/:id/download", async ({ request, params }) => {
+  .get("/api/dashboard/knowledge-exports/:id/download", async ({ request, params, server }) => {
+    extendLargeResponseIdleTimeout(server, request);
     if (!requestMatchesOrigin(request, config.APP_ORIGIN)) throw new SecurityError("Not found", 404);
     const principal = await authorizeDashboardRequest(request, "download");
     if (!principal) throw new SecurityError("Dashboard session required", 401);

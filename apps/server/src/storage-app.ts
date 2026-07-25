@@ -7,6 +7,7 @@ import { Elysia } from "elysia";
 import { z } from "zod";
 import { config } from "./config.ts";
 import { FilesystemStorage, S3Storage, type ByteRange, type ObjectStorageBackend } from "./storage.ts";
+import { extendLargeResponseIdleTimeout } from "./streaming-timeout.ts";
 
 const objectKeySchema = z.string().regex(/^objects\/[a-f0-9-]{36}$/);
 const verificationSchema = z.object({
@@ -189,7 +190,15 @@ export const storageApp = createStorageBrokerApp({
 export async function listenStorageSocket(): Promise<void> {
   const socketPath = config.STORAGE_SOCKET_PATH;
   await unlink(socketPath).catch(() => undefined);
-  Bun.serve({ unix: socketPath, fetch: storageApp.handle });
+  Bun.serve({
+    unix: socketPath,
+    fetch(request, server) {
+      if (request.method === "GET" && new URL(request.url).pathname === "/private/object") {
+        extendLargeResponseIdleTimeout(server, request);
+      }
+      return storageApp.handle(request);
+    },
+  });
   await chmod(socketPath, 0o660);
   console.info("context-use storage broker listening on unix socket");
 }
