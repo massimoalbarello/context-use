@@ -3,6 +3,7 @@ import { config } from "./config.ts";
 import { json, routeError } from "./http.ts";
 import { forwardInternalRequest } from "./internal-proxy.ts";
 import { securityHeaders } from "./security.ts";
+import { extendLargeResponseIdleTimeout } from "./streaming-timeout.ts";
 
 function allowed(request: Request): boolean {
   const { pathname } = new URL(request.url);
@@ -31,7 +32,13 @@ export const dashboardEdgeApp = new Elysia({ serve: { maxRequestBodySize: 5_100_
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
   .get("/health", () => json({ status: "ok", service: "dashboard-edge" }))
-  .all("/api/dashboard/*", ({ request }) => forward(request), { parse: "none" })
+  .all("/api/dashboard/*", ({ request, server }) => {
+    if (request.method === "GET"
+        && /^\/api\/dashboard\/knowledge-exports\/[^/]+\/download$/.test(new URL(request.url).pathname)) {
+      extendLargeResponseIdleTimeout(server, request);
+    }
+    return forward(request);
+  }, { parse: "none" })
   .all("/api/health", ({ request }) => forward(request), { parse: "none" })
   .all("/app", ({ request }) => forward(request), { parse: "none" })
   .all("/app/*", ({ request }) => forward(request), { parse: "none" })
