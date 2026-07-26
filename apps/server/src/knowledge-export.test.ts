@@ -93,16 +93,28 @@ describe("portable knowledge export", () => {
     expect(brief.body).toContain("[Legacy](../../notes/Other%20Note.md#details)");
     expect(brief.body).toContain("[Wiki label](../../notes/Other%20Note.md#next-steps)");
     expect(brief.body).toContain("![Site photo](site%20photo.jpg)");
-    expect(brief.body).toContain("[Acme index](index.md)");
+    expect(brief.body).toContain("[Acme index](Q3%20Brief.md)");
     expect(brief.body).toContain("Missing");
     expect(other.body).toContain("Back to [brief](../projects/acme/Q3%20Brief.md).");
     const root = planned.directories.find(({ current_path }) => current_path === "")!;
     expect(root.vaultPath).toBe("index.md");
     expect(root.body).toContain("[Projects](projects/index.md)");
-    expect(root.body).toContain("[Notes](notes/index.md)");
+    expect(root.body).toContain("[Notes](notes/Other%20Note.md)");
     expect(root.body).toContain("## Contents");
+    expect(planned.directories.map(({ current_path }) => current_path)).toEqual(["", "projects"]);
     expect([...planned.directories, ...planned.pages].map(({ body }) => body).join("\n"))
       .not.toContain("context-use://");
+  });
+
+  test("keeps an index when a one-page directory has authored introduction content", () => {
+    const source = snapshot();
+    source.directories.find(({ id }) => id === notesDirectory)!.intro_markdown = "Read this before opening the note.";
+    const planned = planKnowledgeExport(source);
+    const notes = planned.directories.find(({ id }) => id === notesDirectory)!;
+
+    expect(notes.vaultPath).toBe("notes/index.md");
+    expect(notes.body).toContain("Read this before opening the note.");
+    expect(notes.body).toContain("[Other Note](Other%20Note.md)");
   });
 
   test("resolves friendly-name and directory collisions without database identifiers", () => {
@@ -169,8 +181,6 @@ describe("portable knowledge export", () => {
       "context-use-export/",
       "context-use-export/index.md",
       "context-use-export/projects/index.md",
-      "context-use-export/projects/acme/index.md",
-      "context-use-export/notes/index.md",
       "context-use-export/projects/acme/Q3 Brief.md",
       "context-use-export/notes/Other Note.md",
       "context-use-export/projects/acme/site photo.jpg",
