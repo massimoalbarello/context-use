@@ -146,9 +146,10 @@ export function allDirectoryPaths(directory: PageTreeDirectory): string[] {
   return directory.directories.flatMap((child) => [child.path, ...allDirectoryPaths(child)]);
 }
 
-export function countPublicPages(directory: PageTreeDirectory): number {
+export function countPublicItems(directory: PageTreeDirectory): number {
   return directory.pages.filter(({ page }) => Boolean(page.published_version_id)).length
-    + directory.directories.reduce((total, child) => total + countPublicPages(child), 0);
+    + directory.assets.filter(({ asset }) => Boolean(asset.public_path)).length
+    + directory.directories.reduce((total, child) => total + countPublicItems(child), 0);
 }
 
 export function expandedPathsForDisplay(
