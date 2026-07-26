@@ -3,7 +3,7 @@ import {
   allDirectoryPaths,
   buildKnowledgeTree,
   buildPageTree,
-  countPublicPages,
+  countPublicItems,
   directoryPathsForPage,
   expandedPathsForDisplay,
   knowledgeTreeItemLabel,
@@ -131,13 +131,17 @@ describe("knowledge tree", () => {
     ]);
   });
 
-  test("counts public descendant pages in a directory", () => {
+  test("counts public descendant pages and assets in a directory", () => {
     const publicIntro = { ...page("intro", "about/intro", "Intro"), published_version_id: "published-intro" };
     const publicPhysics = { ...page("physics", "me/science/physics", "Physics"), published_version_id: "published-physics" };
-    const tree = buildPageTree([publicIntro, publicPhysics, page("draft", "me/science/draft", "Draft")]);
+    const publicPhoto = { ...asset("photo", "me/photos/profile", "profile.jpg"), public_path: "photos/profile.jpg" };
+    const tree = buildKnowledgeTree(
+      [publicIntro, publicPhysics, page("draft", "me/science/draft", "Draft")],
+      [publicPhoto, asset("private-photo", "me/photos/private", "private.jpg")],
+    );
 
-    expect(countPublicPages(tree)).toBe(2);
-    expect(countPublicPages(tree.directories[1]!)).toBe(1);
+    expect(countPublicItems(tree)).toBe(3);
+    expect(countPublicItems(tree.directories[1]!)).toBe(2);
   });
 
   test("round-trips the expanded directory state for reloads", () => {

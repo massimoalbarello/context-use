@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   buildKnowledgeTree,
-  countPublicPages,
+  countPublicItems,
   EXPANDED_PATHS_STORAGE_KEY,
   expandedPathsForDisplay,
   knowledgeTreeItemLabel,
@@ -152,7 +152,7 @@ function DirectoryBranch({
   onSelect: (selection: KnowledgeSelection) => void;
 }) {
   const expanded = expandedPaths.has(directory.path);
-  const publicPageCount = expanded ? 0 : countPublicPages(directory);
+  const publicItemCount = expanded ? 0 : countPublicItems(directory);
   const rowStyle = { "--tree-depth": depth } as CSSProperties;
 
   return <div className="tree-branch">
@@ -162,14 +162,14 @@ function DirectoryBranch({
       style={rowStyle}
       role="treeitem"
       aria-expanded={expanded}
-      aria-label={`${directory.name}${publicPageCount ? `, ${publicPageCount} public page${publicPageCount === 1 ? "" : "s"}` : ""}`}
-      title={`${directory.path}/${publicPageCount ? `\n${publicPageCount} public page${publicPageCount === 1 ? "" : "s"}` : ""}`}
+      aria-label={`${directory.name}${publicItemCount ? `, ${publicItemCount} public item${publicItemCount === 1 ? "" : "s"}` : ""}`}
+      title={`${directory.path}/${publicItemCount ? `\n${publicItemCount} public item${publicItemCount === 1 ? "" : "s"}` : ""}`}
       onClick={() => onToggle(directory.path)}
     >
       <Chevron expanded={expanded} />
       <FolderIcon expanded={expanded} />
       <span className="tree-label">{directory.name}</span>
-      {publicPageCount > 0 && <span className="tree-public-count" aria-hidden="true">{publicPageCount > 99 ? "99+" : publicPageCount}</span>}
+      {publicItemCount > 0 && <span className="tree-public-count" aria-hidden="true">{publicItemCount > 99 ? "99+" : publicItemCount}</span>}
     </button>
     {expanded && <div
       className="tree-children"
