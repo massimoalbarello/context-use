@@ -93,11 +93,30 @@ export class DirectoryRepository {
     const directory = await this.get(directoryId);
     if (!directory) return null;
     const children = await this.pool.query<DirectoryIndexEntry>(
-      `SELECT 'directory'::text AS kind,id,current_path AS path,title,summary
-       FROM knowledge_directories
-       WHERE parent_path=$1
+      `SELECT 'directory'::text AS kind,directory.id,directory.current_path AS path,
+         directory.title,directory.summary,
+         CASE
+           WHEN trim(directory.intro_markdown)=''
+             AND NOT EXISTS (
+               SELECT 1 FROM knowledge_directories child
+               WHERE child.parent_path=directory.current_path
+             )
+             AND (
+               SELECT count(*) FROM knowledge_pages page
+               WHERE page.parent_path=directory.current_path AND page.archived_at IS NULL
+             )=1
+           THEN (
+             SELECT page.id FROM knowledge_pages page
+             WHERE page.parent_path=directory.current_path AND page.archived_at IS NULL
+             LIMIT 1
+           )
+           ELSE NULL
+         END AS default_page_id
+       FROM knowledge_directories directory
+       WHERE directory.parent_path=$1
        UNION ALL
-       SELECT 'page'::text AS kind,page.id,page.current_path AS path,version.title,version.summary
+       SELECT 'page'::text AS kind,page.id,page.current_path AS path,
+         version.title,version.summary,NULL::uuid AS default_page_id
        FROM knowledge_pages page
        JOIN knowledge_page_versions version
          ON version.id=page.current_version_id AND version.page_id=page.id

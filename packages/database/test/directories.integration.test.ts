@@ -16,16 +16,20 @@ describeDatabase("first-class directory indexes", () => {
   const suffix = crypto.randomUUID().slice(0, 8);
   const parentPath = `tests/directory-${suffix}`;
   const childPath = `${parentPath}/2020-2024_chapters`;
-  let pageId: string | undefined;
+  const grandchildPath = `${childPath}/details`;
+  const pageIds: string[] = [];
 
   afterAll(async () => {
-    if (pageId) {
+    if (pageIds.length) {
       await pool.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
-      await pool.query("DELETE FROM knowledge_pages WHERE id=$1", [pageId]);
+      await pool.query("DELETE FROM knowledge_pages WHERE id=ANY($1::uuid[])", [pageIds]);
       await pool.query("ALTER TABLE knowledge_pages ENABLE TRIGGER ALL");
-      await pool.query("DELETE FROM knowledge_page_versions WHERE page_id=$1", [pageId]);
+      await pool.query("DELETE FROM knowledge_page_versions WHERE page_id=ANY($1::uuid[])", [pageIds]);
     }
-    await pool.query("DELETE FROM knowledge_directories WHERE current_path IN ($1,$2)", [childPath, parentPath]);
+    await pool.query(
+      "DELETE FROM knowledge_directories WHERE current_path IN ($1,$2,$3)",
+      [grandchildPath, childPath, parentPath],
+    );
     await pool.end();
   });
 
@@ -55,15 +59,86 @@ describeDatabase("first-class directory indexes", () => {
       body_markdown: "Introduction body.",
       commit_message: "Create directory fixture",
     }, { kind: "dashboard", subject: "integration-test-owner" });
-    pageId = page.id;
+    pageIds.push(page.id);
 
     expect(await directories.indexByPath(parentPath)).toMatchObject({
       id: parent.id,
       title: "Life",
       children: [
-        { kind: "page", id: page.id, title: "Introduction", summary: "A concise introduction to this period of the owner's life." },
-        { kind: "directory", id: child.id, title: "Chapters", summary: "The major chapters in the owner's life." },
+        { kind: "page", id: page.id, title: "Introduction", summary: "A concise introduction to this period of the owner's life.", default_page_id: null },
+        { kind: "directory", id: child.id, title: "Chapters", summary: "The major chapters in the owner's life.", default_page_id: null },
       ],
+    });
+    const childPage = await pages.create({
+      path: `${childPath}/como`,
+      title: "Como",
+      summary: "Growing up at the foot of the Alps.",
+      body_markdown: "Como body.",
+      commit_message: "Create sole child page",
+    }, { kind: "dashboard", subject: "integration-test-owner" });
+    pageIds.push(childPage.id);
+    let childEntry = (await directories.indexByPath(parentPath))?.children
+      .find(({ id }) => id === child.id);
+    expect(childEntry).toMatchObject({
+      kind: "directory",
+      id: child.id,
+      default_page_id: childPage.id,
+    });
+    const secondChildPage = await pages.create({
+      path: `${childPath}/lake`,
+      title: "Lake",
+      summary: "A second direct page in the chapter.",
+      body_markdown: "Lake body.",
+      commit_message: "Create second child page",
+    }, { kind: "dashboard", subject: "integration-test-owner" });
+    pageIds.push(secondChildPage.id);
+    childEntry = (await directories.indexByPath(parentPath))?.children
+      .find(({ id }) => id === child.id);
+    expect(childEntry).toMatchObject({
+      kind: "directory",
+      id: child.id,
+      default_page_id: null,
+    });
+    await pool.query("UPDATE knowledge_pages SET archived_at=now() WHERE id=$1", [secondChildPage.id]);
+    childEntry = (await directories.indexByPath(parentPath))?.children
+      .find(({ id }) => id === child.id);
+    expect(childEntry).toMatchObject({
+      kind: "directory",
+      id: child.id,
+      default_page_id: childPage.id,
+    });
+
+    await directories.update(child.id, {
+      title: child.title,
+      summary: child.summary,
+      intro_markdown: "Authored directory introduction.",
+      expected_version_number: 1,
+    });
+    childEntry = (await directories.indexByPath(parentPath))?.children
+      .find(({ id }) => id === child.id);
+    expect(childEntry).toMatchObject({
+      kind: "directory",
+      id: child.id,
+      default_page_id: null,
+    });
+    await directories.update(child.id, {
+      title: child.title,
+      summary: child.summary,
+      intro_markdown: "",
+      expected_version_number: 2,
+    });
+    await directories.create({
+      path: grandchildPath,
+      title: "Details",
+      summary: "Supporting details for the chapter.",
+      intro_markdown: "",
+    });
+    childEntry = (await directories.indexByPath(parentPath))?.children
+      .find(({ id }) => id === child.id);
+    expect(childEntry).toMatchObject({
+      kind: "directory",
+      id: child.id,
+      default_page_id: null,
     });
     expect(await directories.hasPublishedDescendant(parentPath)).toBe(false);
     await pool.query(

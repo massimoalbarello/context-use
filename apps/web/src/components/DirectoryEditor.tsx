@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.ts";
-import type { DirectoryIndex } from "../types.ts";
+import type { DirectoryIndex, DirectoryIndexEntry } from "../types.ts";
 import type { KnowledgeSelection } from "./KnowledgeTree.tsx";
+
+export function selectionForDirectoryEntry(child: DirectoryIndexEntry): KnowledgeSelection {
+  return child.kind === "directory" && child.default_page_id
+    ? { kind: "page", id: child.default_page_id }
+    : { kind: child.kind, id: child.id };
+}
 
 export function DirectoryEditor({
   directoryId,
@@ -79,7 +85,7 @@ export function DirectoryEditor({
       <section className="directory-index" aria-label={`${directory.title} contents`}>
         {directory.children.length ? <ol>
           {directory.children.map((child) => <li key={`${child.kind}-${child.id}`}>
-            <button type="button" onClick={() => onSelect({ kind: child.kind, id: child.id })}>{child.title}</button>
+            <button type="button" onClick={() => onSelect(selectionForDirectoryEntry(child))}>{child.title}</button>
             <span>— {child.summary}</span>
           </li>)}
         </ol> : <p className="directory-empty">This directory has no child pages or directories yet.</p>}

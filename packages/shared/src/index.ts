@@ -223,6 +223,7 @@ export type DirectoryIndexEntry = {
   path: string;
   title: string;
   summary: string;
+  default_page_id: string | null;
 };
 
 export type DirectoryIndex = Directory & {
