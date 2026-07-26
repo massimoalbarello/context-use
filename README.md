@@ -15,7 +15,7 @@ The longer-term vision is an autobiography that writes itself. As Context Use co
 - Gives personal agents read and write access through OAuth-protected MCP.
 - Publishes only the exact pages and assets you approve.
 - Lets only the dashboard owner permanently delete an archived page after fresh passkey confirmation.
-- Exports a portable Markdown vault with page metadata, directory metadata, generated `index.md` files, and local links.
+- Exports a portable Markdown vault with page metadata, directory metadata, generated `index.md` files where navigation requires them, and local links. One-page leaf folders link directly to their sole page.
 - Provides a public profile at `about/intro`, plus public pages for anything else you choose to share.
 - Runs locally or on your own AWS account.
 

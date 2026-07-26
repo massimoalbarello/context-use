@@ -219,6 +219,33 @@ function parentKnowledgePath(path: string): string {
   return path.split("/").slice(0, -1).join("/");
 }
 
+function collapsibleDirectoryPages(snapshot: KnowledgeExportSnapshot): Map<string, KnowledgeExportPage> {
+  const childDirectoryPaths = new Set(
+    snapshot.directories
+      .filter(({ current_path }) => current_path)
+      .map(({ current_path }) => parentKnowledgePath(current_path)),
+  );
+  const pagesByParent = new Map<string, KnowledgeExportPage[]>();
+  for (const page of snapshot.pages) {
+    const parent = parentKnowledgePath(page.current_path);
+    const pages = pagesByParent.get(parent) ?? [];
+    pages.push(page);
+    pagesByParent.set(parent, pages);
+  }
+
+  const collapsed = new Map<string, KnowledgeExportPage>();
+  for (const directory of snapshot.directories) {
+    if (
+      !directory.current_path
+      || directory.intro_markdown.trim()
+      || childDirectoryPaths.has(directory.current_path)
+    ) continue;
+    const pages = pagesByParent.get(directory.current_path) ?? [];
+    if (pages.length === 1) collapsed.set(directory.current_path, pages[0]!);
+  }
+  return collapsed;
+}
+
 export function planKnowledgeExport(snapshot: KnowledgeExportSnapshot): PlannedKnowledgeExport {
   const items = [
     ...snapshot.pages.map((page) => ({ kind: "page" as const, id: page.id, path: page.current_path, page })),
@@ -234,8 +261,10 @@ export function planKnowledgeExport(snapshot: KnowledgeExportSnapshot): PlannedK
   const directoryPaths = new Map<string, string>();
   const directoryPathsByKnowledgePath = new Map<string, string>();
   const assetPaths = new Map<string, string>();
+  const collapsedDirectories = collapsibleDirectoryPages(snapshot);
 
   for (const directory of snapshot.directories) {
+    if (collapsedDirectories.has(directory.current_path)) continue;
     const mapped = directories.get(directory.current_path) ?? "";
     const vaultPath = mapped ? `${mapped}/index.md` : "index.md";
     if (used.has(collisionKey(vaultPath))) throw new Error(`Directory index path collision at ${vaultPath}`);
@@ -260,57 +289,68 @@ export function planKnowledgeExport(snapshot: KnowledgeExportSnapshot): PlannedK
     }
   }
 
+  for (const directory of snapshot.directories) {
+    const page = collapsedDirectories.get(directory.current_path);
+    if (!page) continue;
+    const vaultPath = pagePaths.get(page.id.toLowerCase());
+    if (!vaultPath) throw new Error(`Collapsed directory page path is missing for ${directory.current_path}`);
+    directoryPaths.set(directory.id.toLowerCase(), vaultPath);
+    directoryPathsByKnowledgePath.set(directory.current_path, vaultPath);
+  }
+
   return {
-    directories: snapshot.directories.map((directory) => {
-      const vaultPath = directoryPaths.get(directory.id.toLowerCase())!;
-      const intro = rewriteReferences(
-        directory.intro_markdown,
-        directory.current_path,
-        vaultPath,
-        pagePaths,
-        pagePathsByKnowledgePath,
-        directoryPaths,
-        directoryPathsByKnowledgePath,
-        assetPaths,
-      );
-      const childDirectories = snapshot.directories
-        .filter((candidate) => candidate.current_path && parentKnowledgePath(candidate.current_path) === directory.current_path)
-        .map((candidate) => ({
-          kind: "directory" as const,
-          id: candidate.id,
-          path: candidate.current_path,
-          title: candidate.title,
-          summary: candidate.summary,
-          vaultPath: directoryPaths.get(candidate.id.toLowerCase())!,
-        }));
-      const childPages = snapshot.pages
-        .filter((candidate) => parentKnowledgePath(candidate.current_path) === directory.current_path)
-        .map((candidate) => ({
-          kind: "page" as const,
-          id: candidate.id,
-          path: candidate.current_path,
-          title: candidate.title,
-          summary: candidate.summary,
-          vaultPath: pagePaths.get(candidate.id.toLowerCase())!,
-        }));
-      const children = [...childDirectories, ...childPages]
-        .sort((left, right) => left.path.localeCompare(right.path) || left.kind.localeCompare(right.kind));
-      const listing = children.length
-        ? children.map((child) => (
-          `- [${markdownLabel(child.title)}](${markdownTarget(vaultPath, child.vaultPath)}) — ${child.summary}`
-        )).join("\n")
-        : "_This directory has no child pages or directories._";
-      return {
-        ...directory,
-        vaultPath,
-        body: [
-          metadataFrontmatter("directory", directory.current_path, directory.title, directory.summary),
-          intro.trim(),
-          "## Contents",
-          listing,
-        ].filter(Boolean).join("\n\n"),
-      };
-    }),
+    directories: snapshot.directories
+      .filter((directory) => !collapsedDirectories.has(directory.current_path))
+      .map((directory) => {
+        const vaultPath = directoryPaths.get(directory.id.toLowerCase())!;
+        const intro = rewriteReferences(
+          directory.intro_markdown,
+          directory.current_path,
+          vaultPath,
+          pagePaths,
+          pagePathsByKnowledgePath,
+          directoryPaths,
+          directoryPathsByKnowledgePath,
+          assetPaths,
+        );
+        const childDirectories = snapshot.directories
+          .filter((candidate) => candidate.current_path && parentKnowledgePath(candidate.current_path) === directory.current_path)
+          .map((candidate) => ({
+            kind: "directory" as const,
+            id: candidate.id,
+            path: candidate.current_path,
+            title: candidate.title,
+            summary: candidate.summary,
+            vaultPath: directoryPaths.get(candidate.id.toLowerCase())!,
+          }));
+        const childPages = snapshot.pages
+          .filter((candidate) => parentKnowledgePath(candidate.current_path) === directory.current_path)
+          .map((candidate) => ({
+            kind: "page" as const,
+            id: candidate.id,
+            path: candidate.current_path,
+            title: candidate.title,
+            summary: candidate.summary,
+            vaultPath: pagePaths.get(candidate.id.toLowerCase())!,
+          }));
+        const children = [...childDirectories, ...childPages]
+          .sort((left, right) => left.path.localeCompare(right.path) || left.kind.localeCompare(right.kind));
+        const listing = children.length
+          ? children.map((child) => (
+            `- [${markdownLabel(child.title)}](${markdownTarget(vaultPath, child.vaultPath)}) — ${child.summary}`
+          )).join("\n")
+          : "_This directory has no child pages or directories._";
+        return {
+          ...directory,
+          vaultPath,
+          body: [
+            metadataFrontmatter("directory", directory.current_path, directory.title, directory.summary),
+            intro.trim(),
+            "## Contents",
+            listing,
+          ].filter(Boolean).join("\n\n"),
+        };
+      }),
     pages: snapshot.pages.map((page) => {
       const vaultPath = pagePaths.get(page.id.toLowerCase())!;
       const rewritten = rewriteReferences(
