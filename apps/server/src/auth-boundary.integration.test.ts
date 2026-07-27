@@ -254,10 +254,12 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       expect(publishedHtml).toContain('href="/i"');
       expect(privatePage.status).toBe(404);
       expect(await privatePage.text()).toBe(await missing.text());
-      expect(leafIndex.status).toBe(200);
-      const leafHtml = await leafIndex.text();
-      expect(leafHtml).toContain("Nested public page");
-      expect(leafHtml).toContain("PUBLIC-SUMMARY-CANARY");
+      expect(leafIndex.status).toBe(302);
+      expect(leafIndex.headers.get("location")).toBe(`/p/${publicPath}`);
+      expect(parentIndex.status).toBe(200);
+      const parentHtml = await parentIndex.text();
+      expect(parentHtml).toContain("1 published page");
+      expect(parentHtml).toContain(`href="/p/${publicPath}"`);
       for (const privateCanary of [
         "PRIVATE-TITLE-CANARY",
         "PRIVATE-SUMMARY-CANARY",
@@ -268,9 +270,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         "PRIVATE-NESTED-DIRECTORY-TITLE-CANARY",
         "PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY",
         "PRIVATE-NESTED-DIRECTORY-INTRO-CANARY",
-      ]) expect(leafHtml).not.toContain(privateCanary);
-      expect(parentIndex.status).toBe(200);
-      expect(await parentIndex.text()).toContain("1 published page");
+      ]) expect(parentHtml).not.toContain(privateCanary);
 
       await client.query(
         "UPDATE knowledge_pages SET published_version_id=NULL,public_path=NULL WHERE id=$1",
