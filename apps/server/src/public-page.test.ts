@@ -12,6 +12,7 @@ describe("public page presentation", () => {
     const html = renderPublicPageDocument("Public notes", "<h1>Hello</h1>");
 
     expect(html).toContain("<article><h1>Hello</h1></article><footer class=\"context-use-footnote\">");
+    expect(html).toContain('<a href="/llms.txt" type="text/plain">AI-readable site index</a>');
     expect(html).toContain('<p>self-hosted with ❤️ using <a class="external-link" href="https://github.com/massimoalbarello/context-use" target="_blank" rel="noopener noreferrer" title="External link (opens in a new tab)">context-use</a>.</p>');
     expect(html).not.toContain("private by default");
     expect(html).not.toContain("MCP");
@@ -34,7 +35,9 @@ describe("public page presentation", () => {
 
     expect(nested).toContain('<nav class="knowledge-navigation" aria-label="Knowledge navigation"><a href="/i">Knowledge index</a>');
     expect(nested).toContain('<a href="/i/about/chapters">Chapters index</a>');
+    expect(nested).toContain('<link rel="alternate" type="text/markdown" href="/p/about/chapters/como.md" title="Como as Markdown">');
     expect(rootPage.match(/href="\/i"/g)).toHaveLength(1);
+    expect(rootPage).toContain('href="/p/notes.md"');
   });
 
   test("shows the published version edit date after the page content", () => {
@@ -66,6 +69,7 @@ describe("public page presentation", () => {
     expect(html).toContain('<a href="/p/about/chapters/only-child/story">Only Child</a><span>— 1 published page.</span>');
     expect(html).toContain('<a href="/p/about/chapters/como">Como</a><span>— Growing up at the foot of the Alps.</span>');
     expect(html).toContain("Only explicitly published knowledge appears here.");
+    expect(html).toContain('<a href="/llms.txt" type="text/plain">AI-readable site index</a>');
   });
 
   test("renders the first-person billboard and optional introduction link", () => {
@@ -75,6 +79,7 @@ describe("public page presentation", () => {
     expect(html).toContain("what I choose to share");
     expect(html).toContain('href="/p/about/intro"');
     expect(html).toContain("Explore my knowledge base");
+    expect(html).toContain('<a href="/llms.txt" type="text/plain">AI-readable site index</a>');
     expect(html).not.toContain("MCP");
   });
 

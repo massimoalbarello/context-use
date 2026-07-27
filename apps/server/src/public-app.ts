@@ -5,6 +5,7 @@ import { config } from "./config.ts";
 import { json, routeError } from "./http.ts";
 import { renderMarkdown } from "./markdown.ts";
 import { createPublicAssetContentHandler } from "./public-asset-content.ts";
+import { renderLlmsFullTxt, renderLlmsTxt, renderPublicPageMarkdown } from "./public-llms.ts";
 import {
   IMAGE_LAYOUT_STYLES,
   publicPageStyles,
@@ -25,6 +26,8 @@ const storage = new BrokeredStorage({
 });
 const publicAssetContent = createPublicAssetContentHandler(publicData, storage, config.ASSET_ORIGIN);
 const htmlHeaders = { ...securityHeaders, "content-type": "text/html; charset=utf-8" };
+const textHeaders = { ...securityHeaders, "content-type": "text/plain; charset=utf-8" };
+const markdownHeaders = { ...securityHeaders, "content-type": "text/markdown; charset=utf-8" };
 const unavailableResolvers = {
   page: async () => ({ available: false as const }),
   directory: async () => ({ available: false as const }),
@@ -59,18 +62,29 @@ async function publicDirectoryResponse(rawPath: string): Promise<Response> {
   return new Response(renderPublicIndexDocument(index), { headers: htmlHeaders });
 }
 
+async function publicLlmsResponse(full: boolean): Promise<Response> {
+  const pages = await publicData.publishedPages();
+  const options = { siteOrigin: config.APP_ORIGIN, assetOrigin: config.ASSET_ORIGIN };
+  const content = full ? renderLlmsFullTxt(pages, options) : renderLlmsTxt(pages, options);
+  return new Response(content, { headers: textHeaders });
+}
+
 export const publicApp = new Elysia()
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
   .get("/health", () => json({ status: "ok", service: "public-web" }))
   .get("/a/*", ({ request, params }) => publicAssetContent(request, params["*"]))
+  .get("/llms.txt", () => publicLlmsResponse(false))
+  .get("/llms-full.txt", () => publicLlmsResponse(true))
   .get("/p/*", async ({ params }) => {
-    const parsedPath = PagePath.safeParse(params["*"]);
+    const rawPath = params["*"];
+    const markdown = rawPath.endsWith(".md");
+    const parsedPath = PagePath.safeParse(markdown ? rawPath.slice(0, -3) : rawPath);
     if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
     const publicPath = parsedPath.data;
     const page = await publicData.pageByPublicPath(publicPath);
-    if (!page && publicPath === "about/intro") {
+    if (!page && publicPath === "about/intro" && !markdown) {
       return new Response(renderPublicPageDocument(
         "Nothing published yet",
         "<p>The owner has not published an introduction yet. Please check back later.</p>",
@@ -79,6 +93,12 @@ export const publicApp = new Elysia()
       });
     }
     if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
+    if (markdown) {
+      return new Response(renderPublicPageMarkdown(page, {
+        siteOrigin: config.APP_ORIGIN,
+        assetOrigin: config.ASSET_ORIGIN,
+      }), { headers: markdownHeaders });
+    }
     // The database projection has already removed every private identifier and
     // replaced independently public targets with public paths. The renderer can
     // resolve a published asset path but has no UUID/private-path capability.

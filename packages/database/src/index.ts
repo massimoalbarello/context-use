@@ -25,6 +25,7 @@ export {
   PublicationRepository,
   PublicRepository,
   StoragePublicationRepository,
+  type PublicPage,
 } from "./publication.ts";
 export {
   AUTOMATION_RESULT_SUMMARY_MAX_LENGTH,
