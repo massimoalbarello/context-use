@@ -52,15 +52,18 @@ describe("public page presentation", () => {
   test("renders generated public indexes from published pages and branches", () => {
     const html = renderPublicIndexDocument({
       path: "about/chapters",
+      default_page_path: null,
       entries: [
-        { kind: "directory", path: "about/chapters/early-years", title: null, summary: null, published_count: 2 },
-        { kind: "page", path: "about/chapters/como", title: "Como", summary: "Growing up at the foot of the Alps.", published_count: 1 },
+        { kind: "directory", path: "about/chapters/early-years", title: null, summary: null, published_count: 2, default_page_path: null },
+        { kind: "directory", path: "about/chapters/only-child", title: null, summary: null, published_count: 1, default_page_path: "about/chapters/only-child/story" },
+        { kind: "page", path: "about/chapters/como", title: "Como", summary: "Growing up at the foot of the Alps.", published_count: 1, default_page_path: null },
       ],
     });
 
     expect(html).toContain('<a href="/i">Knowledge index</a>');
     expect(html).toContain('<a href="/i/about">About index</a>');
     expect(html).toContain('<a href="/i/about/chapters/early-years">Early Years</a><span>— 2 published pages.</span>');
+    expect(html).toContain('<a href="/p/about/chapters/only-child/story">Only Child</a><span>— 1 published page.</span>');
     expect(html).toContain('<a href="/p/about/chapters/como">Como</a><span>— Growing up at the foot of the Alps.</span>');
     expect(html).toContain("Only explicitly published knowledge appears here.");
   });

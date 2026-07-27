@@ -1123,6 +1123,7 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       const publicKnowledge = new PublicRepository(admin as unknown as Pool);
       const rootIndex = await publicKnowledge.directoryIndex("");
+      const profileIndex = await publicKnowledge.directoryIndex("profile");
       const workIndex = await publicKnowledge.directoryIndex("profile/work");
       const missingIndex = await publicKnowledge.directoryIndex("profile/private");
       await admin.query("RESET ROLE");
@@ -1155,13 +1156,29 @@ describeDatabase("PostgreSQL security roles", () => {
         title: null,
         summary: null,
         published_count: 1,
+        default_page_path: null,
       });
+      expect(rootIndex?.default_page_path).toBeNull();
+      expect(profileIndex).toEqual({
+        path: "profile",
+        default_page_path: null,
+        entries: [{
+          kind: "directory",
+          path: "profile/work",
+          title: null,
+          summary: null,
+          published_count: 1,
+          default_page_path: "profile/work/project",
+        }],
+      });
+      expect(workIndex?.default_page_path).toBe("profile/work/project");
       expect(workIndex?.entries).toEqual([{
         kind: "page",
         path: "profile/work/project",
         title: "Project",
         summary: "A public project fixture.",
         published_count: 1,
+        default_page_path: null,
       }]);
       expect(missingIndex).toBeNull();
     } finally {
