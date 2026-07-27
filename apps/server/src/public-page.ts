@@ -17,6 +17,7 @@ type PublicIndexEntry = {
   title: string | null;
   summary: string | null;
   published_count: number;
+  default_page_path: string | null;
 };
 
 function parentPath(path: string): string {
@@ -35,6 +36,10 @@ function humanizePath(path: string): string {
 
 function indexHref(path: string): string {
   return path ? `/i/${path}` : "/i";
+}
+
+export function publicPageHref(path: string | null): string | null {
+  return path ? `/p/${path}` : null;
 }
 
 function renderKnowledgeNavigation(folderPath: string): string {
@@ -71,7 +76,11 @@ export function renderPublicPageDocument(
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="/public.css"><link rel="stylesheet" href="/content.css"></head><body><main class="public-page">${navigation}<article>${content}</article>${renderFootnote(lastEditedAt)}</main></body></html>`;
 }
 
-export function renderPublicIndexDocument(index: { path: string; entries: PublicIndexEntry[] }): string {
+export function renderPublicIndexDocument(index: {
+  path: string;
+  default_page_path: string | null;
+  entries: PublicIndexEntry[];
+}): string {
   const title = index.path ? `${humanizePath(index.path)} index` : "Knowledge index";
   const parent = parentPath(index.path);
   const navigation = index.path ? renderKnowledgeNavigation(parent) : "";
@@ -80,7 +89,9 @@ export function renderPublicIndexDocument(index: { path: string; entries: Public
     const description = entry.kind === "page"
       ? entry.summary ?? "Published page."
       : `${entry.published_count} published page${entry.published_count === 1 ? "" : "s"}.`;
-    const href = entry.kind === "page" ? `/p/${entry.path}` : indexHref(entry.path);
+    const href = entry.kind === "page"
+      ? publicPageHref(entry.path)!
+      : publicPageHref(entry.default_page_path) ?? indexHref(entry.path);
     return `<li><a href="${href}">${escapeHtml(entryTitle)}</a><span>— ${escapeHtml(description)}</span></li>`;
   }).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title><link rel="stylesheet" href="/public.css"></head><body><main class="public-page public-index">${navigation}<header class="public-index-header"><p>Generated index</p><h1>${escapeHtml(title)}</h1><span>Only explicitly published knowledge appears here.</span></header><ol class="public-index-list">${entries}</ol>${renderFootnote()}</main></body></html>`;

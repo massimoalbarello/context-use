@@ -8,6 +8,7 @@ import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import {
   IMAGE_LAYOUT_STYLES,
   publicPageStyles,
+  publicPageHref,
   renderPublicIndexDocument,
   renderPublicLandingDocument,
   renderPublicPageDocument,
@@ -48,6 +49,13 @@ async function publicDirectoryResponse(rawPath: string): Promise<Response> {
   if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
   const index = await publicData.directoryIndex(parsedPath.data);
   if (!index) return new Response("Not found", { status: 404, headers: securityHeaders });
+  const defaultPageHref = publicPageHref(index.default_page_path);
+  if (defaultPageHref) {
+    return new Response(null, {
+      status: 302,
+      headers: { ...securityHeaders, location: defaultPageHref },
+    });
+  }
   return new Response(renderPublicIndexDocument(index), { headers: htmlHeaders });
 }
 
