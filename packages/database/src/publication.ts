@@ -2,6 +2,14 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { PublicationIntentInput } from "@context-use/shared";
 
+export type PublicPage = {
+  public_path: string;
+  title: string;
+  summary: string;
+  body_markdown: string;
+  last_edited_at: string | Date;
+};
+
 export class PublicationRepository {
   constructor(private readonly dashboardPool: Pool) {}
 
@@ -29,11 +37,20 @@ export class PublicRepository {
   constructor(private readonly pool: Pool) {}
 
   async pageByPublicPath(path: string) {
-    const result = await this.pool.query(
+    const result = await this.pool.query<PublicPage>(
       "SELECT public_path,title,summary,body_markdown,last_edited_at FROM published_pages WHERE public_path=$1",
       [path],
     );
     return result.rows[0] ?? null;
+  }
+
+  async publishedPages(): Promise<PublicPage[]> {
+    const result = await this.pool.query<PublicPage>(
+      `SELECT public_path,title,summary,body_markdown,last_edited_at
+       FROM published_pages
+       ORDER BY public_path COLLATE "C"`,
+    );
+    return result.rows;
   }
 
   async directoryIndex(path: string) {

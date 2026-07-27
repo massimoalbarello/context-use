@@ -12,6 +12,8 @@ export default defineConfig({
       "/mcp": apiProxyTarget,
       "/p": apiProxyTarget,
       "/a": apiProxyTarget,
+      "/llms.txt": apiProxyTarget,
+      "/llms-full.txt": apiProxyTarget,
       "/.well-known": apiProxyTarget,
       "/public.css": apiProxyTarget,
       "/content.css": apiProxyTarget,

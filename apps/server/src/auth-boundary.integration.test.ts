@@ -242,24 +242,46 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       await client.query("COMMIT");
 
       const published = await application!.handle(new Request(`http://localhost:3000/p/${publicPath}`));
+      const publishedMarkdown = await application!.handle(new Request(`http://localhost:3000/p/${publicPath}.md`));
       const privatePage = await application!.handle(new Request(`http://localhost:3000/p/${privatePath}`));
+      const privateMarkdown = await application!.handle(new Request(`http://localhost:3000/p/${privatePath}.md`));
       const missing = await application!.handle(new Request(`http://localhost:3000/p/tests/${suffix}/nested/missing-page`));
       const leafIndex = await application!.handle(new Request(`http://localhost:3000/i/${nestedPath}`));
       const parentIndex = await application!.handle(new Request(`http://localhost:3000/i/${parentPath}`));
+      const llms = await application!.handle(new Request("http://localhost:3000/llms.txt"));
+      const llmsFull = await application!.handle(new Request("http://localhost:3000/llms-full.txt"));
 
       expect(published.status).toBe(200);
       const publishedHtml = await published.text();
       expect(publishedHtml).toContain("PUBLIC-NESTED-CANARY");
       expect(publishedHtml).toContain(`href="/i/${nestedPath}"`);
       expect(publishedHtml).toContain('href="/i"');
+      expect(publishedHtml).toContain(`href="/p/${publicPath}.md"`);
+      expect(publishedHtml).toContain('href="/llms.txt"');
+      expect(publishedMarkdown.status).toBe(200);
+      expect(publishedMarkdown.headers.get("content-type")).toBe("text/markdown; charset=utf-8");
+      const publishedMarkdownText = await publishedMarkdown.text();
+      expect(publishedMarkdownText).toContain("# Nested public page");
+      expect(publishedMarkdownText).toContain("PUBLIC-SUMMARY-CANARY");
+      expect(publishedMarkdownText).toContain("PUBLIC-NESTED-CANARY");
       expect(privatePage.status).toBe(404);
       expect(await privatePage.text()).toBe(await missing.text());
+      expect(privateMarkdown.status).toBe(404);
       expect(leafIndex.status).toBe(302);
       expect(leafIndex.headers.get("location")).toBe(`/p/${publicPath}`);
       expect(parentIndex.status).toBe(200);
       const parentHtml = await parentIndex.text();
       expect(parentHtml).toContain("1 published page");
       expect(parentHtml).toContain(`href="/p/${publicPath}"`);
+      expect(parentHtml).toContain('href="/llms.txt"');
+      expect(llms.status).toBe(200);
+      const llmsText = await llms.text();
+      expect(llmsText).toContain(`${config.APP_ORIGIN}/p/${publicPath}.md`);
+      expect(llmsText).not.toContain(privatePath);
+      expect(llmsFull.status).toBe(200);
+      const llmsFullText = await llmsFull.text();
+      expect(llmsFullText).toContain("PUBLIC-NESTED-CANARY");
+      expect(llmsFullText).not.toContain("PRIVATE-NESTED-CANARY");
       for (const privateCanary of [
         "PRIVATE-TITLE-CANARY",
         "PRIVATE-SUMMARY-CANARY",
@@ -277,7 +299,9 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         [publicPageId],
       );
       const removedIndex = await application!.handle(new Request(`http://localhost:3000/i/${nestedPath}`));
+      const removedMarkdown = await application!.handle(new Request(`http://localhost:3000/p/${publicPath}.md`));
       expect(removedIndex.status).toBe(404);
+      expect(removedMarkdown.status).toBe(404);
     } finally {
       await client.query("ROLLBACK").catch(() => undefined);
       await client.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
