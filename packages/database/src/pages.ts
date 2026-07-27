@@ -40,10 +40,6 @@ export class AutomationContentAccessError extends Error {
   }
 }
 
-export function automationKnowledgePath(automationKey: string, relativePath: string): string {
-  return `automations/${automationKey}/${relativePath}`;
-}
-
 async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {
@@ -206,22 +202,13 @@ export class PageRepository {
   }
 
   /**
-   * Automation page tools accept either an absolute `path` inside the granted
-   * write scope, or the older `relative_path` resolved under the automation's
-   * own folder. Exactly one is required.
+   * Automation pages are written at absolute paths. An automation always holds
+   * its own `automations/<key>/` folder, and anything beyond that is whatever
+   * its declared write scope grants.
    */
-  private resolveAutomationPath(
-    automation: { key: string; scope: ResolvedWriteScope },
-    input: { path?: string | undefined; relative_path?: string | undefined },
-  ): string {
-    if (Boolean(input.path) === Boolean(input.relative_path)) {
-      throw new AutomationContentAccessError(
-        "Provide either path or relative_path, not both",
-      );
-    }
-    const path = input.path ?? automationKnowledgePath(automation.key, input.relative_path!);
+  private assertAutomationPath(scope: ResolvedWriteScope, path: string): void {
     try {
-      assertWithinWriteScope(automation.scope, path);
+      assertWithinWriteScope(scope, path);
     } catch (error) {
       // Callers of the automation page tools should see one error for "you may
       // not write this page", whatever the reason.
@@ -229,7 +216,6 @@ export class PageRepository {
         error instanceof Error ? error.message : "The automation run cannot write this page",
       );
     }
-    return path;
   }
 
   async create(input: CreatePageInput, actor: Actor) {
@@ -258,7 +244,8 @@ export class PageRepository {
   async createForAutomation(input: CreateAutomationPageInput, actor: Actor) {
     return transaction(this.pool, async (client) => {
       const automation = await this.claimedAutomation(client, input.run_id, input.claim_token, actor.subject);
-      const path = this.resolveAutomationPath(automation, input);
+      const path = input.path;
+      this.assertAutomationPath(automation.scope, path);
       const pageId = randomUUID();
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
@@ -332,7 +319,8 @@ export class PageRepository {
       }
       const currentVersion = existing.version_number;
       if (currentVersion !== input.expected_version_number) throw new VersionConflictError(currentVersion);
-      const path = this.resolveAutomationPath(automation, input);
+      const path = input.path;
+      this.assertAutomationPath(automation.scope, path);
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
       await ensureAncestorDirectories(client, path);

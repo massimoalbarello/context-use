@@ -395,7 +395,7 @@ describe("MCP knowledge and automation authoring", () => {
         arguments: {
           run_id: "55555555-5555-4555-8555-555555555555",
           claim_token: "66666666-6666-4666-8666-666666666666",
-          relative_path: "reports/daily-review",
+          path: "about/diary/2026/07/27/daily-review",
           title: "Daily review",
           summary: "The daily review produced by the automation.",
           body_markdown: "Review body",
@@ -405,7 +405,7 @@ describe("MCP knowledge and automation authoring", () => {
     });
     expect(response.result?.isError).not.toBe(true);
     expect(calls).toEqual([{
-      input: expect.objectContaining({ relative_path: "reports/daily-review" }),
+      input: expect.objectContaining({ path: "about/diary/2026/07/27/daily-review" }),
       actor: { kind: "mcp", subject: "mcp-client" },
     }]);
   });

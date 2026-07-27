@@ -10,7 +10,6 @@ export {
   PageRepository,
   PublicationStateError,
   VersionConflictError,
-  automationKnowledgePath,
 } from "./pages.ts";
 export {
   DIARY_ROOT,

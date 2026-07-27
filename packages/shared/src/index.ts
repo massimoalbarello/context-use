@@ -53,12 +53,6 @@ export const AutomationKey = z
 export const CronExpression = z.string().trim().min(9).max(160);
 export const TimeZone = z.string().trim().min(1).max(100);
 export const AutomationInput = z.record(z.string(), z.unknown());
-export const AutomationRelativePath = z
-  .string()
-  .min(1)
-  .max(430)
-  .regex(/^[a-z0-9][a-z0-9/_-]*$/, "Use lowercase path segments only")
-  .refine((value) => !value.includes("//") && !value.endsWith("/"), "Invalid relative path");
 export const AutomationWriteScope = z
   .array(
     z.string().trim().min(1).max(430).superRefine((value, context) => {
@@ -178,11 +172,8 @@ const automationRunAccessSchema = z.object({
 }).strict();
 
 export const createAutomationPageSchema = automationRunAccessSchema.extend({
-  path: WritablePagePath.optional().describe(
-    "Absolute knowledge path to write, which must fall inside this automation's write scope. Provide this or relative_path, not both.",
-  ),
-  relative_path: AutomationRelativePath.optional().describe(
-    "Path relative to automations/<automation_key>/. Equivalent to passing that absolute path.",
+  path: WritablePagePath.describe(
+    "Absolute knowledge path to write. It must fall inside this run's resolved write scope, which claim_due_run returns as write_scope_resolved.",
   ),
   title: z.string().trim().min(1).max(240),
   summary: KnowledgeSummary,

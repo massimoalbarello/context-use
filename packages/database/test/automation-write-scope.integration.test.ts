@@ -129,16 +129,17 @@ describeDatabase("automation write scopes", () => {
     }, { kind: "mcp", subject: `agent-${suffix}` })).rejects.toThrow(/outside this automation's write scope/);
   });
 
-  test("still resolves relative paths into the automation's own folder", async () => {
+  test("keeps its own folder without declaring anything, and nothing else", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     const { claimed } = await claimableAutomation(suffix, []);
+    expect(claimed.write_scope_resolved).toEqual([`automations/services-digest-${suffix}/**`]);
     const generated = await pages.createForAutomation({
       run_id: claimed.run_id,
       claim_token: claimed.claim_token,
-      relative_path: "reports/latest",
+      path: `automations/services-digest-${suffix}/reports/latest`,
       title: "Latest report",
-      summary: "Output written the way automations wrote before scopes existed.",
-      body_markdown: "Unchanged behaviour.",
+      summary: "Output an automation can always write, with no grant at all.",
+      body_markdown: "Its own folder needs no declaring.",
       commit_message: "Write report",
     }, { kind: "mcp", subject: `agent-${suffix}` });
     expect(generated.current_path).toBe(`automations/services-digest-${suffix}/reports/latest`);
@@ -156,18 +157,4 @@ describeDatabase("automation write scopes", () => {
     }, { kind: "mcp", subject: `agent-${suffix}` })).rejects.toThrow(AutomationContentAccessError);
   });
 
-  test("rejects a write that names both a path and a relative path", async () => {
-    const suffix = crypto.randomUUID().slice(0, 8);
-    const { claimed } = await claimableAutomation(suffix, []);
-    await expect(pages.createForAutomation({
-      run_id: claimed.run_id,
-      claim_token: claimed.claim_token,
-      path: `automations/services-digest-${suffix}/report`,
-      relative_path: "report",
-      title: "Ambiguous target",
-      summary: "Two targets is a mistake, not a merge.",
-      body_markdown: "No.",
-      commit_message: "Attempt an ambiguous write",
-    }, { kind: "mcp", subject: `agent-${suffix}` })).rejects.toThrow(/either path or relative_path/);
-  });
 });
