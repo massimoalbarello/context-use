@@ -12,6 +12,14 @@ export {
   VersionConflictError,
   automationKnowledgePath,
 } from "./pages.ts";
+export {
+  DIARY_ROOT,
+  diaryDayForPage,
+  diaryDayTitle,
+  diaryDirectories,
+  diaryLogStub,
+  type DiaryDay,
+} from "./diary.ts";
 export { AssetRepository, type NewAsset } from "./assets.ts";
 export {
   KnowledgeExportRepository,

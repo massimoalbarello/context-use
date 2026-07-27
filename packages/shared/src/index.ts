@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  AUTOMATION_SCOPE_MAX_PATTERNS,
+  AUTOMATION_WRITE_SCOPE_DESCRIPTION,
+  AutomationScopeError,
+  assertWriteScopePattern,
+} from "./automation-scope.ts";
+
+export * from "./automation-scope.ts";
 
 export const PAGE_MARKDOWN_BODY_DESCRIPTION = [
   "Markdown page body.",
@@ -51,6 +59,21 @@ export const AutomationRelativePath = z
   .max(430)
   .regex(/^[a-z0-9][a-z0-9/_-]*$/, "Use lowercase path segments only")
   .refine((value) => !value.includes("//") && !value.endsWith("/"), "Invalid relative path");
+export const AutomationWriteScope = z
+  .array(
+    z.string().trim().min(1).max(430).superRefine((value, context) => {
+      try {
+        assertWriteScopePattern(value);
+      } catch (error) {
+        context.addIssue({
+          code: "custom",
+          message: error instanceof AutomationScopeError ? error.message : "Invalid write scope pattern",
+        });
+      }
+    }),
+  )
+  .max(AUTOMATION_SCOPE_MAX_PATTERNS)
+  .describe(AUTOMATION_WRITE_SCOPE_DESCRIPTION);
 
 const PageBodyMarkdown = z.string().max(2_000_000).describe(PAGE_MARKDOWN_BODY_DESCRIPTION);
 
@@ -136,6 +159,7 @@ export const createCronScheduleSchema = z.object({
   timezone: TimeZone,
   input: AutomationInput.default({}),
   enabled: z.boolean().default(true),
+  write_scope: AutomationWriteScope.default([]),
 }).strict();
 
 export const updateCronScheduleSchema = createCronScheduleSchema
@@ -143,6 +167,7 @@ export const updateCronScheduleSchema = createCronScheduleSchema
   .extend({
     commit_message: CommitMessage.default("Update automation"),
     enabled: z.boolean(),
+    write_scope: AutomationWriteScope,
     expected_version_number: z.number().int().positive(),
   })
   .strict();
@@ -153,7 +178,12 @@ const automationRunAccessSchema = z.object({
 }).strict();
 
 export const createAutomationPageSchema = automationRunAccessSchema.extend({
-  relative_path: AutomationRelativePath,
+  path: WritablePagePath.optional().describe(
+    "Absolute knowledge path to write, which must fall inside this automation's write scope. Provide this or relative_path, not both.",
+  ),
+  relative_path: AutomationRelativePath.optional().describe(
+    "Path relative to automations/<automation_key>/. Equivalent to passing that absolute path.",
+  ),
   title: z.string().trim().min(1).max(240),
   summary: KnowledgeSummary,
   body_markdown: PageBodyMarkdown,

@@ -59,6 +59,7 @@ describeDatabase("persisted automation lifecycle", () => {
       timezone: "UTC",
       input: { project: "context-use" },
       enabled: true,
+      write_scope: [],
     }, { kind: "dashboard", subject: "integration-test-owner" });
     scheduleIds.push(schedule.id);
     expect(schedule).toMatchObject({
@@ -94,6 +95,7 @@ describeDatabase("persisted automation lifecycle", () => {
       timezone: "UTC",
       input: {},
       enabled: true,
+      write_scope: [],
     }, { kind: "dashboard", subject: "integration-test-owner" })).rejects.toBeInstanceOf(AutomationValidationError);
     await expect(pool.query(
       "UPDATE cron_schedules SET automation_key=$2 WHERE id=$1",
@@ -252,6 +254,7 @@ describeDatabase("persisted automation lifecycle", () => {
       timezone: "UTC",
       input: { project: "context-use" },
       enabled: true,
+      write_scope: [],
       expected_version_number: 1,
     }, { kind: "dashboard", subject: "integration-test-owner" });
     expect(updatedAutomation).toMatchObject({
@@ -287,6 +290,7 @@ describeDatabase("persisted automation lifecycle", () => {
       timezone: "UTC",
       input: {},
       enabled: true,
+      write_scope: [],
       expected_version_number: 1,
     }, { kind: "dashboard", subject: "integration-test-owner" })).rejects.toBeInstanceOf(AutomationVersionConflictError);
 
@@ -340,6 +344,7 @@ describeMcpDatabase("MCP automation authoring role", () => {
       timezone: "Europe/London",
       input: { project: "context-use" },
       enabled: true,
+      write_scope: [],
     }, { kind: "mcp", subject: "integration-test-client" });
     scheduleId = schedule.id;
 
@@ -359,6 +364,7 @@ describeMcpDatabase("MCP automation authoring role", () => {
       timezone: "Europe/London",
       input: {},
       enabled: true,
+      write_scope: [],
       expected_version_number: 1,
     }, { kind: "mcp", subject: "integration-test-client" })).rejects.toThrow();
 

@@ -139,8 +139,28 @@ describe("strict mutation schemas", () => {
       timezone: "Europe/London",
       input: {},
       enabled: true,
+      write_scope: ["about/diary/{YYYY}/{MM}/{DD}/morning-review"],
       expected_version_number: 1,
     }).success).toBe(true);
+    // Updates must restate the write scope. Defaulting it to [] here would let
+    // an edit that never mentions permissions silently revoke them.
+    expect(updateCronScheduleSchema.safeParse({
+      name: "Omits the write scope",
+      instructions_markdown: "Review current context.",
+      cron_expression: "0 10 * * *",
+      timezone: "Europe/London",
+      input: {},
+      enabled: true,
+      expected_version_number: 1,
+    }).success).toBe(false);
+    expect(createCronScheduleSchema.safeParse({
+      name: "Grants too much",
+      automation_key: "grants-too-much",
+      instructions_markdown: "Review current context.",
+      cron_expression: "0 9 * * *",
+      timezone: "Europe/London",
+      write_scope: ["**"],
+    }).success).toBe(false);
     expect(updateCronScheduleSchema.safeParse({
       name: "Attempts key change",
       automation_key: "changed-key",
