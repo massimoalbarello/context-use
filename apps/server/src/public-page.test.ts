@@ -13,7 +13,7 @@ describe("public page presentation", () => {
 
     expect(html).toContain("<article><h1>Hello</h1></article><footer class=\"context-use-footnote\">");
     expect(html).toContain('<a href="/llms.txt" type="text/plain">AI-readable site index</a>');
-    expect(html).toContain('<p>self-hosted with ❤️ using <a class="external-link" href="https://github.com/massimoalbarello/context-use" target="_blank" rel="noopener noreferrer" title="External link (opens in a new tab)">context-use</a>.</p>');
+    expect(html).toContain('<p class="context-use-credit">self-hosted with ❤️ using <a class="external-link" href="https://github.com/massimoalbarello/context-use" target="_blank" rel="noopener noreferrer" title="External link (opens in a new tab)">context-use</a>.</p>');
     expect(html).not.toContain("private by default");
     expect(html).not.toContain("MCP");
   });
@@ -36,8 +36,9 @@ describe("public page presentation", () => {
     expect(nested).toContain('<nav class="knowledge-navigation" aria-label="Knowledge navigation"><a href="/i">Knowledge index</a>');
     expect(nested).toContain('<a href="/i/about/chapters">Chapters index</a>');
     expect(nested).toContain('<link rel="alternate" type="text/markdown" href="/p/about/chapters/como.md" title="Como as Markdown">');
+    expect(nested).toContain('<a href="/p/about/chapters/como.md" type="text/markdown">View as Markdown</a>');
     expect(rootPage.match(/href="\/i"/g)).toHaveLength(1);
-    expect(rootPage).toContain('href="/p/notes.md"');
+    expect(rootPage.match(/href="\/p\/notes\.md"/g)).toHaveLength(2);
   });
 
   test("shows the published version edit date after the page content", () => {
@@ -48,8 +49,9 @@ describe("public page presentation", () => {
       "2026-07-21T13:45:00.000Z",
     );
 
-    expect(html).toContain('<article><h1>Hello</h1></article><footer class="context-use-footnote"><p class="page-last-edited">');
-    expect(html).toContain('<strong>Last edited</strong> <time datetime="2026-07-21T13:45:00.000Z">21 July 2026</time>');
+    expect(html).toContain('<article><h1>Hello</h1></article><footer class="context-use-footnote"><p class="context-use-credit">');
+    expect(html).toContain('<span class="page-last-edited"><strong>Last edited</strong> <time datetime="2026-07-21T13:45:00.000Z">21 July 2026</time></span>');
+    expect(html).toContain('<span class="footer-separator" aria-hidden="true">·</span><a href="/p/notes.md" type="text/markdown">View as Markdown</a>');
   });
 
   test("renders generated public indexes from published pages and branches", () => {
@@ -80,11 +82,14 @@ describe("public page presentation", () => {
     expect(html).toContain('href="/p/about/intro"');
     expect(html).toContain("Explore my knowledge base");
     expect(html).toContain('<a href="/llms.txt" type="text/plain">AI-readable site index</a>');
+    expect(html).toContain('<p class="landing-credit">self-hosted with ❤️ using');
     expect(html).not.toContain("MCP");
   });
 
   test("styles the footnote, billboard, and published media", () => {
     expect(publicPageStyles).toContain(".context-use-footnote{");
+    expect(publicPageStyles).toContain(".context-use-credit{");
+    expect(publicPageStyles).toContain(".context-use-utilities{");
     expect(publicPageStyles).toContain(".knowledge-navigation{");
     expect(publicPageStyles).toContain(".public-index-list{");
     expect(publicPageStyles).toContain(".public-landing{");
