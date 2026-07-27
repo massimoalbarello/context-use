@@ -256,7 +256,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       expect(publishedHtml).toContain("PUBLIC-NESTED-CANARY");
       expect(publishedHtml).toContain(`href="/i/${nestedPath}"`);
       expect(publishedHtml).toContain('href="/i"');
-      expect(publishedHtml).toContain(`href="/p/${publicPath}.md"`);
+      expect(publishedHtml).toContain(`<a href="/p/${publicPath}.md" type="text/markdown">View as Markdown</a>`);
       expect(publishedHtml).toContain('href="/llms.txt"');
       expect(publishedMarkdown.status).toBe(200);
       expect(publishedMarkdown.headers.get("content-type")).toBe("text/markdown; charset=utf-8");
