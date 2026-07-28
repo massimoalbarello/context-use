@@ -10,6 +10,7 @@ import {
   archivePageSchema,
   assetUploadSchema,
   createAutomationPageSchema,
+  createCronScheduleSchema,
   createDirectorySchema,
   createPageSchema,
   updateAutomationPageSchema,
@@ -279,6 +280,14 @@ export async function createMcpServer(
           expires_at: capability.expiresAt,
         },
       });
+    });
+
+    server.registerTool("create_automation", {
+      description: "Create a scheduled automation whose instructions live in a private page at automations/<automation-key>/instructions and may link to other knowledge pages. Before calling, use prepare_knowledge_write with automations/<automation-key> and follow every returned AGENTS.md guide. The semantic automation_key is immutable. Use write_scope to grant the paths its output belongs in, so a day's digest can be written into that day's diary folder rather than filed under the automation that produced it.",
+      inputSchema: createCronScheduleSchema,
+      annotations: { destructiveHint: false },
+    }, async (input) => {
+      return jsonContent(await automations.createSchedule(input, actor));
     });
   }
 

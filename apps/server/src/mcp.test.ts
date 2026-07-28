@@ -355,9 +355,9 @@ describe("MCP knowledge and automation profiles", () => {
       "create_page",
       "update_page",
       "create_asset_upload",
+      "create_automation",
     ]));
     expect(knowledgeTools).not.toEqual(expect.arrayContaining([
-      "create_automation",
       "claim_due_run",
       "create_automation_page",
       "update_automation_page",
@@ -582,6 +582,52 @@ describe("MCP knowledge and automation profiles", () => {
     });
 
     expect(calls).toHaveLength(1);
+  });
+
+  test("creates an automation through the knowledge profile with MCP attribution", async () => {
+    const calls: Array<{ input: unknown; actor: unknown }> = [];
+    const automations = {
+      async createSchedule(input: unknown, actor: unknown) {
+        calls.push({ input, actor });
+        return { id: "33333333-3333-4333-8333-333333333333", ...input as object };
+      },
+    } as unknown as AutomationRepository;
+
+    const response = await mcpRequest(serverWith(automations), {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: {
+        name: "create_automation",
+        arguments: {
+          name: "Weekday review",
+          automation_key: "weekday-review",
+          instructions_markdown: "Review the current project and record decisions.",
+          cron_expression: "0 9 * * 1-5",
+          timezone: "Europe/London",
+        },
+      },
+    });
+
+    expect(response.result?.isError).not.toBe(true);
+    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
+      automation_key: "weekday-review",
+      instructions_markdown: "Review the current project and record decisions.",
+    });
+    expect(calls).toEqual([{
+      input: {
+        name: "Weekday review",
+        automation_key: "weekday-review",
+        instructions_markdown: "Review the current project and record decisions.",
+        commit_message: "Create automation",
+        cron_expression: "0 9 * * 1-5",
+        timezone: "Europe/London",
+        input: {},
+        enabled: true,
+        write_scope: [],
+      },
+      actor: { kind: "mcp", subject: "mcp-client" },
+    }]);
   });
 
   test("passes automation page writes through the run-scoped repository method", async () => {
