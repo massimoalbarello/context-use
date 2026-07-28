@@ -281,7 +281,7 @@ export function Automations() {
     {message && <div className="automation-message">{message}</div>}
 
     <section className="worker-card">
-      <div><span className="eyebrow">Generic worker</span><h2>Worker prompt</h2><p>Schedule this same polling prompt on any connected agent.</p></div>
+      <div><span className="eyebrow">Execution worker</span><h2>Worker prompt</h2><p>Schedule this polling prompt on an agent connected to the execution MCP URL.</p></div>
       <pre>{WORKER_PROMPT}</pre>
       <button onClick={() => navigator.clipboard.writeText(WORKER_PROMPT)
         .then(() => setMessage("Worker prompt copied."))

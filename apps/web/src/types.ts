@@ -105,6 +105,7 @@ export type ConnectedClient = {
   created_at: string;
   approved_at: string;
   last_connected_at: string | null;
+  resources: string[];
 };
 
 export type PaginatedResponse<T> = {

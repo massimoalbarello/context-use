@@ -41,6 +41,11 @@ export const command = defineCommand("doctor", {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       }],
+      ["MCP execution metadata", async () => {
+        const response = await fetch(`https://${config.hostname}/.well-known/oauth-protected-resource/mcp/execution`, { signal: AbortSignal.timeout(5_000) });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      }],
     ];
     let failed = 0;
     for (const [name, check] of checks) {

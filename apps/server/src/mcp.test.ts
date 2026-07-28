@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { AssetRepository, AutomationRepository, DirectoryRepository, PageRepository } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
-import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS } from "./mcp-server.ts";
+import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS, type McpProfile } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
 
 async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body: Record<string, unknown>) {
@@ -43,9 +43,10 @@ function serverWith(
   pages = {} as PageRepository,
   assets = {} as AssetRepository,
   directories = {} as DirectoryRepository,
+  profile: McpProfile = "knowledge",
 ) {
   return createMcpServer(
-    { clientId: "mcp-client" },
+    { clientId: "mcp-client", profile },
     pages,
     directories,
     assets,
@@ -53,7 +54,16 @@ function serverWith(
   );
 }
 
-describe("MCP knowledge and automation authoring", () => {
+function executionServerWith(
+  automations: AutomationRepository,
+  pages = {} as PageRepository,
+  assets = {} as AssetRepository,
+  directories = {} as DirectoryRepository,
+) {
+  return serverWith(automations, pages, assets, directories, "execution");
+}
+
+describe("MCP knowledge and automation profiles", () => {
   test("gives clients the canonical knowledge structure during initialization", async () => {
     const response = await mcpRequest(serverWith({} as AutomationRepository), {
       jsonrpc: "2.0",
@@ -319,15 +329,23 @@ describe("MCP knowledge and automation authoring", () => {
     });
   });
 
-  test("advertises ordinary page tools for skills and separate automation tools", async () => {
-    const response = await mcpRequest(serverWith({} as AutomationRepository), {
+  test("separates ordinary knowledge tools from run-scoped execution tools", async () => {
+    const knowledge = await mcpRequest(serverWith({} as AutomationRepository), {
       jsonrpc: "2.0",
       id: 1,
       method: "tools/list",
       params: {},
     });
+    const execution = await mcpRequest(executionServerWith({} as AutomationRepository), {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/list",
+      params: {},
+    });
 
-    expect(response.result?.tools?.map(({ name }) => name)).toEqual(expect.arrayContaining([
+    const knowledgeTools = knowledge.result?.tools?.map(({ name }) => name) ?? [];
+    const executionTools = execution.result?.tools?.map(({ name }) => name) ?? [];
+    expect(knowledgeTools).toEqual(expect.arrayContaining([
       "get_directory",
       "browse_directory",
       "create_directory",
@@ -336,26 +354,57 @@ describe("MCP knowledge and automation authoring", () => {
       "load_skill",
       "create_page",
       "update_page",
-      "create_automation",
-      "create_automation_page",
       "create_asset_upload",
     ]));
-    const createPage = response.result?.tools?.find(({ name }) => name === "create_page");
+    expect(knowledgeTools).not.toEqual(expect.arrayContaining([
+      "create_automation",
+      "claim_due_run",
+      "create_automation_page",
+      "update_automation_page",
+      "archive_automation_page",
+      "complete_run",
+      "fail_run",
+    ]));
+    expect(executionTools).toEqual(expect.arrayContaining([
+      "get_directory",
+      "browse_directory",
+      "get_page",
+      "prepare_knowledge_write",
+      "load_skill",
+      "claim_due_run",
+      "create_automation_page",
+      "update_automation_page",
+      "archive_automation_page",
+      "complete_run",
+      "fail_run",
+    ]));
+    expect(executionTools).not.toEqual(expect.arrayContaining([
+      "create_directory",
+      "update_directory",
+      "create_page",
+      "update_page",
+      "archive_page",
+      "create_asset_upload",
+      "create_automation",
+    ]));
+
+    const createPage = knowledge.result?.tools?.find(({ name }) => name === "create_page");
     expect(createPage?.description).toContain("body_markdown schema");
     expect(createPage?.inputSchema?.properties?.body_markdown?.description).toContain("layout=half");
-    expect(response.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("automation-created page");
-    expect(response.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_knowledge_write");
-    expect(response.result?.tools?.find(({ name }) => name === "archive_page")?.description).toContain("created by an automation");
-    expect(response.result?.tools?.find(({ name }) => name === "create_automation_page")?.description).toContain("private page");
-    expect(response.result?.tools?.some(({ name }) => name.includes("publish"))).toBe(false);
-    expect(response.result?.tools?.some(({ name }) => name === "list_pages")).toBe(false);
-    expect(response.result?.tools?.map(({ name }) => name)).not.toEqual(expect.arrayContaining([
+    expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("automation-created page");
+    expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_knowledge_write");
+    expect(knowledge.result?.tools?.find(({ name }) => name === "archive_page")?.description).toContain("created by an automation");
+    expect(execution.result?.tools?.find(({ name }) => name === "create_automation_page")?.description).toContain("private page");
+    expect(knowledgeTools.some((name) => name.includes("publish"))).toBe(false);
+    expect(executionTools.some((name) => name.includes("publish"))).toBe(false);
+    expect(knowledgeTools).not.toContain("list_pages");
+    expect(knowledgeTools).not.toEqual(expect.arrayContaining([
       "list_skills",
       "get_skill",
       "create_skill",
     ]));
-    expect(response.result?.tools?.some(({ name }) => name === "get_knowledge_base_guide")).toBe(false);
-    expect(response.result?.tools?.some(({ name }) => name === "get_markdown_guide")).toBe(false);
+    expect(knowledgeTools).not.toContain("get_knowledge_base_guide");
+    expect(knowledgeTools).not.toContain("get_markdown_guide");
   });
 
   test("returns ready-to-paste formatting Markdown for image uploads", async () => {
@@ -492,14 +541,8 @@ describe("MCP knowledge and automation authoring", () => {
     expect(JSON.stringify(result)).not.toContain("amazonaws");
   });
 
-  test("creates a page-backed skill and independent automation instructions with MCP attribution", async () => {
+  test("creates a page-backed skill with MCP attribution", async () => {
     const calls: Array<{ operation: string; input: unknown; actor?: unknown }> = [];
-    const automations = {
-      async createSchedule(input: unknown, actor: unknown) {
-        calls.push({ operation: "schedule", input, actor });
-        return { id: "33333333-3333-4333-8333-333333333333", ...input as object };
-      },
-    } as unknown as AutomationRepository;
     const pages = {
       async create(input: unknown, actor: unknown) {
         calls.push({ operation: "page", input, actor });
@@ -507,7 +550,7 @@ describe("MCP knowledge and automation authoring", () => {
       },
     } as unknown as PageRepository;
 
-    const skill = await mcpRequest(serverWith(automations, pages), {
+    const skill = await mcpRequest(serverWith({} as AutomationRepository, pages), {
       jsonrpc: "2.0",
       id: 2,
       method: "tools/call",
@@ -538,35 +581,7 @@ describe("MCP knowledge and automation authoring", () => {
       actor: { kind: "mcp", subject: "mcp-client" },
     });
 
-    const schedule = await mcpRequest(serverWith(automations, pages), {
-      jsonrpc: "2.0",
-      id: 3,
-      method: "tools/call",
-      params: {
-        name: "create_automation",
-        arguments: {
-          name: "Weekday review",
-          automation_key: "weekday-review",
-          instructions_markdown: "Review the current project and record decisions.",
-          cron_expression: "0 9 * * 1-5",
-          timezone: "Europe/London",
-        },
-      },
-    });
-    expect(JSON.parse(schedule.result?.content?.[0]?.text ?? "null")).toMatchObject({
-      instructions_markdown: "Review the current project and record decisions.",
-    });
-    expect(calls[1]).toMatchObject({
-      operation: "schedule",
-      input: {
-        automation_key: "weekday-review",
-        instructions_markdown: "Review the current project and record decisions.",
-        commit_message: "Create automation",
-        input: {},
-        enabled: true,
-      },
-      actor: { kind: "mcp", subject: "mcp-client" },
-    });
+    expect(calls).toHaveLength(1);
   });
 
   test("passes automation page writes through the run-scoped repository method", async () => {
@@ -577,7 +592,7 @@ describe("MCP knowledge and automation authoring", () => {
         return { id: "44444444-4444-4444-8444-444444444444" };
       },
     } as unknown as PageRepository;
-    const response = await mcpRequest(serverWith(
+    const response = await mcpRequest(executionServerWith(
       {} as AutomationRepository,
       pages,
     ), {
@@ -617,7 +632,7 @@ describe("MCP knowledge and automation authoring", () => {
       claim_token: "66666666-6666-4666-8666-666666666666",
     };
 
-    const concise = await mcpRequest(serverWith(automations), {
+    const concise = await mcpRequest(executionServerWith(automations), {
       jsonrpc: "2.0",
       id: 7,
       method: "tools/call",
@@ -629,7 +644,7 @@ describe("MCP knowledge and automation authoring", () => {
     expect(concise.result?.isError).not.toBe(true);
     expect(calls).toEqual(["Saved the digest to today's knowledge page."]);
 
-    const verbose = await mcpRequest(serverWith(automations), {
+    const verbose = await mcpRequest(executionServerWith(automations), {
       jsonrpc: "2.0",
       id: 8,
       method: "tools/call",

@@ -55,13 +55,19 @@ Follow the prompts for your AWS profile, region, hostname, DNS, and owner email.
 
 ## Connect an agent
 
-Point any OAuth-capable MCP client at:
+For an interactive agent that reads and manages knowledge, point any OAuth-capable MCP client at:
 
 ```text
 https://YOUR_HOST/mcp
 ```
 
-The agent can manage your private knowledge, but it cannot publish it. Public access always remains an owner decision.
+For a dedicated worker that reads knowledge and executes scheduled runs with run-scoped writes, use:
+
+```text
+https://YOUR_HOST/mcp/execution
+```
+
+Authorize the two connections separately. Neither connection can publish knowledge; public access always remains an owner decision.
 
 ## License
 
