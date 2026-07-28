@@ -9,8 +9,15 @@ function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleString() : "Never";
 }
 
+function accessLabel(resources: string[]): string {
+  const hasExecution = resources.some((resource) => resource.endsWith("/mcp/execution"));
+  const hasKnowledge = resources.some((resource) => resource.endsWith("/mcp"));
+  if (hasExecution && hasKnowledge) return "Knowledge + execution";
+  return hasExecution ? "Execution" : "Knowledge";
+}
+
 export function McpClients() {
-  const [endpoint, setEndpoint] = useState("");
+  const [endpoints, setEndpoints] = useState({ knowledge_url: "", execution_url: "" });
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PaginatedResponse<ConnectedClient> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,8 +29,8 @@ export function McpClients() {
   const [revokeError, setRevokeError] = useState("");
 
   useEffect(() => {
-    api<{ url: string }>("/api/dashboard/mcp-endpoint")
-      .then(({ url }) => setEndpoint(url))
+    api<{ knowledge_url: string; execution_url: string }>("/api/dashboard/mcp-endpoint")
+      .then(setEndpoints)
       .catch((cause: Error) => setError(cause.message));
   }, []);
 
@@ -44,11 +51,11 @@ export function McpClients() {
     return () => { current = false; };
   }, [page, refreshKey]);
 
-  const copyUrl = async () => {
+  const copyUrl = async (url: string, label: string) => {
     setError("");
     try {
-      await navigator.clipboard.writeText(endpoint);
-      setMessage("Private MCP URL copied.");
+      await navigator.clipboard.writeText(url);
+      setMessage(`${label} MCP URL copied.`);
     } catch {
       setError("Could not copy the URL. Select it and copy it manually.");
     }
@@ -79,10 +86,16 @@ export function McpClients() {
     {error && <div className="mcp-message error" role="alert">{error}</div>}
 
     <section className="mcp-endpoint-section">
-      <div className="section-heading"><div><h2>Private server URL</h2><p>Paste this endpoint into any client that supports remote MCP servers. The client will ask you to authorize access through OAuth.</p></div></div>
+      <div className="section-heading"><div><h2>Private server URLs</h2><p>Connect an interactive agent to knowledge tools, or a dedicated worker to scheduled execution tools. Each connection is authorized separately through OAuth.</p></div></div>
       <article className="mcp-endpoint-card">
-        <span className="mcp-access-badge private">Private</span>
-        <div className="mcp-endpoint-copy"><code>{endpoint || "Loading…"}</code><button type="button" disabled={!endpoint} onClick={() => void copyUrl()}>Copy URL</button></div>
+        <span className="mcp-access-badge private">Knowledge</span>
+        <p>Read and manage private knowledge and assets. Scheduled runs cannot be claimed.</p>
+        <div className="mcp-endpoint-copy"><code>{endpoints.knowledge_url || "Loading…"}</code><button type="button" disabled={!endpoints.knowledge_url} onClick={() => void copyUrl(endpoints.knowledge_url, "Knowledge")}>Copy URL</button></div>
+      </article>
+      <article className="mcp-endpoint-card">
+        <span className="mcp-access-badge private">Execution</span>
+        <p>Read private knowledge and execute scheduled runs using only run-scoped page writes.</p>
+        <div className="mcp-endpoint-copy"><code>{endpoints.execution_url || "Loading…"}</code><button type="button" disabled={!endpoints.execution_url} onClick={() => void copyUrl(endpoints.execution_url, "Execution")}>Copy URL</button></div>
       </article>
     </section>
 
@@ -90,7 +103,7 @@ export function McpClients() {
       <div className="mcp-client-heading"><div><h2>Connected clients</h2><p>Clients you authorized to access private tools.</p></div></div>
 
       {loading ? <p className="mcp-empty">Loading clients…</p> : clients.length === 0 ? <p className="mcp-empty">No MCP client has connected yet.</p> : <div className="mcp-client-list">{clients.map((client) => <article key={client.client_id}>
-        <div className="mcp-client-main"><div className="mcp-client-title"><strong>{client.name || client.client_id}</strong><span className="mcp-access-badge private">Private</span></div><span>{client.version ? `Version ${client.version} · ` : ""}Approved {formatDate(client.approved_at)}</span><span>Last connected {formatDate(client.last_connected_at)}</span></div>
+        <div className="mcp-client-main"><div className="mcp-client-title"><strong>{client.name || client.client_id}</strong><span className="mcp-access-badge private">{accessLabel(client.resources)}</span></div><span>{client.version ? `Version ${client.version} · ` : ""}Approved {formatDate(client.approved_at)}</span><span>Last connected {formatDate(client.last_connected_at)}</span></div>
         <button type="button" className="danger" onClick={() => { setRevokeError(""); setRevoking(client); }}>Revoke</button>
       </article>)}</div>}
 

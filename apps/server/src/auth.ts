@@ -4,7 +4,7 @@ import { APIError, betterAuth, type BetterAuthPlugin } from "better-auth";
 import { jwt } from "better-auth/plugins";
 import { MCP_SCOPES } from "@context-use/shared";
 import { Pool } from "pg";
-import { config, production } from "./config.ts";
+import { config, MCP_EXECUTION_RESOURCE, production } from "./config.ts";
 import {
   isVerifiedOwner,
   normalizedOwnerEmail,
@@ -160,7 +160,13 @@ export const auth = betterAuth({
       scopes: OAUTH_SCOPES,
       resources: [{
         identifier: config.MCP_RESOURCE,
-        name: "context-use MCP",
+        name: "context-use knowledge MCP",
+        accessTokenTtl: 900,
+        refreshTokenTtl: 2_592_000,
+        allowedScopes: OAUTH_SCOPES,
+      }, {
+        identifier: MCP_EXECUTION_RESOURCE,
+        name: "context-use automation execution MCP",
         accessTokenTtl: 900,
         refreshTokenTtl: 2_592_000,
         allowedScopes: OAUTH_SCOPES,

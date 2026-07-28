@@ -33,7 +33,7 @@ import { authorizeDashboardRequest } from "./auth-client.ts";
 import { forwardDashboardAuthRoute } from "./auth-dashboard-gateway.ts";
 import { decodeCompletedRunCursor, encodeCompletedRunCursor } from "./automation-run-pagination.ts";
 import { assetContentResponse } from "./asset-content.ts";
-import { config, production } from "./config.ts";
+import { config, MCP_EXECUTION_RESOURCE, production } from "./config.ts";
 import { claimConfirmedExport, issueConfirmationOptions } from "./confirmation-client.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
@@ -212,7 +212,10 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
 
   .get("/api/dashboard/mcp-endpoint", async ({ request }) => {
     await ownerRequest(request);
-    return json({ url: config.MCP_RESOURCE });
+    return json({
+      knowledge_url: config.MCP_RESOURCE,
+      execution_url: MCP_EXECUTION_RESOURCE,
+    });
   })
 
   .get("/app", async () => {

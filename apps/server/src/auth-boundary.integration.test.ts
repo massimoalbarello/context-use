@@ -137,30 +137,46 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("cookie credentials are rejected by MCP with discovery metadata", async () => {
-    const response = await application!.handle(new Request("http://localhost:3000/mcp", {
-      method: "POST",
-      headers: { cookie: "context-use.session_token=forged", "content-type": "application/json" },
-      body: "{}",
-    }));
-    expect(response.status).toBe(401);
-    expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource/mcp");
-  });
-
-  test("MCP transport methods always use the private MCP boundary", async () => {
-    for (const method of ["GET", "DELETE"]) {
-      const response = await application!.handle(new Request("http://localhost:3000/mcp", { method }));
-
+    for (const [endpoint, metadata] of [
+      ["/mcp", "oauth-protected-resource/mcp"],
+      ["/mcp/execution", "oauth-protected-resource/mcp/execution"],
+    ] as const) {
+      const response = await application!.handle(new Request(`http://localhost:3000${endpoint}`, {
+        method: "POST",
+        headers: { cookie: "context-use.session_token=forged", "content-type": "application/json" },
+        body: "{}",
+      }));
       expect(response.status).toBe(401);
-      expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource/mcp");
+      expect(response.headers.get("www-authenticate")).toContain(metadata);
     }
   });
 
-  test("both protected-resource discovery paths advertise the single MCP grant", async () => {
-    for (const path of ["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"]) {
+  test("MCP transport methods always use the private MCP boundary", async () => {
+    for (const endpoint of ["/mcp", "/mcp/execution"]) {
+      for (const method of ["GET", "DELETE"]) {
+        const response = await application!.handle(new Request(`http://localhost:3000${endpoint}`, { method }));
+
+        expect(response.status).toBe(401);
+        expect(response.headers.get("www-authenticate")).toContain(
+          endpoint.endsWith("/execution")
+            ? "oauth-protected-resource/mcp/execution"
+            : "oauth-protected-resource/mcp",
+        );
+      }
+    }
+  });
+
+  test("protected-resource discovery advertises separate knowledge and execution resources", async () => {
+    for (const [path, resource, resourceName] of [
+      ["/.well-known/oauth-protected-resource", "http://localhost:3000/mcp", "context-use personal knowledge base"],
+      ["/.well-known/oauth-protected-resource/mcp", "http://localhost:3000/mcp", "context-use personal knowledge base"],
+      ["/.well-known/oauth-protected-resource/mcp/execution", "http://localhost:3000/mcp/execution", "context-use automation execution"],
+    ] as const) {
       const response = await application!.handle(new Request(`http://localhost:3000${path}`));
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({
-        resource: "http://localhost:3000/mcp",
+        resource,
+        resource_name: resourceName,
         scopes_supported: ["mcp:access"],
       });
     }
@@ -385,18 +401,23 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     createdClients.push(client.client_id);
     expect(client.scope).toBe("mcp:access");
 
-    const authorization = new URL("http://localhost:3000/api/auth/oauth2/authorize");
-    authorization.search = new URLSearchParams({
-      client_id: client.client_id,
-      redirect_uri: "http://127.0.0.1:49321/callback",
-      response_type: "code",
-      scope: "mcp:access",
-      resource: "http://localhost:3000/mcp",
-      state: "test-state",
-    }).toString();
-    const response = await application!.handle(new Request(authorization));
-    expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toContain("error_description=pkce+is+required+for+public+clients");
+    for (const resource of [
+      "http://localhost:3000/mcp",
+      "http://localhost:3000/mcp/execution",
+    ]) {
+      const authorization = new URL("http://localhost:3000/api/auth/oauth2/authorize");
+      authorization.search = new URLSearchParams({
+        client_id: client.client_id,
+        redirect_uri: "http://127.0.0.1:49321/callback",
+        response_type: "code",
+        scope: "mcp:access",
+        resource,
+        state: "test-state",
+      }).toString();
+      const response = await application!.handle(new Request(authorization));
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toContain("error_description=pkce+is+required+for+public+clients");
+    }
   });
 
   test("idle and absolute session deadlines cannot be refreshed before authorization", async () => {

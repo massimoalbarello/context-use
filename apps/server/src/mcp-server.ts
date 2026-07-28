@@ -10,7 +10,6 @@ import {
   archivePageSchema,
   assetUploadSchema,
   createAutomationPageSchema,
-  createCronScheduleSchema,
   createDirectorySchema,
   createPageSchema,
   updateAutomationPageSchema,
@@ -23,8 +22,11 @@ import { z } from "zod";
 import { config } from "./config.ts";
 import { createAssetCapability } from "./mcp-asset-capability.ts";
 
+export type McpProfile = "knowledge" | "execution";
+
 export type McpContext = {
   clientId: string;
+  profile: McpProfile;
 };
 
 const jsonContent = (value: unknown) => ({
@@ -57,7 +59,9 @@ export async function createMcpServer(
     ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
   const server = new McpServer({ name: "context-use", version: "0.1.39" }, {
-    instructions: `${KNOWLEDGE_BASE_INSTRUCTIONS}\n\n${skillCatalog}`,
+    instructions: `${KNOWLEDGE_BASE_INSTRUCTIONS}\n\n${skillCatalog}${context.profile === "execution"
+      ? "\n\nThis is an automation execution connection. Read any knowledge needed for the claimed run, but write only with the run-scoped automation page tools and finish every claim with complete_run or fail_run."
+      : ""}`,
   });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
@@ -101,17 +105,19 @@ export async function createMcpServer(
     annotations: { readOnlyHint: true },
   }, async ({ query }) => jsonContent(await directories.list(query)));
 
-  server.registerTool("create_directory", {
-    description: "Create a first-class directory beneath an existing directory. Before calling, use prepare_knowledge_write with the new directory path and follow every returned AGENTS.md guide. Its generated index becomes immediately linkable by path or stable directory reference.",
-    inputSchema: createDirectorySchema,
-    annotations: { destructiveHint: false },
-  }, async (input) => jsonContent(await directories.create(input)));
+  if (context.profile === "knowledge") {
+    server.registerTool("create_directory", {
+      description: "Create a first-class directory beneath an existing directory. Before calling, use prepare_knowledge_write with the new directory path and follow every returned AGENTS.md guide. Its generated index becomes immediately linkable by path or stable directory reference.",
+      inputSchema: createDirectorySchema,
+      annotations: { destructiveHint: false },
+    }, async (input) => jsonContent(await directories.create(input)));
 
-  server.registerTool("update_directory", {
-    description: "Edit a directory index title, required summary, and optional Markdown introduction. Before calling, use prepare_knowledge_write with the directory's current path and follow every returned AGENTS.md guide. The generated child listing is maintained by the framework.",
-    inputSchema: updateDirectorySchema.extend({ directory_id: z.string().uuid() }).strict(),
-    annotations: { destructiveHint: false },
-  }, async ({ directory_id, ...input }) => jsonContent(await directories.update(directory_id, input)));
+    server.registerTool("update_directory", {
+      description: "Edit a directory index title, required summary, and optional Markdown introduction. Before calling, use prepare_knowledge_write with the directory's current path and follow every returned AGENTS.md guide. The generated child listing is maintained by the framework.",
+      inputSchema: updateDirectorySchema.extend({ directory_id: z.string().uuid() }).strict(),
+      annotations: { destructiveHint: false },
+    }, async ({ directory_id, ...input }) => jsonContent(await directories.update(directory_id, input)));
+  }
 
   server.registerTool("get_page", {
     description: "Get the current active version of a knowledge page by stable UUID or semantic path.",
@@ -176,29 +182,31 @@ export async function createMcpServer(
     return jsonContent(await pages.version(page_id, version_number));
   });
 
-  server.registerTool("create_page", {
-    description: "Create a private Markdown page and its first immutable version beneath an existing directory. Before calling, use prepare_knowledge_write with the intended page path and follow every returned AGENTS.md guide. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
-    inputSchema: createPageSchema,
-    annotations: { destructiveHint: false },
-  }, async (input) => {
-    return jsonContent(await pages.create(input, actor));
-  });
+  if (context.profile === "knowledge") {
+    server.registerTool("create_page", {
+      description: "Create a private Markdown page and its first immutable version beneath an existing directory. Before calling, use prepare_knowledge_write with the intended page path and follow every returned AGENTS.md guide. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
+      inputSchema: createPageSchema,
+      annotations: { destructiveHint: false },
+    }, async (input) => {
+      return jsonContent(await pages.create(input, actor));
+    });
 
-  server.registerTool("update_page", {
-    description: "Create a new private page version, including for an automation-created page, using optimistic concurrency. Before calling, use prepare_knowledge_write with the intended page path and follow every returned AGENTS.md guide. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
-    inputSchema: updatePageSchema.extend({ page_id: z.string().uuid() }).strict(),
-    annotations: { destructiveHint: false },
-  }, async ({ page_id, ...input }) => {
-    return jsonContent(await pages.update(page_id, input, actor));
-  });
+    server.registerTool("update_page", {
+      description: "Create a new private page version, including for an automation-created page, using optimistic concurrency. Before calling, use prepare_knowledge_write with the intended page path and follow every returned AGENTS.md guide. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
+      inputSchema: updatePageSchema.extend({ page_id: z.string().uuid() }).strict(),
+      annotations: { destructiveHint: false },
+    }, async ({ page_id, ...input }) => {
+      return jsonContent(await pages.update(page_id, input, actor));
+    });
 
-  server.registerTool("archive_page", {
-    description: "Archive an unpublished page, including one created by an automation. Before calling, use prepare_knowledge_write with the page's current path and follow every returned AGENTS.md guide. Published pages must be manually unpublished in the dashboard first.",
-    inputSchema: archivePageSchema.extend({ page_id: z.string().uuid() }).strict(),
-    annotations: { destructiveHint: true },
-  }, async ({ page_id, ...input }) => {
-    return jsonContent(await pages.archive(page_id, input, actor));
-  });
+    server.registerTool("archive_page", {
+      description: "Archive an unpublished page, including one created by an automation. Before calling, use prepare_knowledge_write with the page's current path and follow every returned AGENTS.md guide. Published pages must be manually unpublished in the dashboard first.",
+      inputSchema: archivePageSchema.extend({ page_id: z.string().uuid() }).strict(),
+      annotations: { destructiveHint: true },
+    }, async ({ page_id, ...input }) => {
+      return jsonContent(await pages.archive(page_id, input, actor));
+    });
+  }
 
   server.registerTool("list_assets", {
     description: "List private asset metadata and organizational paths. Does not reveal S3 keys.",
@@ -228,115 +236,111 @@ export async function createMcpServer(
     });
   });
 
-  server.registerTool("create_asset_upload", {
-    description: "Create a private, checksum-bound asset upload. PUT the exact raw bytes to the returned URL with every returned header before expires_at. Image uploads return ready-to-paste page Markdown and a safe formatting example. The upload credential cannot read, edit, delete, or publish assets.",
-    inputSchema: assetUploadSchema,
-    annotations: { destructiveHint: false },
-  }, async (input) => {
-    const created = await assets.create({
-      currentPath: input.path,
-      filename: input.filename,
-      contentType: input.content_type,
-      sizeBytes: input.size_bytes,
-      contentHash: input.sha256,
-      ...(input.width ? { width: input.width } : {}),
-      ...(input.height ? { height: input.height } : {}),
-      ...(input.duration_seconds !== undefined ? { durationSeconds: input.duration_seconds } : {}),
-    });
-    const capability = createAssetCapability("upload", created.id);
-    const { objectKey: _hidden, ...asset } = created;
-    const reference = `context-use://asset/${created.id}`;
-    const markdownAlt = created.filename.replace(/[\[\]\r\n]+/g, " ").replace(/\s+/g, " ").trim() || "Image";
-    const imageMarkdown = `![${markdownAlt}](${reference})`;
-    return jsonContent({
-      asset,
-      reference,
-      ...(/^image\/(?:png|jpeg|gif|webp|avif)(?:;|$)/i.test(created.content_type)
-        ? {
-            page_markdown: {
-              default: imageMarkdown,
-              formatted_example: `${imageMarkdown}{size=medium align=center shape=auto}`,
-            },
-          }
-        : {}),
-      upload: {
-        method: "PUT",
-        url: `${config.APP_ORIGIN}/api/mcp/assets/${encodeURIComponent(created.id)}/content`,
-        headers: {
-          "content-type": created.content_type,
-          "content-length": String(created.size_bytes),
-          "x-context-use-upload-token": capability.token,
+  if (context.profile === "knowledge") {
+    server.registerTool("create_asset_upload", {
+      description: "Create a private, checksum-bound asset upload. PUT the exact raw bytes to the returned URL with every returned header before expires_at. Image uploads return ready-to-paste page Markdown and a safe formatting example. The upload credential cannot read, edit, delete, or publish assets.",
+      inputSchema: assetUploadSchema,
+      annotations: { destructiveHint: false },
+    }, async (input) => {
+      const created = await assets.create({
+        currentPath: input.path,
+        filename: input.filename,
+        contentType: input.content_type,
+        sizeBytes: input.size_bytes,
+        contentHash: input.sha256,
+        ...(input.width ? { width: input.width } : {}),
+        ...(input.height ? { height: input.height } : {}),
+        ...(input.duration_seconds !== undefined ? { durationSeconds: input.duration_seconds } : {}),
+      });
+      const capability = createAssetCapability("upload", created.id);
+      const { objectKey: _hidden, ...asset } = created;
+      const reference = `context-use://asset/${created.id}`;
+      const markdownAlt = created.filename.replace(/[\[\]\r\n]+/g, " ").replace(/\s+/g, " ").trim() || "Image";
+      const imageMarkdown = `![${markdownAlt}](${reference})`;
+      return jsonContent({
+        asset,
+        reference,
+        ...(/^image\/(?:png|jpeg|gif|webp|avif)(?:;|$)/i.test(created.content_type)
+          ? {
+              page_markdown: {
+                default: imageMarkdown,
+                formatted_example: `${imageMarkdown}{size=medium align=center shape=auto}`,
+              },
+            }
+          : {}),
+        upload: {
+          method: "PUT",
+          url: `${config.APP_ORIGIN}/api/mcp/assets/${encodeURIComponent(created.id)}/content`,
+          headers: {
+            "content-type": created.content_type,
+            "content-length": String(created.size_bytes),
+            "x-context-use-upload-token": capability.token,
+          },
+          expires_at: capability.expiresAt,
         },
-        expires_at: capability.expiresAt,
-      },
+      });
     });
-  });
+  }
 
-  server.registerTool("create_automation", {
-    description: "Create a scheduled automation whose instructions live in a private page at automations/<automation-key>/instructions and may link to other knowledge pages. Before calling, use prepare_knowledge_write with automations/<automation-key> and follow every returned AGENTS.md guide. The semantic automation_key is immutable. Use write_scope to grant the paths its output belongs in, so a day's digest can be written into that day's diary folder rather than filed under the automation that produced it.",
-    inputSchema: createCronScheduleSchema,
-    annotations: { destructiveHint: false },
-  }, async (input) => {
-    return jsonContent(await automations.createSchedule(input, actor));
-  });
+  if (context.profile === "execution") {
+    server.registerTool("claim_due_run", {
+      description: "Claim the oldest due automation run. Returns the instruction page's current Markdown with shared execution context, input, dedicated knowledge path, and a one-hour write capability, or null.",
+      inputSchema: z.object({}).strict(),
+      annotations: { destructiveHint: false },
+    }, async () => {
+      return jsonContent(await automations.claimDueRun(context.clientId));
+    });
 
-  server.registerTool("claim_due_run", {
-    description: "Claim the oldest due automation run. Returns the instruction page's current Markdown with shared execution context, input, dedicated knowledge path, and a one-hour write capability, or null.",
-    inputSchema: z.object({}).strict(),
-    annotations: { destructiveHint: false },
-  }, async () => {
-    return jsonContent(await automations.claimDueRun(context.clientId));
-  });
+    server.registerTool("create_automation_page", {
+      description: "When the automation instructions call for page output, create a private page at an absolute path inside the claimed automation's resolved write scope. Before calling, use prepare_knowledge_write with that path and follow every returned AGENTS.md guide. Writing into a diary day materialises that day's directories and its log. After creation the page follows the ordinary page lifecycle. Paths outside the scope are rejected.",
+      inputSchema: createAutomationPageSchema,
+      annotations: { destructiveHint: false },
+    }, async (input) => {
+      return jsonContent(await pages.createForAutomation(input, actor));
+    });
 
-  server.registerTool("create_automation_page", {
-    description: "When the automation instructions call for page output, create a private page at an absolute path inside the claimed automation's resolved write scope. Before calling, use prepare_knowledge_write with that path and follow every returned AGENTS.md guide. Writing into a diary day materialises that day's directories and its log. After creation the page follows the ordinary page lifecycle. Paths outside the scope are rejected.",
-    inputSchema: createAutomationPageSchema,
-    annotations: { destructiveHint: false },
-  }, async (input) => {
-    return jsonContent(await pages.createForAutomation(input, actor));
-  });
+    server.registerTool("update_automation_page", {
+      description: "Update a page the claimed automation owns, or any page inside its resolved write scope. Before calling, use prepare_knowledge_write with the page's intended path and follow every returned AGENTS.md guide. A page the owner authors stays theirs: change only what the automation instructions describe and leave the rest of the page unchanged.",
+      inputSchema: updateAutomationPageSchema,
+      annotations: { destructiveHint: false },
+    }, async (input) => {
+      return jsonContent(await pages.updateForAutomation(input, actor));
+    });
 
-  server.registerTool("update_automation_page", {
-    description: "Update a page the claimed automation owns, or any page inside its resolved write scope. Before calling, use prepare_knowledge_write with the page's intended path and follow every returned AGENTS.md guide. A page the owner authors stays theirs: change only what the automation instructions describe and leave the rest of the page unchanged.",
-    inputSchema: updateAutomationPageSchema,
-    annotations: { destructiveHint: false },
-  }, async (input) => {
-    return jsonContent(await pages.updateForAutomation(input, actor));
-  });
+    server.registerTool("archive_automation_page", {
+      description: "Archive an unpublished page created by the claimed automation. Before calling, use prepare_knowledge_write with the page's current path and follow every returned AGENTS.md guide. The run claim and automation provenance scope access even if an ordinary edit previously moved the page.",
+      inputSchema: archiveAutomationPageSchema,
+      annotations: { destructiveHint: true },
+    }, async (input) => {
+      return jsonContent(await pages.archiveForAutomation(input, actor));
+    });
 
-  server.registerTool("archive_automation_page", {
-    description: "Archive an unpublished page created by the claimed automation. Before calling, use prepare_knowledge_write with the page's current path and follow every returned AGENTS.md guide. The run claim and automation provenance scope access even if an ordinary edit previously moved the page.",
-    inputSchema: archiveAutomationPageSchema,
-    annotations: { destructiveHint: true },
-  }, async (input) => {
-    return jsonContent(await pages.archiveForAutomation(input, actor));
-  });
+    server.registerTool("complete_run", {
+      description: "Mark a claimed automation run as successfully completed. Page output is optional; when present, the page is the canonical output. Use result_summary only for an optional short dashboard note, never to repeat page contents.",
+      inputSchema: z.object({
+        run_id: z.string().uuid(),
+        claim_token: z.string().uuid(),
+        result_summary: z.string().trim().min(1).max(AUTOMATION_RESULT_SUMMARY_MAX_LENGTH)
+          .describe("Optional one- or two-sentence note saying what changed and where. Omit it when the run status and knowledge page are sufficient; never paste the page contents here.")
+          .optional(),
+      }).strict(),
+      annotations: { destructiveHint: false },
+    }, async ({ run_id, claim_token, result_summary }) => {
+      return jsonContent(await automations.completeRun(run_id, claim_token, context.clientId, result_summary));
+    });
 
-  server.registerTool("complete_run", {
-    description: "Mark a claimed automation run as successfully completed. Page output is optional; when present, the page is the canonical output. Use result_summary only for an optional short dashboard note, never to repeat page contents.",
-    inputSchema: z.object({
-      run_id: z.string().uuid(),
-      claim_token: z.string().uuid(),
-      result_summary: z.string().trim().min(1).max(AUTOMATION_RESULT_SUMMARY_MAX_LENGTH)
-        .describe("Optional one- or two-sentence note saying what changed and where. Omit it when the run status and knowledge page are sufficient; never paste the page contents here.")
-        .optional(),
-    }).strict(),
-    annotations: { destructiveHint: false },
-  }, async ({ run_id, claim_token, result_summary }) => {
-    return jsonContent(await automations.completeRun(run_id, claim_token, context.clientId, result_summary));
-  });
-
-  server.registerTool("fail_run", {
-    description: "Mark a claimed automation run as failed and persist a concise error for the owner dashboard.",
-    inputSchema: z.object({
-      run_id: z.string().uuid(),
-      claim_token: z.string().uuid(),
-      error_message: z.string().trim().min(1).max(10_000),
-    }).strict(),
-    annotations: { destructiveHint: false },
-  }, async ({ run_id, claim_token, error_message }) => {
-    return jsonContent(await automations.failRun(run_id, claim_token, context.clientId, error_message));
-  });
+    server.registerTool("fail_run", {
+      description: "Mark a claimed automation run as failed and persist a concise error for the owner dashboard.",
+      inputSchema: z.object({
+        run_id: z.string().uuid(),
+        claim_token: z.string().uuid(),
+        error_message: z.string().trim().min(1).max(10_000),
+      }).strict(),
+      annotations: { destructiveHint: false },
+    }, async ({ run_id, claim_token, error_message }) => {
+      return jsonContent(await automations.failRun(run_id, claim_token, context.clientId, error_message));
+    });
+  }
 
   return server;
 }

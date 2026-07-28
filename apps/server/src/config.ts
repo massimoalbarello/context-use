@@ -61,6 +61,7 @@ const schema = z.object({
 });
 
 export const config = schema.parse(process.env);
+export const MCP_EXECUTION_RESOURCE = `${config.MCP_RESOURCE}/execution`;
 export const production = config.NODE_ENV === "production";
 
 if (production) {
