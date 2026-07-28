@@ -5,7 +5,8 @@ import { verifyAssetCapability } from "./mcp-asset-capability.ts";
 import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
 
-async function mcpRequest(server: McpServer, body: Record<string, unknown>) {
+async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body: Record<string, unknown>) {
+  const server = await serverOrPromise;
   const transport = createStatelessMcpTransport();
   await server.connect(transport);
   try {
@@ -26,6 +27,7 @@ async function mcpRequest(server: McpServer, body: Record<string, unknown>) {
           inputSchema?: { properties?: Record<string, { description?: string }> };
         }>;
         content?: Array<{ type: string; text: string }>;
+        structuredContent?: Record<string, unknown>;
         instructions?: string;
         isError?: boolean;
       };
@@ -64,32 +66,59 @@ describe("MCP knowledge and automation authoring", () => {
       },
     });
 
-    expect(response.result?.instructions).toBe(KNOWLEDGE_BASE_INSTRUCTIONS);
+    expect(response.result?.instructions).toContain(KNOWLEDGE_BASE_INSTRUCTIONS);
     expect(response.result?.instructions).toContain("about/intro");
     expect(response.result?.instructions).toContain("AGENTS.md");
-    expect(response.result?.instructions).toContain("skills/<skill-name>");
+    expect(response.result?.instructions).toContain("Available reusable skills");
   });
 
-  test("reads the root AGENTS.md guide through a dedicated discovery tool", async () => {
+  test("reads pages by semantic path and prepares applicable write guides", async () => {
     const pages = {
       async getByPath(path: string) {
         expect(path).toBe("agents");
         return { current_path: "agents", title: "AGENTS.md", body_markdown: "Guide" };
       },
+      async guidesForPath(path: string) {
+        expect(path).toBe("about/tasks/job-search/criteria");
+        return [
+          { current_path: "agents", title: "AGENTS.md", body_markdown: "Root guide" },
+          { current_path: "about/tasks/job-search/agents", title: "AGENTS.md", body_markdown: "Local guide" },
+        ];
+      },
     } as unknown as PageRepository;
-    const response = await mcpRequest(serverWith(
+    const pageResponse = await mcpRequest(serverWith(
       {} as AutomationRepository,
       pages,
     ), {
       jsonrpc: "2.0",
       id: 9,
       method: "tools/call",
-      params: { name: "get_knowledge_base_guide", arguments: {} },
+      params: { name: "get_page", arguments: { path: "agents" } },
     });
 
-    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
+    expect(JSON.parse(pageResponse.result?.content?.[0]?.text ?? "null")).toMatchObject({
       current_path: "agents",
       title: "AGENTS.md",
+    });
+
+    const contextResponse = await mcpRequest(serverWith(
+      {} as AutomationRepository,
+      pages,
+    ), {
+      jsonrpc: "2.0",
+      id: 10,
+      method: "tools/call",
+      params: {
+        name: "prepare_knowledge_write",
+        arguments: { target_path: "about/tasks/job-search/criteria" },
+      },
+    });
+    expect(JSON.parse(contextResponse.result?.content?.[0]?.text ?? "null")).toMatchObject({
+      target_path: "about/tasks/job-search/criteria",
+      guides: [
+        { current_path: "agents" },
+        { current_path: "about/tasks/job-search/agents" },
+      ],
     });
   });
 
@@ -129,6 +158,130 @@ describe("MCP knowledge and automation authoring", () => {
     });
   });
 
+  test("browses nested page metadata with directory guides promoted separately", async () => {
+    const directories = {
+      async treeByPath(path: string, depth: number, maxPages: number) {
+        expect({ path, depth, maxPages }).toEqual({
+          path: "about",
+          depth: 3,
+          maxPages: 100,
+        });
+        return {
+          id: "11111111-1111-4111-8111-111111111111",
+          path,
+          title: "About",
+          summary: "Knowledge about the owner.",
+          guide: {
+            id: "22222222-2222-4222-8222-222222222222",
+            path: "about/agents",
+            version_number: 1,
+            title: "AGENTS.md",
+            summary: "Rules for owner knowledge.",
+          },
+          pages: [{
+            id: "33333333-3333-4333-8333-333333333333",
+            path: "about/intro",
+            version_number: 2,
+            title: "Introduction",
+            summary: "A concise introduction to the owner.",
+          }],
+          directories: [{
+            id: "44444444-4444-4444-8444-444444444444",
+            path: "about/tasks",
+            title: "Tasks",
+            summary: "Current and historical efforts.",
+            guide: null,
+            pages: [],
+            directories: [],
+          }],
+          requested_depth: depth,
+          max_pages: maxPages,
+          truncated: false,
+        };
+      },
+    } as unknown as DirectoryRepository;
+    const response = await mcpRequest(serverWith(
+      {} as AutomationRepository,
+      {} as PageRepository,
+      {} as AssetRepository,
+      directories,
+    ), {
+      jsonrpc: "2.0",
+      id: 11,
+      method: "tools/call",
+      params: {
+        name: "browse_directory",
+        arguments: { path: "about", depth: 3, max_pages: 100 },
+      },
+    });
+    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
+      path: "about",
+      guide: { path: "about/agents", title: "AGENTS.md" },
+      pages: [{ path: "about/intro", title: "Introduction" }],
+      directories: [{ path: "about/tasks" }],
+      truncated: false,
+    });
+    expect(response.result?.structuredContent).toMatchObject({
+      path: "about",
+      directories: [{ path: "about/tasks" }],
+    });
+  });
+
+  test("advertises current skill summaries and loads a selected skill", async () => {
+    const pages = {
+      async metadataInDirectory(path: string) {
+        expect(path).toBe("skills");
+        return [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            path: "skills/job-search-review",
+            version_number: 2,
+            title: "SKILL.md",
+            summary: "Evaluate roles against the owner's job-search criteria.",
+          },
+          {
+            id: "22222222-2222-4222-8222-222222222222",
+            path: "skills/agents",
+            version_number: 1,
+            title: "AGENTS.md",
+            summary: "Rules for maintaining reusable skills.",
+          },
+        ];
+      },
+      async getByPath(path: string) {
+        expect(path).toBe("skills/job-search-review");
+        return {
+          current_path: path,
+          version_number: 2,
+          title: "SKILL.md",
+          summary: "Evaluate roles against the owner's job-search criteria.",
+          body_markdown: "---\nname: job-search-review\n---\n\nReview the role.",
+        };
+      },
+    } as unknown as PageRepository;
+    const listed = await mcpRequest(serverWith({} as AutomationRepository, pages), {
+      jsonrpc: "2.0",
+      id: 12,
+      method: "tools/list",
+      params: {},
+    });
+    const loadSkill = listed.result?.tools?.find(({ name }) => name === "load_skill");
+    expect(loadSkill?.description).toContain("job-search-review");
+    expect(loadSkill?.description).toContain("Evaluate roles against");
+    expect(loadSkill?.description).not.toContain("skills/agents");
+
+    const loaded = await mcpRequest(serverWith({} as AutomationRepository, pages), {
+      jsonrpc: "2.0",
+      id: 13,
+      method: "tools/call",
+      params: { name: "load_skill", arguments: { name: "job-search-review" } },
+    });
+    expect(JSON.parse(loaded.result?.content?.[0]?.text ?? "null")).toMatchObject({
+      current_path: "skills/job-search-review",
+      title: "SKILL.md",
+    });
+  });
+
   test("advertises ordinary page tools for skills and separate automation tools", async () => {
     const response = await mcpRequest(serverWith({} as AutomationRepository), {
       jsonrpc: "2.0",
@@ -138,11 +291,13 @@ describe("MCP knowledge and automation authoring", () => {
     });
 
     expect(response.result?.tools?.map(({ name }) => name)).toEqual(expect.arrayContaining([
-      "get_knowledge_base_guide",
       "get_directory",
+      "browse_directory",
       "create_directory",
       "list_pages",
       "get_page",
+      "prepare_knowledge_write",
+      "load_skill",
       "create_page",
       "update_page",
       "create_automation",
@@ -153,6 +308,7 @@ describe("MCP knowledge and automation authoring", () => {
     expect(createPage?.description).toContain("body_markdown schema");
     expect(createPage?.inputSchema?.properties?.body_markdown?.description).toContain("layout=half");
     expect(response.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("automation-created page");
+    expect(response.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_knowledge_write");
     expect(response.result?.tools?.find(({ name }) => name === "archive_page")?.description).toContain("created by an automation");
     expect(response.result?.tools?.find(({ name }) => name === "create_automation_page")?.description).toContain("private page");
     expect(response.result?.tools?.some(({ name }) => name.includes("publish"))).toBe(false);
@@ -161,6 +317,7 @@ describe("MCP knowledge and automation authoring", () => {
       "get_skill",
       "create_skill",
     ]));
+    expect(response.result?.tools?.some(({ name }) => name === "get_knowledge_base_guide")).toBe(false);
     expect(response.result?.tools?.some(({ name }) => name === "get_markdown_guide")).toBe(false);
   });
 

@@ -251,6 +251,30 @@ export type DirectoryIndex = Directory & {
   children: DirectoryIndexEntry[];
 };
 
+export type KnowledgePageMetadata = {
+  id: string;
+  path: string;
+  version_number: number;
+  title: string;
+  summary: string;
+};
+
+export type DirectoryTreeNode = {
+  id: string;
+  path: string;
+  title: string;
+  summary: string;
+  guide: KnowledgePageMetadata | null;
+  pages: KnowledgePageMetadata[];
+  directories: DirectoryTreeNode[];
+};
+
+export type DirectoryTree = DirectoryTreeNode & {
+  requested_depth: number;
+  max_pages: number;
+  truncated: boolean;
+};
+
 export type Asset = {
   id: string;
   current_path: string;

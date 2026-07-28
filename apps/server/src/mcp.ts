@@ -74,7 +74,7 @@ export function createMcpRequestHandler(
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();
-    const server = createMcpServer(context, pages, directories, assets, automations);
+    const server = await createMcpServer(context, pages, directories, assets, automations);
     await server.connect(transport);
     try {
       return await transport.handleRequest(request);

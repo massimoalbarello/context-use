@@ -17,7 +17,7 @@ import {
   updateDirectorySchema,
   updatePageSchema,
 } from "@context-use/shared";
-import { DirectoryPath } from "@context-use/shared";
+import { DirectoryPath, KnowledgePath } from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { config } from "./config.ts";
@@ -31,27 +31,35 @@ const jsonContent = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
 
-export const KNOWLEDGE_BASE_INSTRUCTIONS = "Before managing knowledge, call get_knowledge_base_guide and follow the root AGENTS.md page. Explore progressively with get_directory, beginning at the root path. Create directory metadata before adding pages beneath a new path. Every page and directory requires a concise one-sentence summary used by generated indexes. Link pages and directory indexes alike with [[path|label]], or a Markdown heading with [[path#heading-slug|label]]; stable directory references use context-use://directory/<uuid>. Store owner information under about/ and create about/intro as its concise introduction; keep other entities in separate top-level directories. Reusable skills live at skills/<skill-name>. Keep knowledge private unless the owner explicitly publishes a page.";
+const jsonObjectContent = (value: object) => ({
+  ...jsonContent(value),
+  structuredContent: value as Record<string, unknown>,
+});
 
-export function createMcpServer(
+export const KNOWLEDGE_BASE_INSTRUCTIONS = "Explore knowledge with browse_directory or get_directory, beginning at the root path when you do not yet know where relevant pages live. Read pages by UUID or semantic path with get_page. Before creating, changing, moving, or archiving knowledge, call prepare_knowledge_write with the intended target path and follow every returned AGENTS.md guide. Create directory metadata before adding pages beneath a new path. Every page and directory requires a concise one-sentence summary used by generated indexes. Link pages and directory indexes alike with [[path|label]], or a Markdown heading with [[path#heading-slug|label]]; stable directory references use context-use://directory/<uuid>. Store owner information under about/ and create about/intro as its concise introduction; keep other entities in separate top-level directories. Use load_skill when a listed reusable skill is relevant. Keep knowledge private unless the owner explicitly publishes a page.";
+
+export async function createMcpServer(
   context: McpContext,
   pages: PageRepository,
   directories: DirectoryRepository,
   assets: AssetRepository,
   automations: AutomationRepository,
-): McpServer {
+): Promise<McpServer> {
+  const skillPages = await pages.metadataInDirectory?.("skills") ?? [];
+  const skills = skillPages
+    .filter((page) => page.title === "SKILL.md" && page.path !== "skills/agents"
+      && !page.path.slice("skills/".length).includes("/"))
+    .map((page) => ({
+      name: page.path.slice("skills/".length),
+      summary: page.summary,
+    }));
+  const skillCatalog = skills.length
+    ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
+    : "Available reusable skills: none.";
   const server = new McpServer({ name: "context-use", version: "0.1.39" }, {
-    instructions: KNOWLEDGE_BASE_INSTRUCTIONS,
+    instructions: `${KNOWLEDGE_BASE_INSTRUCTIONS}\n\n${skillCatalog}`,
   });
   const actor = { kind: "mcp" as const, subject: context.clientId };
-
-  server.registerTool("get_knowledge_base_guide", {
-    description: "Call before managing knowledge. Read the root AGENTS.md page that defines this knowledge base's structure.",
-    inputSchema: z.object({}).strict(),
-    annotations: { readOnlyHint: true },
-  }, async () => {
-    return jsonContent(await pages.getByPath("agents"));
-  });
 
   server.registerTool("get_directory", {
     description: "Read a linkable directory index by path or stable UUID. Returns the directory metadata and its generated list of immediate child directories and active pages with summaries. Use the empty path for the root index.",
@@ -74,6 +82,19 @@ export function createMcpServer(
     } : null);
   });
 
+  server.registerTool("browse_directory", {
+    description: "Explore a directory subtree hierarchically. Returns minimal directory metadata, active page metadata, and each directory's AGENTS.md metadata in a prominent guide field. Page bodies and directory introductions are omitted; use get_page for selected pages. Depth 0 includes only pages directly inside the starting directory.",
+    inputSchema: z.object({
+      path: DirectoryPath,
+      depth: z.number().int().min(0).max(5).default(2),
+      max_pages: z.number().int().min(1).max(500).default(200),
+    }).strict(),
+    annotations: { readOnlyHint: true },
+  }, async ({ path, depth, max_pages }) => {
+    const tree = await directories.treeByPath(path, depth, max_pages);
+    return tree ? jsonObjectContent(tree) : jsonContent(null);
+  });
+
   server.registerTool("list_directories", {
     description: "List directory metadata. Prefer get_directory for progressive exploration.",
     inputSchema: z.object({ query: z.string().trim().min(1).max(500).optional() }).strict(),
@@ -81,13 +102,13 @@ export function createMcpServer(
   }, async ({ query }) => jsonContent(await directories.list(query)));
 
   server.registerTool("create_directory", {
-    description: "Create a first-class directory beneath an existing directory. Its generated index becomes immediately linkable by path or stable directory reference.",
+    description: "Create a first-class directory beneath an existing directory. Before calling, use prepare_knowledge_write with the new directory path and follow every returned AGENTS.md guide. Its generated index becomes immediately linkable by path or stable directory reference.",
     inputSchema: createDirectorySchema,
     annotations: { destructiveHint: false },
   }, async (input) => jsonContent(await directories.create(input)));
 
   server.registerTool("update_directory", {
-    description: "Edit a directory index title, required summary, and optional Markdown introduction. The generated child listing is maintained by the framework.",
+    description: "Edit a directory index title, required summary, and optional Markdown introduction. Before calling, use prepare_knowledge_write with the directory's current path and follow every returned AGENTS.md guide. The generated child listing is maintained by the framework.",
     inputSchema: updateDirectorySchema.extend({ directory_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ directory_id, ...input }) => jsonContent(await directories.update(directory_id, input)));
@@ -101,11 +122,42 @@ export function createMcpServer(
   });
 
   server.registerTool("get_page", {
-    description: "Get the current version of a knowledge page by stable UUID.",
-    inputSchema: z.object({ page_id: z.string().uuid() }).strict(),
+    description: "Get the current active version of a knowledge page by stable UUID or semantic path.",
+    inputSchema: z.object({
+      page_id: z.string().uuid().optional(),
+      path: KnowledgePath.optional(),
+    }).strict().superRefine((value, context) => {
+      if ((value.page_id === undefined) === (value.path === undefined)) {
+        context.addIssue({ code: "custom", message: "Provide exactly one of page_id or path" });
+      }
+    }),
     annotations: { readOnlyHint: true },
-  }, async ({ page_id }) => {
-    return jsonContent(await pages.get(page_id));
+  }, async ({ page_id, path }) => {
+    return jsonContent(page_id ? await pages.get(page_id) : await pages.getByPath(path!));
+  });
+
+  server.registerTool("prepare_knowledge_write", {
+    description: "Load the root and applicable directory AGENTS.md guides before creating, changing, moving, or archiving knowledge. Call with the intended target page or directory path, then follow every guide returned in root-to-leaf order.",
+    inputSchema: z.object({ target_path: DirectoryPath }).strict(),
+    annotations: { readOnlyHint: true },
+  }, async ({ target_path }) => {
+    return jsonObjectContent({
+      target_path,
+      guides: await pages.guidesForPath(target_path),
+    });
+  });
+
+  server.registerTool("load_skill", {
+    description: `Load the complete current SKILL.md page for a relevant reusable skill.\n\n${skillCatalog}`,
+    inputSchema: z.object({
+      name: z.string().trim().min(1).max(128)
+        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use the listed lowercase skill name"),
+    }).strict(),
+    annotations: { readOnlyHint: true },
+  }, async ({ name }) => {
+    if (name === "agents") return jsonContent(null);
+    const skill = await pages.getByPath(`skills/${name}`);
+    return jsonContent(skill?.title === "SKILL.md" ? skill : null);
   });
 
   server.registerTool("search_pages", {
@@ -133,7 +185,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_page", {
-    description: "Create a private Markdown page and its first immutable version beneath an existing directory. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
+    description: "Create a private Markdown page and its first immutable version beneath an existing directory. Before calling, use prepare_knowledge_write with the intended page path and follow every returned AGENTS.md guide. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
     inputSchema: createPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -141,7 +193,7 @@ export function createMcpServer(
   });
 
   server.registerTool("update_page", {
-    description: "Create a new private page version, including for an automation-created page, using optimistic concurrency. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
+    description: "Create a new private page version, including for an automation-created page, using optimistic concurrency. Before calling, use prepare_knowledge_write with the intended page path and follow every returned AGENTS.md guide. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
     inputSchema: updatePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ page_id, ...input }) => {
@@ -149,7 +201,7 @@ export function createMcpServer(
   });
 
   server.registerTool("archive_page", {
-    description: "Archive an unpublished page, including one created by an automation. Published pages must be manually unpublished in the dashboard first.",
+    description: "Archive an unpublished page, including one created by an automation. Before calling, use prepare_knowledge_write with the page's current path and follow every returned AGENTS.md guide. Published pages must be manually unpublished in the dashboard first.",
     inputSchema: archivePageSchema.extend({ page_id: z.string().uuid() }).strict(),
     annotations: { destructiveHint: true },
   }, async ({ page_id, ...input }) => {
@@ -229,7 +281,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_automation", {
-    description: "Create a scheduled automation whose instructions live in a private page at automations/<automation-key>/instructions and may link to other knowledge pages. The semantic automation_key is immutable. Use write_scope to grant the paths its output belongs in, so a day's digest can be written into that day's diary folder rather than filed under the automation that produced it.",
+    description: "Create a scheduled automation whose instructions live in a private page at automations/<automation-key>/instructions and may link to other knowledge pages. Before calling, use prepare_knowledge_write with automations/<automation-key> and follow every returned AGENTS.md guide. The semantic automation_key is immutable. Use write_scope to grant the paths its output belongs in, so a day's digest can be written into that day's diary folder rather than filed under the automation that produced it.",
     inputSchema: createCronScheduleSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -245,7 +297,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_automation_page", {
-    description: "When the automation instructions call for page output, create a private page at an absolute path inside the claimed automation's resolved write scope. Writing into a diary day materialises that day's directories and its log. After creation the page follows the ordinary page lifecycle. Paths outside the scope are rejected.",
+    description: "When the automation instructions call for page output, create a private page at an absolute path inside the claimed automation's resolved write scope. Before calling, use prepare_knowledge_write with that path and follow every returned AGENTS.md guide. Writing into a diary day materialises that day's directories and its log. After creation the page follows the ordinary page lifecycle. Paths outside the scope are rejected.",
     inputSchema: createAutomationPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -253,7 +305,7 @@ export function createMcpServer(
   });
 
   server.registerTool("update_automation_page", {
-    description: "Update a page the claimed automation owns, or any page inside its resolved write scope. A page the owner authors stays theirs: change only what the automation instructions describe and leave the rest of the page unchanged.",
+    description: "Update a page the claimed automation owns, or any page inside its resolved write scope. Before calling, use prepare_knowledge_write with the page's intended path and follow every returned AGENTS.md guide. A page the owner authors stays theirs: change only what the automation instructions describe and leave the rest of the page unchanged.",
     inputSchema: updateAutomationPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -261,7 +313,7 @@ export function createMcpServer(
   });
 
   server.registerTool("archive_automation_page", {
-    description: "Archive an unpublished page created by the claimed automation. The run claim and automation provenance scope access even if an ordinary edit previously moved the page.",
+    description: "Archive an unpublished page created by the claimed automation. Before calling, use prepare_knowledge_write with the page's current path and follow every returned AGENTS.md guide. The run claim and automation provenance scope access even if an ordinary edit previously moved the page.",
     inputSchema: archiveAutomationPageSchema,
     annotations: { destructiveHint: true },
   }, async (input) => {
