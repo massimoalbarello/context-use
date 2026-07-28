@@ -4,6 +4,9 @@ import type {
   CreateDirectoryInput,
   DirectoryIndex,
   DirectoryIndexEntry,
+  DirectoryTree,
+  DirectoryTreeNode,
+  KnowledgePageMetadata,
   UpdateDirectoryInput,
 } from "@context-use/shared";
 import { normalizeInternalPageLinks } from "./links.ts";
@@ -130,5 +133,100 @@ export class DirectoryRepository {
   async indexByPath(path: string): Promise<DirectoryIndex | null> {
     const directory = await this.getByPath(path);
     return directory ? this.indexById(directory.id) : null;
+  }
+
+  async treeByPath(path: string, depth: number, maxPages: number): Promise<DirectoryTree | null> {
+    const directories = await this.pool.query<{
+      id: string;
+      path: string;
+      title: string;
+      summary: string;
+      depth: number;
+    }>(
+      `WITH RECURSIVE tree AS (
+         SELECT id,current_path AS path,title,summary,0 AS depth
+         FROM knowledge_directories
+         WHERE current_path=$1
+         UNION ALL
+         SELECT child.id,child.current_path,child.title,child.summary,tree.depth+1
+         FROM knowledge_directories child
+         JOIN tree ON child.parent_path=tree.path
+         WHERE tree.depth<$2
+       )
+       SELECT id,path,title,summary,depth FROM tree ORDER BY path`,
+      [path, depth],
+    );
+    if (!directories.rowCount) return null;
+
+    const directoryPaths = directories.rows.map((directory) => directory.path);
+    const guides = await this.pool.query<KnowledgePageMetadata>(
+      `SELECT p.id,p.current_path AS path,v.version_number,v.title,v.summary
+       FROM knowledge_pages p
+       JOIN knowledge_page_versions v ON v.id=p.current_version_id AND v.page_id=p.id
+       WHERE p.parent_path=ANY($1::text[]) AND p.archived_at IS NULL
+         AND p.current_path=CASE
+           WHEN p.parent_path='' THEN 'agents'
+           ELSE p.parent_path||'/agents'
+         END
+       ORDER BY p.current_path`,
+      [directoryPaths],
+    );
+    const pages = await this.pool.query<KnowledgePageMetadata>(
+      `SELECT p.id,p.current_path AS path,v.version_number,v.title,v.summary
+       FROM knowledge_pages p
+       JOIN knowledge_page_versions v ON v.id=p.current_version_id AND v.page_id=p.id
+       WHERE p.parent_path=ANY($1::text[]) AND p.archived_at IS NULL
+         AND p.current_path<>CASE
+           WHEN p.parent_path='' THEN 'agents'
+           ELSE p.parent_path||'/agents'
+         END
+       ORDER BY p.current_path
+       LIMIT $2`,
+      [directoryPaths, maxPages + 1],
+    );
+    const truncated = pages.rows.length > maxPages;
+    const includedPages = pages.rows.slice(0, maxPages);
+    const pagesByDirectory = new Map<string, KnowledgePageMetadata[]>();
+    for (const page of [...guides.rows, ...includedPages]) {
+      const parentPath = page.path.includes("/")
+        ? page.path.replace(/\/[^/]+$/, "")
+        : "";
+      const entries = pagesByDirectory.get(parentPath) ?? [];
+      entries.push(page);
+      pagesByDirectory.set(parentPath, entries);
+    }
+
+    const nodes = new Map<string, DirectoryTreeNode>();
+    for (const directory of directories.rows) {
+      const entries = pagesByDirectory.get(directory.path) ?? [];
+      const guidePath = directory.path ? `${directory.path}/agents` : "agents";
+      const guide = entries.find((page) => page.path === guidePath) ?? null;
+      nodes.set(directory.path, {
+        id: directory.id,
+        path: directory.path,
+        title: directory.title,
+        summary: directory.summary,
+        guide,
+        pages: entries.filter((page) => page !== guide),
+        directories: [],
+      });
+    }
+    for (const directory of directories.rows) {
+      if (directory.path === path) continue;
+      const parentPath = directory.path.includes("/")
+        ? directory.path.replace(/\/[^/]+$/, "")
+        : "";
+      const parent = nodes.get(parentPath);
+      const child = nodes.get(directory.path);
+      if (parent && child) parent.directories.push(child);
+    }
+
+    const root = nodes.get(path)!;
+    return {
+      ...root,
+      requested_depth: depth,
+      max_pages: maxPages,
+      truncated,
+    };
   }
 }

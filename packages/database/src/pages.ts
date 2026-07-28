@@ -424,6 +424,33 @@ export class PageRepository {
     return result.rows[0] ?? null;
   }
 
+  async guidesForPath(targetPath: string) {
+    const segments = targetPath.split("/").filter(Boolean);
+    const guidePaths = ["agents"];
+    for (let depth = 1; depth <= segments.length; depth += 1) {
+      guidePaths.push(`${segments.slice(0, depth).join("/")}/agents`);
+    }
+    const result = await this.pool.query(
+      `${CURRENT_PAGE_SELECT}
+       WHERE p.current_path=ANY($1::text[]) AND p.archived_at IS NULL
+       ORDER BY array_position($1::text[],p.current_path)`,
+      [guidePaths],
+    );
+    return result.rows;
+  }
+
+  async metadataInDirectory(directoryPath: string) {
+    const result = await this.pool.query(
+      `SELECT p.id,p.current_path AS path,v.version_number,v.title,v.summary
+       FROM knowledge_pages p
+       JOIN knowledge_page_versions v ON v.id=p.current_version_id AND v.page_id=p.id
+       WHERE p.parent_path=$1 AND p.archived_at IS NULL
+       ORDER BY p.current_path`,
+      [directoryPath],
+    );
+    return result.rows;
+  }
+
   private async getWith(client: PoolClient, pageId: string) {
     const result = await client.query(`${CURRENT_PAGE_SELECT} WHERE p.id = $1`, [pageId]);
     return result.rows[0] ?? null;
