@@ -3,6 +3,40 @@ import type { Pool } from "pg";
 import { DirectoryRepository, PageRepository } from "../src/index.ts";
 
 describe("knowledge discovery repositories", () => {
+  test("lists and searches current page metadata without returning bodies", async () => {
+    const queries: Array<{ sql: string; parameters: unknown[] | undefined }> = [];
+    const pool = {
+      async query(sql: string, parameters?: unknown[]) {
+        queries.push({ sql, parameters });
+        return {
+          rowCount: 1,
+          rows: [{
+            id: "page-id",
+            current_path: "about/career",
+            current_version_id: "version-id",
+            published_version_id: null,
+            archived_at: null,
+            version_number: 1,
+            title: "Career",
+            summary: "The owner's career.",
+            updated_at: "2026-07-28T12:00:00.000Z",
+          }],
+        };
+      },
+    } as unknown as Pool;
+    const pages = new PageRepository(pool);
+
+    const listed = await pages.listMetadata();
+    const searched = await pages.searchMetadata("career", { limit: 10, includeArchived: true });
+
+    expect(listed[0]).not.toHaveProperty("body_markdown");
+    expect(searched[0]).not.toHaveProperty("body_markdown");
+    expect(queries[0]?.sql).not.toContain("body_markdown");
+    expect(queries[1]?.sql).not.toContain("body_markdown");
+    expect(queries[1]?.sql).not.toContain("p.archived_at IS NULL");
+    expect(queries[1]?.parameters).toEqual(["career", 10]);
+  });
+
   test("loads root-to-leaf guide candidates for a target path", async () => {
     const calls: unknown[][] = [];
     const pool = {

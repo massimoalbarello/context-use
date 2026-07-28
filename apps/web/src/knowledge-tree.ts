@@ -1,11 +1,11 @@
-import type { Asset, Directory, Page } from "./types.ts";
+import type { Asset, Directory, PageMetadata } from "./types.ts";
 
 export const EXPANDED_PATHS_STORAGE_KEY = "context-use.knowledge-tree.expanded-paths.v1";
 
 export type PageTreePage = {
   kind: "page";
   name: string;
-  page: Page;
+  page: PageMetadata;
 };
 
 export type AssetTreeAsset = {
@@ -81,7 +81,7 @@ function directoryForPath(root: MutableDirectory, currentPath: string) {
   return { directory, name };
 }
 
-export function buildKnowledgeTree(pages: Page[], assets: Asset[], directories: Directory[] = []): PageTreeDirectory {
+export function buildKnowledgeTree(pages: PageMetadata[], assets: Asset[], directories: Directory[] = []): PageTreeDirectory {
   const root: MutableDirectory = {
     kind: "directory",
     name: "",
@@ -129,7 +129,7 @@ export function buildKnowledgeTree(pages: Page[], assets: Asset[], directories: 
   return materialize(root);
 }
 
-export function buildPageTree(pages: Page[]): PageTreeDirectory {
+export function buildPageTree(pages: PageMetadata[]): PageTreeDirectory {
   return buildKnowledgeTree(pages, []);
 }
 
@@ -138,7 +138,7 @@ export function directoryPathsForPath(currentPath: string): string[] {
   return segments.map((_, index) => segments.slice(0, index + 1).join("/"));
 }
 
-export function directoryPathsForPage(page: Page): string[] {
+export function directoryPathsForPage(page: PageMetadata): string[] {
   return directoryPathsForPath(page.current_path);
 }
 

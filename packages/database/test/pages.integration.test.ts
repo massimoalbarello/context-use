@@ -115,8 +115,10 @@ describeDatabase("immutable page history", () => {
     expect((await pages.history(created.id)).map(({ version_number }) => version_number)).toEqual([
       8, 7, 6, 5, 4, 1,
     ]);
-    expect((await pages.search(oldSearchTerm)).some(({ id }) => id === created.id)).toBe(false);
-    expect((await pages.search(currentSearchTerm)).some(({ id }) => id === created.id)).toBe(true);
+    expect((await pages.searchMetadata(oldSearchTerm)).some(({ id }) => id === created.id)).toBe(false);
+    const searchResults = await pages.searchMetadata(currentSearchTerm);
+    expect(searchResults.some(({ id }) => id === created.id)).toBe(true);
+    expect(searchResults.find(({ id }) => id === created.id)).not.toHaveProperty("body_markdown");
 
     await pool.query(
       "UPDATE knowledge_pages SET published_version_id=NULL,public_path=NULL WHERE id=$1",

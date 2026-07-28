@@ -6,6 +6,7 @@ import type {
   ArchivePageInput,
   CreateAutomationPageInput,
   CreatePageInput,
+  PageMetadata,
   UpdateAutomationPageInput,
   UpdatePageInput,
 } from "@context-use/shared";
@@ -148,6 +149,13 @@ const CURRENT_PAGE_SELECT = `
     v.version_number, v.title, v.summary, v.body_markdown
   FROM knowledge_pages p
   JOIN knowledge_page_versions v ON v.id = p.current_version_id AND v.page_id = p.id
+`;
+
+const CURRENT_PAGE_METADATA_SELECT = `
+  SELECT p.id,p.current_path,p.current_version_id,p.published_version_id,
+    p.archived_at,p.updated_at,v.version_number,v.title,v.summary
+  FROM knowledge_pages p
+  JOIN knowledge_page_versions v ON v.id=p.current_version_id AND v.page_id=p.id
 `;
 
 export class PageRepository {
@@ -456,21 +464,25 @@ export class PageRepository {
     return result.rows[0] ?? null;
   }
 
-  async list(includeArchived = false) {
-    const result = await this.pool.query(
-      `${CURRENT_PAGE_SELECT} ${includeArchived ? "" : "WHERE p.archived_at IS NULL"} ORDER BY p.current_path`,
+  async listMetadata(includeArchived = false) {
+    const result = await this.pool.query<PageMetadata>(
+      `${CURRENT_PAGE_METADATA_SELECT} ${includeArchived ? "" : "WHERE p.archived_at IS NULL"} ORDER BY p.current_path`,
     );
     return result.rows;
   }
 
-  async search(query: string, limit = 30) {
-    const result = await this.pool.query(
-      `${CURRENT_PAGE_SELECT}
-       WHERE p.archived_at IS NULL
-         AND p.search_vector @@ websearch_to_tsquery('english', $1)
+  async searchMetadata(
+    query: string,
+    options: { limit?: number; includeArchived?: boolean } = {},
+  ) {
+    const limit = Math.min(Math.max(options.limit ?? 30, 1), 100);
+    const result = await this.pool.query<PageMetadata>(
+      `${CURRENT_PAGE_METADATA_SELECT}
+       WHERE ${options.includeArchived ? "" : "p.archived_at IS NULL AND "}
+         p.search_vector @@ websearch_to_tsquery('english', $1)
        ORDER BY ts_rank(p.search_vector, websearch_to_tsquery('english', $1)) DESC
        LIMIT $2`,
-      [query, Math.min(Math.max(limit, 1), 100)],
+      [query, limit],
     );
     return result.rows;
   }

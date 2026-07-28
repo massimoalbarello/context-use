@@ -113,14 +113,6 @@ export async function createMcpServer(
     annotations: { destructiveHint: false },
   }, async ({ directory_id, ...input }) => jsonContent(await directories.update(directory_id, input)));
 
-  server.registerTool("list_pages", {
-    description: "List current knowledge pages. Archived pages are excluded unless requested.",
-    inputSchema: z.object({ include_archived: z.boolean().default(false) }).strict(),
-    annotations: { readOnlyHint: true },
-  }, async ({ include_archived }) => {
-    return jsonContent(await pages.list(include_archived));
-  });
-
   server.registerTool("get_page", {
     description: "Get the current active version of a knowledge page by stable UUID or semantic path.",
     inputSchema: z.object({
@@ -161,11 +153,11 @@ export async function createMcpServer(
   });
 
   server.registerTool("search_pages", {
-    description: "Full-text search current knowledge pages.",
+    description: "Full-text search current knowledge pages. Returns metadata only; use get_page with a result's UUID or semantic path to read its body.",
     inputSchema: z.object({ query: z.string().min(1).max(500), limit: z.number().int().min(1).max(100).default(30) }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ query, limit }) => {
-    return jsonContent(await pages.search(query, limit));
+    return jsonContent(await pages.searchMetadata(query, { limit }));
   });
 
   server.registerTool("get_page_history", {

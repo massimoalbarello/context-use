@@ -122,6 +122,43 @@ describe("MCP knowledge and automation authoring", () => {
     });
   });
 
+  test("searches page bodies but returns metadata-only results", async () => {
+    const pages = {
+      async searchMetadata(query: string, options: { limit: number }) {
+        expect({ query, options }).toEqual({
+          query: "career direction",
+          options: { limit: 12 },
+        });
+        return [{
+          id: "11111111-1111-4111-8111-111111111111",
+          current_path: "about/career/direction",
+          current_version_id: "22222222-2222-4222-8222-222222222222",
+          published_version_id: null,
+          archived_at: null,
+          version_number: 3,
+          title: "Career direction",
+          summary: "The owner's current criteria and career direction.",
+          updated_at: "2026-07-28T12:00:00.000Z",
+        }];
+      },
+    } as unknown as PageRepository;
+    const response = await mcpRequest(serverWith({} as AutomationRepository, pages), {
+      jsonrpc: "2.0",
+      id: 14,
+      method: "tools/call",
+      params: {
+        name: "search_pages",
+        arguments: { query: "career direction", limit: 12 },
+      },
+    });
+    const results = JSON.parse(response.result?.content?.[0]?.text ?? "null");
+    expect(results).toMatchObject([{
+      current_path: "about/career/direction",
+      title: "Career direction",
+    }]);
+    expect(results[0]).not.toHaveProperty("body_markdown");
+  });
+
   test("explores a generated directory index progressively", async () => {
     const directories = {
       async indexByPath(path: string) {
@@ -294,7 +331,6 @@ describe("MCP knowledge and automation authoring", () => {
       "get_directory",
       "browse_directory",
       "create_directory",
-      "list_pages",
       "get_page",
       "prepare_knowledge_write",
       "load_skill",
@@ -312,6 +348,7 @@ describe("MCP knowledge and automation authoring", () => {
     expect(response.result?.tools?.find(({ name }) => name === "archive_page")?.description).toContain("created by an automation");
     expect(response.result?.tools?.find(({ name }) => name === "create_automation_page")?.description).toContain("private page");
     expect(response.result?.tools?.some(({ name }) => name.includes("publish"))).toBe(false);
+    expect(response.result?.tools?.some(({ name }) => name === "list_pages")).toBe(false);
     expect(response.result?.tools?.map(({ name }) => name)).not.toEqual(expect.arrayContaining([
       "list_skills",
       "get_skill",
