@@ -10,7 +10,7 @@ import { Login } from "./components/Login.tsx";
 import { McpClients } from "./components/McpClients.tsx";
 import { OAuthConsent } from "./components/OAuthConsent.tsx";
 import { Settings, type PasskeySummary } from "./components/Settings.tsx";
-import type { Asset, Directory, Page } from "./types.ts";
+import type { Asset, Directory, PageMetadata } from "./types.ts";
 
 type SessionInfo = { owner: { id: string; email: string }; passkey_count: number; passkeys: PasskeySummary[] };
 type Section = "knowledge" | "automations" | "mcp" | "settings";
@@ -58,7 +58,7 @@ function sectionFromLocation(): Section {
 export function App() {
   const { data: authSession, isPending } = authClient.useSession();
   const [session, setSession] = useState<SessionInfo | null>(null);
-  const [pages, setPages] = useState<Page[]>([]);
+  const [pages, setPages] = useState<PageMetadata[]>([]);
   const [directories, setDirectories] = useState<Directory[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selected, setSelected] = useState<KnowledgeSelection | null>(selectionFromLocation);
@@ -81,7 +81,7 @@ export function App() {
     const parameters = new URLSearchParams();
     if (query) parameters.set("q", query);
     if (showArchived) parameters.set("archived", "true");
-    setPages(await api<Page[]>(`/api/dashboard/pages${parameters.size ? `?${parameters}` : ""}`));
+    setPages(await api<PageMetadata[]>(`/api/dashboard/pages${parameters.size ? `?${parameters}` : ""}`));
   };
   const loadAssets = async () => setAssets(await api<Asset[]>("/api/dashboard/assets"));
   const loadDirectories = async () => {

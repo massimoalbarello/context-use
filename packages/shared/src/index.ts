@@ -227,6 +227,19 @@ export type Page = {
   updated_at: string;
 };
 
+export type PageMetadata = Pick<
+  Page,
+  | "id"
+  | "current_path"
+  | "current_version_id"
+  | "published_version_id"
+  | "archived_at"
+  | "version_number"
+  | "title"
+  | "summary"
+  | "updated_at"
+>;
+
 export type Directory = {
   id: string;
   current_path: string;

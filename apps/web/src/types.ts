@@ -16,6 +16,19 @@ export type Page = {
   rendered_html?: string;
 };
 
+export type PageMetadata = Pick<
+  Page,
+  | "id"
+  | "current_path"
+  | "current_version_id"
+  | "published_version_id"
+  | "archived_at"
+  | "version_number"
+  | "title"
+  | "summary"
+  | "updated_at"
+>;
+
 export type Version = {
   id: string;
   page_id: string;

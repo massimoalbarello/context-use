@@ -365,8 +365,11 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   })
   .get("/api/dashboard/pages", async ({ request, query }) => {
     await ownerRequest(request);
-    if (typeof query.q === "string" && query.q.trim()) return json(await dashboardPages.search(query.q));
-    return json(await dashboardPages.list(query.archived === "true"));
+    const includeArchived = query.archived === "true";
+    if (typeof query.q === "string" && query.q.trim()) {
+      return json(await dashboardPages.searchMetadata(query.q, { includeArchived }));
+    }
+    return json(await dashboardPages.listMetadata(includeArchived));
   })
   .get("/api/dashboard/directories", async ({ request, query }) => {
     await ownerRequest(request);

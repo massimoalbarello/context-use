@@ -12,12 +12,12 @@ import {
   type PageTreePage,
 } from "../knowledge-tree.ts";
 import { isPublishedPageOutdated } from "../publication-status.ts";
-import type { Asset, Directory, Page } from "../types.ts";
+import type { Asset, Directory, PageMetadata } from "../types.ts";
 
 export type KnowledgeSelection = { kind: "page" | "directory" | "asset"; id: string };
 
 type KnowledgeTreeProps = {
-  pages: Page[];
+  pages: PageMetadata[];
   directories: Directory[];
   assets: Asset[];
   query: string;
