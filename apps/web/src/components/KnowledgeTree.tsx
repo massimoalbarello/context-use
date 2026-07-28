@@ -6,6 +6,7 @@ import {
   expandedPathsForDisplay,
   knowledgeTreeItemLabel,
   parseExpandedPaths,
+  pruneEmptyDirectories,
   serializeExpandedPaths,
   type AssetTreeAsset,
   type PageTreeDirectory,
@@ -192,7 +193,10 @@ function DirectoryBranch({
 }
 
 export function KnowledgeTree({ pages, directories, assets, query, selected, onSelect, emptyMessage }: KnowledgeTreeProps) {
-  const tree = useMemo(() => buildKnowledgeTree(pages, assets, directories), [pages, assets, directories]);
+  const tree = useMemo(() => {
+    const completeTree = buildKnowledgeTree(pages, assets, directories);
+    return query.trim() ? completeTree : pruneEmptyDirectories(completeTree);
+  }, [pages, assets, directories, query]);
   const restoredPaths = useRef<Set<string> | null>(restoredExpandedPaths());
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => restoredPaths.current ?? new Set(),
@@ -224,7 +228,9 @@ export function KnowledgeTree({ pages, directories, assets, query, selected, onS
     return next;
   });
 
-  if (!pages.length && !assets.length && !directories.length) return <div className="tree-empty">{query ? "No matching knowledge" : emptyMessage ?? "No knowledge yet"}</div>;
+  if (!pages.length && !assets.length && !tree.directory && !tree.directories.length) {
+    return <div className="tree-empty">{query ? "No matching knowledge" : emptyMessage ?? "No knowledge yet"}</div>;
+  }
 
   return <div className="page-tree" role="tree" aria-label="Knowledge pages and assets">
     {tree.directory && <DirectoryIndexRow directory={tree.directory} depth={0} selected={selected} onSelect={onSelect} />}
