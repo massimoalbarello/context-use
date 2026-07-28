@@ -229,7 +229,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_automation", {
-    description: "Create a scheduled automation whose instructions live in a private page at automations/<automation-key>/instructions and may link to other knowledge pages. The semantic automation_key is immutable.",
+    description: "Create a scheduled automation whose instructions live in a private page at automations/<automation-key>/instructions and may link to other knowledge pages. The semantic automation_key is immutable. Use write_scope to grant the paths its output belongs in, so a day's digest can be written into that day's diary folder rather than filed under the automation that produced it.",
     inputSchema: createCronScheduleSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -245,7 +245,7 @@ export function createMcpServer(
   });
 
   server.registerTool("create_automation_page", {
-    description: "When the automation instructions call for page output, create a private page inside the claimed automation's dedicated folder. After creation it follows the ordinary page lifecycle. The server resolves the relative path and rejects every other location.",
+    description: "When the automation instructions call for page output, create a private page at an absolute path inside the claimed automation's resolved write scope. Writing into a diary day materialises that day's directories and its log. After creation the page follows the ordinary page lifecycle. Paths outside the scope are rejected.",
     inputSchema: createAutomationPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {
@@ -253,7 +253,7 @@ export function createMcpServer(
   });
 
   server.registerTool("update_automation_page", {
-    description: "Update a page owned by the claimed automation while keeping it inside that automation's dedicated folder.",
+    description: "Update a page the claimed automation owns, or any page inside its resolved write scope. A page the owner authors stays theirs: change only what the automation instructions describe and leave the rest of the page unchanged.",
     inputSchema: updateAutomationPageSchema,
     annotations: { destructiveHint: false },
   }, async (input) => {

@@ -128,6 +128,7 @@ export type CronSchedule = {
   enabled: boolean;
   next_run_at: string;
   knowledge_path: string;
+  write_scope: string[];
   generated_page_count: number;
   ready_count: number;
   claimed_count: number;

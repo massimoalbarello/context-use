@@ -9,6 +9,10 @@ function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleString() : "—";
 }
 
+function parseWriteScope(value: string): string[] {
+  return value.split("\n").map((line) => line.trim()).filter(Boolean);
+}
+
 function parseInput(value: string): Record<string, unknown> {
   const parsed: unknown = JSON.parse(value);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Input must be a JSON object");
@@ -93,6 +97,7 @@ export function Automations() {
   const [cronExpression, setCronExpression] = useState("0 9 * * *");
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const [scheduleInput, setScheduleInput] = useState("{}");
+  const [scheduleWriteScope, setScheduleWriteScope] = useState("");
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [editScheduleName, setEditScheduleName] = useState("");
   const [editScheduleInstructions, setEditScheduleInstructions] = useState("");
@@ -100,6 +105,7 @@ export function Automations() {
   const [editCronExpression, setEditCronExpression] = useState("");
   const [editTimezone, setEditTimezone] = useState("");
   const [editScheduleInput, setEditScheduleInput] = useState("{}");
+  const [editWriteScope, setEditWriteScope] = useState("");
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
   const [savingScheduleId, setSavingScheduleId] = useState<string | null>(null);
   const completedRunsInitialized = useRef(false);
@@ -185,6 +191,7 @@ export function Automations() {
           timezone,
           input: parseInput(scheduleInput),
           enabled: true,
+          write_scope: parseWriteScope(scheduleWriteScope),
         }),
       });
       setScheduleName("");
@@ -192,6 +199,7 @@ export function Automations() {
       setAutomationKeyEdited(false);
       setScheduleInstructions("");
       setScheduleInput("{}");
+      setScheduleWriteScope("");
       setMessage(`Automation created. Its instructions live at ${created.instructions_path}.`);
       await load(true);
     } catch (error) {
@@ -211,6 +219,7 @@ export function Automations() {
         timezone: next.timezone,
         input: next.input,
         enabled: next.enabled,
+        write_scope: next.write_scope ?? [],
         expected_version_number: schedule.automation_version_number,
       }),
     });
@@ -226,6 +235,7 @@ export function Automations() {
     setEditCronExpression(schedule.cron_expression);
     setEditTimezone(schedule.timezone);
     setEditScheduleInput(JSON.stringify(schedule.input, null, 2));
+    setEditWriteScope((schedule.write_scope ?? []).join("\n"));
     setMessage("");
   };
 
@@ -240,6 +250,7 @@ export function Automations() {
         cron_expression: editCronExpression,
         timezone: editTimezone,
         input: parseInput(editScheduleInput),
+        write_scope: parseWriteScope(editWriteScope),
       }, editCommitMessage);
       setEditingScheduleId(null);
       setMessage("Automation updated. Its knowledge folder is unchanged.");
@@ -295,7 +306,7 @@ export function Automations() {
     <section>
       <div className="section-heading"><div><h2>Automations</h2><p>Cron is the trigger; every row also owns one immutable knowledge location.</p></div></div>
       {schedules.length === 0 ? <p className="empty-note">No automations yet.</p> : <div className="automation-table-wrap"><table className="automation-table"><thead><tr><th>Automation</th><th>Instructions</th><th>Schedule</th><th>Knowledge location</th><th>Next run</th><th>State</th><th></th></tr></thead><tbody>{schedules.map((schedule) => <Fragment key={schedule.id}>
-        <tr><td><strong>{schedule.name}</strong></td><td><a href={`/app/pages/${schedule.instructions_page_id}`}>v{schedule.instructions_version_number}</a><small><code>{schedule.instructions_path}</code></small></td><td><code>{schedule.cron_expression}</code><small>{schedule.timezone}</small></td><td className="knowledge-location"><code>{schedule.knowledge_path}</code><small>{schedule.generated_page_count} generated page{schedule.generated_page_count === 1 ? "" : "s"}</small></td><td>{formatDate(schedule.next_run_at)}</td><td><span className={`run-status ${schedule.enabled ? "succeeded" : "disabled"}`}>{schedule.enabled ? "enabled" : "paused"}</span></td><td><div className="table-actions"><button onClick={() => startEditing(schedule)}>Edit</button><button onClick={() => saveSchedule(schedule, { enabled: !schedule.enabled }).then(() => setMessage(schedule.enabled ? "Automation paused." : "Automation enabled.")).catch((error: Error) => setMessage(error.message))}>{schedule.enabled ? "Pause" : "Enable"}</button><button className="danger-text" onClick={() => { setEditingScheduleId(null); setDeletingScheduleId(schedule.id); setMessage(""); }}>Delete</button></div></td></tr>
+        <tr><td><strong>{schedule.name}</strong></td><td><a href={`/app/pages/${schedule.instructions_page_id}`}>v{schedule.instructions_version_number}</a><small><code>{schedule.instructions_path}</code></small></td><td><code>{schedule.cron_expression}</code><small>{schedule.timezone}</small></td><td className="knowledge-location"><code>{schedule.knowledge_path}</code><small>{schedule.generated_page_count} generated page{schedule.generated_page_count === 1 ? "" : "s"}</small>{schedule.write_scope?.length ? <small>also writes {schedule.write_scope.join(", ")}</small> : null}</td><td>{formatDate(schedule.next_run_at)}</td><td><span className={`run-status ${schedule.enabled ? "succeeded" : "disabled"}`}>{schedule.enabled ? "enabled" : "paused"}</span></td><td><div className="table-actions"><button onClick={() => startEditing(schedule)}>Edit</button><button onClick={() => saveSchedule(schedule, { enabled: !schedule.enabled }).then(() => setMessage(schedule.enabled ? "Automation paused." : "Automation enabled.")).catch((error: Error) => setMessage(error.message))}>{schedule.enabled ? "Pause" : "Enable"}</button><button className="danger-text" onClick={() => { setEditingScheduleId(null); setDeletingScheduleId(schedule.id); setMessage(""); }}>Delete</button></div></td></tr>
         {editingScheduleId === schedule.id && <tr className="automation-action-row"><td colSpan={7}><form className="inline-dashboard-form automation-inline-editor" onSubmit={(event) => updateSchedule(event, schedule)}>
           <div className="inline-form-heading"><div><strong>Edit {schedule.name}</strong><span>The generated-knowledge location will not change.</span></div></div>
           <label>Name<input required maxLength={160} value={editScheduleName} onChange={(event) => setEditScheduleName(event.target.value)} /></label>
@@ -303,6 +314,7 @@ export function Automations() {
           <label>Change note<input required minLength={3} maxLength={240} value={editCommitMessage} onChange={(event) => setEditCommitMessage(event.target.value)} /></label>
           <div className="form-row"><label>Cron expression<input required value={editCronExpression} onChange={(event) => setEditCronExpression(event.target.value)} /></label><label>Time zone<input required value={editTimezone} onChange={(event) => setEditTimezone(event.target.value)} /></label></div>
           <label>Input JSON<textarea rows={5} value={editScheduleInput} onChange={(event) => setEditScheduleInput(event.target.value)} /></label>
+          <label>Write scope<textarea rows={3} value={editWriteScope} placeholder="about/diary/{YYYY}/{MM}/{DD}/services-digest" onChange={(event) => setEditWriteScope(event.target.value)} /><small>{"One knowledge path per line. {YYYY}, {MM} and {DD} become the date of the run. The automation always writes its own folder."}</small></label>
           <div className="inline-form-actions"><button type="button" onClick={() => setEditingScheduleId(null)}>Cancel</button><button className="primary" disabled={savingScheduleId === schedule.id}>Save changes</button></div>
         </form></td></tr>}
         {deletingScheduleId === schedule.id && <tr className="automation-action-row"><td colSpan={7}><div className="inline-confirmation automation-delete-confirmation">
@@ -323,6 +335,7 @@ export function Automations() {
         <label>Instructions<textarea required rows={10} value={scheduleInstructions} onChange={(event) => setScheduleInstructions(event.target.value)} placeholder="Describe the scheduled workflow and expected result…" /><small>Saved as a permanently private knowledge page at <code>automations/{automationKey || "your-key"}/instructions</code>, where it can link to other knowledge pages. Runtime claim handling is added only when the automation runs.</small></label>
         <div className="form-row"><label>Cron expression<input required value={cronExpression} onChange={(event) => setCronExpression(event.target.value)} /></label><label>Time zone<input required value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label></div>
         <label>Input JSON<textarea rows={4} value={scheduleInput} onChange={(event) => setScheduleInput(event.target.value)} /></label>
+        <label>Write scope<textarea rows={3} value={scheduleWriteScope} placeholder="about/diary/{YYYY}/{MM}/{DD}/services-digest" onChange={(event) => setScheduleWriteScope(event.target.value)} /><small>{"One knowledge path per line. {YYYY}, {MM} and {DD} become the date of the run. The automation always writes its own folder."}</small></label>
         <p className="form-note">The semantic knowledge key is permanent; the automation UUID remains internal provenance metadata.</p>
         <button className="primary">Create automation</button>
       </form></details>

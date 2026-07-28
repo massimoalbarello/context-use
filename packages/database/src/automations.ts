@@ -4,6 +4,7 @@ import type {
   CreateCronScheduleInput,
   UpdateCronScheduleInput,
 } from "@context-use/shared";
+import { resolveWriteScope } from "@context-use/shared";
 import { Cron } from "croner";
 import type { Pool, PoolClient } from "pg";
 import { extractAssetLinks, normalizeInternalPageLinks } from "./links.ts";
@@ -19,7 +20,7 @@ export type CompletedAutomationRunCursor = {
 
 export const AUTOMATION_RUN_EXECUTION_CONTEXT = `## Execution context
 
-You are executing this as a **claimed Context Use automation run**. \`claim_due_run\` gave you a \`run_id\`, \`claim_token\`, and this automation's **dedicated knowledge path**. If the automation instructions call for a persistent page, create it with \`create_automation_page\` (or use \`update_automation_page\` when the target page already exists), passing the \`run_id\` and \`claim_token\`. Do not create a page when the automation instructions do not call for one. Generic writes are disabled during the claim. Automation-created pages are private by default and can later be edited or archived through the ordinary page tools; only the owner can publish from the dashboard with a passkey. When calling \`complete_run\`, omit \`result_summary\` if the status and any page output are sufficient; otherwise use one or two sentences only to say what changed and where. Never copy page contents into the summary. Finish with \`complete_run\` (or \`fail_run\`). Read [[about/intro]] first; hold as context.`;
+You are executing this as a **claimed Context Use automation run**. \`claim_due_run\` gave you a \`run_id\`, \`claim_token\`, this automation's **dedicated knowledge path**, and \`write_scope_resolved\`: the exact paths you may write for this run. If the automation instructions call for a persistent page, create it with \`create_automation_page\` (or use \`update_automation_page\` when the target page already exists), passing the \`run_id\`, \`claim_token\`, and the absolute \`path\`. You may read any page; writes outside the resolved scope are refused. A granted path is not always yours to rewrite: when the scope includes a page the owner authors, change only the part the automation instructions describe and leave the rest of the page exactly as you found it. Read the \`AGENTS.md\` pages covering the paths you are about to write; they say which parts of a shared page belong to whom. Do not create a page when the automation instructions do not call for one. Generic writes are disabled during the claim. Automation-created pages are private by default and can later be edited or archived through the ordinary page tools; only the owner can publish from the dashboard with a passkey. When calling \`complete_run\`, omit \`result_summary\` if the status and any page output are sufficient; otherwise use one or two sentences only to say what changed and where. Never copy page contents into the summary. Finish with \`complete_run\` (or \`fail_run\`). Read [[about/intro]] first; hold as context.`;
 
 export function hasAutomationExecutionContext(instructions: string): boolean {
   let fence: "`" | "~" | null = null;
@@ -162,7 +163,7 @@ export class AutomationRepository {
     const result = await this.pool.query(
       `SELECT schedule.id,schedule.name,schedule.current_version_id AS automation_version_id,
         schedule.cron_expression,schedule.timezone,
-        schedule.automation_key,schedule.input,schedule.enabled,schedule.next_run_at,schedule.knowledge_path,schedule.created_at,schedule.updated_at,
+        schedule.automation_key,schedule.input,schedule.enabled,schedule.next_run_at,schedule.knowledge_path,schedule.write_scope,schedule.created_at,schedule.updated_at,
         version.version_number AS automation_version_number,
         version.commit_message,version.created_at AS version_created_at,
         instructions_page.id AS instructions_page_id,
@@ -215,9 +216,9 @@ export class AutomationRepository {
       await client.query(
         `INSERT INTO cron_schedules(
            id,name,automation_key,current_version_id,instructions_page_id,
-           cron_expression,timezone,input,enabled,next_run_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [scheduleId, input.name, input.automation_key, versionId, instructionsPageId, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt],
+           cron_expression,timezone,input,enabled,next_run_at,write_scope
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)`,
+        [scheduleId, input.name, input.automation_key, versionId, instructionsPageId, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt, JSON.stringify(input.write_scope ?? [])],
       );
       await client.query(
         `INSERT INTO automation_versions(
@@ -335,9 +336,9 @@ export class AutomationRepository {
       await client.query(
         `UPDATE cron_schedules SET
            name=$2,current_version_id=$3,cron_expression=$4,timezone=$5,input=$6,enabled=$7,
-           next_run_at=$8,updated_at=now()
+           next_run_at=$8,write_scope=$9::jsonb,updated_at=now()
          WHERE id=$1`,
-        [scheduleId, input.name, versionId, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt],
+        [scheduleId, input.name, versionId, input.cron_expression, input.timezone, input.input, input.enabled, nextRunAt, JSON.stringify(input.write_scope ?? [])],
       );
       const result = await client.query(
         `SELECT schedule.*,schedule.current_version_id AS automation_version_id,
@@ -483,7 +484,7 @@ export class AutomationRepository {
            AND instructions.page_id=instructions_page.id
          RETURNING run.id AS run_id,run.schedule_id,run.scheduled_for,run.input,run.attempt_count,
            run.claim_token,run.lease_expires_at,schedule.name AS schedule_name,
-           schedule.knowledge_path,
+           schedule.knowledge_path,schedule.write_scope,schedule.timezone,schedule.automation_key,
            version.id AS automation_version_id,
            version.version_number AS automation_version_number,
            instructions_page.id AS instructions_page_id,
@@ -493,7 +494,19 @@ export class AutomationRepository {
            instructions.body_markdown AS instructions_markdown`,
         [candidate.rows[0]!.id, clientId, claimToken, now, RUN_LEASE_HOURS],
       );
-      return claimed.rows[0] ? withAutomationRunInstructions(claimed.rows[0]) : null;
+      const run = claimed.rows[0];
+      if (!run) return null;
+      return {
+        ...withAutomationRunInstructions(run),
+        // Templates resolved against this run's date, so the agent is handed
+        // the concrete paths it may write rather than a pattern to expand.
+        write_scope_resolved: resolveWriteScope(
+          run.automation_key,
+          run.write_scope ?? [],
+          run.scheduled_for,
+          run.timezone,
+        ).patterns,
+      };
     });
   }
 

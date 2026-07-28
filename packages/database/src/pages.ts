@@ -9,6 +9,13 @@ import type {
   UpdateAutomationPageInput,
   UpdatePageInput,
 } from "@context-use/shared";
+import {
+  type ResolvedWriteScope,
+  assertWithinWriteScope,
+  isWithinWriteScope,
+  resolveWriteScope,
+} from "@context-use/shared";
+import { diaryDayForPage, diaryDirectories, diaryLogStub } from "./diary.ts";
 import { extractAssetLinks, normalizeInternalPageLinks } from "./links.ts";
 import { prunePageVersions } from "./page-retention.ts";
 
@@ -31,10 +38,6 @@ export class AutomationContentAccessError extends Error {
     super(message);
     this.name = "AutomationContentAccessError";
   }
-}
-
-export function automationKnowledgePath(automationKey: string, relativePath: string): string {
-  return `automations/${automationKey}/${relativePath}`;
 }
 
 async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -68,13 +71,27 @@ async function insertAssetLinks(
   }
 }
 
-async function ensureAutomationDirectories(client: PoolClient, pagePath: string): Promise<void> {
+/**
+ * Creates any missing ancestor directories for a page an automation is about to
+ * write. Existing directories keep their authored title and summary.
+ *
+ * Diary days get titles computed from the date rather than derived from the
+ * slug, so `about/diary/2026/07/27` reads as "Monday, 27 July 2026" wherever it
+ * is indexed.
+ */
+async function ensureAncestorDirectories(client: PoolClient, pagePath: string): Promise<void> {
+  const day = diaryDayForPage(pagePath);
+  const planned = new Map(
+    (day ? diaryDirectories(day) : []).map((directory) => [directory.path, directory]),
+  );
   const segments = pagePath.split("/").slice(0, -1);
-  for (let depth = 3; depth <= segments.length; depth += 1) {
+  for (let depth = 1; depth <= segments.length; depth += 1) {
     const path = segments.slice(0, depth).join("/");
     const leaf = segments[depth - 1]!;
-    const title = leaf.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-    const summary = `Automation output grouped under ${path}.`;
+    const planning = planned.get(path);
+    const title = planning?.title
+      ?? leaf.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+    const summary = planning?.summary ?? `Pages grouped under ${path}.`;
     await client.query(
       `INSERT INTO knowledge_directories(
          id,current_path,title,summary,intro_markdown,search_vector
@@ -83,6 +100,41 @@ async function ensureAutomationDirectories(client: PoolClient, pagePath: string)
       [randomUUID(), path, title, summary],
     );
   }
+}
+
+/**
+ * A diary day is materialised by the first thing written into it, never in
+ * advance: the day's `log` is the entry point every other page in the folder
+ * hangs off, so it exists as soon as the folder does. Days when nothing
+ * happened have no folder and no log.
+ *
+ * The log belongs to the owner, not to the automation that triggered its
+ * creation, so it carries no automation_id and stays editable with the ordinary
+ * page tools.
+ */
+async function ensureDiaryLog(client: PoolClient, pagePath: string, actor: Actor): Promise<void> {
+  const day = diaryDayForPage(pagePath);
+  if (!day || pagePath === day.logPath) return;
+  const existing = await client.query(
+    "SELECT 1 FROM knowledge_pages WHERE current_path=$1 AND archived_at IS NULL",
+    [day.logPath],
+  );
+  if (existing.rowCount) return;
+  const stub = diaryLogStub(day);
+  const pageId = randomUUID();
+  const versionId = randomUUID();
+  await client.query(
+    `INSERT INTO knowledge_pages(id,current_path,current_version_id,search_vector)
+     VALUES ($1,$2,$3,page_search_vector($2,$4,$5,$6))`,
+    [pageId, stub.path, versionId, stub.title, stub.summary, stub.body_markdown],
+  );
+  await client.query(
+    `INSERT INTO knowledge_page_versions(
+       id,page_id,version_number,path,title,summary,body_markdown,
+       commit_message,actor_kind,actor_subject
+     ) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8,$9)`,
+    [versionId, pageId, stub.path, stub.title, stub.summary, stub.body_markdown, "Open the day's log", actor.kind, actor.subject],
+  );
 }
 
 const CURRENT_PAGE_SELECT = `
@@ -121,9 +173,16 @@ export class PageRepository {
     runId: string,
     claimToken: string,
     clientId: string,
-  ): Promise<{ id: string; key: string }> {
-    const result = await client.query<{ schedule_id: string; automation_key: string }>(
-      `SELECT run.schedule_id,schedule.automation_key
+  ): Promise<{ id: string; key: string; scope: ResolvedWriteScope }> {
+    const result = await client.query<{
+      schedule_id: string;
+      automation_key: string;
+      write_scope: string[];
+      scheduled_for: Date;
+      timezone: string;
+    }>(
+      `SELECT run.schedule_id,schedule.automation_key,schedule.write_scope,
+         run.scheduled_for,schedule.timezone
        FROM automation_runs run
        JOIN cron_schedules schedule ON schedule.id=run.schedule_id
        WHERE run.id=$1 AND run.claim_token=$2 AND run.claimed_by=$3
@@ -132,7 +191,31 @@ export class PageRepository {
       [runId, claimToken, clientId],
     );
     if (!result.rowCount) throw new AutomationContentAccessError();
-    return { id: result.rows[0]!.schedule_id, key: result.rows[0]!.automation_key };
+    const row = result.rows[0]!;
+    return {
+      id: row.schedule_id,
+      key: row.automation_key,
+      // Date templates resolve against the run being executed, not the wall
+      // clock, so a daily automation can only ever write its own day.
+      scope: resolveWriteScope(row.automation_key, row.write_scope ?? [], row.scheduled_for, row.timezone),
+    };
+  }
+
+  /**
+   * Automation pages are written at absolute paths. An automation always holds
+   * its own `automations/<key>/` folder, and anything beyond that is whatever
+   * its declared write scope grants.
+   */
+  private assertAutomationPath(scope: ResolvedWriteScope, path: string): void {
+    try {
+      assertWithinWriteScope(scope, path);
+    } catch (error) {
+      // Callers of the automation page tools should see one error for "you may
+      // not write this page", whatever the reason.
+      throw new AutomationContentAccessError(
+        error instanceof Error ? error.message : "The automation run cannot write this page",
+      );
+    }
   }
 
   async create(input: CreatePageInput, actor: Actor) {
@@ -161,11 +244,13 @@ export class PageRepository {
   async createForAutomation(input: CreateAutomationPageInput, actor: Actor) {
     return transaction(this.pool, async (client) => {
       const automation = await this.claimedAutomation(client, input.run_id, input.claim_token, actor.subject);
-      const path = automationKnowledgePath(automation.key, input.relative_path);
+      const path = input.path;
+      this.assertAutomationPath(automation.scope, path);
       const pageId = randomUUID();
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
-      await ensureAutomationDirectories(client, path);
+      await ensureAncestorDirectories(client, path);
+      await ensureDiaryLog(client, path, actor);
       await client.query(
         `INSERT INTO knowledge_pages(
            id,current_path,current_version_id,automation_id,search_vector
@@ -220,17 +305,26 @@ export class PageRepository {
   async updateForAutomation(input: UpdateAutomationPageInput, actor: Actor) {
     return transaction(this.pool, async (client) => {
       const automation = await this.claimedAutomation(client, input.run_id, input.claim_token, actor.subject);
-      const current = await client.query<{ version_number: number }>(
-        `${CURRENT_PAGE_SELECT} WHERE p.id=$1 AND p.automation_id=$2 FOR UPDATE OF p`,
-        [input.page_id, automation.id],
+      // An automation may update a page it owns, or any page inside its granted
+      // write scope. The second case is what lets a run add its own link to a
+      // day's log without owning the owner's entry.
+      const current = await client.query<{ version_number: number; current_path: string; automation_id: string | null }>(
+        `${CURRENT_PAGE_SELECT} WHERE p.id=$1 FOR UPDATE OF p`,
+        [input.page_id],
       );
       if (!current.rowCount) throw new AutomationContentAccessError();
-      const currentVersion = current.rows[0]!.version_number;
+      const existing = current.rows[0]!;
+      if (existing.automation_id !== automation.id && !isWithinWriteScope(automation.scope, existing.current_path)) {
+        throw new AutomationContentAccessError();
+      }
+      const currentVersion = existing.version_number;
       if (currentVersion !== input.expected_version_number) throw new VersionConflictError(currentVersion);
-      const path = automationKnowledgePath(automation.key, input.relative_path);
+      const path = input.path;
+      this.assertAutomationPath(automation.scope, path);
       const versionId = randomUUID();
       const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
-      await ensureAutomationDirectories(client, path);
+      await ensureAncestorDirectories(client, path);
+      await ensureDiaryLog(client, path, actor);
       await client.query(
         `INSERT INTO knowledge_page_versions(
           id,page_id,version_number,path,title,summary,body_markdown,

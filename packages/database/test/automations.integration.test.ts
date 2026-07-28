@@ -59,6 +59,7 @@ describeDatabase("persisted automation lifecycle", () => {
       timezone: "UTC",
       input: { project: "context-use" },
       enabled: true,
+      write_scope: [],
     }, { kind: "dashboard", subject: "integration-test-owner" });
     scheduleIds.push(schedule.id);
     expect(schedule).toMatchObject({
@@ -94,6 +95,7 @@ describeDatabase("persisted automation lifecycle", () => {
       timezone: "UTC",
       input: {},
       enabled: true,
+      write_scope: [],
     }, { kind: "dashboard", subject: "integration-test-owner" })).rejects.toBeInstanceOf(AutomationValidationError);
     await expect(pool.query(
       "UPDATE cron_schedules SET automation_key=$2 WHERE id=$1",
@@ -124,7 +126,7 @@ describeDatabase("persisted automation lifecycle", () => {
     const generated = await pages.createForAutomation({
       run_id: claimed.run_id,
       claim_token: claimed.claim_token,
-      relative_path: "reviews/latest",
+      path: `automations/morning-review-${suffix}/reviews/latest`,
       title: "Latest project review",
       summary: "The latest project review produced by the automation.",
       body_markdown: "Related to [[projects/context-use]].",
@@ -140,7 +142,7 @@ describeDatabase("persisted automation lifecycle", () => {
       run_id: claimed.run_id,
       claim_token: claimed.claim_token,
       page_id: instructionsPage.id,
-      relative_path: "instructions",
+      path: `automations/morning-review-${suffix}/instructions`,
       title: instructionsPage.title,
       summary: instructionsPage.summary,
       body_markdown: "Read [[projects/context-use]] and use the latest decisions.",
@@ -223,7 +225,7 @@ describeDatabase("persisted automation lifecycle", () => {
       run_id: claimed.run_id,
       claim_token: claimed.claim_token,
       page_id: generated.id,
-      relative_path: "reviews/latest",
+      path: `automations/morning-review-${suffix}/reviews/latest`,
       title: "Expired update",
       summary: "An expired automation update that should be rejected.",
       body_markdown: "Must fail after completion.",
@@ -252,6 +254,7 @@ describeDatabase("persisted automation lifecycle", () => {
       timezone: "UTC",
       input: { project: "context-use" },
       enabled: true,
+      write_scope: [],
       expected_version_number: 1,
     }, { kind: "dashboard", subject: "integration-test-owner" });
     expect(updatedAutomation).toMatchObject({
@@ -287,6 +290,7 @@ describeDatabase("persisted automation lifecycle", () => {
       timezone: "UTC",
       input: {},
       enabled: true,
+      write_scope: [],
       expected_version_number: 1,
     }, { kind: "dashboard", subject: "integration-test-owner" })).rejects.toBeInstanceOf(AutomationVersionConflictError);
 
@@ -340,6 +344,7 @@ describeMcpDatabase("MCP automation authoring role", () => {
       timezone: "Europe/London",
       input: { project: "context-use" },
       enabled: true,
+      write_scope: [],
     }, { kind: "mcp", subject: "integration-test-client" });
     scheduleId = schedule.id;
 
@@ -359,6 +364,7 @@ describeMcpDatabase("MCP automation authoring role", () => {
       timezone: "Europe/London",
       input: {},
       enabled: true,
+      write_scope: [],
       expected_version_number: 1,
     }, { kind: "mcp", subject: "integration-test-client" })).rejects.toThrow();
 
