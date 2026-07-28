@@ -19,7 +19,12 @@ export {
   diaryLogStub,
   type DiaryDay,
 } from "./diary.ts";
-export { AssetRepository, type NewAsset } from "./assets.ts";
+export {
+  AssetArchiveConflictError,
+  AssetRepository,
+  type AssetArchiveConflictReason,
+  type NewAsset,
+} from "./assets.ts";
 export {
   KnowledgeExportRepository,
   type KnowledgeExportAsset,

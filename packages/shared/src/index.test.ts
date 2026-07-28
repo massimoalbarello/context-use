@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  archiveAssetSchema,
   assetUploadSchema,
   createAutomationPageSchema,
   createDirectorySchema,
@@ -48,6 +49,14 @@ describe("strict mutation schemas", () => {
       size_bytes: 123,
       sha256: "A".repeat(64),
       public_path: "projects/acme/site-photo",
+    }).success).toBe(false);
+  });
+
+  test("asset archival accepts only a stable asset identifier", () => {
+    expect(archiveAssetSchema.safeParse({ asset_id: pageId }).success).toBe(true);
+    expect(archiveAssetSchema.safeParse({
+      asset_id: pageId,
+      path: "projects/acme/site-photo",
     }).success).toBe(false);
   });
 

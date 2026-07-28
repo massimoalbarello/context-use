@@ -6,6 +6,7 @@ import {
   PageRepository,
 } from "@context-use/database";
 import {
+  archiveAssetSchema,
   archiveAutomationPageSchema,
   archivePageSchema,
   assetUploadSchema,
@@ -280,6 +281,14 @@ export async function createMcpServer(
           expires_at: capability.expiresAt,
         },
       });
+    });
+
+    server.registerTool("archive_asset", {
+      description: "Archive a private asset while retaining its immutable stored bytes. First use get_asset, then call prepare_knowledge_write with the asset's current path and follow every returned AGENTS.md guide. Published assets and assets referenced by a current active page are rejected. This tool never deletes stored bytes.",
+      inputSchema: archiveAssetSchema,
+      annotations: { destructiveHint: true },
+    }, async ({ asset_id }) => {
+      return jsonContent(await assets.archive(asset_id));
     });
 
     server.registerTool("create_automation", {

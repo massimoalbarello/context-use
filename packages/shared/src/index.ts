@@ -144,6 +144,10 @@ export const assetUploadSchema = z.object({
   duration_seconds: z.number().nonnegative().optional(),
 }).strict();
 
+export const archiveAssetSchema = z.object({
+  asset_id: UUID,
+}).strict();
+
 export const createCronScheduleSchema = z.object({
   name: AutomationName,
   automation_key: AutomationKey,
@@ -199,6 +203,7 @@ export type UpdateDirectoryInput = z.infer<typeof updateDirectorySchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
 export type PublicationIntentInput = z.infer<typeof publicationIntentSchema>;
 export type AssetUploadInput = z.infer<typeof assetUploadSchema>;
+export type ArchiveAssetInput = z.infer<typeof archiveAssetSchema>;
 export type CreateCronScheduleInput = z.infer<typeof createCronScheduleSchema>;
 export type UpdateCronScheduleInput = z.infer<typeof updateCronScheduleSchema>;
 export type CreateAutomationPageInput = z.infer<typeof createAutomationPageSchema>;

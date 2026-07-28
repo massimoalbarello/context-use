@@ -355,6 +355,7 @@ describe("MCP knowledge and automation profiles", () => {
       "create_page",
       "update_page",
       "create_asset_upload",
+      "archive_asset",
       "create_automation",
     ]));
     expect(knowledgeTools).not.toEqual(expect.arrayContaining([
@@ -385,6 +386,7 @@ describe("MCP knowledge and automation profiles", () => {
       "update_page",
       "archive_page",
       "create_asset_upload",
+      "archive_asset",
       "create_automation",
     ]));
 
@@ -498,6 +500,44 @@ describe("MCP knowledge and automation profiles", () => {
     });
     expect(typeof result.upload.headers["x-context-use-upload-token"]).toBe("string");
     expect(JSON.stringify(result)).not.toContain("secret-key");
+  });
+
+  test("archives asset metadata without receiving a storage-delete capability", async () => {
+    const calls: string[] = [];
+    const assets = {
+      async archive(assetId: string) {
+        calls.push(assetId);
+        return {
+          id: assetId,
+          current_path: "documents/private-pdf",
+          filename: "private.pdf",
+          deleted_at: "2026-07-28T18:00:00.000Z",
+        };
+      },
+    } as unknown as AssetRepository;
+    const response = await mcpRequest(serverWith(
+      {} as AutomationRepository,
+      {} as PageRepository,
+      assets,
+    ), {
+      jsonrpc: "2.0",
+      id: 7,
+      method: "tools/call",
+      params: {
+        name: "archive_asset",
+        arguments: { asset_id: "11111111-1111-4111-8111-111111111111" },
+      },
+    });
+
+    expect(response.result?.isError).not.toBe(true);
+    expect(calls).toEqual(["11111111-1111-4111-8111-111111111111"]);
+    const result = JSON.parse(response.result?.content?.[0]?.text ?? "null");
+    expect(result).toMatchObject({
+      id: "11111111-1111-4111-8111-111111111111",
+      current_path: "documents/private-pdf",
+    });
+    expect(result).not.toHaveProperty("s3_object_key");
+    expect(result).not.toHaveProperty("delete");
   });
 
   test("returns an API-proxied asset download without exposing storage keys", async () => {
