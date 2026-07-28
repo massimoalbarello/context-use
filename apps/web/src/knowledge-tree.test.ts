@@ -8,6 +8,7 @@ import {
   expandedPathsForDisplay,
   knowledgeTreeItemLabel,
   parseExpandedPaths,
+  pruneEmptyDirectories,
   serializeExpandedPaths,
 } from "./knowledge-tree.ts";
 import type { Asset, Directory, Page } from "./types.ts";
@@ -100,6 +101,34 @@ describe("knowledge tree", () => {
       id: "about-directory",
       summary: "Summary for About.",
     });
+  });
+
+  test("prunes directory indexes when no visible pages or assets remain", () => {
+    const tree = buildKnowledgeTree(
+      [page("kept", "companies/acme/brief", "Brief")],
+      [],
+      [
+        directory("companies-directory", "companies", "Companies"),
+        directory("acme-directory", "companies/acme", "Acme"),
+        directory("feed-directory", "feed-digest", "Feed digest"),
+        directory("nested-empty-directory", "empty/nested", "Nested empty"),
+      ],
+    );
+
+    const visibleTree = pruneEmptyDirectories(tree);
+
+    expect(visibleTree.directories.map(({ path }) => path)).toEqual(["companies"]);
+    expect(visibleTree.directories[0]!.directories.map(({ path }) => path)).toEqual(["companies/acme"]);
+  });
+
+  test("keeps a directory index when an asset remains", () => {
+    const tree = buildKnowledgeTree(
+      [],
+      [asset("photo", "feed-digest/cover", "cover.jpg")],
+      [directory("feed-directory", "feed-digest", "Feed digest")],
+    );
+
+    expect(pruneEmptyDirectories(tree).directories.map(({ path }) => path)).toEqual(["feed-digest"]);
   });
 
   test("uses the page path filename as its tree label independently of the page title", () => {

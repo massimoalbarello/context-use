@@ -133,6 +133,18 @@ export function buildPageTree(pages: PageMetadata[]): PageTreeDirectory {
   return buildKnowledgeTree(pages, []);
 }
 
+export function pruneEmptyDirectories(directory: PageTreeDirectory): PageTreeDirectory {
+  const directories = directory.directories
+    .map(pruneEmptyDirectories)
+    .filter((child) => (
+      child.pages.length > 0
+      || child.assets.length > 0
+      || child.directories.length > 0
+    ));
+
+  return { ...directory, directories };
+}
+
 export function directoryPathsForPath(currentPath: string): string[] {
   const segments = currentPath.split("/").filter(Boolean).slice(0, -1);
   return segments.map((_, index) => segments.slice(0, index + 1).join("/"));
