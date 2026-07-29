@@ -35,12 +35,14 @@ describe("public page presentation", () => {
     const nested = renderPublicPageDocument("Como", "<p>Story</p>", "about/chapters/como");
     const rootPage = renderPublicPageDocument("Notes", "<p>Text</p>", "notes");
 
-    expect(nested).toContain('<nav class="knowledge-navigation" aria-label="Breadcrumb"><ol><li><a href="/p/">Home</a></li>');
+    expect(nested).toContain('<nav class="knowledge-navigation" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li>');
+    expect(nested).toContain('<li><span class="breadcrumb-separator" aria-hidden="true">/</span><a href="/p/">Knowledge</a></li>');
     expect(nested).toContain('<li><span class="breadcrumb-separator" aria-hidden="true">/</span><a href="/p/about/">About</a></li>');
     expect(nested).toContain('<li><span class="breadcrumb-separator" aria-hidden="true">/</span><a href="/p/about/chapters/">Chapters</a></li>');
     expect(nested).toContain('<li aria-current="page"><span class="breadcrumb-separator" aria-hidden="true">/</span>Como</li></ol></nav>');
     expect(nested).toContain('<link rel="alternate" type="text/markdown" href="/p/about/chapters/como.md" title="Como as Markdown">');
     expect(nested).toContain('<a href="/p/about/chapters/como.md" type="text/markdown">View as Markdown</a>');
+    expect(rootPage.match(/href="\/"/g)).toHaveLength(1);
     expect(rootPage.match(/href="\/p\/"/g)).toHaveLength(1);
     expect(rootPage).toContain('<li aria-current="page"><span class="breadcrumb-separator" aria-hidden="true">/</span>Notes</li>');
     expect(rootPage.match(/href="\/p\/notes\.md"/g)).toHaveLength(2);
@@ -75,10 +77,11 @@ describe("public page presentation", () => {
       entries: [],
     });
 
-    expect(html).toContain('<nav class="knowledge-navigation" aria-label="Breadcrumb"><ol><li><a href="/p/">Home</a></li>');
+    expect(html).toContain('<nav class="knowledge-navigation" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li>');
+    expect(html).toContain('<li><span class="breadcrumb-separator" aria-hidden="true">/</span><a href="/p/">Knowledge</a></li>');
     expect(html).toContain('<li><span class="breadcrumb-separator" aria-hidden="true">/</span><a href="/p/about/">About</a></li>');
     expect(html).toContain('<li aria-current="page"><span class="breadcrumb-separator" aria-hidden="true">/</span>Chapters</li>');
-    expect(html).toContain('<header class="public-index-header"><p>Contents</p><h1>Chapters</h1>');
+    expect(html).toContain('<header class="public-index-header"><h1>Chapters</h1>');
     expect(html).toContain('<a href="/p/about/chapters/early-years/">Early Years</a><span>— 2 published pages.</span>');
     expect(html).toContain('<a href="/p/about/chapters/only-child/story">Only Child</a><span>— 1 published page.</span>');
     expect(html).toContain('<a href="/p/about/chapters/como">Como</a><span>— Growing up at the foot of the Alps.</span>');
@@ -86,8 +89,10 @@ describe("public page presentation", () => {
     expect(html).toContain('<a href="/llms.txt" type="text/plain">AI-readable site index</a>');
     expect(html).not.toContain("Generated index");
     expect(html).not.toContain("Chapters index");
-    expect(rootHtml).toContain("<title>Home</title>");
-    expect(rootHtml).toContain('<header class="public-index-header"><p>Contents</p><h1>Home</h1>');
+    expect(rootHtml).toContain("<title>Knowledge</title>");
+    expect(rootHtml).toContain('<nav class="knowledge-navigation" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li><li aria-current="page"><span class="breadcrumb-separator" aria-hidden="true">/</span>Knowledge</li>');
+    expect(rootHtml).toContain('<header class="public-index-header"><h1>Knowledge</h1>');
+    expect(rootHtml).not.toContain("<p>Contents</p>");
     expect(rootHtml).not.toContain("Knowledge index");
   });
 

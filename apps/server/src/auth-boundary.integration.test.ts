@@ -266,6 +266,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       const leafWithoutSlash = await application!.handle(new Request(`http://localhost:3000/p/${nestedPath}`));
       const parentIndex = await application!.handle(new Request(`http://localhost:3000/p/${parentPath}/`));
       const parentWithoutSlash = await application!.handle(new Request(`http://localhost:3000/p/${parentPath}`));
+      const rootIndex = await application!.handle(new Request("http://localhost:3000/p/"));
       const rootWithoutSlash = await application!.handle(new Request("http://localhost:3000/p"));
       const llms = await application!.handle(new Request("http://localhost:3000/llms.txt"));
       const llmsFull = await application!.handle(new Request("http://localhost:3000/llms-full.txt"));
@@ -293,6 +294,11 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       expect(parentIndex.status).toBe(200);
       expect(parentWithoutSlash.status).toBe(308);
       expect(parentWithoutSlash.headers.get("location")).toBe(`/p/${parentPath}/`);
+      expect(rootIndex.status).toBe(200);
+      expect(rootIndex.headers.get("location")).toBeNull();
+      const rootHtml = await rootIndex.text();
+      expect(rootHtml).toContain('<a href="/">Home</a>');
+      expect(rootHtml).toContain('<h1>Knowledge</h1>');
       expect(rootWithoutSlash.status).toBe(308);
       expect(rootWithoutSlash.headers.get("location")).toBe("/p/");
       const parentHtml = await parentIndex.text();
