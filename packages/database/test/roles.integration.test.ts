@@ -754,7 +754,7 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("MCP can create asset upload intents without editing or deleting assets", async () => {
+  test("MCP can create and archive assets without editing immutable metadata or deleting rows", async () => {
     for (const column of ["id", "current_path", "filename", "content_type", "size_bytes", "content_hash", "s3_object_key", "width", "height", "duration_seconds"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_column_privilege('context_use_mcp', 'assets', $1, 'INSERT') AS allowed",
@@ -764,6 +764,15 @@ describeDatabase("PostgreSQL security roles", () => {
     for (const column of ["public_path", "deleted_at"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_column_privilege('context_use_mcp', 'assets', $1, 'INSERT') AS allowed",
+        [column],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_mcp', 'assets', 'deleted_at', 'UPDATE') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    for (const column of ["current_path", "public_path", "filename", "content_type", "size_bytes", "content_hash", "s3_object_key"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege('context_use_mcp', 'assets', $1, 'UPDATE') AS allowed",
         [column],
       )).rows[0]?.allowed).toBe(false);
     }

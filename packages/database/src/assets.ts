@@ -1,5 +1,31 @@
 import { randomUUID } from "node:crypto";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
+
+export type AssetArchiveConflictReason = "published" | "referenced";
+
+export class AssetArchiveConflictError extends Error {
+  constructor(readonly reason: AssetArchiveConflictReason) {
+    super(reason === "published"
+      ? "Published assets must be explicitly unpublished before they can be archived"
+      : "Assets referenced by an active page cannot be archived");
+    this.name = "AssetArchiveConflictError";
+  }
+}
+
+async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await work(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 export type NewAsset = {
   currentPath: string;
@@ -62,6 +88,40 @@ export class AssetRepository {
         created_at,deleted_at FROM assets WHERE deleted_at IS NULL ORDER BY current_path`,
     );
     return result.rows;
+  }
+
+  async archive(id: string) {
+    return transaction(this.pool, async (client) => {
+      const target = await client.query<{ public_path: string | null }>(
+        `SELECT public_path
+         FROM assets
+         WHERE id=$1 AND deleted_at IS NULL
+         FOR UPDATE`,
+        [id],
+      );
+      if (!target.rowCount) return null;
+      if (target.rows[0]!.public_path !== null) {
+        throw new AssetArchiveConflictError("published");
+      }
+      const referenced = await client.query(
+        `SELECT 1
+         FROM knowledge_asset_links link
+         JOIN knowledge_pages page ON page.current_version_id=link.source_version_id
+         WHERE link.target_asset_id=$1 AND page.archived_at IS NULL
+         LIMIT 1`,
+        [id],
+      );
+      if (referenced.rowCount) throw new AssetArchiveConflictError("referenced");
+      const archived = await client.query(
+        `UPDATE assets
+         SET deleted_at=now()
+         WHERE id=$1 AND deleted_at IS NULL
+         RETURNING id,current_path,public_path,filename,content_type,size_bytes,content_hash,
+           width,height,duration_seconds,created_at,deleted_at`,
+        [id],
+      );
+      return archived.rows[0] ?? null;
+    });
   }
 
   async markDeleted(id: string): Promise<string | null> {
