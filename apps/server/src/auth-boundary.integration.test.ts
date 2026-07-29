@@ -298,7 +298,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       expect(rootIndex.headers.get("location")).toBeNull();
       const rootHtml = await rootIndex.text();
       expect(rootHtml).toContain('<a href="/">Home</a>');
-      expect(rootHtml).toContain('<h1>Contents</h1>');
+      expect(rootHtml).toContain('<h1>Knowledge</h1>');
       expect(rootWithoutSlash.status).toBe(308);
       expect(rootWithoutSlash.headers.get("location")).toBe("/p/");
       const parentHtml = await parentIndex.text();

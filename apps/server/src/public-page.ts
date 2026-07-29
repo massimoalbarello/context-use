@@ -39,14 +39,14 @@ export function publicPageHref(path: string | null): string | null {
 
 function renderKnowledgeNavigation(currentPath: string, currentLabel: string): string {
   const segments = currentPath.split("/").filter(Boolean);
-  const contents = currentPath
-    ? '<li><span class="breadcrumb-separator" aria-hidden="true">/</span><a href="/p/">Contents</a></li>'
+  const knowledge = currentPath
+    ? '<li><span class="breadcrumb-separator" aria-hidden="true">/</span><a href="/p/">Knowledge</a></li>'
     : "";
   const ancestors = segments.slice(0, -1).map((segment, position) => {
     const path = segments.slice(0, position + 1).join("/");
     return `<li><span class="breadcrumb-separator" aria-hidden="true">/</span><a href="${escapeHtml(indexHref(path))}">${escapeHtml(humanizePath(segment))}</a></li>`;
   }).join("");
-  return `<nav class="knowledge-navigation" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li>${contents}${ancestors}<li aria-current="page"><span class="breadcrumb-separator" aria-hidden="true">/</span>${escapeHtml(currentLabel)}</li></ol></nav>`;
+  return `<nav class="knowledge-navigation" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li>${knowledge}${ancestors}<li aria-current="page"><span class="breadcrumb-separator" aria-hidden="true">/</span>${escapeHtml(currentLabel)}</li></ol></nav>`;
 }
 
 function renderLastEdited(lastEditedAt?: string | Date): string {
@@ -91,7 +91,7 @@ export function renderPublicIndexDocument(index: {
   default_page_path: string | null;
   entries: PublicIndexEntry[];
 }): string {
-  const title = index.path ? humanizePath(index.path) : "Contents";
+  const title = index.path ? humanizePath(index.path) : "Knowledge";
   const navigation = renderKnowledgeNavigation(index.path, title);
   const entries = index.entries.map((entry) => {
     const entryTitle = entry.kind === "page" ? entry.title ?? humanizePath(entry.path) : humanizePath(entry.path);
