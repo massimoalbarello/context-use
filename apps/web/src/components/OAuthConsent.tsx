@@ -3,7 +3,7 @@ import { api } from "../api.ts";
 import { authClient } from "../auth-client.ts";
 
 const SCOPE_DESCRIPTIONS: Record<string, string> = {
-  "mcp:access": "Read and manage private knowledge, assets, and automations through MCP",
+  "mcp:access": "Read and manage private knowledge and assets through MCP",
   offline_access: "Remain connected when you are away",
   openid: "Identify your owner account",
 };
@@ -11,7 +11,6 @@ const SCOPE_DESCRIPTIONS: Record<string, string> = {
 export function OAuthConsent() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const requested = (params.get("scope") ?? "mcp:access").split(/\s+/).filter(Boolean);
-  const executionConnection = params.get("resource")?.endsWith("/mcp/execution") ?? false;
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [client, setClient] = useState<{ client_id: string; name: string | null; uri: string | null; software_id: string | null; software_version: string | null } | null>(null);
@@ -35,11 +34,9 @@ export function OAuthConsent() {
 
   return <main className="center-card wide">
     <span className="eyebrow">Agent connection</span>
-    <h1>Allow this {executionConnection ? "automation worker" : "knowledge agent"} to access context-use?</h1>
+    <h1>Allow this knowledge agent to access context-use?</h1>
     <div className="security-callout"><strong>{client?.name ?? "Unidentified MCP client"}</strong><span>Client ID: {client?.client_id ?? params.get("client_id") ?? "missing"}{client?.software_version ? ` · version ${client.software_version}` : ""}</span>{client?.uri && <span>{client.uri}</span>}</div>
-    <p>{executionConnection
-      ? "This worker can read private knowledge, claim scheduled runs, and write only through each run's granted scope."
-      : "This agent can read and manage private knowledge and assets. It cannot claim scheduled automation runs."} It receives an OAuth token, never your passkey or dashboard cookie.</p>
+    <p>This agent can read and manage private knowledge and assets. It receives an OAuth token, never your passkey or dashboard cookie.</p>
     <ul className="scope-list">{requested.map((scope) => <li key={scope}>
       <strong>{scope}</strong><span>{SCOPE_DESCRIPTIONS[scope] ?? "Additional OAuth permission"}</span>
     </li>)}</ul>

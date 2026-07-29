@@ -795,87 +795,80 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("automation roles allow independent creation without definition updates", async () => {
-    expect((await admin.query<{ removed: boolean }>(
-      "SELECT to_regclass('agent_skills') IS NULL AND to_regclass('agent_skill_versions') IS NULL AS removed",
-    )).rows[0]?.removed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','automation_versions','instructions_markdown','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','automation_versions','instructions_markdown','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','automation_versions','instructions_markdown','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','automation_versions','instructions_markdown','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','automation_key','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','current_version_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','instructions_page_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','automation_key','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','cron_schedules','deleted_at','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','automation_runs','status','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','automation_runs','automation_version_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','automation_runs','status','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','knowledge_pages','automation_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','knowledge_pages','automation_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','knowledge_pages','automation_id','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
+  test("scheduler state is absent and automation instructions use ordinary private pages", async () => {
+    const removed = await admin.query<{
+      schedules: string | null;
+      versions: string | null;
+      runs: string | null;
+      provenance_columns: string;
+    }>(
+      `SELECT
+         to_regclass('cron_schedules')::text AS schedules,
+         to_regclass('automation_versions')::text AS versions,
+         to_regclass('automation_runs')::text AS runs,
+         (
+           SELECT count(*)::text
+           FROM information_schema.columns
+           WHERE table_schema='public'
+             AND table_name='knowledge_pages'
+             AND column_name='automation_id'
+         ) AS provenance_columns`,
+    );
+    expect(removed.rows[0]).toEqual({
+      schedules: null,
+      versions: null,
+      runs: null,
+      provenance_columns: "0",
+    });
+
+    const guide = await admin.query<{ title: string; body_markdown: string }>(
+      `SELECT version.title,version.body_markdown
+       FROM knowledge_pages page
+       JOIN knowledge_page_versions version
+         ON version.id=page.current_version_id AND version.page_id=page.id
+       WHERE page.current_path='automations/agents' AND page.archived_at IS NULL`,
+    );
+    expect(guide.rows[0]?.title).toBe("AGENTS.md");
+    expect(guide.rows[0]?.body_markdown).toContain("automations/<automation-name>/instructions");
+    expect(guide.rows[0]?.body_markdown).toContain("ordinary page lifecycle and tools");
+    expect(guide.rows[0]?.body_markdown).toContain("Keep schedules, retries, run history");
+
+    await admin.query("BEGIN");
+    try {
+      const pageId = randomUUID();
+      const versionId = randomUUID();
+      await admin.query("SET LOCAL ROLE context_use_mcp");
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,search_vector)
+         VALUES ($1,'automations/external-instructions',$2,page_search_vector(
+           'automations/external-instructions','External automation instructions',
+           'Instructions followed by an external automation harness.','Run externally.'
+         ))`,
+        [pageId, versionId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,summary,body_markdown,
+           commit_message,actor_kind,actor_subject
+         ) VALUES (
+           $1,$2,1,'automations/external-instructions','External automation instructions',
+           'Instructions followed by an external automation harness.',
+           'Run externally.','Create external automation instructions','mcp','role-test'
+         )`,
+        [versionId, pageId],
+      );
+      await admin.query("SET CONSTRAINTS ALL IMMEDIATE");
+      await admin.query("RESET ROLE");
+    } finally {
+      await admin.query("ROLLBACK");
+    }
+
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_any_column_privilege('context_use_mcp','publication_intents','INSERT') AS allowed",
     )).rows[0]?.allowed).toBe(false);
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_any_column_privilege('context_use_dashboard','publication_intents','INSERT') AS allowed",
     )).rows[0]?.allowed).toBe(true);
-  });
-
-  test("completed automation history uses concise summaries and keyset pagination storage", async () => {
-    const constraint = await admin.query<{ definition: string }>(
-      `SELECT pg_get_constraintdef(oid) AS definition
-       FROM pg_constraint
-       WHERE conrelid='automation_runs'::regclass
-         AND conname='automation_runs_result_summary_check'`,
-    );
-    expect(constraint.rows[0]?.definition).toContain("length(result_summary) <= 500");
-
-    const index = await admin.query<{ definition: string; valid: boolean }>(
-      `SELECT pg_get_indexdef(indexrelid) AS definition,indisvalid AS valid
-       FROM pg_index
-       WHERE indexrelid='automation_runs_completed_idx'::regclass`,
-    );
-    expect(index.rows[0]?.valid).toBe(true);
-    expect(index.rows[0]?.definition).toContain("(completed_at DESC, id DESC)");
-    expect(index.rows[0]?.definition).toContain("'succeeded'");
-    expect(index.rows[0]?.definition).toContain("'failed'");
   });
 
   test("auth role cannot read knowledge tables", async () => {

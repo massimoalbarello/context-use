@@ -6,19 +6,10 @@ export type { PageDeletionPrincipal } from "./page-deletion.ts";
 export { PAGE_VERSION_RETENTION_LIMIT } from "./page-retention.ts";
 export { DirectoryRepository, DirectoryVersionConflictError } from "./directories.ts";
 export {
-  AutomationContentAccessError,
   PageRepository,
   PublicationStateError,
   VersionConflictError,
 } from "./pages.ts";
-export {
-  DIARY_ROOT,
-  diaryDayForPage,
-  diaryDayTitle,
-  diaryDirectories,
-  diaryLogStub,
-  type DiaryDay,
-} from "./diary.ts";
 export {
   AssetArchiveConflictError,
   AssetRepository,
@@ -39,15 +30,6 @@ export {
   StoragePublicationRepository,
   type PublicPage,
 } from "./publication.ts";
-export {
-  AUTOMATION_RESULT_SUMMARY_MAX_LENGTH,
-  AutomationClaimError,
-  AutomationRepository,
-  AutomationValidationError,
-  AutomationVersionConflictError,
-  nextCronOccurrence,
-  type CompletedAutomationRunCursor,
-} from "./automations.ts";
 export {
   extractAssetLinks,
   extractDirectoryLinks,
