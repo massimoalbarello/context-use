@@ -20,7 +20,7 @@ const pages: PublicPage[] = [
     title: "Intro",
     summary: "Massimo's public introduction.",
     body_markdown: [
-      "Read [the project](/p/about/projects/one#details) and [the index](/i/about).",
+      "Read [the project](/p/about/projects/one#details) and [the index](/p/about/).",
       "",
       "![Public photo](context-use://public-asset/about/photo){size=small}",
       "",
@@ -78,7 +78,7 @@ describe("public LLM context", () => {
     expect(content).toContain("- Last updated: 2026-07-27T10:30:00.000Z");
     expect(content.indexOf("## Intro")).toBeLessThan(content.indexOf("## Project [One]"));
     expect(content).toContain("[the project](https://massimo.example/p/about/projects/one#details)");
-    expect(content).toContain("[the index](https://massimo.example/i/about)");
+    expect(content).toContain("[the index](https://massimo.example/p/about/)");
     expect(content).toContain("![Public photo](https://assets.massimo.example/a/about/photo){size=small}");
     expect(content).toContain("[External](https://example.com/story)");
     expect(content).not.toContain("\r");

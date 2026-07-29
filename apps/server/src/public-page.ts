@@ -35,7 +35,7 @@ function humanizePath(path: string): string {
 }
 
 function indexHref(path: string): string {
-  return path ? `/i/${path}` : "/i";
+  return path ? `/p/${path}/` : "/p/";
 }
 
 export function publicPageHref(path: string | null): string | null {
@@ -46,7 +46,7 @@ function renderKnowledgeNavigation(folderPath: string): string {
   const folder = folderPath
     ? `<span aria-hidden="true">/</span><a href="${indexHref(folderPath)}">${escapeHtml(humanizePath(folderPath))} index</a>`
     : "";
-  return `<nav class="knowledge-navigation" aria-label="Knowledge navigation"><a href="/i">Knowledge index</a>${folder}</nav>`;
+  return `<nav class="knowledge-navigation" aria-label="Knowledge navigation"><a href="/p/">Knowledge index</a>${folder}</nav>`;
 }
 
 function renderLastEdited(lastEditedAt?: string | Date): string {

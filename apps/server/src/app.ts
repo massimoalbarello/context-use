@@ -106,7 +106,7 @@ async function directoryWillBePublic(directoryPath: string, candidatePagePath: s
 }
 
 function publicDirectoryHref(path: string): string {
-  return path ? `/i/${path}` : "/i";
+  return path ? `/p/${path}/` : "/p/";
 }
 
 // Publication previews simulate the state after the selected version becomes

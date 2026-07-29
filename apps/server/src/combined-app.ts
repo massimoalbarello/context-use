@@ -28,12 +28,11 @@ function target(request: Request) {
   ) return mcpApp;
   if (
     path === "/"
-    || path === "/i"
-    || path.startsWith("/i/")
     || path === "/llms.txt"
     || path === "/llms-full.txt"
     || path === "/public.css"
     || path === "/content.css"
+    || path === "/p"
     || path.startsWith("/p/")
     || path.startsWith("/a/")
   ) return publicApp;

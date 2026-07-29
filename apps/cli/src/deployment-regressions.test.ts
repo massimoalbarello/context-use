@@ -432,8 +432,8 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).toContain("handle /api/mcp/assets/*/content");
   expect(caddy).toContain("handle /mcp/execution");
   expect(caddy).toContain("handle /content.css");
-  expect(caddy).toContain("handle /i {");
-  expect(caddy).toContain("handle /i/* {");
+  expect(caddy).not.toContain("handle /i {");
+  expect(caddy).not.toContain("handle /i/* {");
   expect(caddy).not.toContain("handle /api/dashboard/publications/confirm");
   expect(caddy).not.toContain("handle /api/dashboard/session");
   expect(caddy).toContain("handle /api/auth/*");
