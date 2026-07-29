@@ -11,7 +11,7 @@ The longer-term vision is an autobiography that writes itself. As Context Use co
 ## What it does
 
 - Stores private Markdown pages with the five latest versions, plus any older snapshot that is still published.
-- Organizes pages beneath first-class, linkable directories whose private and public indexes are generated from required one-sentence summaries; public indexes include only published knowledge.
+- Organizes pages beneath first-class, linkable directories whose private and public indexes are generated from required one-sentence summaries; public indexes show folder metadata only for branches containing published knowledge.
 - Gives personal agents read and write access through OAuth-protected MCP.
 - Publishes only the exact pages and assets you approve.
 - Lets only the dashboard owner permanently delete an archived page after fresh passkey confirmation.

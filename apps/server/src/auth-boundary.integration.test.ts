@@ -302,7 +302,10 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       expect(rootWithoutSlash.status).toBe(308);
       expect(rootWithoutSlash.headers.get("location")).toBe("/p/");
       const parentHtml = await parentIndex.text();
-      expect(parentHtml).toContain("1 published page");
+      expect(parentHtml).toContain("PRIVATE-DIRECTORY-TITLE-CANARY");
+      expect(parentHtml).toContain("PRIVATE-NESTED-DIRECTORY-TITLE-CANARY");
+      expect(parentHtml).toContain("PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY");
+      expect(parentHtml).not.toContain("published page");
       expect(parentHtml).toContain(`href="/p/${publicPath}"`);
       expect(parentHtml).toContain('href="/llms.txt"');
       expect(llms.status).toBe(200);
@@ -317,11 +320,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         "PRIVATE-TITLE-CANARY",
         "PRIVATE-SUMMARY-CANARY",
         "PRIVATE-NESTED-CANARY",
-        "PRIVATE-DIRECTORY-TITLE-CANARY",
-        "PRIVATE-DIRECTORY-SUMMARY-CANARY",
         "PRIVATE-DIRECTORY-INTRO-CANARY",
-        "PRIVATE-NESTED-DIRECTORY-TITLE-CANARY",
-        "PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY",
         "PRIVATE-NESTED-DIRECTORY-INTRO-CANARY",
       ]) expect(parentHtml).not.toContain(privateCanary);
 
