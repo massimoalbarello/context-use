@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { immutablePasskeyRejection, passkeyMutationForPath } from "./passkey-policy.ts";
 
-describe("immutable passkey policy", () => {
+describe("passkey mutation policy", () => {
   test("classifies every Better Auth passkey mutation route", () => {
     expect(passkeyMutationForPath("/api/auth/passkey/generate-register-options")).toBe("register");
     expect(passkeyMutationForPath("/api/auth/passkey/verify-registration")).toBe("register");
@@ -16,11 +16,8 @@ describe("immutable passkey policy", () => {
     expect(immutablePasskeyRejection("register", 0)).toBeNull();
   });
 
-  test("rejects every additional passkey", () => {
-    expect(immutablePasskeyRejection("register", 1)).toEqual({
-      error: "passkey_already_registered",
-      status: 409,
-    });
+  test("leaves additional registration authorization to confirmed enrollment claims", () => {
+    expect(immutablePasskeyRejection("register", 1)).toBeNull();
   });
 
   for (const mutation of ["update", "delete"] as const) {

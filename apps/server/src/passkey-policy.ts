@@ -12,9 +12,8 @@ export function passkeyMutationForPath(path: string): PasskeyMutation | null {
 
 export function immutablePasskeyRejection(
   mutation: PasskeyMutation,
-  passkeyCount: number,
+  _passkeyCount: number,
 ): PasskeyMutationRejection | null {
   if (mutation !== "register") return { error: "passkey_immutable", status: 409 };
-  if (passkeyCount > 0) return { error: "passkey_already_registered", status: 409 };
   return null;
 }

@@ -11,6 +11,12 @@ import {
   ownerSetupContext,
   ownerUserId,
 } from "./owner.ts";
+import {
+  consumeEnrollmentContext,
+  enrollmentForContext,
+  parseEnrollmentContext,
+  passkeyLabelSchema,
+} from "./passkey-management.ts";
 
 const OAUTH_SCOPES = ["openid", "offline_access", ...MCP_SCOPES];
 
@@ -28,6 +34,18 @@ async function resolveOwnerSetup(context: string | null | undefined) {
   return {
     id: ownerUserId,
     name: setup.email,
+    displayName: "context-use owner",
+  };
+}
+
+async function resolvePasskeyRegistration(context: string | null | undefined) {
+  const existing = await authPool.query("SELECT 1 FROM passkey WHERE \"userId\"=$1 LIMIT 1", [ownerUserId]);
+  if (!existing.rowCount) return resolveOwnerSetup(context);
+  const enrollment = await enrollmentForContext(authPool, context);
+  if (!enrollment) throw new APIError("FORBIDDEN", { message: "A confirmed passkey enrollment is required" });
+  return {
+    id: ownerUserId,
+    name: normalizedOwnerEmail,
     displayName: "context-use owner",
   };
 }
@@ -136,14 +154,31 @@ export const auth = betterAuth({
       },
       registration: {
         requireSession: false,
-        resolveUser: ({ context }) => resolveOwnerSetup(context),
-        afterVerification: async ({ context, verification }) => {
+        resolveUser: ({ context }) => resolvePasskeyRegistration(context),
+        afterVerification: async ({ context, ctx, verification }) => {
           if (!verification.registrationInfo?.userVerified) {
             throw new APIError("FORBIDDEN", { message: "User verification is required" });
           }
+          if (parseEnrollmentContext(context)) {
+            const expectedEnrollment = await enrollmentForContext(authPool, context);
+            const requestedName = typeof ctx.body?.name === "string" ? ctx.body.name.trim() : "";
+            if (!expectedEnrollment || (requestedName && requestedName !== expectedEnrollment.name)) {
+              throw new APIError("FORBIDDEN", { message: "Passkey enrollment details do not match" });
+            }
+            const enrollment = await consumeEnrollmentContext(authPool, context);
+            if (!enrollment) {
+              throw new APIError("CONFLICT", { message: "The passkey enrollment is expired or already used" });
+            }
+            await createOwner();
+            return { userId: ownerUserId, name: enrollment.name };
+          }
           await resolveOwnerSetup(context);
           await createOwner();
-          return { userId: ownerUserId, name: "Owner passkey" };
+          const requestedName = typeof ctx.body?.name === "string" ? ctx.body.name.trim() : "";
+          if (requestedName && !passkeyLabelSchema.safeParse(requestedName).success) {
+            throw new APIError("BAD_REQUEST", { message: "Passkey names must be between 1 and 80 characters" });
+          }
+          return { userId: ownerUserId, name: requestedName || "Primary passkey" };
         },
       },
       authentication: {

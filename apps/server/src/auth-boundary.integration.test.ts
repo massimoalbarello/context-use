@@ -74,6 +74,27 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(confirm.status).toBe(401);
   });
 
+  test("passkey management is reachable only from an authenticated dashboard session", async () => {
+    for (const [path, body] of [
+      ["/api/dashboard/passkey-enrollment-intents", { name: "Attacker key", authenticator_attachment: null }],
+      ["/api/dashboard/passkey-enrollment-intents/11111111-1111-4111-8111-111111111111/confirm", { response: {} }],
+      ["/api/dashboard/passkeys/attacker/removal-intents", {}],
+      ["/api/dashboard/passkeys/attacker/remove", {
+        intent_id: "11111111-1111-4111-8111-111111111111",
+        response: {},
+      }],
+    ] as const) {
+      for (const headers of [{}, { authorization: "Bearer forged" }]) {
+        const response = await application!.handle(new Request(`http://localhost:3000${path}`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }));
+        expect(response.status).toBe(401);
+      }
+    }
+  });
+
   test("confirmation browser handlers are internal and require the auth gateway capability", async () => {
     const response = await confirmation!.handle(new Request(
       "http://confirmation:3004/internal/browser-confirmation/publication",

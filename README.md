@@ -14,6 +14,7 @@ The longer-term vision is an autobiography that writes itself. As Context Use co
 - Organizes pages beneath first-class, linkable directories whose private and public indexes are generated from required one-sentence summaries; public indexes show folder metadata only for branches containing published knowledge.
 - Gives personal agents read and write access through OAuth-protected MCP.
 - Publishes only the exact pages and assets you approve.
+- Manages named owner passkeys from Dashboard Settings, including hardware security keys and one-time enrollment links for another device.
 - Lets only the dashboard owner permanently delete an archived page after fresh passkey confirmation.
 - Exports a portable Markdown vault with page metadata, directory metadata, generated `index.md` files where navigation requires them, and local links. One-page leaf folders link directly to their sole page.
 - Provides a public profile at `about/intro`, plus public pages for anything else you choose to share.

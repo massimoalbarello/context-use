@@ -1,5 +1,6 @@
 import { authPool, dashboardPrincipal } from "./auth.ts";
 import { ownerUserId } from "./owner.ts";
+import { enrollmentForContext } from "./passkey-management.ts";
 import { immutablePasskeyRejection, passkeyMutationForPath } from "./passkey-policy.ts";
 
 type PasskeyAuthBoundary = {
@@ -58,6 +59,22 @@ export async function authorizePasskeyAuthRequest(request: Request): Promise<Pas
       [ownerUserId],
     );
     const count = Number(passkeyCount.rows[0]?.count ?? 0);
+    if (!verification && count > 0) {
+      const requestUrl = new URL(request.url);
+      const context = requestUrl.searchParams.get("context");
+      const enrollment = await enrollmentForContext(database, context);
+      if (!enrollment) {
+        await releaseLock();
+        return { denied: Response.json({ error: "confirmed_passkey_enrollment_required" }, { status: 403 }) };
+      }
+      const requestedName = requestUrl.searchParams.get("name");
+      const requestedAttachment = requestUrl.searchParams.get("authenticatorAttachment");
+      if ((requestedName !== null && requestedName.trim() !== enrollment.name)
+          || requestedAttachment !== enrollment.authenticator_attachment) {
+        await releaseLock();
+        return { denied: Response.json({ error: "passkey_enrollment_mismatch" }, { status: 403 }) };
+      }
+    }
     const rejection = immutablePasskeyRejection("register", count);
     if (rejection) {
       await releaseLock();
