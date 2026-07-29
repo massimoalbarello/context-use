@@ -305,13 +305,14 @@ describeDatabase("PostgreSQL security roles", () => {
        FROM pg_class
        WHERE relnamespace='public'::regnamespace
          AND relname IN (
-           'published_page_sources','published_pages','published_assets',
+           'published_page_sources','published_pages','published_directories','published_assets',
            'storage_published_assets'
          )
        ORDER BY relname`,
     );
     expect(views.rows).toEqual([
       { relname: "published_assets", owner: "context_use_projection_owner" },
+      { relname: "published_directories", owner: "context_use_projection_owner" },
       { relname: "published_page_sources", owner: "context_use_projection_owner" },
       { relname: "published_pages", owner: "context_use_projection_owner" },
       { relname: "storage_published_assets", owner: "context_use_projection_owner" },
@@ -578,7 +579,7 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       expect(result.rows[0]?.allowed).toBe(false);
     }
-    for (const relation of ["published_pages", "published_assets"]) {
+    for (const relation of ["published_pages", "published_directories", "published_assets"]) {
       const result = await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_public', $1, 'SELECT') AS allowed",
         [relation],
@@ -598,6 +599,14 @@ describeDatabase("PostgreSQL security roles", () => {
     );
     expect(publicPageColumns.rows.map(({ column_name }) => column_name)).toEqual([
       "public_path", "title", "summary", "body_markdown", "last_edited_at",
+    ]);
+    const publicDirectoryColumns = await admin.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='published_directories'
+       ORDER BY ordinal_position`,
+    );
+    expect(publicDirectoryColumns.rows.map(({ column_name }) => column_name)).toEqual([
+      "path", "title", "summary",
     ]);
     const publicAssetColumns = await admin.query<{ column_name: string }>(
       `SELECT column_name FROM information_schema.columns
@@ -1162,24 +1171,30 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(rootIndex?.entries).toContainEqual({
         kind: "directory",
         path: "profile",
-        title: null,
-        summary: null,
+        title: "Profile",
+        summary: "Fixtures under profile.",
         published_count: 1,
         default_page_path: null,
       });
+      expect(rootIndex?.title).toBe("Knowledge");
+      expect(rootIndex?.summary).toBe("The root of the owner's private, progressively discoverable knowledge base.");
       expect(rootIndex?.default_page_path).toBeNull();
       expect(profileIndex).toEqual({
         path: "profile",
+        title: "Profile",
+        summary: "Fixtures under profile.",
         default_page_path: null,
         entries: [{
           kind: "directory",
           path: "profile/work",
-          title: null,
-          summary: null,
+          title: "Work",
+          summary: "Fixtures under profile/work.",
           published_count: 1,
           default_page_path: "profile/work/project",
         }],
       });
+      expect(workIndex?.title).toBe("Work");
+      expect(workIndex?.summary).toBe("Fixtures under profile/work.");
       expect(workIndex?.default_page_path).toBe("profile/work/project");
       expect(workIndex?.entries).toEqual([{
         kind: "page",

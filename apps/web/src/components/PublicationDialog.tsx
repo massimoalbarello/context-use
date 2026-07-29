@@ -61,7 +61,7 @@ export function PublicationDialog({ page, versionNumber, publishedVersionNumber,
     </p>}
     <p className="public-url">Public URL: {location.origin}/p/{preview?.path ?? "…"}</p>
     {preview && <section className="publication-metadata"><strong>{preview.title}</strong><p>{preview.summary}</p></section>}
-    {preview && <p className="publication-index-note">The framework will also expose the generated root and parent indexes needed to reach this page. Those indexes contain only explicitly published page titles and summaries; private pages and private directory metadata remain hidden.</p>}
+    {preview && <p className="publication-index-note">The framework will also expose the generated root and parent indexes needed to reach this page. Those indexes show the titles and summaries of folders with published descendants and explicitly published pages; private pages and folder introductions remain hidden.</p>}
     {preview?.warnings.map((warning) => <div className="warning" key={warning}>{warning}</div>)}
     {preview?.references.length ? <section className="reference-review"><strong>Linked content has independent visibility</strong>{preview.references.map((reference) => <div key={`${reference.kind}-${reference.id}`}><span>{reference.kind} · {reference.label}{reference.path ? ` · ${reference.path}` : ""}</span><i className={reference.public ? "visible" : "private"}>{reference.public ? "Public" : "Private / missing"}</i></div>)}</section> : null}
     <div className="publication-preview" dangerouslySetInnerHTML={{ __html: preview?.rendered_html ?? "Loading preview…" }} />
