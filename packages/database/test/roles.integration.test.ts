@@ -340,6 +340,7 @@ describeDatabase("PostgreSQL security roles", () => {
            'confirm_page_deletion_intent',
            'claim_knowledge_export_download',
            'prune_page_versions',
+           'remove_owner_passkey',
            'project_public_markdown'
          )
        ORDER BY proname`,
@@ -353,6 +354,7 @@ describeDatabase("PostgreSQL security roles", () => {
       { proname: "issue_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "project_public_markdown", owner: "context_use_projection_owner", security_definer: true },
       { proname: "prune_page_versions", owner: "context_use_boundary_owner", security_definer: true },
+      { proname: "remove_owner_passkey", owner: "context_use_boundary_owner", security_definer: true },
     ]);
 
     for (const [relation, column] of [
@@ -912,6 +914,24 @@ describeDatabase("PostgreSQL security roles", () => {
       });
     } finally {
       await admin.query("ROLLBACK");
+    }
+  });
+
+  test("auth can manage enrollment intents and invoke narrow passkey removal without direct deletion", async () => {
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_table_privilege('context_use_auth','passkey_management_intents','SELECT,INSERT,UPDATE,DELETE') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_function_privilege('context_use_auth','remove_owner_passkey(text,text)','EXECUTE') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_table_privilege('context_use_auth','passkey','DELETE') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+    for (const role of ["context_use_dashboard", "context_use_mcp", "context_use_public", "context_use_confirmation", "context_use_storage"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege($1,'passkey_management_intents','SELECT,INSERT,UPDATE,DELETE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
     }
   });
 

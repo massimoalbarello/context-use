@@ -2,8 +2,15 @@ import { type FormEvent, useEffect, useState } from "react";
 import { authClient } from "../auth-client.ts";
 
 export function Login() {
-  const [setupToken] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("setup") ?? "");
+  const [entry] = useState(() => {
+    const parameters = new URLSearchParams(window.location.hash.slice(1));
+    return {
+      setupToken: parameters.get("setup") ?? "",
+      enrollmentClaim: parameters.get("enroll") ?? "",
+    };
+  });
   const [email, setEmail] = useState("");
+  const [passkeyName, setPasskeyName] = useState("Primary passkey");
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,8 +38,8 @@ export function Login() {
     setError("");
     try {
       const result = await authClient.passkey.addPasskey({
-        name: "Owner passkey",
-        context: JSON.stringify({ email, token: setupToken }),
+        name: passkeyName,
+        context: JSON.stringify({ email, token: entry.setupToken }),
       });
       if (result.error) {
         setError(result.error.message ?? "Passkey setup failed");
@@ -48,18 +55,46 @@ export function Login() {
     }
   };
 
+  const enrollAdditional = async () => {
+    setWorking(true);
+    setError("");
+    try {
+      const result = await authClient.passkey.addPasskey({
+        context: JSON.stringify({ enrollment_claim: entry.enrollmentClaim }),
+      });
+      if (result.error) {
+        setError(result.error.message ?? "Passkey setup failed");
+        return;
+      }
+      const signedIn = await authClient.signIn.passkey();
+      if (signedIn.error) setError("Your passkey was created. Reload this page and sign in with it.");
+      else window.location.assign("/app/settings");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Passkey setup failed");
+    } finally {
+      setWorking(false);
+    }
+  };
+
   return <main className="center-card">
     <div className="brand-mark">cu</div>
     <h1>context-use</h1>
     <p>Your private knowledge base.</p>
-    {setupToken ? <form className="login-form" onSubmit={enroll}>
+    {entry.setupToken ? <form className="login-form" onSubmit={enroll}>
       <span className="eyebrow">Owner setup</span>
-      <p>Enter the owner email chosen during deployment, then create the installation's only passkey. Your device will ask once more to sign in.</p>
+      <p>Enter the owner email chosen during deployment, name this passkey, and create it. Your device will ask once more to sign in.</p>
       <label>Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-      <div className="security-callout"><strong>This passkey is permanent.</strong><span>It is the only way to sign in or change public visibility. It cannot be replaced or recovered.</span></div>
+      <label>Passkey name<input required maxLength={80} value={passkeyName} onChange={(event) => setPasskeyName(event.target.value)} /></label>
+      <div className="security-callout"><strong>This is your initial passkey.</strong><span>Additional passkeys can only be authorized later from Dashboard Settings.</span></div>
       {error && <p className="error">{error}</p>}
       <button className="primary" disabled={working} type="submit">{working ? "Waiting for your device…" : "Create owner passkey"}</button>
-    </form> : <>
+    </form> : entry.enrollmentClaim ? <div className="login-form">
+      <span className="eyebrow">Passkey enrollment</span>
+      <p>Create the passkey authorized from Context Use Settings. This invitation expires after five minutes and can only be used once.</p>
+      <div className="security-callout"><strong>Use this device’s authenticator.</strong><span>Your browser will let you choose an available passkey provider.</span></div>
+      {error && <p className="error">{error}</p>}
+      <button className="primary" disabled={working} onClick={enrollAdditional}>{working ? "Waiting for your device…" : "Create passkey"}</button>
+    </div> : <>
       <p>Use the owner passkey to sign in. Email is not an authentication method.</p>
       {error && <p className="error">{error}</p>}
       <button className="primary" disabled={working} onClick={signIn}>{working ? "Waiting for your device…" : "Sign in with passkey"}</button>

@@ -5,7 +5,7 @@ import { Client } from "pg";
 const adminUrl = process.env.TEST_DATABASE_URL;
 const describeDatabase = adminUrl ? describe : describe.skip;
 
-describeDatabase("immutable passkey schema", () => {
+describeDatabase("owner passkey schema", () => {
   let admin: Client;
 
   beforeAll(async () => {
@@ -17,7 +17,7 @@ describeDatabase("immutable passkey schema", () => {
     await admin.end();
   });
 
-  test("enforces one passkey per owner", async () => {
+  test("allows multiple passkeys but never removal of the final credential", async () => {
     const userId = "context-use-owner";
     await admin.query("BEGIN");
     try {
@@ -32,20 +32,22 @@ describeDatabase("immutable passkey schema", () => {
         [randomUUID(), userId, `credential-${randomUUID()}`],
       );
 
-      let errorCode: string | undefined;
-      let constraint: string | undefined;
-      try {
-        await admin.query(
-          `INSERT INTO passkey(id,"publicKey","userId","credentialID",counter,"deviceType","backedUp")
-           VALUES ($1,'second-public-key',$2,$3,0,'singleDevice',false)`,
-          [randomUUID(), userId, `credential-${randomUUID()}`],
-        );
-      } catch (error) {
-        errorCode = error instanceof Error && "code" in error ? String(error.code) : undefined;
-        constraint = error instanceof Error && "constraint" in error ? String(error.constraint) : undefined;
-      }
-      expect(errorCode).toBe("23505");
-      expect(constraint).toBe("passkey_userId_unique");
+      const secondId = randomUUID();
+      await admin.query(
+        `INSERT INTO passkey(id,"publicKey","userId","credentialID",counter,"deviceType","backedUp")
+         VALUES ($1,'second-public-key',$2,$3,0,'singleDevice',false)`,
+        [secondId, userId, `credential-${randomUUID()}`],
+      );
+      expect((await admin.query(
+        `SELECT count(*)::int AS count FROM passkey WHERE "userId"=$1`,
+        [userId],
+      )).rows[0]?.count).toBe(2);
+
+      await admin.query("SELECT remove_owner_passkey($1,$2)", [userId, secondId]);
+      await expect(admin.query(
+        "SELECT remove_owner_passkey($1,(SELECT id FROM passkey WHERE \"userId\"=$1))",
+        [userId],
+      )).rejects.toMatchObject({ code: "22023" });
     } finally {
       await admin.query("ROLLBACK");
     }

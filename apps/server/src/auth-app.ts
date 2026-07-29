@@ -14,6 +14,17 @@ import { hasHeaderCapability, hasInternalCapability } from "./internal-capabilit
 import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
 import {
+  authenticatorAttachmentSchema,
+  confirmEnrollmentIntent,
+  confirmRemovalIntent,
+  createEnrollmentIntent,
+  createRemovalIntent,
+  managementIntentIdSchema,
+  passkeyAssertionSchema,
+  passkeyIdSchema,
+  passkeyLabelSchema,
+} from "./passkey-management.ts";
+import {
   SecurityError,
   assertDashboardDownloadSecurity,
   assertDashboardRequestSecurity,
@@ -35,6 +46,18 @@ const internalAuthorization = z.object({
 }).strict();
 const clientPageNumber = z.coerce.number().int().min(1).default(1);
 const clientPageSize = z.coerce.number().int().min(1).max(50).default(10);
+const enrollmentIntentSchema = z.object({
+  name: passkeyLabelSchema,
+  authenticator_attachment: authenticatorAttachmentSchema,
+}).strict();
+const confirmationSchema = z.object({
+  response: passkeyAssertionSchema,
+}).strict();
+const passkeyRemovalSchema = z.object({
+  intent_id: managementIntentIdSchema,
+  response: passkeyAssertionSchema,
+}).strict();
+const emptyObjectSchema = z.object({}).strict();
 function browserAuthRequest(request: Request, removeCookie = false): Request {
   const headers = new Headers(request.headers);
   if (removeCookie) headers.delete("cookie");
@@ -113,19 +136,73 @@ export const authApp = new Elysia()
   })
   .get("/api/dashboard/session", async ({ request }) => {
     const principal = await ownerRequest(request);
-    const passkeys = await authPool.query<{ id: string; name: string | null; createdAt: Date }>(
-      `SELECT id,name,"createdAt" FROM passkey WHERE "userId"=$1 ORDER BY "createdAt"`,
+    const passkeys = await authPool.query<{
+      id: string;
+      name: string | null;
+      createdAt: Date;
+      deviceType: string;
+      backedUp: boolean;
+    }>(
+      `SELECT id,name,"createdAt","deviceType","backedUp"
+       FROM passkey WHERE "userId"=$1 ORDER BY "createdAt",id`,
       [principal.userId],
     );
     return json({
       owner: { id: principal.userId, email: principal.email },
       passkey_count: passkeys.rowCount,
-      passkeys: passkeys.rows.map((key) => ({ id: key.id, name: key.name, created_at: key.createdAt })),
+      passkeys: passkeys.rows.map((key) => ({
+        id: key.id,
+        name: key.name,
+        created_at: key.createdAt,
+        device_type: key.deviceType,
+        backed_up: key.backedUp,
+      })),
     });
   })
   .get("/api/dashboard/csrf", async ({ request }) => {
     const principal = await ownerRequest(request);
     return json({ csrf_token: csrfToken(principal) });
+  })
+  .post("/api/dashboard/passkey-enrollment-intents", async ({ request }) => {
+    const principal = await ownerRequest(request, true);
+    const input = enrollmentIntentSchema.parse(await bodyJson(request));
+    return json(await createEnrollmentIntent(
+      authPool,
+      principal,
+      input.name,
+      input.authenticator_attachment,
+    ), 201);
+  })
+  .post("/api/dashboard/passkey-enrollment-intents/:id/confirm", async ({ request, params }) => {
+    const principal = await ownerRequest(request, true);
+    const input = confirmationSchema.parse(await bodyJson(request));
+    return json(await confirmEnrollmentIntent(
+      authPool,
+      principal,
+      managementIntentIdSchema.parse(params.id),
+      input.response,
+    ));
+  })
+  .post("/api/dashboard/passkeys/:id/removal-intents", async ({ request, params }) => {
+    const principal = await ownerRequest(request, true);
+    emptyObjectSchema.parse(await bodyJson(request));
+    return json(await createRemovalIntent(
+      authPool,
+      principal,
+      passkeyIdSchema.parse(params.id),
+    ), 201);
+  })
+  .post("/api/dashboard/passkeys/:id/remove", async ({ request, params }) => {
+    const principal = await ownerRequest(request, true);
+    const input = passkeyRemovalSchema.parse(await bodyJson(request));
+    await confirmRemovalIntent(
+      authPool,
+      principal,
+      input.intent_id,
+      passkeyIdSchema.parse(params.id),
+      input.response,
+    );
+    return json({ removed: true, sessions_revoked: true });
   })
   .post("/api/dashboard/publications/confirm", async ({ request }) => {
     const principal = await ownerRequest(request, true);

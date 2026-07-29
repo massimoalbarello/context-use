@@ -1259,6 +1259,97 @@ button:disabled {
   font-size: 11px;
 }
 
+.security-list .danger {
+  min-height: 30px;
+  padding: 6px 10px;
+  flex: 0 0 auto;
+  font-size: 10px;
+}
+
+.passkey-add {
+  margin-top: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .52);
+}
+
+.passkey-add > label {
+  width: min(480px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #716d66;
+  font-size: 11px;
+  font-weight: 610;
+}
+
+.passkey-add > label input,
+.passkey-link input {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.passkey-kind {
+  width: min(680px, 100%);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.passkey-kind label {
+  padding: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.passkey-kind input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.passkey-kind span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.passkey-kind small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.passkey-link {
+  width: 100%;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.passkey-link > p {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.passkey-link > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
 .mcp-clients-page {
   display: block;
 }
@@ -1635,6 +1726,8 @@ button:disabled {
 }
 
 @media (max-width: 800px) {
+  .passkey-kind { grid-template-columns: 1fr; }
+
   .shell {
     height: 100dvh;
     padding: 0;
