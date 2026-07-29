@@ -14,6 +14,25 @@ type ParsedRange = { start: number; end: number } | "unsatisfiable" | undefined;
 
 function inlineContentSecurityPolicy(contentType: string): string {
   const normalized = contentType.toLowerCase();
+  if (normalized === "text/html") {
+    return [
+      // The opaque sandbox origin prevents active HTML from reading dashboard
+      // data even though its bytes are delivered from the authenticated origin.
+      "sandbox allow-scripts allow-downloads",
+      "default-src 'none'",
+      "base-uri 'none'",
+      "form-action 'none'",
+      "script-src 'unsafe-inline' 'unsafe-eval' data: blob: https:",
+      "style-src 'unsafe-inline' data: https:",
+      "img-src data: blob: https:",
+      "font-src data: https:",
+      "media-src data: blob: https:",
+      "connect-src https:",
+      "frame-src data: blob: https:",
+      "worker-src data: blob:",
+      "frame-ancestors 'self'",
+    ].join("; ");
+  }
   const resourceDirective = normalized.startsWith("image/")
     ? "img-src 'self'"
     : normalized.startsWith("video/") || normalized.startsWith("audio/")

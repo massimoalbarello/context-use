@@ -106,6 +106,23 @@ describe("API-proxied asset content", () => {
     expect(response.headers.get("content-disposition")).toBe('inline; filename="notes.pdf"');
   });
 
+  test("serves HTML inline in an opaque sandbox", async () => {
+    const response = await assetContentResponse(
+      new Request("https://context.example/api/dashboard/assets/id/content"),
+      { ...asset, filename: "interactive.html", content_type: "text/html" },
+      storageFixture().storage,
+      true,
+    );
+
+    expect(response.headers.get("content-type")).toBe("text/html");
+    expect(response.headers.get("content-disposition")).toBe('inline; filename="interactive.html"');
+    const policy = response.headers.get("content-security-policy") ?? "";
+    expect(policy).toContain("sandbox allow-scripts allow-downloads");
+    expect(policy).not.toContain("allow-same-origin");
+    expect(policy).toContain("form-action 'none'");
+    expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+  });
+
   test("forces active formats to download and reports missing bytes without a storage redirect", async () => {
     const activeAsset = { ...asset, filename: "unsafe.svg", content_type: "image/svg+xml" };
     const response = await assetContentResponse(

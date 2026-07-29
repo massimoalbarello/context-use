@@ -167,7 +167,7 @@ export function contentDisposition(filename: string, inline: boolean): string {
   return `${inline ? "inline" : "attachment"}; filename="${safe}"`;
 }
 
-const INLINE_TYPES = /^(image\/(?:png|jpeg|gif|webp|avif)|video\/(?:mp4|webm|quicktime)|audio\/(?:mpeg|ogg|wav)|application\/pdf)$/;
+const INLINE_TYPES = /^(image\/(?:png|jpeg|gif|webp|avif)|video\/(?:mp4|webm|quicktime)|audio\/(?:mpeg|ogg|wav)|application\/pdf|text\/html)$/;
 export function mayRenderInline(contentType: string): boolean {
   return INLINE_TYPES.test(contentType.toLowerCase());
 }

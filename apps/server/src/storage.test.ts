@@ -108,12 +108,12 @@ describe("application-routed asset storage", () => {
     await expect(credentialsFromFile(path)()).rejects.toThrow("expired");
   });
 
-  test("inlines passive preview formats without allowing active images", () => {
+  test("inlines browser-viewable formats without allowing active images", () => {
     expect(mayRenderInline("image/avif")).toBe(true);
     expect(mayRenderInline("video/quicktime")).toBe(true);
     expect(mayRenderInline("application/pdf")).toBe(true);
+    expect(mayRenderInline("text/html")).toBe(true);
     expect(mayRenderInline("image/svg+xml")).toBe(false);
-    expect(mayRenderInline("text/html")).toBe(false);
   });
 
   test("writes verified bytes without buffering them in the route", async () => {
