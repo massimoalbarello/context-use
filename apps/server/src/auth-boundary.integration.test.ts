@@ -262,16 +262,19 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       const privatePage = await application!.handle(new Request(`http://localhost:3000/p/${privatePath}`));
       const privateMarkdown = await application!.handle(new Request(`http://localhost:3000/p/${privatePath}.md`));
       const missing = await application!.handle(new Request(`http://localhost:3000/p/tests/${suffix}/nested/missing-page`));
-      const leafIndex = await application!.handle(new Request(`http://localhost:3000/i/${nestedPath}`));
-      const parentIndex = await application!.handle(new Request(`http://localhost:3000/i/${parentPath}`));
+      const leafIndex = await application!.handle(new Request(`http://localhost:3000/p/${nestedPath}/`));
+      const leafWithoutSlash = await application!.handle(new Request(`http://localhost:3000/p/${nestedPath}`));
+      const parentIndex = await application!.handle(new Request(`http://localhost:3000/p/${parentPath}/`));
+      const parentWithoutSlash = await application!.handle(new Request(`http://localhost:3000/p/${parentPath}`));
+      const rootWithoutSlash = await application!.handle(new Request("http://localhost:3000/p"));
       const llms = await application!.handle(new Request("http://localhost:3000/llms.txt"));
       const llmsFull = await application!.handle(new Request("http://localhost:3000/llms-full.txt"));
 
       expect(published.status).toBe(200);
       const publishedHtml = await published.text();
       expect(publishedHtml).toContain("PUBLIC-NESTED-CANARY");
-      expect(publishedHtml).toContain(`href="/i/${nestedPath}"`);
-      expect(publishedHtml).toContain('href="/i"');
+      expect(publishedHtml).toContain(`href="/p/${nestedPath}/"`);
+      expect(publishedHtml).toContain('href="/p/"');
       expect(publishedHtml).toContain(`<a href="/p/${publicPath}.md" type="text/markdown">View as Markdown</a>`);
       expect(publishedHtml).toContain('href="/llms.txt"');
       expect(publishedMarkdown.status).toBe(200);
@@ -285,7 +288,13 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       expect(privateMarkdown.status).toBe(404);
       expect(leafIndex.status).toBe(302);
       expect(leafIndex.headers.get("location")).toBe(`/p/${publicPath}`);
+      expect(leafWithoutSlash.status).toBe(302);
+      expect(leafWithoutSlash.headers.get("location")).toBe(`/p/${publicPath}`);
       expect(parentIndex.status).toBe(200);
+      expect(parentWithoutSlash.status).toBe(308);
+      expect(parentWithoutSlash.headers.get("location")).toBe(`/p/${parentPath}/`);
+      expect(rootWithoutSlash.status).toBe(308);
+      expect(rootWithoutSlash.headers.get("location")).toBe("/p/");
       const parentHtml = await parentIndex.text();
       expect(parentHtml).toContain("1 published page");
       expect(parentHtml).toContain(`href="/p/${publicPath}"`);
@@ -314,7 +323,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         "UPDATE knowledge_pages SET published_version_id=NULL,public_path=NULL WHERE id=$1",
         [publicPageId],
       );
-      const removedIndex = await application!.handle(new Request(`http://localhost:3000/i/${nestedPath}`));
+      const removedIndex = await application!.handle(new Request(`http://localhost:3000/p/${nestedPath}/`));
       const removedMarkdown = await application!.handle(new Request(`http://localhost:3000/p/${publicPath}.md`));
       expect(removedIndex.status).toBe(404);
       expect(removedMarkdown.status).toBe(404);

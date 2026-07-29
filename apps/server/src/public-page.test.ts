@@ -33,11 +33,11 @@ describe("public page presentation", () => {
     const nested = renderPublicPageDocument("Como", "<p>Story</p>", "about/chapters/como");
     const rootPage = renderPublicPageDocument("Notes", "<p>Text</p>", "notes");
 
-    expect(nested).toContain('<nav class="knowledge-navigation" aria-label="Knowledge navigation"><a href="/i">Knowledge index</a>');
-    expect(nested).toContain('<a href="/i/about/chapters">Chapters index</a>');
+    expect(nested).toContain('<nav class="knowledge-navigation" aria-label="Knowledge navigation"><a href="/p/">Knowledge index</a>');
+    expect(nested).toContain('<a href="/p/about/chapters/">Chapters index</a>');
     expect(nested).toContain('<link rel="alternate" type="text/markdown" href="/p/about/chapters/como.md" title="Como as Markdown">');
     expect(nested).toContain('<a href="/p/about/chapters/como.md" type="text/markdown">View as Markdown</a>');
-    expect(rootPage.match(/href="\/i"/g)).toHaveLength(1);
+    expect(rootPage.match(/href="\/p\/"/g)).toHaveLength(1);
     expect(rootPage.match(/href="\/p\/notes\.md"/g)).toHaveLength(2);
   });
 
@@ -65,9 +65,9 @@ describe("public page presentation", () => {
       ],
     });
 
-    expect(html).toContain('<a href="/i">Knowledge index</a>');
-    expect(html).toContain('<a href="/i/about">About index</a>');
-    expect(html).toContain('<a href="/i/about/chapters/early-years">Early Years</a><span>— 2 published pages.</span>');
+    expect(html).toContain('<a href="/p/">Knowledge index</a>');
+    expect(html).toContain('<a href="/p/about/">About index</a>');
+    expect(html).toContain('<a href="/p/about/chapters/early-years/">Early Years</a><span>— 2 published pages.</span>');
     expect(html).toContain('<a href="/p/about/chapters/only-child/story">Only Child</a><span>— 1 published page.</span>');
     expect(html).toContain('<a href="/p/about/chapters/como">Como</a><span>— Growing up at the foot of the Alps.</span>');
     expect(html).toContain("Only explicitly published knowledge appears here.");

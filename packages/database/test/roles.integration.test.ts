@@ -1148,8 +1148,8 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(webpage.rows[0]?.body_markdown).not.toContain("secret-section");
       expect(webpage.rows[0]?.body_markdown).not.toContain("legacy-secret-section");
       expect(webpage.rows[0]?.body_markdown).not.toContain("private-details");
-      expect(webpage.rows[0]?.body_markdown).toContain("[Work index](/i/profile/work)");
-      expect(webpage.rows[0]?.body_markdown).toContain("[Work wiki index](/i/profile/work)");
+      expect(webpage.rows[0]?.body_markdown).toContain("[Work index](/p/profile/work/)");
+      expect(webpage.rows[0]?.body_markdown).toContain("[Work wiki index](/p/profile/work/)");
       expect(webpage.rows[0]?.body_markdown).toContain("context-use://public-asset/media/public-image");
       expect(webpage.rows[0]?.body_markdown).not.toContain(privatePageId);
       expect(webpage.rows[0]?.body_markdown).not.toContain(privateAssetId);

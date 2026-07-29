@@ -77,8 +77,14 @@ export const publicApp = new Elysia()
   .get("/a/*", ({ request, params }) => publicAssetContent(request, params["*"]))
   .get("/llms.txt", () => publicLlmsResponse(false))
   .get("/llms-full.txt", () => publicLlmsResponse(true))
+  .get("/p", () => new Response(null, {
+    status: 308,
+    headers: { ...securityHeaders, location: "/p/" },
+  }))
   .get("/p/*", async ({ params }) => {
     const rawPath = params["*"];
+    if (rawPath === "") return publicDirectoryResponse("");
+    if (rawPath.endsWith("/")) return publicDirectoryResponse(rawPath.slice(0, -1));
     const markdown = rawPath.endsWith(".md");
     const parsedPath = PagePath.safeParse(markdown ? rawPath.slice(0, -3) : rawPath);
     if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
@@ -92,7 +98,19 @@ export const publicApp = new Elysia()
         headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
       });
     }
-    if (!page) return new Response("Not found", { status: 404, headers: securityHeaders });
+    if (!page) {
+      if (markdown) return new Response("Not found", { status: 404, headers: securityHeaders });
+      const index = await publicData.directoryIndex(publicPath);
+      if (!index) return new Response("Not found", { status: 404, headers: securityHeaders });
+      const defaultPageHref = publicPageHref(index.default_page_path);
+      return new Response(null, {
+        status: defaultPageHref ? 302 : 308,
+        headers: {
+          ...securityHeaders,
+          location: defaultPageHref ?? `/p/${publicPath}/`,
+        },
+      });
+    }
     if (markdown) {
       return new Response(renderPublicPageMarkdown(page, {
         siteOrigin: config.APP_ORIGIN,
@@ -105,8 +123,6 @@ export const publicApp = new Elysia()
     const content = await renderMarkdown(page.body_markdown, unavailableResolvers);
     return new Response(renderPublicPageDocument(page.title, content, page.public_path, page.last_edited_at), { headers: htmlHeaders });
   })
-  .get("/i", () => publicDirectoryResponse(""))
-  .get("/i/*", ({ params }) => publicDirectoryResponse(params["*"]))
   .get("/", () => new Response(renderPublicLandingDocument(), {
     headers: htmlHeaders,
   }))
