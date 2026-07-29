@@ -60,7 +60,7 @@ export async function createMcpServer(
   const skillCatalog = skills.length
     ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
-  const server = new McpServer({ name: "context-use", version: "0.1.44" }, {
+  const server = new McpServer({ name: "context-use", version: "0.1.45" }, {
     instructions: `${KNOWLEDGE_BASE_INSTRUCTIONS}\n\n${skillCatalog}${context.profile === "execution"
       ? "\n\nThis is an automation execution connection. Read any knowledge needed for the claimed run, but write only with the run-scoped automation page tools and finish every claim with complete_run or fail_run."
       : ""}`,
