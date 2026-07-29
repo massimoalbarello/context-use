@@ -69,7 +69,7 @@ async function publicLlmsResponse(full: boolean): Promise<Response> {
   return new Response(content, { headers: textHeaders });
 }
 
-export const publicApp = new Elysia()
+export const publicApp = new Elysia({ strictPath: true })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
