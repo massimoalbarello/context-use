@@ -9,7 +9,7 @@ import { readConfigIfPresent, saveConfig } from "../paths.ts";
 import { currentVersion, deploymentRoot, releaseManifest } from "../release.ts";
 import { ensureRuntimeParameters } from "../setup.ts";
 import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs, currentDataOutputs } from "../terraform.ts";
-import { databaseBackupCommands } from "./backup.ts";
+import { databaseBackupCommands, releaseIncludesNango } from "./backup.ts";
 
 export const command = defineCommand("update", {
   description: "Update the CLI and deployment to the latest release.",
@@ -52,7 +52,7 @@ export const command = defineCommand("update", {
         config.awsProfile,
         config.awsRegion,
         existingCompute.instance_id,
-        databaseBackupCommands(false),
+        databaseBackupCommands(releaseIncludesNango(config.releaseVersion)),
       );
     }
 

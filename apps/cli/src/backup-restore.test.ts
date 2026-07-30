@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { databaseBackupCommands } from "./commands/backup.ts";
+import { databaseBackupCommands, releaseIncludesNango } from "./commands/backup.ts";
 import { nangoRestoreCommands } from "./commands/nango/restore.ts";
 
 test("manual backup creates both database backups and requires Nango support", () => {
@@ -18,8 +18,19 @@ test("pre-update backup skips Nango only when upgrading an older deployment", ()
 
   expect(script).toContain("run --rm backup once");
   expect(script).toContain("run --rm nango-backup once");
+  expect(script).toContain("--no-deps --entrypoint psql nango-backup -X -tAc 'SELECT 1' | grep -qx 1");
+  expect(script).toContain("Older or partially upgraded deployment has no initialized Nango database; skipping it");
   expect(script).toContain("Older deployment has no nango-backup service; skipping it");
   expect(script).not.toContain("exit 1");
+});
+
+test("pre-update backup becomes mandatory after the first Nango release", () => {
+  expect(releaseIncludesNango("v0.1.46")).toBe(false);
+  expect(releaseIncludesNango("v0.1.47")).toBe(true);
+  expect(releaseIncludesNango("v0.1.48")).toBe(true);
+  expect(releaseIncludesNango("v0.2.0")).toBe(true);
+  expect(releaseIncludesNango("v1.0.0")).toBe(true);
+  expect(() => releaseIncludesNango("latest")).toThrow("Invalid installed release version");
 });
 
 test("Nango restore backs up first, isolates Nango, recreates its database, and restores as its owner", () => {
