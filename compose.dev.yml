@@ -48,7 +48,8 @@ services:
     environment:
       <<: *role-passwords
       MIGRATOR_DATABASE_URL: postgres://postgres:postgres@postgres:5432/context_use
-    command: ["bun", "run", "db:migrate"]
+      DATABASE_URL: postgres://context_use_dashboard:development-only@postgres:5432/context_use
+    command: ["bun", "run", "db:initialize"]
     restart: "no"
 
   storage-socket-init:

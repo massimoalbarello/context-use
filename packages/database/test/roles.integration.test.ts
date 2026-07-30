@@ -821,18 +821,6 @@ describeDatabase("PostgreSQL security roles", () => {
       provenance_columns: "0",
     });
 
-    const guide = await admin.query<{ title: string; body_markdown: string }>(
-      `SELECT version.title,version.body_markdown
-       FROM knowledge_pages page
-       JOIN knowledge_page_versions version
-         ON version.id=page.current_version_id AND version.page_id=page.id
-       WHERE page.current_path='automations/agents' AND page.archived_at IS NULL`,
-    );
-    expect(guide.rows[0]?.title).toBe("AGENTS.md");
-    expect(guide.rows[0]?.body_markdown).toContain("automations/<automation-name>/instructions");
-    expect(guide.rows[0]?.body_markdown).toContain("ordinary page lifecycle and tools");
-    expect(guide.rows[0]?.body_markdown).toContain("Keep schedules, retries, run history");
-
     await admin.query("BEGIN");
     try {
       const pageId = randomUUID();

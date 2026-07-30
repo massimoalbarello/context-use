@@ -70,6 +70,11 @@ describeDatabase("immutable page history", () => {
     }, actor);
     expect(archived?.version_number).toBe(3);
     expect(archived?.archived_at).not.toBeNull();
+    expect(await pages.getByPath(`tests/${suffix}/renamed`)).toBeNull();
+    expect(await pages.getByPath(`tests/${suffix}/renamed`, true)).toMatchObject({
+      id: created.id,
+      archived_at: expect.any(Date),
+    });
 
     const history = await pages.history(created.id);
     expect(history.map((version) => version.version_number)).toEqual([3, 2, 1]);

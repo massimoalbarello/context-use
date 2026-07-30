@@ -164,9 +164,12 @@ export class PageRepository {
     return result.rows[0] ?? null;
   }
 
-  async getByPath(path: string) {
+  async getByPath(path: string, includeArchived = false) {
     const result = await this.pool.query(
-      `${CURRENT_PAGE_SELECT} WHERE p.current_path = $1 AND p.archived_at IS NULL`,
+      `${CURRENT_PAGE_SELECT}
+       WHERE p.current_path=$1 ${includeArchived ? "" : "AND p.archived_at IS NULL"}
+       ORDER BY p.archived_at NULLS FIRST
+       LIMIT 1`,
       [path],
     );
     return result.rows[0] ?? null;
