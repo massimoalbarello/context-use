@@ -31,11 +31,12 @@ function deploymentConfig(overrides: Partial<DeploymentConfig> = {}): Deployment
     accountId: "123456789012",
     hostname: "context.example.com",
     assetHostname: "assets.context.example.com",
+    nangoHostname: "nango.context.example.com",
     dnsMode: "manual",
     route53ZoneId: "",
     ownerEmail: "owner@example.com",
     stateBucket: "context-use-state",
-    instanceType: "t3.small",
+    instanceType: "t3.large",
     dataVolumeSizeGb: 50,
     backupRetentionDays: 30,
     ...overrides,
@@ -211,16 +212,27 @@ test("deployment diagnoses cloud-init separately and always removes its temporar
   ]);
   expect(commands.at(-1)).toContain("arn:aws:iam::123456789012:role/context-use-abcdef123456-production-storage");
   expect(commands.at(-1)).toContain("arn:aws:iam::123456789012:role/context-use-abcdef123456-production-backup");
+  expect(commands.at(-1)).not.toContain("CONTEXT_USE_NANGO_IMAGE");
+  expect(commands.at(-1)).not.toContain("CONTEXT_USE_NANGO_HOSTNAME");
 
   const recovery = deploymentCommands(
     deploymentConfig(),
     manifest,
     "#!/bin/sh\nexit 0\n",
     "postgres/2026-07-20T10-20-30-123456789Z.sql.gz",
+    "nango-postgres/2026-07-20T10-20-31-123456789Z.sql.gz",
   );
   expect(recovery.at(-1)).toContain("CONTEXT_USE_RECOVERY_BACKUP_KEY='postgres/2026-07-20T10-20-30-123456789Z.sql.gz'");
+  expect(recovery.at(-1)).toContain("CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY='nango-postgres/2026-07-20T10-20-31-123456789Z.sql.gz'");
   expect(() => deploymentCommands(deploymentConfig(), manifest, "", "../other.sql.gz"))
     .toThrow("Invalid recovery backup key");
+  expect(() => deploymentCommands(
+    deploymentConfig(),
+    manifest,
+    "",
+    "postgres/2026-07-20T10-20-30Z.sql.gz",
+    "postgres/2026-07-20T10-20-31Z.sql.gz",
+  )).toThrow("Invalid Nango recovery backup key");
 });
 
 function dataReadyConfig(overrides: Partial<DeploymentConfig> = {}): DeploymentConfig {
@@ -240,6 +252,7 @@ const computeOutputs: ComputeOutputs = {
   public_ip: "192.0.2.10",
   app_url: "https://context.example.com",
   asset_url: "https://assets.context.example.com",
+  nango_url: "https://nango.context.example.com",
   cloudwatch_log_group: "test",
 };
 
@@ -366,27 +379,39 @@ test("legacy configs retain durable state coordinates without derived lifecycle 
   const {
     schemaVersion: _schemaVersion,
     legacyStateKmsKeyArn: _legacyStateKmsKeyArn,
+    nangoHostname: _nangoHostname,
     ...legacy
   } = deploymentConfig();
   expect(normalizeDeploymentConfig({
     ...legacy,
     schemaVersion: 1,
+    instanceType: "t3.small",
     stateKmsKeyArn: "arn:aws:kms:eu-west-2:123456789012:key/state",
     phase: "deployed",
     parametersReady: true,
+    recovery: {
+      backupKey: "postgres/2026-07-20T10-20-30Z.sql.gz",
+      nangoBackupKey: "nango-postgres/2026-07-20T10-20-31Z.sql.gz",
+      previousVolumeId: "vol-lost",
+    },
   })).toMatchObject({
     hostname: "context.example.com",
+    nangoHostname: "nango.context.example.com",
+    instanceType: "t3.large",
     legacyStateKmsKeyArn: "arn:aws:kms:eu-west-2:123456789012:key/state",
+    recovery: {
+      nangoBackupKey: "nango-postgres/2026-07-20T10-20-31Z.sql.gz",
+    },
   });
 });
 
-test("manual dashboard and asset DNS must resolve to the deployment IP", async () => {
+test("manual dashboard, asset, and Nango DNS must resolve to the deployment IP", async () => {
   const config = deploymentConfig();
   expect(await dnsMismatches(config, computeOutputs, async () => ["192.0.2.10"])).toEqual([]);
   expect(await dnsMismatches(config, computeOutputs, async (hostname) => hostname.startsWith("assets.") ? ["192.0.2.11"] : ["192.0.2.10"]))
     .toEqual(["assets.context.example.com"]);
   expect(await dnsMismatches(config, computeOutputs, async () => { throw new Error("NXDOMAIN"); }))
-    .toEqual(["context.example.com", "assets.context.example.com"]);
+    .toEqual(["context.example.com", "assets.context.example.com", "nango.context.example.com"]);
 });
 
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
@@ -644,15 +669,19 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(compute).not.toContain("public_mcp");
   expect(compute).toContain('data_volume_policy     = file("${path.module}/data-volume-policy.sh")');
   expect(update.indexOf("installCliRelease")).toBeLessThan(update.indexOf("readConfig"));
-  expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("run --rm backup once"));
+  expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("databaseBackupCommands(false)"));
   expect(update.indexOf("retainedDataVolumeExists(config")).toBeLessThan(update.indexOf("await applyData"));
   expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(1);
   expect(update).not.toContain("fallback");
+  expect(update.indexOf("await deploy(config, compute, manifest)")).toBeLessThan(update.indexOf("await ensureNangoApiKeys(config, data)"));
   expect(cliUpdate).not.toContain('"--version"');
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await pauseForManualDns(config, compute)"));
+  expect(setup).toContain('instanceType: "t3.large"');
+  expect(setup.indexOf("await deploy(config, compute, manifest)")).toBeLessThan(setup.indexOf("await ensureNangoApiKeys(config, data)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await pauseForManualDns(config, compute)"));
+  expect(resume.indexOf("await deploy(config, compute, manifest)")).toBeLessThan(resume.indexOf("await ensureNangoApiKeys(config, data)"));
   expect(resume.indexOf("retainedDataVolumeExists(config")).toBeLessThan(resume.indexOf("await applyData"));
   expect(data).toContain('ContextUseInitialization = "pending"');
   expect(data).toContain('ignore_changes = [tags["ContextUseInitialization"]]');

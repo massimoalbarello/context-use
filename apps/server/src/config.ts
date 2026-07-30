@@ -58,6 +58,8 @@ const schema = z.object({
   KMS_KEY_ID: z.string().default(""),
   SESSION_IDLE_SECONDS: z.coerce.number().int().positive().default(43_200),
   SESSION_MAX_SECONDS: z.coerce.number().int().positive().default(604_800),
+  NANGO_PUBLIC_URL: z.union([z.literal(""), z.string().url()]).default(""),
+  NANGO_IMAGE_REFERENCE: z.string().max(512).default(""),
 });
 
 export const config = schema.parse(process.env);
@@ -97,6 +99,20 @@ if (production) {
   if (config.SERVICE_MODE === "storage" && config.AWS_EC2_METADATA_DISABLED !== "true") insecure.push("storage must disable EC2 instance metadata");
   if (config.SERVICE_MODE === "auth" && config.SESSION_MAX_SECONDS > 604_800) insecure.push("dashboard sessions cannot exceed seven days");
   if (config.SERVICE_MODE === "auth" && (config.SESSION_IDLE_SECONDS > 43_200 || config.SESSION_IDLE_SECONDS >= config.SESSION_MAX_SECONDS)) insecure.push("dashboard idle timeout cannot exceed twelve hours");
+  for (const name of ["NANGO_PUBLIC_URL", "NANGO_IMAGE_REFERENCE"] as const) {
+    if (process.env[name] !== undefined && config.SERVICE_MODE !== "dashboard") {
+      insecure.push(`${name} must not be present in the ${config.SERVICE_MODE} service`);
+    }
+  }
+  if (config.SERVICE_MODE === "dashboard") {
+    const hasNangoUrl = Boolean(config.NANGO_PUBLIC_URL);
+    const hasNangoImage = Boolean(config.NANGO_IMAGE_REFERENCE);
+    if (hasNangoUrl !== hasNangoImage) insecure.push("NANGO_PUBLIC_URL and NANGO_IMAGE_REFERENCE must be configured together");
+    if (hasNangoUrl) {
+      const nango = new URL(config.NANGO_PUBLIC_URL);
+      if (nango.protocol !== "https:" || !isBareOrigin(nango)) insecure.push("NANGO_PUBLIC_URL must be an exact bare HTTPS origin");
+    }
+  }
   const databaseRoles = new Map([
     ["DATABASE_URL", [config.DATABASE_URL, "context_use_dashboard"]],
     ["AUTH_DATABASE_URL", [config.AUTH_DATABASE_URL, "context_use_auth"]],

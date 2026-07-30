@@ -1,7 +1,8 @@
 import * as p from "@clack/prompts";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { accountId, bootstrapStateBucket, generateSecret, getSecureParameter, getSecureParameterIfPresent, putSecureParameter } from "./aws.ts";
 import { deploy, manualDnsMismatches, prepareCompute } from "./deploy.ts";
+import { ensureNangoApiKeys } from "./nango.ts";
 import { configPath, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
 import { deploymentRoot, releaseManifest } from "./release.ts";
@@ -24,11 +25,17 @@ function validHostname(input: string | undefined): boolean {
   return input.split(".").every((label) => label.length > 0 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label));
 }
 
+export function generateNangoEncryptionKey(): string {
+  return randomBytes(32).toString("base64");
+}
+
 export async function ensureRuntimeParameters(config: DeploymentConfig, data: DataOutputs, compute: ComputeOutputs): Promise<void> {
   const prefix = `/context-use/${config.installationId}/${config.environment}`;
   const fixed: Record<string, string> = {
     APP_HOSTNAME: config.hostname,
     ASSET_HOSTNAME: config.assetHostname,
+    NANGO_HOSTNAME: config.nangoHostname,
+    NANGO_DASHBOARD_USERNAME: config.ownerEmail,
     OWNER_EMAIL: config.ownerEmail,
     AWS_REGION: config.awsRegion,
     ASSET_BUCKET: data.asset_bucket,
@@ -46,6 +53,11 @@ export async function ensureRuntimeParameters(config: DeploymentConfig, data: Da
     DB_CONFIRMATION_PASSWORD: 36,
     DB_STORAGE_PASSWORD: 36,
     DB_BACKUP_PASSWORD: 36,
+    NANGO_DASHBOARD_PASSWORD: 36,
+    NANGO_ADMIN_KEY: 48,
+    NANGO_ENCRYPTION_KEY: 32,
+    NANGO_DB_PASSWORD: 36,
+    NANGO_BACKUP_DB_PASSWORD: 36,
     MCP_ASSET_CAPABILITY_SECRET: 48,
     CONFIRMATION_GATEWAY_TOKEN: 48,
     AUTH_DASHBOARD_TOKEN: 48,
@@ -67,7 +79,10 @@ export async function ensureRuntimeParameters(config: DeploymentConfig, data: Da
   for (const [name, length] of Object.entries(secrets)) {
     const parameter = `${prefix}/${name}`;
     if (!await getSecureParameterIfPresent(config.awsProfile, config.awsRegion, parameter)) {
-      await putSecureParameter(config.awsProfile, config.awsRegion, parameter, generateSecret(length), data.kms_key_arn);
+      const secret = name === "NANGO_ENCRYPTION_KEY"
+        ? generateNangoEncryptionKey()
+        : generateSecret(length);
+      await putSecureParameter(config.awsProfile, config.awsRegion, parameter, secret, data.kms_key_arn);
     }
     progress.advance(1);
   }
@@ -123,10 +138,11 @@ export async function setup(): Promise<void> {
     awsProfile, awsRegion, availabilityZone: `${awsRegion}a`, accountId: identity,
     hostname,
     assetHostname: `assets.${hostname}`,
+    nangoHostname: `nango.${hostname}`,
     dnsMode,
     route53ZoneId,
     ownerEmail,
-    stateBucket: `context-use-${identity}-${awsRegion}-${createHash("sha256").update(hostname).digest("hex").slice(0, 10)}-tfstate`, instanceType: "t3.small",
+    stateBucket: `context-use-${identity}-${awsRegion}-${createHash("sha256").update(hostname).digest("hex").slice(0, 10)}-tfstate`, instanceType: "t3.large",
     dataVolumeSizeGb: 50, backupRetentionDays: 30,
   };
   await assertTerraformVersion(manifest);
@@ -139,5 +155,6 @@ export async function setup(): Promise<void> {
   await ensureRuntimeParameters(config, data, compute);
   if (await pauseForManualDns(config, compute)) return;
   await deploy(config, compute, manifest);
-  p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}`);
+  await ensureNangoApiKeys(config, data);
+  p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}\n\nNango dashboard credentials:\ncontext-use nango credentials`);
 }

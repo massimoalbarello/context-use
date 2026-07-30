@@ -3,8 +3,9 @@ LABEL org.opencontainers.image.source="https://github.com/massimoalbarello/conte
 RUN apk add --no-cache aws-cli bash gzip coreutils jq
 COPY deploy/backup/backup.sh /usr/local/bin/context-use-backup
 COPY deploy/aws-credential-broker.sh /usr/local/bin/context-use-aws-credential-broker
+COPY deploy/nango/init-db.sh /usr/local/bin/context-use-nango-db-init
 COPY deploy/backup/aws-config /etc/context-use/aws-config
 COPY deploy/backup/aws-storage-config /etc/context-use/aws-storage-config
-RUN chmod 0555 /usr/local/bin/context-use-backup /usr/local/bin/context-use-aws-credential-broker \
+RUN chmod 0555 /usr/local/bin/context-use-backup /usr/local/bin/context-use-aws-credential-broker /usr/local/bin/context-use-nango-db-init \
     && chmod 0444 /etc/context-use/aws-config /etc/context-use/aws-storage-config
 ENTRYPOINT ["/usr/local/bin/context-use-backup"]

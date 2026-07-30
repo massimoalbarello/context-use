@@ -104,6 +104,34 @@ describe("production process credential boundaries", () => {
     }).exitCode).not.toBe(0);
   });
 
+  test("only the dashboard accepts complete non-secret Nango service metadata", () => {
+    const nango = {
+      NANGO_PUBLIC_URL: "https://nango.context.example.com",
+      NANGO_IMAGE_REFERENCE: "ghcr.io/example/nango@sha256:abc123",
+    };
+    expect(load("dashboard", nango).exitCode).toBe(0);
+    for (const service of Object.keys(validByService).filter((service) => service !== "dashboard")) {
+      expect(load(service, nango).exitCode).not.toBe(0);
+    }
+  });
+
+  test("dashboard requires a complete, exact HTTPS Nango service registration", () => {
+    expect(load("dashboard", {
+      NANGO_PUBLIC_URL: "https://nango.context.example.com",
+    }).exitCode).not.toBe(0);
+    expect(load("dashboard", {
+      NANGO_IMAGE_REFERENCE: "ghcr.io/example/nango@sha256:abc123",
+    }).exitCode).not.toBe(0);
+    expect(load("dashboard", {
+      NANGO_PUBLIC_URL: "http://nango.context.example.com",
+      NANGO_IMAGE_REFERENCE: "ghcr.io/example/nango@sha256:abc123",
+    }).exitCode).not.toBe(0);
+    expect(load("dashboard", {
+      NANGO_PUBLIC_URL: "https://nango.context.example.com/dashboard",
+      NANGO_IMAGE_REFERENCE: "ghcr.io/example/nango@sha256:abc123",
+    }).exitCode).not.toBe(0);
+  });
+
   test("dashboard edge rejects every private credential", () => {
     const privateCredentials = {
       DATABASE_URL: "postgres://context_use_dashboard:secret@postgres:5432/context_use",

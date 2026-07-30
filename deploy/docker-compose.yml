@@ -15,6 +15,44 @@ x-logging: &logging
     awslogs-region: ${AWS_REGION}
     awslogs-group: ${CLOUDWATCH_LOG_GROUP}
 
+x-nango-environment: &nango-environment
+  NODE_ENV: production
+  NANGO_ENTERPRISE: "true"
+  NANGO_ENCRYPTION_KEY: ${NANGO_ENCRYPTION_KEY}
+  NANGO_DB_HOST: postgres
+  NANGO_DB_PORT: "5432"
+  NANGO_DB_NAME: nango
+  NANGO_DB_USER: nango_app
+  NANGO_DB_PASSWORD: ${NANGO_DB_PASSWORD}
+  NANGO_DB_SSL: "false"
+  NANGO_DB_SCHEMA: nango
+  NANGO_DB_POOL_MIN: "0"
+  NANGO_DB_POOL_MAX: "4"
+  RECORDS_DATABASE_URL: postgres://nango_app:${NANGO_DB_PASSWORD}@postgres:5432/nango
+  RECORDS_DATABASE_SCHEMA: nango_records
+  RECORDS_DATABASE_POOL_MIN: "0"
+  RECORDS_DATABASE_POOL_MAX: "4"
+  ORCHESTRATOR_SERVICE_URL: http://nango-orchestrator:3008
+  PERSIST_SERVICE_URL: http://nango-persist:3007
+  JOBS_SERVICE_URL: http://nango-jobs:3005
+  ORCHESTRATOR_DB_POOL_MAX: "4"
+  TASKS_DB_POOL_MAX: "3"
+  FLEET_DB_POOL_MAX: "2"
+  NANGO_REDIS_URL: redis://nango-redis:6379
+  NANGO_LOGS_ENABLED: "false"
+  PERSIST_AUTO_PRUNING_INTERVAL_MS: "0"
+  PERSIST_AUTO_DELETING_INTERVAL_MS: "0"
+  LOG_LEVEL: info
+
+x-nango-service: &nango-service
+  image: ${NANGO_IMAGE}
+  restart: unless-stopped
+  read_only: true
+  tmpfs: ["/tmp:size=256m,mode=1777"]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 512
+
 services:
   postgres:
     image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
@@ -24,14 +62,14 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
-    command: ["postgres", "-c", "password_encryption=scram-sha-256", "-c", "listen_addresses=*"]
+    command: ["postgres", "-c", "password_encryption=scram-sha-256", "-c", "listen_addresses=*", "-c", "max_connections=150"]
     volumes: [/data/context-use/postgres:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d context_use"]
       interval: 5s
       timeout: 3s
       retries: 30
-    networks: [migration_data, dashboard_data, auth_data, mcp_data, public_data, confirmation_data, storage_data, backup_data]
+    networks: [migration_data, dashboard_data, auth_data, mcp_data, public_data, confirmation_data, storage_data, backup_data, nango_data]
     logging:
       <<: *logging
       options:
@@ -56,6 +94,163 @@ services:
       DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD}
     command: ["bun", "packages/database/src/initialize.ts"]
     networks: [migration_data]
+
+  nango-db-init:
+    image: ${BACKUP_IMAGE}
+    profiles: [nango-init]
+    depends_on:
+      postgres: { condition: service_healthy }
+    entrypoint: ["/usr/local/bin/context-use-nango-db-init"]
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      NANGO_DB_PASSWORD: ${NANGO_DB_PASSWORD}
+      NANGO_BACKUP_DB_PASSWORD: ${NANGO_BACKUP_DB_PASSWORD}
+    networks: [migration_data, nango_data]
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+
+  nango-redis:
+    image: redis:8.8.0@sha256:234c902a2db49461a129e2d4aeff85b28cf20187ed274a67f6e50995fa713c7b
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks: [nango_internal]
+    read_only: true
+    tmpfs: ["/data:size=64m,mode=0700"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: nango-redis
+
+  nango-orchestrator:
+    <<: *nango-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      nango-redis: { condition: service_healthy }
+    environment:
+      <<: *nango-environment
+      NANGO_DB_APPLICATION_NAME: context-use-nango-orchestrator
+      NANGO_ORCHESTRATOR_PORT: "3008"
+    command: ["node", "packages/orchestrator/dist/app.js"]
+    networks: [nango_data, nango_internal]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3008/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: nango-orchestrator
+
+  nango-persist:
+    <<: *nango-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      nango-redis: { condition: service_healthy }
+    environment:
+      <<: *nango-environment
+      NANGO_DB_APPLICATION_NAME: context-use-nango-persist
+      NANGO_PERSIST_PORT: "3007"
+    command: ["node", "packages/persist/dist/app.js"]
+    networks: [nango_data, nango_internal]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3007/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: nango-persist
+
+  nango-server:
+    <<: *nango-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      nango-redis: { condition: service_healthy }
+    environment:
+      <<: *nango-environment
+      NANGO_DB_APPLICATION_NAME: context-use-nango-server
+      SERVER_PORT: "3003"
+      NANGO_MIGRATE_AT_START: "true"
+      NANGO_SERVER_URL: https://${NANGO_HOSTNAME}
+      NANGO_PUBLIC_SERVER_URL: https://${NANGO_HOSTNAME}
+      NANGO_PUBLIC_CONNECT_URL: https://${NANGO_HOSTNAME}/connect-ui
+      NANGO_ADMIN_KEY: ${NANGO_ADMIN_KEY}
+      FLAG_AUTH_ENABLED: "false"
+      AUTH_ALLOW_SIGNUP: "false"
+      NANGO_DASHBOARD_USERNAME: ${NANGO_DASHBOARD_USERNAME}
+      NANGO_DASHBOARD_PASSWORD: ${NANGO_DASHBOARD_PASSWORD}
+      FLAG_SERVE_CONNECT_UI: "true"
+      NANGO_CONNECT_UI_PORT: "3009"
+      CSP_REPORT_ONLY: "false"
+    command: ["packages/server/entrypoint.sh"]
+    volumes:
+      - /data/context-use/nango-integrations:/app/nango/packages/shared/dist/nango-integrations
+    networks: [nango_data, nango_internal, nango_web, nango_egress]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3003/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: nango-server
+
+  nango-jobs:
+    <<: *nango-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      nango-redis: { condition: service_healthy }
+      nango-orchestrator: { condition: service_healthy }
+      nango-persist: { condition: service_healthy }
+      nango-server: { condition: service_healthy }
+    environment:
+      <<: *nango-environment
+      NANGO_DB_APPLICATION_NAME: context-use-nango-jobs
+      NANGO_JOBS_PORT: "3005"
+      NANGO_SERVER_URL: http://nango-server:3003
+      SERVER_SERVICE_URL: http://nango-server:3003
+      PROVIDERS_URL: http://nango-server:3003/providers.json
+      RUNNER_TYPE: LOCAL
+      NANGO_RUNNER_PATH: /app/nango/packages/runner/dist/app.js
+    command: ["node", "packages/jobs/dist/app.js"]
+    volumes:
+      - /data/context-use/nango-integrations:/app/nango/packages/shared/dist/nango-integrations
+    networks: [nango_data, nango_internal, nango_egress]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3005/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: nango-jobs
 
   dashboard-edge:
     <<: *locked-service
@@ -103,6 +298,8 @@ services:
       CONFIRMATION_DASHBOARD_TOKEN: ${CONFIRMATION_DASHBOARD_TOKEN}
       STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
       STORAGE_DASHBOARD_TOKEN: ${STORAGE_DASHBOARD_TOKEN}
+      NANGO_PUBLIC_URL: https://${NANGO_HOSTNAME}
+      NANGO_IMAGE_REFERENCE: ${NANGO_IMAGE}
       WEB_DIST: /app/apps/web/dist
     command: ["bun", "apps/server/src/dashboard-index.ts"]
     volumes: [storage-socket:/run/context-use-storage:ro]
@@ -337,16 +534,21 @@ services:
   caddy:
     image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
-    depends_on: [dashboard-edge, auth, private-mcp, public-web]
+    depends_on:
+      dashboard-edge: { condition: service_healthy }
+      auth: { condition: service_healthy }
+      private-mcp: { condition: service_healthy }
+      public-web: { condition: service_healthy }
     environment:
       APP_HOSTNAME: ${APP_HOSTNAME}
       ASSET_HOSTNAME: ${ASSET_HOSTNAME}
+      NANGO_HOSTNAME: ${NANGO_HOSTNAME}
     ports: ["80:80", "443:443"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /data/context-use/caddy/data:/data
       - /data/context-use/caddy/config:/config
-    networks: [edge, dashboard_web, auth_web, mcp_web, public_web]
+    networks: [edge, dashboard_web, auth_web, mcp_web, public_web, nango_web]
     logging:
       <<: *logging
       options:
@@ -389,6 +591,42 @@ services:
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
         awslogs-stream: backup
 
+  nango-backup:
+    image: ${BACKUP_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      aws-credential-broker: { condition: service_healthy }
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: nango
+      PGUSER: nango_backup
+      PGPASSWORD: ${NANGO_BACKUP_DB_PASSWORD}
+      BACKUP_KIND: nango
+      BACKUP_BUCKET: ${BACKUP_BUCKET}
+      KMS_KEY_ID: ${KMS_KEY_ID}
+      VERSION: ${VERSION}
+      SCHEMA_VERSION: nango-managed
+      AWS_REGION: ${AWS_REGION}
+      AWS_CONFIG_FILE: /etc/context-use/aws-config
+      AWS_PROFILE: context-use-backup
+      AWS_EC2_METADATA_DISABLED: "true"
+    volumes:
+      - backup-aws-credentials:/run/context-use-aws-backup:ro
+      - /data/context-use/nango-backup-tmp:/tmp
+    networks: [nango_data, backup_egress]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: nango-backup
+
 volumes:
   storage-socket:
   storage-aws-credentials:
@@ -413,5 +651,9 @@ networks:
   confirmation_data: { internal: true }
   storage_data: { internal: true }
   backup_data: { internal: true }
+  nango_data: { internal: true }
+  nango_internal: { internal: true }
+  nango_web: { internal: true }
   storage_egress: {}
   backup_egress: {}
+  nango_egress: {}

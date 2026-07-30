@@ -1239,6 +1239,136 @@ button:disabled {
   line-height: 1.55;
 }
 
+.service-list {
+  margin-top: 18px;
+}
+
+.service-card {
+  max-width: 680px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-strong);
+  box-shadow: 0 5px 18px rgba(47, 41, 31, .035);
+}
+
+.service-card > header,
+.service-card > header > div {
+  display: flex;
+  align-items: center;
+}
+
+.service-card > header {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.service-card > header > div {
+  min-width: 0;
+  gap: 10px;
+}
+
+.service-card > header > div > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.service-card > header small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.service-mark {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: #221f2d;
+  color: #fff;
+  font: 700 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.service-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 99px;
+  background: #efede8;
+  color: #6f6a63;
+  font-size: 9px;
+  font-weight: 680;
+}
+
+.service-status::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #aaa49b;
+  content: "";
+}
+
+.service-status.configured {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.service-status.configured::before { background: #3c8a63; }
+
+.service-card dl {
+  margin: 17px 0 15px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.service-card dl > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.service-card dt {
+  color: var(--faint);
+  font-size: 9px;
+  font-weight: 680;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.service-card dd {
+  min-width: 0;
+  margin: 0;
+  color: #4d4942;
+  font-size: 11px;
+}
+
+.service-card code {
+  display: block;
+  overflow: hidden;
+  font: 10px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-link {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 10px;
+}
+
+.settings-page .service-unavailable,
+.settings-page .service-loading {
+  margin: 14px 0 0;
+  font-size: 11px;
+}
+
 .security-list article {
   padding: 14px 0;
   display: flex;
