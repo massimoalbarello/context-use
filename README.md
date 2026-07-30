@@ -56,19 +56,19 @@ Follow the prompts for your AWS profile, region, hostname, DNS, and owner email.
 
 ## Connect an agent
 
-For an interactive agent that reads and manages knowledge, point any OAuth-capable MCP client at:
+Point any OAuth-capable agent or external automation harness at:
 
 ```text
 https://YOUR_HOST/mcp
 ```
 
-For a dedicated worker that reads knowledge and executes scheduled runs with run-scoped writes, use:
+Context Use stores automation instructions and supporting assets as ordinary
+private knowledge. An external harness such as OpenClaw can schedule a job that
+reads a known instruction page with `get_page`—for example,
+`automations/daily-fabric/instructions`—and then uses the ordinary knowledge and
+asset tools. Scheduling, retries, and run history stay in the harness.
 
-```text
-https://YOUR_HOST/mcp/execution
-```
-
-Authorize the two connections separately. Neither connection can publish knowledge; public access always remains an owner decision.
+MCP clients cannot publish knowledge; public access always remains an owner decision.
 
 ## License
 

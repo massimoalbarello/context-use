@@ -19,9 +19,6 @@
 	handle /mcp {
 		reverse_proxy private-mcp:3003
 	}
-	handle /mcp/execution {
-		reverse_proxy private-mcp:3003
-	}
 	handle /api/mcp/* {
 		reverse_proxy private-mcp:3003
 	}

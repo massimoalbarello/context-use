@@ -225,8 +225,7 @@ export const authApp = new Elysia()
       authPool.query(
         `SELECT client."clientId" AS client_id,client.name,client.uri,
                 client."softwareVersion" AS version,client."createdAt" AS created_at,
-                consent."updatedAt" AS approved_at,tokens.last_connected_at,
-                coalesce(consent.resources,'[]'::jsonb) AS resources
+                consent."updatedAt" AS approved_at,tokens.last_connected_at
          FROM "oauthConsent" consent
          JOIN "oauthClient" client ON client."clientId"=consent."clientId"
          LEFT JOIN (

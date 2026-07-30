@@ -9,8 +9,6 @@ function page(id: string, publishedVersionId: string | null, currentVersionId = 
     current_version_id: currentVersionId,
     published_version_id: publishedVersionId,
     public_path: publishedVersionId ? `pages/${id}` : null,
-    automation_id: null,
-    automation_instructions: false,
     archived_at: null,
     version_number: 2,
     title: id,

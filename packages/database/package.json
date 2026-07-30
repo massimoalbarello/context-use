@@ -11,12 +11,13 @@
     "build": "bun build src/index.ts --outdir dist --target bun",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "bootstrap": "bun src/bootstrap-knowledge.ts",
+    "initialize": "bun src/initialize.ts",
     "migrate": "bun src/migrate.ts",
     "test:roles": "bun test test/roles.integration.test.ts"
   },
   "dependencies": {
     "@context-use/shared": "workspace:*",
-    "croner": "10.0.1",
     "pg": "8.22.0"
   },
   "devDependencies": {

@@ -46,6 +46,7 @@ services:
       postgres: { condition: service_healthy }
     environment:
       MIGRATOR_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/context_use
+      DATABASE_URL: postgres://context_use_dashboard:${DB_DASHBOARD_PASSWORD}@postgres:5432/context_use
       DB_AUTH_PASSWORD: ${DB_AUTH_PASSWORD}
       DB_DASHBOARD_PASSWORD: ${DB_DASHBOARD_PASSWORD}
       DB_MCP_PASSWORD: ${DB_MCP_PASSWORD}
@@ -53,7 +54,7 @@ services:
       DB_CONFIRMATION_PASSWORD: ${DB_CONFIRMATION_PASSWORD}
       DB_STORAGE_PASSWORD: ${DB_STORAGE_PASSWORD}
       DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD}
-    command: ["bun", "packages/database/src/migrate.ts"]
+    command: ["bun", "packages/database/src/initialize.ts"]
     networks: [migration_data]
 
   dashboard-edge:

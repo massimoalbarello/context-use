@@ -22,7 +22,6 @@ function target(request: Request) {
   ) return authApp;
   if (
     path === "/mcp"
-    || path === "/mcp/execution"
     || path.startsWith("/api/mcp/")
     || path.startsWith("/.well-known/oauth-protected-resource")
   ) return mcpApp;

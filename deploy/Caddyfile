@@ -33,12 +33,6 @@
 		}
 		reverse_proxy private-mcp:3003
 	}
-	handle /mcp/execution {
-		request_body {
-			max_size 3MB
-		}
-		reverse_proxy private-mcp:3003
-	}
 	handle /api/mcp/assets/*/content {
 		request_body {
 			max_size 5GB

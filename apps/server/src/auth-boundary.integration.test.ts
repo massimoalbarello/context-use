@@ -158,40 +158,27 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("cookie credentials are rejected by MCP with discovery metadata", async () => {
-    for (const [endpoint, metadata] of [
-      ["/mcp", "oauth-protected-resource/mcp"],
-      ["/mcp/execution", "oauth-protected-resource/mcp/execution"],
-    ] as const) {
-      const response = await application!.handle(new Request(`http://localhost:3000${endpoint}`, {
-        method: "POST",
-        headers: { cookie: "context-use.session_token=forged", "content-type": "application/json" },
-        body: "{}",
-      }));
-      expect(response.status).toBe(401);
-      expect(response.headers.get("www-authenticate")).toContain(metadata);
-    }
+    const response = await application!.handle(new Request("http://localhost:3000/mcp", {
+      method: "POST",
+      headers: { cookie: "context-use.session_token=forged", "content-type": "application/json" },
+      body: "{}",
+    }));
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource/mcp");
   });
 
   test("MCP transport methods always use the private MCP boundary", async () => {
-    for (const endpoint of ["/mcp", "/mcp/execution"]) {
-      for (const method of ["GET", "DELETE"]) {
-        const response = await application!.handle(new Request(`http://localhost:3000${endpoint}`, { method }));
-
-        expect(response.status).toBe(401);
-        expect(response.headers.get("www-authenticate")).toContain(
-          endpoint.endsWith("/execution")
-            ? "oauth-protected-resource/mcp/execution"
-            : "oauth-protected-resource/mcp",
-        );
-      }
+    for (const method of ["GET", "DELETE"]) {
+      const response = await application!.handle(new Request("http://localhost:3000/mcp", { method }));
+      expect(response.status).toBe(401);
+      expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource/mcp");
     }
   });
 
-  test("protected-resource discovery advertises separate knowledge and execution resources", async () => {
+  test("protected-resource discovery advertises only the knowledge resource", async () => {
     for (const [path, resource, resourceName] of [
       ["/.well-known/oauth-protected-resource", "http://localhost:3000/mcp", "context-use personal knowledge base"],
       ["/.well-known/oauth-protected-resource/mcp", "http://localhost:3000/mcp", "context-use personal knowledge base"],
-      ["/.well-known/oauth-protected-resource/mcp/execution", "http://localhost:3000/mcp/execution", "context-use automation execution"],
     ] as const) {
       const response = await application!.handle(new Request(`http://localhost:3000${path}`));
       expect(response.status).toBe(200);
@@ -201,6 +188,13 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         scopes_supported: ["mcp:access"],
       });
     }
+    expect((await application!.handle(new Request(
+      "http://localhost:3000/.well-known/oauth-protected-resource/mcp/execution",
+    ))).status).toBe(404);
+    expect((await application!.handle(new Request(
+      "http://localhost:3000/mcp/execution",
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+    ))).status).toBe(404);
   });
 
   test("private asset access requires a dashboard session on the dashboard origin", async () => {
@@ -436,10 +430,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     createdClients.push(client.client_id);
     expect(client.scope).toBe("mcp:access");
 
-    for (const resource of [
-      "http://localhost:3000/mcp",
-      "http://localhost:3000/mcp/execution",
-    ]) {
+    for (const resource of ["http://localhost:3000/mcp"]) {
       const authorization = new URL("http://localhost:3000/api/auth/oauth2/authorize");
       authorization.search = new URLSearchParams({
         client_id: client.client_id,

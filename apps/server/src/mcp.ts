@@ -1,27 +1,17 @@
-import { AssetRepository, AutomationRepository, DirectoryRepository, PageRepository } from "@context-use/database";
+import { AssetRepository, DirectoryRepository, PageRepository } from "@context-use/database";
 import { MCP_SCOPE } from "@context-use/shared";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
-import { config, MCP_EXECUTION_RESOURCE } from "./config.ts";
-import { createMcpServer, type McpContext, type McpProfile } from "./mcp-server.ts";
+import { config } from "./config.ts";
+import { createMcpServer, type McpContext } from "./mcp-server.ts";
 import { createStatelessMcpTransport, unsupportedMcpMethodResponse } from "./mcp-transport.ts";
 import { requestMatchesOrigin } from "./security.ts";
 
-function profileResource(profile: McpProfile): string {
-  return profile === "execution" ? MCP_EXECUTION_RESOURCE : config.MCP_RESOURCE;
-}
-
-function profileMetadataPath(profile: McpProfile): string {
-  return profile === "execution"
-    ? "/.well-known/oauth-protected-resource/mcp/execution"
-    : "/.well-known/oauth-protected-resource/mcp";
-}
-
-function mcpUnauthorized(profile: McpProfile, message: string): Response {
+function mcpUnauthorized(message: string): Response {
   return new Response(message, {
     status: 401,
     headers: {
       "cache-control": "no-store",
-      "www-authenticate": `Bearer resource_metadata="${config.APP_ORIGIN}${profileMetadataPath(profile)}"`,
+      "www-authenticate": `Bearer resource_metadata="${config.APP_ORIGIN}/.well-known/oauth-protected-resource/mcp"`,
     },
   });
 }
@@ -34,23 +24,21 @@ function scopesFromJwt(jwt: JWTPayload): Set<string> {
   return new Set(Array.isArray(plural) ? plural.filter((item): item is string => typeof item === "string") : []);
 }
 
-function contextFromJwt(jwt: JWTPayload, profile: McpProfile): McpContext | null {
+function contextFromJwt(jwt: JWTPayload): McpContext | null {
   const clientId = typeof jwt.azp === "string" ? jwt.azp : null;
   const userId = typeof jwt.sub === "string" ? jwt.sub : null;
   if (!clientId || !userId || jwt.principal_type !== "mcp_agent") return null;
   const scopes = scopesFromJwt(jwt);
   if (!scopes.has(MCP_SCOPE)) return null;
-  return { clientId, profile };
+  return { clientId };
 }
 
 export function createMcpRequestHandler(
-  profile: McpProfile,
   pages: PageRepository,
   directories: DirectoryRepository,
   assets: AssetRepository,
-  automations: AutomationRepository,
 ) {
-  const resource = profileResource(profile);
+  const resource = config.MCP_RESOURCE;
   // Fetch keys over the private service network. The token issuer and audience
   // remain the public canonical URLs, but the isolated MCP container does not
   // need internet access merely to validate a signature.
@@ -62,10 +50,10 @@ export function createMcpRequestHandler(
     if (!requestMatchesOrigin(request, config.APP_ORIGIN)) {
       return new Response("Not found", { status: 404, headers: { "cache-control": "no-store" } });
     }
-    if (request.headers.has("cookie")) return mcpUnauthorized(profile, "Cookie credentials are not accepted by MCP");
+    if (request.headers.has("cookie")) return mcpUnauthorized("Cookie credentials are not accepted by MCP");
     const authorization = request.headers.get("authorization");
     const match = authorization?.match(/^Bearer ([A-Za-z0-9._~-]+)$/);
-    if (!match) return mcpUnauthorized(profile, "Bearer authorization is required");
+    if (!match) return mcpUnauthorized("Bearer authorization is required");
     let jwt: JWTPayload;
     try {
       const verified = await jwtVerify(match[1]!, jwks, {
@@ -75,18 +63,18 @@ export function createMcpRequestHandler(
       });
       jwt = verified.payload;
     } catch {
-      return mcpUnauthorized(profile, "Bearer token is invalid or expired");
+      return mcpUnauthorized("Bearer token is invalid or expired");
     }
     const audiences = typeof jwt.aud === "string" ? [jwt.aud] : jwt.aud;
     if (!audiences || audiences.length !== 1 || audiences[0] !== resource || typeof jwt.exp !== "number") {
-      return mcpUnauthorized(profile, "Bearer token is not bound exclusively to this MCP resource");
+      return mcpUnauthorized("Bearer token is not bound exclusively to this MCP resource");
     }
-    const context = contextFromJwt(jwt, profile);
-    if (!context) return mcpUnauthorized(profile, `Bearer token lacks ${MCP_SCOPE}`);
+    const context = contextFromJwt(jwt);
+    if (!context) return mcpUnauthorized(`Bearer token lacks ${MCP_SCOPE}`);
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();
-    const server = await createMcpServer(context, pages, directories, assets, automations);
+    const server = await createMcpServer(context, pages, directories, assets);
     await server.connect(transport);
     try {
       return await transport.handleRequest(request);
