@@ -31,6 +31,7 @@ import { forwardDashboardAuthRoute } from "./auth-dashboard-gateway.ts";
 import { assetContentResponse } from "./asset-content.ts";
 import { config, production } from "./config.ts";
 import { claimConfirmedExport, issueConfirmationOptions } from "./confirmation-client.ts";
+import { dashboardServices } from "./dashboard-services.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
 import {
@@ -214,6 +215,10 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     return json({
       knowledge_url: config.MCP_RESOURCE,
     });
+  })
+  .get("/api/dashboard/services", async ({ request }) => {
+    await ownerRequest(request);
+    return json({ services: dashboardServices(config) });
   })
 
   .get("/app", async () => {

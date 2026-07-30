@@ -203,7 +203,10 @@ resource "aws_instance" "app" {
     encrypted   = true
     kms_key_id  = var.kms_key_arn
     volume_type = "gp3"
-    volume_size = 16
+    # The Nango root image contains the complete Functions runtime. Keep
+    # immutable images on the replaceable root disk with enough room for a
+    # safe rolling pull; all durable records remain on /data.
+    volume_size = 30
   }
   tags = { Name = local.prefix }
 }
@@ -234,6 +237,15 @@ resource "aws_route53_record" "assets" {
   count   = var.route53_zone_id == "" ? 0 : 1
   zone_id = var.route53_zone_id
   name    = var.asset_hostname
+  type    = "A"
+  ttl     = 60
+  records = [aws_eip.app.public_ip]
+}
+
+resource "aws_route53_record" "nango" {
+  count   = var.route53_zone_id == "" ? 0 : 1
+  zone_id = var.route53_zone_id
+  name    = var.nango_hostname
   type    = "A"
   ttl     = 60
   records = [aws_eip.app.public_ip]

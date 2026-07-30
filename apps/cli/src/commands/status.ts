@@ -10,11 +10,18 @@ export const command = defineCommand("status", {
     const { config, data, compute } = await readInfrastructure(false);
     const dataVolumePresent = data ? await retainedDataVolumeExists(config, data) : false;
     let healthy = false;
+    let nangoHealthy = false;
     if (compute) {
-      try {
-        const response = await fetch(`https://${config.hostname}/api/health`, { signal: AbortSignal.timeout(5_000) });
-        healthy = response.ok && healthMatchesVersion(await response.json(), config.releaseVersion);
-      } catch {}
+      const [appResult, nangoResult] = await Promise.allSettled([
+        fetch(`https://${config.hostname}/api/health`, { signal: AbortSignal.timeout(5_000) }),
+        fetch(`https://${config.nangoHostname}/ready`, { signal: AbortSignal.timeout(5_000) }),
+      ]);
+      if (appResult.status === "fulfilled") {
+        try {
+          healthy = appResult.value.ok && healthMatchesVersion(await appResult.value.json(), config.releaseVersion);
+        } catch {}
+      }
+      nangoHealthy = nangoResult.status === "fulfilled" && nangoResult.value.ok;
     }
     const state = config.recovery
       ? "recovering"
@@ -24,13 +31,15 @@ export const command = defineCommand("status", {
           ? "volume-lost"
           : !compute
             ? "data-retained"
-            : healthy
+            : healthy && nangoHealthy
               ? "healthy"
               : "unhealthy";
     console.log(JSON.stringify({
       state,
       version: config.releaseVersion,
       url: `https://${config.hostname}/app`,
+      nangoUrl: `https://${config.nangoHostname}`,
+      nangoHealthy,
       instance: compute?.instance_id,
       publicIp: compute?.public_ip,
       dataVolume: data?.data_volume_id,

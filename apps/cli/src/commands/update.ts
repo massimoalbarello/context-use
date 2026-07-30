@@ -4,10 +4,12 @@ import { bootstrapStateBucket, sendSsmCommands } from "../aws.ts";
 import { continueUpdateWithCli, installCliRelease } from "../cli-update.ts";
 import { retainedDataVolumeExists } from "../data-volume.ts";
 import { deploy, deployedRuntimePresent, prepareCompute } from "../deploy.ts";
+import { ensureNangoApiKeys } from "../nango.ts";
 import { readConfigIfPresent, saveConfig } from "../paths.ts";
 import { currentVersion, deploymentRoot, releaseManifest } from "../release.ts";
 import { ensureRuntimeParameters } from "../setup.ts";
 import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs, currentDataOutputs } from "../terraform.ts";
+import { databaseBackupCommands } from "./backup.ts";
 
 export const command = defineCommand("update", {
   description: "Update the CLI and deployment to the latest release.",
@@ -46,9 +48,12 @@ export const command = defineCommand("update", {
     }
     if (!existingData) throw new Error("Retained data state is missing; refusing to update active compute");
     if (await deployedRuntimePresent(config, existingCompute)) {
-      await sendSsmCommands(config.awsProfile, config.awsRegion, existingCompute.instance_id, [
-        "cd /opt/context-use/deploy && docker compose --env-file /data/context-use/secrets/runtime.env run --rm backup once",
-      ]);
+      await sendSsmCommands(
+        config.awsProfile,
+        config.awsRegion,
+        existingCompute.instance_id,
+        databaseBackupCommands(false),
+      );
     }
 
     const data = await applyData(root, config);
@@ -56,6 +61,7 @@ export const command = defineCommand("update", {
     await prepareCompute(config, data, compute);
     await ensureRuntimeParameters(config, data, compute);
     await deploy(config, compute, manifest);
+    await ensureNangoApiKeys(config, data);
     config.releaseVersion = manifest.version;
     await saveConfig(config);
     p.outro(`Updated to ${manifest.version}`);

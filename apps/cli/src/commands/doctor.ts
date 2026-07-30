@@ -3,6 +3,7 @@ import { defineCommand } from "@parshjs/core";
 import { retainedDataVolumeExists } from "../data-volume.ts";
 import { dnsMismatches } from "../deploy.ts";
 import { readInfrastructure } from "../lifecycle.ts";
+import { verifyNangoDashboardAuthentication } from "../nango.ts";
 import { readConfig } from "../paths.ts";
 import { commandExists, run } from "../process.ts";
 import type { ComputeOutputs } from "../types.ts";
@@ -36,6 +37,16 @@ export const command = defineCommand("doctor", {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       }],
+      ["Nango HTTPS readiness", async () => {
+        const response = await fetch(`https://${config.nangoHostname}/ready`, { signal: AbortSignal.timeout(5_000) });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const body: unknown = await response.json();
+        if (!body || typeof body !== "object" || !("result" in body) || body.result !== "ok") {
+          throw new Error("unexpected response");
+        }
+        return body;
+      }],
+      ["Nango dashboard authentication", () => verifyNangoDashboardAuthentication(config)],
       ["MCP metadata", async () => {
         const response = await fetch(`https://${config.hostname}/.well-known/oauth-protected-resource/mcp`, { signal: AbortSignal.timeout(5_000) });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);

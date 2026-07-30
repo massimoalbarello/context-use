@@ -7,8 +7,9 @@ export const configDirectory = resolve(homedir(), ".config/context-use");
 export const cacheDirectory = resolve(homedir(), ".cache/context-use");
 export const configPath = resolve(configDirectory, "config.json");
 
-type StoredDeploymentConfig = Omit<DeploymentConfig, "schemaVersion"> & {
+type StoredDeploymentConfig = Omit<DeploymentConfig, "schemaVersion" | "nangoHostname"> & {
   schemaVersion?: 1 | 2;
+  nangoHostname?: string;
   stateKmsKeyArn?: string;
   phase?: string;
   parametersReady?: boolean;
@@ -29,11 +30,12 @@ export function normalizeDeploymentConfig(config: StoredDeploymentConfig): Deplo
     accountId: config.accountId,
     hostname: config.hostname,
     assetHostname: config.assetHostname,
+    nangoHostname: config.nangoHostname ?? `nango.${config.hostname}`,
     dnsMode: config.dnsMode,
     route53ZoneId: config.route53ZoneId,
     ownerEmail: config.ownerEmail,
     stateBucket: config.stateBucket,
-    instanceType: config.instanceType,
+    instanceType: config.instanceType === "t3.small" ? "t3.large" : config.instanceType,
     dataVolumeSizeGb: config.dataVolumeSizeGb,
     backupRetentionDays: config.backupRetentionDays,
     ...(legacyStateKmsKeyArn ? { legacyStateKmsKeyArn } : {}),

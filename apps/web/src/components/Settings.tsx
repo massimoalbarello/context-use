@@ -2,6 +2,7 @@ import { startAuthentication } from "@simplewebauthn/browser";
 import { useState } from "react";
 import { api } from "../api.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
+import { IntrinsicServices } from "./Services.tsx";
 
 export type PasskeySummary = {
   id: string;
@@ -224,6 +225,7 @@ export function Settings({
   };
   return <main className="content-page settings-page"><header><div><span className="eyebrow">Owner-only controls</span><h1>Settings</h1></div></header>
     {message && <p>{message}</p>}
+    <IntrinsicServices />
     <section><h2>Passkeys</h2><p>Passkeys sign in as the installation owner and can confirm sensitive actions. Adding or removing one requires fresh verification with an existing passkey, and at least one must always remain.</p>
       <div className="security-list">{passkeys.map((key) => <article key={key.id}><div><strong>{key.name || "Unnamed passkey"}</strong><span>Added {new Date(key.created_at).toLocaleString()} · {key.device_type === "singleDevice" ? "Device-bound passkey" : "Multi-device passkey"}{key.backed_up ? " · Backed up" : ""}</span></div><button className="danger" disabled={passkeys.length <= 1 || Boolean(removalPreparingId)} onClick={() => void prepareRemoval(key)}>{removalPreparingId === key.id ? "Preparing…" : "Remove"}</button></article>)}</div>
       {removalError && !removalIntent && <p className="error">{removalError}</p>}

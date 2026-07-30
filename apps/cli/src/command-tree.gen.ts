@@ -4,6 +4,9 @@ import type { InferForwardedOptions, InferParams, RuntimeNode } from '@parshjs/c
 import type { command as backupCmd } from './commands/backup.ts';
 import type { command as destroyCmd } from './commands/destroy.ts';
 import type { command as doctorCmd } from './commands/doctor.ts';
+import type { command as nangoCmd } from './commands/nango.ts';
+import type { command as nangoCredentialsCmd } from './commands/nango/credentials.ts';
+import type { command as nangoRestoreCmd } from './commands/nango/restore.ts';
 import type { command as openCmd } from './commands/open.ts';
 import type { command as recoverCmd } from './commands/recover.ts';
 import type { command as restoreCmd } from './commands/restore.ts';
@@ -26,6 +29,22 @@ declare module '@parshjs/core' {
     };
     'doctor': {
       parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango': {
+      parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango credentials': {
+      parents: {
+        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango restore': {
+      parents: {
+        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+      };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
     'open': {
@@ -83,6 +102,25 @@ export const commandTree: RuntimeNode = {
       segment: { kind: 'literal', value: 'doctor' },
       command: { path: 'doctor', load: () => import('./commands/doctor.ts').then((m) => m.command) },
       literalChildren: {},
+      paramChild: null,
+    },
+    'nango': {
+      segment: { kind: 'literal', value: 'nango' },
+      command: { path: 'nango', load: () => import('./commands/nango.ts').then((m) => m.command) },
+      literalChildren: {
+        'credentials': {
+          segment: { kind: 'literal', value: 'credentials' },
+          command: { path: 'nango credentials', load: () => import('./commands/nango/credentials.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'restore': {
+          segment: { kind: 'literal', value: 'restore' },
+          command: { path: 'nango restore', load: () => import('./commands/nango/restore.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+      },
       paramChild: null,
     },
     'open': {

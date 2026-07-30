@@ -10,10 +10,11 @@ export async function deploy(
   compute: ComputeOutputs,
   manifest: ReleaseManifest,
   recoveryBackupKey?: string,
+  recoveryNangoBackupKey?: string,
 ): Promise<void> {
   await assertManualDns(config, compute);
   const deployScript = await Bun.file(resolve(await deploymentRoot(manifest), "deploy/deploy.sh")).text();
-  const command = deploymentCommands(config, manifest, deployScript, recoveryBackupKey);
+  const command = deploymentCommands(config, manifest, deployScript, recoveryBackupKey, recoveryNangoBackupKey);
   await sendSsmCommands(config.awsProfile, config.awsRegion, compute.instance_id, command);
   await verifyDeployment(config, manifest.version);
 }
@@ -52,7 +53,7 @@ export async function dnsMismatches(
   compute: ComputeOutputs,
   resolver: (hostname: string) => Promise<string[]> = resolve4,
 ): Promise<string[]> {
-  const hostnames = [config.hostname, config.assetHostname];
+  const hostnames = [...new Set([config.hostname, config.assetHostname, config.nangoHostname])];
   const matches = await Promise.all(hostnames.map(async (hostname) => {
     try {
       return (await resolver(hostname)).includes(compute.public_ip);
@@ -83,9 +84,13 @@ export function deploymentCommands(
   manifest: ReleaseManifest,
   deployScript: string,
   recoveryBackupKey?: string,
+  recoveryNangoBackupKey?: string,
 ): string[] {
   if (recoveryBackupKey && !/^postgres\/[0-9TZ-]+\.sql\.gz$/.test(recoveryBackupKey)) {
     throw new Error("Invalid recovery backup key");
+  }
+  if (recoveryNangoBackupKey && !/^nango-postgres\/[0-9TZ-]+\.sql\.gz$/.test(recoveryNangoBackupKey)) {
+    throw new Error("Invalid Nango recovery backup key");
   }
   const encoded = Buffer.from(deployScript).toString("base64");
   const rolePrefix = `context-use-${config.installationId}-${config.environment}`;
@@ -95,7 +100,7 @@ export function deploymentCommands(
     "trap 'rm -f /tmp/context-use-deploy.sh' EXIT",
     `echo '${encoded}' | base64 -d > /tmp/context-use-deploy.sh`,
     "chmod 0700 /tmp/context-use-deploy.sh",
-    `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' CONTEXT_USE_STORAGE_ROLE_ARN='${storageRoleArn}' CONTEXT_USE_BACKUP_ROLE_ARN='${backupRoleArn}'${recoveryBackupKey ? ` CONTEXT_USE_RECOVERY_BACKUP_KEY='${recoveryBackupKey}'` : ""} /tmp/context-use-deploy.sh`,
+    `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' CONTEXT_USE_STORAGE_ROLE_ARN='${storageRoleArn}' CONTEXT_USE_BACKUP_ROLE_ARN='${backupRoleArn}'${recoveryBackupKey ? ` CONTEXT_USE_RECOVERY_BACKUP_KEY='${recoveryBackupKey}'` : ""}${recoveryNangoBackupKey ? ` CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY='${recoveryNangoBackupKey}'` : ""} /tmp/context-use-deploy.sh`,
   ];
 }
 
@@ -137,4 +142,17 @@ export async function verifyDeployment(config: DeploymentConfig, releaseVersion:
   }
   const about = await fetch(`${origin}/p/about/intro`);
   if (!about.ok) throw new Error("The public About empty state is unavailable");
+
+  let nangoError = "health check did not complete";
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      const nangoHealth = await fetch(`https://${config.nangoHostname}/ready`, { signal: AbortSignal.timeout(5_000) });
+      if (nangoHealth.ok) return;
+      nangoError = `health returned HTTP ${nangoHealth.status}`;
+    } catch (error) {
+      nangoError = error instanceof Error ? error.message : String(error);
+    }
+    if (attempt < 59) await Bun.sleep(3_000);
+  }
+  throw new Error(`Nango did not become ready: ${nangoError}`);
 }
