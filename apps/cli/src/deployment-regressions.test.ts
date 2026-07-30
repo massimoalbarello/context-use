@@ -669,7 +669,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(compute).not.toContain("public_mcp");
   expect(compute).toContain('data_volume_policy     = file("${path.module}/data-volume-policy.sh")');
   expect(update.indexOf("installCliRelease")).toBeLessThan(update.indexOf("readConfig"));
-  expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("databaseBackupCommands(false)"));
+  expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("databaseBackupCommands(releaseIncludesNango(config.releaseVersion))"));
   expect(update.indexOf("retainedDataVolumeExists(config")).toBeLessThan(update.indexOf("await applyData"));
   expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(1);
   expect(update).not.toContain("fallback");
