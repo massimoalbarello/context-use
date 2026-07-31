@@ -26,8 +26,9 @@ target's parent before writing.
   `— as of 27 July 2026` inline; a fact with no date becomes a lie quietly.
 
 Information whose subject is the owner goes under [[about|`about/`]], entered at
-`about/intro`. Other entities get top-level directories — `people/`, `companies/`,
-`meetings/`, `events/` exist; add `places/` or `works/` when needed.
+`about/intro`. External material saved for recall goes under [[library|`library/`]].
+Other entities get top-level directories — `people/`, `companies/`, `meetings/`,
+`events/` exist; add `places/` or other entity areas when needed.
 
 ## Where a page belongs
 
@@ -35,6 +36,8 @@ Everything here touches the owner's life, so that decides nothing. **Don't ask "
 this exist if not for them." Ask: are they the topic, or a participant?**
 
 - **Topic** → `about/`: their past, what they built, their present, their substantial efforts and decision frames.
+- **External work saved for recall** → `library/`: an article, video, podcast episode,
+  paper, thread or other source, regardless of format.
 - **Participant, or absent** → an entity directory. A meeting has them in it but is not
   about them.
 
@@ -158,7 +161,7 @@ Entity areas often hold personal detail about third parties. Keep them private b
 default and never publish third-party personal detail. Only the owner may publish a
 deliberately public-safe entity page after reviewing it.
 
-## Directories, automations, skills
+## Directories, library, automations, skills
 
 Every directory is linkable and its index is generated from its immediate children —
 explore from the root down, and never hand-maintain an `index` page. Generated indexes
@@ -169,6 +172,10 @@ Markdown example, write every link target as a placeholder** —
 `[[meetings/…|label]]`, never `[[meetings|label]]` — because a wikilink resolves even
 inside a fenced code block, so an example linking a real path renders as HTML instead of
 the markdown it exists to demonstrate. A target containing `…` or `<slug>` resolves to nothing and survives intact.
+
+[[library|The library]] holds one page per saved external work. Each entry links the
+original, preserves what the owner said when saving it, and connects its people,
+companies and ideas to their canonical pages rather than copying them.
 
 [[automations|Automations]] run unattended in an external harness;
 [[skills|skills]] are loaded by an agent working with the owner. Both file what they

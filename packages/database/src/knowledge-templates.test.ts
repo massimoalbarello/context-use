@@ -64,20 +64,21 @@ describe("knowledge templates", () => {
       "automations",
       "companies",
       "events",
+      "library",
       "meetings",
       "people",
       "skills",
       "about/diary",
       "about/tasks",
     ]);
-    expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(10);
+    expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(11);
     expect(state.createdDirectories).toEqual([]);
     expect(state.createdPages).toEqual([]);
   });
 
   test("updates bootstrap-owned guides while preserving locally edited guides", async () => {
     const state = repositories({
-      directories: ["", "about", "about/diary", "about/tasks", "automations", "companies", "events", "meetings", "people", "skills"],
+      directories: ["", "about", "about/diary", "about/tasks", "automations", "companies", "events", "library", "meetings", "people", "skills"],
       pages: {
         agents: { body: "Legacy root.\n", actor: "context-use-bootstrap" },
         "people/agents": { body: "Owner rules.\n", actor: "owner-user-id" },
@@ -86,13 +87,13 @@ describe("knowledge templates", () => {
     const result = await reconcileKnowledgeTemplate(state.value, "default", true);
 
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(state.createdPages).toHaveLength(8);
+    expect(state.createdPages).toHaveLength(9);
     expect(result.actions).toContainEqual({
       action: "conflict",
       path: "people/agents",
       detail: "Preserve locally modified guide",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 9 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 10 changes; 1 conflict.");
   });
 
   test("adopts an identical local guide so future template changes can update it", async () => {
@@ -112,7 +113,7 @@ describe("knowledge templates", () => {
 
   test("overwrites active local guides only when explicitly requested", async () => {
     const state = repositories({
-      directories: ["", "about", "about/diary", "about/tasks", "automations", "companies", "events", "meetings", "people", "skills"],
+      directories: ["", "about", "about/diary", "about/tasks", "automations", "companies", "events", "library", "meetings", "people", "skills"],
       pages: {
         agents: { body: "Owner root rules.\n", actor: "owner-user-id" },
         "people/agents": { body: "Archived owner rules.\n", actor: "owner-user-id", archived: true },
@@ -141,7 +142,7 @@ describe("knowledge templates", () => {
 
     const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(formatTemplateResult(applied)).toContain("Applied 9 changes; 1 conflict.");
+    expect(formatTemplateResult(applied)).toContain("Applied 10 changes; 1 conflict.");
   });
 
   test("reports page collisions without removing or overwriting existing knowledge", async () => {
@@ -167,11 +168,16 @@ describe("knowledge templates", () => {
   test("contains the reviewed status and privacy corrections", async () => {
     const root = await Bun.file(new URL("../templates/default/AGENTS.md", import.meta.url)).text();
     const diary = await Bun.file(new URL("../templates/default/about/diary/AGENTS.md", import.meta.url)).text();
+    const library = await Bun.file(new URL("../templates/default/library/AGENTS.md", import.meta.url)).text();
     const meetings = await Bun.file(new URL("../templates/default/meetings/AGENTS.md", import.meta.url)).text();
 
     expect(root).toContain("only place that says where ongoing work currently stands");
     expect(root).toContain("deliberately public-safe entity page");
     expect(diary).toContain("Current state remains in the diary");
+    expect(library).toContain("library/<meaningful-slug>");
+    expect(library).toContain("Format is metadata, never a directory");
+    expect(library).toContain("preserved exactly when their words are known");
+    expect(library).toContain("never infer a summary from the title alone");
     expect(meetings).toContain("## Commitments made");
     expect(meetings).not.toContain("## Follow-ups");
   });
