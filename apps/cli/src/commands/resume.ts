@@ -34,7 +34,7 @@ export const command = defineCommand("resume", {
     await prepareCompute(config, data, compute);
     await ensureRuntimeParameters(config, data, compute);
     if (await pauseForManualDns(config, compute)) return;
-    await deploy(config, compute, manifest);
+    await deploy(config, compute, manifest, { installTemplate: "default" });
     await ensureNangoApiKeys(config, data);
     p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}\n\nNango dashboard credentials:\ncontext-use nango credentials`);
   },

@@ -4,6 +4,13 @@ export type { ConfirmationIntentKind, ConfirmationPasskey, VerifiedPasskey } fro
 export { PageDeletionRepository } from "./page-deletion.ts";
 export type { PageDeletionPrincipal } from "./page-deletion.ts";
 export { PAGE_VERSION_RETENTION_LIMIT } from "./page-retention.ts";
+export {
+  formatTemplateResult,
+  reconcileKnowledgeTemplate,
+  type TemplateAction,
+  type TemplateRepositories,
+  type TemplateResult,
+} from "./knowledge-templates.ts";
 export { DirectoryRepository, DirectoryVersionConflictError } from "./directories.ts";
 export {
   PageRepository,

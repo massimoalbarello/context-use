@@ -92,6 +92,7 @@ services:
       DB_CONFIRMATION_PASSWORD: ${DB_CONFIRMATION_PASSWORD}
       DB_STORAGE_PASSWORD: ${DB_STORAGE_PASSWORD}
       DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD}
+      CONTEXT_USE_TEMPLATE_INSTALL: ${CONTEXT_USE_TEMPLATE_INSTALL:-}
     command: ["bun", "packages/database/src/initialize.ts"]
     networks: [migration_data]
 

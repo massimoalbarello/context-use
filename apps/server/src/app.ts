@@ -328,9 +328,9 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     await ownerRequest(request);
     const includeArchived = query.archived === "true";
     if (typeof query.q === "string" && query.q.trim()) {
-      return json(await dashboardPages.searchMetadata(query.q, { includeArchived }));
+      return json(await dashboardPages.searchMetadata(query.q, { includeArchived, excludeGuides: true }));
     }
-    return json(await dashboardPages.listMetadata(includeArchived));
+    return json(await dashboardPages.listMetadata(includeArchived, true));
   })
   .get("/api/dashboard/directories", async ({ request, query }) => {
     await ownerRequest(request);

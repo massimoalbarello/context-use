@@ -14,6 +14,9 @@ import type { command as resumeCmd } from './commands/resume.ts';
 import type { command as rootCmd } from './commands/_root.ts';
 import type { command as setupCmd } from './commands/setup.ts';
 import type { command as statusCmd } from './commands/status.ts';
+import type { command as templateApplyCmd } from './commands/template/apply.ts';
+import type { command as templateCmd } from './commands/template.ts';
+import type { command as templatePlanCmd } from './commands/template/plan.ts';
 import type { command as updateCmd } from './commands/update.ts';
 import type { command as versionCmd } from './commands/version.ts';
 
@@ -69,6 +72,22 @@ declare module '@parshjs/core' {
     };
     'status': {
       parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'template': {
+      parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'template apply': {
+      parents: {
+        'template': { options: InferForwardedOptions<typeof templateCmd.options>; params: InferParams<typeof templateCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'template plan': {
+      parents: {
+        'template': { options: InferForwardedOptions<typeof templateCmd.options>; params: InferParams<typeof templateCmd.params> };
+      };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
     'update': {
@@ -157,6 +176,25 @@ export const commandTree: RuntimeNode = {
       segment: { kind: 'literal', value: 'status' },
       command: { path: 'status', load: () => import('./commands/status.ts').then((m) => m.command) },
       literalChildren: {},
+      paramChild: null,
+    },
+    'template': {
+      segment: { kind: 'literal', value: 'template' },
+      command: { path: 'template', load: () => import('./commands/template.ts').then((m) => m.command) },
+      literalChildren: {
+        'apply': {
+          segment: { kind: 'literal', value: 'apply' },
+          command: { path: 'template apply', load: () => import('./commands/template/apply.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'plan': {
+          segment: { kind: 'literal', value: 'plan' },
+          command: { path: 'template plan', load: () => import('./commands/template/plan.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+      },
       paramChild: null,
     },
     'update': {

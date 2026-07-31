@@ -137,7 +137,8 @@ export function pruneEmptyDirectories(directory: PageTreeDirectory): PageTreeDir
   const directories = directory.directories
     .map(pruneEmptyDirectories)
     .filter((child) => (
-      child.pages.length > 0
+      child.directory !== null
+      || child.pages.length > 0
       || child.assets.length > 0
       || child.directories.length > 0
     ));

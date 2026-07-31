@@ -52,7 +52,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 
 Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use status`, `context-use update`, or `context-use doctor` to manage the installation later.
 
-> **Schema compatibility:** the directory/index release intentionally replaces the pre-release migration history with one checksummed baseline. Existing installations must be destroyed with retained data and recreated; the migrator rejects older or modified schemas instead of starting against an incompatible database.
+New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use `context-use template plan` to preview missing guides, safe updates, and local conflicts, then `context-use template apply` to apply them. Existing directories are never removed, and guides edited inside an instance are preserved. To replace active local guides deliberately, preview with `context-use template plan --overwrite-guides`, then run `context-use template apply --overwrite-guides`.
 
 ## Nango data ingestion
 

@@ -219,20 +219,27 @@ test("deployment diagnoses cloud-init separately and always removes its temporar
     deploymentConfig(),
     manifest,
     "#!/bin/sh\nexit 0\n",
-    "postgres/2026-07-20T10-20-30-123456789Z.sql.gz",
-    "nango-postgres/2026-07-20T10-20-31-123456789Z.sql.gz",
+    {
+      recoveryBackupKey: "postgres/2026-07-20T10-20-30-123456789Z.sql.gz",
+      recoveryNangoBackupKey: "nango-postgres/2026-07-20T10-20-31-123456789Z.sql.gz",
+    },
   );
   expect(recovery.at(-1)).toContain("CONTEXT_USE_RECOVERY_BACKUP_KEY='postgres/2026-07-20T10-20-30-123456789Z.sql.gz'");
   expect(recovery.at(-1)).toContain("CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY='nango-postgres/2026-07-20T10-20-31-123456789Z.sql.gz'");
-  expect(() => deploymentCommands(deploymentConfig(), manifest, "", "../other.sql.gz"))
+  expect(() => deploymentCommands(deploymentConfig(), manifest, "", { recoveryBackupKey: "../other.sql.gz" }))
     .toThrow("Invalid recovery backup key");
   expect(() => deploymentCommands(
     deploymentConfig(),
     manifest,
     "",
-    "postgres/2026-07-20T10-20-30Z.sql.gz",
-    "postgres/2026-07-20T10-20-31Z.sql.gz",
+    {
+      recoveryBackupKey: "postgres/2026-07-20T10-20-30Z.sql.gz",
+      recoveryNangoBackupKey: "postgres/2026-07-20T10-20-31Z.sql.gz",
+    },
   )).toThrow("Invalid Nango recovery backup key");
+
+  const setup = deploymentCommands(deploymentConfig(), manifest, "", { installTemplate: "default" });
+  expect(setup.at(-1)).toContain("CONTEXT_USE_TEMPLATE_INSTALL='default'");
 });
 
 function dataReadyConfig(overrides: Partial<DeploymentConfig> = {}): DeploymentConfig {
@@ -678,10 +685,10 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await pauseForManualDns(config, compute)"));
   expect(setup).toContain('instanceType: "t3.large"');
-  expect(setup.indexOf("await deploy(config, compute, manifest)")).toBeLessThan(setup.indexOf("await ensureNangoApiKeys(config, data)"));
+  expect(setup.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(setup.indexOf("await ensureNangoApiKeys(config, data)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await pauseForManualDns(config, compute)"));
-  expect(resume.indexOf("await deploy(config, compute, manifest)")).toBeLessThan(resume.indexOf("await ensureNangoApiKeys(config, data)"));
+  expect(resume.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(resume.indexOf("await ensureNangoApiKeys(config, data)"));
   expect(resume.indexOf("retainedDataVolumeExists(config")).toBeLessThan(resume.indexOf("await applyData"));
   expect(data).toContain('ContextUseInitialization = "pending"');
   expect(data).toContain('ignore_changes = [tags["ContextUseInitialization"]]');

@@ -62,6 +62,13 @@ export type DirectoryIndexEntry = {
 };
 
 export type DirectoryIndex = Directory & {
+  guide: {
+    id: string;
+    path: string;
+    version_number: number;
+    title: string;
+    summary: string;
+  } | null;
   children: DirectoryIndexEntry[];
   rendered_intro_html?: string;
 };

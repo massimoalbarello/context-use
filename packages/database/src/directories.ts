@@ -95,6 +95,15 @@ export class DirectoryRepository {
   async indexById(directoryId: string): Promise<DirectoryIndex | null> {
     const directory = await this.get(directoryId);
     if (!directory) return null;
+    const guidePath = directory.current_path ? `${directory.current_path}/agents` : "agents";
+    const guide = await this.pool.query<KnowledgePageMetadata>(
+      `SELECT page.id,page.current_path AS path,version.version_number,version.title,version.summary
+       FROM knowledge_pages page
+       JOIN knowledge_page_versions version
+         ON version.id=page.current_version_id AND version.page_id=page.id
+       WHERE page.current_path=$1 AND page.archived_at IS NULL`,
+      [guidePath],
+    );
     const children = await this.pool.query<DirectoryIndexEntry>(
       `SELECT 'directory'::text AS kind,directory.id,directory.current_path AS path,
          directory.title,directory.summary,
@@ -107,10 +116,12 @@ export class DirectoryRepository {
              AND (
                SELECT count(*) FROM knowledge_pages page
                WHERE page.parent_path=directory.current_path AND page.archived_at IS NULL
+                 AND page.current_path<>directory.current_path||'/agents'
              )=1
            THEN (
              SELECT page.id FROM knowledge_pages page
              WHERE page.parent_path=directory.current_path AND page.archived_at IS NULL
+               AND page.current_path<>directory.current_path||'/agents'
              LIMIT 1
            )
            ELSE NULL
@@ -124,10 +135,11 @@ export class DirectoryRepository {
        JOIN knowledge_page_versions version
          ON version.id=page.current_version_id AND version.page_id=page.id
        WHERE page.parent_path=$1 AND page.archived_at IS NULL
+         AND page.current_path<>$2
        ORDER BY path,kind`,
-      [directory.current_path],
+      [directory.current_path, guidePath],
     );
-    return { ...directory, children: children.rows } as DirectoryIndex;
+    return { ...directory, guide: guide.rows[0] ?? null, children: children.rows } as DirectoryIndex;
   }
 
   async indexByPath(path: string): Promise<DirectoryIndex | null> {

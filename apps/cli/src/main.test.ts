@@ -50,16 +50,19 @@ test("root help lists the operational commands", async () => {
   expect(result.stdout).toContain("setup");
   expect(result.stdout).toContain("recover");
   expect(result.stdout).toContain("nango");
+  expect(result.stdout).toContain("template");
   expect(result.stdout).not.toContain("recover-passkey");
   expect(result.stdout).toContain("destroy");
 });
 
 test("command help exposes only intentional sensitive or destructive options", async () => {
-  const [update, destroy, nangoCredentials, nangoRestore] = await Promise.all([
+  const [update, destroy, nangoCredentials, nangoRestore, templatePlan, templateApply] = await Promise.all([
     runCli("update", "--help"),
     runCli("destroy", "--help"),
     runCli("nango", "credentials", "--help"),
     runCli("nango", "restore", "--help"),
+    runCli("template", "plan", "--help"),
+    runCli("template", "apply", "--help"),
   ]);
 
   expect(update.exitCode).toBe(0);
@@ -70,6 +73,10 @@ test("command help exposes only intentional sensitive or destructive options", a
   expect(nangoCredentials.stdout).toContain("--reveal");
   expect(nangoRestore.exitCode).toBe(0);
   expect(nangoRestore.stdout).toContain("Restore Nango");
+  expect(templatePlan.exitCode).toBe(0);
+  expect(templatePlan.stdout).toContain("--overwrite-guides");
+  expect(templateApply.exitCode).toBe(0);
+  expect(templateApply.stdout).toContain("--overwrite-guides");
 });
 
 test("update succeeds without an active deployment", async () => {

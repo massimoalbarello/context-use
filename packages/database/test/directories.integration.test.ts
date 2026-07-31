@@ -77,6 +77,17 @@ describeDatabase("first-class directory indexes", () => {
       commit_message: "Create sole child page",
     }, { kind: "dashboard", subject: "integration-test-owner" });
     pageIds.push(childPage.id);
+    const childGuide = await pages.create({
+      path: `${childPath}/agents`,
+      title: "AGENTS.md",
+      summary: "Instructions for maintaining this chapter.",
+      body_markdown: "Chapter instructions.",
+      commit_message: "Create directory guide fixture",
+    }, { kind: "dashboard", subject: "integration-test-owner" });
+    pageIds.push(childGuide.id);
+    const childIndex = await directories.indexByPath(childPath);
+    expect(childIndex?.guide).toMatchObject({ id: childGuide.id, path: `${childPath}/agents` });
+    expect(childIndex?.children).not.toContainEqual(expect.objectContaining({ id: childGuide.id }));
     let childEntry = (await directories.indexByPath(parentPath))?.children
       .find(({ id }) => id === child.id);
     expect(childEntry).toMatchObject({

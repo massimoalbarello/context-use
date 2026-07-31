@@ -337,7 +337,7 @@ export function planKnowledgeExport(snapshot: KnowledgeExportSnapshot): PlannedK
           .sort((left, right) => left.path.localeCompare(right.path) || left.kind.localeCompare(right.kind));
         const listing = children.length
           ? children.map((child) => (
-            `- [${markdownLabel(child.title)}](${markdownTarget(vaultPath, child.vaultPath)}) — ${child.summary}`
+            `- [${markdownLabel(child.title)}](${markdownTarget(vaultPath, child.vaultPath)})${child.summary ? ` — ${child.summary}` : ""}`
           )).join("\n")
           : "_This directory has no child pages or directories._";
         return {

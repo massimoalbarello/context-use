@@ -49,7 +49,10 @@ export const command = defineCommand("recover", {
     await prepareCompute(config, recoveredData, nextCompute);
     await ensureRuntimeParameters(config, recoveredData, nextCompute);
     if (await pauseForManualDns(config, nextCompute, "recover")) return;
-    await deploy(config, nextCompute, manifest, recovery.backupKey, recovery.nangoBackupKey);
+    await deploy(config, nextCompute, manifest, {
+      recoveryBackupKey: recovery.backupKey,
+      ...(recovery.nangoBackupKey ? { recoveryNangoBackupKey: recovery.nangoBackupKey } : {}),
+    });
     await ensureNangoApiKeys(config, recoveredData);
     delete config.recovery;
     await saveConfig(config);
