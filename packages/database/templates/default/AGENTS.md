@@ -120,8 +120,10 @@ Present missing or ambiguous additions together in one question rather than crea
 unrequested cascade.
 
 **Preview.** Show intended path, title, summary and full body before creating or
-rewriting a page. One preview can cover a coherent set. Unattended automations are the
-exception and follow their own [[automations/agents|guide]].
+rewriting a page. Briefly explain why the proposed location and structure are the
+cleanest fit under the applicable guides. One preview can cover a coherent set.
+Unattended automations are the exception and follow their own
+[[automations/agents|guide]].
 
 ## Directories and guide layering
 
