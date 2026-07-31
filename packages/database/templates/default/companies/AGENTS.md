@@ -53,7 +53,7 @@ partnership, a competitor worth tracking. Not for every name mentioned.
   and mark added reasoning as inference.
 - **A lens page tracks no pursuit** — no status line, no next step. Whether they emailed
   the company, where an application has got to, what they intend next week: none of that
-  is about the company. It happened, so it goes in the [[about/diary|diary]]; if it is an
-  open intent it goes in [[about/tasks|about/tasks/]]. When something changes the view
-  itself, edit the page to say what is now thought and let the diary hold what prompted
-  it.
+  is about the company. Current movement goes in the [[about/diary|diary]]; when it is
+  part of a substantial effort, the durable frame belongs in
+  [[about/tasks|about/tasks/]]. When something changes the view itself, edit the page to
+  say what is now thought and let the diary hold what prompted it.

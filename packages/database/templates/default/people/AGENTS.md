@@ -21,8 +21,8 @@ because it makes the folder look answered.
 - **`work`** — roles and companies over time, what they have built, what they are known
   for. Everything that would otherwise bloat `intro`.
 - **`immigration`** — visas, residency and professional accreditation, for someone whose
-  right to live or practise somewhere is a live multi-year process. It lives with the
-  person rather than in the diary because it is long-running by nature.
+  right to live or practise somewhere is a live multi-year process. Keep dated durable
+  facts here; current progress, ownership and next steps remain in the diary.
 - **Lens pages** — `as-a-cofounder`, `as-a-hire`, `as-an-investor`, `as-a-partner`.
 
 Anything else needs a name obvious to someone who has never opened the folder —

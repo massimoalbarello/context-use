@@ -51,8 +51,8 @@ survive. It goes in as `transcript`, marked raw at the top, never in place of `i
     The substance. Distilled, not transcribed.
 
     ## What I took away
-    The owner's read on it — what changed in their thinking, what they
-    believe now that they didn't before.
+    The owner's read at the time — what the conversation changed in their
+    thinking and what they concluded from it.
 
     ## Commitments made
     - What each participant agreed during the meeting, stated as a historical fact.

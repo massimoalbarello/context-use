@@ -13,9 +13,9 @@ each other, rather than one page accumulating years.
 ## Aspects
 
 - **`intro`** — required. Written so it makes sense to someone who wasn't there.
-- **`takeaways`** — what changed the owner's mind, what they would do differently, who is
-  worth following up. Split out because it is the part they come back for, and it should
-  not be buried in an account of the schedule.
+- **`takeaways`** — what changed the owner's mind at the event, what they would do
+  differently, and who became relevant and why. Split out because it is the part they
+  come back for, and it should not be buried in an account of the schedule.
 
 **Add any new name here** — `talks`, `notes` — so events stay comparable.
 
@@ -41,7 +41,7 @@ for every conversation that happened inside it.
 
     # Takeaways                                   ← takeaways
 
-    What changed in the owner's thinking, what they would do differently,
+    What changed in the owner's thinking at the event, what they would do differently,
     and what each of it turned into — linked to where it went.
 
 ## Local rules

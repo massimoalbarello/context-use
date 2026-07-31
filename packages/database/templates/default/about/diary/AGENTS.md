@@ -1,10 +1,10 @@
 # Diary conventions
 
-The rest of this base holds the owner's past and their constants. The diary holds their
-**present**: what they did, thought, decided and worried about on a given day. Treat it
-as working memory — its job is to let a future agent answer *what are they actually up
-to right now, and why*, then follow links outwards to the durable pages that explain it
-and backwards to the days the work came from.
+The rest of this base holds durable accounts of their subjects. The diary holds the
+owner's **present**: what they did, thought, decided and worried about on a given day.
+Treat it as working memory — its job is to let a future agent answer *what are they
+actually up to right now, and why*, then follow links outwards to the durable pages that
+explain it and backwards to the days the work came from.
 
 It is not a dump. Every entry is curated. If you are about to write something here that
 has a better home, put it there and link.
@@ -34,14 +34,14 @@ The log's summary captures the day and is written **last**, from the finished en
     *London · one line framing the day*
 
     Narrative prose: what actually happened, what it felt like, what changed.
-    Link durable things inline as they come up — [[about/projects/…|Project]],
-    people, places — rather than re-explaining them.
+    Link durable things inline as they come up — [[about/tasks/…|Task]],
+    people, companies — rather than re-explaining them.
 
     ## On my mind
     - Short bullets. Thoughts, doubts, half-formed ideas, things being circled.
 
     ## Threads
-    - [[about/projects/…|Project]] — what moved today · continues [[about/diary/…|24 Jul]]
+    - [[about/tasks/…|Task]] — what moved today · continues [[about/diary/…|24 Jul]]
     - [[people/…|Person]] — what happened between them
 
     ## Companion pages
@@ -70,8 +70,8 @@ Before writing anything, ask: **will this still matter on its own in a month?**
 | Working notes or a draft that only matter today | day folder page, linked from the log |
 | A call, a conference, someone new, a company | the owning [[meetings/agents|meeting]], [[events/agents|event]], [[people/agents|person]] or [[companies/agents|company]] page; the log links |
 | A new idea, or a decision and its reasoning | the durable page for the subject; the log keeps the lived reasoning |
-| A preference, taste, habit or belief articulated | the relevant page under `about/` |
-| An open loop still open tomorrow | the log links the project or [[about/tasks|task]] that gives it context; current state remains in the diary |
+| A preference, taste, habit or belief articulated | a durable owner page, following the instance's organization under `about/` |
+| An open loop still open tomorrow | the log links the durable subject or [[about/tasks/agents|task]] that gives it context; current state remains in the diary |
 
 The log carries **pointers and lived texture, never canonical content**. A fact that
 exists only inside a diary entry is trapped — the failure mode this directory exists to
@@ -91,14 +91,14 @@ reading today can retrieve the context instead of guessing at it.
   every entry is duplication and it rots.
 - **Backwards only.** Never edit a past entry to add a "continued in" pointer. Past
   entries record what was known that day.
-- **Only real continuation.** Mentioning the same project two days running is not
+- **Only real continuation.** Mentioning the same subject two days running is not
   continuation; picking up where you left off is. A link meaning "this existed yesterday
   too" is noise, and noise is what makes the rest of the links untrustworthy.
 
 **Continuity is not a substitute for a durable home.** If a chain runs past a week, or
 you find yourself reading three logs to reconstruct the state of something, that thing
-needs its own durable page — create one for the subject, frame or criteria and let the
-days link to it. Current state remains in the diary.
+needs its own durable page — create one for the subject or frame and let the days link
+to it. Current state remains in the diary.
 
 ## Automations in the diary
 

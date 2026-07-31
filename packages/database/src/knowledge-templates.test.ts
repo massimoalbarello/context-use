@@ -167,12 +167,20 @@ describe("knowledge templates", () => {
 
   test("keeps global conventions in the root and local structure in directory guides", async () => {
     const root = await Bun.file(new URL("../templates/default/AGENTS.md", import.meta.url)).text();
+    const about = await Bun.file(new URL("../templates/default/about/AGENTS.md", import.meta.url)).text();
+    const companies = await Bun.file(new URL("../templates/default/companies/AGENTS.md", import.meta.url)).text();
     const diary = await Bun.file(new URL("../templates/default/about/diary/AGENTS.md", import.meta.url)).text();
+    const events = await Bun.file(new URL("../templates/default/events/AGENTS.md", import.meta.url)).text();
     const library = await Bun.file(new URL("../templates/default/library/AGENTS.md", import.meta.url)).text();
     const meetings = await Bun.file(new URL("../templates/default/meetings/AGENTS.md", import.meta.url)).text();
     const people = await Bun.file(new URL("../templates/default/people/AGENTS.md", import.meta.url)).text();
     const tasks = await Bun.file(new URL("../templates/default/about/tasks/AGENTS.md", import.meta.url)).text();
     const normalizedRoot = root.replaceAll(/\s+/g, " ");
+    const normalizedAbout = about.replaceAll(/\s+/g, " ");
+    const normalizedCompanies = companies.replaceAll(/\s+/g, " ");
+    const normalizedEvents = events.replaceAll(/\s+/g, " ");
+    const normalizedMeetings = meetings.replaceAll(/\s+/g, " ");
+    const normalizedPeople = people.replaceAll(/\s+/g, " ");
 
     for (const guide of [
       "about/agents",
@@ -193,15 +201,28 @@ describe("knowledge templates", () => {
     expect(root).toContain("A deliberately public-safe page still");
     expect(root).not.toContain("people/<first-last>");
     expect(root).not.toContain("meetings/<YYYY>");
+    expect(normalizedAbout).toContain("default template defines only two subdirectories");
+    expect(about).toContain("[[about/diary/agents|");
+    expect(about).toContain("[[about/tasks/agents|");
+    expect(normalizedAbout).toContain("Any other organization under `about/` is specific to the instance");
+    expect(about).not.toContain("chapters/");
+    expect(about).not.toContain("projects/");
+    expect(about).not.toContain("about/intro");
+    expect(normalizedCompanies).toContain("part of a substantial effort");
     expect(diary).toContain("Current state remains in the diary");
+    expect(diary).not.toContain("frame or criteria");
+    expect(diary).not.toContain("about/projects/");
+    expect(normalizedEvents).toContain("what changed the owner's mind at the event");
     expect(library).toContain("library/<meaningful-slug>");
     expect(library).toContain("Format is metadata, never a directory");
     expect(library).toContain("preserved exactly when their words are known");
     expect(library).toContain("never infer a summary from the title alone");
     expect(meetings).toContain("## Commitments made");
+    expect(normalizedMeetings).toContain("The owner's read at the time");
     expect(meetings).not.toContain("## Follow-ups");
     expect(people).toContain("company, meeting, link, handle");
     expect(people).toContain("Occurrences link to people, not the reverse");
+    expect(normalizedPeople).toContain("current progress, ownership and next steps remain in the diary");
     expect(tasks).toContain("Beyond `intro`, there are no default names");
     expect(tasks).not.toContain("criteria");
     expect(tasks).not.toContain("<option>");
