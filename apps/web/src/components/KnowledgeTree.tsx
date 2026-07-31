@@ -61,33 +61,6 @@ function AssetIcon() {
   </svg>;
 }
 
-function DirectoryIndexRow({
-  directory,
-  depth,
-  selected,
-  onSelect,
-}: {
-  directory: Directory;
-  depth: number;
-  selected: KnowledgeSelection | null;
-  onSelect: (selection: KnowledgeSelection) => void;
-}) {
-  const active = selected?.kind === "directory" && selected.id === directory.id;
-  return <button
-    type="button"
-    className={`tree-row tree-page-row tree-index-row${active ? " selected" : ""}`}
-    style={{ "--tree-depth": depth } as CSSProperties}
-    role="treeitem"
-    aria-selected={active}
-    title={`${directory.title}\n${directory.current_path || "/"}`}
-    onClick={() => onSelect({ kind: "directory", id: directory.id })}
-  >
-    <span className="tree-chevron-spacer" aria-hidden="true" />
-    <PageIcon />
-    <span className="tree-label">index</span>
-  </button>;
-}
-
 type TreeItem = PageTreePage | AssetTreeAsset;
 
 function itemName(item: TreeItem) {
@@ -154,18 +127,25 @@ function DirectoryBranch({
 }) {
   const expanded = expandedPaths.has(directory.path);
   const publicItemCount = expanded ? 0 : countPublicItems(directory);
+  const active = directory.directory
+    ? selected?.kind === "directory" && selected.id === directory.directory.id
+    : false;
   const rowStyle = { "--tree-depth": depth } as CSSProperties;
 
   return <div className="tree-branch">
     <button
       type="button"
-      className="tree-row tree-directory-row"
+      className={`tree-row tree-directory-row tree-page-row${active ? " selected" : ""}`}
       style={rowStyle}
       role="treeitem"
       aria-expanded={expanded}
       aria-label={`${directory.name}${publicItemCount ? `, ${publicItemCount} public item${publicItemCount === 1 ? "" : "s"}` : ""}`}
       title={`${directory.path}/${publicItemCount ? `\n${publicItemCount} public item${publicItemCount === 1 ? "" : "s"}` : ""}`}
-      onClick={() => onToggle(directory.path)}
+      aria-selected={active}
+      onClick={() => {
+        onToggle(directory.path);
+        if (directory.directory) onSelect({ kind: "directory", id: directory.directory.id });
+      }}
     >
       <Chevron expanded={expanded} />
       <FolderIcon expanded={expanded} />
@@ -177,7 +157,6 @@ function DirectoryBranch({
       role="group"
       style={{ "--tree-depth": depth } as CSSProperties}
     >
-      {directory.directory && <DirectoryIndexRow directory={directory.directory} depth={depth + 1} selected={selected} onSelect={onSelect} />}
       {directory.directories.map((child) => <DirectoryBranch
         key={child.path}
         directory={child}
@@ -233,7 +212,19 @@ export function KnowledgeTree({ pages, directories, assets, query, selected, onS
   }
 
   return <div className="page-tree" role="tree" aria-label="Knowledge pages and assets">
-    {tree.directory && <DirectoryIndexRow directory={tree.directory} depth={0} selected={selected} onSelect={onSelect} />}
+    {tree.directory && <button
+      type="button"
+      className={`tree-row tree-directory-row tree-page-row${selected?.kind === "directory" && selected.id === tree.directory.id ? " selected" : ""}`}
+      style={{ "--tree-depth": 0 } as CSSProperties}
+      role="treeitem"
+      aria-selected={selected?.kind === "directory" && selected.id === tree.directory.id}
+      title="/"
+      onClick={() => onSelect({ kind: "directory", id: tree.directory!.id })}
+    >
+      <span className="tree-chevron-spacer" aria-hidden="true" />
+      <FolderIcon expanded />
+      <span className="tree-label">{tree.directory.title}</span>
+    </button>}
     {tree.directories.map((directory) => <DirectoryBranch
       key={directory.path}
       directory={directory}

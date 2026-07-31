@@ -207,21 +207,28 @@ export class PageRepository {
     return result.rows[0] ?? null;
   }
 
-  async listMetadata(includeArchived = false) {
+  async listMetadata(includeArchived = false, excludeGuides = false) {
+    const conditions = [
+      includeArchived ? "" : "p.archived_at IS NULL",
+      excludeGuides
+        ? "p.current_path<>CASE WHEN p.parent_path='' THEN 'agents' ELSE p.parent_path||'/agents' END"
+        : "",
+    ].filter(Boolean);
     const result = await this.pool.query<PageMetadata>(
-      `${CURRENT_PAGE_METADATA_SELECT} ${includeArchived ? "" : "WHERE p.archived_at IS NULL"} ORDER BY p.current_path`,
+      `${CURRENT_PAGE_METADATA_SELECT} ${conditions.length ? `WHERE ${conditions.join(" AND ")}` : ""} ORDER BY p.current_path`,
     );
     return result.rows;
   }
 
   async searchMetadata(
     query: string,
-    options: { limit?: number; includeArchived?: boolean } = {},
+    options: { limit?: number; includeArchived?: boolean; excludeGuides?: boolean } = {},
   ) {
     const limit = Math.min(Math.max(options.limit ?? 30, 1), 100);
     const result = await this.pool.query<PageMetadata>(
       `${CURRENT_PAGE_METADATA_SELECT}
        WHERE ${options.includeArchived ? "" : "p.archived_at IS NULL AND "}
+         ${options.excludeGuides ? "p.current_path<>CASE WHEN p.parent_path='' THEN 'agents' ELSE p.parent_path||'/agents' END AND " : ""}
          p.search_vector @@ websearch_to_tsquery('english', $1)
        ORDER BY ts_rank(p.search_vector, websearch_to_tsquery('english', $1)) DESC
        LIMIT $2`,

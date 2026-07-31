@@ -101,7 +101,7 @@ describe("knowledge tree", () => {
     });
   });
 
-  test("prunes directory indexes when no visible pages or assets remain", () => {
+  test("keeps explicit empty directories while pruning synthetic empty ancestors", () => {
     const tree = buildKnowledgeTree(
       [page("kept", "companies/acme/brief", "Brief")],
       [],
@@ -115,7 +115,7 @@ describe("knowledge tree", () => {
 
     const visibleTree = pruneEmptyDirectories(tree);
 
-    expect(visibleTree.directories.map(({ path }) => path)).toEqual(["companies"]);
+    expect(visibleTree.directories.map(({ path }) => path)).toEqual(["companies", "empty", "feed-digest"]);
     expect(visibleTree.directories[0]!.directories.map(({ path }) => path)).toEqual(["companies/acme"]);
   });
 

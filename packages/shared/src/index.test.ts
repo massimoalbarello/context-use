@@ -67,7 +67,7 @@ describe("strict mutation schemas", () => {
     }).success).toBe(false);
   });
 
-  test("pages and directories require concise single-line summaries", () => {
+  test("pages require summaries while directory public-listing summaries are optional", () => {
     expect(createPageSchema.safeParse({
       path: "notes/example", title: "Example", body_markdown: "Body", commit_message: "Create example",
     }).success).toBe(false);
@@ -77,6 +77,12 @@ describe("strict mutation schemas", () => {
     expect(createDirectorySchema.safeParse({
       path: "notes", title: "Notes", summary: "Focused notes and observations.", intro_markdown: "Optional introduction.",
     }).success).toBe(true);
+    expect(createDirectorySchema.parse({
+      path: "empty-notes", title: "Empty notes", intro_markdown: "",
+    }).summary).toBe("");
+    expect(createDirectorySchema.safeParse({
+      path: "notes", title: "Notes", summary: "First line.\nSecond line.", intro_markdown: "",
+    }).success).toBe(false);
   });
 
   test("ordinary page writes reserve about as a folder", () => {

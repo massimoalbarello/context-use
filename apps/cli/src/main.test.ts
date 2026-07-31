@@ -50,6 +50,7 @@ test("root help lists the operational commands", async () => {
   expect(result.stdout).toContain("setup");
   expect(result.stdout).toContain("recover");
   expect(result.stdout).toContain("nango");
+  expect(result.stdout).toContain("template");
   expect(result.stdout).not.toContain("recover-passkey");
   expect(result.stdout).toContain("destroy");
 });

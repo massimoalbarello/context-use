@@ -69,6 +69,7 @@ describe("public page presentation", () => {
       entries: [
         { kind: "directory", path: "about/chapters/early-years", title: "The early years", summary: "Childhood stories and formative experiences.", published_count: 2, default_page_path: null },
         { kind: "directory", path: "about/chapters/only-child", title: "Only child", summary: "Growing up as an only child.", published_count: 1, default_page_path: "about/chapters/only-child/story" },
+        { kind: "directory", path: "about/chapters/undocumented", title: "Undocumented", summary: "", published_count: 1, default_page_path: null },
         { kind: "page", path: "about/chapters/como", title: "Como", summary: "Growing up at the foot of the Alps.", published_count: 1, default_page_path: null },
       ],
     });
@@ -86,6 +87,7 @@ describe("public page presentation", () => {
     expect(html).toContain('<header class="public-index-header"><h1>Life chapters</h1></header>');
     expect(html).toContain('<a href="/p/about/chapters/early-years/">The early years</a><span>— Childhood stories and formative experiences.</span>');
     expect(html).toContain('<a href="/p/about/chapters/only-child/story">Only child</a><span>— Growing up as an only child.</span>');
+    expect(html).toContain('<a href="/p/about/chapters/undocumented/">Undocumented</a><span>— Published folder.</span>');
     expect(html).toContain('<a href="/p/about/chapters/como">Como</a><span>— Growing up at the foot of the Alps.</span>');
     expect(html).not.toContain("published page");
     expect(html).not.toContain("Only explicitly published knowledge appears here.");

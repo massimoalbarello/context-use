@@ -35,6 +35,12 @@ export const KnowledgeSummary = z
   .max(320)
   .refine((value) => !/[\r\n]/.test(value), "Use a single-line summary")
   .describe("Required one-sentence summary used in generated directory indexes and search results.");
+export const DirectorySummary = z
+  .string()
+  .trim()
+  .max(320)
+  .refine((value) => !/[\r\n]/.test(value), "Use a single-line summary")
+  .describe("Optional public-listing summary shown for this directory in its generated parent index.");
 const PageBodyMarkdown = z.string().max(2_000_000).describe(PAGE_MARKDOWN_BODY_DESCRIPTION);
 
 export const createPageSchema = z
@@ -61,13 +67,13 @@ export const updatePageSchema = z
 export const createDirectorySchema = z.object({
   path: KnowledgePath,
   title: z.string().trim().min(1).max(240),
-  summary: KnowledgeSummary,
+  summary: DirectorySummary.default(""),
   intro_markdown: PageBodyMarkdown.default(""),
 }).strict();
 
 export const updateDirectorySchema = z.object({
   title: z.string().trim().min(1).max(240),
-  summary: KnowledgeSummary,
+  summary: DirectorySummary,
   intro_markdown: PageBodyMarkdown,
   expected_version_number: z.number().int().positive(),
 }).strict();
@@ -176,6 +182,7 @@ export type DirectoryIndexEntry = {
 };
 
 export type DirectoryIndex = Directory & {
+  guide: KnowledgePageMetadata | null;
   children: DirectoryIndexEntry[];
 };
 

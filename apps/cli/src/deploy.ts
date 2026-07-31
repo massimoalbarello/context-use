@@ -9,12 +9,15 @@ export async function deploy(
   config: DeploymentConfig,
   compute: ComputeOutputs,
   manifest: ReleaseManifest,
-  recoveryBackupKey?: string,
-  recoveryNangoBackupKey?: string,
+  options: {
+    recoveryBackupKey?: string;
+    recoveryNangoBackupKey?: string;
+    installTemplate?: string;
+  } = {},
 ): Promise<void> {
   await assertManualDns(config, compute);
   const deployScript = await Bun.file(resolve(await deploymentRoot(manifest), "deploy/deploy.sh")).text();
-  const command = deploymentCommands(config, manifest, deployScript, recoveryBackupKey, recoveryNangoBackupKey);
+  const command = deploymentCommands(config, manifest, deployScript, options);
   await sendSsmCommands(config.awsProfile, config.awsRegion, compute.instance_id, command);
   await verifyDeployment(config, manifest.version);
 }
@@ -83,14 +86,21 @@ export function deploymentCommands(
   config: DeploymentConfig,
   manifest: ReleaseManifest,
   deployScript: string,
-  recoveryBackupKey?: string,
-  recoveryNangoBackupKey?: string,
+  options: {
+    recoveryBackupKey?: string;
+    recoveryNangoBackupKey?: string;
+    installTemplate?: string;
+  } = {},
 ): string[] {
+  const { recoveryBackupKey, recoveryNangoBackupKey, installTemplate } = options;
   if (recoveryBackupKey && !/^postgres\/[0-9TZ-]+\.sql\.gz$/.test(recoveryBackupKey)) {
     throw new Error("Invalid recovery backup key");
   }
   if (recoveryNangoBackupKey && !/^nango-postgres\/[0-9TZ-]+\.sql\.gz$/.test(recoveryNangoBackupKey)) {
     throw new Error("Invalid Nango recovery backup key");
+  }
+  if (installTemplate && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(installTemplate)) {
+    throw new Error("Invalid knowledge template name");
   }
   const encoded = Buffer.from(deployScript).toString("base64");
   const rolePrefix = `context-use-${config.installationId}-${config.environment}`;
@@ -100,7 +110,7 @@ export function deploymentCommands(
     "trap 'rm -f /tmp/context-use-deploy.sh' EXIT",
     `echo '${encoded}' | base64 -d > /tmp/context-use-deploy.sh`,
     "chmod 0700 /tmp/context-use-deploy.sh",
-    `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' CONTEXT_USE_STORAGE_ROLE_ARN='${storageRoleArn}' CONTEXT_USE_BACKUP_ROLE_ARN='${backupRoleArn}'${recoveryBackupKey ? ` CONTEXT_USE_RECOVERY_BACKUP_KEY='${recoveryBackupKey}'` : ""}${recoveryNangoBackupKey ? ` CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY='${recoveryNangoBackupKey}'` : ""} /tmp/context-use-deploy.sh`,
+    `CONTEXT_USE_VERSION='${manifest.version}' CONTEXT_USE_ENVIRONMENT='${config.environment}' CONTEXT_USE_BUNDLE_URL='${manifest.deployment_bundle.url}' CONTEXT_USE_BUNDLE_SHA256='${manifest.deployment_bundle.sha256}' CONTEXT_USE_APP_IMAGE='${manifest.images.app}' CONTEXT_USE_BACKUP_IMAGE='${manifest.images.backup}' CONTEXT_USE_PARAMETER_PREFIX='/context-use/${config.installationId}/${config.environment}' CONTEXT_USE_STORAGE_ROLE_ARN='${storageRoleArn}' CONTEXT_USE_BACKUP_ROLE_ARN='${backupRoleArn}'${recoveryBackupKey ? ` CONTEXT_USE_RECOVERY_BACKUP_KEY='${recoveryBackupKey}'` : ""}${recoveryNangoBackupKey ? ` CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY='${recoveryNangoBackupKey}'` : ""}${installTemplate ? ` CONTEXT_USE_TEMPLATE_INSTALL='${installTemplate}'` : ""} /tmp/context-use-deploy.sh`,
   ];
 }
 
