@@ -20,7 +20,10 @@ writing.
 - [[events/agents|Events]] — occasions defined by a time and place.
 - [[library/agents|Library]] — external works saved for recall.
 - [[meetings/agents|Meetings]] — conversations worth preserving.
+- [[objects/agents|Objects]] — individually meaningful physical things with durable
+  identity or history.
 - [[people/agents|People]] — the owner's personal CRM.
+- [[places/agents|Places]] — locations that matter beyond a passing mention.
 - [[skills/agents|Skills]] — reusable instructions loaded by an interactive agent.
 
 The index tells you which guide governs a subject; the linked guide decides its actual
@@ -62,8 +65,15 @@ represents those distinctions; the root does not prescribe a page shape for them
 **The rule that keeps the base from rotting.** Every page outside the diary is a durable
 account of its subject: it says what is true, or, for an occurrence, what happened. Edit
 it in place when its canonical account changes; never turn it into a running update log.
-The diary alone is chronological and is therefore the **only place that says where
-ongoing work currently stands**. Durable pages are overwritten; the diary is appended.
+The diary is the only day-by-day chronology and therefore the **only place that says
+where ongoing work currently stands**. Durable pages are edited to keep their canonical
+account true.
+
+A directory guide may define an entity `timeline`. This is a curated, dated index of
+completed history for one subject, not another diary: it links the canonical meeting,
+event, diary entry or other source, adds only enough context to explain the milestone,
+and never carries current status or next actions. Search remains the exhaustive record;
+a timeline contains the milestones that make the relationship intelligible.
 
 No status, next step, "waiting on", update section or dated progress log belongs on a
 durable page. To find out where something stands, read the recent diary. Dating a fact is

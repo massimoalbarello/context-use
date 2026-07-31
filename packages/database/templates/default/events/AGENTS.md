@@ -52,6 +52,10 @@ for every conversation that happened inside it.
   relevant, propose all such folders together rather than silently creating them. An
   event is often where a relationship starts, and that origin is worth being able to
   find later.
+- **Index material relationship milestones.** When something the owner did with a
+  person or company at the event materially starts or changes that relationship, add one
+  dated link to the entity's `timeline` in the same proposed write. Do not index mere
+  co-attendance or copy the event account.
 - **Anything durable that came out of it goes to its own home** — an idea to a project, a
   company to [[companies|companies]], a decision to the page that owns it — and the event
   links to it rather than restating it.

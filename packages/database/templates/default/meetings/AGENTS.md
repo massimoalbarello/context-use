@@ -71,6 +71,10 @@ survive. It goes in as `transcript`, marked raw at the top, never in place of `i
 - **Commitments are historical facts, not current status.** Record what was agreed in
   the meeting page; record subsequent ownership, progress and next actions in the diary,
   linking the project or [[about/tasks|task]] that gives them durable context.
+- **Index the relationship history.** Add this meeting to each participant's
+  `timeline` in the same proposed write. Add it to a company's `timeline` when the
+  meeting materially concerns the owner's direct relationship with that company. Each
+  timeline gets one dated sentence and a link here, not a copy of the write-up.
 - Written promptly or not at all; a page written a week later from memory should say so.
 - The [[about/diary|diary]] gets one line and a link, not the content, and the meeting
   page does not narrate the day around it. If a meeting changes what the owner wants, the
