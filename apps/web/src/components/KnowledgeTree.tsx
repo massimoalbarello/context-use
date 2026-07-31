@@ -28,6 +28,7 @@ type KnowledgeTreeProps = {
 };
 
 function restoredExpandedPaths(): Set<string> | null {
+  if (typeof window === "undefined") return null;
   try {
     return parseExpandedPaths(window.localStorage.getItem(EXPANDED_PATHS_STORAGE_KEY));
   } catch {
@@ -127,6 +128,9 @@ function DirectoryBranch({
 }) {
   const expanded = expandedPaths.has(directory.path);
   const publicItemCount = expanded ? 0 : countPublicItems(directory);
+  const label = directory.path === "" && directory.directory
+    ? directory.directory.title
+    : directory.name;
   const active = directory.directory
     ? selected?.kind === "directory" && selected.id === directory.directory.id
     : false;
@@ -139,7 +143,7 @@ function DirectoryBranch({
       style={rowStyle}
       role="treeitem"
       aria-expanded={expanded}
-      aria-label={`${directory.name}${publicItemCount ? `, ${publicItemCount} public item${publicItemCount === 1 ? "" : "s"}` : ""}`}
+      aria-label={`${label}${publicItemCount ? `, ${publicItemCount} public item${publicItemCount === 1 ? "" : "s"}` : ""}`}
       title={`${directory.path}/${publicItemCount ? `\n${publicItemCount} public item${publicItemCount === 1 ? "" : "s"}` : ""}`}
       aria-selected={active}
       onClick={() => {
@@ -149,7 +153,7 @@ function DirectoryBranch({
     >
       <Chevron expanded={expanded} />
       <FolderIcon expanded={expanded} />
-      <span className="tree-label">{directory.name}</span>
+      <span className="tree-label">{label}</span>
       {publicItemCount > 0 && <span className="tree-public-count" aria-hidden="true">{publicItemCount > 99 ? "99+" : publicItemCount}</span>}
     </button>
     {expanded && <div
@@ -195,10 +199,13 @@ export function KnowledgeTree({ pages, directories, assets, query, selected, onS
   }, [expandedPaths]);
 
   useEffect(() => {
-    if (initialized.current || (!pages.length && !assets.length)) return;
+    if (initialized.current || (!pages.length && !assets.length && !directories.length)) return;
     initialized.current = true;
-    setExpandedPaths(new Set(tree.directories.map((directory) => directory.path)));
-  }, [assets.length, pages.length, tree]);
+    setExpandedPaths(new Set([
+      ...(tree.directory ? [tree.path] : []),
+      ...tree.directories.map((directory) => directory.path),
+    ]));
+  }, [assets.length, directories.length, pages.length, tree]);
 
   const toggle = (path: string) => setExpandedPaths((current) => {
     const next = new Set(current);
@@ -212,28 +219,26 @@ export function KnowledgeTree({ pages, directories, assets, query, selected, onS
   }
 
   return <div className="page-tree" role="tree" aria-label="Knowledge pages and assets">
-    {tree.directory && <button
-      type="button"
-      className={`tree-row tree-directory-row tree-page-row${selected?.kind === "directory" && selected.id === tree.directory.id ? " selected" : ""}`}
-      style={{ "--tree-depth": 0 } as CSSProperties}
-      role="treeitem"
-      aria-selected={selected?.kind === "directory" && selected.id === tree.directory.id}
-      title="/"
-      onClick={() => onSelect({ kind: "directory", id: tree.directory!.id })}
-    >
-      <span className="tree-chevron-spacer" aria-hidden="true" />
-      <FolderIcon expanded />
-      <span className="tree-label">{tree.directory.title}</span>
-    </button>}
-    {tree.directories.map((directory) => <DirectoryBranch
-      key={directory.path}
-      directory={directory}
-      depth={0}
-      expandedPaths={visibleExpandedPaths}
-      selected={selected}
-      onToggle={toggle}
-      onSelect={onSelect}
-    />)}
-    <KnowledgeItems directory={tree} depth={0} selected={selected} onSelect={onSelect} />
+    {tree.directory
+      ? <DirectoryBranch
+        directory={tree}
+        depth={0}
+        expandedPaths={visibleExpandedPaths}
+        selected={selected}
+        onToggle={toggle}
+        onSelect={onSelect}
+      />
+      : <>
+        {tree.directories.map((directory) => <DirectoryBranch
+          key={directory.path}
+          directory={directory}
+          depth={0}
+          expandedPaths={visibleExpandedPaths}
+          selected={selected}
+          onToggle={toggle}
+          onSelect={onSelect}
+        />)}
+        <KnowledgeItems directory={tree} depth={0} selected={selected} onSelect={onSelect} />
+      </>}
   </div>;
 }

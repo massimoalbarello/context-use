@@ -16,7 +16,7 @@ export async function runTemplateCommand(
       directories: new DirectoryRepository(pool),
       pages: new PageRepository(pool),
     }, templateName, action === "apply", overwriteGuides);
-    console.log(formatTemplateResult(result));
+    console.log(formatTemplateResult(result, !("NO_COLOR" in process.env)));
   } finally {
     await pool.end();
   }

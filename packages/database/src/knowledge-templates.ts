@@ -39,6 +39,13 @@ export type TemplateResult = {
   actions: TemplateAction[];
 };
 
+const RESULT_INDICATORS = {
+  create: { symbol: "+", color: 32 },
+  change: { symbol: "~", color: 33 },
+  conflict: { symbol: "!", color: 31 },
+  success: { symbol: "✓", color: 32 },
+} as const;
+
 function assertTemplateName(name: string): void {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
     throw new Error(`Invalid template name: ${name}`);
@@ -204,11 +211,25 @@ export async function reconcileKnowledgeTemplate(
   return { template: templateName, applied: apply, actions };
 }
 
-export function formatTemplateResult(result: TemplateResult): string {
+function resultIndicator(
+  kind: keyof typeof RESULT_INDICATORS,
+  color: boolean,
+): string {
+  const { symbol, color: ansiColor } = RESULT_INDICATORS[kind];
+  return color ? `\u001B[${ansiColor}m${symbol}\u001B[0m` : symbol;
+}
+
+export function formatTemplateResult(result: TemplateResult, color = false): string {
   const visible = result.actions.filter(({ action }) => action !== "unchanged");
-  const lines = visible.map(({ action, path, detail }) => `${action.padEnd(16)} ${path || "/"}  ${detail}`);
+  const lines = visible.map(({ action, path, detail }) => {
+    const kind = action.startsWith("create-") ? "create"
+      : action === "conflict" ? "conflict"
+      : "change";
+    return `${resultIndicator(kind, color)} ${action.padEnd(16)} ${path || "/"}  ${detail}`;
+  });
   const conflicts = result.actions.filter(({ action }) => action === "conflict").length;
   const changes = result.actions.filter(({ action }) => action.startsWith("create-") || action === "adopt-guide" || action === "update-guide" || action === "replace-guide").length;
-  lines.push(`${result.applied ? "Applied" : "Planned"} ${changes} change${changes === 1 ? "" : "s"}; ${conflicts} conflict${conflicts === 1 ? "" : "s"}.`);
+  const summaryKind = conflicts ? "conflict" : "success";
+  lines.push(`${resultIndicator(summaryKind, color)} ${result.applied ? "Applied" : "Planned"} ${changes} change${changes === 1 ? "" : "s"}; ${conflicts} conflict${conflicts === 1 ? "" : "s"}.`);
   return lines.join("\n");
 }

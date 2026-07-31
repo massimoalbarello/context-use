@@ -74,6 +74,9 @@ describe("knowledge templates", () => {
     expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(11);
     expect(state.createdDirectories).toEqual([]);
     expect(state.createdPages).toEqual([]);
+    expect(formatTemplateResult(result)).toContain("+ create-directory library");
+    expect(formatTemplateResult(result)).toContain("✓ Planned 21 changes; 0 conflicts.");
+    expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
   });
 
   test("updates bootstrap-owned guides while preserving locally edited guides", async () => {
@@ -94,6 +97,9 @@ describe("knowledge templates", () => {
       detail: "Preserve locally modified guide",
     });
     expect(formatTemplateResult(result)).toContain("Applied 10 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("~ update-guide     agents");
+    expect(formatTemplateResult(result)).toContain("! conflict         people/agents");
+    expect(formatTemplateResult(result, true)).toContain("\u001B[31m!\u001B[0m conflict");
   });
 
   test("adopts an identical local guide so future template changes can update it", async () => {
