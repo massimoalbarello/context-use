@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "include": ["index.ts", "catalog.ts", "github/**/*.ts", "test-support/**/*.ts"],
+  "include": ["*.ts", "github/**/*.ts", "test-support/**/*.ts"],
   "exclude": ["node_modules", "build", ".nango"],
   "compilerOptions": {
     "module": "Node16",

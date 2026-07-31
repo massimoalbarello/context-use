@@ -15,7 +15,8 @@ RUN usermod --login bun --home /home/bun --move-home node \
     && groupmod --new-name bun node
 
 COPY --from=dependencies --chown=bun:bun /opt/context-use/nango-integrations/node_modules ./node_modules
-COPY --chown=bun:bun package.json bun.lock tsconfig.json index.ts catalog.ts ./
+COPY --chown=bun:bun package.json bun.lock tsconfig.json ./
+COPY --chown=bun:bun *.ts ./
 COPY --chown=bun:bun github ./github
 
 RUN mkdir -p build .nango \
@@ -26,6 +27,9 @@ ENV NANGO_CLI_DEPENDENCY_UPDATE=false \
     NANGO_CLI_UPGRADE_MODE=ignore
 
 USER bun
+
+RUN node ./node_modules/nango/dist/index.js compile --no-interactive --no-dependency-update \
+    && rm -rf build/* .nango/*
 
 ENTRYPOINT ["node", "./node_modules/nango/dist/index.js"]
 CMD ["--help"]
