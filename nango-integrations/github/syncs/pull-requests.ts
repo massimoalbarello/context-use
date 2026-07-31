@@ -1,6 +1,8 @@
 import { createSync, type ProxyConfiguration } from "nango";
 import { z } from "zod";
 
+import { PipelineRecordSchema, type PipelineRecord } from "../../pipeline-record.js";
+
 const PULL_REQUEST_MODEL = "GitHubPullRequest" as const;
 const REPOSITORY_STATE_MODEL = "GitHubRepositorySyncState" as const;
 
@@ -27,6 +29,27 @@ const RawGitHubRepositorySchema = z.looseObject({
   full_name: RepositoryFullNameSchema,
 });
 
+const RawGitHubUserSchema = z.object({
+  login: z.string().min(1),
+});
+
+const RawGitHubTeamSchema = z.object({
+  slug: z.string().min(1),
+});
+
+const RawGitHubLabelSchema = z.object({
+  name: z.string().min(1),
+});
+
+const RawGitHubMilestoneSchema = z.object({
+  title: z.string().min(1),
+});
+
+const RawGitHubBranchSchema = z.object({
+  ref: z.string().min(1),
+  label: z.string().min(1).optional(),
+});
+
 const PullRequestListItemSchema = z.looseObject({
   id: GitHubIdSchema,
   number: z.number().int().positive(),
@@ -34,50 +57,76 @@ const PullRequestListItemSchema = z.looseObject({
   updated_at: z.iso.datetime({ offset: true }),
 });
 
-const RawGitHubPullRequestSchema = z.looseObject({
+const RawGitHubPullRequestSchema = z.object({
   id: GitHubIdSchema,
   number: z.number().int().positive(),
   state: z.enum(["open", "closed"]),
+  title: z.string(),
+  body: z.string().nullable().optional(),
+  html_url: z.url(),
+  user: RawGitHubUserSchema.nullable().optional(),
+  assignees: z.array(RawGitHubUserSchema).optional().default([]),
+  requested_reviewers: z.array(RawGitHubUserSchema).optional().default([]),
+  requested_teams: z.array(RawGitHubTeamSchema).optional().default([]),
+  labels: z.array(RawGitHubLabelSchema).optional().default([]),
+  milestone: RawGitHubMilestoneSchema.nullable().optional(),
+  created_at: z.iso.datetime({ offset: true }),
   updated_at: z.iso.datetime({ offset: true }),
+  closed_at: z.iso.datetime({ offset: true }).nullable().optional(),
+  merged_at: z.iso.datetime({ offset: true }).nullable().optional(),
+  draft: z.boolean().optional().default(false),
+  head: RawGitHubBranchSchema,
+  base: RawGitHubBranchSchema,
   commits: z.number().int().nonnegative(),
+  additions: z.number().int().nonnegative().optional(),
+  deletions: z.number().int().nonnegative().optional(),
   changed_files: z.number().int().nonnegative(),
 });
 
-const RawGitHubCommitSchema = z.looseObject({
+const RawGitHubCommitSchema = z.object({
   sha: z.string().min(1),
-});
-
-const RawGitHubReviewSchema = z.looseObject({
-  id: GitHubIdSchema,
-});
-
-const RawGitHubIssueCommentSchema = z.looseObject({
-  id: GitHubIdSchema,
-});
-
-const RawGitHubReviewCommentSchema = z.looseObject({
-  id: GitHubIdSchema,
-});
-
-const GitHubPullRequestSchema = z.object({
-  id: z.string().min(1),
-  repository_id: z.string().min(1),
-  repository: RepositoryFullNameSchema,
-  number: z.number().int().positive(),
-  source_updated_at: z.iso.datetime({ offset: true }),
-  pull_request: RawGitHubPullRequestSchema,
-  commits: z.array(RawGitHubCommitSchema),
-  reviews: z.array(RawGitHubReviewSchema),
-  issue_comments: z.array(RawGitHubIssueCommentSchema),
-  review_comments: z.array(RawGitHubReviewCommentSchema),
-  collection_completeness: z.object({
-    commits: z.object({
-      expected: z.number().int().nonnegative(),
-      fetched: z.number().int().nonnegative(),
-      complete: z.boolean(),
-    }),
+  html_url: z.url().optional(),
+  commit: z.object({
+    message: z.string().optional(),
+    author: z.object({
+      name: z.string().nullable().optional(),
+      date: z.iso.datetime({ offset: true }).nullable().optional(),
+    }).nullable().optional(),
   }),
+  author: RawGitHubUserSchema.nullable().optional(),
 });
+
+const RawGitHubReviewSchema = z.object({
+  id: GitHubIdSchema,
+  user: RawGitHubUserSchema.nullable().optional(),
+  state: z.string().min(1),
+  submitted_at: z.iso.datetime({ offset: true }).nullable().optional(),
+  body: z.string().nullable().optional(),
+  html_url: z.url().optional(),
+});
+
+const RawGitHubIssueCommentSchema = z.object({
+  id: GitHubIdSchema,
+  user: RawGitHubUserSchema.nullable().optional(),
+  created_at: z.iso.datetime({ offset: true }),
+  updated_at: z.iso.datetime({ offset: true }).nullable().optional(),
+  body: z.string().nullable().optional(),
+  html_url: z.url().optional(),
+});
+
+const RawGitHubReviewCommentSchema = z.object({
+  id: GitHubIdSchema,
+  user: RawGitHubUserSchema.nullable().optional(),
+  created_at: z.iso.datetime({ offset: true }),
+  updated_at: z.iso.datetime({ offset: true }).nullable().optional(),
+  body: z.string().nullable().optional(),
+  path: z.string().nullable().optional(),
+  line: z.number().int().positive().nullable().optional(),
+  original_line: z.number().int().positive().nullable().optional(),
+  html_url: z.url().optional(),
+});
+
+const GitHubPullRequestSchema = PipelineRecordSchema;
 
 const GitHubRepositorySyncStateSchema = z.object({
   id: z.string().min(1),
@@ -89,7 +138,7 @@ const GitHubSyncMetadataSchema = z.object({
   repositories: z.array(RepositoryFullNameSchema).optional(),
 });
 
-type GitHubPullRequest = z.infer<typeof GitHubPullRequestSchema>;
+type GitHubPullRequest = PipelineRecord;
 type GitHubRepository = z.infer<typeof RawGitHubRepositorySchema>;
 type GitHubRepositorySyncState = z.infer<typeof GitHubRepositorySyncStateSchema>;
 type GitHubSyncMetadata = z.infer<typeof GitHubSyncMetadataSchema>;
@@ -97,8 +146,8 @@ type PullRequestListItem = z.infer<typeof PullRequestListItemSchema>;
 
 const sync = createSync({
   description:
-    "Sync raw GitHub pull request snapshots with explicit commit-list completeness and per-repository incremental state",
-  version: "1.0.0",
+    "Sync compact, Markdown-first GitHub pull request records with complete discussion and review context",
+  version: "2.0.0",
   frequency: "every half hour",
   autoStart: true,
   syncType: "incremental",
@@ -358,20 +407,215 @@ async function hydratePullRequest(
       + `${commits.length}/${details.commits} commits fetched`,
     );
   }
+  const updatedAt = latestTimestamp([
+    details.updated_at,
+    ...reviews.map((review) => review.submitted_at),
+    ...issueComments.map((comment) => comment.updated_at ?? comment.created_at),
+    ...reviewComments.map((comment) => comment.updated_at ?? comment.created_at),
+  ]);
 
   return GitHubPullRequestSchema.parse({
     id: actualId,
-    repository_id: githubId(repository.id),
-    repository: repository.full_name,
-    number: details.number,
-    source_updated_at: details.updated_at,
-    pull_request: details,
-    commits,
-    reviews,
-    issue_comments: issueComments,
-    review_comments: reviewComments,
-    collection_completeness: collectionCompleteness,
+    created_at: details.created_at,
+    updated_at: updatedAt,
+    participants: participants(details, commits, reviews, issueComments, reviewComments),
+    body: renderPullRequestBody(
+      repository.full_name,
+      details,
+      commits,
+      reviews,
+      issueComments,
+      reviewComments,
+      collectionCompleteness,
+      updatedAt,
+    ),
   });
+}
+
+type CommitCompleteness = {
+  commits: {
+    expected: number;
+    fetched: number;
+    complete: boolean;
+  };
+};
+
+function renderPullRequestBody(
+  repository: string,
+  pullRequest: z.infer<typeof RawGitHubPullRequestSchema>,
+  commits: z.infer<typeof RawGitHubCommitSchema>[],
+  reviews: z.infer<typeof RawGitHubReviewSchema>[],
+  issueComments: z.infer<typeof RawGitHubIssueCommentSchema>[],
+  reviewComments: z.infer<typeof RawGitHubReviewCommentSchema>[],
+  completeness: CommitCompleteness,
+  updatedAt: string,
+): string {
+  const status = pullRequest.merged_at
+    ? "merged"
+    : pullRequest.state === "closed"
+      ? "closed"
+      : pullRequest.draft
+        ? "draft"
+        : "open";
+  const lines = [
+    `# Pull request ${repository}#${pullRequest.number}: ${pullRequest.title}`,
+    "",
+    `- Status: ${status}`,
+    `- Repository: ${repository}`,
+    `- Author: ${actor(pullRequest.user)}`,
+    `- Branch: \`${escapeCode(branch(pullRequest.head))}\` -> \`${escapeCode(branch(pullRequest.base))}\``,
+    `- Created: ${pullRequest.created_at}`,
+    `- Last activity: ${updatedAt}`,
+    `- URL: ${pullRequest.html_url}`,
+  ];
+
+  if (pullRequest.merged_at) lines.push(`- Merged: ${pullRequest.merged_at}`);
+  else if (pullRequest.closed_at) lines.push(`- Closed: ${pullRequest.closed_at}`);
+  if (pullRequest.labels.length > 0) {
+    lines.push(`- Labels: ${pullRequest.labels.map((label) => label.name).join(", ")}`);
+  }
+  if (pullRequest.assignees.length > 0) {
+    lines.push(`- Assignees: ${pullRequest.assignees.map(actor).join(", ")}`);
+  }
+  const requestedReviewers = uniqueStrings([
+    ...pullRequest.requested_reviewers.map(actor),
+    ...pullRequest.requested_teams.map((team) => `@${team.slug}`),
+  ]);
+  if (requestedReviewers.length > 0) {
+    lines.push(`- Requested reviewers: ${requestedReviewers.join(", ")}`);
+  }
+  if (pullRequest.milestone) lines.push(`- Milestone: ${pullRequest.milestone.title}`);
+  lines.push(
+    `- Change size: ${pullRequest.changed_files} ${pluralize("file", pullRequest.changed_files)}, ${pullRequest.additions ?? 0} ${pluralize("line", pullRequest.additions ?? 0)} added, ${pullRequest.deletions ?? 0} ${pluralize("line", pullRequest.deletions ?? 0)} removed`,
+  );
+  if (!completeness.commits.complete) {
+    lines.push(
+      `- Data warning: GitHub reported ${completeness.commits.expected} commits but returned ${completeness.commits.fetched}.`,
+    );
+  }
+
+  lines.push("", "## Description", "", normalizedText(pullRequest.body) ?? "(no description)");
+
+  if (commits.length > 0) {
+    lines.push("", "## Commits", "");
+    for (const commit of commits) {
+      const message = splitMessage(commit.commit.message);
+      const timestamp = commit.commit.author?.date;
+      const commitAuthor = commit.author?.login ?? commit.commit.author?.name ?? "unknown";
+      lines.push(
+        `### ${headingParts(timestamp, `@${commitAuthor}`, `${commit.sha.slice(0, 12)} ${message.title}`)}`,
+      );
+      if (message.body) lines.push("", message.body);
+      if (commit.html_url) lines.push("", `Link: ${commit.html_url}`);
+      lines.push("");
+    }
+  }
+
+  const events = [
+    ...reviews.map((review) => ({
+      timestamp: review.submitted_at ?? undefined,
+      author: actor(review.user),
+      title: `Review ${review.state.toLowerCase().replaceAll("_", " ")}`,
+      body: normalizedText(review.body) ?? `${actor(review.user)} submitted this review.`,
+      url: review.html_url,
+    })),
+    ...issueComments
+      .filter((comment) => normalizedText(comment.body))
+      .map((comment) => ({
+        timestamp: comment.created_at,
+        author: actor(comment.user),
+        title: "Discussion comment",
+        body: normalizedText(comment.body)!,
+        url: comment.html_url,
+      })),
+    ...reviewComments
+      .filter((comment) => normalizedText(comment.body))
+      .map((comment) => ({
+        timestamp: comment.created_at,
+        author: actor(comment.user),
+        title: `Code review comment${codeLocation(comment)}`,
+        body: normalizedText(comment.body)!,
+        url: comment.html_url,
+      })),
+  ].sort((left, right) => timestampValue(left.timestamp) - timestampValue(right.timestamp));
+
+  if (events.length > 0) {
+    lines.push("", "## Reviews and comments", "");
+    for (const event of events) {
+      lines.push(`### ${headingParts(event.timestamp, event.author, event.title)}`, "", event.body);
+      if (event.url) lines.push("", `Link: ${event.url}`);
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n").trim();
+}
+
+function participants(
+  pullRequest: z.infer<typeof RawGitHubPullRequestSchema>,
+  commits: z.infer<typeof RawGitHubCommitSchema>[],
+  reviews: z.infer<typeof RawGitHubReviewSchema>[],
+  issueComments: z.infer<typeof RawGitHubIssueCommentSchema>[],
+  reviewComments: z.infer<typeof RawGitHubReviewCommentSchema>[],
+): string[] {
+  return uniqueStrings([
+    pullRequest.user?.login,
+    ...pullRequest.assignees.map((user) => user.login),
+    ...pullRequest.requested_reviewers.map((user) => user.login),
+    ...pullRequest.requested_teams.map((team) => team.slug),
+    ...commits.map((commit) => commit.author?.login ?? commit.commit.author?.name ?? undefined),
+    ...reviews.map((review) => review.user?.login),
+    ...issueComments.map((comment) => comment.user?.login),
+    ...reviewComments.map((comment) => comment.user?.login),
+  ].filter((value): value is string => Boolean(value && value !== "unknown")));
+}
+
+function actor(user: z.infer<typeof RawGitHubUserSchema> | null | undefined): string {
+  return user ? `@${user.login}` : "unknown";
+}
+
+function branch(value: z.infer<typeof RawGitHubBranchSchema>): string {
+  return value.label ?? value.ref;
+}
+
+function escapeCode(value: string): string {
+  return value.replaceAll("`", "\\`");
+}
+
+function normalizedText(value: string | null | undefined): string | undefined {
+  const normalized = value?.replaceAll("\r\n", "\n").trim();
+  return normalized ? normalized : undefined;
+}
+
+function splitMessage(value: string | undefined): { title: string; body?: string } {
+  const normalized = normalizedText(value) ?? "(no commit message)";
+  const [title, ...rest] = normalized.split("\n");
+  const body = rest.join("\n").trim();
+  return { title: title!, ...(body ? { body } : {}) };
+}
+
+function headingParts(...parts: Array<string | null | undefined>): string {
+  return parts.filter((part): part is string => Boolean(part)).join(" - ");
+}
+
+function codeLocation(comment: z.infer<typeof RawGitHubReviewCommentSchema>): string {
+  if (!comment.path) return "";
+  const line = comment.line ?? comment.original_line;
+  return ` on \`${escapeCode(comment.path)}${line ? `:${line}` : ""}\``;
+}
+
+function timestampValue(value: string | null | undefined): number {
+  return value ? Date.parse(value) : Number.MAX_SAFE_INTEGER;
+}
+
+function latestTimestamp(values: Array<string | null | undefined>): string {
+  return values
+    .filter((value): value is string => Boolean(value))
+    .reduce((latest, value) => Date.parse(value) > Date.parse(latest) ? value : latest);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }
 
 function paginatedConfig(endpoint: string): ProxyConfiguration {

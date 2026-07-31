@@ -36,6 +36,7 @@ describe("GitHub pull request integration contract", () => {
       },
     ]);
     expect(sync.frequency).toBe("every half hour");
+    expect(sync.version).toBe("2.0.0");
     expect(sync.autoStart).toBe(true);
     expect(sync.scopes).toEqual(["repo"]);
     expect(Object.keys(sync.models)).toEqual([
@@ -50,7 +51,7 @@ describe("GitHub pull request sync", () => {
     setSystemTime();
   });
 
-  it("hydrates every open PR and only overlapping closed PRs as complete raw snapshots", async () => {
+  it("hydrates every open PR and only overlapping closed PRs as compact Markdown records", async () => {
     const fake = new FakeNango();
     const repository = githubRepository(501, "acme/widgets");
     fake.setPages("/user/repos", [[repository]]);
@@ -84,26 +85,51 @@ describe("GitHub pull request sync", () => {
     expect(pullRequestBatches).toHaveLength(2);
     expect(pullRequestBatches.every((batch) => batch.records.length === 1)).toBe(true);
 
-    const snapshots = pullRequestBatches.flatMap((batch) => batch.records);
-    const openSnapshot = GitHubPullRequestSchema.parse(snapshots[0]);
-    expect(openSnapshot).toMatchObject({
+    const records = pullRequestBatches.flatMap((batch) => batch.records);
+    const openRecord = GitHubPullRequestSchema.parse(records[0]);
+    expect(openRecord).toMatchObject({
       id: "1001",
-      repository_id: "501",
-      repository: "acme/widgets",
-      number: 11,
-      source_updated_at: "2025-01-01T00:00:00.000Z",
+      created_at: "2025-01-01T00:00:00.000Z",
+      updated_at: "2025-01-01T00:00:00.000Z",
+      participants: ["alex", "maya", "platform", "priya", "sam", "taylor"],
     });
-    expect(openSnapshot.pull_request["node_id"]).toBe("PR_1001");
-    expect(openSnapshot.pull_request["requested_reviewers"]).toEqual([{ id: 81, login: "sam" }]);
-    expect(openSnapshot.commits.map((commit) => commit["sha"])).toEqual(["sha-a", "sha-b"]);
-    expect(openSnapshot.reviews[0]?.["node_id"]).toBe("REVIEW_1001");
-    expect(openSnapshot.issue_comments[0]?.["provider_only_field"]).toBe("kept");
-    expect(openSnapshot.review_comments[0]?.["diff_hunk"]).toBe("@@ -1 +1 @@");
-    expect(openSnapshot.collection_completeness).toEqual({
-      commits: { expected: 2, fetched: 2, complete: true },
-    });
-    expect(JSON.stringify(openSnapshot)).not.toContain("synced_at");
-    expect("body" in openSnapshot).toBe(false);
+    expect(Object.keys(openRecord)).toEqual([
+      "id",
+      "created_at",
+      "updated_at",
+      "participants",
+      "body",
+    ]);
+    expect(openRecord.body).toContain("# Pull request acme/widgets#11: Pull request 11");
+    expect(openRecord.body).toContain("- Author: @maya");
+    expect(openRecord.body).toContain("- Status: open");
+    expect(openRecord.body).toContain("- Branch: `maya:feature` -> `acme:main`");
+    expect(openRecord.body).toContain("- Labels: integration");
+    expect(openRecord.body).toContain("- Assignees: @alex");
+    expect(openRecord.body).toContain("- Requested reviewers: @platform, @sam");
+    expect(openRecord.body).toContain("- Milestone: Readable records");
+    expect(openRecord.body).toContain("- Change size: 1 file, 12 lines added, 3 lines removed");
+    expect(openRecord.body).toContain("- URL: https://github.com/acme/widgets/pull/11");
+    expect(openRecord.body).toContain("## Description\n\nRaw body for 11");
+    expect(openRecord.body).toContain("## Commits");
+    expect(openRecord.body).toContain("sha-a First commit");
+    expect(openRecord.body).toContain("Additional commit context.");
+    expect(openRecord.body).toContain("Review approved");
+    expect(openRecord.body).toContain("Discussion comment");
+    expect(openRecord.body).toContain("Code review comment on `src/example.ts:88`");
+    expect(openRecord.body).toContain("Code comment");
+
+    const serialized = JSON.stringify(openRecord);
+    for (const providerField of [
+      "node_id",
+      "provider_only_field",
+      "diff_hunk",
+      "commit_id",
+      "pull_request",
+      "requested_reviewers",
+    ]) {
+      expect(serialized).not.toContain(providerField);
+    }
 
     const requestedEndpoints = [
       ...fake.getCalls.map((call) => call.endpoint),
@@ -139,7 +165,7 @@ describe("GitHub pull request sync", () => {
     await executeSync(fake);
 
     expect(savedRecords(fake, PULL_REQUEST_MODEL)).toHaveLength(1);
-    expect(savedRecords(fake, PULL_REQUEST_MODEL)[0]).toMatchObject({ id: "2001", number: 99 });
+    expect(savedRecords(fake, PULL_REQUEST_MODEL)[0]).toMatchObject({ id: "2001" });
     expect(savedRecords(fake, REPOSITORY_STATE_MODEL)).toHaveLength(1);
   });
 
@@ -156,9 +182,9 @@ describe("GitHub pull request sync", () => {
 
     await executeSync(fake);
 
-    expect(savedRecords(fake, PULL_REQUEST_MODEL)[0]?.["collection_completeness"]).toEqual({
-      commits: { expected: 251, fetched: 1, complete: false },
-    });
+    expect(savedRecords(fake, PULL_REQUEST_MODEL)[0]?.["body"]).toContain(
+      "Data warning: GitHub reported 251 commits but returned 1.",
+    );
     expect(fake.logs.some((message) => message.includes("1/251 commits fetched"))).toBe(true);
   });
 
@@ -185,8 +211,6 @@ describe("GitHub pull request sync", () => {
     ]);
     expect(savedRecords(fake, PULL_REQUEST_MODEL)[0]).toMatchObject({
       id: "pr-9",
-      repository_id: "repo-7",
-      repository: "new-owner/new-name",
     });
     expect(savedRecords(fake, REPOSITORY_STATE_MODEL)[0]).toMatchObject({
       id: "repo-7",
@@ -219,7 +243,6 @@ describe("GitHub pull request sync", () => {
     expect(savedRecords(fake, PULL_REQUEST_MODEL)).toHaveLength(1);
     expect(savedRecords(fake, PULL_REQUEST_MODEL)[0]).toMatchObject({
       id: "20",
-      repository: "acme/healthy",
     });
     expect(savedRecords(fake, REPOSITORY_STATE_MODEL)).toEqual([
       {
@@ -294,36 +317,77 @@ function addHydration(
   fake.setResponse(base, {
     ...summary,
     body: `Raw body for ${number}`,
+    html_url: `https://github.com/${repository}/pull/${number}`,
+    user: { id: 80, login: "maya" },
+    assignees: [{ id: 83, login: "alex" }],
     requested_reviewers: [{ id: 81, login: "sam" }],
     requested_teams: [{ id: 82, slug: "platform" }],
-    head: { ref: "feature", sha: "head-sha" },
-    base: { ref: "main", sha: "base-sha" },
+    labels: [{ id: 1, name: "integration" }],
+    milestone: { id: 2, title: "Readable records" },
+    created_at: summary["updated_at"],
+    closed_at: summary["state"] === "closed" ? summary["updated_at"] : null,
+    merged_at: null,
+    draft: false,
+    head: { ref: "feature", label: "maya:feature", sha: "head-sha" },
+    base: { ref: "main", label: "acme:main", sha: "base-sha" },
     commits: options.reportedCommitCount ?? (options.multiPageCommits ? 2 : 1),
+    additions: 12,
+    deletions: 3,
     changed_files: 1,
     provider_only_field: "kept",
   });
   fake.setPages(
     `${base}/commits`,
     options.multiPageCommits
-      ? [[{ sha: "sha-a", commit: { message: "A" } }], [{ sha: "sha-b", commit: { message: "B" } }]]
-      : [[{ sha: `sha-${id}`, commit: { message: "One commit" } }]],
+      ? [[githubCommit("sha-a", "First commit\n\nAdditional commit context.", summary["updated_at"] as string)], [
+        githubCommit("sha-b", "Second commit", summary["updated_at"] as string),
+      ]]
+      : [[githubCommit(`sha-${id}`, "One commit", summary["updated_at"] as string)]],
   );
   fake.setPages(`${base}/reviews`, [[{
     id: `${id}-review`,
     node_id: `REVIEW_${id}`,
+    user: { id: 83, login: "alex" },
     state: "APPROVED",
+    submitted_at: summary["updated_at"],
+    body: "Schema looks clean.",
+    html_url: `https://github.com/${repository}/pull/${number}#review`,
   }]]);
   fake.setPages(`/repos/${repository}/issues/${number}/comments`, [[{
     id: `${id}-issue-comment`,
+    user: { id: 84, login: "taylor" },
+    created_at: summary["updated_at"],
+    updated_at: summary["updated_at"],
     body: "Discussion",
+    html_url: `https://github.com/${repository}/pull/${number}#discussion`,
     provider_only_field: "kept",
   }]]);
   fake.setPages(`${base}/comments`, [[{
     id: `${id}-review-comment`,
+    user: { id: 85, login: "priya" },
+    created_at: summary["updated_at"],
+    updated_at: summary["updated_at"],
     body: "Code comment",
+    path: "src/example.ts",
+    line: 88,
+    html_url: `https://github.com/${repository}/pull/${number}#code-comment`,
     diff_hunk: "@@ -1 +1 @@",
     commit_id: "raw-commit-id",
   }]]);
+}
+
+function githubCommit(sha: string, message: string, timestamp: string): Record<string, unknown> {
+  return {
+    sha,
+    node_id: `COMMIT_${sha}`,
+    html_url: `https://github.com/acme/widgets/commit/${sha}`,
+    author: { id: 80, login: "maya" },
+    commit: {
+      message,
+      author: { name: "Maya", email: "maya@example.com", date: timestamp },
+      tree: { sha: "provider-tree-sha" },
+    },
+  };
 }
 
 function savedRecords(fake: FakeNango, model: string): Array<Record<string, unknown>> {
