@@ -219,7 +219,8 @@ describe("knowledge templates", () => {
     expect(diary).not.toContain("frame or criteria");
     expect(diary).not.toContain("about/projects/");
     expect(normalizedEvents).toContain("what changed the owner's mind at the event");
-    expect(library).toContain("library/<meaningful-slug>");
+    expect(library).toContain("library/<meaningful-slug>/");
+    expect(library).toContain("description shown for the work in the parent `library/` index");
     expect(library).toContain("Format is metadata, never a directory");
     expect(library).toContain("preserved exactly when their words are known");
     expect(library).toContain("never infer a summary from the title alone");

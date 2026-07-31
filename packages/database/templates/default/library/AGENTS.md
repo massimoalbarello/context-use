@@ -6,14 +6,23 @@ not a feed, reading queue or archive of everything encountered. Save an item whe
 ideas, the owner's reaction or its connection to existing knowledge makes it worth
 finding again.
 
-## One work, one page
+## One work, one folder
 
-Create one page per saved work at `library/<meaningful-slug>`. The slug and page title
-should make the subject or creator recognisable in a directory listing; shorten a long
-original title rather than copying it mechanically. Prefer `<creator>-<topic>` when the
-title alone is vague or likely to collide.
+Create one folder per saved work at `library/<meaningful-slug>/`, entered through
+`intro`. The slug, folder title and `intro` page title should make the subject or creator
+recognisable in a directory listing; shorten a long original title rather than copying
+it mechanically. Prefer `<creator>-<topic>` when the title alone is vague or likely to
+collide.
 
-    library/karpathy-software-is-changing-again
+    library/karpathy-software-is-changing-again/
+    ├── intro       — the canonical account of the work
+    └── (pictures)  — uploaded into the folder and embedded from `intro`
+
+Give every work folder a one-sentence directory summary when creating it. This is the
+description shown for the work in the parent `library/` index, so it should say what the
+item is and why it is useful to remember; do not leave it blank or merely repeat the
+format or title. The `intro` page is required and is usually the only page. Add supporting
+pages or assets beside it only when they make the saved work more useful to revisit.
 
 Use the work itself as the unit, not its delivery format. A video and transcript of the
 same talk are one entry with both links. Separate podcast episodes are separate entries.
@@ -22,7 +31,7 @@ similar branches.
 
 ## Template
 
-    # <Meaningful title>
+    # <Meaningful title>                           ← intro
 
     **Source:** [<full source title>](<canonical URL>)
     **Format:** <video | article | podcast | paper | talk | thread | other>
@@ -51,9 +60,10 @@ similar branches.
     - **Related:** [[about/…|idea, project or preference]], [[about/tasks/…|decision frame]],
       [[meetings/…|meeting]], [[events/…|event]] or [[library/…|related work]]
 
-Delete empty metadata and connection lines rather than leaving placeholders. The page's
-one-sentence summary should say what the item is and why it is useful to remember, not
-merely repeat its format or title.
+Delete empty metadata and connection lines rather than leaving placeholders. The
+`intro` page's one-sentence summary should follow the same standard as the folder
+summary: say what the item is and why it is useful to remember, not merely its format or
+title.
 
 ## Local rules
 
