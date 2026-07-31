@@ -13,6 +13,15 @@ Any other organization under `about/` is specific to the instance. Follow the
 structure and local guides already present; do not assume or create additional
 categories from this template.
 
+## Examples, not a schema
+
+Owner-subject knowledge might include health, finances or taxes, education, family,
+personal history, preferences, beliefs, routines, goals or important documents. These
+are examples of what can belong under `about/`, not prescribed categories, reserved
+names or instructions to create folders. Use the organization already present. When a
+new durable subject genuinely needs a home, choose a name and structure that fit this
+instance and add a local guide only when agents need conventions to maintain it.
+
 ## What belongs here
 
 - Durable facts, context and material whose subject is the owner.

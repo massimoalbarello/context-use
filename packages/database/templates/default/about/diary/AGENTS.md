@@ -68,7 +68,7 @@ Before writing anything, ask: **will this still matter on its own in a month?**
 | --- | --- |
 | How the day felt, a passing observation | the log |
 | Working notes or a draft that only matter today | day folder page, linked from the log |
-| A call, a conference, someone new, a company | the owning [[meetings/agents|meeting]], [[events/agents|event]], [[people/agents|person]] or [[companies/agents|company]] page; the log links |
+| A call, a conference, someone new, a company | the owning [[meetings/agents|meeting]], [[events/agents|event]], [[people/agents|person]] or [[companies/agents|company]] page; the log links, and a material relationship milestone is indexed on the entity timeline |
 | A new idea, or a decision and its reasoning | the durable page for the subject; the log keeps the lived reasoning |
 | A preference, taste, habit or belief articulated | a durable owner page, following the instance's organization under `about/` |
 | An open loop still open tomorrow | the log links the durable subject or [[about/tasks/agents|task]] that gives it context; current state remains in the diary |
@@ -77,6 +77,20 @@ The log carries **pointers and lived texture, never canonical content**. A fact 
 exists only inside a diary entry is trapped — the failure mode this directory exists to
 avoid. When you find one in an older log, promote it: create or update the durable page,
 then reduce the log line to a sentence and a link.
+
+## Relationship timelines
+
+When a day's entry records a material interaction with a person or company, create or
+update that entity's `timeline` in the same proposed write. The diary owns what happened
+that day and where things currently stand; the entity timeline merely makes the durable
+relationship history findable from that entity.
+
+- Link the canonical meeting or event when one exists; otherwise link the most specific
+  diary page that records the interaction.
+- Add one short, dated milestone saying what the owner and entity did together and what
+  durably changed. Do not copy the account from its source.
+- Do not add casual mentions, current status, pending commitments or next actions. A
+  timeline is curated history; search remains the exhaustive occurrence list.
 
 ## Continuity
 
