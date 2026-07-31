@@ -4,9 +4,17 @@ import { formatTemplateResult, reconcileKnowledgeTemplate } from "./knowledge-te
 
 function repositories(options: {
   directories?: string[];
+  directorySummaries?: Record<string, string>;
   pages?: Record<string, { body: string; actor: string; archived?: boolean }>;
 } = {}) {
-  const directoryPaths = new Set(options.directories ?? [""]);
+  const directoryRecords = new Map((options.directories ?? [""]).map((path, index) => [path, {
+    id: `directory-${index}`,
+    current_path: path,
+    version_number: 1,
+    title: path ? path.split("/").at(-1)! : "Knowledge",
+    summary: options.directorySummaries?.[path] ?? "Existing directory summary.",
+    intro_markdown: `Existing introduction for ${path || "root"}.`,
+  }]));
   const pages = new Map(Object.entries(options.pages ?? {}).map(([path, page], index) => [path, {
     id: `page-${index}`,
     current_path: path,
@@ -20,17 +28,33 @@ function repositories(options: {
     actor: page.actor,
   }]));
   const createdDirectories: string[] = [];
+  const createdDirectoryInputs: Array<{ path: string; title: string; summary: string; intro_markdown: string }> = [];
+  const updatedDirectories: string[] = [];
+  const updatedDirectoryInputs: Array<{ title: string; summary: string; intro_markdown: string; expected_version_number: number }> = [];
   const createdPages: string[] = [];
   const updatedPages: string[] = [];
   const value = {
     directories: {
       async getByPath(path: string) {
-        return directoryPaths.has(path) ? { id: path || "root" } : null;
+        return directoryRecords.get(path) ?? null;
       },
-      async create(input: { path: string }) {
-        directoryPaths.add(input.path);
+      async create(input: { path: string; title: string; summary: string; intro_markdown: string }) {
         createdDirectories.push(input.path);
+        createdDirectoryInputs.push(input);
+        directoryRecords.set(input.path, {
+          id: `directory-created-${createdDirectories.length}`,
+          current_path: input.path,
+          version_number: 1,
+          ...input,
+        });
         return input;
+      },
+      async update(id: string, input: { title: string; summary: string; intro_markdown: string; expected_version_number: number }) {
+        const record = [...directoryRecords.values()].find((candidate) => candidate.id === id)!;
+        updatedDirectories.push(record.current_path);
+        updatedDirectoryInputs.push(input);
+        Object.assign(record, input, { version_number: record.version_number + 1 });
+        return record;
       },
     },
     pages: {
@@ -51,11 +75,19 @@ function repositories(options: {
       },
     },
   } as unknown as TemplateRepositories;
-  return { value, createdDirectories, createdPages, updatedPages };
+  return {
+    value,
+    createdDirectories,
+    createdDirectoryInputs,
+    updatedDirectories,
+    updatedDirectoryInputs,
+    createdPages,
+    updatedPages,
+  };
 }
 
 describe("knowledge templates", () => {
-  test("discovers the plain AGENTS.md tree without mutating during a plan", async () => {
+  test("discovers the guide tree and its directory presentation without mutating during a plan", async () => {
     const state = repositories();
     const result = await reconcileKnowledgeTemplate(state.value, "default", false);
 
@@ -79,6 +111,47 @@ describe("knowledge templates", () => {
     expect(formatTemplateResult(result)).toContain("+ create-directory library");
     expect(formatTemplateResult(result)).toContain("✓ Planned 25 changes; 0 conflicts.");
     expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
+  });
+
+  test("creates directory summaries and fills only summaries that are still blank", async () => {
+    const paths = ["", "about", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills", "about/diary", "about/tasks"];
+    const state = repositories({
+      directories: paths,
+      directorySummaries: {
+        library: "",
+        objects: "  ",
+        places: "Owner-authored place summary.",
+      },
+    });
+
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true);
+
+    expect(state.updatedDirectories).toEqual(["library", "objects"]);
+    expect(state.updatedDirectoryInputs.map(({ summary }) => summary)).toEqual([
+      "External works saved for recall, with their useful ideas, the owner's reaction, and connections to existing knowledge.",
+      "Individually meaningful physical things whose identity or history matters over time.",
+    ]);
+    expect(state.updatedDirectoryInputs.every(({ intro_markdown }) => intro_markdown.startsWith("Existing introduction"))).toBe(true);
+    expect(result.actions).toContainEqual({
+      action: "update-directory",
+      path: "library",
+      detail: "Add template summary for library",
+    });
+    expect(formatTemplateResult(result)).toContain("Applied 15 changes; 0 conflicts.");
+  });
+
+  test("uses authored presentation when creating template directories", async () => {
+    const state = repositories();
+
+    await reconcileKnowledgeTemplate(state.value, "default", true);
+
+    expect(state.createdDirectoryInputs).toContainEqual({
+      path: "places",
+      title: "Places",
+      summary: "Locations that matter because the owner returns to them, makes decisions about them, or connects them to several parts of the knowledge base.",
+      intro_markdown: "",
+    });
+    expect(state.createdDirectoryInputs.every(({ summary }) => summary.length > 0)).toBe(true);
   });
 
   test("updates bootstrap-owned guides while preserving locally edited guides", async () => {

@@ -1,0 +1,54 @@
+{
+  "": {
+    "title": "Knowledge",
+    "summary": "The root of the owner's private, progressively discoverable knowledge base."
+  },
+  "about": {
+    "title": "About",
+    "summary": "Knowledge whose subject is the owner: their introduction, timeline, themes, practices, and interests."
+  },
+  "automations": {
+    "title": "Automations",
+    "summary": "Instructions and supporting assets used by automations running in external harnesses."
+  },
+  "companies": {
+    "title": "Companies",
+    "summary": "Companies the owner works with, is considering, competes with, or follows, described factually and with dates."
+  },
+  "events": {
+    "title": "Events",
+    "summary": "Conferences, trips, dinners, hackathons, and other happenings the owner took part in, grouped by date."
+  },
+  "library": {
+    "title": "Library",
+    "summary": "External works saved for recall, with their useful ideas, the owner's reaction, and connections to existing knowledge."
+  },
+  "meetings": {
+    "title": "Meetings",
+    "summary": "Meetings and calls worth remembering, recording who was there, what was said, and what came of them."
+  },
+  "objects": {
+    "title": "Objects",
+    "summary": "Individually meaningful physical things whose identity or history matters over time."
+  },
+  "people": {
+    "title": "People",
+    "summary": "People in the owner's life and work: who they are, how the owner knows them, and what they are doing now."
+  },
+  "places": {
+    "title": "Places",
+    "summary": "Locations that matter because the owner returns to them, makes decisions about them, or connects them to several parts of the knowledge base."
+  },
+  "skills": {
+    "title": "Skills",
+    "summary": "Reusable Agent Skills stored as versioned SKILL.md pages."
+  },
+  "about/diary": {
+    "title": "Diary",
+    "summary": "The owner's chronological record of lived context, actions, decisions, and current state."
+  },
+  "about/tasks": {
+    "title": "Tasks",
+    "summary": "Durable frames for substantial efforts the owner is actively pursuing or may pursue."
+  }
+}
