@@ -49,9 +49,9 @@ for every conversation that happened inside it.
 - **Write what came of it, or don't write the folder.** An event page that only records
   attendance is a memory leak with a date on it. The value is in what followed.
 - **Link existing people folders.** When an encounter makes a missing person materially
-  relevant, propose their folder in the root guide's batched question rather than
-  silently creating it. An event is often where a relationship starts, and that origin
-  is worth being able to find later.
+  relevant, propose all such folders together rather than silently creating them. An
+  event is often where a relationship starts, and that origin is worth being able to
+  find later.
 - **Anything durable that came out of it goes to its own home** — an idea to a project, a
   company to [[companies|companies]], a decision to the page that owns it — and the event
   links to it rather than restating it.

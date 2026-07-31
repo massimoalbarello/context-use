@@ -38,6 +38,10 @@ Not for a name mentioned in passing. An unfiltered contact dump makes the direct
 useless for the thing it exists to do, which is saying who someone is right before the
 next conversation with them.
 
+Before researching or creating a person, search for an existing folder and identify
+which person is meant from the company, meeting, link, handle or other context the owner
+provided. If two candidates survive, stop and ask with the detail that separates them.
+
 ## Template
 
     # <Name>                                         ← intro
@@ -57,6 +61,9 @@ next conversation with them.
 
 ## Local rules
 
+- **Occurrences link to people, not the reverse.** A person's pages may cite a meeting or
+  event where it substantiates the relationship history, but never maintain a complete
+  list of occurrences; use search to find those.
 - **These are real people.** Keep judgements specific and grounded in something that
   actually happened. Nothing here should be embarrassing if the person read it. Any
   deliberately public-safe page still requires the owner's review before publication.

@@ -1,12 +1,30 @@
-# Knowledge base structure
+# Knowledge base conventions
 
 A durable hypermedia representation of the owner's life, work, interests and thinking.
 Design it as though it will hold more than 100,000 pages.
 
-These rules apply everywhere and are stated only here. A directory's own `AGENTS.md`
-adds what its name cannot imply — path shape, aspect vocabulary, templates, inclusion
-criteria — and never repeats what is below. Read every guide from the root down to the
-target's parent before writing.
+This guide defines only conventions that apply everywhere. Each directory guide owns
+the path shape, inclusion rules, aspect vocabulary and page templates for its area. Read
+this guide, then every applicable guide from the root down to the target's parent before
+writing.
+
+## Guide index
+
+- [[about/agents|About]] — knowledge whose subject is the owner.
+  - [[about/diary/agents|Diary]] — chronological lived context and current state.
+  - [[about/tasks/agents|Tasks]] — substantial efforts and decision frames.
+- [[automations/agents|Automations]] — instructions and assets for external unattended
+  workflows.
+- [[companies/agents|Companies]] — company entities and the owner's context-specific
+  views of them.
+- [[events/agents|Events]] — occasions defined by a time and place.
+- [[library/agents|Library]] — external works saved for recall.
+- [[meetings/agents|Meetings]] — conversations worth preserving.
+- [[people/agents|People]] — the owner's personal CRM.
+- [[skills/agents|Skills]] — reusable instructions loaded by an interactive agent.
+
+The index tells you which guide governs a subject; the linked guide decides its actual
+structure. Do not infer a directory schema from examples elsewhere.
 
 ## Organizing knowledge
 
@@ -25,164 +43,93 @@ target's parent before writing.
 - **Date anything that changes** — roles, stages, headcounts, locations. Write
   `— as of 27 July 2026` inline; a fact with no date becomes a lie quietly.
 
-Information whose subject is the owner goes under [[about|`about/`]], entered at
-`about/intro`. External material saved for recall goes under [[library|`library/`]].
-Other entities get top-level directories — `people/`, `companies/`, `meetings/`,
-`events/` exist; add `places/` or other entity areas when needed.
-
 ## Where a page belongs
 
-Everything here touches the owner's life, so that decides nothing. **Don't ask "would
-this exist if not for them." Ask: are they the topic, or a participant?**
+Place a page by its subject, not by the request that produced it or the person doing the
+writing. Everything here touches the owner's life, so that alone decides nothing.
 
-- **Topic** → `about/`: their past, what they built, their present, their substantial efforts and decision frames.
-- **External work saved for recall** → `library/`: an article, video, podcast episode,
-  paper, thread or other source, regardless of format.
-- **Participant, or absent** → an entity directory. A meeting has them in it but is not
-  about them.
+The check when it is unclear: **could this page be handed to someone else's knowledge
+base and remain true?** If not, its subject is probably the owner. If it could, identify
+the actual person, company, occurrence, saved work or other subject and follow that
+area's guide from the index above.
 
-The check when it's unclear: **could this page be handed to someone else's knowledge
-base and remain true?** A meeting page would be nearly identical in any attendee's
-notes; a page on what the owner wants from their next job would be meaningless in anyone
-else's.
-
-**Judgement about an entity stays with the entity** — it is still about them, seen
-through a lens. So an entity folder holds two kinds of page: **fact pages** (what it is,
-neutral and cited and true regardless of the owner) and **lens pages** (what it is *to*
-the owner in one context — `as-an-employer`, `as-a-customer`, `as-a-cofounder` —
-opinionated by design). Never mix them; never put two lenses on one page. What stays in
-`about/` is the owner's **process, not their verdicts**: the criteria they judge by, the
-intents they pursue.
+Judgement stays with the subject being judged. Process, preference and intention stay
+with the person whose thinking they describe. The owning directory guide defines how it
+represents those distinctions; the root does not prescribe a page shape for them.
 
 ## Durable pages and the diary
 
-**The rule that keeps the base from rotting.** Every page outside `about/diary/` is a
-durable account of its subject: it says what is true, or, for a chapter, meeting or
-event, what happened in that occurrence. Edit it in place when its canonical account
-changes; never turn it into a running update log. The diary alone is chronological and
-is therefore the only place that says where ongoing work currently stands. Durable
-pages are overwritten; the diary is appended.
+**The rule that keeps the base from rotting.** Every page outside the diary is a durable
+account of its subject: it says what is true, or, for an occurrence, what happened. Edit
+it in place when its canonical account changes; never turn it into a running update log.
+The diary alone is chronological and is therefore the **only place that says where
+ongoing work currently stands**. Durable pages are overwritten; the diary is appended.
 
-**No status anywhere else** — no status line, no next step, no "Where it stands", no
-"Updates", no dated notes stacking newest-first. This holds for `about/tasks/` too. To
-find out where something stands, **read the recent diary**: by design nothing else will
-tell you, so nothing else can be quietly wrong about it.
+No status, next step, "waiting on", update section or dated progress log belongs on a
+durable page. To find out where something stands, read the recent diary. Dating a fact is
+not logging progress; what is forbidden is mutable state presented as durable truth.
 
-When something changes, write what happened in that day's [[about/diary|log]] with
-links, then **edit the durable page to say what is now true**. Versions hold the
-history; the diary holds why. Dating a fact is not logging progress — what is forbidden
-is state.
+When something changes, write what happened in the relevant day's
+[[about/diary/agents|diary]] with links, then edit the durable page to say what is now
+true. Versions hold the history; the diary holds why.
 
 ## Writing
 
 Say a thing once, at the length it needs, and stop. Length is not thoroughness: a page
 that cannot be skimmed has stopped being useful to whoever is deciding something from
 it. Cut what restates a link's target, what hedges a claim already made, and what exists
-to sound complete. Don't compress past meaning — a fact without its date, a judgement
+to sound complete. Do not compress past meaning — a fact without its date, a judgement
 without its reason or a claim without its source is shorter and worse.
 
-**On researched pages, relevance decides what stays**, because research is abundant and
-free. Keep what bears on **what the owner is doing with this subject** — a call on
-Thursday, a role they are weighing, a partnership — plus the durable facts that identify
-it. A potted biography, a funding history nobody asked about, every role since
-university, scraped marketing copy: all pass for substance and none is, and they bury
-the two lines the owner would act on. Where a template heading has nothing real under
-it, delete the heading; never infer a fact to fill it.
+On researched pages, relevance decides what stays. Keep what bears on why the subject
+matters here plus the durable facts needed to identify it. Delete empty template
+headings; never infer a fact merely to fill one.
 
 ## Citing sources
 
-**Sources are hyperlinks on the text making the claim** — never a list of bare URLs at
-the foot of a page.
+Sources are hyperlinks on the text making the claim, never a list of bare URLs at the
+foot of a page.
 
     Good:   Announced in [June 2026](https://example.com/post), it ages out stale facts.
     Bad:    It ages out stale facts.
             ## Sources
             example.com/post (4 Jun 2026)
 
-Any claim should be checkable from where it sits. **If nothing in the text points at a
-source, the source doesn't belong on the page** — delete it. Where a claim rests on
-something unpublished, link the [[meetings|meeting page]] the same way.
+Any claim should be checkable from where it sits. If nothing in the text points at a
+source, the source does not belong on the page. An unpublished source can be a link to
+the relevant private page.
 
 ## Before writing: identify, propose, preview
 
-**Identify.** Names collide, and a page about the wrong person is worse than none:
-silently wrong, linked, and never forced into correction. Before researching anyone,
-search the base for an existing folder, then pin down which one is meant from what the
-owner gave — the company, the meeting it came from, a link, a handle. If two candidates
-survive, or the match rests on a common name, **stop and ask**, listing the candidates
-and the detail that separates them. The right name at the wrong company is a different
-person until shown otherwise.
+**Identify.** Search for the canonical target before researching or writing. Names and
+subjects collide; if more than one candidate survives, stop and ask with the details
+that distinguish them.
 
-**Propose the neighbours.** Entities arrive attached to others: a meeting brings its
-participants and their employers, a person brings their company, an event brings the
-people met there. Create what the occurrence cannot be written without — a meeting page
-must link its participants — and for the rest, **name the missing ones in one question
-and let the owner choose**:
+**Propose.** Follow the owning directory guide for any related pages the write requires.
+Present missing or ambiguous additions together in one question rather than creating an
+unrequested cascade.
 
-> Added the meeting. No folders yet for Jane Doe or Acme — research and add either?
+**Preview.** Show intended path, title, summary and full body before creating or
+rewriting a page. One preview can cover a coherent set. Unattended automations are the
+exception and follow their own [[automations/agents|guide]].
 
-One batched question per request, never one per entity and never a silent cascade. An
-entity that already exists is not a proposal, though a fact the new material contradicts
-is worth flagging. Don't re-propose what was declined in the same conversation.
+## Directories and guide layering
 
-**Preview.** Show the page before it exists — intended path, title, summary, full body —
-and write only once the owner confirms. New pages and rewrites alike; one message covers
-a whole set. They amend at the preview, which is cheaper than a second edit and a
-version nobody meant. Unattended automations are the exception
-([[automations/agents|why]]).
+Every directory is linkable and its index is generated from its immediate children.
+Never hand-maintain an `index` page; generated indexes are navigation, not a substitute
+for authored overviews.
 
-## Entities
+A directory guide lives at `<directory>/agents`, titled `AGENTS.md`. A child guide may
+refine or extend its ancestors but must not copy them. The most specific applicable rule
+wins when guides differ.
 
-The owner's personal CRM, so any page can **link** to an entity instead of describing it
-again. One conversation splits three ways: the conversation is a [[meetings|meeting]],
-the person is in [[people|`people/`]], their employer is in [[companies|`companies/`]].
-The meeting doesn't explain who the person is; the person's folder doesn't explain what
-their employer does.
-
-- **Every entity is a folder** with an `intro`, never a bare page, even for three lines —
-  promoting `people/jane-doe` to `people/jane-doe/intro` later breaks every inbound link,
-  and entities grow facets rather than paragraphs.
-- **One aspect per page, named from the directory's vocabulary.** Each entity guide lists
-  the aspect names it uses; pick from that list, and add to it when nothing fits. Left
-  free, three sibling folders end up with `contacts`, `contact-info` and
-  `how-to-reach-them`.
-- **Naming.** Entities are slugs — `people/<first-last>/`, `companies/<slug>/`.
-  Occurrences group by year and month and keep the full date in the leaf, so a link is
-  unambiguous wherever it's pasted: `meetings/<YYYY>/<MM>/<YYYY-MM-DD>_<slug>/`, and the
-  same for `events/`. The diary also groups by year and month, but its day leaf is
-  simply `<DD>/`. Create the year and month directories first.
-- **Create on first real relevance**, not speculatively. A directory of every name ever
-  mentioned destroys the signal that a page exists at all.
-- **Occurrences link to entities, never the reverse.** A person's folder keeps no list of
-  their meetings; a list that needs maintaining stops being true. To find every meeting
-  with someone, search.
-
-Entity areas often hold personal detail about third parties. Keep them private by
-default and never publish third-party personal detail. Only the owner may publish a
-deliberately public-safe entity page after reviewing it.
-
-## Directories, library, automations, skills
-
-Every directory is linkable and its index is generated from its immediate children —
-explore from the root down, and never hand-maintain an `index` page. Generated indexes
-are navigation, not a substitute for authored overviews.
-
-A directory guide lives at `<directory>/agents`, titled `AGENTS.md`. **In a copyable
-Markdown example, write every link target as a placeholder** —
-`[[meetings/…|label]]`, never `[[meetings|label]]` — because a wikilink resolves even
-inside a fenced code block, so an example linking a real path renders as HTML instead of
-the markdown it exists to demonstrate. A target containing `…` or `<slug>` resolves to nothing and survives intact.
-
-[[library|The library]] holds one page per saved external work. Each entry links the
-original, preserves what the owner said when saving it, and connects its people,
-companies and ideas to their canonical pages rather than copying them.
-
-[[automations|Automations]] run unattended in an external harness;
-[[skills|skills]] are loaded by an agent working with the owner. Both file what they
-produce by its subject, never by its author.
+In a copyable Markdown example, write link targets as placeholders —
+`[[area/…|label]]`, never a real path — because wikilinks resolve even inside fenced
+code blocks. A target containing `…` or `<slug>` resolves to nothing and survives intact.
 
 ## Privacy
 
-Private by default, and an agent cannot publish — ask the owner to review and publish
+Private by default, and an agent cannot publish. Ask the owner to review and publish
 anything that should be public. Publishing a page makes its directory ancestry navigable
-publicly, exposing published titles and summaries.
+publicly, exposing published titles and summaries. A deliberately public-safe page still
+requires the owner's review before publication.

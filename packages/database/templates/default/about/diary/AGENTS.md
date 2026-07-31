@@ -68,7 +68,7 @@ Before writing anything, ask: **will this still matter on its own in a month?**
 | --- | --- |
 | How the day felt, a passing observation | the log |
 | Working notes or a draft that only matter today | day folder page, linked from the log |
-| A call, a conference, someone new, a company | the [[agents#entities|CRM folder]]; the log links |
+| A call, a conference, someone new, a company | the owning [[meetings/agents|meeting]], [[events/agents|event]], [[people/agents|person]] or [[companies/agents|company]] page; the log links |
 | A new idea, or a decision and its reasoning | the durable page for the subject; the log keeps the lived reasoning |
 | A preference, taste, habit or belief articulated | the relevant page under `about/` |
 | An open loop still open tomorrow | the log links the project or [[about/tasks|task]] that gives it context; current state remains in the diary |

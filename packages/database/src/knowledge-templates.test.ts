@@ -165,15 +165,34 @@ describe("knowledge templates", () => {
     expect(state.createdPages).not.toContain("about/agents");
   });
 
-  test("contains the reviewed status and privacy corrections", async () => {
+  test("keeps global conventions in the root and local structure in directory guides", async () => {
     const root = await Bun.file(new URL("../templates/default/AGENTS.md", import.meta.url)).text();
     const diary = await Bun.file(new URL("../templates/default/about/diary/AGENTS.md", import.meta.url)).text();
     const library = await Bun.file(new URL("../templates/default/library/AGENTS.md", import.meta.url)).text();
     const meetings = await Bun.file(new URL("../templates/default/meetings/AGENTS.md", import.meta.url)).text();
+    const people = await Bun.file(new URL("../templates/default/people/AGENTS.md", import.meta.url)).text();
     const tasks = await Bun.file(new URL("../templates/default/about/tasks/AGENTS.md", import.meta.url)).text();
+    const normalizedRoot = root.replaceAll(/\s+/g, " ");
 
-    expect(root).toContain("only place that says where ongoing work currently stands");
-    expect(root).toContain("deliberately public-safe entity page");
+    for (const guide of [
+      "about/agents",
+      "about/diary/agents",
+      "about/tasks/agents",
+      "automations/agents",
+      "companies/agents",
+      "events/agents",
+      "library/agents",
+      "meetings/agents",
+      "people/agents",
+      "skills/agents",
+    ]) {
+      expect(root).toContain(`[[${guide}|`);
+    }
+    expect(root).toContain("This guide defines only conventions that apply everywhere");
+    expect(normalizedRoot).toContain("only place that says where ongoing work currently stands");
+    expect(root).toContain("A deliberately public-safe page still");
+    expect(root).not.toContain("people/<first-last>");
+    expect(root).not.toContain("meetings/<YYYY>");
     expect(diary).toContain("Current state remains in the diary");
     expect(library).toContain("library/<meaningful-slug>");
     expect(library).toContain("Format is metadata, never a directory");
@@ -181,6 +200,8 @@ describe("knowledge templates", () => {
     expect(library).toContain("never infer a summary from the title alone");
     expect(meetings).toContain("## Commitments made");
     expect(meetings).not.toContain("## Follow-ups");
+    expect(people).toContain("company, meeting, link, handle");
+    expect(people).toContain("Occurrences link to people, not the reverse");
     expect(tasks).toContain("Beyond `intro`, there are no default names");
     expect(tasks).not.toContain("criteria");
     expect(tasks).not.toContain("<option>");

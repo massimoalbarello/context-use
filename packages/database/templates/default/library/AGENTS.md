@@ -65,8 +65,8 @@ merely repeat its format or title.
   the owner's belief merely because they saved it.
 - **Connect to canonical entities.** Link existing people, companies, projects, tasks,
   meetings and events wherever they explain why the item matters. If a missing entity is
-  materially relevant, propose it under the root guide's batched-creation rule rather
-  than silently creating it.
+  materially relevant, propose all such additions together rather than silently creating
+  them.
 - **Do not duplicate durable conclusions.** The library page records what the source
   says and what the owner said about it. When it changes a durable page elsewhere, edit
   that page too and link the two; do not make the library entry its new canonical home.

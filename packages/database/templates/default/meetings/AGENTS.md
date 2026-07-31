@@ -59,10 +59,11 @@ survive. It goes in as `transcript`, marked raw at the top, never in place of `i
 
 ## Local rules
 
-- **Link every participant**, creating a missing person folder because the meeting
-  cannot be represented coherently without it. Link their company where materially
-  relevant; propose any other missing entity in the batched question required by the
-  root guide.
+- **Link every participant.** Before writing, search for each person and resolve any
+  ambiguous identity. A missing participant folder is part of the same proposed meeting
+  write because the meeting cannot be represented coherently without it. Link their
+  company where materially relevant; propose any other missing entity in the same
+  batched question rather than creating a silent cascade.
 - **Never describe the people or the company here.** A meeting page that reintroduces its
   participants will contradict their folders within the year.
 - **Separate what was said from what the owner concluded.** Both are useful; conflating
