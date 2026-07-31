@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AssetRepository, DirectoryRepository, PageRepository } from "@context-use/database";
+import { DirectoryNotEmptyError } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
 import { createGuidanceReceipt, verifyGuidanceReceipt } from "./mcp-guidance-receipt.ts";
@@ -224,6 +225,72 @@ describe("MCP knowledge tools", () => {
       body_markdown: "Introduction.",
       commit_message: "Create introduction",
     }]);
+  });
+
+  test("deletes only an inspected empty directory and reports content blockers", async () => {
+    const deleted: unknown[] = [];
+    const directory = {
+      id: "88888888-8888-4888-8888-888888888888",
+      current_path: "automations/feed-digest",
+      version_number: 2,
+      title: "Feed digest",
+    };
+    const directories = {
+      async get(id: string) {
+        expect(id).toBe(directory.id);
+        return directory;
+      },
+      async delete(id: string, input: unknown) {
+        deleted.push({ id, input });
+        return { id, current_path: directory.current_path };
+      },
+    } as unknown as DirectoryRepository;
+    const success = await mcpRequest(serverWith(
+      pagesWithGuidance(),
+      {} as AssetRepository,
+      directories,
+    ), {
+      jsonrpc: "2.0",
+      id: 16,
+      method: "tools/call",
+      params: {
+        name: "delete_directory",
+        arguments: {
+          directory_id: directory.id,
+          expected_version_number: 2,
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+    expect(success.result?.isError).not.toBe(true);
+    expect(deleted).toEqual([{ id: directory.id, input: { expected_version_number: 2 } }]);
+
+    const blockedDirectories = {
+      ...directories,
+      async delete() {
+        throw new DirectoryNotEmptyError({ activePages: 1, archivedPages: 0, assets: 2, directories: 0 });
+      },
+    } as unknown as DirectoryRepository;
+    const blocked = await mcpRequest(serverWith(
+      pagesWithGuidance(),
+      {} as AssetRepository,
+      blockedDirectories,
+    ), {
+      jsonrpc: "2.0",
+      id: 17,
+      method: "tools/call",
+      params: {
+        name: "delete_directory",
+        arguments: {
+          directory_id: directory.id,
+          expected_version_number: 2,
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+    expect(blocked.result?.isError).toBe(true);
+    expect(blocked.result?.content?.[0]?.text).toContain("1 active page, 2 assets");
+    expect(blocked.result?.content?.[0]?.text).toContain("Delete all pages, assets, and child directories");
   });
 
   test("rejects a receipt when an applicable guide has changed", async () => {
@@ -509,6 +576,7 @@ describe("MCP knowledge tools", () => {
       "get_directory",
       "browse_directory",
       "create_directory",
+      "delete_directory",
       "get_page",
       "prepare_knowledge_write",
       "load_skill",
@@ -525,6 +593,7 @@ describe("MCP knowledge tools", () => {
     for (const name of [
       "create_directory",
       "update_directory",
+      "delete_directory",
       "create_page",
       "update_page",
       "archive_page",

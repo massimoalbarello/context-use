@@ -1,5 +1,6 @@
 import {
   AssetRepository,
+  DirectoryNotEmptyError,
   DirectoryRepository,
   PageRepository,
 } from "@context-use/database";
@@ -9,6 +10,7 @@ import {
   assetUploadSchema,
   createDirectorySchema,
   createPageSchema,
+  deleteDirectorySchema,
   updateDirectorySchema,
   updatePageSchema,
 } from "@context-use/shared";
@@ -176,6 +178,27 @@ export async function createMcpServer(
       return guidanceRequired(directory.current_path, "update_directory");
     }
     return jsonContent(await directories.update(directory_id, input));
+  });
+
+  server.registerTool("delete_directory", {
+    description: "Permanently delete one exact, non-root directory only when it is completely empty. This never cascades: descendant active or archived pages, live assets, and child directories are reported and must be deleted first. First use get_directory, then call prepare_knowledge_write with the directory's current path, follow its complete guidance, and pass the returned guidance_receipt.",
+    inputSchema: deleteDirectorySchema.extend({
+      directory_id: z.string().uuid(),
+      guidance_receipt: guidanceReceiptSchema,
+    }).strict(),
+    annotations: { destructiveHint: true },
+  }, async ({ directory_id, guidance_receipt, ...input }) => {
+    const directory = await directories.get(directory_id);
+    if (!directory) return jsonContent(null);
+    if (!await hasCurrentGuidance(directory.current_path, guidance_receipt)) {
+      return guidanceRequired(directory.current_path, "delete_directory");
+    }
+    try {
+      return jsonContent(await directories.delete(directory_id, input));
+    } catch (error) {
+      if (error instanceof DirectoryNotEmptyError) return textContent(error.message, true);
+      throw error;
+    }
   });
 
   server.registerTool("get_page", {

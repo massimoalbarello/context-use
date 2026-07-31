@@ -1,6 +1,8 @@
 import {
+  DirectoryNotEmptyError,
   DirectoryVersionConflictError,
   PublicationStateError,
+  RootDirectoryDeletionError,
   VersionConflictError,
 } from "@context-use/database";
 import { z } from "zod";
@@ -27,6 +29,12 @@ export function routeError(error: unknown): Response {
   }
   if (error instanceof DirectoryVersionConflictError) {
     return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
+  }
+  if (error instanceof DirectoryNotEmptyError) {
+    return json({ error: "directory_not_empty", message: error.message, contents: error.contents }, 409);
+  }
+  if (error instanceof RootDirectoryDeletionError) {
+    return problem(error.message, 409, "directory_protected");
   }
   if (error instanceof PublicationStateError) return problem(error.message, 409, "publication_state");
   if (error instanceof z.ZodError) return json({ error: "validation_error", issues: error.issues }, 422);

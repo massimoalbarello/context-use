@@ -3,6 +3,7 @@ import {
   archiveAssetSchema,
   assetUploadSchema,
   createDirectorySchema,
+  deleteDirectorySchema,
   AssetPath,
   createPageSchema,
   publicationIntentSchema,
@@ -100,6 +101,12 @@ describe("strict mutation schemas", () => {
       body_markdown: "",
       commit_message: "Create intro page",
     }).success).toBe(true);
+  });
+
+  test("directory deletion is bound to the version the caller inspected", () => {
+    expect(deleteDirectorySchema.safeParse({ expected_version_number: 3 }).success).toBe(true);
+    expect(deleteDirectorySchema.safeParse({}).success).toBe(false);
+    expect(deleteDirectorySchema.safeParse({ expected_version_number: 3, cascade: true }).success).toBe(false);
   });
 
   test("publication intents bind valid fields to the exact action", () => {
