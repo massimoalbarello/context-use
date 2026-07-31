@@ -1,62 +1,54 @@
 # Tasks conventions
 
-**One folder per substantial effort or decision frame** at `about/tasks/<slug>/`, entered through `intro`.
+**One folder per substantial effort or decision frame** at `about/tasks/<slug>/`, entered
+through `intro`.
 
 A task here is an open-ended pursuit the owner is or was actively thinking through — a
-job search, a move, a decision with live options. It is not a to-do item: if it can be
-finished in an afternoon, it does not get a folder.
+job search, a move, a project with unresolved questions. It is not a to-do item: if it
+can be finished in an afternoon, it does not get a folder.
+
+## Minimal shape
 
     about/tasks/<slug>/
-    ├── intro       — the situation and the frame
-    ├── criteria    — what would make an option good, across the whole task
-    ├── agents      — a local guide, once the task grows its own vocabulary
-    └── <option>/   — one folder per live option, where a task has options
-        └── intro
+    └── intro       — what the effort is and why it matters
 
-## Aspects
+`intro` is the only page shape this default guide requires. Add another page or nested
+folder only when its contents are worth reading, retrieving or linking on their own.
+Name it for what it actually contains.
 
-- **`intro`** — required. What the task is, why it is open, and how the owner is framing
-  it.
-- **`criteria`** — what options are judged against. One line per criterion, not a
-  paragraph. This is the page that earns the folder: it is reusable across every option,
-  and it is what a conversation actually changes.
-- **Options** get a folder each when several are live at once and each needs its own
-  thinking. Below that threshold they are bullets in `intro`.
-
-A task that grows its own vocabulary — a kind of option, a stage, a page type — gets its
-own `agents` guide rather than pushing that vocabulary up into this one.
+Beyond `intro`, there are no default names or prescribed supporting pages for a task. If
+an instance develops a recurring structure, record that vocabulary in its copy of this
+guide. If a single task needs conventions that do not belong to every task, give that
+task folder its own local `agents` guide.
 
 ## The line this directory has to hold
 
-**A task page says what the task is and how the owner is thinking about it. It never
+**A task page says what the effort is and how the owner is thinking about it. It never
 says how far along it is.** No status, no next step, no "waiting on", no dated updates
 ([[agents#durable-pages-and-the-diary|root rule]]). What was done about it yesterday is
 a diary entry; where it stands is read from the recent diary.
 
 That is what makes these pages worth keeping. A task folder that tracked progress would
-need rewriting every week and would be wrong in between; one that holds only the frame
-and the criteria stays true until the thinking changes.
+need rewriting every week and would be wrong in between; one that holds the durable
+frame and reasoning stays useful while the diary records movement.
 
 **Judgement about an entity is not part of the task either.** Whether a company is worth
-joining, whether a person is worth partnering with — that is a lens page in their folder
-([[companies/agents|companies]], [[people/agents|people]]). The task links to it. If an
-option page starts explaining what a company does, it is duplicating the lens page.
+joining or a person is worth partnering with belongs on a lens page in that entity's
+folder ([[companies/agents|companies]], [[people/agents|people]]). The task links to it
+instead of explaining the entity again.
 
 ## Closing a task
 
 When a task resolves, give the outcome its durable home — often a chapter or project,
 but whichever page owns the resulting truth. The task folder stays as the reasoning
-record and the diary holds how it unfolded and whether it is active. Don't rewrite the
-task into a retrospective — it is more useful as the record of what was thought at the
-time.
+record and the diary holds how it unfolded and whether it is active. Do not rewrite the
+task into a retrospective.
 
 ## Local rules
 
 - **Write in the owner's first person, from what they have actually said**, and mark
   added reasoning as inference. Never quietly upgrade a suggestion into their position.
-- **State the honest problem.** A criteria page or an option page listing only reasons to
-  be excited is worse than no page.
-- **A criterion is a line, not a paragraph.** If a page cannot be skimmed in thirty
-  seconds it has stopped being useful for deciding, which is the only thing it is for.
-- **Update `criteria` when a conversation changes what the owner wants.** New
-  understanding stranded in an option page is wasted.
+- **Create structure only for real material.** Do not create empty placeholder pages to
+  make two task folders look alike.
+- **Link instead of restating.** People, companies, meetings, events and durable topics
+  keep their own canonical pages; task pages contain only the effort-specific thinking.

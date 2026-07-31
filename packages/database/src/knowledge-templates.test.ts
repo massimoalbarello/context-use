@@ -170,6 +170,7 @@ describe("knowledge templates", () => {
     const diary = await Bun.file(new URL("../templates/default/about/diary/AGENTS.md", import.meta.url)).text();
     const library = await Bun.file(new URL("../templates/default/library/AGENTS.md", import.meta.url)).text();
     const meetings = await Bun.file(new URL("../templates/default/meetings/AGENTS.md", import.meta.url)).text();
+    const tasks = await Bun.file(new URL("../templates/default/about/tasks/AGENTS.md", import.meta.url)).text();
 
     expect(root).toContain("only place that says where ongoing work currently stands");
     expect(root).toContain("deliberately public-safe entity page");
@@ -180,5 +181,8 @@ describe("knowledge templates", () => {
     expect(library).toContain("never infer a summary from the title alone");
     expect(meetings).toContain("## Commitments made");
     expect(meetings).not.toContain("## Follow-ups");
+    expect(tasks).toContain("Beyond `intro`, there are no default names");
+    expect(tasks).not.toContain("criteria");
+    expect(tasks).not.toContain("<option>");
   });
 });

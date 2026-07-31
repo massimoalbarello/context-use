@@ -39,11 +39,11 @@ partnership, a competitor worth tracking. Not for every name mentioned.
 
     # As an employer                               ← lens page
 
-    **Task:** [[about/tasks/…|the pursuit this sits under]]
+    **Context:** [[about/tasks/…|the effort or decision this bears on]]
 
     ## Why they interest me   — and what would change my mind
-    ## Against the criteria   — one line each, including the honest problem
-    ## Roles                  — links to the option pages, wherever they sit
+    ## What matters here      — the relevant strengths, problems and unknowns
+    ## Relevant roles         — links to their canonical pages, wherever they sit
 
 ## Local rules
 
