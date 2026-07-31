@@ -1,5 +1,8 @@
 .git
 nango
+nango-integrations/.nango
+nango-integrations/build
+nango-integrations/node_modules
 node_modules
 dist
 **/dist

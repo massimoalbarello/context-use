@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseReleaseManifest } from "./release.ts";
+import { parseReleaseImages } from "./release-images.ts";
 
 const repositoryRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const digest = (character: string) => character.repeat(64);
@@ -36,7 +37,7 @@ test("release manifests preserve the strict v0.1.46 bootstrap contract", () => {
   expect(() => parseReleaseManifest({ ...legacyManifest, schema_version: 2 })).toThrow();
 });
 
-async function parseNangoImage(metadata: string | null) {
+async function parseNangoImage(metadata: string | null, key = "NANGO_IMAGE") {
   const directory = await mkdtemp(join(tmpdir(), "context-use-release-image-"));
   const metadataPath = join(directory, "release-images.env");
   try {
@@ -45,6 +46,7 @@ async function parseNangoImage(metadata: string | null) {
       "bash",
       join(repositoryRoot, "deploy/nango/read-release-image.sh"),
       metadataPath,
+      key,
     ], { stdout: "pipe", stderr: "pipe" });
     const [stdout, stderr, exitCode] = await Promise.all([
       new Response(child.stdout).text(),
@@ -57,10 +59,18 @@ async function parseNangoImage(metadata: string | null) {
   }
 }
 
-test("deployment bundles accept exactly one digest-pinned Nango image", async () => {
-  const image = `ghcr.io/massimoalbarello/context-use-nango@sha256:${digest("d")}`;
-  expect(await parseNangoImage(`NANGO_IMAGE=${image}\n`)).toEqual({
-    stdout: `${image}\n`,
+test("deployment bundles accept exactly the two digest-pinned Nango images", async () => {
+  const nango = `ghcr.io/massimoalbarello/context-use-nango@sha256:${digest("d")}`;
+  const integrations = `ghcr.io/massimoalbarello/context-use-nango@sha256:${digest("e")}`;
+  const metadata = `NANGO_IMAGE=${nango}\nNANGO_INTEGRATIONS_IMAGE=${integrations}\n`;
+  expect(parseReleaseImages(metadata)).toEqual({ nango, nangoIntegrations: integrations });
+  expect(await parseNangoImage(metadata)).toEqual({
+    stdout: `${nango}\n`,
+    stderr: "",
+    exitCode: 0,
+  });
+  expect(await parseNangoImage(metadata, "NANGO_INTEGRATIONS_IMAGE")).toEqual({
+    stdout: `${integrations}\n`,
     stderr: "",
     exitCode: 0,
   });
@@ -68,12 +78,17 @@ test("deployment bundles accept exactly one digest-pinned Nango image", async ()
   for (const metadata of [
     null,
     "",
-    `NANGO_IMAGE=${image}\nNANGO_IMAGE=${image}\n`,
-    `NANGO_IMAGE=ghcr.io/other/context-use-nango@sha256:${digest("d")}\n`,
-    "NANGO_IMAGE=ghcr.io/massimoalbarello/context-use-nango:latest\n",
+    `NANGO_IMAGE=${nango}\nNANGO_IMAGE=${nango}\n`,
+    `NANGO_IMAGE=${nango}\nNANGO_INTEGRATIONS_IMAGE=${nango}\n`,
+    `NANGO_IMAGE=${nango}\nNANGO_INTEGRATIONS_IMAGE=${integrations}\nEXTRA=value\n`,
+    `NANGO_IMAGE=ghcr.io/other/context-use-nango@sha256:${digest("d")}\nNANGO_INTEGRATIONS_IMAGE=${integrations}\n`,
+    `NANGO_IMAGE=ghcr.io/massimoalbarello/context-use-nango:latest\nNANGO_INTEGRATIONS_IMAGE=${integrations}\n`,
+    `NANGO_IMAGE=${nango}\nNANGO_INTEGRATIONS_IMAGE=ghcr.io/massimoalbarello/context-use-nango:integrations-latest\n`,
   ]) {
     expect((await parseNangoImage(metadata)).exitCode).not.toBe(0);
+    if (metadata !== null) expect(() => parseReleaseImages(metadata)).toThrow();
   }
+  expect((await parseNangoImage(metadata, "UNKNOWN_IMAGE")).exitCode).not.toBe(0);
 });
 
 test("release packaging keeps Nango out of the legacy manifest and inside the verified bundle", async () => {
@@ -86,6 +101,8 @@ test("release packaging keeps Nango out of the legacy manifest and inside the ve
   expect(workflow).toContain("images:{app:$app,backup:$backup}}");
   expect(workflow).not.toContain("images:{app:$app,backup:$backup,nango:");
   expect(workflow).toContain('"$staging/deploy/release-images.env"');
+  expect(workflow).toContain("${{ github.repository }}-nango:integrations-${{ github.ref_name }}");
+  expect(workflow).toContain("NANGO_INTEGRATIONS_IMAGE=%s");
 
   const checksum = deploy.indexOf('sha256sum -c -');
   const stalePinRemoval = deploy.indexOf('rm -f "${root}/deploy/release-images.env"');
@@ -98,6 +115,7 @@ test("release packaging keeps Nango out of the legacy manifest and inside the ve
   expect(extraction).toBeLessThan(imageValidation);
   expect(imageValidation).toBeLessThan(dockerPull);
   expect(deploy).not.toContain("CONTEXT_USE_NANGO_IMAGE");
+  expect(deploy).toContain("NANGO_INTEGRATIONS_IMAGE=${nango_integrations_image}");
 
   expect(syncWorkflow.indexOf("Validate the updated production image"))
     .toBeLessThan(syncWorkflow.indexOf("Publish the validated update branch"));

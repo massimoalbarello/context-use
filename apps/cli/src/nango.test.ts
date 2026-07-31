@@ -103,7 +103,7 @@ test("Nango API key bootstrap creates least-privilege keys and stores their secr
     },
   });
 
-  expect(requests.map((request) => request.method)).toEqual(["GET", "POST", "POST"]);
+  expect(requests.map((request) => request.method)).toEqual(["GET", "POST", "POST", "POST"]);
   expect(requests.every((request) => request.authorization === `Basic ${Buffer.from("owner@example.com:dashboard-password").toString("base64")}`)).toBe(true);
   expect(requests.every((request) => request.url.endsWith("?env=prod"))).toBe(true);
   expect(requests[1]?.body).toEqual({
@@ -118,8 +118,19 @@ test("Nango API key bootstrap creates least-privilege keys and stores their secr
       "environment:connections:list",
     ],
   });
+  expect(requests[3]?.body).toEqual({
+    display_name: "context-use-integration-manager",
+    scopes: [
+      "environment:integrations:read",
+      "environment:integrations:create",
+      "environment:integrations:update",
+      "environment:connections:list",
+      "environment:integrations:list_functions",
+    ],
+  });
   expect(parameters.get("/context-use/abcdef123456/production/NANGO_DEPLOYER_API_KEY")).toBe("context-use-deployer-secret");
   expect(parameters.get("/context-use/abcdef123456/production/NANGO_PIPELINE_API_KEY")).toBe("context-use-pipeline-secret");
+  expect(parameters.get("/context-use/abcdef123456/production/NANGO_INTEGRATION_MANAGER_API_KEY")).toBe("context-use-integration-manager-secret");
 });
 
 test("Nango API key bootstrap reconciles scopes without rotating an existing key", async () => {
@@ -138,6 +149,13 @@ test("Nango API key bootstrap reconciles scopes without rotating an existing key
         data: [
           apiKey(1, "context-use-deployer", ["environment:deploy"], "deployer-secret"),
           apiKey(2, "context-use-pipeline", ["environment:records:read"], "****abcd"),
+          apiKey(3, "context-use-integration-manager", [
+            "environment:integrations:read",
+            "environment:integrations:create",
+            "environment:integrations:update",
+            "environment:connections:list",
+            "environment:integrations:list_functions",
+          ], "manager-secret"),
         ],
       });
     }
@@ -154,6 +172,7 @@ test("Nango API key bootstrap reconciles scopes without rotating an existing key
   expect(methods).toEqual(["GET", "PATCH"]);
   expect(parameters.get(`${prefix}/NANGO_DEPLOYER_API_KEY`)).toBe("deployer-secret");
   expect(parameters.get(`${prefix}/NANGO_PIPELINE_API_KEY`)).toBe("stored-pipeline-secret");
+  expect(parameters.get(`${prefix}/NANGO_INTEGRATION_MANAGER_API_KEY`)).toBe("manager-secret");
 });
 
 test("Nango API key bootstrap fails safely when the only copy of a secret is masked", async () => {

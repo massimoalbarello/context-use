@@ -104,6 +104,6 @@ export const command = defineCommand("nango restore", {
     );
     await verifyDeployment(config, manifest.version);
     await ensureNangoApiKeys(config, data);
-    p.outro(`Nango database restored from ${selected}. Redeploy the integration functions before relying on scheduled syncs; pre-restore artifacts were quarantined on the retained volume.`);
+    p.outro(`Nango database restored from ${selected}. Run \`context-use nango integrations deploy\` before relying on scheduled syncs; pre-restore artifacts were quarantined on the retained volume.`);
   },
 });

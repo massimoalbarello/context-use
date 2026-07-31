@@ -38,7 +38,8 @@ echo "${CONTEXT_USE_BUNDLE_SHA256}  ${archive}" | sha256sum -c -
 # Do not let a malformed bundle inherit an image pin from a previous release.
 rm -f "${root}/deploy/release-images.env"
 tar -xzf "${archive}" -C "${root}"
-nango_image="$(bash "${root}/deploy/nango/read-release-image.sh" "${root}/deploy/release-images.env")"
+nango_image="$(bash "${root}/deploy/nango/read-release-image.sh" "${root}/deploy/release-images.env" NANGO_IMAGE)"
+nango_integrations_image="$(bash "${root}/deploy/nango/read-release-image.sh" "${root}/deploy/release-images.env" NANGO_INTEGRATIONS_IMAGE)"
 
 parameter_prefix="${CONTEXT_USE_PARAMETER_PREFIX}"
 get_secret() {
@@ -51,6 +52,7 @@ VERSION=${CONTEXT_USE_VERSION}
 APP_IMAGE=${CONTEXT_USE_APP_IMAGE}
 BACKUP_IMAGE=${CONTEXT_USE_BACKUP_IMAGE}
 NANGO_IMAGE=${nango_image}
+NANGO_INTEGRATIONS_IMAGE=${nango_integrations_image}
 APP_HOSTNAME=$(get_secret APP_HOSTNAME)
 ASSET_HOSTNAME=$(get_secret ASSET_HOSTNAME)
 NANGO_HOSTNAME=$(get_secret NANGO_HOSTNAME)

@@ -27,6 +27,17 @@ const managedApiKeys = [
       "environment:connections:list",
     ],
   },
+  {
+    displayName: "context-use-integration-manager",
+    parameterName: "NANGO_INTEGRATION_MANAGER_API_KEY",
+    scopes: [
+      "environment:integrations:read",
+      "environment:integrations:create",
+      "environment:integrations:update",
+      "environment:connections:list",
+      "environment:integrations:list_functions",
+    ],
+  },
 ] as const;
 
 type NangoApiKey = z.infer<typeof nangoApiKeySchema>;
