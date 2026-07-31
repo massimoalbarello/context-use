@@ -339,6 +339,7 @@ describeDatabase("PostgreSQL security roles", () => {
            'confirm_knowledge_export_intent',
            'confirm_page_deletion_intent',
            'claim_knowledge_export_download',
+           'delete_empty_knowledge_directory',
            'prune_page_versions',
            'remove_owner_passkey',
            'project_public_markdown'
@@ -351,6 +352,7 @@ describeDatabase("PostgreSQL security roles", () => {
       { proname: "confirm_page_deletion_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_publication_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "consume_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
+      { proname: "delete_empty_knowledge_directory", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "issue_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "project_public_markdown", owner: "context_use_projection_owner", security_definer: true },
       { proname: "prune_page_versions", owner: "context_use_boundary_owner", security_definer: true },
@@ -358,6 +360,7 @@ describeDatabase("PostgreSQL security roles", () => {
     ]);
 
     for (const [relation, column] of [
+      ["knowledge_directories", "title"],
       ["knowledge_page_versions", "body_markdown"],
       ["knowledge_page_versions", "title"],
       ["assets", "s3_object_key"],
@@ -379,6 +382,50 @@ describeDatabase("PostgreSQL security roles", () => {
         "SELECT has_column_privilege('context_use_boundary_owner',$1,$2,'SELECT') AS allowed",
         [relation, column],
       )).rows[0]?.allowed).toBe(true);
+    }
+  });
+
+  test("dashboard and MCP can invoke only the guarded directory deletion capability", async () => {
+    for (const role of ["context_use_dashboard", "context_use_mcp"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege($1,'knowledge_directories','DELETE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,'delete_empty_knowledge_directory(uuid,integer)','EXECUTE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(true);
+
+      const id = randomUUID();
+      const path = `tests/guarded-delete-${role.replace("context_use_", "")}-${id.slice(0, 8)}`;
+      await admin.query("BEGIN");
+      try {
+        await admin.query(
+          `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+           VALUES ($1,$2,'Guarded delete','','',directory_search_vector($2,'Guarded delete','',''))`,
+          [id, path],
+        );
+        await admin.query(`SET LOCAL ROLE ${role}`);
+        await expectDenied("DELETE FROM knowledge_directories WHERE id=$1", [id]);
+        const result = await admin.query<{ result: { status: string; id: string } }>(
+          "SELECT delete_empty_knowledge_directory($1,1) AS result",
+          [id],
+        );
+        expect(result.rows[0]?.result).toMatchObject({ status: "deleted", id });
+        await admin.query("RESET ROLE");
+        await admin.query("COMMIT");
+      } catch (error) {
+        await admin.query("ROLLBACK");
+        throw error;
+      }
+      expect((await admin.query("SELECT 1 FROM knowledge_directories WHERE id=$1", [id])).rowCount).toBe(0);
+    }
+
+    for (const role of ["context_use_auth", "context_use_public", "context_use_confirmation", "context_use_storage", "context_use_backup"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,'delete_empty_knowledge_directory(uuid,integer)','EXECUTE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
     }
   });
 

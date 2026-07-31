@@ -20,6 +20,7 @@ import {
   archivePageSchema,
   createDirectorySchema,
   createPageSchema,
+  deleteDirectorySchema,
   publicationIntentSchema,
   updateDirectorySchema,
   updatePageSchema,
@@ -353,6 +354,12 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const input = updateDirectorySchema.parse(await bodyJson(request));
     const directory = await dashboardDirectories.update(z.string().uuid().parse(params.id), input);
     return directory ? json(directory) : problem("Directory not found", 404, "not_found");
+  })
+  .delete("/api/dashboard/directories/:id", async ({ request, params }) => {
+    await ownerRequest(request, true);
+    const input = deleteDirectorySchema.parse(await bodyJson(request));
+    const directory = await dashboardDirectories.delete(z.string().uuid().parse(params.id), input);
+    return directory ? json({ deleted: true, directory }) : problem("Directory not found", 404, "not_found");
   })
   .post("/api/dashboard/pages", async ({ request }) => {
     const principal = await ownerRequest(request, true);

@@ -11,7 +11,13 @@ export {
   type TemplateRepositories,
   type TemplateResult,
 } from "./knowledge-templates.ts";
-export { DirectoryRepository, DirectoryVersionConflictError } from "./directories.ts";
+export {
+  DirectoryNotEmptyError,
+  DirectoryRepository,
+  DirectoryVersionConflictError,
+  RootDirectoryDeletionError,
+  type DirectoryContents,
+} from "./directories.ts";
 export {
   PageRepository,
   PublicationStateError,

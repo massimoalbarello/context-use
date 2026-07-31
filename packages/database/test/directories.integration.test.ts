@@ -1,6 +1,7 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Pool } from "pg";
 import {
+  AssetRepository,
   DirectoryRepository,
   DirectoryVersionConflictError,
   PageRepository,
@@ -194,5 +195,132 @@ describeDatabase("first-class directory indexes", () => {
       body_markdown: "",
       commit_message: "Attempt orphan page",
     }, { kind: "dashboard", subject: "integration-test-owner" })).rejects.toThrow();
+  });
+});
+
+describeDatabase("guarded directory deletion", () => {
+  const pool = new Pool({ connectionString: databaseUrl });
+  const directories = new DirectoryRepository(pool);
+  const pages = new PageRepository(pool);
+  const assets = new AssetRepository(pool);
+
+  beforeAll(async () => {
+    await pool.query(
+      `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+       VALUES ($1,'tests','Tests','Integration test knowledge.','',directory_search_vector('tests','Tests','Integration test knowledge.',''))
+       ON CONFLICT (current_path) DO NOTHING`,
+      [crypto.randomUUID()],
+    );
+  });
+
+  test("deletes an empty leaf but never cascades through pages, assets, or child directories", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const parentPath = `tests/delete-directory-${suffix}`;
+    const childPath = `${parentPath}/child`;
+    const parent = await directories.create({
+      path: parentPath,
+      title: "Deletion guard",
+      summary: "Temporary content for directory deletion tests.",
+      intro_markdown: "Directory metadata does not make a directory non-empty.",
+    });
+    const child = await directories.create({
+      path: childPath,
+      title: "Child",
+      summary: "A child directory that prevents cascading deletion.",
+      intro_markdown: "",
+    });
+    const activePage = await pages.create({
+      path: `${parentPath}/active-page`,
+      title: "Active page",
+      summary: "An active page that prevents directory deletion.",
+      body_markdown: "Active.",
+      commit_message: "Create active blocker",
+    }, { kind: "dashboard", subject: "directory-deletion-test" });
+    const archivedPage = await pages.create({
+      path: `${parentPath}/archived-page`,
+      title: "Archived page",
+      summary: "An archived page that still retains version history.",
+      body_markdown: "Archived.",
+      commit_message: "Create archived blocker",
+    }, { kind: "dashboard", subject: "directory-deletion-test" });
+    await pages.archive(archivedPage.id, {
+      expected_version_number: archivedPage.version_number,
+      commit_message: "Archive deletion blocker",
+    }, { kind: "dashboard", subject: "directory-deletion-test" });
+    const asset = await assets.create({
+      currentPath: `${parentPath}/asset`,
+      filename: "asset.txt",
+      contentType: "text/plain",
+      sizeBytes: 1,
+      contentHash: "d".repeat(64),
+    });
+
+    try {
+      await expect(directories.delete(parent.id, {
+        expected_version_number: parent.version_number,
+      })).rejects.toMatchObject({
+        contents: { activePages: 1, archivedPages: 1, assets: 1, directories: 1 },
+      });
+
+      expect(await directories.delete(child.id, {
+        expected_version_number: child.version_number,
+      })).toEqual({ id: child.id, current_path: childPath });
+      expect(await directories.get(child.id)).toBeNull();
+    } finally {
+      await pool.query("BEGIN");
+      try {
+        await pool.query("SET CONSTRAINTS ALL DEFERRED");
+        await pool.query("DELETE FROM knowledge_asset_links WHERE source_version_id IN (SELECT id FROM knowledge_page_versions WHERE page_id=ANY($1::uuid[]))", [[activePage.id, archivedPage.id]]);
+        await pool.query("DELETE FROM knowledge_page_versions WHERE page_id=ANY($1::uuid[])", [[activePage.id, archivedPage.id]]);
+        await pool.query("DELETE FROM knowledge_pages WHERE id=ANY($1::uuid[])", [[activePage.id, archivedPage.id]]);
+        await pool.query("DELETE FROM assets WHERE id=$1", [asset.id]);
+        await pool.query("DELETE FROM knowledge_directories WHERE current_path IN ($1,$2)", [childPath, parentPath]);
+        await pool.query("COMMIT");
+      } catch (error) {
+        await pool.query("ROLLBACK");
+        throw error;
+      }
+    }
+  });
+
+  test("protects the root and rejects a stale directory version", async () => {
+    const root = await directories.getByPath("");
+    expect(root).not.toBeNull();
+    await expect(directories.delete(root!.id, {
+      expected_version_number: root!.version_number,
+    })).rejects.toMatchObject({ name: "RootDirectoryDeletionError" });
+
+    const suffix = crypto.randomUUID().slice(0, 8);
+    const target = await directories.create({
+      path: `tests/delete-stale-${suffix}`,
+      title: "Stale delete",
+      summary: "Temporary content for a stale deletion test.",
+      intro_markdown: "",
+    });
+    try {
+      await expect(directories.delete(target.id, {
+        expected_version_number: target.version_number + 1,
+      })).rejects.toBeInstanceOf(DirectoryVersionConflictError);
+      expect(await directories.get(target.id)).not.toBeNull();
+    } finally {
+      await pool.query("DELETE FROM knowledge_directories WHERE id=$1", [target.id]);
+    }
+  });
+
+  test("removes an empty directory even when its own presentation is populated", async () => {
+    const target = await directories.create({
+      path: `tests/delete-empty-${crypto.randomUUID().slice(0, 8)}`,
+      title: "Retired feed digest",
+      summary: "A retired directory with no remaining content.",
+      intro_markdown: "Everything moved elsewhere.",
+    });
+    expect(await directories.delete(target.id, {
+      expected_version_number: target.version_number,
+    })).toEqual({ id: target.id, current_path: target.current_path });
+    expect(await directories.get(target.id)).toBeNull();
+  });
+
+  afterAll(async () => {
+    await pool.end();
   });
 });

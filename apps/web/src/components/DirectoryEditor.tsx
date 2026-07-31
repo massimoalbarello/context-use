@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.ts";
 import type { DirectoryIndex, DirectoryIndexEntry } from "../types.ts";
+import { ActionDialog } from "./ActionDialog.tsx";
 import type { KnowledgeSelection } from "./KnowledgeTree.tsx";
 
 export function selectionForDirectoryEntry(child: DirectoryIndexEntry): KnowledgeSelection {
@@ -12,16 +13,21 @@ export function selectionForDirectoryEntry(child: DirectoryIndexEntry): Knowledg
 export function DirectoryEditor({
   directoryId,
   onChanged,
+  onDeleted,
   onSelect,
 }: {
   directoryId: string;
   onChanged: () => Promise<void> | void;
+  onDeleted: () => Promise<void> | void;
   onSelect: (selection: KnowledgeSelection) => void;
 }) {
   const [directory, setDirectory] = useState<DirectoryIndex | null>(null);
   const [draft, setDraft] = useState({ title: "", summary: "", intro_markdown: "" });
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const load = async () => {
     const next = await api<DirectoryIndex>(`/api/dashboard/directories/${directoryId}`);
@@ -60,6 +66,23 @@ export function DirectoryEditor({
     setIsEditing(true);
   };
 
+  const remove = async () => {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await api(`/api/dashboard/directories/${directory.id}`, {
+        method: "DELETE",
+        body: JSON.stringify({ expected_version_number: directory.version_number }),
+      });
+      setShowDelete(false);
+      await onDeleted();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Deletion failed");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return <main className="editor directory-editor">
     <header className="editor-header">
       <div>
@@ -70,6 +93,7 @@ export function DirectoryEditor({
       {!isEditing && <div className="button-row">
         {directory.guide && <button onClick={() => onSelect({ kind: "page", id: directory.guide!.id })}>Instructions</button>}
         <button className="primary" onClick={startEditing}>Edit presentation</button>
+        {directory.current_path && <button className="danger" onClick={() => { setDeleteError(""); setShowDelete(true); }}>Delete directory</button>}
       </div>}
     </header>
 
@@ -95,5 +119,17 @@ export function DirectoryEditor({
       </section>
     </>}
     {message && <div className="toast">{message}</div>}
+    {showDelete && <ActionDialog
+      eyebrow="Permanent action"
+      title={`Delete ${directory.title}?`}
+      description={<>This removes only <code>{directory.current_path}</code>. It will be refused if any active or archived pages, assets, or child directories remain inside.</>}
+      confirmLabel="Delete empty directory"
+      workingLabel="Deleting…"
+      confirmTone="danger"
+      working={deleting}
+      error={deleteError}
+      onCancel={() => setShowDelete(false)}
+      onConfirm={() => void remove()}
+    />}
   </main>;
 }

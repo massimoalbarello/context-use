@@ -78,6 +78,10 @@ export const updateDirectorySchema = z.object({
   expected_version_number: z.number().int().positive(),
 }).strict();
 
+export const deleteDirectorySchema = z.object({
+  expected_version_number: z.number().int().positive(),
+}).strict();
+
 export const archivePageSchema = z
   .object({
     commit_message: CommitMessage,
@@ -124,6 +128,7 @@ export type CreatePageInput = z.infer<typeof createPageSchema>;
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
 export type CreateDirectoryInput = z.infer<typeof createDirectorySchema>;
 export type UpdateDirectoryInput = z.infer<typeof updateDirectorySchema>;
+export type DeleteDirectoryInput = z.infer<typeof deleteDirectorySchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
 export type PublicationIntentInput = z.infer<typeof publicationIntentSchema>;
 export type AssetUploadInput = z.infer<typeof assetUploadSchema>;

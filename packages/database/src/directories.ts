@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type {
   CreateDirectoryInput,
+  DeleteDirectoryInput,
   DirectoryIndex,
   DirectoryIndexEntry,
   DirectoryTree,
@@ -15,6 +16,33 @@ export class DirectoryVersionConflictError extends Error {
   constructor(readonly currentVersion: number) {
     super(`Directory changed; current version is ${currentVersion}`);
     this.name = "DirectoryVersionConflictError";
+  }
+}
+
+export type DirectoryContents = {
+  activePages: number;
+  archivedPages: number;
+  assets: number;
+  directories: number;
+};
+
+export class DirectoryNotEmptyError extends Error {
+  constructor(readonly contents: DirectoryContents) {
+    const blockers = [
+      contents.activePages ? `${contents.activePages} active page${contents.activePages === 1 ? "" : "s"}` : "",
+      contents.archivedPages ? `${contents.archivedPages} archived page${contents.archivedPages === 1 ? "" : "s"}` : "",
+      contents.assets ? `${contents.assets} asset${contents.assets === 1 ? "" : "s"}` : "",
+      contents.directories ? `${contents.directories} child director${contents.directories === 1 ? "y" : "ies"}` : "",
+    ].filter(Boolean);
+    super(`This directory still contains ${blockers.join(", ")}. Delete all pages, assets, and child directories inside it first.`);
+    this.name = "DirectoryNotEmptyError";
+  }
+}
+
+export class RootDirectoryDeletionError extends Error {
+  constructor() {
+    super("The root knowledge directory cannot be deleted.");
+    this.name = "RootDirectoryDeletionError";
   }
 }
 
@@ -54,6 +82,38 @@ export class DirectoryRepository {
     );
     if (!current.rowCount) return null;
     throw new DirectoryVersionConflictError(current.rows[0]!.version_number);
+  }
+
+  async delete(directoryId: string, input: DeleteDirectoryInput) {
+    type DeleteOutcome = {
+      status: "deleted" | "not_found" | "not_empty" | "protected" | "version_conflict";
+      id?: string;
+      current_path?: string;
+      current_version_number?: number;
+      active_pages?: number;
+      archived_pages?: number;
+      assets?: number;
+      directories?: number;
+    };
+    const result = await this.pool.query<{ result: DeleteOutcome }>(
+      "SELECT delete_empty_knowledge_directory($1,$2) AS result",
+      [directoryId, input.expected_version_number],
+    );
+    const outcome = result.rows[0]?.result;
+    if (!outcome || outcome.status === "not_found") return null;
+    if (outcome.status === "version_conflict") {
+      throw new DirectoryVersionConflictError(outcome.current_version_number!);
+    }
+    if (outcome.status === "protected") throw new RootDirectoryDeletionError();
+    if (outcome.status === "not_empty") {
+      throw new DirectoryNotEmptyError({
+        activePages: outcome.active_pages ?? 0,
+        archivedPages: outcome.archived_pages ?? 0,
+        assets: outcome.assets ?? 0,
+        directories: outcome.directories ?? 0,
+      });
+    }
+    return { id: outcome.id!, current_path: outcome.current_path! };
   }
 
   async get(directoryId: string) {
