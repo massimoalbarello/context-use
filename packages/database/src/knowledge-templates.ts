@@ -28,7 +28,7 @@ export type TemplateRepositories = {
 };
 
 export type TemplateAction = {
-  action: "create-directory" | "create-guide" | "adopt-guide" | "update-guide" | "unchanged" | "conflict";
+  action: "create-directory" | "create-guide" | "adopt-guide" | "update-guide" | "replace-guide" | "unchanged" | "conflict";
   path: string;
   detail: string;
 };
@@ -110,6 +110,7 @@ export async function reconcileKnowledgeTemplate(
   repositories: TemplateRepositories,
   templateName = "default",
   apply = false,
+  overwriteGuides = false,
 ): Promise<TemplateResult> {
   assertTemplateName(templateName);
   const rootUrl = new URL(`${templateName}/`, TEMPLATES_ROOT);
@@ -181,6 +182,14 @@ export async function reconcileKnowledgeTemplate(
       }
       continue;
     }
+    if (overwriteGuides) {
+      actions.push({ action: "replace-guide", path, detail: "Overwrite locally modified guide" });
+      if (apply) {
+        const update: UpdatePageInput = { ...input, expected_version_number: existing.version_number };
+        await repositories.pages.update(existing.id, update, templateActor(templateName));
+      }
+      continue;
+    }
     if (!currentVersion || !templateOwnsCurrentVersion(currentVersion.actor_subject, templateName)) {
       actions.push({ action: "conflict", path, detail: "Preserve locally modified guide" });
       continue;
@@ -199,7 +208,7 @@ export function formatTemplateResult(result: TemplateResult): string {
   const visible = result.actions.filter(({ action }) => action !== "unchanged");
   const lines = visible.map(({ action, path, detail }) => `${action.padEnd(16)} ${path || "/"}  ${detail}`);
   const conflicts = result.actions.filter(({ action }) => action === "conflict").length;
-  const changes = result.actions.filter(({ action }) => action.startsWith("create-") || action === "adopt-guide" || action === "update-guide").length;
+  const changes = result.actions.filter(({ action }) => action.startsWith("create-") || action === "adopt-guide" || action === "update-guide" || action === "replace-guide").length;
   lines.push(`${result.applied ? "Applied" : "Planned"} ${changes} change${changes === 1 ? "" : "s"}; ${conflicts} conflict${conflicts === 1 ? "" : "s"}.`);
   return lines.join("\n");
 }

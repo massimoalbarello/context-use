@@ -110,6 +110,40 @@ describe("knowledge templates", () => {
     expect(state.updatedPages).toContain("agents");
   });
 
+  test("overwrites active local guides only when explicitly requested", async () => {
+    const state = repositories({
+      directories: ["", "about", "about/diary", "about/tasks", "automations", "companies", "events", "meetings", "people", "skills"],
+      pages: {
+        agents: { body: "Owner root rules.\n", actor: "owner-user-id" },
+        "people/agents": { body: "Archived owner rules.\n", actor: "owner-user-id", archived: true },
+      },
+    });
+
+    const ordinaryPlan = await reconcileKnowledgeTemplate(state.value, "default", false);
+    expect(ordinaryPlan.actions).toContainEqual({
+      action: "conflict",
+      path: "agents",
+      detail: "Preserve locally modified guide",
+    });
+
+    const overwritePlan = await reconcileKnowledgeTemplate(state.value, "default", false, true);
+    expect(overwritePlan.actions).toContainEqual({
+      action: "replace-guide",
+      path: "agents",
+      detail: "Overwrite locally modified guide",
+    });
+    expect(overwritePlan.actions).toContainEqual({
+      action: "conflict",
+      path: "people/agents",
+      detail: "Guide was archived locally",
+    });
+    expect(state.updatedPages).toEqual([]);
+
+    const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
+    expect(state.updatedPages).toEqual(["agents"]);
+    expect(formatTemplateResult(applied)).toContain("Applied 9 changes; 1 conflict.");
+  });
+
   test("reports page collisions without removing or overwriting existing knowledge", async () => {
     const state = repositories({
       pages: { about: { body: "Existing page.\n", actor: "owner-user-id" } },
