@@ -195,4 +195,20 @@ describe("knowledge tree", () => {
       "me/learnings/science",
     ]));
   });
+
+  test("expands an explicit root directory while revealing search results", () => {
+    const tree = buildKnowledgeTree(pages, [], [
+      directory("root-directory", "", "Knowledge"),
+      directory("about-directory", "about", "About"),
+    ]);
+
+    expect(expandedPathsForDisplay(new Set(), tree, "physics")).toEqual(new Set([
+      "",
+      "about",
+      "me",
+      "me/learnings",
+      "me/learnings/entrepreneurship",
+      "me/learnings/science",
+    ]));
+  });
 });
