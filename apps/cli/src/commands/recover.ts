@@ -57,7 +57,7 @@ export const command = defineCommand("recover", {
     delete config.recovery;
     await saveConfig(config);
     const nangoRecovery = recovery.nangoBackupKey
-      ? ` Nango was restored from ${recovery.nangoBackupKey}; redeploy its integration functions before relying on scheduled syncs.`
+      ? ` Nango was restored from ${recovery.nangoBackupKey}; run \`context-use nango integrations deploy\` before relying on scheduled syncs.`
       : "";
     p.outro(`Recovered the database from ${recovery.backupKey}.${nangoRecovery} Versioned assets remained in ${recoveredData.asset_bucket}.`);
   },

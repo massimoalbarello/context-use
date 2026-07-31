@@ -74,6 +74,25 @@ Runtime values are KMS-encrypted SecureString parameters below `/context-use/<in
 
 The Nango hostname is internet reachable so providers can call OAuth callback and webhook endpoints. The dashboard is gated by Nango's native username/password authentication, but a blanket proxy login in front of the entire hostname would also block those public integration endpoints. Keep access control route-aware if it is tightened later.
 
+### GitHub pull requests
+
+Create a GitHub OAuth app with `https://nango.YOUR_HOST/oauth/callback` as its authorization callback URL, then run:
+
+```sh
+context-use nango integrations add
+```
+
+The command sends the prompted client ID and secret directly to Nango, creates or reconciles the `github` integration, and deploys the release-pinned `pull-requests` sync. It does not save those OAuth credentials locally or in SSM. Open the Nango dashboard afterward and create a GitHub connection. By default, the connection syncs pull requests from every accessible repository; set its metadata to `{"repositories":["owner/repository"]}` to limit the source set. GitHub's OAuth `repo` scope is required to include private repositories. Changing that source set stops future refreshes but intentionally does not delete existing records yet; retention and pruning will be introduced as a separate, explicit policy. Records retain the PR's aggregate `changed_files`, additions, and deletions metadata, but deliberately omit the much larger changed-file and patch collection. They include a completeness flag when GitHub caps the commit collection for an unusually large pull request.
+
+Inspect the managed state or redeploy the exact function version bundled with the installed Context Use release using:
+
+```sh
+context-use nango integrations status
+context-use nango integrations deploy
+```
+
+`context-use update` updates the Nango runtime and installs the matching function-deployer image, but it does not mutate live functions automatically. Run the explicit deploy command when a release changes integration code. Destructive model changes remain blocked unless you deliberately pass `--allow-destructive`.
+
 Nango gets an independent daily PostgreSQL backup stream in the retained backup bucket under `nango-postgres/`, encrypted with the installation KMS key and produced by the scoped `nango_backup` role. `context-use backup` captures both databases, while `context-use nango restore` restores only Nango. Compiled integration artifacts on the retained volume are reproducible rather than authoritative: keep integration source in version control and redeploy it after total-volume recovery. Application logs go to CloudWatch. Dozzle, Elasticsearch, and Nango's optional log backend are deliberately omitted until they provide enough value to justify their operational cost.
 
 ### Updating Nango

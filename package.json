@@ -18,7 +18,7 @@
     "dev:web": "bun --cwd apps/web dev",
     "build": "bun run --filter '@context-use/*' build",
     "typecheck": "bun run --filter '@context-use/*' typecheck",
-    "test": "bun test",
+    "test": "bun test apps packages",
     "db:bootstrap": "bun --cwd packages/database bootstrap",
     "db:initialize": "bun --cwd packages/database initialize",
     "db:migrate": "bun --cwd packages/database migrate",

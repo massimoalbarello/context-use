@@ -64,6 +64,9 @@ export const command = defineCommand("update", {
     await ensureNangoApiKeys(config, data);
     config.releaseVersion = manifest.version;
     await saveConfig(config);
-    p.outro(`Updated to ${manifest.version}`);
+    p.outro(
+      `Updated to ${manifest.version}. If you use managed Nango integrations, run `
+      + "`context-use nango integrations deploy` to apply this release's function code.",
+    );
   },
 });
