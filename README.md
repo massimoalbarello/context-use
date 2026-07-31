@@ -54,8 +54,6 @@ Follow the prompts for your AWS profile, region, hostname, DNS, and owner email.
 
 New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use `context-use template plan` to preview missing guides, safe updates, and local conflicts, then `context-use template apply` to apply them. Existing directories are never removed, and guides edited inside an instance are preserved. To replace active local guides deliberately, preview with `context-use template plan --overwrite-guides`, then run `context-use template apply --overwrite-guides`.
 
-> **Schema compatibility:** the directory/index release intentionally replaces the pre-release migration history with one checksummed baseline. Existing installations must be destroyed with retained data and recreated; the migrator rejects older or modified schemas instead of starting against an incompatible database.
-
 ## Nango data ingestion
 
 AWS installations also run Nango on the same `t3.large` EC2 instance. Nango is the ingestion and encrypted-record layer; its raw records are not copied into the Context Use knowledge-page schema. The deployment uses Nango's full upstream image with enterprise mode enabled and runs its server, jobs, orchestrator, persist, and Redis services on isolated Docker networks. Nango shares the PostgreSQL container but owns a separate `nango` database through dedicated application and read-only backup roles.
