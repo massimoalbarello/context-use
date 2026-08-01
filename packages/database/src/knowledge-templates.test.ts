@@ -2,10 +2,34 @@ import { describe, expect, test } from "bun:test";
 import type { TemplateRepositories } from "./knowledge-templates.ts";
 import { formatTemplateResult, reconcileKnowledgeTemplate } from "./knowledge-templates.ts";
 
+const DEFAULT_DIRECTORY_PATHS = [
+  "",
+  "about",
+  "automations",
+  "companies",
+  "events",
+  "library",
+  "meetings",
+  "objects",
+  "people",
+  "places",
+  "skills",
+  "about/diary",
+  "about/projects",
+  "about/tasks",
+  "automations/activity-distiller",
+];
+
 function repositories(options: {
   directories?: string[];
   directorySummaries?: Record<string, string>;
-  pages?: Record<string, { body: string; actor: string; archived?: boolean }>;
+  pages?: Record<string, {
+    body: string;
+    actor: string;
+    archived?: boolean;
+    title?: string;
+    summary?: string;
+  }>;
 } = {}) {
   const directoryRecords = new Map((options.directories ?? [""]).map((path, index) => [path, {
     id: `directory-${index}`,
@@ -19,10 +43,12 @@ function repositories(options: {
     id: `page-${index}`,
     current_path: path,
     version_number: 1,
-    title: "AGENTS.md",
-    summary: path === "agents"
+    title: page.title ?? (path === "agents" || path.endsWith("/agents") ? "AGENTS.md" : path.split("/").at(-1)!),
+    summary: page.summary ?? (path === "agents"
       ? "The global instructions for maintaining this knowledge base."
-      : `Instructions for maintaining knowledge in ${path.replace(/\/agents$/, "")}/.`,
+      : path.endsWith("/agents")
+        ? `Instructions for maintaining knowledge in ${path.replace(/\/agents$/, "")}/.`
+        : `Existing summary for ${path}.`),
     body_markdown: page.body,
     archived_at: page.archived ? new Date() : null,
     actor: page.actor,
@@ -32,7 +58,9 @@ function repositories(options: {
   const updatedDirectories: string[] = [];
   const updatedDirectoryInputs: Array<{ title: string; summary: string; intro_markdown: string; expected_version_number: number }> = [];
   const createdPages: string[] = [];
+  const createdPageInputs: Array<{ path: string; title: string; summary: string; body_markdown: string }> = [];
   const updatedPages: string[] = [];
+  const updatedPageInputs: Array<{ path: string; title: string; summary: string; body_markdown: string }> = [];
   const value = {
     directories: {
       async getByPath(path: string) {
@@ -61,12 +89,26 @@ function repositories(options: {
       async getByPath(path: string) {
         return pages.get(path) ?? null;
       },
-      async create(input: { path: string }) {
+      async create(input: { path: string; title: string; summary: string; body_markdown: string }, actor: { subject: string }) {
         createdPages.push(input.path);
+        createdPageInputs.push(input);
+        pages.set(input.path, {
+          id: `page-created-${createdPages.length}`,
+          current_path: input.path,
+          version_number: 1,
+          title: input.title,
+          summary: input.summary,
+          body_markdown: input.body_markdown,
+          archived_at: null,
+          actor: actor.subject,
+        });
         return input;
       },
-      async update(_id: string, input: { path: string }) {
+      async update(id: string, input: { path: string; title: string; summary: string; body_markdown: string }, actor: { subject: string }) {
+        const page = [...pages.values()].find((candidate) => candidate.id === id)!;
         updatedPages.push(input.path);
+        updatedPageInputs.push(input);
+        Object.assign(page, input, { version_number: page.version_number + 1, actor: actor.subject });
         return input;
       },
       async version(id: string) {
@@ -82,7 +124,9 @@ function repositories(options: {
     updatedDirectories,
     updatedDirectoryInputs,
     createdPages,
+    createdPageInputs,
     updatedPages,
+    updatedPageInputs,
   };
 }
 
@@ -105,19 +149,23 @@ describe("knowledge templates", () => {
       "about/diary",
       "about/projects",
       "about/tasks",
+      "automations/activity-distiller",
     ]);
     expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(14);
+    expect(result.actions.filter(({ action }) => action === "create-page").map(({ path }) => path)).toEqual([
+      "automations/activity-distiller/instructions",
+      "automations/activity-distiller/state",
+    ]);
     expect(state.createdDirectories).toEqual([]);
     expect(state.createdPages).toEqual([]);
     expect(formatTemplateResult(result)).toContain("+ create-directory library");
-    expect(formatTemplateResult(result)).toContain("✓ Planned 27 changes; 0 conflicts.");
+    expect(formatTemplateResult(result)).toContain("✓ Planned 30 changes; 0 conflicts.");
     expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
   });
 
   test("creates directory summaries and fills only summaries that are still blank", async () => {
-    const paths = ["", "about", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills", "about/diary", "about/projects", "about/tasks"];
     const state = repositories({
-      directories: paths,
+      directories: DEFAULT_DIRECTORY_PATHS,
       directorySummaries: {
         library: "",
         objects: "  ",
@@ -138,7 +186,7 @@ describe("knowledge templates", () => {
       path: "library",
       detail: "Add template summary for library",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 16 changes; 0 conflicts.");
+    expect(formatTemplateResult(result)).toContain("Applied 18 changes; 0 conflicts.");
   });
 
   test("uses authored presentation when creating template directories", async () => {
@@ -153,11 +201,81 @@ describe("knowledge templates", () => {
       intro_markdown: "",
     });
     expect(state.createdDirectoryInputs.every(({ summary }) => summary.length > 0)).toBe(true);
+    expect(state.createdPageInputs.find(({ path }) => path === "automations/activity-distiller/instructions"))
+      .toMatchObject({
+        title: "Activity distiller",
+        summary: "Instructions for reconciling one bounded batch of connected activity into concise canonical knowledge.",
+        body_markdown: expect.stringContaining("Call `read_source_records` exactly once"),
+      });
+    expect(state.createdPageInputs.find(({ path }) => path === "automations/activity-distiller/state"))
+      .toMatchObject({
+        title: "Activity distiller state",
+        summary: "The current opaque source checkpoint for the activity distiller.",
+        body_markdown: "# Activity distiller state\n\n**Checkpoint:** _none_\n",
+      });
+  });
+
+  test("updates untouched instructions but never overwrites live checkpoint state", async () => {
+    const state = repositories({
+      directories: DEFAULT_DIRECTORY_PATHS,
+      pages: {
+        "automations/activity-distiller/instructions": {
+          title: "Activity distiller",
+          summary: "Instructions for reconciling one bounded batch of connected activity into concise canonical knowledge.",
+          body: "Old template instructions.\n",
+          actor: "context-use-template/default",
+        },
+        "automations/activity-distiller/state": {
+          title: "Activity distiller state",
+          summary: "The current opaque source checkpoint for the activity distiller.",
+          body: "# Activity distiller state\n\n**Checkpoint:** `cu-nango-v1.live`\n",
+          actor: "context-use-template/default",
+        },
+      },
+    });
+
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true);
+
+    expect(result.actions).toContainEqual({
+      action: "update-page",
+      path: "automations/activity-distiller/instructions",
+      detail: "Update untouched template page",
+    });
+    expect(result.actions).toContainEqual({
+      action: "unchanged",
+      path: "automations/activity-distiller/state",
+      detail: "Preserve create-only template page",
+    });
+    expect(state.updatedPages).toContain("automations/activity-distiller/instructions");
+    expect(state.updatedPages).not.toContain("automations/activity-distiller/state");
+  });
+
+  test("preserves locally customized activity-distiller instructions", async () => {
+    const state = repositories({
+      directories: DEFAULT_DIRECTORY_PATHS,
+      pages: {
+        "automations/activity-distiller/instructions": {
+          title: "Activity distiller",
+          summary: "Local activity distiller instructions.",
+          body: "Owner-specific maintenance policy.\n",
+          actor: "owner-user-id",
+        },
+      },
+    });
+
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true, true);
+
+    expect(result.actions).toContainEqual({
+      action: "conflict",
+      path: "automations/activity-distiller/instructions",
+      detail: "Preserve locally modified template page",
+    });
+    expect(state.updatedPages).not.toContain("automations/activity-distiller/instructions");
   });
 
   test("updates bootstrap-owned guides while preserving locally edited guides", async () => {
     const state = repositories({
-      directories: ["", "about", "about/diary", "about/projects", "about/tasks", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills"],
+      directories: DEFAULT_DIRECTORY_PATHS,
       pages: {
         agents: { body: "Legacy root.\n", actor: "context-use-bootstrap" },
         "people/agents": { body: "Owner rules.\n", actor: "owner-user-id" },
@@ -166,13 +284,13 @@ describe("knowledge templates", () => {
     const result = await reconcileKnowledgeTemplate(state.value, "default", true);
 
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(state.createdPages).toHaveLength(12);
+    expect(state.createdPages).toHaveLength(14);
     expect(result.actions).toContainEqual({
       action: "conflict",
       path: "people/agents",
       detail: "Preserve locally modified guide",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 13 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 15 changes; 1 conflict.");
     expect(formatTemplateResult(result)).toContain("~ update-guide     agents");
     expect(formatTemplateResult(result)).toContain("! conflict         people/agents");
     expect(formatTemplateResult(result, true)).toContain("\u001B[31m!\u001B[0m conflict");
@@ -195,7 +313,7 @@ describe("knowledge templates", () => {
 
   test("overwrites active local guides only when explicitly requested", async () => {
     const state = repositories({
-      directories: ["", "about", "about/diary", "about/projects", "about/tasks", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills"],
+      directories: DEFAULT_DIRECTORY_PATHS,
       pages: {
         agents: { body: "Owner root rules.\n", actor: "owner-user-id" },
         "people/agents": { body: "Archived owner rules.\n", actor: "owner-user-id", archived: true },
@@ -224,7 +342,7 @@ describe("knowledge templates", () => {
 
     const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(formatTemplateResult(applied)).toContain("Applied 13 changes; 1 conflict.");
+    expect(formatTemplateResult(applied)).toContain("Applied 15 changes; 1 conflict.");
   });
 
   test("reports page collisions without removing or overwriting existing knowledge", async () => {
@@ -261,6 +379,7 @@ describe("knowledge templates", () => {
     const places = await Bun.file(new URL("../templates/default/places/AGENTS.md", import.meta.url)).text();
     const projects = await Bun.file(new URL("../templates/default/about/projects/AGENTS.md", import.meta.url)).text();
     const tasks = await Bun.file(new URL("../templates/default/about/tasks/AGENTS.md", import.meta.url)).text();
+    const activityDistiller = await Bun.file(new URL("../templates/default/_pages/activity-distiller/instructions.md", import.meta.url)).text();
     const normalizedRoot = root.replaceAll(/\s+/g, " ");
     const normalizedRootLower = normalizedRoot.toLowerCase();
     const normalizedAbout = about.replaceAll(/\s+/g, " ");
@@ -367,6 +486,12 @@ describe("knowledge templates", () => {
     expect(automations).toContain("Only after every intended knowledge mutation succeeds");
     expect(automations).toContain("Do not create an intermediate observation");
     expect(automations).toContain("Do not put pipeline proposals in the diary");
+    expect(activityDistiller).toContain("Call `read_source_records` exactly once");
+    expect(activityDistiller).toContain("call `prepare_knowledge_write` for the exact target");
+    expect(activityDistiller).toContain("rewrite the complete existing activity-distiller page");
+    expect(activityDistiller).toContain("owner `log` merely to link an automation page");
+    expect(activityDistiller).toContain("replace the whole state page with the returned checkpoint");
+    expect(activityDistiller).not.toContain("drain");
     expect(normalizedRootLower).toContain("reconcile; never append by default");
     expect(normalizedRootLower).toContain("as concise as possible, but no more concise than the truth allows");
     for (const instanceSpecificExample of [

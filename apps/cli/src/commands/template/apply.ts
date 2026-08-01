@@ -4,7 +4,7 @@ import { z } from "zod";
 import { runKnowledgeTemplateCommand } from "../../knowledge-template.ts";
 
 export const command = defineCommand("template apply", {
-  description: "Create missing template guides and update eligible existing ones.",
+  description: "Create missing template knowledge and update eligible guides and managed pages.",
   options: {
     "overwrite-guides": {
       schema: z.boolean().optional(),

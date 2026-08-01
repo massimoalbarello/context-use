@@ -52,7 +52,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 
 Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use status`, `context-use update`, or `context-use doctor` to manage the installation later.
 
-New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use `context-use template plan` to preview missing guides, safe updates, and local conflicts, then `context-use template apply` to apply them. Existing directories are never removed, and guides edited inside an instance are preserved. To replace active local guides deliberately, preview with `context-use template plan --overwrite-guides`, then run `context-use template apply --overwrite-guides`.
+New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use `context-use template plan` to preview missing directories and pages, safe updates, and local conflicts, then `context-use template apply` to apply them. Existing directories are never removed, locally edited guides and managed pages are preserved, and create-only state pages are never overwritten. To replace active local guides deliberately, preview with `context-use template plan --overwrite-guides`, then run `context-use template apply --overwrite-guides`.
 
 ## Nango data ingestion
 
@@ -128,10 +128,13 @@ automation may keep exactly one non-secret opaque checkpoint on its stable `stat
 
 ### Activity distillation automation
 
-The first record-to-knowledge pipeline is intentionally agent-driven. Create
-`automations/activity-distiller/instructions` and
-`automations/activity-distiller/state`, authorize its trusted MCP client, and schedule
-its harness once or twice a day. Its run contract is:
+The first record-to-knowledge pipeline is intentionally agent-driven. The default
+knowledge template installs `automations/activity-distiller/instructions` and a
+create-only `automations/activity-distiller/state`; existing installations receive them
+with `context-use template apply`. Authorize the trusted MCP client, then schedule an
+external harness once or twice a day with the prompt: “Open and follow
+`automations/activity-distiller/instructions`; execute exactly one run.” Its run contract
+is:
 
 1. Read the instruction and state pages, call `read_source_records` with the stored
    checkpoint, and process exactly that bounded batch. Do not accumulate multiple
