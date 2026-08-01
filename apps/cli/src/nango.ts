@@ -23,7 +23,6 @@ const managedApiKeys = [
     parameterName: "NANGO_PIPELINE_API_KEY",
     scopes: [
       "environment:records:read",
-      "environment:integrations:list_functions",
       "environment:connections:list",
     ],
   },

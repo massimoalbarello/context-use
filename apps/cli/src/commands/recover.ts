@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { retainedDataVolumeExists } from "../data-volume.ts";
-import { deploy, prepareCompute } from "../deploy.ts";
+import { deploy, prepareCompute, refreshNangoPipelineRuntime } from "../deploy.ts";
 import { readInfrastructure } from "../lifecycle.ts";
 import { ensureNangoApiKeys } from "../nango.ts";
 import { saveConfig } from "../paths.ts";
@@ -54,6 +54,7 @@ export const command = defineCommand("recover", {
       ...(recovery.nangoBackupKey ? { recoveryNangoBackupKey: recovery.nangoBackupKey } : {}),
     });
     await ensureNangoApiKeys(config, recoveredData);
+    await refreshNangoPipelineRuntime(config, nextCompute);
     delete config.recovery;
     await saveConfig(config);
     const nangoRecovery = recovery.nangoBackupKey

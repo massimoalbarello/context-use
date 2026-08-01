@@ -41,6 +41,10 @@ details in `body`. The root `id` is the necessary exception because Nango requir
 Internal state or checkpoint models that are not sent to the downstream pipeline may use a
 sync-specific schema.
 
+Register every discoverable model in the managed function's `pipelineModels` array in
+`catalog.ts`. Keep internal sync-state models only in `models`; catalog membership is the explicit
+boundary that lets the downstream MCP request pipeline data without trying to infer model purpose.
+
 Never save:
 
 - whole provider responses or a `raw`/`payload` copy;

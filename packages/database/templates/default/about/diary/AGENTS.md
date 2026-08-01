@@ -34,14 +34,15 @@ The log's summary captures the day and is written **last**, from the finished en
     *<Location> · one line framing the day*
 
     Narrative prose: what actually happened, what it felt like, what changed.
-    Link durable things inline as they come up — [[about/tasks/…|Task]],
+    Link durable things inline as they come up — [[about/projects/…|Project]],
+    [[about/tasks/…|Task]],
     people, companies — rather than re-explaining them.
 
     ## On my mind
     - Short bullets. Thoughts, doubts, half-formed ideas, things being circled.
 
     ## Threads
-    - [[about/tasks/…|Task]] — what moved today · continues [[about/diary/…|24 Jul]]
+    - [[about/projects/…|Project]] — what moved today · continues [[about/diary/…|24 Jul]]
     - [[people/…|Person]] — what happened between them
 
     ## Companion pages
@@ -71,7 +72,7 @@ Before writing anything, ask: **will this still matter on its own in a month?**
 | A call, a conference, someone new, a company | the owning [[meetings/agents|meeting]], [[events/agents|event]], [[people/agents|person]] or [[companies/agents|company]] page; the log links, and a material relationship milestone is indexed on the entity timeline |
 | A new idea, or a decision and its reasoning | the durable page for the subject; the log keeps the lived reasoning |
 | A preference, taste, habit or belief articulated | a durable owner page, following the instance's organization under `about/` |
-| An open loop still open tomorrow | the log links the durable subject or [[about/tasks/agents|task]] that gives it context; current state remains in the diary |
+| An open loop still open tomorrow | the log links the durable subject, [[about/projects/agents|project]] or [[about/tasks/agents|task]] that gives it context; current state remains in the diary |
 
 The log carries **pointers and lived texture, never canonical content**. A fact that
 exists only inside a diary entry is trapped — the failure mode this directory exists to
@@ -111,26 +112,41 @@ reading today can retrieve the context instead of guessing at it.
 
 **Continuity is not a substitute for a durable home.** If a chain runs past a week, or
 you find yourself reading three logs to reconstruct the state of something, that thing
-needs its own durable page — create one for the subject or frame and let the days link
-to it. Current state remains in the diary.
+needs its own durable page — create one for the subject, [[about/projects/agents|project]]
+or task frame and let the days link to it. Current state remains in the diary.
 
 ## Automations in the diary
 
 The general contract is in [[automations/agents|automations]]. Inside a day folder:
 
-- **One page per automation per day**, flat: `<DD>/<automation-slug>`, the slug stable
-  across days so its history is findable by pattern. Title `<Automation name> —
-  <D Month YYYY>`; summary about *this run*, not what the automation does in general.
-  Open the body with which automation wrote it, which sources it read, and when it ran.
+- **At most one page per automation per day**, flat: `<DD>/<automation-slug>`, the slug
+  stable across days so its history is findable by pattern. Title `<Automation name> —
+  <D Month YYYY>`; summary about the activity on that date, not the pipeline run. Create
+  it only when the day contains something important enough to help future understanding.
+- **The date is when the activity happened, not when a source delivered it.** One run
+  may create or revise several affected days. Delayed evidence belongs on its actual day.
+- A multi-source activity distiller writes one coherent page for the day. It groups the
+  owner's actions by their real project, task or other subject and links those canonical
+  pages. Keep only material decisions, outcomes, changes of direction, meaningful
+  interactions and progress that explains current state. Routine commits, reviews,
+  messages, notifications and administrative activity are omitted unless their effect
+  was consequential. Never create one diary page per connection, provider, repository
+  or record.
+- **A rerun rewrites its whole day page.** Reconsider its organization and wording in
+  light of all evidence available for that day, remove duplication and superseded
+  interpretations, and keep the result concise. Never append a run section or ingestion
+  log. New evidence may justify correcting a past automation page in place.
 - **Nothing to report, write nothing.** A filler page also materialises a day folder
   that had no reason to exist.
-- An automation granted the log adds **one bullet under `## Companion pages`**, creating
-  the section if absent. **Write access to the log is not permission to rewrite it** —
-  the narrative, `On my mind` and `Threads` are the owner's. Change your bullet; leave
-  every other byte as you found it. Re-running replaces that bullet, never adds a second.
-  Never write another automation's page, even where scope would permit it.
-- A `Continues [[…]]` line only where a run genuinely carries on an earlier one — not
-  because the automation also ran yesterday. That chain is derivable from the path.
+- When an automation links its output from the log, it adds **one bullet under
+  `## Companion pages`**, creating the section if absent. **Access to the log is not
+  permission to rewrite it** — the narrative, `On my mind` and `Threads` are the owner's.
+  Change your bullet; leave every other byte as you found it. Re-running replaces that
+  bullet, never adds a second. Never write another automation's page.
+- A `Continues [[…]]` line only where the recorded activity genuinely carries on earlier
+  work — not because the automation ran before. That chain is derivable from the path.
+- Checkpoints, cursors, record identifiers, run times, retry state and source diagnostics
+  never belong in the diary. The automation's single `state` page owns its checkpoint.
 
 ## Reading and sweeping
 

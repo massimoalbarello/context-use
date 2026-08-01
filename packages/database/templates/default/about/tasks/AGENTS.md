@@ -1,11 +1,12 @@
 # Tasks conventions
 
-**One folder per substantial effort or decision frame** at `about/tasks/<slug>/`, entered
-through `intro`.
+**One folder per substantial finite pursuit or decision frame** at
+`about/tasks/<slug>/`, entered through `intro`.
 
-A task here is an open-ended pursuit the owner is or was actively thinking through — a
-long-running project or consequential decision with unresolved questions. It is not a
-to-do item: if it can be finished in an afternoon, it does not get a folder.
+A task here is an outcome, experiment or consequential decision the owner is actively
+thinking through and which can resolve or close. It is not a to-do item: if it can be
+finished in an afternoon, it does not get a folder. Nor is it the durable home of a
+long-lived body of work; that belongs under [[about/projects/agents|projects]].
 
 ## Minimal shape
 
@@ -32,6 +33,10 @@ That is what makes these pages worth keeping. A task folder that tracked progres
 need rewriting every week and would be wrong in between; one that holds the durable
 frame and reasoning stays useful while the diary records movement.
 
+Observed activity does not create a task by itself. Record what happened in the diary;
+create a task only when the evidence establishes a real future-facing pursuit or
+decision frame useful beyond that day.
+
 **Judgement about an entity is not part of the task either.** Whether a company is worth
 joining or a person is worth partnering with belongs on a lens page in that entity's
 folder ([[companies/agents|companies]], [[people/agents|people]]). The task links to it
@@ -39,10 +44,10 @@ instead of explaining the entity again.
 
 ## Closing a task
 
-When a task resolves, give the outcome its durable home — often a chapter or project,
-but whichever page owns the resulting truth. The task folder stays as the reasoning
-record and the diary holds how it unfolded and whether it is active. Do not rewrite the
-task into a retrospective.
+When a task resolves, give the outcome its durable home — often the related
+[[about/projects/agents|project]], but whichever page owns the resulting truth. The task
+folder stays as the reasoning record and the diary holds how it unfolded and whether it
+is active. Do not rewrite the task into a retrospective.
 
 ## Local rules
 

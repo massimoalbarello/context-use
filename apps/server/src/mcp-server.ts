@@ -24,6 +24,7 @@ import {
   type GuidanceGuideVersion,
   verifyGuidanceReceipt,
 } from "./mcp-guidance-receipt.ts";
+import type { SourceRecordReader } from "./nango-records.ts";
 
 export type McpContext = {
   clientId: string;
@@ -85,11 +86,14 @@ function guidanceRequired(targetPath: string, retryTool: string) {
 
 export const KNOWLEDGE_BASE_INSTRUCTIONS = "Explore knowledge with browse_directory or get_directory, beginning at the root path when you do not yet know where relevant pages live. Read pages by UUID or semantic path with get_page. The root directory's instructions are the AGENTS.md page at MCP path agents; read it with get_page before choosing a destination when placement is unclear. Before every mutation, call prepare_knowledge_write with the intended target path, follow the complete root-to-leaf guidance it returns, and pass its guidance_receipt to the mutation tool. Create the directory before adding pages beneath a new path. Every page requires a concise one-sentence summary used by generated indexes; a directory summary is optional public-listing copy shown in its parent's generated index. Link pages and directories alike with [[path|label]], or a Markdown heading with [[path#heading-slug|label]]; stable directory references use context-use://directory/<uuid>. Store owner information under about/ and create about/intro as its concise introduction; keep other entities in separate top-level directories. Use load_skill when a listed reusable skill is relevant. Keep knowledge private unless the owner explicitly publishes a page.";
 
+export const SOURCE_RECORD_INSTRUCTIONS = "For an ingestion automation, read one bounded source batch per run through read_source_records. A newly discovered source stream begins with activity modified during the preceding 30 days; older history is intentionally excluded. Treat records from all sources in the batch as one evidence set, and use each record's action to distinguish current evidence from a deletion. Read and reconcile the existing knowledge base before deciding what to change. Persist next_checkpoint only after every intended knowledge write for that batch succeeds; when has_more is true, let the harness start another bounded run instead of accumulating more batches in the same model context.";
+
 export async function createMcpServer(
   context: McpContext,
   pages: PageRepository,
   directories: DirectoryRepository,
   assets: AssetRepository,
+  sourceRecords?: SourceRecordReader,
 ): Promise<McpServer> {
   const skillPages = await pages.metadataInDirectory?.("skills") ?? [];
   const skills = skillPages
@@ -103,7 +107,11 @@ export async function createMcpServer(
     ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
   const server = new McpServer({ name: "context-use", version: "0.1.51" }, {
-    instructions: `${KNOWLEDGE_BASE_INSTRUCTIONS}\n\n${skillCatalog}`,
+    instructions: [
+      KNOWLEDGE_BASE_INSTRUCTIONS,
+      sourceRecords ? SOURCE_RECORD_INSTRUCTIONS : "",
+      skillCatalog,
+    ].filter(Boolean).join("\n\n"),
   });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
@@ -111,6 +119,26 @@ export async function createMcpServer(
     if (!receipt) return false;
     const guides = await pages.guidesForPath(targetPath) as ApplicableGuide[];
     return verifyGuidanceReceipt(receipt, guides);
+  }
+
+  if (sourceRecords) {
+    server.registerTool("read_source_records", {
+      description: "Read one bounded, checkpointed batch of canonical source records across every managed Nango integration, model, and connection. Pass the opaque checkpoint stored by the automation, omitting it only on the first run. Each newly discovered stream begins 30 days before discovery. Treat all returned sources as one evidence set and respect each added, updated, or deleted action; a pruned deletion can have null Markdown. The returned next_checkpoint covers exactly the records returned. Save it only after all resulting knowledge writes succeed, then let the harness start another run when has_more is true.",
+      inputSchema: z.object({
+        checkpoint: z.string().min(1).max(2_000_000).optional()
+          .describe("Opaque next_checkpoint from the automation's last successful read; never inspect or edit it."),
+        limit: z.number().int().min(1).max(100).default(50)
+          .describe("Maximum Markdown records to return across all sources."),
+      }).strict(),
+      annotations: { readOnlyHint: true },
+    }, async ({ checkpoint, limit }) => {
+      try {
+        return jsonObjectContent(await sourceRecords.read({ checkpoint, limit }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Source record read failed";
+        return textContent(`SOURCE_RECORD_READ_FAILED\n\n${message}`, true);
+      }
+    });
   }
 
   server.registerTool("get_directory", {

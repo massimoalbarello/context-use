@@ -33,6 +33,7 @@ describe("GitHub pull request integration contract", () => {
         name: "pull-requests",
         type: "sync",
         models: ["GitHubPullRequest", "GitHubRepositorySyncState"],
+        pipelineModels: ["GitHubPullRequest"],
       },
     ]);
     expect(sync.frequency).toBe("every half hour");

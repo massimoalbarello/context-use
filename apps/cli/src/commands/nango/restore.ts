@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { listBackups, sendSsmCommands } from "../../aws.ts";
-import { verifyDeployment } from "../../deploy.ts";
+import { refreshNangoPipelineRuntime, verifyDeployment } from "../../deploy.ts";
 import { readInfrastructure } from "../../lifecycle.ts";
 import { ensureNangoApiKeys } from "../../nango.ts";
 import type { DataOutputs, DeploymentConfig } from "../../types.ts";
@@ -104,6 +104,7 @@ export const command = defineCommand("nango restore", {
     );
     await verifyDeployment(config, manifest.version);
     await ensureNangoApiKeys(config, data);
+    await refreshNangoPipelineRuntime(config, compute);
     p.outro(`Nango database restored from ${selected}. Run \`context-use nango integrations deploy\` before relying on scheduled syncs; pre-restore artifacts were quarantined on the retained volume.`);
   },
 });

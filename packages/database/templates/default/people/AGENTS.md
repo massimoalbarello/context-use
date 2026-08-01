@@ -48,6 +48,10 @@ Not for a name mentioned in passing. An unfiltered contact dump makes the direct
 useless for the thing it exists to do, which is saying who someone is right before the
 next conversation with them.
 
+For ingested activity, a participant field or one review/comment is still a passing
+mention. Create the person only when repeated or material interaction makes the page
+independently useful; otherwise link no speculative stub.
+
 Before researching or creating a person, search for an existing folder and identify
 which person is meant from the company, meeting, link, handle or other context the owner
 provided. If two candidates survive, stop and ask with the detail that separates them.

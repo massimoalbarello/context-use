@@ -114,7 +114,6 @@ test("Nango API key bootstrap creates least-privilege keys and stores their secr
     display_name: "context-use-pipeline",
     scopes: [
       "environment:records:read",
-      "environment:integrations:list_functions",
       "environment:connections:list",
     ],
   });

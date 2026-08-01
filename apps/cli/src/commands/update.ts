@@ -3,7 +3,7 @@ import { defineCommand } from "@parshjs/core";
 import { bootstrapStateBucket, sendSsmCommands } from "../aws.ts";
 import { continueUpdateWithCli, installCliRelease } from "../cli-update.ts";
 import { retainedDataVolumeExists } from "../data-volume.ts";
-import { deploy, deployedRuntimePresent, prepareCompute } from "../deploy.ts";
+import { deploy, deployedRuntimePresent, prepareCompute, refreshNangoPipelineRuntime } from "../deploy.ts";
 import { ensureNangoApiKeys } from "../nango.ts";
 import { readConfigIfPresent, saveConfig } from "../paths.ts";
 import { currentVersion, deploymentRoot, releaseManifest } from "../release.ts";
@@ -62,6 +62,7 @@ export const command = defineCommand("update", {
     await ensureRuntimeParameters(config, data, compute);
     await deploy(config, compute, manifest);
     await ensureNangoApiKeys(config, data);
+    await refreshNangoPipelineRuntime(config, compute);
     config.releaseVersion = manifest.version;
     await saveConfig(config);
     p.outro(

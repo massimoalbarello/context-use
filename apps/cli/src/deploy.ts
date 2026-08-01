@@ -42,6 +42,45 @@ export async function prepareCompute(config: DeploymentConfig, data: DataOutputs
   await markDataVolumeInitialized(config, data);
 }
 
+export function nangoPipelineRuntimeCommands(config: DeploymentConfig): string[] {
+  const prefix = `/context-use/${config.installationId}/${config.environment}`;
+  if (!/^\/context-use\/[a-z0-9-]+\/[a-z0-9-]+$/.test(prefix)) {
+    throw new Error("Invalid Nango pipeline parameter prefix");
+  }
+  const parameter = `${prefix}/NANGO_PIPELINE_API_KEY`;
+  const runtimeEnv = "/data/context-use/secrets/runtime.env";
+  const compose = `docker compose --env-file ${runtimeEnv}`;
+  return [
+    "set -euo pipefail",
+    `runtime_env='${runtimeEnv}'`,
+    'test -s "$runtime_env"',
+    `pipeline_key="$(aws ssm get-parameter --name '${parameter}' --with-decryption --query Parameter.Value --output text)"`,
+    "test -n \"$pipeline_key\" || { echo 'Nango pipeline key is empty' >&2; exit 2; }",
+    "case \"$pipeline_key\" in *$'\\n'*|*$'\\r'*) echo 'Invalid Nango pipeline key' >&2; exit 2;; esac",
+    "temporary_env=\"$(mktemp /data/context-use/secrets/runtime.env.XXXXXX)\"",
+    "trap 'rm -f \"$temporary_env\"' EXIT",
+    "awk -F= '$1 != \"NANGO_PIPELINE_API_KEY\"' \"$runtime_env\" > \"$temporary_env\"",
+    "printf '%s\\n' \"NANGO_PIPELINE_API_KEY=$pipeline_key\" >> \"$temporary_env\"",
+    'chmod 0600 "$temporary_env"',
+    'mv "$temporary_env" "$runtime_env"',
+    "trap - EXIT",
+    "cd /opt/context-use/deploy",
+    `${compose} up -d --wait --force-recreate --no-deps private-mcp`,
+  ];
+}
+
+export async function refreshNangoPipelineRuntime(
+  config: DeploymentConfig,
+  compute: ComputeOutputs,
+): Promise<void> {
+  await sendSsmCommands(
+    config.awsProfile,
+    config.awsRegion,
+    compute.instance_id,
+    nangoPipelineRuntimeCommands(config),
+  );
+}
+
 export async function manualDnsMismatches(
   config: DeploymentConfig,
   compute: ComputeOutputs,

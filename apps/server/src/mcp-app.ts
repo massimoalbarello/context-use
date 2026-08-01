@@ -11,6 +11,7 @@ import { json, routeError } from "./http.ts";
 import { createMcpRequestHandler } from "./mcp.ts";
 import { createMcpAssetDownloadHandler } from "./mcp-asset-download.ts";
 import { createMcpAssetUploadHandler } from "./mcp-asset-upload.ts";
+import { NangoRecordReader } from "./nango-records.ts";
 import { securityHeaders } from "./security.ts";
 import { BrokeredStorage } from "./storage-client.ts";
 
@@ -22,7 +23,13 @@ const storage = new BrokeredStorage({
   socketPath: config.STORAGE_SOCKET_PATH,
   token: config.STORAGE_MCP_TOKEN,
 });
-const knowledgeMcp = createMcpRequestHandler(pages, directories, assets);
+const sourceRecords = config.NANGO_PIPELINE_API_KEY
+  ? new NangoRecordReader({
+      baseUrl: config.NANGO_INTERNAL_URL,
+      apiKey: config.NANGO_PIPELINE_API_KEY,
+    })
+  : undefined;
+const knowledgeMcp = createMcpRequestHandler(pages, directories, assets, sourceRecords);
 const upload = createMcpAssetUploadHandler(assets, storage);
 const download = createMcpAssetDownloadHandler(assets, storage);
 const protectedResourceMetadata = () => json({

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { MANAGED_INTEGRATIONS } from "../../../../../../nango-integrations/catalog.ts";
 import { getSecureParameter } from "../../../aws.ts";
 import { readInfrastructure } from "../../../lifecycle.ts";
+import { refreshNangoPipelineRuntime } from "../../../deploy.ts";
 import { deployManagedNangoFunctions } from "../../../nango-integration-deployment.ts";
 import { getNangoIntegration } from "../../../nango-integrations.ts";
 import { ensureNangoApiKeys } from "../../../nango.ts";
@@ -20,6 +21,7 @@ export const command = defineCommand("nango integrations deploy", {
     const { config, root, data, compute } = await readInfrastructure();
     if (!data || !compute) throw new Error("No active deployment");
     await ensureNangoApiKeys(config, data);
+    await refreshNangoPipelineRuntime(config, compute);
 
     const prefix = `/context-use/${config.installationId}/${config.environment}`;
     const managerKey = await getSecureParameter(

@@ -4,6 +4,7 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { config } from "./config.ts";
 import { createMcpServer, type McpContext } from "./mcp-server.ts";
 import { createStatelessMcpTransport, unsupportedMcpMethodResponse } from "./mcp-transport.ts";
+import type { SourceRecordReader } from "./nango-records.ts";
 import { requestMatchesOrigin } from "./security.ts";
 
 function mcpUnauthorized(message: string): Response {
@@ -37,6 +38,7 @@ export function createMcpRequestHandler(
   pages: PageRepository,
   directories: DirectoryRepository,
   assets: AssetRepository,
+  sourceRecords?: SourceRecordReader,
 ) {
   const resource = config.MCP_RESOURCE;
   // Fetch keys over the private service network. The token issuer and audience
@@ -74,7 +76,7 @@ export function createMcpRequestHandler(
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();
-    const server = await createMcpServer(context, pages, directories, assets);
+    const server = await createMcpServer(context, pages, directories, assets, sourceRecords);
     await server.connect(transport);
     try {
       return await transport.handleRequest(request);

@@ -45,6 +45,9 @@ parameter_prefix="${CONTEXT_USE_PARAMETER_PREFIX}"
 get_secret() {
   aws ssm get-parameter --name "${parameter_prefix}/$1" --with-decryption --query Parameter.Value --output text
 }
+get_secret_if_present() {
+  aws ssm get-parameter --name "${parameter_prefix}/$1" --with-decryption --query Parameter.Value --output text 2>/dev/null || true
+}
 
 umask 077
 cat > "${secrets}/runtime.env" <<EOF
@@ -73,6 +76,7 @@ NANGO_ENCRYPTION_KEY=$(get_secret NANGO_ENCRYPTION_KEY)
 NANGO_ADMIN_KEY=$(get_secret NANGO_ADMIN_KEY)
 NANGO_DASHBOARD_USERNAME=$(get_secret NANGO_DASHBOARD_USERNAME)
 NANGO_DASHBOARD_PASSWORD=$(get_secret NANGO_DASHBOARD_PASSWORD)
+NANGO_PIPELINE_API_KEY=$(get_secret_if_present NANGO_PIPELINE_API_KEY)
 MCP_ASSET_CAPABILITY_SECRET=$(get_secret MCP_ASSET_CAPABILITY_SECRET)
 CONFIRMATION_GATEWAY_TOKEN=$(get_secret CONFIRMATION_GATEWAY_TOKEN)
 AUTH_DASHBOARD_TOKEN=$(get_secret AUTH_DASHBOARD_TOKEN)

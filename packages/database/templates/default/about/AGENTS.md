@@ -2,11 +2,13 @@
 
 Everything whose subject is the owner belongs under `about/`.
 
-The default template defines only two subdirectories:
+The default template defines only three subdirectories:
 
 - **`diary/`** — the owner's present, organized by day. See
   [[about/diary/agents|the diary conventions]].
-- **`tasks/`** — substantial efforts and decision frames. See
+- **`projects/`** — enduring bodies of work the owner builds, operates or stewards. See
+  [[about/projects/agents|the project conventions]].
+- **`tasks/`** — finite outcomes, experiments and decision frames. See
   [[about/tasks/agents|the task conventions]].
 
 Any other organization under `about/` is specific to the instance. Follow the
@@ -27,8 +29,8 @@ instance and add a local guide only when agents need conventions to maintain it.
 - Durable facts, context and material whose subject is the owner.
 - Current state belongs in the diary, even when a durable page elsewhere provides
   background.
-- A substantial effort or decision frame may have a task page when it meets the
-  threshold in the task conventions.
+- A durable body of work may have a project page; a finite pursuit or decision frame may
+  have a task page when it meets the threshold in the applicable conventions.
 - Judgement about another company, person or subject belongs with that subject, per
   [[agents#where-a-page-belongs|the subject test]]. Keep only the owner's own context
   here.

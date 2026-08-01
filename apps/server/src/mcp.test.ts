@@ -4,8 +4,9 @@ import { DirectoryNotEmptyError } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
 import { createGuidanceReceipt, verifyGuidanceReceipt } from "./mcp-guidance-receipt.ts";
-import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS } from "./mcp-server.ts";
+import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS, SOURCE_RECORD_INSTRUCTIONS } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
+import type { SourceRecordReader } from "./nango-records.ts";
 
 async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body: Record<string, unknown>) {
   const server = await serverOrPromise;
@@ -44,12 +45,14 @@ function serverWith(
   pages = {} as PageRepository,
   assets = {} as AssetRepository,
   directories = {} as DirectoryRepository,
+  sourceRecords?: SourceRecordReader,
 ) {
   return createMcpServer(
     { clientId: "mcp-client" },
     pages,
     directories,
     assets,
+    sourceRecords,
   );
 }
 
@@ -90,6 +93,80 @@ describe("MCP knowledge tools", () => {
     expect(response.result?.instructions).toContain("about/intro");
     expect(response.result?.instructions).toContain("AGENTS.md");
     expect(response.result?.instructions).toContain("Available reusable skills");
+  });
+
+  test("exposes one unified checkpointed source reader when Nango access is configured", async () => {
+    const calls: unknown[] = [];
+    const sourceRecords = {
+      async read(input: unknown) {
+        calls.push(input);
+        return {
+          records: [{
+            record_ref: `nango:${"a".repeat(64)}`,
+            source: "GitHub",
+            action: "added" as const,
+            markdown: "# Pull request\n\nImplemented the record pipeline.",
+          }],
+          next_checkpoint: "cu-nango-v1.opaque",
+          has_more: false,
+        };
+      },
+    } as SourceRecordReader;
+    const initialized = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      sourceRecords,
+    ), {
+      jsonrpc: "2.0",
+      id: 20,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "test-client", version: "1.0.0" },
+      },
+    });
+    expect(initialized.result?.instructions).toContain(SOURCE_RECORD_INSTRUCTIONS);
+
+    const listed = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      sourceRecords,
+    ), {
+      jsonrpc: "2.0",
+      id: 21,
+      method: "tools/list",
+      params: {},
+    });
+    const tool = listed.result?.tools?.find(({ name }) => name === "read_source_records");
+    expect(tool?.description).toContain("bounded, checkpointed batch");
+    expect(tool?.description).toContain("30 days before discovery");
+    expect(tool?.description).toContain("added, updated, or deleted action");
+    expect(tool?.description).toContain("Save it only after all resulting knowledge writes succeed");
+
+    const read = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      sourceRecords,
+    ), {
+      jsonrpc: "2.0",
+      id: 22,
+      method: "tools/call",
+      params: {
+        name: "read_source_records",
+        arguments: { checkpoint: "cu-nango-v1.previous", limit: 25 },
+      },
+    });
+    expect(read.result?.isError).not.toBe(true);
+    expect(read.result?.structuredContent).toMatchObject({
+      records: [{ source: "GitHub", action: "added", markdown: expect.stringContaining("record pipeline") }],
+      next_checkpoint: "cu-nango-v1.opaque",
+      has_more: false,
+    });
+    expect(calls).toEqual([{ checkpoint: "cu-nango-v1.previous", limit: 25 }]);
   });
 
   test("reads pages by semantic path and prepares applicable write guides", async () => {
