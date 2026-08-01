@@ -3,12 +3,12 @@
 **One folder per person** at `people/<first-last>/` — lowercase, hyphenated, the name
 they actually go by — entered through `intro`.
 
-    people/jane-doe/
-    ├── intro            — who they are and how the owner knows them
-    ├── timeline         — material things the owner and person have done together
-    ├── contacts         — how to reach them
-    ├── work             — roles, companies, what they have built
-    └── as-a-cofounder   — lens page: what they are to the owner, in one context
+    people/<first-last>/
+    ├── intro                  — who they are and how the owner knows them
+    ├── timeline               — material things the owner and person have done together
+    ├── contacts               — how to reach them
+    ├── work                   — roles, companies, what they have built
+    └── as-<relationship>      — what they are to the owner in one context
 
 ## Aspects
 
@@ -31,10 +31,9 @@ because it makes the folder look answered.
   another interaction, including favourite hangouts or gadgets. Link canonical place or
   object pages only when the particular entity independently meets its creation
   threshold; a passing preference stays as prose here.
-- **`immigration`** — visas, residency and professional accreditation, for someone whose
-  right to live or practise somewhere is a live multi-year process. Keep dated durable
-  facts here; current progress, ownership and next steps remain in the diary.
-- **Lens pages** — `as-a-cofounder`, `as-a-hire`, `as-an-investor`, `as-a-partner`.
+- **Lens pages** — use `as-<relationship>` when the owner's judgement of the person
+  depends on a particular context. Reuse an established name when it means the same
+  thing elsewhere.
 
 Anything else needs a name obvious to someone who has never opened the folder —
 `family`, `writing`. **Add it to the list above when you use it.**
@@ -42,8 +41,8 @@ Anything else needs a name obvious to someone who has never opened the folder �
 ## When to create one
 
 When the owner has actually interacted with someone, or when they are materially
-relevant to something the owner is doing — a founder of a company under consideration,
-someone they were introduced to, someone whose work matters to a project.
+relevant to something the owner is doing — someone central to a decision, someone they
+were introduced to, or someone whose work matters to a sustained interest.
 
 Not for a name mentioned in passing. An unfiltered contact dump makes the directory
 useless for the thing it exists to do, which is saying who someone is right before the
@@ -72,7 +71,7 @@ provided. If two candidates survive, stop and ask with the detail that separates
 
     ## 2026
     - **28 July** — [[meetings/…|Introductory call]] — discussed working
-      together; agreed to test the idea with two customers.
+      together; agreed on a concrete next step.
 
 Use descending years and newest-first entries within each year. Each milestone says
 what the owner and person did together and the durable outcome in one sentence. Link the

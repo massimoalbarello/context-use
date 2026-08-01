@@ -14,7 +14,7 @@ recognisable in a directory listing; shorten a long original title rather than c
 it mechanically. Prefer `<creator>-<topic>` when the title alone is vague or likely to
 collide.
 
-    library/karpathy-software-is-changing-again/
+    library/<meaningful-slug>/
     ├── intro       — the canonical account of the work
     └── (pictures)  — uploaded into the folder and embedded from `intro`
 

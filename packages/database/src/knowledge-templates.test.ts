@@ -265,6 +265,21 @@ describe("knowledge templates", () => {
     const normalizedMeetings = meetings.replaceAll(/\s+/g, " ");
     const normalizedPeople = people.replaceAll(/\s+/g, " ");
     const normalizedPlaces = places.replaceAll(/\s+/g, " ");
+    const allDefaultGuides = [
+      root,
+      about,
+      companies,
+      diary,
+      events,
+      library,
+      meetings,
+      objects,
+      people,
+      places,
+      tasks,
+    ]
+      .join("\n")
+      .toLowerCase();
 
     for (const guide of [
       "about/agents",
@@ -320,7 +335,7 @@ describe("knowledge templates", () => {
     expect(people).toContain("material things the owner and person have done together");
     expect(people).toContain("favourite hangouts or gadgets");
     expect(people).toContain("independently meets its creation");
-    expect(normalizedPeople).toContain("current progress, ownership and next steps remain in the diary");
+    expect(people).not.toContain("immigration");
     expect(companies).toContain("material things the owner and company have done together");
     expect(normalizedCompanies).toContain("timeline is completed history, not pursuit state");
     expect(events).toContain("Index material relationship milestones");
@@ -329,5 +344,16 @@ describe("knowledge templates", () => {
     expect(tasks).toContain("Beyond `intro`, there are no default names");
     expect(tasks).not.toContain("criteria");
     expect(tasks).not.toContain("<option>");
+    for (const instanceSpecificExample of [
+      "companies/openai/",
+      "granola-intro-call",
+      "karpathy-software-is-changing-again",
+      "blue-land-rover",
+      "the-old-vicarage",
+      "london-ai-summit",
+      "*london · one line framing the day*",
+    ]) {
+      expect(allDefaultGuides).not.toContain(instanceSpecificExample);
+    }
   });
 });

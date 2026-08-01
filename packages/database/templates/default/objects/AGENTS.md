@@ -12,7 +12,7 @@ specific thing as the owner would recognize it. Add a disambiguating model, year
 nickname only when needed; never put a registration number, serial number or other
 sensitive identifier in a path.
 
-    objects/blue-land-rover/
+    objects/<object-slug>/
     ├── intro          — what this particular object is and why it matters
     ├── specifications — durable technical facts that are actually useful
     ├── maintenance    — the canonical care and service record
