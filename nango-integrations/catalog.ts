@@ -18,5 +18,6 @@ export const MANAGED_FUNCTIONS = [
     name: "pull-requests",
     type: "sync" as const,
     models: ["GitHubPullRequest", "GitHubRepositorySyncState"] as const,
+    pipelineModels: ["GitHubPullRequest"] as const,
   },
 ] as const;

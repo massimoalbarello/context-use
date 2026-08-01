@@ -47,8 +47,12 @@
     "title": "Diary",
     "summary": "The owner's chronological record of lived context, actions, decisions, and current state."
   },
+  "about/projects": {
+    "title": "Projects",
+    "summary": "Enduring bodies of work the owner builds, operates, or stewards, with concise canonical context and curated milestones."
+  },
   "about/tasks": {
     "title": "Tasks",
-    "summary": "Durable frames for substantial efforts the owner is actively pursuing or may pursue."
+    "summary": "Durable frames for finite outcomes, decisions, and experiments the owner is pursuing or considering."
   }
 }

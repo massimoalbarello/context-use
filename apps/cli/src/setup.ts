@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts";
 import { createHash, randomBytes } from "node:crypto";
 import { accountId, bootstrapStateBucket, generateSecret, getSecureParameter, getSecureParameterIfPresent, putSecureParameter } from "./aws.ts";
-import { deploy, manualDnsMismatches, prepareCompute } from "./deploy.ts";
+import { deploy, manualDnsMismatches, prepareCompute, refreshNangoPipelineRuntime } from "./deploy.ts";
 import { ensureNangoApiKeys } from "./nango.ts";
 import { configPath, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
@@ -156,5 +156,6 @@ export async function setup(): Promise<void> {
   if (await pauseForManualDns(config, compute)) return;
   await deploy(config, compute, manifest, { installTemplate: "default" });
   await ensureNangoApiKeys(config, data);
+  await refreshNangoPipelineRuntime(config, compute);
   p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}\n\nNango dashboard credentials:\ncontext-use nango credentials`);
 }

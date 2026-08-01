@@ -103,18 +103,19 @@ describe("knowledge templates", () => {
       "places",
       "skills",
       "about/diary",
+      "about/projects",
       "about/tasks",
     ]);
-    expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(13);
+    expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(14);
     expect(state.createdDirectories).toEqual([]);
     expect(state.createdPages).toEqual([]);
     expect(formatTemplateResult(result)).toContain("+ create-directory library");
-    expect(formatTemplateResult(result)).toContain("✓ Planned 25 changes; 0 conflicts.");
+    expect(formatTemplateResult(result)).toContain("✓ Planned 27 changes; 0 conflicts.");
     expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
   });
 
   test("creates directory summaries and fills only summaries that are still blank", async () => {
-    const paths = ["", "about", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills", "about/diary", "about/tasks"];
+    const paths = ["", "about", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills", "about/diary", "about/projects", "about/tasks"];
     const state = repositories({
       directories: paths,
       directorySummaries: {
@@ -137,7 +138,7 @@ describe("knowledge templates", () => {
       path: "library",
       detail: "Add template summary for library",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 15 changes; 0 conflicts.");
+    expect(formatTemplateResult(result)).toContain("Applied 16 changes; 0 conflicts.");
   });
 
   test("uses authored presentation when creating template directories", async () => {
@@ -156,7 +157,7 @@ describe("knowledge templates", () => {
 
   test("updates bootstrap-owned guides while preserving locally edited guides", async () => {
     const state = repositories({
-      directories: ["", "about", "about/diary", "about/tasks", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills"],
+      directories: ["", "about", "about/diary", "about/projects", "about/tasks", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills"],
       pages: {
         agents: { body: "Legacy root.\n", actor: "context-use-bootstrap" },
         "people/agents": { body: "Owner rules.\n", actor: "owner-user-id" },
@@ -165,13 +166,13 @@ describe("knowledge templates", () => {
     const result = await reconcileKnowledgeTemplate(state.value, "default", true);
 
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(state.createdPages).toHaveLength(11);
+    expect(state.createdPages).toHaveLength(12);
     expect(result.actions).toContainEqual({
       action: "conflict",
       path: "people/agents",
       detail: "Preserve locally modified guide",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 12 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 13 changes; 1 conflict.");
     expect(formatTemplateResult(result)).toContain("~ update-guide     agents");
     expect(formatTemplateResult(result)).toContain("! conflict         people/agents");
     expect(formatTemplateResult(result, true)).toContain("\u001B[31m!\u001B[0m conflict");
@@ -194,7 +195,7 @@ describe("knowledge templates", () => {
 
   test("overwrites active local guides only when explicitly requested", async () => {
     const state = repositories({
-      directories: ["", "about", "about/diary", "about/tasks", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills"],
+      directories: ["", "about", "about/diary", "about/projects", "about/tasks", "automations", "companies", "events", "library", "meetings", "objects", "people", "places", "skills"],
       pages: {
         agents: { body: "Owner root rules.\n", actor: "owner-user-id" },
         "people/agents": { body: "Archived owner rules.\n", actor: "owner-user-id", archived: true },
@@ -223,7 +224,7 @@ describe("knowledge templates", () => {
 
     const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(formatTemplateResult(applied)).toContain("Applied 12 changes; 1 conflict.");
+    expect(formatTemplateResult(applied)).toContain("Applied 13 changes; 1 conflict.");
   });
 
   test("reports page collisions without removing or overwriting existing knowledge", async () => {
@@ -249,6 +250,7 @@ describe("knowledge templates", () => {
   test("keeps global conventions in the root and local structure in directory guides", async () => {
     const root = await Bun.file(new URL("../templates/default/AGENTS.md", import.meta.url)).text();
     const about = await Bun.file(new URL("../templates/default/about/AGENTS.md", import.meta.url)).text();
+    const automations = await Bun.file(new URL("../templates/default/automations/AGENTS.md", import.meta.url)).text();
     const companies = await Bun.file(new URL("../templates/default/companies/AGENTS.md", import.meta.url)).text();
     const diary = await Bun.file(new URL("../templates/default/about/diary/AGENTS.md", import.meta.url)).text();
     const events = await Bun.file(new URL("../templates/default/events/AGENTS.md", import.meta.url)).text();
@@ -257,17 +259,21 @@ describe("knowledge templates", () => {
     const objects = await Bun.file(new URL("../templates/default/objects/AGENTS.md", import.meta.url)).text();
     const people = await Bun.file(new URL("../templates/default/people/AGENTS.md", import.meta.url)).text();
     const places = await Bun.file(new URL("../templates/default/places/AGENTS.md", import.meta.url)).text();
+    const projects = await Bun.file(new URL("../templates/default/about/projects/AGENTS.md", import.meta.url)).text();
     const tasks = await Bun.file(new URL("../templates/default/about/tasks/AGENTS.md", import.meta.url)).text();
     const normalizedRoot = root.replaceAll(/\s+/g, " ");
+    const normalizedRootLower = normalizedRoot.toLowerCase();
     const normalizedAbout = about.replaceAll(/\s+/g, " ");
     const normalizedCompanies = companies.replaceAll(/\s+/g, " ");
     const normalizedEvents = events.replaceAll(/\s+/g, " ");
     const normalizedMeetings = meetings.replaceAll(/\s+/g, " ");
     const normalizedPeople = people.replaceAll(/\s+/g, " ");
     const normalizedPlaces = places.replaceAll(/\s+/g, " ");
+    const normalizedProjects = projects.replaceAll(/\s+/g, " ");
     const allDefaultGuides = [
       root,
       about,
+      automations,
       companies,
       diary,
       events,
@@ -276,6 +282,7 @@ describe("knowledge templates", () => {
       objects,
       people,
       places,
+      projects,
       tasks,
     ]
       .join("\n")
@@ -284,6 +291,7 @@ describe("knowledge templates", () => {
     for (const guide of [
       "about/agents",
       "about/diary/agents",
+      "about/projects/agents",
       "about/tasks/agents",
       "automations/agents",
       "companies/agents",
@@ -303,21 +311,23 @@ describe("knowledge templates", () => {
     expect(root).toContain("A deliberately public-safe page still");
     expect(root).not.toContain("people/<first-last>");
     expect(root).not.toContain("meetings/<YYYY>");
-    expect(normalizedAbout).toContain("default template defines only two subdirectories");
+    expect(normalizedAbout).toContain("default template defines only three subdirectories");
     expect(about).toContain("[[about/diary/agents|");
+    expect(about).toContain("[[about/projects/agents|");
     expect(about).toContain("[[about/tasks/agents|");
     expect(normalizedAbout).toContain("Any other organization under `about/` is specific to the instance");
     expect(about).toContain("## Examples, not a schema");
     expect(normalizedAbout).toContain("not prescribed categories, reserved names or instructions to create folders");
     expect(about).not.toContain("chapters/");
-    expect(about).not.toContain("projects/");
     expect(about).not.toContain("about/intro");
     expect(normalizedCompanies).toContain("part of a substantial effort");
     expect(diary).toContain("Current state remains in the diary");
     expect(diary).toContain("## Relationship timelines");
     expect(diary).toContain("timeline is curated history");
     expect(diary).not.toContain("frame or criteria");
-    expect(diary).not.toContain("about/projects/");
+    expect(diary).toContain("multi-source activity distiller");
+    expect(diary).toContain("A rerun rewrites its whole day page");
+    expect(diary).toContain("Checkpoints, cursors, record identifiers");
     expect(normalizedEvents).toContain("what changed the owner's mind at the event");
     expect(library).toContain("library/<meaningful-slug>/");
     expect(library).toContain("description shown for the work in the parent `library/` index");
@@ -342,8 +352,20 @@ describe("knowledge templates", () => {
     expect(normalizedPlaces).toContain("not a gazetteer of every location mentioned");
     expect(places).toContain("Current progress remains in the diary");
     expect(tasks).toContain("Beyond `intro`, there are no default names");
+    expect(tasks).toContain("which can resolve or close");
+    expect(tasks).toContain("[[about/projects/agents|projects]]");
     expect(tasks).not.toContain("criteria");
     expect(tasks).not.toContain("<option>");
+    expect(projects).toContain("about/projects/<slug>/");
+    expect(normalizedProjects).toContain("A repository can support a project without defining it");
+    expect(projects).toContain("It is not a commit log or exhaustive release log");
+    expect(automations).toContain("exactly one stable");
+    expect(automations).toContain("drain every batch while `has_more` is true");
+    expect(automations).toContain("Only after every intended knowledge mutation succeeds");
+    expect(automations).toContain("Do not create an intermediate observation");
+    expect(automations).toContain("Do not put pipeline proposals in the diary");
+    expect(normalizedRootLower).toContain("reconcile; never append by default");
+    expect(normalizedRootLower).toContain("as concise as possible, but no more concise than the truth allows");
     for (const instanceSpecificExample of [
       "companies/openai/",
       "granola-intro-call",

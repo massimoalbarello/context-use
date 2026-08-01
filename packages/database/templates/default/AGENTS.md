@@ -12,7 +12,9 @@ writing.
 
 - [[about/agents|About]] — knowledge whose subject is the owner.
   - [[about/diary/agents|Diary]] — chronological lived context and current state.
-  - [[about/tasks/agents|Tasks]] — substantial efforts and decision frames.
+  - [[about/projects/agents|Projects]] — enduring bodies of work the owner builds or
+    stewards.
+  - [[about/tasks/agents|Tasks]] — finite outcomes, experiments and decision frames.
 - [[automations/agents|Automations]] — instructions and assets for external unattended
   workflows.
 - [[companies/agents|Companies]] — company entities and the owner's context-specific
@@ -31,9 +33,10 @@ structure. Do not infer a directory schema from examples elsewhere.
 
 ## Organizing knowledge
 
-- **Many small pages over long ones.** A page is the smallest unit worth reading,
-  retrieving or linking on its own. When one starts covering several subjects, split it
-  and link the parts.
+- **The fewest coherent pages, each no larger than useful.** A page is the smallest unit
+  worth reading, retrieving or linking on its own. Split one only when the parts have
+  distinct subjects or are independently useful; never fragment knowledge merely to
+  make pages short.
 - **One canonical location per subject.** Links, never duplication, for anything that
   crosses the hierarchy. Never restate background that has its own page — anything
   written in two places is wrong in one of them within the year.
@@ -45,6 +48,24 @@ structure. Do not infer a directory schema from examples elsewhere.
   three silently, and never upgrade a suggestion into the owner's position.
 - **Date anything that changes** — roles, stages, headcounts, locations. Write
   `— as of 27 July 2026` inline; a fact with no date becomes a lie quietly.
+
+## Reconcile; never append by default
+
+New evidence is a reason to reconsider the existing account, not to tack another block
+onto its end. Before writing, read the canonical page and nearby pages that may overlap.
+Then rewrite the whole affected account so the evidence fits its best current structure:
+change headings, combine or separate claims, move material to its real subject, merge
+duplicates, split an overgrown page, or archive a page that no longer earns its place.
+
+Do not add `Updates`, repeated status snapshots or a chronological tail to a durable
+page. Remove superseded wording and low-value detail; page versions preserve the prior
+account and the diary preserves what happened. Creating a near-duplicate page because
+editing the current one is harder is a failure.
+
+Keep the result as concise as possible, but no more concise than the truth allows.
+Dates, evidence, rationale, meaningful uncertainty and distinctions between observation,
+report and inference survive compression. Reconciliation may leave a page unchanged
+when the new evidence adds no durable value.
 
 ## Where a page belongs
 

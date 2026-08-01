@@ -60,6 +60,8 @@ const schema = z.object({
   SESSION_MAX_SECONDS: z.coerce.number().int().positive().default(604_800),
   NANGO_PUBLIC_URL: z.union([z.literal(""), z.string().url()]).default(""),
   NANGO_IMAGE_REFERENCE: z.string().max(512).default(""),
+  NANGO_INTERNAL_URL: z.string().url().default("http://localhost:3003"),
+  NANGO_PIPELINE_API_KEY: z.union([z.literal(""), z.string().min(16).max(4_096)]).default(""),
 });
 
 export const config = schema.parse(process.env);
@@ -103,6 +105,14 @@ if (production) {
     if (process.env[name] !== undefined && config.SERVICE_MODE !== "dashboard") {
       insecure.push(`${name} must not be present in the ${config.SERVICE_MODE} service`);
     }
+  }
+  for (const name of ["NANGO_INTERNAL_URL", "NANGO_PIPELINE_API_KEY"] as const) {
+    if (process.env[name] !== undefined && config.SERVICE_MODE !== "mcp") {
+      insecure.push(`${name} must not be present in the ${config.SERVICE_MODE} service`);
+    }
+  }
+  if (config.SERVICE_MODE === "mcp" && config.NANGO_INTERNAL_URL !== "http://nango-server:3003") {
+    insecure.push("NANGO_INTERNAL_URL must use the isolated Nango pipeline network");
   }
   if (config.SERVICE_MODE === "dashboard") {
     const hasNangoUrl = Boolean(config.NANGO_PUBLIC_URL);
@@ -171,6 +181,7 @@ if (production) {
     OWNER_SETUP_TOKEN_HASH: ["auth"],
     AUTH_EDGE_TOKEN: [],
     MCP_ASSET_CAPABILITY_SECRET: ["mcp"],
+    NANGO_PIPELINE_API_KEY: ["mcp"],
     CONFIRMATION_GATEWAY_TOKEN: ["auth", "confirmation"],
     AUTH_DASHBOARD_TOKEN: ["auth", "dashboard"],
     AUTH_MCP_TOKEN: ["auth", "mcp"],

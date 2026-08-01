@@ -207,7 +207,7 @@ services:
     command: ["packages/server/entrypoint.sh"]
     volumes:
       - /data/context-use/nango-integrations:/app/nango/packages/shared/dist/nango-integrations
-    networks: [nango_data, nango_internal, nango_web, nango_egress]
+    networks: [nango_data, nango_internal, nango_pipeline_internal, nango_web, nango_egress]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3003/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s
@@ -373,9 +373,11 @@ services:
       MCP_ASSET_CAPABILITY_SECRET: ${MCP_ASSET_CAPABILITY_SECRET}
       STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
       STORAGE_MCP_TOKEN: ${STORAGE_MCP_TOKEN}
+      NANGO_INTERNAL_URL: http://nango-server:3003
+      NANGO_PIPELINE_API_KEY: ${NANGO_PIPELINE_API_KEY:-}
     command: ["bun", "apps/server/src/mcp-index.ts"]
     volumes: [storage-socket:/run/context-use-storage:ro]
-    networks: [mcp_data, mcp_web, auth_mcp_internal]
+    networks: [mcp_data, mcp_web, auth_mcp_internal, nango_pipeline_internal]
     healthcheck:
       test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3003/health'); if (!response.ok) process.exit(1)"]
       interval: 5s
@@ -654,6 +656,7 @@ networks:
   backup_data: { internal: true }
   nango_data: { internal: true }
   nango_internal: { internal: true }
+  nango_pipeline_internal: { internal: true }
   nango_web: { internal: true }
   storage_egress: {}
   backup_egress: {}
