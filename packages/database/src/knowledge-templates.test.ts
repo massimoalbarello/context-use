@@ -360,7 +360,10 @@ describe("knowledge templates", () => {
     expect(normalizedProjects).toContain("A repository can support a project without defining it");
     expect(projects).toContain("It is not a commit log or exhaustive release log");
     expect(automations).toContain("exactly one stable");
-    expect(automations).toContain("drain every batch while `has_more` is true");
+    expect(automations).toContain("Do not drain multiple batches into one model context");
+    expect(automations).toContain("preceding 30 days");
+    expect(automations).toContain("`deleted` withdraws source evidence");
+    expect(automations).toContain("Omit routine or low-value activity entirely");
     expect(automations).toContain("Only after every intended knowledge mutation succeeds");
     expect(automations).toContain("Do not create an intermediate observation");
     expect(automations).toContain("Do not put pipeline proposals in the diary");

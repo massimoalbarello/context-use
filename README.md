@@ -75,10 +75,12 @@ Runtime values are KMS-encrypted SecureString parameters below `/context-use/<in
 The private Context Use MCP exposes `read_source_records` as the single downstream read
 surface. It discovers every connection for each managed pipeline model and returns a
 unified batch containing only a stable source reference, a source label, and the
-record's canonical Markdown. Its `next_checkpoint` is one opaque cursor across all
-connections and models, including connections discovered after earlier runs. Callers
-must treat it as an indivisible value. Nango webhooks are not involved in downstream
-processing, and Context Use does not create a second per-record observation store.
+record's lifecycle action and canonical Markdown. Each newly discovered source stream
+starts with records modified during the preceding 30 days; older history is intentionally
+excluded. Its `next_checkpoint` is one opaque cursor across all connections and models,
+including connections discovered after earlier runs. Callers must treat it as an
+indivisible value. Nango webhooks are not involved in downstream processing, and Context
+Use does not create a second per-record observation store.
 
 The Nango hostname is internet reachable so providers can call OAuth callback and webhook endpoints. The dashboard is gated by Nango's native username/password authentication, but a blanket proxy login in front of the entire hostname would also block those public integration endpoints. Keep access control route-aware if it is tightened later.
 
@@ -128,26 +130,30 @@ automation may keep exactly one non-secret opaque checkpoint on its stable `stat
 
 The first record-to-knowledge pipeline is intentionally agent-driven. Create
 `automations/activity-distiller/instructions` and
-`automations/activity-distiller/state`, grant the automation the intended knowledge
-write scope, and schedule its harness once or twice a day. Its run contract is:
+`automations/activity-distiller/state`, authorize its trusted MCP client, and schedule
+its harness once or twice a day. Its run contract is:
 
 1. Read the instruction and state pages, call `read_source_records` with the stored
-   checkpoint, and drain every batch before drawing conclusions.
+   checkpoint, and process exactly that bounded batch. Do not accumulate multiple
+   batches in one model context; a newly discovered source begins with the last 30 days.
 2. Interpret all source Markdown together. Connections are provenance, not page
    boundaries: records from different services can describe or corroborate the same
-   day, project, decision or entity.
+   day, project, decision or entity. Treat a `deleted` action as withdrawn evidence,
+   not as current source material.
 3. Search and read existing knowledge before writing. Reconcile new evidence into the
    current canonical account by rewriting and reorganizing it; merge overlaps, remove
    superseded detail, and create a new semantic page only when no existing subject fits.
-4. Put temporal activity on one automation-owned diary page for each date when the
-   activity actually happened, with links to its projects, tasks and useful entities.
-   Never put cursors, run metadata or one page per source in the diary.
+4. Put only material temporal activity on at most one automation-owned diary page for
+   each date when it actually happened, with links to its projects, tasks and useful
+   entities. Omit routine activity. Never put cursors, run metadata or one page per
+   source in the diary.
 5. Create project, task, person and company pages selectively. Repetition and material
    involvement can justify an entity; a participant list, repository name or isolated
    record cannot.
 6. Replace the stable state page with the final opaque checkpoint only after every
    intended knowledge write succeeds. Leave it unchanged on failure so the input can be
-   replayed safely.
+   replayed safely. If `has_more` is true, let the harness begin a fresh bounded run from
+   the saved checkpoint.
 
 The default knowledge template carries the detailed placement and maintenance rules,
 including `about/projects/` for enduring work, finite future-facing frames under

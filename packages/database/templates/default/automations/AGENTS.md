@@ -21,18 +21,16 @@ These are ordinary private pages, read and edited through the normal tools; the 
 harness reaches them over the authenticated connection. The harness still owns the
 schedule, credentials, process health and operational history.
 
-## Write scope
-
-Every automation has an explicit **write scope**: the paths it may create or modify. It
-may read anything.
+## Knowledge boundaries
 
 - **Output is filed by its subject, never by its author or source.** Activity goes on
   the actual day's diary page; enduring owner work goes in `about/projects/`; people,
   companies and other entities keep their canonical homes. Knowledge never accumulates
   under the automation except its instructions, minimal state and true support assets.
-- **Write access to a shared page is not permission to rewrite someone else's material.**
-  An automation granted the day's log to add one link edits that link and nothing else.
-- **Anything surfaced outside scope is reported through the external harness, not
+- **Access to a shared page is not permission to rewrite someone else's material.** An
+  automation that adds its companion link to the day's log edits that link and nothing
+  else.
+- **Uncertain or unsupported proposals are reported through the external harness, not
   written as knowledge.** Do not put pipeline proposals in the diary or smuggle them
   into state; neither describes something the owner actually did.
 - **Automations never publish**, and — unlike an interactive agent — they do not preview
@@ -44,34 +42,41 @@ may read anything.
 
 A distillation automation treats every connected source as evidence about the same
 owner. Connection and provider boundaries are provenance, not knowledge architecture.
-Interpret the complete batch together: separate records may describe the same project,
+Interpret each bounded batch together: separate records may describe the same project,
 day, decision, person or milestone and reinforce, qualify or contradict one another.
-Use only each source record's canonical Markdown; do not build provider-specific logic
-from its envelope.
+Use only each source record's lifecycle action and canonical Markdown; do not build
+provider-specific logic from its envelope. `added` and `updated` carry current evidence.
+`deleted` withdraws source evidence: use retained Markdown only to locate affected
+knowledge, never as a current claim. A pruned deletion may have no Markdown; do not
+invent what it contained.
 
 On every run, in this order:
 
 1. Read `instructions` and the single `state` page. Call the unified source-record tool
-   with its checkpoint and drain every batch while `has_more` is true. Keep the final
-   returned checkpoint in memory.
+   once with its checkpoint and keep that bounded batch and returned checkpoint in
+   memory. A newly discovered source starts with the preceding 30 days; older history
+   is intentionally excluded. Do not drain multiple batches into one model context.
 2. Read recent diary pages, search the whole base for likely subjects, and read every
    existing page that might already own the evidence. New names, repository labels or
    source-specific wording are never enough to assume a new subject.
 3. Form one evidence set across all sources. Decide what happened on each actual day,
-   which enduring subjects it bears on, and whether any claimed connection is observed,
-   reported or inferred. Source records are evidence, not pages to mirror.
+   which enduring subjects it bears on, whether evidence was added, changed or withdrawn,
+   and whether any claimed connection is observed, reported or inferred. Source records
+   are evidence, not pages to mirror.
 4. Reconcile semantic knowledge under
    [[agents#reconcile-never-append-by-default|the root rule]]. Rewrite and reorganize
    existing pages as needed; merge overlaps, split only independently useful subjects,
    remove superseded detail and archive redundant pages. Creating a page is the last
    option, not the default response to a new record.
-5. Reconcile one automation-owned diary page for each affected activity date under
+5. Reconcile at most one automation-owned diary page for each date with activity
+   important enough to remember under
    [[about/diary/agents#automations-in-the-diary|the diary rules]], linking outward to
-   projects, tasks and entities. The diary says what the owner did; durable pages say
-   what is true.
+   projects, tasks and entities. Omit routine or low-value activity entirely. The diary
+   says what materially happened; durable pages say what is true.
 6. Only after every intended knowledge mutation succeeds, replace `state` with the final
    opaque checkpoint. On any failed or uncertain write, leave state unchanged so the
-   evidence is safely replayed on the next run.
+   evidence is safely replayed on the next run. If `has_more` is true, let the harness
+   start a fresh bounded run from the saved checkpoint.
 
 Do not create an intermediate observation, inbox or per-record processing model in the
 knowledge base. The source cache and opaque checkpoint already provide replay; page

@@ -26,7 +26,7 @@ const recordMetadataSchema = z.object({
 
 // Nango adds only _nango_metadata to the provider-agnostic pipeline contract.
 // Keeping this strict catches a sync that accidentally starts exposing provider JSON.
-const nangoPipelineRecordSchema = z.object({
+const activeNangoPipelineRecordSchema = z.object({
   id: z.string().min(1),
   created_at: z.iso.datetime({ offset: true }),
   updated_at: z.iso.datetime({ offset: true }),
@@ -35,16 +35,34 @@ const nangoPipelineRecordSchema = z.object({
   _nango_metadata: recordMetadataSchema,
 }).strict();
 
+// A pruned deletion retains only its stable identity and Nango lifecycle metadata.
+// Accepting that tombstone lets the checkpoint advance without treating deleted
+// source material as current evidence.
+const prunedNangoPipelineRecordSchema = z.object({
+  id: z.string().min(1),
+  _nango_metadata: recordMetadataSchema,
+}).strict();
+
+const nangoPipelineRecordSchema = z.union([
+  activeNangoPipelineRecordSchema,
+  prunedNangoPipelineRecordSchema,
+]);
+
 const recordsResponseSchema = z.object({
   records: z.array(nangoPipelineRecordSchema),
   next_cursor: z.string().min(1).max(1_000).nullable(),
 }).strict();
 
+const streamCheckpointSchema = z.object({
+  cursor: z.string().min(1).max(1_000).nullable(),
+  initial_modified_after: z.iso.datetime({ offset: true }),
+}).strict();
+
 const checkpointSchema = z.object({
   version: z.literal(1),
-  cursors: z.record(
+  streams: z.record(
     z.string().regex(/^[a-f0-9]{64}$/),
-    z.string().min(1).max(1_000),
+    streamCheckpointSchema,
   ),
   resume_from: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
 }).strict();
@@ -55,6 +73,7 @@ const DEFAULT_RECORD_LIMIT = 50;
 const MAX_RECORD_LIMIT = 100;
 const DEFAULT_RESPONSE_BYTE_BUDGET = 5_000_000;
 const MAX_CHECKPOINT_STREAMS = 1_000;
+const INITIAL_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1_000;
 
 export type PipelineRecordSource = {
   integrationId: string;
@@ -81,7 +100,8 @@ export const PIPELINE_RECORD_SOURCES: PipelineRecordSource[] = MANAGED_FUNCTIONS
 export type SourceRecord = {
   record_ref: string;
   source: string;
-  markdown: string;
+  action: "added" | "updated" | "deleted";
+  markdown: string | null;
 };
 
 export type ReadSourceRecordsInput = {
@@ -107,6 +127,7 @@ type NangoRecordReaderOptions = {
   fetcher?: Fetcher;
   sources?: PipelineRecordSource[];
   responseByteBudget?: number;
+  now?: () => Date;
 };
 
 type Checkpoint = z.infer<typeof checkpointSchema>;
@@ -161,7 +182,7 @@ function encodeCheckpoint(checkpoint: Checkpoint): string {
 }
 
 function decodeCheckpoint(value?: string): Checkpoint {
-  if (!value) return { version: 1, cursors: {}, resume_from: null };
+  if (!value) return { version: 1, streams: {}, resume_from: null };
   try {
     if (!value.startsWith(CHECKPOINT_PREFIX) || value.length > 2_000_000) {
       throw new Error("invalid checkpoint envelope");
@@ -180,7 +201,7 @@ function decodeCheckpoint(value?: string): Checkpoint {
     if (checksum !== expectedChecksum) throw new Error("invalid checkpoint checksum");
     const parsed: unknown = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
     const checkpoint = checkpointSchema.parse(parsed);
-    if (Object.keys(checkpoint.cursors).length > MAX_CHECKPOINT_STREAMS) {
+    if (Object.keys(checkpoint.streams).length > MAX_CHECKPOINT_STREAMS) {
       throw new Error("too many checkpoint streams");
     }
     return checkpoint;
@@ -209,6 +230,7 @@ export class NangoRecordReader implements SourceRecordReader {
   readonly #fetcher: Fetcher;
   readonly #sources: PipelineRecordSource[];
   readonly #responseByteBudget: number;
+  readonly #now: () => Date;
 
   constructor(options: NangoRecordReaderOptions) {
     const baseUrl = new URL(options.baseUrl);
@@ -221,6 +243,7 @@ export class NangoRecordReader implements SourceRecordReader {
     this.#fetcher = options.fetcher ?? fetch;
     this.#sources = options.sources ?? PIPELINE_RECORD_SOURCES;
     this.#responseByteBudget = options.responseByteBudget ?? DEFAULT_RESPONSE_BYTE_BUDGET;
+    this.#now = options.now ?? (() => new Date());
     if (!Number.isSafeInteger(this.#responseByteBudget) || this.#responseByteBudget < 1) {
       throw new Error("Response byte budget must be a positive integer");
     }
@@ -295,11 +318,15 @@ export class NangoRecordReader implements SourceRecordReader {
     }).sort((left, right) => left.key.localeCompare(right.key));
   }
 
-  async #records(stream: Stream, cursor: string | undefined, limit: number) {
+  async #records(stream: Stream, checkpoint: z.infer<typeof streamCheckpointSchema>, limit: number) {
     const url = new URL(`${this.#baseUrl}/records`);
     url.searchParams.set("model", stream.model);
     url.searchParams.set("limit", String(limit));
-    if (cursor) url.searchParams.set("cursor", cursor);
+    if (checkpoint.cursor) {
+      url.searchParams.set("cursor", checkpoint.cursor);
+    } else {
+      url.searchParams.set("modified_after", checkpoint.initial_modified_after);
+    }
     return recordsResponseSchema.parse(await this.#request(url, {
       "connection-id": stream.connectionId,
       "provider-config-key": stream.integrationId,
@@ -312,8 +339,18 @@ export class NangoRecordReader implements SourceRecordReader {
       throw new Error(`Record limit must be between 1 and ${MAX_RECORD_LIMIT}`);
     }
     const prior = decodeCheckpoint(input.checkpoint);
-    const cursors = { ...prior.cursors };
-    const streams = rotateFrom(await this.#streams(), prior.resume_from);
+    const discoveredStreams = await this.#streams();
+    const now = this.#now();
+    if (Number.isNaN(now.getTime())) throw new Error("Source-record lookback clock is invalid");
+    const initialModifiedAfter = new Date(now.getTime() - INITIAL_LOOKBACK_MS).toISOString();
+    const streamCheckpoints: Checkpoint["streams"] = {};
+    for (const stream of discoveredStreams) {
+      streamCheckpoints[stream.key] = prior.streams[stream.key] ?? {
+        cursor: null,
+        initial_modified_after: initialModifiedAfter,
+      };
+    }
+    const streams = rotateFrom(discoveredStreams, prior.resume_from);
     const records: SourceRecord[] = [];
     let responseBytes = 0;
     let hasMore = false;
@@ -330,12 +367,31 @@ export class NangoRecordReader implements SourceRecordReader {
       }
       const remainingStreams = streams.length - index;
       const streamLimit = Math.max(1, Math.floor(remaining / remainingStreams));
-      const page = await this.#records(stream, cursors[stream.key], streamLimit);
+      const streamCheckpoint = streamCheckpoints[stream.key]!;
+      const page = await this.#records(stream, streamCheckpoint, streamLimit);
       for (const sourceRecord of page.records) {
+        const action = sourceRecord._nango_metadata.last_action.toLowerCase() as SourceRecord["action"];
+        const markdown = "body" in sourceRecord ? sourceRecord.body : null;
+        if (action !== "deleted" && markdown === null) {
+          throw new Error(`Nango returned a pruned non-deleted record for ${stream.model}`);
+        }
+        const relevantTimestamp = action === "deleted"
+          ? sourceRecord._nango_metadata.last_modified_at
+          : "updated_at" in sourceRecord
+            ? sourceRecord.updated_at
+            : sourceRecord._nango_metadata.last_modified_at;
+        if (Date.parse(relevantTimestamp) < Date.parse(streamCheckpoint.initial_modified_after)) {
+          streamCheckpoints[stream.key] = {
+            ...streamCheckpoint,
+            cursor: sourceRecord._nango_metadata.cursor,
+          };
+          continue;
+        }
         const record: SourceRecord = {
           record_ref: recordReference(stream, sourceRecord.id),
           source: stream.displayName,
-          markdown: sourceRecord.body,
+          action,
+          markdown,
         };
         const bytes = responseRecordBytes(record);
         if (records.length > 0 && responseBytes + bytes > this.#responseByteBudget) {
@@ -345,7 +401,10 @@ export class NangoRecordReader implements SourceRecordReader {
         }
         records.push(record);
         responseBytes += bytes;
-        cursors[stream.key] = sourceRecord._nango_metadata.cursor;
+        streamCheckpoints[stream.key] = {
+          ...streamCheckpoint,
+          cursor: sourceRecord._nango_metadata.cursor,
+        };
       }
       if (page.next_cursor) {
         hasMore = true;
@@ -356,7 +415,7 @@ export class NangoRecordReader implements SourceRecordReader {
     if (!resumeFrom && hasMore) resumeFrom = firstStreamWithMore;
     return {
       records,
-      next_checkpoint: encodeCheckpoint({ version: 1, cursors, resume_from: resumeFrom }),
+      next_checkpoint: encodeCheckpoint({ version: 1, streams: streamCheckpoints, resume_from: resumeFrom }),
       has_more: hasMore,
     };
   }

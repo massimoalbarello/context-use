@@ -119,25 +119,30 @@ or task frame and let the days link to it. Current state remains in the diary.
 
 The general contract is in [[automations/agents|automations]]. Inside a day folder:
 
-- **One page per automation per day**, flat: `<DD>/<automation-slug>`, the slug stable
-  across days so its history is findable by pattern. Title `<Automation name> —
-  <D Month YYYY>`; summary about the activity on that date, not the pipeline run.
+- **At most one page per automation per day**, flat: `<DD>/<automation-slug>`, the slug
+  stable across days so its history is findable by pattern. Title `<Automation name> —
+  <D Month YYYY>`; summary about the activity on that date, not the pipeline run. Create
+  it only when the day contains something important enough to help future understanding.
 - **The date is when the activity happened, not when a source delivered it.** One run
   may create or revise several affected days. Delayed evidence belongs on its actual day.
 - A multi-source activity distiller writes one coherent page for the day. It groups the
   owner's actions by their real project, task or other subject and links those canonical
-  pages. Never create one diary page per connection, provider, repository or record.
+  pages. Keep only material decisions, outcomes, changes of direction, meaningful
+  interactions and progress that explains current state. Routine commits, reviews,
+  messages, notifications and administrative activity are omitted unless their effect
+  was consequential. Never create one diary page per connection, provider, repository
+  or record.
 - **A rerun rewrites its whole day page.** Reconsider its organization and wording in
   light of all evidence available for that day, remove duplication and superseded
   interpretations, and keep the result concise. Never append a run section or ingestion
   log. New evidence may justify correcting a past automation page in place.
 - **Nothing to report, write nothing.** A filler page also materialises a day folder
   that had no reason to exist.
-- An automation granted the log adds **one bullet under `## Companion pages`**, creating
-  the section if absent. **Write access to the log is not permission to rewrite it** —
-  the narrative, `On my mind` and `Threads` are the owner's. Change your bullet; leave
-  every other byte as you found it. Re-running replaces that bullet, never adds a second.
-  Never write another automation's page, even where scope would permit it.
+- When an automation links its output from the log, it adds **one bullet under
+  `## Companion pages`**, creating the section if absent. **Access to the log is not
+  permission to rewrite it** — the narrative, `On my mind` and `Threads` are the owner's.
+  Change your bullet; leave every other byte as you found it. Re-running replaces that
+  bullet, never adds a second. Never write another automation's page.
 - A `Continues [[…]]` line only where the recorded activity genuinely carries on earlier
   work — not because the automation ran before. That chain is derivable from the path.
 - Checkpoints, cursors, record identifiers, run times, retry state and source diagnostics

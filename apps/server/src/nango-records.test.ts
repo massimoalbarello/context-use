@@ -11,19 +11,27 @@ const GITHUB: PipelineRecordSource = {
   displayName: "GitHub",
   model: "GitHubPullRequest",
 };
+const NOW = new Date("2026-08-01T12:00:00.000Z");
+const INITIAL_MODIFIED_AFTER = "2026-07-02T12:00:00.000Z";
 
-function pipelineRecord(id: string, body: string, cursor: string) {
+function pipelineRecord(
+  id: string,
+  body: string,
+  cursor: string,
+  action: "ADDED" | "UPDATED" | "DELETED" = "ADDED",
+  updatedAt = "2026-07-31T11:00:00.000Z",
+) {
   return {
     id,
     created_at: "2026-07-31T10:00:00.000Z",
-    updated_at: "2026-07-31T11:00:00.000Z",
+    updated_at: updatedAt,
     participants: ["owner"],
     body,
     _nango_metadata: {
       first_seen_at: "2026-07-31T10:00:00.000Z",
       last_modified_at: "2026-07-31T11:00:00.000Z",
-      last_action: "ADDED",
-      deleted_at: null,
+      last_action: action,
+      deleted_at: action === "DELETED" ? "2026-07-31T11:00:00.000Z" : null,
       pruned_at: null,
       cursor,
     },
@@ -32,12 +40,17 @@ function pipelineRecord(id: string, body: string, cursor: string) {
 
 function reader(
   fetcher: (request: Request) => Promise<Response>,
-  options: { sources?: PipelineRecordSource[]; responseByteBudget?: number } = {},
+  options: {
+    sources?: PipelineRecordSource[];
+    responseByteBudget?: number;
+    now?: () => Date;
+  } = {},
 ) {
   return new NangoRecordReader({
     baseUrl: "http://nango-server:3003",
     apiKey: "pipeline-secret",
     fetcher: async (input, init) => fetcher(new Request(input, init)),
+    now: options.now ?? (() => NOW),
     ...(options.sources ? { sources: options.sources } : {}),
     ...(options.responseByteBudget ? { responseByteBudget: options.responseByteBudget } : {}),
   });
@@ -90,7 +103,8 @@ describe("Nango source-record reader", () => {
       "# github activity\n\nCanonical source Markdown.",
       "# slack activity\n\nCanonical source Markdown.",
     ]);
-    expect(result.records.every((record) => Object.keys(record).sort().join(",") === "markdown,record_ref,source")).toBe(true);
+    expect(result.records.every((record) => Object.keys(record).sort().join(",") === "action,markdown,record_ref,source")).toBe(true);
+    expect(result.records.every(({ action }) => action === "added")).toBe(true);
     expect(result.records.every(({ record_ref }) => /^nango:[a-f0-9]{64}$/.test(record_ref))).toBe(true);
     expect(seen.filter((request) => new URL(request.url).pathname === "/connections")).toHaveLength(2);
     expect(seen.some((request) => new URL(request.url).pathname === "/scripts/config")).toBe(false);
@@ -98,6 +112,7 @@ describe("Nango source-record reader", () => {
 
   test("uses the last returned record cursor inside one opaque multi-stream checkpoint", async () => {
     const cursorsSeen: Array<string | null> = [];
+    const modifiedAfterSeen: Array<string | null> = [];
     const sourceReader = reader(async (request) => {
       const url = new URL(request.url);
       if (url.pathname === "/connections") {
@@ -105,6 +120,7 @@ describe("Nango source-record reader", () => {
       }
       const cursor = url.searchParams.get("cursor");
       cursorsSeen.push(cursor);
+      modifiedAfterSeen.push(url.searchParams.get("modified_after"));
       return cursor === null
         ? Response.json({
             records: [pipelineRecord("1", "# First", "cursor-one")],
@@ -130,11 +146,14 @@ describe("Nango source-record reader", () => {
     expect(second.records.map(({ markdown }) => markdown)).toEqual(["# Second"]);
     expect(second.has_more).toBe(false);
     expect(cursorsSeen).toEqual([null, "cursor-one"]);
+    expect(modifiedAfterSeen).toEqual([INITIAL_MODIFIED_AFTER, null]);
   });
 
-  test("starts newly discovered connections from their beginning while retaining prior cursors", async () => {
+  test("starts newly discovered connections from a stable one-month lookback while retaining prior cursors", async () => {
     let includeSecondConnection = false;
+    let now = NOW;
     const cursors = new Map<string, Array<string | null>>();
+    const modifiedAfter = new Map<string, Array<string | null>>();
     const sourceReader = reader(async (request) => {
       const url = new URL(request.url);
       if (url.pathname === "/connections") {
@@ -148,22 +167,68 @@ describe("Nango source-record reader", () => {
       const connection = request.headers.get("connection-id")!;
       const cursor = url.searchParams.get("cursor");
       cursors.set(connection, [...cursors.get(connection) ?? [], cursor]);
+      modifiedAfter.set(connection, [
+        ...(modifiedAfter.get(connection) ?? []),
+        url.searchParams.get("modified_after"),
+      ]);
       if (connection === "first" && cursor === null) {
         return Response.json({ records: [pipelineRecord("1", "# Existing", "first-cursor")], next_cursor: null });
       }
       if (connection === "second" && cursor === null) {
-        return Response.json({ records: [pipelineRecord("2", "# Newly connected", "second-cursor")], next_cursor: null });
+        return Response.json({
+          records: [pipelineRecord(
+            "2",
+            "# Newly connected",
+            "second-cursor",
+            "ADDED",
+            "2026-08-31T11:00:00.000Z",
+          )],
+          next_cursor: null,
+        });
       }
       return Response.json({ records: [], next_cursor: null });
-    }, { sources: [GITHUB] });
+    }, { sources: [GITHUB], now: () => now });
 
     const first = await sourceReader.read({ limit: 10 });
     includeSecondConnection = true;
+    now = new Date("2026-09-01T12:00:00.000Z");
     const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 10 });
 
     expect(second.records.map(({ markdown }) => markdown)).toEqual(["# Newly connected"]);
     expect(cursors.get("first")).toEqual([null, "first-cursor"]);
     expect(cursors.get("second")).toEqual([null]);
+    expect(modifiedAfter.get("first")).toEqual([INITIAL_MODIFIED_AFTER, null]);
+    expect(modifiedAfter.get("second")).toEqual(["2026-08-02T12:00:00.000Z"]);
+  });
+
+  test("skips source history older than the initial lookback while advancing its cursor", async () => {
+    const cursorsSeen: Array<string | null> = [];
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({ connections: [{ id: 1, connection_id: "owner", provider_config_key: "github" }] });
+      }
+      const cursor = url.searchParams.get("cursor");
+      cursorsSeen.push(cursor);
+      return cursor === null
+        ? Response.json({
+            records: [pipelineRecord("old", "# Old activity", "old-cursor", "ADDED", "2026-06-01T10:00:00.000Z")],
+            next_cursor: "more",
+          })
+        : Response.json({
+            records: [pipelineRecord("recent", "# Recent activity", "recent-cursor")],
+            next_cursor: null,
+          });
+    }, { sources: [GITHUB] });
+
+    const first = await sourceReader.read({ limit: 1 });
+    expect(first.records).toEqual([]);
+    expect(first.has_more).toBe(true);
+
+    const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 1 });
+    expect(second.records.map(({ markdown }) => markdown)).toEqual(["# Recent activity"]);
+    expect(second.has_more).toBe(false);
+    expect(cursorsSeen).toEqual([null, "old-cursor"]);
   });
 
   test("treats a re-created Nango connection as a new stream even when its public ID is reused", async () => {
@@ -216,6 +281,49 @@ describe("Nango source-record reader", () => {
     const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 10 });
     expect(second.records.map(({ markdown }) => markdown)).toEqual(["B".repeat(100)]);
     expect(cursorsSeen).toEqual([null, "cursor-one"]);
+  });
+
+  test("preserves deletion lifecycle and advances past a pruned tombstone", async () => {
+    let read = 0;
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({ connections: [{ id: 1, connection_id: "owner", provider_config_key: "github" }] });
+      }
+      read += 1;
+      return read === 1
+        ? Response.json({
+            records: [pipelineRecord("1", "# Withdrawn activity", "cursor-one", "DELETED")],
+            next_cursor: "more",
+          })
+        : Response.json({
+            records: [{
+              id: "2",
+              _nango_metadata: {
+                first_seen_at: "2026-07-31T10:00:00.000Z",
+                last_modified_at: "2026-07-31T11:00:00.000Z",
+                last_action: "DELETED",
+                deleted_at: "2026-07-31T11:00:00.000Z",
+                pruned_at: "2026-08-01T10:00:00.000Z",
+                cursor: "cursor-two",
+              },
+            }],
+            next_cursor: null,
+          });
+    }, { sources: [GITHUB] });
+
+    const first = await sourceReader.read({ limit: 1 });
+    expect(first.records).toEqual([expect.objectContaining({
+      action: "deleted",
+      markdown: "# Withdrawn activity",
+    })]);
+
+    const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 1 });
+    expect(second.records).toEqual([expect.objectContaining({
+      action: "deleted",
+      markdown: null,
+    })]);
+    expect(second.has_more).toBe(false);
   });
 
   test("fails closed for edited checkpoints and non-canonical record envelopes", async () => {

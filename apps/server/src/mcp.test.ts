@@ -104,6 +104,7 @@ describe("MCP knowledge tools", () => {
           records: [{
             record_ref: `nango:${"a".repeat(64)}`,
             source: "GitHub",
+            action: "added" as const,
             markdown: "# Pull request\n\nImplemented the record pipeline.",
           }],
           next_checkpoint: "cu-nango-v1.opaque",
@@ -140,8 +141,10 @@ describe("MCP knowledge tools", () => {
       params: {},
     });
     const tool = listed.result?.tools?.find(({ name }) => name === "read_source_records");
-    expect(tool?.description).toContain("every managed Nango integration");
-    expect(tool?.description).toContain("save it only after all resulting knowledge writes succeed");
+    expect(tool?.description).toContain("bounded, checkpointed batch");
+    expect(tool?.description).toContain("30 days before discovery");
+    expect(tool?.description).toContain("added, updated, or deleted action");
+    expect(tool?.description).toContain("Save it only after all resulting knowledge writes succeed");
 
     const read = await mcpRequest(serverWith(
       {} as PageRepository,
@@ -159,7 +162,7 @@ describe("MCP knowledge tools", () => {
     });
     expect(read.result?.isError).not.toBe(true);
     expect(read.result?.structuredContent).toMatchObject({
-      records: [{ source: "GitHub", markdown: expect.stringContaining("record pipeline") }],
+      records: [{ source: "GitHub", action: "added", markdown: expect.stringContaining("record pipeline") }],
       next_checkpoint: "cu-nango-v1.opaque",
       has_more: false,
     });
