@@ -362,6 +362,10 @@ export async function reconcileKnowledgeTemplate(
       actions.push({ action: "conflict", path: input.path, detail: "Parent template directory is unavailable" });
       continue;
     }
+    if (await repositories.directories.getByPath(input.path)) {
+      actions.push({ action: "conflict", path: input.path, detail: "Page path is occupied by a directory" });
+      continue;
+    }
     const existing = await repositories.pages.getByPath(input.path, true) as TemplatePage | null;
     if (!existing) {
       actions.push({ action: "create-page", path: input.path, detail: "Create template page" });

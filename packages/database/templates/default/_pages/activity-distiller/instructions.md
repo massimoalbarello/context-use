@@ -22,19 +22,36 @@ mirror records, keep a provider feed, or append updates to durable pages.
   too ambiguous to resolve from existing knowledge and the evidence, leave knowledge
   unchanged and report the uncertainty to the harness.
 
-## Execute one bounded batch
+## Drain one context-bounded backlog
 
 1. Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwise
    pass the exact opaque value without inspecting or editing it.
-2. Call `read_source_records` exactly once. Do not call it again in the same run, even
-   when `has_more` is true. Keep `next_checkpoint` and `has_more` in memory.
-3. Treat every returned record across every service as one evidence set. `source` and
-   `record_ref` are provenance for reasoning only and never belong in knowledge.
-4. Complete all knowledge reconciliation for this batch. Only after every intended
-   mutation succeeds, replace the whole state page with the returned checkpoint.
+2. Before the first source read, choose a source-evidence byte budget that leaves ample
+   context for searching and reconciling existing knowledge. Use a budget supplied by
+   the harness when available; otherwise use 200,000 bytes. Keep the budget and a
+   running byte total in memory.
+3. Call `read_source_records` with the current in-memory checkpoint, `limit: 100`, and
+   `max_bytes` no greater than the remaining source budget. Accumulate the records,
+   add `batch_bytes` to the running total, and keep `next_checkpoint` and `has_more` in
+   memory. The byte ceiling is a target because one individually larger record may be
+   returned to guarantee progress; stop reading if that consumes or exceeds the budget.
+4. While `has_more` is true and source budget remains, call `read_source_records` again
+   with the latest in-memory checkpoint. Drain the available backlog in this automation
+   invocation when it fits; otherwise stop cleanly at the budget. Do not begin knowledge
+   writes until source reading has stopped, and do not fetch more source records after
+   the first knowledge mutation.
+5. Treat every accumulated record across every read and service as one evidence set.
+   `source` and `record_ref` are provenance for reasoning only and never belong in
+   knowledge.
+6. Complete all knowledge reconciliation for the accumulated evidence. Only after every
+   intended mutation succeeds, replace the whole state page with the last in-memory
+   checkpoint.
 
-The first read for a newly discovered stream covers only the preceding 30 days. Do not
-try to recover older source history or compensate by creating a historical backlog.
+The first read for a newly discovered stream covers only records modified during the
+preceding 30 days. This boundary is about source modification, not the date of the
+activity described inside the Markdown: process returned records about older activity
+normally and use their actual activity dates. Never discard an existing checkpoint
+backlog merely because it has since aged beyond 30 days.
 
 ## Interpret and select evidence
 
@@ -125,8 +142,9 @@ only the justified diary activity or make no write and report the ambiguity.
 
 ## Commit the checkpoint and finish
 
-Knowledge writes must be replay-safe because a failed state update causes the same batch
-to return again. Re-read and reconcile pages on replay; never append duplicate material.
+Knowledge writes must be replay-safe because a failed state update causes the same
+accumulated evidence to return again. Re-read and reconcile pages on replay; never append
+duplicate material.
 
 After every intended knowledge write succeeds, replace the state page body with exactly:
 
@@ -138,6 +156,6 @@ Keep its existing title and summary. If any intended mutation or the state updat
 do not claim success; leave the previous checkpoint in force and report the failure.
 
 Finish with a concise harness report containing whether the checkpoint was saved,
-whether `has_more` was returned, the semantic pages changed, and any unresolved
-ambiguity. When `has_more` is true, request another fresh run; never continue reading in
-this model context.
+whether backlog remains (`has_more`), the semantic pages changed, and any unresolved
+ambiguity. When source budget stopped the drain, say so; the next scheduled invocation
+resumes from the saved checkpoint.

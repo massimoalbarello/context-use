@@ -106,6 +106,7 @@ describe("Nango source-record reader", () => {
     expect(result.records.every((record) => Object.keys(record).sort().join(",") === "action,markdown,record_ref,source")).toBe(true);
     expect(result.records.every(({ action }) => action === "added")).toBe(true);
     expect(result.records.every(({ record_ref }) => /^nango:[a-f0-9]{64}$/.test(record_ref))).toBe(true);
+    expect(result.batch_bytes).toBeGreaterThan(0);
     expect(seen.filter((request) => new URL(request.url).pathname === "/connections")).toHaveLength(2);
     expect(seen.some((request) => new URL(request.url).pathname === "/scripts/config")).toBe(false);
   });
@@ -231,6 +232,30 @@ describe("Nango source-record reader", () => {
     expect(cursorsSeen).toEqual([null, "old-cursor"]);
   });
 
+  test("returns recently updated records even when their underlying activity is old", async () => {
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({ connections: [{ id: 1, connection_id: "owner", provider_config_key: "github" }] });
+      }
+      return Response.json({
+        records: [{
+          ...pipelineRecord("old-updated", "# Older activity updated recently", "cursor", "UPDATED"),
+          created_at: "2024-01-10T10:00:00.000Z",
+        }],
+        next_cursor: null,
+      });
+    }, { sources: [GITHUB] });
+
+    const result = await sourceReader.read({ limit: 10 });
+
+    expect(result.records).toEqual([expect.objectContaining({
+      action: "updated",
+      markdown: "# Older activity updated recently",
+    })]);
+    expect(result.has_more).toBe(false);
+  });
+
   test("treats a re-created Nango connection as a new stream even when its public ID is reused", async () => {
     let connectionInstanceId = 1;
     const cursorsSeen: Array<string | null> = [];
@@ -260,7 +285,7 @@ describe("Nango source-record reader", () => {
     expect(cursorsSeen).toEqual([null, null]);
   });
 
-  test("does not advance past a record omitted by the response byte budget", async () => {
+  test("does not advance past a record omitted by the requested response byte budget", async () => {
     const cursorsSeen: Array<string | null> = [];
     const sourceReader = reader(async (request) => {
       const url = new URL(request.url);
@@ -273,12 +298,13 @@ describe("Nango source-record reader", () => {
         ? [pipelineRecord("1", "A".repeat(100), "cursor-one"), pipelineRecord("2", "B".repeat(100), "cursor-two")]
         : [pipelineRecord("2", "B".repeat(100), "cursor-two")];
       return Response.json({ records, next_cursor: null });
-    }, { sources: [GITHUB], responseByteBudget: 300 });
+    }, { sources: [GITHUB] });
 
-    const first = await sourceReader.read({ limit: 10 });
+    const first = await sourceReader.read({ limit: 10, max_bytes: 300 });
     expect(first.records).toHaveLength(1);
     expect(first.has_more).toBe(true);
-    const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 10 });
+    expect(first.batch_bytes).toBeLessThanOrEqual(300);
+    const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 10, max_bytes: 300 });
     expect(second.records.map(({ markdown }) => markdown)).toEqual(["B".repeat(100)]);
     expect(cursorsSeen).toEqual([null, "cursor-one"]);
   });
@@ -340,6 +366,8 @@ describe("Nango source-record reader", () => {
 
     await expect(sourceReader.read({ checkpoint: "not-a-checkpoint" }))
       .rejects.toBeInstanceOf(SourceRecordCheckpointError);
+    await expect(sourceReader.read({ max_bytes: 5_000_001 }))
+      .rejects.toThrow("Source-record byte budget must be between 1 and 5000000");
     await expect(sourceReader.read({ limit: 10 })).rejects.toThrow();
   });
 });

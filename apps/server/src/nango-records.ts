@@ -72,6 +72,7 @@ const CONNECTION_PAGE_SIZE = 2_000;
 const DEFAULT_RECORD_LIMIT = 50;
 const MAX_RECORD_LIMIT = 100;
 const DEFAULT_RESPONSE_BYTE_BUDGET = 5_000_000;
+const MAX_REQUESTED_BYTE_BUDGET = 5_000_000;
 const MAX_CHECKPOINT_STREAMS = 1_000;
 const INITIAL_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1_000;
 
@@ -107,12 +108,14 @@ export type SourceRecord = {
 export type ReadSourceRecordsInput = {
   checkpoint?: string | undefined;
   limit?: number | undefined;
+  max_bytes?: number | undefined;
 };
 
 export type ReadSourceRecordsResult = {
   records: SourceRecord[];
   next_checkpoint: string;
   has_more: boolean;
+  batch_bytes: number;
 };
 
 export interface SourceRecordReader {
@@ -338,6 +341,14 @@ export class NangoRecordReader implements SourceRecordReader {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_RECORD_LIMIT) {
       throw new Error(`Record limit must be between 1 and ${MAX_RECORD_LIMIT}`);
     }
+    const requestedByteBudget = input.max_bytes;
+    if (requestedByteBudget !== undefined
+      && (!Number.isSafeInteger(requestedByteBudget)
+        || requestedByteBudget < 1
+        || requestedByteBudget > MAX_REQUESTED_BYTE_BUDGET)) {
+      throw new Error(`Source-record byte budget must be between 1 and ${MAX_REQUESTED_BYTE_BUDGET}`);
+    }
+    const responseByteBudget = Math.min(requestedByteBudget ?? this.#responseByteBudget, this.#responseByteBudget);
     const prior = decodeCheckpoint(input.checkpoint);
     const discoveredStreams = await this.#streams();
     const now = this.#now();
@@ -394,7 +405,7 @@ export class NangoRecordReader implements SourceRecordReader {
           markdown,
         };
         const bytes = responseRecordBytes(record);
-        if (records.length > 0 && responseBytes + bytes > this.#responseByteBudget) {
+        if (records.length > 0 && responseBytes + bytes > responseByteBudget) {
           hasMore = true;
           resumeFrom = stream.key;
           break outer;
@@ -417,6 +428,7 @@ export class NangoRecordReader implements SourceRecordReader {
       records,
       next_checkpoint: encodeCheckpoint({ version: 1, streams: streamCheckpoints, resume_from: resumeFrom }),
       has_more: hasMore,
+      batch_bytes: responseBytes,
     };
   }
 }

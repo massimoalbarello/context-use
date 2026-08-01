@@ -204,8 +204,8 @@ describe("knowledge templates", () => {
     expect(state.createdPageInputs.find(({ path }) => path === "automations/activity-distiller/instructions"))
       .toMatchObject({
         title: "Activity distiller",
-        summary: "Instructions for reconciling one bounded batch of connected activity into concise canonical knowledge.",
-        body_markdown: expect.stringContaining("Call `read_source_records` exactly once"),
+        summary: "Instructions for reconciling a context-bounded backlog of connected activity into concise canonical knowledge.",
+        body_markdown: expect.stringContaining("call `read_source_records` again"),
       });
     expect(state.createdPageInputs.find(({ path }) => path === "automations/activity-distiller/state"))
       .toMatchObject({
@@ -221,7 +221,7 @@ describe("knowledge templates", () => {
       pages: {
         "automations/activity-distiller/instructions": {
           title: "Activity distiller",
-          summary: "Instructions for reconciling one bounded batch of connected activity into concise canonical knowledge.",
+          summary: "Instructions for reconciling a context-bounded backlog of connected activity into concise canonical knowledge.",
           body: "Old template instructions.\n",
           actor: "context-use-template/default",
         },
@@ -365,6 +365,30 @@ describe("knowledge templates", () => {
     expect(state.createdPages).not.toContain("about/agents");
   });
 
+  test("reports template page paths occupied by existing directories", async () => {
+    const state = repositories({
+      directories: [
+        ...DEFAULT_DIRECTORY_PATHS,
+        "automations/activity-distiller/instructions",
+        "automations/activity-distiller/state",
+      ],
+    });
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true);
+
+    expect(result.actions).toContainEqual({
+      action: "conflict",
+      path: "automations/activity-distiller/instructions",
+      detail: "Page path is occupied by a directory",
+    });
+    expect(result.actions).toContainEqual({
+      action: "conflict",
+      path: "automations/activity-distiller/state",
+      detail: "Page path is occupied by a directory",
+    });
+    expect(state.createdPages).not.toContain("automations/activity-distiller/instructions");
+    expect(state.createdPages).not.toContain("automations/activity-distiller/state");
+  });
+
   test("keeps global conventions in the root and local structure in directory guides", async () => {
     const root = await Bun.file(new URL("../templates/default/AGENTS.md", import.meta.url)).text();
     const about = await Bun.file(new URL("../templates/default/about/AGENTS.md", import.meta.url)).text();
@@ -484,12 +508,17 @@ describe("knowledge templates", () => {
     expect(automations).toContain("canonical description of that automation");
     expect(automations).toContain("Workflow-specific tool calls");
     expect(automations).toContain("follows [[agents#where-a-page-belongs|the root");
-    expect(activityDistiller).toContain("Call `read_source_records` exactly once");
+    expect(automations).toContain("intended knowledge effects");
+    expect(automations).not.toContain("permitted knowledge changes");
+    expect(automations).not.toContain("state its scope");
+    expect(activityDistiller).toContain("call `read_source_records` again");
+    expect(activityDistiller).toContain("`max_bytes`");
+    expect(activityDistiller).toContain("`batch_bytes`");
     expect(activityDistiller).toContain("call `prepare_knowledge_write` for the exact target");
     expect(activityDistiller).toContain("rewrite the complete existing activity-distiller page");
     expect(activityDistiller).toContain("owner `log` merely to link an automation page");
-    expect(activityDistiller).toContain("replace the whole state page with the returned checkpoint");
-    expect(activityDistiller).not.toContain("drain");
+    expect(activityDistiller).toContain("replace the whole state page with the last in-memory");
+    expect(activityDistiller).toContain("Drain the available backlog");
     expect(normalizedRootLower).toContain("reconcile; never append by default");
     expect(normalizedRootLower).toContain("as concise as possible, but no more concise than the truth allows");
     const activityDistillerLower = activityDistiller.toLowerCase();
@@ -519,7 +548,9 @@ describe("knowledge templates", () => {
       "has_more",
       "preceding 30 days",
       "source evidence",
-      "one bounded batch",
+      "context-bounded backlog",
+      "max_bytes",
+      "batch_bytes",
       "pruned deletion",
       "repository or burst of activity",
       "participant lists, handles, domains",

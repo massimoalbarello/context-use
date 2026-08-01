@@ -76,11 +76,15 @@ The private Context Use MCP exposes `read_source_records` as the single downstre
 surface. It discovers every connection for each managed pipeline model and returns a
 unified batch containing only a stable source reference, a source label, and the
 record's lifecycle action and canonical Markdown. Each newly discovered source stream
-starts with records modified during the preceding 30 days; older history is intentionally
-excluded. Its `next_checkpoint` is one opaque cursor across all connections and models,
-including connections discovered after earlier runs. Callers must treat it as an
-indivisible value. Nango webhooks are not involved in downstream processing, and Context
-Use does not create a second per-record observation store.
+starts with records modified during the preceding 30 days; older unmodified history is
+intentionally excluded. That window applies to record modification, not to the activity
+date described by returned Markdown. The tool accepts a target `max_bytes` for each
+response and reports `batch_bytes`, allowing one scheduled invocation to drain successive
+batches without crowding out knowledge reconciliation. Its `next_checkpoint` is one
+opaque cursor across all connections and models, including connections discovered after
+earlier runs. Callers must treat it as an indivisible value. Nango webhooks are not
+involved in downstream processing, and Context Use does not create a second per-record
+observation store.
 
 The Nango hostname is internet reachable so providers can call OAuth callback and webhook endpoints. The dashboard is gated by Nango's native username/password authentication, but a blanket proxy login in front of the entire hostname would also block those public integration endpoints. Keep access control route-aware if it is tightened later.
 
@@ -137,8 +141,12 @@ external harness once or twice a day with the prompt: “Open and follow
 is:
 
 1. Read the instruction and state pages, call `read_source_records` with the stored
-   checkpoint, and process exactly that bounded batch. Do not accumulate multiple
-   batches in one model context; a newly discovered source begins with the last 30 days.
+   checkpoint, and keep reading successive batches with each returned checkpoint while
+   `has_more` is true and the source-byte budget has room. Drain the available backlog in
+   that invocation when it fits; otherwise stop before source evidence crowds out the
+   context needed for reconciliation. A newly discovered stream starts with records
+   modified in the last 30 days, but a returned record may describe older activity and is
+   processed normally.
 2. Interpret all source Markdown together. Connections are provenance, not page
    boundaries: records from different services can describe or corroborate the same
    day, project, decision or entity. Treat a `deleted` action as withdrawn evidence,
@@ -153,10 +161,10 @@ is:
 5. Create project, task, person and company pages selectively. Repetition and material
    involvement can justify an entity; a participant list, repository name or isolated
    record cannot.
-6. Replace the stable state page with the final opaque checkpoint only after every
-   intended knowledge write succeeds. Leave it unchanged on failure so the input can be
-   replayed safely. If `has_more` is true, let the harness begin a fresh bounded run from
-   the saved checkpoint.
+6. Replace the stable state page with the last in-memory opaque checkpoint only after
+   every intended knowledge write succeeds. Leave it unchanged on failure so all
+   accumulated input can be replayed safely. If the context budget stops the drain while
+   `has_more` is true, the next scheduled invocation resumes from the saved checkpoint.
 
 The default knowledge template carries the detailed placement and maintenance rules,
 including `about/projects/` for enduring work, finite future-facing frames under

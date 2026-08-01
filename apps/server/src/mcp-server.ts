@@ -86,7 +86,7 @@ function guidanceRequired(targetPath: string, retryTool: string) {
 
 export const KNOWLEDGE_BASE_INSTRUCTIONS = "Explore knowledge with browse_directory or get_directory, beginning at the root path when you do not yet know where relevant pages live. Read pages by UUID or semantic path with get_page. The root directory's instructions are the AGENTS.md page at MCP path agents; read it with get_page before choosing a destination when placement is unclear. Before every mutation, call prepare_knowledge_write with the intended target path, follow the complete root-to-leaf guidance it returns, and pass its guidance_receipt to the mutation tool. Create the directory before adding pages beneath a new path. Every page requires a concise one-sentence summary used by generated indexes; a directory summary is optional public-listing copy shown in its parent's generated index. Link pages and directories alike with [[path|label]], or a Markdown heading with [[path#heading-slug|label]]; stable directory references use context-use://directory/<uuid>. Store owner information under about/ and create about/intro as its concise introduction; keep other entities in separate top-level directories. Use load_skill when a listed reusable skill is relevant. Keep knowledge private unless the owner explicitly publishes a page.";
 
-export const SOURCE_RECORD_INSTRUCTIONS = "For an ingestion automation, read one bounded source batch per run through read_source_records. A newly discovered source stream begins with activity modified during the preceding 30 days; older history is intentionally excluded. Treat records from all sources in the batch as one evidence set, and use each record's action to distinguish current evidence from a deletion. Read and reconcile the existing knowledge base before deciding what to change. Persist next_checkpoint only after every intended knowledge write for that batch succeeds; when has_more is true, let the harness start another bounded run instead of accumulating more batches in the same model context.";
+export const SOURCE_RECORD_INSTRUCTIONS = "For an ingestion automation, one scheduled invocation may call read_source_records repeatedly to drain the available backlog within a context-aware source-byte budget. Pass each returned next_checkpoint into the next read while has_more is true and enough budget remains, use max_bytes to bound each response, and add batch_bytes to the invocation's running total. A newly discovered source stream begins with records modified during the preceding 30 days; the activity described by a returned record may be older and is processed normally. Treat all records accumulated across sources and reads as one evidence set, and use each action to distinguish current evidence from a deletion. Read and reconcile the existing knowledge base before deciding what to change. Persist only the last next_checkpoint, and only after every intended knowledge write for the accumulated evidence succeeds. If context budget stops the drain while has_more is true, resume from that saved checkpoint on the next scheduled invocation.";
 
 export async function createMcpServer(
   context: McpContext,
@@ -123,17 +123,19 @@ export async function createMcpServer(
 
   if (sourceRecords) {
     server.registerTool("read_source_records", {
-      description: "Read one bounded, checkpointed batch of canonical source records across every managed Nango integration, model, and connection. Pass the opaque checkpoint stored by the automation, omitting it only on the first run. Each newly discovered stream begins 30 days before discovery. Treat all returned sources as one evidence set and respect each added, updated, or deleted action; a pruned deletion can have null Markdown. The returned next_checkpoint covers exactly the records returned. Save it only after all resulting knowledge writes succeed, then let the harness start another run when has_more is true.",
+      description: "Read the next bounded, checkpointed batch of canonical source records across every managed Nango integration, model, and connection. Pass the persisted checkpoint on the first read and each in-memory next_checkpoint on successive reads in the same automation invocation. Each newly discovered stream begins with records modified during the preceding 30 days; returned records can describe older activity. Treat all records accumulated across reads as one evidence set and respect each added, updated, or deleted action; a pruned deletion can have null Markdown. batch_bytes reports the serialized record bytes returned. max_bytes is a target ceiling, but one larger record may be returned to guarantee progress. Persist only the final next_checkpoint and only after all resulting knowledge writes succeed.",
       inputSchema: z.object({
         checkpoint: z.string().min(1).max(2_000_000).optional()
-          .describe("Opaque next_checkpoint from the automation's last successful read; never inspect or edit it."),
+          .describe("Opaque checkpoint from persistent state for the first read, or next_checkpoint from the preceding read in this invocation; never inspect or edit it."),
         limit: z.number().int().min(1).max(100).default(50)
           .describe("Maximum Markdown records to return across all sources."),
+        max_bytes: z.number().int().min(1).max(5_000_000).default(200_000)
+          .describe("Target maximum serialized bytes for returned records. One individually larger record may exceed it so the checkpoint can advance."),
       }).strict(),
       annotations: { readOnlyHint: true },
-    }, async ({ checkpoint, limit }) => {
+    }, async ({ checkpoint, limit, max_bytes }) => {
       try {
-        return jsonObjectContent(await sourceRecords.read({ checkpoint, limit }));
+        return jsonObjectContent(await sourceRecords.read({ checkpoint, limit, max_bytes }));
       } catch (error) {
         const message = error instanceof Error ? error.message : "Source record read failed";
         return textContent(`SOURCE_RECORD_READ_FAILED\n\n${message}`, true);

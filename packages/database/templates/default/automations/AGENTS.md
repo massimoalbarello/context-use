@@ -18,7 +18,7 @@ and one safe place for an opaque checkpoint. Credentials never belong on a page.
   beside it in the same directory, and nothing else does.
 
 Maintain each instruction page as the canonical description of that automation. It
-should state the automation's purpose, inputs, permitted knowledge changes, success and
+should state the automation's purpose, inputs, intended knowledge effects, success and
 failure semantics, and reporting contract precisely enough for the external harness to
 run it without relying on undocumented conventions. Workflow-specific tool calls,
 selection policy and replay behavior belong on that page, not in this directory guide.
@@ -43,4 +43,4 @@ schedule, credentials, process health and operational history.
   harness**, not written into the diary or state.
 - An unattended automation is the root guide's preview exception because there is nobody
   to ask ([[agents#before-writing-identify-propose-preview|root rule]]). Its instructions
-  must therefore state its scope and maintenance policy precisely.
+  must therefore state its intended effects and maintenance policy precisely.
