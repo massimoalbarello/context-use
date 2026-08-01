@@ -5,7 +5,7 @@
 folder, not one per day; a recurring conference gets one folder per occurrence, linked to
 each other, rather than one page accumulating years.
 
-    events/2026/06/2026-06-11_london-ai-summit/
+    events/<YYYY>/<MM>/<YYYY-MM-DD>_<event-slug>/
     ├── intro        — what it was, where, why they went, what happened
     ├── takeaways    — what was actually got out of it
     └── (pictures)   — uploaded into the folder, embedded from either page

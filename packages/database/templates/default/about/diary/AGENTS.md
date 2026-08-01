@@ -31,7 +31,7 @@ The log's summary captures the day and is written **last**, from the finished en
 
     # Log — Monday, 27 July 2026
 
-    *London · one line framing the day*
+    *<Location> · one line framing the day*
 
     Narrative prose: what actually happened, what it felt like, what changed.
     Link durable things inline as they come up — [[about/tasks/…|Task]],

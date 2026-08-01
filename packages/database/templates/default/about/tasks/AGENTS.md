@@ -4,8 +4,8 @@
 through `intro`.
 
 A task here is an open-ended pursuit the owner is or was actively thinking through — a
-job search, a move, a project with unresolved questions. It is not a to-do item: if it
-can be finished in an afternoon, it does not get a folder.
+long-running project or consequential decision with unresolved questions. It is not a
+to-do item: if it can be finished in an afternoon, it does not get a folder.
 
 ## Minimal shape
 

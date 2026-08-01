@@ -11,7 +11,7 @@ One folder per place at `places/<meaningful-slug>/`, entered through `intro`. Pr
 name people actually use. Add a locality only to disambiguate similar names; avoid a
 street address in the path.
 
-    places/the-old-vicarage/
+    places/<place-slug>/
     ├── intro       — what and where it is, and why it matters
     ├── practical   — access, travel or other durable useful details
     └── timeline    — material changes or milestones associated with it

@@ -3,7 +3,7 @@
 **One folder per meeting** at `meetings/<YYYY>/<MM>/<YYYY-MM-DD>_<slug>/`, entered
 through `intro`.
 
-    meetings/2026/07/2026-07-28_granola-intro-call/
+    meetings/<YYYY>/<MM>/<YYYY-MM-DD>_<meeting-slug>/
     ├── prep    — written before: background and what to ask
     └── intro   — written after: what was said and what was taken away
 
