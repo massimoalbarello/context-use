@@ -28,9 +28,9 @@ for example `architecture`, `principles` or `history` — and name it for that s
 - The diary records what the owner did and where active work stands today.
 
 A task can advance a project and should link it. Do not duplicate the task's decision
-frame in the project or turn the project into a queue of future work. A repository can
-support a project without defining it, and several data sources can describe the same
-project.
+frame in the project or turn the project into a queue of future work. A deliverable can
+support a project without defining it, and several bodies of evidence can describe the
+same project.
 
 ## What the durable pages say
 
@@ -46,10 +46,10 @@ sentence about what durably changed. It is not a commit log or exhaustive releas
 
 ## When to create one
 
-Search first across names, repositories and related entities. Create a project only when
-the owner names it as such or the evidence shows a durable body of work through repeated
-activity across days, sources or meaningful milestones. A single source record, a burst
-of commits or a guessed grouping is not enough.
+Search first across names, aliases and related entities. Create a project only when the
+owner names it as such or the evidence shows a durable body of work through repeated
+activity over time or meaningful milestones. One isolated mention, a short burst of
+activity or a guessed grouping is not enough.
 
 When evidence fits an existing project, rewrite that project as needed. Prefer expanding,
 renaming or restructuring the canonical project over creating a sibling with similar

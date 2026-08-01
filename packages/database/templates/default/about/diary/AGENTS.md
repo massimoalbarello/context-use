@@ -46,7 +46,7 @@ The log's summary captures the day and is written **last**, from the finished en
     - [[people/…|Person]] — what happened between them
 
     ## Companion pages
-    - [[about/diary/…|Title]] — one line (automation: `services-digest`)
+    - [[about/diary/…|Title]] — one line (automation: `<automation-slug>`)
 
 Headings are stable — these names, in this order. Omit a section entirely rather than
 leaving it empty, and don't invent top-level sections without a reason that generalises
@@ -117,25 +117,22 @@ or task frame and let the days link to it. Current state remains in the diary.
 
 ## Automations in the diary
 
-The general contract is in [[automations/agents|automations]]. Inside a day folder:
+The general contract is in [[automations/agents|automations]]. This section governs only
+how automation-owned companion pages are maintained inside a day folder:
 
 - **At most one page per automation per day**, flat: `<DD>/<automation-slug>`, the slug
   stable across days so its history is findable by pattern. Title `<Automation name> —
   <D Month YYYY>`; summary about the activity on that date, not the pipeline run. Create
   it only when the day contains something important enough to help future understanding.
-- **The date is when the activity happened, not when a source delivered it.** One run
-  may create or revise several affected days. Delayed evidence belongs on its actual day.
-- A multi-source activity distiller writes one coherent page for the day. It groups the
-  owner's actions by their real project, task or other subject and links those canonical
-  pages. Keep only material decisions, outcomes, changes of direction, meaningful
-  interactions and progress that explains current state. Routine commits, reviews,
-  messages, notifications and administrative activity are omitted unless their effect
-  was consequential. Never create one diary page per connection, provider, repository
-  or record.
+- **The date is when the recorded activity happened, not when the automation ran.** One
+  run may create or revise several affected days.
+- Keep one coherent, concise account of the material activity for that day, organized by
+  its real projects, tasks or other subjects and linked to their canonical pages. Never
+  create one diary page per input item or execution.
 - **A rerun rewrites its whole day page.** Reconsider its organization and wording in
-  light of all evidence available for that day, remove duplication and superseded
-  interpretations, and keep the result concise. Never append a run section or ingestion
-  log. New evidence may justify correcting a past automation page in place.
+  light of what is now known about that day, remove duplication and superseded
+  interpretations, and keep the result concise. Never append a run section or execution
+  log. New knowledge may justify correcting a past automation page in place.
 - **Nothing to report, write nothing.** A filler page also materialises a day folder
   that had no reason to exist.
 - When an automation links its output from the log, it adds **one bullet under
@@ -145,8 +142,8 @@ The general contract is in [[automations/agents|automations]]. Inside a day fold
   bullet, never adds a second. Never write another automation's page.
 - A `Continues [[…]]` line only where the recorded activity genuinely carries on earlier
   work — not because the automation ran before. That chain is derivable from the path.
-- Checkpoints, cursors, record identifiers, run times, retry state and source diagnostics
-  never belong in the diary. The automation's single `state` page owns its checkpoint.
+- Operational metadata and execution state never belong in the diary. Maintain them
+  outside the diary according to the owning automation's instructions.
 
 ## Reading and sweeping
 

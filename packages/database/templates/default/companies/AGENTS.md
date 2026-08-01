@@ -31,9 +31,9 @@ need rewriting.
 When a company becomes relevant to something real — a conversation, collaboration,
 transaction, decision or sustained line of research. Not for every name mentioned.
 
-For ingested activity, a repository owner, email domain or incidental reference is not
-enough. Create the company only when repeated or material evidence makes it independently
-useful; otherwise keep the justified activity under its actual subject.
+An incidental affiliation or passing reference is not enough. Create the company only
+when repeated or material relevance makes it independently useful; otherwise keep the
+justified knowledge under its actual subject.
 
 ## Templates
 

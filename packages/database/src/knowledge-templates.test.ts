@@ -378,6 +378,7 @@ describe("knowledge templates", () => {
     const people = await Bun.file(new URL("../templates/default/people/AGENTS.md", import.meta.url)).text();
     const places = await Bun.file(new URL("../templates/default/places/AGENTS.md", import.meta.url)).text();
     const projects = await Bun.file(new URL("../templates/default/about/projects/AGENTS.md", import.meta.url)).text();
+    const skills = await Bun.file(new URL("../templates/default/skills/AGENTS.md", import.meta.url)).text();
     const tasks = await Bun.file(new URL("../templates/default/about/tasks/AGENTS.md", import.meta.url)).text();
     const activityDistiller = await Bun.file(new URL("../templates/default/_pages/activity-distiller/instructions.md", import.meta.url)).text();
     const normalizedRoot = root.replaceAll(/\s+/g, " ");
@@ -402,6 +403,7 @@ describe("knowledge templates", () => {
       people,
       places,
       projects,
+      skills,
       tasks,
     ]
       .join("\n")
@@ -444,9 +446,9 @@ describe("knowledge templates", () => {
     expect(diary).toContain("## Relationship timelines");
     expect(diary).toContain("timeline is curated history");
     expect(diary).not.toContain("frame or criteria");
-    expect(diary).toContain("multi-source activity distiller");
+    expect(diary).toContain("how automation-owned companion pages are maintained");
     expect(diary).toContain("A rerun rewrites its whole day page");
-    expect(diary).toContain("Checkpoints, cursors, record identifiers");
+    expect(diary).toContain("Operational metadata and execution state never belong in the diary");
     expect(normalizedEvents).toContain("what changed the owner's mind at the event");
     expect(library).toContain("library/<meaningful-slug>/");
     expect(library).toContain("description shown for the work in the parent `library/` index");
@@ -476,16 +478,12 @@ describe("knowledge templates", () => {
     expect(tasks).not.toContain("criteria");
     expect(tasks).not.toContain("<option>");
     expect(projects).toContain("about/projects/<slug>/");
-    expect(normalizedProjects).toContain("A repository can support a project without defining it");
+    expect(normalizedProjects).toContain("A deliverable can support a project without defining it");
     expect(projects).toContain("It is not a commit log or exhaustive release log");
     expect(automations).toContain("exactly one stable");
-    expect(automations).toContain("Do not drain multiple batches into one model context");
-    expect(automations).toContain("preceding 30 days");
-    expect(automations).toContain("`deleted` withdraws source evidence");
-    expect(automations).toContain("Omit routine or low-value activity entirely");
-    expect(automations).toContain("Only after every intended knowledge mutation succeeds");
-    expect(automations).toContain("Do not create an intermediate observation");
-    expect(automations).toContain("Do not put pipeline proposals in the diary");
+    expect(automations).toContain("canonical description of that automation");
+    expect(automations).toContain("Workflow-specific tool calls");
+    expect(automations).toContain("follows [[agents#where-a-page-belongs|the root");
     expect(activityDistiller).toContain("Call `read_source_records` exactly once");
     expect(activityDistiller).toContain("call `prepare_knowledge_write` for the exact target");
     expect(activityDistiller).toContain("rewrite the complete existing activity-distiller page");
@@ -494,6 +492,40 @@ describe("knowledge templates", () => {
     expect(activityDistiller).not.toContain("drain");
     expect(normalizedRootLower).toContain("reconcile; never append by default");
     expect(normalizedRootLower).toContain("as concise as possible, but no more concise than the truth allows");
+    const activityDistillerLower = activityDistiller.toLowerCase();
+    for (const automationSpecificDetail of [
+      "nango",
+      "activity-distiller",
+      "read_source_records",
+      "record_ref",
+      "next_checkpoint",
+      "has_more",
+      "preceding 30 days",
+      "source record",
+      "bounded batch",
+      "multi-source activity distiller",
+      "repository owner, email domain",
+      "participant field",
+      "pipeline proposals",
+      "pruned deletion",
+    ]) {
+      expect(allDefaultGuides).not.toContain(automationSpecificDetail);
+    }
+    for (const requiredInstructionDetail of [
+      "activity-distiller",
+      "read_source_records",
+      "record_ref",
+      "next_checkpoint",
+      "has_more",
+      "preceding 30 days",
+      "source evidence",
+      "one bounded batch",
+      "pruned deletion",
+      "repository or burst of activity",
+      "participant lists, handles, domains",
+    ]) {
+      expect(activityDistillerLower).toContain(requiredInstructionDetail);
+    }
     for (const instanceSpecificExample of [
       "companies/openai/",
       "granola-intro-call",
