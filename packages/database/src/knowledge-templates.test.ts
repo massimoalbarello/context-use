@@ -514,6 +514,9 @@ describe("knowledge templates", () => {
     expect(activityDistiller).toContain("call `read_source_records` again");
     expect(activityDistiller).toContain("`max_bytes`");
     expect(activityDistiller).toContain("`batch_bytes`");
+    expect(activityDistiller).toContain("Do not use a fixed byte or record quota");
+    expect(activityDistiller).not.toContain("200,000");
+    expect(activityDistiller).not.toContain("`limit: 100`");
     expect(activityDistiller).toContain("call `prepare_knowledge_write` for the exact target");
     expect(activityDistiller).toContain("rewrite the complete existing activity-distiller page");
     expect(activityDistiller).toContain("owner `log` merely to link an automation page");

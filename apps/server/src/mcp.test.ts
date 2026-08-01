@@ -27,7 +27,10 @@ async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body:
         tools?: Array<{
           name: string;
           description?: string;
-          inputSchema?: { properties?: Record<string, { description?: string }> };
+          inputSchema?: {
+            properties?: Record<string, { description?: string; default?: unknown }>;
+            required?: string[];
+          };
         }>;
         content?: Array<{ type: string; text: string }>;
         structuredContent?: Record<string, unknown>;
@@ -149,6 +152,8 @@ describe("MCP knowledge tools", () => {
     expect(tool?.description).toContain("batch_bytes");
     expect(tool?.description).toContain("max_bytes");
     expect(tool?.description).toContain("Persist only the final next_checkpoint");
+    expect(tool?.inputSchema?.properties?.max_bytes?.default).toBeUndefined();
+    expect(tool?.inputSchema?.required).toContain("max_bytes");
 
     const read = await mcpRequest(serverWith(
       {} as PageRepository,

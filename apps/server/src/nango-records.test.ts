@@ -366,8 +366,8 @@ describe("Nango source-record reader", () => {
 
     await expect(sourceReader.read({ checkpoint: "not-a-checkpoint" }))
       .rejects.toBeInstanceOf(SourceRecordCheckpointError);
-    await expect(sourceReader.read({ max_bytes: 5_000_001 }))
-      .rejects.toThrow("Source-record byte budget must be between 1 and 5000000");
+    await expect(sourceReader.read({ max_bytes: 0 }))
+      .rejects.toThrow("Source-record byte budget must be a positive integer");
     await expect(sourceReader.read({ limit: 10 })).rejects.toThrow();
   });
 });

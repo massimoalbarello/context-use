@@ -142,11 +142,13 @@ is:
 
 1. Read the instruction and state pages, call `read_source_records` with the stored
    checkpoint, and keep reading successive batches with each returned checkpoint while
-   `has_more` is true and the source-byte budget has room. Drain the available backlog in
-   that invocation when it fits; otherwise stop before source evidence crowds out the
-   context needed for reconciliation. A newly discovered stream starts with records
-   modified in the last 30 days, but a returned record may describe older activity and is
-   processed normally.
+   `has_more` is true and enough model context remains for another read plus the complete
+   reconciliation. Choose each call's `max_bytes` from the context available at that
+   point rather than using a fixed run quota. Drain the available backlog in that
+   invocation when it fits; otherwise stop before source evidence crowds out the context
+   needed for reconciliation. A newly discovered stream starts with records modified in
+   the last 30 days, but a returned record may describe older activity and is processed
+   normally.
 2. Interpret all source Markdown together. Connections are provenance, not page
    boundaries: records from different services can describe or corroborate the same
    day, project, decision or entity. Treat a `deleted` action as withdrawn evidence,

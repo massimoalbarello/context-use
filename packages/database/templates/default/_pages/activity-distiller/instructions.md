@@ -26,20 +26,21 @@ mirror records, keep a provider feed, or append updates to durable pages.
 
 1. Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwise
    pass the exact opaque value without inspecting or editing it.
-2. Before the first source read, choose a source-evidence byte budget that leaves ample
-   context for searching and reconciling existing knowledge. Use a budget supplied by
-   the harness when available; otherwise use 200,000 bytes. Keep the budget and a
-   running byte total in memory.
-3. Call `read_source_records` with the current in-memory checkpoint, `limit: 100`, and
-   `max_bytes` no greater than the remaining source budget. Accumulate the records,
-   add `batch_bytes` to the running total, and keep `next_checkpoint` and `has_more` in
-   memory. The byte ceiling is a target because one individually larger record may be
-   returned to guarantee progress; stop reading if that consumes or exceeds the budget.
-4. While `has_more` is true and source budget remains, call `read_source_records` again
-   with the latest in-memory checkpoint. Drain the available backlog in this automation
-   invocation when it fits; otherwise stop cleanly at the budget. Do not begin knowledge
-   writes until source reading has stopped, and do not fetch more source records after
-   the first knowledge mutation.
+2. Before each source read, assess the model context still available. Reserve enough for
+   searching and reading existing knowledge, reasoning across the evidence, performing
+   the writes and reporting the result. Do not use a fixed byte or record quota across
+   runs.
+3. Call `read_source_records` with the current in-memory checkpoint and a `max_bytes`
+   chosen for this call from the remaining context. Accumulate the records, use
+   `batch_bytes` to track how much source evidence was returned, and keep
+   `next_checkpoint` and `has_more` in memory. The byte ceiling is a target because one
+   individually larger record may be returned to guarantee progress.
+4. While `has_more` is true and there is clearly enough context for another bounded read
+   plus the complete reconciliation, call `read_source_records` again with the latest
+   in-memory checkpoint and a newly chosen `max_bytes`. Drain the available backlog in
+   this automation invocation when it fits; otherwise stop before source evidence crowds
+   out the reconciliation. Do not begin knowledge writes until source reading has
+   stopped, and do not fetch more source records after the first knowledge mutation.
 5. Treat every accumulated record across every read and service as one evidence set.
    `source` and `record_ref` are provenance for reasoning only and never belong in
    knowledge.

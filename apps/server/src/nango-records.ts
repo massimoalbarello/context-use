@@ -72,7 +72,6 @@ const CONNECTION_PAGE_SIZE = 2_000;
 const DEFAULT_RECORD_LIMIT = 50;
 const MAX_RECORD_LIMIT = 100;
 const DEFAULT_RESPONSE_BYTE_BUDGET = 5_000_000;
-const MAX_REQUESTED_BYTE_BUDGET = 5_000_000;
 const MAX_CHECKPOINT_STREAMS = 1_000;
 const INITIAL_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1_000;
 
@@ -344,9 +343,8 @@ export class NangoRecordReader implements SourceRecordReader {
     const requestedByteBudget = input.max_bytes;
     if (requestedByteBudget !== undefined
       && (!Number.isSafeInteger(requestedByteBudget)
-        || requestedByteBudget < 1
-        || requestedByteBudget > MAX_REQUESTED_BYTE_BUDGET)) {
-      throw new Error(`Source-record byte budget must be between 1 and ${MAX_REQUESTED_BYTE_BUDGET}`);
+        || requestedByteBudget < 1)) {
+      throw new Error("Source-record byte budget must be a positive integer");
     }
     const responseByteBudget = Math.min(requestedByteBudget ?? this.#responseByteBudget, this.#responseByteBudget);
     const prior = decodeCheckpoint(input.checkpoint);
