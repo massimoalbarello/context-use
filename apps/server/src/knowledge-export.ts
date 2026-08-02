@@ -237,7 +237,6 @@ function collapsibleDirectoryPages(snapshot: KnowledgeExportSnapshot): Map<strin
   for (const directory of snapshot.directories) {
     if (
       !directory.current_path
-      || directory.intro_markdown.trim()
       || childDirectoryPaths.has(directory.current_path)
     ) continue;
     const pages = pagesByParent.get(directory.current_path) ?? [];
@@ -303,16 +302,6 @@ export function planKnowledgeExport(snapshot: KnowledgeExportSnapshot): PlannedK
       .filter((directory) => !collapsedDirectories.has(directory.current_path))
       .map((directory) => {
         const vaultPath = directoryPaths.get(directory.id.toLowerCase())!;
-        const intro = rewriteReferences(
-          directory.intro_markdown,
-          directory.current_path,
-          vaultPath,
-          pagePaths,
-          pagePathsByKnowledgePath,
-          directoryPaths,
-          directoryPathsByKnowledgePath,
-          assetPaths,
-        );
         const childDirectories = snapshot.directories
           .filter((candidate) => candidate.current_path && parentKnowledgePath(candidate.current_path) === directory.current_path)
           .map((candidate) => ({
@@ -345,7 +334,6 @@ export function planKnowledgeExport(snapshot: KnowledgeExportSnapshot): PlannedK
           vaultPath,
           body: [
             metadataFrontmatter("directory", directory.current_path, directory.title, directory.summary),
-            intro.trim(),
             "## Contents",
             listing,
           ].filter(Boolean).join("\n\n"),

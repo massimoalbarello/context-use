@@ -75,10 +75,10 @@ describeDatabase("passkey-bound current knowledge exports", () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     fixtureRoot = `tests/export-${suffix}`;
     await pool.query(
-      `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+      `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
        VALUES
-         ($1,'tests','Tests','Integration test knowledge.','',directory_search_vector('tests','Tests','Integration test knowledge.','')),
-         ($2,$3,'Export fixture','Knowledge used to test exports.','',directory_search_vector($3,'Export fixture','Knowledge used to test exports.',''))
+         ($1,'tests','Tests','Integration test knowledge.',directory_search_vector('tests','Tests','Integration test knowledge.','')),
+         ($2,$3,'Export fixture','Knowledge used to test exports.',directory_search_vector($3,'Export fixture','Knowledge used to test exports.',''))
        ON CONFLICT (current_path) DO NOTHING`,
       [crypto.randomUUID(), crypto.randomUUID(), fixtureRoot],
     );

@@ -22,7 +22,7 @@ export function DirectoryEditor({
   onSelect: (selection: KnowledgeSelection) => void;
 }) {
   const [directory, setDirectory] = useState<DirectoryIndex | null>(null);
-  const [draft, setDraft] = useState({ title: "", summary: "", intro_markdown: "" });
+  const [draft, setDraft] = useState({ title: "", summary: "" });
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -32,7 +32,7 @@ export function DirectoryEditor({
   const load = async () => {
     const next = await api<DirectoryIndex>(`/api/dashboard/directories/${directoryId}`);
     setDirectory(next);
-    setDraft({ title: next.title, summary: next.summary, intro_markdown: next.intro_markdown });
+    setDraft({ title: next.title, summary: next.summary });
     return next;
   };
 
@@ -62,7 +62,7 @@ export function DirectoryEditor({
   };
 
   const startEditing = () => {
-    setDraft({ title: directory.title, summary: directory.summary, intro_markdown: directory.intro_markdown });
+    setDraft({ title: directory.title, summary: directory.summary });
     setIsEditing(true);
   };
 
@@ -105,10 +105,8 @@ export function DirectoryEditor({
           <label className="summary-field">Public listing summary (optional)<input maxLength={320} value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} /></label>
         </div>
       </div>
-      <textarea className="markdown-editor" aria-label="Directory introduction" placeholder="Optional Markdown introduction" value={draft.intro_markdown} onChange={(event) => setDraft({ ...draft, intro_markdown: event.target.value })} spellCheck />
       <footer className="save-bar"><span>These fields describe this folder in its parent's public index.</span><div className="button-row"><button onClick={() => setIsEditing(false)}>Cancel</button><button className="primary" disabled={!draft.title.trim()} onClick={() => void save()}>Save presentation</button></div></footer>
     </section> : <>
-      {directory.rendered_intro_html && <article className="rendered directory-intro" dangerouslySetInnerHTML={{ __html: directory.rendered_intro_html }} />}
       <section className="directory-index" aria-label={`${directory.title} contents`}>
         {directory.children.length ? <ol>
           {directory.children.map((child) => <li key={`${child.kind}-${child.id}`}>

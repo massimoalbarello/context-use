@@ -19,8 +19,8 @@ describeDatabase("immutable page history", () => {
     const parent = path.split("/").slice(0, -1).join("/");
     if (parent) await createDirectory(parent);
     await pool.query(
-      `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-       VALUES ($1,$2,$3,$4,'',directory_search_vector($2,$3,$4,''))
+      `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+       VALUES ($1,$2,$3,$4,directory_search_vector($2,$3,$4,''))
        ON CONFLICT (current_path) DO NOTHING`,
       [crypto.randomUUID(), path, path.split("/").at(-1), `Test directory for ${path}.`],
     );

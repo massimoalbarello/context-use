@@ -37,7 +37,6 @@ function repositories(options: {
     version_number: 1,
     title: path ? path.split("/").at(-1)! : "Knowledge",
     summary: options.directorySummaries?.[path] ?? "Existing directory summary.",
-    intro_markdown: `Existing introduction for ${path || "root"}.`,
   }]));
   const pages = new Map(Object.entries(options.pages ?? {}).map(([path, page], index) => [path, {
     id: `page-${index}`,
@@ -54,9 +53,9 @@ function repositories(options: {
     actor: page.actor,
   }]));
   const createdDirectories: string[] = [];
-  const createdDirectoryInputs: Array<{ path: string; title: string; summary: string; intro_markdown: string }> = [];
+  const createdDirectoryInputs: Array<{ path: string; title: string; summary: string }> = [];
   const updatedDirectories: string[] = [];
-  const updatedDirectoryInputs: Array<{ title: string; summary: string; intro_markdown: string; expected_version_number: number }> = [];
+  const updatedDirectoryInputs: Array<{ title: string; summary: string; expected_version_number: number }> = [];
   const createdPages: string[] = [];
   const createdPageInputs: Array<{ path: string; title: string; summary: string; body_markdown: string }> = [];
   const updatedPages: string[] = [];
@@ -66,7 +65,7 @@ function repositories(options: {
       async getByPath(path: string) {
         return directoryRecords.get(path) ?? null;
       },
-      async create(input: { path: string; title: string; summary: string; intro_markdown: string }) {
+      async create(input: { path: string; title: string; summary: string }) {
         createdDirectories.push(input.path);
         createdDirectoryInputs.push(input);
         directoryRecords.set(input.path, {
@@ -77,7 +76,7 @@ function repositories(options: {
         });
         return input;
       },
-      async update(id: string, input: { title: string; summary: string; intro_markdown: string; expected_version_number: number }) {
+      async update(id: string, input: { title: string; summary: string; expected_version_number: number }) {
         const record = [...directoryRecords.values()].find((candidate) => candidate.id === id)!;
         updatedDirectories.push(record.current_path);
         updatedDirectoryInputs.push(input);
@@ -180,7 +179,6 @@ describe("knowledge templates", () => {
       "External works saved for recall, with their useful ideas, the owner's reaction, and connections to existing knowledge.",
       "Individually meaningful physical things whose identity or history matters over time.",
     ]);
-    expect(state.updatedDirectoryInputs.every(({ intro_markdown }) => intro_markdown.startsWith("Existing introduction"))).toBe(true);
     expect(result.actions).toContainEqual({
       action: "update-directory",
       path: "library",
@@ -198,7 +196,6 @@ describe("knowledge templates", () => {
       path: "places",
       title: "Places",
       summary: "Locations that matter because the owner returns to them, makes decisions about them, or connects them to several parts of the knowledge base.",
-      intro_markdown: "",
     });
     expect(state.createdDirectoryInputs.every(({ summary }) => summary.length > 0)).toBe(true);
     expect(state.createdPageInputs.find(({ path }) => path === "automations/activity-distiller/instructions"))

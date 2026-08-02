@@ -14,8 +14,8 @@ describeDatabase("PostgreSQL security roles", () => {
     await admin.connect();
     for (const [path, title] of [["test", "Test"], ["tests", "Tests"], ["profile", "Profile"], ["profile/work", "Work"]]) {
       await admin.query(
-        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-         VALUES ($1,$2,$3,$4,'',directory_search_vector($2,$3,$4,''))
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+         VALUES ($1,$2,$3,$4,directory_search_vector($2,$3,$4,''))
          ON CONFLICT (current_path) DO NOTHING`,
         [randomUUID(), path, title, `Fixtures under ${path}.`],
       );
@@ -401,8 +401,8 @@ describeDatabase("PostgreSQL security roles", () => {
       await admin.query("BEGIN");
       try {
         await admin.query(
-          `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-           VALUES ($1,$2,'Guarded delete','','',directory_search_vector($2,'Guarded delete','',''))`,
+          `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+           VALUES ($1,$2,'Guarded delete','',directory_search_vector($2,'Guarded delete','',''))`,
           [id, path],
         );
         await admin.query(`SET LOCAL ROLE ${role}`);
@@ -755,8 +755,8 @@ describeDatabase("PostgreSQL security roles", () => {
     await admin.query("BEGIN");
     try {
       await admin.query(
-        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-         VALUES ($1,$2,'Lifecycle fixture','A directory for publication lifecycle tests.','',directory_search_vector($2,'Lifecycle fixture','A directory for publication lifecycle tests.',''))`,
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+         VALUES ($1,$2,'Lifecycle fixture','A directory for publication lifecycle tests.',directory_search_vector($2,'Lifecycle fixture','A directory for publication lifecycle tests.',''))`,
         [randomUUID(), `tests/${suffix}`],
       );
       await admin.query(
