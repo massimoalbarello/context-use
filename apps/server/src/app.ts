@@ -173,7 +173,6 @@ function exportSize(snapshot: KnowledgeExportSnapshot): number {
     total
     + Buffer.byteLength(directory.title)
     + Buffer.byteLength(directory.summary)
-    + Buffer.byteLength(directory.intro_markdown)
   ), 0)
     + snapshot.pages.reduce((total, page) => (
       total
@@ -346,8 +345,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     await ownerRequest(request);
     const index = await dashboardDirectories.indexById(z.string().uuid().parse(params.id));
     if (!index) return problem("Directory not found", 404, "not_found");
-    const html = await renderMarkdown(index.intro_markdown, privatePageResolvers(index.current_path ? `${index.current_path}/index` : "index"));
-    return json({ ...index, rendered_intro_html: html });
+    return json(index);
   })
   .put("/api/dashboard/directories/:id", async ({ request, params }) => {
     await ownerRequest(request, true);

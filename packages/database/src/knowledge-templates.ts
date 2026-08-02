@@ -36,7 +36,6 @@ type TemplateDirectory = {
   version_number: number;
   title: string;
   summary: string;
-  intro_markdown: string;
 };
 
 type TemplateDirectoryPresentation = {
@@ -267,7 +266,6 @@ export async function reconcileKnowledgeTemplate(
         const input: UpdateDirectoryInput = {
           title: existing.title,
           summary: presentation.summary,
-          intro_markdown: existing.intro_markdown,
           expected_version_number: existing.version_number,
         };
         await repositories.directories.update(existing.id, input);
@@ -296,7 +294,6 @@ export async function reconcileKnowledgeTemplate(
         path,
         title: presentation.title,
         summary: presentation.summary,
-        intro_markdown: "",
       };
       await repositories.directories.create(input);
     }

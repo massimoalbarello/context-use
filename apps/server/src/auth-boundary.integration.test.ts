@@ -245,16 +245,16 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     try {
       await client.query("BEGIN");
       await client.query(
-        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-         VALUES ($1,'tests','Tests','Integration test knowledge.','',directory_search_vector('tests','Tests','Integration test knowledge.',''))
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+         VALUES ($1,'tests','Tests','Integration test knowledge.',directory_search_vector('tests','Tests','Integration test knowledge.',''))
          ON CONFLICT (current_path) DO NOTHING`,
         [crypto.randomUUID()],
       );
       await client.query(
-        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
          VALUES
-           ($1,$2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY','PRIVATE-DIRECTORY-INTRO-CANARY',directory_search_vector($2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY','PRIVATE-DIRECTORY-INTRO-CANARY')),
-           ($3,$4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY','PRIVATE-NESTED-DIRECTORY-INTRO-CANARY',directory_search_vector($4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY','PRIVATE-NESTED-DIRECTORY-INTRO-CANARY'))`,
+           ($1,$2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY',directory_search_vector($2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY','')),
+           ($3,$4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY',directory_search_vector($4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY',''))`,
         [parentDirectoryId, parentPath, nestedDirectoryId, nestedPath],
       );
       await client.query(

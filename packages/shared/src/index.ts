@@ -68,13 +68,11 @@ export const createDirectorySchema = z.object({
   path: KnowledgePath,
   title: z.string().trim().min(1).max(240),
   summary: DirectorySummary.default(""),
-  intro_markdown: PageBodyMarkdown.default(""),
 }).strict();
 
 export const updateDirectorySchema = z.object({
   title: z.string().trim().min(1).max(240),
   summary: DirectorySummary,
-  intro_markdown: PageBodyMarkdown,
   expected_version_number: z.number().int().positive(),
 }).strict();
 
@@ -172,7 +170,6 @@ export type Directory = {
   version_number: number;
   title: string;
   summary: string;
-  intro_markdown: string;
   created_at: string;
   updated_at: string;
 };

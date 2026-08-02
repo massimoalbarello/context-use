@@ -20,28 +20,24 @@ function snapshot(): KnowledgeExportSnapshot {
         current_path: "",
         title: "Knowledge",
         summary: "The root of the portable knowledge base.",
-        intro_markdown: `[Projects](context-use://directory/${projectsDirectory}) and [[notes|Notes]].`,
       },
       {
         id: projectsDirectory,
         current_path: "projects",
         title: "Projects",
         summary: "Projects and their supporting material.",
-        intro_markdown: "",
       },
       {
         id: acmeDirectory,
         current_path: "projects/acme",
         title: "Acme",
         summary: "Knowledge about the Acme project.",
-        intro_markdown: "",
       },
       {
         id: notesDirectory,
         current_path: "notes",
         title: "Notes",
         summary: "Independent notes.",
-        intro_markdown: "",
       },
     ],
     pages: [
@@ -106,23 +102,12 @@ describe("portable knowledge export", () => {
       .not.toContain("context-use://");
   });
 
-  test("keeps an index when a one-page directory has authored introduction content", () => {
-    const source = snapshot();
-    source.directories.find(({ id }) => id === notesDirectory)!.intro_markdown = "Read this before opening the note.";
-    const planned = planKnowledgeExport(source);
-    const notes = planned.directories.find(({ id }) => id === notesDirectory)!;
-
-    expect(notes.vaultPath).toBe("notes/index.md");
-    expect(notes.body).toContain("Read this before opening the note.");
-    expect(notes.body).toContain("[Other Note](Other%20Note.md)");
-  });
-
   test("resolves friendly-name and directory collisions without database identifiers", () => {
     const planned = planKnowledgeExport({
       directories: [
-        { id: rootDirectory, current_path: "", title: "Knowledge", summary: "The root index.", intro_markdown: "" },
-        { id: projectsDirectory, current_path: "folder", title: "Folder", summary: "A test folder.", intro_markdown: "" },
-        { id: acmeDirectory, current_path: "folder/sub", title: "Subfolder", summary: "A test subfolder.", intro_markdown: "" },
+        { id: rootDirectory, current_path: "", title: "Knowledge", summary: "The root index." },
+        { id: projectsDirectory, current_path: "folder", title: "Folder", summary: "A test folder." },
+        { id: acmeDirectory, current_path: "folder/sub", title: "Subfolder", summary: "A test subfolder." },
       ],
       pages: [
         { id: pageOne, current_path: "folder/first", title: "Report", summary: "The first report.", body_markdown: "" },
@@ -208,7 +193,6 @@ describe("portable knowledge export", () => {
         current_path: "",
         title: "Knowledge",
         summary: "The root of an empty knowledge base.",
-        intro_markdown: "",
       }],
       pages: [],
       assets: [],

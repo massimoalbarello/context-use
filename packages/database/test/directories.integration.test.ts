@@ -36,8 +36,8 @@ describeDatabase("first-class directory indexes", () => {
 
   test("generates a progressive index from direct child summaries", async () => {
     await pool.query(
-      `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-       VALUES ($1,'tests','Tests','Integration test knowledge.','',directory_search_vector('tests','Tests','Integration test knowledge.',''))
+      `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+       VALUES ($1,'tests','Tests','Integration test knowledge.',directory_search_vector('tests','Tests','Integration test knowledge.',''))
        ON CONFLICT (current_path) DO NOTHING`,
       [crypto.randomUUID()],
     );
@@ -45,13 +45,11 @@ describeDatabase("first-class directory indexes", () => {
       path: parentPath,
       title: "Life",
       summary: "A structured account of the owner's life.",
-      intro_markdown: "Life only makes sense looking backwards.",
     });
     const child = await directories.create({
       path: childPath,
       title: "Chapters",
       summary: "The major chapters in the owner's life.",
-      intro_markdown: "",
     });
     const page = await pages.create({
       path: `${parentPath}/1998-2017_intro`,
@@ -120,30 +118,10 @@ describeDatabase("first-class directory indexes", () => {
       default_page_id: childPage.id,
     });
 
-    await directories.update(child.id, {
-      title: child.title,
-      summary: child.summary,
-      intro_markdown: "Authored directory introduction.",
-      expected_version_number: 1,
-    });
-    childEntry = (await directories.indexByPath(parentPath))?.children
-      .find(({ id }) => id === child.id);
-    expect(childEntry).toMatchObject({
-      kind: "directory",
-      id: child.id,
-      default_page_id: null,
-    });
-    await directories.update(child.id, {
-      title: child.title,
-      summary: child.summary,
-      intro_markdown: "",
-      expected_version_number: 2,
-    });
     await directories.create({
       path: grandchildPath,
       title: "Details",
       summary: "Supporting details for the chapter.",
-      intro_markdown: "",
     });
     childEntry = (await directories.indexByPath(parentPath))?.children
       .find(({ id }) => id === child.id);
@@ -168,14 +146,12 @@ describeDatabase("first-class directory indexes", () => {
     const updated = await directories.update(parent.id, {
       title: "A Life",
       summary: "A connected account of the owner's life.",
-      intro_markdown: "Updated introduction.",
       expected_version_number: 1,
     });
     expect(updated).toMatchObject({ version_number: 2, title: "A Life" });
     await expect(directories.update(parent.id, {
       title: "Stale",
       summary: "A stale update that must be rejected.",
-      intro_markdown: "",
       expected_version_number: 1,
     })).rejects.toBeInstanceOf(DirectoryVersionConflictError);
   });
@@ -206,8 +182,8 @@ describeDatabase("guarded directory deletion", () => {
 
   beforeAll(async () => {
     await pool.query(
-      `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-       VALUES ($1,'tests','Tests','Integration test knowledge.','',directory_search_vector('tests','Tests','Integration test knowledge.',''))
+      `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+       VALUES ($1,'tests','Tests','Integration test knowledge.',directory_search_vector('tests','Tests','Integration test knowledge.',''))
        ON CONFLICT (current_path) DO NOTHING`,
       [crypto.randomUUID()],
     );
@@ -221,13 +197,11 @@ describeDatabase("guarded directory deletion", () => {
       path: parentPath,
       title: "Deletion guard",
       summary: "Temporary content for directory deletion tests.",
-      intro_markdown: "Directory metadata does not make a directory non-empty.",
     });
     const child = await directories.create({
       path: childPath,
       title: "Child",
       summary: "A child directory that prevents cascading deletion.",
-      intro_markdown: "",
     });
     const activePage = await pages.create({
       path: `${parentPath}/active-page`,
@@ -295,7 +269,6 @@ describeDatabase("guarded directory deletion", () => {
       path: `tests/delete-stale-${suffix}`,
       title: "Stale delete",
       summary: "Temporary content for a stale deletion test.",
-      intro_markdown: "",
     });
     try {
       await expect(directories.delete(target.id, {
@@ -307,12 +280,11 @@ describeDatabase("guarded directory deletion", () => {
     }
   });
 
-  test("removes an empty directory even when its own presentation is populated", async () => {
+  test("removes an empty directory with listing metadata", async () => {
     const target = await directories.create({
       path: `tests/delete-empty-${crypto.randomUUID().slice(0, 8)}`,
       title: "Retired feed digest",
       summary: "A retired directory with no remaining content.",
-      intro_markdown: "Everything moved elsewhere.",
     });
     expect(await directories.delete(target.id, {
       expected_version_number: target.version_number,

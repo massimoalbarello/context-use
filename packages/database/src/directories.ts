@@ -10,7 +10,6 @@ import type {
   KnowledgePageMetadata,
   UpdateDirectoryInput,
 } from "@context-use/shared";
-import { normalizeInternalPageLinks } from "./links.ts";
 
 export class DirectoryVersionConflictError extends Error {
   constructor(readonly currentVersion: number) {
@@ -47,7 +46,7 @@ export class RootDirectoryDeletionError extends Error {
 }
 
 const CURRENT_DIRECTORY_SELECT = `
-  SELECT id,current_path,version_number,title,summary,intro_markdown,created_at,updated_at
+  SELECT id,current_path,version_number,title,summary,created_at,updated_at
   FROM knowledge_directories
 `;
 
@@ -57,23 +56,22 @@ export class DirectoryRepository {
   async create(input: CreateDirectoryInput) {
     const result = await this.pool.query(
       `INSERT INTO knowledge_directories(
-         id,current_path,title,summary,intro_markdown,search_vector
-       ) VALUES ($1,$2,$3,$4,$5,directory_search_vector($2,$3,$4,$5))
-       RETURNING id,current_path,version_number,title,summary,intro_markdown,created_at,updated_at`,
-      [randomUUID(), input.path, input.title, input.summary, normalizeInternalPageLinks(input.intro_markdown)],
+         id,current_path,title,summary,search_vector
+       ) VALUES ($1,$2,$3,$4,directory_search_vector($2,$3,$4,''))
+       RETURNING id,current_path,version_number,title,summary,created_at,updated_at`,
+      [randomUUID(), input.path, input.title, input.summary],
     );
     return result.rows[0]!;
   }
 
   async update(directoryId: string, input: UpdateDirectoryInput) {
-    const introMarkdown = normalizeInternalPageLinks(input.intro_markdown);
     const result = await this.pool.query(
       `UPDATE knowledge_directories
-       SET title=$3,summary=$4,intro_markdown=$5,version_number=version_number+1,
-           search_vector=directory_search_vector(current_path,$3,$4,$5),updated_at=now()
+       SET title=$3,summary=$4,version_number=version_number+1,
+           search_vector=directory_search_vector(current_path,$3,$4,''),updated_at=now()
        WHERE id=$1 AND version_number=$2
-       RETURNING id,current_path,version_number,title,summary,intro_markdown,created_at,updated_at`,
-      [directoryId, input.expected_version_number, input.title, input.summary, introMarkdown],
+       RETURNING id,current_path,version_number,title,summary,created_at,updated_at`,
+      [directoryId, input.expected_version_number, input.title, input.summary],
     );
     if (result.rowCount) return result.rows[0]!;
     const current = await this.pool.query<{ version_number: number }>(
@@ -168,8 +166,7 @@ export class DirectoryRepository {
       `SELECT 'directory'::text AS kind,directory.id,directory.current_path AS path,
          directory.title,directory.summary,
          CASE
-           WHEN trim(directory.intro_markdown)=''
-             AND NOT EXISTS (
+           WHEN NOT EXISTS (
                SELECT 1 FROM knowledge_directories child
                WHERE child.parent_path=directory.current_path
              )

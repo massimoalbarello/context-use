@@ -76,13 +76,16 @@ describe("strict mutation schemas", () => {
       path: "notes/example", title: "Example", summary: "First line.\nSecond line.", body_markdown: "Body", commit_message: "Create example",
     }).success).toBe(false);
     expect(createDirectorySchema.safeParse({
-      path: "notes", title: "Notes", summary: "Focused notes and observations.", intro_markdown: "Optional introduction.",
+      path: "notes", title: "Notes", summary: "Focused notes and observations.",
     }).success).toBe(true);
     expect(createDirectorySchema.parse({
-      path: "empty-notes", title: "Empty notes", intro_markdown: "",
+      path: "empty-notes", title: "Empty notes",
     }).summary).toBe("");
     expect(createDirectorySchema.safeParse({
-      path: "notes", title: "Notes", summary: "First line.\nSecond line.", intro_markdown: "",
+      path: "notes", title: "Notes", intro_markdown: "Not directory metadata.",
+    }).success).toBe(false);
+    expect(createDirectorySchema.safeParse({
+      path: "notes", title: "Notes", summary: "First line.\nSecond line.",
     }).success).toBe(false);
   });
 

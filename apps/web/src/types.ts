@@ -47,7 +47,6 @@ export type Directory = {
   version_number: number;
   title: string;
   summary: string;
-  intro_markdown: string;
   created_at: string;
   updated_at: string;
 };
@@ -70,7 +69,6 @@ export type DirectoryIndex = Directory & {
     summary: string;
   } | null;
   children: DirectoryIndexEntry[];
-  rendered_intro_html?: string;
 };
 
 export type Asset = {
