@@ -106,10 +106,15 @@ not the automation run.
 - On a rerun, read and rewrite the complete existing activity-distiller page. Integrate
   the new evidence, remove duplication and superseded interpretations, and never append
   a batch or run section.
-- Write nothing for a date with nothing important enough to remember. Do not create an
-  owner `log` merely to link an automation page. When that date's `log` already exists,
-  edit only this automation's single bullet under `## Companion pages`; preserve every
-  other byte and never touch another automation's page.
+- Write nothing for a date with nothing important enough to remember. For every date
+  that does receive an activity-distiller page, ensure its required `log` exists. If the
+  `log` is missing, create it after the activity page using the diary guide's title and
+  summary rules; its body contains only the title and a `## Companion pages` section
+  with this automation's single bullet. Derive the summary and bullet from the material
+  activity, and do not invent a location, narrative, `On my mind` or `Threads` content.
+- Whether the `log` is new or existing, own only this automation's single bullet under
+  `## Companion pages`. Preserve every other byte and never touch another automation's
+  page or bullet.
 - Never put checkpoints, record identifiers, source diagnostics or operational details
   in the diary.
 

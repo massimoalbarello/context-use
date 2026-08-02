@@ -517,7 +517,10 @@ describe("knowledge templates", () => {
     expect(normalizedActivityDistiller).toContain("including pages changed by earlier batches");
     expect(activityDistiller).toContain("call `prepare_knowledge_write` for the exact target");
     expect(activityDistiller).toContain("rewrite the complete existing activity-distiller page");
-    expect(activityDistiller).toContain("owner `log` merely to link an automation page");
+    expect(normalizedActivityDistiller).toContain("ensure its required `log` exists");
+    expect(normalizedActivityDistiller).toContain("body contains only the title and a `## Companion pages` section");
+    expect(normalizedActivityDistiller).toContain("do not invent a location, narrative, `On my mind` or `Threads` content");
+    expect(normalizedActivityDistiller).toContain("own only this automation's single bullet");
     expect(normalizedActivityDistiller).toContain("state page with this call's `next_checkpoint`");
     expect(normalizedActivityDistiller).toContain("Continue until `has_more` is false");
     expect(normalizedRootLower).toContain("reconcile; never append by default");

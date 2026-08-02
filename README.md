@@ -152,8 +152,9 @@ is:
    new semantic page only when no existing subject fits.
 4. Put only material temporal activity on at most one automation-owned diary page for
    each date when it actually happened, with links to its projects, tasks and useful
-   entities. Omit routine activity. Never put cursors, run metadata or one page per
-   source in the diary.
+   entities. Ensure the date also has its required `log`; when creating one, keep it to
+   the distiller's companion-page bullet without inventing owner narrative. Omit routine
+   activity. Never put cursors, run metadata or one page per source in the diary.
 5. Create project, task, person and company pages selectively. Repetition and material
    involvement can justify an entity; a participant list, repository name or isolated
    record cannot.
