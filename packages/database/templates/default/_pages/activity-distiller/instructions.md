@@ -22,37 +22,30 @@ mirror records, keep a provider feed, or append updates to durable pages.
   too ambiguous to resolve from existing knowledge and the evidence, leave knowledge
   unchanged and report the uncertainty to the harness.
 
-## Drain one context-bounded backlog
+## Process one batch at a time
 
 1. Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwise
    pass the exact opaque value without inspecting or editing it.
-2. Before each source read, assess the model context still available. Reserve enough for
-   searching and reading existing knowledge, reasoning across the evidence, performing
-   the writes and reporting the result. Do not use a fixed byte or record quota across
-   runs.
-3. Call `read_source_records` with the current in-memory checkpoint and a `max_bytes`
-   chosen for this call from the remaining context. Accumulate the records, use
-   `batch_bytes` to track how much source evidence was returned, and keep
-   `next_checkpoint` and `has_more` in memory. The byte ceiling is a target because one
-   individually larger record may be returned to guarantee progress.
-4. While `has_more` is true and there is clearly enough context for another bounded read
-   plus the complete reconciliation, call `read_source_records` again with the latest
-   in-memory checkpoint and a newly chosen `max_bytes`. Drain the available backlog in
-   this automation invocation when it fits; otherwise stop before source evidence crowds
-   out the reconciliation. Do not begin knowledge writes until source reading has
-   stopped, and do not fetch more source records after the first knowledge mutation.
-5. Treat every accumulated record across every read and service as one evidence set.
-   `source` and `record_ref` are provenance for reasoning only and never belong in
-   knowledge.
-6. Complete all knowledge reconciliation for the accumulated evidence. Only after every
-   intended mutation succeeds, replace the whole state page with the last in-memory
-   checkpoint.
+2. Call `read_source_records` exactly once with that checkpoint. Treat every returned
+   record across every service as one evidence set for this batch. `source` and
+   `record_ref` are provenance for reasoning only and never belong in knowledge.
+3. Search and reconcile existing knowledge for the complete batch before reading again,
+   including pages changed by earlier batches in this run. Do not accumulate a second
+   unread batch. A batch with no material evidence, including one containing no returned
+   records, legitimately makes no semantic change.
+4. Only after every intended knowledge mutation for this batch succeeds, replace the
+   state page with this call's `next_checkpoint`. If any mutation or the state update
+   fails, leave the previous checkpoint in force, stop the run and report the failure.
+5. When `has_more` is true, call `read_source_records` again with the checkpoint just
+   saved and repeat this sequence. Continue until `has_more` is false. Never read the
+   next batch before the current batch has been reconciled and checkpointed.
 
-The first read for a newly discovered stream covers only records modified during the
-preceding 30 days. This boundary is about source modification, not the date of the
-activity described inside the Markdown: process returned records about older activity
-normally and use their actual activity dates. Never discard an existing checkpoint
-backlog merely because it has since aged beyond 30 days.
+On every call, the reader omits records whose latest source update is more than 30 days
+old and advances past them. This rolling boundary applies to existing backlogs as well
+as newly discovered streams; do not recover or interpret excluded records. It is about
+source modification, not the date of the activity described inside the Markdown:
+process a recently updated record about older activity normally and use its actual
+activity date. For a deletion, the deletion modification time determines freshness.
 
 ## Interpret and select evidence
 
@@ -143,9 +136,9 @@ only the justified diary activity or make no write and report the ambiguity.
 
 ## Commit the checkpoint and finish
 
-Knowledge writes must be replay-safe because a failed state update causes the same
-accumulated evidence to return again. Re-read and reconcile pages on replay; never append
-duplicate material.
+Knowledge writes must be replay-safe because a failed state update causes the current
+batch to return again. Re-read and reconcile pages on replay; never append duplicate
+material.
 
 After every intended knowledge write succeeds, replace the state page body with exactly:
 
@@ -153,10 +146,11 @@ After every intended knowledge write succeeds, replace the state page body with 
 
     **Checkpoint:** `<next_checkpoint>`
 
-Keep its existing title and summary. If any intended mutation or the state update fails,
-do not claim success; leave the previous checkpoint in force and report the failure.
+Keep its existing title and summary. Save it after every successfully reconciled batch,
+including a batch that makes no semantic change. After saving, discard that source batch
+before reading the next one.
 
-Finish with a concise harness report containing whether the checkpoint was saved,
-whether backlog remains (`has_more`), the semantic pages changed, and any unresolved
-ambiguity. When source budget stopped the drain, say so; the next scheduled invocation
-resumes from the saved checkpoint.
+A successful run finishes only when `has_more` is false. The final saved checkpoint then
+ensures the next scheduled invocation receives only lifecycle changes after this run.
+Finish with a concise harness report containing the number of batches reconciled, whether
+the source is caught up, the semantic pages changed, and any unresolved ambiguity.

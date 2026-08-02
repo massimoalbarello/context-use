@@ -27,10 +27,7 @@ async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body:
         tools?: Array<{
           name: string;
           description?: string;
-          inputSchema?: {
-            properties?: Record<string, { description?: string; default?: unknown }>;
-            required?: string[];
-          };
+          inputSchema?: { properties?: Record<string, { description?: string }> };
         }>;
         content?: Array<{ type: string; text: string }>;
         structuredContent?: Record<string, unknown>;
@@ -112,7 +109,6 @@ describe("MCP knowledge tools", () => {
           }],
           next_checkpoint: "cu-nango-v1.opaque",
           has_more: false,
-          batch_bytes: 123,
         };
       },
     } as SourceRecordReader;
@@ -146,14 +142,11 @@ describe("MCP knowledge tools", () => {
     });
     const tool = listed.result?.tools?.find(({ name }) => name === "read_source_records");
     expect(tool?.description).toContain("bounded, checkpointed batch");
-    expect(tool?.description).toContain("preceding 30 days");
+    expect(tool?.description).toContain("more than 30 days old");
     expect(tool?.description).toContain("added, updated, or deleted action");
-    expect(tool?.description).toContain("successive reads in the same automation invocation");
-    expect(tool?.description).toContain("batch_bytes");
-    expect(tool?.description).toContain("max_bytes");
-    expect(tool?.description).toContain("Persist only the final next_checkpoint");
-    expect(tool?.inputSchema?.properties?.max_bytes?.default).toBeUndefined();
-    expect(tool?.inputSchema?.required).toContain("max_bytes");
+    expect(tool?.description).toContain("Reconcile this batch and persist next_checkpoint before calling again");
+    expect(tool?.description).toContain("only later lifecycle changes");
+    expect(tool?.inputSchema?.properties?.max_bytes).toBeUndefined();
 
     const read = await mcpRequest(serverWith(
       {} as PageRepository,
@@ -166,7 +159,7 @@ describe("MCP knowledge tools", () => {
       method: "tools/call",
       params: {
         name: "read_source_records",
-        arguments: { checkpoint: "cu-nango-v1.previous", limit: 25, max_bytes: 100_000 },
+        arguments: { checkpoint: "cu-nango-v1.previous", limit: 25 },
       },
     });
     expect(read.result?.isError).not.toBe(true);
@@ -174,9 +167,9 @@ describe("MCP knowledge tools", () => {
       records: [{ source: "GitHub", action: "added", markdown: expect.stringContaining("record pipeline") }],
       next_checkpoint: "cu-nango-v1.opaque",
       has_more: false,
-      batch_bytes: 123,
     });
-    expect(calls).toEqual([{ checkpoint: "cu-nango-v1.previous", limit: 25, max_bytes: 100_000 }]);
+    expect(read.result?.structuredContent?.batch_bytes).toBeUndefined();
+    expect(calls).toEqual([{ checkpoint: "cu-nango-v1.previous", limit: 25 }]);
   });
 
   test("reads pages by semantic path and prepares applicable write guides", async () => {

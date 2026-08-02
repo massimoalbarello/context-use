@@ -204,8 +204,8 @@ describe("knowledge templates", () => {
     expect(state.createdPageInputs.find(({ path }) => path === "automations/activity-distiller/instructions"))
       .toMatchObject({
         title: "Activity distiller",
-        summary: "Instructions for reconciling a context-bounded backlog of connected activity into concise canonical knowledge.",
-        body_markdown: expect.stringContaining("call `read_source_records` again"),
+        summary: "Instructions for reconciling connected activity one checkpointed batch at a time into concise canonical knowledge.",
+        body_markdown: expect.stringContaining("## Process one batch at a time"),
       });
     expect(state.createdPageInputs.find(({ path }) => path === "automations/activity-distiller/state"))
       .toMatchObject({
@@ -221,7 +221,7 @@ describe("knowledge templates", () => {
       pages: {
         "automations/activity-distiller/instructions": {
           title: "Activity distiller",
-          summary: "Instructions for reconciling a context-bounded backlog of connected activity into concise canonical knowledge.",
+          summary: "Instructions for reconciling connected activity one checkpointed batch at a time into concise canonical knowledge.",
           body: "Old template instructions.\n",
           actor: "context-use-template/default",
         },
@@ -414,6 +414,7 @@ describe("knowledge templates", () => {
     const normalizedPeople = people.replaceAll(/\s+/g, " ");
     const normalizedPlaces = places.replaceAll(/\s+/g, " ");
     const normalizedProjects = projects.replaceAll(/\s+/g, " ");
+    const normalizedActivityDistiller = activityDistiller.replaceAll(/\s+/g, " ");
     const allDefaultGuides = [
       root,
       about,
@@ -511,17 +512,14 @@ describe("knowledge templates", () => {
     expect(automations).toContain("intended knowledge effects");
     expect(automations).not.toContain("permitted knowledge changes");
     expect(automations).not.toContain("state its scope");
-    expect(activityDistiller).toContain("call `read_source_records` again");
-    expect(activityDistiller).toContain("`max_bytes`");
-    expect(activityDistiller).toContain("`batch_bytes`");
-    expect(activityDistiller).toContain("Do not use a fixed byte or record quota");
-    expect(activityDistiller).not.toContain("200,000");
-    expect(activityDistiller).not.toContain("`limit: 100`");
+    expect(normalizedActivityDistiller).toContain("Call `read_source_records` exactly once");
+    expect(normalizedActivityDistiller).toContain("Do not accumulate a second unread batch");
+    expect(normalizedActivityDistiller).toContain("including pages changed by earlier batches");
     expect(activityDistiller).toContain("call `prepare_knowledge_write` for the exact target");
     expect(activityDistiller).toContain("rewrite the complete existing activity-distiller page");
     expect(activityDistiller).toContain("owner `log` merely to link an automation page");
-    expect(activityDistiller).toContain("replace the whole state page with the last in-memory");
-    expect(activityDistiller).toContain("Drain the available backlog");
+    expect(normalizedActivityDistiller).toContain("state page with this call's `next_checkpoint`");
+    expect(normalizedActivityDistiller).toContain("Continue until `has_more` is false");
     expect(normalizedRootLower).toContain("reconcile; never append by default");
     expect(normalizedRootLower).toContain("as concise as possible, but no more concise than the truth allows");
     const activityDistillerLower = activityDistiller.toLowerCase();
@@ -549,11 +547,11 @@ describe("knowledge templates", () => {
       "record_ref",
       "next_checkpoint",
       "has_more",
-      "preceding 30 days",
+      "more than 30 days",
       "source evidence",
-      "context-bounded backlog",
-      "max_bytes",
-      "batch_bytes",
+      "process one batch at a time",
+      "existing backlogs",
+      "next scheduled invocation",
       "pruned deletion",
       "repository or burst of activity",
       "participant lists, handles, domains",

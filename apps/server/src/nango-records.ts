@@ -73,7 +73,7 @@ const DEFAULT_RECORD_LIMIT = 50;
 const MAX_RECORD_LIMIT = 100;
 const DEFAULT_RESPONSE_BYTE_BUDGET = 5_000_000;
 const MAX_CHECKPOINT_STREAMS = 1_000;
-const INITIAL_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1_000;
+const RECORD_FRESHNESS_MS = 30 * 24 * 60 * 60 * 1_000;
 
 export type PipelineRecordSource = {
   integrationId: string;
@@ -107,14 +107,12 @@ export type SourceRecord = {
 export type ReadSourceRecordsInput = {
   checkpoint?: string | undefined;
   limit?: number | undefined;
-  max_bytes?: number | undefined;
 };
 
 export type ReadSourceRecordsResult = {
   records: SourceRecord[];
   next_checkpoint: string;
   has_more: boolean;
-  batch_bytes: number;
 };
 
 export interface SourceRecordReader {
@@ -340,23 +338,17 @@ export class NangoRecordReader implements SourceRecordReader {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_RECORD_LIMIT) {
       throw new Error(`Record limit must be between 1 and ${MAX_RECORD_LIMIT}`);
     }
-    const requestedByteBudget = input.max_bytes;
-    if (requestedByteBudget !== undefined
-      && (!Number.isSafeInteger(requestedByteBudget)
-        || requestedByteBudget < 1)) {
-      throw new Error("Source-record byte budget must be a positive integer");
-    }
-    const responseByteBudget = Math.min(requestedByteBudget ?? this.#responseByteBudget, this.#responseByteBudget);
     const prior = decodeCheckpoint(input.checkpoint);
     const discoveredStreams = await this.#streams();
     const now = this.#now();
-    if (Number.isNaN(now.getTime())) throw new Error("Source-record lookback clock is invalid");
-    const initialModifiedAfter = new Date(now.getTime() - INITIAL_LOOKBACK_MS).toISOString();
+    if (Number.isNaN(now.getTime())) throw new Error("Source-record freshness clock is invalid");
+    const freshnessCutoffMs = now.getTime() - RECORD_FRESHNESS_MS;
+    const freshnessCutoff = new Date(freshnessCutoffMs).toISOString();
     const streamCheckpoints: Checkpoint["streams"] = {};
     for (const stream of discoveredStreams) {
-      streamCheckpoints[stream.key] = prior.streams[stream.key] ?? {
-        cursor: null,
-        initial_modified_after: initialModifiedAfter,
+      streamCheckpoints[stream.key] = {
+        cursor: prior.streams[stream.key]?.cursor ?? null,
+        initial_modified_after: freshnessCutoff,
       };
     }
     const streams = rotateFrom(discoveredStreams, prior.resume_from);
@@ -389,7 +381,7 @@ export class NangoRecordReader implements SourceRecordReader {
           : "updated_at" in sourceRecord
             ? sourceRecord.updated_at
             : sourceRecord._nango_metadata.last_modified_at;
-        if (Date.parse(relevantTimestamp) < Date.parse(streamCheckpoint.initial_modified_after)) {
+        if (Date.parse(relevantTimestamp) < freshnessCutoffMs) {
           streamCheckpoints[stream.key] = {
             ...streamCheckpoint,
             cursor: sourceRecord._nango_metadata.cursor,
@@ -403,7 +395,7 @@ export class NangoRecordReader implements SourceRecordReader {
           markdown,
         };
         const bytes = responseRecordBytes(record);
-        if (records.length > 0 && responseBytes + bytes > responseByteBudget) {
+        if (records.length > 0 && responseBytes + bytes > this.#responseByteBudget) {
           hasMore = true;
           resumeFrom = stream.key;
           break outer;
@@ -426,7 +418,6 @@ export class NangoRecordReader implements SourceRecordReader {
       records,
       next_checkpoint: encodeCheckpoint({ version: 1, streams: streamCheckpoints, resume_from: resumeFrom }),
       has_more: hasMore,
-      batch_bytes: responseBytes,
     };
   }
 }
