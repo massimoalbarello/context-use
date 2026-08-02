@@ -142,9 +142,11 @@ describe("MCP knowledge tools", () => {
     });
     const tool = listed.result?.tools?.find(({ name }) => name === "read_source_records");
     expect(tool?.description).toContain("bounded, checkpointed batch");
-    expect(tool?.description).toContain("30 days before discovery");
+    expect(tool?.description).toContain("more than 30 days old");
     expect(tool?.description).toContain("added, updated, or deleted action");
-    expect(tool?.description).toContain("Save it only after all resulting knowledge writes succeed");
+    expect(tool?.description).toContain("Reconcile this batch and persist next_checkpoint before calling again");
+    expect(tool?.description).toContain("only later lifecycle changes");
+    expect(tool?.inputSchema?.properties?.max_bytes).toBeUndefined();
 
     const read = await mcpRequest(serverWith(
       {} as PageRepository,
@@ -166,6 +168,7 @@ describe("MCP knowledge tools", () => {
       next_checkpoint: "cu-nango-v1.opaque",
       has_more: false,
     });
+    expect(read.result?.structuredContent?.batch_bytes).toBeUndefined();
     expect(calls).toEqual([{ checkpoint: "cu-nango-v1.previous", limit: 25 }]);
   });
 

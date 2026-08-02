@@ -52,7 +52,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 
 Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use status`, `context-use update`, or `context-use doctor` to manage the installation later.
 
-New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use `context-use template plan` to preview missing guides, safe updates, and local conflicts, then `context-use template apply` to apply them. Existing directories are never removed, and guides edited inside an instance are preserved. To replace active local guides deliberately, preview with `context-use template plan --overwrite-guides`, then run `context-use template apply --overwrite-guides`.
+New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use `context-use template plan` to preview missing directories and pages, safe updates, and local conflicts, then `context-use template apply` to apply them. Existing directories are never removed, locally edited guides and managed pages are preserved, and create-only state pages are never overwritten. To replace active local guides deliberately, preview with `context-use template plan --overwrite-guides`, then run `context-use template apply --overwrite-guides`.
 
 ## Nango data ingestion
 
@@ -75,12 +75,14 @@ Runtime values are KMS-encrypted SecureString parameters below `/context-use/<in
 The private Context Use MCP exposes `read_source_records` as the single downstream read
 surface. It discovers every connection for each managed pipeline model and returns a
 unified batch containing only a stable source reference, a source label, and the
-record's lifecycle action and canonical Markdown. Each newly discovered source stream
-starts with records modified during the preceding 30 days; older history is intentionally
-excluded. Its `next_checkpoint` is one opaque cursor across all connections and models,
-including connections discovered after earlier runs. Callers must treat it as an
-indivisible value. Nango webhooks are not involved in downstream processing, and Context
-Use does not create a second per-record observation store.
+record's lifecycle action and canonical Markdown. Every read applies a rolling 30-day
+freshness window: records whose latest source update or deletion is older are omitted
+while their cursors still advance. The window applies to source modification, not to the
+activity date described by returned Markdown, so a recently updated record about older
+activity is returned normally. Its `next_checkpoint` is one opaque cursor across all
+connections and models, including connections discovered after earlier runs. Callers
+must treat it as an indivisible value. Nango webhooks are not involved in downstream
+processing, and Context Use does not create a second per-record observation store.
 
 The Nango hostname is internet reachable so providers can call OAuth callback and webhook endpoints. The dashboard is gated by Nango's native username/password authentication, but a blanket proxy login in front of the entire hostname would also block those public integration endpoints. Keep access control route-aware if it is tightened later.
 
@@ -128,32 +130,39 @@ automation may keep exactly one non-secret opaque checkpoint on its stable `stat
 
 ### Activity distillation automation
 
-The first record-to-knowledge pipeline is intentionally agent-driven. Create
-`automations/activity-distiller/instructions` and
-`automations/activity-distiller/state`, authorize its trusted MCP client, and schedule
-its harness once or twice a day. Its run contract is:
+The first record-to-knowledge pipeline is intentionally agent-driven. The default
+knowledge template installs `automations/activity-distiller/instructions` and a
+create-only `automations/activity-distiller/state`; existing installations receive them
+with `context-use template apply`. Authorize the trusted MCP client, then schedule an
+external harness once or twice a day with the prompt: “Open and follow
+`automations/activity-distiller/instructions`; execute exactly one run.” Its run contract
+is:
 
 1. Read the instruction and state pages, call `read_source_records` with the stored
-   checkpoint, and process exactly that bounded batch. Do not accumulate multiple
-   batches in one model context; a newly discovered source begins with the last 30 days.
-2. Interpret all source Markdown together. Connections are provenance, not page
-   boundaries: records from different services can describe or corroborate the same
-   day, project, decision or entity. Treat a `deleted` action as withdrawn evidence,
-   not as current source material.
-3. Search and read existing knowledge before writing. Reconcile new evidence into the
-   current canonical account by rewriting and reorganizing it; merge overlaps, remove
-   superseded detail, and create a new semantic page only when no existing subject fits.
+   checkpoint, and process exactly that returned batch. Records whose latest source
+   update or deletion is more than 30 days old are skipped by the reader; recently
+   updated records about older activity are processed normally.
+2. Interpret all source Markdown in the batch together. Connections are provenance, not
+   page boundaries: records from different services can describe or corroborate the same
+   day, project, decision or entity. Treat a `deleted` action as withdrawn evidence, not
+   as current source material.
+3. Search and read existing knowledge before writing, including changes made for earlier
+   batches in the same run. Reconcile new evidence into the current canonical account by
+   rewriting and reorganizing it; merge overlaps, remove superseded detail, and create a
+   new semantic page only when no existing subject fits.
 4. Put only material temporal activity on at most one automation-owned diary page for
    each date when it actually happened, with links to its projects, tasks and useful
-   entities. Omit routine activity. Never put cursors, run metadata or one page per
-   source in the diary.
+   entities. Ensure the date also has its required `log`; when creating one, keep it to
+   the distiller's companion-page bullet without inventing owner narrative. Omit routine
+   activity. Never put cursors, run metadata or one page per source in the diary.
 5. Create project, task, person and company pages selectively. Repetition and material
    involvement can justify an entity; a participant list, repository name or isolated
    record cannot.
-6. Replace the stable state page with the final opaque checkpoint only after every
-   intended knowledge write succeeds. Leave it unchanged on failure so the input can be
-   replayed safely. If `has_more` is true, let the harness begin a fresh bounded run from
-   the saved checkpoint.
+6. After every intended knowledge write for that batch succeeds, replace the stable
+   state page with its `next_checkpoint`. Only then, if `has_more` is true, read and
+   reconcile the next batch. Continue until `has_more` is false. On failure, do not save
+   the failed batch's checkpoint. A completed run leaves the next scheduled invocation
+   with only later lifecycle changes to process.
 
 The default knowledge template carries the detailed placement and maintenance rules,
 including `about/projects/` for enduring work, finite future-facing frames under

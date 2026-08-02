@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { createPageSchema, DirectoryPath, PagePath } from "@context-use/shared";
 import type {
   Actor,
   CreateDirectoryInput,
@@ -13,6 +14,7 @@ import { PageRepository } from "./pages.ts";
 const TEMPLATES_ROOT = new URL("../templates/", import.meta.url);
 const TEMPLATE_ACTOR_PREFIX = "context-use-template/";
 const LEGACY_BOOTSTRAP_ACTOR = "context-use-bootstrap";
+const TEMPLATE_PAGES_DIRECTORY = "_pages";
 
 type TemplatePage = {
   id: string;
@@ -42,13 +44,20 @@ type TemplateDirectoryPresentation = {
   summary: string;
 };
 
+type TemplatePageManagement = "managed" | "create-only";
+
+type TemplatePageDefinition = {
+  input: CreatePageInput;
+  management: TemplatePageManagement;
+};
+
 export type TemplateRepositories = {
   directories: Pick<DirectoryRepository, "getByPath" | "create" | "update">;
   pages: Pick<PageRepository, "getByPath" | "create" | "update" | "version">;
 };
 
 export type TemplateAction = {
-  action: "create-directory" | "update-directory" | "create-guide" | "adopt-guide" | "update-guide" | "replace-guide" | "unchanged" | "conflict";
+  action: "create-directory" | "update-directory" | "create-guide" | "adopt-guide" | "update-guide" | "replace-guide" | "create-page" | "adopt-page" | "update-page" | "unchanged" | "conflict";
   path: string;
   detail: string;
 };
@@ -78,19 +87,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 async function readDirectoryPresentations(
   rootPath: string,
-  directoryPaths: string[],
+  guideDirectoryPaths: string[],
 ): Promise<Map<string, TemplateDirectoryPresentation>> {
   const source = await readFile(join(rootPath, "directories.json"), "utf8");
   const parsed: unknown = JSON.parse(source);
   if (!isRecord(parsed)) throw new Error("Template directories.json must contain an object");
 
-  const knownPaths = new Set(directoryPaths);
-  for (const path of Object.keys(parsed)) {
-    if (!knownPaths.has(path)) throw new Error(`Template directory metadata has no matching guide: ${path || "/"}`);
+  for (const path of guideDirectoryPaths) {
+    if (!(path in parsed)) throw new Error(`Template directory metadata is missing: ${path || "/"}`);
   }
 
   const presentations = new Map<string, TemplateDirectoryPresentation>();
-  for (const path of directoryPaths) {
+  for (const path of Object.keys(parsed)) {
+    if (!DirectoryPath.safeParse(path).success) {
+      throw new Error(`Invalid template directory path: ${path || "/"}`);
+    }
     const presentation = parsed[path];
     if (!isRecord(presentation)) throw new Error(`Template directory metadata is missing: ${path || "/"}`);
     const { title, summary } = presentation;
@@ -102,7 +113,61 @@ async function readDirectoryPresentations(
     }
     presentations.set(path, { title: title.trim(), summary: summary.trim() });
   }
+  if (!presentations.has("")) throw new Error("Template directory metadata is missing: /");
+  for (const path of presentations.keys()) {
+    if (!path) continue;
+    const parentPath = path.includes("/") ? path.replace(/\/[^/]+$/, "") : "";
+    if (!presentations.has(parentPath)) {
+      throw new Error(`Template directory metadata has no parent: ${path}`);
+    }
+  }
   return presentations;
+}
+
+async function readTemplatePages(
+  rootPath: string,
+  directoryPaths: Set<string>,
+  guideDirectoryPaths: string[],
+  templateName: string,
+): Promise<TemplatePageDefinition[]> {
+  const source = await readFile(join(rootPath, "pages.json"), "utf8");
+  const parsed: unknown = JSON.parse(source);
+  if (!isRecord(parsed)) throw new Error("Template pages.json must contain an object");
+  const guidePaths = new Set(guideDirectoryPaths.map(guidePath));
+  const definitions: TemplatePageDefinition[] = [];
+
+  for (const [path, value] of Object.entries(parsed).sort(([left], [right]) => left.localeCompare(right))) {
+    if (!PagePath.safeParse(path).success) throw new Error(`Invalid template page path: ${path}`);
+    if (guidePaths.has(path)) throw new Error(`Template page collides with a guide: ${path}`);
+    if (directoryPaths.has(path)) throw new Error(`Template page collides with a directory: ${path}`);
+    const parentPath = path.includes("/") ? path.replace(/\/[^/]+$/, "") : "";
+    if (!directoryPaths.has(parentPath)) throw new Error(`Template page parent is missing: ${path}`);
+    if (!isRecord(value)) throw new Error(`Invalid template page metadata: ${path}`);
+    const keys = Object.keys(value).sort();
+    if (keys.join(",") !== "body_file,management,summary,title") {
+      throw new Error(`Invalid template page metadata fields: ${path}`);
+    }
+    const { title, summary, body_file: bodyFile, management } = value;
+    if (management !== "managed" && management !== "create-only") {
+      throw new Error(`Invalid template page management: ${path}`);
+    }
+    if (typeof bodyFile !== "string"
+      || !bodyFile.startsWith(`${TEMPLATE_PAGES_DIRECTORY}/`)
+      || !/^_pages\/[a-z0-9][a-z0-9/_-]*\.md$/.test(bodyFile)
+      || bodyFile.includes("//")) {
+      throw new Error(`Invalid template page body file: ${path}`);
+    }
+    const bodyMarkdown = await readFile(join(rootPath, bodyFile), "utf8");
+    const input = createPageSchema.parse({
+      path,
+      title,
+      summary,
+      body_markdown: bodyMarkdown.trimEnd() + "\n",
+      commit_message: `Apply ${templateName} knowledge template`,
+    });
+    definitions.push({ input, management });
+  }
+  return definitions;
 }
 
 function guidePath(directoryPath: string): string {
@@ -126,7 +191,8 @@ async function discoverGuideDirectories(rootPath: string): Promise<string[]> {
     }
     for (const entry of entries) {
       const isRootMetadata = !relativePath && entry.isFile() && entry.name === "directories.json";
-      if (entry.isFile() && entry.name !== "AGENTS.md" && !isRootMetadata) {
+      const isRootPageMetadata = !relativePath && entry.isFile() && entry.name === "pages.json";
+      if (entry.isFile() && entry.name !== "AGENTS.md" && !isRootMetadata && !isRootPageMetadata) {
         throw new Error(`Unexpected template file: ${join(relativePath, entry.name)}`);
       }
       if (!entry.isFile() && !entry.isDirectory()) {
@@ -134,7 +200,9 @@ async function discoverGuideDirectories(rootPath: string): Promise<string[]> {
       }
     }
     directories.push(relativePath);
-    for (const entry of entries.filter((entry) => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const entry of entries.filter(
+      (entry) => entry.isDirectory() && !(relativePath === "" && entry.name === TEMPLATE_PAGES_DIRECTORY),
+    ).sort((a, b) => a.name.localeCompare(b.name))) {
       await visit(relativePath ? `${relativePath}/${entry.name}` : entry.name);
     }
   }
@@ -155,7 +223,7 @@ function templateOwnsCurrentVersion(actorSubject: string, templateName: string):
     || actorSubject === LEGACY_BOOTSTRAP_ACTOR;
 }
 
-function sameGuide(page: TemplatePage, input: CreatePageInput): boolean {
+function samePage(page: TemplatePage, input: CreatePageInput): boolean {
   return page.title === input.title
     && page.summary === input.summary
     && page.body_markdown === input.body_markdown;
@@ -170,8 +238,18 @@ export async function reconcileKnowledgeTemplate(
   assertTemplateName(templateName);
   const rootUrl = new URL(`${templateName}/`, TEMPLATES_ROOT);
   const rootPath = rootUrl.pathname;
-  const directoryPaths = await discoverGuideDirectories(rootPath);
-  const directoryPresentations = await readDirectoryPresentations(rootPath, directoryPaths);
+  const guideDirectoryPaths = await discoverGuideDirectories(rootPath);
+  const directoryPresentations = await readDirectoryPresentations(rootPath, guideDirectoryPaths);
+  const directoryPaths = [...directoryPresentations.keys()].sort((left, right) => {
+    const depth = left.split("/").filter(Boolean).length - right.split("/").filter(Boolean).length;
+    return depth || left.localeCompare(right);
+  });
+  const templatePages = await readTemplatePages(
+    rootPath,
+    new Set(directoryPaths),
+    guideDirectoryPaths,
+    templateName,
+  );
   const actions: TemplateAction[] = [];
   const blockedDirectories = new Set<string>();
 
@@ -224,7 +302,7 @@ export async function reconcileKnowledgeTemplate(
     }
   }
 
-  for (const directoryPath of directoryPaths) {
+  for (const directoryPath of guideDirectoryPaths) {
     if (blockedDirectories.has(directoryPath)) continue;
     const path = guidePath(directoryPath);
     const bodyMarkdown = await readFile(join(rootPath, directoryPath, "AGENTS.md"), "utf8");
@@ -246,7 +324,7 @@ export async function reconcileKnowledgeTemplate(
       continue;
     }
     const currentVersion = await repositories.pages.version(existing.id, existing.version_number) as TemplatePageVersion | null;
-    if (sameGuide(existing, input)) {
+    if (samePage(existing, input)) {
       if (currentVersion?.actor_subject === `${TEMPLATE_ACTOR_PREFIX}${templateName}`) {
         actions.push({ action: "unchanged", path, detail: "Already matches the template" });
         continue;
@@ -277,6 +355,55 @@ export async function reconcileKnowledgeTemplate(
     }
   }
 
+  for (const definition of templatePages) {
+    const { input, management } = definition;
+    const parentPath = input.path.includes("/") ? input.path.replace(/\/[^/]+$/, "") : "";
+    if (blockedDirectories.has(parentPath)) {
+      actions.push({ action: "conflict", path: input.path, detail: "Parent template directory is unavailable" });
+      continue;
+    }
+    if (await repositories.directories.getByPath(input.path)) {
+      actions.push({ action: "conflict", path: input.path, detail: "Page path is occupied by a directory" });
+      continue;
+    }
+    const existing = await repositories.pages.getByPath(input.path, true) as TemplatePage | null;
+    if (!existing) {
+      actions.push({ action: "create-page", path: input.path, detail: "Create template page" });
+      if (apply) await repositories.pages.create(input, templateActor(templateName));
+      continue;
+    }
+    if (existing.archived_at) {
+      actions.push({ action: "conflict", path: input.path, detail: "Template page was archived locally" });
+      continue;
+    }
+    if (management === "create-only") {
+      actions.push({ action: "unchanged", path: input.path, detail: "Preserve create-only template page" });
+      continue;
+    }
+    const currentVersion = await repositories.pages.version(existing.id, existing.version_number) as TemplatePageVersion | null;
+    if (samePage(existing, input)) {
+      if (currentVersion?.actor_subject === `${TEMPLATE_ACTOR_PREFIX}${templateName}`) {
+        actions.push({ action: "unchanged", path: input.path, detail: "Already matches the template" });
+        continue;
+      }
+      actions.push({ action: "adopt-page", path: input.path, detail: "Adopt matching local template page" });
+      if (apply) {
+        const update: UpdatePageInput = { ...input, expected_version_number: existing.version_number };
+        await repositories.pages.update(existing.id, update, templateActor(templateName));
+      }
+      continue;
+    }
+    if (!currentVersion || !templateOwnsCurrentVersion(currentVersion.actor_subject, templateName)) {
+      actions.push({ action: "conflict", path: input.path, detail: "Preserve locally modified template page" });
+      continue;
+    }
+    actions.push({ action: "update-page", path: input.path, detail: "Update untouched template page" });
+    if (apply) {
+      const update: UpdatePageInput = { ...input, expected_version_number: existing.version_number };
+      await repositories.pages.update(existing.id, update, templateActor(templateName));
+    }
+  }
+
   return { template: templateName, applied: apply, actions };
 }
 
@@ -297,7 +424,7 @@ export function formatTemplateResult(result: TemplateResult, color = false): str
     return `${resultIndicator(kind, color)} ${action.padEnd(16)} ${path || "/"}  ${detail}`;
   });
   const conflicts = result.actions.filter(({ action }) => action === "conflict").length;
-  const changes = result.actions.filter(({ action }) => action.startsWith("create-") || action.startsWith("update-") || action === "adopt-guide" || action === "replace-guide").length;
+  const changes = result.actions.filter(({ action }) => action.startsWith("create-") || action.startsWith("update-") || action === "adopt-guide" || action === "adopt-page" || action === "replace-guide").length;
   const summaryKind = conflicts ? "conflict" : "success";
   lines.push(`${resultIndicator(summaryKind, color)} ${result.applied ? "Applied" : "Planned"} ${changes} change${changes === 1 ? "" : "s"}; ${conflicts} conflict${conflicts === 1 ? "" : "s"}.`);
   return lines.join("\n");

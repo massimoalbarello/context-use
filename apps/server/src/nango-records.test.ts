@@ -12,7 +12,7 @@ const GITHUB: PipelineRecordSource = {
   model: "GitHubPullRequest",
 };
 const NOW = new Date("2026-08-01T12:00:00.000Z");
-const INITIAL_MODIFIED_AFTER = "2026-07-02T12:00:00.000Z";
+const INITIAL_FRESHNESS_CUTOFF = "2026-07-02T12:00:00.000Z";
 
 function pipelineRecord(
   id: string,
@@ -110,7 +110,7 @@ describe("Nango source-record reader", () => {
     expect(seen.some((request) => new URL(request.url).pathname === "/scripts/config")).toBe(false);
   });
 
-  test("uses the last returned record cursor inside one opaque multi-stream checkpoint", async () => {
+  test("uses the last returned cursor so a completed checkpoint yields only later records", async () => {
     const cursorsSeen: Array<string | null> = [];
     const modifiedAfterSeen: Array<string | null> = [];
     const sourceReader = reader(async (request) => {
@@ -121,15 +121,22 @@ describe("Nango source-record reader", () => {
       const cursor = url.searchParams.get("cursor");
       cursorsSeen.push(cursor);
       modifiedAfterSeen.push(url.searchParams.get("modified_after"));
-      return cursor === null
-        ? Response.json({
-            records: [pipelineRecord("1", "# First", "cursor-one")],
-            next_cursor: "more",
-          })
-        : Response.json({
-            records: [pipelineRecord("2", "# Second", "cursor-two")],
-            next_cursor: null,
-          });
+      if (cursor === null) {
+        return Response.json({
+          records: [pipelineRecord("1", "# First", "cursor-one")],
+          next_cursor: "more",
+        });
+      }
+      if (cursor === "cursor-one") {
+        return Response.json({
+          records: [pipelineRecord("2", "# Second", "cursor-two")],
+          next_cursor: null,
+        });
+      }
+      return Response.json({
+        records: [pipelineRecord("3", "# Later", "cursor-three")],
+        next_cursor: null,
+      });
     }, { sources: [GITHUB] });
 
     const first = await sourceReader.read({ limit: 1 });
@@ -145,11 +152,15 @@ describe("Nango source-record reader", () => {
     const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 1 });
     expect(second.records.map(({ markdown }) => markdown)).toEqual(["# Second"]);
     expect(second.has_more).toBe(false);
-    expect(cursorsSeen).toEqual([null, "cursor-one"]);
-    expect(modifiedAfterSeen).toEqual([INITIAL_MODIFIED_AFTER, null]);
+
+    const nextTrigger = await sourceReader.read({ checkpoint: second.next_checkpoint, limit: 1 });
+    expect(nextTrigger.records.map(({ markdown }) => markdown)).toEqual(["# Later"]);
+    expect(nextTrigger.has_more).toBe(false);
+    expect(cursorsSeen).toEqual([null, "cursor-one", "cursor-two"]);
+    expect(modifiedAfterSeen).toEqual([INITIAL_FRESHNESS_CUTOFF, null, null]);
   });
 
-  test("starts newly discovered connections from a stable one-month lookback while retaining prior cursors", async () => {
+  test("starts newly discovered connections from the current one-month window while retaining prior cursors", async () => {
     let includeSecondConnection = false;
     let now = NOW;
     const cursors = new Map<string, Array<string | null>>();
@@ -197,11 +208,11 @@ describe("Nango source-record reader", () => {
     expect(second.records.map(({ markdown }) => markdown)).toEqual(["# Newly connected"]);
     expect(cursors.get("first")).toEqual([null, "first-cursor"]);
     expect(cursors.get("second")).toEqual([null]);
-    expect(modifiedAfter.get("first")).toEqual([INITIAL_MODIFIED_AFTER, null]);
+    expect(modifiedAfter.get("first")).toEqual([INITIAL_FRESHNESS_CUTOFF, null]);
     expect(modifiedAfter.get("second")).toEqual(["2026-08-02T12:00:00.000Z"]);
   });
 
-  test("skips source history older than the initial lookback while advancing its cursor", async () => {
+  test("skips source history older than the current freshness window while advancing its cursor", async () => {
     const cursorsSeen: Array<string | null> = [];
     const sourceReader = reader(async (request) => {
       const url = new URL(request.url);
@@ -229,6 +240,74 @@ describe("Nango source-record reader", () => {
     expect(second.records.map(({ markdown }) => markdown)).toEqual(["# Recent activity"]);
     expect(second.has_more).toBe(false);
     expect(cursorsSeen).toEqual([null, "old-cursor"]);
+  });
+
+  test("applies the rolling freshness window to an existing checkpoint backlog", async () => {
+    let now = NOW;
+    const cursorsSeen: Array<string | null> = [];
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({ connections: [{ id: 1, connection_id: "owner", provider_config_key: "github" }] });
+      }
+      const cursor = url.searchParams.get("cursor");
+      cursorsSeen.push(cursor);
+      return cursor === null
+        ? Response.json({
+            records: [pipelineRecord(
+              "1",
+              "# Initially recent",
+              "cursor-one",
+              "ADDED",
+              "2026-07-15T10:00:00.000Z",
+            )],
+            next_cursor: "more",
+          })
+        : Response.json({
+            records: [pipelineRecord(
+              "2",
+              "# Aged backlog",
+              "cursor-two",
+              "ADDED",
+              "2026-07-15T11:00:00.000Z",
+            )],
+            next_cursor: null,
+          });
+    }, { sources: [GITHUB], now: () => now });
+
+    const first = await sourceReader.read({ limit: 1 });
+    expect(first.records.map(({ markdown }) => markdown)).toEqual(["# Initially recent"]);
+    expect(first.has_more).toBe(true);
+
+    now = new Date("2026-09-01T12:00:00.000Z");
+    const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 1 });
+    expect(second.records).toEqual([]);
+    expect(second.has_more).toBe(false);
+    expect(cursorsSeen).toEqual([null, "cursor-one"]);
+  });
+
+  test("returns recently updated records even when their underlying activity is old", async () => {
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({ connections: [{ id: 1, connection_id: "owner", provider_config_key: "github" }] });
+      }
+      return Response.json({
+        records: [{
+          ...pipelineRecord("old-updated", "# Older activity updated recently", "cursor", "UPDATED"),
+          created_at: "2024-01-10T10:00:00.000Z",
+        }],
+        next_cursor: null,
+      });
+    }, { sources: [GITHUB] });
+
+    const result = await sourceReader.read({ limit: 10 });
+
+    expect(result.records).toEqual([expect.objectContaining({
+      action: "updated",
+      markdown: "# Older activity updated recently",
+    })]);
+    expect(result.has_more).toBe(false);
   });
 
   test("treats a re-created Nango connection as a new stream even when its public ID is reused", async () => {

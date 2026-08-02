@@ -11,6 +11,10 @@
     "title": "Automations",
     "summary": "Instructions and supporting assets used by automations running in external harnesses."
   },
+  "automations/activity-distiller": {
+    "title": "Activity distiller",
+    "summary": "Canonical instructions and minimal checkpoint state for reconciling connected activity into maintained knowledge."
+  },
   "companies": {
     "title": "Companies",
     "summary": "Companies the owner works with, is considering, competes with, or follows, described factually and with dates."
