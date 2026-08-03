@@ -205,6 +205,10 @@ export const auth = betterAuth({
       grantTypes: ["authorization_code", "refresh_token"],
       accessTokenExpiresIn: 900,
       refreshTokenExpiresIn: 2_592_000,
+      // MCP clients can have multiple runtimes retry the same refresh after a
+      // reconnect. Replay the completed rotation briefly instead of treating
+      // that retry as token theft and invalidating the whole token family.
+      refreshTokenReuseInterval: 30,
       codeExpiresIn: 300,
       allowDynamicClientRegistration: true,
       allowUnauthenticatedClientRegistration: true,
