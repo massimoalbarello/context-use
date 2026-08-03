@@ -10,9 +10,9 @@
   "overrides": {
     "@hono/node-server": "2.0.11",
     "fast-uri": "3.1.5",
-    "ip-address": "10.3.1",
+    "ip-address": "10.4.0",
     "kysely": "0.28.17",
-    "postcss": "8.5.23"
+    "postcss": "8.5.25"
   },
   "scripts": {
     "dev": "bun run --filter '@context-use/*' dev",

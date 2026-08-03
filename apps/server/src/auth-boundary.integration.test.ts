@@ -446,6 +446,107 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     }
   });
 
+  test("a retried refresh rotation replays its replacement without invalidating the token family", async () => {
+    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const registration = await application!.handle(new Request("http://localhost:3000/api/auth/oauth2/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "context-use refresh rotation test",
+        redirect_uris: ["http://127.0.0.1:49322/callback"],
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        scope: "offline_access mcp:access",
+      }),
+    }));
+    expect(registration.status).toBe(201);
+    const registered = await registration.json() as { client_id: string };
+    createdClients.push(registered.client_id);
+
+    const originalRefreshToken = `refresh-${crypto.randomUUID()}`;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(originalRefreshToken));
+    const storedRefreshToken = Buffer.from(digest).toString("base64url");
+    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    await client.connect();
+    let createdOwner = false;
+    try {
+      const owner = await client.query(
+        `INSERT INTO "user"(id,name,email,"emailVerified")
+         VALUES ('context-use-owner','Owner',$1,true)
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id`,
+        [config.OWNER_EMAIL],
+      );
+      createdOwner = Boolean(owner.rowCount);
+      await client.query(
+        `INSERT INTO "oauthRefreshToken"(
+           id,token,"clientId","userId","expiresAt","createdAt",scopes,resources
+         ) VALUES ($1,$2,$3,'context-use-owner',now()+interval '30 days',now(),$4::jsonb,$5::jsonb)`,
+        [
+          crypto.randomUUID(),
+          storedRefreshToken,
+          registered.client_id,
+          JSON.stringify(["offline_access", "mcp:access"]),
+          JSON.stringify([config.MCP_RESOURCE]),
+        ],
+      );
+
+      const refresh = (token: string) => application!.handle(new Request(
+        "http://localhost:3000/api/auth/oauth2/token",
+        {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "refresh_token",
+            client_id: registered.client_id,
+            refresh_token: token,
+          }),
+        },
+      ));
+
+      const firstResponse = await refresh(originalRefreshToken);
+      expect(firstResponse.status).toBe(200);
+      const first = await firstResponse.json() as {
+        access_token: string;
+        refresh_token: string;
+      };
+      expect(first.refresh_token).toBeTruthy();
+
+      const replayResponse = await refresh(originalRefreshToken);
+      expect(replayResponse.status).toBe(200);
+      const replay = await replayResponse.json() as {
+        access_token: string;
+        refresh_token: string;
+      };
+      expect(replay.access_token).toBe(first.access_token);
+      expect(replay.refresh_token).toBe(first.refresh_token);
+
+      const replacementResponse = await refresh(first.refresh_token);
+      expect(replacementResponse.status).toBe(200);
+      const replacement = await replacementResponse.json() as { refresh_token: string };
+      expect(replacement.refresh_token).toBeTruthy();
+      expect(replacement.refresh_token).not.toBe(first.refresh_token);
+    } finally {
+      try {
+        await client.query(`DELETE FROM "oauthClient" WHERE "clientId"=$1`, [registered.client_id]);
+        if (createdOwner) {
+          await client.query("BEGIN");
+          try {
+            await client.query("SET LOCAL session_replication_role=replica");
+            await client.query(`DELETE FROM "user" WHERE id='context-use-owner'`);
+            await client.query("COMMIT");
+          } catch (error) {
+            await client.query("ROLLBACK");
+            throw error;
+          }
+        }
+      } finally {
+        await client.end();
+      }
+    }
+  });
+
   test("idle and absolute session deadlines cannot be refreshed before authorization", async () => {
     if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
     const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
