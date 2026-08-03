@@ -157,5 +157,11 @@ before reading the next one.
 
 A successful run finishes only when `has_more` is false. The final saved checkpoint then
 ensures the next scheduled invocation receives only lifecycle changes after this run.
-Finish with a concise harness report containing the number of batches reconciled, whether
-the source is caught up, the semantic pages changed, and any unresolved ambiguity.
+Finish with a concise report containing the number of batches reconciled, whether the
+source is caught up, any unresolved ambiguity, and a short overall summary of the key
+knowledge changes. Report semantic page mutations in two separate lists:
+`Created` and `Updated`. Each entry must give the exact page path followed by a concise summary
+of what was created or changed on that page, so the report explains both the change and where
+it was made. Include every semantic page created or updated during the run, including diary
+logs and companion pages, but exclude structural directories and the operational state/checkpoint
+page. If either list is empty, state `None`.
