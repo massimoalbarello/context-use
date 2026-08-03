@@ -1,12 +1,4 @@
 import { z } from "zod";
-import {
-  AUTOMATION_SCOPE_MAX_PATTERNS,
-  AUTOMATION_WRITE_SCOPE_DESCRIPTION,
-  AutomationScopeError,
-  assertWriteScopePattern,
-} from "./automation-scope.ts";
-
-export * from "./automation-scope.ts";
 
 export const PAGE_MARKDOWN_BODY_DESCRIPTION = [
   "Markdown page body.",
@@ -43,32 +35,12 @@ export const KnowledgeSummary = z
   .max(320)
   .refine((value) => !/[\r\n]/.test(value), "Use a single-line summary")
   .describe("Required one-sentence summary used in generated directory indexes and search results.");
-export const AutomationName = z.string().trim().min(1).max(160);
-export const AutomationKey = z
+export const DirectorySummary = z
   .string()
   .trim()
-  .min(1)
-  .max(64)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and single hyphens only");
-export const CronExpression = z.string().trim().min(9).max(160);
-export const TimeZone = z.string().trim().min(1).max(100);
-export const AutomationInput = z.record(z.string(), z.unknown());
-export const AutomationWriteScope = z
-  .array(
-    z.string().trim().min(1).max(430).superRefine((value, context) => {
-      try {
-        assertWriteScopePattern(value);
-      } catch (error) {
-        context.addIssue({
-          code: "custom",
-          message: error instanceof AutomationScopeError ? error.message : "Invalid write scope pattern",
-        });
-      }
-    }),
-  )
-  .max(AUTOMATION_SCOPE_MAX_PATTERNS)
-  .describe(AUTOMATION_WRITE_SCOPE_DESCRIPTION);
-
+  .max(320)
+  .refine((value) => !/[\r\n]/.test(value), "Use a single-line summary")
+  .describe("Optional public-listing summary shown for this directory in its generated parent index.");
 const PageBodyMarkdown = z.string().max(2_000_000).describe(PAGE_MARKDOWN_BODY_DESCRIPTION);
 
 export const createPageSchema = z
@@ -95,14 +67,16 @@ export const updatePageSchema = z
 export const createDirectorySchema = z.object({
   path: KnowledgePath,
   title: z.string().trim().min(1).max(240),
-  summary: KnowledgeSummary,
-  intro_markdown: PageBodyMarkdown.default(""),
+  summary: DirectorySummary.default(""),
 }).strict();
 
 export const updateDirectorySchema = z.object({
   title: z.string().trim().min(1).max(240),
-  summary: KnowledgeSummary,
-  intro_markdown: PageBodyMarkdown,
+  summary: DirectorySummary,
+  expected_version_number: z.number().int().positive(),
+}).strict();
+
+export const deleteDirectorySchema = z.object({
   expected_version_number: z.number().int().positive(),
 }).strict();
 
@@ -148,68 +122,15 @@ export const archiveAssetSchema = z.object({
   asset_id: UUID,
 }).strict();
 
-export const createCronScheduleSchema = z.object({
-  name: AutomationName,
-  automation_key: AutomationKey,
-  instructions_markdown: z.string().trim().min(1).max(2_000_000),
-  commit_message: CommitMessage.default("Create automation"),
-  cron_expression: CronExpression,
-  timezone: TimeZone,
-  input: AutomationInput.default({}),
-  enabled: z.boolean().default(true),
-  write_scope: AutomationWriteScope.default([]),
-}).strict();
-
-export const updateCronScheduleSchema = createCronScheduleSchema
-  .omit({ automation_key: true })
-  .extend({
-    commit_message: CommitMessage.default("Update automation"),
-    enabled: z.boolean(),
-    write_scope: AutomationWriteScope,
-    expected_version_number: z.number().int().positive(),
-  })
-  .strict();
-
-const automationRunAccessSchema = z.object({
-  run_id: UUID,
-  claim_token: UUID,
-}).strict();
-
-export const createAutomationPageSchema = automationRunAccessSchema.extend({
-  path: WritablePagePath.describe(
-    "Absolute knowledge path to write. It must fall inside this run's resolved write scope, which claim_due_run returns as write_scope_resolved.",
-  ),
-  title: z.string().trim().min(1).max(240),
-  summary: KnowledgeSummary,
-  body_markdown: PageBodyMarkdown,
-  commit_message: CommitMessage,
-}).strict();
-
-export const updateAutomationPageSchema = createAutomationPageSchema.extend({
-  page_id: UUID,
-  expected_version_number: z.number().int().positive(),
-}).strict();
-
-export const archiveAutomationPageSchema = automationRunAccessSchema.extend({
-  page_id: UUID,
-  commit_message: CommitMessage,
-  expected_version_number: z.number().int().positive(),
-}).strict();
-
 export type CreatePageInput = z.infer<typeof createPageSchema>;
 export type UpdatePageInput = z.infer<typeof updatePageSchema>;
 export type CreateDirectoryInput = z.infer<typeof createDirectorySchema>;
 export type UpdateDirectoryInput = z.infer<typeof updateDirectorySchema>;
+export type DeleteDirectoryInput = z.infer<typeof deleteDirectorySchema>;
 export type ArchivePageInput = z.infer<typeof archivePageSchema>;
 export type PublicationIntentInput = z.infer<typeof publicationIntentSchema>;
 export type AssetUploadInput = z.infer<typeof assetUploadSchema>;
 export type ArchiveAssetInput = z.infer<typeof archiveAssetSchema>;
-export type CreateCronScheduleInput = z.infer<typeof createCronScheduleSchema>;
-export type UpdateCronScheduleInput = z.infer<typeof updateCronScheduleSchema>;
-export type CreateAutomationPageInput = z.infer<typeof createAutomationPageSchema>;
-export type UpdateAutomationPageInput = z.infer<typeof updateAutomationPageSchema>;
-export type ArchiveAutomationPageInput = z.infer<typeof archiveAutomationPageSchema>;
-
 export type Actor = {
   kind: "dashboard" | "mcp";
   subject: string;
@@ -221,8 +142,6 @@ export type Page = {
   current_version_id: string;
   published_version_id: string | null;
   public_path: string | null;
-  automation_id: string | null;
-  automation_instructions: boolean;
   archived_at: string | null;
   version_number: number;
   title: string;
@@ -251,7 +170,6 @@ export type Directory = {
   version_number: number;
   title: string;
   summary: string;
-  intro_markdown: string;
   created_at: string;
   updated_at: string;
 };
@@ -266,6 +184,7 @@ export type DirectoryIndexEntry = {
 };
 
 export type DirectoryIndex = Directory & {
+  guide: KnowledgePageMetadata | null;
   children: DirectoryIndexEntry[];
 };
 

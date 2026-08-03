@@ -6,6 +6,7 @@ import {
   deploymentCommands,
   dnsMismatches,
   healthMatchesVersion,
+  nangoPipelineRuntimeCommands,
 } from "./deploy.ts";
 import {
   DATA_VOLUME_INITIALIZATION_TAG,
@@ -31,11 +32,12 @@ function deploymentConfig(overrides: Partial<DeploymentConfig> = {}): Deployment
     accountId: "123456789012",
     hostname: "context.example.com",
     assetHostname: "assets.context.example.com",
+    nangoHostname: "nango.context.example.com",
     dnsMode: "manual",
     route53ZoneId: "",
     ownerEmail: "owner@example.com",
     stateBucket: "context-use-state",
-    instanceType: "t3.small",
+    instanceType: "t3.large",
     dataVolumeSizeGb: 50,
     backupRetentionDays: 30,
     ...overrides,
@@ -211,16 +213,46 @@ test("deployment diagnoses cloud-init separately and always removes its temporar
   ]);
   expect(commands.at(-1)).toContain("arn:aws:iam::123456789012:role/context-use-abcdef123456-production-storage");
   expect(commands.at(-1)).toContain("arn:aws:iam::123456789012:role/context-use-abcdef123456-production-backup");
+  expect(commands.at(-1)).not.toContain("CONTEXT_USE_NANGO_IMAGE");
+  expect(commands.at(-1)).not.toContain("CONTEXT_USE_NANGO_HOSTNAME");
 
   const recovery = deploymentCommands(
     deploymentConfig(),
     manifest,
     "#!/bin/sh\nexit 0\n",
-    "postgres/2026-07-20T10-20-30-123456789Z.sql.gz",
+    {
+      recoveryBackupKey: "postgres/2026-07-20T10-20-30-123456789Z.sql.gz",
+      recoveryNangoBackupKey: "nango-postgres/2026-07-20T10-20-31-123456789Z.sql.gz",
+    },
   );
   expect(recovery.at(-1)).toContain("CONTEXT_USE_RECOVERY_BACKUP_KEY='postgres/2026-07-20T10-20-30-123456789Z.sql.gz'");
-  expect(() => deploymentCommands(deploymentConfig(), manifest, "", "../other.sql.gz"))
+  expect(recovery.at(-1)).toContain("CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY='nango-postgres/2026-07-20T10-20-31-123456789Z.sql.gz'");
+  expect(() => deploymentCommands(deploymentConfig(), manifest, "", { recoveryBackupKey: "../other.sql.gz" }))
     .toThrow("Invalid recovery backup key");
+  expect(() => deploymentCommands(
+    deploymentConfig(),
+    manifest,
+    "",
+    {
+      recoveryBackupKey: "postgres/2026-07-20T10-20-30Z.sql.gz",
+      recoveryNangoBackupKey: "postgres/2026-07-20T10-20-31Z.sql.gz",
+    },
+  )).toThrow("Invalid Nango recovery backup key");
+
+  const setup = deploymentCommands(deploymentConfig(), manifest, "", { installTemplate: "default" });
+  expect(setup.at(-1)).toContain("CONTEXT_USE_TEMPLATE_INSTALL='default'");
+});
+
+test("the scoped Nango pipeline key is installed remotely without crossing the command boundary", () => {
+  const commands = nangoPipelineRuntimeCommands(deploymentConfig()).join("\n");
+
+  expect(commands).toContain("/context-use/abcdef123456/production/NANGO_PIPELINE_API_KEY");
+  expect(commands).toContain("aws ssm get-parameter");
+  expect(commands).toContain("awk -F= '$1 != \"NANGO_PIPELINE_API_KEY\"'");
+  expect(commands).toContain("up -d --wait --force-recreate --no-deps private-mcp");
+  expect(commands).not.toContain("context-use-pipeline-secret");
+  expect(() => nangoPipelineRuntimeCommands(deploymentConfig({ installationId: "bad;id" })))
+    .toThrow("Invalid Nango pipeline parameter prefix");
 });
 
 function dataReadyConfig(overrides: Partial<DeploymentConfig> = {}): DeploymentConfig {
@@ -240,6 +272,7 @@ const computeOutputs: ComputeOutputs = {
   public_ip: "192.0.2.10",
   app_url: "https://context.example.com",
   asset_url: "https://assets.context.example.com",
+  nango_url: "https://nango.context.example.com",
   cloudwatch_log_group: "test",
 };
 
@@ -366,27 +399,39 @@ test("legacy configs retain durable state coordinates without derived lifecycle 
   const {
     schemaVersion: _schemaVersion,
     legacyStateKmsKeyArn: _legacyStateKmsKeyArn,
+    nangoHostname: _nangoHostname,
     ...legacy
   } = deploymentConfig();
   expect(normalizeDeploymentConfig({
     ...legacy,
     schemaVersion: 1,
+    instanceType: "t3.small",
     stateKmsKeyArn: "arn:aws:kms:eu-west-2:123456789012:key/state",
     phase: "deployed",
     parametersReady: true,
+    recovery: {
+      backupKey: "postgres/2026-07-20T10-20-30Z.sql.gz",
+      nangoBackupKey: "nango-postgres/2026-07-20T10-20-31Z.sql.gz",
+      previousVolumeId: "vol-lost",
+    },
   })).toMatchObject({
     hostname: "context.example.com",
+    nangoHostname: "nango.context.example.com",
+    instanceType: "t3.large",
     legacyStateKmsKeyArn: "arn:aws:kms:eu-west-2:123456789012:key/state",
+    recovery: {
+      nangoBackupKey: "nango-postgres/2026-07-20T10-20-31Z.sql.gz",
+    },
   });
 });
 
-test("manual dashboard and asset DNS must resolve to the deployment IP", async () => {
+test("manual dashboard, asset, and Nango DNS must resolve to the deployment IP", async () => {
   const config = deploymentConfig();
   expect(await dnsMismatches(config, computeOutputs, async () => ["192.0.2.10"])).toEqual([]);
   expect(await dnsMismatches(config, computeOutputs, async (hostname) => hostname.startsWith("assets.") ? ["192.0.2.11"] : ["192.0.2.10"]))
     .toEqual(["assets.context.example.com"]);
   expect(await dnsMismatches(config, computeOutputs, async () => { throw new Error("NXDOMAIN"); }))
-    .toEqual(["context.example.com", "assets.context.example.com"]);
+    .toEqual(["context.example.com", "assets.context.example.com", "nango.context.example.com"]);
 });
 
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
@@ -420,6 +465,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployScript).not.toContain("PUBLIC_MCP");
   expect(deployScript).toContain("CREATE ROLE context_use_public_mcp NOLOGIN");
   expect(deployScript).toContain("DROP ROLE IF EXISTS context_use_public_mcp");
+  expect(deployScript).toContain("NANGO_PIPELINE_API_KEY=$(get_secret_if_present NANGO_PIPELINE_API_KEY)");
   expect(deployScript.indexOf("CONTEXT_USE_RECOVERY_BACKUP_KEY")).toBeLessThan(deployScript.indexOf("up -d --remove-orphans"));
   expect(deployScript).toContain("psql --single-transaction -v ON_ERROR_STOP=1");
   expect(deployScript.indexOf("up -d --remove-orphans")).toBeLessThan(deployScript.indexOf("up -d --force-recreate --no-deps caddy"));
@@ -430,7 +476,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(compute).not.toContain('description = "HTTP3"');
   expect(caddy).toContain("handle /api/dashboard/assets/*/content");
   expect(caddy).toContain("handle /api/mcp/assets/*/content");
-  expect(caddy).toContain("handle /mcp/execution");
+  expect(caddy).not.toContain("handle /mcp/execution");
   expect(caddy).toContain("handle /content.css");
   expect(caddy).not.toContain("handle /i {");
   expect(caddy).not.toContain("handle /i/* {");
@@ -520,6 +566,12 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(authService).not.toContain("AWS_REGION:");
   expect(authService).toContain("networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]");
 
+  const nangoServerService = deployCompose.slice(
+    deployCompose.indexOf("\n  nango-server:\n"),
+    deployCompose.indexOf("\n  nango-jobs:\n"),
+  );
+  expect(nangoServerService).toContain("nango_pipeline_internal");
+
   const privateMcpService = deployCompose.slice(
     deployCompose.indexOf("\n  private-mcp:\n"),
     deployCompose.indexOf("\n  public-web:\n"),
@@ -529,11 +581,14 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(privateMcpService).toContain("AUTH_MCP_TOKEN");
   expect(privateMcpService).not.toContain("AUTH_DASHBOARD_TOKEN");
   expect(privateMcpService).toContain("STORAGE_MCP_TOKEN");
+  expect(privateMcpService).toContain("NANGO_INTERNAL_URL: http://nango-server:3003");
+  expect(privateMcpService).toContain("NANGO_PIPELINE_API_KEY: ${NANGO_PIPELINE_API_KEY:-}");
+  expect(deployCompose.replace(privateMcpService, "")).not.toContain("NANGO_PIPELINE_API_KEY");
   expect(privateMcpService).toContain("storage-socket:/run/context-use-storage:ro");
   expect(privateMcpService).not.toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(privateMcpService).not.toContain("AUTH_DATABASE_URL");
   expect(privateMcpService).not.toContain("AWS_REGION:");
-  expect(privateMcpService).toContain("networks: [mcp_data, mcp_web, auth_mcp_internal]");
+  expect(privateMcpService).toContain("networks: [mcp_data, mcp_web, auth_mcp_internal, nango_pipeline_internal]");
 
   const publicWebService = deployCompose.slice(
     deployCompose.indexOf("\n  public-web:\n"),
@@ -644,15 +699,22 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(compute).not.toContain("public_mcp");
   expect(compute).toContain('data_volume_policy     = file("${path.module}/data-volume-policy.sh")');
   expect(update.indexOf("installCliRelease")).toBeLessThan(update.indexOf("readConfig"));
-  expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("run --rm backup once"));
+  expect(update.indexOf("currentComputeOutputs")).toBeLessThan(update.indexOf("databaseBackupCommands(releaseIncludesNango(config.releaseVersion))"));
   expect(update.indexOf("retainedDataVolumeExists(config")).toBeLessThan(update.indexOf("await applyData"));
   expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(1);
   expect(update).not.toContain("fallback");
+  expect(update.indexOf("await deploy(config, compute, manifest)")).toBeLessThan(update.indexOf("await ensureNangoApiKeys(config, data)"));
+  expect(update.indexOf("await ensureNangoApiKeys(config, data)")).toBeLessThan(update.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
   expect(cliUpdate).not.toContain('"--version"');
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await pauseForManualDns(config, compute)"));
+  expect(setup).toContain('instanceType: "t3.large"');
+  expect(setup.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(setup.indexOf("await ensureNangoApiKeys(config, data)"));
+  expect(setup.indexOf("await ensureNangoApiKeys(config, data)")).toBeLessThan(setup.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await pauseForManualDns(config, compute)"));
+  expect(resume.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(resume.indexOf("await ensureNangoApiKeys(config, data)"));
+  expect(resume.indexOf("await ensureNangoApiKeys(config, data)")).toBeLessThan(resume.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
   expect(resume.indexOf("retainedDataVolumeExists(config")).toBeLessThan(resume.indexOf("await applyData"));
   expect(data).toContain('ContextUseInitialization = "pending"');
   expect(data).toContain('ignore_changes = [tags["ContextUseInitialization"]]');

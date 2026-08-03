@@ -4,7 +4,7 @@ import { APIError, betterAuth, type BetterAuthPlugin } from "better-auth";
 import { jwt } from "better-auth/plugins";
 import { MCP_SCOPES } from "@context-use/shared";
 import { Pool } from "pg";
-import { config, MCP_EXECUTION_RESOURCE, production } from "./config.ts";
+import { config, production } from "./config.ts";
 import {
   isVerifiedOwner,
   normalizedOwnerEmail,
@@ -199,18 +199,16 @@ export const auth = betterAuth({
         accessTokenTtl: 900,
         refreshTokenTtl: 2_592_000,
         allowedScopes: OAUTH_SCOPES,
-      }, {
-        identifier: MCP_EXECUTION_RESOURCE,
-        name: "context-use automation execution MCP",
-        accessTokenTtl: 900,
-        refreshTokenTtl: 2_592_000,
-        allowedScopes: OAUTH_SCOPES,
       }],
       resourceSeedMode: "overwrite",
       enforcePerClientResources: false,
       grantTypes: ["authorization_code", "refresh_token"],
       accessTokenExpiresIn: 900,
       refreshTokenExpiresIn: 2_592_000,
+      // MCP clients can have multiple runtimes retry the same refresh after a
+      // reconnect. Replay the completed rotation briefly instead of treating
+      // that retry as token theft and invalidating the whole token family.
+      refreshTokenReuseInterval: 30,
       codeExpiresIn: 300,
       allowDynamicClientRegistration: true,
       allowUnauthenticatedClientRegistration: true,

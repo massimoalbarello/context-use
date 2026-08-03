@@ -4,6 +4,13 @@ import type { InferForwardedOptions, InferParams, RuntimeNode } from '@parshjs/c
 import type { command as backupCmd } from './commands/backup.ts';
 import type { command as destroyCmd } from './commands/destroy.ts';
 import type { command as doctorCmd } from './commands/doctor.ts';
+import type { command as nangoCmd } from './commands/nango.ts';
+import type { command as nangoCredentialsCmd } from './commands/nango/credentials.ts';
+import type { command as nangoIntegrationsAddCmd } from './commands/nango/integrations/add.ts';
+import type { command as nangoIntegrationsCmd } from './commands/nango/integrations.ts';
+import type { command as nangoIntegrationsDeployCmd } from './commands/nango/integrations/deploy.ts';
+import type { command as nangoIntegrationsStatusCmd } from './commands/nango/integrations/status.ts';
+import type { command as nangoRestoreCmd } from './commands/nango/restore.ts';
 import type { command as openCmd } from './commands/open.ts';
 import type { command as recoverCmd } from './commands/recover.ts';
 import type { command as restoreCmd } from './commands/restore.ts';
@@ -11,6 +18,9 @@ import type { command as resumeCmd } from './commands/resume.ts';
 import type { command as rootCmd } from './commands/_root.ts';
 import type { command as setupCmd } from './commands/setup.ts';
 import type { command as statusCmd } from './commands/status.ts';
+import type { command as templateApplyCmd } from './commands/template/apply.ts';
+import type { command as templateCmd } from './commands/template.ts';
+import type { command as templatePlanCmd } from './commands/template/plan.ts';
 import type { command as updateCmd } from './commands/update.ts';
 import type { command as versionCmd } from './commands/version.ts';
 
@@ -26,6 +36,49 @@ declare module '@parshjs/core' {
     };
     'doctor': {
       parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango': {
+      parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango credentials': {
+      parents: {
+        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango integrations': {
+      parents: {
+        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango integrations add': {
+      parents: {
+        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+        'nango integrations': { options: InferForwardedOptions<typeof nangoIntegrationsCmd.options>; params: InferParams<typeof nangoIntegrationsCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango integrations deploy': {
+      parents: {
+        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+        'nango integrations': { options: InferForwardedOptions<typeof nangoIntegrationsCmd.options>; params: InferParams<typeof nangoIntegrationsCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango integrations status': {
+      parents: {
+        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+        'nango integrations': { options: InferForwardedOptions<typeof nangoIntegrationsCmd.options>; params: InferParams<typeof nangoIntegrationsCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'nango restore': {
+      parents: {
+        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+      };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
     'open': {
@@ -50,6 +103,22 @@ declare module '@parshjs/core' {
     };
     'status': {
       parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'template': {
+      parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'template apply': {
+      parents: {
+        'template': { options: InferForwardedOptions<typeof templateCmd.options>; params: InferParams<typeof templateCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'template plan': {
+      parents: {
+        'template': { options: InferForwardedOptions<typeof templateCmd.options>; params: InferParams<typeof templateCmd.params> };
+      };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
     'update': {
@@ -83,6 +152,50 @@ export const commandTree: RuntimeNode = {
       segment: { kind: 'literal', value: 'doctor' },
       command: { path: 'doctor', load: () => import('./commands/doctor.ts').then((m) => m.command) },
       literalChildren: {},
+      paramChild: null,
+    },
+    'nango': {
+      segment: { kind: 'literal', value: 'nango' },
+      command: { path: 'nango', load: () => import('./commands/nango.ts').then((m) => m.command) },
+      literalChildren: {
+        'credentials': {
+          segment: { kind: 'literal', value: 'credentials' },
+          command: { path: 'nango credentials', load: () => import('./commands/nango/credentials.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'integrations': {
+          segment: { kind: 'literal', value: 'integrations' },
+          command: { path: 'nango integrations', load: () => import('./commands/nango/integrations.ts').then((m) => m.command) },
+          literalChildren: {
+            'add': {
+              segment: { kind: 'literal', value: 'add' },
+              command: { path: 'nango integrations add', load: () => import('./commands/nango/integrations/add.ts').then((m) => m.command) },
+              literalChildren: {},
+              paramChild: null,
+            },
+            'deploy': {
+              segment: { kind: 'literal', value: 'deploy' },
+              command: { path: 'nango integrations deploy', load: () => import('./commands/nango/integrations/deploy.ts').then((m) => m.command) },
+              literalChildren: {},
+              paramChild: null,
+            },
+            'status': {
+              segment: { kind: 'literal', value: 'status' },
+              command: { path: 'nango integrations status', load: () => import('./commands/nango/integrations/status.ts').then((m) => m.command) },
+              literalChildren: {},
+              paramChild: null,
+            },
+          },
+          paramChild: null,
+        },
+        'restore': {
+          segment: { kind: 'literal', value: 'restore' },
+          command: { path: 'nango restore', load: () => import('./commands/nango/restore.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+      },
       paramChild: null,
     },
     'open': {
@@ -119,6 +232,25 @@ export const commandTree: RuntimeNode = {
       segment: { kind: 'literal', value: 'status' },
       command: { path: 'status', load: () => import('./commands/status.ts').then((m) => m.command) },
       literalChildren: {},
+      paramChild: null,
+    },
+    'template': {
+      segment: { kind: 'literal', value: 'template' },
+      command: { path: 'template', load: () => import('./commands/template.ts').then((m) => m.command) },
+      literalChildren: {
+        'apply': {
+          segment: { kind: 'literal', value: 'apply' },
+          command: { path: 'template apply', load: () => import('./commands/template/apply.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'plan': {
+          segment: { kind: 'literal', value: 'plan' },
+          command: { path: 'template plan', load: () => import('./commands/template/plan.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+      },
       paramChild: null,
     },
     'update': {

@@ -5,22 +5,28 @@ import { run } from "./process.ts";
 import type { ReleaseManifest } from "./types.ts";
 
 export const repository = "massimoalbarello/context-use";
-export const currentVersion = "v0.1.45";
+export const currentVersion = "v0.1.52";
 
 const digestImage = z.string().regex(/^ghcr\.io\/[a-z0-9_.-]+\/[a-z0-9_.-]+@sha256:[a-f0-9]{64}$/);
 const manifestSchema = z.object({
   version: z.string().regex(/^v\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/),
   terraform: z.object({ minimum: z.string(), maximum_exclusive: z.string() }).strict(),
   deployment_bundle: z.object({ url: z.string().url().startsWith(`https://github.com/${repository}/`), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  // This shape is intentionally frozen for compatibility with older CLIs,
+  // which parse both this object and the manifest root with strict schemas.
   images: z.object({ app: digestImage, backup: digestImage }).strict(),
 }).strict();
+
+export function parseReleaseManifest(input: unknown): ReleaseManifest {
+  return manifestSchema.parse(input) as ReleaseManifest;
+}
 
 export async function releaseManifest(version = "latest"): Promise<ReleaseManifest> {
   if (version !== "latest" && !/^v\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/.test(version)) {
     throw new Error("Release version must look like v1.2.3");
   }
   if (process.env.CONTEXT_USE_RELEASE_MANIFEST) {
-    const manifest = manifestSchema.parse(await Bun.file(process.env.CONTEXT_USE_RELEASE_MANIFEST).json()) as ReleaseManifest;
+    const manifest = parseReleaseManifest(await Bun.file(process.env.CONTEXT_USE_RELEASE_MANIFEST).json());
     if (version !== "latest" && manifest.version !== version) {
       throw new Error(`Release manifest reported ${manifest.version}; expected ${version}`);
     }
@@ -33,7 +39,7 @@ export async function releaseManifest(version = "latest"): Promise<ReleaseManife
     const response = await fetch(url, { redirect: "follow" });
     if (!response.ok) throw new Error(`Unable to download release manifest (${response.status})`);
     const rawManifest = await response.text();
-    const manifest = manifestSchema.parse(JSON.parse(rawManifest)) as ReleaseManifest;
+    const manifest = parseReleaseManifest(JSON.parse(rawManifest));
     if (version !== "latest" && manifest.version !== version) {
       throw new Error(`Release manifest reported ${manifest.version}; expected ${version}`);
     }
@@ -50,7 +56,7 @@ export async function releaseManifest(version = "latest"): Promise<ReleaseManife
     if (version !== "latest") {
       const cached = Bun.file(resolve(cacheDirectory, `release-${version}.json`));
       if (await cached.exists()) {
-        const manifest = manifestSchema.parse(await cached.json()) as ReleaseManifest;
+        const manifest = parseReleaseManifest(await cached.json());
         if (manifest.version === version) return manifest;
       }
     }

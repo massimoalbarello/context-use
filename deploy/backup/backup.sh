@@ -5,18 +5,35 @@ file=""
 metadata=""
 trap 'rm -f "${file}" "${metadata}"' EXIT
 
+case "${BACKUP_KIND:-context-use}" in
+  context-use)
+    backup_prefix=postgres
+    backup_format=context-use-postgres-v1
+    backup_basename=context-use
+    ;;
+  nango)
+    backup_prefix=nango-postgres
+    backup_format=context-use-nango-postgres-v1
+    backup_basename=nango
+    ;;
+  *)
+    echo "Invalid backup kind" >&2
+    exit 2
+    ;;
+esac
+
 backup_once() {
   timestamp="$(date -u +%Y-%m-%dT%H-%M-%S-%NZ)"
-  file="/tmp/context-use-${timestamp}.sql.gz"
-  metadata="/tmp/context-use-${timestamp}.json"
-  key="postgres/${timestamp}.sql.gz"
+  file="/tmp/${backup_basename}-${timestamp}.sql.gz"
+  metadata="/tmp/${backup_basename}-${timestamp}.json"
+  key="${backup_prefix}/${timestamp}.sql.gz"
   pg_dump --format=plain --clean --if-exists --no-owner | gzip -9 > "${file}"
   test -s "${file}"
   gzip -t "${file}"
   sha256="$(sha256sum "${file}" | cut -d ' ' -f 1)"
   size="$(wc -c < "${file}" | tr -d ' ')"
   jq -n \
-    --arg format context-use-postgres-v1 \
+    --arg format "${backup_format}" \
     --arg objectKey "${key}" \
     --arg releaseVersion "${VERSION}" \
     --arg schemaVersion "${SCHEMA_VERSION}" \
@@ -41,7 +58,7 @@ fi
 
 if [ "${1:-}" = "fetch" ]; then
   key="${2:-}"
-  if [[ ! "${key}" =~ ^postgres/[0-9TZ-]+\.sql\.gz$ ]]; then
+  if [[ ! "${key}" =~ ^${backup_prefix}/[0-9TZ-]+\.sql\.gz$ ]]; then
     echo "Invalid backup key" >&2
     exit 2
   fi
@@ -51,7 +68,8 @@ if [ "${1:-}" = "fetch" ]; then
   aws s3 cp "s3://${BACKUP_BUCKET}/${key%.sql.gz}.json" "${metadata}" --only-show-errors
   jq -e \
     --arg key "${key}" \
-    '.format == "context-use-postgres-v1" and .objectKey == $key and (.releaseVersion | type == "string" and length > 0) and (.schemaVersion | type == "string" and length > 0) and (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes | type == "number" and . > 0)' \
+    --arg format "${backup_format}" \
+    '.format == $format and .objectKey == $key and (.releaseVersion | type == "string" and length > 0) and (.schemaVersion | type == "string" and length > 0) and (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes | type == "number" and . > 0)' \
     "${metadata}" >/dev/null
   test "$(wc -c < "${file}" | tr -d ' ')" = "$(jq -r .sizeBytes "${metadata}")"
   echo "$(jq -r .sha256 "${metadata}")  ${file}" | sha256sum -c - >/dev/null

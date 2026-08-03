@@ -89,9 +89,16 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "private" {
 resource "aws_s3_bucket_lifecycle_configuration" "backups" {
   bucket = aws_s3_bucket.backups.id
   rule {
-    id     = "backup-retention"
+    id     = "context-use-database-retention"
     status = "Enabled"
     filter { prefix = "postgres/" }
+    expiration { days = var.backup_retention_days }
+    noncurrent_version_expiration { noncurrent_days = 7 }
+  }
+  rule {
+    id     = "nango-database-retention"
+    status = "Enabled"
+    filter { prefix = "nango-postgres/" }
     expiration { days = var.backup_retention_days }
     noncurrent_version_expiration { noncurrent_days = 7 }
   }

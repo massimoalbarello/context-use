@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import type { AssetRepository, AutomationRepository, DirectoryRepository, PageRepository } from "@context-use/database";
+import type { AssetRepository, DirectoryRepository, PageRepository } from "@context-use/database";
+import { DirectoryNotEmptyError } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
-import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS, type McpProfile } from "./mcp-server.ts";
+import { createGuidanceReceipt, verifyGuidanceReceipt } from "./mcp-guidance-receipt.ts";
+import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS, SOURCE_RECORD_INSTRUCTIONS } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
+import type { SourceRecordReader } from "./nango-records.ts";
 
 async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body: Record<string, unknown>) {
   const server = await serverOrPromise;
@@ -39,33 +42,43 @@ async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body:
 }
 
 function serverWith(
-  automations: AutomationRepository,
   pages = {} as PageRepository,
   assets = {} as AssetRepository,
   directories = {} as DirectoryRepository,
-  profile: McpProfile = "knowledge",
+  sourceRecords?: SourceRecordReader,
 ) {
   return createMcpServer(
-    { clientId: "mcp-client", profile },
+    { clientId: "mcp-client" },
     pages,
     directories,
     assets,
-    automations,
+    sourceRecords,
   );
 }
 
-function executionServerWith(
-  automations: AutomationRepository,
-  pages = {} as PageRepository,
-  assets = {} as AssetRepository,
-  directories = {} as DirectoryRepository,
-) {
-  return serverWith(automations, pages, assets, directories, "execution");
+const rootGuide = {
+  id: "11111111-1111-4111-8111-111111111111",
+  current_path: "agents",
+  current_version_id: "22222222-2222-4222-8222-222222222222",
+  version_number: 1,
+  title: "AGENTS.md",
+  body_markdown: "Root guide",
+};
+
+function pagesWithGuidance(overrides: Record<string, unknown> = {}): PageRepository {
+  return {
+    async guidesForPath() {
+      return [rootGuide];
+    },
+    ...overrides,
+  } as unknown as PageRepository;
 }
 
-describe("MCP knowledge and automation profiles", () => {
+const rootGuidanceReceipt = createGuidanceReceipt([rootGuide]);
+
+describe("MCP knowledge tools", () => {
   test("gives clients the canonical knowledge structure during initialization", async () => {
-    const response = await mcpRequest(serverWith({} as AutomationRepository), {
+    const response = await mcpRequest(serverWith(), {
       jsonrpc: "2.0",
       id: 0,
       method: "initialize",
@@ -82,7 +95,95 @@ describe("MCP knowledge and automation profiles", () => {
     expect(response.result?.instructions).toContain("Available reusable skills");
   });
 
+  test("exposes one unified checkpointed source reader when Nango access is configured", async () => {
+    const calls: unknown[] = [];
+    const sourceRecords = {
+      async read(input: unknown) {
+        calls.push(input);
+        return {
+          records: [{
+            record_ref: `nango:${"a".repeat(64)}`,
+            source: "GitHub",
+            action: "added" as const,
+            markdown: "# Pull request\n\nImplemented the record pipeline.",
+          }],
+          next_checkpoint: "cu-nango-v1.opaque",
+          has_more: false,
+        };
+      },
+    } as SourceRecordReader;
+    const initialized = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      sourceRecords,
+    ), {
+      jsonrpc: "2.0",
+      id: 20,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "test-client", version: "1.0.0" },
+      },
+    });
+    expect(initialized.result?.instructions).toContain(SOURCE_RECORD_INSTRUCTIONS);
+
+    const listed = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      sourceRecords,
+    ), {
+      jsonrpc: "2.0",
+      id: 21,
+      method: "tools/list",
+      params: {},
+    });
+    const tool = listed.result?.tools?.find(({ name }) => name === "read_source_records");
+    expect(tool?.description).toContain("bounded, checkpointed batch");
+    expect(tool?.description).toContain("more than 30 days old");
+    expect(tool?.description).toContain("added, updated, or deleted action");
+    expect(tool?.description).toContain("Reconcile this batch and persist next_checkpoint before calling again");
+    expect(tool?.description).toContain("only later lifecycle changes");
+    expect(tool?.inputSchema?.properties?.max_bytes).toBeUndefined();
+
+    const read = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      sourceRecords,
+    ), {
+      jsonrpc: "2.0",
+      id: 22,
+      method: "tools/call",
+      params: {
+        name: "read_source_records",
+        arguments: { checkpoint: "cu-nango-v1.previous", limit: 25 },
+      },
+    });
+    expect(read.result?.isError).not.toBe(true);
+    expect(read.result?.structuredContent).toMatchObject({
+      records: [{ source: "GitHub", action: "added", markdown: expect.stringContaining("record pipeline") }],
+      next_checkpoint: "cu-nango-v1.opaque",
+      has_more: false,
+    });
+    expect(read.result?.structuredContent?.batch_bytes).toBeUndefined();
+    expect(calls).toEqual([{ checkpoint: "cu-nango-v1.previous", limit: 25 }]);
+  });
+
   test("reads pages by semantic path and prepares applicable write guides", async () => {
+    const guides = [
+      rootGuide,
+      {
+        id: "33333333-3333-4333-8333-333333333333",
+        current_path: "about/tasks/job-search/agents",
+        current_version_id: "44444444-4444-4444-8444-444444444444",
+        version_number: 2,
+        title: "AGENTS.md",
+        body_markdown: "Local guide",
+      },
+    ];
     const pages = {
       async getByPath(path: string) {
         expect(path).toBe("agents");
@@ -90,16 +191,10 @@ describe("MCP knowledge and automation profiles", () => {
       },
       async guidesForPath(path: string) {
         expect(path).toBe("about/tasks/job-search/criteria");
-        return [
-          { current_path: "agents", title: "AGENTS.md", body_markdown: "Root guide" },
-          { current_path: "about/tasks/job-search/agents", title: "AGENTS.md", body_markdown: "Local guide" },
-        ];
+        return guides;
       },
     } as unknown as PageRepository;
-    const pageResponse = await mcpRequest(serverWith(
-      {} as AutomationRepository,
-      pages,
-    ), {
+    const pageResponse = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
       id: 9,
       method: "tools/call",
@@ -111,10 +206,7 @@ describe("MCP knowledge and automation profiles", () => {
       title: "AGENTS.md",
     });
 
-    const contextResponse = await mcpRequest(serverWith(
-      {} as AutomationRepository,
-      pages,
-    ), {
+    const contextResponse = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
       id: 10,
       method: "tools/call",
@@ -123,13 +215,238 @@ describe("MCP knowledge and automation profiles", () => {
         arguments: { target_path: "about/tasks/job-search/criteria" },
       },
     });
-    expect(JSON.parse(contextResponse.result?.content?.[0]?.text ?? "null")).toMatchObject({
-      target_path: "about/tasks/job-search/criteria",
-      guides: [
-        { current_path: "agents" },
-        { current_path: "about/tasks/job-search/agents" },
-      ],
+    const prepared = contextResponse.result?.content?.[0]?.text ?? "";
+    expect(prepared).toContain("TARGET_PATH: about/tasks/job-search/criteria");
+    expect(prepared).toContain("BEGIN GUIDE 1/2: Root AGENTS.md");
+    expect(prepared).toContain("BEGIN GUIDE 2/2: about/tasks/job-search/AGENTS.md");
+    expect(prepared.indexOf("Root guide")).toBeLessThan(prepared.indexOf("Local guide"));
+    const receipt = prepared.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
+    expect(receipt).toBeTruthy();
+    expect(verifyGuidanceReceipt(receipt!, guides)).toBe(true);
+    expect(contextResponse.result?.structuredContent).toBeUndefined();
+  });
+
+  test("directs a mutation without current guidance to the exact preparation call", async () => {
+    const calls: unknown[] = [];
+    const pages = pagesWithGuidance({
+      async create(input: unknown) {
+        calls.push(input);
+        return input;
+      },
     });
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 11,
+      method: "tools/call",
+      params: {
+        name: "create_page",
+        arguments: {
+          path: "about/tasks/daily-review",
+          title: "Daily review",
+          summary: "The owner's durable frame for reviewing each day.",
+          body_markdown: "Review the day.",
+          commit_message: "Create daily review",
+        },
+      },
+    });
+
+    expect(response.result?.isError).toBe(true);
+    expect(response.result?.content?.[0]?.text).toBe([
+      "GUIDANCE_REQUIRED",
+      'Call prepare_knowledge_write with {"target_path":"about/tasks/daily-review"}.',
+      "Then retry create_page with the returned guidance_receipt.",
+    ].join("\n\n"));
+    expect(response.result?.structuredContent).toBeUndefined();
+    expect(calls).toEqual([]);
+  });
+
+  test("accepts the receipt returned by preparation across stateless MCP calls", async () => {
+    const calls: unknown[] = [];
+    const pages = pagesWithGuidance({
+      async create(input: unknown) {
+        calls.push(input);
+        return { id: "77777777-7777-4777-8777-777777777777", ...input as object };
+      },
+    });
+    const preparation = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 14,
+      method: "tools/call",
+      params: {
+        name: "prepare_knowledge_write",
+        arguments: { target_path: "about/intro" },
+      },
+    });
+    const receipt = preparation.result?.content?.[0]?.text.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
+    expect(receipt).toBeTruthy();
+
+    const mutation = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 15,
+      method: "tools/call",
+      params: {
+        name: "create_page",
+        arguments: {
+          path: "about/intro",
+          title: "Introduction",
+          summary: "A concise introduction to the owner.",
+          body_markdown: "Introduction.",
+          commit_message: "Create introduction",
+          guidance_receipt: receipt,
+        },
+      },
+    });
+
+    expect(mutation.result?.isError).not.toBe(true);
+    expect(calls).toEqual([{
+      path: "about/intro",
+      title: "Introduction",
+      summary: "A concise introduction to the owner.",
+      body_markdown: "Introduction.",
+      commit_message: "Create introduction",
+    }]);
+  });
+
+  test("deletes only an inspected empty directory and reports content blockers", async () => {
+    const deleted: unknown[] = [];
+    const directory = {
+      id: "88888888-8888-4888-8888-888888888888",
+      current_path: "automations/feed-digest",
+      version_number: 2,
+      title: "Feed digest",
+    };
+    const directories = {
+      async get(id: string) {
+        expect(id).toBe(directory.id);
+        return directory;
+      },
+      async delete(id: string, input: unknown) {
+        deleted.push({ id, input });
+        return { id, current_path: directory.current_path };
+      },
+    } as unknown as DirectoryRepository;
+    const success = await mcpRequest(serverWith(
+      pagesWithGuidance(),
+      {} as AssetRepository,
+      directories,
+    ), {
+      jsonrpc: "2.0",
+      id: 16,
+      method: "tools/call",
+      params: {
+        name: "delete_directory",
+        arguments: {
+          directory_id: directory.id,
+          expected_version_number: 2,
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+    expect(success.result?.isError).not.toBe(true);
+    expect(deleted).toEqual([{ id: directory.id, input: { expected_version_number: 2 } }]);
+
+    const blockedDirectories = {
+      ...directories,
+      async delete() {
+        throw new DirectoryNotEmptyError({ activePages: 1, archivedPages: 0, assets: 2, directories: 0 });
+      },
+    } as unknown as DirectoryRepository;
+    const blocked = await mcpRequest(serverWith(
+      pagesWithGuidance(),
+      {} as AssetRepository,
+      blockedDirectories,
+    ), {
+      jsonrpc: "2.0",
+      id: 17,
+      method: "tools/call",
+      params: {
+        name: "delete_directory",
+        arguments: {
+          directory_id: directory.id,
+          expected_version_number: 2,
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+    expect(blocked.result?.isError).toBe(true);
+    expect(blocked.result?.content?.[0]?.text).toContain("1 active page, 2 assets");
+    expect(blocked.result?.content?.[0]?.text).toContain("Delete all pages, assets, and child directories");
+  });
+
+  test("rejects a receipt when an applicable guide has changed", async () => {
+    const calls: unknown[] = [];
+    const staleReceipt = createGuidanceReceipt([rootGuide]);
+    const changedRoot = {
+      ...rootGuide,
+      current_version_id: "55555555-5555-4555-8555-555555555555",
+      version_number: 2,
+      body_markdown: "Changed root guide",
+    };
+    const pages = {
+      async guidesForPath() {
+        return [changedRoot];
+      },
+      async create(input: unknown) {
+        calls.push(input);
+        return input;
+      },
+    } as unknown as PageRepository;
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 12,
+      method: "tools/call",
+      params: {
+        name: "create_page",
+        arguments: {
+          path: "about/intro",
+          title: "Introduction",
+          summary: "A concise introduction to the owner.",
+          body_markdown: "Introduction.",
+          commit_message: "Create introduction",
+          guidance_receipt: staleReceipt,
+        },
+      },
+    });
+
+    expect(response.result?.isError).toBe(true);
+    expect(response.result?.content?.[0]?.text).toContain(
+      'prepare_knowledge_write with {"target_path":"about/intro"}',
+    );
+    expect(calls).toEqual([]);
+  });
+
+  test("resolves an ID-only mutation target before directing guidance recovery", async () => {
+    const archiveCalls: string[] = [];
+    const assets = {
+      async get(assetId: string) {
+        return {
+          id: assetId,
+          current_path: "library/private/recording",
+          filename: "recording.mp3",
+        };
+      },
+      async archive(assetId: string) {
+        archiveCalls.push(assetId);
+        return null;
+      },
+    } as unknown as AssetRepository;
+    const response = await mcpRequest(serverWith(pagesWithGuidance(), assets), {
+      jsonrpc: "2.0",
+      id: 13,
+      method: "tools/call",
+      params: {
+        name: "archive_asset",
+        arguments: { asset_id: "66666666-6666-4666-8666-666666666666" },
+      },
+    });
+
+    expect(response.result?.isError).toBe(true);
+    expect(response.result?.content?.[0]?.text).toBe([
+      "GUIDANCE_REQUIRED",
+      'Call prepare_knowledge_write with {"target_path":"library/private/recording"}.',
+      "Then retry archive_asset with the returned guidance_receipt.",
+    ].join("\n\n"));
+    expect(archiveCalls).toEqual([]);
   });
 
   test("searches page bodies but returns metadata-only results", async () => {
@@ -152,7 +469,7 @@ describe("MCP knowledge and automation profiles", () => {
         }];
       },
     } as unknown as PageRepository;
-    const response = await mcpRequest(serverWith({} as AutomationRepository, pages), {
+    const response = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
       id: 14,
       method: "tools/call",
@@ -189,7 +506,6 @@ describe("MCP knowledge and automation profiles", () => {
       },
     } as unknown as DirectoryRepository;
     const response = await mcpRequest(serverWith(
-      {} as AutomationRepository,
       {} as PageRepository,
       {} as AssetRepository,
       directories,
@@ -248,7 +564,6 @@ describe("MCP knowledge and automation profiles", () => {
       },
     } as unknown as DirectoryRepository;
     const response = await mcpRequest(serverWith(
-      {} as AutomationRepository,
       {} as PageRepository,
       {} as AssetRepository,
       directories,
@@ -306,7 +621,7 @@ describe("MCP knowledge and automation profiles", () => {
         };
       },
     } as unknown as PageRepository;
-    const listed = await mcpRequest(serverWith({} as AutomationRepository, pages), {
+    const listed = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
       id: 12,
       method: "tools/list",
@@ -317,7 +632,7 @@ describe("MCP knowledge and automation profiles", () => {
     expect(loadSkill?.description).toContain("Evaluate roles against");
     expect(loadSkill?.description).not.toContain("skills/agents");
 
-    const loaded = await mcpRequest(serverWith({} as AutomationRepository, pages), {
+    const loaded = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
       id: 13,
       method: "tools/call",
@@ -329,26 +644,19 @@ describe("MCP knowledge and automation profiles", () => {
     });
   });
 
-  test("separates ordinary knowledge tools from run-scoped execution tools", async () => {
-    const knowledge = await mcpRequest(serverWith({} as AutomationRepository), {
+  test("exposes knowledge and asset tools without publication capabilities", async () => {
+    const knowledge = await mcpRequest(serverWith(), {
       jsonrpc: "2.0",
       id: 1,
       method: "tools/list",
       params: {},
     });
-    const execution = await mcpRequest(executionServerWith({} as AutomationRepository), {
-      jsonrpc: "2.0",
-      id: 2,
-      method: "tools/list",
-      params: {},
-    });
-
     const knowledgeTools = knowledge.result?.tools?.map(({ name }) => name) ?? [];
-    const executionTools = execution.result?.tools?.map(({ name }) => name) ?? [];
     expect(knowledgeTools).toEqual(expect.arrayContaining([
       "get_directory",
       "browse_directory",
       "create_directory",
+      "delete_directory",
       "get_page",
       "prepare_knowledge_write",
       "load_skill",
@@ -356,49 +664,27 @@ describe("MCP knowledge and automation profiles", () => {
       "update_page",
       "create_asset_upload",
       "archive_asset",
-      "create_automation",
-    ]));
-    expect(knowledgeTools).not.toEqual(expect.arrayContaining([
-      "claim_due_run",
-      "create_automation_page",
-      "update_automation_page",
-      "archive_automation_page",
-      "complete_run",
-      "fail_run",
-    ]));
-    expect(executionTools).toEqual(expect.arrayContaining([
-      "get_directory",
-      "browse_directory",
-      "get_page",
-      "prepare_knowledge_write",
-      "load_skill",
-      "claim_due_run",
-      "create_automation_page",
-      "update_automation_page",
-      "archive_automation_page",
-      "complete_run",
-      "fail_run",
-    ]));
-    expect(executionTools).not.toEqual(expect.arrayContaining([
-      "create_directory",
-      "update_directory",
-      "create_page",
-      "update_page",
-      "archive_page",
-      "create_asset_upload",
-      "archive_asset",
-      "create_automation",
     ]));
 
     const createPage = knowledge.result?.tools?.find(({ name }) => name === "create_page");
     expect(createPage?.description).toContain("body_markdown schema");
     expect(createPage?.inputSchema?.properties?.body_markdown?.description).toContain("layout=half");
-    expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("automation-created page");
     expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_knowledge_write");
-    expect(knowledge.result?.tools?.find(({ name }) => name === "archive_page")?.description).toContain("created by an automation");
-    expect(execution.result?.tools?.find(({ name }) => name === "create_automation_page")?.description).toContain("private page");
+    for (const name of [
+      "create_directory",
+      "update_directory",
+      "delete_directory",
+      "create_page",
+      "update_page",
+      "archive_page",
+      "create_asset_upload",
+      "archive_asset",
+    ]) {
+      expect(knowledge.result?.tools?.find((tool) => tool.name === name)?.inputSchema?.properties)
+        .toHaveProperty("guidance_receipt");
+    }
     expect(knowledgeTools.some((name) => name.includes("publish"))).toBe(false);
-    expect(executionTools.some((name) => name.includes("publish"))).toBe(false);
+    expect(knowledgeTools.some((name) => name.includes("automation"))).toBe(false);
     expect(knowledgeTools).not.toContain("list_pages");
     expect(knowledgeTools).not.toEqual(expect.arrayContaining([
       "list_skills",
@@ -423,11 +709,7 @@ describe("MCP knowledge and automation profiles", () => {
         };
       },
     } as unknown as AssetRepository;
-    const response = await mcpRequest(serverWith(
-      {} as AutomationRepository,
-      {} as PageRepository,
-      assets,
-    ), {
+    const response = await mcpRequest(serverWith(pagesWithGuidance(), assets), {
       jsonrpc: "2.0",
       id: 10,
       method: "tools/call",
@@ -439,6 +721,7 @@ describe("MCP knowledge and automation profiles", () => {
           content_type: "image/jpeg",
           size_bytes: 123,
           sha256: "a".repeat(64),
+          guidance_receipt: rootGuidanceReceipt,
         },
       },
     });
@@ -465,11 +748,7 @@ describe("MCP knowledge and automation profiles", () => {
         };
       },
     } as unknown as AssetRepository;
-    const response = await mcpRequest(serverWith(
-      {} as AutomationRepository,
-      {} as PageRepository,
-      assets,
-    ), {
+    const response = await mcpRequest(serverWith(pagesWithGuidance(), assets), {
       jsonrpc: "2.0",
       id: 6,
       method: "tools/call",
@@ -481,6 +760,7 @@ describe("MCP knowledge and automation profiles", () => {
           content_type: "application/pdf",
           size_bytes: 123,
           sha256: "a".repeat(64),
+          guidance_receipt: rootGuidanceReceipt,
         },
       },
     });
@@ -505,6 +785,13 @@ describe("MCP knowledge and automation profiles", () => {
   test("archives asset metadata without receiving a storage-delete capability", async () => {
     const calls: string[] = [];
     const assets = {
+      async get(assetId: string) {
+        return {
+          id: assetId,
+          current_path: "documents/private-pdf",
+          filename: "private.pdf",
+        };
+      },
       async archive(assetId: string) {
         calls.push(assetId);
         return {
@@ -515,17 +802,16 @@ describe("MCP knowledge and automation profiles", () => {
         };
       },
     } as unknown as AssetRepository;
-    const response = await mcpRequest(serverWith(
-      {} as AutomationRepository,
-      {} as PageRepository,
-      assets,
-    ), {
+    const response = await mcpRequest(serverWith(pagesWithGuidance(), assets), {
       jsonrpc: "2.0",
       id: 7,
       method: "tools/call",
       params: {
         name: "archive_asset",
-        arguments: { asset_id: "11111111-1111-4111-8111-111111111111" },
+        arguments: {
+          asset_id: "11111111-1111-4111-8111-111111111111",
+          guidance_receipt: rootGuidanceReceipt,
+        },
       },
     });
 
@@ -554,11 +840,7 @@ describe("MCP knowledge and automation profiles", () => {
         };
       },
     } as unknown as AssetRepository;
-    const response = await mcpRequest(serverWith(
-      {} as AutomationRepository,
-      {} as PageRepository,
-      assets,
-    ), {
+    const response = await mcpRequest(serverWith({} as PageRepository, assets), {
       jsonrpc: "2.0",
       id: 8,
       method: "tools/call",
@@ -583,14 +865,14 @@ describe("MCP knowledge and automation profiles", () => {
 
   test("creates a page-backed skill with MCP attribution", async () => {
     const calls: Array<{ operation: string; input: unknown; actor?: unknown }> = [];
-    const pages = {
+    const pages = pagesWithGuidance({
       async create(input: unknown, actor: unknown) {
         calls.push({ operation: "page", input, actor });
         return { id: "11111111-1111-4111-8111-111111111111", ...input as object };
       },
-    } as unknown as PageRepository;
+    });
 
-    const skill = await mcpRequest(serverWith({} as AutomationRepository, pages), {
+    const skill = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
       id: 2,
       method: "tools/call",
@@ -602,6 +884,7 @@ describe("MCP knowledge and automation profiles", () => {
           summary: "A reusable skill for reviewing project context each day.",
           body_markdown: "---\nname: daily-review\ndescription: Reviews current project context. Use for a daily project health check.\n---\n\nReview the current project and record decisions.",
           commit_message: "Create daily review skill",
+          guidance_receipt: rootGuidanceReceipt,
         },
       },
     });
@@ -624,122 +907,4 @@ describe("MCP knowledge and automation profiles", () => {
     expect(calls).toHaveLength(1);
   });
 
-  test("creates an automation through the knowledge profile with MCP attribution", async () => {
-    const calls: Array<{ input: unknown; actor: unknown }> = [];
-    const automations = {
-      async createSchedule(input: unknown, actor: unknown) {
-        calls.push({ input, actor });
-        return { id: "33333333-3333-4333-8333-333333333333", ...input as object };
-      },
-    } as unknown as AutomationRepository;
-
-    const response = await mcpRequest(serverWith(automations), {
-      jsonrpc: "2.0",
-      id: 3,
-      method: "tools/call",
-      params: {
-        name: "create_automation",
-        arguments: {
-          name: "Weekday review",
-          automation_key: "weekday-review",
-          instructions_markdown: "Review the current project and record decisions.",
-          cron_expression: "0 9 * * 1-5",
-          timezone: "Europe/London",
-        },
-      },
-    });
-
-    expect(response.result?.isError).not.toBe(true);
-    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
-      automation_key: "weekday-review",
-      instructions_markdown: "Review the current project and record decisions.",
-    });
-    expect(calls).toEqual([{
-      input: {
-        name: "Weekday review",
-        automation_key: "weekday-review",
-        instructions_markdown: "Review the current project and record decisions.",
-        commit_message: "Create automation",
-        cron_expression: "0 9 * * 1-5",
-        timezone: "Europe/London",
-        input: {},
-        enabled: true,
-        write_scope: [],
-      },
-      actor: { kind: "mcp", subject: "mcp-client" },
-    }]);
-  });
-
-  test("passes automation page writes through the run-scoped repository method", async () => {
-    const calls: unknown[] = [];
-    const pages = {
-      async createForAutomation(input: unknown, actor: unknown) {
-        calls.push({ input, actor });
-        return { id: "44444444-4444-4444-8444-444444444444" };
-      },
-    } as unknown as PageRepository;
-    const response = await mcpRequest(executionServerWith(
-      {} as AutomationRepository,
-      pages,
-    ), {
-      jsonrpc: "2.0",
-      id: 6,
-      method: "tools/call",
-      params: {
-        name: "create_automation_page",
-        arguments: {
-          run_id: "55555555-5555-4555-8555-555555555555",
-          claim_token: "66666666-6666-4666-8666-666666666666",
-          path: "about/diary/2026/07/27/daily-review",
-          title: "Daily review",
-          summary: "The daily review produced by the automation.",
-          body_markdown: "Review body",
-          commit_message: "Create daily review",
-        },
-      },
-    });
-    expect(response.result?.isError).not.toBe(true);
-    expect(calls).toEqual([{
-      input: expect.objectContaining({ path: "about/diary/2026/07/27/daily-review" }),
-      actor: { kind: "mcp", subject: "mcp-client" },
-    }]);
-  });
-
-  test("accepts only concise automation completion summaries", async () => {
-    const calls: string[] = [];
-    const automations = {
-      async completeRun(_runId: string, _claimToken: string, _clientId: string, summary?: string) {
-        calls.push(summary ?? "");
-        return { status: "succeeded", result_summary: summary };
-      },
-    } as unknown as AutomationRepository;
-    const argumentsBase = {
-      run_id: "55555555-5555-4555-8555-555555555555",
-      claim_token: "66666666-6666-4666-8666-666666666666",
-    };
-
-    const concise = await mcpRequest(executionServerWith(automations), {
-      jsonrpc: "2.0",
-      id: 7,
-      method: "tools/call",
-      params: {
-        name: "complete_run",
-        arguments: { ...argumentsBase, result_summary: "Saved the digest to today's knowledge page." },
-      },
-    });
-    expect(concise.result?.isError).not.toBe(true);
-    expect(calls).toEqual(["Saved the digest to today's knowledge page."]);
-
-    const verbose = await mcpRequest(executionServerWith(automations), {
-      jsonrpc: "2.0",
-      id: 8,
-      method: "tools/call",
-      params: {
-        name: "complete_run",
-        arguments: { ...argumentsBase, result_summary: "x".repeat(501) },
-      },
-    });
-    expect(verbose.result?.isError).toBe(true);
-    expect(calls).toHaveLength(1);
-  });
 });

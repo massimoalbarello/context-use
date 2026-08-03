@@ -1,0 +1,6 @@
+.nango
+build
+coverage
+node_modules
+**/*.test.ts
+test-support

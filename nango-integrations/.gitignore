@@ -1,0 +1,4 @@
+.nango/*
+!.nango/.gitkeep
+build/
+node_modules/

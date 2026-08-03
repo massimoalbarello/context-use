@@ -52,23 +52,142 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 
 Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use status`, `context-use update`, or `context-use doctor` to manage the installation later.
 
-> **Schema compatibility:** the directory/index release intentionally replaces the pre-release migration history with one checksummed baseline. Existing installations must be destroyed with retained data and recreated; the migrator rejects older or modified schemas instead of starting against an incompatible database.
+New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use `context-use template plan` to preview missing directories and pages, safe updates, and local conflicts, then `context-use template apply` to apply them. Existing directories are never removed, locally edited guides and managed pages are preserved, and create-only state pages are never overwritten. To replace active local guides deliberately, preview with `context-use template plan --overwrite-guides`, then run `context-use template apply --overwrite-guides`.
+
+## Nango data ingestion
+
+AWS installations also run Nango on the same `t3.large` EC2 instance. Nango is the ingestion and encrypted-record layer. Each sync must transform provider responses into a provider-agnostic JSON envelope containing only `id`, `created_at`, `updated_at`, `participants`, and a complete semantic Markdown `body`. These records are the input to the downstream pipeline, so connection-specific fields, raw provider payloads, and unused API fields must not be saved outside the Markdown document. Nango records are not copied directly into the Context Use knowledge-page schema. The deployment uses Nango's full upstream image with enterprise mode enabled and runs its server, jobs, orchestrator, persist, and Redis services on isolated Docker networks. Nango shares the PostgreSQL container but owns a separate `nango` database through dedicated application and read-only backup roles. The record contract and required tests are documented in [`nango-integrations/SYNC_GUIDELINES.md`](nango-integrations/SYNC_GUIDELINES.md).
+
+The Context Use dashboard registers Nango as a managed service and links to its dashboard at `https://nango.YOUR_HOST`. Show the username and URL with:
+
+```sh
+context-use nango credentials
+```
+
+Reveal the generated dashboard password only when you need to log in:
+
+```sh
+context-use nango credentials --reveal
+```
+
+Runtime values are KMS-encrypted SecureString parameters below `/context-use/<installation-id>/<environment>/`. Nango's dashboard credentials, admin key, encryption key, database credentials, and scoped deployer and pipeline API keys use `NANGO_*` names there. The credentials command intentionally exposes only the dashboard login; service keys remain internal. The pipeline key is injected only into the private MCP service, which reaches Nango over a dedicated internal Docker network.
+
+The private Context Use MCP exposes `read_source_records` as the single downstream read
+surface. It discovers every connection for each managed pipeline model and returns a
+unified batch containing only a stable source reference, a source label, and the
+record's lifecycle action and canonical Markdown. Every read applies a rolling 30-day
+freshness window: records whose latest source update or deletion is older are omitted
+while their cursors still advance. The window applies to source modification, not to the
+activity date described by returned Markdown, so a recently updated record about older
+activity is returned normally. Its `next_checkpoint` is one opaque cursor across all
+connections and models, including connections discovered after earlier runs. Callers
+must treat it as an indivisible value. Nango webhooks are not involved in downstream
+processing, and Context Use does not create a second per-record observation store.
+
+The Nango hostname is internet reachable so providers can call OAuth callback and webhook endpoints. The dashboard is gated by Nango's native username/password authentication, but a blanket proxy login in front of the entire hostname would also block those public integration endpoints. Keep access control route-aware if it is tightened later.
+
+### GitHub pull requests
+
+Create a GitHub OAuth app with `https://nango.YOUR_HOST/oauth/callback` as its authorization callback URL, then run:
+
+```sh
+context-use nango integrations add
+```
+
+The command sends the prompted client ID and secret directly to Nango, creates or reconciles the `github` integration, and deploys the release-pinned `pull-requests` sync. It does not save those OAuth credentials locally or in SSM. Open the Nango dashboard afterward and create a GitHub connection. By default, the connection syncs pull requests from every accessible repository; set its metadata to `{"repositories":["owner/repository"]}` to limit the source set. GitHub's OAuth `repo` scope is required to include private repositories. Changing that source set stops future refreshes but intentionally does not delete existing records yet; retention and pruning will be introduced as a separate, explicit policy. Each saved PR has the universal pipeline envelope, while its Markdown body contains the PR description, status, branches, participants, change-size summary, commits, reviews, and discussion and code-review comments. Changed-file patches and unused GitHub API fields are discarded. A Markdown warning identifies the unusual case where GitHub caps the commit collection.
+
+### Granola meeting summaries
+
+Create the Granola integration in the Nango dashboard before running the managed
+integration command. Choose **Granola (MCP)**, set the integration ID to `granola`, and
+leave client credentials empty. The dashboard creation path performs Granola's dynamic
+MCP client registration; Nango's public integration-management endpoint does not, so
+Context Use intentionally refuses to create this integration automatically. Create a
+Granola connection through Nango's browser OAuth flow, then run:
+
+```sh
+context-use nango integrations add
+```
+
+The hourly `meetings` sync uses only the free-tier-compatible `list_meetings` and
+`get_meetings` MCP tools. Granola Basic exposes personal notes from the last 30 days.
+Each `GranolaMeeting` record contains the meeting title, Granola's displayed date, a
+source link, named attendees with stable email identifiers when available, and the
+complete Granola-generated summary. Private notes and transcripts are not stored.
+
+Inspect the managed state or redeploy the exact function version bundled with the installed Context Use release using:
+
+```sh
+context-use nango integrations status
+context-use nango integrations deploy
+```
+
+`context-use update` updates the Nango runtime and installs the matching function-deployer image, but it does not mutate live functions automatically. Run the explicit deploy command when a release changes integration code. Destructive model changes remain blocked unless you deliberately pass `--allow-destructive`.
+
+Nango gets an independent daily PostgreSQL backup stream in the retained backup bucket under `nango-postgres/`, encrypted with the installation KMS key and produced by the scoped `nango_backup` role. `context-use backup` captures both databases, while `context-use nango restore` restores only Nango. Compiled integration artifacts on the retained volume are reproducible rather than authoritative: keep integration source in version control and redeploy it after total-volume recovery. Application logs go to CloudWatch. Dozzle, Elasticsearch, and Nango's optional log backend are deliberately omitted until they provide enough value to justify their operational cost.
+
+### Updating Nango
+
+The `nango/` submodule points to the `context-use` branch of the personal [`massimoalbarello/nango`](https://github.com/massimoalbarello/nango) fork. The fork currently stays source-compatible with upstream; Context Use does not depend on Company Brain's Nango patches.
+
+The gitlink is pinned so every Context Use release builds a reproducible Nango commit. The daily and manually runnable `Sync Nango submodule` workflow checks the fork's `context-use` branch, rejects non-fast-forward changes, and opens a pull request that advances the pin. Merge that pull request and publish or redeploy Context Use to roll out the new image; deployments never follow a moving branch directly.
 
 ## Connect an agent
 
-For an interactive agent that reads and manages knowledge, point any OAuth-capable MCP client at:
+Point any OAuth-capable agent or external automation harness at:
 
 ```text
 https://YOUR_HOST/mcp
 ```
 
-For a dedicated worker that reads knowledge and executes scheduled runs with run-scoped writes, use:
+Context Use stores automation instructions and supporting assets as ordinary
+private knowledge. An external harness such as OpenClaw can schedule a job that
+reads a known instruction page with `get_page`—for example,
+`automations/daily-fabric/instructions`—and then uses the ordinary knowledge and
+asset tools. Scheduling, retries, and run history stay in the harness. An incremental
+automation may keep exactly one non-secret opaque checkpoint on its stable `state` page.
 
-```text
-https://YOUR_HOST/mcp/execution
-```
+### Activity distillation automation
 
-Authorize the two connections separately. Neither connection can publish knowledge; public access always remains an owner decision.
+The first record-to-knowledge pipeline is intentionally agent-driven. The default
+knowledge template installs `automations/activity-distiller/instructions` and a
+create-only `automations/activity-distiller/state`; existing installations receive them
+with `context-use template apply`. Authorize the trusted MCP client, then schedule an
+external harness once or twice a day with the prompt: “Open and follow
+`automations/activity-distiller/instructions`; execute exactly one run.” Its run contract
+is:
+
+1. Read the instruction and state pages, call `read_source_records` with the stored
+   checkpoint, and process exactly that returned batch. Records whose latest source
+   update or deletion is more than 30 days old are skipped by the reader; recently
+   updated records about older activity are processed normally.
+2. Interpret all source Markdown in the batch together. Connections are provenance, not
+   page boundaries: records from different services can describe or corroborate the same
+   day, project, decision or entity. Treat a `deleted` action as withdrawn evidence, not
+   as current source material.
+3. Search and read existing knowledge before writing, including changes made for earlier
+   batches in the same run. Reconcile new evidence into the current canonical account by
+   rewriting and reorganizing it; merge overlaps, remove superseded detail, and create a
+   new semantic page only when no existing subject fits.
+4. Put only material temporal activity on at most one automation-owned diary page for
+   each date when it actually happened, with links to its projects, tasks and useful
+   entities. Ensure the date also has its required `log`; when creating one, keep it to
+   the distiller's companion-page bullet without inventing owner narrative. Omit routine
+   activity. Never put cursors, run metadata or one page per source in the diary.
+5. Create project, task, person and company pages selectively. Repetition and material
+   involvement can justify an entity; a participant list, repository name or isolated
+   record cannot.
+6. After every intended knowledge write for that batch succeeds, replace the stable
+   state page with its `next_checkpoint`. Only then, if `has_more` is true, read and
+   reconcile the next batch. Continue until `has_more` is false. On failure, do not save
+   the failed batch's checkpoint. A completed run leaves the next scheduled invocation
+   with only later lifecycle changes to process.
+
+The default knowledge template carries the detailed placement and maintenance rules,
+including `about/projects/` for enduring work, finite future-facing frames under
+`about/tasks/`, and whole-page reconciliation instead of append-only updates.
+
+MCP clients cannot publish knowledge; public access always remains an owner decision.
 
 ## License
 

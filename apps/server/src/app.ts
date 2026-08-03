@@ -1,7 +1,6 @@
 import { resolve } from "node:path";
 import {
   AssetRepository,
-  AutomationRepository,
   DirectoryRepository,
   KnowledgeExportRepository,
   type KnowledgeExportAsset,
@@ -19,11 +18,10 @@ import {
 import {
   assetUploadSchema,
   archivePageSchema,
-  createCronScheduleSchema,
   createDirectorySchema,
   createPageSchema,
+  deleteDirectorySchema,
   publicationIntentSchema,
-  updateCronScheduleSchema,
   updateDirectorySchema,
   updatePageSchema,
 } from "@context-use/shared";
@@ -31,10 +29,10 @@ import { Elysia } from "elysia";
 import { z } from "zod";
 import { authorizeDashboardRequest } from "./auth-client.ts";
 import { forwardDashboardAuthRoute } from "./auth-dashboard-gateway.ts";
-import { decodeCompletedRunCursor, encodeCompletedRunCursor } from "./automation-run-pagination.ts";
 import { assetContentResponse } from "./asset-content.ts";
-import { config, MCP_EXECUTION_RESOURCE, production } from "./config.ts";
+import { config, production } from "./config.ts";
 import { claimConfirmedExport, issueConfirmationOptions } from "./confirmation-client.ts";
+import { dashboardServices } from "./dashboard-services.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
 import {
@@ -57,7 +55,6 @@ const dashboardPages = new PageRepository(dashboardPool);
 const dashboardDirectories = new DirectoryRepository(dashboardPool);
 const pageDeletions = new PageDeletionRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
-const dashboardAutomations = new AutomationRepository(dashboardPool);
 const publications = new PublicationRepository(dashboardPool);
 const knowledgeExports = new KnowledgeExportRepository(dashboardPool);
 
@@ -176,7 +173,6 @@ function exportSize(snapshot: KnowledgeExportSnapshot): number {
     total
     + Buffer.byteLength(directory.title)
     + Buffer.byteLength(directory.summary)
-    + Buffer.byteLength(directory.intro_markdown)
   ), 0)
     + snapshot.pages.reduce((total, page) => (
       total
@@ -200,7 +196,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
-  .get("/api/health", () => json({ status: "ok", version: "0.1.45", service: "dashboard" }))
+  .get("/api/health", () => json({ status: "ok", version: "0.1.52", service: "dashboard" }))
   .get("/api/dashboard/session", ({ request }) => forwardDashboardAuthRoute(request))
   .get("/api/dashboard/csrf", ({ request }) => forwardDashboardAuthRoute(request))
   .post("/api/dashboard/passkey-enrollment-intents", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })
@@ -218,8 +214,11 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     await ownerRequest(request);
     return json({
       knowledge_url: config.MCP_RESOURCE,
-      execution_url: MCP_EXECUTION_RESOURCE,
     });
+  })
+  .get("/api/dashboard/services", async ({ request }) => {
+    await ownerRequest(request);
+    return json({ services: dashboardServices(config) });
   })
 
   .get("/app", async () => {
@@ -325,58 +324,13 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
       },
     });
   })
-  .get("/api/dashboard/automations/schedules", async ({ request }) => {
-    await ownerRequest(request);
-    return json(await dashboardAutomations.listSchedules());
-  })
-  .post("/api/dashboard/automations/schedules", async ({ request }) => {
-    const principal = await ownerRequest(request, true);
-    const input = createCronScheduleSchema.parse(await bodyJson(request));
-    return json(await dashboardAutomations.createSchedule(input, { kind: "dashboard", subject: principal.userId }), 201);
-  })
-  .put("/api/dashboard/automations/schedules/:id", async ({ request, params }) => {
-    const principal = await ownerRequest(request, true);
-    const input = updateCronScheduleSchema.parse(await bodyJson(request));
-    const schedule = await dashboardAutomations.updateSchedule(
-      z.string().uuid().parse(params.id),
-      input,
-      { kind: "dashboard", subject: principal.userId },
-    );
-    return schedule ? json(schedule) : problem("Cron schedule not found", 404, "not_found");
-  })
-  .delete("/api/dashboard/automations/schedules/:id", async ({ request, params }) => {
-    await ownerRequest(request, true);
-    const schedule = await dashboardAutomations.deleteSchedule(z.string().uuid().parse(params.id));
-    return schedule ? json({ deleted: true }) : problem("Cron schedule not found", 404, "not_found");
-  })
-  .get("/api/dashboard/automations/runs/active", async ({ request }) => {
-    await ownerRequest(request);
-    return json(await dashboardAutomations.listActiveRuns());
-  })
-  .get("/api/dashboard/automations/runs/completed", async ({ request, query }) => {
-    await ownerRequest(request);
-    const limit = z.coerce.number().int().min(1).max(50).default(10).parse(query.limit);
-    const encodedCursor = z.string().max(500).optional().parse(query.cursor);
-    const cursor = encodedCursor ? decodeCompletedRunCursor(encodedCursor) : undefined;
-    const page = await dashboardAutomations.listCompletedRuns(limit, cursor);
-    return json({
-      items: page.items,
-      next_cursor: page.nextCursor ? encodeCompletedRunCursor(page.nextCursor) : null,
-      totals: page.totals,
-    });
-  })
-  .get("/api/dashboard/automations/runs", async ({ request, query }) => {
-    await ownerRequest(request);
-    const limit = z.coerce.number().int().min(1).max(500).default(200).parse(query.limit);
-    return json(await dashboardAutomations.listRuns(limit));
-  })
   .get("/api/dashboard/pages", async ({ request, query }) => {
     await ownerRequest(request);
     const includeArchived = query.archived === "true";
     if (typeof query.q === "string" && query.q.trim()) {
-      return json(await dashboardPages.searchMetadata(query.q, { includeArchived }));
+      return json(await dashboardPages.searchMetadata(query.q, { includeArchived, excludeGuides: true }));
     }
-    return json(await dashboardPages.listMetadata(includeArchived));
+    return json(await dashboardPages.listMetadata(includeArchived, true));
   })
   .get("/api/dashboard/directories", async ({ request, query }) => {
     await ownerRequest(request);
@@ -391,14 +345,19 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     await ownerRequest(request);
     const index = await dashboardDirectories.indexById(z.string().uuid().parse(params.id));
     if (!index) return problem("Directory not found", 404, "not_found");
-    const html = await renderMarkdown(index.intro_markdown, privatePageResolvers(index.current_path ? `${index.current_path}/index` : "index"));
-    return json({ ...index, rendered_intro_html: html });
+    return json(index);
   })
   .put("/api/dashboard/directories/:id", async ({ request, params }) => {
     await ownerRequest(request, true);
     const input = updateDirectorySchema.parse(await bodyJson(request));
     const directory = await dashboardDirectories.update(z.string().uuid().parse(params.id), input);
     return directory ? json(directory) : problem("Directory not found", 404, "not_found");
+  })
+  .delete("/api/dashboard/directories/:id", async ({ request, params }) => {
+    await ownerRequest(request, true);
+    const input = deleteDirectorySchema.parse(await bodyJson(request));
+    const directory = await dashboardDirectories.delete(z.string().uuid().parse(params.id), input);
+    return directory ? json({ deleted: true, directory }) : problem("Directory not found", 404, "not_found");
   })
   .post("/api/dashboard/pages", async ({ request }) => {
     const principal = await ownerRequest(request, true);
@@ -430,7 +389,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     const pageId = z.string().uuid().parse(params.id);
     const page = await dashboardPages.get(pageId);
     if (!page) return problem("Page not found", 404, "not_found");
-    if (!page.archived_at || page.published_version_id || page.automation_instructions) {
+    if (!page.archived_at || page.published_version_id) {
       return problem("Only archived, unpublished pages can be permanently deleted", 409, "page_not_deletable");
     }
     const intent = await pageDeletions.createIntent(pageId, {
@@ -622,9 +581,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     if (input.target_kind === "page") {
       const page = await dashboardPages.get(input.target_id);
       if (!page) return problem("Page not found", 404, "not_found");
-      if (page.automation_instructions && input.action !== "unpublish") {
-        return problem("Automation instruction pages remain private", 403, "automation_instructions_private");
-      }
       if (input.action !== "unpublish") {
         if (!input.version_id) return problem("Page version is required", 422);
         const history = await dashboardPages.history(input.target_id);

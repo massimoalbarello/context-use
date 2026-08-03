@@ -58,10 +58,13 @@ const schema = z.object({
   KMS_KEY_ID: z.string().default(""),
   SESSION_IDLE_SECONDS: z.coerce.number().int().positive().default(43_200),
   SESSION_MAX_SECONDS: z.coerce.number().int().positive().default(604_800),
+  NANGO_PUBLIC_URL: z.union([z.literal(""), z.string().url()]).default(""),
+  NANGO_IMAGE_REFERENCE: z.string().max(512).default(""),
+  NANGO_INTERNAL_URL: z.string().url().default("http://localhost:3003"),
+  NANGO_PIPELINE_API_KEY: z.union([z.literal(""), z.string().min(16).max(4_096)]).default(""),
 });
 
 export const config = schema.parse(process.env);
-export const MCP_EXECUTION_RESOURCE = `${config.MCP_RESOURCE}/execution`;
 export const production = config.NODE_ENV === "production";
 
 if (production) {
@@ -98,6 +101,28 @@ if (production) {
   if (config.SERVICE_MODE === "storage" && config.AWS_EC2_METADATA_DISABLED !== "true") insecure.push("storage must disable EC2 instance metadata");
   if (config.SERVICE_MODE === "auth" && config.SESSION_MAX_SECONDS > 604_800) insecure.push("dashboard sessions cannot exceed seven days");
   if (config.SERVICE_MODE === "auth" && (config.SESSION_IDLE_SECONDS > 43_200 || config.SESSION_IDLE_SECONDS >= config.SESSION_MAX_SECONDS)) insecure.push("dashboard idle timeout cannot exceed twelve hours");
+  for (const name of ["NANGO_PUBLIC_URL", "NANGO_IMAGE_REFERENCE"] as const) {
+    if (process.env[name] !== undefined && config.SERVICE_MODE !== "dashboard") {
+      insecure.push(`${name} must not be present in the ${config.SERVICE_MODE} service`);
+    }
+  }
+  for (const name of ["NANGO_INTERNAL_URL", "NANGO_PIPELINE_API_KEY"] as const) {
+    if (process.env[name] !== undefined && config.SERVICE_MODE !== "mcp") {
+      insecure.push(`${name} must not be present in the ${config.SERVICE_MODE} service`);
+    }
+  }
+  if (config.SERVICE_MODE === "mcp" && config.NANGO_INTERNAL_URL !== "http://nango-server:3003") {
+    insecure.push("NANGO_INTERNAL_URL must use the isolated Nango pipeline network");
+  }
+  if (config.SERVICE_MODE === "dashboard") {
+    const hasNangoUrl = Boolean(config.NANGO_PUBLIC_URL);
+    const hasNangoImage = Boolean(config.NANGO_IMAGE_REFERENCE);
+    if (hasNangoUrl !== hasNangoImage) insecure.push("NANGO_PUBLIC_URL and NANGO_IMAGE_REFERENCE must be configured together");
+    if (hasNangoUrl) {
+      const nango = new URL(config.NANGO_PUBLIC_URL);
+      if (nango.protocol !== "https:" || !isBareOrigin(nango)) insecure.push("NANGO_PUBLIC_URL must be an exact bare HTTPS origin");
+    }
+  }
   const databaseRoles = new Map([
     ["DATABASE_URL", [config.DATABASE_URL, "context_use_dashboard"]],
     ["AUTH_DATABASE_URL", [config.AUTH_DATABASE_URL, "context_use_auth"]],
@@ -156,6 +181,7 @@ if (production) {
     OWNER_SETUP_TOKEN_HASH: ["auth"],
     AUTH_EDGE_TOKEN: [],
     MCP_ASSET_CAPABILITY_SECRET: ["mcp"],
+    NANGO_PIPELINE_API_KEY: ["mcp"],
     CONFIRMATION_GATEWAY_TOKEN: ["auth", "confirmation"],
     AUTH_DASHBOARD_TOKEN: ["auth", "dashboard"],
     AUTH_MCP_TOKEN: ["auth", "mcp"],
