@@ -52,7 +52,7 @@ export const command = defineCommand("nango integrations add", {
     p.intro("Add managed Nango integrations");
     p.log.info(`Register this OAuth callback URL in your GitHub OAuth app:\nhttps://${config.nangoHostname}/oauth/callback`);
 
-    for (const integration of MANAGED_INTEGRATIONS) {
+    for (const integration of MANAGED_INTEGRATIONS.filter((candidate) => !("hidden" in candidate && candidate.hidden))) {
       const existing = await getNangoIntegration(baseUrl, managerKey, integration.id);
       if (existing && existing.provider !== integration.provider) {
         throw new Error(

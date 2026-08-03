@@ -17,6 +17,7 @@ RUN usermod --login bun --home /home/bun --move-home node \
 COPY --from=dependencies --chown=bun:bun /opt/context-use/nango-integrations/node_modules ./node_modules
 COPY --chown=bun:bun package.json bun.lock tsconfig.json ./
 COPY --chown=bun:bun *.ts ./
+COPY --chown=bun:bun agent-conversations ./agent-conversations
 COPY --chown=bun:bun github ./github
 COPY --chown=bun:bun granola ./granola
 
