@@ -28,6 +28,11 @@ function asNango(fake: FakeNango): AgentConversationNango {
 }
 
 describe("agent conversation integration contract", () => {
+  it("is packaged into the managed integration deployer image", async () => {
+    const dockerfile = await Bun.file(new URL("../../Dockerfile", import.meta.url)).text();
+    expect(dockerfile).toContain("COPY --chown=bun:bun agent-conversations ./agent-conversations");
+  });
+
   it("is a hidden managed webhook sync with the universal pipeline model", () => {
     expect(MANAGED_INTEGRATIONS.at(-1)).toEqual({
       id: "agent-conversations",
