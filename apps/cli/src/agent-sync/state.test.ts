@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { PipelineRecord } from "../../../../nango-integrations/pipeline-record.ts";
+import type { AgentConversationRecord } from "./record.ts";
 import { AgentSyncState } from "./state.ts";
 import type { CapturedConversation } from "./types.ts";
 
@@ -52,7 +52,7 @@ test("unchanged scan errors back off until the file changes", async () => {
   }
 });
 
-function record(id: string, updatedAt: string, body: string): PipelineRecord {
+function record(id: string, updatedAt: string, body: string): AgentConversationRecord {
   return {
     id,
     created_at: "2026-08-01T09:00:00.000Z",
@@ -62,7 +62,7 @@ function record(id: string, updatedAt: string, body: string): PipelineRecord {
   };
 }
 
-function captured(value: PipelineRecord, path: string, size: number): CapturedConversation {
+function captured(value: AgentConversationRecord, path: string, size: number): CapturedConversation {
   return {
     file: { source: "codex", path, size, mtimeMs: size },
     fileHash: String(size).padStart(64, "0"),

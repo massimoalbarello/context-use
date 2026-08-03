@@ -1,21 +1,23 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, join, resolve } from "node:path";
 
-import { PipelineRecordSchema, type PipelineRecord } from "../../../../nango-integrations/pipeline-record.ts";
+import { AGENT_SOURCES } from "./types.ts";
+import { AgentConversationRecordSchema, type AgentConversationRecord } from "./record.ts";
 import type {
   AgentMessage,
   AgentSource,
   CapturedConversation,
   ParsedConversation,
+  SourceRoot,
   TranscriptFile,
 } from "./types.ts";
 
 const MAX_TOOL_TEXT = 32 * 1024;
 const MAX_BODY_BYTES = 768 * 1024;
 
-export type SourceRoot = { source: AgentSource; root: string };
+export type { SourceRoot } from "./types.ts";
 export type DiscoveryErrorHandler = (source: AgentSource, path: string, error: unknown) => void;
 
 export function defaultSourceRoots(home = homedir()): SourceRoot[] {
@@ -28,6 +30,28 @@ export function defaultSourceRoots(home = homedir()): SourceRoot[] {
       root: join(home, ".codex", "claude-cowork-transcript-imports"),
     },
   ];
+}
+
+export function configuredSourceRoots(
+  overrides: Partial<Record<AgentSource, string | undefined>>,
+  current?: SourceRoot[],
+  home = homedir(),
+  cwd = process.cwd(),
+): SourceRoot[] {
+  const existing = current ?? defaultSourceRoots(home);
+  return AGENT_SOURCES.flatMap((source) => {
+    const override = overrides[source];
+    if (!override) return existing.filter((candidate) => candidate.source === source);
+    return [{ source, root: absoluteSourceRoot(override, home, cwd) }];
+  });
+}
+
+function absoluteSourceRoot(input: string, home: string, cwd: string): string {
+  const trimmed = input.trim();
+  if (trimmed === "~") return home;
+  if (trimmed.startsWith("~/")) return resolve(home, trimmed.slice(2));
+  if (trimmed.startsWith("~")) throw new Error("Agent-sync paths support ~ but not another user's home shortcut");
+  return resolve(cwd, trimmed);
 }
 
 export async function discoverTranscriptFiles(
@@ -233,9 +257,9 @@ function assignString(state: ParserState, key: "sessionId" | "cwd" | "model", va
   if (parsed) state[key] = parsed;
 }
 
-export function conversationRecord(conversation: ParsedConversation): PipelineRecord {
+export function conversationRecord(conversation: ParsedConversation): AgentConversationRecord {
   const body = truncateConversationBody(renderConversation(conversation));
-  return PipelineRecordSchema.parse({
+  return AgentConversationRecordSchema.parse({
     id: `ac1_${sha256(`${conversation.source}\0${conversation.sessionId}`, "base64url")}`,
     created_at: conversation.createdAt,
     updated_at: conversation.updatedAt,

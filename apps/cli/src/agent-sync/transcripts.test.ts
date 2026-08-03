@@ -3,13 +3,32 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { captureTranscript, conversationRecord, defaultSourceRoots, discoverTranscriptFiles, parseTranscript } from "./transcripts.ts";
+import {
+  captureTranscript,
+  configuredSourceRoots,
+  conversationRecord,
+  defaultSourceRoots,
+  discoverTranscriptFiles,
+  parseTranscript,
+} from "./transcripts.ts";
 
 test("default adapters cover Codex, Claude Code, and Claude workspace transcripts", () => {
   expect(defaultSourceRoots("/Users/tester")).toEqual([
     { source: "codex", root: "/Users/tester/.codex/sessions" },
     { source: "codex", root: "/Users/tester/.codex/archived_sessions" },
     { source: "claude-code", root: "/Users/tester/.claude/projects" },
+    { source: "claude-cowork", root: "/Users/tester/.codex/claude-cowork-transcript-imports" },
+  ]);
+});
+
+test("source path overrides replace only their family and normalize persisted paths", () => {
+  const defaults = defaultSourceRoots("/Users/tester");
+  expect(configuredSourceRoots({
+    codex: "~/custom-codex",
+    "claude-code": "relative-claude",
+  }, defaults, "/Users/tester", "/work/context-use")).toEqual([
+    { source: "codex", root: "/Users/tester/custom-codex" },
+    { source: "claude-code", root: "/work/context-use/relative-claude" },
     { source: "claude-cowork", root: "/Users/tester/.codex/claude-cowork-transcript-imports" },
   ]);
 });

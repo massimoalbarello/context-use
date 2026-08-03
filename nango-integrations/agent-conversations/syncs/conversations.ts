@@ -58,5 +58,4 @@ function newestRecords(records: PipelineRecord[]): PipelineRecord[] {
 }
 
 export type AgentConversationNango = Parameters<(typeof sync)["exec"]>[0];
-export { WebhookPayloadSchema, newestRecords };
 export default sync;

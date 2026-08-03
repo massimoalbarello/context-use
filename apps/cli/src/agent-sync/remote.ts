@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { PipelineRecord } from "../../../../nango-integrations/pipeline-record.ts";
+import type { AgentConversationRecord } from "./record.ts";
 
 const acceptedSchema = z.object({ accepted: z.boolean() }).passthrough();
 const statusSchema = z.object({ active: z.literal(true) }).passthrough();
@@ -11,7 +11,7 @@ export type AgentSyncWebhookPayload = {
   connectionId: string;
   batchId: string;
   sentAt: string;
-  records: PipelineRecord[];
+  records: AgentConversationRecord[];
 };
 
 export type AgentSyncRemoteDependencies = {

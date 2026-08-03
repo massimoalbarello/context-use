@@ -1,7 +1,12 @@
-import type { PipelineRecord } from "../../../../nango-integrations/pipeline-record.ts";
+import type { AgentConversationRecord } from "./record.ts";
 
 export const AGENT_SOURCES = ["codex", "claude-code", "claude-cowork"] as const;
 export type AgentSource = (typeof AGENT_SOURCES)[number];
+
+export type SourceRoot = {
+  source: AgentSource;
+  root: string;
+};
 
 export type AgentMessage = {
   role: "user" | "assistant" | "tool";
@@ -31,7 +36,7 @@ export type TranscriptFile = {
 export type CapturedConversation = {
   file: TranscriptFile;
   fileHash: string;
-  record: PipelineRecord;
+  record: AgentConversationRecord;
 };
 
 export type AgentSyncConfig = {
@@ -41,4 +46,5 @@ export type AgentSyncConfig = {
   webhookUrl: string;
   installedAt: string;
   label: string;
+  sourceRoots: SourceRoot[];
 };

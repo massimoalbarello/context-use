@@ -4,7 +4,7 @@ import { readAgentSyncConfig, readAgentSyncToken } from "./config.ts";
 import { acquireAgentSyncRunLock } from "./lock.ts";
 import { pushAgentConversations, type AgentSyncRemoteDependencies } from "./remote.ts";
 import { AgentSyncState } from "./state.ts";
-import { captureTranscript, defaultSourceRoots, discoverTranscriptFiles, type SourceRoot } from "./transcripts.ts";
+import { captureTranscript, discoverTranscriptFiles, type SourceRoot } from "./transcripts.ts";
 import type { AgentSyncConfig } from "./types.ts";
 
 const MAX_BATCH_RECORDS = 100;
@@ -43,7 +43,7 @@ export async function runAgentSync(dependencies: AgentSyncRunDependencies = {}):
   const state = await AgentSyncState.open(dependencies.statePath);
   try {
     let scanErrors = 0;
-    const files = await discoverTranscriptFiles(dependencies.roots ?? defaultSourceRoots(), () => {
+    const files = await discoverTranscriptFiles(dependencies.roots ?? config.sourceRoots, () => {
       scanErrors += 1;
     });
     let captured = 0;

@@ -2,8 +2,8 @@ import { Database } from "bun:sqlite";
 import { chmod, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import { PipelineRecordSchema, type PipelineRecord } from "../../../../nango-integrations/pipeline-record.ts";
 import { agentSyncStatePath } from "./paths.ts";
+import { AgentConversationRecordSchema, type AgentConversationRecord } from "./record.ts";
 import type { CapturedConversation, TranscriptFile } from "./types.ts";
 
 const REVERIFY_AFTER_MS = 24 * 60 * 60 * 1_000;
@@ -26,7 +26,7 @@ type PendingRow = {
 };
 
 export type PendingRecord = {
-  record: PipelineRecord;
+  record: AgentConversationRecord;
   payloadHash: string;
 };
 
@@ -130,7 +130,7 @@ export class AgentSyncState implements Disposable {
       let outcome: "inserted" | "updated" | "unchanged" | "stale" = existing ? "updated" : "inserted";
 
       if (existing) {
-        const stored = PipelineRecordSchema.parse(JSON.parse(existing.payload_json));
+        const stored = AgentConversationRecordSchema.parse(JSON.parse(existing.payload_json));
         const incomingTime = Date.parse(record.updated_at);
         const storedTime = Date.parse(stored.updated_at);
         if (incomingTime < storedTime) {
@@ -219,7 +219,7 @@ export class AgentSyncState implements Disposable {
       )
       .all(now, limit);
     return rows.map((row) => ({
-      record: PipelineRecordSchema.parse(JSON.parse(row.payload_json)),
+      record: AgentConversationRecordSchema.parse(JSON.parse(row.payload_json)),
       payloadHash: row.payload_hash,
     }));
   }
@@ -275,7 +275,7 @@ export class AgentSyncState implements Disposable {
   }
 }
 
-function canonicalJson(record: PipelineRecord): string {
+function canonicalJson(record: AgentConversationRecord): string {
   return JSON.stringify({
     id: record.id,
     created_at: record.created_at,
@@ -285,7 +285,7 @@ function canonicalJson(record: PipelineRecord): string {
   });
 }
 
-function sameConversation(left: PipelineRecord, right: PipelineRecord): boolean {
+function sameConversation(left: AgentConversationRecord, right: AgentConversationRecord): boolean {
   return left.id === right.id
     && left.created_at === right.created_at
     && left.participants.length === right.participants.length

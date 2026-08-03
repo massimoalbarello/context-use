@@ -1,4 +1,5 @@
 import { chmod, mkdir, readFile, rename, rm } from "node:fs/promises";
+import { isAbsolute } from "node:path";
 import { z } from "zod";
 
 import {
@@ -6,7 +7,13 @@ import {
   agentSyncCredentialPath,
   agentSyncDirectory,
 } from "./paths.ts";
-import type { AgentSyncConfig } from "./types.ts";
+import { defaultSourceRoots } from "./transcripts.ts";
+import { AGENT_SOURCES, type AgentSyncConfig } from "./types.ts";
+
+const sourceRootSchema = z.object({
+  source: z.enum(AGENT_SOURCES),
+  root: z.string().min(1).refine(isAbsolute, "Agent-sync source roots must be absolute paths"),
+}).strict();
 
 const configSchema = z.object({
   schemaVersion: z.literal(1),
@@ -15,11 +22,13 @@ const configSchema = z.object({
   webhookUrl: z.url(),
   installedAt: z.iso.datetime({ offset: true }),
   label: z.string().min(1),
+  sourceRoots: z.array(sourceRootSchema).min(1).optional(),
 }).strict();
 
 export async function readAgentSyncConfig(): Promise<AgentSyncConfig | null> {
   try {
-    return configSchema.parse(JSON.parse(await readFile(agentSyncConfigPath, "utf8")));
+    const config = configSchema.parse(JSON.parse(await readFile(agentSyncConfigPath, "utf8")));
+    return { ...config, sourceRoots: config.sourceRoots ?? defaultSourceRoots() };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;

@@ -1,6 +1,7 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { hostname } from "node:os";
+import { z } from "zod";
 
 import { MANAGED_INTEGRATIONS } from "../../../../../nango-integrations/catalog.ts";
 import { getSecureParameter } from "../../aws.ts";
@@ -17,6 +18,7 @@ import {
 } from "../../agent-sync/registration.ts";
 import { probeAgentSync } from "../../agent-sync/remote.ts";
 import { runAgentSync } from "../../agent-sync/runtime.ts";
+import { configuredSourceRoots } from "../../agent-sync/transcripts.ts";
 import { refreshNangoPipelineRuntime } from "../../deploy.ts";
 import { readInfrastructure } from "../../lifecycle.ts";
 import { deployManagedNangoFunction } from "../../nango-integration-deployment.ts";
@@ -30,8 +32,21 @@ import { ensureNangoApiKeys } from "../../nango.ts";
 
 export const command = defineCommand("agent-sync install", {
   description: "Install and register the local agent conversation sync.",
-  options: {},
-  handler: async () => {
+  options: {
+    "codex-path": {
+      schema: z.string().trim().min(1).optional(),
+      description: "Override the recursively scanned Codex conversation directory.",
+    },
+    "claude-code-path": {
+      schema: z.string().trim().min(1).optional(),
+      description: "Override the recursively scanned Claude Code conversation directory.",
+    },
+    "claude-workspace-path": {
+      schema: z.string().trim().min(1).optional(),
+      description: "Override the recursively scanned Claude workspace conversation directory.",
+    },
+  },
+  handler: async ({ options }) => {
     if (process.platform !== "darwin") throw new Error("Agent sync currently supports macOS only");
     const { config, root, data, compute } = await readInfrastructure();
     if (!data || !compute) throw new Error("No active deployment");
@@ -88,6 +103,11 @@ export const command = defineCommand("agent-sync install", {
     const token = localToken ?? newAgentSyncToken();
     const label = localConfig?.label ?? hostname();
     const installedAt = localConfig?.installedAt ?? new Date().toISOString();
+    const sourceRoots = configuredSourceRoots({
+      codex: options["codex-path"],
+      "claude-code": options["claude-code-path"],
+      "claude-cowork": options["claude-workspace-path"],
+    }, localConfig?.sourceRoots);
     await writeAgentSyncToken(token);
     await writeAgentSyncConfig({
       schemaVersion: 1,
@@ -96,6 +116,7 @@ export const command = defineCommand("agent-sync install", {
       webhookUrl,
       installedAt,
       label,
+      sourceRoots,
     });
     await putAgentSyncConnection(
       baseUrl,

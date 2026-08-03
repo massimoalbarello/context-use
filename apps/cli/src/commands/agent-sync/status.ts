@@ -27,6 +27,7 @@ export const command = defineCommand("agent-sync status", {
       label: config.label,
       deploymentId: config.deploymentId,
       installedAt: config.installedAt,
+      sourceRoots: config.sourceRoots,
       daemonLoaded: daemon,
       nangoRegistered: remote,
       ...summary,
