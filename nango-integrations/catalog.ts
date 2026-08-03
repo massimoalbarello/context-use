@@ -17,6 +17,13 @@ export const MANAGED_INTEGRATIONS = [
     forwardWebhooks: false,
     setup: "manual" as const,
   },
+  {
+    id: "agent-conversations",
+    provider: "context-use-agent-sync",
+    displayName: "Agent Conversations",
+    forwardWebhooks: false,
+    hidden: true,
+  },
 ] as const;
 
 export const MANAGED_FUNCTIONS = [
@@ -33,5 +40,12 @@ export const MANAGED_FUNCTIONS = [
     type: "sync" as const,
     models: ["GranolaMeeting"] as const,
     pipelineModels: ["GranolaMeeting"] as const,
+  },
+  {
+    integrationId: "agent-conversations",
+    name: "conversations",
+    type: "sync" as const,
+    models: ["AgentConversation"] as const,
+    pipelineModels: ["AgentConversation"] as const,
   },
 ] as const;

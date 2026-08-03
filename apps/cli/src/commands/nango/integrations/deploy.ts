@@ -30,7 +30,7 @@ export const command = defineCommand("nango integrations deploy", {
       `${prefix}/NANGO_INTEGRATION_MANAGER_API_KEY`,
     );
     const baseUrl = `https://${config.nangoHostname}`;
-    for (const integration of MANAGED_INTEGRATIONS) {
+    for (const integration of MANAGED_INTEGRATIONS.filter((candidate) => !("hidden" in candidate && candidate.hidden))) {
       const configured = await getNangoIntegration(baseUrl, managerKey, integration.id);
       if (!configured) {
         throw new Error(`Nango integration ${integration.id} is not configured; run \`context-use nango integrations add\``);

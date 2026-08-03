@@ -6,13 +6,16 @@ const integrationSchema = z.object({
   provider: z.string().min(1),
   display_name: z.string().nullable().optional(),
   forward_webhooks: z.boolean(),
+  webhook_url: z.string().url().nullable().optional(),
 }).passthrough();
 
 const integrationResponseSchema = z.object({ data: integrationSchema });
 const connectionSchema = z.object({
   connection_id: z.string().min(1),
   provider_config_key: z.string().min(1),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 }).passthrough();
+const connectionResponseSchema = connectionSchema;
 const connectionsResponseSchema = z.object({ connections: z.array(connectionSchema) });
 const scriptSchema = z.object({
   name: z.string().min(1),
@@ -52,6 +55,15 @@ export type GitHubOAuthCredentials = {
 export type IntegrationReconcileResult = {
   integration: NangoIntegration;
   outcome: "created" | "updated" | "unchanged";
+};
+
+export type AgentSyncConnectionMetadata = {
+  state: "active" | "revoked";
+  token_sha256: string;
+  deployment_id: string;
+  label: string;
+  daemon_version: string;
+  updated_at: string;
 };
 
 export type ManagedIntegrationStatus = {
@@ -142,6 +154,89 @@ export async function getNangoIntegration(
     if (error instanceof NangoHttpError && error.status === 404) return null;
     throw error;
   }
+}
+
+export async function getNangoIntegrationWebhookUrl(
+  baseUrl: string,
+  apiKey: string,
+  integrationId: string,
+  dependencies: NangoApiDependencies = {},
+): Promise<string> {
+  const result = integrationResponseSchema.parse(await requestJson(
+    baseUrl,
+    apiKey,
+    `/integrations/${encodeURIComponent(integrationId)}?include=webhook`,
+    { method: "GET" },
+    dependencies,
+  )).data;
+  if (!result.webhook_url) throw new Error(`Nango integration ${integrationId} does not expose a webhook URL`);
+  return result.webhook_url;
+}
+
+export async function getNangoConnection(
+  baseUrl: string,
+  apiKey: string,
+  integrationId: string,
+  connectionId: string,
+  dependencies: NangoApiDependencies = {},
+): Promise<NangoConnection | null> {
+  const query = new URLSearchParams({ provider_config_key: integrationId });
+  try {
+    return connectionResponseSchema.parse(await requestJson(
+      baseUrl,
+      apiKey,
+      `/connections/${encodeURIComponent(connectionId)}?${query.toString()}`,
+      { method: "GET" },
+      dependencies,
+    ));
+  } catch (error) {
+    if (error instanceof NangoHttpError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+export async function putAgentSyncConnection(
+  baseUrl: string,
+  apiKey: string,
+  integrationId: string,
+  connectionId: string,
+  metadata: AgentSyncConnectionMetadata,
+  dependencies: NangoApiDependencies = {},
+): Promise<NangoConnection> {
+  const existing = await getNangoConnection(baseUrl, apiKey, integrationId, connectionId, dependencies);
+  if (!existing) {
+    return connectionResponseSchema.parse(await requestJson(
+      baseUrl,
+      apiKey,
+      "/connections",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          provider_config_key: integrationId,
+          connection_id: connectionId,
+          credentials: { type: "NONE" },
+          metadata,
+        }),
+      },
+      dependencies,
+      false,
+    ));
+  }
+  await requestJson(
+    baseUrl,
+    apiKey,
+    "/connections/metadata",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        provider_config_key: integrationId,
+        connection_id: connectionId,
+        metadata,
+      }),
+    },
+    dependencies,
+  );
+  return { ...existing, metadata };
 }
 
 function assertProvider(integration: NangoIntegration, spec: ManagedIntegration): void {

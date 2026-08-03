@@ -1,4 +1,4 @@
-import { MANAGED_FUNCTIONS } from "../../../nango-integrations/catalog.ts";
+import { MANAGED_FUNCTIONS, MANAGED_INTEGRATIONS } from "../../../nango-integrations/catalog.ts";
 import { sendSsmCommands } from "./aws.ts";
 import { nangoFunctionDeploymentCommands } from "./nango-integrations.ts";
 import { readReleaseImages } from "./release-images.ts";
@@ -31,26 +31,73 @@ export async function deployManagedNangoFunctions(
   const deployerKeyParameter = `/context-use/${config.installationId}/${config.environment}/NANGO_DEPLOYER_API_KEY`;
   const results: NangoFunctionDeploymentResult[] = [];
 
-  for (const managedFunction of MANAGED_FUNCTIONS) {
-    const output = await sendCommands(
-      config.awsProfile,
-      config.awsRegion,
+  for (const managedFunction of MANAGED_FUNCTIONS.filter((candidate) => {
+    const integration = MANAGED_INTEGRATIONS.find((item) => item.id === candidate.integrationId);
+    return integration && !("hidden" in integration && integration.hidden);
+  })) {
+    results.push(await deployFunction(
+      config,
       instanceId,
-      nangoFunctionDeploymentCommands({
-        image: nangoIntegrations,
-        releaseVersion: config.releaseVersion,
-        deployerKeyParameter,
-        integrationId: managedFunction.integrationId,
-        syncName: managedFunction.name,
-        allowDestructive,
-      }),
-    );
-    results.push({
-      integrationId: managedFunction.integrationId,
-      functionName: managedFunction.name,
-      output,
-    });
+      managedFunction.integrationId,
+      managedFunction.name,
+      nangoIntegrations,
+      deployerKeyParameter,
+      allowDestructive,
+      sendCommands,
+    ));
   }
 
   return results;
+}
+
+export async function deployManagedNangoFunction(
+  config: DeploymentConfig,
+  deploymentRoot: string,
+  instanceId: string,
+  integrationId: string,
+  functionName: string,
+  dependencies: NangoIntegrationDeploymentDependencies = {},
+): Promise<NangoFunctionDeploymentResult> {
+  const managed = MANAGED_FUNCTIONS.find(
+    (candidate) => candidate.integrationId === integrationId && candidate.name === functionName,
+  );
+  if (!managed) throw new Error(`Unknown managed Nango function ${integrationId}/${functionName}`);
+  const sendCommands = dependencies.sendCommands ?? sendSsmCommands;
+  const { nangoIntegrations } = await (dependencies.readImages ?? readReleaseImages)(deploymentRoot);
+  return deployFunction(
+    config,
+    instanceId,
+    managed.integrationId,
+    managed.name,
+    nangoIntegrations,
+    `/context-use/${config.installationId}/${config.environment}/NANGO_DEPLOYER_API_KEY`,
+    false,
+    sendCommands,
+  );
+}
+
+async function deployFunction(
+  config: DeploymentConfig,
+  instanceId: string,
+  integrationId: string,
+  functionName: string,
+  image: string,
+  deployerKeyParameter: string,
+  allowDestructive: boolean,
+  sendCommands: SendCommands,
+): Promise<NangoFunctionDeploymentResult> {
+  const output = await sendCommands(
+    config.awsProfile,
+    config.awsRegion,
+    instanceId,
+    nangoFunctionDeploymentCommands({
+      image,
+      releaseVersion: config.releaseVersion,
+      deployerKeyParameter,
+      integrationId,
+      syncName: functionName,
+      allowDestructive,
+    }),
+  );
+  return { integrationId, functionName, output };
 }

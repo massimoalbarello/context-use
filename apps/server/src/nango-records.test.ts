@@ -16,6 +16,11 @@ const GRANOLA: PipelineRecordSource = {
   displayName: "Granola",
   model: "GranolaMeeting",
 };
+const AGENT_CONVERSATIONS: PipelineRecordSource = {
+  integrationId: "agent-conversations",
+  displayName: "Agent Conversations",
+  model: "AgentConversation",
+};
 const NOW = new Date("2026-08-01T12:00:00.000Z");
 const INITIAL_FRESHNESS_CUTOFF = "2026-07-02T12:00:00.000Z";
 
@@ -63,7 +68,7 @@ function reader(
 
 describe("Nango source-record reader", () => {
   test("declares only canonical pipeline models from the managed integration catalog", () => {
-    expect(PIPELINE_RECORD_SOURCES).toEqual([GITHUB, GRANOLA]);
+    expect(PIPELINE_RECORD_SOURCES).toEqual([GITHUB, GRANOLA, AGENT_CONVERSATIONS]);
     expect(PIPELINE_RECORD_SOURCES.map(({ model }) => model)).not.toContain("GitHubRepositorySyncState");
   });
 

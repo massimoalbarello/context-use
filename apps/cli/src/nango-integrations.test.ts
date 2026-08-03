@@ -2,8 +2,11 @@ import { expect, test } from "bun:test";
 import { MANAGED_INTEGRATIONS } from "../../../nango-integrations/catalog.ts";
 import { deployManagedNangoFunctions } from "./nango-integration-deployment.ts";
 import {
+  getNangoConnection,
   getNangoIntegration,
+  getNangoIntegrationWebhookUrl,
   nangoFunctionDeploymentCommands,
+  putAgentSyncConnection,
   readManagedIntegrationStatus,
   reconcileNangoIntegration,
 } from "./nango-integrations.ts";
@@ -77,6 +80,106 @@ test("Granola integration creation is left to the dashboard MCP registration flo
     }) as unknown as typeof fetch,
   })).rejects.toThrow("must be created in the Nango dashboard");
   expect(requests).toBe(1);
+});
+
+test("agent-sync registration uses the scoped connection APIs and stores only metadata", async () => {
+  const metadata = {
+    state: "active" as const,
+    token_sha256: "a".repeat(64),
+    deployment_id: "deployment",
+    label: "laptop",
+    daemon_version: "v1.2.3",
+    updated_at: "2026-08-01T10:00:00.000Z",
+  };
+  const requests: Array<{ path: string; search: string; method: string; body?: unknown }> = [];
+  const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(input.toString());
+    const method = init?.method ?? "GET";
+    requests.push({
+      path: url.pathname,
+      search: url.search,
+      method,
+      ...(init?.body ? { body: JSON.parse(String(init.body)) as unknown } : {}),
+    });
+    if (method === "GET") return Response.json({}, { status: 404 });
+    return Response.json({
+      connection_id: "agent-sync",
+      provider_config_key: "agent-conversations",
+      metadata,
+    });
+  }) as typeof fetch;
+
+  const result = await putAgentSyncConnection(
+    baseUrl,
+    apiKey,
+    "agent-conversations",
+    "agent-sync",
+    metadata,
+    { fetcher, pause: async () => {} },
+  );
+  expect(result.metadata).toEqual(metadata);
+  expect(requests).toEqual([
+    {
+      path: "/connections/agent-sync",
+      search: "?provider_config_key=agent-conversations",
+      method: "GET",
+    },
+    {
+      path: "/connections",
+      search: "",
+      method: "POST",
+      body: {
+        provider_config_key: "agent-conversations",
+        connection_id: "agent-sync",
+        credentials: { type: "NONE" },
+        metadata,
+      },
+    },
+  ]);
+  expect(JSON.stringify(requests)).not.toContain("credential\":\"Bearer");
+});
+
+test("agent-sync reads its webhook and replaces metadata without reading credentials", async () => {
+  const existing = {
+    connection_id: "agent-sync",
+    provider_config_key: "agent-conversations",
+    metadata: { state: "active" },
+  };
+  const methods: string[] = [];
+  const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(input.toString());
+    methods.push(`${init?.method ?? "GET"} ${url.pathname}${url.search}`);
+    if (url.pathname === "/integrations/agent-conversations") {
+      return Response.json({ data: {
+        unique_key: "agent-conversations",
+        provider: "context-use-agent-sync",
+        display_name: "Agent Conversations",
+        forward_webhooks: false,
+        webhook_url: "https://nango.example.com/webhooks/environment/agent-conversations",
+      } });
+    }
+    if (url.pathname === "/connections/agent-sync") return Response.json(existing);
+    return Response.json(existing, { status: 201 });
+  }) as typeof fetch;
+
+  expect(await getNangoIntegrationWebhookUrl(baseUrl, apiKey, "agent-conversations", { fetcher }))
+    .toBe("https://nango.example.com/webhooks/environment/agent-conversations");
+  expect(await getNangoConnection(baseUrl, apiKey, "agent-conversations", "agent-sync", { fetcher }))
+    .toEqual(existing);
+  await putAgentSyncConnection(baseUrl, apiKey, "agent-conversations", "agent-sync", {
+    state: "revoked",
+    token_sha256: "b".repeat(64),
+    deployment_id: "deployment",
+    label: "laptop",
+    daemon_version: "v1.2.4",
+    updated_at: "2026-08-02T10:00:00.000Z",
+  }, { fetcher });
+  expect(methods).toEqual([
+    "GET /integrations/agent-conversations?include=webhook",
+    "GET /connections/agent-sync?provider_config_key=agent-conversations",
+    "GET /connections/agent-sync?provider_config_key=agent-conversations",
+    "POST /connections/metadata",
+  ]);
 });
 
 test("existing GitHub credentials are preserved unless reconfiguration is explicit", async () => {

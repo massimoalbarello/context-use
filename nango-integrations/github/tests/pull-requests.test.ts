@@ -33,6 +33,13 @@ describe("GitHub pull request integration contract", () => {
         forwardWebhooks: false,
         setup: "manual",
       },
+      {
+        id: "agent-conversations",
+        provider: "context-use-agent-sync",
+        displayName: "Agent Conversations",
+        forwardWebhooks: false,
+        hidden: true,
+      },
     ]);
     expect(MANAGED_FUNCTIONS).toEqual([
       {
@@ -48,6 +55,13 @@ describe("GitHub pull request integration contract", () => {
         type: "sync",
         models: ["GranolaMeeting"],
         pipelineModels: ["GranolaMeeting"],
+      },
+      {
+        integrationId: "agent-conversations",
+        name: "conversations",
+        type: "sync",
+        models: ["AgentConversation"],
+        pipelineModels: ["AgentConversation"],
       },
     ]);
     expect(sync.frequency).toBe("every half hour");
