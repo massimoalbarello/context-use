@@ -18,6 +18,7 @@ COPY --from=dependencies --chown=bun:bun /opt/context-use/nango-integrations/nod
 COPY --chown=bun:bun package.json bun.lock tsconfig.json ./
 COPY --chown=bun:bun *.ts ./
 COPY --chown=bun:bun github ./github
+COPY --chown=bun:bun granola ./granola
 
 RUN mkdir -p build .nango \
     && chown -R bun:bun /opt/context-use/nango-integrations

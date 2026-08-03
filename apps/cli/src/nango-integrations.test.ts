@@ -12,6 +12,7 @@ import type { DeploymentConfig } from "./types.ts";
 const baseUrl = "https://nango.example.com";
 const apiKey = "manager-secret";
 const github = MANAGED_INTEGRATIONS[0];
+const granola = MANAGED_INTEGRATIONS[1];
 const digest = "a".repeat(64);
 const image = `ghcr.io/massimoalbarello/context-use-nango@sha256:${digest}`;
 
@@ -65,6 +66,17 @@ test("GitHub integration creation sends OAuth credentials directly to Nango", as
       },
     },
   });
+});
+
+test("Granola integration creation is left to the dashboard MCP registration flow", async () => {
+  let requests = 0;
+  await expect(reconcileNangoIntegration(baseUrl, apiKey, granola, undefined, {
+    fetcher: (async () => {
+      requests += 1;
+      return Response.json({}, { status: 404 });
+    }) as unknown as typeof fetch,
+  })).rejects.toThrow("must be created in the Nango dashboard");
+  expect(requests).toBe(1);
 });
 
 test("existing GitHub credentials are preserved unless reconfiguration is explicit", async () => {
@@ -229,8 +241,11 @@ test("managed deployment uses the installed release image and never resolves lat
       return "deployed";
     },
   });
-  expect(result).toEqual([{ integrationId: "github", functionName: "pull-requests", output: "deployed" }]);
-  expect(calls).toHaveLength(1);
+  expect(result).toEqual([
+    { integrationId: "github", functionName: "pull-requests", output: "deployed" },
+    { integrationId: "granola", functionName: "meetings", output: "deployed" },
+  ]);
+  expect(calls).toHaveLength(2);
   expect(calls[0]?.commands.join("\n")).toContain("--version 'v1.2.3'");
 });
 

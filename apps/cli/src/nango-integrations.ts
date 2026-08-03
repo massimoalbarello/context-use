@@ -154,6 +154,7 @@ function assertProvider(integration: NangoIntegration, spec: ManagedIntegration)
 }
 
 function oauthBody(spec: ManagedIntegration, credentials: GitHubOAuthCredentials) {
+  if (!("oauth" in spec)) throw new Error(`${spec.displayName} does not use static OAuth credentials`);
   if (!credentials.clientId.trim() || !credentials.clientSecret.trim()) {
     throw new Error(`${spec.displayName} OAuth client ID and secret are required`);
   }
@@ -195,13 +196,18 @@ export async function reconcileNangoIntegration(
     return { integration: updated, outcome: "updated" };
   }
 
-  if (!credentials) throw new Error(`${spec.displayName} OAuth credentials are required to create the integration`);
+  if ("setup" in spec && spec.setup === "manual") {
+    throw new Error(
+      `${spec.displayName} must be created in the Nango dashboard so its MCP client is registered dynamically`,
+    );
+  }
+  if ("oauth" in spec && !credentials) throw new Error(`${spec.displayName} OAuth credentials are required to create the integration`);
   const body = {
     provider: spec.provider,
     unique_key: spec.id,
     display_name: spec.displayName,
     forward_webhooks: spec.forwardWebhooks,
-    credentials: oauthBody(spec, credentials),
+    ...(credentials ? { credentials: oauthBody(spec, credentials) } : {}),
   };
   try {
     const created = integrationResponseSchema.parse(await requestJson(
