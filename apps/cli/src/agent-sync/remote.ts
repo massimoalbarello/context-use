@@ -40,7 +40,7 @@ export async function probeAgentSync(
   const response = await authenticatedRequest(
     webhookUrl,
     token,
-    { type: "agent.sync.status", connectionId },
+    { type: "nango.authenticated-webhook.status", connectionId },
     false,
     dependencies,
   );

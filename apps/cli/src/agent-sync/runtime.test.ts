@@ -97,7 +97,10 @@ test("status probes and launch configuration contain no management or daemon sec
   const token = "z".repeat(43);
   const fetcher = (async (_input: string | URL | Request, init?: RequestInit) => {
     expect(new Headers(init?.headers).get("Authorization")).toBe(`Bearer ${token}`);
-    expect(JSON.parse(String(init?.body))).toEqual({ type: "agent.sync.status", connectionId: "agent-sync" });
+    expect(JSON.parse(String(init?.body))).toEqual({
+      type: "nango.authenticated-webhook.status",
+      connectionId: "agent-sync",
+    });
     return Response.json({ active: true });
   }) as typeof fetch;
   expect(await probeAgentSync("https://nango.example.com/hook", token, "agent-sync", { fetcher })).toBe(true);

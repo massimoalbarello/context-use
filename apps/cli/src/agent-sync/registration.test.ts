@@ -17,14 +17,17 @@ test("registration stores only a one-way token verifier and revocation preserves
     version: "v1.2.3",
     now: new Date("2026-08-01T10:00:00Z"),
   });
-  expect(active.token_sha256).toBe(agentSyncTokenVerifier(token));
+  expect(active.authenticated_webhook.token_sha256).toBe(agentSyncTokenVerifier(token));
   expect(JSON.stringify(active)).not.toContain(token);
   expect(parseAgentSyncMetadata(active)).toEqual(active);
   expect(parseAgentSyncMetadata({ ...active, extra: true })).toBeNull();
 
   expect(revokedAgentSyncMetadata(active, "v1.2.4", new Date("2026-08-02T10:00:00Z"))).toEqual({
     ...active,
-    state: "revoked",
+    authenticated_webhook: {
+      ...active.authenticated_webhook,
+      state: "revoked",
+    },
     daemon_version: "v1.2.4",
     updated_at: "2026-08-02T10:00:00.000Z",
   });

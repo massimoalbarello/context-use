@@ -8,8 +8,10 @@ export const AGENT_SYNC_FUNCTION_NAME = "conversations";
 export const AGENT_SYNC_CONNECTION_ID = "agent-sync";
 
 const metadataSchema = z.object({
-  state: z.enum(["active", "revoked"]),
-  token_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  authenticated_webhook: z.object({
+    state: z.enum(["active", "revoked"]),
+    token_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict(),
   deployment_id: z.string().min(1),
   label: z.string().min(1),
   daemon_version: z.string().min(1),
@@ -45,8 +47,11 @@ export function assertAgentSyncActivationAllowed(input: {
     throw new Error("The Nango agent-sync connection belongs to a different Context Use deployment");
   }
   if (
-    input.metadata.state === "active"
-    && (!input.localToken || input.metadata.token_sha256 !== agentSyncTokenVerifier(input.localToken))
+    input.metadata.authenticated_webhook.state === "active"
+    && (
+      !input.localToken
+      || input.metadata.authenticated_webhook.token_sha256 !== agentSyncTokenVerifier(input.localToken)
+    )
   ) {
     throw new Error(
       "Agent sync is already registered on another computer. This release supports one installation; "
@@ -63,8 +68,10 @@ export function activeAgentSyncMetadata(input: {
   now?: Date;
 }): AgentSyncConnectionMetadata {
   return metadataSchema.parse({
-    state: "active",
-    token_sha256: agentSyncTokenVerifier(input.token),
+    authenticated_webhook: {
+      state: "active",
+      token_sha256: agentSyncTokenVerifier(input.token),
+    },
     deployment_id: input.deploymentId,
     label: input.label,
     daemon_version: input.version,
@@ -79,7 +86,10 @@ export function revokedAgentSyncMetadata(
 ): AgentSyncConnectionMetadata {
   return metadataSchema.parse({
     ...previous,
-    state: "revoked",
+    authenticated_webhook: {
+      ...previous.authenticated_webhook,
+      state: "revoked",
+    },
     daemon_version: version,
     updated_at: now.toISOString(),
   });

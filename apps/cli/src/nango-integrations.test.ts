@@ -84,8 +84,10 @@ test("Granola integration creation is left to the dashboard MCP registration flo
 
 test("agent-sync registration uses the scoped connection APIs and stores only metadata", async () => {
   const metadata = {
-    state: "active" as const,
-    token_sha256: "a".repeat(64),
+    authenticated_webhook: {
+      state: "active" as const,
+      token_sha256: "a".repeat(64),
+    },
     deployment_id: "deployment",
     label: "laptop",
     daemon_version: "v1.2.3",
@@ -143,7 +145,7 @@ test("agent-sync reads its webhook and replaces metadata without reading credent
   const existing = {
     connection_id: "agent-sync",
     provider_config_key: "agent-conversations",
-    metadata: { state: "active" },
+    metadata: { authenticated_webhook: { state: "active", token_sha256: "a".repeat(64) } },
   };
   const methods: string[] = [];
   const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -152,7 +154,7 @@ test("agent-sync reads its webhook and replaces metadata without reading credent
     if (url.pathname === "/integrations/agent-conversations") {
       return Response.json({ data: {
         unique_key: "agent-conversations",
-        provider: "context-use-agent-sync",
+        provider: "authenticated-webhook",
         display_name: "Agent Conversations",
         forward_webhooks: false,
         webhook_url: "https://nango.example.com/webhooks/environment/agent-conversations",
@@ -167,8 +169,10 @@ test("agent-sync reads its webhook and replaces metadata without reading credent
   expect(await getNangoConnection(baseUrl, apiKey, "agent-conversations", "agent-sync", { fetcher }))
     .toEqual(existing);
   await putAgentSyncConnection(baseUrl, apiKey, "agent-conversations", "agent-sync", {
-    state: "revoked",
-    token_sha256: "b".repeat(64),
+    authenticated_webhook: {
+      state: "revoked",
+      token_sha256: "b".repeat(64),
+    },
     deployment_id: "deployment",
     label: "laptop",
     daemon_version: "v1.2.4",

@@ -58,8 +58,10 @@ export type IntegrationReconcileResult = {
 };
 
 export type AgentSyncConnectionMetadata = {
-  state: "active" | "revoked";
-  token_sha256: string;
+  authenticated_webhook: {
+    state: "active" | "revoked";
+    token_sha256: string;
+  };
   deployment_id: string;
   label: string;
   daemon_version: string;

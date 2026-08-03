@@ -36,7 +36,7 @@ describe("agent conversation integration contract", () => {
   it("is a hidden managed webhook sync with the universal pipeline model", () => {
     expect(MANAGED_INTEGRATIONS.at(-1)).toEqual({
       id: "agent-conversations",
-      provider: "context-use-agent-sync",
+      provider: "authenticated-webhook",
       displayName: "Agent Conversations",
       forwardWebhooks: false,
       hidden: true,

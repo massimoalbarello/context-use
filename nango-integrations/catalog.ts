@@ -19,7 +19,7 @@ export const MANAGED_INTEGRATIONS = [
   },
   {
     id: "agent-conversations",
-    provider: "context-use-agent-sync",
+    provider: "authenticated-webhook",
     displayName: "Agent Conversations",
     forwardWebhooks: false,
     hidden: true,

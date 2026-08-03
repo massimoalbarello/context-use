@@ -35,7 +35,7 @@ describe("GitHub pull request integration contract", () => {
       },
       {
         id: "agent-conversations",
-        provider: "context-use-agent-sync",
+        provider: "authenticated-webhook",
         displayName: "Agent Conversations",
         forwardWebhooks: false,
         hidden: true,
