@@ -5,7 +5,6 @@ import { join } from "node:path";
 
 import {
   captureTranscript,
-  configuredSourceRoots,
   conversationRecord,
   defaultSourceRoots,
   discoverTranscriptFiles,
@@ -17,18 +16,6 @@ test("default adapters cover Codex, Claude Code, and Claude workspace transcript
     { source: "codex", root: "/Users/tester/.codex/sessions" },
     { source: "codex", root: "/Users/tester/.codex/archived_sessions" },
     { source: "claude-code", root: "/Users/tester/.claude/projects" },
-    { source: "claude-cowork", root: "/Users/tester/.codex/claude-cowork-transcript-imports" },
-  ]);
-});
-
-test("source path overrides replace only their family and normalize persisted paths", () => {
-  const defaults = defaultSourceRoots("/Users/tester");
-  expect(configuredSourceRoots({
-    codex: "~/custom-codex",
-    "claude-code": "relative-claude",
-  }, defaults, "/Users/tester", "/work/context-use")).toEqual([
-    { source: "codex", root: "/Users/tester/custom-codex" },
-    { source: "claude-code", root: "/work/context-use/relative-claude" },
     { source: "claude-cowork", root: "/Users/tester/.codex/claude-cowork-transcript-imports" },
   ]);
 });
@@ -115,7 +102,10 @@ test("discovery and capture use source roots without putting paths in record ide
     await writeFile(join(root, "subagents", "child.jsonl"), lines([
       { type: "user", sessionId: "portable-id", message: { role: "user", content: "Child task" } },
     ]));
-    const files = await discoverTranscriptFiles([{ source: "codex", root }]);
+    const files = await discoverTranscriptFiles([
+      { source: "codex", root },
+      { source: "codex", root: join(root, "nested") },
+    ]);
     expect(files).toHaveLength(1);
     const captured = await captureTranscript(files[0]!);
     expect(captured.fileHash).toMatch(/^[a-f0-9]{64}$/);

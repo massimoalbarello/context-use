@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 export const agentSyncDirectory = resolve(homedir(), ".config/context-use/agent-sync");
 export const agentSyncConfigPath = resolve(agentSyncDirectory, "config.json");
+export const agentSyncSourcesPath = resolve(agentSyncDirectory, "sources.json");
 export const agentSyncCredentialPath = resolve(agentSyncDirectory, "credential");
 export const agentSyncStatePath = resolve(agentSyncDirectory, "state.sqlite");
 export const agentSyncLockPath = resolve(agentSyncDirectory, "run.lock");

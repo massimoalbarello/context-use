@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, join } from "node:path";
 
-import { AGENT_SOURCES } from "./types.ts";
 import { AgentConversationRecordSchema, type AgentConversationRecord } from "./record.ts";
 import type {
   AgentMessage,
@@ -32,28 +31,6 @@ export function defaultSourceRoots(home = homedir()): SourceRoot[] {
   ];
 }
 
-export function configuredSourceRoots(
-  overrides: Partial<Record<AgentSource, string | undefined>>,
-  current?: SourceRoot[],
-  home = homedir(),
-  cwd = process.cwd(),
-): SourceRoot[] {
-  const existing = current ?? defaultSourceRoots(home);
-  return AGENT_SOURCES.flatMap((source) => {
-    const override = overrides[source];
-    if (!override) return existing.filter((candidate) => candidate.source === source);
-    return [{ source, root: absoluteSourceRoot(override, home, cwd) }];
-  });
-}
-
-function absoluteSourceRoot(input: string, home: string, cwd: string): string {
-  const trimmed = input.trim();
-  if (trimmed === "~") return home;
-  if (trimmed.startsWith("~/")) return resolve(home, trimmed.slice(2));
-  if (trimmed.startsWith("~")) throw new Error("Agent-sync paths support ~ but not another user's home shortcut");
-  return resolve(cwd, trimmed);
-}
-
 export async function discoverTranscriptFiles(
   roots: SourceRoot[] = defaultSourceRoots(),
   onError?: DiscoveryErrorHandler,
@@ -62,7 +39,8 @@ export async function discoverTranscriptFiles(
   for (const sourceRoot of roots) {
     await walk(sourceRoot, sourceRoot.root, files, onError);
   }
-  return files.sort((left, right) => left.path.localeCompare(right.path));
+  const unique = new Map(files.map((file) => [`${file.source}\0${file.path}`, file]));
+  return [...unique.values()].sort((left, right) => left.path.localeCompare(right.path));
 }
 
 async function walk(

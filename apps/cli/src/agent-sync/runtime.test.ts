@@ -29,7 +29,6 @@ test("runtime checkpoints accepted batches and uploads only later changes", asyn
     webhookUrl: "https://nango.example.com/webhooks/agent",
     installedAt: "2026-08-01T00:00:00.000Z",
     label: "laptop",
-    sourceRoots: [{ source: "codex", root }],
   };
   const dependencies = {
     config,

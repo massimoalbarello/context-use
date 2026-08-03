@@ -46,5 +46,4 @@ export type AgentSyncConfig = {
   webhookUrl: string;
   installedAt: string;
   label: string;
-  sourceRoots: SourceRoot[];
 };

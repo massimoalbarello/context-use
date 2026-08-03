@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readAgentSyncConfig, readAgentSyncToken } from "./config.ts";
 import { acquireAgentSyncRunLock } from "./lock.ts";
 import { pushAgentConversations, type AgentSyncRemoteDependencies } from "./remote.ts";
+import { readAgentSyncSourceRoots } from "./source-config.ts";
 import { AgentSyncState } from "./state.ts";
 import { captureTranscript, discoverTranscriptFiles, type SourceRoot } from "./transcripts.ts";
 import type { AgentSyncConfig } from "./types.ts";
@@ -35,6 +36,7 @@ export async function runAgentSync(dependencies: AgentSyncRunDependencies = {}):
   const config = dependencies.config ?? await readAgentSyncConfig();
   const token = dependencies.token ?? await readAgentSyncToken();
   if (!config || !token) throw new Error("Agent sync is not installed; run `context-use agent-sync install`");
+  const roots = dependencies.roots ?? await readAgentSyncSourceRoots();
   const lock = await acquireAgentSyncRunLock(dependencies.lockPath);
   if (!lock) {
     return { state: "already-running", discovered: 0, captured: 0, changed: 0, scanErrors: 0, accepted: 0, pending: 0 };
@@ -43,7 +45,7 @@ export async function runAgentSync(dependencies: AgentSyncRunDependencies = {}):
   const state = await AgentSyncState.open(dependencies.statePath);
   try {
     let scanErrors = 0;
-    const files = await discoverTranscriptFiles(dependencies.roots ?? config.sourceRoots, () => {
+    const files = await discoverTranscriptFiles(roots, () => {
       scanErrors += 1;
     });
     let captured = 0;

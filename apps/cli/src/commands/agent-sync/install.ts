@@ -7,6 +7,7 @@ import { MANAGED_INTEGRATIONS } from "../../../../../nango-integrations/catalog.
 import { getSecureParameter } from "../../aws.ts";
 import { writeAgentSyncConfig, readAgentSyncConfig, readAgentSyncToken, writeAgentSyncToken } from "../../agent-sync/config.ts";
 import { installLaunchAgent } from "../../agent-sync/launchd.ts";
+import { agentSyncSourcesPath } from "../../agent-sync/paths.ts";
 import {
   activeAgentSyncMetadata,
   AGENT_SYNC_CONNECTION_ID,
@@ -18,7 +19,7 @@ import {
 } from "../../agent-sync/registration.ts";
 import { probeAgentSync } from "../../agent-sync/remote.ts";
 import { runAgentSync } from "../../agent-sync/runtime.ts";
-import { configuredSourceRoots } from "../../agent-sync/transcripts.ts";
+import { ensureAgentSyncSourceConfig } from "../../agent-sync/source-config.ts";
 import { refreshNangoPipelineRuntime } from "../../deploy.ts";
 import { readInfrastructure } from "../../lifecycle.ts";
 import { deployManagedNangoFunction } from "../../nango-integration-deployment.ts";
@@ -35,15 +36,15 @@ export const command = defineCommand("agent-sync install", {
   options: {
     "codex-path": {
       schema: z.string().trim().min(1).optional(),
-      description: "Override the recursively scanned Codex conversation directory.",
+      description: "Write one Codex directory override to the agent-sync sources file.",
     },
     "claude-code-path": {
       schema: z.string().trim().min(1).optional(),
-      description: "Override the recursively scanned Claude Code conversation directory.",
+      description: "Write one Claude Code directory override to the agent-sync sources file.",
     },
     "claude-workspace-path": {
       schema: z.string().trim().min(1).optional(),
-      description: "Override the recursively scanned Claude workspace conversation directory.",
+      description: "Write one Claude workspace directory override to the agent-sync sources file.",
     },
   },
   handler: async ({ options }) => {
@@ -56,6 +57,11 @@ export const command = defineCommand("agent-sync install", {
         `Agent sync is already installed for deployment ${localConfig.deploymentId}; uninstall it before installing for another deployment`,
       );
     }
+    await ensureAgentSyncSourceConfig({
+      codex: options["codex-path"],
+      claudeCode: options["claude-code-path"],
+      claudeWorkspace: options["claude-workspace-path"],
+    });
 
     p.intro("Install agent sync");
     const progress = p.spinner();
@@ -103,11 +109,6 @@ export const command = defineCommand("agent-sync install", {
     const token = localToken ?? newAgentSyncToken();
     const label = localConfig?.label ?? hostname();
     const installedAt = localConfig?.installedAt ?? new Date().toISOString();
-    const sourceRoots = configuredSourceRoots({
-      codex: options["codex-path"],
-      "claude-code": options["claude-code-path"],
-      "claude-cowork": options["claude-workspace-path"],
-    }, localConfig?.sourceRoots);
     await writeAgentSyncToken(token);
     await writeAgentSyncConfig({
       schemaVersion: 1,
@@ -116,7 +117,6 @@ export const command = defineCommand("agent-sync install", {
       webhookUrl,
       installedAt,
       label,
-      sourceRoots,
     });
     await putAgentSyncConnection(
       baseUrl,
@@ -137,7 +137,7 @@ export const command = defineCommand("agent-sync install", {
     const result = await runAgentSync();
     await installLaunchAgent();
     p.outro(
-      `Agent sync installed on ${label}; ${result.accepted} conversation${result.accepted === 1 ? "" : "s"} accepted in the initial run.`,
+      `Agent sync installed on ${label}; ${result.accepted} conversation${result.accepted === 1 ? "" : "s"} accepted in the initial run. Source paths: ${agentSyncSourcesPath}`,
     );
   },
 });
