@@ -26,6 +26,13 @@ describe("GitHub pull request integration contract", () => {
         forwardWebhooks: false,
         oauth: { scopes: ["repo"] },
       },
+      {
+        id: "granola",
+        provider: "granola-mcp",
+        displayName: "Granola",
+        forwardWebhooks: false,
+        setup: "manual",
+      },
     ]);
     expect(MANAGED_FUNCTIONS).toEqual([
       {
@@ -34,6 +41,13 @@ describe("GitHub pull request integration contract", () => {
         type: "sync",
         models: ["GitHubPullRequest", "GitHubRepositorySyncState"],
         pipelineModels: ["GitHubPullRequest"],
+      },
+      {
+        integrationId: "granola",
+        name: "meetings",
+        type: "sync",
+        models: ["GranolaMeeting"],
+        pipelineModels: ["GranolaMeeting"],
       },
     ]);
     expect(sync.frequency).toBe("every half hour");

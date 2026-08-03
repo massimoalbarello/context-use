@@ -28,7 +28,7 @@ function printDeploymentOutput(results: Awaited<ReturnType<typeof deployManagedN
 }
 
 export const command = defineCommand("nango integrations add", {
-  description: "Configure GitHub and deploy its managed pull-request sync.",
+  description: "Configure managed Nango integrations and deploy their syncs.",
   options: {
     reconfigure: {
       schema: z.boolean().optional(),
@@ -49,7 +49,7 @@ export const command = defineCommand("nango integrations add", {
     );
     const baseUrl = `https://${config.nangoHostname}`;
 
-    p.intro("Add the GitHub pull-request integration");
+    p.intro("Add managed Nango integrations");
     p.log.info(`Register this OAuth callback URL in your GitHub OAuth app:\nhttps://${config.nangoHostname}/oauth/callback`);
 
     for (const integration of MANAGED_INTEGRATIONS) {
@@ -61,8 +61,16 @@ export const command = defineCommand("nango integrations add", {
         );
       }
 
+      if ("setup" in integration && integration.setup === "manual" && !existing) {
+        throw new Error(
+          `Create the ${integration.displayName} integration in the Nango dashboard first: `
+          + `choose provider Granola (MCP), set the integration ID to ${integration.id}, and then rerun this command. `
+          + "Nango's public integration API does not perform MCP dynamic client registration.",
+        );
+      }
+
       let credentials: GitHubOAuthCredentials | undefined;
-      if (!existing || options.reconfigure) {
+      if ("oauth" in integration && (!existing || options.reconfigure)) {
         credentials = {
           clientId: await promptCredential(`${integration.displayName} OAuth client ID`),
           clientSecret: await promptCredential(`${integration.displayName} OAuth client secret`, true),
@@ -81,19 +89,19 @@ export const command = defineCommand("nango integrations add", {
     }
 
     const progress = p.spinner();
-    progress.start("Deploying the GitHub pull-request sync");
+    progress.start("Deploying managed Nango syncs");
     try {
       const results = await deployManagedNangoFunctions(config, root, compute.instance_id);
-      progress.stop("GitHub pull-request sync deployed");
+      progress.stop("Managed Nango syncs deployed");
       printDeploymentOutput(results);
     } catch (error) {
-      progress.stop("GitHub pull-request sync deployment failed");
+      progress.stop("Managed Nango sync deployment failed");
       throw error;
     }
 
     p.outro(
-      `Open https://${config.nangoHostname}, create a GitHub connection, and optionally set sync metadata `
-      + "to {\"repositories\":[\"owner/repository\"]}. Without metadata, all accessible repositories are synced.",
+      `Open https://${config.nangoHostname} and authorize connections for GitHub and Granola. `
+      + "Granola must use the dashboard-created granola-mcp integration so Nango performs dynamic client registration.",
     );
   },
 });

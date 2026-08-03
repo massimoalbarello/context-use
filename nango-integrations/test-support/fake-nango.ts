@@ -18,6 +18,8 @@ export class FakeNango {
   readonly yieldedPages = new Map<string, number>();
   readonly recordsLookups: RecordsLookup[] = [];
   readonly logs: string[] = [];
+  checkpoint: unknown = undefined;
+  readonly postCalls: ProxyConfiguration[] = [];
 
   private readonly responses = new Map<string, unknown>();
   private readonly pages = new Map<string, unknown[][]>();
@@ -47,6 +49,28 @@ export class FakeNango {
 
   getMetadata(): Promise<unknown> {
     return Promise.resolve(structuredClone(this.metadata));
+  }
+
+  getCheckpoint(): Promise<unknown> {
+    return Promise.resolve(structuredClone(this.checkpoint));
+  }
+
+  saveCheckpoint(checkpoint: unknown): Promise<void> {
+    this.checkpoint = structuredClone(checkpoint);
+    return Promise.resolve();
+  }
+
+  async post(config: ProxyConfiguration): Promise<{ data: unknown }> {
+    this.postCalls.push(structuredClone(config));
+    const method = typeof config.data === "object" && config.data !== null && "method" in config.data
+      ? String(config.data.method)
+      : "";
+    const params = typeof config.data === "object" && config.data !== null && "params" in config.data
+      ? config.data.params as { name?: string }
+      : undefined;
+    const key = params?.name ? `${config.endpoint}:${method}:${params.name}` : `${config.endpoint}:${method}`;
+    if (!this.responses.has(key)) throw new Error(`Fake Nango has no POST response for ${key}`);
+    return { data: structuredClone(this.responses.get(key)) };
   }
 
   async get(config: ProxyConfiguration): Promise<{ data: unknown }> {

@@ -10,6 +10,13 @@ export const MANAGED_INTEGRATIONS = [
       scopes: GITHUB_OAUTH_SCOPES,
     },
   },
+  {
+    id: "granola",
+    provider: "granola-mcp",
+    displayName: "Granola",
+    forwardWebhooks: false,
+    setup: "manual" as const,
+  },
 ] as const;
 
 export const MANAGED_FUNCTIONS = [
@@ -19,5 +26,12 @@ export const MANAGED_FUNCTIONS = [
     type: "sync" as const,
     models: ["GitHubPullRequest", "GitHubRepositorySyncState"] as const,
     pipelineModels: ["GitHubPullRequest"] as const,
+  },
+  {
+    integrationId: "granola",
+    name: "meetings",
+    type: "sync" as const,
+    models: ["GranolaMeeting"] as const,
+    pipelineModels: ["GranolaMeeting"] as const,
   },
 ] as const;
