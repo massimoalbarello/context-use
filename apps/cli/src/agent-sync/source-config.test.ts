@@ -14,7 +14,7 @@ test("source config is editable, supports multiple roots, and falls back per sou
       { source: "codex", root: "/Users/tester/.codex/sessions" },
       { source: "codex", root: "/Users/tester/.codex/archived_sessions" },
       { source: "claude-code", root: "/Users/tester/.claude/projects" },
-      { source: "claude-cowork", root: "/Users/tester/.codex/claude-cowork-transcript-imports" },
+      { source: "claude-cowork", root: "/Users/tester/Library/Application Support/Claude/local-agent-mode-sessions" },
     ]);
 
     await ensureAgentSyncSourceConfig({}, options);
@@ -22,7 +22,7 @@ test("source config is editable, supports multiple roots, and falls back per sou
       schemaVersion: 1,
       codex: ["~/.codex/sessions", "~/.codex/archived_sessions"],
       claudeCode: ["~/.claude/projects"],
-      claudeWorkspace: ["~/.codex/claude-cowork-transcript-imports"],
+      claudeWorkspace: ["~/Library/Application Support/Claude/local-agent-mode-sessions"],
     });
     expect((await stat(path)).mode & 0o777).toBe(0o600);
 
@@ -34,7 +34,7 @@ test("source config is editable, supports multiple roots, and falls back per sou
     expect(await readAgentSyncSourceRoots(options)).toEqual([
       { source: "codex", root: "/Users/tester/custom/sessions" },
       { source: "codex", root: join(directory, "relative/archive") },
-      { source: "claude-cowork", root: "/Users/tester/.codex/claude-cowork-transcript-imports" },
+      { source: "claude-cowork", root: "/Users/tester/Library/Application Support/Claude/local-agent-mode-sessions" },
     ]);
 
     await ensureAgentSyncSourceConfig({ claudeWorkspace: "~/workspace" }, options);
@@ -43,6 +43,15 @@ test("source config is editable, supports multiple roots, and falls back per sou
       { source: "codex", root: join(directory, "relative/archive") },
       { source: "claude-cowork", root: "/Users/tester/workspace" },
     ]);
+
+    await Bun.write(path, JSON.stringify({
+      schemaVersion: 1,
+      claudeWorkspace: ["~/.codex/claude-cowork-transcript-imports"],
+    }));
+    expect(await readAgentSyncSourceRoots(options)).toContainEqual({
+      source: "claude-cowork",
+      root: "/Users/tester/Library/Application Support/Claude/local-agent-mode-sessions",
+    });
 
     await Bun.write(path, JSON.stringify({ schemaVersion: 1, codex: [], unexpected: true }));
     await expect(readAgentSyncSourceRoots(options)).rejects.toThrow();

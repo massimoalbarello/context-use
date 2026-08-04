@@ -47,7 +47,9 @@ test("runtime checkpoints accepted batches and uploads only later changes", asyn
     expect(requests).toHaveLength(1);
 
     await writeFile(transcript, jsonl([...first,
-      { type: "response_item", timestamp: "2026-08-01T10:00:02Z", payload: { type: "message", role: "assistant", content: "Hi" } },
+      { type: "response_item", timestamp: "2026-08-01T10:00:02Z", payload: { type: "message", role: "assistant", phase: "final_answer", content: "Hi" } },
+      { type: "event_msg", timestamp: "2026-08-01T10:00:03Z", payload: { type: "user_message", message: "One more question" } },
+      { type: "event_msg", timestamp: "2026-08-01T10:00:04Z", payload: { type: "agent_message", phase: "final_answer", message: "One more answer" } },
     ]));
     expect(await runAgentSync(dependencies)).toMatchObject({ changed: 1, accepted: 1, pending: 0 });
     expect(requests).toHaveLength(2);
@@ -56,6 +58,7 @@ test("runtime checkpoints accepted batches and uploads only later changes", asyn
       connectionId: "agent-sync",
       batchId: "batch",
     });
+    expect(requests[1]).toMatchObject({ records: [{ body: expect.stringContaining("One more answer") }] });
   } finally {
     await rm(root, { recursive: true, force: true });
   }
