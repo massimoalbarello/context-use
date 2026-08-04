@@ -91,12 +91,7 @@
     },
   },
   "overrides": {
-    "@hono/node-server": "2.0.11",
-    "fast-uri": "3.1.5",
-    "hono": "4.12.34",
-    "ip-address": "10.4.0",
     "kysely": "0.28.17",
-    "postcss": "8.5.25",
   },
   "packages": {
     "@aws-sdk/checksums": ["@aws-sdk/checksums@3.1000.19", "", { "dependencies": { "@aws-sdk/core": "^3.976.0", "@aws-sdk/types": "^3.974.2", "@smithy/core": "^3.29.4", "@smithy/types": "^4.16.1", "tslib": "^2.6.2" } }, "sha512-Hc4N100RdkuWshKBnhPzmpdftfi9mCLz+OHFELHM1QIgMH4QRUUWyWgfiebta/YX2Bd62wTcm3EqAP8TeXv0gA=="],
