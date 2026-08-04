@@ -67,7 +67,6 @@ describeDatabase("hierarchical asset metadata", () => {
       path: `asset-archive-${suffix}`,
       title: "Asset archive test",
       summary: "Temporary pages used to verify safe asset archival.",
-      intro_markdown: "",
     });
     createdDirectoryIds.push(directory.id);
     const created = await assets.create({

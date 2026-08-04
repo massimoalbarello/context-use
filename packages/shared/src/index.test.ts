@@ -2,14 +2,12 @@ import { describe, expect, test } from "bun:test";
 import {
   archiveAssetSchema,
   assetUploadSchema,
-  createAutomationPageSchema,
   createDirectorySchema,
+  deleteDirectorySchema,
   AssetPath,
-  createCronScheduleSchema,
   createPageSchema,
   publicationIntentSchema,
   PAGE_MARKDOWN_BODY_DESCRIPTION,
-  updateCronScheduleSchema,
   updatePageSchema,
 } from "./index.ts";
 
@@ -70,7 +68,7 @@ describe("strict mutation schemas", () => {
     }).success).toBe(false);
   });
 
-  test("pages and directories require concise single-line summaries", () => {
+  test("pages require summaries while directory public-listing summaries are optional", () => {
     expect(createPageSchema.safeParse({
       path: "notes/example", title: "Example", body_markdown: "Body", commit_message: "Create example",
     }).success).toBe(false);
@@ -78,8 +76,17 @@ describe("strict mutation schemas", () => {
       path: "notes/example", title: "Example", summary: "First line.\nSecond line.", body_markdown: "Body", commit_message: "Create example",
     }).success).toBe(false);
     expect(createDirectorySchema.safeParse({
-      path: "notes", title: "Notes", summary: "Focused notes and observations.", intro_markdown: "Optional introduction.",
+      path: "notes", title: "Notes", summary: "Focused notes and observations.",
     }).success).toBe(true);
+    expect(createDirectorySchema.parse({
+      path: "empty-notes", title: "Empty notes",
+    }).summary).toBe("");
+    expect(createDirectorySchema.safeParse({
+      path: "notes", title: "Notes", intro_markdown: "Not directory metadata.",
+    }).success).toBe(false);
+    expect(createDirectorySchema.safeParse({
+      path: "notes", title: "Notes", summary: "First line.\nSecond line.",
+    }).success).toBe(false);
   });
 
   test("ordinary page writes reserve about as a folder", () => {
@@ -97,6 +104,12 @@ describe("strict mutation schemas", () => {
       body_markdown: "",
       commit_message: "Create intro page",
     }).success).toBe(true);
+  });
+
+  test("directory deletion is bound to the version the caller inspected", () => {
+    expect(deleteDirectorySchema.safeParse({ expected_version_number: 3 }).success).toBe(true);
+    expect(deleteDirectorySchema.safeParse({}).success).toBe(false);
+    expect(deleteDirectorySchema.safeParse({ expected_version_number: 3, cascade: true }).success).toBe(false);
   });
 
   test("publication intents bind valid fields to the exact action", () => {
@@ -117,100 +130,4 @@ describe("strict mutation schemas", () => {
     }).success).toBe(false);
   });
 
-  test("automations own versioned instructions and immutable semantic keys", () => {
-    expect(createCronScheduleSchema.safeParse({
-      name: "Morning review",
-      automation_key: "morning-review",
-      instructions_markdown: "Review current context and save the daily digest.",
-      cron_expression: "0 9 * * *",
-      timezone: "Europe/London",
-      input: { project: "context-use" },
-      enabled: true,
-    }).success).toBe(true);
-    expect(createCronScheduleSchema.safeParse({
-      name: "Advertises capabilities",
-      automation_key: "Advertises capabilities",
-      instructions_markdown: "Review current context.",
-      cron_expression: "0 9 * * *",
-      timezone: "Europe/London",
-      capabilities: ["browser"],
-    }).success).toBe(false);
-    expect(createCronScheduleSchema.safeParse({
-      name: "Missing semantic key",
-      instructions_markdown: "Review current context.",
-      cron_expression: "0 9 * * *",
-      timezone: "Europe/London",
-    }).success).toBe(false);
-    expect(updateCronScheduleSchema.safeParse({
-      name: "Renamed review",
-      instructions_markdown: "Review current context and save the daily digest.",
-      cron_expression: "0 10 * * *",
-      timezone: "Europe/London",
-      input: {},
-      enabled: true,
-      write_scope: ["about/diary/{YYYY}/{MM}/{DD}/morning-review"],
-      expected_version_number: 1,
-    }).success).toBe(true);
-    // Updates must restate the write scope. Defaulting it to [] here would let
-    // an edit that never mentions permissions silently revoke them.
-    expect(updateCronScheduleSchema.safeParse({
-      name: "Omits the write scope",
-      instructions_markdown: "Review current context.",
-      cron_expression: "0 10 * * *",
-      timezone: "Europe/London",
-      input: {},
-      enabled: true,
-      expected_version_number: 1,
-    }).success).toBe(false);
-    expect(createCronScheduleSchema.safeParse({
-      name: "Grants too much",
-      automation_key: "grants-too-much",
-      instructions_markdown: "Review current context.",
-      cron_expression: "0 9 * * *",
-      timezone: "Europe/London",
-      write_scope: ["**"],
-    }).success).toBe(false);
-    expect(updateCronScheduleSchema.safeParse({
-      name: "Attempts key change",
-      automation_key: "changed-key",
-      instructions_markdown: "Review current context.",
-      cron_expression: "0 10 * * *",
-      timezone: "Europe/London",
-      input: {},
-      enabled: true,
-      expected_version_number: 1,
-    }).success).toBe(false);
-  });
-
-  test("automation page writes name an absolute knowledge path", () => {
-    expect(createAutomationPageSchema.safeParse({
-      run_id: pageId,
-      claim_token: versionId,
-      path: "about/diary/2026/07/27/services-digest",
-      title: "Services digest",
-      summary: "The digest generated by an automation.",
-      body_markdown: "Linked to [[projects/context-use]].",
-      commit_message: "Create services digest",
-    }).success).toBe(true);
-    expect(createAutomationPageSchema.safeParse({
-      run_id: pageId,
-      claim_token: versionId,
-      path: "../projects/context-use",
-      title: "Escape",
-      summary: "An invalid path escape attempt.",
-      body_markdown: "No",
-      commit_message: "Attempt path escape",
-    }).success).toBe(false);
-    // Paths relative to the automation's own folder are no longer a thing:
-    // where an automation may write is a grant, not a location.
-    expect(createAutomationPageSchema.safeParse({
-      run_id: pageId,
-      claim_token: versionId,
-      relative_path: "reports/weekly-review",
-      title: "Legacy relative path",
-      summary: "Relative paths are no longer accepted.",
-      body_markdown: "No",
-      commit_message: "Attempt a relative path",
-    }).success).toBe(false);
-  });
 });

@@ -1,11 +1,13 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { retainedDataVolumeExists } from "../data-volume.ts";
-import { deploy, prepareCompute } from "../deploy.ts";
+import { deploy, prepareCompute, refreshNangoPipelineRuntime } from "../deploy.ts";
 import { readInfrastructure } from "../lifecycle.ts";
+import { ensureNangoApiKeys } from "../nango.ts";
 import { saveConfig } from "../paths.ts";
 import { ensureRuntimeParameters, pauseForManualDns } from "../setup.ts";
 import { applyCompute, applyData, currentComputeOutputs, destroyCompute } from "../terraform.ts";
+import { selectOptionalNangoBackup } from "./nango/restore.ts";
 import { selectBackup } from "./restore.ts";
 
 export const command = defineCommand("recover", {
@@ -20,9 +22,15 @@ export const command = defineCommand("recover", {
         throw new Error("The retained volume still exists; use `context-use restore` for database recovery");
       }
       const backupKey = await selectBackup(config, data);
-      const typed = await p.text({ message: `Type ${config.hostname} to replace the lost volume and restore ${backupKey}` });
+      const nangoBackupKey = await selectOptionalNangoBackup(config, data);
+      const restoreSummary = nangoBackupKey ? `${backupKey} and ${nangoBackupKey}` : backupKey;
+      const typed = await p.text({ message: `Type ${config.hostname} to replace the lost volume and restore ${restoreSummary}` });
       if (p.isCancel(typed) || typed !== config.hostname) throw new Error("Confirmation did not match");
-      config.recovery = { backupKey, previousVolumeId: data.data_volume_id };
+      config.recovery = {
+        backupKey,
+        ...(nangoBackupKey ? { nangoBackupKey } : {}),
+        previousVolumeId: data.data_volume_id,
+      };
       await saveConfig(config);
     }
 
@@ -41,9 +49,17 @@ export const command = defineCommand("recover", {
     await prepareCompute(config, recoveredData, nextCompute);
     await ensureRuntimeParameters(config, recoveredData, nextCompute);
     if (await pauseForManualDns(config, nextCompute, "recover")) return;
-    await deploy(config, nextCompute, manifest, recovery.backupKey);
+    await deploy(config, nextCompute, manifest, {
+      recoveryBackupKey: recovery.backupKey,
+      ...(recovery.nangoBackupKey ? { recoveryNangoBackupKey: recovery.nangoBackupKey } : {}),
+    });
+    await ensureNangoApiKeys(config, recoveredData);
+    await refreshNangoPipelineRuntime(config, nextCompute);
     delete config.recovery;
     await saveConfig(config);
-    p.outro(`Recovered the database from ${recovery.backupKey}. Versioned assets remained in ${recoveredData.asset_bucket}.`);
+    const nangoRecovery = recovery.nangoBackupKey
+      ? ` Nango was restored from ${recovery.nangoBackupKey}; run \`context-use nango integrations deploy\` before relying on scheduled syncs.`
+      : "";
+    p.outro(`Recovered the database from ${recovery.backupKey}.${nangoRecovery} Versioned assets remained in ${recoveredData.asset_bucket}.`);
   },
 });

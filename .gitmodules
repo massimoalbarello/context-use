@@ -1,0 +1,5 @@
+[submodule "nango"]
+	path = nango
+	url = https://github.com/massimoalbarello/nango.git
+	branch = context-use
+	shallow = true

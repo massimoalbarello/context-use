@@ -42,6 +42,8 @@ const validByService: Record<string, Record<string, string>> = {
     MCP_RESOURCE: `${common.APP_ORIGIN}/mcp`,
     MCP_ASSET_CAPABILITY_SECRET: "mcp-capability-secret-that-is-not-shared",
     STORAGE_MCP_TOKEN: "private-mcp-storage-token-not-shared",
+    NANGO_INTERNAL_URL: "http://nango-server:3003",
+    NANGO_PIPELINE_API_KEY: "nango-pipeline-key-that-is-private-to-mcp",
   },
   public: {
     PUBLIC_DATABASE_URL: "postgres://context_use_public:secret@postgres:5432/context_use",
@@ -101,6 +103,47 @@ describe("production process credential boundaries", () => {
     }).exitCode).not.toBe(0);
     expect(load("dashboard", {
       STORAGE_DATABASE_URL: "postgres://context_use_storage:secret@postgres:5432/context_use",
+    }).exitCode).not.toBe(0);
+  });
+
+  test("only the dashboard accepts complete non-secret Nango service metadata", () => {
+    const nango = {
+      NANGO_PUBLIC_URL: "https://nango.context.example.com",
+      NANGO_IMAGE_REFERENCE: "ghcr.io/example/nango@sha256:abc123",
+    };
+    expect(load("dashboard", nango).exitCode).toBe(0);
+    for (const service of Object.keys(validByService).filter((service) => service !== "dashboard")) {
+      expect(load(service, nango).exitCode).not.toBe(0);
+    }
+  });
+
+  test("only private MCP accepts the scoped Nango record-reader credential", () => {
+    const reader = {
+      NANGO_INTERNAL_URL: "http://nango-server:3003",
+      NANGO_PIPELINE_API_KEY: "nango-pipeline-key-that-is-private-to-mcp",
+    };
+    expect(load("mcp", reader).exitCode).toBe(0);
+    expect(load("mcp", { NANGO_PIPELINE_API_KEY: "" }).exitCode).toBe(0);
+    for (const service of Object.keys(validByService).filter((service) => service !== "mcp")) {
+      expect(load(service, reader).exitCode).not.toBe(0);
+    }
+    expect(load("mcp", { NANGO_INTERNAL_URL: "https://nango.context.example.com" }).exitCode).not.toBe(0);
+  });
+
+  test("dashboard requires a complete, exact HTTPS Nango service registration", () => {
+    expect(load("dashboard", {
+      NANGO_PUBLIC_URL: "https://nango.context.example.com",
+    }).exitCode).not.toBe(0);
+    expect(load("dashboard", {
+      NANGO_IMAGE_REFERENCE: "ghcr.io/example/nango@sha256:abc123",
+    }).exitCode).not.toBe(0);
+    expect(load("dashboard", {
+      NANGO_PUBLIC_URL: "http://nango.context.example.com",
+      NANGO_IMAGE_REFERENCE: "ghcr.io/example/nango@sha256:abc123",
+    }).exitCode).not.toBe(0);
+    expect(load("dashboard", {
+      NANGO_PUBLIC_URL: "https://nango.context.example.com/dashboard",
+      NANGO_IMAGE_REFERENCE: "ghcr.io/example/nango@sha256:abc123",
     }).exitCode).not.toBe(0);
   });
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import type { AssetRepository, AutomationRepository, DirectoryRepository, PageRepository } from "@context-use/database";
+import type { AssetRepository, DirectoryRepository, PageRepository } from "@context-use/database";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { config, MCP_EXECUTION_RESOURCE } from "./config.ts";
+import { config } from "./config.ts";
 import { createMcpRequestHandler } from "./mcp.ts";
 
 const originalFetch = globalThis.fetch;
@@ -38,8 +38,8 @@ function toolListRequest(endpoint: string, token: string): Request {
   });
 }
 
-describe("MCP profile audience binding", () => {
-  test("knowledge and execution tokens cannot be exchanged between endpoints", async () => {
+describe("MCP audience binding", () => {
+  test("accepts only tokens bound exclusively to the knowledge resource", async () => {
     const { publicKey, privateKey } = await generateKeyPair("EdDSA");
     const publicJwk = await exportJWK(publicKey);
     const fetchJwks = Object.assign(
@@ -54,30 +54,20 @@ describe("MCP profile audience binding", () => {
       {} as PageRepository,
       {} as DirectoryRepository,
       {} as AssetRepository,
-      {} as AutomationRepository,
     ] as const;
-    const knowledge = createMcpRequestHandler("knowledge", ...repositories);
-    const execution = createMcpRequestHandler("execution", ...repositories);
+    const knowledge = createMcpRequestHandler(...repositories);
     const knowledgeToken = await accessToken(config.MCP_RESOURCE, privateKey);
-    const executionToken = await accessToken(MCP_EXECUTION_RESOURCE, privateKey);
+    const wrongAudienceToken = await accessToken(`${config.MCP_RESOURCE}/retired`, privateKey);
 
     const knowledgeResponse = await knowledge(toolListRequest(config.MCP_RESOURCE, knowledgeToken));
-    const executionResponse = await execution(toolListRequest(MCP_EXECUTION_RESOURCE, executionToken));
     expect(knowledgeResponse.status).toBe(200);
-    expect(executionResponse.status, await executionResponse.clone().text()).toBe(200);
 
     const knowledgeTools = ((await knowledgeResponse.json()) as {
       result: { tools: Array<{ name: string }> };
     }).result.tools.map(({ name }) => name);
-    const executionTools = ((await executionResponse.json()) as {
-      result: { tools: Array<{ name: string }> };
-    }).result.tools.map(({ name }) => name);
     expect(knowledgeTools).toContain("create_page");
-    expect(knowledgeTools).not.toContain("claim_due_run");
-    expect(executionTools).toContain("claim_due_run");
-    expect(executionTools).not.toContain("create_page");
+    expect(knowledgeTools.some((name) => name.includes("automation"))).toBe(false);
 
-    expect((await execution(toolListRequest(MCP_EXECUTION_RESOURCE, knowledgeToken))).status).toBe(401);
-    expect((await knowledge(toolListRequest(config.MCP_RESOURCE, executionToken))).status).toBe(401);
+    expect((await knowledge(toolListRequest(config.MCP_RESOURCE, wrongAudienceToken))).status).toBe(401);
   });
 });

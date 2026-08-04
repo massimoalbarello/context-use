@@ -172,12 +172,22 @@ export async function deleteStateBucket(profile: string, region: string, bucket:
   }
 }
 
-export async function listBackups(profile: string, region: string, bucket: string): Promise<Array<{ key: string; modified: string; size: number }>> {
+export type BackupPrefix = "postgres" | "nango-postgres";
+
+export async function listBackups(
+  profile: string,
+  region: string,
+  bucket: string,
+  prefix: BackupPrefix = "postgres",
+): Promise<Array<{ key: string; modified: string; size: number }>> {
   const result = await awsJson<{ Contents?: Array<{ Key: string; LastModified: string; Size: number }> }>(profile, region, [
-    "s3api", "list-objects-v2", "--bucket", bucket, "--prefix", "postgres/",
+    "s3api", "list-objects-v2", "--bucket", bucket, "--prefix", `${prefix}/`,
   ]);
+  const keyPattern = prefix === "postgres"
+    ? /^postgres\/[0-9TZ-]+\.sql\.gz$/
+    : /^nango-postgres\/[0-9TZ-]+\.sql\.gz$/;
   return (result.Contents ?? [])
-    .filter((entry) => /^postgres\/[0-9TZ-]+\.sql\.gz$/.test(entry.Key))
+    .filter((entry) => keyPattern.test(entry.Key))
     .map((entry) => ({ key: entry.Key, modified: entry.LastModified, size: entry.Size }))
     .sort((a, b) => b.modified.localeCompare(a.modified));
 }

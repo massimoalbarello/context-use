@@ -1,6 +1,6 @@
 import type { Asset, Directory, PageMetadata } from "./types.ts";
 
-export const EXPANDED_PATHS_STORAGE_KEY = "context-use.knowledge-tree.expanded-paths.v1";
+export const EXPANDED_PATHS_STORAGE_KEY = "context-use.knowledge-tree.expanded-paths.v2";
 
 export type PageTreePage = {
   kind: "page";
@@ -137,7 +137,8 @@ export function pruneEmptyDirectories(directory: PageTreeDirectory): PageTreeDir
   const directories = directory.directories
     .map(pruneEmptyDirectories)
     .filter((child) => (
-      child.pages.length > 0
+      child.directory !== null
+      || child.pages.length > 0
       || child.assets.length > 0
       || child.directories.length > 0
     ));
@@ -170,7 +171,11 @@ export function expandedPathsForDisplay(
   query: string,
 ): Set<string> {
   if (!query.trim()) return persistedPaths;
-  return new Set([...persistedPaths, ...allDirectoryPaths(directory)]);
+  return new Set([
+    ...persistedPaths,
+    ...(directory.directory ? [directory.path] : []),
+    ...allDirectoryPaths(directory),
+  ]);
 }
 
 export function parseExpandedPaths(value: string | null): Set<string> | null {

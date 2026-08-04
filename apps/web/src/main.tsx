@@ -4,7 +4,6 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import "./styles.css";
 import "./knowledge-tree.css";
-import "./boundaries.css";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } });
 

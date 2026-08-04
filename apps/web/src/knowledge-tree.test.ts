@@ -20,8 +20,6 @@ function page(id: string, currentPath: string, title: string): Page {
     current_version_id: `version-${id}`,
     published_version_id: null,
     public_path: null,
-    automation_id: null,
-    automation_instructions: false,
     archived_at: null,
     version_number: 1,
     title,
@@ -52,7 +50,6 @@ function directory(id: string, currentPath: string, title: string): Directory {
     version_number: 1,
     title,
     summary: `Summary for ${title}.`,
-    intro_markdown: "",
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
   };
@@ -103,7 +100,7 @@ describe("knowledge tree", () => {
     });
   });
 
-  test("prunes directory indexes when no visible pages or assets remain", () => {
+  test("keeps explicit empty directories while pruning synthetic empty ancestors", () => {
     const tree = buildKnowledgeTree(
       [page("kept", "companies/acme/brief", "Brief")],
       [],
@@ -117,7 +114,7 @@ describe("knowledge tree", () => {
 
     const visibleTree = pruneEmptyDirectories(tree);
 
-    expect(visibleTree.directories.map(({ path }) => path)).toEqual(["companies"]);
+    expect(visibleTree.directories.map(({ path }) => path)).toEqual(["companies", "empty", "feed-digest"]);
     expect(visibleTree.directories[0]!.directories.map(({ path }) => path)).toEqual(["companies/acme"]);
   });
 
@@ -192,6 +189,22 @@ describe("knowledge tree", () => {
     expect(visible).toEqual(new Set([
       "me",
       "about",
+      "me/learnings",
+      "me/learnings/entrepreneurship",
+      "me/learnings/science",
+    ]));
+  });
+
+  test("expands an explicit root directory while revealing search results", () => {
+    const tree = buildKnowledgeTree(pages, [], [
+      directory("root-directory", "", "Knowledge"),
+      directory("about-directory", "about", "About"),
+    ]);
+
+    expect(expandedPathsForDisplay(new Set(), tree, "physics")).toEqual(new Set([
+      "",
+      "about",
+      "me",
       "me/learnings",
       "me/learnings/entrepreneurship",
       "me/learnings/science",

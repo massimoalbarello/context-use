@@ -27,14 +27,18 @@ describe("knowledge discovery repositories", () => {
     const pages = new PageRepository(pool);
 
     const listed = await pages.listMetadata();
+    await pages.listMetadata(false, true);
     const searched = await pages.searchMetadata("career", { limit: 10, includeArchived: true });
+    await pages.searchMetadata("career", { limit: 10, includeArchived: true, excludeGuides: true });
 
     expect(listed[0]).not.toHaveProperty("body_markdown");
     expect(searched[0]).not.toHaveProperty("body_markdown");
     expect(queries[0]?.sql).not.toContain("body_markdown");
-    expect(queries[1]?.sql).not.toContain("body_markdown");
-    expect(queries[1]?.sql).not.toContain("p.archived_at IS NULL");
-    expect(queries[1]?.parameters).toEqual(["career", 10]);
+    expect(queries[1]?.sql).toContain("p.current_path<>CASE WHEN p.parent_path='' THEN 'agents'");
+    expect(queries[2]?.sql).not.toContain("body_markdown");
+    expect(queries[2]?.sql).not.toContain("p.archived_at IS NULL");
+    expect(queries[2]?.parameters).toEqual(["career", 10]);
+    expect(queries[3]?.sql).toContain("p.current_path<>CASE WHEN p.parent_path='' THEN 'agents'");
   });
 
   test("loads root-to-leaf guide candidates for a target path", async () => {

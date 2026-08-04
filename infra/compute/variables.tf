@@ -13,12 +13,15 @@ variable "installation_id" {
 }
 variable "instance_type" {
   type    = string
-  default = "t3.small"
+  default = "t3.large"
 }
 variable "app_hostname" {
   type = string
 }
 variable "asset_hostname" {
+  type = string
+}
+variable "nango_hostname" {
   type = string
 }
 variable "route53_zone_id" {

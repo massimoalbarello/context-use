@@ -11,9 +11,14 @@ set -euo pipefail
 : "${CONTEXT_USE_STORAGE_ROLE_ARN:?CONTEXT_USE_STORAGE_ROLE_ARN is required}"
 : "${CONTEXT_USE_BACKUP_ROLE_ARN:?CONTEXT_USE_BACKUP_ROLE_ARN is required}"
 : "${CONTEXT_USE_RECOVERY_BACKUP_KEY:=}"
+: "${CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY:=}"
 
 if [ -n "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" ] && [[ ! "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" =~ ^postgres/[0-9TZ-]+\.sql\.gz$ ]]; then
   echo "Invalid recovery backup key" >&2
+  exit 2
+fi
+if [ -n "${CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY}" ] && [[ ! "${CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY}" =~ ^nango-postgres/[0-9TZ-]+\.sql\.gz$ ]]; then
+  echo "Invalid Nango recovery backup key" >&2
   exit 2
 fi
 
@@ -21,20 +26,27 @@ root=/opt/context-use
 secrets=/data/context-use/secrets
 mountpoint -q /data || { echo "Retained data volume is not mounted" >&2; exit 1; }
 [ -s /data/context-use/.volume-id ] || { echo "Retained data volume marker is missing" >&2; exit 1; }
-mkdir -p "${root}" "${secrets}" /data/context-use/{postgres,backup-tmp,caddy/data,caddy/config}
+mkdir -p "${root}" "${secrets}" /data/context-use/{postgres,backup-tmp,nango-backup-tmp,nango-integrations,caddy/data,caddy/config}
 chmod 0700 "${secrets}"
-chmod 0700 /data/context-use/backup-tmp
+chmod 0700 /data/context-use/backup-tmp /data/context-use/nango-backup-tmp /data/context-use/nango-integrations
 chown 70:70 /data/context-use/postgres
 chmod 0700 /data/context-use/postgres
 
 archive="/tmp/context-use-deployment-${CONTEXT_USE_VERSION}.tar.gz"
 curl --proto '=https' --tlsv1.2 -fsSL "${CONTEXT_USE_BUNDLE_URL}" -o "${archive}"
 echo "${CONTEXT_USE_BUNDLE_SHA256}  ${archive}" | sha256sum -c -
+# Do not let a malformed bundle inherit an image pin from a previous release.
+rm -f "${root}/deploy/release-images.env"
 tar -xzf "${archive}" -C "${root}"
+nango_image="$(bash "${root}/deploy/nango/read-release-image.sh" "${root}/deploy/release-images.env" NANGO_IMAGE)"
+nango_integrations_image="$(bash "${root}/deploy/nango/read-release-image.sh" "${root}/deploy/release-images.env" NANGO_INTEGRATIONS_IMAGE)"
 
 parameter_prefix="${CONTEXT_USE_PARAMETER_PREFIX}"
 get_secret() {
   aws ssm get-parameter --name "${parameter_prefix}/$1" --with-decryption --query Parameter.Value --output text
+}
+get_secret_if_present() {
+  aws ssm get-parameter --name "${parameter_prefix}/$1" --with-decryption --query Parameter.Value --output text 2>/dev/null || true
 }
 
 umask 077
@@ -42,8 +54,11 @@ cat > "${secrets}/runtime.env" <<EOF
 VERSION=${CONTEXT_USE_VERSION}
 APP_IMAGE=${CONTEXT_USE_APP_IMAGE}
 BACKUP_IMAGE=${CONTEXT_USE_BACKUP_IMAGE}
+NANGO_IMAGE=${nango_image}
+NANGO_INTEGRATIONS_IMAGE=${nango_integrations_image}
 APP_HOSTNAME=$(get_secret APP_HOSTNAME)
 ASSET_HOSTNAME=$(get_secret ASSET_HOSTNAME)
+NANGO_HOSTNAME=$(get_secret NANGO_HOSTNAME)
 OWNER_EMAIL=$(get_secret OWNER_EMAIL)
 OWNER_SETUP_TOKEN_HASH=$(get_secret OWNER_SETUP_TOKEN_HASH)
 BETTER_AUTH_SECRET=$(get_secret BETTER_AUTH_SECRET)
@@ -55,6 +70,13 @@ DB_PUBLIC_PASSWORD=$(get_secret DB_PUBLIC_PASSWORD)
 DB_CONFIRMATION_PASSWORD=$(get_secret DB_CONFIRMATION_PASSWORD)
 DB_STORAGE_PASSWORD=$(get_secret DB_STORAGE_PASSWORD)
 DB_BACKUP_PASSWORD=$(get_secret DB_BACKUP_PASSWORD)
+NANGO_DB_PASSWORD=$(get_secret NANGO_DB_PASSWORD)
+NANGO_BACKUP_DB_PASSWORD=$(get_secret NANGO_BACKUP_DB_PASSWORD)
+NANGO_ENCRYPTION_KEY=$(get_secret NANGO_ENCRYPTION_KEY)
+NANGO_ADMIN_KEY=$(get_secret NANGO_ADMIN_KEY)
+NANGO_DASHBOARD_USERNAME=$(get_secret NANGO_DASHBOARD_USERNAME)
+NANGO_DASHBOARD_PASSWORD=$(get_secret NANGO_DASHBOARD_PASSWORD)
+NANGO_PIPELINE_API_KEY=$(get_secret_if_present NANGO_PIPELINE_API_KEY)
 MCP_ASSET_CAPABILITY_SECRET=$(get_secret MCP_ASSET_CAPABILITY_SECRET)
 CONFIRMATION_GATEWAY_TOKEN=$(get_secret CONFIRMATION_GATEWAY_TOKEN)
 AUTH_DASHBOARD_TOKEN=$(get_secret AUTH_DASHBOARD_TOKEN)
@@ -75,6 +97,8 @@ EOF
 cd "${root}/deploy"
 docker compose --env-file "${secrets}/runtime.env" pull --quiet
 docker compose --env-file "${secrets}/runtime.env" stop caddy
+docker compose --env-file "${secrets}/runtime.env" stop \
+  nango-jobs nango-backup nango-server nango-persist nango-orchestrator nango-redis
 docker compose --env-file "${secrets}/runtime.env" --profile migration run --rm migrate
 if [ -n "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" ]; then
   export PGPASSWORD="$(get_secret POSTGRES_PASSWORD)"
@@ -93,6 +117,33 @@ if [ -n "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" ]; then
     psql -v ON_ERROR_STOP=1 -U postgres -d context_use \
     -c 'DROP ROLE IF EXISTS context_use_public_mcp'
 fi
+# The primary Context Use edge is independent from Nango. Bring it back after
+# its own migration/restore so a later Nango failure cannot leave the main
+# dashboard, MCP endpoint, or public pages offline.
+docker compose --env-file "${secrets}/runtime.env" up -d caddy
+docker compose --env-file "${secrets}/runtime.env" --profile nango-init run --rm nango-db-init
+if [ -n "${CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY}" ]; then
+  export PGPASSWORD="$(get_secret POSTGRES_PASSWORD)"
+  docker compose --env-file "${secrets}/runtime.env" up -d postgres aws-credential-broker
+  docker compose --env-file "${secrets}/runtime.env" exec -T -e PGPASSWORD postgres \
+    psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'DROP DATABASE IF EXISTS nango WITH (FORCE)'
+  docker compose --env-file "${secrets}/runtime.env" --profile nango-init run --rm nango-db-init
+  export PGPASSWORD="$(get_secret NANGO_DB_PASSWORD)"
+  docker compose --env-file "${secrets}/runtime.env" run --rm --no-deps -T nango-backup \
+    fetch "${CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY}" \
+    | gunzip \
+    | docker compose --env-file "${secrets}/runtime.env" exec -T -e PGPASSWORD postgres \
+      psql -X --single-transaction -v ON_ERROR_STOP=1 -U nango_app -d nango
+  docker compose --env-file "${secrets}/runtime.env" --profile nango-init run --rm nango-db-init
+fi
+docker compose --env-file "${secrets}/runtime.env" up -d --wait \
+  postgres nango-redis nango-server
+docker compose --env-file "${secrets}/runtime.env" up -d --wait \
+  nango-orchestrator nango-persist nango-jobs
+# Reconcile the read-only backup grants after Nango has applied every upstream
+# migration, and set default grants for relations created between releases.
+docker compose --env-file "${secrets}/runtime.env" --profile nango-init run --rm nango-db-init
 docker compose --env-file "${secrets}/runtime.env" up -d --remove-orphans
 # Compose does not recreate a service when only bind-mounted file contents
 # change. Recreate Caddy so every release loads the newly extracted Caddyfile.

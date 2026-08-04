@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type {
   CreateDirectoryInput,
+  DeleteDirectoryInput,
   DirectoryIndex,
   DirectoryIndexEntry,
   DirectoryTree,
@@ -9,7 +10,6 @@ import type {
   KnowledgePageMetadata,
   UpdateDirectoryInput,
 } from "@context-use/shared";
-import { normalizeInternalPageLinks } from "./links.ts";
 
 export class DirectoryVersionConflictError extends Error {
   constructor(readonly currentVersion: number) {
@@ -18,8 +18,35 @@ export class DirectoryVersionConflictError extends Error {
   }
 }
 
+export type DirectoryContents = {
+  activePages: number;
+  archivedPages: number;
+  assets: number;
+  directories: number;
+};
+
+export class DirectoryNotEmptyError extends Error {
+  constructor(readonly contents: DirectoryContents) {
+    const blockers = [
+      contents.activePages ? `${contents.activePages} active page${contents.activePages === 1 ? "" : "s"}` : "",
+      contents.archivedPages ? `${contents.archivedPages} archived page${contents.archivedPages === 1 ? "" : "s"}` : "",
+      contents.assets ? `${contents.assets} asset${contents.assets === 1 ? "" : "s"}` : "",
+      contents.directories ? `${contents.directories} child director${contents.directories === 1 ? "y" : "ies"}` : "",
+    ].filter(Boolean);
+    super(`This directory still contains ${blockers.join(", ")}. Delete all pages, assets, and child directories inside it first.`);
+    this.name = "DirectoryNotEmptyError";
+  }
+}
+
+export class RootDirectoryDeletionError extends Error {
+  constructor() {
+    super("The root knowledge directory cannot be deleted.");
+    this.name = "RootDirectoryDeletionError";
+  }
+}
+
 const CURRENT_DIRECTORY_SELECT = `
-  SELECT id,current_path,version_number,title,summary,intro_markdown,created_at,updated_at
+  SELECT id,current_path,version_number,title,summary,created_at,updated_at
   FROM knowledge_directories
 `;
 
@@ -29,23 +56,22 @@ export class DirectoryRepository {
   async create(input: CreateDirectoryInput) {
     const result = await this.pool.query(
       `INSERT INTO knowledge_directories(
-         id,current_path,title,summary,intro_markdown,search_vector
-       ) VALUES ($1,$2,$3,$4,$5,directory_search_vector($2,$3,$4,$5))
-       RETURNING id,current_path,version_number,title,summary,intro_markdown,created_at,updated_at`,
-      [randomUUID(), input.path, input.title, input.summary, normalizeInternalPageLinks(input.intro_markdown)],
+         id,current_path,title,summary,search_vector
+       ) VALUES ($1,$2,$3,$4,directory_search_vector($2,$3,$4,''))
+       RETURNING id,current_path,version_number,title,summary,created_at,updated_at`,
+      [randomUUID(), input.path, input.title, input.summary],
     );
     return result.rows[0]!;
   }
 
   async update(directoryId: string, input: UpdateDirectoryInput) {
-    const introMarkdown = normalizeInternalPageLinks(input.intro_markdown);
     const result = await this.pool.query(
       `UPDATE knowledge_directories
-       SET title=$3,summary=$4,intro_markdown=$5,version_number=version_number+1,
-           search_vector=directory_search_vector(current_path,$3,$4,$5),updated_at=now()
+       SET title=$3,summary=$4,version_number=version_number+1,
+           search_vector=directory_search_vector(current_path,$3,$4,''),updated_at=now()
        WHERE id=$1 AND version_number=$2
-       RETURNING id,current_path,version_number,title,summary,intro_markdown,created_at,updated_at`,
-      [directoryId, input.expected_version_number, input.title, input.summary, introMarkdown],
+       RETURNING id,current_path,version_number,title,summary,created_at,updated_at`,
+      [directoryId, input.expected_version_number, input.title, input.summary],
     );
     if (result.rowCount) return result.rows[0]!;
     const current = await this.pool.query<{ version_number: number }>(
@@ -54,6 +80,38 @@ export class DirectoryRepository {
     );
     if (!current.rowCount) return null;
     throw new DirectoryVersionConflictError(current.rows[0]!.version_number);
+  }
+
+  async delete(directoryId: string, input: DeleteDirectoryInput) {
+    type DeleteOutcome = {
+      status: "deleted" | "not_found" | "not_empty" | "protected" | "version_conflict";
+      id?: string;
+      current_path?: string;
+      current_version_number?: number;
+      active_pages?: number;
+      archived_pages?: number;
+      assets?: number;
+      directories?: number;
+    };
+    const result = await this.pool.query<{ result: DeleteOutcome }>(
+      "SELECT delete_empty_knowledge_directory($1,$2) AS result",
+      [directoryId, input.expected_version_number],
+    );
+    const outcome = result.rows[0]?.result;
+    if (!outcome || outcome.status === "not_found") return null;
+    if (outcome.status === "version_conflict") {
+      throw new DirectoryVersionConflictError(outcome.current_version_number!);
+    }
+    if (outcome.status === "protected") throw new RootDirectoryDeletionError();
+    if (outcome.status === "not_empty") {
+      throw new DirectoryNotEmptyError({
+        activePages: outcome.active_pages ?? 0,
+        archivedPages: outcome.archived_pages ?? 0,
+        assets: outcome.assets ?? 0,
+        directories: outcome.directories ?? 0,
+      });
+    }
+    return { id: outcome.id!, current_path: outcome.current_path! };
   }
 
   async get(directoryId: string) {
@@ -95,22 +153,32 @@ export class DirectoryRepository {
   async indexById(directoryId: string): Promise<DirectoryIndex | null> {
     const directory = await this.get(directoryId);
     if (!directory) return null;
+    const guidePath = directory.current_path ? `${directory.current_path}/agents` : "agents";
+    const guide = await this.pool.query<KnowledgePageMetadata>(
+      `SELECT page.id,page.current_path AS path,version.version_number,version.title,version.summary
+       FROM knowledge_pages page
+       JOIN knowledge_page_versions version
+         ON version.id=page.current_version_id AND version.page_id=page.id
+       WHERE page.current_path=$1 AND page.archived_at IS NULL`,
+      [guidePath],
+    );
     const children = await this.pool.query<DirectoryIndexEntry>(
       `SELECT 'directory'::text AS kind,directory.id,directory.current_path AS path,
          directory.title,directory.summary,
          CASE
-           WHEN trim(directory.intro_markdown)=''
-             AND NOT EXISTS (
+           WHEN NOT EXISTS (
                SELECT 1 FROM knowledge_directories child
                WHERE child.parent_path=directory.current_path
              )
              AND (
                SELECT count(*) FROM knowledge_pages page
                WHERE page.parent_path=directory.current_path AND page.archived_at IS NULL
+                 AND page.current_path<>directory.current_path||'/agents'
              )=1
            THEN (
              SELECT page.id FROM knowledge_pages page
              WHERE page.parent_path=directory.current_path AND page.archived_at IS NULL
+               AND page.current_path<>directory.current_path||'/agents'
              LIMIT 1
            )
            ELSE NULL
@@ -124,10 +192,11 @@ export class DirectoryRepository {
        JOIN knowledge_page_versions version
          ON version.id=page.current_version_id AND version.page_id=page.id
        WHERE page.parent_path=$1 AND page.archived_at IS NULL
+         AND page.current_path<>$2
        ORDER BY path,kind`,
-      [directory.current_path],
+      [directory.current_path, guidePath],
     );
-    return { ...directory, children: children.rows } as DirectoryIndex;
+    return { ...directory, guide: guide.rows[0] ?? null, children: children.rows } as DirectoryIndex;
   }
 
   async indexByPath(path: string): Promise<DirectoryIndex | null> {
