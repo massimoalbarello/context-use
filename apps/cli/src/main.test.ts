@@ -56,13 +56,14 @@ test("root help lists the operational commands", async () => {
 });
 
 test("command help exposes only intentional sensitive or destructive options", async () => {
-  const [update, destroy, nangoCredentials, nangoRestore, templatePlan, templateApply] = await Promise.all([
+  const [update, destroy, nangoCredentials, nangoRestore, templatePlan, templateApply, agentSyncInstall] = await Promise.all([
     runCli("update", "--help"),
     runCli("destroy", "--help"),
     runCli("nango", "credentials", "--help"),
     runCli("nango", "restore", "--help"),
     runCli("template", "plan", "--help"),
     runCli("template", "apply", "--help"),
+    runCli("agent-sync", "install", "--help"),
   ]);
 
   expect(update.exitCode).toBe(0);
@@ -75,8 +76,14 @@ test("command help exposes only intentional sensitive or destructive options", a
   expect(nangoRestore.stdout).toContain("Restore Nango");
   expect(templatePlan.exitCode).toBe(0);
   expect(templatePlan.stdout).toContain("--overwrite-guides");
+  expect(templatePlan.stdout).toContain("--overwrite-managed-pages");
   expect(templateApply.exitCode).toBe(0);
   expect(templateApply.stdout).toContain("--overwrite-guides");
+  expect(templateApply.stdout).toContain("--overwrite-managed-pages");
+  expect(agentSyncInstall.exitCode).toBe(0);
+  expect(agentSyncInstall.stdout).toContain("--codex-path");
+  expect(agentSyncInstall.stdout).toContain("--claude-code-path");
+  expect(agentSyncInstall.stdout).toContain("--claude-workspace-path");
 });
 
 test("update succeeds without an active deployment", async () => {

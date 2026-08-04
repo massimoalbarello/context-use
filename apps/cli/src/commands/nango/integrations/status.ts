@@ -46,7 +46,7 @@ export const command = defineCommand("nango integrations status", {
     );
     const baseUrl = `https://${config.nangoHostname}`;
 
-    for (const integration of MANAGED_INTEGRATIONS) {
+    for (const integration of MANAGED_INTEGRATIONS.filter((candidate) => !("hidden" in candidate && candidate.hidden))) {
       const managedFunction = MANAGED_FUNCTIONS.find((candidate) => candidate.integrationId === integration.id);
       if (!managedFunction) throw new Error(`No managed function is registered for ${integration.id}`);
       const status = await readManagedIntegrationStatus(

@@ -10,10 +10,15 @@ export const command = defineCommand("template apply", {
       schema: z.boolean().optional(),
       description: "Replace locally modified active AGENTS.md guides with the template.",
     },
+    "overwrite-managed-pages": {
+      schema: z.boolean().optional(),
+      description: "Replace locally modified managed pages with the template.",
+    },
   },
   handler: async ({ options }) => {
     const output = (await runKnowledgeTemplateCommand("apply", {
       overwriteGuides: options["overwrite-guides"] ?? false,
+      overwriteManagedPages: options["overwrite-managed-pages"] ?? false,
     })).trim();
     p.note(output || "No template changes", "Default template applied");
   },
