@@ -270,6 +270,47 @@ describe("knowledge templates", () => {
     expect(state.updatedPages).not.toContain("automations/activity-distiller/instructions");
   });
 
+  test("overwrites locally customized managed pages only when explicitly requested", async () => {
+    const state = repositories({
+      directories: DEFAULT_DIRECTORY_PATHS,
+      pages: {
+        "automations/activity-distiller/instructions": {
+          title: "Activity distiller",
+          summary: "Local activity distiller instructions.",
+          body: "Owner-specific maintenance policy.\n",
+          actor: "owner-user-id",
+        },
+        "automations/activity-distiller/state": {
+          title: "Activity distiller state",
+          summary: "Owner checkpoint.",
+          body: "# Activity distiller state\n\n**Checkpoint:** `cu-nango-v1.live`\n",
+          actor: "owner-user-id",
+        },
+      },
+    });
+
+    const overwritePlan = await reconcileKnowledgeTemplate(state.value, "default", false, false, true);
+    expect(overwritePlan.actions).toContainEqual({
+      action: "update-page",
+      path: "automations/activity-distiller/instructions",
+      detail: "Overwrite locally modified template page",
+    });
+    expect(overwritePlan.actions).toContainEqual({
+      action: "unchanged",
+      path: "automations/activity-distiller/state",
+      detail: "Preserve create-only template page",
+    });
+    expect(state.updatedPages).toEqual([]);
+
+    const applied = await reconcileKnowledgeTemplate(state.value, "default", true, false, true);
+    expect(state.updatedPages).toEqual(["automations/activity-distiller/instructions"]);
+    expect(state.updatedPageInputs).toContainEqual(expect.objectContaining({
+      path: "automations/activity-distiller/instructions",
+      body_markdown: expect.stringContaining("## Process one batch at a time"),
+    }));
+    expect(formatTemplateResult(applied)).toContain("~ update-page      automations/activity-distiller/instructions");
+  });
+
   test("updates bootstrap-owned guides while preserving locally edited guides", async () => {
     const state = repositories({
       directories: DEFAULT_DIRECTORY_PATHS,
