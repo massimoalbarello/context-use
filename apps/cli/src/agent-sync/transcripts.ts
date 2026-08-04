@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { join, sep } from "node:path";
 
 import { AgentConversationRecordSchema, type AgentConversationRecord } from "./record.ts";
 import type {
@@ -13,7 +13,6 @@ import type {
   TranscriptFile,
 } from "./types.ts";
 
-const MAX_TOOL_TEXT = 32 * 1024;
 const MAX_BODY_BYTES = 768 * 1024;
 
 export type { SourceRoot } from "./types.ts";
@@ -26,7 +25,7 @@ export function defaultSourceRoots(home = homedir()): SourceRoot[] {
     { source: "claude-code", root: join(home, ".claude", "projects") },
     {
       source: "claude-cowork",
-      root: join(home, ".codex", "claude-cowork-transcript-imports"),
+      root: join(home, "Library", "Application Support", "Claude", "local-agent-mode-sessions"),
     },
   ];
 }
@@ -60,9 +59,9 @@ async function walk(
   }
   for (const entry of entries) {
     const path = join(directory, entry.name);
-    if (entry.isDirectory() && entry.name !== "subagents") {
+    if (entry.isDirectory() && !IGNORED_TRANSCRIPT_DIRECTORIES.has(entry.name)) {
       await walk(sourceRoot, path, files, onError);
-    } else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+    } else if (entry.isFile() && isTranscriptFile(sourceRoot.source, path, entry.name)) {
       try {
         const info = await stat(path);
         files.push({ source: sourceRoot.source, path, size: info.size, mtimeMs: info.mtimeMs });
@@ -72,6 +71,14 @@ async function walk(
       }
     }
   }
+}
+
+const IGNORED_TRANSCRIPT_DIRECTORIES = new Set(["subagents", "outputs", "uploads"]);
+
+function isTranscriptFile(source: AgentSource, path: string, name: string): boolean {
+  if (!name.endsWith(".jsonl") || name === "audit.jsonl") return false;
+  if (source !== "claude-cowork") return true;
+  return path.includes(`${sep}.claude${sep}projects${sep}`);
 }
 
 export async function captureTranscript(file: TranscriptFile): Promise<CapturedConversation> {
@@ -120,7 +127,7 @@ export function parseTranscript(
     model: state.model,
     createdAt: timestamps[0] ?? fallback,
     updatedAt: timestamps.at(-1) ?? fallback,
-    messages: deduplicateMessages(state.messages),
+    messages: conversationMessages(state.messages),
     incomplete,
   };
 }
@@ -150,9 +157,10 @@ function readCodex(record: Record<string, unknown>, state: ParserState): void {
   }
   if (type === "event_msg" && payload) {
     const payloadType = stringValue(payload.type);
-    if (payloadType === "user_message" || payloadType === "agent_message") {
+    const phase = stringValue(payload.phase);
+    if (payloadType === "user_message" || (payloadType === "agent_message" && phase === "final_answer")) {
       const text = stringValue(payload.message) ?? stringValue(payload.text);
-      if (text) {
+      if (text && !isInjectedUserContext(payloadType, text)) {
         state.messages.push({
           role: payloadType === "user_message" ? "user" : "assistant",
           text,
@@ -167,23 +175,12 @@ function readCodex(record: Record<string, unknown>, state: ParserState): void {
   if (payloadType === "message") {
     const role = stringValue(payload.role);
     if (role !== "user" && role !== "assistant") return;
-    for (const text of textParts(payload.content)) {
+    const phase = stringValue(payload.phase);
+    if (role === "assistant" && phase !== "final_answer") return;
+    const text = textParts(payload.content).join("\n\n");
+    if (text && !isInjectedUserContext(role === "user" ? "user_message" : "agent_message", text)) {
       state.messages.push({ role, text, createdAt: isoValue(record.timestamp) });
     }
-  } else if (payloadType === "function_call" || payloadType === "custom_tool_call") {
-    state.messages.push({
-      role: "tool",
-      toolName: stringValue(payload.name) ?? "tool",
-      text: compactValue(payload.arguments ?? payload.input),
-      createdAt: isoValue(record.timestamp),
-    });
-  } else if (payloadType === "function_call_output" || payloadType === "custom_tool_call_output") {
-    state.messages.push({
-      role: "tool",
-      toolName: "tool result",
-      text: compactValue(payload.output),
-      createdAt: isoValue(record.timestamp),
-    });
   }
 }
 
@@ -205,29 +202,17 @@ function readClaude(record: Record<string, unknown>, state: ParserState): void {
     return;
   }
   if (!Array.isArray(content)) return;
+  const texts: string[] = [];
   for (const rawBlock of content) {
     const block = objectValue(rawBlock);
     const blockType = stringValue(block?.type);
-    if (!block || blockType === "thinking") continue;
-    if (blockType === "tool_use") {
-      state.messages.push({
-        role: "tool",
-        toolName: stringValue(block.name) ?? "tool",
-        text: compactValue(block.input),
-        createdAt,
-      });
-    } else if (blockType === "tool_result") {
-      state.messages.push({
-        role: "tool",
-        toolName: stringValue(block.name) ?? "tool result",
-        text: compactValue(block.content),
-        createdAt,
-      });
-    } else {
+    if (!block || blockType === "thinking" || blockType === "tool_use" || blockType === "tool_result") continue;
+    else {
       const text = stringValue(block.text);
-      if (text) state.messages.push({ role, text, createdAt });
+      if (text) texts.push(text);
     }
   }
+  if (texts.length > 0) state.messages.push({ role, text: texts.join("\n\n"), createdAt });
 }
 
 function assignString(state: ParserState, key: "sessionId" | "cwd" | "model", value: unknown): void {
@@ -251,27 +236,11 @@ function renderConversation(conversation: ParsedConversation): string {
   const title = firstUser?.split(/\r?\n/, 1)[0]?.trim().slice(0, 100);
   const lines = [
     `# Agent conversation${title ? `: ${title}` : ""}`,
-    "",
-    `- Source: ${sourceName(conversation.source)}`,
-    `- Native session: \`${escapeInline(conversation.sessionId)}\``,
-    `- Started: ${conversation.createdAt}`,
-    `- Updated: ${conversation.updatedAt}`,
-    ...(conversation.cwd ? [`- Workspace: ${basename(conversation.cwd) || conversation.cwd}`] : []),
-    ...(conversation.model ? [`- Model: ${conversation.model}`] : []),
-    ...(conversation.incomplete ? ["- Data warning: the transcript ended with an incomplete JSONL entry; the complete prefix is shown."] : []),
-    "",
-    "## Transcript",
   ];
   for (const message of conversation.messages) {
-    const label = message.role === "tool"
-      ? `Tool: ${message.toolName ?? "tool"}`
-      : message.role === "user" ? "User" : "Assistant";
+    const label = message.role === "user" ? "User" : "Assistant";
     lines.push("", `### ${label}${message.createdAt ? ` — ${message.createdAt}` : ""}`, "");
-    if (message.role === "tool") {
-      lines.push(indent(truncateToolText(message.text)));
-    } else {
-      lines.push(message.text.trim());
-    }
+    lines.push(message.text.trim());
   }
   return `${lines.join("\n").trim()}\n`;
 }
@@ -311,14 +280,24 @@ function textParts(value: unknown): string[] {
   });
 }
 
-function deduplicateMessages(messages: AgentMessage[]): AgentMessage[] {
+function conversationMessages(messages: AgentMessage[]): AgentMessage[] {
   const result: AgentMessage[] = [];
   for (const message of messages) {
+    if (message.role === "tool") continue;
     const previous = result.at(-1);
     if (previous && sameMessage(previous, message) && timestampsNear(previous.createdAt, message.createdAt)) continue;
-    result.push(message);
+    // Claude transcripts do not label commentary versus final answers. Within a
+    // user turn, its last visible assistant message is the final response.
+    if (message.role === "assistant" && previous?.role === "assistant") result[result.length - 1] = message;
+    else result.push(message);
   }
   return result;
+}
+
+function isInjectedUserContext(payloadType: string, text: string): boolean {
+  if (payloadType !== "user_message") return false;
+  const trimmed = text.trim();
+  return /^<(recommended_plugins|environment_context)>[\s\S]*<\/\1>$/.test(trimmed);
 }
 
 function sameMessage(left: AgentMessage, right: AgentMessage): boolean {
@@ -351,22 +330,6 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
 
-function compactValue(value: unknown): string {
-  if (typeof value === "string") {
-    try {
-      return JSON.stringify(JSON.parse(value), null, 2);
-    } catch {
-      return value;
-    }
-  }
-  return value === undefined ? "" : JSON.stringify(value, null, 2);
-}
-
-function truncateToolText(value: string): string {
-  if (Buffer.byteLength(value, "utf8") <= MAX_TOOL_TEXT) return value;
-  return `${Buffer.from(value).subarray(0, MAX_TOOL_TEXT).toString("utf8")}\n\n[Tool output truncated at 32 KiB]`;
-}
-
 function truncateConversationBody(body: string): string {
   if (Buffer.byteLength(body, "utf8") <= MAX_BODY_BYTES) return body;
   const marker = "\n\n> Context Use truncated the middle of this large conversation during ingestion.\n\n";
@@ -381,20 +344,6 @@ function truncateConversationBody(body: string): string {
 
 function utf8Slice(bytes: Buffer, start: number, end: number): string {
   return new TextDecoder().decode(bytes.subarray(Math.max(0, start), Math.min(bytes.length, end)));
-}
-
-function indent(value: string): string {
-  return value.split(/\r?\n/).map((line) => `    ${line}`).join("\n");
-}
-
-function escapeInline(value: string): string {
-  return value.replaceAll("`", "\\`");
-}
-
-function sourceName(source: AgentSource): string {
-  if (source === "codex") return "Codex / Work";
-  if (source === "claude-code") return "Claude Code";
-  return "Claude workspace";
 }
 
 function sha256(value: string, encoding: "hex" | "base64url" = "hex"): string {

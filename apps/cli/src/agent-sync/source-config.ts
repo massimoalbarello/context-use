@@ -22,8 +22,10 @@ const DEFAULT_SOURCE_CONFIG: SourceConfig = {
   schemaVersion: 1,
   codex: ["~/.codex/sessions", "~/.codex/archived_sessions"],
   claudeCode: ["~/.claude/projects"],
-  claudeWorkspace: ["~/.codex/claude-cowork-transcript-imports"],
+  claudeWorkspace: ["~/Library/Application Support/Claude/local-agent-mode-sessions"],
 };
+
+const LEGACY_COWORK_ROOT = "~/.codex/claude-cowork-transcript-imports";
 
 const SOURCE_FIELDS = [
   { source: "codex", key: "codex" },
@@ -57,7 +59,7 @@ export async function ensureAgentSyncSourceConfig(
   const path = options.path ?? agentSyncSourcesPath;
   const home = options.home ?? homedir();
   const baseDirectory = options.baseDirectory ?? dirname(path);
-  const config = await readSourceConfig(path) ?? { ...DEFAULT_SOURCE_CONFIG };
+  const config = migrateSourceConfig(await readSourceConfig(path) ?? { ...DEFAULT_SOURCE_CONFIG });
   if (overrides.codex !== undefined) config.codex = [overrides.codex];
   if (overrides.claudeCode !== undefined) config.claudeCode = [overrides.claudeCode];
   if (overrides.claudeWorkspace !== undefined) config.claudeWorkspace = [overrides.claudeWorkspace];
@@ -76,12 +78,20 @@ async function readSourceConfig(path: string): Promise<SourceConfig | null> {
 }
 
 function effectiveSourceRoots(config: SourceConfig | null, home: string, baseDirectory: string): SourceRoot[] {
+  config = config ? migrateSourceConfig(config) : null;
   const defaults = defaultSourceRoots(home);
   return SOURCE_FIELDS.flatMap(({ source, key }) => {
     const configured = config?.[key];
     if (configured === undefined) return defaults.filter((candidate) => candidate.source === source);
     return configured.map((path) => ({ source, root: absoluteSourceRoot(path, home, baseDirectory) }));
   });
+}
+
+function migrateSourceConfig(config: SourceConfig): SourceConfig {
+  if (config.claudeWorkspace?.length === 1 && config.claudeWorkspace[0] === LEGACY_COWORK_ROOT) {
+    return { ...config, claudeWorkspace: [...DEFAULT_SOURCE_CONFIG.claudeWorkspace!] };
+  }
+  return config;
 }
 
 function absoluteSourceRoot(input: string, home: string, baseDirectory: string): string {
