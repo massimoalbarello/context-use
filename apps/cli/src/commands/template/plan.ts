@@ -10,10 +10,15 @@ export const command = defineCommand("template plan", {
       schema: z.boolean().optional(),
       description: "Preview replacement of locally modified active AGENTS.md guides.",
     },
+    "overwrite-managed-pages": {
+      schema: z.boolean().optional(),
+      description: "Preview replacement of locally modified managed pages.",
+    },
   },
   handler: async ({ options }) => {
     const output = (await runKnowledgeTemplateCommand("plan", {
       overwriteGuides: options["overwrite-guides"] ?? false,
+      overwriteManagedPages: options["overwrite-managed-pages"] ?? false,
     })).trim();
     p.note(output || "No template changes", "Default template plan");
   },

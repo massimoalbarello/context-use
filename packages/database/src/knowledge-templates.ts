@@ -233,6 +233,7 @@ export async function reconcileKnowledgeTemplate(
   templateName = "default",
   apply = false,
   overwriteGuides = false,
+  overwriteManagedPages = false,
 ): Promise<TemplateResult> {
   assertTemplateName(templateName);
   const rootUrl = new URL(`${templateName}/`, TEMPLATES_ROOT);
@@ -384,6 +385,14 @@ export async function reconcileKnowledgeTemplate(
         continue;
       }
       actions.push({ action: "adopt-page", path: input.path, detail: "Adopt matching local template page" });
+      if (apply) {
+        const update: UpdatePageInput = { ...input, expected_version_number: existing.version_number };
+        await repositories.pages.update(existing.id, update, templateActor(templateName));
+      }
+      continue;
+    }
+    if (overwriteManagedPages) {
+      actions.push({ action: "update-page", path: input.path, detail: "Overwrite locally modified template page" });
       if (apply) {
         const update: UpdatePageInput = { ...input, expected_version_number: existing.version_number };
         await repositories.pages.update(existing.id, update, templateActor(templateName));
