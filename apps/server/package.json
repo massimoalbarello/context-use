@@ -17,7 +17,7 @@
     "@context-use/database": "workspace:*",
     "@context-use/shared": "workspace:*",
     "@elysiajs/static": "1.4.10",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@simplewebauthn/server": "13.3.2",
     "@zip.js/zip.js": "2.8.31",
     "better-auth": "1.7.0-rc.1",
