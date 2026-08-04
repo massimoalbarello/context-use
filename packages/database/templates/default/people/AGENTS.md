@@ -56,6 +56,22 @@ Before researching or creating a person, search for an existing folder and ident
 which person is meant from the company, meeting, link, handle or other context the owner
 provided. If two candidates survive, stop and ask with the detail that separates them.
 
+### Identity required for creation
+
+A person page requires a confidently established first and last name, not a contact
+stub. Corroborate who the person is from the available evidence and retain supported
+identifiers in the appropriate aspects: email address or other contact, professional
+profile, current role, company, personal or company website, location, and the specific
+relationship or interactions that establish how the owner knows them. Not all of these
+must be available, but seek them before creating the page and keep enough context to
+distinguish the person from namesakes and future duplicates.
+
+An email address, display name, first name, handle, guessed surname, isolated profile,
+participant-list entry or company affiliation is not sufficient by itself. Cross-check
+the evidence against existing aliases and plausible candidates. If a complete identity
+still cannot be established, do not create the folder; ask the owner with the likely
+candidates and the exact fact needed to choose between them.
+
 ## Template
 
     # <Name>                                         ← intro

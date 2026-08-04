@@ -35,6 +35,21 @@ An incidental affiliation or passing reference is not enough. Create the company
 when repeated or material relevance makes it independently useful; otherwise keep the
 justified knowledge under its actual subject.
 
+### Identity required for creation
+
+A company page requires its canonical name and enough corroborating context to
+distinguish the organization from similarly named companies and future duplicates.
+Establish what it does and, when available, its official website or domain; retain other
+supported identifiers such as relevant people, products, location or legal name in the
+appropriate aspects. Search existing folders, aliases and linked people before creating
+a new one.
+
+A sender domain, email signature, logo, abbreviated name or passing mention is not
+sufficient by itself. A domain is evidence, not automatic proof that the sender's
+organization and the company being discussed are the same. If research leaves multiple
+plausible companies, do not create the folder; ask the owner with the candidates and the
+fact needed to distinguish them.
+
 ## Templates
 
     # <Company>                                    ← intro

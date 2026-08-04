@@ -471,6 +471,20 @@ describe("knowledge templates", () => {
     ]
       .join("\n")
       .toLowerCase();
+    const allEntityGuides = [
+      about,
+      companies,
+      events,
+      library,
+      meetings,
+      objects,
+      people,
+      places,
+      projects,
+      tasks,
+    ]
+      .join("\n")
+      .toLowerCase();
 
     for (const guide of [
       "about/agents",
@@ -561,6 +575,27 @@ describe("knowledge templates", () => {
     expect(normalizedActivityDistiller).toContain("own only this automation's single bullet");
     expect(normalizedActivityDistiller).toContain("state page with this call's `next_checkpoint`");
     expect(normalizedActivityDistiller).toContain("Continue until `has_more` is false");
+    expect(normalizedActivityDistiller).toContain("external harness owns the invocation schedule");
+    expect(normalizedActivityDistiller).toContain("Treat a confirmed upcoming meeting as a proactive research trigger");
+    expect(normalizedActivityDistiller).toContain("Search connected evidence for earlier meetings, substantive email exchanges");
+    expect(normalizedActivityDistiller).toContain("Ignore unsolicited messages the owner does not meaningfully engage with");
+    expect(normalizedActivityDistiller).toContain("Ask the owner through the harness only after doing the available research");
+    expect(normalizedActivityDistiller).toContain("Treat every provider record as evidence about subjects");
+    expect(normalizedActivityDistiller).toContain("These are one connected knowledge change, not independent source summaries");
+    expect(normalizedActivityDistiller).toContain("A calendar-shaped record is not automatically a meeting");
+    expect(normalizedActivityDistiller).toContain("classify it by the occurrence's actual subject under [[meetings/agents|Meetings]] and [[events/agents|Events]]");
+    expect(normalizedActivityDistiller).toContain("The provider's label does not override those guides");
+    expect(normalizedActivityDistiller).toContain("Material historical evidence and newly arriving evidence may both justify **creating** canonical entities");
+    expect(normalizedActivityDistiller).toContain("the existing knowledge base has been checked for aliases or duplicates");
+    expect(normalizedActivityDistiller).toContain("link the new entity to the material email, meeting, event, diary entry, project, task or other canonical subject");
+    expect(normalizedActivityDistiller).toContain("read the complete root-to-leaf guide chain **before deciding that creation is allowed**");
+    expect(normalizedActivityDistiller).toContain("does not redefine the schemas for projects, tasks, people, companies, meetings, events or any future entity type");
+    expect(people).toContain("A person page requires a confidently established first and last name");
+    expect(people).toContain("An email address, display name, first name, handle, guessed surname");
+    expect(companies).toContain("A company page requires its canonical name and enough corroborating context");
+    expect(companies).toContain("A sender domain, email signature, logo, abbreviated name");
+    expect(activityDistiller).not.toContain("A person requires a confidently established first and last name");
+    expect(activityDistiller).not.toContain("A company requires its canonical name");
     expect(normalizedRootLower).toContain("reconcile; never append by default");
     expect(normalizedRootLower).toContain("as concise as possible, but no more concise than the truth allows");
     const activityDistillerLower = activityDistiller.toLowerCase();
@@ -582,6 +617,22 @@ describe("knowledge templates", () => {
     ]) {
       expect(allDefaultGuides).not.toContain(automationSpecificDetail);
     }
+    for (const automationConcern of [
+      "activity-distiller",
+      "external harness",
+      "invocation schedule",
+      "read_source_records",
+      "record_ref",
+      "next_checkpoint",
+      "has_more",
+      "opaque checkpoint",
+      "provider record",
+      "pipeline run",
+      "run history",
+      "nango",
+    ]) {
+      expect(allEntityGuides).not.toContain(automationConcern);
+    }
     for (const requiredInstructionDetail of [
       "activity-distiller",
       "read_source_records",
@@ -594,8 +645,6 @@ describe("knowledge templates", () => {
       "existing backlogs",
       "next scheduled invocation",
       "pruned deletion",
-      "repository or burst of activity",
-      "participant lists, handles, domains",
     ]) {
       expect(activityDistillerLower).toContain(requiredInstructionDetail);
     }
