@@ -1,6 +1,6 @@
 {
   "name": "@context-use/server",
-  "version": "0.1.45",
+  "version": "0.1.53",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,9 +17,9 @@
     "@context-use/database": "workspace:*",
     "@context-use/shared": "workspace:*",
     "@elysiajs/static": "1.4.10",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@simplewebauthn/server": "13.3.2",
-    "@zip.js/zip.js": "2.8.31",
+    "@zip.js/zip.js": "2.8.34",
     "better-auth": "1.7.0-rc.1",
     "elysia": "1.4.29",
     "jose": "6.2.4",

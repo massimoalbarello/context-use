@@ -45,6 +45,74 @@ jobs:
           provenance: mode=max
           sbom: true
 
+  nango_image:
+    runs-on: ubuntu-24.04
+    outputs:
+      digest: ${{ steps.nango.outputs.digest }}
+      integrations_digest: ${{ steps.integrations.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - id: source
+        name: Resolve pinned Nango source
+        run: echo "sha=$(git -C nango rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Verify deployer CLI compatibility
+        run: |
+          runtime_cli="$(jq -r .version nango/packages/cli/package.json)"
+          deployer_cli="$(jq -r .dependencies.nango nango-integrations/package.json)"
+          test "$deployer_cli" = "$runtime_cli"
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: 1.3.11 }
+      - name: Validate integration deployer
+        working-directory: nango-integrations
+        run: |
+          bun install --frozen-lockfile
+          bun test
+          bun run typecheck
+          bun run compile
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: nango
+        uses: docker/build-push-action@v7
+        with:
+          context: ./nango
+          file: ./nango/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-nango:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}-nango:source-${{ steps.source.outputs.sha }}
+          build-args: git_hash=${{ steps.source.outputs.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/massimoalbarello/nango
+            org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha,scope=nango
+          cache-to: type=gha,mode=max,scope=nango
+          provenance: mode=max
+          sbom: true
+      - id: integrations
+        uses: docker/build-push-action@v7
+        with:
+          context: ./nango-integrations
+          file: ./nango-integrations/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/${{ github.repository }}-nango:integrations-${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha,scope=nango-integrations
+          cache-to: type=gha,mode=max,scope=nango-integrations
+          provenance: mode=max
+          sbom: true
+
   cli:
     strategy:
       matrix:
@@ -73,7 +141,7 @@ jobs:
           path: context-use-${{ matrix.os_name }}-${{ matrix.arch }}.tar.gz
 
   publish:
-    needs: [images, cli]
+    needs: [images, nango_image, cli]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -87,8 +155,29 @@ jobs:
           TAG: ${{ github.ref_name }}
           APP_DIGEST: ${{ needs.images.outputs.app_digest }}
           BACKUP_DIGEST: ${{ needs.images.outputs.backup_digest }}
+          NANGO_DIGEST: ${{ needs.nango_image.outputs.digest }}
+          NANGO_INTEGRATIONS_DIGEST: ${{ needs.nango_image.outputs.integrations_digest }}
         run: |
-          tar -czf "artifacts/context-use-deployment-${TAG}.tar.gz" infra deploy
+          staging="$(mktemp -d)"
+          trap 'rm -rf "$staging"' EXIT
+          cp -R infra deploy "$staging/"
+          nango_image="ghcr.io/${GITHUB_REPOSITORY}-nango@${NANGO_DIGEST}"
+          nango_integrations_image="ghcr.io/${GITHUB_REPOSITORY}-nango@${NANGO_INTEGRATIONS_DIGEST}"
+          if [[ ! "$nango_image" =~ ^ghcr\.io/massimoalbarello/context-use-nango@sha256:[a-f0-9]{64}$ ]]; then
+            echo "Invalid Nango image reference" >&2
+            exit 1
+          fi
+          if [[ ! "$nango_integrations_image" =~ ^ghcr\.io/massimoalbarello/context-use-nango@sha256:[a-f0-9]{64}$ ]]; then
+            echo "Invalid Nango integrations image reference" >&2
+            exit 1
+          fi
+          if [ "$nango_image" = "$nango_integrations_image" ]; then
+            echo "Nango runtime and integrations images unexpectedly have the same digest" >&2
+            exit 1
+          fi
+          printf 'NANGO_IMAGE=%s\nNANGO_INTEGRATIONS_IMAGE=%s\n' \
+            "$nango_image" "$nango_integrations_image" > "$staging/deploy/release-images.env"
+          tar -czf "artifacts/context-use-deployment-${TAG}.tar.gz" -C "$staging" infra deploy
           bundle_sha="$(sha256sum "artifacts/context-use-deployment-${TAG}.tar.gz" | cut -d' ' -f1)"
           jq -n \
             --arg version "$TAG" \

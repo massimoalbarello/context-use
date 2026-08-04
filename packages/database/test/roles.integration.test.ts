@@ -14,8 +14,8 @@ describeDatabase("PostgreSQL security roles", () => {
     await admin.connect();
     for (const [path, title] of [["test", "Test"], ["tests", "Tests"], ["profile", "Profile"], ["profile/work", "Work"]]) {
       await admin.query(
-        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-         VALUES ($1,$2,$3,$4,'',directory_search_vector($2,$3,$4,''))
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+         VALUES ($1,$2,$3,$4,directory_search_vector($2,$3,$4,''))
          ON CONFLICT (current_path) DO NOTHING`,
         [randomUUID(), path, title, `Fixtures under ${path}.`],
       );
@@ -339,6 +339,7 @@ describeDatabase("PostgreSQL security roles", () => {
            'confirm_knowledge_export_intent',
            'confirm_page_deletion_intent',
            'claim_knowledge_export_download',
+           'delete_empty_knowledge_directory',
            'prune_page_versions',
            'remove_owner_passkey',
            'project_public_markdown'
@@ -351,6 +352,7 @@ describeDatabase("PostgreSQL security roles", () => {
       { proname: "confirm_page_deletion_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_publication_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "consume_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
+      { proname: "delete_empty_knowledge_directory", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "issue_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "project_public_markdown", owner: "context_use_projection_owner", security_definer: true },
       { proname: "prune_page_versions", owner: "context_use_boundary_owner", security_definer: true },
@@ -358,6 +360,7 @@ describeDatabase("PostgreSQL security roles", () => {
     ]);
 
     for (const [relation, column] of [
+      ["knowledge_directories", "title"],
       ["knowledge_page_versions", "body_markdown"],
       ["knowledge_page_versions", "title"],
       ["assets", "s3_object_key"],
@@ -379,6 +382,50 @@ describeDatabase("PostgreSQL security roles", () => {
         "SELECT has_column_privilege('context_use_boundary_owner',$1,$2,'SELECT') AS allowed",
         [relation, column],
       )).rows[0]?.allowed).toBe(true);
+    }
+  });
+
+  test("dashboard and MCP can invoke only the guarded directory deletion capability", async () => {
+    for (const role of ["context_use_dashboard", "context_use_mcp"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege($1,'knowledge_directories','DELETE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,'delete_empty_knowledge_directory(uuid,integer)','EXECUTE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(true);
+
+      const id = randomUUID();
+      const path = `tests/guarded-delete-${role.replace("context_use_", "")}-${id.slice(0, 8)}`;
+      await admin.query("BEGIN");
+      try {
+        await admin.query(
+          `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+           VALUES ($1,$2,'Guarded delete','',directory_search_vector($2,'Guarded delete','',''))`,
+          [id, path],
+        );
+        await admin.query(`SET LOCAL ROLE ${role}`);
+        await expectDenied("DELETE FROM knowledge_directories WHERE id=$1", [id]);
+        const result = await admin.query<{ result: { status: string; id: string } }>(
+          "SELECT delete_empty_knowledge_directory($1,1) AS result",
+          [id],
+        );
+        expect(result.rows[0]?.result).toMatchObject({ status: "deleted", id });
+        await admin.query("RESET ROLE");
+        await admin.query("COMMIT");
+      } catch (error) {
+        await admin.query("ROLLBACK");
+        throw error;
+      }
+      expect((await admin.query("SELECT 1 FROM knowledge_directories WHERE id=$1", [id])).rowCount).toBe(0);
+    }
+
+    for (const role of ["context_use_auth", "context_use_public", "context_use_confirmation", "context_use_storage", "context_use_backup"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,'delete_empty_knowledge_directory(uuid,integer)','EXECUTE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
     }
   });
 
@@ -708,8 +755,8 @@ describeDatabase("PostgreSQL security roles", () => {
     await admin.query("BEGIN");
     try {
       await admin.query(
-        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-         VALUES ($1,$2,'Lifecycle fixture','A directory for publication lifecycle tests.','',directory_search_vector($2,'Lifecycle fixture','A directory for publication lifecycle tests.',''))`,
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+         VALUES ($1,$2,'Lifecycle fixture','A directory for publication lifecycle tests.',directory_search_vector($2,'Lifecycle fixture','A directory for publication lifecycle tests.',''))`,
         [randomUUID(), `tests/${suffix}`],
       );
       await admin.query(
@@ -795,87 +842,68 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("automation roles allow independent creation without definition updates", async () => {
-    expect((await admin.query<{ removed: boolean }>(
-      "SELECT to_regclass('agent_skills') IS NULL AND to_regclass('agent_skill_versions') IS NULL AS removed",
-    )).rows[0]?.removed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','automation_versions','instructions_markdown','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','automation_versions','instructions_markdown','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','automation_versions','instructions_markdown','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','automation_versions','instructions_markdown','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','automation_key','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','current_version_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','instructions_page_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','automation_key','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','cron_schedules','cron_expression','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','cron_schedules','deleted_at','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','automation_runs','status','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','automation_runs','automation_version_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','automation_runs','status','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','knowledge_pages','automation_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_dashboard','knowledge_pages','automation_id','INSERT') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_mcp','knowledge_pages','automation_id','UPDATE') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
+  test("scheduler state is absent and automation instructions use ordinary private pages", async () => {
+    const removed = await admin.query<{
+      schedules: string | null;
+      versions: string | null;
+      runs: string | null;
+      provenance_columns: string;
+    }>(
+      `SELECT
+         to_regclass('cron_schedules')::text AS schedules,
+         to_regclass('automation_versions')::text AS versions,
+         to_regclass('automation_runs')::text AS runs,
+         (
+           SELECT count(*)::text
+           FROM information_schema.columns
+           WHERE table_schema='public'
+             AND table_name='knowledge_pages'
+             AND column_name='automation_id'
+         ) AS provenance_columns`,
+    );
+    expect(removed.rows[0]).toEqual({
+      schedules: null,
+      versions: null,
+      runs: null,
+      provenance_columns: "0",
+    });
+
+    await admin.query("BEGIN");
+    try {
+      const pageId = randomUUID();
+      const versionId = randomUUID();
+      await admin.query("SET LOCAL ROLE context_use_mcp");
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,search_vector)
+         VALUES ($1,'automations/external-instructions',$2,page_search_vector(
+           'automations/external-instructions','External automation instructions',
+           'Instructions followed by an external automation harness.','Run externally.'
+         ))`,
+        [pageId, versionId],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,summary,body_markdown,
+           commit_message,actor_kind,actor_subject
+         ) VALUES (
+           $1,$2,1,'automations/external-instructions','External automation instructions',
+           'Instructions followed by an external automation harness.',
+           'Run externally.','Create external automation instructions','mcp','role-test'
+         )`,
+        [versionId, pageId],
+      );
+      await admin.query("SET CONSTRAINTS ALL IMMEDIATE");
+      await admin.query("RESET ROLE");
+    } finally {
+      await admin.query("ROLLBACK");
+    }
+
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_any_column_privilege('context_use_mcp','publication_intents','INSERT') AS allowed",
     )).rows[0]?.allowed).toBe(false);
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_any_column_privilege('context_use_dashboard','publication_intents','INSERT') AS allowed",
     )).rows[0]?.allowed).toBe(true);
-  });
-
-  test("completed automation history uses concise summaries and keyset pagination storage", async () => {
-    const constraint = await admin.query<{ definition: string }>(
-      `SELECT pg_get_constraintdef(oid) AS definition
-       FROM pg_constraint
-       WHERE conrelid='automation_runs'::regclass
-         AND conname='automation_runs_result_summary_check'`,
-    );
-    expect(constraint.rows[0]?.definition).toContain("length(result_summary) <= 500");
-
-    const index = await admin.query<{ definition: string; valid: boolean }>(
-      `SELECT pg_get_indexdef(indexrelid) AS definition,indisvalid AS valid
-       FROM pg_index
-       WHERE indexrelid='automation_runs_completed_idx'::regclass`,
-    );
-    expect(index.rows[0]?.valid).toBe(true);
-    expect(index.rows[0]?.definition).toContain("(completed_at DESC, id DESC)");
-    expect(index.rows[0]?.definition).toContain("'succeeded'");
-    expect(index.rows[0]?.definition).toContain("'failed'");
   });
 
   test("auth role cannot read knowledge tables", async () => {

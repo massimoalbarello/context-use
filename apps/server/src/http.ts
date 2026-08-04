@@ -1,8 +1,8 @@
 import {
-  AutomationValidationError,
-  AutomationVersionConflictError,
+  DirectoryNotEmptyError,
   DirectoryVersionConflictError,
   PublicationStateError,
+  RootDirectoryDeletionError,
   VersionConflictError,
 } from "@context-use/database";
 import { z } from "zod";
@@ -30,11 +30,13 @@ export function routeError(error: unknown): Response {
   if (error instanceof DirectoryVersionConflictError) {
     return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
   }
-  if (error instanceof PublicationStateError) return problem(error.message, 409, "publication_state");
-  if (error instanceof AutomationValidationError) return problem(error.message, 422, "automation_validation");
-  if (error instanceof AutomationVersionConflictError) {
-    return json({ error: "version_conflict", current_version_number: error.currentVersion }, 409);
+  if (error instanceof DirectoryNotEmptyError) {
+    return json({ error: "directory_not_empty", message: error.message, contents: error.contents }, 409);
   }
+  if (error instanceof RootDirectoryDeletionError) {
+    return problem(error.message, 409, "directory_protected");
+  }
+  if (error instanceof PublicationStateError) return problem(error.message, 409, "publication_state");
   if (error instanceof z.ZodError) return json({ error: "validation_error", issues: error.issues }, 422);
   if (error instanceof Error && "code" in error) {
     const code = String((error as Error & { code: unknown }).code);

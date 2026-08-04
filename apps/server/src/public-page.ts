@@ -96,7 +96,7 @@ export function renderPublicIndexDocument(index: {
   const navigation = renderKnowledgeNavigation(index.path, title);
   const entries = index.entries.map((entry) => {
     const entryTitle = entry.title ?? humanizePath(entry.path);
-    const description = entry.summary ?? (entry.kind === "page" ? "Published page." : "Published folder.");
+    const description = entry.summary?.trim() || (entry.kind === "page" ? "Published page." : "Published folder.");
     const href = entry.kind === "page"
       ? publicPageHref(entry.path)!
       : publicPageHref(entry.default_page_path) ?? indexHref(entry.path);

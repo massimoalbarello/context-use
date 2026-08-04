@@ -16,7 +16,6 @@ export type KnowledgeExportDirectory = {
   current_path: string;
   title: string;
   summary: string;
-  intro_markdown: string;
 };
 
 export type KnowledgeExportAsset = {
@@ -82,7 +81,6 @@ export class KnowledgeExportRepository {
                SELECT sum(
                  octet_length(directory.title)
                  + octet_length(directory.summary)
-                 + octet_length(directory.intro_markdown)
                )
                FROM knowledge_directories directory
              ),0)
@@ -153,7 +151,7 @@ export class KnowledgeExportRepository {
     return transaction(this.dashboardPool, async (client) => {
       await client.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY");
       const directories = await client.query<KnowledgeExportDirectory>(
-        `SELECT id,current_path,title,summary,intro_markdown
+        `SELECT id,current_path,title,summary
          FROM knowledge_directories
          ORDER BY current_path,id`,
       );

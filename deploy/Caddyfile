@@ -33,12 +33,6 @@
 		}
 		reverse_proxy private-mcp:3003
 	}
-	handle /mcp/execution {
-		request_body {
-			max_size 3MB
-		}
-		reverse_proxy private-mcp:3003
-	}
 	handle /api/mcp/assets/*/content {
 		request_body {
 			max_size 5GB
@@ -103,5 +97,28 @@
 	}
 	handle {
 		respond "Not found" 404
+	}
+}
+
+{$NANGO_HOSTNAME} {
+	encode zstd gzip
+	header {
+		-Server
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+	}
+
+	handle_path /connect-ui/* {
+		reverse_proxy nango-server:3009
+	}
+	handle /connect-ui {
+		redir /connect-ui/ 308
+	}
+	handle {
+		request_body {
+			max_size 75MB
+		}
+		reverse_proxy nango-server:3003
 	}
 }

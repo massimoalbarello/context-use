@@ -2,7 +2,8 @@ import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { bootstrapStateBucket } from "../aws.ts";
 import { retainedDataVolumeExists } from "../data-volume.ts";
-import { deploy, prepareCompute } from "../deploy.ts";
+import { deploy, prepareCompute, refreshNangoPipelineRuntime } from "../deploy.ts";
+import { ensureNangoApiKeys } from "../nango.ts";
 import { readConfig } from "../paths.ts";
 import { deploymentRoot, releaseManifest } from "../release.ts";
 import { ensureRuntimeParameters, ownerSetupUrl, pauseForManualDns } from "../setup.ts";
@@ -33,7 +34,9 @@ export const command = defineCommand("resume", {
     await prepareCompute(config, data, compute);
     await ensureRuntimeParameters(config, data, compute);
     if (await pauseForManualDns(config, compute)) return;
-    await deploy(config, compute, manifest);
-    p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}`);
+    await deploy(config, compute, manifest, { installTemplate: "default" });
+    await ensureNangoApiKeys(config, data);
+    await refreshNangoPipelineRuntime(config, compute);
+    p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}\n\nNango dashboard credentials:\ncontext-use nango credentials`);
   },
 });

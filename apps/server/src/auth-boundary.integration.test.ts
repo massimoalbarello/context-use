@@ -158,40 +158,27 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("cookie credentials are rejected by MCP with discovery metadata", async () => {
-    for (const [endpoint, metadata] of [
-      ["/mcp", "oauth-protected-resource/mcp"],
-      ["/mcp/execution", "oauth-protected-resource/mcp/execution"],
-    ] as const) {
-      const response = await application!.handle(new Request(`http://localhost:3000${endpoint}`, {
-        method: "POST",
-        headers: { cookie: "context-use.session_token=forged", "content-type": "application/json" },
-        body: "{}",
-      }));
-      expect(response.status).toBe(401);
-      expect(response.headers.get("www-authenticate")).toContain(metadata);
-    }
+    const response = await application!.handle(new Request("http://localhost:3000/mcp", {
+      method: "POST",
+      headers: { cookie: "context-use.session_token=forged", "content-type": "application/json" },
+      body: "{}",
+    }));
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource/mcp");
   });
 
   test("MCP transport methods always use the private MCP boundary", async () => {
-    for (const endpoint of ["/mcp", "/mcp/execution"]) {
-      for (const method of ["GET", "DELETE"]) {
-        const response = await application!.handle(new Request(`http://localhost:3000${endpoint}`, { method }));
-
-        expect(response.status).toBe(401);
-        expect(response.headers.get("www-authenticate")).toContain(
-          endpoint.endsWith("/execution")
-            ? "oauth-protected-resource/mcp/execution"
-            : "oauth-protected-resource/mcp",
-        );
-      }
+    for (const method of ["GET", "DELETE"]) {
+      const response = await application!.handle(new Request("http://localhost:3000/mcp", { method }));
+      expect(response.status).toBe(401);
+      expect(response.headers.get("www-authenticate")).toContain("oauth-protected-resource/mcp");
     }
   });
 
-  test("protected-resource discovery advertises separate knowledge and execution resources", async () => {
+  test("protected-resource discovery advertises only the knowledge resource", async () => {
     for (const [path, resource, resourceName] of [
       ["/.well-known/oauth-protected-resource", "http://localhost:3000/mcp", "context-use personal knowledge base"],
       ["/.well-known/oauth-protected-resource/mcp", "http://localhost:3000/mcp", "context-use personal knowledge base"],
-      ["/.well-known/oauth-protected-resource/mcp/execution", "http://localhost:3000/mcp/execution", "context-use automation execution"],
     ] as const) {
       const response = await application!.handle(new Request(`http://localhost:3000${path}`));
       expect(response.status).toBe(200);
@@ -201,6 +188,13 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         scopes_supported: ["mcp:access"],
       });
     }
+    expect((await application!.handle(new Request(
+      "http://localhost:3000/.well-known/oauth-protected-resource/mcp/execution",
+    ))).status).toBe(404);
+    expect((await application!.handle(new Request(
+      "http://localhost:3000/mcp/execution",
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+    ))).status).toBe(404);
   });
 
   test("private asset access requires a dashboard session on the dashboard origin", async () => {
@@ -251,16 +245,16 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     try {
       await client.query("BEGIN");
       await client.query(
-        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
-         VALUES ($1,'tests','Tests','Integration test knowledge.','',directory_search_vector('tests','Tests','Integration test knowledge.',''))
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
+         VALUES ($1,'tests','Tests','Integration test knowledge.',directory_search_vector('tests','Tests','Integration test knowledge.',''))
          ON CONFLICT (current_path) DO NOTHING`,
         [crypto.randomUUID()],
       );
       await client.query(
-        `INSERT INTO knowledge_directories(id,current_path,title,summary,intro_markdown,search_vector)
+        `INSERT INTO knowledge_directories(id,current_path,title,summary,search_vector)
          VALUES
-           ($1,$2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY','PRIVATE-DIRECTORY-INTRO-CANARY',directory_search_vector($2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY','PRIVATE-DIRECTORY-INTRO-CANARY')),
-           ($3,$4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY','PRIVATE-NESTED-DIRECTORY-INTRO-CANARY',directory_search_vector($4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY','PRIVATE-NESTED-DIRECTORY-INTRO-CANARY'))`,
+           ($1,$2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY',directory_search_vector($2,'PRIVATE-DIRECTORY-TITLE-CANARY','PRIVATE-DIRECTORY-SUMMARY-CANARY','')),
+           ($3,$4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY',directory_search_vector($4,'PRIVATE-NESTED-DIRECTORY-TITLE-CANARY','PRIVATE-NESTED-DIRECTORY-SUMMARY-CANARY',''))`,
         [parentDirectoryId, parentPath, nestedDirectoryId, nestedPath],
       );
       await client.query(
@@ -436,10 +430,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     createdClients.push(client.client_id);
     expect(client.scope).toBe("mcp:access");
 
-    for (const resource of [
-      "http://localhost:3000/mcp",
-      "http://localhost:3000/mcp/execution",
-    ]) {
+    for (const resource of ["http://localhost:3000/mcp"]) {
       const authorization = new URL("http://localhost:3000/api/auth/oauth2/authorize");
       authorization.search = new URLSearchParams({
         client_id: client.client_id,
@@ -452,6 +443,107 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       const response = await application!.handle(new Request(authorization));
       expect(response.status).toBe(302);
       expect(response.headers.get("location")).toContain("error_description=pkce+is+required+for+public+clients");
+    }
+  });
+
+  test("a retried refresh rotation replays its replacement without invalidating the token family", async () => {
+    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const registration = await application!.handle(new Request("http://localhost:3000/api/auth/oauth2/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "context-use refresh rotation test",
+        redirect_uris: ["http://127.0.0.1:49322/callback"],
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        scope: "offline_access mcp:access",
+      }),
+    }));
+    expect(registration.status).toBe(201);
+    const registered = await registration.json() as { client_id: string };
+    createdClients.push(registered.client_id);
+
+    const originalRefreshToken = `refresh-${crypto.randomUUID()}`;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(originalRefreshToken));
+    const storedRefreshToken = Buffer.from(digest).toString("base64url");
+    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    await client.connect();
+    let createdOwner = false;
+    try {
+      const owner = await client.query(
+        `INSERT INTO "user"(id,name,email,"emailVerified")
+         VALUES ('context-use-owner','Owner',$1,true)
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id`,
+        [config.OWNER_EMAIL],
+      );
+      createdOwner = Boolean(owner.rowCount);
+      await client.query(
+        `INSERT INTO "oauthRefreshToken"(
+           id,token,"clientId","userId","expiresAt","createdAt",scopes,resources
+         ) VALUES ($1,$2,$3,'context-use-owner',now()+interval '30 days',now(),$4::jsonb,$5::jsonb)`,
+        [
+          crypto.randomUUID(),
+          storedRefreshToken,
+          registered.client_id,
+          JSON.stringify(["offline_access", "mcp:access"]),
+          JSON.stringify([config.MCP_RESOURCE]),
+        ],
+      );
+
+      const refresh = (token: string) => application!.handle(new Request(
+        "http://localhost:3000/api/auth/oauth2/token",
+        {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "refresh_token",
+            client_id: registered.client_id,
+            refresh_token: token,
+          }),
+        },
+      ));
+
+      const firstResponse = await refresh(originalRefreshToken);
+      expect(firstResponse.status).toBe(200);
+      const first = await firstResponse.json() as {
+        access_token: string;
+        refresh_token: string;
+      };
+      expect(first.refresh_token).toBeTruthy();
+
+      const replayResponse = await refresh(originalRefreshToken);
+      expect(replayResponse.status).toBe(200);
+      const replay = await replayResponse.json() as {
+        access_token: string;
+        refresh_token: string;
+      };
+      expect(replay.access_token).toBe(first.access_token);
+      expect(replay.refresh_token).toBe(first.refresh_token);
+
+      const replacementResponse = await refresh(first.refresh_token);
+      expect(replacementResponse.status).toBe(200);
+      const replacement = await replacementResponse.json() as { refresh_token: string };
+      expect(replacement.refresh_token).toBeTruthy();
+      expect(replacement.refresh_token).not.toBe(first.refresh_token);
+    } finally {
+      try {
+        await client.query(`DELETE FROM "oauthClient" WHERE "clientId"=$1`, [registered.client_id]);
+        if (createdOwner) {
+          await client.query("BEGIN");
+          try {
+            await client.query("SET LOCAL session_replication_role=replica");
+            await client.query(`DELETE FROM "user" WHERE id='context-use-owner'`);
+            await client.query("COMMIT");
+          } catch (error) {
+            await client.query("ROLLBACK");
+            throw error;
+          }
+        }
+      } finally {
+        await client.end();
+      }
     }
   });
 
