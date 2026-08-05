@@ -18,9 +18,13 @@ mirror records, keep a provider feed, or append updates to durable pages.
   belong under `automations/activity-distiller/`. Never store source records, record
   references, run logs, retry state, proposals or intermediate observations here or
   anywhere else in the knowledge base.
+- The external harness owns the invocation schedule. Do not assume a run time, cadence
+  or time of day; use the dates and times in the source evidence only to understand the
+  underlying activity.
 - Never publish. Do not preview unattended writes. If identity, placement or a claim is
-  too ambiguous to resolve from existing knowledge and the evidence, leave knowledge
-  unchanged and report the uncertainty to the harness.
+  too ambiguous to resolve after the research required below, leave the affected
+  knowledge unchanged and ask the owner through the harness. Include the likely
+  candidates and the smallest specific fact needed to disambiguate them.
 
 ## Process one batch at a time
 
@@ -66,16 +70,120 @@ activity date. For a deletion, the deletion modification time determines freshne
 Keep only evidence that changes future understanding. Material evidence includes a
 decision and its rationale, a consequential outcome, a meaningful change of direction,
 a milestone, an important commitment, a substantive external interaction, or progress
-needed to explain current state. Routine commits, ordinary reviews, acknowledgements,
-notifications, scheduling, administrative messages and repeated corroboration are
-omitted unless their effect was consequential. A valid run may update only the
+needed to explain current state. Apply a high bar to high-volume streams: importance is
+shown by the owner's substantive participation, a consequential relationship, a durable
+decision or fact, a real commitment, or a connection to an already important subject.
+Volume, recency and availability are not importance. A valid run may update only the
 checkpoint.
+
+- Ignore unsolicited messages the owner does not meaningfully engage with, newsletters,
+  receipts, platform notifications, automated alerts, cold outreach, acknowledgements,
+  routine scheduling and administrative mail by default. Do not create people or
+  companies merely because they appear in an inbox.
+- Preserve an email thread only through the knowledge it establishes. Prefer threads in
+  which the owner replies substantively, makes or receives a meaningful commitment,
+  develops an important relationship, explains their work or thinking, reaches a
+  decision, or materially advances an existing project or task. Never copy an email body
+  or create an email-thread page merely to summarize correspondence.
+- Routine commits, ordinary reviews and repeated corroboration are also omitted unless
+  their effect was consequential. Several low-value records do not become material by
+  accumulation.
+
+## Build connected knowledge
+
+Treat every provider record as evidence about subjects, never as the subject or the
+shape of the output. This must continue to work as new source types are connected: apply
+the same selection, identity, placement and reconciliation rules regardless of the
+provider or record schema.
+
+For each material fact or occurrence, identify the smallest set of canonical subjects
+needed to represent it coherently. Reconcile existing pages before creating missing
+ones, then add the links required to make the knowledge navigable in both directions
+under the applicable guides. A person may link to their company and a meeting; that
+meeting may link to a project or task; the relevant relationship timelines may link
+back to the occurrence. These are one connected knowledge change, not independent
+source summaries. Create only the pages that independently clear their own guide's
+threshold, and never invent a weak entity merely to complete the graph.
+
+Material historical evidence and newly arriving evidence may both justify **creating**
+canonical entities, not only updating entities that already exist. This includes a
+substantive email exchange or evidence from any other high-signal source. Creation is
+appropriate when the subject is independently useful, its identity is resolved, the
+existing knowledge base has been checked for aliases or duplicates, and the new page
+can be connected to the interaction and the other relevant canonical subjects in the
+same change. The underlying interaction does not need to be recent when its evidence is
+present in a returned source record; use the actual activity date and reconcile it with
+what is known now.
+
+## Identity gate for new entities
+
+Do not create an entity from a label or provider record alone. For every candidate new
+entity, call `prepare_knowledge_write` for its intended target and read the complete
+root-to-leaf guide chain **before deciding that creation is allowed**, not merely before
+performing the write. The owning directory guide defines that entity type's identity,
+creation threshold, structure and aspects; for example, follow [[people/agents|People]]
+for a person and [[companies/agents|Companies]] for a company. Do the same for every
+other target type rather than generalising the person or company schema to it.
+
+Use source evidence, existing knowledge, other connected sources and reliable public
+research together to satisfy the applicable guide and rule out aliases, namesakes and
+duplicates. Put identifying facts in the aspects prescribed by that guide, then link the
+new entity to the material email, meeting, event, diary entry, project, task or other
+canonical subject that made it relevant. If the guide's minimum identity cannot be
+established after research, make no entity page and ask the owner through the harness
+with the likely candidates and the exact missing fact.
+
+## Prepare from future signals
+
+Evidence of a consequential future interaction, commitment or occurrence is a trigger
+to gather the context that will be useful beforehand, even when it comes from a future
+source type. Research and reconcile the relevant existing subjects without recording
+the future activity as though it already happened.
+
+Treat a confirmed upcoming meeting as a proactive research trigger, including meetings
+later than the current day. A calendar-shaped record is not automatically a meeting:
+classify it by the occurrence's actual subject under [[meetings/agents|Meetings]] and
+[[events/agents|Events]]. The provider's label does not override those guides. Do not
+create both occurrence types unless each independently meets its own guide and the pages
+can link without duplicating their accounts.
+
+The calendar entry itself is not diary activity. It does not justify an `intro` page for
+a meeting or event that has not happened. A substantive upcoming meeting may justify
+creating or updating its `prep` page because that page is explicitly written beforehand;
+an upcoming event has no equivalent default prep page, so update only independently
+justified related knowledge until evidence supports an event page under its guide.
+
+For each such meeting:
+
+1. Resolve every external participant against existing people and companies, searching
+   aliases, email addresses, domains and linked entities before considering a new page.
+2. Search connected evidence for earlier meetings, substantive email exchanges,
+   introductions, commitments and shared projects or tasks. Read the canonical pages
+   those records point to so the result reconciles with what is already known.
+3. Research missing public identity and current-role facts using reliable sources such
+   as an official company site and a clearly matching professional profile. Cite those
+   sources on the claims they support, date changeable facts and retain only background
+   useful for this relationship or conversation.
+4. Reconcile the smallest connected set of people, company, relationship and, when
+   justified, meeting prep pages. Link them to one another and to prior canonical
+   meetings, events, diary entries, projects and tasks instead of repeating their
+   content. The prep page should surface why the meeting matters, relevant relationship
+   history and useful questions or unknowns; it is not a research dossier.
+
+Create participant and company entities only when the upcoming substantive interaction
+makes them independently useful and they satisfy their respective guides. If a required
+identity still cannot be established, do not create the uncertain entity or a meeting
+page that requires it. Ask the owner through the harness only after doing the available
+research, and group all ambiguities for the meeting into one concise question.
 
 ## Reconcile existing knowledge
 
 Search before creating. Read recent diary pages and every plausible canonical subject,
-including aliases and nearby pages, before deciding where evidence belongs. A repository,
-email thread, meeting title or provider boundary does not define a knowledge page.
+including aliases and nearby pages, before deciding where evidence belongs. Search
+across services when one source identifies a subject in another: calendar participants,
+email correspondents, earlier meetings or events, and public research should converge
+on the same canonical entities. A repository, email thread, calendar item, record type
+or provider boundary does not define a knowledge page.
 
 - Rewrite the whole affected account so it says what is best supported now. Merge
   overlap, remove superseded or low-value detail, reorganize headings, move material to
@@ -120,18 +228,14 @@ not the automation run.
 
 ## Creation thresholds and connected updates
 
-- Create a project only for an explicit or strongly evidenced enduring body of work
-  whose identity survives individual deliverables. A repository or burst of activity
-  alone is insufficient.
-- Create a task only for a substantial finite future-facing outcome, experiment or
-  decision frame. Completed activity by itself is not a task.
-- Create a person, company or other entity only after a material interaction or repeated
-  evidence makes it independently useful. Resolve identity first; do not create stubs
-  from participant lists, handles, domains or incidental mentions.
-- Create a meeting only when the conversation is worth preserving and its participants
-  can be resolved under the meeting and people guides. Distil it; never copy a transcript.
-  Keep what was said separate from what the owner concluded, record commitments as
-  historical facts, and update material person or company timelines in the same change.
+- Historical evidence, new evidence and substantive confirmed future interactions can
+  all trigger entity creation. For each candidate, apply the identity gate above and the
+  target directory's creation threshold. A provider record type, isolated identifier,
+  repeated low-value evidence or a desire to complete a graph never overrides the guide.
+- Follow the target guide for what content belongs on the new or reconciled page. The
+  distiller selects material evidence and coordinates the connected write; it does not
+  redefine the schemas for projects, tasks, people, companies, meetings, events or any
+  future entity type.
 - When a diary entry records a material relationship or project milestone, update the
   applicable curated timeline in the same change. A timeline is a sparse index of
   completed milestones, never current status or an exhaustive activity log.
