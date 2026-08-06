@@ -313,6 +313,14 @@ export const auth = betterAuth({
           ? "nango_dashboard_owner"
           : "mcp_agent",
       }),
+      // The provider keeps the standard profile claims out of the ID token and
+      // serves them from UserInfo instead. OAuth2 Proxy guards the Nango edge
+      // with SKIP_CLAIMS_FROM_PROFILE_URL so it never calls UserInfo, and it
+      // refuses to create a session without a verified email, so carry both
+      // claims in the ID token for the clients granted the email scope.
+      customIdTokenClaims: ({ user, scopes }) => scopes.includes("email")
+        ? { email: user.email, email_verified: user.emailVerified === true }
+        : {},
       clientPrivileges: ({ user }) => user?.id === ownerUserId && isVerifiedOwner(user.email, user.emailVerified) ? true : undefined,
     }) as unknown as BetterAuthPlugin,
   ],

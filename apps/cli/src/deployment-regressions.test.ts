@@ -465,6 +465,28 @@ test("manual dashboard, asset, and Nango DNS must resolve to the deployment IP",
     .toEqual(["context.example.com", "assets.context.example.com", "nango.context.example.com"]);
 });
 
+test("the Nango SSO edge can read a verified email out of the ID token", async () => {
+  const [deployCompose, authSource] = await Promise.all([
+    Bun.file(new URL("../../../deploy/docker-compose.yml", import.meta.url)).text(),
+    Bun.file(new URL("../../server/src/auth.ts", import.meta.url)).text(),
+  ]);
+  const compose = Bun.YAML.parse(deployCompose) as {
+    services: Record<string, { environment?: Record<string, string> }>;
+  };
+  const environment = compose.services["oauth2-proxy"]?.environment ?? {};
+  // OAuth2 Proxy never calls UserInfo here, so the ID token is its only claim
+  // source, and it refuses to create a session without a verified email. The
+  // provider guards every standard claim out of the ID token by default, so
+  // these settings only work while auth.ts issues both claims itself.
+  expect(environment.OAUTH2_PROXY_SKIP_CLAIMS_FROM_PROFILE_URL).toBe("true");
+  expect(environment.OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL).toBe("false");
+  expect(environment.OAUTH2_PROXY_SCOPE).toContain("email");
+  const idTokenClaims = authSource.slice(authSource.indexOf("customIdTokenClaims:"));
+  expect(authSource).toContain("customIdTokenClaims:");
+  expect(idTokenClaims).toContain("email: user.email");
+  expect(idTokenClaims).toContain("email_verified");
+});
+
 test("the pinned Docker address pools hold every compose network and exclude the fixed subnets", async () => {
   const [userData, deployScript, deployCompose] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
