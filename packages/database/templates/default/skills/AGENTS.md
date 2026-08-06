@@ -1,11 +1,28 @@
 # Skills conventions
 
-**One page per skill** at `skills/<skill-name>` — kebab-case — whose body is a complete
-`SKILL.md`. Page history is the versioning; there is no other copy.
+Follow the [[agents|root guide]] for every convention not specific to skills. This guide
+adds the metadata and body contract needed for discoverable skills.
+
+## Discoverable shape
+
+Use one immediate page at `skills/<skill-name>`, where `<skill-name>` is kebab-case.
+Three values work together:
+
+1. The page metadata title is exactly `SKILL.md`.
+2. The page path leaf and YAML frontmatter `name` are exactly equal.
+3. The page metadata summary is the discovery mechanism. It says what the skill does
+   and includes the natural phrasings that should trigger it. Keep the YAML
+   `description` aligned with that summary, usually by using the same text.
+
+These are functional discovery constraints rather than stylistic preferences. An agent
+uses the metadata summary to decide whether to load the page; trigger-poor or drifting
+metadata makes the skill effectively invisible.
+
+The page body is the complete skill:
 
     ---
     name: <skill-name>
-    description: <what it does, and the phrasings that should trigger it>
+    description: <what it does and the phrasings that should trigger it>
     ---
 
     # <Skill name>
@@ -14,31 +31,13 @@
     ## Method
     ## Output
 
-**This is a deliberate flat-page directory**, the stated deviation from
-[[agents#entities-are-folders-and-views-are-pages|the root entity rule]]: a skill is
-loaded whole, by name, and the loaded thing is the page body. Adding a folder around it
-would put an `intro` between the agent and the instructions it came for.
+Page history provides versioning, so another copy is unnecessary.
 
-Promote one to `skills/<skill-name>/` only when a skill genuinely needs supporting
-material of its own — a template, a reference file, a worked example too long to inline.
-Keep the `SKILL.md` at `intro`, and verify the skill still loads under the new path
-before relying on it.
+## Skill-specific guidance
 
-A skill is loaded by an agent working **with** the owner. An automation runs unattended
-on a schedule in an external harness and lives in [[automations|`automations/`]] instead
-— the difference matters, because an automation writes without a preview and a skill
-does not.
+A skill is loaded by an agent working **with** the owner. An unattended scheduled
+workflow instead follows [[automations/agents|the automation guide]].
 
-## Local rules
-
-- **The `description` is the whole retrieval mechanism.** It is all an agent sees when
-  deciding whether to load the skill, so it states what the skill does *and* the phrasings
-  that should trigger it, including the ones that don't name the tool. A description that
-  only describes gets skipped.
-- **A skill assumes this base, it does not restate it.** Link [[agents|the root guide]] or
-  the relevant directory guide rather than copying rules in — a skill carrying its own
-  copy of the naming convention is one more thing to drift.
-- **Name what the skill may write.** A skill that creates pages states the paths it may
-  create, in the skill itself, and stays inside them.
-- **Say what the skill outputs**: a chat answer, a page, a file. A skill whose output is
-  ambiguous produces a different thing every run.
+State the paths or other resources the skill may change and the output it produces,
+such as a chat answer, page or file. Let the skill link the applicable guide rather than
+copying knowledge-base conventions into its body.

@@ -332,6 +332,19 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     }
     return json(await dashboardPages.listMetadata(includeArchived, true));
   })
+  .get("/api/dashboard/knowledge-changes", async ({ request, query }) => {
+    await ownerRequest(request);
+    const before = typeof query.before === "string"
+      ? z.string().regex(/^cu-page-changes-v1\.[0-9a-z]+$/).parse(query.before)
+      : undefined;
+    const limit = query.limit === undefined
+      ? 50
+      : z.coerce.number().int().min(1).max(100).parse(query.limit);
+    return json(await dashboardPages.recentChanges({
+      ...(before ? { before } : {}),
+      limit,
+    }));
+  })
   .get("/api/dashboard/directories", async ({ request, query }) => {
     await ownerRequest(request);
     return json(await dashboardDirectories.list(typeof query.q === "string" ? query.q : undefined));

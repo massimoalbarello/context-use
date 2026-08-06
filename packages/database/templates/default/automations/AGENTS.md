@@ -1,64 +1,49 @@
 # Automations conventions
 
-`automations/` stores the instructions, minimal durable state and supporting assets for
-automations that run in an **external harness**. The harness schedules and executes jobs
-and owns retries and run history. This base supplies versioned instructions, knowledge
-and one safe place for an opaque checkpoint. Credentials never belong on a page.
+Follow the [[agents|root guide]] for every convention not specific to automations. This
+guide adds only the shape and boundaries of unattended workflows.
 
-## Structure
+`automations/` holds versioned instructions, minimal durable state and true supporting
+assets for jobs run by an **external harness**. The harness owns scheduling, execution,
+retries, credentials and run history.
 
-- One stable kebab-case directory per automation: `automations/<automation-name>/`, as
-  [[agents#entities-are-folders-and-views-are-pages|every entity gets]].
-- Its canonical instruction page is `automations/<automation-name>/instructions`.
-  Reserve that leaf for it. This directory names its entry point `instructions` rather
-  than `intro`, because the page is addressed by the harness, not read as an
-  introduction.
-- When incremental input requires it, use exactly one stable
-  `automations/<automation-name>/state` page. It contains only the current opaque
-  checkpoint and, if useful, the last successful completion time. No dated state pages,
-  record ledger, retry log or copied source material.
-- Supporting context an automation needs — an HTML template, a prompt fragment — lives
-  beside it in the same directory, and nothing else does.
+## Suggested shape
 
-**`state` is the one place in this base that holds mutable state**, the stated exception
-to [[agents#durable-pages-and-the-diary|the root rule]]. It survives only because it is
-machine-owned, overwritten in full on every successful run, and never read as a claim
-about the world. Nothing else here carries a status: an automation that has not run is
-not a fact about the automation, and an automation's history belongs to the harness.
+    automations/<automation-name>/
+    ├── instructions  — the canonical operating contract
+    ├── state         — an optional opaque incremental checkpoint
+    └── <asset>       — a prompt fragment, template or other real dependency
 
-Maintain each instruction page as the canonical description of that automation. It
-should state the automation's purpose, inputs, intended knowledge effects, success and
-failure semantics, and reporting contract precisely enough for the external harness to
-run it without relying on undocumented conventions. Workflow-specific tool calls,
-selection policy and replay behavior belong on that page, not in this directory guide.
+- A stable kebab-case directory gives an automation a durable identity.
+- `instructions` is the useful default leaf for its canonical operating contract.
+- Incremental workflows may use one stable `state` page containing only the current
+  opaque checkpoint and, when useful, the last successful completion time. Run logs,
+  retry histories, source records and dated checkpoint pages belong to the harness.
+- Supporting assets sit beside the instructions only when the automation actually
+  consumes them.
 
-Rewrite instructions and state in place as their canonical account changes. Remove
-obsolete supporting assets instead of accumulating revisions or run-specific copies.
+The instruction page should make the automation runnable without hidden conventions:
+describe its purpose, inputs, intended knowledge effects, tool and selection policy,
+checkpoint and replay behavior, success and failure semantics, and workflow-specific
+reporting contract. Keep this directory guide general; those details belong to the
+individual automation.
 
-These are ordinary private pages, read and edited through the normal tools; the external
-harness reaches them over the authenticated connection. The harness still owns the
-schedule, credentials, process health and operational history.
+## Boundaries
 
-## Knowledge boundaries
+Knowledge created by an automation belongs with its real subject and follows that
+target's guide. Only the automation's own instructions, minimal state and dependencies
+belong here.
 
-- Knowledge produced by an automation follows [[agents#where-a-page-belongs|the root
-  placement rule]] and the target directory's guide. Nothing belongs under the
-  automation merely because the automation produced it; this directory contains only
-  its instructions, minimal state and true support assets.
-- **An automation maintains the timelines it touches.** When its write records something
-  that changed an entity's state, the dated line goes on that entity's `timeline` in the
-  same write, exactly as an interactive agent would add it.
-- **Automations do not know about each other.** Several run against this base, and none
-  is written in terms of another: an instruction page never names, links to, coordinates
-  with or defers to a second automation, and never assumes it is the only one writing.
-  They stay out of each other's way through ownership, not cooperation, so this guide is
-  where non-interference is stated and no instruction page repeats it.
-- **An automation owns what it writes and nothing else.** On a page it shares, that means
-  its own lines — the companion bullet it added, not the section holding it. Edit those
-  and leave every other byte as found, whoever wrote it. Access to a page is not
-  permission to rewrite it.
-- **Uncertain or unsupported proposed knowledge is reported through the external
-  harness**, not written into the diary or state.
-- An unattended automation is the root guide's preview exception because there is nobody
-  to ask ([[agents#before-writing-identify-propose-preview|root rule]]). Its instructions
-  must therefore state its intended effects and maintenance policy precisely.
+An unattended workflow can carry out the confident, useful changes described by the
+[[agents|root guide]] and reports its semantic changes through the external harness.
+Its own instructions should say how unresolved ambiguity or failure is reported.
+Copied provider data is not automation-page content.
+
+Automations do not coordinate through one another's instruction pages or assume that
+they are the only writer. Each workflow owns only its own instructions, state,
+dependencies and the exact knowledge fragments its contract tells it to maintain. On a
+shared page, preserve every other byte as found. Access to a page is not permission to
+rewrite material owned by another workflow or by the user.
+
+Maintain instructions, state and assets as their current canonical forms. Page history
+provides versioning; run-specific copies add no useful knowledge.

@@ -1,22 +1,14 @@
 # Diary conventions
 
-The rest of this base holds durable accounts of their subjects. The diary holds the
-owner's **present**: what they did, thought, decided and worried about on a given day.
-Treat it as working memory — its job is to let a future agent answer *what are they
-actually up to right now, and why*, then follow links outwards to the durable pages that
-explain it and backwards to the days the work came from.
-
-It is not a dump. Every entry is curated. If you are about to write something here that
-has a better home, put it there and link.
+This subtree inherits the [[about/agents|About conventions]]. The diary is the owner's
+working memory: a curated day-by-day account of what they did, thought, decided and
+worried about, with links to the durable subjects that explain it.
 
 ## Structure
 
-One folder per day at `about/diary/<YYYY>/<MM>/<DD>/`, segments zero-padded, with
-exactly one entry point: `<DD>/log`. The day folder holds pages and assets belonging to
-that day and nothing else.
-
-**Day folders are created on write, never in advance.** A day when nothing happened has
-no folder at all — an empty log is a memory leak with a date on it.
+Use one folder per day at `about/diary/<YYYY>/<MM>/<DD>/`, with zero-padded path
+segments and `<DD>/log` as the day's entry point. Create a day only when there is
+something useful to record; do not pre-create empty folders or logs.
 
 | Resource | Title |
 | --- | --- |
@@ -25,7 +17,9 @@ no folder at all — an empty log is a memory leak with a date on it.
 | `log` page | `Log — Monday, 27 July 2026` |
 | Other day pages | descriptive, date-suffixed |
 
-The log's summary captures the day and is written **last**, from the finished entry.
+The day folder contains only pages and assets belonging to that day. Give long or
+structured day-specific material its own descriptive page and link it from the log.
+Write the log summary last, from the finished entry.
 
 ## The log
 
@@ -33,148 +27,84 @@ The log's summary captures the day and is written **last**, from the finished en
 
     *<Location> · one line framing the day*
 
-    Narrative prose: what actually happened, what it felt like, what changed.
-    Link durable things inline as they come up — [[about/projects/…|Project]],
-    [[about/tasks/…|Task]],
-    people, companies — rather than re-explaining them.
+    Narrative prose about what happened, what it felt like and what changed, with
+    durable subjects linked inline.
 
     ## On my mind
-    - Short bullets. Thoughts, doubts, half-formed ideas, things being circled.
+    - Short thoughts, doubts and half-formed ideas.
 
     ## Threads
-    - [[about/projects/…|Project]] — what moved today · continues [[about/diary/…|24 Jul]]
-    - [[people/…|Person]] — what happened between them
+    - [[about/projects/…|Project]] — what moved · continues [[about/diary/…|24 Jul]]
 
     ## Companion pages
     - [[about/diary/…|Title]] — one line (automation: `<automation-slug>`)
 
-Headings are stable — these names, in this order. Omit a section entirely rather than
-leaving it empty, and don't invent top-level sections without a reason that generalises
-to other days. Write in the owner's first person.
+Keep these headings and order when the sections are useful; omit empty sections. The
+narrative carries the lived texture, `On my mind` holds emerging thoughts, `Threads` is
+the day's edge list, and `Companion pages` points to substantial material kept outside
+the log.
 
-**Threads is load-bearing**: it is the day's edge list, outwards into durable knowledge
-and backwards into the days this work came from. A day with no links is a warning sign,
-not a finished entry.
-
-## The placement rule
-
-Before writing anything, ask: **will this still matter on its own in a month?**
-
-- **No** → it belongs to the day: the log, or its own page in the day folder if it is
-  long or structured.
-- **Yes** → it belongs to a durable page elsewhere. Create or update that page, and let
-  the log record *that it happened today*, with a link.
-
-| Thing | Where it goes |
-| --- | --- |
-| How the day felt, a passing observation | the log |
-| Working notes or a draft that only matter today | day folder page, linked from the log |
-| A call, a conference, someone new, a company | the owning [[meetings/agents|meeting]], [[events/agents|event]], [[people/agents|person]] or [[companies/agents|company]] page; the log links, and a material milestone is indexed on the entity timeline |
-| A new idea, or a decision and its reasoning | the durable page for the subject; the log keeps the lived reasoning |
-| A preference, taste, habit or belief articulated | a durable owner page, following the instance's organization under `about/` |
-| An open loop still open tomorrow | the log links the durable subject, [[about/projects/agents|project]] or [[about/tasks/agents|task]] that gives it context; anything that changed an entity's state also gets its dated line on that entity's timeline |
-
-The log carries **pointers and lived texture, never canonical content**. A fact that
-exists only inside a diary entry is trapped — the failure mode this directory exists to
-avoid. When you find one in an older log, promote it: create or update the durable page,
-then reduce the log line to a sentence and a link.
-
-## Entity timelines
-
-When a day's entry records something that changed an entity's state — a material
-interaction with a person or company, an application sent, a milestone reached, a thing
-acquired — create or update that entity's `timeline` in the same proposed write, under
-[[agents#durable-pages-and-the-diary|the root rule]]. The diary owns the day's account;
-the entity timeline is what lets an agent read where one thing stands without walking
-back through a month of logs.
-
-- Link the canonical meeting or event when one exists; otherwise link the most specific
-  diary page that records it.
-- Add one short, dated line saying what changed. Do not copy the account from its source.
-- Put it on the smallest entity it is true of. An application's history belongs to that
-  application, not to the effort containing it.
-- No casual mentions, no next actions, no undated status. A timeline is curated history;
-  search remains the exhaustive occurrence list.
+A linked day is easier to retrieve than an isolated one. When the day contains a
+material entity event or state change, apply the bidirectional diary/timeline contract
+in the [[agents#diary-and-entity-timelines|root guide]]. A durable fact left only in a
+log is hard to find from its subject: reconcile it into the canonical page, then let the
+log say what happened that day and link the result.
 
 ## Continuity
 
-When a thread picks up work an earlier day already covered, link that page so an agent
-reading today can retrieve the context instead of guessing at it.
+When work genuinely resumes from an earlier day, add one backward link on the relevant
+`Threads` bullet: `· continues [[about/diary/…|24 Jul]]`.
 
-- The link lives **on the Threads bullet**: `· continues [[about/diary/…|24 Jul]]`.
-  Continuity belongs to the thread, not the day — one day can continue three things and
-  start a fourth.
-- **One hop back only**, to the most specific page — a meeting or a day page, not
-  necessarily a log. Chains are traversed by following hops; repeating the ancestry in
-  every entry is duplication and it rots.
-- **Backwards only.** Never edit a past entry to add a "continued in" pointer. Past
-  entries record what was known that day.
-- **Only real continuation.** Mentioning the same subject two days running is not
-  continuation; picking up where you left off is. A link meaning "this existed yesterday
-  too" is noise, and noise is what makes the rest of the links untrustworthy.
+- Link one hop to the most specific earlier page. Following the chain recovers older
+  context, so repeating its whole ancestry is unnecessary.
+- Do not edit an earlier entry merely to add a forward pointer; it records what was known
+  then.
+- Repeated mention is not automatically continuation. Use the link only when work picks
+  up where it left off.
 
-**Continuity is not a substitute for a durable home.** If a chain runs past a week, or
-you find yourself reading three logs to reconstruct the state of something, that thing
-needs its own durable page — create one for the subject,
-[[about/projects/agents|project]] or task frame, let the days link to it, and give it a
-`timeline` so its dated states can be read from the entity itself.
+A chain that becomes cumbersome is evidence that the subject may need a durable page,
+project or task. Repetition is a signal to review placement, not proof that a new entity
+or page is necessary.
 
-## Automations in the diary
+## Automation companion pages
 
-The general contract is in [[automations/agents|automations]]. This section governs only
-how automation-owned companion pages are maintained inside a day folder:
+The general automation contract is in [[automations/agents|the automation guide]]. For
+automation-owned material inside a day folder:
 
-- **At most one page per automation per day**, flat: `<DD>/<automation-slug>`, the slug
-  stable across days so its history is findable by pattern. Title `<Automation name> —
-  <D Month YYYY>`; summary about the activity on that date, not the pipeline run. Create
-  it only when the day contains something important enough to help future understanding.
-- **The date is when the recorded activity happened, not when the automation ran.** One
-  run may create or revise several affected days.
-- Keep one coherent, concise account of the material activity for that day, organized by
-  its real projects, tasks or other subjects and linked to their canonical pages. Never
-  create one diary page per input item or execution.
-- **A rerun rewrites its whole day page.** Reconsider its organization and wording in
-  light of what is now known about that day, remove duplication and superseded
-  interpretations, and keep the result concise. Never append a run section or execution
-  log. New knowledge may justify correcting a past automation page in place.
-- **Nothing to report, write nothing.** A filler page also materialises a day folder
-  that had no reason to exist.
-- When an automation links its output from the log, it adds **one bullet under
-  `## Companion pages`**, creating the section if absent. **Access to the log is not
-  permission to rewrite it** — the narrative, `On my mind` and `Threads` are the owner's.
-  Change your bullet; leave every other byte as you found it. Re-running replaces that
-  bullet, never adds a second. Never write another automation's page.
-- A `Continues [[…]]` line only where the recorded activity genuinely carries on earlier
-  work — not because the automation ran before. That chain is derivable from the path.
-- Operational metadata and execution state never belong in the diary. Maintain them
-  outside the diary according to the owning automation's instructions.
+- Keep at most one page per automation per affected day, at
+  `<DD>/<automation-slug>`. Keep the slug stable across days; title the page
+  `<Automation name> — <D Month YYYY>` and summarize the activity on that date rather
+  than the pipeline run.
+- Use the date when the recorded activity happened, not the date the automation ran.
+  One run may therefore create or revise several affected days.
+- Reconcile reruns into one concise account of the material activity. Do not append run
+  logs or create a page per input item.
+- When linking output from the log, maintain one automation-owned bullet under
+  `Companion pages`. Leave the owner's narrative, `On my mind`, `Threads`, and other
+  automations' pages and bullets unchanged.
+- Create no filler page when there is nothing useful to report. Keep execution state and
+  operational metadata outside the diary.
 
-## Reading and sweeping
+## Reading and maintenance
 
-- Start at today's `log` and walk back day by day; about a week is usually enough.
-  Follow `continues` links rather than reading every intervening day — that is the point
-  of them. Follow outward links for background: a log tells you *what happened*, the
-  durable page tells you *what is true*, and its timeline tells you *what it has been
-  through*.
-- When the question is about one subject rather than the last few days, start at that
-  entity's `timeline` instead of sweeping the diary.
-- Logs are snapshots of a moment. Don't treat a mood, plan or open loop from an old
-  entry as current without checking later days.
-- **Weekly:** scan the last seven logs for anything mentioned twice or more. Repetition
-  means it is durable — promote it and link back. A continuity chain that survived the
-  week is the same signal.
-- **Monthly, optionally:** `about/diary/<YYYY>/<MM>/overview`, narrating the month and
-  recording what lasted. Never auto-generated; the point is the review.
-- **Keep logs short.** A log is an index into a day with enough texture to remember it,
-  not a transcript. Past roughly one screen means content is sitting in the wrong place.
-  No raw dumps — no transcripts, email bodies, exports, credentials or keys.
-- **Never delete or rewrite a past log to tidy up**, or to keep a chain neat. Correct it
-  in place with a clear commit message, or record the correction in a later entry.
+- Start with today's log and work backward, usually about a week. Follow continuity
+  links for active threads and outward links for durable context.
+- Treat an old mood, plan or open loop as a historical snapshot until later entries
+  confirm it.
+- Periodically review recent logs for repeated or durable material that is difficult to
+  retrieve from its subject. Promote only what earns a durable home.
+- An optional `about/diary/<YYYY>/<MM>/overview` may narrate what mattered in the month;
+  it is a considered review, not an automatic digest.
+- Keep logs skimmable. Put transcripts, long drafts and structured material in an
+  appropriate companion or canonical page.
 
-## Privacy
+Do not rewrite a past log merely to tidy its prose or make a link chain neater. Do
+correct content that is wrong or misleading under the root reconciliation rule, while
+preserving useful contemporaneous experience. When the correction itself matters to the
+story, make it explicit and link the later evidence.
 
-Publishing exposes ancestry: publishing any page here would make the diary's directory
-titles, and that page's title and summary, publicly navigable. So a publishable summary
-is written as its own day page — `<DD>/public-summary` — with a title and summary safe
-to be seen, and only the owner publishes it. Assume everything else in a day folder
-contains sensitive personal detail.
+## Diary privacy
+
+Assume day folders contain sensitive personal detail. Material intended for publication
+belongs on a separate `<DD>/public-summary` page whose title, summary and body are safe
+to expose; the owner still reviews and publishes it under the root privacy rule.

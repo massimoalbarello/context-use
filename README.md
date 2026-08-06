@@ -52,7 +52,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 
 Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use status`, `context-use update`, or `context-use doctor` to manage the installation later.
 
-New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use `context-use template plan` to preview missing directories and pages, safe updates, and local conflicts, then `context-use template apply` to apply them. Existing directories are never removed, locally edited guides and managed pages are preserved, and create-only state pages are never overwritten. To replace active local guides deliberately, add `--overwrite-guides`; to replace locally edited managed pages, add `--overwrite-managed-pages`. Preview with the same flags on `context-use template plan` before using them with `context-use template apply`.
+New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use `context-use template plan` to preview missing directories and pages, safe updates, and local conflicts, then `context-use template apply` to apply them. Existing directories are never removed, directory-presentation drift is reported rather than overwritten, locally edited guides and managed pages are preserved, and create-only state pages are structurally checked but never overwritten. A page explicitly listed in the template's `retired.json` is archived only while it remains unpublished and template-owned; published or locally modified pages are preserved for review. To replace active local guides deliberately, add `--overwrite-guides`; to replace locally edited managed pages, add `--overwrite-managed-pages`. Preview with the same flags on `context-use template plan` before using them with `context-use template apply`.
 
 ## Nango data ingestion
 
@@ -176,6 +176,21 @@ is:
 The default knowledge template carries the detailed placement and maintenance rules,
 including `about/projects/` for enduring work, finite future-facing frames under
 `about/tasks/`, and whole-page reconciliation instead of append-only updates.
+
+### Guideline consistency review automation
+
+The default template also installs
+`automations/guideline-consistency-review/instructions`. Schedule an external harness
+to open and follow that page periodically. The harness keeps the opaque cursor returned
+by `get_knowledge_changes` and supplies it to the next run; Context Use records the
+underlying body-free page ledger automatically and collapses repeated edits to one page
+within each fixed review window. The automation reviews only those changed pages
+against the currently installed root-to-leaf guides, proposes corrections without
+writing them, and returns its report for delivery through the harness-managed user
+channel. Persist the new cursor only after the full review and delivery succeed.
+
+The dashboard's **History** section shows the same durable page ledger, including
+creates, updates, archives, and deletion tombstones without page bodies or diffs.
 
 MCP clients cannot publish knowledge; public access always remains an owner decision.
 

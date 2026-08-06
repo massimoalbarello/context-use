@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { createPageSchema, DirectoryPath, PagePath } from "@context-use/shared";
 import type {
   Actor,
+  ArchivePageInput,
   CreateDirectoryInput,
   CreatePageInput,
   UpdateDirectoryInput,
@@ -15,6 +16,7 @@ const TEMPLATES_ROOT = new URL("../templates/", import.meta.url);
 const TEMPLATE_ACTOR_PREFIX = "context-use-template/";
 const LEGACY_BOOTSTRAP_ACTOR = "context-use-bootstrap";
 const TEMPLATE_PAGES_DIRECTORY = "_pages";
+const TEMPLATE_RETIREMENTS_FILE = "retired.json";
 
 type TemplatePage = {
   id: string;
@@ -23,6 +25,7 @@ type TemplatePage = {
   title: string;
   summary: string;
   body_markdown: string;
+  published_version_id: unknown | null;
   archived_at: unknown | null;
 };
 
@@ -50,13 +53,18 @@ type TemplatePageDefinition = {
   management: TemplatePageManagement;
 };
 
+type TemplateRetirements = {
+  directories: string[];
+  pages: string[];
+};
+
 export type TemplateRepositories = {
   directories: Pick<DirectoryRepository, "getByPath" | "create" | "update">;
-  pages: Pick<PageRepository, "getByPath" | "create" | "update" | "version">;
+  pages: Pick<PageRepository, "getByPath" | "create" | "update" | "archive" | "version">;
 };
 
 export type TemplateAction = {
-  action: "create-directory" | "update-directory" | "create-guide" | "adopt-guide" | "update-guide" | "replace-guide" | "create-page" | "adopt-page" | "update-page" | "unchanged" | "conflict";
+  action: "create-directory" | "update-directory" | "create-guide" | "adopt-guide" | "update-guide" | "replace-guide" | "create-page" | "adopt-page" | "update-page" | "retire-page" | "unchanged" | "conflict";
   path: string;
   detail: string;
 };
@@ -132,6 +140,8 @@ async function readTemplatePages(
   const source = await readFile(join(rootPath, "pages.json"), "utf8");
   const parsed: unknown = JSON.parse(source);
   if (!isRecord(parsed)) throw new Error("Template pages.json must contain an object");
+  const availableBodyFiles = await discoverTemplatePageBodyFiles(rootPath);
+  const referencedBodyFiles = new Set<string>();
   const guidePaths = new Set(guideDirectoryPaths.map(guidePath));
   const definitions: TemplatePageDefinition[] = [];
 
@@ -156,6 +166,10 @@ async function readTemplatePages(
       || bodyFile.includes("//")) {
       throw new Error(`Invalid template page body file: ${path}`);
     }
+    if (referencedBodyFiles.has(bodyFile)) {
+      throw new Error(`Template page body file is referenced more than once: ${bodyFile}`);
+    }
+    referencedBodyFiles.add(bodyFile);
     const bodyMarkdown = await readFile(join(rootPath, bodyFile), "utf8");
     const input = createPageSchema.parse({
       path,
@@ -166,7 +180,90 @@ async function readTemplatePages(
     });
     definitions.push({ input, management });
   }
+  for (const bodyFile of availableBodyFiles) {
+    if (!referencedBodyFiles.has(bodyFile)) {
+      throw new Error(`Template page body file is orphaned: ${bodyFile}`);
+    }
+  }
   return definitions;
+}
+
+async function discoverTemplatePageBodyFiles(rootPath: string): Promise<string[]> {
+  const files: string[] = [];
+  const pagesRoot = join(rootPath, TEMPLATE_PAGES_DIRECTORY);
+
+  async function visit(relativePath: string): Promise<void> {
+    const filesystemPath = relativePath ? join(pagesRoot, relativePath) : pagesRoot;
+    let entries;
+    try {
+      entries = await readdir(filesystemPath, { withFileTypes: true });
+    } catch (error) {
+      if (!relativePath && isRecord(error) && error.code === "ENOENT") return;
+      throw error;
+    }
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+      const entryPath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+      const bodyFile = `${TEMPLATE_PAGES_DIRECTORY}/${entryPath}`;
+      if (entry.isDirectory()) {
+        await visit(entryPath);
+      } else if (entry.isFile()) {
+        if (!/^_pages\/[a-z0-9][a-z0-9/_-]*\.md$/.test(bodyFile) || bodyFile.includes("//")) {
+          throw new Error(`Invalid template page body file: ${bodyFile}`);
+        }
+        files.push(bodyFile);
+      } else {
+        throw new Error(`Unsupported template page body entry: ${bodyFile}`);
+      }
+    }
+  }
+
+  await visit("");
+  return files;
+}
+
+async function readTemplateRetirements(
+  rootPath: string,
+  currentDirectoryPaths: Set<string>,
+  currentPagePaths: Set<string>,
+): Promise<TemplateRetirements> {
+  let source: string;
+  try {
+    source = await readFile(join(rootPath, TEMPLATE_RETIREMENTS_FILE), "utf8");
+  } catch (error) {
+    if (isRecord(error) && error.code === "ENOENT") return { directories: [], pages: [] };
+    throw error;
+  }
+  const parsed: unknown = JSON.parse(source);
+  if (!isRecord(parsed) || Object.keys(parsed).sort().join(",") !== "directories,pages") {
+    throw new Error("Template retired.json must contain only directories and pages arrays");
+  }
+
+  const readPaths = (
+    kind: "directory" | "page",
+    value: unknown,
+    currentPaths: Set<string>,
+  ): string[] => {
+    if (!Array.isArray(value)) throw new Error(`Template retired ${kind} paths must be an array`);
+    const paths: string[] = [];
+    const seen = new Set<string>();
+    for (const path of value) {
+      const valid = typeof path === "string"
+        && (kind === "directory" ? DirectoryPath : PagePath).safeParse(path).success;
+      if (!valid || (kind === "directory" && path === "")) {
+        throw new Error(`Invalid retired template ${kind} path: ${String(path) || "/"}`);
+      }
+      if (seen.has(path)) throw new Error(`Duplicate retired template ${kind} path: ${path}`);
+      if (currentPaths.has(path)) throw new Error(`Template ${kind} is both current and retired: ${path}`);
+      seen.add(path);
+      paths.push(path);
+    }
+    return paths.sort((left, right) => left.localeCompare(right));
+  };
+
+  return {
+    directories: readPaths("directory", parsed.directories, currentDirectoryPaths),
+    pages: readPaths("page", parsed.pages, currentPagePaths),
+  };
 }
 
 function guidePath(directoryPath: string): string {
@@ -191,7 +288,8 @@ async function discoverGuideDirectories(rootPath: string): Promise<string[]> {
     for (const entry of entries) {
       const isRootMetadata = !relativePath && entry.isFile() && entry.name === "directories.json";
       const isRootPageMetadata = !relativePath && entry.isFile() && entry.name === "pages.json";
-      if (entry.isFile() && entry.name !== "AGENTS.md" && !isRootMetadata && !isRootPageMetadata) {
+      const isRootRetirementMetadata = !relativePath && entry.isFile() && entry.name === TEMPLATE_RETIREMENTS_FILE;
+      if (entry.isFile() && entry.name !== "AGENTS.md" && !isRootMetadata && !isRootPageMetadata && !isRootRetirementMetadata) {
         throw new Error(`Unexpected template file: ${join(relativePath, entry.name)}`);
       }
       if (!entry.isFile() && !entry.isDirectory()) {
@@ -228,6 +326,21 @@ function samePage(page: TemplatePage, input: CreatePageInput): boolean {
     && page.body_markdown === input.body_markdown;
 }
 
+function missingCreateOnlyStructure(page: TemplatePage, input: CreatePageInput): string[] {
+  const existingLines = new Set(page.body_markdown.split(/\r?\n/).map((line) => line.trim()));
+  const requiredMarkers = input.body_markdown.split(/\r?\n/).flatMap((line) => {
+    const trimmed = line.trim();
+    if (/^#{1,6}\s+\S/.test(trimmed)) return [trimmed];
+    const field = trimmed.match(/^\*\*[^*\r\n]+:\*\*/)?.[0];
+    return field ? [field] : [];
+  });
+  const missing = requiredMarkers.filter((marker) => marker.endsWith("**")
+    ? ![...existingLines].some((line) => line.startsWith(marker))
+    : !existingLines.has(marker));
+  if (!page.body_markdown.trim()) missing.unshift("non-empty body");
+  return [...new Set(missing)];
+}
+
 export async function reconcileKnowledgeTemplate(
   repositories: TemplateRepositories,
   templateName = "default",
@@ -250,6 +363,15 @@ export async function reconcileKnowledgeTemplate(
     guideDirectoryPaths,
     templateName,
   );
+  const currentPagePaths = new Set([
+    ...guideDirectoryPaths.map(guidePath),
+    ...templatePages.map(({ input }) => input.path),
+  ]);
+  const retirements = await readTemplateRetirements(
+    rootPath,
+    new Set(directoryPaths),
+    currentPagePaths,
+  );
   const actions: TemplateAction[] = [];
   const blockedDirectories = new Set<string>();
 
@@ -257,23 +379,43 @@ export async function reconcileKnowledgeTemplate(
     const presentation = directoryPresentations.get(path)!;
     const existing = await repositories.directories.getByPath(path) as TemplateDirectory | null;
     if (existing) {
-      if (existing.summary.trim()) continue;
-      actions.push({
-        action: "update-directory",
-        path,
-        detail: `Add template summary for ${existing.title}`,
-      });
-      if (apply) {
-        const input: UpdateDirectoryInput = {
-          title: existing.title,
-          summary: presentation.summary,
-          expected_version_number: existing.version_number,
-        };
-        await repositories.directories.update(existing.id, input);
+      if (!existing.summary.trim()) {
+        actions.push({
+          action: "update-directory",
+          path,
+          detail: `Add template summary for ${existing.title}`,
+        });
+        if (apply) {
+          const input: UpdateDirectoryInput = {
+            title: existing.title,
+            summary: presentation.summary,
+            expected_version_number: existing.version_number,
+          };
+          await repositories.directories.update(existing.id, input);
+        }
+        if (existing.title !== presentation.title) {
+          actions.push({
+            action: "conflict",
+            path,
+            detail: "Directory title differs from the template; preserve local metadata",
+          });
+        }
+        continue;
+      }
+      if (existing.title !== presentation.title || existing.summary !== presentation.summary) {
+        actions.push({
+          action: "conflict",
+          path,
+          detail: "Directory metadata differs from the template; preserve local metadata",
+        });
       }
       continue;
     }
-    if (!path) continue;
+    if (!path) {
+      blockedDirectories.add("");
+      actions.push({ action: "conflict", path, detail: "Root knowledge directory is missing" });
+      continue;
+    }
     const parentPath = path.includes("/") ? path.replace(/\/[^/]+$/, "") : "";
     if (blockedDirectories.has(parentPath)) {
       blockedDirectories.add(path);
@@ -375,6 +517,15 @@ export async function reconcileKnowledgeTemplate(
       continue;
     }
     if (management === "create-only") {
+      const missingStructure = missingCreateOnlyStructure(existing, input);
+      if (missingStructure.length) {
+        actions.push({
+          action: "conflict",
+          path: input.path,
+          detail: `Create-only template page is missing required structure: ${missingStructure.join(", ")}`,
+        });
+        continue;
+      }
       actions.push({ action: "unchanged", path: input.path, detail: "Preserve create-only template page" });
       continue;
     }
@@ -410,6 +561,43 @@ export async function reconcileKnowledgeTemplate(
     }
   }
 
+  if (!blockedDirectories.has("")) {
+    for (const path of retirements.pages) {
+      const existing = await repositories.pages.getByPath(path, true) as TemplatePage | null;
+      if (!existing) continue;
+      if (existing.archived_at) {
+        actions.push({ action: "unchanged", path, detail: "Retired template page is already archived" });
+        continue;
+      }
+      if (existing.published_version_id) {
+        actions.push({ action: "conflict", path, detail: "Retired template page is published; preserve it" });
+        continue;
+      }
+      const currentVersion = await repositories.pages.version(existing.id, existing.version_number) as TemplatePageVersion | null;
+      if (!currentVersion || !templateOwnsCurrentVersion(currentVersion.actor_subject, templateName)) {
+        actions.push({ action: "conflict", path, detail: "Retired template page has local changes; preserve it" });
+        continue;
+      }
+      actions.push({ action: "retire-page", path, detail: "Archive retired template page" });
+      if (apply) {
+        const input: ArchivePageInput = {
+          commit_message: `Retire page removed from ${templateName} knowledge template`,
+          expected_version_number: existing.version_number,
+        };
+        await repositories.pages.archive(existing.id, input, templateActor(templateName));
+      }
+    }
+    for (const path of retirements.directories) {
+      if (await repositories.directories.getByPath(path)) {
+        actions.push({
+          action: "conflict",
+          path,
+          detail: "Retired template directory remains; preserve it for manual review",
+        });
+      }
+    }
+  }
+
   return { template: templateName, applied: apply, actions };
 }
 
@@ -430,7 +618,7 @@ export function formatTemplateResult(result: TemplateResult, color = false): str
     return `${resultIndicator(kind, color)} ${action.padEnd(16)} ${path || "/"}  ${detail}`;
   });
   const conflicts = result.actions.filter(({ action }) => action === "conflict").length;
-  const changes = result.actions.filter(({ action }) => action.startsWith("create-") || action.startsWith("update-") || action === "adopt-guide" || action === "adopt-page" || action === "replace-guide").length;
+  const changes = result.actions.filter(({ action }) => action.startsWith("create-") || action.startsWith("update-") || action === "adopt-guide" || action === "adopt-page" || action === "replace-guide" || action === "retire-page").length;
   const summaryKind = conflicts ? "conflict" : "success";
   lines.push(`${resultIndicator(summaryKind, color)} ${result.applied ? "Applied" : "Planned"} ${changes} change${changes === 1 ? "" : "s"}; ${conflicts} conflict${conflicts === 1 ? "" : "s"}.`);
   return lines.join("\n");
