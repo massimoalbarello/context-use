@@ -21,6 +21,10 @@ printf '%s\n' \
   '      OWNER_EMAIL: ${OWNER_EMAIL}' \
   > "${temporary_dir}/compose.yml"
 
+# The explicit test file must be the only source for this variable even when
+# the surrounding CI or operator environment also defines OWNER_EMAIL.
+unset OWNER_EMAIL
+
 compose() {
   if docker compose version >/dev/null 2>&1; then
     docker compose "$@"
