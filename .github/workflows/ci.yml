@@ -181,11 +181,19 @@ jobs:
               caddy validate --config /etc/caddy/Caddyfile
           done
           printf '%s\n' owner@example.com > "$RUNNER_TEMP/nango-owner-email"
-          docker compose -f deploy/docker-compose.yml run --rm --no-deps \
+          compose_json="$(docker compose -f deploy/docker-compose.yml config --format json)"
+          oauth2_proxy_image="$(jq -r '.services["oauth2-proxy"].image' <<<"$compose_json")"
+          oauth2_proxy_env=()
+          while IFS= read -r entry; do
+            oauth2_proxy_env+=(--env "$entry")
+          done < <(jq -r '.services["oauth2-proxy"].environment | to_entries[] | "\(.key)=\(.value)"' <<<"$compose_json")
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            "${oauth2_proxy_env[@]}" \
             -e OAUTH2_PROXY_SESSION_STORE_TYPE=cookie \
             -e OAUTH2_PROXY_REDIS_CONNECTION_URL= \
             -v "$RUNNER_TEMP/nango-owner-email:/etc/oauth2-proxy/authorized-emails:ro" \
-            oauth2-proxy --config-test
+            "$oauth2_proxy_image" --config-test
       - run: docker build -t context-use:test .
       - run: docker build -f deploy/backup/Dockerfile -t context-use-backup:test .
       - name: Verify Nango database role isolation
