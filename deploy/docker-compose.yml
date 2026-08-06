@@ -68,6 +68,9 @@ x-nango-gateway: &nango-gateway
     - /data:size=8m,mode=0700
     - /config:size=8m,mode=0700
   cap_drop: [ALL]
+  # The official binary carries cap_net_bind_service as a file capability and
+  # cannot be executed when that capability is absent from the bounding set.
+  cap_add: [NET_BIND_SERVICE]
   security_opt: [no-new-privileges:true]
   pids_limit: 64
 
