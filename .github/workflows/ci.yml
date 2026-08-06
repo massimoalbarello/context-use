@@ -178,7 +178,7 @@ jobs:
               -e AUTH_NANGO_TOKEN=validation-only \
               -e NANGO_DASHBOARD_BASIC=dmFsaWRhdGlvbjpvbmx5 \
               caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d \
-              validate --config /etc/caddy/Caddyfile
+              caddy validate --config /etc/caddy/Caddyfile
           done
           printf '%s\n' owner@example.com > "$RUNNER_TEMP/nango-owner-email"
           docker compose -f deploy/docker-compose.yml run --rm --no-deps \
