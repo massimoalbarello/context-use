@@ -58,19 +58,9 @@ New installations receive the Git-versioned default knowledge template. Template
 
 AWS installations also run Nango on the same `t3.large` EC2 instance. Nango is the ingestion and encrypted-record layer. Each sync must transform provider responses into a provider-agnostic JSON envelope containing only `id`, `created_at`, `updated_at`, `participants`, and a complete semantic Markdown `body`. These records are the input to the downstream pipeline, so connection-specific fields, raw provider payloads, and unused API fields must not be saved outside the Markdown document. Nango records are not copied directly into the Context Use knowledge-page schema. The deployment uses Nango's full upstream image with enterprise mode enabled and runs its server, jobs, orchestrator, persist, and Redis services on isolated Docker networks. Nango shares the PostgreSQL container but owns a separate `nango` database through dedicated application and read-only backup roles. The record contract and required tests are documented in [`nango-integrations/SYNC_GUIDELINES.md`](nango-integrations/SYNC_GUIDELINES.md).
 
-The Context Use dashboard registers Nango as a managed service and links to its dashboard at `https://nango.YOUR_HOST`. Show the username and URL with:
+The Context Use dashboard registers Nango as a managed service and links to its dashboard at `https://nango.YOUR_HOST`. Open that link after signing in to Context Use. A fixed first-party OIDC client completes the same passkey session automatically, without a second account, passkey registration, or credential-retrieval command.
 
-```sh
-context-use nango credentials
-```
-
-Reveal the generated dashboard password only when you need to log in:
-
-```sh
-context-use nango credentials --reveal
-```
-
-Runtime values are KMS-encrypted SecureString parameters below `/context-use/<installation-id>/<environment>/`. Nango's dashboard credentials, admin key, encryption key, database credentials, and scoped deployer and pipeline API keys use `NANGO_*` names there. The credentials command intentionally exposes only the dashboard login; service keys remain internal. The pipeline key is injected only into the private MCP service, which reaches Nango over a dedicated internal Docker network.
+Runtime values are KMS-encrypted SecureString parameters below `/context-use/<installation-id>/<environment>/`. Nango's internal dashboard credential, admin key, encryption key, database credentials, OIDC client secret, and scoped deployer and pipeline API keys use dedicated values there. The CLI never reveals the internal dashboard credential. Controller operations run through Systems Manager and a route-allowlisted container-loopback channel; the public Nango edge does not accept those credentials. The pipeline key is injected only into the private MCP service, which reaches Nango over a dedicated internal Docker network.
 
 The private Context Use MCP exposes `read_source_records` as the single downstream read
 surface. It discovers every connection for each managed pipeline model and returns a
@@ -84,7 +74,7 @@ connections and models, including connections discovered after earlier runs. Cal
 must treat it as an indivisible value. Nango webhooks are not involved in downstream
 processing, and Context Use does not create a second per-record observation store.
 
-The Nango hostname is internet reachable so providers can call OAuth callback and webhook endpoints. The dashboard is gated by Nango's native username/password authentication, but a blanket proxy login in front of the entire hostname would also block those public integration endpoints. Keep access control route-aware if it is tightened later.
+The Nango hostname is internet reachable because providers must call a small set of OAuth callback, Connect-session, and webhook endpoints. Those method/path combinations pass through a credential-free, default-deny public gateway. Every dashboard request instead passes through OAuth2 Proxy and a live Context Use owner-session check before an internal gateway injects Nango's Basic credential. The browser never receives that credential or the OIDC access token, and the outer edge has no network path to Nango itself.
 
 ### GitHub pull requests
 

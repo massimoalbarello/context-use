@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { MANAGED_INTEGRATIONS } from "../../../nango-integrations/catalog.ts";
+import { NANGO_CONNECTION_PAGE_SIZE } from "./nango-internal.ts";
 
 const integrationSchema = z.object({
   unique_key: z.string().min(1),
@@ -101,7 +102,7 @@ async function requestJson(
   const method = init.method ?? "GET";
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  headers.set("Authorization", `Bearer ${apiKey}`);
+  if (apiKey) headers.set("Authorization", `Bearer ${apiKey}`);
   if (init.body !== undefined) headers.set("Content-Type", "application/json");
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -335,7 +336,7 @@ async function listNangoConnections(
 ): Promise<NangoConnection[]> {
   const connections: NangoConnection[] = [];
   for (let page = 0; ; page += 1) {
-    const query = new URLSearchParams({ integrationId, limit: "100", page: String(page) });
+    const query = new URLSearchParams({ integrationId, limit: String(NANGO_CONNECTION_PAGE_SIZE), page: String(page) });
     const result = connectionsResponseSchema.parse(await requestJson(
       baseUrl,
       apiKey,
@@ -344,7 +345,7 @@ async function listNangoConnections(
       dependencies,
     ));
     connections.push(...result.connections);
-    if (result.connections.length < 100) return connections;
+    if (result.connections.length < NANGO_CONNECTION_PAGE_SIZE) return connections;
   }
 }
 
@@ -389,7 +390,7 @@ export function nangoFunctionDeploymentCommands(input: NangoFunctionDeployment):
 
   const deploy = [
     "docker run --rm",
-    "--network context-use_nango_web",
+    "--network context-use_nango_management_internal",
     "--read-only",
     "--tmpfs /tmp:rw,noexec,nosuid,size=64m,mode=1777,uid=1000,gid=1000",
     "--tmpfs /opt/context-use/nango-integrations/build:rw,noexec,nosuid,size=256m,mode=0700,uid=1000,gid=1000",

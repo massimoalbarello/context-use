@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { readdir, lstat, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import { cacheDirectory } from "./paths.ts";
 import { redactSensitiveText, run, type RunOptions } from "./process.ts";
@@ -9,8 +10,8 @@ export function awsArgs(profile: string, region: string, args: string[]): string
   return ["aws", "--profile", profile, "--region", region, ...args];
 }
 
-export async function awsJson<T>(profile: string, region: string, args: string[]): Promise<T> {
-  const output = await run(awsArgs(profile, region, [...args, "--output", "json"]), { quiet: true });
+export async function awsJson<T>(profile: string, region: string, args: string[], options: Pick<RunOptions, "signal"> = {}): Promise<T> {
+  const output = await run(awsArgs(profile, region, [...args, "--output", "json"]), { quiet: true, ...options });
   return JSON.parse(output || "{}") as T;
 }
 
@@ -101,14 +102,57 @@ export async function scheduleStateKmsKeyDeletion(profile: string, region: strin
   }
 }
 
-export async function putSecureParameter(profile: string, region: string, name: string, value: string, kmsKeyId: string): Promise<void> {
-  const path = resolve(cacheDirectory, `ssm-${randomBytes(8).toString("hex")}.json`);
-  await Bun.write(path, JSON.stringify({ Name: name, Value: value, Type: "SecureString", KeyId: kmsKeyId, Overwrite: true }), { createPath: true, mode: 0o600 });
+export async function putSecureParameter(
+  profile: string,
+  region: string,
+  name: string,
+  value: string,
+  kmsKeyId: string,
+  execute: CommandRunner = run,
+): Promise<void> {
+  await cleanupStaleSsmJsonFiles();
+  await execute(awsArgs(profile, region, [
+    "ssm", "put-parameter",
+    "--name", name,
+    "--type", "SecureString",
+    "--key-id", kmsKeyId,
+    "--overwrite",
+    "--value", "file:///dev/stdin",
+  ]), { quiet: true, stdin: value });
+}
+
+export async function cleanupStaleSsmJsonFiles(
+  directory = cacheDirectory,
+  now = Date.now(),
+  maximumAgeMs = 60 * 60 * 1_000,
+): Promise<string[]> {
+  let entries;
   try {
-    await run(awsArgs(profile, region, ["ssm", "put-parameter", "--cli-input-json", `file://${path}`]), { quiet: true });
-  } finally {
-    await Bun.file(path).delete();
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return [];
+    throw error;
   }
+  const deleted: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !/^ssm(?:-command)?-[a-f0-9]{16}\.json$/.test(entry.name)) continue;
+    const path = resolve(directory, entry.name);
+    let info;
+    try {
+      info = await lstat(path);
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") continue;
+      throw error;
+    }
+    if (!info.isFile() || (info.mode & 0o777) !== 0o600 || now - info.mtimeMs <= maximumAgeMs) continue;
+    try {
+      await unlink(path);
+      deleted.push(path);
+    } catch (error) {
+      if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") throw error;
+    }
+  }
+  return deleted;
 }
 
 export async function getSecureParameter(profile: string, region: string, name: string): Promise<string> {
@@ -126,6 +170,14 @@ export async function getSecureParameterIfPresent(profile: string, region: strin
   } catch (error) {
     if (error instanceof Error && error.message.includes("ParameterNotFound")) return null;
     throw error;
+  }
+}
+
+export async function deleteSecureParameter(profile: string, region: string, name: string): Promise<void> {
+  try {
+    await run(awsArgs(profile, region, ["ssm", "delete-parameter", "--name", name]), { quiet: true });
+  } catch (error) {
+    if (!(error instanceof Error) || !/ParameterNotFound/i.test(error.message)) throw error;
   }
 }
 
@@ -217,10 +269,12 @@ const pendingSsmStatuses = new Set(["Pending", "InProgress", "Delayed", "Cancell
 
 export async function waitForSsmInvocation(
   readInvocation: () => Promise<SsmCommandInvocation>,
-  pause: () => Promise<void> = () => Bun.sleep(5_000),
+  pause?: () => Promise<void>,
   maxAttempts = 720,
+  signal?: AbortSignal,
 ): Promise<SsmCommandInvocation> {
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (signal?.aborted) throw new DOMException("Operation was aborted", "AbortError");
     try {
       const invocation = await readInvocation();
       if (!pendingSsmStatuses.has(invocation.Status)) return invocation;
@@ -228,20 +282,60 @@ export async function waitForSsmInvocation(
       const detail = error instanceof Error ? error.message : String(error);
       if (!detail.includes("InvocationDoesNotExist")) throw error;
     }
-    if (attempt < maxAttempts - 1) await pause();
+    if (attempt < maxAttempts - 1) {
+      if (pause) {
+        await pause();
+      } else {
+        await new Promise<void>((resolvePause, rejectPause) => {
+          const finish = () => {
+            signal?.removeEventListener("abort", abort);
+            resolvePause();
+          };
+          const timeout = setTimeout(finish, 5_000);
+          const abort = () => {
+            clearTimeout(timeout);
+            signal?.removeEventListener("abort", abort);
+            rejectPause(new DOMException("Operation was aborted", "AbortError"));
+          };
+          signal?.addEventListener("abort", abort, { once: true });
+          if (signal?.aborted) abort();
+        });
+      }
+    }
   }
   throw new Error("Remote command did not complete within one hour");
 }
 
-export async function sendSsmCommands(profile: string, region: string, instanceId: string, commands: string[]): Promise<string> {
+export async function sendSsmCommands(
+  profile: string,
+  region: string,
+  instanceId: string,
+  commands: string[],
+  options: { signal?: AbortSignal } = {},
+): Promise<string> {
+  await cleanupStaleSsmJsonFiles();
+  if (options.signal?.aborted) throw new DOMException("Operation was aborted", "AbortError");
   const path = resolve(cacheDirectory, `ssm-command-${randomBytes(8).toString("hex")}.json`);
   await Bun.write(path, JSON.stringify({ DocumentName: "AWS-RunShellScript", InstanceIds: [instanceId], Parameters: { commands: strictSsmCommands(commands) } }), { createPath: true, mode: 0o600 });
   try {
-    const result = await awsJson<{ Command: { CommandId: string } }>(profile, region, ["ssm", "send-command", "--cli-input-json", `file://${path}`]);
+    const result = await awsJson<{ Command: { CommandId: string } }>(profile, region, ["ssm", "send-command", "--cli-input-json", `file://${path}`], options);
     const commandId = result.Command.CommandId;
-    const invocation = await waitForSsmInvocation(() => awsJson<SsmCommandInvocation>(profile, region, [
+    const cancel = () => run(awsArgs(profile, region, [
+      "ssm", "cancel-command", "--command-id", commandId, "--instance-ids", instanceId,
+    ]), { quiet: true, allowFailure: true });
+    const onAbort = () => { void cancel().catch(() => {}); };
+    options.signal?.addEventListener("abort", onAbort, { once: true });
+    let invocation: SsmCommandInvocation;
+    try {
+      invocation = await waitForSsmInvocation(() => awsJson<SsmCommandInvocation>(profile, region, [
       "ssm", "get-command-invocation", "--command-id", commandId, "--instance-id", instanceId,
-    ]));
+      ], options), undefined, 720, options.signal);
+    } catch (error) {
+      if (options.signal?.aborted) await cancel();
+      throw error;
+    } finally {
+      options.signal?.removeEventListener("abort", onAbort);
+    }
     if (invocation.Status !== "Success") {
       const detail = redactSensitiveText(invocation.StandardErrorContent?.trim() ?? "") || `status ${invocation.Status}`;
       throw new Error(`Remote command failed: ${detail}`);

@@ -2,17 +2,33 @@ import {
   oauthProviderAuthServerMetadata,
   oauthProviderOpenIdConfigMetadata,
 } from "@better-auth/oauth-provider";
+import { MCP_SCOPE } from "@context-use/shared";
 import { Elysia } from "elysia";
+import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
 import { z } from "zod";
-import { auth, authPathRequiresOwnerSession, authPool, dashboardPrincipal } from "./auth.ts";
+import {
+  auth,
+  authPathRequiresOwnerSession,
+  authPool,
+  dashboardPrincipal,
+  ensureNangoOAuthClient,
+  touchLiveOwnerSession,
+} from "./auth.ts";
 import { dashboardGatewayHeader } from "./auth-dashboard-gateway.ts";
+import {
+  mcpClientHeader,
+  mcpGatewayHeader,
+  mcpSessionHeader,
+} from "./auth-mcp-gateway.ts";
 import { publicAuthRequestAllowed } from "./auth-protocol.ts";
 import { config, production } from "./config.ts";
 import { forwardBrowserConfirmation } from "./confirmation-gateway.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
 import { hasHeaderCapability, hasInternalCapability } from "./internal-capability.ts";
 import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
-import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
+import { ownerUserId } from "./owner.ts";
+import { authorizeOwnerAuthenticationRequest } from "./passkey-boundary.ts";
+import { whileOwnerAuthenticationLockHeld } from "./passkey-policy.ts";
 import {
   authenticatorAttachmentSchema,
   confirmEnrollmentIntent,
@@ -58,10 +74,135 @@ const passkeyRemovalSchema = z.object({
   response: passkeyAssertionSchema,
 }).strict();
 const emptyObjectSchema = z.object({}).strict();
+const nangoAccessTokenSchema = z.object({
+  active: z.literal(true),
+  azp: z.string(),
+  client_id: z.string(),
+  iss: z.string(),
+  principal_type: z.literal("nango_dashboard_owner"),
+  scope: z.string(),
+  sid: z.string().min(1).max(512),
+  sub: z.string(),
+}).passthrough();
+const mcpAccessTokenSchema = z.object({
+  azp: z.string().min(1).max(512),
+  client_id: z.string().min(1).max(512),
+  principal_type: z.literal("mcp_agent"),
+  scope: z.string(),
+  sid: z.string().min(1).max(512),
+  sub: z.literal(ownerUserId),
+}).passthrough();
+const mcpLineageSchema = z.object({
+  clientId: z.string().min(1).max(512),
+  sessionId: z.string().min(1).max(512),
+}).strict();
+const oauthTokenRequestBodyLimit = 64 * 1024;
+
+export const nangoGatewayHeader = "x-context-use-nango-gateway";
+
+function bearerAccessToken(request: Request): string | null {
+  return request.headers.get("authorization")
+    ?.match(/^Bearer ([A-Za-z0-9._~-]{32,8192})$/)?.[1] ?? null;
+}
+
+function exactNangoScopes(scope: string): boolean {
+  const scopes = scope.split(" ").filter(Boolean);
+  return scopes.length === 2 && new Set(scopes).size === 2
+    && scopes.includes("openid") && scopes.includes("email");
+}
+
+async function verifiedMcpAccessToken(token: string): Promise<z.infer<typeof mcpAccessTokenSchema> | null> {
+  try {
+    const jwks = await auth.api.getJwks({ asResponse: false });
+    const verified = await jwtVerify(token, createLocalJWKSet(jwks as JSONWebKeySet), {
+      issuer: config.OAUTH_ISSUER,
+      audience: config.MCP_RESOURCE,
+      algorithms: ["EdDSA"],
+    });
+    const audiences = typeof verified.payload.aud === "string"
+      ? [verified.payload.aud]
+      : verified.payload.aud;
+    if (!audiences || audiences.length !== 1 || audiences[0] !== config.MCP_RESOURCE) return null;
+    const parsed = mcpAccessTokenSchema.safeParse(verified.payload);
+    if (!parsed.success || parsed.data.azp !== parsed.data.client_id) return null;
+    const scopes = parsed.data.scope.split(/\s+/).filter(Boolean);
+    return scopes.includes(MCP_SCOPE) ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+async function activeMcpLineage(clientId: string, sessionId: string): Promise<boolean> {
+  const lineage = await authPool.query(
+    `SELECT 1
+     FROM "oauthClient" client
+     JOIN "oauthConsent" consent
+       ON consent."clientId"=client."clientId"
+      AND consent."userId"=$2
+     JOIN "session" owner_session
+       ON owner_session.id=$3
+      AND owner_session."userId"=$2
+     WHERE client."clientId"=$1
+       AND coalesce(client.disabled,false)=false
+       AND consent.scopes @> $4::jsonb
+       AND consent.resources @> $5::jsonb
+     LIMIT 1`,
+    [
+      clientId,
+      ownerUserId,
+      sessionId,
+      JSON.stringify([MCP_SCOPE]),
+      JSON.stringify([config.MCP_RESOURCE]),
+    ],
+  );
+  return Boolean(lineage.rowCount) && await touchLiveOwnerSession(sessionId);
+}
+
 function browserAuthRequest(request: Request, removeCookie = false): Request {
   const headers = new Headers(request.headers);
   if (removeCookie) headers.delete("cookie");
-  return new Request(request, { headers });
+  return new Request(request.url, {
+    method: request.method,
+    headers,
+    body: request.body,
+    signal: request.signal,
+  });
+}
+
+function oauthTokenRequestError(description: string, status: number): Response {
+  return Response.json({ error: "invalid_request", error_description: description }, {
+    status,
+    headers: {
+      "cache-control": "no-store",
+      pragma: "no-cache",
+    },
+  });
+}
+
+async function bufferOAuthTokenRequestBody(request: Request): Promise<Request | Response> {
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null
+      && (!/^\d+$/.test(declaredLength) || Number(declaredLength) > oauthTokenRequestBodyLimit)) {
+    return oauthTokenRequestError("request body is too large", 413);
+  }
+  try {
+    // The token route is public. Fully receive its small, edge-bounded body
+    // before taking the owner database lock so a slow unauthenticated upload
+    // cannot keep passkey removal blocked. Rebuild the request with the exact
+    // bytes so Better Auth can consume them normally after the lock is taken.
+    const body = await request.arrayBuffer();
+    if (body.byteLength > oauthTokenRequestBodyLimit) {
+      return oauthTokenRequestError("request body is too large", 413);
+    }
+    return new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body,
+      signal: request.signal,
+    });
+  } catch {
+    return oauthTokenRequestError("request body could not be read", 400);
+  }
 }
 
 async function ownerRequest(request: Request, mutation = false) {
@@ -86,11 +227,21 @@ export const authApp = new Elysia()
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
-  .get("/health", () => json({ status: "ok", service: "auth" }))
+  .get("/health", async () => {
+    await ensureNangoOAuthClient();
+    return json({ status: "ok", service: "auth" });
+  })
   .all("/api/auth/*", async ({ request }) => {
     if (!publicAuthRequestAllowed(request)) return problem("Not found", 404, "not_found");
-    const sanitized = browserAuthRequest(request);
+    await ensureNangoOAuthClient();
+    let sanitized = browserAuthRequest(request);
     const pathname = new URL(sanitized.url).pathname;
+
+    if (pathname === "/api/auth/oauth2/token") {
+      const buffered = await bufferOAuthTokenRequestBody(sanitized);
+      if (buffered instanceof Response) return buffered;
+      sanitized = buffered;
+    }
 
     if (pathname === "/api/auth/get-session") {
       if (!await dashboardPrincipal(sanitized)) return json(null);
@@ -104,13 +255,12 @@ export const authApp = new Elysia()
       return problem("Owner session required", 401, "owner_session_required");
     }
 
-    const boundary = await authorizePasskeyAuthRequest(sanitized);
+    const boundary = await authorizeOwnerAuthenticationRequest(sanitized);
     if (boundary.denied) return boundary.denied;
-    try {
-      return await requireAuthenticationUserVerification(pathname, await auth.handler(sanitized));
-    } finally {
-      await boundary.release?.();
-    }
+    return whileOwnerAuthenticationLockHeld(
+      async () => requireAuthenticationUserVerification(pathname, await auth.handler(sanitized)),
+      boundary.release,
+    );
   })
   .get("/.well-known/oauth-authorization-server", ({ request }) =>
     withCodexIssuerCompatibility(authServerMetadata(browserAuthRequest(request))))
@@ -129,6 +279,90 @@ export const authApp = new Elysia()
     if (input.kind === "upload") assertDashboardUploadSecurity(reconstructed, principal);
     if (input.kind === "download") assertDashboardDownloadSecurity(reconstructed);
     return json(principal);
+  })
+  .get("/internal/authorize-nango", async ({ request }) => {
+    if (!hasHeaderCapability(request, nangoGatewayHeader, config.AUTH_NANGO_TOKEN)) {
+      return problem("Not found", 404, "not_found");
+    }
+    const token = bearerAccessToken(request);
+    if (!token) return problem("Authorization required", 401, "unauthorized");
+    await ensureNangoOAuthClient();
+
+    let value: unknown;
+    try {
+      const oauthApi = auth.api as unknown as {
+        oauth2Introspect(input: {
+          asResponse: false;
+          headers: Headers;
+          request: Request;
+          body: { token: string; token_type_hint: string };
+        }): Promise<unknown>;
+      };
+      const headers = new Headers({
+        authorization: `Basic ${Buffer.from(`${config.NANGO_OAUTH_CLIENT_ID}:${config.NANGO_OAUTH_CLIENT_SECRET}`).toString("base64")}`,
+      });
+      value = await oauthApi.oauth2Introspect({
+        asResponse: false,
+        headers,
+        request: new Request(`${config.APP_ORIGIN}/api/auth/oauth2/introspect`, {
+          method: "POST",
+          headers,
+        }),
+        body: { token, token_type_hint: "access_token" },
+      });
+    } catch (error) {
+      // The OAuth provider currently bundles its own APIError constructor, so
+      // instanceof against Better Auth's public export is not stable across
+      // package builds. Name matching is limited to this dependency boundary;
+      // provider-side failures still remain distinguishable from bad tokens.
+      if (error instanceof Error && error.name === "APIError") {
+        const statusCode = Number((error as Error & { statusCode?: unknown }).statusCode);
+        if (Number.isFinite(statusCode) && statusCode >= 500) {
+          return problem("Authorization unavailable", 503, "authorization_unavailable");
+        }
+        return problem("Authorization required", 401, "unauthorized");
+      }
+      throw error;
+    }
+
+    const introspection = nangoAccessTokenSchema.safeParse(value);
+    if (!introspection.success
+        || introspection.data.client_id !== config.NANGO_OAUTH_CLIENT_ID
+        || introspection.data.azp !== config.NANGO_OAUTH_CLIENT_ID
+        || introspection.data.iss !== config.OAUTH_ISSUER
+        || introspection.data.sub !== ownerUserId
+        || !exactNangoScopes(introspection.data.scope)
+        || !await touchLiveOwnerSession(introspection.data.sid)) {
+      return problem("Authorization required", 401, "unauthorized");
+    }
+    return new Response(null, { status: 204, headers: securityHeaders });
+  })
+  .get("/internal/authorize-mcp", async ({ request }) => {
+    if (!hasHeaderCapability(request, mcpGatewayHeader, config.AUTH_MCP_TOKEN)) {
+      return problem("Not found", 404, "not_found");
+    }
+    const hasBearer = request.headers.has("authorization");
+    const hasLineage = request.headers.has(mcpClientHeader) || request.headers.has(mcpSessionHeader);
+    if (hasBearer === hasLineage) return problem("Authorization required", 401, "unauthorized");
+
+    if (hasBearer) {
+      const token = bearerAccessToken(request);
+      if (!token) return problem("Authorization required", 401, "unauthorized");
+      const access = await verifiedMcpAccessToken(token);
+      if (!access || !await activeMcpLineage(access.client_id, access.sid)) {
+        return problem("Authorization required", 401, "unauthorized");
+      }
+      return json({ client_id: access.client_id });
+    }
+
+    const lineage = mcpLineageSchema.safeParse({
+      clientId: request.headers.get(mcpClientHeader),
+      sessionId: request.headers.get(mcpSessionHeader),
+    });
+    if (!lineage.success || !await activeMcpLineage(lineage.data.clientId, lineage.data.sessionId)) {
+      return problem("Authorization required", 401, "unauthorized");
+    }
+    return new Response(null, { status: 204, headers: securityHeaders });
   })
   .get("/internal/jwks", ({ request }) => {
     if (!hasInternalCapability(request, config.AUTH_MCP_TOKEN)) return problem("Not found", 404, "not_found");
@@ -266,29 +500,18 @@ export const authApp = new Elysia()
   .delete("/api/dashboard/oauth-clients/:clientId", async ({ request, params }) => {
     const principal = await ownerRequest(request, true);
     const clientId = z.string().min(1).max(512).parse(params.clientId);
-    const client = await authPool.connect();
-    try {
-      await client.query("BEGIN");
-      const removed = await client.query(
-        `DELETE FROM "oauthConsent" WHERE "clientId"=$1 AND "userId"=$2 RETURNING id`,
-        [clientId, principal.userId],
-      );
-      if (!removed.rowCount) throw new SecurityError("Connected client not found", 404);
-      await client.query(
-        `UPDATE "oauthRefreshToken" SET revoked=now()
-         WHERE "clientId"=$1 AND "userId"=$2 AND revoked IS NULL`,
-        [clientId, principal.userId],
-      );
-      await client.query(
-        `DELETE FROM "oauthAccessToken" WHERE "clientId"=$1 AND "userId"=$2`,
-        [clientId, principal.userId],
-      );
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
+    // Remove the dynamic registration itself, not only its current consent.
+    // A later authorization must receive a fresh client_id, so an old
+    // self-contained access JWT can never become active again.
+    const removed = await authPool.query(
+      `DELETE FROM "oauthClient" oauth_client
+       USING "oauthConsent" consent
+       WHERE oauth_client."clientId"=$1
+         AND consent."clientId"=oauth_client."clientId"
+         AND consent."userId"=$2
+       RETURNING oauth_client."clientId"`,
+      [clientId, principal.userId],
+    );
+    if (!removed.rowCount) throw new SecurityError("Connected client not found", 404);
     return json({ revoked: true });
   });

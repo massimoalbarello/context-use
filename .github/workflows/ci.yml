@@ -120,6 +120,7 @@ jobs:
           APP_IMAGE: ghcr.io/massimoalbarello/context-use@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           BACKUP_IMAGE: ghcr.io/massimoalbarello/context-use-backup@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
           NANGO_IMAGE: ghcr.io/massimoalbarello/context-use-nango@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+          OAUTH2_PROXY_IMAGE: quay.io/oauth2-proxy/oauth2-proxy:v7.15.2@sha256:aa0bd8dd5ab0c78e4c91c92755ad573a5f92241f88138b4141b8ec803463b4fd
           POSTGRES_PASSWORD: test
           DB_AUTH_PASSWORD: test
           DB_DASHBOARD_PASSWORD: test
@@ -134,6 +135,10 @@ jobs:
           NANGO_ADMIN_KEY: test-test-test-test-nango-admin-key
           NANGO_DASHBOARD_USERNAME: owner@example.com
           NANGO_DASHBOARD_PASSWORD: test-test-test-test-nango-dashboard
+          NANGO_DASHBOARD_BASIC: b3duZXJAZXhhbXBsZS5jb206dGVzdA==
+          NANGO_OAUTH_CLIENT_ID: context-use-nango-dashboard
+          NANGO_OAUTH_CLIENT_SECRET: test-test-test-test-nango-oauth-client-secret
+          NANGO_AUTH_COOKIE_SECRET: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
           APP_HOSTNAME: context.example.com
           ASSET_HOSTNAME: assets.context.example.com
           NANGO_HOSTNAME: nango.context.example.com
@@ -144,6 +149,7 @@ jobs:
           CONFIRMATION_GATEWAY_TOKEN: test-test-test-test-confirmation-gateway
           AUTH_DASHBOARD_TOKEN: test-test-test-test-dashboard-auth-gateway
           AUTH_MCP_TOKEN: test-test-test-test-private-mcp-auth-gateway
+          AUTH_NANGO_TOKEN: test-test-test-test-nango-auth-gateway
           CONFIRMATION_DASHBOARD_TOKEN: test-test-test-dashboard-confirmation
           STORAGE_DASHBOARD_TOKEN: test-test-test-test-storage-dashboard
           STORAGE_MCP_TOKEN: test-test-test-test-storage-private-mcp
@@ -156,8 +162,41 @@ jobs:
           STORAGE_ROLE_ARN: arn:aws:iam::123456789012:role/context-use-test-storage
           BACKUP_ROLE_ARN: arn:aws:iam::123456789012:role/context-use-test-backup
         run: |
+          bash -n deploy/deploy.sh
+          bash -n deploy/compose-env.sh deploy/validate-compose-env.sh
+          bash deploy/validate-compose-env.sh deploy
+          sh -n deploy/validate-nango-edge.sh
+          sh deploy/validate-nango-edge.sh deploy
           docker compose -f deploy/docker-compose.yml config --quiet
-          docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" -e APP_HOSTNAME=context.example.com -e ASSET_HOSTNAME=assets.context.example.com -e NANGO_HOSTNAME=nango.context.example.com caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
+          for caddyfile in Caddyfile Caddyfile.nango-auth Caddyfile.nango-public; do
+            docker run --rm --network none --read-only --cap-drop ALL --cap-add NET_BIND_SERVICE --security-opt no-new-privileges \
+              --tmpfs /tmp:rw,noexec,nosuid,size=8m \
+              --tmpfs /data:rw,noexec,nosuid,size=8m \
+              --tmpfs /config:rw,noexec,nosuid,size=8m \
+              -v "$PWD/deploy/${caddyfile}:/etc/caddy/Caddyfile:ro" \
+              -e APP_HOSTNAME=context.example.com \
+              -e ASSET_HOSTNAME=assets.context.example.com \
+              -e NANGO_HOSTNAME=nango.context.example.com \
+              -e AUTH_NANGO_TOKEN=validation-only \
+              -e NANGO_DASHBOARD_BASIC=dmFsaWRhdGlvbjpvbmx5 \
+              caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d \
+              caddy validate --config /etc/caddy/Caddyfile
+          done
+          sh deploy/probe-nango-public-edge.sh deploy
+          printf '%s\n' owner@example.com > "$RUNNER_TEMP/nango-owner-email"
+          compose_json="$(docker compose -f deploy/docker-compose.yml config --format json)"
+          oauth2_proxy_image="$(jq -r '.services["oauth2-proxy"].image' <<<"$compose_json")"
+          oauth2_proxy_env=()
+          while IFS= read -r entry; do
+            oauth2_proxy_env+=(--env "$entry")
+          done < <(jq -r '.services["oauth2-proxy"].environment | to_entries[] | "\(.key)=\(.value)"' <<<"$compose_json")
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            "${oauth2_proxy_env[@]}" \
+            -e OAUTH2_PROXY_SESSION_STORE_TYPE=cookie \
+            -e OAUTH2_PROXY_REDIS_CONNECTION_URL= \
+            -v "$RUNNER_TEMP/nango-owner-email:/etc/oauth2-proxy/authorized-emails:ro" \
+            "$oauth2_proxy_image" --config-test
       - run: docker build -t context-use:test .
       - run: docker build -f deploy/backup/Dockerfile -t context-use-backup:test .
       - name: Verify Nango database role isolation

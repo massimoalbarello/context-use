@@ -1,0 +1,155 @@
+{
+	admin off
+	auto_https off
+	log default {
+		format filter {
+			request>uri regexp \?.*$ ?redacted
+		}
+	}
+	servers {
+		protocols h1 h2
+	}
+}
+
+:3000 {
+	header {
+		-Server
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options SAMEORIGIN
+	}
+
+	request_header -Baggage
+	request_header -Traceparent
+	request_header -Tracestate
+	request_header -Uber-Trace-Id
+	request_header -X-Amzn-Trace-Id
+	request_header -X-Datadog-Trace-Id
+	request_header -X-Datadog-Parent-Id
+	request_header -X-Datadog-Sampling-Priority
+	request_header -X-Datadog-Origin
+	request_header -X-Datadog-Tags
+
+	route {
+		@health path /healthz
+		handle @health {
+			respond "ok" 200
+		}
+
+		# These are Nango data-plane, control-plane, callback, and internal
+		# namespaces—not dashboard routes. The outer edge sends the tiny authorized
+		# public subset to the credential-free gateway. Refuse them here as a second
+		# boundary so a routing regression can never combine them with injected Basic.
+		@non_dashboard_namespace {
+			path /internal /internal/* /mcp /mcp/* /records /records/* /proxy /proxy/* /v1 /v1/* /sync /sync/* /action /action/* /scripts /scripts/* /functions /functions/* /connections /connections/* /connection /connection/* /integrations /integrations/* /providers /providers/* /oauth /oauth/* /oauth2 /oauth2/* /auth /auth/* /api-auth /api-auth/* /app-auth /app-auth/* /app-store-auth /app-store-auth/* /webhook /webhook/* /connect-ui /connect-ui/* /connect/ws /connect/session /connect/sessions /connect/sessions/* /connect/telemetry /environment-variables /environment-variables/* /config /config/* /health /ready
+		}
+		respond @non_dashboard_namespace "Not found" 404
+
+		# Every dashboard API request must have been initiated by the Nango origin,
+		# even when it is read-only. This prevents a sibling subdomain from turning
+		# the ambient SSO cookie into a Basic-authenticated Nango API request.
+		@api_without_fetch_metadata {
+			path /api/v1 /api/v1/*
+			not header Sec-Fetch-Site same-origin
+		}
+		respond @api_without_fetch_metadata "Forbidden" 403
+
+		# Nango's browser dashboard only mutates /api/v1. Reject every other
+		# externally-originated mutation even after SSO so its API-key data plane
+		# cannot accidentally become an authenticated browser API.
+		@unsupported_mutation {
+			method POST PUT PATCH DELETE
+			not path /api/v1 /api/v1/*
+		}
+		respond @unsupported_mutation "Not found" 404
+
+		# SameSite is a site boundary, not an origin boundary. Require both browser
+		# signals on dashboard mutations to reject requests from sibling subdomains.
+		@mutation_without_origin {
+			method POST PUT PATCH DELETE
+			not header Origin https://{$NANGO_HOSTNAME}
+		}
+		respond @mutation_without_origin "Forbidden" 403
+
+		@mutation_without_fetch_metadata {
+			method POST PUT PATCH DELETE
+			not header Sec-Fetch-Site same-origin
+		}
+		respond @mutation_without_fetch_metadata "Forbidden" 403
+
+		# Never trust identity or credentials supplied by a browser. The two
+		# forward-auth checks below are the only ways these headers are created.
+		request_header -Authorization
+		request_header -Proxy-Authorization
+		request_header -X-Auth-Request-*
+		request_header -X-Context-Use-Access-Token
+		request_header -X-Context-Use-Nango-Gateway
+		request_header -X-Forwarded-Access-Token
+		request_header -X-Forwarded-Email
+		request_header -X-Forwarded-Groups
+		request_header -X-Forwarded-Preferred-Username
+		request_header -X-Forwarded-User
+
+		# OAuth2 Proxy validates its host-only child session and returns the OIDC
+		# access token only over this private Docker network. Its /auth endpoint is
+		# deliberately not reachable through the public edge.
+		forward_auth oauth2-proxy:4180 {
+			uri /_context-use-auth/auth
+			header_up Host {$NANGO_HOSTNAME}
+			header_up X-Forwarded-Host {$NANGO_HOSTNAME}
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Uri {uri}
+			copy_headers X-Auth-Request-Access-Token>X-Context-Use-Access-Token
+
+			@not_authenticated status 401
+			handle_response @not_authenticated {
+				# Use only the fixed origin and path. An arbitrary query nested in rd
+				# would create redirect-parameter ambiguity.
+				redir * /_context-use-auth/start?rd=https://{$NANGO_HOSTNAME}{http.request.uri.path} 302
+			}
+		}
+		request_header Authorization "Bearer {http.request.header.X-Context-Use-Access-Token}"
+
+		# A proxy cookie alone is not authorization. Context Use checks the token's
+		# fixed client/owner claims and its bound parent dashboard session online on
+		# every request, making logout and passkey removal effective immediately.
+		forward_auth auth:3002 {
+			uri /internal/authorize-nango
+			header_up -Cookie
+			header_up X-Context-Use-Nango-Gateway {$AUTH_NANGO_TOKEN}
+
+			@parent_session_invalid status 401
+			handle_response @parent_session_invalid {
+				# Clear the stale child ticket before starting OIDC again. Otherwise
+				# OAuth2 Proxy would keep accepting it and create a redirect loop.
+				redir * /_context-use-auth/sign_out?rd=https://{$NANGO_HOSTNAME}{http.request.uri.path} 302
+			}
+		}
+
+		request_body {
+			max_size 75MB
+		}
+
+		reverse_proxy nango-server:3003 {
+			# Basic authentication is a private gateway-to-Nango capability. Never
+			# forward the proxy ticket, OAuth token, or asserted identity to Nango.
+			header_up Authorization "Basic {$NANGO_DASHBOARD_BASIC}"
+			header_up -Cookie
+			header_up -Proxy-Authorization
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_up -X-Forwarded-Email
+			header_up -X-Forwarded-Groups
+			header_up -X-Forwarded-Preferred-Username
+			header_up -X-Forwarded-User
+			header_down -Server
+			header_down -Set-Cookie
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+}

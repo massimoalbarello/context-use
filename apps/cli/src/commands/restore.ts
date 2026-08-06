@@ -16,8 +16,7 @@ export function restoreCommands(bucket: string, key: string): string[] {
   return [
     "set -euo pipefail",
     "cd /opt/context-use/deploy",
-    "set -a; . /data/context-use/secrets/runtime.env; set +a",
-    "export PGPASSWORD=\"$POSTGRES_PASSWORD\"",
+    "export PGPASSWORD=\"$(sed -n 's/^POSTGRES_PASSWORD=//p' /data/context-use/secrets/runtime.env)\"",
     `restore_failed() { ${database} -c 'DROP ROLE IF EXISTS ${compatibilityRole}' >/dev/null 2>&1 || true; ${compose} up -d postgres aws-credential-broker backup >/dev/null 2>&1 || true; }`,
     "trap restore_failed EXIT",
     `${compose} run --rm backup once`,
@@ -58,7 +57,7 @@ export const command = defineCommand("restore", {
     const typed = await p.text({ message: `Type ${config.hostname} to replace the live database` });
     if (p.isCancel(typed) || typed !== config.hostname) throw new Error("Confirmation did not match");
     await sendSsmCommands(config.awsProfile, config.awsRegion, compute.instance_id, restoreCommands(data.backup_bucket, selected));
-    await verifyDeployment(config, manifest.version);
+    await verifyDeployment(config, manifest.version, compute.instance_id);
     p.outro(`Database restored from ${selected}`);
   },
 });

@@ -1,0 +1,326 @@
+{
+	admin off
+	auto_https off
+	log default {
+		format filter {
+			request>uri regexp \?.*$ ?redacted
+		}
+	}
+	servers {
+		protocols h1 h2
+	}
+}
+
+:3000 {
+	header {
+		-Server
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+
+	request_header -Baggage
+	request_header -Traceparent
+	request_header -Tracestate
+	request_header -Uber-Trace-Id
+	request_header -X-Amzn-Trace-Id
+	request_header -X-Datadog-Trace-Id
+	request_header -X-Datadog-Parent-Id
+	request_header -X-Datadog-Sampling-Priority
+	request_header -X-Datadog-Origin
+	request_header -X-Datadog-Tags
+
+	# No browser or webhook may assert gateway/OIDC identity. Individual Connect
+	# handlers below preserve only their required Authorization bearer.
+	request_header -Proxy-Authorization
+	request_header -X-Auth-Request-*
+	request_header -X-Context-Use-Access-Token
+	request_header -X-Context-Use-Nango-Gateway
+	request_header -X-Forwarded-Access-Token
+	request_header -X-Forwarded-Email
+	request_header -X-Forwarded-Groups
+	request_header -X-Forwarded-Preferred-Username
+	request_header -X-Forwarded-User
+
+	@health path /healthz
+	handle @health {
+		respond "ok" 200
+	}
+
+	# Connect UI is a bearer-scoped integration surface, not the administrative
+	# dashboard. It therefore uses the credential-free public gateway. Remove
+	# the bearer from the upstream static-file request while leaving the browser
+	# URL intact for Connect UI's client-side token validation.
+	@connect_ui_root {
+		method GET HEAD
+		path /connect-ui
+	}
+	handle @connect_ui_root {
+		header Cache-Control "no-store, private"
+		redir * /connect-ui/?{query} 308
+	}
+
+	@connect_ui {
+		method GET HEAD
+		path /connect-ui/*
+	}
+	handle @connect_ui {
+		rewrite * {path}?
+		uri strip_prefix /connect-ui
+		reverse_proxy nango-server:3009 {
+			header_up -Authorization
+			header_up -Proxy-Authorization
+			header_up -Cookie
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_down -Server
+			header_down Cache-Control "no-store, private"
+			header_down Referrer-Policy no-referrer
+			header_down -Set-Cookie
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	# The SDK opens this socket before provider authorization and receives only
+	# an unguessable correlation id. Require the exact browser origin and a real
+	# WebSocket upgrade; no dashboard or Nango API credential is forwarded.
+	@connect_socket {
+		method GET
+		path /connect/ws
+		header Origin https://{$NANGO_HOSTNAME}
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	handle @connect_socket {
+		reverse_proxy nango-server:3003 {
+			header_up -Authorization
+			header_up -Proxy-Authorization
+			header_up -Cookie
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_down -Server
+			header_down -Set-Cookie
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	# These Connect UI reads accept exactly one complete Connect-session bearer.
+	# Caddy joins repeated request-header fields in this placeholder, so the
+	# anchored expression rejects duplicate and comma-joined Authorization
+	# values. Overwrite the upstream field from the match capture as a second
+	# guarantee that Nango receives only the validated Connect bearer.
+	@connect_session {
+		method GET DELETE
+		path /connect/session
+		vars_regexp connect_bearer {http.request.header.Authorization} "^Bearer nango_connect_session_[a-f0-9]{64}$"
+	}
+	handle @connect_session {
+		reverse_proxy nango-server:3003 {
+			header_up Authorization "{re.connect_bearer.0}"
+			header_up -Proxy-Authorization
+			header_up -Cookie
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_down -Server
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	@connect_integrations {
+		method GET
+		path /integrations /providers
+		vars_regexp connect_bearer {http.request.header.Authorization} "^Bearer nango_connect_session_[a-f0-9]{64}$"
+	}
+	handle @connect_integrations {
+		reverse_proxy nango-server:3003 {
+			header_up Authorization "{re.connect_bearer.0}"
+			header_up -Proxy-Authorization
+			header_up -Cookie
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_down -Server
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	@connect_provider {
+		method GET
+		path_regexp provider_path ^/providers/[^/]+/?$
+		vars_regexp connect_bearer {http.request.header.Authorization} "^Bearer nango_connect_session_[a-f0-9]{64}$"
+	}
+	handle @connect_provider {
+		reverse_proxy nango-server:3003 {
+			header_up Authorization "{re.connect_bearer.0}"
+			header_up -Proxy-Authorization
+			header_up -Cookie
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_down -Server
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	# Provider authorization requests carry the Connect token in the query. The
+	# exact format check excludes Nango public keys; Nango validates the backing
+	# session before processing credentials.
+	@connect_authorization {
+		method GET POST
+		path /oauth/connect/* /oauth2/auth/* /auth/oauth-outbound/* /api-auth/api-key/* /api-auth/basic/* /app-store-auth/* /auth/tba/* /auth/two-step/* /auth/jwt/* /auth/bill/* /auth/aws-sigv4/* /auth/signature/* /auth/unauthenticated/*
+		vars_regexp connect_session_token {query.connect_session_token} ^nango_connect_session_[a-f0-9]{64}$
+	}
+	handle @connect_authorization {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy nango-server:3003 {
+			header_up -Authorization
+			header_up -Proxy-Authorization
+			header_up -Cookie
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_down -Server
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	# sendBeacon cannot set an Authorization header; Nango validates the Connect
+	# token from this endpoint's small JSON body.
+	@connect_telemetry {
+		method POST OPTIONS
+		path /connect/telemetry
+	}
+	handle @connect_telemetry {
+		request_body {
+			max_size 64KB
+		}
+		reverse_proxy nango-server:3003 {
+			header_up -Authorization
+			header_up -Proxy-Authorization
+			header_up -Cookie
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_down -Server
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	# OAuth/provider callbacks and signed webhook delivery must arrive without a
+	# dashboard session. Keep this list exact and independently default-deny.
+	@oauth_callback {
+		method GET
+		path /oauth/callback
+	}
+	handle @oauth_callback {
+		reverse_proxy nango-server:3003 {
+			header_up -Authorization
+			header_up -Proxy-Authorization
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			# Preserve Nango's state cookie while removing OAuth2 Proxy's host-wide
+			# session and per-request CSRF cookies from the same Cookie header.
+			header_up Cookie "(?:^__Host-context-use-nango(?:(?:_[A-Za-z0-9_-]{8})?_csrf)?=[^;]*(?:;[ ]*)?|;[ ]*__Host-context-use-nango(?:(?:_[A-Za-z0-9_-]{8})?_csrf)?=[^;]*)" ""
+			header_down -Server
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	@oauth_client_metadata {
+		method GET
+		path_regexp metadata_path ^/oauth/client-metadata/[^/]+/[^/]+/?$
+	}
+	handle @oauth_client_metadata {
+		reverse_proxy nango-server:3003 {
+			header_up -Authorization
+			header_up -Proxy-Authorization
+			header_up -Cookie
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_down -Server
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	@app_auth_callback {
+		method GET
+		path /app-auth/connect
+	}
+	handle @app_auth_callback {
+		reverse_proxy nango-server:3003 {
+			header_up -Authorization
+			header_up -Proxy-Authorization
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_up Cookie "(?:^__Host-context-use-nango(?:(?:_[A-Za-z0-9_-]{8})?_csrf)?=[^;]*(?:;[ ]*)?|;[ ]*__Host-context-use-nango(?:(?:_[A-Za-z0-9_-]{8})?_csrf)?=[^;]*)" ""
+			header_down -Server
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	@webhook {
+		method POST
+		path_regexp webhook_path ^/webhook/[^/]+/[^/]+/?$
+	}
+	handle @webhook {
+		request_body {
+			max_size 75MB
+		}
+		reverse_proxy nango-server:3003 {
+			# Some providers authenticate webhook delivery with Authorization. This
+			# exact route cannot reach any Nango API namespace, so preserve it here.
+			header_up -Proxy-Authorization
+			header_up -Cookie
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_down -Server
+			header_down -WWW-Authenticate
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}

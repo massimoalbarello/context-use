@@ -2,6 +2,7 @@ import type { AssetRepository } from "@context-use/database";
 import { z } from "zod";
 import { config } from "./config.ts";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
+import { activeMcpLineage } from "./mcp-auth-client.ts";
 import { requestMatchesOrigin, securityHeaders } from "./security.ts";
 import { AssetIntegrityError, type ObjectStorage } from "./storage.ts";
 
@@ -12,6 +13,7 @@ function problem(message: string, status: number, code: string): Response {
 export function createMcpAssetUploadHandler(
   assets: AssetRepository,
   storage: ObjectStorage,
+  authorizeLineage = activeMcpLineage,
 ) {
   return async (request: Request, assetId: string): Promise<Response> => {
     if (!requestMatchesOrigin(request, config.APP_ORIGIN)) {
@@ -23,6 +25,9 @@ export function createMcpAssetUploadHandler(
     const capability = verifyAssetCapability(request.headers.get("x-context-use-upload-token") ?? "", "upload");
     if (!capability || capability.assetId !== assetId) {
       return problem("Asset upload capability is invalid or expired", 401, "invalid_upload_capability");
+    }
+    if (!await authorizeLineage(capability.clientId, capability.sessionId)) {
+      return problem("Asset upload authorization is no longer active", 401, "invalid_upload_capability");
     }
 
     const asset = await assets.get(z.string().uuid().parse(assetId), true);

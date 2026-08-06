@@ -61,7 +61,7 @@ export const command = defineCommand("update", {
     await prepareCompute(config, data, compute);
     await ensureRuntimeParameters(config, data, compute);
     await deploy(config, compute, manifest);
-    await ensureNangoApiKeys(config, data);
+    await ensureNangoApiKeys(config, data, compute.instance_id);
     await refreshNangoPipelineRuntime(config, compute);
     config.releaseVersion = manifest.version;
     await saveConfig(config);

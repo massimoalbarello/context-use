@@ -17,7 +17,31 @@ type StoredDeploymentConfig = Omit<DeploymentConfig, "schemaVersion" | "nangoHos
   computeOutputs?: unknown;
 };
 
+export function isValidOwnerEmail(input: unknown): input is string {
+  if (typeof input !== "string" || input.length > 254 || input !== input.trim()) return false;
+  const separator = input.indexOf("@");
+  if (separator < 1 || separator !== input.lastIndexOf("@")) return false;
+  const local = input.slice(0, separator);
+  const domain = input.slice(separator + 1);
+  // Preserve ordinary RFC 5322 atom characters while excluding the values
+  // that can become comments, extra entries, or quoting syntax in the
+  // generated dotenv and OAuth2 Proxy authorized-emails files.
+  if (
+    local.length > 64
+    || !/^(?!\.)(?!.*\.\.)(?!.*\.$)[A-Za-z0-9!$%&'*+/=?^_`{|}~.-]+$/.test(local)
+  ) return false;
+  const labels = domain.split(".");
+  return labels.length > 1 && labels.every((label) => (
+    label.length > 0
+    && label.length <= 63
+    && /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(label)
+  ));
+}
+
 export function normalizeDeploymentConfig(config: StoredDeploymentConfig): DeploymentConfig {
+  if (!isValidOwnerEmail(config.ownerEmail)) {
+    throw new Error("Deployment config contains an invalid owner email");
+  }
   const legacyStateKmsKeyArn = config.legacyStateKmsKeyArn ?? config.stateKmsKeyArn;
   return {
     schemaVersion: 2,

@@ -15,8 +15,9 @@ import {
   retainedDataVolumeExists,
 } from "./data-volume.ts";
 import { restoreCommands } from "./commands/restore.ts";
-import { normalizeDeploymentConfig } from "./paths.ts";
+import { isValidOwnerEmail, normalizeDeploymentConfig } from "./paths.ts";
 import { redactSensitiveText } from "./process.ts";
+import { ensureRuntimeParameters } from "./setup.ts";
 import { backendArgs, initializeTerraformBackend, terraformEnvironment } from "./terraform.ts";
 import type { ComputeOutputs, DataOutputs, DeploymentConfig, ReleaseManifest } from "./types.ts";
 
@@ -371,8 +372,8 @@ test("data-volume policy initializes only a first-install volume and fails close
 test("restore verifies the backup, keeps traffic down on failure, migrates, and restarts on success", () => {
   const script = restoreCommands("backup-bucket", "postgres/2026-07-17T10-39-47Z.sql.gz").join("\n");
 
-  expect(script).toContain(". /data/context-use/secrets/runtime.env");
-  expect(script).toContain("export PGPASSWORD=\"$POSTGRES_PASSWORD\"");
+  expect(script).not.toContain(". /data/context-use/secrets/runtime.env");
+  expect(script).toContain("sed -n 's/^POSTGRES_PASSWORD=//p' /data/context-use/secrets/runtime.env");
   expect(script).toContain("exec -T -e PGPASSWORD postgres psql");
   expect(script).toContain("--single-transaction");
   expect(script).toContain("backup fetch 'postgres/2026-07-17T10-39-47Z.sql.gz'");
@@ -386,7 +387,7 @@ test("restore verifies the backup, keeps traffic down on failure, migrates, and 
   expect(script.indexOf("CREATE ROLE context_use_public_mcp NOLOGIN")).toBeLessThan(script.indexOf("backup fetch"));
   expect(script.lastIndexOf("DROP ROLE IF EXISTS context_use_public_mcp")).toBeGreaterThan(script.indexOf("--profile migration run --rm migrate"));
   expect(script).toContain("up -d --remove-orphans");
-  expect(script).not.toContain("POSTGRES_PASSWORD=");
+  expect(script).not.toContain("export POSTGRES_PASSWORD");
 });
 
 test("deployment health must report the requested release version", () => {
@@ -425,6 +426,36 @@ test("legacy configs retain durable state coordinates without derived lifecycle 
   });
 });
 
+test("owner emails are safe single entries for OAuth2 Proxy's authorized-emails file", async () => {
+  for (const email of [
+    "owner@example.com",
+    "owner.name+context@example.co.uk",
+    "OWNER_1@example.com",
+    "o'brien@example.com",
+    "user!tag@example.com",
+    "owner$tag@example.com",
+    "owner${tag}@example.com",
+  ]) {
+    expect(isValidOwnerEmail(email)).toBe(true);
+  }
+  for (const email of [
+    "#owner@example.com",
+    "owner#tag@example.com",
+    "owner@example.com,attacker@example.com",
+    '"owner"@example.com',
+    "owner@example.com\nattacker@example.com",
+    " owner@example.com",
+  ]) {
+    expect(isValidOwnerEmail(email)).toBe(false);
+    expect(() => normalizeDeploymentConfig(deploymentConfig({ ownerEmail: email }))).toThrow("invalid owner email");
+  }
+  await expect(ensureRuntimeParameters(
+    deploymentConfig({ ownerEmail: "owner@example.com,attacker@example.com" }),
+    dataOutputs,
+    computeOutputs,
+  )).rejects.toThrow("Invalid owner email");
+});
+
 test("manual dashboard, asset, and Nango DNS must resolve to the deployment IP", async () => {
   const config = deploymentConfig();
   expect(await dnsMismatches(config, computeOutputs, async () => ["192.0.2.10"])).toEqual([]);
@@ -435,10 +466,12 @@ test("manual dashboard, asset, and Nango DNS must resolve to the deployment IP",
 });
 
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
-  const [userData, deployScript, caddy, compute, update, setup, resume, data, deployCompose, backupScript, cliUpdate] = await Promise.all([
+  const [userData, deployScript, caddy, nangoPublicCaddy, nangoAuthCaddy, compute, update, setup, resume, data, deployCompose, backupScript, cliUpdate] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/deploy.sh", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile", import.meta.url)).text(),
+    Bun.file(new URL("../../../deploy/Caddyfile.nango-public", import.meta.url)).text(),
+    Bun.file(new URL("../../../deploy/Caddyfile.nango-auth", import.meta.url)).text(),
     Bun.file(new URL("../../../infra/compute/main.tf", import.meta.url)).text(),
     Bun.file(new URL("./commands/update.ts", import.meta.url)).text(),
     Bun.file(new URL("./setup.ts", import.meta.url)).text(),
@@ -448,6 +481,9 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     Bun.file(new URL("../../../deploy/backup/backup.sh", import.meta.url)).text(),
     Bun.file(new URL("./cli-update.ts", import.meta.url)).text(),
   ]);
+  expect(deployScript).toContain('source "${root}/deploy/compose-env.sh"');
+  expect(deployScript).toContain("OWNER_EMAIL=${owner_email_literal}");
+  expect(deployScript).toContain("NANGO_DASHBOARD_USERNAME=${nango_dashboard_username_literal}");
 
   expect(userData.indexOf("install -d -m 0755 /usr/local/lib/docker/cli-plugins")).toBeLessThan(userData.indexOf("docker-compose-linux-"));
   expect(userData).toContain("context_use_data_volume_action");
@@ -494,6 +530,37 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(caddy).not.toContain("handle /public/mcp");
   expect(caddy).not.toContain("PUBLIC_MCP");
   expect(caddy).not.toContain("public-mcp");
+  expect(caddy).not.toContain("reverse_proxy nango-server");
+  expect(caddy).toContain("reverse_proxy nango-public-gateway:3000");
+  expect(caddy).toContain("reverse_proxy nango-auth-gateway:3000");
+  const strippedTracingHeaders = [
+    "Baggage",
+    "Traceparent",
+    "Tracestate",
+    "Uber-Trace-Id",
+    "X-Amzn-Trace-Id",
+    "X-Datadog-Trace-Id",
+    "X-Datadog-Parent-Id",
+    "X-Datadog-Sampling-Priority",
+    "X-Datadog-Origin",
+    "X-Datadog-Tags",
+  ];
+  for (const edgeCaddyfile of [caddy, nangoPublicCaddy, nangoAuthCaddy]) {
+    expect(edgeCaddyfile).toContain("request>uri regexp \\?.*$ ?redacted");
+    for (const header of strippedTracingHeaders) {
+      expect(edgeCaddyfile).toContain(`request_header -${header}`);
+    }
+  }
+  expect(nangoPublicCaddy).toContain('respond "Not found" 404');
+  expect(nangoPublicCaddy).toContain("rewrite * {path}?");
+  expect(nangoPublicCaddy).toContain("path /connect/session");
+  expect(nangoPublicCaddy).not.toContain("NANGO_DASHBOARD_BASIC");
+  expect(nangoPublicCaddy).not.toContain("AUTH_NANGO_TOKEN");
+  expect(nangoAuthCaddy).toContain("forward_auth oauth2-proxy:4180");
+  expect(nangoAuthCaddy).toContain("forward_auth auth:3002");
+  expect(nangoAuthCaddy).toContain('header_up Authorization "Basic {$NANGO_DASHBOARD_BASIC}"');
+  expect(nangoAuthCaddy).toContain("@non_dashboard_namespace");
+  expect(nangoAuthCaddy).not.toContain("handle @connect_ui");
   const assetSite = caddy.slice(caddy.indexOf("{$ASSET_HOSTNAME}"));
   expect(assetSite).toContain("handle /a/*");
   expect(assetSite).not.toContain("handle /p/*");
@@ -504,16 +571,70 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     deployCompose.indexOf("x-locked-service:"),
     deployCompose.indexOf("x-logging:"),
   );
+  type ComposeService = {
+    tmpfs?: string[];
+    environment?: Record<string, unknown>;
+    networks?: string[] | Record<string, unknown>;
+  };
   const parsedCompose = Bun.YAML.parse(deployCompose) as {
     "x-locked-service": { tmpfs: string[] };
-    services: Record<string, { tmpfs?: string[] }>;
+    services: Record<string, ComposeService>;
   };
+  const networkNames = (service: ComposeService | undefined): string[] => Array.isArray(service?.networks)
+    ? service.networks
+    : Object.keys(service?.networks ?? {});
   expect(parsedCompose["x-locked-service"].tmpfs).toEqual(["/tmp:size=32m,mode=1777"]);
   expect(parsedCompose.services["aws-credential-broker"]?.tmpfs).toEqual(["/tmp:size=8m,mode=1777"]);
   expect(parsedCompose.services.storage?.tmpfs).toEqual(["/tmp:size=32m,mode=1777"]);
   expect(parsedCompose.services["public-mcp"]).toBeUndefined();
   expect(parsedCompose.services["auth-edge"]).toBeUndefined();
   expect(parsedCompose.services["private-mcp-edge"]).toBeUndefined();
+  expect(networkNames(parsedCompose.services.caddy)).toEqual(expect.arrayContaining([
+    "nango_public_edge",
+    "nango_auth_edge",
+    "nango_oauth_browser",
+  ]));
+  expect(networkNames(parsedCompose.services.caddy)).not.toEqual(expect.arrayContaining([
+    "nango_public_upstream",
+    "nango_auth_upstream",
+    "nango_management_internal",
+    "nango_pipeline_internal",
+  ]));
+  expect(Object.keys(parsedCompose.services["nango-public-gateway"]?.environment ?? {})).toEqual(["NANGO_HOSTNAME"]);
+  expect(networkNames(parsedCompose.services["nango-public-gateway"])).toEqual(["nango_public_edge", "nango_public_upstream"]);
+  expect(Object.keys(parsedCompose.services["nango-auth-gateway"]?.environment ?? {}).sort()).toEqual([
+    "AUTH_NANGO_TOKEN",
+    "NANGO_DASHBOARD_BASIC",
+    "NANGO_HOSTNAME",
+  ]);
+  expect(networkNames(parsedCompose.services["nango-auth-gateway"])).toEqual([
+    "nango_auth_edge",
+    "nango_auth_upstream",
+    "nango_sso_internal",
+    "auth_nango_internal",
+  ]);
+  const oauthEnvironment = Object.keys(parsedCompose.services["oauth2-proxy"]?.environment ?? {});
+  expect(oauthEnvironment).toEqual(expect.arrayContaining([
+    "OAUTH2_PROXY_CLIENT_SECRET",
+    "OAUTH2_PROXY_COOKIE_SECRET",
+    "OAUTH2_PROXY_OIDC_ENABLED_SIGNING_ALGS",
+  ]));
+  expect(oauthEnvironment).not.toEqual(expect.arrayContaining([
+    "AUTH_NANGO_TOKEN",
+    "NANGO_DASHBOARD_BASIC",
+    "NANGO_INTEGRATION_MANAGER_API_KEY",
+  ]));
+  expect(networkNames(parsedCompose.services["nango-sso-redis"])).toEqual(["nango_sso_store"]);
+  expect(networkNames(parsedCompose.services["nango-server"])).toEqual(expect.arrayContaining([
+    "nango_pipeline_internal",
+    "nango_management_internal",
+    "nango_public_upstream",
+    "nango_auth_upstream",
+  ]));
+  expect(parsedCompose.services["nango-server"]?.environment).toMatchObject({
+    DD_TRACE_ENABLED: "false",
+    OTEL_PROPAGATORS: "none",
+  });
   expect(lockedService).toContain("read_only: true");
   expect(lockedService).toContain("cap_drop: [ALL]");
   expect(deployCompose).not.toContain("PUBLIC_MCP");
@@ -564,7 +685,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(authService).not.toContain("DATABASE_URL: postgres://context_use_dashboard");
   expect(authService).not.toContain("STORAGE_");
   expect(authService).not.toContain("AWS_REGION:");
-  expect(authService).toContain("networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]");
+  expect(authService).toContain("networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal, auth_nango_internal]");
 
   const nangoServerService = deployCompose.slice(
     deployCompose.indexOf("\n  nango-server:\n"),
@@ -692,8 +813,13 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     compute.indexOf('resource "aws_iam_instance_profile" "app"'),
   );
   expect(instancePolicy).not.toContain("s3:");
-  expect(instancePolicy).not.toContain("kms:Encrypt");
+  expect(instancePolicy).toContain('["kms:Encrypt"]');
   expect(instancePolicy).not.toContain("kms:GenerateDataKey");
+  expect(instancePolicy).toContain('["ssm:PutParameter"]');
+  expect(instancePolicy).toContain("parameter\${var.ssm_parameter_prefix}/NANGO_DEPLOYER_API_KEY");
+  expect(instancePolicy).toContain("parameter\${var.ssm_parameter_prefix}/NANGO_PIPELINE_API_KEY");
+  expect(instancePolicy).toContain("parameter\${var.ssm_parameter_prefix}/NANGO_INTEGRATION_MANAGER_API_KEY");
+  expect(instancePolicy).not.toContain('Action = ["ssm:PutParameter"], Resource = ["arn:aws:ssm:\${var.aws_region}:*:parameter\${var.ssm_parameter_prefix}/*"]');
   expect(compute).toContain("http_put_response_hop_limit = 1");
   expect(compute).not.toContain("http_put_response_hop_limit = 2");
   expect(compute).not.toContain("public_mcp");
@@ -703,18 +829,23 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(update.indexOf("retainedDataVolumeExists(config")).toBeLessThan(update.indexOf("await applyData"));
   expect(update.match(/await saveConfig\(config\)/g)?.length).toBe(1);
   expect(update).not.toContain("fallback");
-  expect(update.indexOf("await deploy(config, compute, manifest)")).toBeLessThan(update.indexOf("await ensureNangoApiKeys(config, data)"));
-  expect(update.indexOf("await ensureNangoApiKeys(config, data)")).toBeLessThan(update.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
+  expect(update.indexOf("await deploy(config, compute, manifest)")).toBeLessThan(update.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)"));
+  expect(update.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)")).toBeLessThan(update.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
   expect(cliUpdate).not.toContain('"--version"');
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await pauseForManualDns(config, compute)"));
   expect(setup).toContain('instanceType: "t3.large"');
-  expect(setup.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(setup.indexOf("await ensureNangoApiKeys(config, data)"));
-  expect(setup.indexOf("await ensureNangoApiKeys(config, data)")).toBeLessThan(setup.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
+  expect(setup.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(setup.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)"));
+  expect(setup.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)")).toBeLessThan(setup.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
+  expect(setup).toContain("NANGO_OAUTH_CLIENT_ID");
+  expect(setup).toContain("NANGO_OAUTH_CLIENT_SECRET");
+  expect(setup).toContain("NANGO_AUTH_COOKIE_SECRET");
+  expect(setup).toContain("AUTH_NANGO_TOKEN");
+  expect(setup).not.toContain("Nango dashboard credentials:");
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await pauseForManualDns(config, compute)"));
-  expect(resume.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(resume.indexOf("await ensureNangoApiKeys(config, data)"));
-  expect(resume.indexOf("await ensureNangoApiKeys(config, data)")).toBeLessThan(resume.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
+  expect(resume.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(resume.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)"));
+  expect(resume.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)")).toBeLessThan(resume.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
   expect(resume.indexOf("retainedDataVolumeExists(config")).toBeLessThan(resume.indexOf("await applyData"));
   expect(data).toContain('ContextUseInitialization = "pending"');
   expect(data).toContain('ignore_changes = [tags["ContextUseInitialization"]]');

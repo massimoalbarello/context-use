@@ -2,6 +2,7 @@ import { defineCommand } from "@parshjs/core";
 import { retainedDataVolumeExists } from "../data-volume.ts";
 import { healthMatchesVersion } from "../deploy.ts";
 import { readInfrastructure } from "../lifecycle.ts";
+import { probeInternalNangoReady, verifyExternalNangoBoundary } from "../nango-internal.ts";
 
 export const command = defineCommand("status", {
   description: "Show deployment status.",
@@ -14,14 +15,19 @@ export const command = defineCommand("status", {
     if (compute) {
       const [appResult, nangoResult] = await Promise.allSettled([
         fetch(`https://${config.hostname}/api/health`, { signal: AbortSignal.timeout(5_000) }),
-        fetch(`https://${config.nangoHostname}/ready`, { signal: AbortSignal.timeout(5_000) }),
+        data
+          ? Promise.all([
+            probeInternalNangoReady(config, compute.instance_id),
+            verifyExternalNangoBoundary(config, compute.instance_id),
+          ]).then((checks) => checks.every(Boolean))
+          : Promise.resolve(false),
       ]);
       if (appResult.status === "fulfilled") {
         try {
           healthy = appResult.value.ok && healthMatchesVersion(await appResult.value.json(), config.releaseVersion);
         } catch {}
       }
-      nangoHealthy = nangoResult.status === "fulfilled" && nangoResult.value.ok;
+      nangoHealthy = nangoResult.status === "fulfilled" && nangoResult.value;
     }
     const state = config.recovery
       ? "recovering"

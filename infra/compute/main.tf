@@ -2,6 +2,8 @@ data "aws_ssm_parameter" "al2023" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
+data "aws_caller_identity" "current" {}
+
 locals { prefix = "context-use-${var.installation_id}-${var.environment}" }
 
 resource "aws_vpc" "main" {
@@ -165,7 +167,17 @@ resource "aws_iam_role_policy" "data" {
     Version = "2012-10-17"
     Statement = [
       { Effect = "Allow", Action = ["kms:Decrypt"], Resource = [var.kms_key_arn] },
+      { Effect = "Allow", Action = ["kms:Encrypt"], Resource = [var.kms_key_arn] },
       { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"], Resource = ["arn:aws:ssm:${var.aws_region}:*:parameter${var.ssm_parameter_prefix}/*"] },
+      {
+        Effect = "Allow"
+        Action = ["ssm:PutParameter"]
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_parameter_prefix}/NANGO_DEPLOYER_API_KEY",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_parameter_prefix}/NANGO_PIPELINE_API_KEY",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_parameter_prefix}/NANGO_INTEGRATION_MANAGER_API_KEY",
+        ]
+      },
       { Effect = "Allow", Action = ["sts:AssumeRole"], Resource = [aws_iam_role.storage.arn, aws_iam_role.backup.arn] },
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"], Resource = ["${aws_cloudwatch_log_group.app.arn}:*"] }
     ]

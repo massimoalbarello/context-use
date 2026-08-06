@@ -78,6 +78,35 @@ async function cleanupIntents(database: Queryable): Promise<void> {
   await database.query("DELETE FROM passkey_management_intents WHERE expires_at<=now()");
 }
 
+export async function beginPasskeyRemovalTransaction(client: PoolClient): Promise<void> {
+  await client.query("BEGIN");
+  // This must be the first lock in the transaction. Passkey authentication
+  // takes the same owner lock before Better Auth reads a credential or creates
+  // a session, preventing either side from acquiring row locks out of order.
+  await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [ownerUserId]);
+}
+
+export async function revokeOwnerAuthentication(database: Queryable, userId: string): Promise<void> {
+  // These foreign keys intentionally use ON DELETE SET NULL for general OAuth
+  // compatibility. Revoke OAuth credentials first so deleting a bound session
+  // can never turn its token into an unbound, still-active credential.
+  await database.query(
+    `UPDATE "oauthRefreshToken"
+     SET revoked=coalesce(revoked,now()),
+         "rotationReplayResponse"=NULL,
+         "rotationReplayExpiresAt"=NULL
+     WHERE "userId"=$1`,
+    [userId],
+  );
+  await database.query(
+    `UPDATE "oauthAccessToken"
+     SET revoked=coalesce(revoked,now())
+     WHERE "userId"=$1`,
+    [userId],
+  );
+  await database.query(`DELETE FROM "session" WHERE "userId"=$1`, [userId]);
+}
+
 export async function createEnrollmentIntent(
   database: Queryable,
   principal: Principal,
@@ -252,7 +281,7 @@ export async function confirmRemovalIntent(
 ): Promise<void> {
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await beginPasskeyRemovalTransaction(client);
     const intent = await lockedIntent(client, intentId, principal, "delete");
     if (intent.target_passkey_id !== targetPasskeyId) {
       throw new SecurityError("Passkey management request not found", 404);
@@ -266,7 +295,7 @@ export async function confirmRemovalIntent(
       [intent.id, verified.key.credentialID],
     );
     await client.query("SELECT remove_owner_passkey($1,$2)", [principal.userId, targetPasskeyId]);
-    await client.query(`DELETE FROM "session" WHERE "userId"=$1`, [principal.userId]);
+    await revokeOwnerAuthentication(client, principal.userId);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

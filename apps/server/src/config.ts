@@ -7,8 +7,10 @@ const developmentConfirmationGatewayToken = "development-confirmation-gateway-to
 const developmentInternalTokens = {
   authDashboard: "development-auth-dashboard-internal-token",
   authMcp: "development-auth-private-mcp-internal-token",
+  authNango: "development-auth-nango-gateway-token",
   confirmationDashboard: "development-confirmation-dashboard-token",
 };
+const developmentNangoOAuthClientSecret = "development-nango-oauth-client-secret";
 const developmentStorageTokens = {
   dashboard: "development-storage-dashboard-token",
   mcp: "development-storage-private-mcp-token",
@@ -35,6 +37,7 @@ const schema = z.object({
   CONFIRMATION_GATEWAY_TOKEN: z.string().min(32).default(developmentConfirmationGatewayToken),
   AUTH_DASHBOARD_TOKEN: z.string().min(32).default(developmentInternalTokens.authDashboard),
   AUTH_MCP_TOKEN: z.string().min(32).default(developmentInternalTokens.authMcp),
+  AUTH_NANGO_TOKEN: z.string().regex(/^[A-Za-z0-9_-]{32,256}$/).default(developmentInternalTokens.authNango),
   CONFIRMATION_DASHBOARD_TOKEN: z.string().min(32).default(developmentInternalTokens.confirmationDashboard),
   OWNER_EMAIL: z.string().email().default("owner@example.com"),
   OWNER_SETUP_TOKEN_HASH: z.string().regex(/^[a-f0-9]{64}$/).default(developmentSetupTokenHash),
@@ -58,6 +61,9 @@ const schema = z.object({
   KMS_KEY_ID: z.string().default(""),
   SESSION_IDLE_SECONDS: z.coerce.number().int().positive().default(43_200),
   SESSION_MAX_SECONDS: z.coerce.number().int().positive().default(604_800),
+  NANGO_ORIGIN: z.string().url().default("http://localhost:3003"),
+  NANGO_OAUTH_CLIENT_ID: z.string().regex(/^[A-Za-z0-9_-]{16,128}$/).default("context-use-nango-dashboard"),
+  NANGO_OAUTH_CLIENT_SECRET: z.string().regex(/^[A-Za-z0-9_-]{32,256}$/).default(developmentNangoOAuthClientSecret),
   NANGO_PUBLIC_URL: z.union([z.literal(""), z.string().url()]).default(""),
   NANGO_IMAGE_REFERENCE: z.string().max(512).default(""),
   NANGO_INTERNAL_URL: z.string().url().default("http://localhost:3003"),
@@ -86,6 +92,8 @@ if (production) {
   if (["auth", "confirmation"].includes(config.SERVICE_MODE) && config.CONFIRMATION_GATEWAY_TOKEN === developmentConfirmationGatewayToken) insecure.push("CONFIRMATION_GATEWAY_TOKEN must be changed");
   if (["auth", "dashboard"].includes(config.SERVICE_MODE) && config.AUTH_DASHBOARD_TOKEN === developmentInternalTokens.authDashboard) insecure.push("AUTH_DASHBOARD_TOKEN must be changed");
   if (["auth", "mcp"].includes(config.SERVICE_MODE) && config.AUTH_MCP_TOKEN === developmentInternalTokens.authMcp) insecure.push("AUTH_MCP_TOKEN must be changed");
+  if (config.SERVICE_MODE === "auth" && config.AUTH_NANGO_TOKEN === developmentInternalTokens.authNango) insecure.push("AUTH_NANGO_TOKEN must be changed");
+  if (config.SERVICE_MODE === "auth" && config.NANGO_OAUTH_CLIENT_SECRET === developmentNangoOAuthClientSecret) insecure.push("NANGO_OAUTH_CLIENT_SECRET must be changed");
   if (["confirmation", "dashboard"].includes(config.SERVICE_MODE) && config.CONFIRMATION_DASHBOARD_TOKEN === developmentInternalTokens.confirmationDashboard) insecure.push("CONFIRMATION_DASHBOARD_TOKEN must be changed");
   if (["dashboard", "storage"].includes(config.SERVICE_MODE) && config.STORAGE_DASHBOARD_TOKEN === developmentStorageTokens.dashboard) insecure.push("STORAGE_DASHBOARD_TOKEN must be changed");
   if (["mcp", "storage"].includes(config.SERVICE_MODE) && config.STORAGE_MCP_TOKEN === developmentStorageTokens.mcp) insecure.push("STORAGE_MCP_TOKEN must be changed");
@@ -101,6 +109,24 @@ if (production) {
   if (config.SERVICE_MODE === "storage" && config.AWS_EC2_METADATA_DISABLED !== "true") insecure.push("storage must disable EC2 instance metadata");
   if (config.SERVICE_MODE === "auth" && config.SESSION_MAX_SECONDS > 604_800) insecure.push("dashboard sessions cannot exceed seven days");
   if (config.SERVICE_MODE === "auth" && (config.SESSION_IDLE_SECONDS > 43_200 || config.SESSION_IDLE_SECONDS >= config.SESSION_MAX_SECONDS)) insecure.push("dashboard idle timeout cannot exceed twelve hours");
+  if (config.SERVICE_MODE === "auth") {
+    const nango = new URL(config.NANGO_ORIGIN);
+    if (nango.protocol !== "https:" || !isBareOrigin(nango)) insecure.push("NANGO_ORIGIN must be an exact bare HTTPS origin");
+    if (nango.hostname !== `nango.${app.hostname}`) insecure.push("NANGO_ORIGIN must be the dedicated Nango subdomain of APP_ORIGIN");
+    if (new Set([
+      config.BETTER_AUTH_SECRET,
+      config.AUTH_DASHBOARD_TOKEN,
+      config.AUTH_MCP_TOKEN,
+      config.AUTH_NANGO_TOKEN,
+      config.CONFIRMATION_GATEWAY_TOKEN,
+      config.NANGO_OAUTH_CLIENT_SECRET,
+    ]).size !== 6) insecure.push("auth service secrets and capabilities must be pairwise and distinct");
+  }
+  for (const name of ["NANGO_ORIGIN", "NANGO_OAUTH_CLIENT_ID"] as const) {
+    if (process.env[name] !== undefined && config.SERVICE_MODE !== "auth") {
+      insecure.push(`${name} must not be present in the ${config.SERVICE_MODE} service`);
+    }
+  }
   for (const name of ["NANGO_PUBLIC_URL", "NANGO_IMAGE_REFERENCE"] as const) {
     if (process.env[name] !== undefined && config.SERVICE_MODE !== "dashboard") {
       insecure.push(`${name} must not be present in the ${config.SERVICE_MODE} service`);
@@ -185,6 +211,8 @@ if (production) {
     CONFIRMATION_GATEWAY_TOKEN: ["auth", "confirmation"],
     AUTH_DASHBOARD_TOKEN: ["auth", "dashboard"],
     AUTH_MCP_TOKEN: ["auth", "mcp"],
+    AUTH_NANGO_TOKEN: ["auth"],
+    NANGO_OAUTH_CLIENT_SECRET: ["auth"],
     CONFIRMATION_DASHBOARD_TOKEN: ["confirmation", "dashboard"],
     STORAGE_DASHBOARD_TOKEN: ["dashboard", "storage"],
     STORAGE_MCP_TOKEN: ["mcp", "storage"],

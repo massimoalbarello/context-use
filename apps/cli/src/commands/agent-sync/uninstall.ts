@@ -1,7 +1,6 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 
-import { getSecureParameter } from "../../aws.ts";
 import { readAgentSyncConfig, removeAgentSyncFiles } from "../../agent-sync/config.ts";
 import { uninstallLaunchAgent } from "../../agent-sync/launchd.ts";
 import {
@@ -11,6 +10,7 @@ import {
   revokedAgentSyncMetadata,
 } from "../../agent-sync/registration.ts";
 import { readInfrastructure } from "../../lifecycle.ts";
+import { createInternalNangoFetcher } from "../../nango-internal.ts";
 import { getNangoConnection, putAgentSyncConnection } from "../../nango-integrations.ts";
 import { ensureNangoApiKeys } from "../../nango.ts";
 
@@ -27,18 +27,16 @@ export const command = defineCommand("agent-sync uninstall", {
       );
     }
     p.intro("Uninstall agent sync");
-    await ensureNangoApiKeys(config, data);
-    const managerKey = await getSecureParameter(
-      config.awsProfile,
-      config.awsRegion,
-      `/context-use/${config.installationId}/${config.environment}/NANGO_INTEGRATION_MANAGER_API_KEY`,
-    );
+    await ensureNangoApiKeys(config, data, compute.instance_id);
+    const managerKey = "";
     const baseUrl = `https://${config.nangoHostname}`;
+    const nango = { fetcher: createInternalNangoFetcher(config, data, compute.instance_id, "integration-manager") };
     const connection = await getNangoConnection(
       baseUrl,
       managerKey,
       AGENT_SYNC_INTEGRATION_ID,
       AGENT_SYNC_CONNECTION_ID,
+      nango,
     );
     const metadata = parseAgentSyncMetadata(connection?.metadata);
     if (connection && !metadata) {
@@ -54,6 +52,7 @@ export const command = defineCommand("agent-sync uninstall", {
         AGENT_SYNC_INTEGRATION_ID,
         AGENT_SYNC_CONNECTION_ID,
         revokedAgentSyncMetadata(metadata, config.releaseVersion),
+        nango,
       );
     }
     await uninstallLaunchAgent();

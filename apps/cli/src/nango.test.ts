@@ -1,12 +1,15 @@
 import { expect, test } from "bun:test";
-import { formatNangoCredentials } from "./commands/nango/credentials.ts";
-import { ensureNangoApiKeys, verifyNangoDashboardAuthentication } from "./nango.ts";
-import { generateNangoEncryptionKey } from "./setup.ts";
+import {
+  ensureNangoApiKeys,
+  nangoApiKeyReconciliationCommands,
+  verifyNangoDashboardAuthentication,
+} from "./nango.ts";
+import { generateNangoAuthCookieSecret, generateNangoEncryptionKey } from "./setup.ts";
 import type { DataOutputs, DeploymentConfig } from "./types.ts";
 
 const config: DeploymentConfig = {
   schemaVersion: 2,
-  releaseVersion: "v0.1.47",
+  releaseVersion: "v0.1.54",
   environment: "production",
   installationId: "abcdef123456",
   awsProfile: "default",
@@ -26,16 +29,12 @@ const config: DeploymentConfig = {
 };
 
 const data: DataOutputs = {
-  kms_key_arn: "arn:aws:kms:eu-west-2:123456789012:key/data",
+  kms_key_arn: "arn:aws:kms:eu-west-2:123456789012:key/data-key",
   kms_key_id: "data",
   data_volume_id: "vol-data",
   asset_bucket: "assets",
   backup_bucket: "backups",
 };
-
-function apiKey(id: number, displayName: string, scopes: string[], secret: string) {
-  return { id, display_name: displayName, scopes, secret };
-}
 
 test("Nango's encryption key is exactly 256 bits encoded as standard base64", () => {
   const key = generateNangoEncryptionKey();
@@ -43,154 +42,118 @@ test("Nango's encryption key is exactly 256 bits encoded as standard base64", ()
   expect(Buffer.from(key, "base64")).toHaveLength(32);
 });
 
-test("Nango dashboard credentials stay masked unless explicitly revealed", () => {
-  expect(formatNangoCredentials("https://nango.example.com", "owner@example.com", null))
-    .toContain("Password: ******** (use --reveal to show)");
-  expect(formatNangoCredentials("https://nango.example.com", "owner@example.com", "dashboard-secret"))
-    .toContain("Password: dashboard-secret");
+test("Nango's auth cookie key is exactly 256 bits encoded as standard base64", () => {
+  const key = generateNangoAuthCookieSecret();
+  expect(key).toMatch(/^[A-Za-z0-9+/]{43}=$/);
+  expect(Buffer.from(key, "base64")).toHaveLength(32);
 });
 
-test("Nango dashboard authentication rejects anonymous access and accepts only its Basic credentials", async () => {
-  const requests: Array<string | null> = [];
-  const fetcher = async (_input: string | URL | Request, init?: RequestInit): Promise<Response> => {
-    const authorization = new Headers(init?.headers).get("Authorization");
-    requests.push(authorization);
-    return authorization ? Response.json({ data: { id: 0 } }) : Response.json({}, { status: 401 });
-  };
-  const verified = await verifyNangoDashboardAuthentication(config, {
-    fetcher: fetcher as typeof fetch,
-    readParameter: async (_profile, _region, name) => name.endsWith("USERNAME") ? "owner@example.com" : "dashboard-password",
+test("Nango dashboard authentication verifies anonymous denial and internal Basic success", async () => {
+  const calls: string[] = [];
+  const verified = await verifyNangoDashboardAuthentication(config, data, "i-123abc", {
+    anonymousFetcher: (async () => {
+      calls.push("anonymous");
+      return Response.json({}, { status: 401 });
+    }) as unknown as typeof fetch,
+    authorizedFetcher: (async () => {
+      calls.push("authorized");
+      return Response.json({});
+    }) as unknown as typeof fetch,
   });
-
   expect(verified).toBe(true);
-  expect(requests).toEqual([
-    null,
-    `Basic ${Buffer.from("owner@example.com:dashboard-password").toString("base64")}`,
-  ]);
+  expect(calls).toEqual(["anonymous", "authorized"]);
 
-  await expect(verifyNangoDashboardAuthentication(config, {
-    fetcher: (async () => Response.json({ data: {} })) as unknown as typeof fetch,
-    readParameter: async () => "unused",
+  await expect(verifyNangoDashboardAuthentication(config, data, "i-123abc", {
+    anonymousFetcher: (async () => Response.json({})) as unknown as typeof fetch,
+    authorizedFetcher: (async () => Response.json({})) as unknown as typeof fetch,
   })).rejects.toThrow("expected 401");
 });
 
-test("Nango API key bootstrap creates least-privilege keys and stores their secrets", async () => {
-  const parameters = new Map<string, string>([
-    ["/context-use/abcdef123456/production/NANGO_DASHBOARD_USERNAME", "owner@example.com"],
-    ["/context-use/abcdef123456/production/NANGO_DASHBOARD_PASSWORD", "dashboard-password"],
-  ]);
-  const requests: Array<{ url: string; method: string; body?: unknown; authorization: string | null }> = [];
-  let nextId = 1;
-  const fetcher = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
-    const body = init?.body ? JSON.parse(String(init.body)) as { display_name: string; scopes: string[] } : undefined;
-    requests.push({
-      url: input.toString(),
-      method: init?.method ?? "GET",
-      ...(body ? { body } : {}),
-      authorization: new Headers(init?.headers).get("Authorization"),
-    });
-    if (!body) return Response.json({ data: [] });
-    return Response.json({ data: apiKey(nextId++, body.display_name, body.scopes, `${body.display_name}-secret`) });
-  };
+test("Nango API key reconciliation keeps all secrets inside an on-instance pipe", () => {
+  const commands = nangoApiKeyReconciliationCommands(config, data);
+  const text = commands.join("\n");
+  const parameterNames = [
+    "NANGO_DEPLOYER_API_KEY",
+    "NANGO_PIPELINE_API_KEY",
+    "NANGO_INTEGRATION_MANAGER_API_KEY",
+  ];
 
-  await ensureNangoApiKeys(config, data, {
-    fetcher: fetcher as typeof fetch,
-    readParameter: async (_profile, _region, name) => parameters.get(name) ?? (() => { throw new Error("missing"); })(),
-    readParameterIfPresent: async (_profile, _region, name) => parameters.get(name) ?? null,
-    writeParameter: async (_profile, _region, name, value, kmsKeyId) => {
-      expect(kmsKeyId).toBe(data.kms_key_arn);
-      parameters.set(name, value);
+  expect(text.match(/aws ssm put-parameter/g)).toHaveLength(3);
+  expect(text.match(/--value file:\/\/\/dev\/stdin/g)).toHaveLength(3);
+  expect(text.match(/--with-decryption --query Parameter\.Value/g)).toHaveLength(3);
+  expect(text).not.toContain("--query Parameter.Name");
+  expect(text).not.toContain("--value \"");
+  expect(text).not.toContain("usableSecret");
+  expect(text).not.toContain("dashboard-password");
+  expect(text).not.toContain("manager-secret");
+  for (const parameterName of parameterNames) {
+    expect(text).toContain(`/context-use/abcdef123456/production/${parameterName}' --type SecureString`);
+  }
+  expect(commands.at(-1)).toBe("echo 'CONTEXT_USE_NANGO_KEYS_OK'");
+
+  const encoded = commands.find((command) => command.startsWith("nango_key_worker='"))
+    ?.slice("nango_key_worker='".length, -1);
+  expect(encoded).toBeTruthy();
+  const worker = Buffer.from(encoded!, "base64").toString("utf8");
+  expect(() => new Function(worker)).not.toThrow();
+  expect(worker).not.toContain("console.log");
+  expect(worker).not.toContain("console.error");
+  expect(worker).toContain("process.stdout.write(key.secret)");
+  expect(worker).toContain("Authorization: \"Bearer \" + secret");
+  expect(worker).toContain("/functions/deployments/00000000-0000-0000-0000-000000000000");
+  expect(worker).toContain("/connections?limit=1&page=0");
+  expect(worker).toContain("/scripts/config");
+});
+
+test("existing Nango keys always replace present SSM values and are verified from storage", () => {
+  const commands = nangoApiKeyReconciliationCommands(config, data);
+  const text = commands.join("\n");
+
+  expect(text).not.toContain("CONTEXT_USE_KEY_MODE=inspect");
+  expect(text).not.toContain("CONTEXT_USE_KEY_MODE=reconcile");
+  expect(text).not.toContain("nango_key_state");
+  expect(text).not.toContain("nango_parameter_state");
+  for (const parameterName of [
+    "NANGO_DEPLOYER_API_KEY",
+    "NANGO_PIPELINE_API_KEY",
+    "NANGO_INTEGRATION_MANAGER_API_KEY",
+  ]) {
+    const parameter = `/context-use/abcdef123456/production/${parameterName}`;
+    const writeIndex = commands.findIndex((command) => command.includes(`put-parameter --name '${parameter}'`));
+    const verifyIndex = commands.findIndex((command) => command.includes(`get-parameter --name '${parameter}' --with-decryption`));
+    expect(writeIndex).toBeGreaterThan(-1);
+    expect(commands[writeIndex]).toContain("CONTEXT_USE_KEY_MODE=write");
+    expect(verifyIndex).toBe(writeIndex + 1);
+    expect(commands[verifyIndex]).toContain("| docker compose");
+    expect(commands[verifyIndex]).toContain("CONTEXT_USE_KEY_MODE=verify");
+  }
+});
+
+test("Nango API key reconciliation accepts only its fixed success marker", async () => {
+  const sent: string[][] = [];
+  await ensureNangoApiKeys(config, data, "i-123abc", {
+    sendCommands: async (_profile, _region, _instance, commands) => {
+      sent.push(commands);
+      return sent.length === 1
+        ? "CONTEXT_USE_NANGO_KEYS_OK\n"
+        : "CONTEXT_USE_NANGO_BOUNDARY_OK\n";
     },
   });
+  expect(sent[0]).toEqual(nangoApiKeyReconciliationCommands(config, data));
+  expect(sent[1]?.join("\n")).toContain("NANGO_INTEGRATION_MANAGER_API_KEY");
 
-  expect(requests.map((request) => request.method)).toEqual(["GET", "POST", "POST", "POST"]);
-  expect(requests.every((request) => request.authorization === `Basic ${Buffer.from("owner@example.com:dashboard-password").toString("base64")}`)).toBe(true);
-  expect(requests.every((request) => request.url.endsWith("?env=prod"))).toBe(true);
-  expect(requests[1]?.body).toEqual({
-    display_name: "context-use-deployer",
-    scopes: ["environment:deploy"],
-  });
-  expect(requests[2]?.body).toEqual({
-    display_name: "context-use-pipeline",
-    scopes: [
-      "environment:records:read",
-      "environment:connections:list",
-    ],
-  });
-  expect(requests[3]?.body).toEqual({
-    display_name: "context-use-integration-manager",
-    scopes: [
-      "environment:integrations:read",
-      "environment:integrations:create",
-      "environment:integrations:update",
-      "environment:connections:list",
-      "environment:connections:read",
-      "environment:connections:create",
-      "environment:connections:update",
-      "environment:integrations:list_functions",
-    ],
-  });
-  expect(parameters.get("/context-use/abcdef123456/production/NANGO_DEPLOYER_API_KEY")).toBe("context-use-deployer-secret");
-  expect(parameters.get("/context-use/abcdef123456/production/NANGO_PIPELINE_API_KEY")).toBe("context-use-pipeline-secret");
-  expect(parameters.get("/context-use/abcdef123456/production/NANGO_INTEGRATION_MANAGER_API_KEY")).toBe("context-use-integration-manager-secret");
+  await expect(ensureNangoApiKeys(config, data, "i-123abc", {
+    sendCommands: async () => "unexpected Nango JSON",
+  })).rejects.toThrow("invalid response");
 });
 
-test("Nango API key bootstrap reconciles scopes without rotating an existing key", async () => {
-  const prefix = "/context-use/abcdef123456/production";
-  const parameters = new Map<string, string>([
-    [`${prefix}/NANGO_DASHBOARD_USERNAME`, "owner@example.com"],
-    [`${prefix}/NANGO_DASHBOARD_PASSWORD`, "dashboard-password"],
-    [`${prefix}/NANGO_PIPELINE_API_KEY`, "stored-pipeline-secret"],
-  ]);
-  const methods: string[] = [];
-  const fetcher = async (_input: string | URL | Request, init?: RequestInit): Promise<Response> => {
-    const method = init?.method ?? "GET";
-    methods.push(method);
-    if (method === "GET") {
-      return Response.json({
-        data: [
-          apiKey(1, "context-use-deployer", ["environment:deploy"], "deployer-secret"),
-          apiKey(2, "context-use-pipeline", ["environment:records:read"], "****abcd"),
-          apiKey(3, "context-use-integration-manager", [
-            "environment:integrations:read",
-            "environment:integrations:create",
-            "environment:integrations:update",
-            "environment:connections:list",
-            "environment:connections:read",
-            "environment:connections:create",
-            "environment:connections:update",
-            "environment:integrations:list_functions",
-          ], "manager-secret"),
-        ],
-      });
-    }
-    return Response.json({ success: true });
-  };
-
-  await ensureNangoApiKeys(config, data, {
-    fetcher: fetcher as typeof fetch,
-    readParameter: async (_profile, _region, name) => parameters.get(name) ?? (() => { throw new Error("missing"); })(),
-    readParameterIfPresent: async (_profile, _region, name) => parameters.get(name) ?? null,
-    writeParameter: async (_profile, _region, name, value) => { parameters.set(name, value); },
-  });
-
-  expect(methods).toEqual(["GET", "PATCH"]);
-  expect(parameters.get(`${prefix}/NANGO_DEPLOYER_API_KEY`)).toBe("deployer-secret");
-  expect(parameters.get(`${prefix}/NANGO_PIPELINE_API_KEY`)).toBe("stored-pipeline-secret");
-  expect(parameters.get(`${prefix}/NANGO_INTEGRATION_MANAGER_API_KEY`)).toBe("manager-secret");
-});
-
-test("Nango API key bootstrap fails safely when the only copy of a secret is masked", async () => {
-  const prefix = "/context-use/abcdef123456/production";
-  await expect(ensureNangoApiKeys(config, data, {
-    fetcher: (async () => Response.json({
-      data: [
-        apiKey(1, "context-use-deployer", ["environment:deploy"], "****abcd"),
-      ],
-    })) as unknown as typeof fetch,
-    readParameter: async (_profile, _region, name) => name.endsWith("USERNAME") ? "owner@example.com" : "password",
-    readParameterIfPresent: async () => null,
-    writeParameter: async () => {},
-  })).rejects.toThrow("Restore that SSM parameter");
-  expect(prefix).toContain(config.installationId);
+test("Nango API key command construction rejects shell-injectable infrastructure values", () => {
+  expect(() => nangoApiKeyReconciliationCommands(
+    { ...config, environment: "production'; touch /tmp/x" },
+    data,
+  )).toThrow("Invalid Nango parameter prefix");
+  expect(() => nangoApiKeyReconciliationCommands(config, {
+    ...data,
+    kms_key_arn: "arn:aws:kms:eu-west-2:123456789012:key/data'; touch /tmp/x",
+  })).toThrow("Invalid Nango parameter KMS key");
 });
