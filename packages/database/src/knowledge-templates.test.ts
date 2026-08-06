@@ -784,10 +784,10 @@ describe("knowledge templates", () => {
     expect(normalize(guides.automations)).toContain("a local exception to the root `intro` entry-point convention");
     expect(normalize(guides.diary)).toContain("A day folder is a chronological container, not a durable entity");
 
-    expect(normalizedDistiller).toContain("Before every mutation, call `prepare_knowledge_write` for the exact target");
+    expect(normalizedDistiller).toContain("Before the first mutation in a guidance scope");
     expect(activityDistiller).toContain("[[agents|root guide]]");
     expect(activityDistiller).toContain("[[automations/agents|automation guide]]");
-    expect(activityDistiller).not.toContain("cached_guidance_receipt");
+    expect(activityDistiller).toContain("`cached_guidance_receipt`");
     expect(normalizedDistiller).toContain("Carry out the mutations those guides support without a preview");
     expect(normalizedDistiller).toContain("let its guide chain decide the useful pages");
     expect(normalizedDistiller).toContain("Apply the meeting guide's participant rule");

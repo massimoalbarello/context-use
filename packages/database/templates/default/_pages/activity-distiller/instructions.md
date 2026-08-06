@@ -7,12 +7,18 @@ not pages to mirror.
 
 ## Authority and boundaries
 
-- Read the [[agents|root guide]], [[automations/agents|automation guide]], this page and
-  [[automations/activity-distiller/state|state]] at the start of every run. The installed
-  guides, including local edits, are authoritative.
-- Before every mutation, call `prepare_knowledge_write` for the exact target and follow
-  its root-to-leaf guide chain. A target guide supplies that subject's local selection,
-  shape and aspect guidance.
+- After opening this page, call `prepare_knowledge_write` for
+  `automations/activity-distiller/instructions` to load the [[agents|root guide]] and
+  applicable [[automations/agents|automation guide]], begin the run's guidance cache,
+  then read [[automations/activity-distiller/state|state]]. The installed guides,
+  including local edits, are authoritative.
+- Before the first mutation in a guidance scope, call `prepare_knowledge_write` for the
+  exact target and follow its root-to-leaf guide chain. Retain the receipt for this run
+  and reuse it for later targets with the same applicable chain. When a write rejects a
+  receipt or another scope may add local guidance, prepare the exact target with the
+  prior receipt as `cached_guidance_receipt` so unchanged parent guides are not
+  repeated. A target guide supplies that subject's local selection, shape and aspect
+  guidance.
 - Carry out the mutations those guides support without a preview. Leave genuinely
   ambiguous knowledge unchanged; report the candidates and smallest fact needed to
   decide.

@@ -21,6 +21,7 @@ import { config } from "./config.ts";
 import { createAssetCapability } from "./mcp-asset-capability.ts";
 import {
   createGuidanceReceipt,
+  guidanceGuidesFromReceipt,
   type GuidanceGuideVersion,
   verifyGuidanceReceipt,
 } from "./mcp-guidance-receipt.ts";
@@ -50,8 +51,8 @@ type ApplicableGuide = GuidanceGuideVersion & {
   body_markdown: string;
 };
 
-const guidanceReceiptSchema = z.string().min(1).optional().describe(
-  "Required for mutation. Obtain it by calling prepare_knowledge_write for the mutation target.",
+const guidanceReceiptSchema = z.string().min(1).max(100_000).optional().describe(
+  "Required for mutation. Reuse a receipt while it covers the target's current guide chain; otherwise obtain one with prepare_knowledge_write.",
 );
 
 function guideLabel(path: string): string {
@@ -62,16 +63,53 @@ function preparedGuidance(
   targetPath: string,
   receipt: string,
   guides: ApplicableGuide[],
+  cachedReceipt?: string,
 ): string {
-  const renderedGuides = guides.map((guide, index) => [
+  const decodedCache = cachedReceipt ? guidanceGuidesFromReceipt(cachedReceipt) : null;
+  const exactLegacyCache = Boolean(cachedReceipt && !decodedCache
+    && verifyGuidanceReceipt(cachedReceipt, guides));
+  const cachedGuides = decodedCache ?? (exactLegacyCache ? guides : []);
+  const cachedVersions = new Map(cachedGuides.map((guide) => [
+    guide.current_path,
+    guide.current_version_id,
+  ]));
+  const currentPaths = new Set(guides.map((guide) => guide.current_path));
+  const cachedIndexes = new Set(guides.flatMap((guide, index) => (
+    cachedVersions.get(guide.current_path) === guide.current_version_id ? [index] : []
+  )));
+  const replacedGuides = guides.filter((guide) => (
+    cachedVersions.has(guide.current_path)
+    && cachedVersions.get(guide.current_path) !== guide.current_version_id
+  ));
+  const removedGuides = cachedGuides.filter((guide) => !currentPaths.has(guide.current_path));
+  const renderedGuides = guides.flatMap((guide, index) => cachedIndexes.has(index) ? [] : [[
     `===== BEGIN GUIDE ${index + 1}/${guides.length}: ${guideLabel(guide.current_path)} =====`,
     guide.body_markdown.trim(),
     `===== END GUIDE ${index + 1}/${guides.length}: ${guideLabel(guide.current_path)} =====`,
-  ].join("\n\n")).join("\n\n");
+  ].join("\n\n")]).join("\n\n");
+  const applicableGuides = guides.length
+    ? guides.map((guide, index) => `- ${cachedIndexes.has(index) ? "CACHED" : "LOADED"}: ${guideLabel(guide.current_path)}`).join("\n")
+    : "- None";
+  const cacheStatus = !cachedReceipt
+    ? "No cached receipt supplied; all applicable guide bodies are loaded below."
+    : decodedCache || exactLegacyCache
+      ? `Reused ${cachedIndexes.size} unchanged guide${cachedIndexes.size === 1 ? "" : "s"}; loaded ${guides.length - cachedIndexes.size} new or changed guide${guides.length - cachedIndexes.size === 1 ? "" : "s"}.`
+      : "The cached receipt was invalid or could not be applied; all applicable guide bodies are loaded below.";
   return [
     `GUIDANCE_RECEIPT: ${receipt}`,
     `TARGET_PATH: ${targetPath || "<root>"}`,
-    "The following instructions apply in root-to-leaf order. More specific guides override earlier guides when they conflict.",
+    "This receipt covers the complete current guide chain. Reuse it for later mutations whose applicable guide chain is unchanged.",
+    `CACHE_STATUS: ${cacheStatus}`,
+    `APPLICABLE_GUIDES:\n${applicableGuides}`,
+    replacedGuides.length
+      ? `REPLACED_CACHED_GUIDES:\n${replacedGuides.map((guide) => `- ${guideLabel(guide.current_path)}`).join("\n")}`
+      : "",
+    removedGuides.length
+      ? `GUIDES_NO_LONGER_APPLICABLE:\n${removedGuides.map((guide) => `- ${guideLabel(guide.current_path)}`).join("\n")}`
+      : "",
+    renderedGuides
+      ? "The new or changed instructions below apply in root-to-leaf order. Combine them with the cached applicable guides above; more specific guides override earlier guides when they conflict."
+      : "No guide bodies are repeated because every applicable guide is already cached.",
     renderedGuides,
   ].filter(Boolean).join("\n\n");
 }
@@ -81,11 +119,12 @@ function guidanceRequired(targetPath: string, retryTool: string) {
   return textContent([
     "GUIDANCE_REQUIRED",
     `Call prepare_knowledge_write with ${argumentsJson}.`,
+    "If you have a previously returned receipt, also pass it as cached_guidance_receipt so unchanged guides are not repeated.",
     `Then retry ${retryTool} with the returned guidance_receipt.`,
   ].join("\n\n"), true);
 }
 
-export const KNOWLEDGE_BASE_INSTRUCTIONS = "Explore knowledge with browse_directory or get_directory, beginning at the root path when you do not yet know where relevant pages live. Read pages by UUID or semantic path with get_page. The root AGENTS.md guide is at MCP path agents. Read it before choosing a destination, then before every mutation call prepare_knowledge_write with the intended target path, follow the complete root-to-leaf guidance it returns, and pass its guidance_receipt to the mutation tool. The returned guides are authoritative for placement, structure, editorial policy, privacy, and reporting; these bootstrap instructions do not define an entity schema. Create a directory before adding pages beneath a new path. Link pages and directories with [[path|label]], link headings with [[path#heading-slug|label]], and use context-use://directory/<uuid> for a stable directory reference. Use load_skill when a listed reusable skill is relevant.";
+export const KNOWLEDGE_BASE_INSTRUCTIONS = "Explore knowledge with browse_directory or get_directory, beginning at the root path when you do not yet know where relevant pages live. Read pages by UUID or semantic path with get_page. Before choosing a destination, ensure the root AGENTS.md guide at MCP path agents has been loaded; prepare_knowledge_write with an empty target path loads it and returns a reusable receipt. Before the first mutation in a guidance scope, call prepare_knowledge_write with the intended target path, follow the root-to-leaf guidance it returns, and pass its guidance_receipt to the mutation tool. Retain receipts for the current task and reuse one for later mutations or other targets with the same applicable guide chain. If a mutation returns GUIDANCE_REQUIRED, call prepare_knowledge_write for that target and pass the rejected receipt as cached_guidance_receipt so only new, changed, or removed guidance is reported, then retry with the new receipt. Do not persist receipts in knowledge. The returned guides are authoritative for placement, structure, editorial policy, privacy, and reporting; these bootstrap instructions do not define an entity schema. Create a directory before adding pages beneath a new path. Link pages and directories with [[path|label]], link headings with [[path#heading-slug|label]], and use context-use://directory/<uuid> for a stable directory reference. Use load_skill when a listed reusable skill is relevant.";
 
 export const SOURCE_RECORD_INSTRUCTIONS = "For an ingestion automation, process source records one checkpointed batch at a time. Call read_source_records with the persisted checkpoint, reconcile that entire returned batch against existing knowledge, and persist its next_checkpoint only after every intended knowledge write succeeds. Only then, when has_more is true, read and reconcile the next batch; never accumulate multiple unread batches before writing. Continue until has_more is false so the next scheduled invocation starts from the fully processed checkpoint and receives only later lifecycle changes. The reader omits records whose latest source update or deletion is more than 30 days old while advancing past them. A recently updated record may describe older activity and is processed normally using its actual activity date. Use each action to distinguish current evidence from a deletion, and stop without advancing the failed batch if reconciliation or checkpoint persistence fails.";
 
@@ -183,7 +222,7 @@ export async function createMcpServer(
   }, async ({ query }) => jsonContent(await directories.list(query)));
 
   server.registerTool("create_directory", {
-    description: "Create a first-class directory beneath an existing directory. First call prepare_knowledge_write with the new directory path, follow its complete guidance, and pass the returned guidance_receipt. Its title and optional summary are the metadata displayed in its parent's index; content belongs in child pages such as intro. The directory becomes immediately linkable by path or stable directory reference.",
+    description: "Create a first-class directory beneath an existing directory. Pass a current guidance_receipt covering the new directory path; reuse a cached receipt when its guide chain still applies, or call prepare_knowledge_write when it does not. Its title and optional summary are the metadata displayed in its parent's index; content belongs in child pages such as intro. The directory becomes immediately linkable by path or stable directory reference.",
     inputSchema: createDirectorySchema.extend({ guidance_receipt: guidanceReceiptSchema }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ guidance_receipt, ...input }) => {
@@ -194,7 +233,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("update_directory", {
-    description: "Edit a directory's public-listing title and optional summary. These are displayed in its parent's index; content belongs in child pages such as intro. First call prepare_knowledge_write with the directory's current path, follow its complete guidance, and pass the returned guidance_receipt. Public child listings are generated by the framework.",
+    description: "Edit a directory's public-listing title and optional summary. These are displayed in its parent's index; content belongs in child pages such as intro. Pass a current guidance_receipt covering the directory's path; reuse a cached receipt when its guide chain still applies, or call prepare_knowledge_write when it does not. Public child listings are generated by the framework.",
     inputSchema: updateDirectorySchema.extend({
       directory_id: z.string().uuid(),
       guidance_receipt: guidanceReceiptSchema,
@@ -210,7 +249,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("delete_directory", {
-    description: "Permanently delete one exact, non-root directory only when it is completely empty. This never cascades: descendant active or archived pages, live assets, and child directories are reported and must be deleted first. First use get_directory, then call prepare_knowledge_write with the directory's current path, follow its complete guidance, and pass the returned guidance_receipt.",
+    description: "Permanently delete one exact, non-root directory only when it is completely empty. This never cascades: descendant active or archived pages, live assets, and child directories are reported and must be deleted first. First use get_directory, then pass a current guidance_receipt covering the directory's path; reuse a cached receipt when its guide chain still applies, or call prepare_knowledge_write when it does not.",
     inputSchema: deleteDirectorySchema.extend({
       directory_id: z.string().uuid(),
       guidance_receipt: guidanceReceiptSchema,
@@ -246,12 +285,21 @@ export async function createMcpServer(
   });
 
   server.registerTool("prepare_knowledge_write", {
-    description: "Load the complete root and applicable directory AGENTS.md guidance before creating, changing, moving, or archiving knowledge. Returns every guide concatenated in root-to-leaf order and a guidance_receipt to pass to the mutation tool; no additional guide calls are needed.",
-    inputSchema: z.object({ target_path: DirectoryPath }).strict(),
+    description: "Resolve the complete current root-to-leaf AGENTS.md guide chain before creating, changing, moving, or archiving knowledge. Returns a guidance_receipt to pass to mutations. Retain that receipt for the current task and reuse it for targets with the same guide chain. When moving to another scope or refreshing a rejected receipt, pass cached_guidance_receipt; unchanged guide bodies are not repeated, while changed, newly applicable, and no-longer-applicable guides are identified. Omit the cache to load every applicable guide.",
+    inputSchema: z.object({
+      target_path: DirectoryPath,
+      cached_guidance_receipt: z.string().min(1).max(100_000).optional()
+        .describe("A receipt returned earlier in this task; valid unchanged guides it contains will not be repeated."),
+    }).strict(),
     annotations: { readOnlyHint: true },
-  }, async ({ target_path }) => {
+  }, async ({ target_path, cached_guidance_receipt }) => {
     const guides = await pages.guidesForPath(target_path) as ApplicableGuide[];
-    return textContent(preparedGuidance(target_path, createGuidanceReceipt(guides), guides));
+    return textContent(preparedGuidance(
+      target_path,
+      createGuidanceReceipt(guides),
+      guides,
+      cached_guidance_receipt,
+    ));
   });
 
   server.registerTool("load_skill", {
@@ -315,7 +363,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("create_page", {
-    description: "Create a private Markdown page and its first immutable version beneath an existing directory. First call prepare_knowledge_write with the intended page path, follow its complete guidance, and pass the returned guidance_receipt. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
+    description: "Create a private Markdown page and its first immutable version beneath an existing directory. Pass a current guidance_receipt covering the intended path; reuse a cached receipt when its guide chain still applies, or call prepare_knowledge_write when it does not. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
     inputSchema: createPageSchema.extend({ guidance_receipt: guidanceReceiptSchema }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ guidance_receipt, ...input }) => {
@@ -326,7 +374,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("update_page", {
-    description: "Create a new private page version using optimistic concurrency. First call prepare_knowledge_write with the intended page path, follow its complete guidance, and pass the returned guidance_receipt. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
+    description: "Create a new private page version using optimistic concurrency. Pass a current guidance_receipt covering the intended path; reuse a cached receipt when its guide chain still applies, or call prepare_knowledge_write when it does not. A one-sentence summary is required for generated indexes. The body_markdown schema documents supported image layouts. Link to pages or directory indexes with [[path|label]], or to a Markdown heading with [[path#heading-slug|label]]. Stable references may use context-use://page/<uuid>; never store dashboard or public URLs.",
     inputSchema: updatePageSchema.extend({
       page_id: z.string().uuid(),
       guidance_receipt: guidanceReceiptSchema,
@@ -340,7 +388,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("archive_page", {
-    description: "Archive an unpublished page. First call prepare_knowledge_write with the page's current path, follow its complete guidance, and pass the returned guidance_receipt. Published pages must be manually unpublished in the dashboard first.",
+    description: "Archive an unpublished page. Pass a current guidance_receipt covering the page's current path; reuse a cached receipt when its guide chain still applies, or call prepare_knowledge_write when it does not. Published pages must be manually unpublished in the dashboard first.",
     inputSchema: archivePageSchema.extend({
       page_id: z.string().uuid(),
       guidance_receipt: guidanceReceiptSchema,
@@ -384,7 +432,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("create_asset_upload", {
-    description: "Create a private, checksum-bound asset upload. First call prepare_knowledge_write with the intended asset path, follow its complete guidance, and pass the returned guidance_receipt. PUT the exact raw bytes to the returned URL with every returned header before expires_at. Image uploads return ready-to-paste page Markdown and a safe formatting example. The upload credential cannot read, edit, delete, or publish assets.",
+    description: "Create a private, checksum-bound asset upload. Pass a current guidance_receipt covering the intended path; reuse a cached receipt when its guide chain still applies, or call prepare_knowledge_write when it does not. PUT the exact raw bytes to the returned URL with every returned header before expires_at. Image uploads return ready-to-paste page Markdown and a safe formatting example. The upload credential cannot read, edit, delete, or publish assets.",
     inputSchema: assetUploadSchema.extend({ guidance_receipt: guidanceReceiptSchema }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ guidance_receipt, ...input }) => {
@@ -431,7 +479,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("archive_asset", {
-    description: "Archive a private asset while retaining its immutable stored bytes. First use get_asset, then call prepare_knowledge_write with the asset's current path, follow its complete guidance, and pass the returned guidance_receipt. Published assets and assets referenced by a current active page are rejected. This tool never deletes stored bytes.",
+    description: "Archive a private asset while retaining its immutable stored bytes. First use get_asset, then pass a current guidance_receipt covering the asset's current path; reuse a cached receipt when its guide chain still applies, or call prepare_knowledge_write when it does not. Published assets and assets referenced by a current active page are rejected. This tool never deletes stored bytes.",
     inputSchema: archiveAssetSchema.extend({ guidance_receipt: guidanceReceiptSchema }).strict(),
     annotations: { destructiveHint: true },
   }, async ({ asset_id, guidance_receipt }) => {
