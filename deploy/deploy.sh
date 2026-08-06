@@ -211,6 +211,36 @@ docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-
   --env-file "${oauth2_validation_env}" \
   -v "${secrets}/nango-owner-email:/etc/oauth2-proxy/authorized-emails:ro" \
   "${CONTEXT_USE_OAUTH2_PROXY_IMAGE}" --config-test
+# Docker's built-in address pools hold 31 subnets and cover 172.30.0.0/16, which
+# contains the fixed OAuth browser subnets below. An instance provisioned before
+# this pool was pinned exhausts the pool and collides with those subnets, so
+# reconcile the daemon configuration here as well as in the instance bootstrap.
+# The daemon applies default-address-pools only on a restart, and a restart is
+# safe only once every network allocated from the old pool is gone, so drop the
+# whole stack first. This runs after the validation above so a rejected
+# configuration never leaves the deployment down.
+desired_daemon_config=$(cat <<'DAEMON'
+{
+  "default-address-pools": [
+    { "base": "172.18.0.0/15", "size": 24 },
+    { "base": "172.20.0.0/14", "size": 24 }
+  ]
+}
+DAEMON
+)
+if ! printf '%s\n' "${desired_daemon_config}" | cmp -s - /etc/docker/daemon.json 2>/dev/null; then
+  docker compose --env-file "${secrets}/runtime.env" down --remove-orphans
+  docker network prune -f
+  install -d -m 0755 /etc/docker
+  printf '%s\n' "${desired_daemon_config}" > /etc/docker/daemon.json
+  chmod 0644 /etc/docker/daemon.json
+  systemctl restart docker
+  for _ in $(seq 1 30); do
+    docker info >/dev/null 2>&1 && break
+    sleep 2
+  done
+  docker info >/dev/null || { echo "Docker did not restart after its address pools were pinned" >&2; exit 1; }
+fi
 docker compose --env-file "${secrets}/runtime.env" stop caddy
 docker compose --env-file "${secrets}/runtime.env" stop \
   nango-auth-gateway nango-public-gateway oauth2-proxy nango-sso-redis \
