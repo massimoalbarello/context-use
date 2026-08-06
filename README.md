@@ -177,6 +177,21 @@ The default knowledge template carries the detailed placement and maintenance ru
 including `about/projects/` for enduring work, finite future-facing frames under
 `about/tasks/`, and whole-page reconciliation instead of append-only updates.
 
+### Guideline consistency review automation
+
+The default template also installs
+`automations/guideline-consistency-review/instructions`. Schedule an external harness
+to open and follow that page periodically. The harness keeps the opaque cursor returned
+by `get_knowledge_changes` and supplies it to the next run; Context Use records the
+underlying body-free page ledger automatically and collapses repeated edits to one page
+within each fixed review window. The automation reviews only those changed pages
+against the currently installed root-to-leaf guides, proposes corrections without
+writing them, and returns its report for delivery through the harness-managed user
+channel. Persist the new cursor only after the full review and delivery succeed.
+
+The dashboard's **History** section shows the same durable page ledger, including
+creates, updates, archives, and deletion tombstones without page bodies or diffs.
+
 MCP clients cannot publish knowledge; public access always remains an owner decision.
 
 ## License

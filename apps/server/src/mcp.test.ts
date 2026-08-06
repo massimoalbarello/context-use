@@ -659,6 +659,7 @@ describe("MCP knowledge tools", () => {
       "create_directory",
       "delete_directory",
       "get_page",
+      "get_knowledge_changes",
       "prepare_knowledge_write",
       "load_skill",
       "create_page",
@@ -694,6 +695,50 @@ describe("MCP knowledge tools", () => {
     ]));
     expect(knowledgeTools).not.toContain("get_knowledge_base_guide");
     expect(knowledgeTools).not.toContain("get_markdown_guide");
+  });
+
+  test("reads a fixed, deduplicated knowledge-change window with harness-owned cursors", async () => {
+    const calls: unknown[] = [];
+    const pages = pagesWithGuidance({
+      async changesSince(input: unknown) {
+        calls.push(input);
+        return {
+          changes: [{
+            cursor: "cu-page-changes-v1.9",
+            page_id: "11111111-1111-4111-8111-111111111111",
+            version_id: "22222222-2222-4222-8222-222222222222",
+            version_number: 4,
+            change_kind: "updated",
+            path: "about/intro",
+            title: "Introduction",
+            commit_message: "Reconcile introduction",
+            actor_kind: "mcp",
+            actor_subject: "client/session",
+            changed_at: "2026-08-06T10:00:00.000Z",
+          }],
+          next_cursor: "cu-page-changes-v1.c",
+          next_page_token: "cu-page-scan-v1.5.c.9",
+          has_more: true,
+        };
+      },
+    });
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 15,
+      method: "tools/call",
+      params: {
+        name: "get_knowledge_changes",
+        arguments: { cursor: "cu-page-changes-v1.5", limit: 25 },
+      },
+    });
+
+    expect(calls).toEqual([{ cursor: "cu-page-changes-v1.5", limit: 25 }]);
+    expect(response.result?.structuredContent).toMatchObject({
+      changes: [{ path: "about/intro", version_number: 4 }],
+      next_cursor: "cu-page-changes-v1.c",
+      has_more: true,
+    });
+    expect(response.result?.content?.[0]?.text).not.toContain("body_markdown");
   });
 
   test("returns ready-to-paste formatting Markdown for image uploads", async () => {
