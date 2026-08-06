@@ -3,20 +3,20 @@ import { ownerUserId } from "./owner.ts";
 import { enrollmentForContext } from "./passkey-management.ts";
 import {
   immutablePasskeyRejection,
+  ownerAuthenticationLockForPath,
   passkeyMutationForPath,
-  passkeyOwnerLockForPath,
 } from "./passkey-policy.ts";
 
-type PasskeyAuthBoundary = {
+type OwnerAuthenticationBoundary = {
   denied: Response | null;
   release?: () => Promise<void>;
 };
 
-export async function authorizePasskeyAuthRequest(request: Request): Promise<PasskeyAuthBoundary> {
+export async function authorizeOwnerAuthenticationRequest(request: Request): Promise<OwnerAuthenticationBoundary> {
   const path = new URL(request.url).pathname;
   const mutation = passkeyMutationForPath(path);
-  const lockMode = passkeyOwnerLockForPath(path);
-  const registrationVerification = mutation === "register" && lockMode === "registration";
+  const lockMode = ownerAuthenticationLockForPath(path);
+  const registrationVerification = mutation === "register" && lockMode === "passkey-registration";
   if (!mutation && !lockMode) return { denied: null };
 
   if (mutation && mutation !== "register") {
@@ -56,7 +56,22 @@ export async function authorizePasskeyAuthRequest(request: Request): Promise<Pas
       );
       if (!lock.rows[0]?.locked) {
         await releaseLock();
-        const error = lockMode === "authentication"
+        if (lockMode === "oauth-token") {
+          return {
+            denied: Response.json({
+              error: "temporarily_unavailable",
+              error_description: "Owner authentication is changing",
+            }, {
+              status: 503,
+              headers: {
+                "cache-control": "no-store",
+                pragma: "no-cache",
+                "retry-after": "1",
+              },
+            }),
+          };
+        }
+        const error = lockMode === "passkey-authentication"
           ? "passkey_authentication_in_progress"
           : "passkey_registration_in_progress";
         return { denied: Response.json({ error }, { status: 409 }) };
@@ -64,9 +79,10 @@ export async function authorizePasskeyAuthRequest(request: Request): Promise<Pas
       lockHeld = true;
     }
 
-    // Authentication verification must hold the owner lock until the caller's
-    // finally block has received the Better Auth response. That covers both
-    // credential verification and the session insert performed by the handler.
+    // Hold the owner lock until Better Auth has finished creating a passkey
+    // session or issuing/rotating OAuth tokens. Passkey removal takes the same
+    // lock before revoking tokens and sessions, so neither operation can leave
+    // behind authentication created midway through revocation.
     if (!mutation) return { denied: null, release: releaseLock };
 
     const database = lockClient ?? authPool;

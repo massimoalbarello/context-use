@@ -426,6 +426,37 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     }
   });
 
+  test("OAuth grants cannot issue tokens while owner revocation holds its lock", async () => {
+    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    await client.connect();
+    try {
+      await client.query("SELECT pg_advisory_lock(hashtextextended($1,0))", ["context-use-owner"]);
+      const response = await application!.handle(new Request(
+        "http://localhost:3000/api/auth/oauth2/token",
+        {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "refresh_token",
+            client_id: "untrusted-client",
+            refresh_token: "untrusted-refresh-token",
+          }),
+        },
+      ));
+      expect(response.status).toBe(503);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("retry-after")).toBe("1");
+      expect(await response.json()).toEqual({
+        error: "temporarily_unavailable",
+        error_description: "Owner authentication is changing",
+      });
+    } finally {
+      await client.query("SELECT pg_advisory_unlock(hashtextextended($1,0))", ["context-use-owner"]);
+      await client.end();
+    }
+  });
+
   test("Google social sign-in is not configured", async () => {
     const errorLog = spyOn(console, "error").mockImplementation(() => undefined);
     try {

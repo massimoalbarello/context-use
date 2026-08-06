@@ -1,5 +1,8 @@
 export type PasskeyMutation = "register" | "update" | "delete";
-export type PasskeyOwnerLock = "authentication" | "registration";
+export type OwnerAuthenticationLock =
+  | "passkey-authentication"
+  | "passkey-registration"
+  | "oauth-token";
 type PasskeyMutationRejection = { error: string; status: 409 };
 
 export function passkeyMutationForPath(path: string): PasskeyMutation | null {
@@ -11,13 +14,14 @@ export function passkeyMutationForPath(path: string): PasskeyMutation | null {
   return null;
 }
 
-export function passkeyOwnerLockForPath(path: string): PasskeyOwnerLock | null {
-  if (path.endsWith("/passkey/verify-authentication")) return "authentication";
-  if (path.endsWith("/passkey/verify-registration")) return "registration";
+export function ownerAuthenticationLockForPath(path: string): OwnerAuthenticationLock | null {
+  if (path.endsWith("/passkey/verify-authentication")) return "passkey-authentication";
+  if (path.endsWith("/passkey/verify-registration")) return "passkey-registration";
+  if (path.endsWith("/oauth2/token")) return "oauth-token";
   return null;
 }
 
-export async function whilePasskeyOwnerLockHeld<T>(
+export async function whileOwnerAuthenticationLockHeld<T>(
   operation: () => Promise<T>,
   release: (() => Promise<void>) | undefined,
 ): Promise<T> {

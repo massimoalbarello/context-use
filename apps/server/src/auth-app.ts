@@ -20,8 +20,8 @@ import { bodyJson, json, problem, routeError } from "./http.ts";
 import { hasHeaderCapability, hasInternalCapability } from "./internal-capability.ts";
 import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
 import { ownerUserId } from "./owner.ts";
-import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
-import { whilePasskeyOwnerLockHeld } from "./passkey-policy.ts";
+import { authorizeOwnerAuthenticationRequest } from "./passkey-boundary.ts";
+import { whileOwnerAuthenticationLockHeld } from "./passkey-policy.ts";
 import {
   authenticatorAttachmentSchema,
   confirmEnrollmentIntent,
@@ -140,9 +140,9 @@ export const authApp = new Elysia()
       return problem("Owner session required", 401, "owner_session_required");
     }
 
-    const boundary = await authorizePasskeyAuthRequest(sanitized);
+    const boundary = await authorizeOwnerAuthenticationRequest(sanitized);
     if (boundary.denied) return boundary.denied;
-    return whilePasskeyOwnerLockHeld(
+    return whileOwnerAuthenticationLockHeld(
       async () => requireAuthenticationUserVerification(pathname, await auth.handler(sanitized)),
       boundary.release,
     );
