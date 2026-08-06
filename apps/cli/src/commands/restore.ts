@@ -58,7 +58,7 @@ export const command = defineCommand("restore", {
     const typed = await p.text({ message: `Type ${config.hostname} to replace the live database` });
     if (p.isCancel(typed) || typed !== config.hostname) throw new Error("Confirmation did not match");
     await sendSsmCommands(config.awsProfile, config.awsRegion, compute.instance_id, restoreCommands(data.backup_bucket, selected));
-    await verifyDeployment(config, manifest.version);
+    await verifyDeployment(config, manifest.version, compute.instance_id);
     p.outro(`Database restored from ${selected}`);
   },
 });

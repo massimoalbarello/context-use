@@ -1,5 +1,13 @@
 {
 	admin off
+	# Reverse-proxy failures are runtime logs, not access logs, and otherwise
+	# include the complete request URI. Nango Connect/OAuth URLs carry bearer
+	# material in their query, so redact every query before any log is emitted.
+	log default {
+		format filter {
+			request>uri regexp \?.*$ ?redacted
+		}
+	}
 	servers {
 		protocols h1 h2
 	}
@@ -106,19 +114,135 @@
 		-Server
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
 		X-Content-Type-Options nosniff
-		Referrer-Policy same-origin
+		# Nango OAuth and Connect URLs contain one-time capabilities. Never let a
+		# browser reuse any such URL as a Referer, even on this same origin.
+		Referrer-Policy no-referrer
 	}
 
-	handle_path /connect-ui/* {
-		reverse_proxy nango-server:3009
+	# Context Use does not accept distributed tracing from the public Internet.
+	# Besides avoiding cross-system correlation, this keeps untrusted propagation
+	# input out of Nango's optional tracing libraries.
+	request_header -Baggage
+	request_header -Traceparent
+	request_header -Tracestate
+	request_header -Uber-Trace-Id
+	request_header -X-Amzn-Trace-Id
+	request_header -X-Datadog-Trace-Id
+	request_header -X-Datadog-Parent-Id
+	request_header -X-Datadog-Sampling-Priority
+	request_header -X-Datadog-Origin
+	request_header -X-Datadog-Tags
+
+	# Container health probes use the inner gateway directly. Do not publish a
+	# Nango health oracle on the Internet.
+	handle /healthz {
+		respond "Not found" 404
 	}
-	handle /connect-ui {
-		redir /connect-ui/ 308
+
+	# Expose only the OAuth2 Proxy browser endpoints needed to complete the
+	# authorization-code flow. In particular, /auth and /userinfo are internal:
+	# /auth's response contains the OIDC access token used for online checks.
+	@oauth_proxy_browser {
+		method GET
+		path /_context-use-auth/start /_context-use-auth/callback /_context-use-auth/sign_in /_context-use-auth/sign_out /_context-use-auth/static/*
 	}
+	handle @oauth_proxy_browser {
+		reverse_proxy oauth2-proxy:4180 {
+			header_up Host {$NANGO_HOSTNAME}
+			header_up X-Forwarded-Host {$NANGO_HOSTNAME}
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Uri {uri}
+			header_up -Authorization
+			header_up -Proxy-Authorization
+			header_up -X-Auth-Request-*
+			header_up -X-Context-Use-Access-Token
+			header_up -X-Context-Use-Nango-Gateway
+			header_up -X-Forwarded-Access-Token
+			header_up -X-Forwarded-Email
+			header_up -X-Forwarded-Groups
+			header_up -X-Forwarded-Preferred-Username
+			header_up -X-Forwarded-User
+			header_down -Authorization
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+			header_down -X-Forwarded-Email
+			header_down -X-Forwarded-Groups
+			header_down -X-Forwarded-Preferred-Username
+			header_down -X-Forwarded-User
+		}
+	}
+	handle /_context-use-auth/* {
+		respond "Not found" 404
+	}
+
+	# Connect UI is bearer-scoped rather than administrative. Keep its token in
+	# the browser URL, but remove every query value from both proxy hops before
+	# the static-file server sees the request.
+	@public_connect_ui_root {
+		method GET HEAD
+		path /connect-ui
+	}
+	handle @public_connect_ui_root {
+		header Cache-Control "no-store, private"
+		redir * /connect-ui/?{query} 308
+	}
+
+	@public_connect_ui {
+		method GET HEAD
+		path /connect-ui/*
+	}
+	handle @public_connect_ui {
+		rewrite * {path}?
+		reverse_proxy nango-public-gateway:3000 {
+			header_down Cache-Control "no-store, private"
+			header_down Referrer-Policy no-referrer
+			header_down -Authorization
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	@public_connect_socket {
+		method GET
+		path /connect/ws
+		header Origin https://{$NANGO_HOSTNAME}
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	handle @public_connect_socket {
+		reverse_proxy nango-public-gateway:3000 {
+			header_down -Authorization
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	# Public Nango callbacks and Connect flows pass through a credential-free,
+	# independently default-deny gateway. It cannot reach the dashboard gateway.
+	@public_nango_flow {
+		path /connect/session /connect/telemetry /integrations /providers /providers/* /oauth/callback /oauth/client-metadata/* /app-auth/connect /oauth/connect/* /oauth2/auth/* /auth/oauth-outbound/* /api-auth/api-key/* /api-auth/basic/* /app-store-auth/* /auth/tba/* /auth/two-step/* /auth/jwt/* /auth/bill/* /auth/aws-sigv4/* /auth/signature/* /auth/unauthenticated/* /webhook/*
+	}
+	handle @public_nango_flow {
+		request_body {
+			max_size 75MB
+		}
+		reverse_proxy nango-public-gateway:3000 {
+			header_down -Authorization
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
+	}
+
+	# Everything else is a dashboard request. The inner gateway performs both
+	# the OAuth2 Proxy check and the live Context Use owner-session check.
 	handle {
 		request_body {
 			max_size 75MB
 		}
-		reverse_proxy nango-server:3003
+		reverse_proxy nango-auth-gateway:3000 {
+			header_down -Authorization
+			header_down -X-Auth-Request-*
+			header_down -X-Forwarded-Access-Token
+		}
 	}
 }

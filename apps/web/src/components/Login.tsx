@@ -1,6 +1,12 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { authClient } from "../auth-client.ts";
 
+function continuesOAuthAuthorization(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const value = data as Record<string, unknown>;
+  return value.redirect === true && typeof value.url === "string";
+}
+
 export function Login() {
   const [entry] = useState(() => {
     const parameters = new URLSearchParams(window.location.hash.slice(1));
@@ -24,7 +30,7 @@ export function Login() {
     try {
       const result = await authClient.signIn.passkey();
       if (result.error) setError(result.error.message ?? "Passkey sign-in failed");
-      else window.location.assign("/app");
+      else if (!continuesOAuthAuthorization(result.data)) window.location.assign("/app");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Passkey sign-in failed");
     } finally {
@@ -47,7 +53,7 @@ export function Login() {
       }
       const signedIn = await authClient.signIn.passkey();
       if (signedIn.error) setError("Your passkey was created. Reload this page and use Sign in with passkey.");
-      else window.location.assign("/app");
+      else if (!continuesOAuthAuthorization(signedIn.data)) window.location.assign("/app");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Passkey setup failed");
     } finally {
@@ -68,7 +74,7 @@ export function Login() {
       }
       const signedIn = await authClient.signIn.passkey();
       if (signedIn.error) setError("Your passkey was created. Reload this page and sign in with it.");
-      else window.location.assign("/app/settings");
+      else if (!continuesOAuthAuthorization(signedIn.data)) window.location.assign("/app/settings");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Passkey setup failed");
     } finally {

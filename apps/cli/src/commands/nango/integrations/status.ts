@@ -1,8 +1,8 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { MANAGED_FUNCTIONS, MANAGED_INTEGRATIONS } from "../../../../../../nango-integrations/catalog.ts";
-import { getSecureParameter } from "../../../aws.ts";
 import { readInfrastructure } from "../../../lifecycle.ts";
+import { createInternalNangoFetcher } from "../../../nango-internal.ts";
 import { readManagedIntegrationStatus, type ManagedIntegrationStatus } from "../../../nango-integrations.ts";
 
 export function formatManagedIntegrationStatus(
@@ -38,13 +38,9 @@ export const command = defineCommand("nango integrations status", {
   handler: async () => {
     const { config, data, compute } = await readInfrastructure();
     if (!data || !compute) throw new Error("No active deployment");
-    const prefix = `/context-use/${config.installationId}/${config.environment}`;
-    const managerKey = await getSecureParameter(
-      config.awsProfile,
-      config.awsRegion,
-      `${prefix}/NANGO_INTEGRATION_MANAGER_API_KEY`,
-    );
+    const managerKey = "";
     const baseUrl = `https://${config.nangoHostname}`;
+    const nango = { fetcher: createInternalNangoFetcher(config, data, compute.instance_id, "integration-manager") };
 
     for (const integration of MANAGED_INTEGRATIONS.filter((candidate) => !("hidden" in candidate && candidate.hidden))) {
       const managedFunction = MANAGED_FUNCTIONS.find((candidate) => candidate.integrationId === integration.id);
@@ -54,6 +50,7 @@ export const command = defineCommand("nango integrations status", {
         managerKey,
         integration.id,
         managedFunction.name,
+        nango,
       );
       p.note(formatManagedIntegrationStatus(config.releaseVersion, status), integration.displayName);
     }

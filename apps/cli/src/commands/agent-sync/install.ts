@@ -4,7 +4,6 @@ import { hostname } from "node:os";
 import { z } from "zod";
 
 import { MANAGED_INTEGRATIONS } from "../../../../../nango-integrations/catalog.ts";
-import { getSecureParameter } from "../../aws.ts";
 import { writeAgentSyncConfig, readAgentSyncConfig, readAgentSyncToken, writeAgentSyncToken } from "../../agent-sync/config.ts";
 import { installLaunchAgent } from "../../agent-sync/launchd.ts";
 import { agentSyncSourcesPath } from "../../agent-sync/paths.ts";
@@ -23,6 +22,7 @@ import { ensureAgentSyncSourceConfig } from "../../agent-sync/source-config.ts";
 import { refreshNangoPipelineRuntime } from "../../deploy.ts";
 import { readInfrastructure } from "../../lifecycle.ts";
 import { deployManagedNangoFunction } from "../../nango-integration-deployment.ts";
+import { createInternalNangoFetcher } from "../../nango-internal.ts";
 import {
   getNangoConnection,
   getNangoIntegrationWebhookUrl,
@@ -66,17 +66,14 @@ export const command = defineCommand("agent-sync install", {
     p.intro("Install agent sync");
     const progress = p.spinner();
     progress.start("Preparing the managed Nango ingestion endpoint");
-    await ensureNangoApiKeys(config, data);
+    await ensureNangoApiKeys(config, data, compute.instance_id);
     await refreshNangoPipelineRuntime(config, compute);
-    const managerKey = await getSecureParameter(
-      config.awsProfile,
-      config.awsRegion,
-      `/context-use/${config.installationId}/${config.environment}/NANGO_INTEGRATION_MANAGER_API_KEY`,
-    );
+    const managerKey = "";
     const baseUrl = `https://${config.nangoHostname}`;
+    const nango = { fetcher: createInternalNangoFetcher(config, data, compute.instance_id, "integration-manager") };
     const integration = MANAGED_INTEGRATIONS.find((candidate) => candidate.id === AGENT_SYNC_INTEGRATION_ID);
     if (!integration) throw new Error("The agent-sync integration is missing from this Context Use release");
-    await reconcileNangoIntegration(baseUrl, managerKey, integration, undefined);
+    await reconcileNangoIntegration(baseUrl, managerKey, integration, undefined, nango);
     await deployManagedNangoFunction(
       config,
       root,
@@ -88,6 +85,7 @@ export const command = defineCommand("agent-sync install", {
       baseUrl,
       managerKey,
       AGENT_SYNC_INTEGRATION_ID,
+      nango,
     );
     progress.stop("Managed Nango ingestion endpoint ready");
 
@@ -96,6 +94,7 @@ export const command = defineCommand("agent-sync install", {
       managerKey,
       AGENT_SYNC_INTEGRATION_ID,
       AGENT_SYNC_CONNECTION_ID,
+      nango,
     );
     const existingMetadata = parseAgentSyncMetadata(existing?.metadata);
     const localToken = await readAgentSyncToken();
@@ -129,6 +128,7 @@ export const command = defineCommand("agent-sync install", {
         label,
         version: config.releaseVersion,
       }),
+      nango,
     );
     if (!await probeAgentSync(webhookUrl, token, AGENT_SYNC_CONNECTION_ID)) {
       throw new Error("Nango did not activate the agent-sync connection");

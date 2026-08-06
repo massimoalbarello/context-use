@@ -40,6 +40,12 @@ x-nango-environment: &nango-environment
   FLEET_DB_POOL_MAX: "2"
   NANGO_REDIS_URL: redis://nango-redis:6379
   NANGO_LOGS_ENABLED: "false"
+  # Context Use does not run a Datadog agent. Load dd-trace's no-op proxy at
+  # process start so public propagation headers cannot activate tracing.
+  DD_TRACE_ENABLED: "false"
+  # Nango's optional OTLP export does not need inbound cross-system context.
+  # An unregistered value makes its SDK install no global propagator.
+  OTEL_PROPAGATORS: none
   PERSIST_AUTO_PRUNING_INTERVAL_MS: "0"
   PERSIST_AUTO_DELETING_INTERVAL_MS: "0"
   LOG_LEVEL: info
@@ -52,6 +58,18 @@ x-nango-service: &nango-service
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
   pids_limit: 512
+
+x-nango-gateway: &nango-gateway
+  image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp:size=8m,mode=1777
+    - /data:size=8m,mode=0700
+    - /config:size=8m,mode=0700
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 64
 
 services:
   postgres:
@@ -203,11 +221,19 @@ services:
       NANGO_DASHBOARD_PASSWORD: ${NANGO_DASHBOARD_PASSWORD}
       FLAG_SERVE_CONNECT_UI: "true"
       NANGO_CONNECT_UI_PORT: "3009"
+      NANGO_SERVER_WEBSOCKETS_PATH: /connect/ws
       CSP_REPORT_ONLY: "false"
     command: ["packages/server/entrypoint.sh"]
     volumes:
       - /data/context-use/nango-integrations:/app/nango/packages/shared/dist/nango-integrations
-    networks: [nango_data, nango_internal, nango_pipeline_internal, nango_web, nango_egress]
+    networks:
+      - nango_data
+      - nango_internal
+      - nango_pipeline_internal
+      - nango_management_internal
+      - nango_public_upstream
+      - nango_auth_upstream
+      - nango_egress
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3003/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s
@@ -219,6 +245,184 @@ services:
         awslogs-region: ${AWS_REGION}
         awslogs-group: ${CLOUDWATCH_LOG_GROUP}
         awslogs-stream: nango-server
+
+  # OAuth2 Proxy stores only an opaque ticket in the browser. Its tokens live
+  # in this non-published Redis, whose network has no other peer.
+  nango-sso-redis:
+    image: redis:8.8.0@sha256:234c902a2db49461a129e2d4aeff85b28cf20187ed274a67f6e50995fa713c7b
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    networks: [nango_sso_store]
+    read_only: true
+    tmpfs: ["/data:size=64m,mode=0700"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: nango-sso-redis
+
+  oauth2-proxy:
+    image: ${OAUTH2_PROXY_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      auth: { condition: service_healthy }
+      nango-sso-redis: { condition: service_healthy }
+    environment:
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_PROVIDER_DISPLAY_NAME: Context Use passkey
+      OAUTH2_PROXY_OIDC_ISSUER_URL: https://${APP_HOSTNAME}
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
+      OAUTH2_PROXY_LOGIN_URL: https://${APP_HOSTNAME}/api/auth/oauth2/authorize
+      OAUTH2_PROXY_REDEEM_URL: http://auth:3002/api/auth/oauth2/token
+      OAUTH2_PROXY_OIDC_JWKS_URL: http://auth:3002/api/auth/jwks
+      OAUTH2_PROXY_OIDC_ENABLED_SIGNING_ALGS: EdDSA
+      OAUTH2_PROXY_SKIP_CLAIMS_FROM_PROFILE_URL: "true"
+      OAUTH2_PROXY_CLIENT_ID: ${NANGO_OAUTH_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${NANGO_OAUTH_CLIENT_SECRET}
+      OAUTH2_PROXY_REDIRECT_URL: https://${NANGO_HOSTNAME}/_context-use-auth/callback
+      OAUTH2_PROXY_SCOPE: openid email
+      OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
+      OAUTH2_PROXY_INSECURE_OIDC_SKIP_NONCE: "false"
+      OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "false"
+      OAUTH2_PROXY_AUTHENTICATED_EMAILS_FILE: /etc/oauth2-proxy/authorized-emails
+      OAUTH2_PROXY_PROXY_PREFIX: /_context-use-auth
+      OAUTH2_PROXY_UPSTREAMS: static://202
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_TRUSTED_PROXY_IPS: 172.30.254.2/32,172.30.254.11/32
+      OAUTH2_PROXY_WHITELIST_DOMAINS: ${NANGO_HOSTNAME}
+      OAUTH2_PROXY_SESSION_STORE_TYPE: redis
+      OAUTH2_PROXY_REDIS_CONNECTION_URL: redis://nango-sso-redis:6379/0
+      OAUTH2_PROXY_COOKIE_NAME: __Host-context-use-nango
+      OAUTH2_PROXY_COOKIE_SECRET: ${NANGO_AUTH_COOKIE_SECRET}
+      OAUTH2_PROXY_COOKIE_SECURE: "true"
+      OAUTH2_PROXY_COOKIE_HTTPONLY: "true"
+      OAUTH2_PROXY_COOKIE_SAMESITE: strict
+      OAUTH2_PROXY_COOKIE_PATH: /
+      OAUTH2_PROXY_COOKIE_EXPIRE: 10m
+      OAUTH2_PROXY_COOKIE_REFRESH: "0"
+      OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST: "true"
+      OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST_LIMIT: "8"
+      OAUTH2_PROXY_COOKIE_CSRF_EXPIRE: 5m
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"
+      OAUTH2_PROXY_SET_AUTHORIZATION_HEADER: "false"
+      OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "false"
+      OAUTH2_PROXY_PASS_BASIC_AUTH: "false"
+      OAUTH2_PROXY_PASS_USER_HEADERS: "false"
+      OAUTH2_PROXY_SKIP_AUTH_STRIP_HEADERS: "false"
+      OAUTH2_PROXY_SKIP_AUTH_PREFLIGHT: "false"
+      OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS: "false"
+      OAUTH2_PROXY_PROXY_WEBSOCKETS: "false"
+      OAUTH2_PROXY_REQUEST_LOGGING: "false"
+      OAUTH2_PROXY_AUTH_LOGGING: "false"
+      OAUTH2_PROXY_STANDARD_LOGGING: "true"
+      OAUTH2_PROXY_SILENCE_PING_LOGGING: "true"
+      OAUTH2_PROXY_SHOW_DEBUG_ON_ERROR: "false"
+    volumes:
+      - /data/context-use/secrets/nango-owner-email:/etc/oauth2-proxy/authorized-emails:ro
+    networks:
+      nango_oauth_browser:
+        ipv4_address: 172.30.254.3
+      nango_sso_internal:
+        ipv4_address: 172.30.254.10
+      nango_sso_store: {}
+      auth_nango_internal: {}
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    healthcheck:
+      # The pinned image is distroless, so there is no HTTP client. This checks
+      # option validity; nango-auth-gateway's healthcheck below calls /ready to
+      # verify the live listener and isolated Redis session store.
+      test: ["CMD", "/bin/oauth2-proxy", "--config-test"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: oauth2-proxy
+
+  # This gateway has no credentials. Its Caddyfile independently allowlists
+  # exact public callback/webhook/Connect route+method combinations.
+  nango-public-gateway:
+    <<: *nango-gateway
+    depends_on:
+      nango-server: { condition: service_healthy }
+    environment:
+      NANGO_HOSTNAME: ${NANGO_HOSTNAME}
+    volumes:
+      - ./Caddyfile.nango-public:/etc/caddy/Caddyfile:ro
+    networks: [nango_public_edge, nango_public_upstream]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          wget -q -O /dev/null http://127.0.0.1:3000/healthz &&
+          wget -q -O /dev/null http://nango-server:3003/ready
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: nango-public-gateway
+
+  # This is the only edge-adjacent service that knows Nango's Basic
+  # capability. It must pass both SSO and live Context authorization first.
+  nango-auth-gateway:
+    <<: *nango-gateway
+    depends_on:
+      auth: { condition: service_healthy }
+      nango-server: { condition: service_healthy }
+      oauth2-proxy: { condition: service_healthy }
+    environment:
+      NANGO_HOSTNAME: ${NANGO_HOSTNAME}
+      NANGO_DASHBOARD_BASIC: ${NANGO_DASHBOARD_BASIC}
+      AUTH_NANGO_TOKEN: ${AUTH_NANGO_TOKEN}
+    volumes:
+      - ./Caddyfile.nango-auth:/etc/caddy/Caddyfile:ro
+    networks:
+      nango_auth_edge: {}
+      nango_auth_upstream: {}
+      nango_sso_internal:
+        ipv4_address: 172.30.254.11
+      auth_nango_internal: {}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          wget -q -O /dev/null http://127.0.0.1:3000/healthz &&
+          wget -q -O /dev/null http://oauth2-proxy:4180/ready &&
+          wget -q -O /dev/null http://auth:3002/health &&
+          wget -q -O /dev/null http://nango-server:3003/ready
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      <<: *logging
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${CLOUDWATCH_LOG_GROUP}
+        awslogs-stream: nango-auth-gateway
 
   nango-jobs:
     <<: *nango-service
@@ -329,6 +533,7 @@ services:
       ASSET_ORIGIN: https://${ASSET_HOSTNAME}
       OAUTH_ISSUER: https://${APP_HOSTNAME}
       MCP_RESOURCE: https://${APP_HOSTNAME}/mcp
+      NANGO_ORIGIN: https://${NANGO_HOSTNAME}
       WEBAUTHN_RP_ID: ${APP_HOSTNAME}
       WEBAUTHN_RP_NAME: context-use
       OWNER_EMAIL: ${OWNER_EMAIL}
@@ -336,11 +541,14 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       AUTH_DASHBOARD_TOKEN: ${AUTH_DASHBOARD_TOKEN}
       AUTH_MCP_TOKEN: ${AUTH_MCP_TOKEN}
+      AUTH_NANGO_TOKEN: ${AUTH_NANGO_TOKEN}
+      NANGO_OAUTH_CLIENT_ID: ${NANGO_OAUTH_CLIENT_ID}
+      NANGO_OAUTH_CLIENT_SECRET: ${NANGO_OAUTH_CLIENT_SECRET}
       CONFIRMATION_INTERNAL_URL: http://confirmation:3004
       CONFIRMATION_GATEWAY_TOKEN: ${CONFIRMATION_GATEWAY_TOKEN}
       AUTH_DATABASE_URL: postgres://context_use_auth:${DB_AUTH_PASSWORD}@postgres:5432/context_use
     command: ["bun", "apps/server/src/auth-index.ts"]
-    networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal]
+    networks: [auth_data, auth_web, auth_dashboard_internal, auth_mcp_internal, auth_confirmation_internal, auth_nango_internal]
     healthcheck:
       test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3002/health'); if (!response.ok) process.exit(1)"]
       interval: 5s
@@ -551,7 +759,16 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /data/context-use/caddy/data:/data
       - /data/context-use/caddy/config:/config
-    networks: [edge, dashboard_web, auth_web, mcp_web, public_web, nango_web]
+    networks:
+      edge: {}
+      dashboard_web: {}
+      auth_web: {}
+      mcp_web: {}
+      public_web: {}
+      nango_public_edge: {}
+      nango_auth_edge: {}
+      nango_oauth_browser:
+        ipv4_address: 172.30.254.2
     logging:
       <<: *logging
       options:
@@ -657,7 +874,23 @@ networks:
   nango_data: { internal: true }
   nango_internal: { internal: true }
   nango_pipeline_internal: { internal: true }
-  nango_web: { internal: true }
+  nango_management_internal: { internal: true }
+  nango_public_edge: { internal: true }
+  nango_public_upstream: { internal: true }
+  nango_auth_edge: { internal: true }
+  nango_auth_upstream: { internal: true }
+  auth_nango_internal: { internal: true }
+  nango_sso_store: { internal: true }
+  nango_oauth_browser:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.254.0/29
+  nango_sso_internal:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.254.8/29
   storage_egress: {}
   backup_egress: {}
   nango_egress: {}

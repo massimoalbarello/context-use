@@ -293,7 +293,7 @@ test("remote function deployment is digest-pinned, least-privilege, and single-s
   const joined = commands.join("\n");
 
   expect(joined).toContain(`docker pull '${image}'`);
-  expect(joined).toContain("--network context-use_nango_web");
+  expect(joined).toContain("--network context-use_nango_management_internal");
   expect(joined).toContain("--read-only");
   expect(joined).toContain("--cap-drop ALL");
   expect(joined).toContain("--security-opt no-new-privileges");

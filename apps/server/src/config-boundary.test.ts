@@ -33,6 +33,10 @@ const validByService: Record<string, Record<string, string>> = {
     BETTER_AUTH_SECRET: "authentication-secret-that-is-not-shared",
     AUTH_DASHBOARD_TOKEN: "dashboard-to-auth-token-that-is-not-shared",
     AUTH_MCP_TOKEN: "private-mcp-to-auth-token-that-is-not-shared",
+    AUTH_NANGO_TOKEN: "nango-gateway-to-auth-token-that-is-not-shared",
+    NANGO_ORIGIN: "https://nango.context.example.com",
+    NANGO_OAUTH_CLIENT_ID: "context-use-nango-dashboard",
+    NANGO_OAUTH_CLIENT_SECRET: "nango-oauth-client-secret-that-is-not-shared",
   },
   mcp: {
     MCP_DATABASE_URL: "postgres://context_use_mcp:secret@postgres:5432/context_use",
@@ -100,6 +104,8 @@ describe("production process credential boundaries", () => {
     }).exitCode).not.toBe(0);
     expect(load("dashboard", {
       AUTH_MCP_TOKEN: "leaked-private-mcp-auth-token-that-is-long",
+      AUTH_NANGO_TOKEN: "leaked-nango-gateway-token-that-is-long",
+      NANGO_OAUTH_CLIENT_SECRET: "leaked-nango-oauth-client-secret-that-is-long",
     }).exitCode).not.toBe(0);
     expect(load("dashboard", {
       STORAGE_DATABASE_URL: "postgres://context_use_storage:secret@postgres:5432/context_use",
@@ -179,6 +185,31 @@ describe("production process credential boundaries", () => {
     });
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr.toString()).toContain("DATABASE_URL must use only context_use_dashboard");
+  });
+
+  test("auth requires an exact Nango subdomain and pairwise Nango credentials", () => {
+    expect(load("auth", { NANGO_ORIGIN: "http://nango.context.example.com" }).exitCode).not.toBe(0);
+    expect(load("auth", { NANGO_ORIGIN: "https://nango.context.example.com/path" }).exitCode).not.toBe(0);
+    expect(load("auth", { NANGO_ORIGIN: "https://other.example.com" }).exitCode).not.toBe(0);
+    expect(load("auth", {
+      AUTH_NANGO_TOKEN: validByService.auth!.AUTH_MCP_TOKEN!,
+    }).exitCode).not.toBe(0);
+    expect(load("auth", {
+      NANGO_OAUTH_CLIENT_SECRET: validByService.auth!.AUTH_NANGO_TOKEN!,
+    }).exitCode).not.toBe(0);
+    expect(load("auth", {
+      NANGO_OAUTH_CLIENT_SECRET: validByService.auth!.BETTER_AUTH_SECRET!,
+    }).exitCode).not.toBe(0);
+
+    const nangoAuthConfiguration = {
+      NANGO_ORIGIN: "https://nango.context.example.com",
+      NANGO_OAUTH_CLIENT_ID: "context-use-nango-dashboard",
+      NANGO_OAUTH_CLIENT_SECRET: "nango-oauth-client-secret-that-is-not-shared",
+      AUTH_NANGO_TOKEN: "nango-gateway-to-auth-token-that-is-not-shared",
+    };
+    for (const service of Object.keys(validByService).filter((service) => service !== "auth")) {
+      expect(load(service, nangoAuthConfiguration).exitCode).not.toBe(0);
+    }
   });
 
   test("combined production mode and shared storage tokens are forbidden", () => {

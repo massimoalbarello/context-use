@@ -2,6 +2,7 @@ import { resolve4 } from "node:dns/promises";
 import { resolve } from "node:path";
 import { sendSsmCommands, waitForSsm } from "./aws.ts";
 import { markDataVolumeInitialized } from "./data-volume.ts";
+import { probeInternalNangoReady, verifyExternalNangoBoundary } from "./nango-internal.ts";
 import { deploymentRoot } from "./release.ts";
 import type { ComputeOutputs, DataOutputs, DeploymentConfig, ReleaseManifest } from "./types.ts";
 
@@ -19,7 +20,7 @@ export async function deploy(
   const deployScript = await Bun.file(resolve(await deploymentRoot(manifest), "deploy/deploy.sh")).text();
   const command = deploymentCommands(config, manifest, deployScript, options);
   await sendSsmCommands(config.awsProfile, config.awsRegion, compute.instance_id, command);
-  await verifyDeployment(config, manifest.version);
+  await verifyDeployment(config, manifest.version, compute.instance_id);
 }
 
 export function computeBootstrapCommands(): string[] {
@@ -158,7 +159,7 @@ export function healthMatchesVersion(health: unknown, releaseVersion: string): b
   return health.version === releaseVersion.replace(/^v/, "");
 }
 
-export async function verifyDeployment(config: DeploymentConfig, releaseVersion: string): Promise<void> {
+export async function verifyDeployment(config: DeploymentConfig, releaseVersion: string, instanceId: string): Promise<void> {
   const origin = `https://${config.hostname}`;
   let lastError = "health check did not complete";
   for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -195,9 +196,14 @@ export async function verifyDeployment(config: DeploymentConfig, releaseVersion:
   let nangoError = "health check did not complete";
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
-      const nangoHealth = await fetch(`https://${config.nangoHostname}/ready`, { signal: AbortSignal.timeout(5_000) });
-      if (nangoHealth.ok) return;
-      nangoError = `health returned HTTP ${nangoHealth.status}`;
+      if (await probeInternalNangoReady(config, instanceId)) {
+        // Scoped API keys are provisioned immediately after deploy returns.
+        // This pass proves anonymous and native-Basic isolation; provisioning
+        // performs the mandatory real scoped-bearer bypass test.
+        await verifyExternalNangoBoundary(config, instanceId, {}, { requireManagedApiKey: false });
+        return;
+      }
+      nangoError = "internal readiness check failed";
     } catch (error) {
       nangoError = error instanceof Error ? error.message : String(error);
     }

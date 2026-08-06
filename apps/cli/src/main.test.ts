@@ -71,7 +71,8 @@ test("command help exposes only intentional sensitive or destructive options", a
   expect(destroy.exitCode).toBe(0);
   expect(destroy.stdout).toContain("--purge-data");
   expect(nangoCredentials.exitCode).toBe(0);
-  expect(nangoCredentials.stdout).toContain("--reveal");
+  expect(nangoCredentials.stdout).toContain("passkey-protected");
+  expect(nangoCredentials.stdout).not.toContain("--reveal");
   expect(nangoRestore.exitCode).toBe(0);
   expect(nangoRestore.stdout).toContain("Restore Nango");
   expect(templatePlan.exitCode).toBe(0);

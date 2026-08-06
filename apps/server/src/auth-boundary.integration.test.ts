@@ -145,6 +145,11 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       },
     ));
     expect(authResponse.status).toBe(404);
+    const nangoResponse = await authentication!.handle(new Request(
+      "http://auth:3002/internal/authorize-nango",
+      { headers: { authorization: "Bearer forged" } },
+    ));
+    expect(nangoResponse.status).toBe(404);
     const jwksWithoutCapability = await authentication!.handle(new Request(
       "http://auth:3002/internal/jwks",
     ));
@@ -399,6 +404,28 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(await response.json()).toMatchObject({ userVerification: "required" });
   });
 
+  test("passkey authentication cannot create a session while owner revocation holds its lock", async () => {
+    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    await client.connect();
+    try {
+      await client.query("SELECT pg_advisory_lock(hashtextextended($1,0))", ["context-use-owner"]);
+      const response = await application!.handle(new Request(
+        "http://localhost:3000/api/auth/passkey/verify-authentication",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ response: {} }),
+        },
+      ));
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({ error: "passkey_authentication_in_progress" });
+    } finally {
+      await client.query("SELECT pg_advisory_unlock(hashtextextended($1,0))", ["context-use-owner"]);
+      await client.end();
+    }
+  });
+
   test("Google social sign-in is not configured", async () => {
     const errorLog = spyOn(console, "error").mockImplementation(() => undefined);
     try {
@@ -414,6 +441,20 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("dynamic clients default to the private MCP grant and public clients cannot omit PKCE", async () => {
+    const emailRegistration = await application!.handle(new Request("http://localhost:3000/api/auth/oauth2/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "untrusted email scope test",
+        redirect_uris: ["http://127.0.0.1:49320/callback"],
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code"],
+        response_types: ["code"],
+        scope: "openid email",
+      }),
+    }));
+    expect(emailRegistration.status).toBe(400);
+
     const registration = await application!.handle(new Request("http://localhost:3000/api/auth/oauth2/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -624,6 +665,137 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         `DELETE FROM "session" WHERE id=ANY($1::text[])`,
         [sessions.map(({ id }) => id)],
       ).catch(() => undefined);
+      if (createdOwner) {
+        await client.query('ALTER TABLE "user" DISABLE TRIGGER user_protect_owner_identity');
+        try {
+          await client.query(
+            `DELETE FROM "user"
+             WHERE id='context-use-owner'
+               AND NOT EXISTS (SELECT 1 FROM passkey WHERE "userId"='context-use-owner')`,
+          );
+        } finally {
+          await client.query('ALTER TABLE "user" ENABLE TRIGGER user_protect_owner_identity');
+        }
+      }
+      await client.end();
+    }
+  });
+
+  test("the fixed Nango client and live owner session are both required by the internal gateway", async () => {
+    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const sessionId = crypto.randomUUID();
+    const sessionToken = `nango-session-${crypto.randomUUID()}`;
+    const accessToken = `nango-access-${crypto.randomUUID()}`;
+    const unboundAccessToken = `nango-unbound-${crypto.randomUUID()}`;
+    const accessTokenId = crypto.randomUUID();
+    const unboundAccessTokenId = crypto.randomUUID();
+    const storedAccessToken = Buffer.from(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(accessToken)),
+    ).toString("base64url");
+    const storedUnboundAccessToken = Buffer.from(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(unboundAccessToken)),
+    ).toString("base64url");
+    const expectedSecret = Buffer.from(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(config.NANGO_OAUTH_CLIENT_SECRET)),
+    ).toString("base64url");
+    let createdOwner = false;
+
+    await client.connect();
+    try {
+      // Readiness is also the fail-closed provisioning boundary.
+      expect((await authentication!.handle(new Request("http://auth:3002/health"))).status).toBe(200);
+      const provisioned = await client.query<{
+        clientId: string;
+        clientSecret: string;
+        disabled: boolean;
+        skipConsent: boolean;
+        scopes: string[];
+        redirectUris: string[];
+        tokenEndpointAuthMethod: string;
+        grantTypes: string[];
+        responseTypes: string[];
+        public: boolean;
+        type: string;
+        requirePKCE: boolean;
+      }>(
+        `SELECT "clientId","clientSecret",disabled,"skipConsent",scopes,
+                "redirectUris","tokenEndpointAuthMethod","grantTypes",
+                "responseTypes",public,type,"requirePKCE"
+         FROM "oauthClient" WHERE "clientId"=$1`,
+        [config.NANGO_OAUTH_CLIENT_ID],
+      );
+      expect(provisioned.rows[0]).toMatchObject({
+        clientId: config.NANGO_OAUTH_CLIENT_ID,
+        clientSecret: expectedSecret,
+        disabled: false,
+        skipConsent: true,
+        scopes: ["openid", "email"],
+        redirectUris: [`${config.NANGO_ORIGIN}/_context-use-auth/callback`],
+        tokenEndpointAuthMethod: "client_secret_basic",
+        grantTypes: ["authorization_code"],
+        responseTypes: ["code"],
+        public: false,
+        type: "web",
+        requirePKCE: true,
+      });
+
+      const owner = await client.query(
+        `INSERT INTO "user"(id,name,email,"emailVerified")
+         VALUES ('context-use-owner','Owner',$1,true)
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id`,
+        [config.OWNER_EMAIL],
+      );
+      createdOwner = Boolean(owner.rowCount);
+      await client.query(
+        `INSERT INTO "session"(id,"expiresAt",token,"createdAt","updatedAt","userId")
+         VALUES ($1,now()+interval '1 day',$2,now()-interval '1 hour',now()-interval '1 minute','context-use-owner')`,
+        [sessionId, sessionToken],
+      );
+      await client.query(
+        `INSERT INTO "oauthAccessToken"(
+           id,token,"clientId","sessionId","userId","expiresAt","createdAt",scopes
+         ) VALUES
+           ($1,$2,$3,$4,'context-use-owner',now()+interval '10 minutes',now(),$5::jsonb),
+           ($6,$7,$3,NULL,'context-use-owner',now()+interval '10 minutes',now(),$5::jsonb)`,
+        [
+          accessTokenId,
+          storedAccessToken,
+          config.NANGO_OAUTH_CLIENT_ID,
+          sessionId,
+          JSON.stringify(["openid", "email"]),
+          unboundAccessTokenId,
+          storedUnboundAccessToken,
+        ],
+      );
+
+      const authorize = (token: string, capability = config.AUTH_NANGO_TOKEN) => authentication!.handle(new Request(
+        "http://auth:3002/internal/authorize-nango",
+        {
+          headers: {
+            authorization: `Bearer ${token}`,
+            "x-context-use-nango-gateway": capability,
+          },
+        },
+      ));
+
+      expect((await authorize(accessToken, "wrong-capability-that-is-still-long-enough")).status).toBe(404);
+      expect((await authorize(`forged-${crypto.randomUUID()}`)).status).toBe(401);
+      expect((await authorize(unboundAccessToken)).status).toBe(401);
+      expect((await authorize(accessToken)).status).toBe(204);
+
+      await client.query(
+        `UPDATE "session" SET "updatedAt"=now()-interval '13 hours' WHERE id=$1`,
+        [sessionId],
+      );
+      expect((await authorize(accessToken)).status).toBe(401);
+    } finally {
+      await client.query(
+        `DELETE FROM "oauthAccessToken" WHERE id=ANY($1::text[])`,
+        [[accessTokenId, unboundAccessTokenId]],
+      ).catch(() => undefined);
+      await client.query(`DELETE FROM "session" WHERE id=$1`, [sessionId]).catch(() => undefined);
       if (createdOwner) {
         await client.query('ALTER TABLE "user" DISABLE TRIGGER user_protect_owner_identity');
         try {

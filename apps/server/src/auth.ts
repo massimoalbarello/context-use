@@ -3,6 +3,7 @@ import { passkey } from "@better-auth/passkey";
 import { APIError, betterAuth, type BetterAuthPlugin } from "better-auth";
 import { jwt } from "better-auth/plugins";
 import { MCP_SCOPES } from "@context-use/shared";
+import { createHash } from "node:crypto";
 import { Pool } from "pg";
 import { config, production } from "./config.ts";
 import {
@@ -18,13 +19,101 @@ import {
   passkeyLabelSchema,
 } from "./passkey-management.ts";
 
-const OAUTH_SCOPES = ["openid", "offline_access", ...MCP_SCOPES];
+const OAUTH_SCOPES = ["openid", "email", "offline_access", ...MCP_SCOPES];
+const NANGO_OAUTH_SCOPES = ["openid", "email"] as const;
+const NANGO_CLIENT_KIND = "context-use:nango-dashboard";
+
+export const nangoOAuthRedirectUri = `${config.NANGO_ORIGIN}/_context-use-auth/callback`;
+
+function hashOAuthClientSecret(secret: string): string {
+  return createHash("sha256").update(secret).digest("base64url");
+}
 
 export const authPool = new Pool({
   connectionString: config.AUTH_DATABASE_URL,
   max: 10,
   application_name: "context-use-auth",
 });
+
+let nangoClientProvisioning: Promise<void> | null = null;
+
+async function provisionNangoOAuthClient(): Promise<void> {
+  const now = new Date();
+  const client = await authPool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [NANGO_CLIENT_KIND]);
+    await client.query(
+      `UPDATE "oauthClient"
+       SET disabled=true,"updatedAt"=$3
+       WHERE "referenceId"=$1 AND "clientId"<>$2`,
+      [NANGO_CLIENT_KIND, config.NANGO_OAUTH_CLIENT_ID, now],
+    );
+    await client.query(
+      `INSERT INTO "oauthClient"(
+       id,"clientId","clientSecret",disabled,"skipConsent","enableEndSession",
+       "subjectType",scopes,"userId","createdAt","updatedAt",name,uri,
+       "redirectUris","postLogoutRedirectUris","tokenEndpointAuthMethod",
+       "grantTypes","responseTypes",public,type,"requirePKCE","referenceId",
+       metadata,"dpopBoundAccessTokens"
+     ) VALUES (
+       $1,$2,$3,false,true,false,'public',$4::jsonb,NULL,$5,$5,
+       'context-use Nango dashboard',$6,$7::jsonb,'[]'::jsonb,
+       'client_secret_basic','["authorization_code"]'::jsonb,'["code"]'::jsonb,
+       false,'web',true,$8,$9::jsonb,false
+     )
+     ON CONFLICT ("clientId") DO UPDATE SET
+       "clientSecret"=excluded."clientSecret",
+       disabled=false,
+       "skipConsent"=true,
+       "enableEndSession"=false,
+       "subjectType"='public',
+       scopes=excluded.scopes,
+       "userId"=NULL,
+       "updatedAt"=excluded."updatedAt",
+       name=excluded.name,
+       uri=excluded.uri,
+       "redirectUris"=excluded."redirectUris",
+       "postLogoutRedirectUris"='[]'::jsonb,
+       "tokenEndpointAuthMethod"='client_secret_basic',
+       "grantTypes"='["authorization_code"]'::jsonb,
+       "responseTypes"='["code"]'::jsonb,
+       public=false,
+       type='web',
+       "requirePKCE"=true,
+       "referenceId"=excluded."referenceId",
+       metadata=excluded.metadata,
+       "dpopBoundAccessTokens"=false`,
+      [
+        `first-party:${config.NANGO_OAUTH_CLIENT_ID}`,
+        config.NANGO_OAUTH_CLIENT_ID,
+        hashOAuthClientSecret(config.NANGO_OAUTH_CLIENT_SECRET),
+        JSON.stringify(NANGO_OAUTH_SCOPES),
+        now,
+        config.NANGO_ORIGIN,
+        JSON.stringify([nangoOAuthRedirectUri]),
+        NANGO_CLIENT_KIND,
+        JSON.stringify({ client_kind: NANGO_CLIENT_KIND }),
+      ],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function ensureNangoOAuthClient(): Promise<void> {
+  if (!nangoClientProvisioning) {
+    nangoClientProvisioning = provisionNangoOAuthClient().catch((error) => {
+      nangoClientProvisioning = null;
+      throw error;
+    });
+  }
+  await nangoClientProvisioning;
+}
 
 async function resolveOwnerSetup(context: string | null | undefined) {
   const setup = ownerSetupContext(context);
@@ -209,6 +298,7 @@ export const auth = betterAuth({
       // reconnect. Replay the completed rotation briefly instead of treating
       // that retry as token theft and invalidating the whole token family.
       refreshTokenReuseInterval: 30,
+      storeClientSecret: { hash: hashOAuthClientSecret },
       codeExpiresIn: 300,
       allowDynamicClientRegistration: true,
       allowUnauthenticatedClientRegistration: true,
@@ -216,8 +306,12 @@ export const auth = betterAuth({
       clientRegistrationAllowedScopes: ["offline_access", "openid"],
       clientRegistrationClientSecretExpiration: "30 days",
       silenceWarnings: { oauthAuthServerConfig: true, openidConfig: true },
-      customAccessTokenClaims: () => ({
-        principal_type: "mcp_agent",
+      customAccessTokenClaims: ({ metadata, scopes }) => ({
+        principal_type: metadata?.client_kind === NANGO_CLIENT_KIND
+          && NANGO_OAUTH_SCOPES.every((scope) => scopes.includes(scope))
+          && scopes.length === NANGO_OAUTH_SCOPES.length
+          ? "nango_dashboard_owner"
+          : "mcp_agent",
       }),
       clientPrivileges: ({ user }) => user?.id === ownerUserId && isVerifiedOwner(user.email, user.emailVerified) ? true : undefined,
     }) as unknown as BetterAuthPlugin,
@@ -229,6 +323,27 @@ export type DashboardPrincipal = {
   sessionId: string;
   email: string;
 };
+
+export async function touchLiveOwnerSession(sessionId: string): Promise<boolean> {
+  if (!sessionId || sessionId.length > 512) return false;
+  const touched = await authPool.query(
+    `UPDATE "session"
+     SET "updatedAt"=now()
+     WHERE id=$1 AND "userId"=$2
+       AND "createdAt">=now()-make_interval(secs=>$3::int)
+       AND "updatedAt">=now()-make_interval(secs=>$4::int)
+       AND "expiresAt">now()
+       AND EXISTS (
+         SELECT 1 FROM "user" owner
+         WHERE owner.id=$2
+           AND lower(btrim(owner.email))=$5
+           AND owner."emailVerified"=true
+       )
+     RETURNING id`,
+    [sessionId, ownerUserId, config.SESSION_MAX_SECONDS, config.SESSION_IDLE_SECONDS, normalizedOwnerEmail],
+  );
+  return Boolean(touched.rowCount);
+}
 
 export async function dashboardPrincipal(request: Request): Promise<DashboardPrincipal | null> {
   if (request.headers.has("authorization")) return null;
@@ -249,17 +364,7 @@ export async function dashboardPrincipal(request: Request): Promise<DashboardPri
   // Recheck every bound in the write itself. Concurrent requests cannot revive
   // a session that crossed the idle/absolute boundary after the read above,
   // and expiresAt is never extended.
-  const touched = await authPool.query(
-    `UPDATE "session"
-     SET "updatedAt"=now()
-     WHERE id=$1 AND "userId"=$2
-       AND "createdAt">=now()-make_interval(secs=>$3::int)
-       AND "updatedAt">=now()-make_interval(secs=>$4::int)
-       AND "expiresAt">now()
-     RETURNING id`,
-    [result.session.id, ownerUserId, config.SESSION_MAX_SECONDS, config.SESSION_IDLE_SECONDS],
-  );
-  if (!touched.rowCount) return null;
+  if (!await touchLiveOwnerSession(result.session.id)) return null;
   return {
     userId: result.user.id,
     sessionId: result.session.id,

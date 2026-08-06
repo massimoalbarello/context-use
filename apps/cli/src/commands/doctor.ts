@@ -3,10 +3,11 @@ import { defineCommand } from "@parshjs/core";
 import { retainedDataVolumeExists } from "../data-volume.ts";
 import { dnsMismatches } from "../deploy.ts";
 import { readInfrastructure } from "../lifecycle.ts";
+import { probeInternalNangoReady, verifyExternalNangoBoundary } from "../nango-internal.ts";
 import { verifyNangoDashboardAuthentication } from "../nango.ts";
 import { readConfig } from "../paths.ts";
 import { commandExists, run } from "../process.ts";
-import type { ComputeOutputs } from "../types.ts";
+import type { ComputeOutputs, DataOutputs } from "../types.ts";
 
 export const command = defineCommand("doctor", {
   description: "Check local, AWS, DNS, TLS, and application health.",
@@ -14,6 +15,7 @@ export const command = defineCommand("doctor", {
   handler: async () => {
     const config = await readConfig();
     let compute: ComputeOutputs | null = null;
+    let data: DataOutputs | null = null;
     const checks: Array<[string, () => Promise<unknown>]> = [
       ["AWS CLI", async () => { if (!(await commandExists("aws"))) throw new Error("not installed"); }],
       ["Terraform", async () => { if (!(await commandExists("terraform"))) throw new Error("not installed"); }],
@@ -22,6 +24,7 @@ export const command = defineCommand("doctor", {
       ["Terraform state", async () => {
         const infrastructure = await readInfrastructure(false);
         compute = infrastructure.compute;
+        data = infrastructure.data;
         if (!infrastructure.data) throw new Error("retained data stack is absent");
         if (!await retainedDataVolumeExists(config, infrastructure.data)) throw new Error("retained data volume is missing; run `context-use recover`");
         if (!compute) throw new Error("compute stack is absent");
@@ -37,16 +40,19 @@ export const command = defineCommand("doctor", {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       }],
-      ["Nango HTTPS readiness", async () => {
-        const response = await fetch(`https://${config.nangoHostname}/ready`, { signal: AbortSignal.timeout(5_000) });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const body: unknown = await response.json();
-        if (!body || typeof body !== "object" || !("result" in body) || body.result !== "ok") {
-          throw new Error("unexpected response");
-        }
-        return body;
+      ["Nango internal readiness", async () => {
+        if (!compute) throw new Error("no active compute output");
+        if (!await probeInternalNangoReady(config, compute.instance_id)) throw new Error("unexpected response");
+        return true;
       }],
-      ["Nango dashboard authentication", () => verifyNangoDashboardAuthentication(config)],
+      ["Nango external boundary", async () => {
+        if (!compute) throw new Error("no active compute output");
+        return verifyExternalNangoBoundary(config, compute.instance_id);
+      }],
+      ["Nango dashboard authentication", () => {
+        if (!compute || !data) throw new Error("no active infrastructure output");
+        return verifyNangoDashboardAuthentication(config, data, compute.instance_id);
+      }],
       ["MCP metadata", async () => {
         const response = await fetch(`https://${config.hostname}/.well-known/oauth-protected-resource/mcp`, { signal: AbortSignal.timeout(5_000) });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);

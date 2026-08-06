@@ -29,6 +29,10 @@ export function generateNangoEncryptionKey(): string {
   return randomBytes(32).toString("base64");
 }
 
+export function generateNangoAuthCookieSecret(): string {
+  return randomBytes(32).toString("base64");
+}
+
 export async function ensureRuntimeParameters(config: DeploymentConfig, data: DataOutputs, compute: ComputeOutputs): Promise<void> {
   const prefix = `/context-use/${config.installationId}/${config.environment}`;
   const fixed: Record<string, string> = {
@@ -56,6 +60,10 @@ export async function ensureRuntimeParameters(config: DeploymentConfig, data: Da
     NANGO_DASHBOARD_PASSWORD: 36,
     NANGO_ADMIN_KEY: 48,
     NANGO_ENCRYPTION_KEY: 32,
+    NANGO_OAUTH_CLIENT_ID: 24,
+    NANGO_OAUTH_CLIENT_SECRET: 32,
+    NANGO_AUTH_COOKIE_SECRET: 32,
+    AUTH_NANGO_TOKEN: 32,
     NANGO_DB_PASSWORD: 36,
     NANGO_BACKUP_DB_PASSWORD: 36,
     MCP_ASSET_CAPABILITY_SECRET: 48,
@@ -81,7 +89,9 @@ export async function ensureRuntimeParameters(config: DeploymentConfig, data: Da
     if (!await getSecureParameterIfPresent(config.awsProfile, config.awsRegion, parameter)) {
       const secret = name === "NANGO_ENCRYPTION_KEY"
         ? generateNangoEncryptionKey()
-        : generateSecret(length);
+        : name === "NANGO_AUTH_COOKIE_SECRET"
+          ? generateNangoAuthCookieSecret()
+          : generateSecret(length);
       await putSecureParameter(config.awsProfile, config.awsRegion, parameter, secret, data.kms_key_arn);
     }
     progress.advance(1);
@@ -155,7 +165,7 @@ export async function setup(): Promise<void> {
   await ensureRuntimeParameters(config, data, compute);
   if (await pauseForManualDns(config, compute)) return;
   await deploy(config, compute, manifest, { installTemplate: "default" });
-  await ensureNangoApiKeys(config, data);
+  await ensureNangoApiKeys(config, data, compute.instance_id);
   await refreshNangoPipelineRuntime(config, compute);
-  p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}\n\nNango dashboard credentials:\ncontext-use nango credentials`);
+  p.outro(`context-use is ready. Create the owner passkey:\n${await ownerSetupUrl(config)}\n\nThen open https://${config.nangoHostname}; it uses the same passkey session.`);
 }

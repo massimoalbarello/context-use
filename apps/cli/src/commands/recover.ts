@@ -53,7 +53,7 @@ export const command = defineCommand("recover", {
       recoveryBackupKey: recovery.backupKey,
       ...(recovery.nangoBackupKey ? { recoveryNangoBackupKey: recovery.nangoBackupKey } : {}),
     });
-    await ensureNangoApiKeys(config, recoveredData);
+    await ensureNangoApiKeys(config, recoveredData, nextCompute.instance_id);
     await refreshNangoPipelineRuntime(config, nextCompute);
     delete config.recovery;
     await saveConfig(config);

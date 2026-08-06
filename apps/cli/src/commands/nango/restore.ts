@@ -102,8 +102,8 @@ export const command = defineCommand("nango restore", {
       compute.instance_id,
       nangoRestoreCommands(data.backup_bucket, selected),
     );
-    await verifyDeployment(config, manifest.version);
-    await ensureNangoApiKeys(config, data);
+    await verifyDeployment(config, manifest.version, compute.instance_id);
+    await ensureNangoApiKeys(config, data, compute.instance_id);
     await refreshNangoPipelineRuntime(config, compute);
     p.outro(`Nango database restored from ${selected}. Run \`context-use nango integrations deploy\` before relying on scheduled syncs; pre-restore artifacts were quarantined on the retained volume.`);
   },

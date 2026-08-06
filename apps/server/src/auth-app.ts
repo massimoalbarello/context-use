@@ -4,7 +4,14 @@ import {
 } from "@better-auth/oauth-provider";
 import { Elysia } from "elysia";
 import { z } from "zod";
-import { auth, authPathRequiresOwnerSession, authPool, dashboardPrincipal } from "./auth.ts";
+import {
+  auth,
+  authPathRequiresOwnerSession,
+  authPool,
+  dashboardPrincipal,
+  ensureNangoOAuthClient,
+  touchLiveOwnerSession,
+} from "./auth.ts";
 import { dashboardGatewayHeader } from "./auth-dashboard-gateway.ts";
 import { publicAuthRequestAllowed } from "./auth-protocol.ts";
 import { config, production } from "./config.ts";
@@ -12,7 +19,9 @@ import { forwardBrowserConfirmation } from "./confirmation-gateway.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
 import { hasHeaderCapability, hasInternalCapability } from "./internal-capability.ts";
 import { withCodexIssuerCompatibility } from "./oauth-metadata.ts";
+import { ownerUserId } from "./owner.ts";
 import { authorizePasskeyAuthRequest } from "./passkey-boundary.ts";
+import { whilePasskeyOwnerLockHeld } from "./passkey-policy.ts";
 import {
   authenticatorAttachmentSchema,
   confirmEnrollmentIntent,
@@ -58,6 +67,29 @@ const passkeyRemovalSchema = z.object({
   response: passkeyAssertionSchema,
 }).strict();
 const emptyObjectSchema = z.object({}).strict();
+const nangoAccessTokenSchema = z.object({
+  active: z.literal(true),
+  azp: z.string(),
+  client_id: z.string(),
+  iss: z.string(),
+  principal_type: z.literal("nango_dashboard_owner"),
+  scope: z.string(),
+  sid: z.string().min(1).max(512),
+  sub: z.string(),
+}).passthrough();
+
+export const nangoGatewayHeader = "x-context-use-nango-gateway";
+
+function bearerAccessToken(request: Request): string | null {
+  return request.headers.get("authorization")
+    ?.match(/^Bearer ([A-Za-z0-9._~-]{32,8192})$/)?.[1] ?? null;
+}
+
+function exactNangoScopes(scope: string): boolean {
+  const scopes = scope.split(" ").filter(Boolean);
+  return scopes.length === 2 && new Set(scopes).size === 2
+    && scopes.includes("openid") && scopes.includes("email");
+}
 function browserAuthRequest(request: Request, removeCookie = false): Request {
   const headers = new Headers(request.headers);
   if (removeCookie) headers.delete("cookie");
@@ -86,9 +118,13 @@ export const authApp = new Elysia()
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
-  .get("/health", () => json({ status: "ok", service: "auth" }))
+  .get("/health", async () => {
+    await ensureNangoOAuthClient();
+    return json({ status: "ok", service: "auth" });
+  })
   .all("/api/auth/*", async ({ request }) => {
     if (!publicAuthRequestAllowed(request)) return problem("Not found", 404, "not_found");
+    await ensureNangoOAuthClient();
     const sanitized = browserAuthRequest(request);
     const pathname = new URL(sanitized.url).pathname;
 
@@ -106,11 +142,10 @@ export const authApp = new Elysia()
 
     const boundary = await authorizePasskeyAuthRequest(sanitized);
     if (boundary.denied) return boundary.denied;
-    try {
-      return await requireAuthenticationUserVerification(pathname, await auth.handler(sanitized));
-    } finally {
-      await boundary.release?.();
-    }
+    return whilePasskeyOwnerLockHeld(
+      async () => requireAuthenticationUserVerification(pathname, await auth.handler(sanitized)),
+      boundary.release,
+    );
   })
   .get("/.well-known/oauth-authorization-server", ({ request }) =>
     withCodexIssuerCompatibility(authServerMetadata(browserAuthRequest(request))))
@@ -129,6 +164,63 @@ export const authApp = new Elysia()
     if (input.kind === "upload") assertDashboardUploadSecurity(reconstructed, principal);
     if (input.kind === "download") assertDashboardDownloadSecurity(reconstructed);
     return json(principal);
+  })
+  .get("/internal/authorize-nango", async ({ request }) => {
+    if (!hasHeaderCapability(request, nangoGatewayHeader, config.AUTH_NANGO_TOKEN)) {
+      return problem("Not found", 404, "not_found");
+    }
+    const token = bearerAccessToken(request);
+    if (!token) return problem("Authorization required", 401, "unauthorized");
+    await ensureNangoOAuthClient();
+
+    let value: unknown;
+    try {
+      const oauthApi = auth.api as unknown as {
+        oauth2Introspect(input: {
+          asResponse: false;
+          headers: Headers;
+          request: Request;
+          body: { token: string; token_type_hint: string };
+        }): Promise<unknown>;
+      };
+      const headers = new Headers({
+        authorization: `Basic ${Buffer.from(`${config.NANGO_OAUTH_CLIENT_ID}:${config.NANGO_OAUTH_CLIENT_SECRET}`).toString("base64")}`,
+      });
+      value = await oauthApi.oauth2Introspect({
+        asResponse: false,
+        headers,
+        request: new Request(`${config.APP_ORIGIN}/api/auth/oauth2/introspect`, {
+          method: "POST",
+          headers,
+        }),
+        body: { token, token_type_hint: "access_token" },
+      });
+    } catch (error) {
+      // The OAuth provider currently bundles its own APIError constructor, so
+      // instanceof against Better Auth's public export is not stable across
+      // package builds. Name matching is limited to this dependency boundary;
+      // provider-side failures still remain distinguishable from bad tokens.
+      if (error instanceof Error && error.name === "APIError") {
+        const statusCode = Number((error as Error & { statusCode?: unknown }).statusCode);
+        if (Number.isFinite(statusCode) && statusCode >= 500) {
+          return problem("Authorization unavailable", 503, "authorization_unavailable");
+        }
+        return problem("Authorization required", 401, "unauthorized");
+      }
+      throw error;
+    }
+
+    const introspection = nangoAccessTokenSchema.safeParse(value);
+    if (!introspection.success
+        || introspection.data.client_id !== config.NANGO_OAUTH_CLIENT_ID
+        || introspection.data.azp !== config.NANGO_OAUTH_CLIENT_ID
+        || introspection.data.iss !== config.OAUTH_ISSUER
+        || introspection.data.sub !== ownerUserId
+        || !exactNangoScopes(introspection.data.scope)
+        || !await touchLiveOwnerSession(introspection.data.sid)) {
+      return problem("Authorization required", 401, "unauthorized");
+    }
+    return new Response(null, { status: 204, headers: securityHeaders });
   })
   .get("/internal/jwks", ({ request }) => {
     if (!hasInternalCapability(request, config.AUTH_MCP_TOKEN)) return problem("Not found", 404, "not_found");
