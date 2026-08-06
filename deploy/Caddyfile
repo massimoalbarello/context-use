@@ -13,6 +13,27 @@
 	}
 }
 
+# A release stops Caddy's upstreams but never Caddy itself, so the update window
+# reaches clients as this response instead of a refused connection. It fires only
+# on a Caddy-generated dial failure; an upstream's own 5xx is a response and is
+# still forwarded unchanged.
+(maintenance) {
+	handle_errors 502 503 504 {
+		# Error routes are a separate route list, so the site's own header block
+		# does not reach them. Repeat the response hardening here.
+		header {
+			-Server
+			Cache-Control "no-store"
+			Content-Type "text/plain; charset=utf-8"
+			Referrer-Policy no-referrer
+			Retry-After 30
+			Strict-Transport-Security "max-age=63072000; includeSubDomains"
+			X-Content-Type-Options nosniff
+		}
+		respond "Context Use is updating. Retry shortly." 503
+	}
+}
+
 {$APP_HOSTNAME} {
 	encode zstd gzip
 	header {
@@ -85,6 +106,8 @@
 		}
 		reverse_proxy public-web:3005
 	}
+
+	import maintenance
 }
 
 {$ASSET_HOSTNAME} {
@@ -106,6 +129,8 @@
 	handle {
 		respond "Not found" 404
 	}
+
+	import maintenance
 }
 
 {$NANGO_HOSTNAME} {
@@ -245,4 +270,6 @@
 			header_down -X-Forwarded-Access-Token
 		}
 	}
+
+	import maintenance
 }

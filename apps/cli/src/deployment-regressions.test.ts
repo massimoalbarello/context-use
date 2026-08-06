@@ -569,7 +569,33 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployScript).toContain("NANGO_PIPELINE_API_KEY=$(get_secret_if_present NANGO_PIPELINE_API_KEY)");
   expect(deployScript.indexOf("CONTEXT_USE_RECOVERY_BACKUP_KEY")).toBeLessThan(deployScript.indexOf("up -d --remove-orphans"));
   expect(deployScript).toContain("psql --single-transaction -v ON_ERROR_STOP=1");
-  expect(deployScript.indexOf("up -d --remove-orphans")).toBeLessThan(deployScript.indexOf("up -d --force-recreate --no-deps caddy"));
+  // Caddy serves the maintenance response for the whole window, so a release
+  // stops its upstreams instead. Stopping Caddy would make the window a refused
+  // connection again, and leaving the upstreams up would run the previous
+  // release's code against a migrating schema.
+  expect(deployScript).not.toContain("stop caddy");
+  const stopClients = "stop \\\n  dashboard-edge app auth private-mcp public-web confirmation storage backup";
+  const restorePublic = "up -d --wait \\\n  storage public-web";
+  const restoreDashboard = "up -d --wait \\\n  dashboard-edge app auth private-mcp";
+  expect(deployScript.indexOf(stopClients)).toBeLessThan(deployScript.indexOf("--profile migration run --rm migrate"));
+  expect(deployScript.indexOf("--profile migration run --rm migrate")).toBeLessThan(deployScript.indexOf(restorePublic));
+  // The public pages are the availability priority: their path comes back
+  // before the dashboard, MCP, and auth services compete for the same cores,
+  // and the whole primary edge finishes before Nango is touched at all.
+  expect(deployScript.indexOf(restorePublic)).toBeLessThan(deployScript.indexOf(restoreDashboard));
+  expect(deployScript.indexOf(restoreDashboard)).toBeLessThan(deployScript.indexOf("--profile nango-init run --rm nango-db-init"));
+  // Every gateway runs with `admin off`, so a changed Caddyfile can only be
+  // applied by recreating the container. Comparing the release against the
+  // running mount keeps releases that do not touch a Caddyfile interruption-free.
+  expect(deployScript).toContain("sha256sum /etc/caddy/Caddyfile");
+  expect(deployScript.indexOf("up -d --remove-orphans")).toBeLessThan(deployScript.indexOf("recreate_changed_gateway caddy Caddyfile"));
+  for (const gateway of [
+    "recreate_changed_gateway nango-public-gateway Caddyfile.nango-public",
+    "recreate_changed_gateway nango-auth-gateway Caddyfile.nango-auth",
+    "recreate_changed_gateway caddy Caddyfile",
+  ]) {
+    expect(deployScript).toContain(gateway);
+  }
   expect(caddy).not.toContain("email off");
   expect(caddy).toContain("protocols h1 h2");
   expect(caddy).not.toContain("protocols h1 h2 h3");
@@ -615,7 +641,19 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     for (const header of strippedTracingHeaders) {
       expect(edgeCaddyfile).toContain(`request_header -${header}`);
     }
+    // An unreachable upstream must answer retryably rather than as an empty 502.
+    // Only Caddy-generated dial failures reach here; an upstream's own 5xx and
+    // every authorization decision are responses and are still forwarded.
+    expect(edgeCaddyfile).toContain("handle_errors 502 503 504");
+    const maintenance = edgeCaddyfile.slice(edgeCaddyfile.indexOf("handle_errors 502 503 504"));
+    expect(maintenance).toContain("Retry-After 30");
+    expect(maintenance).toContain("Strict-Transport-Security");
+    expect(maintenance).toContain("X-Content-Type-Options nosniff");
+    expect(maintenance).toContain("-Server");
+    expect(maintenance).not.toContain("err.trace");
   }
+  // Every site on the primary edge, not just the dashboard.
+  expect(caddy.match(/import maintenance/g)?.length).toBe(3);
   expect(nangoPublicCaddy).toContain('respond "Not found" 404');
   expect(nangoPublicCaddy).toContain("rewrite * {path}?");
   expect(nangoPublicCaddy).toContain("path /connect/session");
@@ -840,6 +878,18 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(credentialBroker).toContain("BACKUP_ROLE_ARN");
   expect(credentialBroker).not.toContain("DATABASE_URL");
   expect(credentialBroker).not.toContain("POSTGRES_PASSWORD");
+  // The public pages are the availability priority, so a release detects the
+  // services gating that path ready faster than the rest of the stack. The
+  // retry count holds the same overall timeout budget as everywhere else.
+  for (const publicPathService of [publicWebService, storageService, credentialBroker]) {
+    expect(publicPathService).toContain("interval: 2s");
+    expect(publicPathService).toContain("retries: 75");
+  }
+  // Everything off that path keeps the cheaper steady-state probe rate, which
+  // matters because those probes each spawn a runtime.
+  for (const offPathService of [appService, authService, dashboardEdgeService, confirmationService]) {
+    expect(offPathService).toContain("interval: 5s");
+  }
   const backupService = deployCompose.slice(deployCompose.indexOf("\n  backup:\n"));
   expect(backupService).not.toContain("network_mode: host");
   expect(backupService).toContain('AWS_EC2_METADATA_DISABLED: "true"');

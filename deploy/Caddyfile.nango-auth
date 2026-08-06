@@ -152,4 +152,24 @@
 			header_down -X-Forwarded-Access-Token
 		}
 	}
+
+	# Both forward-auth hops and Nango itself restart during a release. Answer an
+	# unreachable one with a retryable response rather than an empty 502. This
+	# never masks an authorization decision: a 401 or 403 is a response, not an
+	# error, and still reaches the browser unchanged.
+	handle_errors 502 503 504 {
+		# Error routes are a separate route list, so the site's own header block
+		# does not reach them. Repeat the response hardening here.
+		header {
+			-Server
+			Cache-Control "no-store"
+			Content-Type "text/plain; charset=utf-8"
+			Referrer-Policy no-referrer
+			Retry-After 30
+			Strict-Transport-Security "max-age=63072000; includeSubDomains"
+			X-Content-Type-Options nosniff
+			X-Frame-Options SAMEORIGIN
+		}
+		respond "Context Use is updating. Retry shortly." 503
+	}
 }

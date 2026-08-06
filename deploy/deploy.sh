@@ -241,7 +241,12 @@ if ! printf '%s\n' "${desired_daemon_config}" | cmp -s - /etc/docker/daemon.json
   done
   docker info >/dev/null || { echo "Docker did not restart after its address pools were pinned" >&2; exit 1; }
 fi
-docker compose --env-file "${secrets}/runtime.env" stop caddy
+# Caddy stays up for the whole window. Stopping only its upstreams turns the
+# outage into the retryable maintenance response its Caddyfile serves on a dial
+# failure, and it keeps the previous release's code off the database while
+# migrations run.
+docker compose --env-file "${secrets}/runtime.env" stop \
+  dashboard-edge app auth private-mcp public-web confirmation storage backup
 docker compose --env-file "${secrets}/runtime.env" stop \
   nango-auth-gateway nango-public-gateway oauth2-proxy nango-sso-redis \
   nango-jobs nango-backup nango-server nango-persist nango-orchestrator nango-redis
@@ -265,8 +270,20 @@ if [ -n "${CONTEXT_USE_RECOVERY_BACKUP_KEY}" ]; then
 fi
 # The primary Context Use edge is independent from Nango. Bring it back after
 # its own migration/restore so a later Nango failure cannot leave the main
-# dashboard, MCP endpoint, or public pages offline.
-docker compose --env-file "${secrets}/runtime.env" up -d caddy
+# dashboard, MCP endpoint, or public pages offline. Waiting here ends the
+# maintenance response for these hostnames before Nango is touched at all.
+#
+# The public pages are the availability priority, and they need only postgres,
+# storage, and public-web. Restore exactly that path first and wait for it, so
+# it is serving again before the dashboard, MCP, and auth services start
+# competing for the same two cores.
+docker compose --env-file "${secrets}/runtime.env" up -d --wait \
+  storage public-web
+docker compose --env-file "${secrets}/runtime.env" up -d --wait \
+  dashboard-edge app auth private-mcp
+# A running Caddy was never stopped and stays untouched; a first install starts
+# it here so the edge still opens before the Nango stack.
+docker compose --env-file "${secrets}/runtime.env" up -d --no-deps caddy
 docker compose --env-file "${secrets}/runtime.env" --profile nango-init run --rm nango-db-init
 if [ -n "${CONTEXT_USE_RECOVERY_NANGO_BACKUP_KEY}" ]; then
   export PGPASSWORD="$(get_secret POSTGRES_PASSWORD)"
@@ -294,6 +311,23 @@ docker compose --env-file "${secrets}/runtime.env" up -d --wait \
 docker compose --env-file "${secrets}/runtime.env" --profile nango-init run --rm nango-db-init
 docker compose --env-file "${secrets}/runtime.env" up -d --remove-orphans
 # Compose does not recreate a service when only bind-mounted file contents
-# change. Recreate Caddy so every release loads the newly extracted Caddyfile.
-docker compose --env-file "${secrets}/runtime.env" up -d --force-recreate --no-deps caddy
+# change, and every gateway runs with `admin off`, so there is no reload
+# endpoint either: a changed Caddyfile needs a recreate. Compare the release
+# against what the container actually has mounted, so a release that leaves a
+# Caddyfile alone costs no interruption at all. An absent container reports no
+# digest and is recreated.
+recreate_changed_gateway() {
+  service="$1"
+  released="$(sha256sum "${root}/deploy/$2" | cut -d ' ' -f 1)"
+  running="$(docker compose --env-file "${secrets}/runtime.env" exec -T "${service}" \
+    sha256sum /etc/caddy/Caddyfile 2>/dev/null | cut -d ' ' -f 1 || true)"
+  if [ "${running}" = "${released}" ]; then
+    echo "${service}: Caddyfile unchanged, leaving the running container in place"
+    return 0
+  fi
+  docker compose --env-file "${secrets}/runtime.env" up -d --wait --force-recreate --no-deps "${service}"
+}
+recreate_changed_gateway nango-public-gateway Caddyfile.nango-public
+recreate_changed_gateway nango-auth-gateway Caddyfile.nango-auth
+recreate_changed_gateway caddy Caddyfile
 docker compose --env-file "${secrets}/runtime.env" ps
