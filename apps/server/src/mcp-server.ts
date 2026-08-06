@@ -107,7 +107,7 @@ export async function createMcpServer(
   const skillCatalog = skills.length
     ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
-  const server = new McpServer({ name: "context-use", version: "0.1.54" }, {
+  const server = new McpServer({ name: "context-use", version: "0.1.55" }, {
     instructions: [
       KNOWLEDGE_BASE_INSTRUCTIONS,
       sourceRecords ? SOURCE_RECORD_INSTRUCTIONS : "",
