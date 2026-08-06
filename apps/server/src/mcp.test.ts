@@ -90,7 +90,8 @@ describe("MCP knowledge tools", () => {
     });
 
     expect(response.result?.instructions).toContain(KNOWLEDGE_BASE_INSTRUCTIONS);
-    expect(response.result?.instructions).toContain("about/intro");
+    expect(response.result?.instructions).not.toContain("about/intro");
+    expect(response.result?.instructions).toContain("guides are authoritative");
     expect(response.result?.instructions).toContain("AGENTS.md");
     expect(response.result?.instructions).toContain("Available reusable skills");
   });

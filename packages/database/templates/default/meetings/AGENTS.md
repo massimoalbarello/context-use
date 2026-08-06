@@ -1,86 +1,76 @@
 # Meetings conventions
 
-**One folder per meeting** at `meetings/<YYYY>/<MM>/<YYYY-MM-DD>_<slug>/`, entered
-through `intro`, as [[agents#entities-are-folders-and-views-are-pages|every entity is]].
+Follow the [[agents|root guide]] for every convention not specific to meetings. This
+guide adds only meeting selection and shape.
+
+## Suggested shape and lifecycle
+
+A meeting can use
+`meetings/<YYYY>/<MM>/<YYYY-MM-DD>_<meeting-slug>/`:
 
     meetings/<YYYY>/<MM>/<YYYY-MM-DD>_<meeting-slug>/
-    ├── prep    — written before: background and what to ask
-    └── intro   — written after: what was said and what was taken away
+    ├── prep        — background and questions prepared beforehand
+    ├── intro       — the useful account after the conversation happens
+    └── transcript  — exceptional raw source when no durable source survives
 
-## Aspects
+A confirmed future meeting may begin with `prep` alone; this is a lifecycle exception
+to the root `intro` entry-point convention. `intro` becomes useful only after the
+conversation happens, so do not create an empty one in advance. If the meeting is
+cancelled, keep or archive the prep according to whether its research remains
+independently useful. This supports preparation without pretending a future
+conversation already occurred.
 
-- **`intro`** — the record of the conversation. Required, and usually the only page.
-- **`prep`** — written *before*, holding background and the questions worth asking.
-  Leave it as written afterwards: it records what was expected going in, not a draft of
-  the write-up.
-- **`transcript`** — rare; see below.
+- **`prep`** holds only background, relationship context, useful unknowns and questions
+  for this conversation. Leaving it in its pre-meeting form preserves what was known
+  going in.
+- **`intro`** distils what was said, what the owner concluded and any commitments made.
+- **`transcript`** is reserved for a transcript that is the only record and whose source
+  will not survive. Mark it as raw and still create a distilled `intro` when useful.
 
-Photos, whiteboards and shared decks upload into the folder and embed from `intro`.
+Photos, whiteboards and shared decks can sit in the folder and embed from the relevant
+page.
 
-A meeting is a completed occurrence, so it has no timeline of its own — it is what other
-entities' timelines link to.
+## When a meeting is useful
 
-## When a meeting gets a folder
+A meeting folder is useful when forgetting the conversation would lose a meaningful
+decision, insight, introduction, commitment or relationship milestone. Routine syncs
+and purely administrative calls usually do not need one.
 
-When something would be lost by forgetting it: a conversation with someone external, an
-intro, an interview, a call where something was decided or learned. Routine internal
-syncs don't. The value of this directory is that everything in it is worth reading.
+An [[events/agents|event]] is defined by its occasion; a meeting is defined by its
+conversation. A conversation at an event can have its own meeting page when it matters
+independently, with links between the two accounts.
 
-An **[[events|event]]** is defined by the occasion, a meeting by who was in it. A
-conversation at an event that matters on its own gets its own meeting folder, linking
-the event.
+## Distil the conversation
 
-## No transcripts
+Prefer the useful account over a recording dump, transcript export or pasted raw notes.
+Link a recording where it supports the relevant claim. Raw material otherwise makes
+the important few paragraphs harder to retrieve.
 
-**Distil, never dump.** No transcript exports, no recording dumps, no pasted notes-app
-contents — link the recording where it already lives, on the line that cites it.
+    # <What it was> — <D Month YYYY>               ← intro
 
-This is about retrieval, not tidiness. A transcript is the raw material the write-up
-already extracted; keeping both means every future search over this directory wades
-through ten thousand words of hedging and crosstalk to reach the two paragraphs that
-mattered. The write-up *is* the artefact.
-
-The single exception is a transcript that is the only record and whose source will not
-survive. It goes in as `transcript`, marked raw at the top, never in place of `intro`.
-
-## Template
-
-    # <What it was> — <D Month YYYY>              ← intro
-
-    **With:** [[people/…|Name]] ([[companies/…|Company]])
+    **With:** [[people/…|Name]] ([[companies/…|Company]]) or <plain name> (<role, when useful>)
     **Where:** in person / call · **Why:** one line.
 
     ## What was said
-    The substance. Distilled, not transcribed.
+    The substance, distilled rather than transcribed.
 
     ## What I took away
-    The owner's read at the time — what the conversation changed in their
-    thinking and what they concluded from it.
+    The owner's conclusion or changed understanding at the time.
 
     ## Commitments made
-    - What each participant agreed during the meeting, stated as a historical fact.
+    - What someone agreed during the meeting, stated as a historical fact.
 
-## Local rules
+Include only participants who help someone understand the meeting and whose identity is
+clear. Link an existing or newly useful person/company entity when confidently matched;
+otherwise a clear plain-text name is enough, with a role only as context. There is no
+need to create an entity for every attendee, and uncertain participant-list entries can
+be omitted.
 
-- **Link every participant.** Before writing, search for each person and resolve any
-  ambiguous identity. A missing participant folder is part of the same proposed meeting
-  write because the meeting cannot be represented coherently without it. Link their
-  company where materially relevant; propose any other missing entity in the same
-  batched question rather than creating a silent cascade.
-- **Never describe the people or the company here.** A meeting page that reintroduces its
-  participants will contradict their folders within the year.
-- **Separate what was said from what the owner concluded.** Both are useful; conflating
-  them makes the page untrustworthy later.
-- **Commitments are historical facts.** Record what was agreed here, as of this date;
-  subsequent ownership and next actions go in the diary, linking the project or
-  [[about/tasks|task]] that gives them durable context.
-- **Index every entity this moved.** In the same proposed write, add one dated line and
-  a link to the `timeline` of each participant, of a company whose relationship with the
-  owner this materially concerns, and of anything else whose state the meeting changed —
-  an application, a project, a decision ([[agents#durable-pages-and-the-diary|root
-  rule]]). One sentence each, never a copy of the write-up.
-- Written promptly or not at all; a page written a week later from memory should say so.
-- The [[about/diary|diary]] gets one line and a link, not the content, and the meeting
-  page does not narrate the day around it. If a meeting changes what the owner wants, the
-  durable page gets updated too — the meeting page records that it happened, it is not
-  where the new position lives.
+Keep what another participant said distinct from what the owner concluded. A commitment
+records what was agreed then; its later state follows the root diary and timeline
+contract.
+
+Index the meeting only where it is a material relationship milestone: for the relevant
+identifiable people, and for a company when the conversation materially concerned the
+owner's direct relationship with it. The linked meeting remains the full account. If a
+write-up relies materially on delayed memory, say so.

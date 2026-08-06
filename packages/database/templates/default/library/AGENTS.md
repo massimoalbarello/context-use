@@ -1,88 +1,66 @@
 # Library conventions
 
-`library/` is the owner's collection of external material worth remembering: videos,
-articles, blog posts, podcast episodes, papers, talks, threads and similar works. It is
-not a feed, reading queue or archive of everything encountered. Save an item when its
-ideas, the owner's reaction or its connection to existing knowledge makes it worth
-finding again.
+Follow the [[agents|root guide]] for every convention not specific to saved works. This
+guide adds only library selection and shape.
 
-## One work, one folder
+`library/` is the owner's collection of external works worth finding again: articles,
+videos, podcast episodes, papers, talks, threads and similar material. It is not a feed,
+reading queue or archive of everything encountered.
 
-A saved work is an entity, so it gets a folder
-([[agents#entities-are-folders-and-views-are-pages|root rule]]): one per work at
-`library/<meaningful-slug>/`, entered through `intro`. The slug, folder title and `intro`
-page title should make the subject or creator recognisable in a directory listing;
-shorten a long original title rather than copying it mechanically. Prefer
-`<creator>-<topic>` when the title alone is vague or likely to collide.
+## One work as the unit
+
+A saved work can use `library/<meaningful-slug>/` with an `intro` page:
 
     library/<meaningful-slug>/
     ├── intro       — the canonical account of the work
-    └── (pictures)  — uploaded into the folder and embedded from `intro`
+    └── (pictures)  — assets embedded from `intro`
 
-Give every work folder a one-sentence directory summary when creating it. This is the
-description shown for the work in the parent `library/` index, so it should say what the
-item is and why it is useful to remember; do not leave it blank or merely repeat the
-format or title. The `intro` page is required and is usually the only page. Add supporting
-pages or assets beside it only when they make the saved work more useful to revisit.
+Name the work so its subject or creator is recognizable in the library index. A shortened
+title or `<creator>-<topic>` often works better than a mechanically copied long title.
+The directory and page summaries should say what the work is and why it is useful to
+remember.
 
-Use the work itself as the unit, not its delivery format. A video and transcript of the
-same talk are one entry with both links. Separate podcast episodes are separate entries.
-Format is metadata, never a directory: do not create `videos/`, `podcasts/`, `books/` or
-similar branches.
+The work, not its delivery format, is the unit. A talk and its transcript are one entry
+with two source links; distinct podcast episodes are separate works. Format is metadata,
+not a directory branch.
 
-## Template
+Save a work when its ideas, the owner's reaction or its connection to existing
+knowledge makes it useful to retrieve again. `intro` will usually be enough; supporting
+pages or assets help only when they make the work materially easier to revisit.
 
-    # <Meaningful title>                           ← intro
+## Example `intro`
+
+    # <Meaningful title>
 
     **Source:** [<full source title>](<canonical URL>)
     **Format:** <video | article | podcast | paper | talk | thread | other>
-    **Creator:** [[people/…|Name]] or <name as plain text when no entity exists>
-    **Publisher:** [[companies/…|Company]] or <publisher / channel as plain text>
-    **Published:** <date, if known> · **Saved:** <date, only when useful>
+    **Creator:** [[people/…|Name]] or <plain name>
+    **Publisher:** [[companies/…|Company]] or <plain publisher / channel>
+    **Published:** <date, if known> · **Saved:** <date, when useful>
 
     ## Summary
 
-    A concise account of the work's useful argument, evidence or story. Link claims to
-    the source inline; for audio or video, use timestamped links where they materially
-    help. Omit this section when the source could not be accessed and the owner supplied
-    no reliable description — never infer a summary from the title alone.
+    A concise account of the useful argument, evidence or story. For audio or video,
+    timestamped links can point directly to important passages.
 
     ## Owner's note
 
-    > <What the owner said when saving it, preserved exactly when their words are known.>
-
-    Label a paraphrase as a paraphrase. Omit the section when the owner added no comment;
-    do not invent why they saved something.
+    > <The owner's exact words when known.>
 
     ## Connections
 
-    - **People:** [[people/…|Name]] — the relevant relationship to the work
-    - **Companies:** [[companies/…|Company]] — publisher, employer or subject
-    - **Related:** [[about/…|idea, project or preference]], [[about/tasks/…|decision frame]],
-      [[meetings/…|meeting]], [[events/…|event]] or [[library/…|related work]]
+    - [[about/…|idea or project]] — why this work matters there
+    - [[library/…|related work]] — the useful relationship between the works
 
-Delete empty metadata and connection lines rather than leaving placeholders. The
-`intro` page's one-sentence summary should follow the same standard as the folder
-summary: say what the item is and why it is useful to remember, not merely its format or
-title.
+Keep the creator or publisher's canonical source prominent; alternate links are useful
+when they provide a distinct form such as a transcript. Use plain text for a creator or
+publisher that does not independently need an entity page.
 
-A saved work is fixed once published, so it has no timeline. What the owner did with it
-over time belongs to whatever the work changed, and to the diary.
+The summary represents the work's claims, not the owner's beliefs. Preserve the owner's
+exact words separately and label a paraphrase. If neither the work nor a reliable
+description is accessible, keep the source and any owner note without inferring a
+summary from the title.
 
-## Local rules
-
-- **Keep the canonical source link prominent.** Prefer the creator or publisher's URL to
-  a repost, tracking link or search result. Add alternate links only when they provide a
-  distinct useful form such as a transcript.
-- **Preserve the owner's words separately from the source summary.** Exact words stay
-  exact and visibly quoted; interpretation is labelled. Never turn a source's claim into
-  the owner's belief merely because they saved it.
-- **Connect to canonical entities.** Link existing people, companies, projects, tasks,
-  meetings and events wherever they explain why the item matters. If a missing entity is
-  materially relevant, propose all such additions together rather than silently creating
-  them.
-- **Do not duplicate durable conclusions.** The library page records what the source
-  says and what the owner said about it. When it changes a durable page elsewhere, edit
-  that page too and link the two; do not make the library entry its new canonical home.
-- **Summarise only from evidence.** If the source is inaccessible, preserve its link and
-  the owner's note, record that no summary was available, and stop.
+Connections explain why the work matters without moving another subject's durable
+conclusion into the library entry. Empty metadata, headings and connection lists can
+simply be omitted.

@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { randomUUID } from "node:crypto";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { TemplateRepositories } from "./knowledge-templates.ts";
 import { formatTemplateResult, reconcileKnowledgeTemplate } from "./knowledge-templates.ts";
+
+const DEFAULT_DIRECTORY_PRESENTATIONS = JSON.parse(
+  await Bun.file(new URL("../templates/default/directories.json", import.meta.url)).text(),
+) as Record<string, { title: string; summary: string }>;
 
 const DEFAULT_DIRECTORY_PATHS = [
   "",
@@ -22,22 +30,31 @@ const DEFAULT_DIRECTORY_PATHS = [
 
 function repositories(options: {
   directories?: string[];
+  directoryTitles?: Record<string, string>;
   directorySummaries?: Record<string, string>;
   pages?: Record<string, {
     body: string;
     actor: string;
     archived?: boolean;
+    published?: boolean;
     title?: string;
     summary?: string;
   }>;
 } = {}) {
-  const directoryRecords = new Map((options.directories ?? [""]).map((path, index) => [path, {
-    id: `directory-${index}`,
-    current_path: path,
-    version_number: 1,
-    title: path ? path.split("/").at(-1)! : "Knowledge",
-    summary: options.directorySummaries?.[path] ?? "Existing directory summary.",
-  }]));
+  const directoryRecords = new Map((options.directories ?? [""]).map((path, index) => {
+    const presentation = DEFAULT_DIRECTORY_PRESENTATIONS[path];
+    return [path, {
+      id: `directory-${index}`,
+      current_path: path,
+      version_number: 1,
+      title: options.directoryTitles?.[path]
+        ?? presentation?.title
+        ?? (path ? path.split("/").at(-1)! : "Knowledge"),
+      summary: options.directorySummaries?.[path]
+        ?? presentation?.summary
+        ?? "Existing directory summary.",
+    }];
+  }));
   const pages = new Map(Object.entries(options.pages ?? {}).map(([path, page], index) => [path, {
     id: `page-${index}`,
     current_path: path,
@@ -50,6 +67,7 @@ function repositories(options: {
         : `Existing summary for ${path}.`),
     body_markdown: page.body,
     archived_at: page.archived ? new Date() : null,
+    published_version_id: page.published ? `published-${index}` : null,
     actor: page.actor,
   }]));
   const createdDirectories: string[] = [];
@@ -60,6 +78,7 @@ function repositories(options: {
   const createdPageInputs: Array<{ path: string; title: string; summary: string; body_markdown: string }> = [];
   const updatedPages: string[] = [];
   const updatedPageInputs: Array<{ path: string; title: string; summary: string; body_markdown: string }> = [];
+  const archivedPages: string[] = [];
   const value = {
     directories: {
       async getByPath(path: string) {
@@ -99,6 +118,7 @@ function repositories(options: {
           summary: input.summary,
           body_markdown: input.body_markdown,
           archived_at: null,
+          published_version_id: null,
           actor: actor.subject,
         });
         return input;
@@ -109,6 +129,16 @@ function repositories(options: {
         updatedPageInputs.push(input);
         Object.assign(page, input, { version_number: page.version_number + 1, actor: actor.subject });
         return input;
+      },
+      async archive(id: string, _input: unknown, actor: { subject: string }) {
+        const page = [...pages.values()].find((candidate) => candidate.id === id)!;
+        archivedPages.push(page.current_path);
+        Object.assign(page, {
+          archived_at: new Date(),
+          version_number: page.version_number + 1,
+          actor: actor.subject,
+        });
+        return page;
       },
       async version(id: string) {
         const page = [...pages.values()].find((candidate) => candidate.id === id);
@@ -126,8 +156,36 @@ function repositories(options: {
     createdPageInputs,
     updatedPages,
     updatedPageInputs,
+    archivedPages,
   };
 }
+
+async function withTemplateFixture<T>(
+  files: Record<string, string>,
+  run: (templateName: string) => Promise<T>,
+): Promise<T> {
+  const templateName = `test-${randomUUID()}`;
+  const rootPath = fileURLToPath(new URL(`../templates/${templateName}/`, import.meta.url));
+  await mkdir(rootPath);
+  try {
+    for (const [relativePath, contents] of Object.entries(files)) {
+      const path = `${rootPath}/${relativePath}`;
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, contents, "utf8");
+    }
+    return await run(templateName);
+  } finally {
+    await rm(rootPath, { recursive: true });
+  }
+}
+
+const MINIMAL_TEMPLATE_FILES = {
+  "AGENTS.md": "# Fixture guide\n",
+  "directories.json": JSON.stringify({
+    "": { title: "Knowledge", summary: "Fixture root." },
+  }),
+  "pages.json": "{}",
+} as const;
 
 describe("knowledge templates", () => {
   test("discovers the guide tree and its directory presentation without mutating during a plan", async () => {
@@ -162,6 +220,23 @@ describe("knowledge templates", () => {
     expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
   });
 
+  test("reports a missing knowledge root and blocks all template writes", async () => {
+    const state = repositories({ directories: [] });
+
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true);
+
+    expect(result.actions).toContainEqual({
+      action: "conflict",
+      path: "",
+      detail: "Root knowledge directory is missing",
+    });
+    expect(state.createdDirectories).toEqual([]);
+    expect(state.createdPages).toEqual([]);
+    expect(state.updatedDirectories).toEqual([]);
+    expect(state.updatedPages).toEqual([]);
+    expect(formatTemplateResult(result)).toContain("Applied 0 changes;");
+  });
+
   test("creates directory summaries and fills only summaries that are still blank", async () => {
     const state = repositories({
       directories: DEFAULT_DIRECTORY_PATHS,
@@ -182,9 +257,31 @@ describe("knowledge templates", () => {
     expect(result.actions).toContainEqual({
       action: "update-directory",
       path: "library",
-      detail: "Add template summary for library",
+      detail: "Add template summary for Library",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 18 changes; 0 conflicts.");
+    expect(result.actions).toContainEqual({
+      action: "conflict",
+      path: "places",
+      detail: "Directory metadata differs from the template; preserve local metadata",
+    });
+    expect(formatTemplateResult(result)).toContain("Applied 18 changes; 1 conflict.");
+  });
+
+  test("surfaces directory metadata drift without overwriting local presentation", async () => {
+    const state = repositories({
+      directories: DEFAULT_DIRECTORY_PATHS,
+      directoryTitles: { people: "Contacts" },
+      directorySummaries: { people: "The owner's intentionally customized contacts directory." },
+    });
+
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true);
+
+    expect(result.actions).toContainEqual({
+      action: "conflict",
+      path: "people",
+      detail: "Directory metadata differs from the template; preserve local metadata",
+    });
+    expect(state.updatedDirectories).not.toContain("people");
   });
 
   test("uses authored presentation when creating template directories", async () => {
@@ -223,8 +320,8 @@ describe("knowledge templates", () => {
           actor: "context-use-template/default",
         },
         "automations/activity-distiller/state": {
-          title: "Activity distiller state",
-          summary: "The current opaque source checkpoint for the activity distiller.",
+          title: "Owner's activity checkpoint",
+          summary: "The owner's customized description of this live checkpoint.",
           body: "# Activity distiller state\n\n**Checkpoint:** `cu-nango-v1.live`\n",
           actor: "context-use-template/default",
         },
@@ -244,6 +341,29 @@ describe("knowledge templates", () => {
       detail: "Preserve create-only template page",
     });
     expect(state.updatedPages).toContain("automations/activity-distiller/instructions");
+    expect(state.updatedPages).not.toContain("automations/activity-distiller/state");
+  });
+
+  test("reports corrupt create-only page structure without overwriting live state", async () => {
+    const state = repositories({
+      directories: DEFAULT_DIRECTORY_PATHS,
+      pages: {
+        "automations/activity-distiller/state": {
+          title: "Owner's activity checkpoint",
+          summary: "Owner checkpoint.",
+          body: "# Activity distiller state\n\nThe checkpoint field was removed.\n",
+          actor: "owner-user-id",
+        },
+      },
+    });
+
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true, false, true);
+
+    expect(result.actions).toContainEqual({
+      action: "conflict",
+      path: "automations/activity-distiller/state",
+      detail: "Create-only template page is missing required structure: **Checkpoint:**",
+    });
     expect(state.updatedPages).not.toContain("automations/activity-distiller/state");
   });
 
@@ -282,7 +402,7 @@ describe("knowledge templates", () => {
         },
         "automations/activity-distiller/state": {
           title: "Activity distiller state",
-          summary: "Owner checkpoint.",
+          summary: "The current opaque source checkpoint for the activity distiller.",
           body: "# Activity distiller state\n\n**Checkpoint:** `cu-nango-v1.live`\n",
           actor: "owner-user-id",
         },
@@ -427,66 +547,138 @@ describe("knowledge templates", () => {
     expect(state.createdPages).not.toContain("automations/activity-distiller/state");
   });
 
-  test("keeps global conventions in the root and local structure in directory guides", async () => {
-    const root = await Bun.file(new URL("../templates/default/AGENTS.md", import.meta.url)).text();
-    const about = await Bun.file(new URL("../templates/default/about/AGENTS.md", import.meta.url)).text();
-    const automations = await Bun.file(new URL("../templates/default/automations/AGENTS.md", import.meta.url)).text();
-    const companies = await Bun.file(new URL("../templates/default/companies/AGENTS.md", import.meta.url)).text();
-    const diary = await Bun.file(new URL("../templates/default/about/diary/AGENTS.md", import.meta.url)).text();
-    const events = await Bun.file(new URL("../templates/default/events/AGENTS.md", import.meta.url)).text();
-    const library = await Bun.file(new URL("../templates/default/library/AGENTS.md", import.meta.url)).text();
-    const meetings = await Bun.file(new URL("../templates/default/meetings/AGENTS.md", import.meta.url)).text();
-    const objects = await Bun.file(new URL("../templates/default/objects/AGENTS.md", import.meta.url)).text();
-    const people = await Bun.file(new URL("../templates/default/people/AGENTS.md", import.meta.url)).text();
-    const places = await Bun.file(new URL("../templates/default/places/AGENTS.md", import.meta.url)).text();
-    const projects = await Bun.file(new URL("../templates/default/about/projects/AGENTS.md", import.meta.url)).text();
-    const skills = await Bun.file(new URL("../templates/default/skills/AGENTS.md", import.meta.url)).text();
-    const tasks = await Bun.file(new URL("../templates/default/about/tasks/AGENTS.md", import.meta.url)).text();
-    const activityDistiller = await Bun.file(new URL("../templates/default/_pages/activity-distiller/instructions.md", import.meta.url)).text();
-    const normalizedRoot = root.replaceAll(/\s+/g, " ");
-    const normalizedRootLower = normalizedRoot.toLowerCase();
-    const normalizedAbout = about.replaceAll(/\s+/g, " ");
-    const normalizedCompanies = companies.replaceAll(/\s+/g, " ");
-    const normalizedEvents = events.replaceAll(/\s+/g, " ");
-    const normalizedMeetings = meetings.replaceAll(/\s+/g, " ");
-    const normalizedPeople = people.replaceAll(/\s+/g, " ");
-    const normalizedPlaces = places.replaceAll(/\s+/g, " ");
-    const normalizedProjects = projects.replaceAll(/\s+/g, " ");
-    const normalizedActivityDistiller = activityDistiller.replaceAll(/\s+/g, " ");
-    const allDefaultGuides = [
-      root,
-      about,
-      automations,
-      companies,
-      diary,
-      events,
-      library,
-      meetings,
-      objects,
-      people,
-      places,
-      projects,
-      skills,
-      tasks,
-    ]
-      .join("\n")
-      .toLowerCase();
-    const allEntityGuides = [
-      about,
-      companies,
-      events,
-      library,
-      meetings,
-      objects,
-      people,
-      places,
-      projects,
-      tasks,
-    ]
-      .join("\n")
-      .toLowerCase();
+  test("archives only explicitly retired, unpublished, template-owned pages", async () => {
+    await withTemplateFixture({
+      ...MINIMAL_TEMPLATE_FILES,
+      "pages.json": "{}",
+      "retired.json": JSON.stringify({
+        directories: ["retired"],
+        pages: [
+          "retired/already-archived",
+          "retired/local",
+          "retired/owned",
+          "retired/published",
+        ],
+      }),
+    }, async (templateName) => {
+      const templateActor = `context-use-template/${templateName}`;
+      const state = repositories({
+        directories: ["", "retired"],
+        directorySummaries: { "": "Fixture root." },
+        pages: {
+          "retired/already-archived": {
+            body: "Old template page.\n",
+            actor: templateActor,
+            archived: true,
+          },
+          "retired/local": {
+            body: "Owner changed this page.\n",
+            actor: "owner-user-id",
+          },
+          "retired/owned": {
+            body: "Untouched old template page.\n",
+            actor: templateActor,
+          },
+          "retired/published": {
+            body: "Published old template page.\n",
+            actor: templateActor,
+            published: true,
+          },
+        },
+      });
 
-    for (const guide of [
+      const result = await reconcileKnowledgeTemplate(state.value, templateName, true);
+
+      expect(state.archivedPages).toEqual(["retired/owned"]);
+      expect(result.actions).toContainEqual({
+        action: "retire-page",
+        path: "retired/owned",
+        detail: "Archive retired template page",
+      });
+      expect(result.actions).toContainEqual({
+        action: "conflict",
+        path: "retired/local",
+        detail: "Retired template page has local changes; preserve it",
+      });
+      expect(result.actions).toContainEqual({
+        action: "conflict",
+        path: "retired/published",
+        detail: "Retired template page is published; preserve it",
+      });
+      expect(result.actions).toContainEqual({
+        action: "conflict",
+        path: "retired",
+        detail: "Retired template directory remains; preserve it for manual review",
+      });
+    });
+  });
+
+  test("rejects orphaned and multiply referenced managed page bodies", async () => {
+    const page = (bodyFile: string) => ({
+      title: "Fixture page",
+      summary: "A fixture page used to validate template body ownership.",
+      body_file: bodyFile,
+      management: "managed",
+    });
+
+    await withTemplateFixture({
+      ...MINIMAL_TEMPLATE_FILES,
+      "pages.json": JSON.stringify({ fixture: page("_pages/used.md") }),
+      "_pages/used.md": "# Used\n",
+      "_pages/orphan.md": "# Orphan\n",
+    }, async (templateName) => {
+      const state = repositories({ directorySummaries: { "": "Fixture root." } });
+      await expect(reconcileKnowledgeTemplate(state.value, templateName)).rejects.toThrow(
+        "Template page body file is orphaned: _pages/orphan.md",
+      );
+    });
+
+    await withTemplateFixture({
+      ...MINIMAL_TEMPLATE_FILES,
+      "pages.json": JSON.stringify({
+        first: page("_pages/shared.md"),
+        second: { ...page("_pages/shared.md"), title: "Second fixture page" },
+      }),
+      "_pages/shared.md": "# Shared\n",
+    }, async (templateName) => {
+      const state = repositories({ directorySummaries: { "": "Fixture root." } });
+      await expect(reconcileKnowledgeTemplate(state.value, templateName)).rejects.toThrow(
+        "Template page body file is referenced more than once: _pages/shared.md",
+      );
+    });
+  });
+
+  test("keeps shared contracts in parent guides and local shape in child guides", async () => {
+    const guides = {
+      root: await Bun.file(new URL("../templates/default/AGENTS.md", import.meta.url)).text(),
+      about: await Bun.file(new URL("../templates/default/about/AGENTS.md", import.meta.url)).text(),
+      diary: await Bun.file(new URL("../templates/default/about/diary/AGENTS.md", import.meta.url)).text(),
+      projects: await Bun.file(new URL("../templates/default/about/projects/AGENTS.md", import.meta.url)).text(),
+      tasks: await Bun.file(new URL("../templates/default/about/tasks/AGENTS.md", import.meta.url)).text(),
+      automations: await Bun.file(new URL("../templates/default/automations/AGENTS.md", import.meta.url)).text(),
+      companies: await Bun.file(new URL("../templates/default/companies/AGENTS.md", import.meta.url)).text(),
+      events: await Bun.file(new URL("../templates/default/events/AGENTS.md", import.meta.url)).text(),
+      library: await Bun.file(new URL("../templates/default/library/AGENTS.md", import.meta.url)).text(),
+      meetings: await Bun.file(new URL("../templates/default/meetings/AGENTS.md", import.meta.url)).text(),
+      objects: await Bun.file(new URL("../templates/default/objects/AGENTS.md", import.meta.url)).text(),
+      people: await Bun.file(new URL("../templates/default/people/AGENTS.md", import.meta.url)).text(),
+      places: await Bun.file(new URL("../templates/default/places/AGENTS.md", import.meta.url)).text(),
+      skills: await Bun.file(new URL("../templates/default/skills/AGENTS.md", import.meta.url)).text(),
+    };
+    const activityDistiller = await Bun.file(
+      new URL("../templates/default/_pages/activity-distiller/instructions.md", import.meta.url),
+    ).text();
+    const normalize = (value: string) => value.replaceAll(/\s+/g, " ");
+    const normalizedRoot = normalize(guides.root);
+    const normalizedDistiller = normalize(activityDistiller);
+    const rootIndex = guides.root.slice(
+      guides.root.indexOf("## Guide and managed-page index"),
+      guides.root.indexOf("## Keep only what matters"),
+    );
+
+    const indexedPaths = [...rootIndex.matchAll(/\[\[([^|#\]]+)(?:#[^|\]]+)?\|/g)]
+      .map((match) => match[1]);
+    expect(indexedPaths).toEqual([
       "about/agents",
       "about/diary/agents",
       "about/projects/agents",
@@ -500,173 +692,126 @@ describe("knowledge templates", () => {
       "people/agents",
       "places/agents",
       "skills/agents",
+      "automations/activity-distiller/instructions",
+      "automations/activity-distiller/state",
+    ]);
+
+    for (const guide of [
+      guides.about,
+      guides.automations,
+      guides.companies,
+      guides.events,
+      guides.library,
+      guides.meetings,
+      guides.objects,
+      guides.people,
+      guides.places,
+      guides.skills,
     ]) {
-      expect(root).toContain(`[[${guide}|`);
+      expect(guide).toContain("[[agents|root guide]]");
     }
-    expect(root).toContain("This guide defines only conventions that apply everywhere");
-    expect(normalizedRoot).toContain("## Entities are folders and views are pages");
-    expect(normalizedRoot).toContain("Anything with its own identity gets a folder");
-    expect(normalizedRoot).toContain("A `timeline` is optional and curated, never exhaustive");
-    expect(normalizedRoot).toContain("is state with no date on it");
-    expect(normalizedRoot).toContain("## Attention is evidence");
-    expect(normalizedRoot).toContain("One mention, one saved work or one passing reference is not recurring attention");
-    expect(normalizedRoot).toContain("**Attention is not interaction.**");
-    expect(normalizedRoot).toContain("**Attention is not agreement.**");
-    expect(root).toContain("A deliberately public-safe page still");
-    expect(root).not.toContain("people/<first-last>");
-    expect(root).not.toContain("meetings/<YYYY>");
-    expect(normalizedAbout).toContain("default template defines only three subdirectories");
-    expect(about).toContain("[[about/diary/agents|");
-    expect(about).toContain("[[about/projects/agents|");
-    expect(about).toContain("[[about/tasks/agents|");
-    expect(normalizedAbout).toContain("Any other organization under `about/` is specific to the instance");
-    expect(about).toContain("## Examples, not a schema");
-    expect(normalizedAbout).toContain("not prescribed categories, reserved names or instructions to create folders");
-    expect(about).not.toContain("chapters/");
-    expect(about).not.toContain("about/intro");
-    expect(normalizedCompanies).toContain("the durable frame of a substantial effort");
-    expect(diary).toContain("`timeline` so its dated states can be read from the entity itself");
-    expect(diary).toContain("## Entity timelines");
-    expect(diary).toContain("timeline is curated history");
-    expect(diary).not.toContain("frame or criteria");
-    expect(diary).toContain("how automation-owned companion pages are maintained");
-    expect(diary).toContain("A rerun rewrites its whole day page");
-    expect(diary).toContain("Operational metadata and execution state never belong in the diary");
-    expect(normalizedEvents).toContain("what changed the owner's mind at the event");
-    expect(library).toContain("library/<meaningful-slug>/");
-    expect(library).toContain("description shown for the work in the parent `library/` index");
-    expect(library).toContain("Format is metadata, never a directory");
-    expect(library).toContain("preserved exactly when their words are known");
-    expect(library).toContain("never infer a summary from the title alone");
-    expect(meetings).toContain("## Commitments made");
-    expect(normalizedMeetings).toContain("The owner's read at the time");
-    expect(meetings).toContain("Index every entity this moved");
-    expect(meetings).not.toContain("## Follow-ups");
-    expect(objects).toContain("not a product catalogue or an inventory");
-    expect(objects).toContain("Dated history, never a to-do");
-    expect(people).toContain("company, meeting, link, handle");
-    expect(people).toContain("timeline` is the sole reverse index");
-    expect(people).toContain("material things the owner and person have done together");
-    expect(people).toContain("favourite hangouts or gadgets");
-    expect(people).toContain("independently meets its creation");
-    expect(people).not.toContain("immigration");
-    expect(companies).toContain("material things the owner and company have done together");
-    expect(normalizedCompanies).toContain("A lens page says what the owner thinks, never where anything stands");
-    expect(events).toContain("Index every entity this moved");
-    expect(normalizedPlaces).toContain("not a gazetteer of every location mentioned");
-    expect(places).toContain("Dated history, never a plan");
-    expect(tasks).toContain("Beyond `intro` and `timeline`, there are no default names");
-    expect(tasks).toContain("which can resolve or close");
-    expect(tasks).toContain("[[about/projects/agents|projects]]");
-    expect(tasks).not.toContain("criteria");
-    expect(tasks).not.toContain("<option>");
-    expect(projects).toContain("about/projects/<slug>/");
-    expect(normalizedProjects).toContain("A deliverable can support a project without defining it");
-    expect(projects).toContain("It is not a commit log or exhaustive release log");
-    expect(automations).toContain("exactly one stable");
-    expect(automations).toContain("canonical description of that automation");
-    expect(automations).toContain("Workflow-specific tool calls");
-    expect(automations).toContain("follows [[agents#where-a-page-belongs|the root");
-    expect(automations).toContain("intended knowledge effects");
-    expect(automations).toContain("**Automations do not know about each other.**");
-    expect(automations).toContain("An automation owns what it writes and nothing else");
-    expect(normalizedActivityDistiller).not.toContain("another automation");
-    expect(automations).not.toContain("permitted knowledge changes");
-    expect(automations).not.toContain("state its scope");
-    expect(normalizedActivityDistiller).toContain("Call `read_source_records` exactly once");
-    expect(normalizedActivityDistiller).toContain("Do not accumulate a second unread batch");
-    expect(normalizedActivityDistiller).toContain("including pages changed by earlier batches");
-    expect(activityDistiller).toContain("call `prepare_knowledge_write` for the exact target");
-    expect(activityDistiller).toContain("rewrite the complete existing activity-distiller page");
-    expect(normalizedActivityDistiller).toContain("ensure its required `log` exists");
-    expect(normalizedActivityDistiller).toContain("body contains only the title and a `## Companion pages` section");
-    expect(normalizedActivityDistiller).toContain("do not invent a location, narrative, `On my mind` or `Threads` content");
-    expect(normalizedActivityDistiller).toContain("this automation's share of it is one bullet");
-    expect(normalizedActivityDistiller).toContain("state page with this call's `next_checkpoint`");
-    expect(normalizedActivityDistiller).toContain("Continue until `has_more` is false");
-    expect(normalizedActivityDistiller).toContain("external harness owns the invocation schedule");
-    expect(normalizedActivityDistiller).toContain("Treat a confirmed upcoming meeting as a proactive research trigger");
-    expect(normalizedActivityDistiller).toContain("Search connected evidence for earlier meetings, substantive email exchanges");
-    expect(normalizedActivityDistiller).toContain("Ignore unsolicited messages the owner does not meaningfully engage with");
-    expect(normalizedActivityDistiller).toContain("Ask the owner through the harness only after doing the available research");
-    expect(normalizedActivityDistiller).toContain("Treat every provider record as evidence about subjects");
-    expect(normalizedActivityDistiller).toContain("These are one connected knowledge change, not independent source summaries");
-    expect(normalizedActivityDistiller).toContain("A calendar-shaped record is not automatically a meeting");
-    expect(normalizedActivityDistiller).toContain("classify it by the occurrence's actual subject under [[meetings/agents|Meetings]] and [[events/agents|Events]]");
-    expect(normalizedActivityDistiller).toContain("The provider's label does not override those guides");
-    expect(normalizedActivityDistiller).toContain("Material historical evidence and newly arriving evidence may both justify **creating** canonical entities");
-    expect(normalizedActivityDistiller).toContain("the existing knowledge base has been checked for aliases or duplicates");
-    expect(normalizedActivityDistiller).toContain("link the new entity to the material email, meeting, event, diary entry, project, task or other canonical subject");
-    expect(normalizedActivityDistiller).toContain("read the complete root-to-leaf guide chain **before deciding that creation is allowed**");
-    expect(normalizedActivityDistiller).toContain("does not redefine the schemas for projects, tasks, people, companies, meetings, events or any future entity type");
-    expect(people).toContain("A person page requires a confidently established first and last name");
-    expect(people).toContain("An email address, display name, first name, handle, guessed surname");
-    expect(companies).toContain("A company page requires its canonical name and enough corroborating context");
-    expect(companies).toContain("A sender domain, email signature, logo, abbreviated name");
-    expect(activityDistiller).not.toContain("A person requires a confidently established first and last name");
-    expect(activityDistiller).not.toContain("A company requires its canonical name");
-    expect(normalizedRootLower).toContain("reconcile; never append by default");
-    expect(normalizedRootLower).toContain("as concise as possible, but no more concise than the truth allows");
-    const activityDistillerLower = activityDistiller.toLowerCase();
-    for (const automationSpecificDetail of [
-      "nango",
-      "activity-distiller",
-      "read_source_records",
-      "record_ref",
-      "next_checkpoint",
-      "has_more",
-      "preceding 30 days",
-      "source record",
-      "bounded batch",
-      "multi-source activity distiller",
-      "repository owner, email domain",
-      "participant field",
-      "pipeline proposals",
-      "pruned deletion",
-    ]) {
-      expect(allDefaultGuides).not.toContain(automationSpecificDetail);
+    for (const guide of [guides.diary, guides.projects, guides.tasks]) {
+      expect(guide).toContain("[[about/agents|About conventions]]");
     }
-    for (const automationConcern of [
-      "activity-distiller",
-      "external harness",
-      "invocation schedule",
-      "read_source_records",
-      "record_ref",
-      "next_checkpoint",
-      "has_more",
-      "opaque checkpoint",
-      "provider record",
-      "pipeline run",
-      "run history",
-      "nango",
-    ]) {
-      expect(allEntityGuides).not.toContain(automationConcern);
+
+    expect(normalizedRoot).toContain("smallest account that preserves what is useful to the owner");
+    expect(normalizedRoot).toContain("When a page speaks as the owner, use first person");
+    expect(normalizedRoot).toContain("without asking for a preview or proposal");
+    expect(normalizedRoot).toContain("Anything with durable identity is represented by a folder");
+    expect(normalizedRoot).toContain("Repeated attention across saved works, research and the owner's own pages");
+    expect(normalizedRoot).toContain("Attention is not interaction and is not agreement");
+    expect(guides.root).toContain("## Diary and entity timelines");
+    expect(normalizedRoot).toContain("descending year headings and newest-first entries");
+    expect(guides.root).toContain("[[about/diary/…|Diary entry]] · [[area/…|Occurrence]]");
+    expect(normalizedRoot).toContain("keep the diary and entity timeline synchronized in the same write");
+    expect(normalizedRoot).toContain("Rewrite or remove claims that later evidence shows to be wrong or misleading");
+    expect(guides.root).toContain("## Write, then report");
+    expect(normalizedRoot).toContain("Highlight newly created entities");
+    expect(normalizedRoot).toContain("Every child guide links its direct parent guide");
+    expect(normalizedRoot).toContain("Never store credentials, access tokens, access codes or recovery secrets");
+    expect(guides.root).toContain("## Referencing uploaded assets");
+    expect(guides.root).toContain("![Cover letter](context-use://asset/<uuid>)");
+    expect(guides.root).not.toContain("people/<person-slug>");
+    expect(guides.root).not.toContain("meetings/<YYYY>");
+
+    for (const child of Object.values(guides).filter((guide) => guide !== guides.root)) {
+      expect(child).not.toContain("## Reconcile the canonical account");
+      expect(child).not.toContain("## Diary and entity timelines");
+      expect(child).not.toContain("## Write, then report");
+      expect(child).not.toContain("not a mandatory template");
+      expect(child).not.toContain("required scaffolding");
     }
-    for (const requiredInstructionDetail of [
-      "activity-distiller",
+
+    expect(guides.about).toContain("about/intro");
+    expect(normalize(guides.about)).toContain("not managed by the default template");
+    expect(guides.about).not.toContain("## Owner voice");
+    expect(guides.about).toContain("[[about/diary/agents|");
+    expect(guides.about).toContain("[[about/projects/agents|");
+    expect(guides.about).toContain("[[about/tasks/agents|");
+    expect(normalize(guides.diary)).toContain("Repetition is a signal to review placement, not proof");
+    expect(normalize(guides.diary)).toContain("Do correct content that is wrong or misleading");
+    expect(guides.diary).toContain("[[agents#diary-and-entity-timelines|root guide]]");
+    expect(guides.projects).toContain("about/projects/<slug>/");
+    expect(guides.tasks).toContain("about/tasks/<slug>/");
+    expect(normalize(guides.tasks)).toContain("Resolution always earns a dated timeline milestone");
+
+    expect(normalizedRoot).toContain("A common template is a vocabulary, not a quota");
+    expect(normalize(guides.companies)).toContain("Split out a topic only when it is useful");
+    expect(guides.companies).not.toContain("as soon as `intro` starts having sections");
+    expect(normalize(guides.meetings)).toContain("A confirmed future meeting may begin with `prep` alone");
+    expect(normalize(guides.meetings)).toContain("a lifecycle exception to the root `intro` entry-point convention");
+    expect(normalize(guides.meetings)).toContain("There is no need to create an entity for every attendee");
+    expect(normalize(guides.people)).toContain("what someone cares about can stay in `intro`");
+    expect(guides.people).not.toContain("`interests`");
+    expect(normalize(guides.people)).toContain("meaningful change in what the person is doing");
+    expect(normalize(guides.people)).toContain("Omit the `Timeline` link from `intro`");
+    expect(DEFAULT_DIRECTORY_PRESENTATIONS.about!.summary).not.toContain("themes, practices, and interests");
+    expect(DEFAULT_DIRECTORY_PRESENTATIONS.meetings!.summary).not.toContain("recording who was there");
+    expect(guides.skills).toContain("page metadata title is exactly `SKILL.md`");
+    expect(guides.skills).toContain("page path leaf and YAML frontmatter `name` are exactly equal");
+    expect(normalize(guides.skills)).toContain("page metadata summary is the discovery mechanism");
+    expect(normalize(guides.skills)).toContain("a local exception to the root entity-folder default");
+    expect(normalize(guides.automations)).toContain("Automations do not coordinate through one another's instruction pages");
+    expect(normalize(guides.automations)).toContain("preserve every other byte as found");
+    expect(normalize(guides.automations)).toContain("a local exception to the root `intro` entry-point convention");
+    expect(normalize(guides.diary)).toContain("A day folder is a chronological container, not a durable entity");
+
+    expect(normalizedDistiller).toContain("Before every mutation, call `prepare_knowledge_write` for the exact target");
+    expect(activityDistiller).toContain("[[agents|root guide]]");
+    expect(activityDistiller).toContain("[[automations/agents|automation guide]]");
+    expect(activityDistiller).not.toContain("cached_guidance_receipt");
+    expect(normalizedDistiller).toContain("Carry out the mutations those guides support without a preview");
+    expect(normalizedDistiller).toContain("let its guide chain decide the useful pages");
+    expect(normalizedDistiller).toContain("Apply the meeting guide's participant rule");
+    expect(normalizedDistiller).toContain("Apply the root timeline contract in the same coherent write");
+    expect(normalizedDistiller).toContain("`Created`, `Updated` and `Archived` lists");
+    for (const detail of [
       "read_source_records",
       "record_ref",
       "next_checkpoint",
       "has_more",
       "more than 30 days",
-      "source evidence",
-      "process one batch at a time",
-      "existing backlogs",
-      "next scheduled invocation",
       "pruned deletion",
+      "process one batch at a time",
     ]) {
-      expect(activityDistillerLower).toContain(requiredInstructionDetail);
+      expect(normalizedDistiller.toLowerCase()).toContain(detail);
     }
-    for (const instanceSpecificExample of [
-      "companies/openai/",
-      "granola-intro-call",
-      "karpathy-software-is-changing-again",
-      "blue-land-rover",
-      "the-old-vicarage",
-      "london-ai-summit",
-      "*london · one line framing the day*",
-    ]) {
-      expect(allDefaultGuides).not.toContain(instanceSpecificExample);
+
+    const guidesWithoutAutomation = [
+      guides.about,
+      guides.companies,
+      guides.events,
+      guides.library,
+      guides.meetings,
+      guides.objects,
+      guides.people,
+      guides.places,
+      guides.projects,
+      guides.tasks,
+      guides.skills,
+    ].join("\n").toLowerCase();
+    for (const detail of ["read_source_records", "record_ref", "next_checkpoint", "has_more", "pruned deletion"]) {
+      expect(guidesWithoutAutomation).not.toContain(detail);
     }
   });
 });

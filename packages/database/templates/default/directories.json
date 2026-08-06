@@ -5,7 +5,7 @@
   },
   "about": {
     "title": "About",
-    "summary": "Knowledge whose subject is the owner: their introduction, timeline, themes, practices, and interests."
+    "summary": "Knowledge whose subject is the owner, organized around the durable personal context that matters in this instance."
   },
   "automations": {
     "title": "Automations",
@@ -29,7 +29,7 @@
   },
   "meetings": {
     "title": "Meetings",
-    "summary": "Meetings and calls worth remembering, recording who was there, what was said, and what came of them."
+    "summary": "Meetings and calls worth remembering, preserving the useful conversation, clearly identified relevant participants, and what followed."
   },
   "objects": {
     "title": "Objects",
@@ -37,7 +37,7 @@
   },
   "people": {
     "title": "People",
-    "summary": "People in the owner's life and work: who they are, how the owner knows them, and what they are doing now."
+    "summary": "People in the owner's life and work: who they are, how the owner knows them, and the material history of that relationship."
   },
   "places": {
     "title": "Places",

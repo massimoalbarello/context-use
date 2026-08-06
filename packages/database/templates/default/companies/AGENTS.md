@@ -1,103 +1,66 @@
 # Companies conventions
 
-**One folder per company** at `companies/<slug>/` — lowercase, hyphenated — entered
-through `intro`, as [[agents#entities-are-folders-and-views-are-pages|every entity is]].
-Split a topic out as soon as `intro` starts having sections; don't let one page become
-the whole company.
+Follow the [[agents|root guide]] for every convention not specific to companies. This
+guide covers only company selection and shape.
+
+## Suggested shape
+
+A company can use a kebab-case folder at `companies/<company-slug>/`:
 
     companies/<company-slug>/
-    ├── intro                 — what they are, and the links out
-    ├── timeline              — material things the owner and company have done together
-    ├── <fact-topic>          — a topic worth its own page
-    └── as-<relationship>     — what they are to the owner in one context
+    ├── intro                 — what the company is and why it matters here
+    ├── timeline              — material history between the owner and company
+    ├── <fact-topic>          — an independently useful company fact
+    └── as-<relationship>     — the owner's view in one relationship context
 
-## Aspects
+Most folders can remain a single `intro` page. Split out a topic only when it is useful
+to retrieve or maintain independently, as described by the root guide.
 
-**Fact pages** are named for their topic: `history`, `products`, `leadership`,
-`locations`. **Lens pages** use `as-<relationship>` for the context in which the owner
-relates to the company. Reuse an established name when it means the same thing in
-another company folder; add genuinely reusable vocabulary to this guide when it emerges.
+## Company aspects
 
-**`timeline`** is neither a fact page nor a lens page. It is the entity timeline defined
-in [[agents#durable-pages-and-the-diary|the root guide]], and here it holds the owner's
-material history with the company: meetings, collaborations, transactions, purchases and
-other direct interactions, including the dated states an active relationship passes
-through. Create it on the first such interaction; a company known only through research
-does not need one.
+- **Fact pages** use a plain topic name such as `history`, `products`, `leadership` or
+  `locations`. They describe the company rather than the owner's opinion of it.
+- **Lens pages** use `as-<relationship>` for a context-dependent view of what the
+  company is to the owner. This keeps a changing relationship separate from company
+  facts.
+- **`timeline`** contains only milestones in the owner's direct history with the
+  company. Useful company-specific milestones include meetings, collaborations,
+  transactions, purchases and relationship changes. Research alone usually does not
+  call for a company timeline.
 
-The split survives because context changes and facts don't — a company may stop fitting
-one relationship while becoming relevant in another, and only the lens pages should
-need rewriting.
+Reuse an established aspect name when it has the same meaning. Add a new aspect only
+when its subject is independently useful.
 
-## When to create one
+## When a company is useful
 
-When a company becomes relevant to something real — a conversation, collaboration,
-transaction, decision or sustained line of research. Not for every name mentioned.
+A company folder is useful when the organization has material relevance to a
+conversation, collaboration, transaction, decision or sustained line of research.
+An incidental affiliation or passing name can remain a link or plain text under the
+subject that made it relevant.
 
-An incidental affiliation or passing reference is not enough. Create the company only
-when repeated or material relevance makes it independently useful; otherwise keep the
-justified knowledge under its actual subject.
+Create a canonical company only when its identity is clear enough to avoid a likely
+duplicate. Its canonical name plus what it does may be enough; an official domain,
+relevant people, products, location or legal name can supply further corroboration when
+needed. A sender domain, signature, logo or abbreviated name is evidence, but not proof
+on its own when several organizations remain plausible.
 
-### Identity required for creation
-
-A company page requires its canonical name and enough corroborating context to
-distinguish the organization from similarly named companies and future duplicates.
-Establish what it does and, when available, its official website or domain; retain other
-supported identifiers such as relevant people, products, location or legal name in the
-appropriate aspects. Search existing folders, aliases and linked people before creating
-a new one.
-
-A sender domain, email signature, logo, abbreviated name or passing mention is not
-sufficient by itself. A domain is evidence, not automatic proof that the sender's
-organization and the company being discussed are the same. If research leaves multiple
-plausible companies, do not create the folder; ask the owner with the candidates and the
-fact needed to distinguish them.
-
-## Templates
+## Example pages
 
     # <Company>                                    ← intro
 
     **What they do:** one line.
-    **Stage / size / where:** — *as of <date>*.
 
-    ## What they are        — fact pages, one line each
-    ## What they are to me  — lens pages, one line each
-    ## People
+    Why the company matters here, with links to any independently useful aspects.
 
-    # <Relationship context>                       ← lens page
+    # <Relationship context>                       ← lens
 
     **Context:** [[about/tasks/…|the effort or decision this bears on]]
 
-    ## Why this relationship matters — and what would change my mind
-    ## What matters here      — the relevant strengths, problems and unknowns
-    ## Connections            — links to relevant canonical pages, wherever they sit
+    ## Why this relationship matters
+    ## What matters here
+    ## Connections
 
-    # Timeline                                      ← timeline
-
-    ## 2026
-    - **28 July** — [[meetings/…|Planning conversation]] with [[people/…|Name]] —
-      agreed what each side would contribute to the next phase.
-
-Use descending years and newest-first entries within each year. Each milestone links
-the most specific meeting or event, or the diary page when no occurrence page exists,
-and states only the durable outcome in one sentence.
-
-## Local rules
-
-- **Fact pages: facts, dated, nothing else.** No opinion or narrative; state uncertainty
-  and sourcing plainly. A fact page with an opinion in it stops being trustworthy.
-- **Write lens pages in the owner's first person**, from what they have actually said,
-  and mark added reasoning as inference.
-- **A lens page says what the owner thinks, never where anything stands** — no status
-  line, no next step. Whether they contacted the company and where a live conversation
-  has got to are dated events, so they belong on the `timeline`; what the owner intends
-  next week belongs in the [[about/diary|diary]], and the durable frame of a substantial
-  effort in [[about/tasks|about/tasks/]]. When something changes the view itself, edit
-  the lens page to say what is now thought and let the diary hold what prompted it.
-- **Update the timeline with the occurrence.** Add its dated line in the same proposed
-  write as the meeting, event or diary entry that materially advances the relationship,
-  under [[agents#durable-pages-and-the-diary|the root rule]]: what changed and when, in
-  one sentence, never who currently owns it or what happens next.
-- **Keep only one company chronology.** Company facts still belong on fact pages and the
-  owner's judgement still belongs on lens pages. The timeline links their historical
-  causes where useful instead of restating either account.
+Fact pages should distinguish supported fact from uncertainty. Lens pages use the
+owner's expressed point of view; additional reasoning is labelled as inference. The
+timeline indexes only material company-relationship milestones under the root timeline
+contract and leaves the full account on its linked diary and occurrence pages.

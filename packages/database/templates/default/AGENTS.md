@@ -1,242 +1,176 @@
 # Knowledge base conventions
 
-A durable hypermedia representation of the owner's life, work, interests and thinking.
-Design it as though it will hold more than 100,000 pages.
+This knowledge base is a durable hypermedia representation of the owner's life, work,
+interests and thinking. Design it to remain useful beyond 100,000 pages.
 
-This guide defines only conventions that apply everywhere. Each directory guide owns
-the path shape, inclusion rules, aspect vocabulary and page templates for its area. Read
-this guide, then every applicable guide from the root down to the target's parent before
-writing.
+This root guide contains only conventions that apply everywhere. A directory guide adds
+the few rules specific to its subtree. Before writing, read this guide and each guide on
+the path to the target; do not repeat inherited guidance in a child.
 
-## Guide index
+## Guide and managed-page index
 
-- [[about/agents|About]] — knowledge whose subject is the owner.
-  - [[about/diary/agents|Diary]] — chronological lived context and current state.
-  - [[about/projects/agents|Projects]] — enduring bodies of work the owner builds or
-    stewards.
-  - [[about/tasks/agents|Tasks]] — finite outcomes, experiments and decision frames.
-- [[automations/agents|Automations]] — instructions and assets for external unattended
-  workflows.
-- [[companies/agents|Companies]] — company entities and the owner's context-specific
-  views of them.
-- [[events/agents|Events]] — occasions defined by a time and place.
-- [[library/agents|Library]] — external works saved for recall.
-- [[meetings/agents|Meetings]] — conversations worth preserving.
-- [[objects/agents|Objects]] — individually meaningful physical things with durable
-  identity or history.
-- [[people/agents|People]] — the owner's personal CRM.
-- [[places/agents|Places]] — locations that matter beyond a passing mention.
-- [[skills/agents|Skills]] — reusable instructions loaded by an interactive agent.
+### Guides
 
-The index tells you which guide governs a subject; the linked guide decides its actual
-structure. Do not infer a directory schema from examples elsewhere.
+- [[about/agents|About]]
+  - [[about/diary/agents|Diary]]
+  - [[about/projects/agents|Projects]]
+  - [[about/tasks/agents|Tasks]]
+- [[automations/agents|Automations]]
+- [[companies/agents|Companies]]
+- [[events/agents|Events]]
+- [[library/agents|Library]]
+- [[meetings/agents|Meetings]]
+- [[objects/agents|Objects]]
+- [[people/agents|People]]
+- [[places/agents|Places]]
+- [[skills/agents|Skills]]
 
-## Organizing knowledge
+### Managed pages
 
-- **The fewest coherent pages, each no larger than useful.** A page is the smallest unit
-  worth reading, retrieving or linking on its own. Split one only when the parts have
-  distinct subjects or are independently useful; never fragment knowledge merely to
-  make pages short.
-- **One canonical location per subject.** Links, never duplication, for anything that
-  crosses the hierarchy. Never restate background that has its own page — anything
-  written in two places is wrong in one of them within the year.
-- **Every page needs a one-sentence summary.** Generated directory indexes and search
-  results are built from them.
-- **Connect, don't accumulate.** When something happened, who was involved, what preceded
-  it and what followed — as links, not prose.
-- **Say what was observed, what was reported, and what was inferred.** Never merge the
-  three silently, and never upgrade a suggestion into the owner's position.
-- **Date anything that changes** — roles, stages, headcounts, locations. Write
-  `— as of 27 July 2026` inline; a fact with no date becomes a lie quietly.
+- [[automations/activity-distiller/instructions|Activity distiller instructions]] —
+  maintained by the default template.
+- [[automations/activity-distiller/state|Activity distiller state]] — created by the
+  template when absent, then owned by the automation.
 
-## Reconcile; never append by default
+The links identify the guide or page that owns each convention. They do not imply a
+schema beyond what the linked guide says.
 
-New evidence is a reason to reconsider the existing account, not to tack another block
-onto its end. Before writing, read the canonical page and nearby pages that may overlap.
-Then rewrite the whole affected account so the evidence fits its best current structure:
-change headings, combine or separate claims, move material to its real subject, merge
-duplicates, split an overgrown page, or archive a page that no longer earns its place.
+## Keep only what matters
 
-Do not add `Updates`, repeated status snapshots or a chronological tail to a durable
-page. Remove superseded wording and low-value detail; page versions preserve the prior
-account and the diary preserves what happened. Creating a near-duplicate page because
-editing the current one is harder is a failure.
+Less is more. Keep the smallest account that preserves what is useful to the owner:
+the facts, dates, evidence, rationale, uncertainty and connections needed to understand
+the subject. The context in which the owner interacted with a subject is the best signal
+of what matters; a canonical page is not an encyclopedia entry or a container for every
+available fact.
 
-Keep the result as concise as possible, but no more concise than the truth allows.
-Dates, evidence, rationale, meaningful uncertainty and distinctions between observation,
-report and inference survive compression. Reconciliation may leave a page unchanged
-when the new evidence adds no durable value.
+- Prefer the fewest coherent pages, each no larger than useful. Split a page only when
+  its parts have distinct subjects or are independently worth retrieving.
+- Give every page a one-sentence summary; directory indexes and search use it.
+- Link to canonical context instead of restating it. Say a thing once, where it belongs.
+- Connect what happened, who or what was involved, what preceded it and what followed.
+- Remove empty headings and scaffolding. A common template is a vocabulary, not a quota.
+- Distinguish observation, report and inference. Do not turn a suggestion into the
+  owner's view or fill a gap merely to make a page look complete.
+- When a page speaks as the owner, use first person and ground it in what they expressed;
+  label inference rather than silently turning it into their memory, motive or position.
+- Date facts that can change, using an inline form such as `— as of 27 July 2026`.
 
-## Where a page belongs
+## Place and identify
 
 Place a page by its subject, not by the request that produced it or the person doing the
-writing. Everything here touches the owner's life, so that alone decides nothing.
+writing. If a page could be handed to someone else's knowledge base and remain true,
+its subject is probably a person, organization, occurrence, work, place or other entity
+rather than the owner. Judgement stays with the subject being judged; a person's own
+process, preference and intention stay with that person.
 
-The check when it is unclear: **could this page be handed to someone else's knowledge
-base and remain true?** If not, its subject is probably the owner. If it could, identify
-the actual person, company, occurrence, saved work or other subject and follow that
-area's guide from the index above.
+Search for the canonical target across names, aliases and nearby context before writing.
+When the evidence identifies a distinct entity confidently, create or update its
+canonical page without asking for a preview or proposal. Start with the smallest useful
+account and include only material supported by the interaction. If identity remains
+genuinely ambiguous, do not guess or create duplicates: keep the reference in plain text
+or ask for the detail that distinguishes the candidates.
 
-Judgement stays with the subject being judged. Process, preference and intention stay
-with the person whose thinking they describe. The owning directory guide defines how it
-represents those distinctions; the root does not prescribe a page shape for them.
+Anything with durable identity is represented by a folder, entered through `intro`;
+other pages in that folder are views of the same entity. The owning directory guide
+defines the useful views and the evidence required to create the entity. If a flat page
+later needs a second independently useful view, promote it to a folder and repair its
+inbound links in the same coherent change.
 
-## Entities are folders and views are pages
+Repeated attention across saved works, research and the owner's own pages can be
+evidence that an entity matters, even without direct interaction. One passing mention
+or saved work is not enough, and recurring attention never relaxes the owning guide's
+identity threshold. Attention is not interaction and is not agreement: link the
+attending evidence without inventing a relationship or adopting its claims as the
+owner's view.
 
-**Anything with its own identity gets a folder.** A person, a company, a place, a
-project, a task, a saved work, an object, a role applied for — if you would naturally
-say *this thing* about it, it is an entity, and it lives at `<parent>/<slug>/` entered
-through `intro`. Nesting never demotes one: something that exists inside a task, a
-project or another entity is still an entity and still gets its own folder.
+## Reconcile the canonical account
 
-**A page is one view of the entity that contains it** — an aspect of it, a lens on it, a
-chronology of it, or a document produced about it. Views carry no identity of their own;
-each exists to say one thing about its folder.
+New evidence is a reason to reconsider the existing account, not to append another
+update block. Read the canonical page and nearby pages that may overlap, then make the
+smallest coherent change: rewrite, reorder, combine, move, split, merge or archive as
+needed so there is one concise current account.
 
-    <parent>/<entity-slug>/
-    ├── intro       — what it is; every entity has one
-    ├── timeline    — its dated history, when it has one
-    ├── <aspect>    — one page per view worth reading on its own
-    └── <asset>     — files and documents belonging to this entity
+Preserve useful information, including meaningful historical context. Rewrite or remove
+claims that later evidence shows to be wrong or misleading; those claims do not become
+valuable merely because they were written first. When a mistaken belief is itself useful
+history, label it as what was believed at the time and connect it to the correction.
+Versions retain replaced wording, so the live page need not preserve superseded prose.
 
-Entities accumulate and views do not. Anything with identity eventually attracts a
-second aspect, a document, an asset or a history, and a flat page has nowhere to put
-them — so the next agent either grows one page past readability or invents a naming
-scheme beside it. The folder costs one path segment today and absorbs all of that later.
+Do not append `Updates`, repeated snapshots or chronological tails to a canonical page.
+Reconciliation may leave a page unchanged when new evidence adds no durable value.
 
-The test when it is unclear: **could the subject be described without reference to its
-container?** If it could, it is an entity and takes a folder, even when `intro` is the
-only page it will ever hold. If it only means something relative to its parent — the
-criteria for one search, notes on one aspect, a single document produced for it — it is
-a view and stays a page.
+## Diary and entity timelines
 
-**Promote rather than grow.** When an entity kept as a flat page needs a second view,
-convert it into a folder with the existing page as `intro`, redirect inbound links in
-the same write, and correct the directory guide that described it as a page. A directory
-that deliberately keeps its entities flat has to say so in its own guide, and say what
-promotes one; an undocumented deviation is exactly how a guide and its directory drift
-apart.
+Durable pages explain their subjects. The [[about/diary/agents|diary]] records lived
+chronology, including current activity and why it matters. A durable entity may also
+have a `timeline`: a concise, dated index of the material events and state changes that
+make its history intelligible. It is not an exhaustive activity feed.
 
-## Durable pages and the diary
+A useful common shape uses descending year headings and newest-first entries within
+each year:
 
-**The rule that keeps the base from rotting.** Every page outside the diary is a durable
-account of its subject: it says what is true, or, for an occurrence, what happened. Edit
-it in place when its canonical account changes; never turn it into a running update log.
+    ## 2026
+    - **28 July** — [[about/diary/…|Diary entry]] · [[area/…|Occurrence]] — what
+      materially changed.
 
-Two things answer *where does this stand*, from opposite ends, and both reach the same
-work:
+Omit the occurrence link when no canonical occurrence page exists.
 
-- **The diary** is the only day-by-day chronology of the owner's life. Read the last few
-  days to see what they are doing across everything at once, then follow its links
-  outwards.
-- **An entity's `timeline`** is that one entity's dated history: the states it has passed
-  through, each linking the diary entry, meeting or event that holds the work itself.
-  Read it to see where one thing stands without searching the diary for it.
+For a material change recorded as it happens, keep the diary and entity timeline
+synchronized in the same write:
 
-Neither holds a mutable field. A change of state is written as a **dated entry** —
-`**6 August** — applied, with the cover letter in this folder` — and the current state
-is simply the most recent one, which stays true with nobody maintaining it. What is
-forbidden everywhere, timelines included, is state with no date on it: a `Status:` line,
-a "waiting on", a next step, an `Updates` section, a dated progress log on a page whose
-job is to say what is true. Undated state is wrong the moment it stops being edited and
-nothing says when that was. Dating a fact is not logging progress.
+- The diary account links the entity and any canonical meeting, event or other
+  occurrence page.
+- The entity timeline links the exact diary entry and, when one exists, the canonical
+  occurrence page. It adds only a short statement of what materially changed.
+- The date and factual claim agree across both directions; the detailed narrative lives
+  in its canonical source rather than being copied into the timeline.
 
-A `timeline` is optional and curated, never exhaustive. It carries the milestones that
-make the entity's history intelligible — one dated line each, newest first under
-descending years, adding only enough context to explain what changed, never restating
-the page it links. Search remains the exhaustive record; an entity with no history worth
-tracing has no timeline.
+Historical milestones from before diary coverage link the best available source; never
+invent a retrospective diary entry solely to satisfy the pattern. Casual mentions,
+routine activity and repeated non-changes do not earn milestones. The latest relevant
+milestone should make a major state change—such as starting, changing direction,
+handover, completion or resolution—easy to find, while transient status and next actions
+remain in the recent diary.
 
-Every other page in the folder stays free of chronology. `intro` and the aspect pages
-say what the entity *is*, and are edited in place to stay true.
+When correcting a timeline event, check its linked diary and occurrence pages in the
+same pass. Correct wrong or misleading claims wherever they appear, preserve any useful
+contemporaneous context, and keep the links and dates in agreement.
 
-When something happens, write it in the day's [[about/diary/agents|diary]] with links;
-add a dated line to the entity's timeline if its state changed; then edit the durable
-pages so they say what is now true. Versions hold the history; the diary holds why.
+## Sources and links
 
-## Attention is evidence
+Put a source link on the text that makes the claim, not in a list of bare URLs at the
+end. An unpublished source can link to the relevant private page.
 
-Interaction is not the only thing that earns a subject a page. Reading, watching and
-researching the same subject repeatedly is the owner taking an interest, and an interest
-that keeps returning is a fact about them worth representing.
+    Good: Announced in [June 2026](https://example.com/post), it ages out stale facts.
+    Bad:  It ages out stale facts.
+          ## Sources
+          example.com/post (4 Jun 2026)
 
-This lowers no threshold. The owning guide still decides what a person, company or other
-entity requires before it exists, and identity must still be established rather than
-assumed. What it adds is another way to meet that bar: recurring attention across saved
-works, research and the owner's own pages is evidence of material relevance, in the same
-way an interaction is. One mention, one saved work or one passing reference is not
-recurring attention.
+Use wikilinks for knowledge-base relationships. In copyable examples, use unresolved
+placeholders such as `[[area/…|label]]`, because real wikilinks resolve even inside code
+blocks.
 
-Once the entity exists, everything attending to it links to it, so that attention gathers
-in one place instead of scattering across unconnected notes. The link runs from the
-attending page — the saved work, the diary entry, the task — to the entity, and says what
-that piece contributed. The entity's own pages cite those sources on the claims they
-support; when what has gathered about a subject outgrows what `intro` can carry, it
-becomes an aspect page like any other view.
+## Write, then report
 
-**Attention is not interaction.** Saving a work about someone, or reading about a
-company, is not something that happened between them and the owner. It earns no line on
-that entity's `timeline`, which holds the states the entity has actually passed through.
+Make confident, in-scope writes directly. Afterward, tell the owner which pages were
+created, materially rewritten, merged or archived and briefly why. Highlight newly
+created entities so the owner can correct, remove or archive them if they are not useful.
+Do not turn this report into a request for retroactive approval.
 
-**Attention is not agreement.** A claim in a source stays the source's. It becomes the
-owner's view only where the owner says so, and it is then written wherever that guide
-keeps their judgement — never inferred from the fact that they saved it.
-
-## Writing
-
-Say a thing once, at the length it needs, and stop. Length is not thoroughness: a page
-that cannot be skimmed has stopped being useful to whoever is deciding something from
-it. Cut what restates a link's target, what hedges a claim already made, and what exists
-to sound complete. Do not compress past meaning — a fact without its date, a judgement
-without its reason or a claim without its source is shorter and worse.
-
-On researched pages, relevance decides what stays. Keep what bears on why the subject
-matters here plus the durable facts needed to identify it. Delete empty template
-headings; never infer a fact merely to fill one.
-
-## Citing sources
-
-Sources are hyperlinks on the text making the claim, never a list of bare URLs at the
-foot of a page.
-
-    Good:   Announced in [June 2026](https://example.com/post), it ages out stale facts.
-    Bad:    It ages out stale facts.
-            ## Sources
-            example.com/post (4 Jun 2026)
-
-Any claim should be checkable from where it sits. If nothing in the text points at a
-source, the source does not belong on the page. An unpublished source can be a link to
-the relevant private page.
-
-## Before writing: identify, propose, preview
-
-**Identify.** Search for the canonical target before researching or writing. Names and
-subjects collide; if more than one candidate survives, stop and ask with the details
-that distinguish them.
-
-**Propose.** Follow the owning directory guide for any related pages the write requires.
-Present missing or ambiguous additions together in one question rather than creating an
-unrequested cascade.
-
-**Preview.** Show intended path, title, summary and full body before creating or
-rewriting a page. Briefly explain why the proposed location and structure are the
-cleanest fit under the applicable guides. One preview can cover a coherent set.
-Unattended automations are the exception and follow their own
-[[automations/agents|guide]].
+Ask before writing only when unresolved identity or scope would make a confident choice
+unsafe. An unattended automation follows the same knowledge rules and the additional
+operational contract in its [[automations/agents|guide]].
 
 ## Directories and guide layering
 
 Every directory is linkable and its index is generated from its immediate children.
-Never hand-maintain an `index` page; generated indexes are navigation, not a substitute
-for authored overviews.
+Do not hand-maintain an `index` page; generated indexes are navigation, not a substitute
+for an authored overview.
 
-A directory guide lives at `<directory>/agents`, titled `AGENTS.md`. A child guide may
-refine or extend its ancestors but must not copy them. The most specific applicable rule
-wins when guides differ.
-
-In a copyable Markdown example, write link targets as placeholders —
-`[[area/…|label]]`, never a real path — because wikilinks resolve even inside fenced
-code blocks. A target containing `…` or `<slug>` resolves to nothing and survives intact.
+A directory guide lives at `<directory>/agents`, titled `AGENTS.md`. Every child guide
+links its direct parent guide and contains only local refinements. Inherited rules remain
+in force without being copied; when a genuine local exception exists, the most specific
+applicable guide wins and says so explicitly.
 
 ## Referencing uploaded assets
 
@@ -270,7 +204,11 @@ An asset is published separately from the page embedding it, so a published page
 
 ## Privacy
 
-Private by default, and an agent cannot publish. Ask the owner to review and publish
-anything that should be public. Publishing a page makes its directory ancestry navigable
-publicly, exposing published titles and summaries. A deliberately public-safe page still
-requires the owner's review before publication.
+Knowledge is private by default, and an agent cannot publish it. Ask the owner to review
+and publish anything intended for the public. Publishing a page makes its directory
+ancestry navigable and exposes published titles and summaries, so even deliberately
+public-safe material needs review before publication.
+
+Never store credentials, access tokens, access codes or recovery secrets. Keep a
+sensitive identifier or exact location only when it is genuinely useful to the owner,
+and never expose one in a title, path or summary.
