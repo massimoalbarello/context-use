@@ -14,6 +14,16 @@
     ## Method
     ## Output
 
+**This is a deliberate flat-page directory**, the stated deviation from
+[[agents#entities-are-folders-and-views-are-pages|the root entity rule]]: a skill is
+loaded whole, by name, and the loaded thing is the page body. Adding a folder around it
+would put an `intro` between the agent and the instructions it came for.
+
+Promote one to `skills/<skill-name>/` only when a skill genuinely needs supporting
+material of its own — a template, a reference file, a worked example too long to inline.
+Keep the `SKILL.md` at `intro`, and verify the skill still loads under the new path
+before relying on it.
+
 A skill is loaded by an agent working **with** the owner. An automation runs unattended
 on a schedule in an external harness and lives in [[automations|`automations/`]] instead
 — the difference matters, because an automation writes without a preview and a skill

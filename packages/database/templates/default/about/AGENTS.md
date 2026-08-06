@@ -27,8 +27,9 @@ instance and add a local guide only when agents need conventions to maintain it.
 ## What belongs here
 
 - Durable facts, context and material whose subject is the owner.
-- Current state belongs in the diary, even when a durable page elsewhere provides
-  background.
+- No page here carries an undated status. What the owner is doing now is read from the
+  diary; what one subject has been through is read from its `timeline`
+  ([[agents#durable-pages-and-the-diary|root rule]]).
 - A durable body of work may have a project page; a finite pursuit or decision frame may
   have a task page when it meets the threshold in the applicable conventions.
 - Judgement about another company, person or subject belongs with that subject, per

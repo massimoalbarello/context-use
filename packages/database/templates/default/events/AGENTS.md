@@ -1,9 +1,10 @@
 # Events conventions
 
 **One folder per event** at `events/<YYYY>/<MM>/<YYYY-MM-DD>_<slug>/`, entered through
-`intro`, using the **start date** for anything spanning days. Multi-day events get one
-folder, not one per day; a recurring conference gets one folder per occurrence, linked to
-each other, rather than one page accumulating years.
+`intro`, as [[agents#entities-are-folders-and-views-are-pages|every entity is]], using
+the **start date** for anything spanning days. Multi-day events get one folder, not one
+per day; a recurring conference gets one folder per occurrence, linked to each other,
+rather than one page accumulating years.
 
     events/<YYYY>/<MM>/<YYYY-MM-DD>_<event-slug>/
     ├── intro        — what it was, where, why they went, what happened
@@ -18,6 +19,9 @@ each other, rather than one page accumulating years.
   come back for, and it should not be buried in an account of the schedule.
 
 **Add any new name here** — `talks`, `notes` — so events stay comparable.
+
+An event is a completed occurrence, so it has no timeline of its own — it is what other
+entities' timelines link to.
 
 ## When an event gets a folder
 
@@ -52,10 +56,11 @@ for every conversation that happened inside it.
   relevant, propose all such folders together rather than silently creating them. An
   event is often where a relationship starts, and that origin is worth being able to
   find later.
-- **Index material relationship milestones.** When something the owner did with a
-  person or company at the event materially starts or changes that relationship, add one
-  dated link to the entity's `timeline` in the same proposed write. Do not index mere
-  co-attendance or copy the event account.
+- **Index every entity this moved.** When something the owner did at the event materially
+  starts or changes a relationship, or changes the state of anything else with a folder,
+  add one dated link to that entity's `timeline` in the same proposed write
+  ([[agents#durable-pages-and-the-diary|root rule]]). Do not index mere co-attendance or
+  copy the event account.
 - **Anything durable that came out of it goes to its own home** — an idea to a project, a
   company to [[companies|companies]], a decision to the page that owns it — and the event
   links to it rather than restating it.

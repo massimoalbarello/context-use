@@ -1,7 +1,7 @@
 # Projects conventions
 
 **One folder per enduring body of work** at `about/projects/<slug>/`, entered through
-`intro`.
+`intro`, as [[agents#entities-are-folders-and-views-are-pages|every entity is]].
 
 A project is something the owner builds, operates or stewards whose identity survives
 individual deliverables: a product, organization, research programme, creative body of
@@ -18,6 +18,8 @@ coherent, durable subject.
 `intro` is required. `timeline` appears only after there are milestones worth navigating.
 Create any other page only when it has a stable subject worth retrieving on its own —
 for example `architecture`, `principles` or `history` — and name it for that subject.
+Anything inside the project that is an entity in its own right gets its own folder there,
+under the root rule; pages hold the project's own views of itself.
 
 ## Project or task?
 
@@ -25,7 +27,8 @@ for example `architecture`, `principles` or `history` — and name it for that s
   across several outcomes.
 - A [[about/tasks/agents|task]] is a finite outcome, experiment or consequential
   decision that can resolve or close.
-- The diary records what the owner did and where active work stands today.
+- The diary records what the owner did on a given day; each entity's timeline records the
+  dated states that entity has passed through.
 
 A task can advance a project and should link it. Do not duplicate the task's decision
 frame in the project or turn the project into a queue of future work. A deliverable can
@@ -35,13 +38,15 @@ same project.
 ## What the durable pages say
 
 Keep the canonical purpose, boundaries, durable design, principles, important outcomes
-and links to related people, companies and tasks. Never keep status, next actions,
-backlogs, open pull requests or a dated progress feed here. Reconcile new evidence into
-the current account under [[agents#reconcile-never-append-by-default|the root rule]].
+and links to related people, companies and tasks. Never keep an undated status, next
+actions, backlogs, open pull requests or a running progress feed here. Reconcile new
+evidence into the current account under
+[[agents#reconcile-never-append-by-default|the root rule]].
 
-The optional `timeline` is a sparse reverse index of completed milestones: launch,
-material direction change, major release, handover or similarly consequential outcome.
-It links the most specific diary, meeting, event or other canonical page and adds one
+The optional `timeline` is the project's entity timeline
+([[agents#durable-pages-and-the-diary|root rule]]) and stays sparse: launch, material
+direction change, major release, handover or similarly consequential outcome, each
+linking the most specific diary, meeting, event or other canonical page and adding one
 sentence about what durably changed. It is not a commit log or exhaustive release log.
 
 ## When to create one

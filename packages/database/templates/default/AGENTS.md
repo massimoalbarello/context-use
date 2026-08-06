@@ -81,28 +81,78 @@ Judgement stays with the subject being judged. Process, preference and intention
 with the person whose thinking they describe. The owning directory guide defines how it
 represents those distinctions; the root does not prescribe a page shape for them.
 
+## Entities are folders and views are pages
+
+**Anything with its own identity gets a folder.** A person, a company, a place, a
+project, a task, a saved work, an object, a role applied for — if you would naturally
+say *this thing* about it, it is an entity, and it lives at `<parent>/<slug>/` entered
+through `intro`. Nesting never demotes one: something that exists inside a task, a
+project or another entity is still an entity and still gets its own folder.
+
+**A page is one view of the entity that contains it** — an aspect of it, a lens on it, a
+chronology of it, or a document produced about it. Views carry no identity of their own;
+each exists to say one thing about its folder.
+
+    <parent>/<entity-slug>/
+    ├── intro       — what it is; every entity has one
+    ├── timeline    — its dated history, when it has one
+    ├── <aspect>    — one page per view worth reading on its own
+    └── <asset>     — files and documents belonging to this entity
+
+Entities accumulate and views do not. Anything with identity eventually attracts a
+second aspect, a document, an asset or a history, and a flat page has nowhere to put
+them — so the next agent either grows one page past readability or invents a naming
+scheme beside it. The folder costs one path segment today and absorbs all of that later.
+
+The test when it is unclear: **could the subject be described without reference to its
+container?** If it could, it is an entity and takes a folder, even when `intro` is the
+only page it will ever hold. If it only means something relative to its parent — the
+criteria for one search, notes on one aspect, a single document produced for it — it is
+a view and stays a page.
+
+**Promote rather than grow.** When an entity kept as a flat page needs a second view,
+convert it into a folder with the existing page as `intro`, redirect inbound links in
+the same write, and correct the directory guide that described it as a page. A directory
+that deliberately keeps its entities flat has to say so in its own guide, and say what
+promotes one; an undocumented deviation is exactly how a guide and its directory drift
+apart.
+
 ## Durable pages and the diary
 
 **The rule that keeps the base from rotting.** Every page outside the diary is a durable
 account of its subject: it says what is true, or, for an occurrence, what happened. Edit
 it in place when its canonical account changes; never turn it into a running update log.
-The diary is the only day-by-day chronology and therefore the **only place that says
-where ongoing work currently stands**. Durable pages are edited to keep their canonical
-account true.
 
-A directory guide may define an entity `timeline`. This is a curated, dated index of
-completed history for one subject, not another diary: it links the canonical meeting,
-event, diary entry or other source, adds only enough context to explain the milestone,
-and never carries current status or next actions. Search remains the exhaustive record;
-a timeline contains the milestones that make the relationship intelligible.
+Two things answer *where does this stand*, from opposite ends, and both reach the same
+work:
 
-No status, next step, "waiting on", update section or dated progress log belongs on a
-durable page. To find out where something stands, read the recent diary. Dating a fact is
-not logging progress; what is forbidden is mutable state presented as durable truth.
+- **The diary** is the only day-by-day chronology of the owner's life. Read the last few
+  days to see what they are doing across everything at once, then follow its links
+  outwards.
+- **An entity's `timeline`** is that one entity's dated history: the states it has passed
+  through, each linking the diary entry, meeting or event that holds the work itself.
+  Read it to see where one thing stands without searching the diary for it.
 
-When something changes, write what happened in the relevant day's
-[[about/diary/agents|diary]] with links, then edit the durable page to say what is now
-true. Versions hold the history; the diary holds why.
+Neither holds a mutable field. A change of state is written as a **dated entry** —
+`**6 August** — applied, with the cover letter in this folder` — and the current state
+is simply the most recent one, which stays true with nobody maintaining it. What is
+forbidden everywhere, timelines included, is state with no date on it: a `Status:` line,
+a "waiting on", a next step, an `Updates` section, a dated progress log on a page whose
+job is to say what is true. Undated state is wrong the moment it stops being edited and
+nothing says when that was. Dating a fact is not logging progress.
+
+A `timeline` is optional and curated, never exhaustive. It carries the milestones that
+make the entity's history intelligible — one dated line each, newest first under
+descending years, adding only enough context to explain what changed, never restating
+the page it links. Search remains the exhaustive record; an entity with no history worth
+tracing has no timeline.
+
+Every other page in the folder stays free of chronology. `intro` and the aspect pages
+say what the entity *is*, and are edited in place to stay true.
+
+When something happens, write it in the day's [[about/diary/agents|diary]] with links;
+add a dated line to the entity's timeline if its state changed; then edit the durable
+pages so they say what is now true. Versions hold the history; the diary holds why.
 
 ## Writing
 

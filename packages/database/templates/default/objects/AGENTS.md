@@ -7,10 +7,11 @@ someone owns.
 
 ## Structure
 
-One folder per object at `objects/<meaningful-slug>/`, entered through `intro`. Name the
-specific thing as the owner would recognize it. Add a disambiguating model, year or
-nickname only when needed; never put a registration number, serial number or other
-sensitive identifier in a path.
+One folder per object at `objects/<meaningful-slug>/`, entered through `intro`, as
+[[agents#entities-are-folders-and-views-are-pages|every entity is]]. Name the specific
+thing as the owner would recognize it. Add a disambiguating model, year or nickname only
+when needed; never put a registration number, serial number or other sensitive
+identifier in a path.
 
     objects/<object-slug>/
     ├── intro          — what this particular object is and why it matters
@@ -48,9 +49,10 @@ also meets this directory's threshold.
     - **28 July** — [[about/diary/…|Repaired after the trip]] — replaced the
       failed alternator; the durable maintenance detail is in [[objects/…/maintenance|maintenance]].
 
-Use descending years and newest-first entries within each year. Include acquisitions,
-material repairs, modifications and transfers; omit routine use. Link the canonical
-event, meeting, diary entry or maintenance page rather than duplicating it.
+The timeline follows [[agents#durable-pages-and-the-diary|the root rule]]: descending
+years, newest first, acquisitions, material repairs, modifications and transfers, each
+linking the canonical event, meeting, diary entry or maintenance page rather than
+duplicating it. Omit routine use.
 
 ## Local rules
 
@@ -60,9 +62,9 @@ event, meeting, diary entry or maintenance page rather than duplicating it.
 - **Relationships are links.** Ownership, use and preference concern a person; record
   them on the relevant person or owner page and link this object. Do not maintain an
   exhaustive list of everyone who has touched it.
-- **Current progress remains in the diary.** The timeline and maintenance record may say
-  what happened and when, but not that a repair is waiting, who currently owns the next
-  action or what happens tomorrow.
+- **Dated history, never a to-do.** The timeline and maintenance record say what
+  happened and when — never that a repair is waiting, who owns the next action or what
+  happens tomorrow; that stays in the diary.
 - **Minimize sensitive identifiers.** Never store credentials, access codes or recovery
   secrets. Record serial, registration, tracking or insurance identifiers only when the
   owner explicitly needs them here, and never expose them in titles, paths or summaries.

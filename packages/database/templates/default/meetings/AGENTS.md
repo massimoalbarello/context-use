@@ -1,7 +1,7 @@
 # Meetings conventions
 
 **One folder per meeting** at `meetings/<YYYY>/<MM>/<YYYY-MM-DD>_<slug>/`, entered
-through `intro`.
+through `intro`, as [[agents#entities-are-folders-and-views-are-pages|every entity is]].
 
     meetings/<YYYY>/<MM>/<YYYY-MM-DD>_<meeting-slug>/
     ├── prep    — written before: background and what to ask
@@ -16,6 +16,9 @@ through `intro`.
 - **`transcript`** — rare; see below.
 
 Photos, whiteboards and shared decks upload into the folder and embed from `intro`.
+
+A meeting is a completed occurrence, so it has no timeline of its own — it is what other
+entities' timelines link to.
 
 ## When a meeting gets a folder
 
@@ -68,13 +71,14 @@ survive. It goes in as `transcript`, marked raw at the top, never in place of `i
   participants will contradict their folders within the year.
 - **Separate what was said from what the owner concluded.** Both are useful; conflating
   them makes the page untrustworthy later.
-- **Commitments are historical facts, not current status.** Record what was agreed in
-  the meeting page; record subsequent ownership, progress and next actions in the diary,
-  linking the project or [[about/tasks|task]] that gives them durable context.
-- **Index the relationship history.** Add this meeting to each participant's
-  `timeline` in the same proposed write. Add it to a company's `timeline` when the
-  meeting materially concerns the owner's direct relationship with that company. Each
-  timeline gets one dated sentence and a link here, not a copy of the write-up.
+- **Commitments are historical facts.** Record what was agreed here, as of this date;
+  subsequent ownership and next actions go in the diary, linking the project or
+  [[about/tasks|task]] that gives them durable context.
+- **Index every entity this moved.** In the same proposed write, add one dated line and
+  a link to the `timeline` of each participant, of a company whose relationship with the
+  owner this materially concerns, and of anything else whose state the meeting changed —
+  an application, a project, a decision ([[agents#durable-pages-and-the-diary|root
+  rule]]). One sentence each, never a copy of the write-up.
 - Written promptly or not at all; a page written a week later from memory should say so.
 - The [[about/diary|diary]] gets one line and a link, not the content, and the meeting
   page does not narrate the day around it. If a meeting changes what the owner wants, the
