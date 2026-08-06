@@ -465,6 +465,49 @@ test("manual dashboard, asset, and Nango DNS must resolve to the deployment IP",
     .toEqual(["context.example.com", "assets.context.example.com", "nango.context.example.com"]);
 });
 
+test("the pinned Docker address pools hold every compose network and exclude the fixed subnets", async () => {
+  const [userData, deployScript, deployCompose] = await Promise.all([
+    Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
+    Bun.file(new URL("../../../deploy/deploy.sh", import.meta.url)).text(),
+    Bun.file(new URL("../../../deploy/docker-compose.yml", import.meta.url)).text(),
+  ]);
+  const address = (value: string): number => value.split(".")
+    .reduce((total, octet) => total * 256 + Number(octet), 0);
+  const range = (cidr: string): { first: number; last: number; prefix: number } => {
+    const [base, prefix] = cidr.split("/");
+    const first = address(base ?? "");
+    return { first, last: first + 2 ** (32 - Number(prefix)) - 1, prefix: Number(prefix) };
+  };
+  const declaredPools = (script: string): { cidr: string; size: number }[] =>
+    [...script.matchAll(/\{ "base": "([0-9./]+)", "size": (\d+) \}/g)]
+      .map(([, cidr, size]) => ({ cidr: cidr ?? "", size: Number(size) }));
+  const pools = declaredPools(userData);
+  // A host provisioned before the pool was pinned only picks it up through
+  // deploy.sh, so both copies must stay identical.
+  expect(pools.length).toBeGreaterThan(0);
+  expect(declaredPools(deployScript)).toEqual(pools);
+
+  const compose = Bun.YAML.parse(deployCompose) as {
+    networks: Record<string, { ipam?: { config?: { subnet?: string }[] } }>;
+  };
+  const networks = Object.entries(compose.networks);
+  const capacity = pools.reduce((total, pool) => total + 2 ** (pool.size - range(pool.cidr).prefix), 0);
+  // Docker allocates one subnet per compose network plus the default bridge.
+  expect(capacity).toBeGreaterThan(networks.length);
+
+  const poolRanges = pools.map((pool) => range(pool.cidr));
+  const pinned = networks.flatMap(([name, network]) =>
+    (network?.ipam?.config ?? []).map((entry) => ({ name, subnet: entry.subnet ?? "" })));
+  expect(pinned.length).toBeGreaterThan(0);
+  for (const { name, subnet } of pinned) {
+    const { first, last } = range(subnet);
+    const overlapping = poolRanges.filter((pool) => first <= pool.last && last >= pool.first);
+    // An automatic allocation that covers a fixed subnet makes Docker reject the
+    // network with "Pool overlaps with other one on this address space".
+    expect([name, overlapping]).toEqual([name, []]);
+  }
+});
+
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
   const [userData, deployScript, caddy, nangoPublicCaddy, nangoAuthCaddy, compute, update, setup, resume, data, deployCompose, backupScript, cliUpdate] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),

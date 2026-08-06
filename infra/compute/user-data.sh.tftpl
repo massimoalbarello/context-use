@@ -5,6 +5,19 @@ ${data_volume_policy}
 
 dnf update -y --security
 dnf install -y docker
+# Docker's built-in pools offer 31 subnets and cover 172.30.0.0/16, which holds the
+# fixed OAuth browser subnets in docker-compose.yml. Pin a disjoint pool with room
+# for every compose network before the daemon allocates anything.
+install -d -m 0755 /etc/docker
+cat > /etc/docker/daemon.json <<'DAEMON'
+{
+  "default-address-pools": [
+    { "base": "172.18.0.0/15", "size": 24 },
+    { "base": "172.20.0.0/14", "size": 24 }
+  ]
+}
+DAEMON
+chmod 0644 /etc/docker/daemon.json
 systemctl enable --now docker
 
 if ! docker compose version >/dev/null 2>&1; then
