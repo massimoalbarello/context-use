@@ -13,3 +13,6 @@ terraform.tfvars
 .context-use/
 /data/
 apps/web/src/routeTree.gen.ts
+
+# Local agent settings
+.claude/settings.local.json
