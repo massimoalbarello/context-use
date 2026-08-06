@@ -190,7 +190,7 @@ docker compose --env-file "${secrets}/runtime.env" pull --quiet
 # an upstream service.
 caddy_image='caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
 for caddyfile in Caddyfile.nango-public Caddyfile.nango-auth Caddyfile; do
-  docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+  docker run --rm --network none --read-only --cap-drop ALL --cap-add NET_BIND_SERVICE --security-opt no-new-privileges \
     --tmpfs /tmp:rw,noexec,nosuid,size=8m \
     --tmpfs /data:rw,noexec,nosuid,size=8m \
     --tmpfs /config:rw,noexec,nosuid,size=8m \
@@ -200,7 +200,7 @@ for caddyfile in Caddyfile.nango-public Caddyfile.nango-auth Caddyfile; do
     -e AUTH_NANGO_TOKEN=validation-only \
     -e NANGO_DASHBOARD_BASIC=dmFsaWRhdGlvbjpvbmx5 \
     -v "${root}/deploy/${caddyfile}:/etc/caddy/Caddyfile:ro" \
-    "${caddy_image}" validate --config /etc/caddy/Caddyfile
+    "${caddy_image}" caddy validate --config /etc/caddy/Caddyfile
 done
 docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
   --tmpfs /tmp:rw,noexec,nosuid,size=8m \

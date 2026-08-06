@@ -176,12 +176,12 @@
 	}
 
 	# Provider authorization requests carry the Connect token in the query. The
-	# prefix check excludes Nango public keys; Nango validates all 64 random hex
-	# characters and the backing session before processing credentials.
+	# exact format check excludes Nango public keys; Nango validates the backing
+	# session before processing credentials.
 	@connect_authorization {
 		method GET POST
 		path /oauth/connect/* /oauth2/auth/* /auth/oauth-outbound/* /api-auth/api-key/* /api-auth/basic/* /app-store-auth/* /auth/tba/* /auth/two-step/* /auth/jwt/* /auth/bill/* /auth/aws-sigv4/* /auth/signature/* /auth/unauthenticated/*
-		query connect_session_token=nango_connect_session_*
+		vars_regexp connect_session_token {query.connect_session_token} ^nango_connect_session_[a-f0-9]{64}$
 	}
 	handle @connect_authorization {
 		request_body {

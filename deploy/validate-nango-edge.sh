@@ -5,6 +5,7 @@ deploy_dir=${1:-.}
 edge_config="${deploy_dir}/Caddyfile"
 auth_config="${deploy_dir}/Caddyfile.nango-auth"
 public_config="${deploy_dir}/Caddyfile.nango-public"
+deploy_script="${deploy_dir}/deploy.sh"
 
 require_line() {
   file=$1
@@ -37,6 +38,8 @@ reject_line "${edge_config}" "/_context-use-auth/auth"
 require_line "${public_config}" 'respond "Not found" 404'
 require_line "${public_config}" "path /connect-ui/*"
 require_line "${public_config}" "path /connect/ws"
+require_line "${public_config}" 'vars_regexp connect_session_token {query.connect_session_token} ^nango_connect_session_[a-f0-9]{64}$'
+reject_line "${public_config}" 'query connect_session_token=nango_connect_session_*'
 require_line "${edge_config}" "@public_connect_ui"
 require_line "${edge_config}" "@public_connect_socket"
 require_line "${edge_config}" 'rewrite * {path}?'
@@ -62,3 +65,9 @@ require_line "${auth_config}" 'header_up Authorization "Basic {$NANGO_DASHBOARD_
 require_line "${auth_config}" "header_up -X-Context-Use-Access-Token"
 require_line "${auth_config}" "@non_dashboard_namespace"
 require_line "${public_config}" "__Host-context-use-nango"
+
+# The official Caddy binary carries cap_net_bind_service as a file capability.
+# The production preflight must retain that one bounding-set capability and
+# invoke the binary explicitly, just like CI and the gateway services.
+require_line "${deploy_script}" "--cap-add NET_BIND_SERVICE"
+require_line "${deploy_script}" '"${caddy_image}" caddy validate --config /etc/caddy/Caddyfile'
