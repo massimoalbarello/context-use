@@ -1,43 +1,38 @@
 # About conventions
 
-Everything whose subject is the owner belongs under `about/`.
+This subtree inherits the [[agents|root guide]]. It adds only conventions for knowledge
+whose subject is the owner.
 
-The default template defines only three subdirectories:
+## Entry point and local organization
 
-- **`diary/`** — the owner's present, organized by day. See
-  [[about/diary/agents|the diary conventions]].
-- **`projects/`** — enduring bodies of work the owner builds, operates or stewards. See
-  [[about/projects/agents|the project conventions]].
-- **`tasks/`** — finite outcomes, experiments and decision frames. See
-  [[about/tasks/agents|the task conventions]].
+Use `about/intro` as the concise, instance-owned overview of the owner and the most
+useful routes into their knowledge. Its content is not managed by the default template,
+and this guide does not prescribe sections for it. Reconcile it as the instance evolves.
 
-Any other organization under `about/` is specific to the instance. Follow the
-structure and local guides already present; do not assume or create additional
-categories from this template.
+The default template supplies three useful subdirectories:
 
-## Examples, not a schema
+- [[about/diary/agents|Diary]] — chronological lived context and current activity.
+- [[about/projects/agents|Projects]] — enduring bodies of work the owner builds or
+  stewards.
+- [[about/tasks/agents|Tasks]] — finite outcomes, experiments and decision frames.
 
-Owner-subject knowledge might include health, finances or taxes, education, family,
+Other owner-subject knowledge might include health, finances, education, family,
 personal history, preferences, beliefs, routines, goals or important documents. These
-are examples of what can belong under `about/`, not prescribed categories, reserved
-names or instructions to create folders. Use the organization already present. When a
-new durable subject genuinely needs a home, choose a name and structure that fit this
-instance and add a local guide only when agents need conventions to maintain it.
+are examples, not prescribed categories. Preserve the organization already present;
+when a durable subject genuinely needs a new home, choose the simplest name and shape
+that fit this instance. Add a local guide only when its subtree needs recurring rules.
 
-## What belongs here
+## Choosing diary, project or task
 
-- Durable facts, context and material whose subject is the owner.
-- No page here carries an undated status. What the owner is doing now is read from the
-  diary; what one subject has been through is read from its `timeline`
-  ([[agents#durable-pages-and-the-diary|root rule]]).
-- A durable body of work may have a project page; a finite pursuit or decision frame may
-  have a task page when it meets the threshold in the applicable conventions.
-- Judgement about another company, person or subject belongs with that subject, per
-  [[agents#where-a-page-belongs|the subject test]]. Keep only the owner's own context
-  here.
+- Use the diary for what happened on a day, what the owner was thinking or feeling, and
+  where active work currently stands.
+- Use a project for a body of work whose identity persists across several outcomes.
+- Use a task for a finite pursuit, experiment or consequential decision that can resolve
+  or close and whose frame remains useful beyond a simple to-do.
+- Use another durable owner page when the subject is the owner's lasting context but is
+  neither a body of work nor a finite pursuit.
 
-## Local rules
-
-- Write from what the owner has actually said. Do not invent motives or memories;
-  mark inference as inference.
-- Preserve any instance-specific organization and follow its nearest `agents` guide.
+A task may advance a project and should link it; neither should duplicate the other's
+account. The relevant child guide supplies local selection and page-shape guidance.
+Judgement about another subject stays with that subject under the
+[[agents#place-and-identify|root placement rule]].

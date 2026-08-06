@@ -1,66 +1,58 @@
 # Events conventions
 
-**One folder per event** at `events/<YYYY>/<MM>/<YYYY-MM-DD>_<slug>/`, entered through
-`intro`, as [[agents#entities-are-folders-and-views-are-pages|every entity is]], using
-the **start date** for anything spanning days. Multi-day events get one folder, not one
-per day; a recurring conference gets one folder per occurrence, linked to each other,
-rather than one page accumulating years.
+Follow the [[agents|root guide]] for every convention not specific to events. This guide
+adds only event selection and shape.
+
+## Suggested shape
+
+An event can use its start date at
+`events/<YYYY>/<MM>/<YYYY-MM-DD>_<event-slug>/`:
 
     events/<YYYY>/<MM>/<YYYY-MM-DD>_<event-slug>/
-    ├── intro        — what it was, where, why they went, what happened
-    ├── takeaways    — what was actually got out of it
-    └── (pictures)   — uploaded into the folder, embedded from either page
+    ├── intro        — what it was, where, why the owner went and what happened
+    ├── takeaways    — what changed or became useful because of it
+    └── (pictures)   — assets embedded from the relevant page
 
-## Aspects
+A multi-day event is one occurrence and usually one folder. A recurring conference has
+one folder per occurrence, linked across years, rather than one page that mixes them.
 
-- **`intro`** — required. Written so it makes sense to someone who wasn't there.
-- **`takeaways`** — what changed the owner's mind at the event, what they would do
-  differently, and who became relevant and why. Split out because it is the part they
-  come back for, and it should not be buried in an account of the schedule.
+`intro` should make the occurrence intelligible to someone who was not there.
+`takeaways` is worth separating only when the owner's changed thinking, follow-through
+or new connections are independently useful to revisit. Names such as `talks` or
+`notes` should have an obvious event-specific purpose and be reused consistently.
 
-**Add any new name here** — `talks`, `notes` — so events stay comparable.
+## What counts as an event
 
-An event is a completed occurrence, so it has no timeline of its own — it is what other
-entities' timelines link to.
+An event is defined by an occasion with a time and place: for example, a conference,
+trip, dinner, hackathon, demo day or wedding. A [[meetings/agents|meeting]] is instead
+defined by the conversation and participants. A meaningful conversation inside an
+event may have its own meeting page, but the event is not a container for every
+conversation that occurred there.
 
-## When an event gets a folder
+An event page earns its place when it preserves something useful beyond attendance:
+what happened, what the owner took from it, or what it led to. A passing calendar entry
+or an occurrence with no durable significance can remain in the diary or source system.
 
-An event is a happening with a time and a place: a conference, a trip, a dinner, a
-hackathon, a demo day, a wedding. Defined by the occasion, where a
-[[meetings|meeting]] is defined by who was in it — so the event folder is not a container
-for every conversation that happened inside it.
+## Example pages
 
-## Template
-
-    # <Event> — <D Month YYYY>                    ← intro
+    # <Event> — <D Month YYYY>                     ← intro
 
     **What:** one line. **Where:** city, venue.
-    **Why they went:** one line.
+    **Why the owner went:** one line.
 
     ## What happened
     The parts worth remembering.
 
     ## People
-    - [[people/…|Name]] — how they came up.
+    - [[people/…|Name]] — why this person mattered to the event.
 
-    # Takeaways                                   ← takeaways
+    # Takeaways                                    ← takeaways
 
-    What changed in the owner's thinking at the event, what they would do differently,
-    and what each of it turned into — linked to where it went.
+    What changed in the owner's thinking, what they would do differently and what the
+    event led to, linked to the canonical pages where those outcomes now live.
 
-## Local rules
-
-- **Write what came of it, or don't write the folder.** An event page that only records
-  attendance is a memory leak with a date on it. The value is in what followed.
-- **Link existing people folders.** When an encounter makes a missing person materially
-  relevant, propose all such folders together rather than silently creating them. An
-  event is often where a relationship starts, and that origin is worth being able to
-  find later.
-- **Index every entity this moved.** When something the owner did at the event materially
-  starts or changes a relationship, or changes the state of anything else with a folder,
-  add one dated link to that entity's `timeline` in the same proposed write
-  ([[agents#durable-pages-and-the-diary|root rule]]). Do not index mere co-attendance or
-  copy the event account.
-- **Anything durable that came out of it goes to its own home** — an idea to a project, a
-  company to [[companies|companies]], a decision to the page that owns it — and the event
-  links to it rather than restating it.
+Link only people and companies that are clearly identified and useful to understanding
+the event. When an encounter materially starts or changes a relationship, it can become
+a milestone in that entity's timeline under the root contract; co-attendance alone is
+not a milestone. The event remains the account of the occurrence, while durable outputs
+live with their own subjects and link back here.

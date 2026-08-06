@@ -1,115 +1,69 @@
 # People conventions
 
-**One folder per person** at `people/<first-last>/` — lowercase, hyphenated, the name
-they actually go by — entered through `intro`, as
-[[agents#entities-are-folders-and-views-are-pages|every entity is]].
+Follow the [[agents|root guide]] for every convention not specific to people. This guide
+adds only person selection and shape.
 
-    people/<first-last>/
+## Suggested shape
+
+A person can use a recognizable kebab-case folder, commonly
+`people/<first-last>/`:
+
+    people/<person-slug>/
     ├── intro                  — who they are and how the owner knows them
-    ├── timeline               — material things the owner and person have done together
-    ├── contacts               — how to reach them
-    ├── work                   — roles, companies, what they have built
-    └── as-<relationship>      — what they are to the owner in one context
+    ├── timeline               — material relationship and relevance milestones
+    ├── contacts               — useful ways to reach them
+    ├── work                   — roles, companies and things they have built
+    └── as-<relationship>      — the owner's view in one relationship context
 
-## Aspects
+Most people need only `intro`. An aspect earns its own page when it is useful to read or
+maintain independently:
 
-`intro` is required and for most people is the only page. The rest are created when
-there is something real to put in them — an empty stub is worse than a missing page,
-because it makes the folder look answered.
+- **`contacts`** contains supported contact details and useful location facts.
+- **`work`** contains roles and companies over time, notable work and relevant
+  professional background.
+- **Lens pages** use `as-<relationship>` when the owner's view depends on a particular
+  context.
+- **`timeline`** contains material interactions and dated changes that explain the
+  relationship or why the person is relevant.
 
-- **`intro`** — who they are, how the owner knows them, one line on what they are doing
-  now. Links to their company; never explains it.
-- **`timeline`** — the relationship's material history, under
-  [[agents#durable-pages-and-the-diary|the root timeline rule]]. Create it for anyone the
-  owner has interacted with; for a research-only person, wait until the first
-  interaction. It links the canonical meetings, events and diary entries rather than
-  repeating them.
-- **`contacts`** — email, phone, handles and where they are based or live. Facts only;
-  date changeable details and link a canonical [[places/agents|place]] when one meets
-  that directory's durability threshold rather than copying its description.
-- **`work`** — roles and companies over time, what they have built, what they are known
-  for. Everything that would otherwise bloat `intro`.
-- **`interests`** — durable preferences and recurring interests that are useful before
-  another interaction, including favourite hangouts or gadgets. Link canonical place or
-  object pages only when the particular entity independently meets its creation
-  threshold; a passing preference stays as prose here.
-- **Lens pages** — use `as-<relationship>` when the owner's judgement of the person
-  depends on a particular context. Reuse an established name when it means the same
-  thing elsewhere.
+Conversation-useful context such as what someone cares about can stay in `intro` or the
+relevant relationship lens. Add another aspect only when its subject becomes
+independently useful, and name it for that subject.
 
-Anything else needs a name obvious to someone who has never opened the folder —
-`family`, `writing`. **Add it to the list above when you use it.**
+## When a person is useful
 
-## When to create one
+A person folder is useful when the owner has a material relationship or interaction
+with them, or when the person is important to a real decision, introduction, project or
+sustained interest. A passing name, peripheral attendee or unengaged correspondent does
+not need a speculative stub.
 
-When the owner has actually interacted with someone, or when they are materially
-relevant to something the owner is doing — someone central to a decision, someone they
-were introduced to, or someone whose work matters to a sustained interest.
+Create the entity when the person is clearly identifiable and the page will be useful
+again. Usually this means a supported name plus enough context—such as company, role,
+profile, contact detail or specific interaction—to distinguish them from plausible
+namesakes and existing aliases. No fixed checklist of identifiers is required. A lone
+display name, email address, handle or participant-list entry is insufficient when it
+still leaves genuine doubt.
 
-Not for a name mentioned in passing. An unfiltered contact dump makes the directory
-useless for the thing it exists to do, which is saying who someone is right before the
-next conversation with them.
+## Example intro
 
-Participation in one peripheral interaction is still a passing mention. Create the
-person only when repeated or material interaction makes the page independently useful;
-otherwise create no speculative stub.
-
-Before researching or creating a person, search for an existing folder and identify
-which person is meant from the company, meeting, link, handle or other context the owner
-provided. If two candidates survive, stop and ask with the detail that separates them.
-
-### Identity required for creation
-
-A person page requires a confidently established first and last name, not a contact
-stub. Corroborate who the person is from the available evidence and retain supported
-identifiers in the appropriate aspects: email address or other contact, professional
-profile, current role, company, personal or company website, location, and the specific
-relationship or interactions that establish how the owner knows them. Not all of these
-must be available, but seek them before creating the page and keep enough context to
-distinguish the person from namesakes and future duplicates.
-
-An email address, display name, first name, handle, guessed surname, isolated profile,
-participant-list entry or company affiliation is not sufficient by itself. Cross-check
-the evidence against existing aliases and plausible candidates. If a complete identity
-still cannot be established, do not create the folder; ask the owner with the likely
-candidates and the exact fact needed to choose between them.
-
-## Template
-
-    # <Name>                                         ← intro
+    # <Name>                                        ← intro
 
     **How the owner knows them:** one line.
-    **Currently:** <role> at [[companies/…|Company]] — *as of <date>*.
 
-    A few sentences on who they are and why they matter here.
+    Why this person matters here, with links to the useful aspects.
 
     **Timeline:** [[people/…/timeline|Relationship history]].
 
     ## Notes
-    What is worth knowing before the next conversation — what they care
-    about, what they are working on.
+    What is worth knowing before another interaction.
 
-    # Timeline                                      ← timeline
+Omit the `Timeline` link from `intro` until a timeline page is useful enough to exist.
 
-    ## 2026
-    - **28 July** — [[meetings/…|Introductory call]] — discussed working
-      together; agreed on a concrete next step.
+The timeline is for material interactions and changes, not every contact. Record a
+meaningful change in what the person is doing—such as starting a role, company or
+project—as a dated milestone instead of keeping an undated “currently” snapshot in
+`intro`. `work` can hold the fuller role history without duplicating the milestone.
+Follow the root contract to keep a milestone and its diary evidence synchronized.
 
-Use descending years and newest-first entries within each year. Each milestone says
-what the owner and person did together and the durable outcome in one sentence. Link the
-most specific canonical meeting or event; if none exists, link the diary page that
-records it.
-
-## Local rules
-
-- **Occurrences link to people.** The person's `timeline` is the sole reverse index: it
-  links back to material occurrences to make the relationship intelligible. Do not keep
-  occurrence lists on other person pages, and do not turn the timeline into an exhaustive
-  contact log; use search for that.
-- **Update the timeline with the occurrence.** When creating or updating a meeting,
-  event or diary entry that materially advances the relationship, include its timeline
-  milestone in the same proposed write. Historical commitments may be named; current
-  ownership and next actions remain in the diary.
-- **These are real people.** Keep judgements specific and grounded in something that
-  actually happened. Nothing here should be embarrassing if the person read it. Any
-  deliberately public-safe page still requires the owner's review before publication.
+Keep judgements specific, relevant to the owner's relationship and grounded in
+something that happened. Write with the care appropriate to a real person.
