@@ -30,7 +30,22 @@ export function generateNangoEncryptionKey(): string {
 }
 
 export function generateNangoAuthCookieSecret(): string {
-  return randomBytes(32).toString("base64");
+  // OAuth2 Proxy strips the padding and decodes the secret as base64url before
+  // it checks for a 16, 24, or 32 byte AES key. Standard base64 that happens to
+  // contain + or / fails that decode, leaving the raw 44 character string as
+  // the key, which OAuth2 Proxy rejects on startup.
+  return randomBytes(32).toString("base64url");
+}
+
+// Mirrors OAuth2 Proxy's own secret decoding so a secret this CLI stores can
+// never crash-loop the Nango SSO edge.
+export function nangoAuthCookieSecretUsable(secret: string): boolean {
+  const aesKeyLengths = [16, 24, 32];
+  const unpadded = secret.replace(/=+$/, "");
+  if (/^[A-Za-z0-9_-]+$/.test(unpadded) && aesKeyLengths.includes(Buffer.from(unpadded, "base64url").length)) {
+    return true;
+  }
+  return aesKeyLengths.includes(Buffer.byteLength(secret));
 }
 
 export async function ensureRuntimeParameters(config: DeploymentConfig, data: DataOutputs, compute: ComputeOutputs): Promise<void> {
@@ -87,7 +102,14 @@ export async function ensureRuntimeParameters(config: DeploymentConfig, data: Da
   }
   for (const [name, length] of Object.entries(secrets)) {
     const parameter = `${prefix}/${name}`;
-    if (!await getSecureParameterIfPresent(config.awsProfile, config.awsRegion, parameter)) {
+    const stored = await getSecureParameterIfPresent(config.awsProfile, config.awsRegion, parameter);
+    // Releases before the generator became URL-safe stored cookie secrets that
+    // OAuth2 Proxy rejects, so replace one rather than redeploy into a crash
+    // loop. Rotating it only invalidates Nango dashboard sign-in sessions.
+    const unusable = stored !== null
+      && name === "NANGO_AUTH_COOKIE_SECRET"
+      && !nangoAuthCookieSecretUsable(stored);
+    if (!stored || unusable) {
       const secret = name === "NANGO_ENCRYPTION_KEY"
         ? generateNangoEncryptionKey()
         : name === "NANGO_AUTH_COOKIE_SECRET"

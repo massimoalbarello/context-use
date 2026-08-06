@@ -4,7 +4,7 @@ import {
   nangoApiKeyReconciliationCommands,
   verifyNangoDashboardAuthentication,
 } from "./nango.ts";
-import { generateNangoAuthCookieSecret, generateNangoEncryptionKey } from "./setup.ts";
+import { generateNangoAuthCookieSecret, generateNangoEncryptionKey, nangoAuthCookieSecretUsable } from "./setup.ts";
 import type { DataOutputs, DeploymentConfig } from "./types.ts";
 
 const config: DeploymentConfig = {
@@ -42,10 +42,27 @@ test("Nango's encryption key is exactly 256 bits encoded as standard base64", ()
   expect(Buffer.from(key, "base64")).toHaveLength(32);
 });
 
-test("Nango's auth cookie key is exactly 256 bits encoded as standard base64", () => {
-  const key = generateNangoAuthCookieSecret();
-  expect(key).toMatch(/^[A-Za-z0-9+/]{43}=$/);
-  expect(Buffer.from(key, "base64")).toHaveLength(32);
+test("Nango's auth cookie key is a 256 bit key OAuth2 Proxy can decode", () => {
+  // OAuth2 Proxy decodes the secret as base64url. A standard base64 generator
+  // only produces a rejected value when the draw happens to contain + or /, so
+  // a single sample passes roughly a quarter of the time.
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const key = generateNangoAuthCookieSecret();
+    expect(key).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(Buffer.from(key, "base64url")).toHaveLength(32);
+    expect(nangoAuthCookieSecretUsable(key)).toBe(true);
+  }
+});
+
+test("cookie secrets OAuth2 Proxy would reject are replaced rather than deployed", () => {
+  // The padded all-A key deploy.sh passes to --config-test must stay usable.
+  expect(nangoAuthCookieSecretUsable(`${"A".repeat(43)}=`)).toBe(true);
+  expect(nangoAuthCookieSecretUsable("x".repeat(32))).toBe(true);
+  // Standard base64 carrying either character outside the URL-safe alphabet
+  // reaches OAuth2 Proxy as a 44 byte string and crash-loops it.
+  expect(nangoAuthCookieSecretUsable(`${"A".repeat(42)}+=`)).toBe(false);
+  expect(nangoAuthCookieSecretUsable(`${"A".repeat(42)}/=`)).toBe(false);
+  expect(nangoAuthCookieSecretUsable("short")).toBe(false);
 });
 
 test("Nango dashboard authentication verifies anonymous denial and internal Basic success", async () => {
