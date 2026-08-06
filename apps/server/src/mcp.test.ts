@@ -227,6 +227,99 @@ describe("MCP knowledge tools", () => {
     expect(contextResponse.result?.structuredContent).toBeUndefined();
   });
 
+  test("prepares only guidance deltas when moving between instruction scopes", async () => {
+    const aboutGuide = {
+      ...rootGuide,
+      id: "33333333-3333-4333-8333-333333333333",
+      current_path: "about/agents",
+      current_version_id: "44444444-4444-4444-8444-444444444444",
+      body_markdown: "Unique about instructions body",
+    };
+    const tasksGuide = {
+      ...rootGuide,
+      id: "55555555-5555-4555-8555-555555555555",
+      current_path: "about/tasks/agents",
+      current_version_id: "66666666-6666-4666-8666-666666666666",
+      body_markdown: "Unique task instructions body",
+    };
+    const placesGuide = {
+      ...rootGuide,
+      id: "77777777-7777-4777-8777-777777777777",
+      current_path: "places/agents",
+      current_version_id: "88888888-8888-4888-8888-888888888888",
+      body_markdown: "Unique place instructions body",
+    };
+    const rootWithUniqueBody = { ...rootGuide, body_markdown: "Unique root instructions body" };
+    const pages = {
+      async guidesForPath(path: string) {
+        if (path.startsWith("about/tasks/")) return [rootWithUniqueBody, aboutGuide, tasksGuide];
+        if (path.startsWith("about/")) return [rootWithUniqueBody, aboutGuide];
+        if (path.startsWith("places/")) return [rootWithUniqueBody, placesGuide];
+        return [rootWithUniqueBody];
+      },
+    } as unknown as PageRepository;
+
+    const aboutPreparation = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 40,
+      method: "tools/call",
+      params: {
+        name: "prepare_knowledge_write",
+        arguments: { target_path: "about/profile" },
+      },
+    });
+    const aboutPrepared = aboutPreparation.result?.content?.[0]?.text ?? "";
+    const aboutReceipt = aboutPrepared.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
+    expect(aboutReceipt).toBeTruthy();
+    expect(aboutPrepared).toContain("Unique root instructions body");
+    expect(aboutPrepared).toContain("Unique about instructions body");
+
+    const tasksPreparation = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 41,
+      method: "tools/call",
+      params: {
+        name: "prepare_knowledge_write",
+        arguments: {
+          target_path: "about/tasks/daily-review",
+          cached_guidance_receipt: aboutReceipt,
+        },
+      },
+    });
+    const tasksPrepared = tasksPreparation.result?.content?.[0]?.text ?? "";
+    const tasksReceipt = tasksPrepared.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
+    expect(tasksReceipt).toBeTruthy();
+    expect(tasksPrepared).toContain("CACHE_STATUS: Reused 2 unchanged guides; loaded 1 new or changed guide.");
+    expect(tasksPrepared).toContain("CACHED: Root AGENTS.md");
+    expect(tasksPrepared).toContain("CACHED: about/AGENTS.md");
+    expect(tasksPrepared).toContain("LOADED: about/tasks/AGENTS.md");
+    expect(tasksPrepared).not.toContain("Unique root instructions body");
+    expect(tasksPrepared).not.toContain("Unique about instructions body");
+    expect(tasksPrepared).toContain("Unique task instructions body");
+    expect(tasksPrepared).toContain("BEGIN GUIDE 3/3: about/tasks/AGENTS.md");
+    expect(verifyGuidanceReceipt(tasksReceipt!, [rootWithUniqueBody, aboutGuide, tasksGuide])).toBe(true);
+
+    const placesPreparation = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 42,
+      method: "tools/call",
+      params: {
+        name: "prepare_knowledge_write",
+        arguments: {
+          target_path: "places/london",
+          cached_guidance_receipt: tasksReceipt,
+        },
+      },
+    });
+    const placesPrepared = placesPreparation.result?.content?.[0]?.text ?? "";
+    expect(placesPrepared).toContain("CACHE_STATUS: Reused 1 unchanged guide; loaded 1 new or changed guide.");
+    expect(placesPrepared).not.toContain("Unique root instructions body");
+    expect(placesPrepared).toContain("Unique place instructions body");
+    expect(placesPrepared).toContain("GUIDES_NO_LONGER_APPLICABLE:");
+    expect(placesPrepared).toContain("- about/AGENTS.md");
+    expect(placesPrepared).toContain("- about/tasks/AGENTS.md");
+  });
+
   test("directs a mutation without current guidance to the exact preparation call", async () => {
     const calls: unknown[] = [];
     const pages = pagesWithGuidance({
@@ -255,13 +348,14 @@ describe("MCP knowledge tools", () => {
     expect(response.result?.content?.[0]?.text).toBe([
       "GUIDANCE_REQUIRED",
       'Call prepare_knowledge_write with {"target_path":"about/tasks/daily-review"}.',
+      "If you have a previously returned receipt, also pass it as cached_guidance_receipt so unchanged guides are not repeated.",
       "Then retry create_page with the returned guidance_receipt.",
     ].join("\n\n"));
     expect(response.result?.structuredContent).toBeUndefined();
     expect(calls).toEqual([]);
   });
 
-  test("accepts the receipt returned by preparation across stateless MCP calls", async () => {
+  test("reuses a receipt across stateless calls and targets with the same guide chain", async () => {
     const calls: unknown[] = [];
     const pages = pagesWithGuidance({
       async create(input: unknown) {
@@ -299,13 +393,82 @@ describe("MCP knowledge tools", () => {
     });
 
     expect(mutation.result?.isError).not.toBe(true);
-    expect(calls).toEqual([{
-      path: "about/intro",
-      title: "Introduction",
-      summary: "A concise introduction to the owner.",
-      body_markdown: "Introduction.",
-      commit_message: "Create introduction",
-    }]);
+    const siblingMutation = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 16,
+      method: "tools/call",
+      params: {
+        name: "create_page",
+        arguments: {
+          path: "library/notes",
+          title: "Notes",
+          summary: "A durable collection of notes.",
+          body_markdown: "Notes.",
+          commit_message: "Create notes",
+          guidance_receipt: receipt,
+        },
+      },
+    });
+
+    expect(siblingMutation.result?.isError).not.toBe(true);
+    expect(calls).toEqual([
+      {
+        path: "about/intro",
+        title: "Introduction",
+        summary: "A concise introduction to the owner.",
+        body_markdown: "Introduction.",
+        commit_message: "Create introduction",
+      },
+      {
+        path: "library/notes",
+        title: "Notes",
+        summary: "A durable collection of notes.",
+        body_markdown: "Notes.",
+        commit_message: "Create notes",
+      },
+    ]);
+  });
+
+  test("rejects a parent receipt before writing in a folder with a newly applicable guide", async () => {
+    const calls: unknown[] = [];
+    const localGuide = {
+      ...rootGuide,
+      current_path: "library/private/agents",
+      current_version_id: "99999999-9999-4999-8999-999999999999",
+      body_markdown: "Private library guidance",
+    };
+    const pages = {
+      async guidesForPath() {
+        return [rootGuide, localGuide];
+      },
+      async create(input: unknown) {
+        calls.push(input);
+        return input;
+      },
+    } as unknown as PageRepository;
+
+    const mutation = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 44,
+      method: "tools/call",
+      params: {
+        name: "create_page",
+        arguments: {
+          path: "library/private/notes",
+          title: "Private notes",
+          summary: "Private notes governed by the local library guide.",
+          body_markdown: "Notes.",
+          commit_message: "Create private notes",
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+
+    expect(mutation.result?.isError).toBe(true);
+    expect(mutation.result?.content?.[0]?.text).toContain(
+      'prepare_knowledge_write with {"target_path":"library/private/notes"}',
+    );
+    expect(calls).toEqual([]);
   });
 
   test("deletes only an inspected empty directory and reports content blockers", async () => {
@@ -414,6 +577,25 @@ describe("MCP knowledge tools", () => {
       'prepare_knowledge_write with {"target_path":"about/intro"}',
     );
     expect(calls).toEqual([]);
+
+    const refreshed = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 43,
+      method: "tools/call",
+      params: {
+        name: "prepare_knowledge_write",
+        arguments: {
+          target_path: "about/intro",
+          cached_guidance_receipt: staleReceipt,
+        },
+      },
+    });
+    const refreshedGuidance = refreshed.result?.content?.[0]?.text ?? "";
+    const refreshedReceipt = refreshedGuidance.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
+    expect(refreshedGuidance).toContain("CACHE_STATUS: Reused 0 unchanged guides; loaded 1 new or changed guide.");
+    expect(refreshedGuidance).toContain("REPLACED_CACHED_GUIDES:\n- Root AGENTS.md");
+    expect(refreshedGuidance).toContain("Changed root guide");
+    expect(verifyGuidanceReceipt(refreshedReceipt!, [changedRoot])).toBe(true);
   });
 
   test("resolves an ID-only mutation target before directing guidance recovery", async () => {
@@ -445,6 +627,7 @@ describe("MCP knowledge tools", () => {
     expect(response.result?.content?.[0]?.text).toBe([
       "GUIDANCE_REQUIRED",
       'Call prepare_knowledge_write with {"target_path":"library/private/recording"}.',
+      "If you have a previously returned receipt, also pass it as cached_guidance_receipt so unchanged guides are not repeated.",
       "Then retry archive_asset with the returned guidance_receipt.",
     ].join("\n\n"));
     expect(archiveCalls).toEqual([]);
@@ -672,6 +855,8 @@ describe("MCP knowledge tools", () => {
     expect(createPage?.description).toContain("body_markdown schema");
     expect(createPage?.inputSchema?.properties?.body_markdown?.description).toContain("layout=half");
     expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_knowledge_write");
+    expect(knowledge.result?.tools?.find(({ name }) => name === "prepare_knowledge_write")?.inputSchema?.properties)
+      .toHaveProperty("cached_guidance_receipt");
     for (const name of [
       "create_directory",
       "update_directory",
