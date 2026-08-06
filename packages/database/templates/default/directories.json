@@ -15,6 +15,10 @@
     "title": "Activity distiller",
     "summary": "Canonical instructions and minimal checkpoint state for reconciling connected activity into maintained knowledge."
   },
+  "automations/guideline-consistency-review": {
+    "title": "Guideline consistency review",
+    "summary": "Canonical instructions for reviewing only recently changed pages against the owner's current guide hierarchy."
+  },
   "companies": {
     "title": "Companies",
     "summary": "Companies the owner works with, is considering, competes with, or follows, described factually and with dates."

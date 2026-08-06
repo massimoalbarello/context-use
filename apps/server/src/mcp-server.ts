@@ -275,6 +275,29 @@ export async function createMcpServer(
     return jsonContent(await pages.searchMetadata(query, { limit }));
   });
 
+  server.registerTool("get_knowledge_changes", {
+    description: "Read the durable, context-use-recorded page changes after the opaque cursor from the previous successful automation run. The ledger contains paths and commit metadata but never bodies or diffs. Within the fixed scan window, multiple edits to one page collapse to its latest change. Omit cursor only on the first run. When has_more is true, call again with next_page_token and no cursor; persist next_cursor in the external harness only after every page has been reviewed and the run has completed successfully. Use get_page_version with each returned page_id and version_number to inspect that exact changed version.",
+    inputSchema: z.object({
+      cursor: z.string().regex(/^cu-page-changes-v1\.[0-9a-z]+$/).optional()
+        .describe("Opaque next_cursor persisted by the harness after the previous successful complete scan."),
+      page_token: z.string().regex(/^cu-page-scan-v1\.[0-9a-z]+\.[0-9a-z]+\.[0-9a-z]+$/).optional()
+        .describe("Opaque next_page_token from the preceding call in this scan; omit cursor when using it."),
+      limit: z.number().int().min(1).max(500).default(200)
+        .describe("Maximum distinct changed pages to return in this page."),
+    }).strict().superRefine((value, context) => {
+      if (value.cursor && value.page_token) {
+        context.addIssue({ code: "custom", message: "Provide a cursor or page_token, not both" });
+      }
+    }),
+    annotations: { readOnlyHint: true },
+  }, async ({ cursor, page_token, limit }) => {
+    return jsonObjectContent(await pages.changesSince({
+      ...(cursor ? { cursor } : {}),
+      ...(page_token ? { pageToken: page_token } : {}),
+      limit,
+    }));
+  });
+
   server.registerTool("get_page_history", {
     description: "List immutable versions and commit attribution for a page.",
     inputSchema: z.object({ page_id: z.string().uuid() }).strict(),

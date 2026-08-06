@@ -149,6 +149,55 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
+  test("page change history is body-free, harness-readable, and database-authored only", async () => {
+    const columns = await admin.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='knowledge_page_changes'
+       ORDER BY ordinal_position`,
+    );
+    expect(columns.rows.map(({ column_name }) => column_name)).toEqual([
+      "change_sequence",
+      "page_id",
+      "version_id",
+      "version_number",
+      "change_kind",
+      "path",
+      "title",
+      "commit_message",
+      "actor_kind",
+      "actor_subject",
+      "changed_at",
+    ]);
+    for (const role of ["context_use_dashboard", "context_use_mcp", "context_use_backup"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege($1,'knowledge_page_changes','SELECT') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(true);
+    }
+    for (const role of ["context_use_auth", "context_use_public", "context_use_confirmation", "context_use_storage"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege($1,'knowledge_page_changes','SELECT') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    for (const role of [
+      "context_use_auth",
+      "context_use_dashboard",
+      "context_use_mcp",
+      "context_use_public",
+      "context_use_confirmation",
+      "context_use_storage",
+      "context_use_backup",
+    ]) {
+      for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
+        expect((await admin.query<{ allowed: boolean }>(
+          "SELECT has_table_privilege($1,'knowledge_page_changes',$2) AS allowed",
+          [role, privilege],
+        )).rows[0]?.allowed).toBe(false);
+      }
+    }
+  });
+
   test("only the dashboard can stage a permanent page deletion", async () => {
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_any_column_privilege('context_use_dashboard','page_deletion_intents','INSERT') AS allowed",
@@ -568,6 +617,11 @@ describeDatabase("PostgreSQL security roles", () => {
       expect((await admin.query("SELECT 1 FROM knowledge_page_versions WHERE page_id=$1", [pageId])).rowCount).toBe(0);
       expect((await admin.query("SELECT 1 FROM page_deletion_intents WHERE id=$1", [intentId])).rowCount).toBe(0);
       expect((await admin.query("SELECT counter FROM passkey WHERE id='test-passkey'")).rows[0]?.counter).toBe(1);
+      expect((await admin.query<{ change_kind: string; path: string }>(
+        `SELECT change_kind,path FROM knowledge_page_changes
+         WHERE page_id=$1 AND change_kind='deleted'`,
+        [pageId],
+      )).rows).toEqual([{ change_kind: "deleted", path: "test/permanent-page-deletion" }]);
     } finally {
       await admin.query("ROLLBACK");
     }

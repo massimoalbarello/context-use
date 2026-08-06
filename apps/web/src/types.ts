@@ -41,6 +41,26 @@ export type Version = {
   created_at: string;
 };
 
+export type KnowledgePageChange = {
+  cursor: string;
+  page_id: string;
+  version_id: string;
+  version_number: number;
+  change_kind: "created" | "updated" | "archived" | "deleted";
+  path: string;
+  title: string;
+  commit_message: string;
+  actor_kind: "dashboard" | "mcp" | null;
+  actor_subject: string | null;
+  changed_at: string;
+};
+
+export type KnowledgePageChangeBatch = {
+  changes: KnowledgePageChange[];
+  next_cursor: string;
+  has_more: boolean;
+};
+
 export type Directory = {
   id: string;
   current_path: string;

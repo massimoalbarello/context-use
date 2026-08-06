@@ -22,6 +22,9 @@ export {
   PageRepository,
   PublicationStateError,
   VersionConflictError,
+  type KnowledgePageChange,
+  type KnowledgePageChangeBatch,
+  type KnowledgePageChangeKind,
 } from "./pages.ts";
 export {
   AssetArchiveConflictError,

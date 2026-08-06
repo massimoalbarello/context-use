@@ -10,6 +10,110 @@ import type {
 import { extractAssetLinks, normalizeInternalPageLinks } from "./links.ts";
 import { prunePageVersions } from "./page-retention.ts";
 
+const CHANGE_CURSOR_PREFIX = "cu-page-changes-v1.";
+const CHANGE_PAGE_TOKEN_PREFIX = "cu-page-scan-v1.";
+const MAX_BIGINT = 9_223_372_036_854_775_807n;
+
+export type KnowledgePageChangeKind = "created" | "updated" | "archived" | "deleted";
+
+export type KnowledgePageChange = {
+  cursor: string;
+  page_id: string;
+  version_id: string;
+  version_number: number;
+  change_kind: KnowledgePageChangeKind;
+  path: string;
+  title: string;
+  commit_message: string;
+  actor_kind: Actor["kind"] | null;
+  actor_subject: string | null;
+  changed_at: Date | string;
+};
+
+export type KnowledgePageChangeBatch = {
+  changes: KnowledgePageChange[];
+  next_cursor: string;
+  next_page_token?: string;
+  has_more: boolean;
+};
+
+type KnowledgePageChangeRow = Omit<KnowledgePageChange, "cursor"> & {
+  change_sequence: string;
+};
+
+function parseBase36(value: string): bigint {
+  if (!/^[0-9a-z]+$/.test(value)) throw new Error("Invalid knowledge page change cursor");
+  let result = 0n;
+  for (const character of value) {
+    const digit = BigInt(parseInt(character, 36));
+    result = result * 36n + digit;
+    if (result > MAX_BIGINT) throw new Error("Invalid knowledge page change cursor");
+  }
+  return result;
+}
+
+function changeCursor(sequence: string | bigint): string {
+  return `${CHANGE_CURSOR_PREFIX}${BigInt(sequence).toString(36)}`;
+}
+
+function parseChangeCursor(cursor?: string): bigint {
+  if (!cursor) return 0n;
+  if (!cursor.startsWith(CHANGE_CURSOR_PREFIX)) {
+    throw new Error("Invalid knowledge page change cursor");
+  }
+  return parseBase36(cursor.slice(CHANGE_CURSOR_PREFIX.length));
+}
+
+function pageToken(after: bigint, through: bigint, position: bigint): string {
+  return `${CHANGE_PAGE_TOKEN_PREFIX}${after.toString(36)}.${through.toString(36)}.${position.toString(36)}`;
+}
+
+function parsePageToken(token: string): { after: bigint; through: bigint; position: bigint } {
+  if (!token.startsWith(CHANGE_PAGE_TOKEN_PREFIX)) {
+    throw new Error("Invalid knowledge page change page token");
+  }
+  const parts = token.slice(CHANGE_PAGE_TOKEN_PREFIX.length).split(".");
+  if (parts.length !== 3) throw new Error("Invalid knowledge page change page token");
+  const after = parseBase36(parts[0]!);
+  const through = parseBase36(parts[1]!);
+  const position = parseBase36(parts[2]!);
+  if (after > position || position > through) {
+    throw new Error("Invalid knowledge page change page token");
+  }
+  return { after, through, position };
+}
+
+function pageChange(row: KnowledgePageChangeRow): KnowledgePageChange {
+  const { change_sequence, ...change } = row;
+  return { cursor: changeCursor(change_sequence), ...change };
+}
+
+async function knowledgeChangeWindowHead(pool: Pool, after: bigint): Promise<bigint> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Ledger writers take this same transaction lock before allocating their
+    // sequence. Query max in the following READ COMMITTED statement so every
+    // writer serialized before this cutoff is visible and every later writer
+    // receives a sequence above it.
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended('knowledge-page-change-ledger',0))",
+    );
+    const head = await client.query<{ change_sequence: string }>(
+      `SELECT GREATEST($1::bigint,COALESCE(max(change_sequence),0))::text AS change_sequence
+       FROM knowledge_page_changes`,
+      [after.toString()],
+    );
+    await client.query("COMMIT");
+    return BigInt(head.rows[0]?.change_sequence ?? after);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export class VersionConflictError extends Error {
   constructor(readonly currentVersion: number) {
     super(`Page changed; current version is ${currentVersion}`);
@@ -254,6 +358,80 @@ export class PageRepository {
       [pageId, versionNumber],
     );
     return result.rows[0] ?? null;
+  }
+
+  async changesSince(options: {
+    cursor?: string;
+    pageToken?: string;
+    limit?: number;
+  } = {}): Promise<KnowledgePageChangeBatch> {
+    if (options.cursor && options.pageToken) {
+      throw new Error("Provide a cursor or page token, not both");
+    }
+    const limit = Math.min(Math.max(options.limit ?? 200, 1), 500);
+    let after: bigint;
+    let through: bigint;
+    let position: bigint;
+    if (options.pageToken) {
+      ({ after, through, position } = parsePageToken(options.pageToken));
+    } else {
+      after = parseChangeCursor(options.cursor);
+      through = await knowledgeChangeWindowHead(this.pool, after);
+      position = after;
+    }
+    const result = await this.pool.query<KnowledgePageChangeRow>(
+      `WITH latest_per_page AS (
+         SELECT DISTINCT ON (page_id)
+           change_sequence,page_id,version_id,version_number,change_kind,path,title,
+           commit_message,actor_kind,actor_subject,changed_at
+         FROM knowledge_page_changes
+         WHERE change_sequence>$1::bigint AND change_sequence<=$2::bigint
+         ORDER BY page_id,change_sequence DESC
+       )
+       SELECT change_sequence::text AS change_sequence,page_id,version_id,version_number,
+         change_kind,path,title,commit_message,actor_kind,actor_subject,changed_at
+       FROM latest_per_page
+       WHERE change_sequence>$3::bigint
+       ORDER BY change_sequence
+       LIMIT $4`,
+      [after.toString(), through.toString(), position.toString(), limit + 1],
+    );
+    const hasMore = result.rows.length > limit;
+    const included = result.rows.slice(0, limit);
+    const lastPosition = included.length
+      ? BigInt(included[included.length - 1]!.change_sequence)
+      : position;
+    return {
+      changes: included.map(pageChange),
+      next_cursor: changeCursor(through),
+      ...(hasMore ? { next_page_token: pageToken(after, through, lastPosition) } : {}),
+      has_more: hasMore,
+    };
+  }
+
+  async recentChanges(options: {
+    before?: string;
+    limit?: number;
+  } = {}): Promise<KnowledgePageChangeBatch> {
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
+    const before = options.before ? parseChangeCursor(options.before) : null;
+    const result = await this.pool.query<KnowledgePageChangeRow>(
+      `SELECT change_sequence::text AS change_sequence,page_id,version_id,version_number,
+         change_kind,path,title,commit_message,actor_kind,actor_subject,changed_at
+       FROM knowledge_page_changes
+       WHERE ($1::bigint IS NULL OR change_sequence<$1::bigint)
+       ORDER BY change_sequence DESC
+       LIMIT $2`,
+      [before?.toString() ?? null, limit + 1],
+    );
+    const hasMore = result.rows.length > limit;
+    const included = result.rows.slice(0, limit);
+    const oldest = included[included.length - 1];
+    return {
+      changes: included.map(pageChange),
+      next_cursor: oldest ? changeCursor(oldest.change_sequence) : options.before ?? changeCursor(0n),
+      has_more: hasMore,
+    };
   }
 
 }

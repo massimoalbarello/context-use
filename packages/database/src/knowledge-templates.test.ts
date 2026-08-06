@@ -26,6 +26,7 @@ const DEFAULT_DIRECTORY_PATHS = [
   "about/projects",
   "about/tasks",
   "automations/activity-distiller",
+  "automations/guideline-consistency-review",
 ];
 
 function repositories(options: {
@@ -207,16 +208,18 @@ describe("knowledge templates", () => {
       "about/projects",
       "about/tasks",
       "automations/activity-distiller",
+      "automations/guideline-consistency-review",
     ]);
     expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(14);
     expect(result.actions.filter(({ action }) => action === "create-page").map(({ path }) => path)).toEqual([
       "automations/activity-distiller/instructions",
       "automations/activity-distiller/state",
+      "automations/guideline-consistency-review/instructions",
     ]);
     expect(state.createdDirectories).toEqual([]);
     expect(state.createdPages).toEqual([]);
     expect(formatTemplateResult(result)).toContain("+ create-directory library");
-    expect(formatTemplateResult(result)).toContain("✓ Planned 30 changes; 0 conflicts.");
+    expect(formatTemplateResult(result)).toContain("✓ Planned 32 changes; 0 conflicts.");
     expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
   });
 
@@ -264,7 +267,7 @@ describe("knowledge templates", () => {
       path: "places",
       detail: "Directory metadata differs from the template; preserve local metadata",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 18 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 19 changes; 1 conflict.");
   });
 
   test("surfaces directory metadata drift without overwriting local presentation", async () => {
@@ -306,6 +309,11 @@ describe("knowledge templates", () => {
         title: "Activity distiller state",
         summary: "The current opaque source checkpoint for the activity distiller.",
         body_markdown: "# Activity distiller state\n\n**Checkpoint:** _none_\n",
+      });
+    expect(state.createdPageInputs.find(({ path }) => path === "automations/guideline-consistency-review/instructions"))
+      .toMatchObject({
+        title: "Guideline consistency review",
+        body_markdown: expect.stringContaining("## Select the fixed change window"),
       });
   });
 
@@ -442,13 +450,13 @@ describe("knowledge templates", () => {
     const result = await reconcileKnowledgeTemplate(state.value, "default", true);
 
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(state.createdPages).toHaveLength(14);
+    expect(state.createdPages).toHaveLength(15);
     expect(result.actions).toContainEqual({
       action: "conflict",
       path: "people/agents",
       detail: "Preserve locally modified guide",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 15 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 16 changes; 1 conflict.");
     expect(formatTemplateResult(result)).toContain("~ update-guide     agents");
     expect(formatTemplateResult(result)).toContain("! conflict         people/agents");
     expect(formatTemplateResult(result, true)).toContain("\u001B[31m!\u001B[0m conflict");
@@ -500,7 +508,7 @@ describe("knowledge templates", () => {
 
     const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(formatTemplateResult(applied)).toContain("Applied 15 changes; 1 conflict.");
+    expect(formatTemplateResult(applied)).toContain("Applied 16 changes; 1 conflict.");
   });
 
   test("reports page collisions without removing or overwriting existing knowledge", async () => {
