@@ -1,7 +1,8 @@
 # People conventions
 
 **One folder per person** at `people/<first-last>/` — lowercase, hyphenated, the name
-they actually go by — entered through `intro`.
+they actually go by — entered through `intro`, as
+[[agents#entities-are-folders-and-views-are-pages|every entity is]].
 
     people/<first-last>/
     ├── intro                  — who they are and how the owner knows them
@@ -18,8 +19,9 @@ because it makes the folder look answered.
 
 - **`intro`** — who they are, how the owner knows them, one line on what they are doing
   now. Links to their company; never explains it.
-- **`timeline`** — the relationship's material history, newest first. Create it for
-  anyone the owner has interacted with; for a research-only person, wait until the first
+- **`timeline`** — the relationship's material history, under
+  [[agents#durable-pages-and-the-diary|the root timeline rule]]. Create it for anyone the
+  owner has interacted with; for a research-only person, wait until the first
   interaction. It links the canonical meetings, events and diary entries rather than
   repeating them.
 - **`contacts`** — email, phone, handles and where they are based or live. Facts only;
@@ -107,7 +109,7 @@ records it.
 - **Update the timeline with the occurrence.** When creating or updating a meeting,
   event or diary entry that materially advances the relationship, include its timeline
   milestone in the same proposed write. Historical commitments may be named; current
-  ownership, progress and next actions remain in the diary.
+  ownership and next actions remain in the diary.
 - **These are real people.** Keep judgements specific and grounded in something that
   actually happened. Nothing here should be embarrassing if the person read it. Any
   deliberately public-safe page still requires the owner's review before publication.

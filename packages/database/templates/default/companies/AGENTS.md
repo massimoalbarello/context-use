@@ -1,8 +1,9 @@
 # Companies conventions
 
 **One folder per company** at `companies/<slug>/` — lowercase, hyphenated — entered
-through `intro`. Split a topic out as soon as `intro` starts having sections; don't let
-one page become the whole company.
+through `intro`, as [[agents#entities-are-folders-and-views-are-pages|every entity is]].
+Split a topic out as soon as `intro` starts having sections; don't let one page become
+the whole company.
 
     companies/<company-slug>/
     ├── intro                 — what they are, and the links out
@@ -17,10 +18,12 @@ one page become the whole company.
 relates to the company. Reuse an established name when it means the same thing in
 another company folder; add genuinely reusable vocabulary to this guide when it emerges.
 
-**`timeline`** is neither a fact page nor a lens page. It is the owner's material history
-with the company, newest first: meetings, collaborations, transactions, purchases and
-other direct interactions. Create it on the first such interaction; a
-company known only through research does not need one.
+**`timeline`** is neither a fact page nor a lens page. It is the entity timeline defined
+in [[agents#durable-pages-and-the-diary|the root guide]], and here it holds the owner's
+material history with the company: meetings, collaborations, transactions, purchases and
+other direct interactions, including the dated states an active relationship passes
+through. Create it on the first such interaction; a company known only through research
+does not need one.
 
 The split survives because context changes and facts don't — a company may stop fitting
 one relationship while becoming relevant in another, and only the lens pages should
@@ -85,16 +88,16 @@ and states only the durable outcome in one sentence.
   and sourcing plainly. A fact page with an opinion in it stops being trustworthy.
 - **Write lens pages in the owner's first person**, from what they have actually said,
   and mark added reasoning as inference.
-- **A lens page tracks no pursuit** — no status line, no next step. Whether they contacted
-  the company, where an active conversation has got to, what they intend next week: none
-  of that is about the company. Current movement goes in the [[about/diary|diary]];
-  when it is part of a substantial effort, the durable frame belongs in
-  [[about/tasks|about/tasks/]]. When something changes the view itself, edit the page to
-  say what is now thought and let the diary hold what prompted it.
-- **The timeline is completed history, not pursuit state.** Update it in the same
-  proposed write as a meeting, event or diary entry that materially advances the
-  relationship. It may record what was agreed then, but never whether it is still open,
-  who currently owns it or what happens next; the diary owns that changing state.
+- **A lens page says what the owner thinks, never where anything stands** — no status
+  line, no next step. Whether they contacted the company and where a live conversation
+  has got to are dated events, so they belong on the `timeline`; what the owner intends
+  next week belongs in the [[about/diary|diary]], and the durable frame of a substantial
+  effort in [[about/tasks|about/tasks/]]. When something changes the view itself, edit
+  the lens page to say what is now thought and let the diary hold what prompted it.
+- **Update the timeline with the occurrence.** Add its dated line in the same proposed
+  write as the meeting, event or diary entry that materially advances the relationship,
+  under [[agents#durable-pages-and-the-diary|the root rule]]: what changed and when, in
+  one sentence, never who currently owns it or what happens next.
 - **Keep only one company chronology.** Company facts still belong on fact pages and the
   owner's judgement still belongs on lens pages. The timeline links their historical
   causes where useful instead of restating either account.

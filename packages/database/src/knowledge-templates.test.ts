@@ -504,8 +504,10 @@ describe("knowledge templates", () => {
       expect(root).toContain(`[[${guide}|`);
     }
     expect(root).toContain("This guide defines only conventions that apply everywhere");
-    expect(normalizedRoot).toContain("only place that says where ongoing work currently stands");
-    expect(normalizedRoot).toContain("curated, dated index of completed history");
+    expect(normalizedRoot).toContain("## Entities are folders and views are pages");
+    expect(normalizedRoot).toContain("Anything with its own identity gets a folder");
+    expect(normalizedRoot).toContain("A `timeline` is optional and curated, never exhaustive");
+    expect(normalizedRoot).toContain("is state with no date on it");
     expect(root).toContain("A deliberately public-safe page still");
     expect(root).not.toContain("people/<first-last>");
     expect(root).not.toContain("meetings/<YYYY>");
@@ -518,9 +520,9 @@ describe("knowledge templates", () => {
     expect(normalizedAbout).toContain("not prescribed categories, reserved names or instructions to create folders");
     expect(about).not.toContain("chapters/");
     expect(about).not.toContain("about/intro");
-    expect(normalizedCompanies).toContain("part of a substantial effort");
-    expect(diary).toContain("Current state remains in the diary");
-    expect(diary).toContain("## Relationship timelines");
+    expect(normalizedCompanies).toContain("the durable frame of a substantial effort");
+    expect(diary).toContain("`timeline` so its dated states can be read from the entity itself");
+    expect(diary).toContain("## Entity timelines");
     expect(diary).toContain("timeline is curated history");
     expect(diary).not.toContain("frame or criteria");
     expect(diary).toContain("how automation-owned companion pages are maintained");
@@ -534,10 +536,10 @@ describe("knowledge templates", () => {
     expect(library).toContain("never infer a summary from the title alone");
     expect(meetings).toContain("## Commitments made");
     expect(normalizedMeetings).toContain("The owner's read at the time");
-    expect(meetings).toContain("Add this meeting to each participant's");
+    expect(meetings).toContain("Index every entity this moved");
     expect(meetings).not.toContain("## Follow-ups");
     expect(objects).toContain("not a product catalogue or an inventory");
-    expect(objects).toContain("Current progress remains in the diary");
+    expect(objects).toContain("Dated history, never a to-do");
     expect(people).toContain("company, meeting, link, handle");
     expect(people).toContain("timeline` is the sole reverse index");
     expect(people).toContain("material things the owner and person have done together");
@@ -545,11 +547,11 @@ describe("knowledge templates", () => {
     expect(people).toContain("independently meets its creation");
     expect(people).not.toContain("immigration");
     expect(companies).toContain("material things the owner and company have done together");
-    expect(normalizedCompanies).toContain("timeline is completed history, not pursuit state");
-    expect(events).toContain("Index material relationship milestones");
+    expect(normalizedCompanies).toContain("A lens page says what the owner thinks, never where anything stands");
+    expect(events).toContain("Index every entity this moved");
     expect(normalizedPlaces).toContain("not a gazetteer of every location mentioned");
-    expect(places).toContain("Current progress remains in the diary");
-    expect(tasks).toContain("Beyond `intro`, there are no default names");
+    expect(places).toContain("Dated history, never a plan");
+    expect(tasks).toContain("Beyond `intro` and `timeline`, there are no default names");
     expect(tasks).toContain("which can resolve or close");
     expect(tasks).toContain("[[about/projects/agents|projects]]");
     expect(tasks).not.toContain("criteria");

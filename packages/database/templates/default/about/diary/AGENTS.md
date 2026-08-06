@@ -69,29 +69,32 @@ Before writing anything, ask: **will this still matter on its own in a month?**
 | --- | --- |
 | How the day felt, a passing observation | the log |
 | Working notes or a draft that only matter today | day folder page, linked from the log |
-| A call, a conference, someone new, a company | the owning [[meetings/agents|meeting]], [[events/agents|event]], [[people/agents|person]] or [[companies/agents|company]] page; the log links, and a material relationship milestone is indexed on the entity timeline |
+| A call, a conference, someone new, a company | the owning [[meetings/agents|meeting]], [[events/agents|event]], [[people/agents|person]] or [[companies/agents|company]] page; the log links, and a material milestone is indexed on the entity timeline |
 | A new idea, or a decision and its reasoning | the durable page for the subject; the log keeps the lived reasoning |
 | A preference, taste, habit or belief articulated | a durable owner page, following the instance's organization under `about/` |
-| An open loop still open tomorrow | the log links the durable subject, [[about/projects/agents|project]] or [[about/tasks/agents|task]] that gives it context; current state remains in the diary |
+| An open loop still open tomorrow | the log links the durable subject, [[about/projects/agents|project]] or [[about/tasks/agents|task]] that gives it context; anything that changed an entity's state also gets its dated line on that entity's timeline |
 
 The log carries **pointers and lived texture, never canonical content**. A fact that
 exists only inside a diary entry is trapped — the failure mode this directory exists to
 avoid. When you find one in an older log, promote it: create or update the durable page,
 then reduce the log line to a sentence and a link.
 
-## Relationship timelines
+## Entity timelines
 
-When a day's entry records a material interaction with a person or company, create or
-update that entity's `timeline` in the same proposed write. The diary owns what happened
-that day and where things currently stand; the entity timeline merely makes the durable
-relationship history findable from that entity.
+When a day's entry records something that changed an entity's state — a material
+interaction with a person or company, an application sent, a milestone reached, a thing
+acquired — create or update that entity's `timeline` in the same proposed write, under
+[[agents#durable-pages-and-the-diary|the root rule]]. The diary owns the day's account;
+the entity timeline is what lets an agent read where one thing stands without walking
+back through a month of logs.
 
 - Link the canonical meeting or event when one exists; otherwise link the most specific
-  diary page that records the interaction.
-- Add one short, dated milestone saying what the owner and entity did together and what
-  durably changed. Do not copy the account from its source.
-- Do not add casual mentions, current status, pending commitments or next actions. A
-  timeline is curated history; search remains the exhaustive occurrence list.
+  diary page that records it.
+- Add one short, dated line saying what changed. Do not copy the account from its source.
+- Put it on the smallest entity it is true of. An application's history belongs to that
+  application, not to the effort containing it.
+- No casual mentions, no next actions, no undated status. A timeline is curated history;
+  search remains the exhaustive occurrence list.
 
 ## Continuity
 
@@ -112,8 +115,9 @@ reading today can retrieve the context instead of guessing at it.
 
 **Continuity is not a substitute for a durable home.** If a chain runs past a week, or
 you find yourself reading three logs to reconstruct the state of something, that thing
-needs its own durable page — create one for the subject, [[about/projects/agents|project]]
-or task frame and let the days link to it. Current state remains in the diary.
+needs its own durable page — create one for the subject,
+[[about/projects/agents|project]] or task frame, let the days link to it, and give it a
+`timeline` so its dated states can be read from the entity itself.
 
 ## Automations in the diary
 
@@ -150,7 +154,10 @@ how automation-owned companion pages are maintained inside a day folder:
 - Start at today's `log` and walk back day by day; about a week is usually enough.
   Follow `continues` links rather than reading every intervening day — that is the point
   of them. Follow outward links for background: a log tells you *what happened*, the
-  durable page tells you *what is true*.
+  durable page tells you *what is true*, and its timeline tells you *what it has been
+  through*.
+- When the question is about one subject rather than the last few days, start at that
+  entity's `timeline` instead of sweeping the diary.
 - Logs are snapshots of a moment. Don't treat a mood, plan or open loop from an old
   entry as current without checking later days.
 - **Weekly:** scan the last seven logs for anything mentioned twice or more. Repetition

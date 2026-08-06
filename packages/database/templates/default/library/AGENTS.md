@@ -8,11 +8,12 @@ finding again.
 
 ## One work, one folder
 
-Create one folder per saved work at `library/<meaningful-slug>/`, entered through
-`intro`. The slug, folder title and `intro` page title should make the subject or creator
-recognisable in a directory listing; shorten a long original title rather than copying
-it mechanically. Prefer `<creator>-<topic>` when the title alone is vague or likely to
-collide.
+A saved work is an entity, so it gets a folder
+([[agents#entities-are-folders-and-views-are-pages|root rule]]): one per work at
+`library/<meaningful-slug>/`, entered through `intro`. The slug, folder title and `intro`
+page title should make the subject or creator recognisable in a directory listing;
+shorten a long original title rather than copying it mechanically. Prefer
+`<creator>-<topic>` when the title alone is vague or likely to collide.
 
     library/<meaningful-slug>/
     ├── intro       — the canonical account of the work
@@ -64,6 +65,9 @@ Delete empty metadata and connection lines rather than leaving placeholders. The
 `intro` page's one-sentence summary should follow the same standard as the folder
 summary: say what the item is and why it is useful to remember, not merely its format or
 title.
+
+A saved work is fixed once published, so it has no timeline. What the owner did with it
+over time belongs to whatever the work changed, and to the diary.
 
 ## Local rules
 

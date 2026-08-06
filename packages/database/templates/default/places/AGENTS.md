@@ -7,9 +7,10 @@ of every location mentioned in a meeting or diary entry.
 
 ## Structure
 
-One folder per place at `places/<meaningful-slug>/`, entered through `intro`. Prefer the
-name people actually use. Add a locality only to disambiguate similar names; avoid a
-street address in the path.
+One folder per place at `places/<meaningful-slug>/`, entered through `intro`, as
+[[agents#entities-are-folders-and-views-are-pages|every entity is]]. Prefer the name
+people actually use. Add a locality only to disambiguate similar names; avoid a street
+address in the path.
 
     places/<place-slug>/
     ├── intro       — what and where it is, and why it matters
@@ -45,9 +46,10 @@ repetition or durable significance makes a canonical page useful.
     ## 2026
     - **28 July** — [[events/…|Moved in]] — began using it as a family home.
 
-Use descending years and newest-first entries within each year. Include only changes or
-milestones that make the place's history intelligible, linking their canonical pages.
-Ordinary visits remain discoverable through search.
+The timeline follows [[agents#durable-pages-and-the-diary|the root rule]]: descending
+years, newest first, only the changes or milestones that make the place's history
+intelligible, each linking its canonical page. Ordinary visits remain discoverable
+through search.
 
 ## Local rules
 
@@ -57,9 +59,9 @@ Ordinary visits remain discoverable through search.
 - **The occurrence remains canonical.** Meetings, events and diary entries say what
   happened at a place. Its page supplies reusable place context and links only the
   milestones that materially changed its own history or significance.
-- **Current progress remains in the diary.** A place timeline can record a completed
-  move, renovation or closure, but never a live moving plan, pending repair or next
-  action.
+- **Dated history, never a plan.** The timeline records a completed move, renovation or
+  closure — including the dated steps of one under way — but never an undated status, a
+  pending repair or a next action; those stay in the diary.
 - **Use the least sensitive location sufficient.** Exact home addresses and access
   instructions are private and should appear only when the owner genuinely needs them;
   never expose them in titles, paths or summaries.
