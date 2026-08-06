@@ -77,6 +77,7 @@ const nangoAccessTokenSchema = z.object({
   sid: z.string().min(1).max(512),
   sub: z.string(),
 }).passthrough();
+const oauthTokenRequestBodyLimit = 64 * 1024;
 
 export const nangoGatewayHeader = "x-context-use-nango-gateway";
 
@@ -93,7 +94,48 @@ function exactNangoScopes(scope: string): boolean {
 function browserAuthRequest(request: Request, removeCookie = false): Request {
   const headers = new Headers(request.headers);
   if (removeCookie) headers.delete("cookie");
-  return new Request(request, { headers });
+  return new Request(request.url, {
+    method: request.method,
+    headers,
+    body: request.body,
+    signal: request.signal,
+  });
+}
+
+function oauthTokenRequestError(description: string, status: number): Response {
+  return Response.json({ error: "invalid_request", error_description: description }, {
+    status,
+    headers: {
+      "cache-control": "no-store",
+      pragma: "no-cache",
+    },
+  });
+}
+
+async function bufferOAuthTokenRequestBody(request: Request): Promise<Request | Response> {
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength !== null
+      && (!/^\d+$/.test(declaredLength) || Number(declaredLength) > oauthTokenRequestBodyLimit)) {
+    return oauthTokenRequestError("request body is too large", 413);
+  }
+  try {
+    // The token route is public. Fully receive its small, edge-bounded body
+    // before taking the owner database lock so a slow unauthenticated upload
+    // cannot keep passkey removal blocked. Rebuild the request with the exact
+    // bytes so Better Auth can consume them normally after the lock is taken.
+    const body = await request.arrayBuffer();
+    if (body.byteLength > oauthTokenRequestBodyLimit) {
+      return oauthTokenRequestError("request body is too large", 413);
+    }
+    return new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body,
+      signal: request.signal,
+    });
+  } catch {
+    return oauthTokenRequestError("request body could not be read", 400);
+  }
 }
 
 async function ownerRequest(request: Request, mutation = false) {
@@ -125,8 +167,14 @@ export const authApp = new Elysia()
   .all("/api/auth/*", async ({ request }) => {
     if (!publicAuthRequestAllowed(request)) return problem("Not found", 404, "not_found");
     await ensureNangoOAuthClient();
-    const sanitized = browserAuthRequest(request);
+    let sanitized = browserAuthRequest(request);
     const pathname = new URL(sanitized.url).pathname;
+
+    if (pathname === "/api/auth/oauth2/token") {
+      const buffered = await bufferOAuthTokenRequestBody(sanitized);
+      if (buffered instanceof Response) return buffered;
+      sanitized = buffered;
+    }
 
     if (pathname === "/api/auth/get-session") {
       if (!await dashboardPrincipal(sanitized)) return json(null);

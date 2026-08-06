@@ -457,6 +457,61 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     }
   });
 
+  test("OAuth token bodies are fully received before taking the owner lock", async () => {
+    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    await client.connect();
+    let releaseBody: () => void = () => {};
+    let bodyReadStarted: () => void = () => {};
+    const bodyCanFinish = new Promise<void>((resolve) => {
+      releaseBody = resolve;
+    });
+    const readingSecondChunk = new Promise<void>((resolve) => {
+      bodyReadStarted = resolve;
+    });
+    const encoder = new TextEncoder();
+    let finishing = false;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode("grant_type=refresh_token&"));
+      },
+      async pull(controller) {
+        if (finishing) return;
+        finishing = true;
+        bodyReadStarted();
+        await bodyCanFinish;
+        controller.enqueue(encoder.encode("client_id=untrusted&refresh_token=untrusted"));
+        controller.close();
+      },
+    });
+    const tokenRequest = new Request(
+      "http://localhost:3000/api/auth/oauth2/token",
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body,
+      },
+    );
+    const pendingResponse = Promise.resolve().then(() => application!.handle(tokenRequest));
+
+    try {
+      await readingSecondChunk;
+      const lock = await client.query<{ locked: boolean }>(
+        "SELECT pg_try_advisory_lock(hashtextextended($1,0)) AS locked",
+        ["context-use-owner"],
+      );
+      expect(lock.rows[0]?.locked).toBe(true);
+      releaseBody();
+      const response = await pendingResponse;
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({ error: "temporarily_unavailable" });
+    } finally {
+      releaseBody();
+      await client.query("SELECT pg_advisory_unlock(hashtextextended($1,0))", ["context-use-owner"]);
+      await client.end();
+    }
+  });
+
   test("Google social sign-in is not configured", async () => {
     const errorLog = spyOn(console, "error").mockImplementation(() => undefined);
     try {
