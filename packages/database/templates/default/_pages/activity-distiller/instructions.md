@@ -220,9 +220,8 @@ not the automation run.
   summary rules; its body contains only the title and a `## Companion pages` section
   with this automation's single bullet. Derive the summary and bullet from the material
   activity, and do not invent a location, narrative, `On my mind` or `Threads` content.
-- Whether the `log` is new or existing, own only this automation's single bullet under
-  `## Companion pages`. Preserve every other byte and never touch another automation's
-  page or bullet.
+- Whether the `log` is new or existing, this automation's share of it is one bullet under
+  `## Companion pages`.
 - Never put checkpoints, record identifiers, source diagnostics or operational details
   in the diary.
 

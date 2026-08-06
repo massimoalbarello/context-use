@@ -564,6 +564,9 @@ describe("knowledge templates", () => {
     expect(automations).toContain("Workflow-specific tool calls");
     expect(automations).toContain("follows [[agents#where-a-page-belongs|the root");
     expect(automations).toContain("intended knowledge effects");
+    expect(automations).toContain("**Automations do not know about each other.**");
+    expect(automations).toContain("An automation owns what it writes and nothing else");
+    expect(normalizedActivityDistiller).not.toContain("another automation");
     expect(automations).not.toContain("permitted knowledge changes");
     expect(automations).not.toContain("state its scope");
     expect(normalizedActivityDistiller).toContain("Call `read_source_records` exactly once");
@@ -574,7 +577,7 @@ describe("knowledge templates", () => {
     expect(normalizedActivityDistiller).toContain("ensure its required `log` exists");
     expect(normalizedActivityDistiller).toContain("body contains only the title and a `## Companion pages` section");
     expect(normalizedActivityDistiller).toContain("do not invent a location, narrative, `On my mind` or `Threads` content");
-    expect(normalizedActivityDistiller).toContain("own only this automation's single bullet");
+    expect(normalizedActivityDistiller).toContain("this automation's share of it is one bullet");
     expect(normalizedActivityDistiller).toContain("state page with this call's `next_checkpoint`");
     expect(normalizedActivityDistiller).toContain("Continue until `has_more` is false");
     expect(normalizedActivityDistiller).toContain("external harness owns the invocation schedule");

@@ -48,9 +48,15 @@ schedule, credentials, process health and operational history.
 - **An automation maintains the timelines it touches.** When its write records something
   that changed an entity's state, the dated line goes on that entity's `timeline` in the
   same write, exactly as an interactive agent would add it.
-- **Access to a shared page is not permission to rewrite someone else's material.** An
-  automation that adds its companion link to the day's log edits that link and nothing
-  else.
+- **Automations do not know about each other.** Several run against this base, and none
+  is written in terms of another: an instruction page never names, links to, coordinates
+  with or defers to a second automation, and never assumes it is the only one writing.
+  They stay out of each other's way through ownership, not cooperation, so this guide is
+  where non-interference is stated and no instruction page repeats it.
+- **An automation owns what it writes and nothing else.** On a page it shares, that means
+  its own lines — the companion bullet it added, not the section holding it. Edit those
+  and leave every other byte as found, whoever wrote it. Access to a page is not
+  permission to rewrite it.
 - **Uncertain or unsupported proposed knowledge is reported through the external
   harness**, not written into the diary or state.
 - An unattended automation is the root guide's preview exception because there is nobody
