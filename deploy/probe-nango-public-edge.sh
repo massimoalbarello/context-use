@@ -61,9 +61,12 @@ connect_token=nango_connect_session_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 connect_auth="Authorization: Bearer ${connect_token}"
 api_key_auth='Authorization: Bearer nango_sk_test_api_key'
 
-# An allowed request reaches the deliberately absent test upstream (502). All
-# ambiguous variants must instead stop at the gateway's default-deny 404.
-probe_status 502 'one Connect bearer is routed' --header "${connect_auth}"
+# An allowed request reaches the deliberately absent test upstream, whose dial
+# failure the gateway's maintenance handler reports as 503. All ambiguous
+# variants must instead stop at the gateway's default-deny 404. A denial is a
+# response rather than an error, so it never reaches that handler and 503
+# remains an unambiguous signal that the request was routed.
+probe_status 503 'one Connect bearer is routed' --header "${connect_auth}"
 probe_status 404 'an API key is rejected' --header "${api_key_auth}"
 probe_status 404 'API key then Connect bearer is rejected' --header "${api_key_auth}" --header "${connect_auth}"
 probe_status 404 'Connect bearer then API key is rejected' --header "${connect_auth}" --header "${api_key_auth}"

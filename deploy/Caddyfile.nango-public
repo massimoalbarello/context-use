@@ -323,4 +323,22 @@
 	handle {
 		respond "Not found" 404
 	}
+
+	# Nango restarts while this gateway keeps serving. A retryable maintenance
+	# response lets provider callbacks and webhook delivery back off instead of
+	# reading an empty 502 as a permanent failure.
+	handle_errors 502 503 504 {
+		# Error routes are a separate route list, so the site's own header block
+		# does not reach them. Repeat the response hardening here.
+		header {
+			-Server
+			Cache-Control "no-store"
+			Content-Type "text/plain; charset=utf-8"
+			Referrer-Policy no-referrer
+			Retry-After 30
+			Strict-Transport-Security "max-age=63072000; includeSubDomains"
+			X-Content-Type-Options nosniff
+		}
+		respond "Context Use is updating. Retry shortly." 503
+	}
 }
