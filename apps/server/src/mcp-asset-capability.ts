@@ -10,9 +10,11 @@ const CAPABILITY_SECONDS: Record<AssetCapabilityAction, number> = {
 };
 
 const capabilityPayloadSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
   action: z.enum(["upload", "download"]),
   assetId: z.string().uuid(),
+  clientId: z.string().min(1).max(512),
+  sessionId: z.string().min(1).max(512),
   expiresAt: z.number().int().positive(),
 }).strict();
 
@@ -28,12 +30,15 @@ function signature(encodedPayload: string): Buffer {
 export function createAssetCapability(
   action: AssetCapabilityAction,
   assetId: string,
+  principal: { clientId: string; sessionId: string },
   now = Date.now(),
 ): { token: string; expiresAt: string } {
   const payload: CapabilityPayload = {
-    version: 1,
+    version: 2,
     action,
     assetId: z.string().uuid().parse(assetId),
+    clientId: z.string().min(1).max(512).parse(principal.clientId),
+    sessionId: z.string().min(1).max(512).parse(principal.sessionId),
     expiresAt: Math.floor(now / 1000) + CAPABILITY_SECONDS[action],
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");

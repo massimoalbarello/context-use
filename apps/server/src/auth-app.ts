@@ -2,7 +2,9 @@ import {
   oauthProviderAuthServerMetadata,
   oauthProviderOpenIdConfigMetadata,
 } from "@better-auth/oauth-provider";
+import { MCP_SCOPE } from "@context-use/shared";
 import { Elysia } from "elysia";
+import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
 import { z } from "zod";
 import {
   auth,
@@ -13,6 +15,11 @@ import {
   touchLiveOwnerSession,
 } from "./auth.ts";
 import { dashboardGatewayHeader } from "./auth-dashboard-gateway.ts";
+import {
+  mcpClientHeader,
+  mcpGatewayHeader,
+  mcpSessionHeader,
+} from "./auth-mcp-gateway.ts";
 import { publicAuthRequestAllowed } from "./auth-protocol.ts";
 import { config, production } from "./config.ts";
 import { forwardBrowserConfirmation } from "./confirmation-gateway.ts";
@@ -77,6 +84,18 @@ const nangoAccessTokenSchema = z.object({
   sid: z.string().min(1).max(512),
   sub: z.string(),
 }).passthrough();
+const mcpAccessTokenSchema = z.object({
+  azp: z.string().min(1).max(512),
+  client_id: z.string().min(1).max(512),
+  principal_type: z.literal("mcp_agent"),
+  scope: z.string(),
+  sid: z.string().min(1).max(512),
+  sub: z.literal(ownerUserId),
+}).passthrough();
+const mcpLineageSchema = z.object({
+  clientId: z.string().min(1).max(512),
+  sessionId: z.string().min(1).max(512),
+}).strict();
 const oauthTokenRequestBodyLimit = 64 * 1024;
 
 export const nangoGatewayHeader = "x-context-use-nango-gateway";
@@ -91,6 +110,54 @@ function exactNangoScopes(scope: string): boolean {
   return scopes.length === 2 && new Set(scopes).size === 2
     && scopes.includes("openid") && scopes.includes("email");
 }
+
+async function verifiedMcpAccessToken(token: string): Promise<z.infer<typeof mcpAccessTokenSchema> | null> {
+  try {
+    const jwks = await auth.api.getJwks({ asResponse: false });
+    const verified = await jwtVerify(token, createLocalJWKSet(jwks as JSONWebKeySet), {
+      issuer: config.OAUTH_ISSUER,
+      audience: config.MCP_RESOURCE,
+      algorithms: ["EdDSA"],
+    });
+    const audiences = typeof verified.payload.aud === "string"
+      ? [verified.payload.aud]
+      : verified.payload.aud;
+    if (!audiences || audiences.length !== 1 || audiences[0] !== config.MCP_RESOURCE) return null;
+    const parsed = mcpAccessTokenSchema.safeParse(verified.payload);
+    if (!parsed.success || parsed.data.azp !== parsed.data.client_id) return null;
+    const scopes = parsed.data.scope.split(/\s+/).filter(Boolean);
+    return scopes.includes(MCP_SCOPE) ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+async function activeMcpLineage(clientId: string, sessionId: string): Promise<boolean> {
+  const lineage = await authPool.query(
+    `SELECT 1
+     FROM "oauthClient" client
+     JOIN "oauthConsent" consent
+       ON consent."clientId"=client."clientId"
+      AND consent."userId"=$2
+     JOIN "session" owner_session
+       ON owner_session.id=$3
+      AND owner_session."userId"=$2
+     WHERE client."clientId"=$1
+       AND coalesce(client.disabled,false)=false
+       AND consent.scopes @> $4::jsonb
+       AND consent.resources @> $5::jsonb
+     LIMIT 1`,
+    [
+      clientId,
+      ownerUserId,
+      sessionId,
+      JSON.stringify([MCP_SCOPE]),
+      JSON.stringify([config.MCP_RESOURCE]),
+    ],
+  );
+  return Boolean(lineage.rowCount) && await touchLiveOwnerSession(sessionId);
+}
+
 function browserAuthRequest(request: Request, removeCookie = false): Request {
   const headers = new Headers(request.headers);
   if (removeCookie) headers.delete("cookie");
@@ -270,6 +337,33 @@ export const authApp = new Elysia()
     }
     return new Response(null, { status: 204, headers: securityHeaders });
   })
+  .get("/internal/authorize-mcp", async ({ request }) => {
+    if (!hasHeaderCapability(request, mcpGatewayHeader, config.AUTH_MCP_TOKEN)) {
+      return problem("Not found", 404, "not_found");
+    }
+    const hasBearer = request.headers.has("authorization");
+    const hasLineage = request.headers.has(mcpClientHeader) || request.headers.has(mcpSessionHeader);
+    if (hasBearer === hasLineage) return problem("Authorization required", 401, "unauthorized");
+
+    if (hasBearer) {
+      const token = bearerAccessToken(request);
+      if (!token) return problem("Authorization required", 401, "unauthorized");
+      const access = await verifiedMcpAccessToken(token);
+      if (!access || !await activeMcpLineage(access.client_id, access.sid)) {
+        return problem("Authorization required", 401, "unauthorized");
+      }
+      return json({ client_id: access.client_id });
+    }
+
+    const lineage = mcpLineageSchema.safeParse({
+      clientId: request.headers.get(mcpClientHeader),
+      sessionId: request.headers.get(mcpSessionHeader),
+    });
+    if (!lineage.success || !await activeMcpLineage(lineage.data.clientId, lineage.data.sessionId)) {
+      return problem("Authorization required", 401, "unauthorized");
+    }
+    return new Response(null, { status: 204, headers: securityHeaders });
+  })
   .get("/internal/jwks", ({ request }) => {
     if (!hasInternalCapability(request, config.AUTH_MCP_TOKEN)) return problem("Not found", 404, "not_found");
     return auth.handler(new Request(`${config.APP_ORIGIN}/api/auth/jwks`));
@@ -406,29 +500,18 @@ export const authApp = new Elysia()
   .delete("/api/dashboard/oauth-clients/:clientId", async ({ request, params }) => {
     const principal = await ownerRequest(request, true);
     const clientId = z.string().min(1).max(512).parse(params.clientId);
-    const client = await authPool.connect();
-    try {
-      await client.query("BEGIN");
-      const removed = await client.query(
-        `DELETE FROM "oauthConsent" WHERE "clientId"=$1 AND "userId"=$2 RETURNING id`,
-        [clientId, principal.userId],
-      );
-      if (!removed.rowCount) throw new SecurityError("Connected client not found", 404);
-      await client.query(
-        `UPDATE "oauthRefreshToken" SET revoked=now()
-         WHERE "clientId"=$1 AND "userId"=$2 AND revoked IS NULL`,
-        [clientId, principal.userId],
-      );
-      await client.query(
-        `DELETE FROM "oauthAccessToken" WHERE "clientId"=$1 AND "userId"=$2`,
-        [clientId, principal.userId],
-      );
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
+    // Remove the dynamic registration itself, not only its current consent.
+    // A later authorization must receive a fresh client_id, so an old
+    // self-contained access JWT can never become active again.
+    const removed = await authPool.query(
+      `DELETE FROM "oauthClient" oauth_client
+       USING "oauthConsent" consent
+       WHERE oauth_client."clientId"=$1
+         AND consent."clientId"=oauth_client."clientId"
+         AND consent."userId"=$2
+       RETURNING oauth_client."clientId"`,
+      [clientId, principal.userId],
+    );
+    if (!removed.rowCount) throw new SecurityError("Connected client not found", 404);
     return json({ revoked: true });
   });

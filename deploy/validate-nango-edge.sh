@@ -25,6 +25,17 @@ reject_line() {
   fi
 }
 
+require_count() {
+  file=$1
+  expected=$2
+  count=$3
+  actual=$(grep -Fc -- "${expected}" "${file}" || true)
+  if [ "${actual}" -ne "${count}" ]; then
+    echo "Expected ${count} occurrences in ${file}, found ${actual}: ${expected}" >&2
+    exit 1
+  fi
+}
+
 # OAuth2 Proxy returns a raw token. It must be copied into a private temporary
 # header and explicitly wrapped in Bearer before Context Use sees it.
 require_line "${auth_config}" "copy_headers X-Auth-Request-Access-Token>X-Context-Use-Access-Token"
@@ -40,6 +51,9 @@ require_line "${public_config}" "path /connect-ui/*"
 require_line "${public_config}" "path /connect/ws"
 require_line "${public_config}" 'vars_regexp connect_session_token {query.connect_session_token} ^nango_connect_session_[a-f0-9]{64}$'
 reject_line "${public_config}" 'query connect_session_token=nango_connect_session_*'
+require_count "${public_config}" 'vars_regexp connect_bearer {http.request.header.Authorization} "^Bearer nango_connect_session_[a-f0-9]{64}$"' 3
+require_count "${public_config}" 'header_up Authorization "{re.connect_bearer.0}"' 3
+reject_line "${public_config}" 'header Authorization "Bearer nango_connect_session_*"'
 require_line "${edge_config}" "@public_connect_ui"
 require_line "${edge_config}" "@public_connect_socket"
 require_line "${edge_config}" 'rewrite * {path}?'

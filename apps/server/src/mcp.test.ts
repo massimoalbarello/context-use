@@ -48,7 +48,7 @@ function serverWith(
   sourceRecords?: SourceRecordReader,
 ) {
   return createMcpServer(
-    { clientId: "mcp-client" },
+    { clientId: "mcp-client", sessionId: "mcp-session" },
     pages,
     directories,
     assets,

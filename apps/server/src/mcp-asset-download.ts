@@ -3,6 +3,7 @@ import { z } from "zod";
 import { assetContentResponse } from "./asset-content.ts";
 import { config } from "./config.ts";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
+import { activeMcpLineage } from "./mcp-auth-client.ts";
 import { requestMatchesOrigin, securityHeaders } from "./security.ts";
 import type { ObjectStorage } from "./storage.ts";
 
@@ -13,6 +14,7 @@ function problem(message: string, status: number, code: string): Response {
 export function createMcpAssetDownloadHandler(
   assets: AssetRepository,
   storage: ObjectStorage,
+  authorizeLineage = activeMcpLineage,
 ) {
   return async (request: Request, assetId: string): Promise<Response> => {
     if (!requestMatchesOrigin(request, config.APP_ORIGIN)) {
@@ -24,6 +26,9 @@ export function createMcpAssetDownloadHandler(
     const capability = verifyAssetCapability(request.headers.get("x-context-use-download-token") ?? "", "download");
     if (!capability || capability.assetId !== assetId) {
       return problem("Asset download capability is invalid or expired", 401, "invalid_download_capability");
+    }
+    if (!await authorizeLineage(capability.clientId, capability.sessionId)) {
+      return problem("Asset download authorization is no longer active", 401, "invalid_download_capability");
     }
 
     const asset = await assets.get(z.string().uuid().parse(assetId), true);

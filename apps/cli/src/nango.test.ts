@@ -88,8 +88,9 @@ test("Nango API key reconciliation keeps all secrets inside an on-instance pipe"
 
   expect(text.match(/aws ssm put-parameter/g)).toHaveLength(3);
   expect(text.match(/--value file:\/\/\/dev\/stdin/g)).toHaveLength(3);
-  expect(text.match(/--query Parameter\.Name/g)).toHaveLength(3);
-  expect(text).not.toContain("--query Parameter.Value");
+  expect(text.match(/--with-decryption --query Parameter\.Value/g)).toHaveLength(3);
+  expect(text).not.toContain("--query Parameter.Name");
+  expect(text).not.toContain("--value \"");
   expect(text).not.toContain("usableSecret");
   expect(text).not.toContain("dashboard-password");
   expect(text).not.toContain("manager-secret");
@@ -106,6 +107,34 @@ test("Nango API key reconciliation keeps all secrets inside an on-instance pipe"
   expect(worker).not.toContain("console.log");
   expect(worker).not.toContain("console.error");
   expect(worker).toContain("process.stdout.write(key.secret)");
+  expect(worker).toContain("Authorization: \"Bearer \" + secret");
+  expect(worker).toContain("/functions/deployments/00000000-0000-0000-0000-000000000000");
+  expect(worker).toContain("/connections?limit=1&page=0");
+  expect(worker).toContain("/scripts/config");
+});
+
+test("existing Nango keys always replace present SSM values and are verified from storage", () => {
+  const commands = nangoApiKeyReconciliationCommands(config, data);
+  const text = commands.join("\n");
+
+  expect(text).not.toContain("CONTEXT_USE_KEY_MODE=inspect");
+  expect(text).not.toContain("CONTEXT_USE_KEY_MODE=reconcile");
+  expect(text).not.toContain("nango_key_state");
+  expect(text).not.toContain("nango_parameter_state");
+  for (const parameterName of [
+    "NANGO_DEPLOYER_API_KEY",
+    "NANGO_PIPELINE_API_KEY",
+    "NANGO_INTEGRATION_MANAGER_API_KEY",
+  ]) {
+    const parameter = `/context-use/abcdef123456/production/${parameterName}`;
+    const writeIndex = commands.findIndex((command) => command.includes(`put-parameter --name '${parameter}'`));
+    const verifyIndex = commands.findIndex((command) => command.includes(`get-parameter --name '${parameter}' --with-decryption`));
+    expect(writeIndex).toBeGreaterThan(-1);
+    expect(commands[writeIndex]).toContain("CONTEXT_USE_KEY_MODE=write");
+    expect(verifyIndex).toBe(writeIndex + 1);
+    expect(commands[verifyIndex]).toContain("| docker compose");
+    expect(commands[verifyIndex]).toContain("CONTEXT_USE_KEY_MODE=verify");
+  }
 });
 
 test("Nango API key reconciliation accepts only its fixed success marker", async () => {

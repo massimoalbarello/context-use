@@ -15,8 +15,9 @@ import {
   retainedDataVolumeExists,
 } from "./data-volume.ts";
 import { restoreCommands } from "./commands/restore.ts";
-import { normalizeDeploymentConfig } from "./paths.ts";
+import { isValidOwnerEmail, normalizeDeploymentConfig } from "./paths.ts";
 import { redactSensitiveText } from "./process.ts";
+import { ensureRuntimeParameters } from "./setup.ts";
 import { backendArgs, initializeTerraformBackend, terraformEnvironment } from "./terraform.ts";
 import type { ComputeOutputs, DataOutputs, DeploymentConfig, ReleaseManifest } from "./types.ts";
 
@@ -423,6 +424,34 @@ test("legacy configs retain durable state coordinates without derived lifecycle 
       nangoBackupKey: "nango-postgres/2026-07-20T10-20-31Z.sql.gz",
     },
   });
+});
+
+test("owner emails are safe single entries for OAuth2 Proxy's authorized-emails file", async () => {
+  for (const email of [
+    "owner@example.com",
+    "owner.name+context@example.co.uk",
+    "OWNER_1@example.com",
+    "o'brien@example.com",
+    "user!tag@example.com",
+  ]) {
+    expect(isValidOwnerEmail(email)).toBe(true);
+  }
+  for (const email of [
+    "#owner@example.com",
+    "owner#tag@example.com",
+    "owner@example.com,attacker@example.com",
+    '"owner"@example.com',
+    "owner@example.com\nattacker@example.com",
+    " owner@example.com",
+  ]) {
+    expect(isValidOwnerEmail(email)).toBe(false);
+    expect(() => normalizeDeploymentConfig(deploymentConfig({ ownerEmail: email }))).toThrow("invalid owner email");
+  }
+  await expect(ensureRuntimeParameters(
+    deploymentConfig({ ownerEmail: "owner@example.com,attacker@example.com" }),
+    dataOutputs,
+    computeOutputs,
+  )).rejects.toThrow("Invalid owner email");
 });
 
 test("manual dashboard, asset, and Nango DNS must resolve to the deployment IP", async () => {

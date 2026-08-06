@@ -112,16 +112,19 @@
 		}
 	}
 
-	# These Connect UI reads accept only Nango's unambiguous Connect-session
-	# bearer prefix. Secret/public API keys cannot pass this gateway matcher and
-	# Nango performs the full token validation behind it.
+	# These Connect UI reads accept exactly one complete Connect-session bearer.
+	# Caddy joins repeated request-header fields in this placeholder, so the
+	# anchored expression rejects duplicate and comma-joined Authorization
+	# values. Overwrite the upstream field from the match capture as a second
+	# guarantee that Nango receives only the validated Connect bearer.
 	@connect_session {
 		method GET DELETE
 		path /connect/session
-		header Authorization "Bearer nango_connect_session_*"
+		vars_regexp connect_bearer {http.request.header.Authorization} "^Bearer nango_connect_session_[a-f0-9]{64}$"
 	}
 	handle @connect_session {
 		reverse_proxy nango-server:3003 {
+			header_up Authorization "{re.connect_bearer.0}"
 			header_up -Proxy-Authorization
 			header_up -Cookie
 			header_up -X-Auth-Request-*
@@ -138,10 +141,11 @@
 	@connect_integrations {
 		method GET
 		path /integrations /providers
-		header Authorization "Bearer nango_connect_session_*"
+		vars_regexp connect_bearer {http.request.header.Authorization} "^Bearer nango_connect_session_[a-f0-9]{64}$"
 	}
 	handle @connect_integrations {
 		reverse_proxy nango-server:3003 {
+			header_up Authorization "{re.connect_bearer.0}"
 			header_up -Proxy-Authorization
 			header_up -Cookie
 			header_up -X-Auth-Request-*
@@ -158,10 +162,11 @@
 	@connect_provider {
 		method GET
 		path_regexp provider_path ^/providers/[^/]+/?$
-		header Authorization "Bearer nango_connect_session_*"
+		vars_regexp connect_bearer {http.request.header.Authorization} "^Bearer nango_connect_session_[a-f0-9]{64}$"
 	}
 	handle @connect_provider {
 		reverse_proxy nango-server:3003 {
+			header_up Authorization "{re.connect_bearer.0}"
 			header_up -Proxy-Authorization
 			header_up -Cookie
 			header_up -X-Auth-Request-*

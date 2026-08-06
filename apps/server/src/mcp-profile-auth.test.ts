@@ -15,6 +15,7 @@ async function accessToken(audience: string, privateKey: CryptoKey): Promise<str
     azp: "profile-test-client",
     principal_type: "mcp_agent",
     scope: "mcp:access",
+    sid: "profile-test-session",
   })
     .setProtectedHeader({ alg: "EdDSA", kid: "profile-test-key" })
     .setIssuer(config.OAUTH_ISSUER)
@@ -43,9 +44,13 @@ describe("MCP audience binding", () => {
     const { publicKey, privateKey } = await generateKeyPair("EdDSA");
     const publicJwk = await exportJWK(publicKey);
     const fetchJwks = Object.assign(
-      async () => Response.json({
-        keys: [{ ...publicJwk, alg: "EdDSA", kid: "profile-test-key", use: "sig" }],
-      }),
+      async (input: string | URL | Request) => new URL(
+        input instanceof Request ? input.url : input.toString(),
+      ).pathname === "/internal/jwks"
+        ? Response.json({
+            keys: [{ ...publicJwk, alg: "EdDSA", kid: "profile-test-key", use: "sig" }],
+          })
+        : Response.json({ client_id: "profile-test-client" }),
       { preconnect: originalFetch.preconnect },
     );
     spyOn(globalThis, "fetch").mockImplementation(fetchJwks);
@@ -69,5 +74,29 @@ describe("MCP audience binding", () => {
     expect(knowledgeTools.some((name) => name.includes("automation"))).toBe(false);
 
     expect((await knowledge(toolListRequest(config.MCP_RESOURCE, wrongAudienceToken))).status).toBe(401);
+  });
+
+  test("rejects a signed MCP token when the auth service reports it inactive", async () => {
+    const { publicKey, privateKey } = await generateKeyPair("EdDSA");
+    const publicJwk = await exportJWK(publicKey);
+    const fetchAuthorization = Object.assign(
+      async (input: string | URL | Request) => new URL(
+        input instanceof Request ? input.url : input.toString(),
+      ).pathname === "/internal/jwks"
+        ? Response.json({
+            keys: [{ ...publicJwk, alg: "EdDSA", kid: "profile-test-key", use: "sig" }],
+          })
+        : new Response(null, { status: 401 }),
+      { preconnect: originalFetch.preconnect },
+    );
+    spyOn(globalThis, "fetch").mockImplementation(fetchAuthorization);
+
+    const knowledge = createMcpRequestHandler(
+      {} as PageRepository,
+      {} as DirectoryRepository,
+      {} as AssetRepository,
+    );
+    const token = await accessToken(config.MCP_RESOURCE, privateKey);
+    expect((await knowledge(toolListRequest(config.MCP_RESOURCE, token))).status).toBe(401);
   });
 });

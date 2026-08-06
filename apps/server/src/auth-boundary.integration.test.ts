@@ -2,6 +2,7 @@ import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { makeSignature } from "better-auth/crypto";
 import { Client } from "pg";
 import { config } from "./config.ts";
+import { csrfToken } from "./security.ts";
 
 const enabled = process.env.TEST_APP_DATABASE_URL === "1";
 const application = enabled ? (await import("./combined-app.ts")).combinedApp : null;
@@ -150,6 +151,11 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       { headers: { authorization: "Bearer forged" } },
     ));
     expect(nangoResponse.status).toBe(404);
+    const mcpResponse = await authentication!.handle(new Request(
+      "http://auth:3002/internal/authorize-mcp",
+      { headers: { authorization: "Bearer forged" } },
+    ));
+    expect(mcpResponse.status).toBe(404);
     const jwksWithoutCapability = await authentication!.handle(new Request(
       "http://auth:3002/internal/jwks",
     ));
@@ -881,6 +887,176 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         `DELETE FROM "oauthAccessToken" WHERE id=ANY($1::text[])`,
         [[accessTokenId, unboundAccessTokenId]],
       ).catch(() => undefined);
+      await client.query(`DELETE FROM "session" WHERE id=$1`, [sessionId]).catch(() => undefined);
+      if (createdOwner) {
+        await client.query('ALTER TABLE "user" DISABLE TRIGGER user_protect_owner_identity');
+        try {
+          await client.query(
+            `DELETE FROM "user"
+             WHERE id='context-use-owner'
+               AND NOT EXISTS (SELECT 1 FROM passkey WHERE "userId"='context-use-owner')`,
+          );
+        } finally {
+          await client.query('ALTER TABLE "user" ENABLE TRIGGER user_protect_owner_identity');
+        }
+      }
+      await client.end();
+    }
+  });
+
+  test("the MCP gateway requires an active token bound to a live owner session", async () => {
+    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const registration = await application!.handle(new Request("http://localhost:3000/api/auth/oauth2/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "context-use MCP gateway test",
+        redirect_uris: ["http://127.0.0.1:49323/callback"],
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        scope: "offline_access mcp:access",
+      }),
+    }));
+    expect(registration.status).toBe(201);
+    const registered = await registration.json() as { client_id: string };
+    createdClients.push(registered.client_id);
+
+    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const sessionId = crypto.randomUUID();
+    const sessionToken = `mcp-session-${crypto.randomUUID()}`;
+    const refreshToken = `mcp-refresh-${crypto.randomUUID()}`;
+    const refreshTokenId = crypto.randomUUID();
+    const consentId = crypto.randomUUID();
+    const storedRefreshToken = Buffer.from(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(refreshToken)),
+    ).toString("base64url");
+    let createdOwner = false;
+
+    await client.connect();
+    try {
+      const owner = await client.query(
+        `INSERT INTO "user"(id,name,email,"emailVerified")
+         VALUES ('context-use-owner','Owner',$1,true)
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id`,
+        [config.OWNER_EMAIL],
+      );
+      createdOwner = Boolean(owner.rowCount);
+      await client.query(
+        `INSERT INTO "session"(id,"expiresAt",token,"createdAt","updatedAt","userId")
+         VALUES ($1,now()+interval '1 day',$2,now()-interval '1 hour',now()-interval '1 minute','context-use-owner')`,
+        [sessionId, sessionToken],
+      );
+      await client.query(
+        `INSERT INTO "oauthConsent"(
+           id,"clientId","userId",scopes,resources,"createdAt","updatedAt"
+         ) VALUES ($1,$2,'context-use-owner',$3::jsonb,$4::jsonb,now(),now())`,
+        [
+          consentId,
+          registered.client_id,
+          JSON.stringify(["offline_access", "mcp:access"]),
+          JSON.stringify([config.MCP_RESOURCE]),
+        ],
+      );
+      await client.query(
+        `INSERT INTO "oauthRefreshToken"(
+           id,token,"clientId","sessionId","userId","expiresAt","createdAt",scopes,resources
+         ) VALUES ($1,$2,$3,$4,'context-use-owner',now()+interval '30 days',now(),$5::jsonb,$6::jsonb)`,
+        [
+          refreshTokenId,
+          storedRefreshToken,
+          registered.client_id,
+          sessionId,
+          JSON.stringify(["offline_access", "mcp:access"]),
+          JSON.stringify([config.MCP_RESOURCE]),
+        ],
+      );
+
+      const tokenResponse = await application!.handle(new Request(
+        "http://localhost:3000/api/auth/oauth2/token",
+        {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "refresh_token",
+            client_id: registered.client_id,
+            refresh_token: refreshToken,
+          }),
+        },
+      ));
+      expect(tokenResponse.status).toBe(200);
+      const issued = await tokenResponse.json() as { access_token: string };
+      expect(issued.access_token.split(".")).toHaveLength(3);
+      const opaqueRows = await client.query(
+        `SELECT 1 FROM "oauthAccessToken" WHERE "clientId"=$1`,
+        [registered.client_id],
+      );
+      expect(opaqueRows.rowCount).toBe(0);
+
+      const authorize = (token: string, capability = config.AUTH_MCP_TOKEN) => authentication!.handle(new Request(
+        "http://auth:3002/internal/authorize-mcp",
+        {
+          headers: {
+            authorization: `Bearer ${token}`,
+            "x-context-use-mcp-gateway": capability,
+          },
+        },
+      ));
+      const authorizeLineage = () => authentication!.handle(new Request(
+        "http://auth:3002/internal/authorize-mcp",
+        {
+          headers: {
+            "x-context-use-mcp-client": registered.client_id,
+            "x-context-use-mcp-gateway": config.AUTH_MCP_TOKEN,
+            "x-context-use-mcp-session": sessionId,
+          },
+        },
+      ));
+
+      expect((await authorize(issued.access_token, "wrong-capability-that-is-still-long-enough")).status).toBe(404);
+      expect((await authorize(`forged-${crypto.randomUUID()}`)).status).toBe(401);
+      const active = await authorize(issued.access_token);
+      expect(active.status).toBe(200);
+      expect(await active.json()).toEqual({ client_id: registered.client_id });
+      expect((await authorizeLineage()).status).toBe(204);
+
+      await client.query(`UPDATE "session" SET "updatedAt"=now()-interval '13 hours' WHERE id=$1`, [sessionId]);
+      expect((await authorize(issued.access_token)).status).toBe(401);
+      expect((await authorizeLineage()).status).toBe(401);
+      await client.query(`UPDATE "session" SET "updatedAt"=now() WHERE id=$1`, [sessionId]);
+      expect((await authorize(issued.access_token)).status).toBe(200);
+      expect((await authorizeLineage()).status).toBe(204);
+
+      const signature = await makeSignature(sessionToken, config.BETTER_AUTH_SECRET);
+      const disconnect = await authentication!.handle(new Request(
+        `http://localhost:3000/api/dashboard/oauth-clients/${encodeURIComponent(registered.client_id)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "content-type": "application/json",
+            cookie: `context-use.session_token=${sessionToken}.${signature}`,
+            origin: config.APP_ORIGIN,
+            "sec-fetch-site": "same-origin",
+            "x-csrf-token": csrfToken({
+              userId: "context-use-owner",
+              sessionId,
+              email: config.OWNER_EMAIL,
+            }),
+          },
+        },
+      ));
+      expect(disconnect.status).toBe(200);
+      expect(await disconnect.json()).toEqual({ revoked: true });
+      expect((await authorize(issued.access_token)).status).toBe(401);
+      expect((await authorizeLineage()).status).toBe(401);
+      const removedClient = await client.query(
+        `SELECT 1 FROM "oauthClient" WHERE "clientId"=$1`,
+        [registered.client_id],
+      );
+      expect(removedClient.rowCount).toBe(0);
+    } finally {
+      await client.query(`DELETE FROM "oauthClient" WHERE "clientId"=$1`, [registered.client_id]).catch(() => undefined);
       await client.query(`DELETE FROM "session" WHERE id=$1`, [sessionId]).catch(() => undefined);
       if (createdOwner) {
         await client.query('ALTER TABLE "user" DISABLE TRIGGER user_protect_owner_identity');

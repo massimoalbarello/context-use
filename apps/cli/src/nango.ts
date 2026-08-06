@@ -57,13 +57,23 @@ const targets = ${JSON.stringify(Object.fromEntries(managedApiKeys.map((key) => 
   key.displayName,
   { display_name: key.displayName, scopes: key.scopes },
 ])))};
+const probes = {
+  "context-use-deployer": {
+    path: "/functions/deployments/00000000-0000-0000-0000-000000000000",
+    statuses: [404],
+  },
+  "context-use-pipeline": { path: "/connections?limit=1&page=0", statuses: [200] },
+  "context-use-integration-manager": { path: "/scripts/config", statuses: [200] },
+};
 const target = targets[process.env.CONTEXT_USE_MANAGED_KEY];
+const probe = probes[process.env.CONTEXT_USE_MANAGED_KEY];
 const mode = process.env.CONTEXT_USE_KEY_MODE;
 const stop = () => process.exit(1);
-const request = async (path, init = {}) => {
+if (!target || !probe || !["write", "verify"].includes(mode)) stop();
+const dashboardRequest = async (path, init = {}) => {
   const username = process.env.NANGO_DASHBOARD_USERNAME;
   const password = process.env.NANGO_DASHBOARD_PASSWORD;
-  if (!username || !password || !target || !["inspect", "reconcile", "write"].includes(mode)) stop();
+  if (!username || !password) stop();
   const response = await fetch("http://127.0.0.1:3003" + path, {
     ...init,
     headers: {
@@ -81,18 +91,34 @@ const sameScopes = (left, right) => Array.isArray(left)
   && left.length === right.length
   && [...left].sort().every((scope, index) => scope === [...right].sort()[index]);
 void (async () => { try {
-  const listed = await request("/api/v1/environment/api-keys?env=prod").then((response) => response.json());
+  if (mode === "verify") {
+    const chunks = [];
+    let length = 0;
+    for await (const chunk of process.stdin) {
+      const bytes = Buffer.from(chunk);
+      length += bytes.length;
+      if (length > 4096) stop();
+      chunks.push(bytes);
+    }
+    let secret = Buffer.concat(chunks).toString("utf8");
+    if (secret.endsWith("\n")) secret = secret.slice(0, -1);
+    if (secret.endsWith("\r")) secret = secret.slice(0, -1);
+    if (!secret || /[\r\n\0]/.test(secret)) stop();
+    const response = await fetch("http://127.0.0.1:3003" + probe.path, {
+      headers: { Accept: "application/json", Authorization: "Bearer " + secret },
+      redirect: "error",
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!probe.statuses.includes(response.status)) stop();
+    process.exit(0);
+  }
+  const listed = await dashboardRequest("/api/v1/environment/api-keys?env=prod").then((response) => response.json());
   if (!listed || !Array.isArray(listed.data)) stop();
   const matches = listed.data.filter((key) => key && key.display_name === target.display_name);
   if (matches.length > 1) stop();
   let key = matches[0];
-  if (mode === "inspect") {
-    process.stdout.write(key ? "EXISTING" : "MISSING");
-    process.exit(0);
-  }
   if (!key) {
-    if (mode !== "write") stop();
-    const created = await request("/api/v1/environment/api-keys?env=prod", {
+    const created = await dashboardRequest("/api/v1/environment/api-keys?env=prod", {
       method: "POST",
       body: JSON.stringify(target),
     }).then((response) => response.json());
@@ -101,16 +127,14 @@ void (async () => { try {
   if (!key || !Number.isInteger(key.id) || key.id < 1
     || key.display_name !== target.display_name || !Array.isArray(key.scopes)) stop();
   if (!sameScopes(key.scopes, target.scopes)) {
-    await request("/api/v1/environment/api-keys/" + key.id + "?env=prod", {
+    await dashboardRequest("/api/v1/environment/api-keys/" + key.id + "?env=prod", {
       method: "PATCH",
       body: JSON.stringify({ scopes: target.scopes }),
     });
   }
-  if (mode === "write") {
-    if (typeof key.secret !== "string" || key.secret.length < 1 || key.secret.startsWith("****")
-      || /[\r\n\0]/.test(key.secret)) stop();
-    process.stdout.write(key.secret);
-  }
+  if (typeof key.secret !== "string" || key.secret.length < 1 || key.secret.startsWith("****")
+    || /[\r\n\0]/.test(key.secret)) stop();
+  process.stdout.write(key.secret);
 } catch { stop(); } })();
 `;
 
@@ -128,16 +152,11 @@ export function nangoApiKeyReconciliationCommands(config: DeploymentConfig, data
     const parameter = `${prefix}/${key.parameterName}`;
     const worker = `${compose} exec -T -e CONTEXT_USE_MANAGED_KEY='${key.displayName}'`;
     commands.push(
-      `if ${worker} -e CONTEXT_USE_KEY_MODE=inspect nango-server node -e \"eval(Buffer.from('$nango_key_worker','base64').toString('utf8'))\" 2>/dev/null | grep -Fxq EXISTING; then nango_key_state=EXISTING; else nango_key_state=MISSING; fi`,
-      `if aws ssm get-parameter --name '${parameter}' --query Parameter.Name --output text >/dev/null 2>&1; then nango_parameter_state=PRESENT; else nango_parameter_state=MISSING; fi`,
-      "if [ \"$nango_key_state\" = EXISTING ] && [ \"$nango_parameter_state\" = PRESENT ]; then",
-      `  if ! ${worker} -e CONTEXT_USE_KEY_MODE=reconcile nango-server node -e \"eval(Buffer.from('$nango_key_worker','base64').toString('utf8'))\" >/dev/null 2>&1; then echo 'Nango API key reconciliation failed' >&2; exit 1; fi`,
-      "else",
-      `  if ! ${worker} -e CONTEXT_USE_KEY_MODE=write nango-server node -e \"eval(Buffer.from('$nango_key_worker','base64').toString('utf8'))\" 2>/dev/null | aws ssm put-parameter --name '${parameter}' --type SecureString --key-id '${data.kms_key_arn}' --overwrite --value file:///dev/stdin >/dev/null 2>&1; then echo 'Nango API key reconciliation failed' >&2; exit 1; fi`,
-      "fi",
+      `if ! ${worker} -e CONTEXT_USE_KEY_MODE=write nango-server node -e \"eval(Buffer.from('$nango_key_worker','base64').toString('utf8'))\" 2>/dev/null | aws ssm put-parameter --name '${parameter}' --type SecureString --key-id '${data.kms_key_arn}' --overwrite --value file:///dev/stdin >/dev/null 2>&1; then echo 'Nango API key reconciliation failed' >&2; exit 1; fi`,
+      `if ! aws ssm get-parameter --name '${parameter}' --with-decryption --query Parameter.Value --output text 2>/dev/null | ${worker} -e CONTEXT_USE_KEY_MODE=verify nango-server node -e \"eval(Buffer.from('$nango_key_worker','base64').toString('utf8'))\" >/dev/null 2>&1; then echo 'Nango API key verification failed' >&2; exit 1; fi`,
     );
   }
-  commands.push("unset nango_key_worker nango_key_state nango_parameter_state", `echo '${keyReconciliationMarker}'`);
+  commands.push("unset nango_key_worker", `echo '${keyReconciliationMarker}'`);
   return commands;
 }
 

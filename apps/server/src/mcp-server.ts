@@ -28,6 +28,7 @@ import type { SourceRecordReader } from "./nango-records.ts";
 
 export type McpContext = {
   clientId: string;
+  sessionId: string;
 };
 
 const jsonContent = (value: unknown) => ({
@@ -346,7 +347,7 @@ export async function createMcpServer(
   }, async ({ asset_id }) => {
     const asset = await assets.get(asset_id, true);
     if (!asset) return jsonContent(null);
-    const capability = createAssetCapability("download", asset.id);
+    const capability = createAssetCapability("download", asset.id, context);
     const { s3_object_key: _hidden, ...metadata } = asset;
     return jsonContent({
       ...metadata,
@@ -377,7 +378,7 @@ export async function createMcpServer(
       ...(input.height ? { height: input.height } : {}),
       ...(input.duration_seconds !== undefined ? { durationSeconds: input.duration_seconds } : {}),
     });
-    const capability = createAssetCapability("upload", created.id);
+    const capability = createAssetCapability("upload", created.id, context);
     const { objectKey: _hidden, ...asset } = created;
     const reference = `context-use://asset/${created.id}`;
     const markdownAlt = created.filename.replace(/[\[\]\r\n]+/g, " ").replace(/\s+/g, " ").trim() || "Image";

@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { accountId, bootstrapStateBucket, generateSecret, getSecureParameter, getSecureParameterIfPresent, putSecureParameter } from "./aws.ts";
 import { deploy, manualDnsMismatches, prepareCompute, refreshNangoPipelineRuntime } from "./deploy.ts";
 import { ensureNangoApiKeys } from "./nango.ts";
-import { configPath, saveConfig } from "./paths.ts";
+import { configPath, isValidOwnerEmail, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
 import { deploymentRoot, releaseManifest } from "./release.ts";
 import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs } from "./terraform.ts";
@@ -34,6 +34,7 @@ export function generateNangoAuthCookieSecret(): string {
 }
 
 export async function ensureRuntimeParameters(config: DeploymentConfig, data: DataOutputs, compute: ComputeOutputs): Promise<void> {
+  if (!isValidOwnerEmail(config.ownerEmail)) throw new Error("Invalid owner email");
   const prefix = `/context-use/${config.installationId}/${config.environment}`;
   const fixed: Record<string, string> = {
     APP_HOSTNAME: config.hostname,
@@ -140,7 +141,7 @@ export async function setup(): Promise<void> {
   const hostname = required(await p.text({ message: "Dashboard hostname", placeholder: "context.example.com", validate: (input) => validHostname(input) ? undefined : "Enter a valid lowercase hostname" }), "Hostname");
   const dnsMode = value(await p.select({ message: "DNS management", options: [{ value: "route53", label: "Route 53 (automatic)" }, { value: "manual", label: "Manual DNS" }] })) as "route53" | "manual";
   const route53ZoneId = dnsMode === "route53" ? required(await p.text({ message: "Route 53 hosted zone ID" }), "Route 53 zone ID") : "";
-  const ownerEmail = required(await p.text({ message: "Owner email", validate: (input) => input && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input) ? undefined : "Enter a valid email" }), "Owner email").trim().toLowerCase();
+  const ownerEmail = required(await p.text({ message: "Owner email", validate: (input) => isValidOwnerEmail(input) ? undefined : "Enter a valid email" }), "Owner email").trim().toLowerCase();
   const manifest = await releaseManifest(process.env.CONTEXT_USE_VERSION ?? "latest");
   const config: DeploymentConfig = {
     schemaVersion: 2, releaseVersion: manifest.version, environment: "production",

@@ -2,6 +2,7 @@ import { AssetRepository, DirectoryRepository, PageRepository } from "@context-u
 import { MCP_SCOPE } from "@context-use/shared";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { config } from "./config.ts";
+import { activeMcpClientId } from "./mcp-auth-client.ts";
 import { createMcpServer, type McpContext } from "./mcp-server.ts";
 import { createStatelessMcpTransport, unsupportedMcpMethodResponse } from "./mcp-transport.ts";
 import type { SourceRecordReader } from "./nango-records.ts";
@@ -27,11 +28,12 @@ function scopesFromJwt(jwt: JWTPayload): Set<string> {
 
 function contextFromJwt(jwt: JWTPayload): McpContext | null {
   const clientId = typeof jwt.azp === "string" ? jwt.azp : null;
+  const sessionId = typeof jwt.sid === "string" ? jwt.sid : null;
   const userId = typeof jwt.sub === "string" ? jwt.sub : null;
-  if (!clientId || !userId || jwt.principal_type !== "mcp_agent") return null;
+  if (!clientId || !sessionId || !userId || jwt.principal_type !== "mcp_agent") return null;
   const scopes = scopesFromJwt(jwt);
   if (!scopes.has(MCP_SCOPE)) return null;
-  return { clientId };
+  return { clientId, sessionId };
 }
 
 export function createMcpRequestHandler(
@@ -73,6 +75,9 @@ export function createMcpRequestHandler(
     }
     const context = contextFromJwt(jwt);
     if (!context) return mcpUnauthorized(`Bearer token lacks ${MCP_SCOPE}`);
+    if (await activeMcpClientId(match[1]!) !== context.clientId) {
+      return mcpUnauthorized("Bearer token is revoked or its owner session is inactive");
+    }
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();

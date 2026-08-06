@@ -180,6 +180,7 @@ jobs:
               caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d \
               caddy validate --config /etc/caddy/Caddyfile
           done
+          sh deploy/probe-nango-public-edge.sh deploy
           printf '%s\n' owner@example.com > "$RUNNER_TEMP/nango-owner-email"
           compose_json="$(docker compose -f deploy/docker-compose.yml config --format json)"
           oauth2_proxy_image="$(jq -r '.services["oauth2-proxy"].image' <<<"$compose_json")"
