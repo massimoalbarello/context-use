@@ -160,6 +160,36 @@ In a copyable Markdown example, write link targets as placeholders —
 `[[area/…|label]]`, never a real path — because wikilinks resolve even inside fenced
 code blocks. A target containing `…` or `<slug>` resolves to nothing and survives intact.
 
+## Referencing uploaded assets
+
+Every uploaded asset is referenced with the image form, leading `!` included, whatever
+the file actually is:
+
+    ![Cover letter](context-use://asset/<uuid>)
+
+The `!` is what makes it an asset reference. Without it nothing resolves the target and
+the page renders the literal words `Private reference` where the file should be — the
+most common way an asset reference is broken. Never write the plain link form
+`[label](context-use://asset/…)`, never leave a bare `context-use://asset/<uuid>` in the
+prose, and never paste a dashboard or download URL.
+
+Presentation follows the asset's own content type, not the syntax. Images and videos
+embed inline; every other type — PDFs and other documents — renders as a hyperlink
+labelled with the bracket text. So a document needs a label that reads as a link:
+`![Cover letter](…)`, not the raw filename and not `![](…)`, which falls back to a bare
+`Open PDF`. An empty label is acceptable only on an image, where it is alt text.
+
+The optional `{size=… align=… shape=… layout=…}` attributes apply to images and videos
+only; they are ignored on a document, and one unrecognised key prints the whole brace
+group verbatim on the page.
+
+Copy the UUID from the asset's own reference field rather than retyping it. A UUID that
+resolves to nothing renders as `Private reference` exactly like a missing `!`, so check
+the rendered page rather than assuming the reference took.
+
+An asset is published separately from the page embedding it, so a published page shows
+`Private asset unavailable` wherever its asset is still private.
+
 ## Privacy
 
 Private by default, and an agent cannot publish. Ask the owner to review and publish
