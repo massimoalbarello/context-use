@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import { formatNangoAccess } from "./commands/nango/credentials.ts";
 import {
   ensureNangoApiKeys,
   nangoApiKeyReconciliationCommands,
@@ -47,13 +46,6 @@ test("Nango's auth cookie key is exactly 256 bits encoded as standard base64", (
   const key = generateNangoAuthCookieSecret();
   expect(key).toMatch(/^[A-Za-z0-9+/]{43}=$/);
   expect(Buffer.from(key, "base64")).toHaveLength(32);
-});
-
-test("Nango access never discloses its internal credentials", () => {
-  const output = formatNangoAccess("https://nango.example.com");
-  expect(output).toContain("Authentication: Context Use passkey");
-  expect(output).toContain("internal credentials are not disclosed");
-  expect(output).not.toContain("Password:");
 });
 
 test("Nango dashboard authentication verifies anonymous denial and internal Basic success", async () => {

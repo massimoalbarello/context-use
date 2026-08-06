@@ -10,7 +10,6 @@ import type { command as backupCmd } from './commands/backup.ts';
 import type { command as destroyCmd } from './commands/destroy.ts';
 import type { command as doctorCmd } from './commands/doctor.ts';
 import type { command as nangoCmd } from './commands/nango.ts';
-import type { command as nangoCredentialsCmd } from './commands/nango/credentials.ts';
 import type { command as nangoIntegrationsAddCmd } from './commands/nango/integrations/add.ts';
 import type { command as nangoIntegrationsCmd } from './commands/nango/integrations.ts';
 import type { command as nangoIntegrationsDeployCmd } from './commands/nango/integrations/deploy.ts';
@@ -73,12 +72,6 @@ declare module '@parshjs/core' {
     };
     'nango': {
       parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'nango credentials': {
-      parents: {
-        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
-      };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
     'nango integrations': {
@@ -222,12 +215,6 @@ export const commandTree: RuntimeNode = {
       segment: { kind: 'literal', value: 'nango' },
       command: { path: 'nango', load: () => import('./commands/nango.ts').then((m) => m.command) },
       literalChildren: {
-        'credentials': {
-          segment: { kind: 'literal', value: 'credentials' },
-          command: { path: 'nango credentials', load: () => import('./commands/nango/credentials.ts').then((m) => m.command) },
-          literalChildren: {},
-          paramChild: null,
-        },
         'integrations': {
           segment: { kind: 'literal', value: 'integrations' },
           command: { path: 'nango integrations', load: () => import('./commands/nango/integrations.ts').then((m) => m.command) },

@@ -56,10 +56,10 @@ test("root help lists the operational commands", async () => {
 });
 
 test("command help exposes only intentional sensitive or destructive options", async () => {
-  const [update, destroy, nangoCredentials, nangoRestore, templatePlan, templateApply, agentSyncInstall] = await Promise.all([
+  const [update, destroy, nango, nangoRestore, templatePlan, templateApply, agentSyncInstall] = await Promise.all([
     runCli("update", "--help"),
     runCli("destroy", "--help"),
-    runCli("nango", "credentials", "--help"),
+    runCli("nango", "--help"),
     runCli("nango", "restore", "--help"),
     runCli("template", "plan", "--help"),
     runCli("template", "apply", "--help"),
@@ -70,9 +70,8 @@ test("command help exposes only intentional sensitive or destructive options", a
   expect(update.stdout).not.toContain("--version");
   expect(destroy.exitCode).toBe(0);
   expect(destroy.stdout).toContain("--purge-data");
-  expect(nangoCredentials.exitCode).toBe(0);
-  expect(nangoCredentials.stdout).toContain("passkey-protected");
-  expect(nangoCredentials.stdout).not.toContain("--reveal");
+  expect(nango.exitCode).toBe(0);
+  expect(nango.stdout).not.toContain("credentials");
   expect(nangoRestore.exitCode).toBe(0);
   expect(nangoRestore.stdout).toContain("Restore Nango");
   expect(templatePlan.exitCode).toBe(0);
