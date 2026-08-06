@@ -508,6 +508,10 @@ describe("knowledge templates", () => {
     expect(normalizedRoot).toContain("Anything with its own identity gets a folder");
     expect(normalizedRoot).toContain("A `timeline` is optional and curated, never exhaustive");
     expect(normalizedRoot).toContain("is state with no date on it");
+    expect(normalizedRoot).toContain("## Attention is evidence");
+    expect(normalizedRoot).toContain("One mention, one saved work or one passing reference is not recurring attention");
+    expect(normalizedRoot).toContain("**Attention is not interaction.**");
+    expect(normalizedRoot).toContain("**Attention is not agreement.**");
     expect(root).toContain("A deliberately public-safe page still");
     expect(root).not.toContain("people/<first-last>");
     expect(root).not.toContain("meetings/<YYYY>");

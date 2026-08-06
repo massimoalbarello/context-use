@@ -154,6 +154,34 @@ When something happens, write it in the day's [[about/diary/agents|diary]] with 
 add a dated line to the entity's timeline if its state changed; then edit the durable
 pages so they say what is now true. Versions hold the history; the diary holds why.
 
+## Attention is evidence
+
+Interaction is not the only thing that earns a subject a page. Reading, watching and
+researching the same subject repeatedly is the owner taking an interest, and an interest
+that keeps returning is a fact about them worth representing.
+
+This lowers no threshold. The owning guide still decides what a person, company or other
+entity requires before it exists, and identity must still be established rather than
+assumed. What it adds is another way to meet that bar: recurring attention across saved
+works, research and the owner's own pages is evidence of material relevance, in the same
+way an interaction is. One mention, one saved work or one passing reference is not
+recurring attention.
+
+Once the entity exists, everything attending to it links to it, so that attention gathers
+in one place instead of scattering across unconnected notes. The link runs from the
+attending page — the saved work, the diary entry, the task — to the entity, and says what
+that piece contributed. The entity's own pages cite those sources on the claims they
+support; when what has gathered about a subject outgrows what `intro` can carry, it
+becomes an aspect page like any other view.
+
+**Attention is not interaction.** Saving a work about someone, or reading about a
+company, is not something that happened between them and the owner. It earns no line on
+that entity's `timeline`, which holds the states the entity has actually passed through.
+
+**Attention is not agreement.** A claim in a source stays the source's. It becomes the
+owner's view only where the owner says so, and it is then written wherever that guide
+keeps their judgement — never inferred from the fact that they saved it.
+
 ## Writing
 
 Say a thing once, at the length it needs, and stop. Length is not thoroughness: a page
