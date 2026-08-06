@@ -163,6 +163,8 @@ jobs:
           BACKUP_ROLE_ARN: arn:aws:iam::123456789012:role/context-use-test-backup
         run: |
           bash -n deploy/deploy.sh
+          bash -n deploy/compose-env.sh deploy/validate-compose-env.sh
+          bash deploy/validate-compose-env.sh deploy
           sh -n deploy/validate-nango-edge.sh
           sh deploy/validate-nango-edge.sh deploy
           docker compose -f deploy/docker-compose.yml config --quiet

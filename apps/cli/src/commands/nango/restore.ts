@@ -20,7 +20,8 @@ export function nangoRestoreCommands(bucket: string, key: string): string[] {
   return [
     "set -euo pipefail",
     "cd /opt/context-use/deploy",
-    "set -a; . /data/context-use/secrets/runtime.env; set +a",
+    "export POSTGRES_PASSWORD=\"$(sed -n 's/^POSTGRES_PASSWORD=//p' /data/context-use/secrets/runtime.env)\"",
+    "export NANGO_DB_PASSWORD=\"$(sed -n 's/^NANGO_DB_PASSWORD=//p' /data/context-use/secrets/runtime.env)\"",
     `${compose} config --services | grep -Fx nango-backup >/dev/null`,
     `running_services="$(${compose} ps --status running --services)"`,
     `if printf '%s\\n' "$running_services" | grep -Fx nango-server >/dev/null; then ${compose} run --rm nango-backup once; else echo "Nango is already stopped; reusing the previously verified backup without taking another" >&2; fi`,

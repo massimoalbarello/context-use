@@ -372,8 +372,8 @@ test("data-volume policy initializes only a first-install volume and fails close
 test("restore verifies the backup, keeps traffic down on failure, migrates, and restarts on success", () => {
   const script = restoreCommands("backup-bucket", "postgres/2026-07-17T10-39-47Z.sql.gz").join("\n");
 
-  expect(script).toContain(". /data/context-use/secrets/runtime.env");
-  expect(script).toContain("export PGPASSWORD=\"$POSTGRES_PASSWORD\"");
+  expect(script).not.toContain(". /data/context-use/secrets/runtime.env");
+  expect(script).toContain("sed -n 's/^POSTGRES_PASSWORD=//p' /data/context-use/secrets/runtime.env");
   expect(script).toContain("exec -T -e PGPASSWORD postgres psql");
   expect(script).toContain("--single-transaction");
   expect(script).toContain("backup fetch 'postgres/2026-07-17T10-39-47Z.sql.gz'");
@@ -387,7 +387,7 @@ test("restore verifies the backup, keeps traffic down on failure, migrates, and 
   expect(script.indexOf("CREATE ROLE context_use_public_mcp NOLOGIN")).toBeLessThan(script.indexOf("backup fetch"));
   expect(script.lastIndexOf("DROP ROLE IF EXISTS context_use_public_mcp")).toBeGreaterThan(script.indexOf("--profile migration run --rm migrate"));
   expect(script).toContain("up -d --remove-orphans");
-  expect(script).not.toContain("POSTGRES_PASSWORD=");
+  expect(script).not.toContain("export POSTGRES_PASSWORD");
 });
 
 test("deployment health must report the requested release version", () => {
@@ -433,6 +433,8 @@ test("owner emails are safe single entries for OAuth2 Proxy's authorized-emails 
     "OWNER_1@example.com",
     "o'brien@example.com",
     "user!tag@example.com",
+    "owner$tag@example.com",
+    "owner${tag}@example.com",
   ]) {
     expect(isValidOwnerEmail(email)).toBe(true);
   }
@@ -479,6 +481,9 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     Bun.file(new URL("../../../deploy/backup/backup.sh", import.meta.url)).text(),
     Bun.file(new URL("./cli-update.ts", import.meta.url)).text(),
   ]);
+  expect(deployScript).toContain('source "${root}/deploy/compose-env.sh"');
+  expect(deployScript).toContain("OWNER_EMAIL=${owner_email_literal}");
+  expect(deployScript).toContain("NANGO_DASHBOARD_USERNAME=${nango_dashboard_username_literal}");
 
   expect(userData.indexOf("install -d -m 0755 /usr/local/lib/docker/cli-plugins")).toBeLessThan(userData.indexOf("docker-compose-linux-"));
   expect(userData).toContain("context_use_data_volume_action");

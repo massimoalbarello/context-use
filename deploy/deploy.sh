@@ -44,6 +44,8 @@ echo "${CONTEXT_USE_BUNDLE_SHA256}  ${archive}" | sha256sum -c -
 # Do not let a malformed bundle inherit an image pin from a previous release.
 rm -f "${root}/deploy/release-images.env"
 tar -xzf "${archive}" -C "${root}"
+# shellcheck source=compose-env.sh
+source "${root}/deploy/compose-env.sh"
 nango_image="$(bash "${root}/deploy/nango/read-release-image.sh" "${root}/deploy/release-images.env" NANGO_IMAGE)"
 nango_integrations_image="$(bash "${root}/deploy/nango/read-release-image.sh" "${root}/deploy/release-images.env" NANGO_INTEGRATIONS_IMAGE)"
 
@@ -68,6 +70,8 @@ esac
 case "${nango_dashboard_username}" in
   *:*) echo "Nango dashboard username cannot contain a colon" >&2; exit 2 ;;
 esac
+owner_email_literal="$(compose_env_literal "${owner_email}")"
+nango_dashboard_username_literal="$(compose_env_literal "${nango_dashboard_username}")"
 nango_dashboard_basic="$(printf '%s:%s' "${nango_dashboard_username}" "${nango_dashboard_password}" | base64 | tr -d '\n')"
 printf '%s\n' "${owner_email}" > "${secrets}/nango-owner-email"
 # The parent secrets directory remains 0700. Read-only world permission on the
@@ -142,7 +146,7 @@ NANGO_INTEGRATIONS_IMAGE=${nango_integrations_image}
 APP_HOSTNAME=${app_hostname}
 ASSET_HOSTNAME=${asset_hostname}
 NANGO_HOSTNAME=${nango_hostname}
-OWNER_EMAIL=${owner_email}
+OWNER_EMAIL=${owner_email_literal}
 OWNER_SETUP_TOKEN_HASH=$(get_secret OWNER_SETUP_TOKEN_HASH)
 BETTER_AUTH_SECRET=$(get_secret BETTER_AUTH_SECRET)
 POSTGRES_PASSWORD=$(get_secret POSTGRES_PASSWORD)
@@ -157,7 +161,7 @@ NANGO_DB_PASSWORD=$(get_secret NANGO_DB_PASSWORD)
 NANGO_BACKUP_DB_PASSWORD=$(get_secret NANGO_BACKUP_DB_PASSWORD)
 NANGO_ENCRYPTION_KEY=$(get_secret NANGO_ENCRYPTION_KEY)
 NANGO_ADMIN_KEY=$(get_secret NANGO_ADMIN_KEY)
-NANGO_DASHBOARD_USERNAME=${nango_dashboard_username}
+NANGO_DASHBOARD_USERNAME=${nango_dashboard_username_literal}
 NANGO_DASHBOARD_PASSWORD=${nango_dashboard_password}
 NANGO_DASHBOARD_BASIC=${nango_dashboard_basic}
 NANGO_OAUTH_CLIENT_ID=$(get_secret NANGO_OAUTH_CLIENT_ID)

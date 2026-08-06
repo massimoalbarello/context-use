@@ -63,6 +63,9 @@ test("Nango restore backs up first, isolates Nango, recreates its database, and 
   expect(script).toContain(startWorkers);
   expect(script.indexOf(startServer)).toBeLessThan(script.indexOf(startWorkers));
   expect(script).toContain("up -d nango-backup");
+  expect(script).not.toContain(". /data/context-use/secrets/runtime.env");
+  expect(script).toContain("sed -n 's/^POSTGRES_PASSWORD=//p' /data/context-use/secrets/runtime.env");
+  expect(script).toContain("sed -n 's/^NANGO_DB_PASSWORD=//p' /data/context-use/secrets/runtime.env");
   expect(script).not.toContain("stop caddy");
   expect(script).not.toContain("stop app");
   expect(script).not.toContain("--profile migration");
