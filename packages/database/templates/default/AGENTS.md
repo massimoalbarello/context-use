@@ -151,6 +151,12 @@ Use wikilinks for knowledge-base relationships. In copyable examples, use unreso
 placeholders such as `[[area/…|label]]`, because real wikilinks resolve even inside code
 blocks.
 
+The same rule governs relationships between pages. Put the wikilink on the sentence that
+explains the relationship, never in a `Connections`, `Related` or `See also` list at the
+end. Such a list asserts that two subjects are connected without saying how, and generated
+directory indexes already provide navigation. If a relationship is worth recording, it is
+worth a sentence saying what it is.
+
 ## Write, then report
 
 Make confident, in-scope writes directly. Afterward, tell the owner which pages were

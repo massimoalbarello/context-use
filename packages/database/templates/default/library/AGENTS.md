@@ -47,11 +47,6 @@ pages or assets help only when they make the work materially easier to revisit.
 
     > <The owner's exact words when known.>
 
-    ## Connections
-
-    - [[about/…|idea or project]] — why this work matters there
-    - [[library/…|related work]] — the useful relationship between the works
-
 Keep the creator or publisher's canonical source prominent; alternate links are useful
 when they provide a distinct form such as a transcript. Use plain text for a creator or
 publisher that does not independently need an entity page.
@@ -61,6 +56,7 @@ exact words separately and label a paraphrase. If neither the work nor a reliabl
 description is accessible, keep the source and any owner note without inferring a
 summary from the title.
 
-Connections explain why the work matters without moving another subject's durable
-conclusion into the library entry. Empty metadata, headings and connection lists can
+Say why the work matters to existing knowledge in the prose that makes the connection,
+linking the topic, project or related work in the sentence itself, without moving another
+subject's durable conclusion into the library entry. Empty metadata and headings can
 simply be omitted.
