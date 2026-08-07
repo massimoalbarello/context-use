@@ -24,6 +24,7 @@ the path to the target; do not repeat inherited guidance in a child.
 - [[people/agents|People]]
 - [[places/agents|Places]]
 - [[skills/agents|Skills]]
+- [[topics/agents|Topics]]
 
 ### Managed pages
 
