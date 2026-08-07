@@ -56,18 +56,24 @@ const WRITE_TOOL_LABELS: Record<string, string> = {
   archive_page: "Archived page",
 };
 
+/** Codex can emit the same completed item more than once; print each write only once. */
+const printedItems = new Set<string>();
+
 export function printCodexProgress(line: string): void {
   try {
     const event = JSON.parse(line) as {
       type?: string;
-      item?: { type?: string; tool?: string; arguments?: { path?: string } };
+      item?: { id?: string; type?: string; tool?: string; arguments?: { path?: string } };
       error?: { message?: string };
     };
+    const item = event.item;
     if (event.type === "item.completed"
-      && event.item?.type === "mcp_tool_call"
-      && event.item.tool
-      && WRITE_TOOL_LABELS[event.item.tool]) {
-      console.log(`  ✓ ${WRITE_TOOL_LABELS[event.item.tool]} · ${event.item.arguments?.path ?? "(unknown path)"}`);
+      && item?.type === "mcp_tool_call"
+      && item.tool
+      && WRITE_TOOL_LABELS[item.tool]) {
+      if (item.id && printedItems.has(item.id)) return;
+      if (item.id) printedItems.add(item.id);
+      console.log(`  ✓ ${WRITE_TOOL_LABELS[item.tool]} · ${item.arguments?.path ?? "(unknown path)"}`);
     } else if (event.type?.includes("failed")) {
       console.error(`  Agent error: ${event.error?.message ?? line}`);
     }

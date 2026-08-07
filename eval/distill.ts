@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { loadCorpus, type CorpusWindow } from "../apps/server/src/corpus-records.ts";
-import { runStackCommand } from "../scripts/local-stack.ts";
+import { LOCAL_STACK, runStackCommand } from "../scripts/local-stack.ts";
 import { EVAL_URL, MCP_NAME, ROOT, runAgentSession, type EvalProvider } from "./agent.ts";
 import { CORPUS_DIRECTORY, corpusIsUnchanged, diffCorpus } from "./corpus-integrity.ts";
 import { pageChanges, snapshotKnowledge, type PageChange, type PageSnapshot } from "./snapshot.ts";
@@ -23,8 +23,26 @@ export type DistillOptions = {
   window: CorpusWindow;
   /** Stop after this many corpus days; omit to process the whole window. */
   days?: number | undefined;
-  reset?: boolean;
 };
+
+/**
+ * Confirms the running MCP actually serves the window this run reports. Without it the
+ * client and server can disagree silently and the report describes days that were never
+ * served — the failure mode that produced January pages from an April window.
+ */
+function assertServedWindow(expected: CorpusWindow): void {
+  const child = Bun.spawnSync([
+    "docker", "compose", "--project-name", LOCAL_STACK.project,
+    "exec", "-T", "private-mcp", "printenv", "EVAL_CORPUS_WINDOW",
+  ], { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
+  if (child.exitCode !== 0) {
+    throw new Error(`Could not read the served corpus window:\n${child.stderr.toString()}`);
+  }
+  const served = child.stdout.toString().trim();
+  if (served !== expected) {
+    throw new Error(`The private MCP serves the ${served} window but this run reports ${expected}.`);
+  }
+}
 
 export type DayResult = {
   day: string;
@@ -74,13 +92,15 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   console.log(`Corpus: ${corpus.corpusId} · window ${options.window} · ${days.length} of ${allDays.length} days · ${
     windowRecords.filter((record) => days.includes(record.day)).length} records`);
   console.log(`Live dashboard: ${EVAL_URL}/app/`);
-  console.log(`Run files: ${runDirectory}`);
-  console.log("\nThe server must serve the same window; it reads EVAL_CORPUS_WINDOW at startup.\n");
+  console.log(`Run files: ${runDirectory}\n`);
 
-  if (options.reset !== false) {
-    console.log("Resetting semantic knowledge while preserving passkeys and OAuth…");
-    runStackCommand("reset");
-  }
+  // The server reads the window at startup, so the run owns it and recreates the stack
+  // with it. Leaving that to the operator lets the client label days the server never
+  // served, which silently measures something other than what the report claims.
+  process.env.EVAL_CORPUS_WINDOW = options.window;
+  console.log(`Resetting and serving the ${options.window} window while preserving passkeys and OAuth…`);
+  runStackCommand("reset");
+  assertServedWindow(options.window);
 
   let previous: PageSnapshot[] = snapshotKnowledge();
   await Bun.write(join(runDirectory, "initial-snapshot.json"), `${JSON.stringify(previous, null, 2)}\n`);

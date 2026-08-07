@@ -42,14 +42,10 @@ bun run eval distill --window dense --days 2
 N days, which is how to try it cheaply — the full dense window is eight agent runs over
 379 records, and the full corpus is 47.
 
-The window is also read by the server, which picks it up from `EVAL_CORPUS_WINDOW` at
-startup and defaults to `full`. To run the dense window, set it before bringing the stack
-up so both sides agree:
-
-```sh
-EVAL_CORPUS_WINDOW=dense bun run local up
-bun run eval distill --window dense
-```
+`--window` is the single source of truth. The server reads the window at startup, so the
+run exports it, resets the stack with it, and then reads it back out of the running
+container before the first agent run. A client and server that disagree would label days
+the server never served, so the run fails instead.
 
 Every run resets semantic knowledge and assets in this local instance to the default
 template while preserving the owner passkey and OAuth authorization. Do not keep
