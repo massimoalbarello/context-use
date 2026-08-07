@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type RefCallback } from "react";
 import {
   buildKnowledgeTree,
   countPublicItems,
+  directoryPathsForPath,
   EXPANDED_PATHS_STORAGE_KEY,
   expandedPathsForDisplay,
   knowledgeTreeItemLabel,
@@ -72,11 +73,13 @@ function KnowledgeItems({
   directory,
   depth,
   selected,
+  selectedItemRef,
   onSelect,
 }: {
   directory: PageTreeDirectory;
   depth: number;
   selected: KnowledgeSelection | null;
+  selectedItemRef: RefCallback<HTMLButtonElement>;
   onSelect: (selection: KnowledgeSelection) => void;
 }) {
   const items: TreeItem[] = [...directory.pages, ...directory.assets].sort((left, right) => (
@@ -99,6 +102,7 @@ function KnowledgeItems({
       aria-selected={active}
       title={`${label}\n${entity.current_path}${publicationOutdated ? "\nPublished version is out of date" : ""}`}
       key={`${item.kind}-${entity.id}`}
+      ref={active ? selectedItemRef : undefined}
       onClick={() => onSelect({ kind: item.kind, id: entity.id })}
     >
       <span className="tree-chevron-spacer" aria-hidden="true" />
@@ -116,6 +120,7 @@ function DirectoryBranch({
   depth,
   expandedPaths,
   selected,
+  selectedItemRef,
   onToggle,
   onSelect,
 }: {
@@ -123,6 +128,7 @@ function DirectoryBranch({
   depth: number;
   expandedPaths: Set<string>;
   selected: KnowledgeSelection | null;
+  selectedItemRef: RefCallback<HTMLButtonElement>;
   onToggle: (path: string) => void;
   onSelect: (selection: KnowledgeSelection) => void;
 }) {
@@ -146,6 +152,7 @@ function DirectoryBranch({
       aria-label={`${label}${publicItemCount ? `, ${publicItemCount} public item${publicItemCount === 1 ? "" : "s"}` : ""}`}
       title={`${directory.path}/${publicItemCount ? `\n${publicItemCount} public item${publicItemCount === 1 ? "" : "s"}` : ""}`}
       aria-selected={active}
+      ref={active ? selectedItemRef : undefined}
       onClick={() => {
         onToggle(directory.path);
         if (directory.directory) onSelect({ kind: "directory", id: directory.directory.id });
@@ -167,10 +174,11 @@ function DirectoryBranch({
         depth={depth + 1}
         expandedPaths={expandedPaths}
         selected={selected}
+        selectedItemRef={selectedItemRef}
         onToggle={onToggle}
         onSelect={onSelect}
       />)}
-      <KnowledgeItems directory={directory} depth={depth + 1} selected={selected} onSelect={onSelect} />
+      <KnowledgeItems directory={directory} depth={depth + 1} selected={selected} selectedItemRef={selectedItemRef} onSelect={onSelect} />
     </div>}
   </div>;
 }
@@ -185,10 +193,26 @@ export function KnowledgeTree({ pages, directories, assets, query, selected, onS
     () => restoredPaths.current ?? new Set(),
   );
   const initialized = useRef(restoredPaths.current !== null);
+  const scrollFrame = useRef<number | null>(null);
   const visibleExpandedPaths = useMemo(
     () => expandedPathsForDisplay(expandedPaths, tree, query),
     [expandedPaths, query, tree],
   );
+  const hasRootDirectory = tree.directory !== null;
+  const selectedPath = useMemo(() => {
+    if (!selected) return null;
+    if (selected.kind === "page") return pages.find((page) => page.id === selected.id)?.current_path ?? null;
+    if (selected.kind === "directory") return directories.find((directory) => directory.id === selected.id)?.current_path ?? null;
+    return assets.find((asset) => asset.id === selected.id)?.current_path ?? null;
+  }, [assets, directories, pages, selected]);
+  const selectedItemRef = useCallback<RefCallback<HTMLButtonElement>>((element) => {
+    if (!element) return;
+    if (scrollFrame.current !== null) window.cancelAnimationFrame(scrollFrame.current);
+    scrollFrame.current = window.requestAnimationFrame(() => {
+      scrollFrame.current = null;
+      if (element.isConnected) element.scrollIntoView({ block: "center", inline: "nearest" });
+    });
+  }, [selected?.id, selected?.kind]);
 
   useEffect(() => {
     try {
@@ -206,6 +230,30 @@ export function KnowledgeTree({ pages, directories, assets, query, selected, onS
       ...tree.directories.map((directory) => directory.path),
     ]));
   }, [assets.length, directories.length, pages.length, tree]);
+
+  useEffect(() => {
+    if (selectedPath === null) return;
+    const pathsToReveal = [
+      ...(hasRootDirectory ? [tree.path] : []),
+      ...directoryPathsForPath(selectedPath),
+    ];
+    if (!pathsToReveal.length) return;
+
+    setExpandedPaths((current) => {
+      const next = new Set(current);
+      let changed = false;
+      for (const path of pathsToReveal) {
+        if (next.has(path)) continue;
+        next.add(path);
+        changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [hasRootDirectory, selectedPath, tree.path]);
+
+  useEffect(() => () => {
+    if (scrollFrame.current !== null) window.cancelAnimationFrame(scrollFrame.current);
+  }, []);
 
   const toggle = (path: string) => setExpandedPaths((current) => {
     const next = new Set(current);
@@ -225,6 +273,7 @@ export function KnowledgeTree({ pages, directories, assets, query, selected, onS
         depth={0}
         expandedPaths={visibleExpandedPaths}
         selected={selected}
+        selectedItemRef={selectedItemRef}
         onToggle={toggle}
         onSelect={onSelect}
       />
@@ -235,10 +284,11 @@ export function KnowledgeTree({ pages, directories, assets, query, selected, onS
           depth={0}
           expandedPaths={visibleExpandedPaths}
           selected={selected}
+          selectedItemRef={selectedItemRef}
           onToggle={toggle}
           onSelect={onSelect}
         />)}
-        <KnowledgeItems directory={tree} depth={0} selected={selected} onSelect={onSelect} />
+        <KnowledgeItems directory={tree} depth={0} selected={selected} selectedItemRef={selectedItemRef} onSelect={onSelect} />
       </>}
   </div>;
 }
