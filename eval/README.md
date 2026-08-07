@@ -52,6 +52,29 @@ template while preserving the owner passkey and OAuth authorization. Do not keep
 development data in it. Snapshots, per-day agent logs and a Markdown report land in
 `.eval-results/`.
 
+## What counts as one source record
+
+A conversation is one record, not one record per message, because the Nango envelope
+contract is a source item carrying a complete semantic body — the same reason a meeting is
+one record. The 418 upstream items become 226 records: 300 Slack messages collapse into
+130, and 50 emails into 28. Notes, meetings and calendar events are already single items
+and are unchanged. `loadCorpus` fails if any manifest item is not carried by some record,
+so grouping can never silently drop evidence.
+
+Slack threads are keyed by **channel and `thread_ts` together**, not `thread_ts` alone.
+This corpus reuses one `thread_ts` across all four channels for unrelated subjects, so
+grouping on it alone would splice a fund close, a deal update and office chat into a single
+"conversation". Keyed by channel the groups are two or three messages and read as threads.
+
+A thread that gains messages on a later day is served again that day, `added` the first
+time and `updated` after, carrying the whole conversation each time. That is how an
+incremental source behaves, it keeps later messages out of an earlier day, and it means a
+thread is never split across batches. Thirteen records in this corpus are updates.
+
+`doc/` holds six reference documents that are **not** in the upstream manifest and are
+therefore never served. That matches upstream's own definition of the corpus, and no other
+record references them.
+
 ## How one run equals one day
 
 `CorpusRecordReader` implements the same `SourceRecordReader` interface as the Nango
