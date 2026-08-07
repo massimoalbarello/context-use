@@ -287,6 +287,63 @@ describe("knowledge templates", () => {
     expect(state.updatedDirectories).not.toContain("people");
   });
 
+  test("force template overwrites all eligible local template customizations", async () => {
+    const state = repositories({
+      directories: DEFAULT_DIRECTORY_PATHS,
+      directoryTitles: { people: "Contacts" },
+      directorySummaries: { people: "The owner's intentionally customized contacts directory." },
+      pages: {
+        agents: {
+          body: "Owner root rules.\n",
+          actor: "owner-user-id",
+        },
+        "automations/activity-distiller/instructions": {
+          title: "Local activity distiller",
+          summary: "Local activity distiller instructions.",
+          body: "Owner-specific maintenance policy.\n",
+          actor: "owner-user-id",
+        },
+        "automations/activity-distiller/state": {
+          title: "Owner's activity checkpoint",
+          summary: "Owner checkpoint.",
+          body: "# Activity distiller state\n\n**Checkpoint:** `cu-nango-v1.live`\n",
+          actor: "owner-user-id",
+        },
+      },
+    });
+
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true, true);
+
+    expect(result.actions).toContainEqual({
+      action: "update-directory",
+      path: "people",
+      detail: "Overwrite local directory metadata with the template",
+    });
+    expect(state.updatedDirectoryInputs).toContainEqual({
+      title: DEFAULT_DIRECTORY_PRESENTATIONS.people!.title,
+      summary: DEFAULT_DIRECTORY_PRESENTATIONS.people!.summary,
+      expected_version_number: 1,
+    });
+    expect(result.actions).toContainEqual({
+      action: "replace-guide",
+      path: "agents",
+      detail: "Overwrite locally modified guide",
+    });
+    expect(result.actions).toContainEqual({
+      action: "update-page",
+      path: "automations/activity-distiller/instructions",
+      detail: "Overwrite locally modified template page",
+    });
+    expect(result.actions).toContainEqual({
+      action: "unchanged",
+      path: "automations/activity-distiller/state",
+      detail: "Preserve create-only template page",
+    });
+    expect(state.updatedPages).toContain("agents");
+    expect(state.updatedPages).toContain("automations/activity-distiller/instructions");
+    expect(state.updatedPages).not.toContain("automations/activity-distiller/state");
+  });
+
   test("uses authored presentation when creating template directories", async () => {
     const state = repositories();
 
@@ -365,7 +422,7 @@ describe("knowledge templates", () => {
       },
     });
 
-    const result = await reconcileKnowledgeTemplate(state.value, "default", true, false, true);
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true, true);
 
     expect(result.actions).toContainEqual({
       action: "conflict",
@@ -388,7 +445,7 @@ describe("knowledge templates", () => {
       },
     });
 
-    const result = await reconcileKnowledgeTemplate(state.value, "default", true, true);
+    const result = await reconcileKnowledgeTemplate(state.value, "default", true);
 
     expect(result.actions).toContainEqual({
       action: "conflict",
@@ -417,7 +474,7 @@ describe("knowledge templates", () => {
       },
     });
 
-    const overwritePlan = await reconcileKnowledgeTemplate(state.value, "default", false, false, true);
+    const overwritePlan = await reconcileKnowledgeTemplate(state.value, "default", false, true);
     expect(overwritePlan.actions).toContainEqual({
       action: "update-page",
       path: "automations/activity-distiller/instructions",
@@ -430,7 +487,7 @@ describe("knowledge templates", () => {
     });
     expect(state.updatedPages).toEqual([]);
 
-    const applied = await reconcileKnowledgeTemplate(state.value, "default", true, false, true);
+    const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
     expect(state.updatedPages).toEqual(["automations/activity-distiller/instructions"]);
     expect(state.updatedPageInputs).toContainEqual(expect.objectContaining({
       path: "automations/activity-distiller/instructions",

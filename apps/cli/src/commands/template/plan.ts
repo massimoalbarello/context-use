@@ -6,19 +6,14 @@ import { runKnowledgeTemplateCommand } from "../../knowledge-template.ts";
 export const command = defineCommand("template plan", {
   description: "Preview safe default-template changes and local conflicts.",
   options: {
-    "overwrite-guides": {
+    "force-template": {
       schema: z.boolean().optional(),
-      description: "Preview replacement of locally modified active AGENTS.md guides.",
-    },
-    "overwrite-managed-pages": {
-      schema: z.boolean().optional(),
-      description: "Preview replacement of locally modified managed pages.",
+      description: "Preview replacement of eligible local directory metadata, guides, and managed pages.",
     },
   },
   handler: async ({ options }) => {
     const output = (await runKnowledgeTemplateCommand("plan", {
-      overwriteGuides: options["overwrite-guides"] ?? false,
-      overwriteManagedPages: options["overwrite-managed-pages"] ?? false,
+      forceTemplate: options["force-template"] ?? false,
     })).trim();
     p.note(output || "No template changes", "Default template plan");
   },

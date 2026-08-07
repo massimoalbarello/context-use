@@ -6,19 +6,14 @@ import { runKnowledgeTemplateCommand } from "../../knowledge-template.ts";
 export const command = defineCommand("template apply", {
   description: "Create missing template knowledge and update eligible guides and managed pages.",
   options: {
-    "overwrite-guides": {
+    "force-template": {
       schema: z.boolean().optional(),
-      description: "Replace locally modified active AGENTS.md guides with the template.",
-    },
-    "overwrite-managed-pages": {
-      schema: z.boolean().optional(),
-      description: "Replace locally modified managed pages with the template.",
+      description: "Replace eligible local directory metadata, guides, and managed pages with the template.",
     },
   },
   handler: async ({ options }) => {
     const output = (await runKnowledgeTemplateCommand("apply", {
-      overwriteGuides: options["overwrite-guides"] ?? false,
-      overwriteManagedPages: options["overwrite-managed-pages"] ?? false,
+      forceTemplate: options["force-template"] ?? false,
     })).trim();
     p.note(output || "No template changes", "Default template applied");
   },

@@ -75,11 +75,13 @@ test("command help exposes only intentional sensitive or destructive options", a
   expect(nangoRestore.exitCode).toBe(0);
   expect(nangoRestore.stdout).toContain("Restore Nango");
   expect(templatePlan.exitCode).toBe(0);
-  expect(templatePlan.stdout).toContain("--overwrite-guides");
-  expect(templatePlan.stdout).toContain("--overwrite-managed-pages");
+  expect(templatePlan.stdout).toContain("--force-template");
+  expect(templatePlan.stdout).not.toContain("--overwrite-guides");
+  expect(templatePlan.stdout).not.toContain("--overwrite-managed-pages");
   expect(templateApply.exitCode).toBe(0);
-  expect(templateApply.stdout).toContain("--overwrite-guides");
-  expect(templateApply.stdout).toContain("--overwrite-managed-pages");
+  expect(templateApply.stdout).toContain("--force-template");
+  expect(templateApply.stdout).not.toContain("--overwrite-guides");
+  expect(templateApply.stdout).not.toContain("--overwrite-managed-pages");
   expect(agentSyncInstall.exitCode).toBe(0);
   expect(agentSyncInstall.stdout).toContain("--codex-path");
   expect(agentSyncInstall.stdout).toContain("--claude-code-path");

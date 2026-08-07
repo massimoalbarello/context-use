@@ -345,8 +345,7 @@ export async function reconcileKnowledgeTemplate(
   repositories: TemplateRepositories,
   templateName = "default",
   apply = false,
-  overwriteGuides = false,
-  overwriteManagedPages = false,
+  forceTemplate = false,
 ): Promise<TemplateResult> {
   assertTemplateName(templateName);
   const rootUrl = new URL(`${templateName}/`, TEMPLATES_ROOT);
@@ -379,6 +378,24 @@ export async function reconcileKnowledgeTemplate(
     const presentation = directoryPresentations.get(path)!;
     const existing = await repositories.directories.getByPath(path) as TemplateDirectory | null;
     if (existing) {
+      if (forceTemplate) {
+        if (existing.title !== presentation.title || existing.summary !== presentation.summary) {
+          actions.push({
+            action: "update-directory",
+            path,
+            detail: "Overwrite local directory metadata with the template",
+          });
+          if (apply) {
+            const input: UpdateDirectoryInput = {
+              title: presentation.title,
+              summary: presentation.summary,
+              expected_version_number: existing.version_number,
+            };
+            await repositories.directories.update(existing.id, input);
+          }
+        }
+        continue;
+      }
       if (!existing.summary.trim()) {
         actions.push({
           action: "update-directory",
@@ -476,7 +493,7 @@ export async function reconcileKnowledgeTemplate(
       }
       continue;
     }
-    if (overwriteGuides) {
+    if (forceTemplate) {
       actions.push({ action: "replace-guide", path, detail: "Overwrite locally modified guide" });
       if (apply) {
         const update: UpdatePageInput = { ...input, expected_version_number: existing.version_number };
@@ -542,7 +559,7 @@ export async function reconcileKnowledgeTemplate(
       }
       continue;
     }
-    if (overwriteManagedPages) {
+    if (forceTemplate) {
       actions.push({ action: "update-page", path: input.path, detail: "Overwrite locally modified template page" });
       if (apply) {
         const update: UpdatePageInput = { ...input, expected_version_number: existing.version_number };
