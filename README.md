@@ -55,41 +55,18 @@ bun run local purge    # erase every volume, including owner and passkeys
 
 ## Run knowledge evals locally
 
-Knowledge evals use an isolated Context Use installation so they cannot modify normal
-development data. It runs at `http://localhost:5273`, exposes MCP at
-`http://localhost:5273/mcp`, and uses its own PostgreSQL and asset volumes.
-
-```sh
-bun run eval up
-bun run eval status
-bun run eval logs
-bun run eval down
-```
-
-`down` preserves the evaluation knowledge base for inspection. To begin again with a
-blank knowledge base containing only the default template while retaining the owner,
-passkeys, sessions, and MCP OAuth grants, reset it:
-
-```sh
-bun run eval reset
-```
-
-Use `destroy` to perform the same identity-preserving reset and leave the stack stopped.
-The explicit `purge` command removes the complete evaluation installation, including its
-owner, passkeys, and OAuth state:
-
-```sh
-bun run eval purge
-```
-
-Connect Codex once, then run the GBrain-derived trajectory with your local ChatGPT
-subscription. The command resets knowledge and assets before the run but preserves the
-owner passkey and MCP OAuth authorization:
+Knowledge evals use the same local instance. Start it with `bun run local up` and create
+its owner once, then connect Codex and run the GBrain-derived trajectory with your local
+ChatGPT subscription:
 
 ```sh
 bun run eval connect codex
 bun run eval run
 ```
+
+Each run resets local knowledge and assets before it starts, so do not keep development
+data in this disposable instance. The owner, passkeys, sessions, and MCP OAuth grants
+are preserved.
 
 Use `bun run eval run --provider claude` after `claude auth login` to use Claude Code.
 Reports, complete agent logs, and per-step snapshots are written beneath the gitignored

@@ -1,11 +1,7 @@
-import { runStackCommand } from "./local-stack.ts";
 import { connectProvider, runEval, scoreEval, type EvalProvider } from "../eval/runner.ts";
-
-const LIFECYCLE_COMMANDS = ["up", "down", "destroy", "purge", "reset", "logs", "status", "url"] as const;
 
 function usage(): never {
   console.error(`Usage:
-  bun run eval <up|down|destroy|purge|reset|logs|status|url>
   bun run eval connect <codex|claude>
   bun run eval run [--provider <codex|claude>]
   bun run eval score [run-id]`);
@@ -21,9 +17,7 @@ function providerFrom(args: string[]): EvalProvider {
 
 const [command, ...args] = process.argv.slice(2);
 
-if (command && (LIFECYCLE_COMMANDS as readonly string[]).includes(command)) {
-  runStackCommand("eval", command as (typeof LIFECYCLE_COMMANDS)[number]);
-} else if (command === "connect") {
+if (command === "connect") {
   const provider = args[0];
   if (provider !== "codex" && provider !== "claude") usage();
   connectProvider(provider);

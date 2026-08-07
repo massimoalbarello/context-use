@@ -1,44 +1,33 @@
 import { describe, expect, test } from "bun:test";
 import {
+  LOCAL_STACK,
   composeArguments,
   setupUrl,
-  stackEnvironment,
   stackUrl,
   stackVolumeName,
 } from "./local-stack.ts";
 
 describe("local stack commands", () => {
-  test("keeps development and evaluation data isolated", () => {
-    expect(stackEnvironment("local")).toMatchObject({
-      CONTEXT_USE_COMPOSE_PROJECT: "context-use-dev",
-      CONTEXT_USE_DB_NAME: "context_use",
-      CONTEXT_USE_WEB_PORT: "5173",
-      CONTEXT_USE_POSTGRES_PORT: "5432",
+  test("uses one local application and database", () => {
+    expect(LOCAL_STACK).toEqual({
+      project: "context-use-dev",
+      database: "context_use",
+      url: "http://localhost:5173",
     });
-    expect(stackEnvironment("eval")).toMatchObject({
-      CONTEXT_USE_COMPOSE_PROJECT: "context-use-eval",
-      CONTEXT_USE_DB_NAME: "context_use_eval",
-      CONTEXT_USE_WEB_PORT: "5273",
-      CONTEXT_USE_POSTGRES_PORT: "55432",
-    });
+    expect(stackUrl()).toBe("http://localhost:5173");
+    expect(setupUrl()).toContain("/app#setup=development-owner-setup-token-");
   });
 
-  test("prints the correct local URLs", () => {
-    expect(stackUrl("local")).toBe("http://localhost:5173");
-    expect(stackUrl("eval")).toBe("http://localhost:5273");
-    expect(setupUrl("eval")).toContain("/app#setup=development-owner-setup-token-");
-  });
-
-  test("only purge removes the selected Compose project volumes", () => {
-    expect(composeArguments("eval", "purge")).toEqual([
+  test("only purge removes the local Compose project volumes", () => {
+    expect(composeArguments("purge")).toEqual([
       "compose",
       "--project-name",
-      "context-use-eval",
+      "context-use-dev",
       "down",
       "--volumes",
       "--remove-orphans",
     ]);
-    expect(composeArguments("eval", "down")).not.toContain("--volumes");
-    expect(stackVolumeName("eval", "asset-data")).toBe("context-use-eval_asset-data");
+    expect(composeArguments("down")).not.toContain("--volumes");
+    expect(stackVolumeName("asset-data")).toBe("context-use-dev_asset-data");
   });
 });

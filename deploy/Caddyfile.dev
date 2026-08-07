@@ -18,12 +18,12 @@
 	}
 	handle /mcp {
 		reverse_proxy private-mcp:3003 {
-			header_up Host localhost:{$CONTEXT_USE_WEB_PORT:5173}
+			header_up Host localhost:5173
 		}
 	}
 	handle /api/mcp/* {
 		reverse_proxy private-mcp:3003 {
-			header_up Host localhost:{$CONTEXT_USE_WEB_PORT:5173}
+			header_up Host localhost:5173
 		}
 	}
 	handle /api/dashboard/* {
