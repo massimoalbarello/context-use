@@ -11,7 +11,8 @@ export default defineConfig({
       "/api": apiProxyTarget,
       "/mcp": apiProxyTarget,
       "/p": apiProxyTarget,
-      "/a": apiProxyTarget,
+      // Keep the public asset route from also matching the dashboard's /app path.
+      "/a/": apiProxyTarget,
       "/llms.txt": apiProxyTarget,
       "/llms-full.txt": apiProxyTarget,
       "/.well-known": apiProxyTarget,

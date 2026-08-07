@@ -15,6 +15,7 @@
     "template": "bun src/template-command.ts",
     "initialize": "bun src/initialize.ts",
     "migrate": "bun src/migrate.ts",
+    "reset:development": "bun src/reset-development.ts",
     "test:roles": "bun test test/roles.integration.test.ts"
   },
   "dependencies": {

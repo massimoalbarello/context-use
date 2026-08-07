@@ -39,6 +39,52 @@ To use another email on a fresh installation:
 OWNER_EMAIL=me@example.com docker compose up --build
 ```
 
+When developing from this repository, the Bun shortcuts make the stack lifecycle easier:
+
+```sh
+bun run local up       # build, start, and wait until the app is ready
+bun run local status   # show the development containers
+bun run local logs     # follow their logs
+bun run local down     # stop everything but preserve local data
+bun run local reset    # erase knowledge/assets, preserve login, and restart
+bun run local destroy  # erase knowledge/assets, preserve login, and leave it stopped
+bun run local purge    # erase every volume, including owner and passkeys
+```
+
+`bun run local up` prints the app and owner-setup URLs when it is ready.
+
+## Run knowledge evals locally
+
+Knowledge evals use an isolated Context Use installation so they cannot modify normal
+development data. It runs at `http://localhost:5273`, exposes MCP at
+`http://localhost:5273/mcp`, and uses its own PostgreSQL and asset volumes.
+
+```sh
+bun run eval up
+bun run eval status
+bun run eval logs
+bun run eval down
+```
+
+`down` preserves the evaluation knowledge base for inspection. To begin again with a
+blank knowledge base containing only the default template while retaining the owner,
+passkeys, sessions, and MCP OAuth grants, reset it:
+
+```sh
+bun run eval reset
+```
+
+Use `destroy` to perform the same identity-preserving reset and leave the stack stopped.
+The explicit `purge` command removes the complete evaluation installation, including its
+owner, passkeys, and OAuth state:
+
+```sh
+bun run eval purge
+```
+
+The forthcoming GBrain-derived trajectory runner will use this isolated stack and write
+reports beneath the gitignored `.eval-results/` directory.
+
 ## Self-host on AWS
 
 The CLI provisions and manages Context Use in your AWS account. You need an authenticated AWS CLI profile, Terraform 1.11+, GitHub CLI, and a hostname you control.
