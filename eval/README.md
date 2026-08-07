@@ -17,11 +17,11 @@ itself. Immediately after each step, deterministic checks inspect the database f
 ## Run locally with Codex
 
 ```sh
-bun run eval up
+bun run local up
 ```
 
 Create the owner once at the setup URL printed by that command using
-`eval@example.com`. Then connect the installed Codex CLI once:
+`you@example.com`. Then connect the installed Codex CLI once:
 
 ```sh
 bun run eval connect codex
@@ -33,12 +33,12 @@ Run the scenario whenever wanted:
 bun run eval run
 ```
 
-Every run resets semantic knowledge and assets to the default template while preserving
-the owner passkey and OAuth authorization. Reports and snapshots are written under
-`.eval-results/`.
+Every run resets semantic knowledge and assets in this local instance to the default
+template while preserving the owner passkey and OAuth authorization. Do not keep
+development data in it. Reports and snapshots are written under `.eval-results/`.
 
 The terminal shows readable write progress and per-step scores. Keep the dashboard open
-at `http://localhost:5273/app/` to watch the knowledge tree update during the run.
+at `http://localhost:5173/app/` to watch the knowledge tree update during the run.
 Complete agent JSONL, stderr, final messages, per-step database snapshots, and the
 baseline snapshot remain in the run directory for debugging.
 
@@ -50,8 +50,8 @@ bun run eval score
 bun run eval score 2026-08-07T14-14-46-829Z-codex
 ```
 
-Use `bun run eval destroy` to remove semantic data and stop the stack while preserving
-authentication, or `bun run eval purge` to remove everything, including the passkey.
+Use `bun run local destroy` to remove semantic data and stop the stack while preserving
+authentication, or `bun run local purge` to remove everything, including the passkey.
 
 ## Claude Code
 

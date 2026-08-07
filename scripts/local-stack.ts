@@ -1,67 +1,29 @@
-type StackName = "local" | "eval";
 type StackCommand = "up" | "down" | "destroy" | "purge" | "reset" | "logs" | "status" | "url";
 type ComposeCommand = "up" | "down" | "purge" | "logs" | "status";
 
-type StackConfiguration = {
-  project: string;
-  database: string;
-  webPort: string;
-  postgresPort: string;
-  ownerEmail: string;
-};
-
-const STACKS: Record<StackName, StackConfiguration> = {
-  local: {
-    project: "context-use-dev",
-    database: "context_use",
-    webPort: "5173",
-    postgresPort: "5432",
-    ownerEmail: "you@example.com",
-  },
-  eval: {
-    project: "context-use-eval",
-    database: "context_use_eval",
-    webPort: "5273",
-    postgresPort: "55432",
-    ownerEmail: "eval@example.com",
-  },
-};
+export const LOCAL_STACK = {
+  project: "context-use-dev",
+  database: "context_use",
+  url: "http://localhost:5173",
+} as const;
 
 const SETUP_TOKEN = "development-owner-setup-token-0000000000000";
 
 function usage(): never {
-  console.error("Usage: bun run <local|eval> <up|down|destroy|purge|reset|logs|status|url>");
+  console.error("Usage: bun run local <up|down|destroy|purge|reset|logs|status|url>");
   process.exit(1);
 }
 
-export function stackConfiguration(name: StackName): StackConfiguration {
-  return STACKS[name];
+export function stackUrl(): string {
+  return LOCAL_STACK.url;
 }
 
-export function stackEnvironment(name: StackName): Record<string, string> {
-  const stack = stackConfiguration(name);
-  return {
-    CONTEXT_USE_COMPOSE_PROJECT: stack.project,
-    CONTEXT_USE_DB_NAME: stack.database,
-    CONTEXT_USE_WEB_PORT: stack.webPort,
-    CONTEXT_USE_POSTGRES_PORT: stack.postgresPort,
-    OWNER_EMAIL: stack.ownerEmail,
-  };
+export function setupUrl(): string {
+  return `${stackUrl()}/app#setup=${SETUP_TOKEN}`;
 }
 
-export function stackUrl(name: StackName): string {
-  return `http://localhost:${stackConfiguration(name).webPort}`;
-}
-
-export function setupUrl(name: StackName): string {
-  return `${stackUrl(name)}/app#setup=${SETUP_TOKEN}`;
-}
-
-export function composeArguments(
-  name: StackName,
-  command: ComposeCommand,
-): string[] {
-  const prefix = ["compose", "--project-name", stackConfiguration(name).project];
+export function composeArguments(command: ComposeCommand): string[] {
+  const prefix = ["compose", "--project-name", LOCAL_STACK.project];
   switch (command) {
     case "up":
       return [...prefix, "up", "--build", "--detach", "--wait"];
@@ -76,14 +38,14 @@ export function composeArguments(
   }
 }
 
-export function stackVolumeName(name: StackName, volume: "asset-data"): string {
-  return `${stackConfiguration(name).project}_${volume}`;
+export function stackVolumeName(volume: "asset-data"): string {
+  return `${LOCAL_STACK.project}_${volume}`;
 }
 
-function runCompose(name: StackName, arguments_: string[]): void {
-  const child = Bun.spawnSync(["docker", "compose", "--project-name", stackConfiguration(name).project, ...arguments_], {
+function runCompose(arguments_: string[]): void {
+  const child = Bun.spawnSync(["docker", "compose", "--project-name", LOCAL_STACK.project, ...arguments_], {
     cwd: import.meta.dir + "/..",
-    env: { ...process.env, ...stackEnvironment(name) },
+    env: process.env,
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
@@ -91,12 +53,12 @@ function runCompose(name: StackName, arguments_: string[]): void {
   if (child.exitCode !== 0) process.exit(child.exitCode);
 }
 
-function runDocker(name: StackName, command: ComposeCommand): void {
-  runCompose(name, composeArguments(name, command).slice(3));
+function runDocker(command: ComposeCommand): void {
+  runCompose(composeArguments(command).slice(3));
 }
 
-function removeDataVolume(name: StackName): void {
-  const volume = stackVolumeName(name, "asset-data");
+function removeDataVolume(): void {
+  const volume = stackVolumeName("asset-data");
   const listed = Bun.spawnSync(["docker", "volume", "ls", "--quiet", "--filter", `name=^${volume}$`], {
     stdout: "pipe",
     stderr: "inherit",
@@ -111,10 +73,10 @@ function removeDataVolume(name: StackName): void {
   }
 }
 
-function resetData(name: StackName, restart: boolean): void {
-  runDocker(name, "down");
-  runCompose(name, ["up", "--detach", "--wait", "postgres"]);
-  runCompose(name, [
+function resetData(restart: boolean): void {
+  runDocker("down");
+  runCompose(["up", "--detach", "--wait", "postgres"]);
+  runCompose([
     "run",
     "--build",
     "--rm",
@@ -127,46 +89,45 @@ function resetData(name: StackName, restart: boolean): void {
     "packages/database",
     "reset:development",
   ]);
-  removeDataVolume(name);
+  removeDataVolume();
   if (restart) {
-    runDocker(name, "up");
-    printReady(name);
+    runDocker("up");
+    printReady();
   } else {
-    runDocker(name, "down");
+    runDocker("down");
     console.log("\nKnowledge and assets were removed; owner, passkeys, and OAuth state were preserved.");
   }
 }
 
-function printReady(name: StackName): void {
-  console.log(`\nContext Use ${name === "eval" ? "evaluation" : "development"} stack is ready.`);
-  console.log(`App:   ${stackUrl(name)}`);
-  console.log(`Setup: ${setupUrl(name)}`);
-  if (name === "eval") console.log(`MCP:   ${stackUrl(name)}/mcp`);
+function printReady(): void {
+  console.log("\nContext Use local stack is ready.");
+  console.log(`App:   ${stackUrl()}`);
+  console.log(`Setup: ${setupUrl()}`);
+  console.log(`MCP:   ${stackUrl()}/mcp`);
 }
 
-export function runStackCommand(name: StackName, command: StackCommand): void {
+export function runStackCommand(command: StackCommand): void {
   if (command === "url") {
-    console.log(stackUrl(name));
+    console.log(stackUrl());
     return;
   }
   if (command === "reset") {
-    resetData(name, true);
+    resetData(true);
     return;
   }
   if (command === "destroy") {
-    resetData(name, false);
+    resetData(false);
     return;
   }
-  runDocker(name, command);
-  if (command === "up") printReady(name);
+  runDocker(command);
+  if (command === "up") printReady();
 }
 
 if (import.meta.main) {
-  const [rawName, rawCommand] = process.argv.slice(2);
-  if (!(rawName === "local" || rawName === "eval")) usage();
+  const [rawCommand] = process.argv.slice(2);
   if (!rawCommand
     || !(["up", "down", "destroy", "purge", "reset", "logs", "status", "url"] as string[]).includes(rawCommand)) {
     usage();
   }
-  runStackCommand(rawName, rawCommand as StackCommand);
+  runStackCommand(rawCommand as StackCommand);
 }

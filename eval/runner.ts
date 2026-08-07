@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { runStackCommand } from "../scripts/local-stack.ts";
+import { LOCAL_STACK, runStackCommand, stackUrl } from "../scripts/local-stack.ts";
 import { scoreStep, type PageSnapshot, type StepScore } from "./scoring.ts";
 import { amaraNovaMindScenario, type EvalStep } from "./scenarios/amara-novamind.ts";
 
@@ -18,7 +18,7 @@ type RunReport = {
 
 const ROOT = join(import.meta.dir, "..");
 const RESULTS_ROOT = join(ROOT, ".eval-results");
-const EVAL_URL = "http://localhost:5273";
+const EVAL_URL = stackUrl();
 const MCP_NAME = "context_use_eval";
 const MCP_URL = `${EVAL_URL}/mcp`;
 const CODEX_APP_BINARY = "/Applications/ChatGPT.app/Contents/Resources/codex";
@@ -44,8 +44,8 @@ function snapshotKnowledge(): PageSnapshot[] {
   JOIN knowledge_page_versions v ON v.id=p.current_version_id AND v.page_id=p.id
   WHERE p.archived_at IS NULL;`;
   const child = Bun.spawnSync([
-    "docker", "compose", "--project-name", "context-use-eval", "exec", "-T",
-    "postgres", "psql", "-U", "postgres", "-d", "context_use_eval", "-Atc", sql,
+    "docker", "compose", "--project-name", LOCAL_STACK.project, "exec", "-T",
+    "postgres", "psql", "-U", "postgres", "-d", LOCAL_STACK.database, "-Atc", sql,
   ], { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
   if (child.exitCode !== 0) {
     throw new Error(`Could not snapshot the eval knowledge base:\n${child.stderr.toString()}`);
@@ -257,7 +257,7 @@ export async function runEval(provider: EvalProvider): Promise<string> {
   console.log(`Live dashboard: ${EVAL_URL}/app/`);
   console.log(`Run files: ${runDirectory}\n`);
   console.log("Resetting semantic eval data while preserving passkeys and OAuth…");
-  runStackCommand("eval", "reset");
+  runStackCommand("reset");
   const initial = snapshotKnowledge();
   if (initial.length !== 18) {
     throw new Error(`Expected 18 default-template pages after reset, found ${initial.length}.`);

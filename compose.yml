@@ -1,4 +1,4 @@
-name: ${CONTEXT_USE_COMPOSE_PROJECT:-context-use-dev}
+name: context-use-dev
 
 include:
   - compose.dev.yml
