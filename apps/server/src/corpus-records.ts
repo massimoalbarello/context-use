@@ -89,13 +89,52 @@ const checkpointSchema = z.object({
 type Checkpoint = z.infer<typeof checkpointSchema>;
 
 export type CorpusRecord = {
+  /** Stable source identity. A conversation keeps one slug across every day it is served. */
   slug: string;
   type: CorpusItemType;
   /** Calendar day in UTC, the unit one automation run consumes. */
   day: string;
   timestamp: string;
   markdown: string;
+  action: "added" | "updated";
+  /** Manifest items first carried by this record, used to prove nothing is dropped. */
+  itemSlugs: string[];
 };
+
+/**
+ * Turns grouped messages into one record per conversation, re-served on each later day it
+ * gains messages. A thread spanning two days is `added` on the first and `updated` on the
+ * second carrying the whole conversation, which is how an incremental source behaves and
+ * which keeps later messages out of an earlier day.
+ */
+function conversationRecords<T extends { ts: string; slug: string }>(
+  threads: Map<string, T[]>,
+  type: "slack" | "email",
+  render: (messages: T[]) => string,
+): CorpusRecord[] {
+  const records: CorpusRecord[] = [];
+  for (const unsorted of threads.values()) {
+    const messages = [...unsorted].sort((left, right) => left.ts.localeCompare(right.ts)
+      || left.slug.localeCompare(right.slug));
+    const slug = messages[0]!.slug;
+    const days = [...new Set(messages.map((message) => message.ts.slice(0, 10)))].sort();
+    for (const [index, day] of days.entries()) {
+      const upToDay = messages.filter((message) => message.ts.slice(0, 10) <= day);
+      records.push({
+        slug,
+        type,
+        day,
+        timestamp: upToDay.at(-1)!.ts,
+        markdown: render(upToDay),
+        action: index === 0 ? "added" : "updated",
+        itemSlugs: messages
+          .filter((message) => message.ts.slice(0, 10) === day)
+          .map((message) => message.slug),
+      });
+    }
+  }
+  return records;
+}
 
 export type Corpus = {
   corpusId: string;
@@ -165,33 +204,38 @@ function parseCalendar(text: string): Map<string, CalendarEvent> {
   return events;
 }
 
-function renderEmail(email: z.infer<typeof emailSchema>): string {
-  const recipients = email.to.map((person) => `${person.name} <${person.email}>`).join(", ");
-  const lines = [
-    `# ${email.subject}`,
-    "",
-    `**From:** ${email.from.name} <${email.from.email}>`,
-    ...(recipients ? [`**To:** ${recipients}`] : []),
-    `**Sent:** ${email.ts}`,
-    ...(email.thread_id ? [`**Thread:** ${email.thread_id}${email.in_reply_to ? ` (reply to ${email.in_reply_to})` : ""}`] : []),
-    "",
-    email.body_text,
-  ];
-  return `${lines.join("\n")}\n`;
+function renderEmailThread(messages: z.infer<typeof emailSchema>[]): string {
+  const first = messages[0]!;
+  const lines = [`# ${first.subject}`, ""];
+  for (const email of messages) {
+    const recipients = email.to.map((person) => `${person.name} <${person.email}>`).join(", ");
+    lines.push(
+      `## ${email.subject}`,
+      "",
+      `**From:** ${email.from.name} <${email.from.email}>`,
+      ...(recipients ? [`**To:** ${recipients}`] : []),
+      `**Sent:** ${email.ts}`,
+      "",
+      email.body_text,
+      "",
+    );
+  }
+  return `${lines.join("\n").trimEnd()}\n`;
 }
 
-function renderSlack(message: z.infer<typeof slackSchema>): string {
+function renderSlackThread(messages: z.infer<typeof slackSchema>[]): string {
+  const first = messages[0]!;
   const lines = [
-    `# ${message.channel} — ${message.user.name}`,
+    `# ${first.channel} — conversation of ${first.ts.slice(0, 10)}`,
     "",
-    `**Channel:** ${message.channel}`,
-    `**From:** ${message.user.name} (@${message.user.handle})`,
-    `**Sent:** ${message.ts}`,
-    ...(message.thread_ts ? [`**In thread:** ${message.thread_ts}`] : []),
+    `**Channel:** ${first.channel}`,
+    `**Started:** ${first.ts}`,
     "",
-    message.text,
   ];
-  return `${lines.join("\n")}\n`;
+  for (const message of messages) {
+    lines.push(`**${message.user.name}** (@${message.user.handle}) — ${message.ts}`, "", message.text, "");
+  }
+  return `${lines.join("\n").trimEnd()}\n`;
 }
 
 function renderCalendarEvent(event: CalendarEvent): string {
@@ -231,10 +275,10 @@ export function loadCorpus(directory: string): Corpus {
   const slack = readJsonLines(join(directory, "slack", "messages.jsonl"), slackSchema);
 
   const records: CorpusRecord[] = [];
-  for (const item of manifest.items) {
-    let timestamp: string;
-    let markdown: string;
+  const slackThreads = new Map<string, z.infer<typeof slackSchema>[]>();
+  const emailThreads = new Map<string, z.infer<typeof emailSchema>[]>();
 
+  for (const item of manifest.items) {
     if (item.type === "note" || item.type === "meeting") {
       const body = readFileSync(join(directory, item.path), "utf8");
       const digest = createHash("sha256").update(body, "utf8").digest("hex");
@@ -243,32 +287,55 @@ export function loadCorpus(directory: string): Corpus {
       }
       const date = frontMatterField(body, "date");
       if (!date) throw new Error(`Corpus item ${item.slug} has no front-matter date`);
-      timestamp = `${date}T00:00:00.000Z`;
+      const timestamp = `${date}T00:00:00.000Z`;
       // Served verbatim: the authored Markdown is already the semantic body.
-      markdown = body;
+      records.push({
+        slug: item.slug, type: item.type, day: date, timestamp,
+        markdown: body, action: "added", itemSlugs: [item.slug],
+      });
     } else if (item.type === "email") {
       const email = emails.get(item.slug);
       if (!email) throw new Error(`Corpus item ${item.slug} is missing from emails.jsonl`);
-      timestamp = new Date(email.ts).toISOString();
-      markdown = renderEmail(email);
+      // Grouped below: a thread is one source item with one complete body.
+      const key = email.thread_id ?? email.slug;
+      emailThreads.set(key, [...(emailThreads.get(key) ?? []), email]);
     } else if (item.type === "slack") {
       const message = slack.get(item.slug);
       if (!message) throw new Error(`Corpus item ${item.slug} is missing from messages.jsonl`);
-      timestamp = new Date(message.ts).toISOString();
-      markdown = renderSlack(message);
+      // Keyed by channel as well as thread: this corpus reuses one thread_ts across all
+      // four channels for unrelated subjects, so thread_ts alone would splice a fund
+      // close, a deal update and office chat into a single "conversation".
+      const key = JSON.stringify([message.channel, message.thread_ts ?? message.ts]);
+      slackThreads.set(key, [...(slackThreads.get(key) ?? []), message]);
     } else {
       const uid = item.slug.split("/").at(-1)!;
       const event = calendar.get(uid);
       if (!event) throw new Error(`Corpus item ${item.slug} is missing from calendar.ics`);
-      timestamp = event.start;
-      markdown = renderCalendarEvent(event);
+      records.push({
+        slug: item.slug,
+        type: item.type,
+        day: event.start.slice(0, 10),
+        timestamp: event.start,
+        markdown: renderCalendarEvent(event),
+        action: "added",
+        itemSlugs: [item.slug],
+      });
     }
-
-    records.push({ slug: item.slug, type: item.type, day: timestamp.slice(0, 10), timestamp, markdown });
   }
+
+  records.push(...conversationRecords(slackThreads, "slack", renderSlackThread));
+  records.push(...conversationRecords(emailThreads, "email", renderEmailThread));
 
   records.sort((left, right) => left.timestamp.localeCompare(right.timestamp)
     || left.slug.localeCompare(right.slug));
+
+  const covered = new Set(records.flatMap((record) => record.itemSlugs));
+  const missing = manifest.items.filter((item) => !covered.has(item.slug));
+  if (missing.length) {
+    throw new Error(`Corpus items were dropped rather than served: ${
+      missing.slice(0, 5).map((item) => item.slug).join(", ")}`);
+  }
+
   return {
     corpusId: manifest.corpus_id,
     license: manifest.license,
@@ -374,7 +441,7 @@ export class CorpusRecordReader implements SourceRecordReader {
       const source: SourceRecord = {
         record_ref: `corpus:${this.#corpus.corpusId}:${record.slug}`,
         source: SOURCE_LABELS[record.type],
-        action: "added",
+        action: record.action,
         markdown: record.markdown,
       };
       const bytes = Buffer.byteLength(JSON.stringify(source), "utf8") + 1;
