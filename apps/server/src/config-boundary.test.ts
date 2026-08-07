@@ -136,6 +136,13 @@ describe("production process credential boundaries", () => {
     expect(load("mcp", { NANGO_INTERNAL_URL: "https://nango.context.example.com" }).exitCode).not.toBe(0);
   });
 
+  test("no service accepts the local evaluation corpus settings in production", () => {
+    for (const service of Object.keys(validByService)) {
+      expect(load(service, { EVAL_CORPUS_PATH: "/app/eval/corpus/amara-life-v1" }).exitCode).not.toBe(0);
+      expect(load(service, { EVAL_CORPUS_WINDOW: "dense" }).exitCode).not.toBe(0);
+    }
+  });
+
   test("dashboard requires a complete, exact HTTPS Nango service registration", () => {
     expect(load("dashboard", {
       NANGO_PUBLIC_URL: "https://nango.context.example.com",

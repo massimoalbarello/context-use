@@ -7,6 +7,7 @@ import {
 import { MCP_SCOPES } from "@context-use/shared";
 import { Elysia } from "elysia";
 import { config } from "./config.ts";
+import { CorpusRecordReader } from "./corpus-records.ts";
 import { json, routeError } from "./http.ts";
 import { createMcpRequestHandler } from "./mcp.ts";
 import { createMcpAssetDownloadHandler } from "./mcp-asset-download.ts";
@@ -23,12 +24,19 @@ const storage = new BrokeredStorage({
   socketPath: config.STORAGE_SOCKET_PATH,
   token: config.STORAGE_MCP_TOKEN,
 });
-const sourceRecords = config.NANGO_PIPELINE_API_KEY
-  ? new NangoRecordReader({
-      baseUrl: config.NANGO_INTERNAL_URL,
-      apiKey: config.NANGO_PIPELINE_API_KEY,
+// A local evaluation corpus replaces the Nango pipeline behind the same reader contract,
+// so `read_source_records` stays the one downstream surface in both cases.
+const sourceRecords = config.EVAL_CORPUS_PATH
+  ? new CorpusRecordReader({
+      directory: config.EVAL_CORPUS_PATH,
+      window: config.EVAL_CORPUS_WINDOW,
     })
-  : undefined;
+  : config.NANGO_PIPELINE_API_KEY
+    ? new NangoRecordReader({
+        baseUrl: config.NANGO_INTERNAL_URL,
+        apiKey: config.NANGO_PIPELINE_API_KEY,
+      })
+    : undefined;
 const knowledgeMcp = createMcpRequestHandler(pages, directories, assets, sourceRecords);
 const upload = createMcpAssetUploadHandler(assets, storage);
 const download = createMcpAssetDownloadHandler(assets, storage);

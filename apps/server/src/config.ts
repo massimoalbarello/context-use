@@ -68,6 +68,12 @@ const schema = z.object({
   NANGO_IMAGE_REFERENCE: z.string().max(512).default(""),
   NANGO_INTERNAL_URL: z.string().url().default("http://localhost:3003"),
   NANGO_PIPELINE_API_KEY: z.union([z.literal(""), z.string().min(16).max(4_096)]).default(""),
+  // Local knowledge evaluations only. When set, the private MCP serves source records
+  // from a fixed on-disk corpus instead of the Nango pipeline. Forbidden in production.
+  EVAL_CORPUS_PATH: z.string().max(4_096).default(""),
+  // Kept structurally compatible with CorpusWindow in corpus-records.ts, which cannot be
+  // imported here without a config import cycle; the MCP wiring type-checks the pairing.
+  EVAL_CORPUS_WINDOW: z.enum(["dense", "full"]).default("full"),
 });
 
 export const config = schema.parse(process.env);
@@ -135,6 +141,11 @@ if (production) {
   for (const name of ["NANGO_INTERNAL_URL", "NANGO_PIPELINE_API_KEY"] as const) {
     if (process.env[name] !== undefined && config.SERVICE_MODE !== "mcp") {
       insecure.push(`${name} must not be present in the ${config.SERVICE_MODE} service`);
+    }
+  }
+  for (const name of ["EVAL_CORPUS_PATH", "EVAL_CORPUS_WINDOW"] as const) {
+    if (process.env[name] !== undefined) {
+      insecure.push(`${name} is a local evaluation setting and must not be present in production`);
     }
   }
   if (config.SERVICE_MODE === "mcp" && config.NANGO_INTERNAL_URL !== "http://nango-server:3003") {
