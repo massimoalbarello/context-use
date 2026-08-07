@@ -68,3 +68,27 @@ describe("durable page change cursor", () => {
     })).rejects.toThrow("Provide a cursor or page token, not both");
   });
 });
+
+describe("dashboard page change history", () => {
+  test("orders by change time with sequence as a stable pagination tie-breaker", async () => {
+    const calls: Array<{ sql: string; values: unknown[] | undefined }> = [];
+    const rows = [
+      { ...row("12", crypto.randomUUID(), "about/latest"), changed_at: new Date("2026-08-07T11:08:00.000Z") },
+      { ...row("9", crypto.randomUUID(), "about/earlier"), changed_at: new Date("2026-08-07T10:50:00.000Z") },
+    ];
+    const pool = {
+      async query(sql: string, values?: unknown[]) {
+        calls.push({ sql, values });
+        return { rows };
+      },
+    } as unknown as Pool;
+    const pages = new PageRepository(pool);
+
+    const history = await pages.recentChanges({ before: "cu-page-changes-v1.d", limit: 2 });
+
+    expect(history.changes.map(({ path }) => path)).toEqual(["about/latest", "about/earlier"]);
+    expect(calls[0]?.sql).toContain("ORDER BY changes.changed_at DESC,changes.change_sequence DESC");
+    expect(calls[0]?.sql).toContain("(changes.changed_at,changes.change_sequence)<");
+    expect(calls[0]?.values).toEqual(["13", 3]);
+  });
+});

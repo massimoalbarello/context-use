@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { KnowledgePageChange } from "../types.ts";
-import { KnowledgeChangeRow } from "./KnowledgeHistory.tsx";
+import {
+  groupKnowledgeChanges,
+  KnowledgeChangeDay,
+  KnowledgeChangeRow,
+} from "./KnowledgeHistory.tsx";
 
 const change: KnowledgePageChange = {
   cursor: "cu-page-changes-v1.a",
@@ -37,5 +41,47 @@ describe("knowledge change history row", () => {
 
     expect(html).toContain("Deleted");
     expect(html).not.toContain("<button");
+  });
+});
+
+describe("knowledge change history days", () => {
+  test("sorts changes newest-first and groups them by local calendar day", () => {
+    const groups = groupKnowledgeChanges([
+      { ...change, cursor: "cu-page-changes-v1.1", changed_at: "2026-07-26T14:40:00.000Z" },
+      { ...change, cursor: "cu-page-changes-v1.2", changed_at: "2026-08-07T09:50:00.000Z" },
+      { ...change, cursor: "cu-page-changes-v1.3", changed_at: "2026-08-07T10:08:00.000Z" },
+    ]);
+
+    expect(groups.map(({ key }) => key)).toEqual(["2026-08-07", "2026-07-26"]);
+    expect(groups[0]?.changes.map(({ cursor }) => cursor)).toEqual([
+      "cu-page-changes-v1.3",
+      "cu-page-changes-v1.2",
+    ]);
+  });
+
+  test("uses the ledger cursor as a deterministic tie-breaker", () => {
+    const groups = groupKnowledgeChanges([
+      { ...change, cursor: "cu-page-changes-v1.z" },
+      { ...change, cursor: "cu-page-changes-v1.10" },
+    ]);
+
+    expect(groups[0]?.changes.map(({ cursor }) => cursor)).toEqual([
+      "cu-page-changes-v1.10",
+      "cu-page-changes-v1.z",
+    ]);
+  });
+
+  test("labels the current day and moves the full date into the group heading", () => {
+    const group = groupKnowledgeChanges([{ ...change, changed_at: "2026-08-07T10:00:00.000Z" }])[0]!;
+    const today = new Date(group.date.getFullYear(), group.date.getMonth(), group.date.getDate(), 18);
+    const html = renderToStaticMarkup(<KnowledgeChangeDay
+      group={group}
+      onOpenPage={() => undefined}
+      today={today}
+    />);
+
+    expect(html).toContain(">Today<");
+    expect(html).toContain("1 change");
+    expect(html).toContain("knowledge-change-day-2026-08-07");
   });
 });

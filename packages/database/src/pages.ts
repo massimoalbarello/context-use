@@ -416,11 +416,19 @@ export class PageRepository {
     const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
     const before = options.before ? parseChangeCursor(options.before) : null;
     const result = await this.pool.query<KnowledgePageChangeRow>(
-      `SELECT change_sequence::text AS change_sequence,page_id,version_id,version_number,
-         change_kind,path,title,commit_message,actor_kind,actor_subject,changed_at
-       FROM knowledge_page_changes
-       WHERE ($1::bigint IS NULL OR change_sequence<$1::bigint)
-       ORDER BY change_sequence DESC
+      `WITH cursor_position AS (
+         SELECT changed_at,change_sequence
+         FROM knowledge_page_changes
+         WHERE change_sequence=$1::bigint
+       )
+       SELECT changes.change_sequence::text AS change_sequence,changes.page_id,
+         changes.version_id,changes.version_number,changes.change_kind,changes.path,
+         changes.title,changes.commit_message,changes.actor_kind,changes.actor_subject,
+         changes.changed_at
+       FROM knowledge_page_changes AS changes
+       WHERE $1::bigint IS NULL OR (changes.changed_at,changes.change_sequence)<
+         (SELECT changed_at,change_sequence FROM cursor_position)
+       ORDER BY changes.changed_at DESC,changes.change_sequence DESC
        LIMIT $2`,
       [before?.toString() ?? null, limit + 1],
     );

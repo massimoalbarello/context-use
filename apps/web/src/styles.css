@@ -1058,10 +1058,7 @@ button:disabled {
 }
 
 .knowledge-history-intro {
-  padding: 15px 18px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: rgba(255, 255, 255, .46);
+  padding: 0 2px;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
@@ -1071,15 +1068,56 @@ button:disabled {
 .knowledge-change-main p,
 .knowledge-history-empty { margin: 0; }
 
-.knowledge-change-list { margin-top: 18px; }
+.knowledge-change-list {
+  margin-top: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+}
+
+.knowledge-change-day-heading {
+  min-height: 28px;
+  padding: 0 2px 10px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.knowledge-change-day-heading > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.knowledge-change-day-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.knowledge-change-day-heading time,
+.knowledge-change-day-heading > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.knowledge-change-day-heading > span { white-space: nowrap; }
 
 .knowledge-change-row {
-  padding: 16px 4px;
+  padding: 13px 2px;
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) auto;
+  grid-template-columns: 66px minmax(0, 1fr) auto;
   align-items: start;
-  gap: 14px;
-  border-bottom: 1px solid var(--line);
+  gap: 12px;
+}
+
+.knowledge-change-row + .knowledge-change-row {
+  border-top: 1px solid var(--line);
 }
 
 .change-kind {
@@ -1102,7 +1140,7 @@ button:disabled {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .knowledge-change-heading {
@@ -1151,6 +1189,7 @@ button:disabled {
 .knowledge-change-main p {
   color: #3c3934;
   font-size: 12px;
+  line-height: 1.4;
 }
 
 .knowledge-change-row > time {
