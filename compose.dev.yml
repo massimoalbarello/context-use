@@ -1,5 +1,3 @@
-name: context-use-dev
-
 x-code-service: &code-service
   build:
     context: .
@@ -8,13 +6,22 @@ x-code-service: &code-service
   volumes:
     - .:/app
     - dependencies:/app/node_modules
+  # A host-side Bun install can leave workspace node_modules links that target
+  # a host-specific layout. Mask them so containers consistently resolve from
+  # the dependency volume installed by Dockerfile.dev.
+  tmpfs:
+    - /app/apps/cli/node_modules
+    - /app/apps/server/node_modules
+    - /app/apps/web/node_modules
+    - /app/packages/database/node_modules
+    - /app/packages/shared/node_modules
 
 x-common: &common
   NODE_ENV: development
-  APP_ORIGIN: http://localhost:5173
-  ASSET_ORIGIN: http://localhost:5173
-  OAUTH_ISSUER: http://localhost:5173
-  MCP_RESOURCE: http://localhost:5173/mcp
+  APP_ORIGIN: http://localhost:${CONTEXT_USE_WEB_PORT:-5173}
+  ASSET_ORIGIN: http://localhost:${CONTEXT_USE_WEB_PORT:-5173}
+  OAUTH_ISSUER: http://localhost:${CONTEXT_USE_WEB_PORT:-5173}
+  MCP_RESOURCE: http://localhost:${CONTEXT_USE_WEB_PORT:-5173}/mcp
 
 x-role-passwords: &role-passwords
   DB_AUTH_PASSWORD: development-only
@@ -30,13 +37,13 @@ services:
     image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     restart: unless-stopped
     environment:
-      POSTGRES_DB: context_use
+      POSTGRES_DB: ${CONTEXT_USE_DB_NAME:-context_use}
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports: ["5432:5432"]
+    ports: ["${CONTEXT_USE_POSTGRES_PORT:-5432}:5432"]
     volumes: [postgres-data:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d context_use"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB}"]
       interval: 2s
       timeout: 3s
       retries: 30
@@ -47,8 +54,8 @@ services:
       postgres: { condition: service_healthy }
     environment:
       <<: *role-passwords
-      MIGRATOR_DATABASE_URL: postgres://postgres:postgres@postgres:5432/context_use
-      DATABASE_URL: postgres://context_use_dashboard:development-only@postgres:5432/context_use
+      MIGRATOR_DATABASE_URL: postgres://postgres:postgres@postgres:5432/${CONTEXT_USE_DB_NAME:-context_use}
+      DATABASE_URL: postgres://context_use_dashboard:development-only@postgres:5432/${CONTEXT_USE_DB_NAME:-context_use}
       CONTEXT_USE_TEMPLATE_INSTALL: default
     command: ["bun", "run", "db:initialize"]
     restart: "no"
@@ -69,7 +76,7 @@ services:
     environment:
       <<: *common
       SERVICE_MODE: storage
-      STORAGE_DATABASE_URL: postgres://context_use_storage:development-only@postgres:5432/context_use
+      STORAGE_DATABASE_URL: postgres://context_use_storage:development-only@postgres:5432/${CONTEXT_USE_DB_NAME:-context_use}
       STORAGE_DRIVER: filesystem
       STORAGE_PATH: /app/data/assets
       STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
@@ -101,7 +108,7 @@ services:
       AUTH_MCP_TOKEN: development-auth-private-mcp-internal-token
       CONFIRMATION_INTERNAL_URL: http://confirmation:3004
       CONFIRMATION_GATEWAY_TOKEN: development-confirmation-gateway-token
-      AUTH_DATABASE_URL: postgres://context_use_auth:development-only@postgres:5432/context_use
+      AUTH_DATABASE_URL: postgres://context_use_auth:development-only@postgres:5432/${CONTEXT_USE_DB_NAME:-context_use}
     command: ["bun", "--watch", "apps/server/src/auth-index.ts"]
     restart: unless-stopped
 
@@ -128,7 +135,7 @@ services:
       <<: *common
       SERVICE_MODE: dashboard
       PORT: "3000"
-      DATABASE_URL: postgres://context_use_dashboard:development-only@postgres:5432/context_use
+      DATABASE_URL: postgres://context_use_dashboard:development-only@postgres:5432/${CONTEXT_USE_DB_NAME:-context_use}
       AUTH_INTERNAL_URL: http://auth:3002
       CONFIRMATION_INTERNAL_URL: http://confirmation:3004
       AUTH_DASHBOARD_TOKEN: development-auth-dashboard-internal-token
@@ -153,7 +160,7 @@ services:
       <<: *common
       SERVICE_MODE: mcp
       PORT: "3003"
-      MCP_DATABASE_URL: postgres://context_use_mcp:development-only@postgres:5432/context_use
+      MCP_DATABASE_URL: postgres://context_use_mcp:development-only@postgres:5432/${CONTEXT_USE_DB_NAME:-context_use}
       AUTH_INTERNAL_URL: http://auth:3002
       AUTH_MCP_TOKEN: development-auth-private-mcp-internal-token
       MCP_ASSET_CAPABILITY_SECRET: development-only-mcp-capability-secret
@@ -175,7 +182,7 @@ services:
       SERVICE_MODE: confirmation
       PORT: "3004"
       WEBAUTHN_RP_ID: localhost
-      CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:development-only@postgres:5432/context_use
+      CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:development-only@postgres:5432/${CONTEXT_USE_DB_NAME:-context_use}
       CONFIRMATION_GATEWAY_TOKEN: development-confirmation-gateway-token
       CONFIRMATION_DASHBOARD_TOKEN: development-confirmation-dashboard-token
     command: ["bun", "--watch", "apps/server/src/confirmation-index.ts"]
@@ -190,7 +197,7 @@ services:
       <<: *common
       SERVICE_MODE: public
       PORT: "3005"
-      PUBLIC_DATABASE_URL: postgres://context_use_public:development-only@postgres:5432/context_use
+      PUBLIC_DATABASE_URL: postgres://context_use_public:development-only@postgres:5432/${CONTEXT_USE_DB_NAME:-context_use}
       STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
       STORAGE_PUBLIC_TOKEN: development-storage-public-web-token
     command: ["bun", "--watch", "apps/server/src/public-index.ts"]
@@ -213,7 +220,7 @@ services:
     environment:
       VITE_API_PROXY_TARGET: http://gateway:8080
     command: ["bun", "--cwd", "apps/web", "dev", "--host", "0.0.0.0"]
-    ports: ["5173:5173"]
+    ports: ["${CONTEXT_USE_WEB_PORT:-5173}:5173"]
     restart: unless-stopped
 
 volumes:

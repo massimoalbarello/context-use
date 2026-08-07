@@ -6,6 +6,7 @@ dist/
 .DS_Store
 *.log
 coverage/
+.eval-results/
 .terraform/
 *.tfstate
 *.tfstate.*
