@@ -52,9 +52,6 @@ make the owner's relationship to it intelligible, and no more.
 
     # <Topic>                                      ← intro
 
-    **Kind:** idea / field / discipline / practice / regulation.
-    **Origin:** who articulated it and when, where that is what makes it legible.
-
     The smallest account of the subject that makes the rest of the page useful.
 
     ## Why it matters to me
