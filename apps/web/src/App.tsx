@@ -94,6 +94,14 @@ export function App() {
   useEffect(() => { if (session) loadAssets().catch(() => undefined); }, [session]);
   useEffect(() => { if (session) loadDirectories().catch(() => undefined); }, [session, query]);
   useEffect(() => {
+    if (!session || section !== "knowledge") return;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void Promise.all([loadPages(), loadDirectories(), loadAssets()]);
+    }, 2_500);
+    return () => window.clearInterval(interval);
+  }, [session, section, query, showArchived]);
+  useEffect(() => {
     const syncLocation = () => {
       setSelected(selectionFromLocation());
       setSection(sectionFromLocation());

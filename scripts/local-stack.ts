@@ -164,7 +164,8 @@ export function runStackCommand(name: StackName, command: StackCommand): void {
 if (import.meta.main) {
   const [rawName, rawCommand] = process.argv.slice(2);
   if (!(rawName === "local" || rawName === "eval")) usage();
-  if (!(["up", "down", "destroy", "purge", "reset", "logs", "status", "url"] as string[]).includes(rawCommand)) {
+  if (!rawCommand
+    || !(["up", "down", "destroy", "purge", "reset", "logs", "status", "url"] as string[]).includes(rawCommand)) {
     usage();
   }
   runStackCommand(rawName, rawCommand as StackCommand);

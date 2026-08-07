@@ -82,8 +82,19 @@ owner, passkeys, and OAuth state:
 bun run eval purge
 ```
 
-The forthcoming GBrain-derived trajectory runner will use this isolated stack and write
-reports beneath the gitignored `.eval-results/` directory.
+Connect Codex once, then run the GBrain-derived trajectory with your local ChatGPT
+subscription. The command resets knowledge and assets before the run but preserves the
+owner passkey and MCP OAuth authorization:
+
+```sh
+bun run eval connect codex
+bun run eval run
+```
+
+Use `bun run eval run --provider claude` after `claude auth login` to use Claude Code.
+Reports, complete agent logs, and per-step snapshots are written beneath the gitignored
+`.eval-results/` directory. `bun run eval score` deterministically rescores saved
+snapshots without using model credits. See [`eval/README.md`](eval/README.md) for details.
 
 ## Self-host on AWS
 

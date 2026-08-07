@@ -15,7 +15,7 @@
     "dev:server": "bun --cwd apps/server dev",
     "dev:web": "bun --cwd apps/web dev",
     "local": "bun scripts/local-stack.ts local",
-    "eval": "bun scripts/local-stack.ts eval",
+    "eval": "bun scripts/eval.ts",
     "build": "bun run --filter '@context-use/*' build",
     "typecheck": "bun run --filter '@context-use/*' typecheck",
     "test": "bun test apps packages",
