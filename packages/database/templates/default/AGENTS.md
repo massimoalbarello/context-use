@@ -24,6 +24,7 @@ the path to the target; do not repeat inherited guidance in a child.
 - [[people/agents|People]]
 - [[places/agents|Places]]
 - [[skills/agents|Skills]]
+- [[topics/agents|Topics]]
 
 ### Managed pages
 
@@ -149,6 +150,12 @@ end. An unpublished source can link to the relevant private page.
 Use wikilinks for knowledge-base relationships. In copyable examples, use unresolved
 placeholders such as `[[area/…|label]]`, because real wikilinks resolve even inside code
 blocks.
+
+The same rule governs relationships between pages. Put the wikilink on the sentence that
+explains the relationship, never in a `Connections`, `Related` or `See also` list at the
+end. Such a list asserts that two subjects are connected without saying how, and generated
+directory indexes already provide navigation. If a relationship is worth recording, it is
+worth a sentence saying what it is.
 
 ## Write, then report
 

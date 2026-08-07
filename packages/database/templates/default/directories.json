@@ -51,6 +51,10 @@
     "title": "Skills",
     "summary": "Reusable Agent Skills stored as versioned SKILL.md pages."
   },
+  "topics": {
+    "title": "Topics",
+    "summary": "Recurring subjects the owner returns to, each the canonical home for what the rest of the knowledge base keeps referring to."
+  },
   "about/diary": {
     "title": "Diary",
     "summary": "The owner's chronological record of lived context, actions, decisions, and current state."
