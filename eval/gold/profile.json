@@ -1,0 +1,4683 @@
+{
+  "corpusId": "amara-life-v1",
+  "totals": {
+    "manifestItems": 418,
+    "records": 226,
+    "days": 47,
+    "entities": 176,
+    "singleRecordEntities": 130,
+    "multiSourceEntities": 25
+  },
+  "days": [
+    {
+      "day": "2026-01-25",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-01-27",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-01-29",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-01-31",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-02",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-04",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-06",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-08",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-10",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-12",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-14",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-16",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-18",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-20",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-22",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-24",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-26",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-02-28",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-02",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-04",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-06",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-08",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-10",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-12",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-14",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-16",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-18",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-20",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-22",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-24",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-26",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-28",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-03-30",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-04-01",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-04-03",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-04-05",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-04-07",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-04-09",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-04-11",
+      "records": 1,
+      "items": 1,
+      "byType": {
+        "note": 1
+      }
+    },
+    {
+      "day": "2026-04-13",
+      "records": 17,
+      "items": 30,
+      "byType": {
+        "meeting": 2,
+        "note": 1,
+        "slack": 12,
+        "email": 2
+      }
+    },
+    {
+      "day": "2026-04-14",
+      "records": 41,
+      "items": 84,
+      "byType": {
+        "meeting": 1,
+        "slack": 32,
+        "calendar-event": 4,
+        "email": 4
+      }
+    },
+    {
+      "day": "2026-04-15",
+      "records": 40,
+      "items": 83,
+      "byType": {
+        "meeting": 1,
+        "slack": 32,
+        "calendar-event": 4,
+        "email": 3
+      }
+    },
+    {
+      "day": "2026-04-16",
+      "records": 39,
+      "items": 84,
+      "byType": {
+        "meeting": 1,
+        "slack": 30,
+        "calendar-event": 4,
+        "email": 4
+      }
+    },
+    {
+      "day": "2026-04-17",
+      "records": 33,
+      "items": 72,
+      "byType": {
+        "meeting": 1,
+        "email": 4,
+        "calendar-event": 4,
+        "slack": 24
+      }
+    },
+    {
+      "day": "2026-04-18",
+      "records": 9,
+      "items": 12,
+      "byType": {
+        "meeting": 1,
+        "calendar-event": 4,
+        "email": 4
+      }
+    },
+    {
+      "day": "2026-04-19",
+      "records": 5,
+      "items": 8,
+      "byType": {
+        "meeting": 1,
+        "email": 4
+      }
+    },
+    {
+      "day": "2026-04-20",
+      "records": 3,
+      "items": 6,
+      "byType": {
+        "email": 3
+      }
+    }
+  ],
+  "entities": [
+    {
+      "slug": "aerion",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Aerion"
+      ],
+      "records": [
+        "slack/sl-0180"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "amara-okafor",
+      "kind": "person",
+      "namespaces": [
+        "people",
+        "user"
+      ],
+      "labels": [
+        "Amara",
+        "Amara Okafor"
+      ],
+      "records": [
+        "meeting/mtg-0000",
+        "meeting/mtg-0002",
+        "meeting/mtg-0003",
+        "meeting/mtg-0004",
+        "meeting/mtg-0006",
+        "meeting/mtg-0007",
+        "slack/sl-0000",
+        "slack/sl-0001",
+        "slack/sl-0002",
+        "slack/sl-0040",
+        "slack/sl-0050",
+        "slack/sl-0052",
+        "slack/sl-0062",
+        "slack/sl-0070",
+        "slack/sl-0071",
+        "slack/sl-0100",
+        "slack/sl-0102",
+        "slack/sl-0110",
+        "slack/sl-0112",
+        "slack/sl-0120",
+        "slack/sl-0142",
+        "slack/sl-0180",
+        "slack/sl-0181",
+        "slack/sl-0182",
+        "slack/sl-0192",
+        "slack/sl-0212",
+        "slack/sl-0220",
+        "slack/sl-0232",
+        "slack/sl-0240",
+        "slack/sl-0242",
+        "slack/sl-0252",
+        "slack/sl-0272"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "slack"
+      ],
+      "mentions": 52,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-19"
+    },
+    {
+      "slug": "anna-petrov",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "@Anna Petrov",
+        "Anna Petrov"
+      ],
+      "records": [
+        "note/2026-03-20-orange-mode",
+        "slack/sl-0011",
+        "slack/sl-0070",
+        "slack/sl-0161",
+        "slack/sl-0173",
+        "slack/sl-0211",
+        "slack/sl-0241",
+        "slack/sl-0270"
+      ],
+      "sourceTypes": [
+        "note",
+        "slack"
+      ],
+      "mentions": 10,
+      "firstDay": "2026-03-20",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "anthropic",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Anthropic"
+      ],
+      "records": [
+        "emails/em-0044"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-20",
+      "lastDay": "2026-04-20"
+    },
+    {
+      "slug": "apex-fund-services",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Apex"
+      ],
+      "records": [
+        "slack/sl-0102"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "archivo",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Archivo"
+      ],
+      "records": [
+        "slack/sl-0252"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "armada-logistics",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Armada Logistics"
+      ],
+      "records": [
+        "slack/sl-0032"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "aurora-grid",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Aurora Grid"
+      ],
+      "records": [
+        "emails/em-0022"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "axiom-energy",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Axiom Energy"
+      ],
+      "records": [
+        "emails/em-0020",
+        "emails/em-0048"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-20"
+    },
+    {
+      "slug": "axiom-partners",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Axiom Partners"
+      ],
+      "records": [
+        "slack/sl-0170"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "axon-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Axon Labs"
+      ],
+      "records": [
+        "slack/sl-0013"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-13"
+    },
+    {
+      "slug": "beacon-health",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Beacon Health"
+      ],
+      "records": [
+        "slack/sl-0002"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-13"
+    },
+    {
+      "slug": "bill-hart",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Bill Hart"
+      ],
+      "records": [
+        "slack/sl-0010",
+        "slack/sl-0081"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "bodhi-fund",
+      "kind": "other",
+      "namespaces": [
+        "entities"
+      ],
+      "labels": [
+        "Bodhi Fund"
+      ],
+      "records": [
+        "slack/sl-0030"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "canopy-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Canopy Robotics"
+      ],
+      "records": [
+        "slack/sl-0021",
+        "slack/sl-0061",
+        "slack/sl-0202"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 3,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "capacitor-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Capacitor Labs"
+      ],
+      "records": [
+        "meeting/mtg-0000"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-13"
+    },
+    {
+      "slug": "carta",
+      "kind": "other",
+      "namespaces": [
+        "tool"
+      ],
+      "labels": [
+        "Carta"
+      ],
+      "records": [
+        "slack/sl-0062"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "chen-wei",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Chen Wei",
+        "Wei"
+      ],
+      "records": [
+        "note/2026-02-20-novamind-followup",
+        "note/2026-03-16-novamind-followup",
+        "note/2026-04-09-novamind-followup"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 4,
+      "firstDay": "2026-02-20",
+      "lastDay": "2026-04-09"
+    },
+    {
+      "slug": "cirrus-systems",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Cirrus Systems"
+      ],
+      "records": [
+        "note/2026-03-04-board-prep"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-03-04",
+      "lastDay": "2026-03-04"
+    },
+    {
+      "slug": "climate-tech-summit-2026",
+      "kind": "other",
+      "namespaces": [
+        "events"
+      ],
+      "labels": [
+        "Climate Tech Summit"
+      ],
+      "records": [
+        "emails/em-0002"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "cobalt-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Cobalt Robotics"
+      ],
+      "records": [
+        "slack/sl-0261"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "cognify",
+      "kind": "organisation",
+      "namespaces": [
+        "companies",
+        "company"
+      ],
+      "labels": [
+        "Cognify"
+      ],
+      "records": [
+        "slack/sl-0050",
+        "slack/sl-0100"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "cognify-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Cognify Labs"
+      ],
+      "records": [
+        "slack/sl-0210"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "cognito-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Cognito Labs"
+      ],
+      "records": [
+        "slack/sl-0240"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "cognivault",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Cognivault"
+      ],
+      "records": [
+        "slack/sl-0121"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "cognivue",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Cognivue"
+      ],
+      "records": [
+        "slack/sl-0060"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "coreweave",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "CoreWeave"
+      ],
+      "records": [
+        "emails/em-0016"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "cortex-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Cortex Robotics"
+      ],
+      "records": [
+        "slack/sl-0050"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "daniel-oyelaran",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Daniel"
+      ],
+      "records": [
+        "note/2026-03-06-sourcing-queue"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-03-06",
+      "lastDay": "2026-03-06"
+    },
+    {
+      "slug": "daria-novak",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Daria"
+      ],
+      "records": [
+        "slack/sl-0092"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "datamesh",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "DataMesh"
+      ],
+      "records": [
+        "slack/sl-0072"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "david-chen",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "David",
+        "David Chen"
+      ],
+      "records": [
+        "note/2026-02-22-climate-thesis",
+        "note/2026-02-26-weekly-review",
+        "note/2026-04-11-climate-thesis"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 3,
+      "firstDay": "2026-02-22",
+      "lastDay": "2026-04-11"
+    },
+    {
+      "slug": "david-lenton",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "David Lenton"
+      ],
+      "records": [
+        "note/2026-02-14-market-report-reactions"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-02-14",
+      "lastDay": "2026-02-14"
+    },
+    {
+      "slug": "david-okonkwo",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "David Okonkwo"
+      ],
+      "records": [
+        "meeting/mtg-0001"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-13"
+    },
+    {
+      "slug": "derek-chen",
+      "kind": "person",
+      "namespaces": [
+        "people",
+        "user"
+      ],
+      "labels": [
+        "Derek",
+        "Derek Chen"
+      ],
+      "records": [
+        "note/2026-01-29-climate-thesis",
+        "note/2026-02-08-board-prep",
+        "note/2026-03-18-climate-thesis",
+        "note/2026-03-22-weekly-review",
+        "slack/sl-0130",
+        "slack/sl-0222",
+        "slack/sl-0292"
+      ],
+      "sourceTypes": [
+        "note",
+        "slack"
+      ],
+      "mentions": 7,
+      "firstDay": "2026-01-29",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "derek-huang",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Derek",
+        "Derek Huang"
+      ],
+      "records": [
+        "note/2026-03-04-board-prep",
+        "note/2026-03-30-sourcing-queue"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-03-04",
+      "lastDay": "2026-03-30"
+    },
+    {
+      "slug": "derek-lin",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Derek"
+      ],
+      "records": [
+        "note/2026-01-27-novamind-followup"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-01-27",
+      "lastDay": "2026-01-27"
+    },
+    {
+      "slug": "derek-zhang",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Derek",
+        "Derek Zhang"
+      ],
+      "records": [
+        "note/2026-02-02-weekly-review"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-02-02",
+      "lastDay": "2026-02-02"
+    },
+    {
+      "slug": "dev-anand",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Dev"
+      ],
+      "records": [
+        "note/2026-02-10-sourcing-queue"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-02-10",
+      "lastDay": "2026-02-10"
+    },
+    {
+      "slug": "diego-alvarez",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Diego",
+        "Diego Alvarez"
+      ],
+      "records": [
+        "note/2026-03-08-threshold-terms",
+        "note/2026-03-26-team-1-1s"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-03-08",
+      "lastDay": "2026-03-26"
+    },
+    {
+      "slug": "docusign",
+      "kind": "other",
+      "namespaces": [
+        "tool"
+      ],
+      "labels": [
+        "DocuSign"
+      ],
+      "records": [
+        "slack/sl-0230"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "elena-rossi",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Elena",
+        "Elena Rossi"
+      ],
+      "records": [
+        "meeting/mtg-0007",
+        "note/2026-01-25-next-quarter-plan",
+        "note/2026-04-13-orange-mode",
+        "slack/sl-0071",
+        "slack/sl-0090",
+        "slack/sl-0170",
+        "slack/sl-0203",
+        "slack/sl-0212"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "note",
+        "slack"
+      ],
+      "mentions": 15,
+      "firstDay": "2026-01-25",
+      "lastDay": "2026-04-19"
+    },
+    {
+      "slug": "elena-vasquez",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Elena Vasquez"
+      ],
+      "records": [
+        "note/2026-04-03-market-report-reactions"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-03",
+      "lastDay": "2026-04-03"
+    },
+    {
+      "slug": "elena-voskresenskaya",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Elena Voskresenskaya"
+      ],
+      "records": [
+        "note/2026-03-28-board-prep"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-03-28",
+      "lastDay": "2026-03-28"
+    },
+    {
+      "slug": "fervo-energy",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Fervo Energy"
+      ],
+      "records": [
+        "emails/em-0008"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "forma",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Forma"
+      ],
+      "records": [
+        "slack/sl-0190"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "fund-admin-q2",
+      "kind": "other",
+      "namespaces": [
+        "processes"
+      ],
+      "labels": [
+        "Q2 fund admin"
+      ],
+      "records": [
+        "slack/sl-0070"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "glint",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Glint"
+      ],
+      "records": [
+        "slack/sl-0102"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "greenfield-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Greenfield Robotics"
+      ],
+      "records": [
+        "slack/sl-0200"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "greenfield-series-a",
+      "kind": "other",
+      "namespaces": [
+        "deal"
+      ],
+      "labels": [
+        "Series A docs"
+      ],
+      "records": [
+        "slack/sl-0210"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "greenloop-logistics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Greenloop Logistics"
+      ],
+      "records": [
+        "slack/sl-0153"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "greenloop-packaging",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Greenloop Packaging"
+      ],
+      "records": [
+        "slack/sl-0020"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "gridmatrix",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "GridMatrix"
+      ],
+      "records": [
+        "emails/em-0016"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "gridmind",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "GridMind"
+      ],
+      "records": [
+        "emails/em-0018"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "gridscale",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "GridScale"
+      ],
+      "records": [
+        "emails/em-0014"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "gridscale-ai",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "GridScale AI"
+      ],
+      "records": [
+        "emails/em-0024"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "halfway-capital",
+      "kind": "organisation",
+      "namespaces": [
+        "companies",
+        "company",
+        "org",
+        "organizations",
+        "orgs"
+      ],
+      "labels": [
+        "Halfway Capital"
+      ],
+      "records": [
+        "emails/em-0006",
+        "emails/em-0012",
+        "emails/em-0028",
+        "emails/em-0030",
+        "emails/em-0046",
+        "meeting/mtg-0000",
+        "meeting/mtg-0001",
+        "meeting/mtg-0002",
+        "meeting/mtg-0004",
+        "meeting/mtg-0006",
+        "slack/sl-0010",
+        "slack/sl-0122"
+      ],
+      "sourceTypes": [
+        "email",
+        "meeting",
+        "slack"
+      ],
+      "mentions": 14,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-20"
+    },
+    {
+      "slug": "halfway-capital-fund-iii",
+      "kind": "organisation",
+      "namespaces": [
+        "fund"
+      ],
+      "labels": [
+        "Halfway Capital Fund III"
+      ],
+      "records": [
+        "slack/sl-0000"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-13"
+    },
+    {
+      "slug": "hannah-liu",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "@Hannah Liu",
+        "Hannah",
+        "Hannah Liu"
+      ],
+      "records": [
+        "meeting/mtg-0000",
+        "meeting/mtg-0001",
+        "note/2026-02-06-team-1-1s",
+        "slack/sl-0043"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "note",
+        "slack"
+      ],
+      "mentions": 13,
+      "firstDay": "2026-02-06",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "helion-energy",
+      "kind": "organisation",
+      "namespaces": [
+        "orgs"
+      ],
+      "labels": [
+        "Helion Energy"
+      ],
+      "records": [
+        "emails/em-0004"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "helios",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Helios"
+      ],
+      "records": [
+        "meeting/mtg-0007"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-19",
+      "lastDay": "2026-04-19"
+    },
+    {
+      "slug": "helios-climate-systems",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Helios Climate Systems"
+      ],
+      "records": [
+        "emails/em-0004",
+        "emails/em-0010"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "helios-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies",
+        "company"
+      ],
+      "labels": [
+        "Helios Robotics"
+      ],
+      "records": [
+        "slack/sl-0041",
+        "slack/sl-0053",
+        "slack/sl-0101",
+        "slack/sl-0113",
+        "slack/sl-0121",
+        "slack/sl-0162",
+        "slack/sl-0192",
+        "slack/sl-0201"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 9,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "jamie-chen",
+      "kind": "person",
+      "namespaces": [
+        "user"
+      ],
+      "labels": [
+        "Jamie"
+      ],
+      "records": [
+        "slack/sl-0110"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "jin-mehta",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Jin Mehta"
+      ],
+      "records": [
+        "note/2026-02-14-market-report-reactions"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-02-14",
+      "lastDay": "2026-02-14"
+    },
+    {
+      "slug": "jordan-mata",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Jordan",
+        "Jordan Mata"
+      ],
+      "records": [
+        "note/2026-03-12-jordan-diligence"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-03-12",
+      "lastDay": "2026-03-12"
+    },
+    {
+      "slug": "jordan-melo",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Jordan",
+        "Jordan Melo"
+      ],
+      "records": [
+        "note/2026-04-05-jordan-diligence"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-05",
+      "lastDay": "2026-04-05"
+    },
+    {
+      "slug": "jordan-mwangi",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Jordan Mwangi"
+      ],
+      "records": [
+        "note/2026-02-16-jordan-diligence"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-02-16",
+      "lastDay": "2026-02-16"
+    },
+    {
+      "slug": "jordan-park",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Jordan Park",
+        "NovaMind"
+      ],
+      "records": [
+        "emails/em-0040",
+        "meeting/mtg-0002",
+        "slack/sl-0021",
+        "slack/sl-0030",
+        "slack/sl-0033",
+        "slack/sl-0293"
+      ],
+      "sourceTypes": [
+        "email",
+        "meeting",
+        "slack"
+      ],
+      "mentions": 6,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-19"
+    },
+    {
+      "slug": "kenji-tanaka",
+      "kind": "person",
+      "namespaces": [
+        "user"
+      ],
+      "labels": [
+        "Kenji"
+      ],
+      "records": [
+        "slack/sl-0092"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "kira-johnson",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Kira"
+      ],
+      "records": [
+        "slack/sl-0090"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "kofi-mensah",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "@Kofi Mensah",
+        "Kofi",
+        "Kofi Mensah"
+      ],
+      "records": [
+        "meeting/mtg-0006",
+        "note/2026-04-01-threshold-terms",
+        "slack/sl-0230",
+        "slack/sl-0282"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "note",
+        "slack"
+      ],
+      "mentions": 4,
+      "firstDay": "2026-04-01",
+      "lastDay": "2026-04-18"
+    },
+    {
+      "slug": "kollektiv",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Kollektiv"
+      ],
+      "records": [
+        "slack/sl-0260"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "kuiper-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Kuiper Labs"
+      ],
+      "records": [
+        "slack/sl-0081"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "lena-park",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Lena Park"
+      ],
+      "records": [
+        "note/2026-04-07-next-quarter-plan",
+        "slack/sl-0191"
+      ],
+      "sourceTypes": [
+        "note",
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-07",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "leon-marchetti",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Leon Marchetti"
+      ],
+      "records": [
+        "note/2026-03-10-market-report-reactions"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-03-10",
+      "lastDay": "2026-03-10"
+    },
+    {
+      "slug": "lightspeed-venture-partners",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Lightspeed"
+      ],
+      "records": [
+        "meeting/mtg-0005"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "lina-mwangi",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Lina"
+      ],
+      "records": [
+        "note/2026-03-22-weekly-review"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-03-22",
+      "lastDay": "2026-03-22"
+    },
+    {
+      "slug": "lp-agreement-v3",
+      "kind": "other",
+      "namespaces": [
+        "doc"
+      ],
+      "labels": [
+        "LP Agreement"
+      ],
+      "records": [
+        "slack/sl-0250"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "lucia-3",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Lucia-3"
+      ],
+      "records": [
+        "note/2026-02-10-sourcing-queue"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-02-10",
+      "lastDay": "2026-02-10"
+    },
+    {
+      "slug": "marcos-reyes",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Marcos"
+      ],
+      "records": [
+        "note/2026-03-16-novamind-followup"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-03-16",
+      "lastDay": "2026-03-16"
+    },
+    {
+      "slug": "marcus-chen",
+      "kind": "person",
+      "namespaces": [
+        "people",
+        "user"
+      ],
+      "labels": [
+        "Marcus",
+        "Marcus Chen"
+      ],
+      "records": [
+        "note/2026-04-03-market-report-reactions",
+        "slack/sl-0002",
+        "slack/sl-0122",
+        "slack/sl-0180",
+        "slack/sl-0280"
+      ],
+      "sourceTypes": [
+        "note",
+        "slack"
+      ],
+      "mentions": 5,
+      "firstDay": "2026-04-03",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "marcus-holloway",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Marcus"
+      ],
+      "records": [
+        "note/2026-02-26-weekly-review"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-02-26",
+      "lastDay": "2026-02-26"
+    },
+    {
+      "slug": "marcus-reid",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Marcus",
+        "Marcus Reid"
+      ],
+      "records": [
+        "meeting/mtg-0000",
+        "meeting/mtg-0001",
+        "meeting/mtg-0002",
+        "meeting/mtg-0003",
+        "meeting/mtg-0004",
+        "meeting/mtg-0005",
+        "meeting/mtg-0006",
+        "meeting/mtg-0007",
+        "note/2026-02-24-orange-mode",
+        "slack/sl-0251"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "note",
+        "slack"
+      ],
+      "mentions": 15,
+      "firstDay": "2026-02-24",
+      "lastDay": "2026-04-19"
+    },
+    {
+      "slug": "marcus-thompson-hw",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Marcus Thompson"
+      ],
+      "records": [
+        "note/2026-03-28-board-prep"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-03-28",
+      "lastDay": "2026-03-28"
+    },
+    {
+      "slug": "maria-santos",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Maria",
+        "Maria Santos"
+      ],
+      "records": [
+        "note/2026-01-29-climate-thesis",
+        "note/2026-02-22-climate-thesis",
+        "note/2026-04-11-climate-thesis"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 3,
+      "firstDay": "2026-01-29",
+      "lastDay": "2026-04-11"
+    },
+    {
+      "slug": "maria-vasquez",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Maria"
+      ],
+      "records": [
+        "note/2026-03-18-climate-thesis"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-03-18",
+      "lastDay": "2026-03-18"
+    },
+    {
+      "slug": "meridian",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Meridian"
+      ],
+      "records": [
+        "slack/sl-0230",
+        "slack/sl-0282"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "meridian-health",
+      "kind": "organisation",
+      "namespaces": [
+        "companies",
+        "company"
+      ],
+      "labels": [
+        "Meridian",
+        "Meridian Health"
+      ],
+      "records": [
+        "meeting/mtg-0000",
+        "meeting/mtg-0006",
+        "slack/sl-0110"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "slack"
+      ],
+      "mentions": 5,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-18"
+    },
+    {
+      "slug": "meridian-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Meridian Labs"
+      ],
+      "records": [
+        "slack/sl-0220"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "meridian-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies",
+        "company"
+      ],
+      "labels": [
+        "Meridian",
+        "Meridian Robotics"
+      ],
+      "records": [
+        "meeting/mtg-0002",
+        "slack/sl-0033",
+        "slack/sl-0273",
+        "slack/sl-0281"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "slack"
+      ],
+      "mentions": 6,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "meridian-ventures",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Meridian Ventures"
+      ],
+      "records": [
+        "slack/sl-0250"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "mina-kapoor",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "@Mina Kapoor",
+        "Mina",
+        "Mina Kapoor",
+        "Threshold Ventures"
+      ],
+      "records": [
+        "emails/em-0018",
+        "note/2026-02-18-next-quarter-plan",
+        "note/2026-03-02-team-1-1s",
+        "slack/sl-0073",
+        "slack/sl-0090",
+        "slack/sl-0142",
+        "slack/sl-0290"
+      ],
+      "sourceTypes": [
+        "email",
+        "note",
+        "slack"
+      ],
+      "mentions": 9,
+      "firstDay": "2026-02-18",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "mira-health",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Mira Health"
+      ],
+      "records": [
+        "slack/sl-0262"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "mira-patel",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Mira Patel"
+      ],
+      "records": [
+        "slack/sl-0160"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "modular-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Modular Labs"
+      ],
+      "records": [
+        "meeting/mtg-0003"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "nadia-freeman",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "@Nadia Freeman",
+        "Nadia",
+        "Nadia Freeman"
+      ],
+      "records": [
+        "meeting/mtg-0003",
+        "meeting/mtg-0004",
+        "slack/sl-0031",
+        "slack/sl-0261"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "slack"
+      ],
+      "mentions": 17,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "nadia-okonkwo",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Nadia Okonkwo"
+      ],
+      "records": [
+        "note/2026-02-08-board-prep"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-02-08",
+      "lastDay": "2026-02-08"
+    },
+    {
+      "slug": "naveen-rao",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Naveen Rao"
+      ],
+      "records": [
+        "note/2026-02-02-weekly-review"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-02-02",
+      "lastDay": "2026-02-02"
+    },
+    {
+      "slug": "nextera-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Nextera Robotics"
+      ],
+      "records": [
+        "slack/sl-0101"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "nexus-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Nexus Labs"
+      ],
+      "records": [
+        "slack/sl-0080"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "nexus-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies",
+        "company"
+      ],
+      "labels": [
+        "Nexus Robotics"
+      ],
+      "records": [
+        "slack/sl-0001",
+        "slack/sl-0040",
+        "slack/sl-0101",
+        "slack/sl-0120",
+        "slack/sl-0193",
+        "slack/sl-0200",
+        "slack/sl-0201",
+        "slack/sl-0241",
+        "slack/sl-0273"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 10,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "nile",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Nile"
+      ],
+      "records": [
+        "slack/sl-0281"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "nile-analytics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Nile Analytics"
+      ],
+      "records": [
+        "slack/sl-0221"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "nimbus-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Nimbus Robotics"
+      ],
+      "records": [
+        "slack/sl-0181",
+        "slack/sl-0213"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "notion",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Notion"
+      ],
+      "records": [
+        "slack/sl-0100"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "novamind",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "NovaMind",
+        "NovaMinds",
+        "NovaM​ind",
+        "Novamind"
+      ],
+      "records": [
+        "emails/em-0024",
+        "emails/em-0042",
+        "emails/em-0046",
+        "note/2026-01-27-novamind-followup",
+        "note/2026-02-20-novamind-followup",
+        "note/2026-03-16-novamind-followup",
+        "note/2026-04-09-novamind-followup"
+      ],
+      "sourceTypes": [
+        "email",
+        "note"
+      ],
+      "mentions": 7,
+      "firstDay": "2026-01-27",
+      "lastDay": "2026-04-20"
+    },
+    {
+      "slug": "novamind-ai",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "NovaMind AI"
+      ],
+      "records": [
+        "emails/em-0012"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "novatech",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "NovaTech"
+      ],
+      "records": [
+        "slack/sl-0241"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "novatech-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "NovaTech Labs"
+      ],
+      "records": [
+        "meeting/mtg-0006"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 3,
+      "firstDay": "2026-04-18",
+      "lastDay": "2026-04-18"
+    },
+    {
+      "slug": "nutrigenix",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Nutrigenix"
+      ],
+      "records": [
+        "slack/sl-0161"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "pendulum",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Pendulum"
+      ],
+      "records": [
+        "slack/sl-0080"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "phantom",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Phantom"
+      ],
+      "records": [
+        "slack/sl-0110"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "phantom-ai",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Phantom AI"
+      ],
+      "records": [
+        "slack/sl-0260",
+        "slack/sl-0282"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "phantom-neuro",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Phantom Neuro"
+      ],
+      "records": [
+        "slack/sl-0172"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "phantom-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Phantom Robotics"
+      ],
+      "records": [
+        "slack/sl-0073",
+        "slack/sl-0093",
+        "slack/sl-0133",
+        "slack/sl-0152"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 4,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "photon-bio",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Photon Bio"
+      ],
+      "records": [
+        "slack/sl-0290"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "plexora",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Plexora"
+      ],
+      "records": [
+        "slack/sl-0242"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "portfolio-dashboard",
+      "kind": "other",
+      "namespaces": [
+        "tools"
+      ],
+      "labels": [
+        "portfolio dashboard"
+      ],
+      "records": [
+        "slack/sl-0262"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "prism-analytics",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Prism Analytics"
+      ],
+      "records": [
+        "slack/sl-0152"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "prisma-health",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Prisma Health"
+      ],
+      "records": [
+        "slack/sl-0280"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "priya-anand",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Priya",
+        "Priya Anand"
+      ],
+      "records": [
+        "note/2026-03-06-sourcing-queue",
+        "note/2026-03-10-market-report-reactions",
+        "note/2026-03-30-sourcing-queue"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 3,
+      "firstDay": "2026-03-06",
+      "lastDay": "2026-03-30"
+    },
+    {
+      "slug": "priya-patel",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "@Priya Patel",
+        "Priya",
+        "Priya Patel"
+      ],
+      "records": [
+        "emails/em-0048",
+        "meeting/mtg-0002",
+        "meeting/mtg-0003",
+        "meeting/mtg-0004",
+        "meeting/mtg-0005",
+        "meeting/mtg-0006",
+        "meeting/mtg-0007",
+        "note/2026-02-12-threshold-terms",
+        "slack/sl-0043",
+        "slack/sl-0060",
+        "slack/sl-0081",
+        "slack/sl-0150",
+        "slack/sl-0243"
+      ],
+      "sourceTypes": [
+        "email",
+        "meeting",
+        "note",
+        "slack"
+      ],
+      "mentions": 15,
+      "firstDay": "2026-02-12",
+      "lastDay": "2026-04-20"
+    },
+    {
+      "slug": "priya-sharma",
+      "kind": "person",
+      "namespaces": [
+        "people",
+        "user"
+      ],
+      "labels": [
+        "Priya"
+      ],
+      "records": [
+        "note/2026-02-26-weekly-review",
+        "slack/sl-0010",
+        "slack/sl-0221"
+      ],
+      "sourceTypes": [
+        "note",
+        "slack"
+      ],
+      "mentions": 3,
+      "firstDay": "2026-02-26",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "q1-2026-financials",
+      "kind": "other",
+      "namespaces": [
+        "docs"
+      ],
+      "labels": [
+        "Q1 financials"
+      ],
+      "records": [
+        "slack/sl-0082"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "q1-2026-fund-admin-report",
+      "kind": "other",
+      "namespaces": [
+        "docs"
+      ],
+      "labels": [
+        "Q1 fund admin report"
+      ],
+      "records": [
+        "slack/sl-0102"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "q1-2026-lp-report",
+      "kind": "other",
+      "namespaces": [
+        "docs"
+      ],
+      "labels": [
+        "Q1 LP Report"
+      ],
+      "records": [
+        "slack/sl-0242"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "q2-lp-report",
+      "kind": "other",
+      "namespaces": [
+        "docs"
+      ],
+      "labels": [
+        "Q2 LP Report"
+      ],
+      "records": [
+        "slack/sl-0042"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "quantex",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Quantex"
+      ],
+      "records": [
+        "slack/sl-0213"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "quantum-circuits",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Quantum Circuits"
+      ],
+      "records": [
+        "slack/sl-0281"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "quantum-materials",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Quantum Materials"
+      ],
+      "records": [
+        "slack/sl-0041"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "quantum-mesh",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Quantum Mesh"
+      ],
+      "records": [
+        "slack/sl-0181"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "quantum-yield",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Quantum Yield"
+      ],
+      "records": [
+        "slack/sl-0233"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "quartzy",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Quartzy"
+      ],
+      "records": [
+        "slack/sl-0222"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "qubit",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Qubit"
+      ],
+      "records": [
+        "slack/sl-0272"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "quillit",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Quillit"
+      ],
+      "records": [
+        "slack/sl-0141"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "quilltree",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Quilltree"
+      ],
+      "records": [
+        "slack/sl-0193"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "quilr",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Quilr"
+      ],
+      "records": [
+        "slack/sl-0082"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "quilted",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Quilted"
+      ],
+      "records": [
+        "slack/sl-0280"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "ravi-gupta",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "@Ravi Gupta",
+        "Ravi",
+        "Ravi Gupta"
+      ],
+      "records": [
+        "meeting/mtg-0002",
+        "slack/sl-0042",
+        "slack/sl-0061",
+        "slack/sl-0131",
+        "slack/sl-0161",
+        "slack/sl-0170",
+        "slack/sl-0182",
+        "slack/sl-0250",
+        "slack/sl-0293"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "slack"
+      ],
+      "mentions": 17,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "remedy",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Remedy"
+      ],
+      "records": [
+        "slack/sl-0260"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "sarah-chen",
+      "kind": "person",
+      "namespaces": [
+        "people",
+        "person",
+        "user"
+      ],
+      "labels": [
+        "Sarah",
+        "Sarah Chen"
+      ],
+      "records": [
+        "meeting/mtg-0000",
+        "meeting/mtg-0002",
+        "meeting/mtg-0003",
+        "meeting/mtg-0005",
+        "note/2026-03-14-next-quarter-plan",
+        "slack/sl-0050",
+        "slack/sl-0052",
+        "slack/sl-0141",
+        "slack/sl-0160",
+        "slack/sl-0162",
+        "slack/sl-0210"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "note",
+        "slack"
+      ],
+      "mentions": 12,
+      "firstDay": "2026-03-14",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "stratos",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Stratos"
+      ],
+      "records": [
+        "slack/sl-0002",
+        "slack/sl-0160",
+        "slack/sl-0220",
+        "slack/sl-0250",
+        "slack/sl-0262"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 6,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "synth-bio",
+      "kind": "other",
+      "namespaces": [
+        "deal"
+      ],
+      "labels": [
+        "Synth Bio"
+      ],
+      "records": [
+        "slack/sl-0180"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "synthbio",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "SynthBio"
+      ],
+      "records": [
+        "meeting/mtg-0006"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-18",
+      "lastDay": "2026-04-18"
+    },
+    {
+      "slug": "synthesis-bio",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Synthesis Bio"
+      ],
+      "records": [
+        "slack/sl-0110",
+        "slack/sl-0253"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "tempo-ai",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Tempo AI"
+      ],
+      "records": [
+        "slack/sl-0280"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "tempo-health",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Tempo Health"
+      ],
+      "records": [
+        "slack/sl-0020"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "terraflow",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Terraflow"
+      ],
+      "records": [
+        "slack/sl-0132"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "terraflux",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Terraflux"
+      ],
+      "records": [
+        "note/2026-04-05-jordan-diligence"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-05",
+      "lastDay": "2026-04-05"
+    },
+    {
+      "slug": "terraform-dynamics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Terraform Dynamics"
+      ],
+      "records": [
+        "emails/em-0000",
+        "emails/em-0028",
+        "note/2026-02-16-jordan-diligence",
+        "slack/sl-0201"
+      ],
+      "sourceTypes": [
+        "email",
+        "note",
+        "slack"
+      ],
+      "mentions": 5,
+      "firstDay": "2026-02-16",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "terraform-energy",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Terraform Energy"
+      ],
+      "records": [
+        "emails/em-0012",
+        "emails/em-0014",
+        "emails/em-0038",
+        "emails/em-0044"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 4,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-20"
+    },
+    {
+      "slug": "terraform-industries",
+      "kind": "organisation",
+      "namespaces": [
+        "companies",
+        "company"
+      ],
+      "labels": [
+        "Terraform Industries"
+      ],
+      "records": [
+        "emails/em-0000",
+        "emails/em-0002",
+        "emails/em-0026",
+        "emails/em-0032",
+        "emails/em-0034",
+        "emails/em-0036",
+        "slack/sl-0041",
+        "slack/sl-0080",
+        "slack/sl-0272"
+      ],
+      "sourceTypes": [
+        "email",
+        "slack"
+      ],
+      "mentions": 11,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-19"
+    },
+    {
+      "slug": "terraform-labs",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Terraform Labs"
+      ],
+      "records": [
+        "emails/em-0030",
+        "emails/em-0036",
+        "slack/sl-0121"
+      ],
+      "sourceTypes": [
+        "email",
+        "slack"
+      ],
+      "mentions": 3,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-19"
+    },
+    {
+      "slug": "threshold-ventures",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Threshold Ventures"
+      ],
+      "records": [
+        "meeting/mtg-0001"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-13"
+    },
+    {
+      "slug": "tideline",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Tideline"
+      ],
+      "records": [
+        "slack/sl-0280"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "tideline-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Tideline Robotics"
+      ],
+      "records": [
+        "slack/sl-0072"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "toby-fletcher",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Toby"
+      ],
+      "records": [
+        "note/2026-03-22-weekly-review"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-03-22",
+      "lastDay": "2026-03-22"
+    },
+    {
+      "slug": "tomoko-sato",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "@Tomoko Sato",
+        "Tomoko",
+        "Tomoko Sato"
+      ],
+      "records": [
+        "note/2026-01-31-orange-mode",
+        "slack/sl-0011",
+        "slack/sl-0140",
+        "slack/sl-0151",
+        "slack/sl-0153",
+        "slack/sl-0253"
+      ],
+      "sourceTypes": [
+        "note",
+        "slack"
+      ],
+      "mentions": 6,
+      "firstDay": "2026-01-31",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "vantage-ai",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vantage AI"
+      ],
+      "records": [
+        "emails/em-0040"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-19",
+      "lastDay": "2026-04-19"
+    },
+    {
+      "slug": "vela-bio",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vela Bio"
+      ],
+      "records": [
+        "slack/sl-0092"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "vela-optics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vela Optics"
+      ],
+      "records": [
+        "slack/sl-0020"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "vela-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vela Robotics"
+      ],
+      "records": [
+        "meeting/mtg-0005",
+        "slack/sl-0221"
+      ],
+      "sourceTypes": [
+        "meeting",
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "vela-systems",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Vela Systems"
+      ],
+      "records": [
+        "slack/sl-0270"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-17",
+      "lastDay": "2026-04-17"
+    },
+    {
+      "slug": "vela-therapeutics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vela Therapeutics"
+      ],
+      "records": [
+        "slack/sl-0141"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "velar-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Velar Robotics"
+      ],
+      "records": [
+        "slack/sl-0150"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "verda-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Verda Robotics"
+      ],
+      "records": [
+        "slack/sl-0141"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "verde-climate-solutions",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Verde Climate Solutions"
+      ],
+      "records": [
+        "slack/sl-0050"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "vero-health",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vero Health"
+      ],
+      "records": [
+        "meeting/mtg-0001"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 3,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-13"
+    },
+    {
+      "slug": "vertex",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vertex"
+      ],
+      "records": [
+        "slack/sl-0172"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-16",
+      "lastDay": "2026-04-16"
+    },
+    {
+      "slug": "vertex-health",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vertex Health"
+      ],
+      "records": [
+        "meeting/mtg-0003"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-15",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "vertex-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "company"
+      ],
+      "labels": [
+        "Vertex Robotics"
+      ],
+      "records": [
+        "slack/sl-0093"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-15"
+    },
+    {
+      "slug": "vespera-dynamics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vespera Dynamics"
+      ],
+      "records": [
+        "meeting/mtg-0007"
+      ],
+      "sourceTypes": [
+        "meeting"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-04-19",
+      "lastDay": "2026-04-19"
+    },
+    {
+      "slug": "vesta-robotics",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Vesta Robotics"
+      ],
+      "records": [
+        "slack/sl-0021"
+      ],
+      "sourceTypes": [
+        "slack"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-13",
+      "lastDay": "2026-04-14"
+    },
+    {
+      "slug": "watershed",
+      "kind": "organisation",
+      "namespaces": [
+        "companies"
+      ],
+      "labels": [
+        "Watershed"
+      ],
+      "records": [
+        "emails/em-0006",
+        "emails/em-0032"
+      ],
+      "sourceTypes": [
+        "email"
+      ],
+      "mentions": 2,
+      "firstDay": "2026-04-14",
+      "lastDay": "2026-04-18"
+    },
+    {
+      "slug": "yusuf-mensah",
+      "kind": "person",
+      "namespaces": [
+        "people"
+      ],
+      "labels": [
+        "Yusuf"
+      ],
+      "records": [
+        "note/2026-02-04-morning-reflection"
+      ],
+      "sourceTypes": [
+        "note"
+      ],
+      "mentions": 1,
+      "firstDay": "2026-02-04",
+      "lastDay": "2026-02-04"
+    }
+  ],
+  "confusions": {
+    "sharedLabel": [
+      {
+        "label": "derek",
+        "slugs": [
+          "derek-chen",
+          "derek-huang",
+          "derek-lin",
+          "derek-zhang"
+        ]
+      },
+      {
+        "label": "jordan",
+        "slugs": [
+          "jordan-mata",
+          "jordan-melo"
+        ]
+      },
+      {
+        "label": "marcus",
+        "slugs": [
+          "marcus-chen",
+          "marcus-holloway",
+          "marcus-reid"
+        ]
+      },
+      {
+        "label": "maria",
+        "slugs": [
+          "maria-santos",
+          "maria-vasquez"
+        ]
+      },
+      {
+        "label": "meridian",
+        "slugs": [
+          "meridian",
+          "meridian-health",
+          "meridian-robotics"
+        ]
+      },
+      {
+        "label": "novamind",
+        "slugs": [
+          "jordan-park",
+          "novamind"
+        ]
+      },
+      {
+        "label": "priya",
+        "slugs": [
+          "priya-anand",
+          "priya-patel",
+          "priya-sharma"
+        ]
+      },
+      {
+        "label": "threshold ventures",
+        "slugs": [
+          "mina-kapoor",
+          "threshold-ventures"
+        ]
+      }
+    ],
+    "sharedSlug": [
+      {
+        "slug": "amara-okafor",
+        "labels": [
+          "Amara",
+          "Amara Okafor"
+        ]
+      },
+      {
+        "slug": "chen-wei",
+        "labels": [
+          "Chen Wei",
+          "Wei"
+        ]
+      },
+      {
+        "slug": "david-chen",
+        "labels": [
+          "David",
+          "David Chen"
+        ]
+      },
+      {
+        "slug": "derek-chen",
+        "labels": [
+          "Derek",
+          "Derek Chen"
+        ]
+      },
+      {
+        "slug": "derek-huang",
+        "labels": [
+          "Derek",
+          "Derek Huang"
+        ]
+      },
+      {
+        "slug": "derek-zhang",
+        "labels": [
+          "Derek",
+          "Derek Zhang"
+        ]
+      },
+      {
+        "slug": "diego-alvarez",
+        "labels": [
+          "Diego",
+          "Diego Alvarez"
+        ]
+      },
+      {
+        "slug": "elena-rossi",
+        "labels": [
+          "Elena",
+          "Elena Rossi"
+        ]
+      },
+      {
+        "slug": "hannah-liu",
+        "labels": [
+          "@Hannah Liu",
+          "Hannah",
+          "Hannah Liu"
+        ]
+      },
+      {
+        "slug": "jordan-mata",
+        "labels": [
+          "Jordan",
+          "Jordan Mata"
+        ]
+      },
+      {
+        "slug": "jordan-melo",
+        "labels": [
+          "Jordan",
+          "Jordan Melo"
+        ]
+      },
+      {
+        "slug": "jordan-park",
+        "labels": [
+          "Jordan Park",
+          "NovaMind"
+        ]
+      },
+      {
+        "slug": "kofi-mensah",
+        "labels": [
+          "@Kofi Mensah",
+          "Kofi",
+          "Kofi Mensah"
+        ]
+      },
+      {
+        "slug": "marcus-chen",
+        "labels": [
+          "Marcus",
+          "Marcus Chen"
+        ]
+      },
+      {
+        "slug": "marcus-reid",
+        "labels": [
+          "Marcus",
+          "Marcus Reid"
+        ]
+      },
+      {
+        "slug": "maria-santos",
+        "labels": [
+          "Maria",
+          "Maria Santos"
+        ]
+      },
+      {
+        "slug": "meridian-health",
+        "labels": [
+          "Meridian",
+          "Meridian Health"
+        ]
+      },
+      {
+        "slug": "meridian-robotics",
+        "labels": [
+          "Meridian",
+          "Meridian Robotics"
+        ]
+      },
+      {
+        "slug": "mina-kapoor",
+        "labels": [
+          "@Mina Kapoor",
+          "Mina",
+          "Mina Kapoor",
+          "Threshold Ventures"
+        ]
+      },
+      {
+        "slug": "nadia-freeman",
+        "labels": [
+          "@Nadia Freeman",
+          "Nadia",
+          "Nadia Freeman"
+        ]
+      },
+      {
+        "slug": "novamind",
+        "labels": [
+          "NovaMind",
+          "NovaMinds",
+          "NovaM​ind",
+          "Novamind"
+        ]
+      },
+      {
+        "slug": "priya-anand",
+        "labels": [
+          "Priya",
+          "Priya Anand"
+        ]
+      },
+      {
+        "slug": "priya-patel",
+        "labels": [
+          "@Priya Patel",
+          "Priya",
+          "Priya Patel"
+        ]
+      },
+      {
+        "slug": "ravi-gupta",
+        "labels": [
+          "@Ravi Gupta",
+          "Ravi",
+          "Ravi Gupta"
+        ]
+      },
+      {
+        "slug": "sarah-chen",
+        "labels": [
+          "Sarah",
+          "Sarah Chen"
+        ]
+      },
+      {
+        "slug": "tomoko-sato",
+        "labels": [
+          "@Tomoko Sato",
+          "Tomoko",
+          "Tomoko Sato"
+        ]
+      }
+    ],
+    "labelMismatch": [
+      {
+        "slug": "jordan-park",
+        "label": "NovaMind",
+        "records": [
+          "emails/em-0040"
+        ]
+      },
+      {
+        "slug": "mina-kapoor",
+        "label": "Threshold Ventures",
+        "records": [
+          "emails/em-0018"
+        ]
+      }
+    ],
+    "namespaceSplit": [
+      {
+        "slug": "amara-okafor",
+        "namespaces": [
+          "people",
+          "user"
+        ]
+      },
+      {
+        "slug": "cognify",
+        "namespaces": [
+          "companies",
+          "company"
+        ]
+      },
+      {
+        "slug": "derek-chen",
+        "namespaces": [
+          "people",
+          "user"
+        ]
+      },
+      {
+        "slug": "halfway-capital",
+        "namespaces": [
+          "companies",
+          "company",
+          "org",
+          "organizations",
+          "orgs"
+        ]
+      },
+      {
+        "slug": "helios-robotics",
+        "namespaces": [
+          "companies",
+          "company"
+        ]
+      },
+      {
+        "slug": "marcus-chen",
+        "namespaces": [
+          "people",
+          "user"
+        ]
+      },
+      {
+        "slug": "meridian-health",
+        "namespaces": [
+          "companies",
+          "company"
+        ]
+      },
+      {
+        "slug": "meridian-robotics",
+        "namespaces": [
+          "companies",
+          "company"
+        ]
+      },
+      {
+        "slug": "nexus-robotics",
+        "namespaces": [
+          "companies",
+          "company"
+        ]
+      },
+      {
+        "slug": "priya-sharma",
+        "namespaces": [
+          "people",
+          "user"
+        ]
+      },
+      {
+        "slug": "sarah-chen",
+        "namespaces": [
+          "people",
+          "person",
+          "user"
+        ]
+      },
+      {
+        "slug": "terraform-industries",
+        "namespaces": [
+          "companies",
+          "company"
+        ]
+      }
+    ]
+  },
+  "defects": {
+    "ownerNamespaceMisuse": [
+      "derek-chen",
+      "jamie-chen",
+      "kenji-tanaka",
+      "marcus-chen",
+      "priya-sharma",
+      "sarah-chen"
+    ],
+    "incoherentEmailThreads": [
+      {
+        "record": "emails/em-0000",
+        "day": "2026-04-13"
+      },
+      {
+        "record": "emails/em-0002",
+        "day": "2026-04-14"
+      },
+      {
+        "record": "emails/em-0004",
+        "day": "2026-04-14"
+      },
+      {
+        "record": "emails/em-0006",
+        "day": "2026-04-14"
+      },
+      {
+        "record": "emails/em-0008",
+        "day": "2026-04-14"
+      },
+      {
+        "record": "emails/em-0010",
+        "day": "2026-04-15"
+      },
+      {
+        "record": "emails/em-0012",
+        "day": "2026-04-15"
+      },
+      {
+        "record": "emails/em-0014",
+        "day": "2026-04-15"
+      },
+      {
+        "record": "emails/em-0016",
+        "day": "2026-04-16"
+      },
+      {
+        "record": "emails/em-0018",
+        "day": "2026-04-16"
+      },
+      {
+        "record": "emails/em-0020",
+        "day": "2026-04-16"
+      },
+      {
+        "record": "emails/em-0022",
+        "day": "2026-04-17"
+      },
+      {
+        "record": "emails/em-0024",
+        "day": "2026-04-17"
+      },
+      {
+        "record": "emails/em-0026",
+        "day": "2026-04-17"
+      },
+      {
+        "record": "emails/em-0030",
+        "day": "2026-04-18"
+      },
+      {
+        "record": "emails/em-0032",
+        "day": "2026-04-18"
+      },
+      {
+        "record": "emails/em-0034",
+        "day": "2026-04-18"
+      },
+      {
+        "record": "emails/em-0036",
+        "day": "2026-04-19"
+      },
+      {
+        "record": "emails/em-0038",
+        "day": "2026-04-19"
+      },
+      {
+        "record": "emails/em-0040",
+        "day": "2026-04-19"
+      },
+      {
+        "record": "emails/em-0042",
+        "day": "2026-04-19"
+      },
+      {
+        "record": "emails/em-0044",
+        "day": "2026-04-20"
+      },
+      {
+        "record": "emails/em-0046",
+        "day": "2026-04-20"
+      },
+      {
+        "record": "emails/em-0048",
+        "day": "2026-04-20"
+      }
+    ],
+    "linkedCalendarMismatch": [
+      {
+        "meeting": "meeting/mtg-0002",
+        "event": "cal/evt-0004",
+        "meetingAttendees": [
+          "user/amara-okafor",
+          "people/ravi-gupta"
+        ],
+        "eventAttendees": [
+          "Amara Okafor",
+          "Diego Alvarez"
+        ]
+      },
+      {
+        "meeting": "meeting/mtg-0003",
+        "event": "cal/evt-0006",
+        "meetingAttendees": [
+          "user/amara-okafor",
+          "people/nadia-freeman"
+        ],
+        "eventAttendees": [
+          "Amara Okafor",
+          "Tomoko Sato"
+        ]
+      },
+      {
+        "meeting": "meeting/mtg-0005",
+        "event": "cal/evt-0010",
+        "meetingAttendees": [
+          "user/amara-okafor",
+          "people/sarah-chen"
+        ],
+        "eventAttendees": [
+          "Amara Okafor",
+          "Mina Kapoor"
+        ]
+      },
+      {
+        "meeting": "meeting/mtg-0006",
+        "event": "cal/evt-0012",
+        "meetingAttendees": [
+          "user/amara-okafor",
+          "people/kofi-mensah"
+        ],
+        "eventAttendees": [
+          "Amara Okafor",
+          "Elena Rossi"
+        ]
+      },
+      {
+        "meeting": "meeting/mtg-0007",
+        "event": "cal/evt-0014",
+        "meetingAttendees": [
+          "user/amara-okafor",
+          "people/elena-rossi"
+        ],
+        "eventAttendees": [
+          "Amara Okafor",
+          "Lena Park"
+        ]
+      }
+    ],
+    "recurringNoteTopics": [
+      {
+        "topic": "board-prep",
+        "days": [
+          "2026-02-08",
+          "2026-03-04",
+          "2026-03-28"
+        ]
+      },
+      {
+        "topic": "climate-thesis",
+        "days": [
+          "2026-01-29",
+          "2026-02-22",
+          "2026-03-18",
+          "2026-04-11"
+        ]
+      },
+      {
+        "topic": "jordan-diligence",
+        "days": [
+          "2026-02-16",
+          "2026-03-12",
+          "2026-04-05"
+        ]
+      },
+      {
+        "topic": "market-report-reactions",
+        "days": [
+          "2026-02-14",
+          "2026-03-10",
+          "2026-04-03"
+        ]
+      },
+      {
+        "topic": "morning-reflection",
+        "days": [
+          "2026-02-04",
+          "2026-02-28",
+          "2026-03-24"
+        ]
+      },
+      {
+        "topic": "next-quarter-plan",
+        "days": [
+          "2026-01-25",
+          "2026-02-18",
+          "2026-03-14",
+          "2026-04-07"
+        ]
+      },
+      {
+        "topic": "novamind-followup",
+        "days": [
+          "2026-01-27",
+          "2026-02-20",
+          "2026-03-16",
+          "2026-04-09"
+        ]
+      },
+      {
+        "topic": "orange-mode",
+        "days": [
+          "2026-01-31",
+          "2026-02-24",
+          "2026-03-20",
+          "2026-04-13"
+        ]
+      },
+      {
+        "topic": "sourcing-queue",
+        "days": [
+          "2026-02-10",
+          "2026-03-06",
+          "2026-03-30"
+        ]
+      },
+      {
+        "topic": "team-1-1s",
+        "days": [
+          "2026-02-06",
+          "2026-03-02",
+          "2026-03-26"
+        ]
+      },
+      {
+        "topic": "threshold-terms",
+        "days": [
+          "2026-02-12",
+          "2026-03-08",
+          "2026-04-01"
+        ]
+      },
+      {
+        "topic": "weekly-review",
+        "days": [
+          "2026-02-02",
+          "2026-02-26",
+          "2026-03-22"
+        ]
+      }
+    ]
+  }
+}
