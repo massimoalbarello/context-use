@@ -4,6 +4,7 @@ import {
   setupUrl,
   stackEnvironment,
   stackUrl,
+  stackVolumeName,
 } from "./local-stack.ts";
 
 describe("local stack commands", () => {
@@ -28,8 +29,8 @@ describe("local stack commands", () => {
     expect(setupUrl("eval")).toContain("/app#setup=development-owner-setup-token-");
   });
 
-  test("destroy is scoped to the selected Compose project volumes", () => {
-    expect(composeArguments("eval", "destroy")).toEqual([
+  test("only purge removes the selected Compose project volumes", () => {
+    expect(composeArguments("eval", "purge")).toEqual([
       "compose",
       "--project-name",
       "context-use-eval",
@@ -37,5 +38,7 @@ describe("local stack commands", () => {
       "--volumes",
       "--remove-orphans",
     ]);
+    expect(composeArguments("eval", "down")).not.toContain("--volumes");
+    expect(stackVolumeName("eval", "asset-data")).toBe("context-use-eval_asset-data");
   });
 });

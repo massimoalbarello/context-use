@@ -46,8 +46,9 @@ bun run local up       # build, start, and wait until the app is ready
 bun run local status   # show the development containers
 bun run local logs     # follow their logs
 bun run local down     # stop everything but preserve local data
-bun run local reset    # erase local data and start again from the default template
-bun run local destroy  # erase local data and leave the stack stopped
+bun run local reset    # erase knowledge/assets, preserve login, and restart
+bun run local destroy  # erase knowledge/assets, preserve login, and leave it stopped
+bun run local purge    # erase every volume, including owner and passkeys
 ```
 
 `bun run local up` prints the app and owner-setup URLs when it is ready.
@@ -66,18 +67,19 @@ bun run eval down
 ```
 
 `down` preserves the evaluation knowledge base for inspection. To begin again with a
-blank knowledge base containing only the default template, reset it:
+blank knowledge base containing only the default template while retaining the owner,
+passkeys, sessions, and MCP OAuth grants, reset it:
 
 ```sh
 bun run eval reset
 ```
 
-Resetting removes the evaluation owner and OAuth state too, so open the setup URL printed
-by the command and reconnect the local Codex or Claude client before the next run. When
-finished, remove the complete evaluation installation with:
+Use `destroy` to perform the same identity-preserving reset and leave the stack stopped.
+The explicit `purge` command removes the complete evaluation installation, including its
+owner, passkeys, and OAuth state:
 
 ```sh
-bun run eval destroy
+bun run eval purge
 ```
 
 The forthcoming GBrain-derived trajectory runner will use this isolated stack and write
