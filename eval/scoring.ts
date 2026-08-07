@@ -1,13 +1,7 @@
 import type { EvalStep } from "./scenarios/amara-novamind.ts";
+import type { PageSnapshot } from "./snapshot.ts";
 
-export type PageSnapshot = {
-  id: string;
-  path: string;
-  version: number;
-  title: string;
-  summary: string;
-  body: string;
-};
+export type { PageSnapshot } from "./snapshot.ts";
 
 export type AssertionResult = {
   id: string;

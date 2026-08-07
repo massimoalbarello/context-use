@@ -56,22 +56,29 @@ bun run local purge    # erase every volume, including owner and passkeys
 ## Run knowledge evals locally
 
 Knowledge evals use the same local instance. Start it with `bun run local up` and create
-its owner once, then connect Codex and run the GBrain-derived trajectory with your local
-ChatGPT subscription:
+its owner once, then connect Codex and drive the activity distiller over a vendored
+corpus with your local ChatGPT subscription:
 
 ```sh
 bun run eval connect codex
-bun run eval run
+bun run eval distill --window dense --days 2
 ```
+
+The corpus is copied verbatim from [`garrytan/gbrain-evals`](https://github.com/garrytan/gbrain-evals)
+and served through the production `read_source_records` tool, one automation run per
+corpus day, so this exercises the real ingestion path rather than an eval-only prompt.
+`bun run eval run` still runs the earlier hand-written trajectory with deterministic
+scoring.
 
 Each run resets local knowledge and assets before it starts, so do not keep development
 data in this disposable instance. The owner, passkeys, sessions, and MCP OAuth grants
 are preserved.
 
-Use `bun run eval run --provider claude` after `claude auth login` to use Claude Code.
-Reports, complete agent logs, and per-step snapshots are written beneath the gitignored
+Add `--provider claude` after `claude auth login` to use Claude Code instead. Reports,
+complete agent logs, and per-run snapshots are written beneath the gitignored
 `.eval-results/` directory. `bun run eval score` deterministically rescores saved
-snapshots without using model credits. See [`eval/README.md`](eval/README.md) for details.
+scenario snapshots without using model credits, and `bun run eval corpus:verify` confirms
+the corpus is unchanged. See [`eval/README.md`](eval/README.md) for details.
 
 ## Self-host on AWS
 

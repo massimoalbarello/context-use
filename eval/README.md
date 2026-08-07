@@ -1,74 +1,89 @@
-# Local knowledge-organization evals
+# Local knowledge evals
 
-These evals test the write path: whether a fresh agent turns successive pieces of
-information into a connected knowledge base that follows the default template. They do
-not test retrieval.
+Two things live here.
 
-Each step runs in a new agent session. The only state carried forward is Context Use
-itself. Immediately after each step, deterministic checks inspect the database for:
+**Corpus distillation** (`bun run eval distill`) runs the activity distiller over a fixed,
+vendored corpus, one automation run per corpus day, and reports the pages it wrote. This
+is the write path end to end: the private MCP serves the corpus through the production
+`read_source_records` tool, and the agent follows the automation instructions installed in
+the knowledge base. There is no evaluation-specific prompt and no evaluation-specific tool.
+It does not score anything yet.
 
-- canonical people and company entities without duplicates;
-- contextual links between related entities;
-- creation or reconciliation of every expected entity on every step;
-- one timeline per materially involved entity;
-- the exact daily diary and bidirectional timeline links; and
-- a canonical occurrence page for meaningful meetings.
+**Scenario scoring** (`bun run eval run`) is the earlier, hand-written four-step
+trajectory with deterministic assertions about entities, timelines, diary synchronization
+and reconciliation. It will be replaced by scoring over corpus days, at which point the
+hand-written scenario goes away.
 
-## Run locally with Codex
+## The corpus
+
+`corpus/amara-life-v1/` is copied verbatim from [`garrytan/gbrain-evals`][upstream] and is
+never edited — see [corpus/UPSTREAM.md](corpus/UPSTREAM.md) for the pinned commit and how
+integrity is enforced. 418 items over 47 days: 300 Slack messages, 50 emails, 40 notes, 20
+calendar events and 8 meetings. Thirty-nine days hold one note each; the eight days from
+13 to 20 April 2026 hold 379 of the 418 items.
+
+```sh
+bun run eval corpus:verify    # working copy against corpus.lock.json
+bun run eval corpus:refresh   # working copy against the pinned upstream commit
+```
+
+Both are read-only. Re-pinning the corpus has to be a deliberate commit, because changing
+it invalidates every result measured against the previous version.
+
+## Running the distillation
 
 ```sh
 bun run local up
-```
-
-Create the owner once at the setup URL printed by that command using
-`you@example.com`. Then connect the installed Codex CLI once:
-
-```sh
 bun run eval connect codex
+bun run eval distill --window dense --days 2
 ```
 
-Run the scenario whenever wanted:
+`--window dense` selects the eight busy days; `full` walks all 47. `--days N` stops after
+N days, which is how to try it cheaply — the full dense window is eight agent runs over
+379 records, and the full corpus is 47.
+
+The window is also read by the server, which picks it up from `EVAL_CORPUS_WINDOW` at
+startup and defaults to `full`. To run the dense window, set it before bringing the stack
+up so both sides agree:
 
 ```sh
-bun run eval run
+EVAL_CORPUS_WINDOW=dense bun run local up
+bun run eval distill --window dense
 ```
 
 Every run resets semantic knowledge and assets in this local instance to the default
 template while preserving the owner passkey and OAuth authorization. Do not keep
-development data in it. Reports and snapshots are written under `.eval-results/`.
+development data in it. Snapshots, per-day agent logs and a Markdown report land in
+`.eval-results/`.
 
-The terminal shows readable write progress and per-step scores. Keep the dashboard open
-at `http://localhost:5173/app/` to watch the knowledge tree update during the run.
-Complete agent JSONL, stderr, final messages, per-step database snapshots, and the
-baseline snapshot remain in the run directory for debugging.
+## How one run equals one day
 
-Scoring is deterministic and does not use model credits. After changing the assertions,
-rescore the latest saved snapshots—or a specific run—without rerunning the agent:
+`CorpusRecordReader` implements the same `SourceRecordReader` interface as the Nango
+pipeline and is selected in `mcp-app.ts` when `EVAL_CORPUS_PATH` is set, so
+`read_source_records` behaves exactly as it does in production — opaque checkpoints,
+`has_more` batching, and the automation persisting its own checkpoint into
+`automations/activity-distiller/state`.
 
-```sh
-bun run eval score
-bun run eval score 2026-08-07T14-14-46-829Z-codex
-```
+The one difference is where a batch ends. `has_more` stays true only while the current
+corpus day still has records; when the day is exhausted the checkpoint advances to the
+next day that has any. An automation run therefore consumes one day and stops, the way a
+scheduled production run consumes whatever the source produced since its last checkpoint.
+The harness just triggers the next run.
 
-Use `bun run local destroy` to remove semantic data and stop the stack while preserving
-authentication, or `bun run local purge` to remove everything, including the passkey.
+Nango's 30-day source-freshness window is deliberately absent rather than disabled by a
+flag. It belongs to Nango's semantics, because Nango backfills historical records; a fixed
+corpus does not. Nothing in the production reader branches on evaluation mode, and corpus
+dates are served exactly as authored.
 
-## Claude Code
-
-Claude Code uses the same scenario and scorer:
-
-```sh
-claude auth login
-bun run eval connect claude
-bun run eval run --provider claude
-```
-
-Claude's MCP authorization is managed by Claude Code and may require approving the
-localhost server with `/mcp` in an interactive Claude session before the first run.
+`EVAL_CORPUS_PATH` and `EVAL_CORPUS_WINDOW` are rejected outright in production by the
+config boundary, in every service.
 
 ## Fixture attribution
 
-The fictional Amara, NovaMind, Chen Wei, Derek Lin, and Marcos Reyes trajectory is
-adapted from [`garrytan/gbrain-evals`](https://github.com/garrytan/gbrain-evals), used
-under its MIT License. The fixture is intentionally rewritten and reduced to the facts
-needed to test Context Use's semantic and temporal organization.
+The fictional Amara Okafor world is from [`garrytan/gbrain-evals`][upstream], used under
+its MIT License. The corpus is served unmodified, including its inline entity references
+such as `[Ravi Gupta](people/ravi-gupta)`: those are upstream's own paths, and rewriting
+them would both modify the corpus and disadvantage any system whose extraction is built to
+read them.
+
+[upstream]: https://github.com/garrytan/gbrain-evals
