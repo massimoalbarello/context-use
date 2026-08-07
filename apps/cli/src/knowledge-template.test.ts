@@ -9,10 +9,6 @@ test("template commands use the installed application image without updating the
   ]);
   expect(knowledgeTemplateCommands("apply").at(-1)).toEndWith("template-command.ts apply default");
   expect(knowledgeTemplateCommands("apply", "default", true).at(-1))
-    .toEndWith("template-command.ts apply default --overwrite-guides");
-  expect(knowledgeTemplateCommands("apply", "default", false, true).at(-1))
-    .toEndWith("template-command.ts apply default --overwrite-managed-pages");
-  expect(knowledgeTemplateCommands("apply", "default", true, true).at(-1))
-    .toEndWith("template-command.ts apply default --overwrite-guides --overwrite-managed-pages");
+    .toEndWith("template-command.ts apply default --force-template");
   expect(() => knowledgeTemplateCommands("apply", "../other")).toThrow("Invalid template name");
 });
