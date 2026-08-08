@@ -54,26 +54,51 @@ development data in it. Snapshots, per-day agent logs and a Markdown report land
 
 ## What counts as one source record
 
-A conversation is one record, not one record per message, because the Nango envelope
-contract is a source item carrying a complete semantic body — the same reason a meeting is
-one record. The 418 upstream items become 226 records: 300 Slack messages collapse into
-130, and 50 emails into 28. Notes, meetings and calendar events are already single items
-and are unchanged. `loadCorpus` fails if any manifest item is not carried by some record,
-so grouping can never silently drop evidence.
+One manifest item is one record: 418 items, 418 records. `loadCorpus` fails if any
+manifest item is not carried, so nothing can be silently dropped.
 
-Slack threads are keyed by **channel and `thread_ts` together**, not `thread_ts` alone.
-This corpus reuses one `thread_ts` across all four channels for unrelated subjects, so
-grouping on it alone would splice a fund close, a deal update and office chat into a single
-"conversation". Keyed by channel the groups are two or three messages and read as threads.
+The obvious alternative — group a thread into one record, the way a meeting already is
+one record — is wrong for this corpus, because **its threading carries no meaning**.
+Upstream's generator sets `thread_id` to `floor(index / 2)` over emails whose
+counterparties are drawn independently at random, and `thread_ts` to a bucket of every
+tenth Slack message across four channels that rotate by index. Its prose generator then
+wrote every item in isolation: it was handed `In-Reply-To: em-0000` and
+`Thread parent: <timestamp>` as bare identifiers, never the text being replied to, and
+instructed to "acknowledge thread context".
 
-A thread that gains messages on a later day is served again that day, `added` the first
-time and `updated` after, carrying the whole conversation each time. That is how an
-incremental source behaves, it keeps later messages out of an earlier day, and it means a
-thread is never split across batches. Thirteen records in this corpus are updates.
+That is why `thr-0000` is Ravi introducing Terraform Dynamics followed by Amara thanking
+Bill about Terraform Industries, and why a fund-close announcement draws two replies
+agreeing about timeline concerns nobody raised. Twenty-four of the twenty-five declared
+email threads pair messages that share no entity at all. Grouping them, or even printing
+the thread id as a header, would assert a relationship the corpus does not contain and
+would then penalise a knowledge base for not inventing it.
+
+So the renderer adds no threading header of its own. Upstream's own subject line still
+reads `Thread thr-0000 re Ravi` and is served verbatim, because the subject is the
+message's own content — but nothing beyond the message itself is promoted into the body.
+
+Every record is `added`. A fixed corpus never revises an item it has already served.
 
 `doc/` holds six reference documents that are **not** in the upstream manifest and are
 therefore never served. That matches upstream's own definition of the corpus, and no other
 record references them.
+
+## What upstream planted, and what it did not
+
+The corpus is a deliberately messy week, and knowing which mess is deliberate matters.
+Upstream's generator seeded **10 contradictions, 5 stale facts, 5 prompt-injection
+payloads and 3 implicit preferences**, and left `fixture_id` markers on the items carrying
+them. Ten of those markers survive into the vendored JSONL; the rest were designed for
+meetings and notes, whose front matter has no field to carry a marker. The markers live in
+the envelope and are never rendered into a record body, so they are answer key the agent
+cannot read.
+
+Everything else that looks broken is a generator artifact, not a test: the threading
+above, `linked_calendar` (which is `cal/evt-{index * 2}` and points at the wrong event all
+five times it appears), the twelve note topics regenerated from a one-word hint rather than
+continued, and the entity sprawl — upstream designed a cast of sixteen, and the prose
+generator, told to write `[Name](people/slug)` without a closed vocabulary, invented
+thirty-seven more people. `bun run eval gold:profile` reports both sets separately.
 
 ## How one run equals one day
 

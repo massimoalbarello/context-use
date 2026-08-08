@@ -84,13 +84,13 @@ describe("corpus source records", () => {
     const corpus = loadCorpus(buildCorpus());
     expect(corpus.corpusId).toBe("test-corpus");
     expect(corpus.days).toEqual(["2026-04-13", "2026-04-14", "2026-04-15"]);
-    // em-0 and em-1 share a thread, so the thread is served once per day it gains a message.
+    // em-0 and em-1 declare one thread; each is still served as its own record.
     expect(corpus.records.map((record) => [record.slug, record.day, record.action])).toEqual([
       ["note/a", "2026-04-13", "added"],
       ["emails/em-0", "2026-04-13", "added"],
       ["slack/sl-0", "2026-04-13", "added"],
       ["cal/evt-0", "2026-04-14", "added"],
-      ["emails/em-0", "2026-04-14", "updated"],
+      ["emails/em-1", "2026-04-14", "added"],
       ["note/b", "2026-04-15", "added"],
     ]);
   });
@@ -102,14 +102,19 @@ describe("corpus source records", () => {
     ]);
   });
 
-  test("renders a thread as one body carrying every message so far", () => {
+  test("renders one message per body and never points at its declared thread", () => {
     const corpus = loadCorpus(buildCorpus());
-    const [added, updated] = corpus.records.filter((record) => record.slug === "emails/em-0");
-    expect(added!.markdown).toContain("Body text.");
-    expect(added!.markdown).not.toContain("Reply text.");
-    // The update repeats the whole conversation rather than only the new message.
-    expect(updated!.markdown).toContain("Body text.");
-    expect(updated!.markdown).toContain("Reply text.");
+    const first = corpus.records.find((record) => record.slug === "emails/em-0")!;
+    const second = corpus.records.find((record) => record.slug === "emails/em-1")!;
+    expect(first.markdown).toContain("Body text.");
+    expect(first.markdown).not.toContain("Reply text.");
+    expect(second.markdown).toContain("Reply text.");
+    // Upstream's threading is index arithmetic its own generator never honoured, so
+    // surfacing it would assert a relationship the corpus does not contain.
+    for (const record of [first, second]) {
+      expect(record.markdown).not.toContain("thr-0");
+      expect(record.markdown).not.toContain("em-0");
+    }
   });
 
   test("rejects a corpus whose file no longer matches the upstream manifest", () => {
@@ -124,9 +129,8 @@ describe("corpus source records", () => {
     const first = await drainDay(reader);
     expect(first.slugs).toEqual(["note/a", "emails/em-0", "slack/sl-0"]);
 
-    // The thread keeps its identity across days, so the same record_ref returns updated.
     const second = await drainDay(reader, first.checkpoint);
-    expect(second.slugs).toEqual(["cal/evt-0", "emails/em-0"]);
+    expect(second.slugs).toEqual(["cal/evt-0", "emails/em-1"]);
 
     const third = await drainDay(reader, second.checkpoint);
     expect(third.slugs).toEqual(["note/b"]);

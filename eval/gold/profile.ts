@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { loadCorpus, type Corpus, type CorpusRecord } from "../../apps/server/src/corpus-records.ts";
 
 /**
@@ -10,17 +12,22 @@ import { loadCorpus, type Corpus, type CorpusRecord } from "../../apps/server/sr
  * test asserts it still regenerates, which turns any drift in the corpus or in this
  * derivation into a reviewable diff.
  *
- * Two things it exists to surface:
+ * Three things it exists to surface, and the difference between them matters:
+ *
+ *  - **Planted perturbations.** Upstream deliberately seeded contradictions, stale
+ *    facts and prompt-injection payloads, and left `fixture_id` markers on the items
+ *    carrying them. This is answer key we did not have to author. The markers live in
+ *    the JSONL envelope and never reach a record body, so the agent cannot see them.
  *
  *  - **Identity.** Upstream marks every entity reference with its own canonical slug,
- *    so the slug is an answer key for coreference that we did not have to author. The
- *    surface labels around those slugs are not clean: one slug carries four spellings
- *    of NovaMind, and the bare label "Priya" stands for three different people. Both
- *    directions of that confusion are enumerated here.
+ *    so the slug is an answer key for coreference. The surface labels around those
+ *    slugs are not clean: one slug carries four spellings of NovaMind, and the bare
+ *    label "Priya" stands for three different people. Both directions are enumerated.
  *
- *  - **Defects.** Parts of the corpus assert relationships that its own contents
- *    contradict. A gold standard built without knowing which signals are unreliable
- *    would encode the defects as targets.
+ *  - **Generator artifacts.** Several structural signals are index arithmetic rather
+ *    than meaning, and the entity sprawl is unconstrained prose generation rather than
+ *    a planted test. Neither is a target. Treating an artifact as signal would score a
+ *    knowledge base for reproducing a defect.
  */
 
 /** Namespaces upstream uses for the same underlying kind of entity, in its own spellings. */
@@ -71,16 +78,55 @@ export type CorpusProfile = {
     labelMismatch: { slug: string; label: string; records: string[] }[];
     namespaceSplit: { slug: string; namespaces: string[] }[];
   };
-  defects: {
+  /**
+   * Upstream's own answer key, read from the JSONL envelope. These markers never reach a
+   * record body, so they are ground truth the system under test cannot see.
+   */
+  perturbations: {
+    planted: { item: string; kind: string; fixtureId: string; day: string; sourceType: string }[];
+    /**
+     * Perturbations upstream's generator designed but whose markers did not survive into
+     * the vendored data, because meeting and note front matter has no perturbation field.
+     * Recorded so nobody mistakes the marked set for the designed set.
+     */
+    designedButUnmarked: { kind: string; designed: number; marked: number }[];
+  };
+  /**
+   * Structure that looks like meaning but is index arithmetic or unconstrained prose
+   * generation. None of it is a target; a knowledge base reproducing it is not correct.
+   */
+  generatorArtifacts: {
     /** Slugs other than the owner written as `user/`, so the namespace cannot identify the owner. */
     ownerNamespaceMisuse: string[];
-    /** Declared email threads whose two messages share no entity: the threading is nominal. */
-    incoherentEmailThreads: { record: string; day: string }[];
+    /** Declared email threads pairing two messages that share no entity. `thread_id` is floor(index / 2). */
+    nominalEmailThreads: { threadId: string; items: string[] }[];
     /** Meetings whose `linked_calendar` event has different attendees or a different date. */
     linkedCalendarMismatch: { meeting: string; event: string; meetingAttendees: string[]; eventAttendees: string[] }[];
-    /** Note topics reused across days. Upstream regenerates them rather than continuing them. */
+    /** Note topics reused across days. Upstream regenerates them from a one-word hint. */
     recurringNoteTopics: { topic: string; days: string[] }[];
+    /** Person slugs invented during prose generation, outside upstream's designed cast. */
+    uncastPersonSlugs: string[];
   };
+};
+
+/**
+ * Upstream's designed cast, transcribed from `DEFAULT_CONTACTS` in its own
+ * `eval/generators/amara-life.ts`: fifteen contacts plus the owner. Every other person
+ * slug in the corpus was invented by the prose generator, which was told to write
+ * `[Name](people/slug)` but never given a closed vocabulary to draw from.
+ */
+const DESIGNED_CAST = new Set([
+  "amara-okafor", "mina-kapoor", "priya-patel", "marcus-reid", "sarah-chen", "jordan-park",
+  "hannah-liu", "diego-alvarez", "elena-rossi", "kofi-mensah", "ravi-gupta", "lena-park",
+  "tomoko-sato", "bill-hart", "nadia-freeman", "anna-petrov",
+]);
+
+/** What upstream's generator says it planted, against what the vendored data still marks. */
+const DESIGNED_PERTURBATIONS: Record<string, number> = {
+  contradiction: 10,
+  "stale-fact": 5,
+  poison: 5,
+  "implicit-preference": 3,
 };
 
 /** Collapses spelling noise so that distinct entities sharing a surface form are found. */
@@ -211,28 +257,42 @@ function profileConfusions(records: CorpusRecord[], entities: ProfiledEntity[]):
   };
 }
 
-function profileDefects(corpus: Corpus, entities: ProfiledEntity[]): CorpusProfile["defects"] {
+type EmailEnvelope = { slug: string; thread_id: string | null; body_text: string };
+
+function profileArtifacts(
+  corpus: Corpus,
+  entities: ProfiledEntity[],
+  emails: EmailEnvelope[],
+): CorpusProfile["generatorArtifacts"] {
   const ownerNamespaceMisuse = entities
     .filter((entity) => entity.namespaces.includes("user") && entity.slug !== OWNER_SLUG)
     .map((entity) => entity.slug);
 
-  // An email record carries a whole declared thread. If its messages share no entity,
-  // upstream grouped unrelated correspondence under one thread id.
-  const incoherentEmailThreads: { record: string; day: string }[] = [];
-  for (const record of corpus.records) {
-    if (record.type !== "email") continue;
-    const messages = record.markdown.split(/^## /m).slice(1);
+  const uncastPersonSlugs = entities
+    .filter((entity) => entity.kind === "person" && !DESIGNED_CAST.has(entity.slug))
+    .map((entity) => entity.slug);
+
+  // `thread_id` is floor(index / 2) over emails whose counterparties are drawn
+  // independently, so a "thread" is two unrelated messages far more often than not.
+  const threads = new Map<string, EmailEnvelope[]>();
+  for (const email of emails) {
+    const key = email.thread_id ?? email.slug;
+    threads.set(key, [...(threads.get(key) ?? []), email]);
+  }
+  const nominalEmailThreads: { threadId: string; items: string[] }[] = [];
+  for (const [threadId, messages] of threads) {
     if (messages.length < 2) continue;
     const perMessage = messages.map((message) =>
-      new Set([...message.matchAll(REFERENCE_PATTERN)].map((match) => match[3]!)));
+      new Set([...message.body_text.matchAll(REFERENCE_PATTERN)].map((match) => match[3]!)));
     const shared = [...perMessage[0]!].some((slug) => perMessage.slice(1).every((set) => set.has(slug)));
-    if (!shared) incoherentEmailThreads.push({ record: record.slug, day: record.day });
+    if (!shared) nominalEmailThreads.push({ threadId, items: messages.map((message) => message.slug).sort() });
   }
+  nominalEmailThreads.sort((left, right) => left.threadId.localeCompare(right.threadId));
 
   const calendar = new Map(corpus.records
     .filter((record) => record.type === "calendar-event")
     .map((record) => [record.slug, record]));
-  const linkedCalendarMismatch: CorpusProfile["defects"]["linkedCalendarMismatch"] = [];
+  const linkedCalendarMismatch: CorpusProfile["generatorArtifacts"]["linkedCalendarMismatch"] = [];
   const recurring = new Map<string, string[]>();
 
   for (const record of corpus.records) {
@@ -264,21 +324,60 @@ function profileDefects(corpus: Corpus, entities: ProfiledEntity[]): CorpusProfi
 
   return {
     ownerNamespaceMisuse,
-    incoherentEmailThreads,
+    nominalEmailThreads,
     linkedCalendarMismatch,
     recurringNoteTopics: [...recurring]
       .filter(([, days]) => days.length > 1)
       .map(([topic, days]) => ({ topic, days: [...days].sort() }))
       .sort((left, right) => left.topic.localeCompare(right.topic)),
+    uncastPersonSlugs,
   };
 }
 
-export function profileCorpus(corpus: Corpus): CorpusProfile {
+/**
+ * Reads the `perturbation` markers upstream leaves on the JSONL envelope. They are the
+ * one part of the corpus deliberately planted to be got right, and the renderer never
+ * copies them into a record body, so the system under test cannot read the answer.
+ */
+function profilePerturbations(
+  entries: { slug: string; ts: string; sourceType: string; perturbation?: { kind: string; fixture_id: string } }[],
+): CorpusProfile["perturbations"] {
+  const planted = entries
+    .filter((entry) => entry.perturbation)
+    .map((entry) => ({
+      item: entry.slug,
+      kind: entry.perturbation!.kind,
+      fixtureId: entry.perturbation!.fixture_id,
+      day: entry.ts.slice(0, 10),
+      sourceType: entry.sourceType,
+    }))
+    .sort((left, right) => left.fixtureId.localeCompare(right.fixtureId));
+
+  return {
+    planted,
+    designedButUnmarked: Object.entries(DESIGNED_PERTURBATIONS)
+      .map(([kind, designed]) => ({
+        kind,
+        designed,
+        marked: planted.filter((entry) => entry.kind === kind).length,
+      }))
+      .filter((entry) => entry.marked < entry.designed)
+      .sort((left, right) => left.kind.localeCompare(right.kind)),
+  };
+}
+
+export function profileCorpus(corpus: Corpus, directory: string): CorpusProfile {
   const entities = profileEntities(corpus.records);
   const byDay = new Map<string, CorpusRecord[]>();
   for (const record of corpus.records) {
     byDay.set(record.day, [...(byDay.get(record.day) ?? []), record]);
   }
+
+  const readEnvelope = (path: string, sourceType: string) =>
+    readFileSync(join(directory, path), "utf8").split("\n").filter((line) => line.trim())
+      .map((line) => ({ ...JSON.parse(line), sourceType }));
+  const emailEnvelopes = readEnvelope(join("inbox", "emails.jsonl"), "email");
+  const slackEnvelopes = readEnvelope(join("slack", "messages.jsonl"), "slack");
 
   return {
     corpusId: corpus.corpusId,
@@ -301,10 +400,11 @@ export function profileCorpus(corpus: Corpus): CorpusProfile {
     })),
     entities,
     confusions: profileConfusions(corpus.records, entities),
-    defects: profileDefects(corpus, entities),
+    perturbations: profilePerturbations([...emailEnvelopes, ...slackEnvelopes]),
+    generatorArtifacts: profileArtifacts(corpus, entities, emailEnvelopes),
   };
 }
 
 export function profileCorpusAt(directory: string): CorpusProfile {
-  return profileCorpus(loadCorpus(directory));
+  return profileCorpus(loadCorpus(directory), directory);
 }
