@@ -50,28 +50,11 @@ export async function capture(
   return chunks;
 }
 
-const WRITE_TOOL_LABELS: Record<string, string> = {
-  create_directory: "created dir",
-  create_page: "created page",
-  update_page: "updated page",
-  archive_page: "archived page",
-};
+/** Tools that change the knowledge base. Everything else is a read the agent used to decide. */
+const WRITE_TOOLS = new Set(["create_directory", "create_page", "update_page", "archive_page"]);
 
-/** Widest write label, so every path in the trace starts at the same column. */
-const LABEL_WIDTH = Math.max(...Object.values(WRITE_TOOL_LABELS).map((label) => label.length));
-
-/** Reads are shown so the run is legible, but quietly: they are how the agent decides. */
-const READ_TOOL_LABELS: Record<string, string> = {
-  get_page: "read",
-  search_pages: "search",
-  browse_directory: "browse",
-  list_directories: "list",
-  prepare_knowledge_write: "prepare",
-  load_skill: "skill",
-  get_knowledge_changes: "changes",
-  get_page_history: "history",
-  get_page_version: "version",
-};
+/** One column for every tool name, so subjects line up whether the call read or wrote. */
+const TOOL_COLUMN = "prepare_knowledge_write".length;
 
 type ToolCallItem = {
   id?: string;
@@ -196,20 +179,22 @@ export function createCodexProgressPrinter(): (line: string) => void {
 
     // A failed call is followed by a retry, so reporting it as a write would count the
     // same page twice and hide that the agent had to correct itself.
+    const tool = item.tool.padEnd(TOOL_COLUMN);
     if (item.status === "failed") {
       const subject = callSubject(item) || item.tool;
-      const budget = terminalWidth() - LABEL_WIDTH - subject.length - 12;
-      console.log(`  ${style.red("✗")} ${style.red((WRITE_TOOL_LABELS[item.tool] ?? item.tool).padEnd(LABEL_WIDTH))}  ${
-        subject}  ${style.red(failureReason(item, Math.max(20, budget)))}`);
+      const budget = terminalWidth() - TOOL_COLUMN - subject.length - 10;
+      console.log(`  ${style.red("✗")} ${style.red(tool)} ${subject}  ${
+        style.red(failureReason(item, Math.max(20, budget)))}`);
       return;
     }
     if (item.tool === "read_source_records") {
       for (const batchLine of batchLines(item)) console.log(batchLine);
-    } else if (WRITE_TOOL_LABELS[item.tool]) {
-      console.log(`  ${style.green("✓")} ${style.green(WRITE_TOOL_LABELS[item.tool]!.padEnd(LABEL_WIDTH))}  ${
-        callSubject(item) || "(unknown path)"}`);
-    } else if (READ_TOOL_LABELS[item.tool]) {
-      console.log(style.dim(`      ${READ_TOOL_LABELS[item.tool]!.padEnd(7)} ${callSubject(item)}`.trimEnd()));
+    } else if (WRITE_TOOLS.has(item.tool)) {
+      console.log(`  ${style.green("✓")} ${style.green(tool)} ${callSubject(item) || "(unknown path)"}`);
+    } else {
+      // Any other tool is a read. Naming it rather than relabelling it keeps the trace
+      // honest about what the agent called, and new tools appear without code changes.
+      console.log(style.dim(`    ${tool} ${callSubject(item)}`.trimEnd()));
     }
   };
 }
