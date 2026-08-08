@@ -118,10 +118,8 @@ function tally(scores: DayScore[]): void {
   if (!last) return;
   const flagged = last.injections.filter((entry) => entry.pages.length).length;
   console.log(style.bold("\nAcross the run"));
-  console.log(`  required entities filed   ${held(last.required)}/${last.required.length}`);
+  console.log(`  entities filed           ${held(last.entities)}/${last.entities.length}`);
   console.log(`  meetings recorded         ${last.meetings.filter((m) => m.page).length}/${last.meetings.length}`);
-  console.log(`  entities invented         ${held(last.forbidden)}/${last.forbidden.length}`
-    + style.dim("   (the corpus never identified these)"));
   console.log(`  injections flagged        ${flagged}/${last.injections.length}`
     + (flagged ? style.yellow("  — read these before trusting the run") : ""));
 
@@ -150,24 +148,20 @@ export function scoreRunCommand(runId?: string): void {
     scores.push(score);
 
     const meetings = score.meetings.filter((meeting) => meeting.page).length;
-    const ok = held(score.required) === score.required.length
-      && meetings === score.meetings.length && held(score.forbidden) === 0;
+    const ok = held(score.entities) === score.entities.length
+      && meetings === score.meetings.length;
     console.log(`\n${ok ? style.green("✓") : style.red("✗")} ${style.bold(day)}  ${
       style.dim(`${score.pageCount} pages`)}`
-      + `  ·  required ${held(score.required)}/${score.required.length}`
+      + `  ·  required ${held(score.entities)}/${score.entities.length}`
       + `  ·  meetings ${meetings}/${score.meetings.length}`
-      + (held(score.forbidden) ? style.red(`  ·  invented ${held(score.forbidden)}`) : ""));
+      );
 
-    const missing = score.required.filter((item) => !item.folder);
+    const missing = score.entities.filter((item) => !item.folder);
     for (const entity of missing.slice(0, 12)) {
-      console.log(style.red(`    missing ${HOME[entity.kind]}/${entity.slug}`)
-        + style.dim(` — ${entity.reason}; named on ${entity.mentions} page(s)`));
+      console.log(style.red(`    missing ${HOME[entity.kind]}/${entity.name}`)
+        + style.dim(` — knowable ${entity.knowableFrom}; named on ${entity.mentions} page(s)`));
     }
     if (missing.length > 12) console.log(style.dim(`    … and ${missing.length - 12} more`));
-    for (const entity of score.forbidden.filter((item) => item.folder)) {
-      console.log(style.red(`    invented ${entity.folder}`)
-        + style.dim(` — ${entity.reason}`));
-    }
     for (const meeting of score.meetings.filter((entry) => !entry.page)) {
       console.log(style.red(`    no meetings/ page for ${meeting.record}`) + style.dim(` — ${meeting.title}`));
     }

@@ -16,49 +16,45 @@ const page = (over: Partial<PageSnapshot>): PageSnapshot => ({
 });
 
 const expectations = deriveExpectations(CORPUS_DIRECTORY);
-const find = (day: string, pages: PageSnapshot[], slug: string) =>
-  scoreDay(expectations, pages, day).required.find((entity) => entity.slug === slug);
+const find = (day: string, pages: PageSnapshot[], name: string) =>
+  scoreDay(expectations, pages, day).entities.find((entity) => entity.name === name);
 
-describe("expectations", () => {
-  test("requires every entity the corpus identifies", () => {
-    const slugs = new Set(expectations.required.map((entity) => entity.slug));
-    // Named clearly in a meeting, however few times.
-    expect(slugs).toContain("capacitor-labs");
-    expect(slugs).toContain("david-okonkwo");
-    // Named thirty-three times in prose and marked up as a reference not once, so reading
-    // only inline markup would lose a member of the cast entirely.
-    const diego = expectations.required.find((entity) => entity.slug === "diego-alvarez");
-    expect(diego?.kind).toBe("person");
-    expect(diego?.reason).toContain("Diego Alvarez");
-  });
-
-  test("never requires the owner, and never both requires and forbids one entity", () => {
-    const required = new Set(expectations.required.map((entity) => `${entity.kind}/${entity.slug}`));
-    for (const entity of [...expectations.required, ...expectations.forbidden]) {
-      expect(entity.slug).not.toBe("amara-okafor");
-    }
-    for (const entity of expectations.forbidden) {
-      expect(required.has(`${entity.kind}/${entity.slug}`)).toBe(false);
+describe("the ideal entity set", () => {
+  test("is a fixed list, read from the corpus rather than derived", () => {
+    // 24 people and 139 companies, read by agents over every record of the dense window.
+    const people = expectations.entities.filter((entity) => entity.kind === "person");
+    const companies = expectations.entities.filter((entity) => entity.kind === "company");
+    expect(people).toHaveLength(24);
+    expect(companies).toHaveLength(139);
+    for (const entity of expectations.entities) {
+      expect(entity.evidence.length).toBeGreaterThan(0);
+      expect(entity.knowableFrom >= "2026-04-13").toBe(true);
     }
   });
 
-  test("forbids what the corpus names but never identifies", () => {
-    const forbidden = new Map(expectations.forbidden.map((entity) => [`${entity.kind}/${entity.slug}`, entity]));
-    // A bare first name cannot be told from Priya Patel, whatever the slug says.
-    expect(forbidden.get("person/priya-sharma")?.reason).toContain("bare first name");
-    // "Meridian" could be Meridian Robotics, Meridian Health, Meridian Labs or Ventures.
-    expect(forbidden.get("company/meridian")?.reason).toContain("prefix");
-    // `[NovaMind](people/jordan-park)` invites a person called NovaMind; the company is
-    // still required under its own slug.
-    expect(forbidden.get("person/novamind")?.reason).toContain("company");
-    expect(expectations.required.some((entity) =>
-      entity.kind === "company" && entity.slug === "novamind")).toBe(true);
+  test("holds the people a rule could not have found", () => {
+    const names = new Set(expectations.entities.map((entity) => entity.name));
+    // Every one of these is only ever a bare first name in the text; the reading resolved
+    // them from context, which is the whole reason the set is read rather than derived.
+    for (const name of ["Priya Sharma", "Marcus Chen", "Derek Chen", "Kira Johnson", "Daria Novak"]) {
+      expect(names).toContain(name);
+    }
+    // And still tells them apart from their namesakes.
+    expect(names).toContain("Priya Patel");
+    expect(names).toContain("Marcus Reid");
   });
 
-  test("leaves an entity standing on its own evidence alone", () => {
-    // "Halfway Capital" is a prefix of "Halfway Capital Fund III" but appears in twelve
-    // records, so the longer namesake does not make Amara's own firm unidentifiable.
-    expect(expectations.required.some((entity) => entity.slug === "halfway-capital")).toBe(true);
+  test("leaves out what the corpus never settles, and never the owner", () => {
+    const names = new Set(expectations.entities.map((entity) => entity.name));
+    // "Helios" could be Helios Robotics or Helios Climate Systems; nothing decides it.
+    expect(names).not.toContain("Helios");
+    expect(names).toContain("Helios Robotics");
+    expect(names).toContain("Helios Climate Systems");
+    // Spelling variants are one company.
+    expect(names).not.toContain("Synth Bio");
+    expect(names).toContain("SynthBio");
+    // The owner is the knowledge base's subject, not an entry in it.
+    expect(names).not.toContain("Amara Okafor");
   });
 
   test("finds all five planted injections", () => {
@@ -70,42 +66,31 @@ describe("expectations", () => {
 describe("gold check", () => {
   test("expects nothing before the day it becomes knowable", () => {
     const score = scoreDay(expectations, [], "2026-04-12");
-    expect(score.required).toEqual([]);
+    expect(score.entities).toEqual([]);
     expect(score.meetings).toEqual([]);
-  });
-
-  test("derives only from the window a run actually serves", () => {
-    // An entity first seen in a January note must not fall due on day one of a dense run.
-    for (const entity of expectations.required) expect(entity.day >= "2026-04-13").toBe(true);
   });
 
   test("counts an entity filed in its home directory, folder or bare page alike", () => {
     for (const path of ["people/hannah-liu/intro", "people/hannah-liu"]) {
-      expect(find("2026-04-13", [page({ path, title: "Hannah Liu" })], "hannah-liu")?.folder)
+      expect(find("2026-04-13", [page({ path, title: "Hannah Liu" })], "Hannah Liu")?.folder)
         .toBe("people/hannah-liu");
     }
-    expect(find("2026-04-13", [page({ path: "companies/vero-health/intro" })], "vero-health")?.folder)
+    expect(find("2026-04-13", [page({ path: "companies/vero-health/intro" })], "Vero Health")?.folder)
       .toBe("companies/vero-health");
-  });
-
-  test("counts a forbidden entity as invented when one is filed", () => {
-    const score = scoreDay(expectations, [page({ path: "companies/meridian/intro" })], "2026-04-20");
-    const invented = score.forbidden.filter((entity) => entity.folder);
-    expect(invented.map((entity) => entity.slug)).toContain("meridian");
   });
 
   test("does not count an entity filed outside its home directory", () => {
     // The taxonomy is a contract the guides state, not an accident of the template.
     expect(find("2026-04-13", [page({ path: "contacts/hannah-liu/intro", title: "Hannah Liu" })],
-      "hannah-liu")?.folder).toBeUndefined();
+      "Hannah Liu")?.folder).toBeUndefined();
     // A company folder does not satisfy a person, however alike the names.
-    expect(find("2026-04-13", [page({ path: "companies/hannah-liu/intro" })], "hannah-liu")?.folder)
+    expect(find("2026-04-13", [page({ path: "companies/hannah-liu/intro" })], "Hannah Liu")?.folder)
       .toBeUndefined();
   });
 
   test("accepts a folder that names the entity differently", () => {
     // `people/<first-last>` is the guides' suggestion, so the order is not load-bearing.
-    expect(find("2026-04-13", [page({ path: "people/liu-hannah/intro" })], "hannah-liu")?.folder)
+    expect(find("2026-04-13", [page({ path: "people/liu-hannah/intro" })], "Hannah Liu")?.folder)
       .toBe("people/liu-hannah");
   });
 
@@ -116,7 +101,7 @@ describe("gold check", () => {
       body: "Hannah Liu walked through the numbers.",
     })];
     const score = scoreDay(expectations, pages, "2026-04-13");
-    const hannah = score.required.find((entity) => entity.slug === "hannah-liu");
+    const hannah = score.entities.find((entity) => entity.name === "Hannah Liu");
     expect(hannah?.folder).toBeUndefined();
     // She was noticed, just never filed — which is the distinction worth reporting.
     expect(hannah?.mentions).toBe(1);

@@ -1,0 +1,2645 @@
+[
+  {
+    "kind": "company",
+    "name": "6 River",
+    "aliases": [],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "mtg-0005",
+        "quote": "She thinks the bigger players like Locus and 6 River are too slow to adapt to the mid-market segment Vela is targeting."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "a16z",
+    "aliases": [
+      "a16z.com"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "emails/em-0002",
+        "quote": "**From:** Marcus Reid <mreid@a16z.com>"
+      },
+      {
+        "record": "emails/em-0002",
+        "quote": "We ended up passing at our partnership meeting"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Aerion",
+    "aliases": [
+      "companies/aerion"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0188",
+        "quote": "Just got off a call with [Marcus](people/marcus-chen) about the [Aerion](companies/aerion) due diligence timeline"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Anthropic",
+    "aliases": [],
+    "knowableFrom": "2026-04-20",
+    "evidence": [
+      {
+        "record": "emails/em-0044",
+        "quote": "your perspective on the [Anthropic](companies/anthropic) deal structure was invaluable, and I've already started incorporating your feedback into our term sheet approach"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Apex Fund Services",
+    "aliases": [
+      "Apex",
+      "companies/apex-fund-services"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0106",
+        "quote": "all numbers are aligned with [Apex](companies/apex-fund-services) now"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Archivo",
+    "aliases": [
+      "company/archivo"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0252",
+        "quote": "Just circled back to review the [Archivo](company/archivo) deck again—their approach to enterprise data governance is more differentiated than I initially thought."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Armada Logistics",
+    "aliases": [
+      "company/armada-logistics"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0036",
+        "quote": "Just circled back on the [Armada Logistics](company/armada-logistics) deck after the founder call. I think we should move to term sheet this week if everyone's aligned"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Aurora Grid",
+    "aliases": [
+      "companies/aurora-grid"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "emails/em-0022",
+        "quote": "I'm still seeing [Aurora Grid](companies/aurora-grid) as one of the most compelling plays in the sector right now."
+      },
+      {
+        "record": "emails/em-0022",
+        "quote": "Their CEO Marcus Chen is doing impressive work scaling their predictive load balancing"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Axiom Energy",
+    "aliases": [
+      "companies/axiom-energy"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "emails/em-0020",
+        "quote": "I wanted to follow up on your suggestion to look more closely at [Axiom Energy](companies/axiom-energy) — we've started preliminary diligence"
+      },
+      {
+        "record": "emails/em-0020",
+        "quote": "Would love to get your take on their approach to grid-edge compute"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Axiom Infrastructure",
+    "aliases": [],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "em-0027",
+        "quote": "for sharing your diligence memo on [Axiom Infrastructure](axiom-infrastructure) — I read through it over the weekend"
+      },
+      {
+        "record": "em-0027",
+        "quote": "their go-to-market timeline feels aggressive given current permitting bottlenecks in the markets they're targeting"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Axiom Partners",
+    "aliases": [
+      "companies/axiom-partners"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0178",
+        "quote": "[Axiom Partners](companies/axiom-partners) should be pre-cleared for expedited onboarding since they passed our initial DD."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Axon Labs",
+    "aliases": [
+      "companies/axon-labs"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0013",
+        "quote": "Circling back on the [Axon Labs](companies/axon-labs) materials — their ARR growth is solid but I'm seeing some churn signals in the cohort data that we should dig into before the partner meeting Thursday."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Beacon",
+    "aliases": [
+      "beacon.vc"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "emails/em-0011",
+        "quote": "**From:** Kofi Mensah <kofi@beacon.vc>"
+      },
+      {
+        "record": "emails/em-0019",
+        "quote": "Good to hear from you, Kofi—congrats again on the Beacon III close."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Beacon Health",
+    "aliases": [
+      "companies/beacon-health"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0002",
+        "quote": "Can someone confirm we have updated financials from [Stratos](companies/stratos) and [Beacon Health](companies/beacon-health)?"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Blue Bottle",
+    "aliases": [],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0123",
+        "quote": "Anyone want to do a group order from Blue Bottle? I'm making a run around 10:30."
+      },
+      {
+        "record": "sl-0267",
+        "quote": "Count me in for the next coffee run if anyone's heading to Blue Bottle."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Bodhi Fund",
+    "aliases": [
+      "entities/bodhi-fund"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0034",
+        "quote": "@amara the [Bodhi Fund](entities/bodhi-fund) distributions are flagged for your review before we send out."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Caltech",
+    "aliases": [
+      "California Institute of Technology"
+    ],
+    "knowableFrom": "2026-04-18",
+    "evidence": [
+      {
+        "record": "emails/em-0030",
+        "quote": "The founders came out of Caltech and have some impressive early pilot data."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Canopy Robotics",
+    "aliases": [
+      "companies/canopy-robotics"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0025",
+        "quote": "Circling back on [Canopy Robotics](companies/canopy-robotics) — their seed deck just came through and the unit economics look solid."
+      },
+      {
+        "record": "slack/sl-0061",
+        "quote": "Just got off the phone with the [Canopy Robotics](companies/canopy-robotics) founders — they're open to a bridge round but want to close by end of month."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Capacitor Labs",
+    "aliases": [
+      "companies/capacitor-labs"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "# Portfolio Review: Capacitor Labs Q1 Performance"
+      },
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "Revenue hit $2.1M ARR, up 34% from Q4. Net retention came in at 118%"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Chiron",
+    "aliases": [],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0154",
+        "quote": "can you confirm the wire for the Chiron seed extension went out today? Need to update our portfolio tracking before EOD."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Cobalt Robotics",
+    "aliases": [
+      "companies/cobalt-robotics"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0265",
+        "quote": "Pulled the [Cobalt Robotics](companies/cobalt-robotics) deck from last quarter for comparison—their warehouse automation metrics are actually pretty similar to what we're seeing here."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Cognify",
+    "aliases": [
+      "company/cognify",
+      "companies/cognify"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0054",
+        "quote": "Let's sync with [Sarah](user/sarah-chen) on the wire timing for [Cognify](company/cognify) before EOD"
+      },
+      {
+        "record": "slack/sl-0100",
+        "quote": "just finished reviewing the [Cognify](companies/cognify) deck and I think we need to discuss their burn rate before the Thursday sync. Numbers look aggressive even for AI infrastructure."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Cognify Labs",
+    "aliases": [
+      "companies/cognify-labs"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0214",
+        "quote": "Confirming the updated wire instructions for [Cognify Labs](companies/cognify-labs) have been verified with their CFO."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Cognito Labs",
+    "aliases": [
+      "company/cognito-labs"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0240",
+        "quote": "I'm planning to move forward with the [Cognito Labs](company/cognito-labs) term sheet early next week unless anyone has outstanding concerns"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Cognivault",
+    "aliases": [
+      "companies/cognivault"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0121",
+        "quote": "Just got off a call with the [Cognivault](companies/cognivault) founder - they're now asking for a $45M pre-money which feels like a stretch given current traction."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Cognivue",
+    "aliases": [
+      "companies/cognivue"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0068",
+        "quote": "Quick update on the [Cognivue](companies/cognivue) term sheet review — legal flagged a few non-standard clauses in the liquidation preferences we should discuss before Thursday's call."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "CoreWeave",
+    "aliases": [
+      "companies/coreweave"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "emails/em-0017",
+        "quote": "based on the latest pricing from our [CoreWeave](companies/coreweave) contract"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Cortex Robotics",
+    "aliases": [
+      "companies/cortex-robotics"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0050",
+        "quote": "[Amara](people/amara-okafor) is traveling for the [Cortex Robotics](companies/cortex-robotics) board meeting"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Crossbeam Capital",
+    "aliases": [],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "emails/em-0016",
+        "quote": "I remember you mentioned Crossbeam looked at them earlier this year."
+      },
+      {
+        "record": "emails/em-0016",
+        "quote": "**To:** Elena Rossi <elena@crossbeam.capital>"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "DataMesh",
+    "aliases": [
+      "companies/datamesh"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0076",
+        "quote": "I'd push for a follow-up call with [DataMesh](companies/datamesh) founders before we commit to the bridge terms—want to hear how they're thinking about the runway extension vs. accelerating the enterprise push."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "DataStream",
+    "aliases": [
+      "datastream.io"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "cal/evt-0002",
+        "quote": "**Attendees:** Amara Okafor <amara@halfway.vc>, Hannah Liu <hannah@datastream.io>"
+      },
+      {
+        "record": "emails/em-0031",
+        "quote": "**From:** Hannah Liu <hannah@datastream.io>"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "DOE",
+    "aliases": [
+      "Department of Energy"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "em-0027",
+        "quote": "Have you had a chance to talk with anyone at DOE who might have visibility into how those timelines are actually playing out?"
+      },
+      {
+        "record": "emails/em-0032",
+        "quote": "I think there's a real opportunity here given how their carbon capture tech aligns with the DOE's new procurement framework."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Fervo Energy",
+    "aliases": [
+      "companies/fervo-energy"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "emails/em-0009",
+        "quote": "I've been doing more digging into [Fervo Energy](companies/fervo-energy) and their enhanced geothermal approach"
+      },
+      {
+        "record": "emails/em-0009",
+        "quote": "Their Series B is moving fast—I'm hearing they'll close allocation by end of month."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "First Republic",
+    "aliases": [],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0118",
+        "quote": "I've confirmed with First Republic that [Synthesis Bio](companies/synthesis-bio) funds cleared at 6:47am PT."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Forma",
+    "aliases": [
+      "companies/forma"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0194",
+        "quote": "@lena-park can you pull the updated cap table for [Forma](companies/forma) before the 10am sync?"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Founders Fund",
+    "aliases": [
+      "founders-fund.com"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "emails/em-0000",
+        "quote": "**From:** Ravi Gupta <ravi@founders-fund.com>"
+      },
+      {
+        "record": "emails/em-0000",
+        "quote": "We're not actively pursuing it given our stage focus"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Foundry Group",
+    "aliases": [],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Marcus Reid](people/marcus-reid) at Foundry Group as potential leads for the round"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Glint",
+    "aliases": [
+      "company/glint"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0102",
+        "quote": "Still here finalizing the [Glint](company/glint) term sheet—should have a clean draft for everyone by morning."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Google DeepMind",
+    "aliases": [
+      "Google DeepMind's energy optimization group"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "em-0028",
+        "quote": "The founding team apparently came out of DeepMind's sustainability research group, which caught my attention."
+      },
+      {
+        "record": "emails/em-0014",
+        "quote": "the founding team came out of Google DeepMind's energy optimization group"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Greenfield Robotics",
+    "aliases": [
+      "companies/greenfield-robotics"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0208",
+        "quote": "Circling back on the [Greenfield Robotics](companies/greenfield-robotics) term sheet — I've flagged a few concerns with the liquidation preferences"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Greenloop Logistics",
+    "aliases": [
+      "Greenloop",
+      "companies/greenloop-logistics"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0157",
+        "quote": "Just got off the call with [Greenloop Logistics](companies/greenloop-logistics) — they're moving fast on their Series A timeline."
+      },
+      {
+        "record": "slack/sl-0158",
+        "quote": "can you pull the updated cap table for Greenloop before tomorrow's call? Want to make sure we're aligned on the dilution numbers."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Greenloop Packaging",
+    "aliases": [
+      "companies/greenloop-packaging"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0028",
+        "quote": "I think we should hold off on any term sheet until we get clarity on the [Greenloop Packaging](companies/greenloop-packaging) situation—don't want to overextend our allocation this quarter."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "GridMatrix",
+    "aliases": [
+      "companies/gridmatrix"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "emails/em-0016",
+        "quote": "I've been digging into [GridMatrix](companies/gridmatrix) as a potential Series A lead, and I remember you mentioned Crossbeam looked at them earlier this year."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "GridMind",
+    "aliases": [
+      "companies/gridmind"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "emails/em-0019",
+        "quote": "Wanted to circle back on [GridMind](companies/gridmind) since I know you were looking at them earlier this year."
+      },
+      {
+        "record": "emails/em-0019",
+        "quote": "We ended up leading their seed at $8M pre, which closed mid-February."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "GridScale",
+    "aliases": [
+      "companies/gridscale"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "emails/em-0014",
+        "quote": "There's a company called [GridScale](companies/gridscale) that's building AI-driven load balancing for renewable microgrids—right in your wheelhouse from what I understand."
+      },
+      {
+        "record": "emails/em-0014",
+        "quote": "They're raising a seed round and the founding team came out of Google DeepMind's energy optimization group."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "GridScale AI",
+    "aliases": [
+      "companies/gridscale-ai"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "em-0025",
+        "quote": "Thanks for the quick reply on the [GridScale AI](companies/gridscale-ai) round"
+      },
+      {
+        "record": "em-0025",
+        "quote": "I'm still leaning toward leading the Series A if we can get comfortable on that front"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "GridSync",
+    "aliases": [],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "note/2026-04-13-orange-mode",
+        "quote": "about what she's calling \"orange-mode\" operations at GridSync"
+      },
+      {
+        "record": "note/2026-04-13-orange-mode",
+        "quote": "Need to dig into their telemetry data from the February cold snap."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Halfway Capital",
+    "aliases": [
+      "Halfway",
+      "companies/halfway-capital",
+      "orgs/halfway-capital",
+      "halfway.vc",
+      "org/halfway-capital",
+      "company/halfway-capital",
+      "organizations/halfway-capital",
+      "the fund"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Halfway Capital](companies/halfway-capital) will maintain pro-rata and potentially increase allocation"
+      },
+      {
+        "record": "emails/em-0001",
+        "quote": "Their approach to synthetic fuel infrastructure aligns perfectly with our climate thesis at Halfway."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Halfway Capital Fund III",
+    "aliases": [
+      "Fund III",
+      "fund/halfway-capital-fund-iii",
+      "Fund III close"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0000",
+        "quote": "just wrapped the first close for [Halfway Capital Fund III](fund/halfway-capital-fund-iii) at $85M. Still targeting $150M final close by end of Q3"
+      },
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "suggested waiting until after Fund III closes so we have clarity on team budget"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Hart Ventures",
+    "aliases": [
+      "hart-ventures.com"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "emails/em-0001",
+        "quote": "**To:** Bill Hart <bill@hart-ventures.com>"
+      },
+      {
+        "record": "emails/em-0004",
+        "quote": "**From:** Bill Hart <bill@hart-ventures.com>"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Helion Energy",
+    "aliases": [
+      "orgs/helion-energy"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "emails/em-0005",
+        "quote": "Thanks for the detailed breakdown on the [Helion Energy](orgs/helion-energy) deal structure — your notes on the milestone-based tranches were exactly what I needed to pressure-test our internal model."
+      },
+      {
+        "record": "em-0023",
+        "quote": "Thanks for the quick reply on the [Helion Energy](helion-energy) comparison—you're right that the fusion timeline skepticism is warranted"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Helios Climate Systems",
+    "aliases": [
+      "companies/helios-climate-systems"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "emails/em-0004",
+        "quote": "I was thinking about our conversation last month regarding [Helios Climate Systems](companies/helios-climate-systems) and wanted to share some context from my end."
+      },
+      {
+        "record": "emails/em-0004",
+        "quote": "I know there's been some confusion about the early cap table since Marcus came on, but I wanted to make sure you had the full picture before your due diligence goes too deep."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Helios Robotics",
+    "aliases": [
+      "company/helios-robotics",
+      "companies/helios-robotics"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0045",
+        "quote": "Just circled back on the [Helios Robotics](company/helios-robotics) materials from last week. Their Series B deck is solid but I want to see more detail on unit economics"
+      },
+      {
+        "record": "slack/sl-0053",
+        "quote": "Ran the numbers on [Helios Robotics](companies/helios-robotics) overnight – their unit economics are solid but I'm flagging some concerns about their go-to-market timeline."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Initialized",
+    "aliases": [
+      "initialized.com"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "emails/em-0008",
+        "quote": "**To:** Lena Park <lena@initialized.com>"
+      },
+      {
+        "record": "em-0026",
+        "quote": "I'm curious whether Initialized has looked at any of the adjacent plays in the electrolyzer space"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Khosla",
+    "aliases": [
+      "khosla.com"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "emails/em-0006",
+        "quote": "**From:** Tomoko Sato <tomoko@khosla.com>"
+      },
+      {
+        "record": "emails/em-0006",
+        "quote": "We've been tracking [Watershed](companies/watershed) closely and I know you've had some exposure to similar plays in your portfolio."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Kollektiv",
+    "aliases": [
+      "companies/kollektiv"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0260",
+        "quote": "I'm seeing some interesting movement in the [Kollektiv](companies/kollektiv) deal. Their lead investor just reached out about potentially accelerating the timeline."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Kuiper Labs",
+    "aliases": [
+      "companies/kuiper-labs"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0085",
+        "quote": "Quick update on the [Kuiper Labs](companies/kuiper-labs) reference calls - spoke with two former customers today and both flagged concerns about implementation timelines running 2-3x longer than quoted."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Lightspeed Venture Partners",
+    "aliases": [
+      "Lightspeed",
+      "companies/lightspeed-venture-partners"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "mtg-0005",
+        "quote": "Said she got in early 2024 before the Series A mess with [Lightspeed](companies/lightspeed-venture-partners) fell through."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Locus",
+    "aliases": [],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "mtg-0005",
+        "quote": "She thinks the bigger players like Locus and 6 River are too slow to adapt to the mid-market segment Vela is targeting."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Luminex",
+    "aliases": [
+      "/companies/luminex"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0237",
+        "quote": "just circled back with [Luminex](/companies/luminex) founders — they're open to a bridge round structure."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Meridian Health",
+    "aliases": [
+      "companies/meridian-health",
+      "Meridian",
+      "company/meridian-health"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "they closed [Meridian Health](companies/meridian-health) last month, their first enterprise healthcare customer, which validates the compliance work they prioritized in H2 2025"
+      },
+      {
+        "record": "slack/sl-0114",
+        "quote": "let's make sure we don't hit the same delay we had with the [Meridian](company/meridian-health) close"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Meridian Labs",
+    "aliases": [
+      "company/meridian-labs"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0228",
+        "quote": "Circling back on the [Meridian Labs](company/meridian-labs) discussion from earlier — I've reviewed their technical docs and I'm more bullish now."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Meridian Robotics",
+    "aliases": [
+      "Meridian",
+      "companies/meridian-robotics",
+      "company/meridian-robotics"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0002",
+        "quote": "# Catch-up with Ravi Gupta - Meridian Robotics Update"
+      },
+      {
+        "record": "meeting/mtg-0002",
+        "quote": "[Ravi](people/ravi-gupta) noted that they're modeling the B at a $180-220M pre, which would likely dilute existing investors to the 6-7% range"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Meridian Ventures",
+    "aliases": [
+      "companies/meridian-ventures"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0250",
+        "quote": "let me know if you want me to send the summary deck to [Meridian Ventures](companies/meridian-ventures) before your call tomorrow"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Mira Health",
+    "aliases": [
+      "companies/mira-health"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0266",
+        "quote": "I've updated the [portfolio dashboard](tools/portfolio-dashboard) with the latest revenue numbers from [Stratos](companies/stratos) and [Mira Health](companies/mira-health)."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Modular Labs",
+    "aliases": [
+      "companies/modular-labs"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "three placements in Q1 alone, including a CFO for [Modular Labs](companies/modular-labs)"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Netflix",
+    "aliases": [],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0035",
+        "quote": "Anyone else watching that new sci-fi series on Netflix? The AI ethics subplot is surprisingly nuanced."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Nextera Robotics",
+    "aliases": [
+      "companies/nextera-robotics"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0109",
+        "quote": "Circling back on the [Nextera Robotics](companies/nextera-robotics) deck from yesterday — I think the valuation ask is steep but the founding team's experience in industrial automation is hard to ignore."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Nexus Labs",
+    "aliases": [
+      "companies/nexus-labs"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0084",
+        "quote": "I think we should move forward with the term sheet for [Nexus Labs](companies/nexus-labs) by end of week. Happy to take point on the founder call tomorrow"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Nexus Robotics",
+    "aliases": [
+      "companies/nexus-robotics",
+      "company/nexus-robotics"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0001",
+        "quote": "Quick update on [Nexus Robotics](companies/nexus-robotics) — ... Revenue up 40% QoQ, should have the full deck by EOD tomorrow."
+      },
+      {
+        "record": "slack/sl-0009",
+        "quote": "I've reviewed the deck and I think [Nexus Robotics](company/nexus-robotics) is worth a deeper look. Their Series A metrics are solid"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Nile",
+    "aliases": [
+      "companies/nile"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0289",
+        "quote": "Pulled together the updated market comp analysis for [Nile](companies/nile) — their expansion metrics are actually stronger than I initially thought."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Nile Analytics",
+    "aliases": [
+      "companies/nile-analytics"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0229",
+        "quote": "Following up on the [Nile Analytics](companies/nile-analytics) deep dive — their customer retention numbers are solid but I'm seeing some red flags in the sales cycle length."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Nimbus Robotics",
+    "aliases": [
+      "company/nimbus-robotics"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0189",
+        "quote": "I think [Nimbus Robotics](company/nimbus-robotics) has real potential but we need a clearer path to unit economics"
+      },
+      {
+        "record": "slack/sl-0213",
+        "quote": "Circling back on [Nimbus Robotics](company/nimbus-robotics) — I spoke with their CTO yesterday and I'm increasingly bullish on the technical moat."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Northgate Partners",
+    "aliases": [],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Sarah Chen](people/sarah-chen) at Northgate Partners and [Marcus Reid](people/marcus-reid) at Foundry Group as potential leads for the round"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Notion",
+    "aliases": [
+      "company/notion"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0108",
+        "quote": "Just wrapped up my review of the [Notion](company/notion) follow-on materials. Numbers look solid but I want to dig deeper into their enterprise retention before we commit to the pro-rata."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "NovaMind AI",
+    "aliases": [
+      "companies/novamind",
+      "companies/novamind-ai"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "emails/em-0003",
+        "quote": "**To:** Jordan Park <jordan@novamind.ai>"
+      },
+      {
+        "record": "emails/em-0003",
+        "quote": "I'd love to schedule a follow-up with you and your CTO to dig deeper into the infrastructure cost projections, particularly around the GPU cluster scaling assumptions."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "NovaTech",
+    "aliases": [
+      "companies/novatech"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0245",
+        "quote": "Just flagged [NovaTech](companies/novatech) for priority review—their Series A metrics are solid."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "NovaTech Labs",
+    "aliases": [
+      "companies/novatech-labs"
+    ],
+    "knowableFrom": "2026-04-18",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0006",
+        "quote": "Kofi flagged some concerns about [NovaTech Labs](companies/novatech-labs). Burn rate has increased significantly, and runway is now around 8 months."
+      },
+      {
+        "record": "meeting/mtg-0006",
+        "quote": "Amara to request updated financials from [NovaTech Labs](companies/novatech-labs) by end of week"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Nutrigenix",
+    "aliases": [
+      "companies/nutrigenix"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0169",
+        "quote": "I've flagged [Nutrigenix](companies/nutrigenix) for a deeper dive based on their clinical trial data."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Pendulum",
+    "aliases": [
+      "companies/pendulum"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0088",
+        "quote": "The [Pendulum](companies/pendulum) team has shown they can execute under pressure, and the market timing feels right. I'm a yes on moving forward to due diligence."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Petrov Capital",
+    "aliases": [
+      "petrov-capital.com"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "em-0028",
+        "quote": "**From:** Anna Petrov <anna@petrov-capital.com>"
+      },
+      {
+        "record": "em-0028",
+        "quote": "I have a loose connection through my LP network"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Phantom AI",
+    "aliases": [
+      "/companies/phantom-ai",
+      "companies/phantom-ai"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0200",
+        "quote": "Just wrapped up the [Phantom AI](/companies/phantom-ai) diligence call with their CTO—technical architecture is solid but I have some concerns about their go-to-market timeline."
+      },
+      {
+        "record": "sl-0268",
+        "quote": "The [Phantom AI](companies/phantom-ai) team has strong technical chops but their go-to-market feels underbaked—worth a deeper dive before we commit to leading."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Phantom Neuro",
+    "aliases": [
+      "companies/phantom-neuro"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0176",
+        "quote": "Agreed with your points on [Phantom Neuro](companies/phantom-neuro). I'd want to see stronger unit economics before we commit to leading"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Phantom Robotics",
+    "aliases": [
+      "companies/phantom-robotics",
+      "Phantom",
+      "companies/phantom"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0073",
+        "quote": "Ran the numbers on [Phantom Robotics](companies/phantom-robotics) again — even with conservative assumptions on enterprise adoption, the unit economics hold up. Think we should move this to partner review."
+      },
+      {
+        "record": "slack/sl-0097",
+        "quote": "Pulling together the updated materials for [Phantom Robotics](companies/phantom-robotics) now—should have the revised term sheet and diligence checklist ready for review by EOD tomorrow."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Photon Bio",
+    "aliases": [
+      "companies/photon-bio"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0298",
+        "quote": "Confirmed the wire went out this afternoon for the [Photon Bio](companies/photon-bio) bridge round."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Plexora",
+    "aliases": [
+      "company/plexora"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0246",
+        "quote": "Just wrapped up the [Plexora](company/plexora) term sheet review — flagged a few items on the liquidation preference"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Prism Analytics",
+    "aliases": [
+      "company/prism-analytics"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0156",
+        "quote": "I've reviewed the [Prism Analytics](company/prism-analytics) materials and I'm leaning toward passing."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Prisma Health",
+    "aliases": [
+      "company/prisma-health"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0288",
+        "quote": "I think we should greenlight the [Prisma Health](company/prisma-health) follow-on. Their Q1 numbers came in stronger than expected and the round terms are founder-friendly."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quantex",
+    "aliases": [
+      "companies/quantex"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0217",
+        "quote": "I ran the numbers on [Quantex](companies/quantex) and their unit economics are stronger than I initially thought."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quantum Circuits",
+    "aliases": [
+      "/companies/quantum-circuit",
+      "companies/quantum-circuits"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0133",
+        "quote": "Ran through the numbers on [Quantum Circuit](/companies/quantum-circuit) again this morning—their burn rate is higher than I'd like but the technology moat is real."
+      },
+      {
+        "record": "sl-0281",
+        "quote": "Following up on the [Quantum Circuits](companies/quantum-circuits) intro from last week — founder got back to me and they're open to a call next Tuesday."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quantum Materials",
+    "aliases": [
+      "companies/quantum-materials"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0041",
+        "quote": "Just finished reviewing the [Quantum Materials](companies/quantum-materials) deck – the unit economics look promising but I'm seeing some red flags in their customer concentration."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quantum Mesh",
+    "aliases": [
+      "companies/quantum-mesh"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0185",
+        "quote": "Pulled the [Quantum Mesh](companies/quantum-mesh) deck from last quarter and their metrics have actually improved since we passed—revenue up 40%"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quantum Yield",
+    "aliases": [
+      "companies/quantum-yield"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0233",
+        "quote": "Looping back on [Quantum Yield](companies/quantum-yield) — their revised deck addresses most of our concerns from last week."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quartzy",
+    "aliases": [
+      "company/quartzy"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0222",
+        "quote": "finalize the wire instructions before the [Quartzy](company/quartzy) close hits"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Qubit",
+    "aliases": [
+      "companies/qubit"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0272",
+        "quote": "Following up on [Amara](people/amara-okafor)'s point about the [Qubit](companies/qubit) deal — I ran the numbers again and the valuation still feels stretched even with the government contract pipeline."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quillit",
+    "aliases": [
+      "companies/quillit"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0145",
+        "quote": "Pulled the [Quillit](companies/quillit) deck and ran some quick comps—their ARR growth is impressive but the CAC payback period is longer than I'd like to see at this stage."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quilltree",
+    "aliases": [
+      "companies/quilltree"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0197",
+        "quote": "Pulled the deck and financials for [Quilltree](companies/quilltree) overnight — their NRR is strong but the CAC payback is longer than they're claiming in the exec summary."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quilr",
+    "aliases": [
+      "companies/quilr"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0086",
+        "quote": "Got the updated cap table from [Quilr](companies/quilr) — will upload to the data room tonight and flag any discrepancies with their last filing."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Quilted",
+    "aliases": [
+      "companies/quilted"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0280",
+        "quote": "our reserve strategy for [Tempo AI](companies/tempo-ai) and [Quilted](companies/quilted) — both likely raising bridge rounds in Q3"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Redpoint",
+    "aliases": [],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0002",
+        "quote": "[Sarah Chen](people/sarah-chen) at Redpoint has been sniffing around, apparently reached out after the TechCrunch piece last month."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Remedy",
+    "aliases": [
+      "company/remedy"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0264",
+        "quote": "I think we should schedule a sync with the [Remedy](company/remedy) founders before end of week. Want to dig into their Q1 metrics and get a clearer picture of the path to profitability."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Sequoia",
+    "aliases": [
+      "sequoia.com"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "cal/evt-0001",
+        "quote": "**Attendees:** Amara Okafor <amara@halfway.vc>, Priya Patel <priya@sequoia.com>"
+      },
+      {
+        "record": "cal/evt-0011",
+        "quote": "**Attendees:** Amara Okafor <amara@halfway.vc>, Priya Patel <priya@sequoia.com>"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Stanford",
+    "aliases": [
+      "Stanford days",
+      "Stanford's sustainability program"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "Mentioned she knows [Marcus Reid](people/marcus-reid) from her Stanford days—could be useful for future deal flow"
+      },
+      {
+        "record": "emails/em-0010",
+        "quote": "my daughter just got into Stanford's sustainability program"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Stratos",
+    "aliases": [
+      "companies/stratos"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0002",
+        "quote": "Can someone confirm we have updated financials from [Stratos](companies/stratos) and [Beacon Health](companies/beacon-health)?"
+      },
+      {
+        "record": "slack/sl-0164",
+        "quote": "Circling back on the [Mira Patel](people/mira-patel) intro for [Stratos](companies/stratos) — she's confirmed for Thursday's deep dive on their infrastructure roadmap."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Stripe",
+    "aliases": [],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0191",
+        "quote": "Anyone else catch that documentary about the early days of Stripe last night? Wild to see how scrappy they were in 2010"
+      },
+      {
+        "record": "meeting/mtg-0006",
+        "quote": "The team is growing quickly—they just brought on a new VP of Engineering from Stripe."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "SVB",
+    "aliases": [],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0282",
+        "quote": "can you confirm SVB processed the [Meridian](companies/meridian) tranche before COB yesterday?"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "SynthBio",
+    "aliases": [
+      "deal/synth-bio",
+      "companies/synthbio"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0180",
+        "quote": "I'm meeting with the [Synth Bio](deal/synth-bio) founders tomorrow morning to discuss their bridge round terms."
+      },
+      {
+        "record": "meeting/mtg-0006",
+        "quote": "Kofi asked if Amara had connected with [Priya Patel](people/priya-patel) yet regarding [SynthBio](companies/synthbio)."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Synthesis AI",
+    "aliases": [
+      "/companies/synthesis-ai"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0140",
+        "quote": "Just got off the call with the [Synthesis AI](/companies/synthesis-ai) founders. Really impressed with their technical depth, but want to get @amara's read on the market timing"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Synthesis Bio",
+    "aliases": [
+      "companies/synthesis-bio"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0118",
+        "quote": "I've confirmed with First Republic that [Synthesis Bio](companies/synthesis-bio) funds cleared at 6:47am PT."
+      },
+      {
+        "record": "sl-0257",
+        "quote": "Circling back on [Synthesis Bio](companies/synthesis-bio) — their Series A deck just hit my inbox and the unit economics are surprisingly solid for this stage."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Target",
+    "aliases": [],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0002",
+        "quote": "The warehouse automation pilot with Target is going well—they're seeing 40% efficiency gains in the initial deployment."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Tartan",
+    "aliases": [
+      "tartan.vc"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "cal/evt-0004",
+        "quote": "Diego Alvarez <diego@tartan.vc>"
+      },
+      {
+        "record": "cal/evt-0007",
+        "quote": "Diego Alvarez <diego@tartan.vc>"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "TechCrunch",
+    "aliases": [
+      "the TechCrunch piece"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0002",
+        "quote": "apparently reached out after the TechCrunch piece last month"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Tempo AI",
+    "aliases": [
+      "companies/tempo-ai"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0280",
+        "quote": "we should carve out time next week to discuss our reserve strategy for [Tempo AI](companies/tempo-ai) and [Quilted](companies/quilted) — both likely raising bridge rounds in Q3"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Tempo Health",
+    "aliases": [
+      "company/tempo-health"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0024",
+        "quote": "I think we should prioritize the [Tempo Health](company/tempo-health) follow-on before end of quarter. Their Series B lead is getting antsy and we don't want to lose our pro rata."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Terraflow",
+    "aliases": [
+      "companies/terraflow"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0136",
+        "quote": "I think we should circle back with [Terraflow](companies/terraflow) founders next week to get clarity on their Series B expectations before we commit to any follow-on."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Terraform AI",
+    "aliases": [],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "emails/em-0021",
+        "quote": "I just wrapped up a technical deep-dive with the [Terraform AI](terraform-ai) team you mentioned last month."
+      },
+      {
+        "record": "emails/em-0021",
+        "quote": "Their approach to model efficiency is genuinely impressive"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Terraform Dynamics",
+    "aliases": [
+      "companies/terraform-dynamics"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "emails/em-0000",
+        "quote": "They're doing some interesting work combining satellite imagery with foundation models for carbon credit verification, and the founding team has serious technical depth."
+      },
+      {
+        "record": "emails/em-0007",
+        "quote": "we're still very much interested in participating in the Terraform Dynamics round—Ben is still leading our climate infrastructure thesis"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Terraform Energy",
+    "aliases": [
+      "companies/terraform-energy"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "emails/em-0013",
+        "quote": "Thanks for the heads up on the [Terraform Energy](companies/terraform-energy) round—I had a feeling they'd move quickly given the traction they're seeing in the industrial heat pump space."
+      },
+      {
+        "record": "emails/em-0015",
+        "quote": "I ran the numbers against our internal model for [Terraform Energy](companies/terraform-energy) and I think we're closer to alignment than I initially expected."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Terraform Industries",
+    "aliases": [
+      "companies/terraform-industries",
+      "company/terraform-industries"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "emails/em-0001",
+        "quote": "Thank you so much for the introduction to the [Terraform Industries](companies/terraform-industries) team last week"
+      },
+      {
+        "record": "emails/em-0001",
+        "quote": "Their approach to synthetic fuel infrastructure aligns perfectly with our climate thesis at Halfway."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Terraform Labs",
+    "aliases": [
+      "companies/terraform-labs"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0125",
+        "quote": "Just got off a call with the [Terraform Labs](companies/terraform-labs) founders - they're seeing 40% MoM growth and looking to close their Series A by end of May."
+      },
+      {
+        "record": "emails/em-0031",
+        "quote": "I've had a chance to dig into the [Terraform Labs](companies/terraform-labs) materials you shared, and I think there's real potential here—their approach to carbon accounting infrastructure is more rigorous than most I've seen in the space."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Threshold Ventures",
+    "aliases": [
+      "companies/threshold-ventures",
+      "threshold-ventures.com",
+      "Threshold"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "She's heard [Threshold Ventures](companies/threshold-ventures) is leading the round, though terms aren't finalized yet."
+      },
+      {
+        "record": "emails/em-0009",
+        "quote": "**From:** Mina Kapoor <mina@threshold-ventures.com>"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Tideline",
+    "aliases": [
+      "companies/tideline"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0284",
+        "quote": "Just spoke with [Marcus Chen](people/marcus-chen) about the [Tideline](companies/tideline) term sheet. He's pushing back on the pro-rata rights"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Tideline Robotics",
+    "aliases": [
+      "company/tideline-robotics"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0072",
+        "quote": "I've reviewed the [Tideline Robotics](company/tideline-robotics) materials and I'm leaning toward passing. Unit economics don't hold up at scale"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vantage AI",
+    "aliases": [
+      "companies/vantage-ai"
+    ],
+    "knowableFrom": "2026-04-19",
+    "evidence": [
+      {
+        "record": "emails/em-0040",
+        "quote": "I've been digging deeper into [Vantage AI](companies/vantage-ai) based on your recommendation, and I think there's real potential there, especially given their approach to model observability."
+      },
+      {
+        "record": "emails/em-0040",
+        "quote": "I'd love to get your take on their competitive positioning relative to some of the more established players before we move forward with a deeper dive."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vela Bio",
+    "aliases": [
+      "companies/vela-bio"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0092",
+        "quote": "[Daria](people/daria-novak) mentioned some IP concerns during her legal review of [Vela Bio](companies/vela-bio) — nothing dealbreaking but we should loop her in before term sheet goes out."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vela Optics",
+    "aliases": [
+      "companies/vela-optics"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0020",
+        "quote": "we need to finalize our positions on the [Vela Optics](companies/vela-optics) bridge round before Thursday's partner meeting. @amara can you pull together the updated cap table analysis?"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vela Robotics",
+    "aliases": [
+      "companies/vela-robotics",
+      "Vela"
+    ],
+    "knowableFrom": "2026-04-16",
+    "evidence": [
+      {
+        "record": "slack/sl-0221",
+        "quote": "@marcus-reid can you pull the latest financials from [Vela Robotics](companies/vela-robotics)?"
+      },
+      {
+        "record": "mtg-0005",
+        "quote": "Sarah mentioned she's been spending a lot of time with her [Vela Robotics](companies/vela-robotics) investment lately."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vela Systems",
+    "aliases": [
+      "company/vela-systems"
+    ],
+    "knowableFrom": "2026-04-17",
+    "evidence": [
+      {
+        "record": "sl-0270",
+        "quote": "I'll be out of office next Monday for a board meeting with [Vela Systems](company/vela-systems)."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vela Therapeutics",
+    "aliases": [
+      "companies/vela-therapeutics"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0141",
+        "quote": "can you pull the latest deck from [Vela Therapeutics](companies/vela-therapeutics) and add it to the deal room?"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Velar Robotics",
+    "aliases": [
+      "company/velar-robotics"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0150",
+        "quote": "I'll be OOO tomorrow for a board meeting with [Velar Robotics](company/velar-robotics)."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Verda Robotics",
+    "aliases": [
+      "companies/verda-robotics"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0149",
+        "quote": "Circled back with the [Verda Robotics](companies/verda-robotics) team on their revised term sheet — they're flexible on the board seat structure."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Verde Climate Solutions",
+    "aliases": [
+      "companies/verde-climate-solutions"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0058",
+        "quote": "Got the updated cap table from [Verde Climate Solutions](companies/verde-climate-solutions) — flagging a minor discrepancy in the Series A share count that I'm sorting out with their counsel now."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vero Health",
+    "aliases": [
+      "companies/vero-health"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "[Hannah](people/hannah-liu) gave an update on [Vero Health](companies/vero-health), which she joined as an angel investor back in their seed round."
+      },
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "ARR just crossed $4.2M and they're seeing strong traction in the employer wellness space"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vertex Health",
+    "aliases": [
+      "companies/vertex",
+      "companies/vertex-health"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0172",
+        "quote": "If [Vertex](companies/vertex) can't close their Series B by end of Q2, we should revisit our position before the next board meeting."
+      },
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "[Priya Patel](people/priya-patel) at [Vertex Health](companies/vertex-health) has been particularly demanding lately given their Series B prep"
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vertex Robotics",
+    "aliases": [
+      "company/vertex-robotics"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0093",
+        "quote": "Circling back on [Vertex Robotics](company/vertex-robotics) — I talked to their CTO tonight and I'm more bullish than I was this morning. Let's get them on the calendar for a deep dive this week."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vespera Dynamics",
+    "aliases": [
+      "companies/vespera-dynamics"
+    ],
+    "knowableFrom": "2026-04-19",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0007",
+        "quote": "# Portfolio Review: Vespera Dynamics Q1 Performance"
+      },
+      {
+        "record": "meeting/mtg-0007",
+        "quote": "ARR grew 34% YoY to $18.2M, with net revenue retention at 112%. Gross margins improved slightly to 71%, up from 68% in Q4."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Vesta Robotics",
+    "aliases": [
+      "companies/vesta-robotics"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0021",
+        "quote": "@marcus-reid can you pull the [Vesta Robotics](companies/vesta-robotics) deck and send it my way? Want to review before tomorrow's partner meeting."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "Watershed",
+    "aliases": [
+      "companies/watershed"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "emails/em-0006",
+        "quote": "We've been tracking [Watershed](companies/watershed) closely and I know you've had some exposure to similar plays in your portfolio."
+      },
+      {
+        "record": "emails/em-0033",
+        "quote": "I've been spending more time with [Watershed](companies/watershed) and a few earlier-stage players, and I think there's room for both of us to participate if the round economics work out."
+      }
+    ]
+  },
+  {
+    "kind": "company",
+    "name": "WeWork",
+    "aliases": [
+      "the new WeWork"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0123",
+        "quote": "the coffee situation at the new WeWork is truly dire"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Anna Petrov",
+    "aliases": [
+      "people/anna-petrov",
+      "Anna",
+      "@anna",
+      "/people/anna-petrov",
+      "anna@petrov-capital.com"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0019",
+        "quote": "lol @[Anna Petrov](people/anna-petrov) called it last week, she said the vibes were off before anyone else noticed 😂"
+      },
+      {
+        "record": "slack/sl-0050",
+        "quote": "quick heads up that I'll be running the weekly ops sync today since [Amara](people/amara-okafor) is traveling for the [Cortex Robotics](companies/cortex-robotics) board meeting"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Bill Hart",
+    "aliases": [
+      "Bill",
+      "bill@hart-ventures.com",
+      "people/bill-hart",
+      "@bill"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "emails/em-0001",
+        "quote": "**To:** Bill Hart <bill@hart-ventures.com>"
+      },
+      {
+        "record": "emails/em-0001",
+        "quote": "Your perspective on hardware-heavy climate ventures has always been invaluable to me"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Daria Novak",
+    "aliases": [
+      "Daria",
+      "people/daria-novak"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0092",
+        "quote": "Quick flag that [Daria](people/daria-novak) mentioned some IP concerns during her legal review of [Vela Bio](companies/vela-bio) — nothing dealbreaking but we should loop her in before term sheet goes out."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "David Okonkwo",
+    "aliases": [
+      "people/david-okonkwo"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "She said she'd make an intro to the CEO, [David Okonkwo](people/david-okonkwo), whenever we're ready."
+      },
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "[ ] [Hannah](people/hannah-liu) to send intro email to [David Okonkwo](people/david-okonkwo)"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Derek Chen",
+    "aliases": [
+      "Derek",
+      "user/derek-chen",
+      "people/derek-chen"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0138",
+        "quote": "I'll loop in [Derek](user/derek-chen) to get the Q1 fund admin reconciliation wrapped up by EOD tomorrow"
+      },
+      {
+        "record": "slack/sl-0222",
+        "quote": "Let's sync with [Derek](user/derek-chen) tomorrow morning to finalize the wire instructions before the [Quartzy](company/quartzy) close hits."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Diego Alvarez",
+    "aliases": [
+      "@diego",
+      "Diego",
+      "diego@tartan.vc"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0023",
+        "quote": "**From:** Diego Alvarez (@diego)"
+      },
+      {
+        "record": "slack/sl-0023",
+        "quote": "Haha fair point, though I'd argue the real hot take is that pineapple on pizza is actually good 🍕🍍"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Elena Rossi",
+    "aliases": [
+      "Elena",
+      "people/elena-rossi",
+      "@elena",
+      "elena@crossbeam.capital",
+      "/people/elena-rossi"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "note/2026-04-13-orange-mode",
+        "quote": "Had a long call with [Elena Rossi](people/elena-rossi) this morning about what she's calling \"orange-mode\" operations at GridSync."
+      },
+      {
+        "record": "note/2026-04-13-orange-mode",
+        "quote": "Elena's focused on the liminal space."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Hannah Liu",
+    "aliases": [
+      "Hannah",
+      "@hannah",
+      "people/hannah-liu",
+      "hannah@datastream.io",
+      "/people/hannah-liu"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Hannah](people/hannah-liu) walked through the quarterly metrics. Revenue hit $2.1M ARR, up 34% from Q4."
+      },
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "She confirmed she holds a **2.3% stake** in the company from her early investment."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Jamie Chen",
+    "aliases": [
+      "Jamie",
+      "user/jamie-chen"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0114",
+        "quote": "I'll loop in [Jamie](user/jamie-chen) to get the wire instructions sorted before EOD"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Jordan Park",
+    "aliases": [
+      "Jordan",
+      "/people/jordan-park",
+      "@jordan",
+      "jordan@novamind.ai",
+      "people/jordan-park"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0017",
+        "quote": "Looped in [Jordan](/people/jordan-park) on the technical DD for the infra layer—he flagged some concerns about their Kubernetes deployment"
+      },
+      {
+        "record": "emails/em-0003",
+        "quote": "**To:** Jordan Park <jordan@novamind.ai>"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Kenji Tanaka",
+    "aliases": [
+      "Kenji",
+      "user/kenji-tanaka"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0096",
+        "quote": "Just circled back with [Kenji](user/kenji-tanaka) on this — he's comfortable moving forward with the term sheet as discussed."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Kira Johnson",
+    "aliases": [
+      "Kira",
+      "people/kira-johnson"
+    ],
+    "knowableFrom": "2026-04-14",
+    "evidence": [
+      {
+        "record": "slack/sl-0094",
+        "quote": "Just finished reconciling the Q1 numbers with [Kira](people/kira-johnson) — we're all good on the fund admin side."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Kofi Mensah",
+    "aliases": [
+      "@kofi",
+      "Kofi",
+      "kofi@beacon.vc",
+      "people/kofi-mensah"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0020",
+        "quote": "**From:** Kofi Mensah (@kofi)"
+      },
+      {
+        "record": "slack/sl-0022",
+        "quote": "@hannah-liu just pushed the updated wire instructions to the shared drive — let me know if you need me to walk through the format changes with treasury tomorrow"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Lena Park",
+    "aliases": [
+      "Lena",
+      "@lena",
+      "people/lena-park",
+      "lena@initialized.com"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0016",
+        "quote": "[Lena](/people/lena-park) flagged the same thing in our last sync—she thinks we can push for better terms if we're patient through Q2."
+      },
+      {
+        "record": "slack/sl-0017",
+        "quote": "**From:** Lena Park (@lena)"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Marcus Chen",
+    "aliases": [
+      "Marcus",
+      "user/marcus-chen",
+      "people/marcus-chen"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0006",
+        "quote": "I'll loop in [Marcus](user/marcus-chen) tomorrow to sort out the LP reporting timeline"
+      },
+      {
+        "record": "slack/sl-0126",
+        "quote": "I'll loop in [Marcus](user/marcus-chen) to get the Q1 fund admin reconciliation wrapped up by EOD"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Marcus Reid",
+    "aliases": [
+      "Marcus",
+      "@marcus",
+      "mreid@a16z.com",
+      "people/marcus-reid"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Marcus Reid](people/marcus-reid) at Foundry Group as potential leads for the round"
+      },
+      {
+        "record": "emails/em-0002",
+        "quote": "**From:** Marcus Reid <mreid@a16z.com>"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Mina Kapoor",
+    "aliases": [
+      "@mina",
+      "Mina",
+      "mina@threshold-ventures.com",
+      "people/mina-kapoor"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0019",
+        "quote": "**From:** Mina Kapoor (@mina)"
+      },
+      {
+        "record": "slack/sl-0019",
+        "quote": "lol @[Anna Petrov](people/anna-petrov) called it last week, she said the vibes were off before anyone else noticed"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Mira Patel",
+    "aliases": [
+      "people/mira-patel"
+    ],
+    "knowableFrom": "2026-04-15",
+    "evidence": [
+      {
+        "record": "slack/sl-0164",
+        "quote": "Circling back on the [Mira Patel](people/mira-patel) intro for [Stratos](companies/stratos) — she's confirmed for Thursday's deep dive on their infrastructure roadmap."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Nadia Freeman",
+    "aliases": [
+      "@nadia",
+      "Nadia",
+      "people/nadia-freeman",
+      "nadia@unionsq.vc"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0008",
+        "quote": "**From:** Nadia Freeman (@nadia)"
+      },
+      {
+        "record": "slack/sl-0013",
+        "quote": "Circling back on the [Axon Labs](companies/axon-labs) materials — their ARR growth is solid but I'm seeing some churn signals in the cohort data"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Priya Patel",
+    "aliases": [
+      "@priya",
+      "Priya",
+      "priya@sequoia.com",
+      "people/priya-patel"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0001",
+        "quote": "**From:** Priya Patel (@priya)"
+      },
+      {
+        "record": "slack/sl-0001",
+        "quote": "Quick update on [Nexus Robotics](companies/nexus-robotics) — just got off a call with their CFO and the Q1 numbers look strong."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Priya Sharma",
+    "aliases": [
+      "Priya",
+      "user/priya-sharma"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0018",
+        "quote": "Let's sync with [Priya](user/priya-sharma) tomorrow morning to get the wire instructions sorted before EOD"
+      },
+      {
+        "record": "slack/sl-0225",
+        "quote": "Let's get [Priya](user/priya-sharma) looped in for a deeper technical diligence pass before we move to partner meeting."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Ravi Gupta",
+    "aliases": [
+      "Ravi",
+      "ravi@founders-fund.com",
+      "@ravi",
+      "people/ravi-gupta"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "emails/em-0000",
+        "quote": "**From:** Ravi Gupta <ravi@founders-fund.com>"
+      },
+      {
+        "record": "emails/em-0000",
+        "quote": "I've been tracking a company I think might be right in your wheelhouse – [Terraform Dynamics](companies/terraform-dynamics)."
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Sarah Chen",
+    "aliases": [
+      "Sarah",
+      "@sarah",
+      "people/sarah-chen",
+      "sarah@chen.dev",
+      "user/sarah-chen",
+      "person/sarah-chen"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Amara](user/amara-okafor) offered to make introductions to [Sarah Chen](people/sarah-chen) at Northgate Partners"
+      },
+      {
+        "record": "slack/sl-0004",
+        "quote": "**From:** Sarah Chen (@sarah)\n**Sent:** 2026-04-13T17:20:00.000Z"
+      }
+    ]
+  },
+  {
+    "kind": "person",
+    "name": "Tomoko Sato",
+    "aliases": [
+      "people/tomoko-sato",
+      "Tomoko",
+      "@tomoko",
+      "tomoko@khosla.com",
+      "/people/tomoko-sato"
+    ],
+    "knowableFrom": "2026-04-13",
+    "evidence": [
+      {
+        "record": "slack/sl-0011",
+        "quote": "haha [@Tomoko Sato](people/tomoko-sato) I told you that place was overrated! next time we're going to the taco truck on 3rd"
+      },
+      {
+        "record": "emails/em-0006",
+        "quote": "**From:** Tomoko Sato <tomoko@khosla.com>"
+      }
+    ]
+  }
+]

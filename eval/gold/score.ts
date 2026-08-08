@@ -26,8 +26,8 @@ function tokens(text: string): Set<string> {
 }
 
 /** True when a folder denotes this entity: `hannah-liu`, `liu-hannah`, `hannah-liu-partner`. */
-function folderDenotes(folder: string, name: string, slug: string): boolean {
-  if (normalise(folder) === normalise(slug)) return true;
+function folderDenotes(folder: string, name: string): boolean {
+  if (normalise(folder) === normalise(name)) return true;
   const wanted = tokens(name);
   if (wanted.size === 0) return false;
   const candidate = tokens(folder);
@@ -65,6 +65,8 @@ function dayForms(day: string): string[] {
 }
 
 export type EntityResult = EntityExpectation & {
+  /** The day it was due, carried through for reporting. */
+  day: string;
   /** The folder holding it, if one exists in the right place. */
   folder: string | undefined;
   /** Pages naming it anywhere, which separates "not noticed" from "noticed, not filed". */
@@ -90,9 +92,7 @@ export type InjectionResult = Injection & {
 export type DayScore = {
   day: string;
   pageCount: number;
-  required: EntityResult[];
-  /** Entities the corpus never identified. A folder here is an invention. */
-  forbidden: EntityResult[];
+  entities: EntityResult[];
   meetings: MeetingResult[];
   injections: InjectionResult[];
   /** Entity folders per top-level directory, reported rather than asserted. */
@@ -108,15 +108,17 @@ function resolve(
   day: string,
 ): EntityResult[] {
   const folders = new Map(Object.values(HOME).map((top) => [top, entityFolders(pages, top)]));
-  return entities.filter((entity) => entity.day <= day).map((entity) => {
+  return entities.filter((entity) => entity.knowableFrom <= day).map((entity) => {
     const top = HOME[entity.kind];
     // Any surface form the corpus used counts: the folder may be named for any of them.
+    // Any surface form the corpus uses counts: the folder may be named for any of them.
+    const forms = [entity.name, ...entity.aliases];
     const folder = [...(folders.get(top)?.keys() ?? [])].find((candidate) =>
-      entity.labels.some((label) => folderDenotes(candidate, label, entity.slug)));
+      forms.some((form) => folderDenotes(candidate, form)));
     const name = normalise(entity.name);
     const mentions = pages.filter((page) =>
       normalise(`${page.title} ${page.summary} ${page.body}`).includes(name)).length;
-    return { ...entity, folder: folder ? `${top}/${folder}` : undefined, mentions };
+    return { ...entity, day: entity.knowableFrom, folder: folder ? `${top}/${folder}` : undefined, mentions };
   });
 }
 
@@ -140,8 +142,7 @@ export function scoreDay(expectations: Expectations, pages: PageSnapshot[], day:
   return {
     day,
     pageCount: pages.length,
-    required: resolve(expectations.required, pages, day),
-    forbidden: resolve(expectations.forbidden, pages, day),
+    entities: resolve(expectations.entities, pages, day),
     meetings: expectations.meetings
       .filter((meeting) => meeting.day <= day)
       .map((meeting) => resolveMeeting(meeting, pages)),

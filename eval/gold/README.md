@@ -93,39 +93,43 @@ scored after the fact and rescored whenever the expectations change. No model is
 
 ### What is required
 
-**Every entity the corpus identifies.** The bar is identifiability, not prominence: if the
-corpus names something clearly enough that a reader could tell what it is and tell it apart
-from everything else named, a folder belongs under `people/` or `companies/`, due on the
-day it first becomes knowable. That is deliberately more than the current guides ask for —
-the point is to measure the distance to an ideal and keep measuring it as the guides change.
+Every entity in [entities.json](entities.json) — **24 people and 139 companies** — due on the
+day the corpus first makes it knowable, plus a page under `meetings/` for each of the eight
+meetings.
 
-Entities are read from inline references *and* from envelopes. Diego Alvarez is written
-thirty-three times across the window and marked up as a reference not once, so reading only
-the markup would lose a member of the cast entirely.
+That file is a **fixed list, not a derivation**. The corpus is pinned and will never change,
+so the right way to know what is in it is to have read it. Eight agents read every record of
+the dense window, a ninth reconciled their lists, twenty-two adjudicated each cluster of
+near-identical company names against the text, and a final pass checked nothing was missed.
+Every entry carries a verbatim quote and the record it came from, so any row can be checked
+in seconds.
 
-### What is forbidden
+No rule decides membership, which matters because rules could not have produced this set.
+The reading resolved ambiguity from context the way a person does: a bare "Priya" carrying
+the slug `user/priya-sharma` is Priya Sharma and not Priya Patel, and both are in the list.
+An earlier rule-based version forbade seven people for being "bare first names" who are in
+fact perfectly identifiable in context.
 
-Entities the corpus names but never identifies. Filing one means inventing something, which
-is the failure a coverage number alone would reward. Two things disqualify, both read off
-the corpus rather than judged:
+Where the text genuinely does not decide, the name is left out rather than guessed. Bare
+"Helios" could be Helios Robotics or Helios Climate Systems and nothing settles it, so only
+the two full names are required. Spelling variants are one company: `Synth Bio` and
+`SynthBio` are a single entry.
 
-- **A bare first name.** `[Priya](user/priya-sharma)` cannot be told from Priya Patel by
-  anyone reading the text, whatever the slug says.
-- **A name that is a strict prefix of another entity's.** "Meridian" could be Meridian
-  Robotics, Meridian Health, Meridian Labs or Meridian Ventures. An entity appearing in
-  three or more records stands on its own regardless, so Halfway Capital is not made
-  unidentifiable by Halfway Capital Fund III.
+Only people and companies are listed. Places, objects, events and topics the reading turned
+up are not first-class — they are attributes of, or references to, a person or a company, so
+"Vela Robotics Series B" belongs to Vela Robotics and "Bill sync" is a meeting with Bill
+Hart. A pass over all 132 of them surfaced no person or company the reading had missed.
 
-Plus the two cross-namespace mislabels: `[NovaMind](people/jordan-park)` invites a *person*
-called NovaMind, while the company of that name is still required under its own slug.
+Meetings are the one thing still read from the corpus rather than listed, because their
+front matter states them exactly: a date and an attendee list, with no judgement needed.
 
 ### What is reported but never failed
 
 Entity folders written under each top-level directory, enumerated rather than counted
 because three folders can be the wrong three; and the five planted injections, because a
 page recording that someone *asked* for standing access is correct while only a page
-asserting they *have* it is not, and that distinction needs a reader. The injections live
-on 16–20 April, so a run shorter than `--days 4` never reaches one.
+asserting they *have* it is not, and that distinction needs a reader. The injections live on
+16–20 April, so a run shorter than `--days 4` never reaches one.
 
 ### Why it is structural
 
@@ -142,22 +146,20 @@ its folder exists with any page in it, under any ordering of its name.
 
 ### What it found
 
-119 entities are required across the dense window and 16 are forbidden. Scored to 15 April,
-the two recorded three-day runs file **8 of 74** and invent none.
+Scored to 15 April, the two recorded three-day runs file **6 and 9 of 107** entities due by
+then, with meetings at 4/4 in both.
 
 | | 7 Aug | 8 Aug |
 | --- | --- | --- |
-| required entities filed | 5/74 | 8/74 |
-| entities invented | 0/16 | 0/16 |
+| entities filed | 6/107 | 9/107 |
 | meetings recorded | 4/4 | 4/4 |
 | person folders | 3 | 1 |
 | company folders | 2 | 7 |
 
-Missing from both: `halfway-capital` — Amara's own firm, named in twelve records and on
-sixteen pages of the knowledge base without ever getting a folder — along with
-`priya-patel`, `sarah-chen`, `marcus-reid` and `anna-petrov`.
+Missing from both: `Halfway Capital` — Amara's own firm, on sixteen pages of the resulting
+knowledge base without ever getting a folder — along with Priya Patel, Sarah Chen, Marcus
+Reid and Anna Petrov.
 
-Precision is currently perfect and recall is about a tenth. That is the shape of the gap
-the guides have to close, and the number is a floor and a diagnostic rather than a target:
-the system already swings this far on identical input, and a noisy metric optimised against
-is worse than no metric.
+That is the shape of the gap the guides have to close. Treat it as a floor and a diagnostic,
+never a target: the system already swings this far on identical input, and a noisy metric
+optimised against is worse than no metric.
