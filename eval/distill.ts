@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { loadCorpus, type CorpusWindow } from "../apps/server/src/corpus-records.ts";
+import { loadCorpus, type CorpusWindow } from "./corpus-records.ts";
 import { LOCAL_STACK, runStackCommand } from "../scripts/local-stack.ts";
 import { EVAL_URL, MCP_NAME, ROOT, runAgentSession, type EvalProvider } from "./agent.ts";
 import { CORPUS_DIRECTORY, corpusIsUnchanged, diffCorpus } from "./corpus-integrity.ts";

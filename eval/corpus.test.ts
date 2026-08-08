@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { loadCorpus } from "../apps/server/src/corpus-records.ts";
+import { loadCorpus } from "./corpus-records.ts";
 import {
   CORPUS_DIRECTORY,
   CORPUS_UPSTREAM,
@@ -38,27 +38,35 @@ describe("vendored evaluation corpus", () => {
     expect(new Set(carried).size).toBe(418);
   });
 
-  test("groups conversations instead of serving one record per message", () => {
+  test("serves one record per manifest item", () => {
     const corpus = loadCorpus(CORPUS_DIRECTORY);
     const counts = corpus.records.reduce<Record<string, number>>((totals, record) => {
       totals[record.type] = (totals[record.type] ?? 0) + 1;
       return totals;
     }, {});
-    // 300 Slack messages collapse into per-channel threads, 50 emails into 25 threads.
-    expect(counts).toEqual({ slack: 130, email: 28, note: 40, "calendar-event": 20, meeting: 8 });
-    expect(corpus.records).toHaveLength(226);
+    expect(counts).toEqual({ slack: 300, email: 50, note: 40, "calendar-event": 20, meeting: 8 });
+    expect(corpus.records).toHaveLength(418);
+    for (const record of corpus.records) expect(record.itemSlugs).toEqual([record.slug]);
   });
 
-  test("re-serves a thread that gains messages on a later day as an update", () => {
+  test("adds no threading header of its own", () => {
     const corpus = loadCorpus(CORPUS_DIRECTORY);
-    const updates = corpus.records.filter((record) => record.action === "updated");
-    expect(updates).toHaveLength(13);
-    for (const update of updates) {
-      const emissions = corpus.records.filter((record) => record.slug === update.slug);
-      // An update always follows an earlier emission of the same source.
-      expect(emissions.filter((record) => record.action === "added")).toHaveLength(1);
-      expect(emissions.some((record) => record.day < update.day)).toBe(true);
+    // `thread_id` is floor(index / 2) over independently drawn counterparties and
+    // `thread_ts` groups every tenth Slack message across four rotating channels, while
+    // upstream's prose generator wrote every item from metadata alone. Promoting either
+    // into the body would invite a link between messages that have nothing to do with
+    // one another. Upstream's own subject line still reads "Thread thr-0000 re Ravi" and
+    // is served verbatim, because the subject is the message's own content.
+    for (const record of corpus.records) {
+      if (record.type !== "email" && record.type !== "slack") continue;
+      expect(record.markdown).not.toMatch(/\*\*(Thread|In thread|In-Reply-To|Reply to):\*\*/i);
     }
+  });
+
+  test("never revises an item it has already served", () => {
+    const corpus = loadCorpus(CORPUS_DIRECTORY);
+    expect(corpus.records.every((record) => record.action === "added")).toBe(true);
+    expect(new Set(corpus.records.map((record) => record.slug)).size).toBe(corpus.records.length);
   });
 
   test("holds the expected shape across days", () => {

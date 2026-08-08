@@ -7,13 +7,18 @@ import type {
   ReadSourceRecordsResult,
   SourceRecord,
   SourceRecordReader,
-} from "./nango-records.ts";
-import { SourceRecordCheckpointError } from "./nango-records.ts";
+} from "../apps/server/src/nango-records.ts";
+import { SourceRecordCheckpointError } from "../apps/server/src/nango-records.ts";
 
 /**
  * Serves a fixed on-disk corpus through the same `SourceRecordReader` contract the
  * Nango pipeline implements, so knowledge evaluations exercise the production
  * `read_source_records` batch loop instead of a bespoke test path.
+ *
+ * This file lives outside `apps/server` on purpose. The production image copies only
+ * `apps/` and `packages/`, so the evaluation reader is not present in it at all, and
+ * `mcp-app.ts` reaches it through a specifier the module graph cannot resolve
+ * statically. Development bind-mounts the repository, so it resolves there.
  *
  * One read advances through exactly one corpus day. `has_more` stays true while that
  * day still holds records, then the checkpoint moves to the next day that has any. An
@@ -89,52 +94,18 @@ const checkpointSchema = z.object({
 type Checkpoint = z.infer<typeof checkpointSchema>;
 
 export type CorpusRecord = {
-  /** Stable source identity. A conversation keeps one slug across every day it is served. */
+  /** The upstream manifest slug. One record carries exactly one manifest item. */
   slug: string;
   type: CorpusItemType;
   /** Calendar day in UTC, the unit one automation run consumes. */
   day: string;
   timestamp: string;
   markdown: string;
+  /** Always `added`: a fixed corpus never revises an item it has already served. */
   action: "added" | "updated";
-  /** Manifest items first carried by this record, used to prove nothing is dropped. */
+  /** Manifest items carried by this record, used to prove nothing is dropped. */
   itemSlugs: string[];
 };
-
-/**
- * Turns grouped messages into one record per conversation, re-served on each later day it
- * gains messages. A thread spanning two days is `added` on the first and `updated` on the
- * second carrying the whole conversation, which is how an incremental source behaves and
- * which keeps later messages out of an earlier day.
- */
-function conversationRecords<T extends { ts: string; slug: string }>(
-  threads: Map<string, T[]>,
-  type: "slack" | "email",
-  render: (messages: T[]) => string,
-): CorpusRecord[] {
-  const records: CorpusRecord[] = [];
-  for (const unsorted of threads.values()) {
-    const messages = [...unsorted].sort((left, right) => left.ts.localeCompare(right.ts)
-      || left.slug.localeCompare(right.slug));
-    const slug = messages[0]!.slug;
-    const days = [...new Set(messages.map((message) => message.ts.slice(0, 10)))].sort();
-    for (const [index, day] of days.entries()) {
-      const upToDay = messages.filter((message) => message.ts.slice(0, 10) <= day);
-      records.push({
-        slug,
-        type,
-        day,
-        timestamp: upToDay.at(-1)!.ts,
-        markdown: render(upToDay),
-        action: index === 0 ? "added" : "updated",
-        itemSlugs: messages
-          .filter((message) => message.ts.slice(0, 10) === day)
-          .map((message) => message.slug),
-      });
-    }
-  }
-  return records;
-}
 
 export type Corpus = {
   corpusId: string;
@@ -204,38 +175,49 @@ function parseCalendar(text: string): Map<string, CalendarEvent> {
   return events;
 }
 
-function renderEmailThread(messages: z.infer<typeof emailSchema>[]): string {
-  const first = messages[0]!;
-  const lines = [`# ${first.subject}`, ""];
-  for (const email of messages) {
-    const recipients = email.to.map((person) => `${person.name} <${person.email}>`).join(", ");
-    lines.push(
-      `## ${email.subject}`,
-      "",
-      `**From:** ${email.from.name} <${email.from.email}>`,
-      ...(recipients ? [`**To:** ${recipients}`] : []),
-      `**Sent:** ${email.ts}`,
-      "",
-      email.body_text,
-      "",
-    );
-  }
-  return `${lines.join("\n").trimEnd()}\n`;
+/**
+ * One message is one record, and the declared thread is deliberately not surfaced.
+ *
+ * Upstream's threading carries no meaning. `thread_id` is `floor(index / 2)` over emails
+ * whose counterparties are drawn independently at random, and `thread_ts` groups every
+ * tenth Slack message across four channels that rotate by index. Upstream's own prose
+ * generator then wrote every item in isolation: it was handed `In-Reply-To: em-0000` and
+ * `Thread parent: <timestamp>` as bare identifiers, never the text being replied to, and
+ * told to "acknowledge thread context". That is why `thr-0000` is Ravi introducing
+ * Terraform Dynamics followed by Amara thanking Bill about Terraform Industries, and why
+ * a fund-close announcement draws two replies agreeing about timeline concerns nobody
+ * raised.
+ *
+ * Grouping those into one body, or pointing at them from one, would assert a relationship
+ * the corpus does not contain and would penalise a knowledge base for not inventing it.
+ * Each message body was authored standalone, so a message is already the complete
+ * semantic body the envelope contract asks for.
+ */
+function renderEmail(email: z.infer<typeof emailSchema>): string {
+  const recipients = email.to.map((person) => `${person.name} <${person.email}>`).join(", ");
+  const lines = [
+    `# ${email.subject}`,
+    "",
+    `**From:** ${email.from.name} <${email.from.email}>`,
+    ...(recipients ? [`**To:** ${recipients}`] : []),
+    `**Sent:** ${email.ts}`,
+    "",
+    email.body_text,
+  ];
+  return `${lines.join("\n")}\n`;
 }
 
-function renderSlackThread(messages: z.infer<typeof slackSchema>[]): string {
-  const first = messages[0]!;
+function renderSlack(message: z.infer<typeof slackSchema>): string {
   const lines = [
-    `# ${first.channel} — conversation of ${first.ts.slice(0, 10)}`,
+    `# ${message.channel} — ${message.user.name}`,
     "",
-    `**Channel:** ${first.channel}`,
-    `**Started:** ${first.ts}`,
+    `**Channel:** ${message.channel}`,
+    `**From:** ${message.user.name} (@${message.user.handle})`,
+    `**Sent:** ${message.ts}`,
     "",
+    message.text,
   ];
-  for (const message of messages) {
-    lines.push(`**${message.user.name}** (@${message.user.handle}) — ${message.ts}`, "", message.text, "");
-  }
-  return `${lines.join("\n").trimEnd()}\n`;
+  return `${lines.join("\n")}\n`;
 }
 
 function renderCalendarEvent(event: CalendarEvent): string {
@@ -275,8 +257,6 @@ export function loadCorpus(directory: string): Corpus {
   const slack = readJsonLines(join(directory, "slack", "messages.jsonl"), slackSchema);
 
   const records: CorpusRecord[] = [];
-  const slackThreads = new Map<string, z.infer<typeof slackSchema>[]>();
-  const emailThreads = new Map<string, z.infer<typeof emailSchema>[]>();
 
   for (const item of manifest.items) {
     if (item.type === "note" || item.type === "meeting") {
@@ -296,17 +276,17 @@ export function loadCorpus(directory: string): Corpus {
     } else if (item.type === "email") {
       const email = emails.get(item.slug);
       if (!email) throw new Error(`Corpus item ${item.slug} is missing from emails.jsonl`);
-      // Grouped below: a thread is one source item with one complete body.
-      const key = email.thread_id ?? email.slug;
-      emailThreads.set(key, [...(emailThreads.get(key) ?? []), email]);
+      records.push({
+        slug: item.slug, type: item.type, day: email.ts.slice(0, 10), timestamp: email.ts,
+        markdown: renderEmail(email), action: "added", itemSlugs: [item.slug],
+      });
     } else if (item.type === "slack") {
       const message = slack.get(item.slug);
       if (!message) throw new Error(`Corpus item ${item.slug} is missing from messages.jsonl`);
-      // Keyed by channel as well as thread: this corpus reuses one thread_ts across all
-      // four channels for unrelated subjects, so thread_ts alone would splice a fund
-      // close, a deal update and office chat into a single "conversation".
-      const key = JSON.stringify([message.channel, message.thread_ts ?? message.ts]);
-      slackThreads.set(key, [...(slackThreads.get(key) ?? []), message]);
+      records.push({
+        slug: item.slug, type: item.type, day: message.ts.slice(0, 10), timestamp: message.ts,
+        markdown: renderSlack(message), action: "added", itemSlugs: [item.slug],
+      });
     } else {
       const uid = item.slug.split("/").at(-1)!;
       const event = calendar.get(uid);
@@ -322,9 +302,6 @@ export function loadCorpus(directory: string): Corpus {
       });
     }
   }
-
-  records.push(...conversationRecords(slackThreads, "slack", renderSlackThread));
-  records.push(...conversationRecords(emailThreads, "email", renderEmailThread));
 
   records.sort((left, right) => left.timestamp.localeCompare(right.timestamp)
     || left.slug.localeCompare(right.slug));

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
-import { loadCorpus } from "../apps/server/src/corpus-records.ts";
+import { loadCorpus } from "./corpus-records.ts";
 import {
   CORPUS_DIRECTORY,
   CORPUS_UPSTREAM,

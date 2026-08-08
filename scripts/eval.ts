@@ -1,6 +1,7 @@
-import type { CorpusWindow } from "../apps/server/src/corpus-records.ts";
+import type { CorpusWindow } from "../eval/corpus-records.ts";
 import { runDistillation } from "../eval/distill.ts";
 import { verifyCorpus, refreshCorpus } from "../eval/corpus-commands.ts";
+import { profileCorpusCommand } from "../eval/gold/commands.ts";
 import { connectProvider, runEval, scoreEval, type EvalProvider } from "../eval/runner.ts";
 
 function usage(): never {
@@ -10,7 +11,8 @@ function usage(): never {
   bun run eval run [--provider <codex|claude>]
   bun run eval score [run-id]
   bun run eval corpus:verify
-  bun run eval corpus:refresh`);
+  bun run eval corpus:refresh
+  bun run eval gold:profile [--write]`);
   process.exit(1);
 }
 
@@ -60,6 +62,8 @@ if (command === "connect") {
   verifyCorpus();
 } else if (command === "corpus:refresh") {
   await refreshCorpus();
+} else if (command === "gold:profile") {
+  profileCorpusCommand({ write: args.includes("--write") });
 } else {
   usage();
 }

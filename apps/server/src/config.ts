@@ -71,8 +71,8 @@ const schema = z.object({
   // Local knowledge evaluations only. When set, the private MCP serves source records
   // from a fixed on-disk corpus instead of the Nango pipeline. Forbidden in production.
   EVAL_CORPUS_PATH: z.string().max(4_096).default(""),
-  // Kept structurally compatible with CorpusWindow in corpus-records.ts, which cannot be
-  // imported here without a config import cycle; the MCP wiring type-checks the pairing.
+  // Kept structurally compatible with CorpusWindow in eval/corpus-records.ts, which is
+  // deliberately outside this workspace so the harness never ships in a production image.
   EVAL_CORPUS_WINDOW: z.enum(["dense", "full"]).default("full"),
 });
 
