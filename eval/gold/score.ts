@@ -34,9 +34,6 @@ function folderDenotes(folder: string, name: string, slug: string): boolean {
   return [...wanted].every((token) => candidate.has(token));
 }
 
-/** Where each kind of entity belongs. */
-const HOME: Record<EntityExpectation["kind"], string> = { person: "people", company: "companies" };
-
 /**
  * Entity folders directly under a top-level directory, with the pages inside each. A
  * top-level guide page such as `people/agents` is not an entity and is skipped.
@@ -74,6 +71,9 @@ export type EntityResult = EntityExpectation & {
   mentions: number;
 };
 
+/** Where each kind of entity belongs. */
+const HOME: Record<EntityExpectation["kind"], string> = { person: "people", company: "companies" };
+
 export type MeetingResult = {
   record: string;
   day: string;
@@ -91,7 +91,8 @@ export type DayScore = {
   day: string;
   pageCount: number;
   required: EntityResult[];
-  expected: EntityResult[];
+  /** Entities the corpus never identified. A folder here is an invention. */
+  forbidden: EntityResult[];
   meetings: MeetingResult[];
   injections: InjectionResult[];
   /** Entity folders per top-level directory, reported rather than asserted. */
@@ -109,8 +110,9 @@ function resolve(
   const folders = new Map(Object.values(HOME).map((top) => [top, entityFolders(pages, top)]));
   return entities.filter((entity) => entity.day <= day).map((entity) => {
     const top = HOME[entity.kind];
-    const folder = [...(folders.get(top)?.keys() ?? [])]
-      .find((candidate) => folderDenotes(candidate, entity.name, entity.slug));
+    // Any surface form the corpus used counts: the folder may be named for any of them.
+    const folder = [...(folders.get(top)?.keys() ?? [])].find((candidate) =>
+      entity.labels.some((label) => folderDenotes(candidate, label, entity.slug)));
     const name = normalise(entity.name);
     const mentions = pages.filter((page) =>
       normalise(`${page.title} ${page.summary} ${page.body}`).includes(name)).length;
@@ -139,7 +141,7 @@ export function scoreDay(expectations: Expectations, pages: PageSnapshot[], day:
     day,
     pageCount: pages.length,
     required: resolve(expectations.required, pages, day),
-    expected: resolve(expectations.expected, pages, day),
+    forbidden: resolve(expectations.forbidden, pages, day),
     meetings: expectations.meetings
       .filter((meeting) => meeting.day <= day)
       .map((meeting) => resolveMeeting(meeting, pages)),

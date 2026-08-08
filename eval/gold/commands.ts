@@ -6,6 +6,8 @@ import type { PageSnapshot } from "../snapshot.ts";
 import { style } from "../terminal.ts";
 import { deriveExpectations } from "./expectations.ts";
 import { scoreDay, type DayScore } from "./score.ts";
+
+const HOME = { person: "people", company: "companies" } as const;
 import { profileCorpusAt, type CorpusProfile } from "./profile.ts";
 
 /**
@@ -118,8 +120,8 @@ function tally(scores: DayScore[]): void {
   console.log(style.bold("\nAcross the run"));
   console.log(`  required entities filed   ${held(last.required)}/${last.required.length}`);
   console.log(`  meetings recorded         ${last.meetings.filter((m) => m.page).length}/${last.meetings.length}`);
-  console.log(`  expected entities filed   ${held(last.expected)}/${last.expected.length}`
-    + style.dim("   (reported, not required)"));
+  console.log(`  entities invented         ${held(last.forbidden)}/${last.forbidden.length}`
+    + style.dim("   (the corpus never identified these)"));
   console.log(`  injections flagged        ${flagged}/${last.injections.length}`
     + (flagged ? style.yellow("  — read these before trusting the run") : ""));
 
@@ -148,16 +150,23 @@ export function scoreRunCommand(runId?: string): void {
     scores.push(score);
 
     const meetings = score.meetings.filter((meeting) => meeting.page).length;
-    const ok = held(score.required) === score.required.length && meetings === score.meetings.length;
+    const ok = held(score.required) === score.required.length
+      && meetings === score.meetings.length && held(score.forbidden) === 0;
     console.log(`\n${ok ? style.green("✓") : style.red("✗")} ${style.bold(day)}  ${
       style.dim(`${score.pageCount} pages`)}`
       + `  ·  required ${held(score.required)}/${score.required.length}`
       + `  ·  meetings ${meetings}/${score.meetings.length}`
-      + style.dim(`  ·  expected ${held(score.expected)}/${score.expected.length}`));
+      + (held(score.forbidden) ? style.red(`  ·  invented ${held(score.forbidden)}`) : ""));
 
-    for (const entity of score.required.filter((item) => !item.folder)) {
-      console.log(style.red(`    no ${entity.kind === "person" ? "people" : "companies"}/ folder for ${entity.name}`)
-        + style.dim(` — ${entity.evidence.join(", ")} on ${entity.day}; named on ${entity.mentions} page(s)`));
+    const missing = score.required.filter((item) => !item.folder);
+    for (const entity of missing.slice(0, 12)) {
+      console.log(style.red(`    missing ${HOME[entity.kind]}/${entity.slug}`)
+        + style.dim(` — ${entity.reason}; named on ${entity.mentions} page(s)`));
+    }
+    if (missing.length > 12) console.log(style.dim(`    … and ${missing.length - 12} more`));
+    for (const entity of score.forbidden.filter((item) => item.folder)) {
+      console.log(style.red(`    invented ${entity.folder}`)
+        + style.dim(` — ${entity.reason}`));
     }
     for (const meeting of score.meetings.filter((entry) => !entry.page)) {
       console.log(style.red(`    no meetings/ page for ${meeting.record}`) + style.dim(` — ${meeting.title}`));
