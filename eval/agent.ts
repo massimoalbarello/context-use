@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { stackUrl } from "../scripts/local-stack.ts";
+import { style, terminalWidth, truncate, wrapList } from "./terminal.ts";
 
 /** Agent session plumbing shared by the scenario eval and the corpus distillation run. */
 
@@ -49,37 +50,153 @@ export async function capture(
   return chunks;
 }
 
-const WRITE_TOOL_LABELS: Record<string, string> = {
-  create_directory: "Created directory",
-  create_page: "Created page",
-  update_page: "Updated page",
-  archive_page: "Archived page",
+/** Tools that change the knowledge base. Everything else is a read the agent used to decide. */
+const WRITE_TOOLS = new Set(["create_directory", "create_page", "update_page", "archive_page"]);
+
+/** One column for every tool name, so subjects line up whether the call read or wrote. */
+const TOOL_COLUMN = "prepare_knowledge_write".length;
+
+type ToolCallItem = {
+  id?: string;
+  type?: string;
+  tool?: string;
+  status?: string;
+  arguments?: Record<string, unknown>;
+  result?: { content?: { type?: string; text?: string }[] };
 };
 
-/** Codex can emit the same completed item more than once; print each write only once. */
-const printedItems = new Set<string>();
+/**
+ * The useful part of a failed call's result. MCP wraps the reason in two layers of
+ * boilerplate that repeat the tool name already printed on the same line.
+ */
+function failureReason(item: ToolCallItem, budget: number): string {
+  const text = item.result?.content?.find((entry) => entry.text)?.text ?? "";
+  const reason = (text.split("\n")[0] ?? "")
+    .replace(/^MCP error -?\d+:\s*/, "")
+    .replace(/^Input validation error:\s*/, "")
+    .replace(/^Invalid arguments for tool \w+:\s*/, "");
+  return truncate(reason || "no reason reported", budget);
+}
 
-export function printCodexProgress(line: string): void {
-  try {
-    const event = JSON.parse(line) as {
-      type?: string;
-      item?: { id?: string; type?: string; tool?: string; arguments?: { path?: string } };
-      error?: { message?: string };
-    };
-    const item = event.item;
-    if (event.type === "item.completed"
-      && item?.type === "mcp_tool_call"
-      && item.tool
-      && WRITE_TOOL_LABELS[item.tool]) {
-      if (item.id && printedItems.has(item.id)) return;
-      if (item.id) printedItems.add(item.id);
-      console.log(`  ✓ ${WRITE_TOOL_LABELS[item.tool]} · ${item.arguments?.path ?? "(unknown path)"}`);
-    } else if (event.type?.includes("failed")) {
-      console.error(`  Agent error: ${event.error?.message ?? line}`);
-    }
-  } catch {
-    // Preserve non-JSON output in the log without flooding the terminal.
+
+/** The argument worth seeing, in the order a reader would look for it. */
+function callSubject(item: ToolCallItem): string {
+  for (const key of ["path", "target_path", "query", "directory", "name", "skill"]) {
+    const value = item.arguments?.[key];
+    if (typeof value === "string" && value) return value;
   }
+  return "";
+}
+
+/**
+ * Turns one `read_source_records` result into the batch the agent was just handed,
+ * grouped by source so a day of eighty records stays a handful of lines.
+ */
+function batchLines(item: ToolCallItem): string[] {
+  const text = item.result?.content?.find((entry) => entry.text)?.text;
+  if (!text) return [];
+  let parsed: { records?: { record_ref?: string }[]; has_more?: boolean };
+  try {
+    parsed = JSON.parse(text) as typeof parsed;
+  } catch {
+    return [];
+  }
+  const records = parsed.records ?? [];
+  const grouped = new Map<string, string[]>();
+  for (const record of records) {
+    // `corpus:amara-life-v1:meeting/mtg-0000` reads better as `meeting mtg-0000`.
+    const ref = (record.record_ref ?? "").replace(/^corpus:[^:]+:/, "");
+    const separator = ref.indexOf("/");
+    const source = separator === -1 ? "other" : ref.slice(0, separator);
+    grouped.set(source, [...(grouped.get(source) ?? []), ref.slice(separator + 1)]);
+  }
+  const width = Math.max(...[...grouped.keys()].map((source) => source.length));
+  // Built by concatenation rather than nesting: one style's reset ends the other early.
+  const lines = [
+    style.cyan("  ← ") + style.bold(String(records.length)) + style.cyan(" records served")
+      + (parsed.has_more ? style.dim(" · more in this day") : ""),
+  ];
+  for (const [source, refs] of [...grouped].sort(([left], [right]) => left.localeCompare(right))) {
+    const indent = 8 + width + 2;
+    const [first, ...rest] = wrapList(refs, indent);
+    lines.push(
+      `      ${style.cyan(source.padEnd(width))}  ${style.dim((first ?? "").trimStart())}`,
+      ...rest.map((line) => style.dim(line)),
+    );
+  }
+  return lines;
+}
+
+/**
+ * Builds a live trace for one agent session: the records it is handed, what it says about
+ * them, the pages it reads to decide, and every write it makes.
+ *
+ * There is deliberately no per-record outcome. The agent is handed a whole day at once and
+ * reconciles the batch, and the pages it writes do not cite the record that prompted them,
+ * so attributing a page to a record is not observable from the stream. What is observable
+ * is the batch in, the agent's own account of what it kept, and the writes out.
+ *
+ * One printer per session, because Codex numbers its items from zero on every run: a
+ * shared set of seen ids would suppress the second day onwards almost entirely.
+ */
+export function createCodexProgressPrinter(): (line: string) => void {
+  // Codex can emit the same completed item more than once; print each one only once.
+  const printed = new Set<string>();
+
+  return (line: string): void => {
+    let event: { type?: string; item?: ToolCallItem & { text?: string }; error?: { message?: string } };
+    try {
+      event = JSON.parse(line) as typeof event;
+    } catch {
+      // Preserve non-JSON output in the log without flooding the terminal.
+      return;
+    }
+    const item = event.item;
+
+    if (event.type === "item.started" && item?.type === "mcp_tool_call"
+      && item.tool === "read_source_records") {
+      console.log(`\n${style.dim("  ← reading source records…")}`);
+      return;
+    }
+    if (event.type?.includes("failed")) {
+      console.error(style.red(`  Agent error: ${event.error?.message ?? line}`));
+      return;
+    }
+    if (event.type !== "item.completed" || !item) return;
+    if (item.id && printed.has(item.id)) return;
+    if (item.id) printed.add(item.id);
+
+    if (item.type === "agent_message" && item.text) {
+      // The agent's own account of what it kept and why, which is the closest thing to a
+      // result for the batch. Set apart so it reads as narration around the tool calls.
+      console.log("");
+      for (const paragraph of item.text.trim().split("\n")) {
+        if (paragraph.trim()) console.log(`  ${style.yellow("»")} ${paragraph.trim()}`);
+      }
+      return;
+    }
+    if (item.type !== "mcp_tool_call" || !item.tool) return;
+
+    // A failed call is followed by a retry, so reporting it as a write would count the
+    // same page twice and hide that the agent had to correct itself.
+    const tool = item.tool.padEnd(TOOL_COLUMN);
+    if (item.status === "failed") {
+      const subject = callSubject(item) || item.tool;
+      const budget = terminalWidth() - TOOL_COLUMN - subject.length - 10;
+      console.log(`  ${style.red("✗")} ${style.red(tool)} ${subject}  ${
+        style.red(failureReason(item, Math.max(20, budget)))}`);
+      return;
+    }
+    if (item.tool === "read_source_records") {
+      for (const batchLine of batchLines(item)) console.log(batchLine);
+    } else if (WRITE_TOOLS.has(item.tool)) {
+      console.log(`  ${style.green("✓")} ${style.green(tool)} ${callSubject(item) || "(unknown path)"}`);
+    } else {
+      // Any other tool is a read. Naming it rather than relabelling it keeps the trace
+      // honest about what the agent called, and new tools appear without code changes.
+      console.log(style.dim(`    ${tool} ${callSubject(item)}`.trimEnd()));
+    }
+  };
 }
 
 export type AgentSession = {
@@ -110,7 +227,7 @@ async function runCodexSession({ id, prompt, runDirectory }: AgentSession): Prom
   child.stdin.write(prompt);
   child.stdin.end();
   const [stdoutChunks, stderrChunks, exitCode] = await Promise.all([
-    capture(child.stdout, printCodexProgress),
+    capture(child.stdout, createCodexProgressPrinter()),
     capture(child.stderr),
     child.exited,
   ]);

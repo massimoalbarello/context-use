@@ -5,6 +5,7 @@ import { LOCAL_STACK, runStackCommand } from "../scripts/local-stack.ts";
 import { EVAL_URL, MCP_NAME, ROOT, runAgentSession, type EvalProvider } from "./agent.ts";
 import { CORPUS_DIRECTORY, corpusIsUnchanged, diffCorpus } from "./corpus-integrity.ts";
 import { pageChanges, snapshotKnowledge, type PageChange, type PageSnapshot } from "./snapshot.ts";
+import { style, terminalWidth } from "./terminal.ts";
 
 /**
  * Drives the activity distiller over the vendored corpus, one run per corpus day.
@@ -88,17 +89,17 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   const runDirectory = join(RESULTS_ROOT, runId);
   await mkdir(runDirectory, { recursive: true });
 
-  console.log(`Distillation run: ${runId}`);
+  console.log(style.heading(`\nDistillation run: ${runId}`));
   console.log(`Corpus: ${corpus.corpusId} · window ${options.window} · ${days.length} of ${allDays.length} days · ${
     windowRecords.filter((record) => days.includes(record.day)).length} records`);
-  console.log(`Live dashboard: ${EVAL_URL}/app/`);
-  console.log(`Run files: ${runDirectory}\n`);
+  console.log(`Live dashboard: ${style.blue(`${EVAL_URL}/app/`)}`);
+  console.log(style.dim(`Run files: ${runDirectory}`));
 
   // The server reads the window at startup, so the run owns it and recreates the stack
   // with it. Leaving that to the operator lets the client label days the server never
   // served, which silently measures something other than what the report claims.
   process.env.EVAL_CORPUS_WINDOW = options.window;
-  console.log(`Resetting and serving the ${options.window} window while preserving passkeys and OAuth…`);
+  console.log(style.dim(`\nResetting and serving the ${options.window} window while preserving passkeys and OAuth…`));
   runStackCommand("reset");
   assertServedWindow(options.window);
 
@@ -108,9 +109,9 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   const results: DayResult[] = [];
   for (const [index, day] of days.entries()) {
     const dayRecords = windowRecords.filter((record) => record.day === day);
-    console.log(`\n=== Run ${index + 1}/${days.length} · ${day} · ${dayRecords.length} records ===`);
-    console.log(`  Sources · ${[...new Set(dayRecords.map((record) => record.type))].sort().join(", ")}`);
-    console.log("  Agent is reading its instructions and reconciling the batch…\n");
+    console.log(style.heading(`\n\n${"─".repeat(terminalWidth())}\nRun ${index + 1}/${days.length} · ${day} · ${dayRecords.length} records`));
+    console.log(style.dim(`  ${[...new Set(dayRecords.map((record) => record.type))].sort().join(" · ")}`));
+    console.log(style.dim("  Agent is reading its instructions and reconciling the batch…"));
 
     await runAgentSession({
       provider: options.provider,
@@ -124,7 +125,7 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
     const changes = pageChanges(previous, pages);
     results.push({ day, index, changes, pageCount: pages.length });
     previous = pages;
-    console.log(`\n  ${day} complete · ${summarise(changes)} · ${pages.length} pages total`);
+    console.log(style.green(`\n  ${day} complete · ${summarise(changes)} · ${pages.length} pages total`));
   }
 
   const report = {
@@ -158,7 +159,7 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   await Bun.write(reportPath, `${lines.join("\n")}\n`);
   await Bun.write(join(RESULTS_ROOT, "latest-distill"), `${runId}\n`);
 
-  console.log(`\n✓ Distillation complete · ${previous.length} pages · ${days.length} days`);
-  console.log(`Report: ${reportPath}`);
+  console.log(style.heading(`\n\n✓ Distillation complete · ${previous.length} pages · ${days.length} days`));
+  console.log(`Report: ${style.blue(reportPath)}`);
   return reportPath;
 }
