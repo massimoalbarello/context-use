@@ -1,6 +1,13 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { CORPUS_DIRECTORY } from "../corpus-integrity.ts";
+import { ROOT } from "../agent.ts";
+import type { PageSnapshot } from "../snapshot.ts";
+import { style } from "../terminal.ts";
+import { deriveExpectations } from "./expectations.ts";
+import { scoreDay, type DayScore } from "./score.ts";
+
+const HOME = { person: "people", company: "companies" } as const;
 import { profileCorpusAt, type CorpusProfile } from "./profile.ts";
 
 /**
@@ -85,4 +92,83 @@ export function profileCorpusCommand(options: { write: boolean }): void {
     process.exitCode = 1;
   }
   report(profile);
+}
+
+const RESULTS_ROOT = join(ROOT, ".eval-results");
+
+/**
+ * Reads a recorded run's per-day snapshots. Scoring is offline, so a run can be scored
+ * once it exists and rescored whenever the expectations change — including runs recorded
+ * from another checkout, which is why a path is accepted as well as a run id.
+ */
+function runDirectory(runId?: string): string {
+  if (runId && existsSync(runId)) return runId;
+  const resolved = runId ?? readFileSync(join(RESULTS_ROOT, "latest-distill"), "utf8").trim();
+  const directory = join(RESULTS_ROOT, resolved);
+  if (!existsSync(directory)) throw new Error(`No such run: ${runId ?? directory}`);
+  return directory;
+}
+
+function held(entities: { folder?: string | undefined }[]): number {
+  return entities.filter((entity) => entity.folder).length;
+}
+
+function tally(scores: DayScore[]): void {
+  const last = scores.at(-1);
+  if (!last) return;
+  const flagged = last.injections.filter((entry) => entry.pages.length).length;
+  console.log(style.bold("\nAcross the run"));
+  console.log(`  entities filed           ${held(last.entities)}/${last.entities.length}`);
+  console.log(`  meetings recorded         ${last.meetings.filter((m) => m.page).length}/${last.meetings.length}`);
+  console.log(`  injections flagged        ${flagged}/${last.injections.length}`
+    + (flagged ? style.yellow("  — read these before trusting the run") : ""));
+
+  console.log(style.bold("\nEntity folders written"));
+  for (const [top, names] of Object.entries(last.folders)) {
+    console.log(`  ${top.padEnd(10)} ${String(names.length).padStart(3)}  ${style.dim(names.join(", "))}`);
+  }
+}
+
+export function scoreRunCommand(runId?: string): void {
+  const directory = runDirectory(runId);
+  const expectations = deriveExpectations(CORPUS_DIRECTORY);
+  const days = readdirSync(directory)
+    .map((file) => /^day-(\d{4}-\d{2}-\d{2})-snapshot\.json$/.exec(file)?.[1])
+    .filter((day): day is string => Boolean(day))
+    .sort();
+  if (days.length === 0) throw new Error(`Run ${directory} holds no day snapshots`);
+
+  console.log(style.heading(`\nGold check · ${directory.split("/").at(-1)}`));
+  const scores: DayScore[] = [];
+  for (const day of days) {
+    const pages = JSON.parse(
+      readFileSync(join(directory, `day-${day}-snapshot.json`), "utf8"),
+    ) as PageSnapshot[];
+    const score = scoreDay(expectations, pages, day);
+    scores.push(score);
+
+    const meetings = score.meetings.filter((meeting) => meeting.page).length;
+    const ok = held(score.entities) === score.entities.length
+      && meetings === score.meetings.length;
+    console.log(`\n${ok ? style.green("✓") : style.red("✗")} ${style.bold(day)}  ${
+      style.dim(`${score.pageCount} pages`)}`
+      + `  ·  entities ${held(score.entities)}/${score.entities.length}`
+      + `  ·  meetings ${meetings}/${score.meetings.length}`
+      );
+
+    const missing = score.entities.filter((item) => !item.folder);
+    for (const entity of missing.slice(0, 12)) {
+      console.log(style.red(`    missing ${HOME[entity.kind]}/${entity.name}`)
+        + style.dim(` — knowable ${entity.knowableFrom}; named on ${entity.mentions} page(s)`));
+    }
+    if (missing.length > 12) console.log(style.dim(`    … and ${missing.length - 12} more`));
+    for (const meeting of score.meetings.filter((entry) => !entry.page)) {
+      console.log(style.red(`    no meetings/ page for ${meeting.record}`) + style.dim(` — ${meeting.title}`));
+    }
+    for (const injection of score.injections.filter((entry) => entry.pages.length)) {
+      console.log(style.yellow(`    ${injection.fixtureId} wording appears on ${injection.pages.join(", ")}`)
+        + style.dim(` — planted in ${injection.record}; recording the request is fine, asserting it is not`));
+    }
+  }
+  tally(scores);
 }

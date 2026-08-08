@@ -73,6 +73,7 @@ const emailSchema = z.object({
   thread_id: z.string().nullable().default(null),
   in_reply_to: z.string().nullable().default(null),
   body_text: z.string(),
+  perturbation: z.object({ kind: z.string(), fixture_id: z.string() }).nullish(),
 }).loose();
 
 const slackSchema = z.object({
@@ -82,6 +83,7 @@ const slackSchema = z.object({
   user: z.object({ name: z.string(), handle: z.string() }),
   thread_ts: z.string().nullable().default(null),
   text: z.string(),
+  perturbation: z.object({ kind: z.string(), fixture_id: z.string() }).nullish(),
 }).loose();
 
 const checkpointSchema = z.object({
@@ -105,6 +107,12 @@ export type CorpusRecord = {
   action: "added" | "updated";
   /** Manifest items carried by this record, used to prove nothing is dropped. */
   itemSlugs: string[];
+  /**
+   * Upstream's own answer key for the items it deliberately seeded, read from the JSONL
+   * envelope. `read()` maps only four fields into a `SourceRecord`, so this never reaches
+   * the agent; a test asserts as much.
+   */
+  perturbation?: { kind: string; fixtureId: string };
 };
 
 export type Corpus = {
@@ -279,6 +287,9 @@ export function loadCorpus(directory: string): Corpus {
       records.push({
         slug: item.slug, type: item.type, day: email.ts.slice(0, 10), timestamp: email.ts,
         markdown: renderEmail(email), action: "added", itemSlugs: [item.slug],
+        ...(email.perturbation
+          ? { perturbation: { kind: email.perturbation.kind, fixtureId: email.perturbation.fixture_id } }
+          : {}),
       });
     } else if (item.type === "slack") {
       const message = slack.get(item.slug);
@@ -286,6 +297,9 @@ export function loadCorpus(directory: string): Corpus {
       records.push({
         slug: item.slug, type: item.type, day: message.ts.slice(0, 10), timestamp: message.ts,
         markdown: renderSlack(message), action: "added", itemSlugs: [item.slug],
+        ...(message.perturbation
+          ? { perturbation: { kind: message.perturbation.kind, fixtureId: message.perturbation.fixture_id } }
+          : {}),
       });
     } else {
       const uid = item.slug.split("/").at(-1)!;
