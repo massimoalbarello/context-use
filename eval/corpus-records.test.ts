@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import { CorpusRecordReader, loadCorpus } from "./corpus-records.ts";
-import { SourceRecordCheckpointError } from "./nango-records.ts";
+import { SourceRecordCheckpointError } from "../apps/server/src/nango-records.ts";
 
 function note(date: string, body: string): string {
   return `---\nid: note-${date}\ndate: ${date}\n---\n\n${body}\n`;

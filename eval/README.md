@@ -102,11 +102,10 @@ thirty-seven more people. `bun run eval gold:profile` reports both sets separate
 
 ## How one run equals one day
 
-`CorpusRecordReader` implements the same `SourceRecordReader` interface as the Nango
-pipeline and is selected in `mcp-app.ts` when `EVAL_CORPUS_PATH` is set, so
-`read_source_records` behaves exactly as it does in production — opaque checkpoints,
-`has_more` batching, and the automation persisting its own checkpoint into
-`automations/activity-distiller/state`.
+`CorpusRecordReader` in [corpus-records.ts](corpus-records.ts) implements the same
+`SourceRecordReader` interface as the Nango pipeline, so `read_source_records` behaves
+exactly as it does in production — opaque checkpoints, `has_more` batching, and the
+automation persisting its own checkpoint into `automations/activity-distiller/state`.
 
 The one difference is where a batch ends. `has_more` stays true only while the current
 corpus day still has records; when the day is exhausted the checkpoint advances to the
@@ -119,8 +118,23 @@ flag. It belongs to Nango's semantics, because Nango backfills historical record
 corpus does not. Nothing in the production reader branches on evaluation mode, and corpus
 dates are served exactly as authored.
 
+## Keeping the harness out of production
+
+Nothing under `eval/` reaches a production deployment, by three independent means.
+
+The reader lives here rather than in `apps/server/src`, and the production image copies
+only `apps/`, `packages/` and one file from `nango-integrations/` — so
+`corpus-records.ts` is not in the image at all. `mcp-app.ts` reaches it through a
+specifier assembled at runtime, so it is not in the module graph and a production bundle
+does not contain it either; only the six-line loader survives bundling. And
 `EVAL_CORPUS_PATH` and `EVAL_CORPUS_WINDOW` are rejected outright in production by the
-config boundary, in every service.
+config boundary, in every service, so the loader never runs there.
+
+Development bind-mounts the repository at `/app`, so the specifier resolves normally.
+
+The one thing the harness borrows from production is the `SourceRecordReader` interface
+in `apps/server/src/nango-records.ts`. That direction is correct: the contract belongs to
+production and the evaluation implements it, not the other way round.
 
 ## Fixture attribution
 

@@ -1,4 +1,4 @@
-import type { CorpusWindow } from "../apps/server/src/corpus-records.ts";
+import type { CorpusWindow } from "../eval/corpus-records.ts";
 import { runDistillation } from "../eval/distill.ts";
 import { verifyCorpus, refreshCorpus } from "../eval/corpus-commands.ts";
 import { profileCorpusCommand } from "../eval/gold/commands.ts";

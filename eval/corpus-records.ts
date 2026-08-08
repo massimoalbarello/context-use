@@ -7,13 +7,18 @@ import type {
   ReadSourceRecordsResult,
   SourceRecord,
   SourceRecordReader,
-} from "./nango-records.ts";
-import { SourceRecordCheckpointError } from "./nango-records.ts";
+} from "../apps/server/src/nango-records.ts";
+import { SourceRecordCheckpointError } from "../apps/server/src/nango-records.ts";
 
 /**
  * Serves a fixed on-disk corpus through the same `SourceRecordReader` contract the
  * Nango pipeline implements, so knowledge evaluations exercise the production
  * `read_source_records` batch loop instead of a bespoke test path.
+ *
+ * This file lives outside `apps/server` on purpose. The production image copies only
+ * `apps/` and `packages/`, so the evaluation reader is not present in it at all, and
+ * `mcp-app.ts` reaches it through a specifier the module graph cannot resolve
+ * statically. Development bind-mounts the repository, so it resolves there.
  *
  * One read advances through exactly one corpus day. `has_more` stays true while that
  * day still holds records, then the checkpoint moves to the next day that has any. An

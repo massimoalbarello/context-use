@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadCorpus, type Corpus, type CorpusRecord } from "../../apps/server/src/corpus-records.ts";
+import { loadCorpus, type Corpus, type CorpusRecord } from "../corpus-records.ts";
 
 /**
  * Stage 0 of the gold-standard workflow: a purely descriptive, fully deterministic
