@@ -56,30 +56,154 @@ const WRITE_TOOL_LABELS: Record<string, string> = {
   archive_page: "Archived page",
 };
 
-/** Codex can emit the same completed item more than once; print each write only once. */
-const printedItems = new Set<string>();
+/** Reads are shown so the run is legible, but quietly: they are how the agent decides. */
+const READ_TOOL_LABELS: Record<string, string> = {
+  get_page: "read",
+  search_pages: "search",
+  browse_directory: "browse",
+  list_directories: "list",
+  prepare_knowledge_write: "prepare",
+  load_skill: "skill",
+  get_knowledge_changes: "changes",
+  get_page_history: "history",
+  get_page_version: "version",
+};
 
-export function printCodexProgress(line: string): void {
-  try {
-    const event = JSON.parse(line) as {
-      type?: string;
-      item?: { id?: string; type?: string; tool?: string; arguments?: { path?: string } };
-      error?: { message?: string };
-    };
-    const item = event.item;
-    if (event.type === "item.completed"
-      && item?.type === "mcp_tool_call"
-      && item.tool
-      && WRITE_TOOL_LABELS[item.tool]) {
-      if (item.id && printedItems.has(item.id)) return;
-      if (item.id) printedItems.add(item.id);
-      console.log(`  ✓ ${WRITE_TOOL_LABELS[item.tool]} · ${item.arguments?.path ?? "(unknown path)"}`);
-    } else if (event.type?.includes("failed")) {
-      console.error(`  Agent error: ${event.error?.message ?? line}`);
-    }
-  } catch {
-    // Preserve non-JSON output in the log without flooding the terminal.
+type ToolCallItem = {
+  id?: string;
+  type?: string;
+  tool?: string;
+  status?: string;
+  arguments?: Record<string, unknown>;
+  result?: { content?: { type?: string; text?: string }[] };
+};
+
+/** The first line of a failed call's result, which carries the validation message. */
+function failureReason(item: ToolCallItem): string {
+  const text = item.result?.content?.find((entry) => entry.text)?.text ?? "";
+  return text.split("\n")[0]?.slice(0, 160) ?? "no reason reported";
+}
+
+
+/** The argument worth seeing, in the order a reader would look for it. */
+function callSubject(item: ToolCallItem): string {
+  for (const key of ["path", "target_path", "query", "directory", "name", "skill"]) {
+    const value = item.arguments?.[key];
+    if (typeof value === "string" && value) return value;
   }
+  return "";
+}
+
+/** Wraps a long list of record ids so a busy day stays readable in a terminal. */
+function wrapRefs(refs: string[], indent: string, width = 92): string[] {
+  const lines: string[] = [];
+  let current = "";
+  for (const ref of refs) {
+    const candidate = current ? `${current}, ${ref}` : ref;
+    if (current && indent.length + candidate.length > width) {
+      lines.push(indent + current);
+      current = ref;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(indent + current);
+  return lines;
+}
+
+/**
+ * Turns one `read_source_records` result into the batch the agent was just handed,
+ * grouped by source so a day of eighty records stays a handful of lines.
+ */
+function batchLines(item: ToolCallItem): string[] {
+  const text = item.result?.content?.find((entry) => entry.text)?.text;
+  if (!text) return [];
+  let parsed: { records?: { record_ref?: string }[]; has_more?: boolean };
+  try {
+    parsed = JSON.parse(text) as typeof parsed;
+  } catch {
+    return [];
+  }
+  const records = parsed.records ?? [];
+  const grouped = new Map<string, string[]>();
+  for (const record of records) {
+    // `corpus:amara-life-v1:meeting/mtg-0000` reads better as `meeting mtg-0000`.
+    const ref = (record.record_ref ?? "").replace(/^corpus:[^:]+:/, "");
+    const separator = ref.indexOf("/");
+    const source = separator === -1 ? "other" : ref.slice(0, separator);
+    grouped.set(source, [...(grouped.get(source) ?? []), ref.slice(separator + 1)]);
+  }
+  const lines = [`  ← ${records.length} records served${parsed.has_more ? ", more in this day" : ""}`];
+  for (const [source, refs] of [...grouped].sort(([left], [right]) => left.localeCompare(right))) {
+    const [first, ...rest] = wrapRefs(refs, "".padEnd(15));
+    lines.push(`      ${source.padEnd(8)} ${(first ?? "").trimStart()}`, ...rest);
+  }
+  return lines;
+}
+
+/**
+ * Builds a live trace for one agent session: the records it is handed, what it says about
+ * them, the pages it reads to decide, and every write it makes.
+ *
+ * There is deliberately no per-record outcome. The agent is handed a whole day at once and
+ * reconciles the batch, and the pages it writes do not cite the record that prompted them,
+ * so attributing a page to a record is not observable from the stream. What is observable
+ * is the batch in, the agent's own account of what it kept, and the writes out.
+ *
+ * One printer per session, because Codex numbers its items from zero on every run: a
+ * shared set of seen ids would suppress the second day onwards almost entirely.
+ */
+export function createCodexProgressPrinter(): (line: string) => void {
+  // Codex can emit the same completed item more than once; print each one only once.
+  const printed = new Set<string>();
+
+  return (line: string): void => {
+    let event: { type?: string; item?: ToolCallItem & { text?: string }; error?: { message?: string } };
+    try {
+      event = JSON.parse(line) as typeof event;
+    } catch {
+      // Preserve non-JSON output in the log without flooding the terminal.
+      return;
+    }
+    const item = event.item;
+
+    if (event.type === "item.started" && item?.type === "mcp_tool_call"
+      && item.tool === "read_source_records") {
+      console.log("  ← reading source records…");
+      return;
+    }
+    if (event.type?.includes("failed")) {
+      console.error(`  Agent error: ${event.error?.message ?? line}`);
+      return;
+    }
+    if (event.type !== "item.completed" || !item) return;
+    if (item.id && printed.has(item.id)) return;
+    if (item.id) printed.add(item.id);
+
+    if (item.type === "agent_message" && item.text) {
+      // The agent's own account of what it kept and why, which is the closest thing to a
+      // result for the batch. Indented so it reads as narration around the tool calls.
+      for (const paragraph of item.text.trim().split("\n")) {
+        if (paragraph.trim()) console.log(`  » ${paragraph.trim()}`);
+      }
+      return;
+    }
+    if (item.type !== "mcp_tool_call" || !item.tool) return;
+
+    // A failed call is followed by a retry, so reporting it as a write would count the
+    // same page twice and hide that the agent had to correct itself.
+    if (item.status === "failed") {
+      console.log(`  ✗ ${item.tool} ${callSubject(item)} · ${failureReason(item)}`);
+      return;
+    }
+    if (item.tool === "read_source_records") {
+      for (const batchLine of batchLines(item)) console.log(batchLine);
+    } else if (WRITE_TOOL_LABELS[item.tool]) {
+      console.log(`  ✓ ${WRITE_TOOL_LABELS[item.tool]} · ${callSubject(item) || "(unknown path)"}`);
+    } else if (READ_TOOL_LABELS[item.tool]) {
+      console.log(`    · ${READ_TOOL_LABELS[item.tool]} ${callSubject(item)}`.trimEnd());
+    }
+  };
 }
 
 export type AgentSession = {
@@ -110,7 +234,7 @@ async function runCodexSession({ id, prompt, runDirectory }: AgentSession): Prom
   child.stdin.write(prompt);
   child.stdin.end();
   const [stdoutChunks, stderrChunks, exitCode] = await Promise.all([
-    capture(child.stdout, printCodexProgress),
+    capture(child.stdout, createCodexProgressPrinter()),
     capture(child.stderr),
     child.exited,
   ]);
