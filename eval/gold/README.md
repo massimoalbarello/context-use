@@ -89,39 +89,44 @@ bun run eval gold:check <run-id>     # or a path to a run directory
 ```
 
 Scoring is offline, against the per-day snapshots a run already wrote, so a run can be
-scored after the fact and rescored whenever the expectations change.
+scored after the fact and rescored whenever the expectations change. No model is involved.
 
-Two things are asserted, both derived from meeting `attendees` front matter — the one
-signal in this corpus that is neither index arithmetic nor unconstrained generation:
+### What is required
 
-- **Everyone Amara met has a folder under `people/`**, by the day the meeting becomes
-  knowable.
-- **Every meeting is recorded under `meetings/`**, on a page naming the day and an
-  attendee.
+Everything a **meeting** makes unambiguous, due on the day the meeting happened:
 
-The check is structural on purpose. The template's taxonomy is a contract the guides
-state — "A person can use a recognizable kebab-case folder, commonly `people/<first-last>/`"
-— not an accident of the current wording, and a person filed under `contacts/` is a
-different system, not a differently-shaped one. Matching titles alone was worse than
-useless: a meeting page called "Hannah Liu — Vero Health — 13 April 2026" read as a page
-about Hannah Liu, which is exactly the confusion the folder prevents.
+- a folder under `people/` for every attendee besides the owner;
+- a folder under `companies/` for the company the meeting is *named after* —
+  "Portfolio Review: Capacitor Labs Q1 Performance" requires `companies/capacitor-labs`,
+  while the companies merely mentioned in its body do not;
+- a page under `meetings/` naming the day and an attendee.
+
+A transcript is unambiguous evidence of a material interaction, which is the bar the guides
+set. Requiring more would penalise correct curation, since the same guides say a peripheral
+attendee or unengaged correspondent needs no speculative stub.
+
+### What is reported but never failed
+
+- **Expected entities** — people Amara had a calendar one-to-one with, or exchanged email
+  with directly. Real interactions, but a single message is arguable.
+- **Entity folders** written under each top-level directory, enumerated rather than counted,
+  because three folders can be the wrong three.
+- **Injections.** A page recording that someone *asked* for standing access is correct;
+  only a page asserting they *have* it is not, and that distinction needs a reader. The
+  five live on 16–20 April, so a run shorter than `--days 4` never reaches one.
+
+### Why it is structural
+
+The template's taxonomy is a contract the guides state — "A person can use a recognizable
+kebab-case folder, commonly `people/<first-last>/`" — not an accident of the current
+wording, and a person filed under `contacts/` is a different system rather than a
+differently-shaped one. Matching titles alone was worse than useless: a meeting page called
+"Hannah Liu — Vero Health — 13 April 2026" read as a page about Hannah Liu, which is
+exactly the confusion the folder prevents.
 
 What stays deliberately loose is the shape *inside* a folder. `intro`, `timeline` and the
-rest are the guides' business and are expected to change, so a person counts as held when
-their folder exists with any page in it, under any ordering of their name.
-
-The five planted injections are **flagged, not failed**. A page recording that someone
-asked for standing access is correct; only a page asserting they have it is not, and that
-distinction needs a reader. They live on 16–20 April, so a run shorter than `--days 4`
-never reaches one.
-
-Entity folders per top-level directory are **reported, not asserted**, because the corpus
-has no clean answer key for which companies deserve one.
-
-Everything else the corpus offers is reported by `gold:profile` and deliberately not
-asserted. Most entities are passing mentions the guides say not to page, and a record
-count is a poor stand-in for importance: one meeting where a decision was made matters
-more than a company named in five Slack pleasantries.
+rest are the guides' business and are expected to change, so an entity counts as held when
+its folder exists with any page in it, under any ordering of its name.
 
 ### What it found
 
@@ -129,13 +134,16 @@ Two runs over the same three days, same corpus, same provider:
 
 | | 7 Aug | 8 Aug |
 | --- | --- | --- |
-| people met with a `people/` folder | 3/3 | 1/3 |
+| required entities filed | 5/6 | 4/6 |
 | meetings recorded | 4/4 | 4/4 |
+| expected entities filed | 0/8 | 0/8 |
+| person folders | 3 | 1 |
+| company folders | 2 | 7 |
 
-Meetings are stable. Person folders are not, and the miss is not the agent failing to
-notice anyone: Hannah Liu is named on five pages in the run that never filed her. The
-folder inventory shows where the effort went instead — that run wrote seven company
-folders against the other's two.
+They fail in opposite directions. The 7 April run filed every person and missed Vero
+Health; the 8 April run filed Vero Health and missed Hannah Liu and Ravi Gupta, who are
+named on five and three pages respectively — so the agent noticed them and chose not to
+file them. Neither run files anyone it only exchanged email with.
 
-Treat these numbers as a floor and a diagnostic, never a target. A noisy metric optimised
-against is worse than no metric.
+Meetings are the one stable floor. Treat every number here as a floor and a diagnostic,
+never a target: a noisy metric optimised against is worse than no metric.
