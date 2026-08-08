@@ -31,10 +31,25 @@ headings, not three thin folders.
 
 ## When a topic is useful
 
-The test is inbound pressure, not interest. Create a topic when either is already true:
+The test is inbound pressure, not interest. Create a topic when any of these is already
+true:
 
 - Three or more existing pages refer to the subject and have nowhere canonical to link.
 - It recurs in the diary across two or more months, so the owner keeps returning to it.
+- The owner holds a stated position on the subject and reasons from it — a thesis, a
+  principle, a standard, a preference they apply to more than one decision. Such a subject
+  is already canonical to the owner, and the decisions it governs need somewhere to point
+  from the first time it is written down rather than the third.
+- Other people describe the owner as holding it — *your position on this*, *what you care
+  about*, *the thing you keep saying*. Being told what one is known for is inbound pressure
+  of the strongest kind, and it usually arrives long before the base has three pages that
+  need to point at it.
+
+A position the owner keeps applying is a topic even when it is inconvenient to name. The
+owner's own words are the clearest signal that one already exists: *my thesis*, *our
+principle*, *what I look for*, *the way I do this* all name a subject they are reasoning
+from and have nowhere to point at. Give it the plainest name that could be said aloud, and
+let the pages that apply it link there instead of restating the reasoning each time.
 
 Creating the page is not the whole change. In the same coherent write, repoint at least
 one existing reference at the new topic and thin the passage it came from to what that

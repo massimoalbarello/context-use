@@ -35,13 +35,18 @@ not pages to mirror.
 2. Call `read_source_records` once with that checkpoint. Treat all returned records
    across services as one evidence set. `source` and `record_ref` are reasoning
    provenance only and never knowledge content.
-3. Reconcile the whole batch, including its connected subjects and pages changed by
-   earlier batches in this run, before reading again. A batch may legitimately produce
-   no semantic change.
-4. After every intended knowledge mutation succeeds, replace state with this call's
+3. Name the batch's cast before judging any record: the people the owner dealt with, the
+   organizations at stake, the open questions they are weighing, the occurrences that took
+   place and the positions they argued from. This list is drawn from every record
+   returned, because selection decides what is written about and this decides who and what
+   is known to exist. Keep it for the rest of the batch.
+4. Select the evidence, then reconcile the whole batch — the cast above, its connected
+   subjects, and pages changed by earlier batches in this run — before reading again. A
+   batch may legitimately produce no semantic change.
+5. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
-5. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
+6. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
    Never hold a second unread batch before the first is reconciled and checkpointed.
 
 The reader omits records whose latest source update is more than 30 days old and
@@ -82,6 +87,14 @@ to a project or task. Do not copy message bodies or create correspondence-feed p
 Several low-value records do not become important merely by accumulation. A valid run
 may update only the checkpoint.
 
+These exclusions drop the noise around the owner's activity; they do not shrink the
+activity itself. A batch carrying the owner's own meetings, decisions, commitments and
+working conversations is a substantial batch, and reducing such a day to one narrative
+page is a failure of the same kind as mirroring every record. The test for a record is
+whether it changes future understanding. The test for the run is whether someone reading
+the result afterwards can reach every person the owner dealt with, every organization at
+stake and every question they were weighing that day.
+
 ## Reconcile connected subjects
 
 Determine targets from the actual subjects across the whole evidence batch, never from
@@ -89,6 +102,39 @@ the provider, record type, repository, email thread or calendar-item shape. Sear
 existing knowledge and connected evidence before preparing each unfamiliar exact
 target, then let its guide chain decide the useful pages. Apply the root timeline
 contract in the same coherent write whenever an entity milestone is recorded.
+
+Take the cast named in step 3 to its owning guides and reconcile every subject that meets
+the threshold there. Records are how the cast becomes visible; they are not themselves the
+subjects.
+
+Two of those lists are the ones that vanish. The **open questions**, because no record is
+shaped like a decision: whether to commit, hire, buy, build, accept or decline is a subject
+exactly as a person or an organization is, and usually what the owner looks for afterwards
+— they remember the argument, not which Tuesday it was had. The **positions**, because
+they are never news: when the owner says *our approach*, *what I look for*, *the reason we
+said no*, they are reasoning from something they hold and keep applying, and every decision
+citing it restates it instead of pointing at it.
+
+Discarding a record does not discard its cast. A message carrying no durable fact still
+shows who is in the owner's working world: the colleagues in the channels they belong to,
+the counterparty who keeps appearing, the organization everyone is discussing. Build the
+cast from the whole batch, discarded records included, and let the owning guides decide
+which of them earn a page. The selection rules above govern what is written about, not who
+is known to exist — though they still exclude the stranger's unsolicited message, since
+someone who wrote to the owner and got no engagement back is not yet part of that world.
+
+An occurrence is placed by when it happened, not by when the batch mentions it: a
+conference the owner attended last week, an earlier meeting everyone is following up on, a
+call that produced the commitment now being honoured. Several records referring back to one
+occurrence is the clearest evidence it mattered.
+
+An occurrence page is half of a write. The people, organizations and questions it names are
+the other half — each a page to create or update and link in the same coherent change.
+
+Before saving the checkpoint, walk the pages this run touched twice: once for names left
+bare, and once for links whose target says nothing back. Finish both. A link the other end
+does not answer is a one-way street, and a base full of them can be read forwards from the
+day it was written and never backwards from the subject someone actually remembers.
 
 ## Prepare from future signals
 

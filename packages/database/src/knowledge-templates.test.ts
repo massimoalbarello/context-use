@@ -830,7 +830,7 @@ describe("knowledge templates", () => {
     expect(guides.companies).not.toContain("as soon as `intro` starts having sections");
     expect(normalize(guides.meetings)).toContain("A confirmed future meeting may begin with `prep` alone");
     expect(normalize(guides.meetings)).toContain("a lifecycle exception to the root `intro` entry-point convention");
-    expect(normalize(guides.meetings)).toContain("There is no need to create an entity for every attendee");
+    expect(normalize(guides.meetings)).toContain("a clearly identified attendee meets the");
     expect(normalize(guides.people)).toContain("what someone cares about can stay in `intro`");
     expect(guides.people).not.toContain("`interests`");
     expect(normalize(guides.people)).toContain("meaningful change in what the person is doing");

@@ -31,18 +31,44 @@ to retrieve or maintain independently, as described by the root guide.
 Reuse an established aspect name when it has the same meaning. Add a new aspect only
 when its subject is independently useful.
 
+Name and link the people the owner actually deals with at the organization, in the
+sentence that says what each of them does there. This is where someone looks to remember
+who to talk to, and it is the edge that connects an organization to the rest of the base
+instead of leaving it hanging off whichever occurrence created it. Only those people: the
+page is not a staff directory, and someone the owner has never dealt with belongs on the
+account that mentioned them.
+
 ## When a company is useful
 
-A company folder is useful when the organization has material relevance to a
-conversation, collaboration, transaction, decision or sustained line of research.
-An incidental affiliation or passing name can remain a link or plain text under the
-subject that made it relevant.
+Engagement under the [[agents#place-and-identify|root threshold]] means the organization
+is something the owner is actually dealing with. Any one of these is enough, the first
+time it happens:
+
+- the owner employs, works for, or works inside it;
+- it was the subject of a meeting, call or working conversation the owner took part in;
+- the owner is evaluating, negotiating with, buying from, selling to, investing in or
+  partnering with it, or has decided not to;
+- the owner corresponds with its people about its business;
+- it is the affiliation of someone the owner engages with, and that affiliation matters to
+  why they engage.
+
+One such engagement earns the folder, before the relationship has any history to record.
+An organization named only in passing inside someone else's account, with no dealing by
+the owner, stays plain text under the page that mentioned it.
 
 Create a canonical company only when its identity is clear enough to avoid a likely
 duplicate. Its canonical name plus what it does may be enough; an official domain,
 relevant people, products, location or legal name can supply further corroboration when
 needed. A sender domain, signature, logo or abbreviated name is evidence, but not proof
 on its own when several organizations remain plausible.
+
+Organizations sharing a word are not the same organization. A common first word, a shared
+family of names, or one being described as similar to another says nothing about identity;
+what does is a shared domain, shared people, a stated relationship or a source's own
+stable reference. Where several similarly named organizations appear, give each its own
+page and say on each what distinguishes it, so the next mention can be placed correctly.
+A single blended page is much harder to unpick later than two pages that turn out to be
+one.
 
 ## Example pages
 

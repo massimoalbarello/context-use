@@ -9,6 +9,10 @@ Use `about/intro` as the concise, instance-owned overview of the owner and the m
 useful routes into their knowledge. Its content is not managed by the default template,
 and this guide does not prescribe sections for it. Reconcile it as the instance evolves.
 
+Create it on the first write that establishes who the owner is and what they spend their
+time on, and reconcile it as that changes. It is the route into everything else, and a
+base whose subjects are all reachable except the person they are about has no front door.
+
 The default template supplies three useful subdirectories:
 
 - [[about/diary/agents|Diary]] — chronological lived context and current activity.

@@ -38,14 +38,21 @@ schema beyond what the linked guide says.
 
 ## Keep only what matters
 
-Less is more. Keep the smallest account that preserves what is useful to the owner:
-the facts, dates, evidence, rationale, uncertainty and connections needed to understand
-the subject. The context in which the owner interacted with a subject is the best signal
-of what matters; a canonical page is not an encyclopedia entry or a container for every
-available fact.
+Keep the smallest account that preserves what is useful to the owner: the facts, dates,
+evidence, rationale, uncertainty and connections needed to understand the subject. The
+context in which the owner interacted with a subject is the best signal of what matters;
+a canonical page is not an encyclopedia entry or a container for every available fact.
+
+Brevity governs how much is written about a subject, never how many of the owner's
+subjects are represented. Each page stays short; the base still covers everyone the owner
+dealt with and everything they decided. A base that answers "what happened" but not "to
+whom, at which company, about which question" is not concise, it is missing its subjects.
 
 - Prefer the fewest coherent pages, each no larger than useful. Split a page only when
   its parts have distinct subjects or are independently worth retrieving.
+- Prefer several small linked pages over one page that absorbs its neighbours' subjects.
+  A paragraph about a person, company or question inside someone else's page is a page
+  that has not been written yet.
 - Give every page a one-sentence summary; directory indexes and search use it.
 - Link to canonical context instead of restating it. Say a thing once, where it belongs.
 - Connect what happened, who or what was involved, what preceded it and what followed.
@@ -71,11 +78,32 @@ account and include only material supported by the interaction. If identity rema
 genuinely ambiguous, do not guess or create duplicates: keep the reference in plain text
 or ask for the detail that distinguishes the candidates.
 
+The owner's own engagement is the general threshold for a canonical page. Someone they
+met, wrote to or heard from; an organization they evaluated, decided about, worked with
+or transacted with; a question they took a position on — each is part of what the owner
+did, and earns its page the first time it happens rather than after it repeats. A name
+that appears only inside someone else's account, with no engagement by the owner, stays
+plain text under the page that mentioned it. Each directory guide says what engagement
+means in its subtree and may narrow the threshold for its own kind of subject; none of
+them replaces it with a requirement to wait for repetition.
+
+Identity is decided by evidence, not by resemblance. Two people who share a given name,
+or two organizations that share a first word, are two entities until something in the
+evidence actually joins them; merging them silently destroys knowledge that separate
+pages would have kept. When a source marks its own references with a stable identifier or
+path, treat matching markers as the same entity and differing markers as different ones,
+whatever the visible labels do.
+
 Anything with durable identity is represented by a folder, entered through `intro`;
 other pages in that folder are views of the same entity. The owning directory guide
 defines the useful views and the evidence required to create the entity. If a flat page
 later needs a second independently useful view, promote it to a folder and repair its
 inbound links in the same coherent change.
+
+`intro` is the entry point in fact and not only in name: every other page in the folder is
+reachable from it, through the sentence that says what that view holds. A `timeline`, lens
+or fact page nothing links to is unreachable from the entity it belongs to, and a reader
+arriving at the entity will never learn it exists.
 
 Repeated attention across saved works, research and the owner's own pages can be
 evidence that an entity matters, even without direct interaction. One passing mention
@@ -156,6 +184,52 @@ explains the relationship, never in a `Connections`, `Related` or `See also` lis
 end. Such a list asserts that two subjects are connected without saying how, and generated
 directory indexes already provide navigation. If a relationship is worth recording, it is
 worth a sentence saying what it is.
+
+### Name a subject once, as a link
+
+Every page names other subjects, and each of those names is either a link or a gap. The
+first mention of a person, organization, place, work, topic, project, task or occurrence
+that has a canonical page is a wikilink to it, in the sentence saying what it was to this
+subject; later mentions on the same page stay plain so the prose reads. A subject counts
+as mentioned however it is actually written — full name, given name, surname, initials, a
+nickname, or a bare `the company`, `the conference`, `the project` — and the first of
+those forms carries the link. Waiting for the canonical spelling is how a page names
+someone four times without ever linking them.
+
+Link the page that carries the account, not the folder around it: an entity is entered
+through `intro`, so `[[area/…/intro|Name]]` lands a reader on what is known, while
+`[[area/…|Label]]` names a collection and belongs only where the collection is itself the
+subject. Both forms resolve, which is what makes mixing them easy and costly.
+
+If a page names a subject that earns a canonical page under its own guide but does not
+have one yet, the write is unfinished: create it in the same coherent change and link it.
+Conversely, a page that links nothing is not yet placed — whatever the subject is to the
+owner is itself a subject here, and the sentence saying so is where the link goes. Only
+genuine doubt about identity justifies a plain name; doubt about whether a subject matters
+enough is answered by the owning guide's threshold, not by omitting the link.
+
+Never write a link to a page that does not exist. A wikilink is a claim that the target is
+there, and one aimed at a path never created is a dead end for every reader who follows it
+and a page that no later write knows is missing. The two halves are one decision: if the
+subject earns a page, create it in this write and then link it; if it does not, name it in
+plain text. Writing the link first and leaving the page for later is how both end up
+undone.
+
+Connection is mutual, and mutual connection is what makes this base crawlable: someone
+arriving at any subject — a reader, or an agent following links for them — should reach
+everything related to it by walking outward, without going back to search. So both ends
+record a relationship. An occurrence names its participants and each participant's page
+says what that occurrence was to them; an organization names the people the owner deals
+with there and each of their pages names the organization; a subject that depends on,
+displaced or competes with another says so from both sides. Watch for the shape where
+every page links one or two hubs and nothing links sideways: it looks well connected and
+is not, because every route between two related subjects runs through the hub. The links
+worth adding are the ones between peers.
+
+None of this is a reason to write fewer pages. It raises what a page must do, never how
+many of the owner's subjects are represented: a subject that earns a page under its guide
+gets one, and gets the sentence that connects it. Leaving a subject out because connecting
+it looked like work is the failure these rules exist to prevent.
 
 ## Write, then report
 
