@@ -25,7 +25,7 @@ describe("the ideal entity set", () => {
     const people = expectations.entities.filter((entity) => entity.kind === "person");
     const companies = expectations.entities.filter((entity) => entity.kind === "company");
     expect(people).toHaveLength(24);
-    expect(companies).toHaveLength(139);
+    expect(companies).toHaveLength(134);
     for (const entity of expectations.entities) {
       expect(entity.evidence.length).toBeGreaterThan(0);
       expect(entity.knowableFrom >= "2026-04-13").toBe(true);
@@ -53,6 +53,12 @@ describe("the ideal entity set", () => {
     // Spelling variants are one company.
     expect(names).not.toContain("Synth Bio");
     expect(names).toContain("SynthBio");
+    // A bare name the text resolves to a longer one is an alias, not its own company.
+    for (const bare of ["NovaTech", "Tideline", "Cognify", "GridScale", "Nile", "Vertex"]) {
+      expect(names).not.toContain(bare);
+    }
+    const novatech = expectations.entities.find((entity) => entity.name === "NovaTech Labs");
+    expect(novatech?.aliases).toContain("NovaTech");
     // The owner is the knowledge base's subject, not an entry in it.
     expect(names).not.toContain("Amara Okafor");
   });

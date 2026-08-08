@@ -91,9 +91,14 @@ bun run eval gold:check <run-id>     # or a path to a run directory
 Scoring is offline, against the per-day snapshots a run already wrote, so a run can be
 scored after the fact and rescored whenever the expectations change. No model is involved.
 
+**A run of any length scores correctly.** Each entity carries the day the corpus first makes
+it knowable, and each day is scored only against what is due by then, so `--days 3` is
+scored against the 107 entities knowable by 15 April rather than all 158. The set grows
+39, 76, 107, 132, 154, 155, 157, 158 across the eight days.
+
 ### What is required
 
-Every entity in [entities.json](entities.json) — **24 people and 139 companies** — due on the
+Every entity in [entities.json](entities.json) — **24 people and 134 companies** — due on the
 day the corpus first makes it knowable, plus a page under `meetings/` for each of the eight
 meetings.
 
@@ -110,10 +115,19 @@ the slug `user/priya-sharma` is Priya Sharma and not Priya Patel, and both are i
 An earlier rule-based version forbade seven people for being "bare first names" who are in
 fact perfectly identifiable in context.
 
+A short name the text resolves to a longer one is an **alias, not its own entity** — which
+matches how upstream models identity too, listing `["J", "J. Park", "Jordan"]` as aliases of
+one person and scoring "resolve aliases, handles, emails to one person" as a capability.
+`Cognify` and `Cognify Labs` appear in the same wire-instruction thread; `Tideline` and
+`Tideline Robotics` are the same term sheet two days apart; `NovaTech`, `GridScale`, `Nile`
+and `Vertex` likewise fold into their fuller names. Spelling variants are one company:
+`Synth Bio` and `SynthBio` are a single entry.
+
 Where the text genuinely does not decide, the name is left out rather than guessed. Bare
 "Helios" could be Helios Robotics or Helios Climate Systems and nothing settles it, so only
-the two full names are required. Spelling variants are one company: `Synth Bio` and
-`SynthBio` are a single entry.
+the two full names are required. Names that merely rhyme stay apart: Meridian Health, Labs,
+Robotics and Ventures are four companies, and `Beacon` the firm at `beacon.vc` is not
+`Beacon Health` the portfolio company.
 
 Only people and companies are listed. Places, objects, events and topics the reading turned
 up are not first-class — they are attributes of, or references to, a person or a company, so

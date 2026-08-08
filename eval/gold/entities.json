@@ -318,10 +318,12 @@
   },
   {
     "kind": "company",
-    "name": "Cognify",
+    "name": "Cognify Labs",
     "aliases": [
+      "Cognify",
       "company/cognify",
-      "companies/cognify"
+      "companies/cognify",
+      "companies/cognify-labs"
     ],
     "knowableFrom": "2026-04-14",
     "evidence": [
@@ -332,17 +334,7 @@
       {
         "record": "slack/sl-0100",
         "quote": "just finished reviewing the [Cognify](companies/cognify) deck and I think we need to discuss their burn rate before the Thursday sync. Numbers look aggressive even for AI infrastructure."
-      }
-    ]
-  },
-  {
-    "kind": "company",
-    "name": "Cognify Labs",
-    "aliases": [
-      "companies/cognify-labs"
-    ],
-    "knowableFrom": "2026-04-16",
-    "evidence": [
+      },
       {
         "record": "slack/sl-0214",
         "quote": "Confirming the updated wire instructions for [Cognify Labs](companies/cognify-labs) have been verified with their CFO."
@@ -672,9 +664,11 @@
   },
   {
     "kind": "company",
-    "name": "GridScale",
+    "name": "GridScale AI",
     "aliases": [
-      "companies/gridscale"
+      "GridScale",
+      "companies/gridscale",
+      "companies/gridscale-ai"
     ],
     "knowableFrom": "2026-04-15",
     "evidence": [
@@ -685,24 +679,10 @@
       {
         "record": "emails/em-0014",
         "quote": "They're raising a seed round and the founding team came out of Google DeepMind's energy optimization group."
-      }
-    ]
-  },
-  {
-    "kind": "company",
-    "name": "GridScale AI",
-    "aliases": [
-      "companies/gridscale-ai"
-    ],
-    "knowableFrom": "2026-04-17",
-    "evidence": [
-      {
-        "record": "em-0025",
-        "quote": "Thanks for the quick reply on the [GridScale AI](companies/gridscale-ai) round"
       },
       {
         "record": "em-0025",
-        "quote": "I'm still leaning toward leading the Series A if we can get comfortable on that front"
+        "quote": "Thanks for the quick reply on the [GridScale AI](companies/gridscale-ai) round"
       }
     ]
   },
@@ -1102,26 +1082,18 @@
   },
   {
     "kind": "company",
-    "name": "Nile",
-    "aliases": [
-      "companies/nile"
-    ],
-    "knowableFrom": "2026-04-17",
-    "evidence": [
-      {
-        "record": "sl-0289",
-        "quote": "Pulled together the updated market comp analysis for [Nile](companies/nile) — their expansion metrics are actually stronger than I initially thought."
-      }
-    ]
-  },
-  {
-    "kind": "company",
     "name": "Nile Analytics",
     "aliases": [
+      "Nile",
+      "companies/nile",
       "companies/nile-analytics"
     ],
     "knowableFrom": "2026-04-16",
     "evidence": [
+      {
+        "record": "sl-0289",
+        "quote": "Pulled together the updated market comp analysis for [Nile](companies/nile) — their expansion metrics are actually stronger than I initially thought."
+      },
       {
         "record": "slack/sl-0229",
         "quote": "Following up on the [Nile Analytics](companies/nile-analytics) deep dive — their customer retention numbers are solid but I'm seeing some red flags in the sales cycle length."
@@ -1193,26 +1165,18 @@
   },
   {
     "kind": "company",
-    "name": "NovaTech",
+    "name": "NovaTech Labs",
     "aliases": [
-      "companies/novatech"
+      "NovaTech",
+      "companies/novatech",
+      "companies/novatech-labs"
     ],
     "knowableFrom": "2026-04-17",
     "evidence": [
       {
         "record": "sl-0245",
         "quote": "Just flagged [NovaTech](companies/novatech) for priority review—their Series A metrics are solid."
-      }
-    ]
-  },
-  {
-    "kind": "company",
-    "name": "NovaTech Labs",
-    "aliases": [
-      "companies/novatech-labs"
-    ],
-    "knowableFrom": "2026-04-18",
-    "evidence": [
+      },
       {
         "record": "meeting/mtg-0006",
         "quote": "Kofi flagged some concerns about [NovaTech Labs](companies/novatech-labs). Burn rate has increased significantly, and runway is now around 8 months."
@@ -1894,26 +1858,18 @@
   },
   {
     "kind": "company",
-    "name": "Tideline",
-    "aliases": [
-      "companies/tideline"
-    ],
-    "knowableFrom": "2026-04-17",
-    "evidence": [
-      {
-        "record": "sl-0284",
-        "quote": "Just spoke with [Marcus Chen](people/marcus-chen) about the [Tideline](companies/tideline) term sheet. He's pushing back on the pro-rata rights"
-      }
-    ]
-  },
-  {
-    "kind": "company",
     "name": "Tideline Robotics",
     "aliases": [
+      "Tideline",
+      "companies/tideline",
       "company/tideline-robotics"
     ],
     "knowableFrom": "2026-04-14",
     "evidence": [
+      {
+        "record": "sl-0284",
+        "quote": "Just spoke with [Marcus Chen](people/marcus-chen) about the [Tideline](companies/tideline) term sheet. He's pushing back on the pro-rata rights"
+      },
       {
         "record": "slack/sl-0072",
         "quote": "I've reviewed the [Tideline Robotics](company/tideline-robotics) materials and I'm leaning toward passing. Unit economics don't hold up at scale"

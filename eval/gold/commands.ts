@@ -152,7 +152,7 @@ export function scoreRunCommand(runId?: string): void {
       && meetings === score.meetings.length;
     console.log(`\n${ok ? style.green("✓") : style.red("✗")} ${style.bold(day)}  ${
       style.dim(`${score.pageCount} pages`)}`
-      + `  ·  required ${held(score.entities)}/${score.entities.length}`
+      + `  ·  entities ${held(score.entities)}/${score.entities.length}`
       + `  ·  meetings ${meetings}/${score.meetings.length}`
       );
 
