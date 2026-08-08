@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { stackUrl } from "../scripts/local-stack.ts";
+import { style, terminalWidth, truncate, wrapList } from "./terminal.ts";
 
 /** Agent session plumbing shared by the scenario eval and the corpus distillation run. */
 
@@ -50,11 +51,14 @@ export async function capture(
 }
 
 const WRITE_TOOL_LABELS: Record<string, string> = {
-  create_directory: "Created directory",
-  create_page: "Created page",
-  update_page: "Updated page",
-  archive_page: "Archived page",
+  create_directory: "created dir",
+  create_page: "created page",
+  update_page: "updated page",
+  archive_page: "archived page",
 };
+
+/** Widest write label, so every path in the trace starts at the same column. */
+const LABEL_WIDTH = Math.max(...Object.values(WRITE_TOOL_LABELS).map((label) => label.length));
 
 /** Reads are shown so the run is legible, but quietly: they are how the agent decides. */
 const READ_TOOL_LABELS: Record<string, string> = {
@@ -78,10 +82,17 @@ type ToolCallItem = {
   result?: { content?: { type?: string; text?: string }[] };
 };
 
-/** The first line of a failed call's result, which carries the validation message. */
-function failureReason(item: ToolCallItem): string {
+/**
+ * The useful part of a failed call's result. MCP wraps the reason in two layers of
+ * boilerplate that repeat the tool name already printed on the same line.
+ */
+function failureReason(item: ToolCallItem, budget: number): string {
   const text = item.result?.content?.find((entry) => entry.text)?.text ?? "";
-  return text.split("\n")[0]?.slice(0, 160) ?? "no reason reported";
+  const reason = (text.split("\n")[0] ?? "")
+    .replace(/^MCP error -?\d+:\s*/, "")
+    .replace(/^Input validation error:\s*/, "")
+    .replace(/^Invalid arguments for tool \w+:\s*/, "");
+  return truncate(reason || "no reason reported", budget);
 }
 
 
@@ -92,23 +103,6 @@ function callSubject(item: ToolCallItem): string {
     if (typeof value === "string" && value) return value;
   }
   return "";
-}
-
-/** Wraps a long list of record ids so a busy day stays readable in a terminal. */
-function wrapRefs(refs: string[], indent: string, width = 92): string[] {
-  const lines: string[] = [];
-  let current = "";
-  for (const ref of refs) {
-    const candidate = current ? `${current}, ${ref}` : ref;
-    if (current && indent.length + candidate.length > width) {
-      lines.push(indent + current);
-      current = ref;
-    } else {
-      current = candidate;
-    }
-  }
-  if (current) lines.push(indent + current);
-  return lines;
 }
 
 /**
@@ -133,10 +127,19 @@ function batchLines(item: ToolCallItem): string[] {
     const source = separator === -1 ? "other" : ref.slice(0, separator);
     grouped.set(source, [...(grouped.get(source) ?? []), ref.slice(separator + 1)]);
   }
-  const lines = [`  ← ${records.length} records served${parsed.has_more ? ", more in this day" : ""}`];
+  const width = Math.max(...[...grouped.keys()].map((source) => source.length));
+  // Built by concatenation rather than nesting: one style's reset ends the other early.
+  const lines = [
+    style.cyan("  ← ") + style.bold(String(records.length)) + style.cyan(" records served")
+      + (parsed.has_more ? style.dim(" · more in this day") : ""),
+  ];
   for (const [source, refs] of [...grouped].sort(([left], [right]) => left.localeCompare(right))) {
-    const [first, ...rest] = wrapRefs(refs, "".padEnd(15));
-    lines.push(`      ${source.padEnd(8)} ${(first ?? "").trimStart()}`, ...rest);
+    const indent = 8 + width + 2;
+    const [first, ...rest] = wrapList(refs, indent);
+    lines.push(
+      `      ${style.cyan(source.padEnd(width))}  ${style.dim((first ?? "").trimStart())}`,
+      ...rest.map((line) => style.dim(line)),
+    );
   }
   return lines;
 }
@@ -169,11 +172,11 @@ export function createCodexProgressPrinter(): (line: string) => void {
 
     if (event.type === "item.started" && item?.type === "mcp_tool_call"
       && item.tool === "read_source_records") {
-      console.log("  ← reading source records…");
+      console.log(`\n${style.dim("  ← reading source records…")}`);
       return;
     }
     if (event.type?.includes("failed")) {
-      console.error(`  Agent error: ${event.error?.message ?? line}`);
+      console.error(style.red(`  Agent error: ${event.error?.message ?? line}`));
       return;
     }
     if (event.type !== "item.completed" || !item) return;
@@ -182,9 +185,10 @@ export function createCodexProgressPrinter(): (line: string) => void {
 
     if (item.type === "agent_message" && item.text) {
       // The agent's own account of what it kept and why, which is the closest thing to a
-      // result for the batch. Indented so it reads as narration around the tool calls.
+      // result for the batch. Set apart so it reads as narration around the tool calls.
+      console.log("");
       for (const paragraph of item.text.trim().split("\n")) {
-        if (paragraph.trim()) console.log(`  » ${paragraph.trim()}`);
+        if (paragraph.trim()) console.log(`  ${style.yellow("»")} ${paragraph.trim()}`);
       }
       return;
     }
@@ -193,15 +197,19 @@ export function createCodexProgressPrinter(): (line: string) => void {
     // A failed call is followed by a retry, so reporting it as a write would count the
     // same page twice and hide that the agent had to correct itself.
     if (item.status === "failed") {
-      console.log(`  ✗ ${item.tool} ${callSubject(item)} · ${failureReason(item)}`);
+      const subject = callSubject(item) || item.tool;
+      const budget = terminalWidth() - LABEL_WIDTH - subject.length - 12;
+      console.log(`  ${style.red("✗")} ${style.red((WRITE_TOOL_LABELS[item.tool] ?? item.tool).padEnd(LABEL_WIDTH))}  ${
+        subject}  ${style.red(failureReason(item, Math.max(20, budget)))}`);
       return;
     }
     if (item.tool === "read_source_records") {
       for (const batchLine of batchLines(item)) console.log(batchLine);
     } else if (WRITE_TOOL_LABELS[item.tool]) {
-      console.log(`  ✓ ${WRITE_TOOL_LABELS[item.tool]} · ${callSubject(item) || "(unknown path)"}`);
+      console.log(`  ${style.green("✓")} ${style.green(WRITE_TOOL_LABELS[item.tool]!.padEnd(LABEL_WIDTH))}  ${
+        callSubject(item) || "(unknown path)"}`);
     } else if (READ_TOOL_LABELS[item.tool]) {
-      console.log(`    · ${READ_TOOL_LABELS[item.tool]} ${callSubject(item)}`.trimEnd());
+      console.log(style.dim(`      ${READ_TOOL_LABELS[item.tool]!.padEnd(7)} ${callSubject(item)}`.trimEnd()));
     }
   };
 }

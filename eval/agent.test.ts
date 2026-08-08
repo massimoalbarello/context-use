@@ -43,7 +43,7 @@ describe("codex progress trace", () => {
         }],
       },
     })]);
-    expect(lines[0]).toBe("  ← 3 records served, more in this day");
+    expect(lines[0]).toBe("  ← 3 records served · more in this day");
     expect(lines[1]).toContain("meeting");
     expect(lines[1]).toContain("mtg-0000");
     expect(lines[2]).toContain("sl-0001, sl-0002");
@@ -55,18 +55,21 @@ describe("codex progress trace", () => {
       result: { content: [{ type: "text", text: "MCP error -32602: missing commit_message" }] },
     })]);
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toStartWith("  ✗ create_page people/x/intro");
+    expect(lines[0]).toStartWith("  ✗ ");
+    expect(lines[0]).toContain("people/x/intro");
+    // The MCP boilerplate repeating the tool name is stripped; the reason survives.
     expect(lines[0]).toContain("missing commit_message");
+    expect(lines[0]).not.toContain("Invalid arguments for tool");
   });
 
   test("prints a repeated item once within a session but never across sessions", () => {
     const call = completedCall("item_1", "create_page", { path: "people/x/intro" });
     // Codex can emit the same completed item twice, so one session prints it once.
-    expect(trace([call, call])).toEqual(["  ✓ Created page · people/x/intro"]);
+    expect(trace([call, call])).toEqual(["  ✓ created page   people/x/intro"]);
     // A second day reuses `item_1` for different work, and must not be silenced.
     const printer = createCodexProgressPrinter();
     expect(printer).not.toBe(createCodexProgressPrinter());
-    expect(trace([call])).toEqual(["  ✓ Created page · people/x/intro"]);
+    expect(trace([call])).toEqual(["  ✓ created page   people/x/intro"]);
   });
 
   test("shows the agent's own account of the batch", () => {
@@ -74,7 +77,7 @@ describe("codex progress trace", () => {
       type: "item.completed",
       item: { id: "item_2", type: "agent_message", text: "Kept the meeting.\n\nDropped the chatter." },
     }]);
-    expect(lines).toEqual(["  » Kept the meeting.", "  » Dropped the chatter."]);
+    expect(lines).toEqual(["", "  » Kept the meeting.", "  » Dropped the chatter."]);
   });
 
   test("names the page a knowledge-write preparation targets", () => {
@@ -82,7 +85,7 @@ describe("codex progress trace", () => {
     const lines = trace([completedCall("item_3", "prepare_knowledge_write", {
       target_path: "companies/acme/intro",
     })]);
-    expect(lines).toEqual(["    · prepare companies/acme/intro"]);
+    expect(lines).toEqual(["      prepare companies/acme/intro"]);
   });
 
   test("ignores output that is not an event", () => {
