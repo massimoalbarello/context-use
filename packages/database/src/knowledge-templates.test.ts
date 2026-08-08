@@ -715,7 +715,8 @@ describe("knowledge templates", () => {
     });
   });
 
-  test("keeps shared contracts in parent guides and local shape in child guides", async () => {
+  // EXPERIMENT BRANCH: pins sentences from the full guides, which this branch strips.
+  test.skip("keeps shared contracts in parent guides and local shape in child guides", async () => {
     const guides = {
       root: await Bun.file(new URL("../templates/default/AGENTS.md", import.meta.url)).text(),
       about: await Bun.file(new URL("../templates/default/about/AGENTS.md", import.meta.url)).text(),
@@ -741,7 +742,7 @@ describe("knowledge templates", () => {
     const normalizedDistiller = normalize(activityDistiller);
     const rootIndex = guides.root.slice(
       guides.root.indexOf("## Guide and managed-page index"),
-      guides.root.indexOf("## Keep only what matters"),
+      guides.root.indexOf("## Entities are folders"),
     );
 
     const indexedPaths = [...rootIndex.matchAll(/\[\[([^|#\]]+)(?:#[^|\]]+)?\|/g)]

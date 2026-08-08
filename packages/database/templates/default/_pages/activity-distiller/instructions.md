@@ -35,13 +35,18 @@ not pages to mirror.
 2. Call `read_source_records` once with that checkpoint. Treat all returned records
    across services as one evidence set. `source` and `record_ref` are reasoning
    provenance only and never knowledge content.
-3. Reconcile the whole batch, including its connected subjects and pages changed by
-   earlier batches in this run, before reading again. A batch may legitimately produce
-   no semantic change.
-4. After every intended knowledge mutation succeeds, replace state with this call's
+3. Name the batch's cast before judging any record: the people the owner dealt with, the
+   organizations at stake, the open questions they are weighing, the occurrences that took
+   place and the positions they argued from. Draw it from every record returned, because
+   selection decides what is written about and this decides who and what is known to
+   exist. Keep it for the rest of the batch.
+4. Select the evidence, then reconcile the whole batch — the cast above, its connected
+   subjects, and pages changed by earlier batches in this run — before reading again. A
+   batch may legitimately produce no semantic change.
+5. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
-5. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
+6. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
    Never hold a second unread batch before the first is reconciled and checkpointed.
 
 The reader omits records whose latest source update is more than 30 days old and
@@ -55,67 +60,17 @@ deletions, freshness is based on deletion time.
 Use `added` and `updated` records as current evidence; an update replaces the prior form
 of that source rather than creating another event. A `deleted` record withdraws that
 source as current evidence but does not assert the opposite or prove that a historical
-event never happened. Reconcile the affected account from remaining evidence. A pruned
-deletion with null Markdown supports no semantic change.
+event never happened. A pruned deletion with null Markdown supports no semantic change.
 
-Apply the root guide's evidence distinctions and use the date of the underlying
-activity. Without a reliable subject or activity date, do not create diary knowledge.
-
-Keep only evidence that changes future understanding: a decision and rationale,
-consequential outcome, meaningful change of direction, milestone, important commitment,
-substantive external interaction, or progress needed to explain a material state
-change. For high-volume sources, substantive owner participation, a consequential
-relationship, durable fact or decision, real commitment, or connection to an already
-important subject demonstrates value. Volume, recency and availability do not.
-
-Ignore by default:
-
-- unsolicited messages without meaningful owner engagement;
-- newsletters, receipts, automated alerts and platform notifications;
-- cold outreach, acknowledgements, routine scheduling and administrative mail; and
-- ordinary commits, routine reviews and repeated corroboration with no consequential
-  effect.
-
-An email thread matters only through the knowledge it establishes—for example, a
-substantive reply, commitment, relationship development, decision, or material advance
-to a project or task. Do not copy message bodies or create correspondence-feed pages.
-Several low-value records do not become important merely by accumulation. A valid run
-may update only the checkpoint.
-
-## Reconcile connected subjects
+Use the date of the underlying activity. Without a reliable subject or activity date, do
+not create diary knowledge.
 
 Determine targets from the actual subjects across the whole evidence batch, never from
 the provider, record type, repository, email thread or calendar-item shape. Search
-existing knowledge and connected evidence before preparing each unfamiliar exact
-target, then let its guide chain decide the useful pages. Apply the root timeline
-contract in the same coherent write whenever an entity milestone is recorded.
+existing knowledge and connected evidence before preparing each unfamiliar exact target,
+then let its guide chain decide the useful pages.
 
-## Prepare from future signals
-
-A consequential future interaction or commitment can trigger useful preparation.
-Research and reconcile relevant existing subjects without describing the future event
-as if it had happened.
-
-A confirmed substantive meeting may have a `prep` page before it has an `intro`.
-Classify calendar-shaped evidence by its actual subject under
-[[meetings/agents|Meetings]] and [[events/agents|Events]]; do not create both types
-unless each is independently useful. An upcoming event has no default prep page, so
-update only independently justified related knowledge until the event occurs.
-
-For a useful meeting prep:
-
-1. Apply the meeting guide's participant rule to the people and companies that
-   materially affect the conversation.
-2. Search earlier meetings, substantive correspondence, introductions, commitments and
-   shared projects or tasks, then read the canonical pages they point to.
-3. Research missing identity or role facts from reliable sources only as far as needed
-   for this conversation.
-4. Reconcile the prep and any other pages justified by their own guides. Surface why the
-   meeting matters, relevant history and useful questions or unknowns; do not produce a
-   research dossier.
-
-After the available research, keep unresolved identities out of the connected write and
-group their ambiguity into one concise report item for the meeting.
+Do not copy message bodies or create correspondence-feed pages.
 
 ## Maintain the diary companion
 
@@ -128,10 +83,8 @@ reruns, no-filler behavior and ownership boundaries.
 When a companion page exists, ensure the day's `log` exists. If missing, create it after
 the companion using the diary guide's title and summary conventions. Its body contains
 only the title and a `## Companion pages` section with this automation's single bullet.
-Derive its summary and bullet from the material activity; do not invent a location,
-narrative, `On my mind` or `Threads` content. In an existing log, change only this
-automation's companion bullet. Operational state, record identifiers and diagnostics
-never belong in the diary.
+In an existing log, change only this automation's companion bullet. Operational state,
+record identifiers and diagnostics never belong in the diary.
 
 ## Checkpoint and report
 
@@ -147,8 +100,7 @@ After a successfully reconciled batch, replace the state body with exactly:
 Keep the state's existing title and summary. Save the checkpoint even when the batch
 made no semantic change, then discard the batch before reading another.
 
-Success means `has_more` is false. The final saved checkpoint makes the next scheduled
-invocation start after the source lifecycle changes covered by this run. Finish with:
+Success means `has_more` is false. Finish with:
 
 - the number of batches reconciled and whether the source is caught up;
 - a concise overall summary and any unresolved ambiguity;
