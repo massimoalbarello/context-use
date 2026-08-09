@@ -39,7 +39,10 @@ true:
 - The owner holds a stated position on the subject and reasons from it — a thesis, a
   principle, a standard, a preference they apply to more than one decision. Such a subject
   is already canonical to the owner, and the decisions it governs need somewhere to point
-  from the first time it is written down rather than the third.
+  from the first time it is written down rather than the third. A position belongs here
+  however personal it is, because a thesis, principle or standard is always *about*
+  something and belongs with the subject it judges; `about/` holds the owner's own
+  circumstances, not the views they apply to the world.
 - Other people describe the owner as holding it — *your position on this*, *what you care
   about*, *the thing you keep saying*. Being told what one is known for is inbound pressure
   of the strongest kind, and it usually arrives long before the base has three pages that

@@ -34,7 +34,14 @@ that fit this instance. Add a local guide only when its subtree needs recurring 
 - Use a task for a finite pursuit, experiment or consequential decision that can resolve
   or close and whose frame remains useful beyond a simple to-do.
 - Use another durable owner page when the subject is the owner's lasting context but is
-  neither a body of work nor a finite pursuit.
+  neither a body of work nor a finite pursuit — their health, finances, education, family,
+  history, household or working conditions.
+
+A position the owner reasons from is not one of those pages. An investment thesis, a
+standard for stewarding a board, a rule about how they work: each is *about* a subject in
+the world, so it belongs on that subject's [[topics/agents|topic]] where the decisions
+citing it can point, however personal the view is. What stays here is the owner's own
+circumstances, not the judgements they apply to everything else.
 
 A task may advance a project and should link it; neither should duplicate the other's
 account. The relevant child guide supplies local selection and page-shape guidance.
