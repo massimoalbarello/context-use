@@ -51,6 +51,24 @@ function mentionsDiary(page: PageSnapshot | undefined): boolean {
   return page ? /\[\[about\/diary\//i.test(page.body) : false;
 }
 
+const MONTH_PATTERN = MONTHS.join("|");
+const DATE_PATTERN = new RegExp(
+  `\\b(?:\\d{1,2} )?(?:${MONTH_PATTERN})(?: \\d{4})?\\b|\\bQ[1-4](?: \\d{4})?\\b`,
+  "gi",
+);
+
+/**
+ * A canonical page carries one kind of date only: an inline `— as of <date>` on a durable
+ * fact that can change. Any other date is a status, stage or figure that belongs on the
+ * timeline. Returns the offending fragments so a failure names what to move.
+ */
+function undatedStatus(page: PageSnapshot | undefined): string[] {
+  if (!page) return [];
+  return [...page.body.matchAll(DATE_PATTERN)]
+    .filter((match) => !/as of\s*$/i.test(page.body.slice(Math.max(0, match.index - 8), match.index)))
+    .map((match) => match[0]);
+}
+
 function add(
   assertions: AssertionResult[],
   id: string,
@@ -81,17 +99,17 @@ export function scoreStep(
     const timelinePath = `${entity.path}/timeline`;
     const intro = pageAt(pages, introPath);
     const timeline = pageAt(pages, timelinePath);
-    const previousIntro = pageAt(previousPages, introPath);
     const previousTimeline = pageAt(previousPages, timelinePath);
 
     add(assertions, `${entity.path}.intro`, Boolean(intro), `${entity.label} has a canonical intro page`);
     add(assertions, `${entity.path}.timeline`, Boolean(timeline), `${entity.label} has its own timeline`);
+    const dated = undatedStatus(intro);
     add(
       assertions,
-      `${entity.path}.intro-reconciled`,
-      intro !== undefined && (!previousIntro || intro.version > previousIntro.version),
-      `${entity.label}'s canonical account was ${previousIntro ? "updated" : "created"} for this step`,
-      intro ? `${intro.path} v${intro.version}` : undefined,
+      `${entity.path}.intro-undated`,
+      intro !== undefined && dated.length === 0,
+      `${entity.label}'s canonical account carries no date outside an "as of" fact`,
+      dated.join(", ") || undefined,
     );
     add(
       assertions,

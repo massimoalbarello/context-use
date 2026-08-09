@@ -67,7 +67,7 @@ describe("knowledge eval scoring", () => {
     expect(score.assertions.find((assertion) => assertion.id === "people/chen-wei.no-diary-link")?.passed).toBe(true);
   });
 
-  test("requires existing canonical pages and timelines to change on each step", () => {
+  test("requires an existing timeline to change on each step", () => {
     const pages = [
       page("companies/novamind/intro", "Led by [[people/chen-wei/intro|Chen Wei]]."),
       page("companies/novamind/timeline", timeline()),
@@ -77,8 +77,25 @@ describe("knowledge eval scoring", () => {
     ];
 
     const score = scoreStep(step, pages, pages);
-    expect(score.assertions.find((assertion) => assertion.id === "companies/novamind.intro-reconciled")?.passed).toBe(false);
     expect(score.assertions.find((assertion) => assertion.id === "people/chen-wei.timeline-reconciled")?.passed).toBe(false);
+  });
+
+  test("accepts an as-of date on a canonical page but not a bare status", () => {
+    const asOf = page("companies/novamind/intro", "Builds inference silicon — as of 20 February 2026.");
+    const status = page("people/chen-wei/intro", "Reported $2.1M ARR in Q1 and moved to diligence in March 2026.");
+    const pages = [
+      asOf,
+      page("companies/novamind/timeline", timeline()),
+      status,
+      page("people/chen-wei/timeline", timeline()),
+      page(MEETING, "[[companies/novamind|NovaMind]] [[people/chen-wei|Chen Wei]]"),
+    ];
+
+    const score = scoreStep(step, pages);
+    expect(score.assertions.find((assertion) => assertion.id === "companies/novamind.intro-undated")?.passed).toBe(true);
+    const failed = score.assertions.find((assertion) => assertion.id === "people/chen-wei.intro-undated");
+    expect(failed?.passed).toBe(false);
+    expect(failed?.evidence).toBe("Q1, March 2026");
   });
 
   test("scores the composed diary in the direction the links run", () => {
