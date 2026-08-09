@@ -10,6 +10,7 @@ test("manual backup creates both database backups and requires Nango support", (
 
   expect(script).toContain("sed -n 's/^POSTGRES_PASSWORD=//p' /data/context-use/secrets/runtime.env");
   expect(script).toContain("exec -T -e PGPASSWORD postgres psql -X -v ON_ERROR_STOP=1");
+  expect(script).not.toContain("export PGPASSWORD");
   expect(script.indexOf(permissionRepair)).toBeLessThan(script.indexOf(contextBackup));
   expect(script).toContain("config --services | grep -Fx nango-backup >/dev/null");
   expect(script.indexOf(contextBackup)).toBeLessThan(script.indexOf(nangoBackup));

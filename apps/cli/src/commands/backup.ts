@@ -26,8 +26,7 @@ export function databaseBackupCommands(requireNango: boolean): string[] {
   return [
     "set -euo pipefail",
     "cd /opt/context-use/deploy",
-    "export PGPASSWORD=\"$(sed -n 's/^POSTGRES_PASSWORD=//p' /data/context-use/secrets/runtime.env)\"",
-    `${database} -c 'GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO context_use_backup'`,
+    `PGPASSWORD="$(sed -n 's/^POSTGRES_PASSWORD=//p' /data/context-use/secrets/runtime.env)" ${database} -c 'GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO context_use_backup'`,
     `${compose} run --rm backup once`,
     `if ${compose} config --services | grep -Fx nango-backup >/dev/null; then ${backupWhenDefined}; else ${unavailable}; fi`,
   ];
