@@ -30,6 +30,27 @@ function linksTo(page: PageSnapshot | undefined, path: string): boolean {
   });
 }
 
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function diaryPathFor(date: string): string {
+  return `about/diary/${date.replaceAll("-", "/")}/log`;
+}
+
+/** The root guide's entry shape: `- **9 August** — …` under a year and month heading. */
+function hasDatedEntry(page: PageSnapshot | undefined, date: string): boolean {
+  if (!page) return false;
+  const [, month, day] = date.split("-");
+  const label = `${Number(day)} ${MONTHS[Number(month) - 1]}`;
+  return new RegExp(`\\*\\*${label}\\*\\*`, "i").test(page.body);
+}
+
+function mentionsDiary(page: PageSnapshot | undefined): boolean {
+  return page ? /\[\[about\/diary\//i.test(page.body) : false;
+}
+
 function add(
   assertions: AssertionResult[],
   id: string,
@@ -54,10 +75,6 @@ export function scoreStep(
   previousPages: PageSnapshot[] = [],
 ): StepScore {
   const assertions: AssertionResult[] = [];
-  const diaryPath = `about/diary/${step.date.replaceAll("-", "/")}/log`;
-  const diary = pageAt(pages, diaryPath);
-
-  add(assertions, "diary.exists", Boolean(diary), `Daily diary exists at ${diaryPath}`);
 
   for (const entity of step.entities) {
     const introPath = `${entity.path}/intro`;
@@ -85,17 +102,17 @@ export function scoreStep(
     );
     add(
       assertions,
-      `${entity.path}.diary-backlink`,
-      linksTo(timeline, diaryPath),
-      `${entity.label}'s timeline links the exact daily diary`,
+      `${entity.path}.timeline-dated`,
+      hasDatedEntry(timeline, step.date),
+      `${entity.label}'s timeline carries an entry dated ${step.date}`,
       timeline?.path,
     );
     add(
       assertions,
-      `diary.${entity.path}`,
-      linksTo(diary, introPath),
-      `The daily diary links ${entity.label}`,
-      diary?.path,
+      `${entity.path}.no-diary-link`,
+      !mentionsDiary(timeline),
+      `${entity.label}'s timeline links no diary page; the composer owns that direction`,
+      timeline?.path,
     );
 
     const duplicateIntros = pages.filter((page) => page.path.startsWith(`${entity.path}-`)
@@ -140,13 +157,6 @@ export function scoreStep(
     const meeting = findMeeting(pages, step.date, step.entities.map((entity) => entity.path));
     add(assertions, "meeting.exists", Boolean(meeting), `A canonical meeting account exists for ${step.date}`);
     if (meeting) {
-      add(
-        assertions,
-        "diary.meeting-link",
-        linksTo(diary, meeting.path),
-        "The daily diary links the canonical meeting",
-        meeting.path,
-      );
       for (const entity of step.entities) {
         add(
           assertions,
@@ -168,6 +178,52 @@ export function scoreStep(
 
   return {
     stepId: step.id,
+    passed: assertions.filter((assertion) => assertion.passed).length,
+    total: assertions.length,
+    assertions,
+  };
+}
+
+/**
+ * The diary is composed after the fact by the diary composer, not written by the agent
+ * that recorded the events. It is therefore scored once, over the final snapshot, in the
+ * direction the links actually run: diary → entity.
+ */
+export function scoreDiary(steps: EvalStep[], pages: PageSnapshot[]): StepScore {
+  const assertions: AssertionResult[] = [];
+
+  for (const date of [...new Set(steps.map((step) => step.date))].sort()) {
+    const diaryPath = diaryPathFor(date);
+    const diary = pageAt(pages, diaryPath);
+    add(assertions, `diary.${date}.exists`, Boolean(diary), `Daily diary exists at ${diaryPath}`);
+
+    const entities = steps
+      .filter((step) => step.date === date)
+      .flatMap((step) => step.entities);
+    for (const entity of entities) {
+      add(
+        assertions,
+        `diary.${date}.${entity.path}`,
+        linksTo(diary, `${entity.path}/intro`),
+        `The ${date} diary links ${entity.label}`,
+        diary?.path,
+      );
+    }
+
+    for (const step of steps.filter((candidate) => candidate.date === date && candidate.meetingExpected)) {
+      const meeting = findMeeting(pages, date, step.entities.map((entity) => entity.path));
+      add(
+        assertions,
+        `diary.${date}.meeting-link`,
+        Boolean(meeting) && linksTo(diary, meeting!.path),
+        `The ${date} diary links the canonical meeting`,
+        meeting?.path,
+      );
+    }
+  }
+
+  return {
+    stepId: "diary-composer",
     passed: assertions.filter((assertion) => assertion.passed).length,
     total: assertions.length,
     assertions,

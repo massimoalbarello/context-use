@@ -11,6 +11,18 @@
     "body_file": "_pages/activity-distiller/state.md",
     "management": "create-only"
   },
+  "automations/diary-composer/instructions": {
+    "title": "Diary composer",
+    "summary": "Instructions for composing each day's diary log from the entity timelines that changed.",
+    "body_file": "_pages/diary-composer/instructions.md",
+    "management": "managed"
+  },
+  "automations/diary-composer/state": {
+    "title": "Diary composer state",
+    "summary": "The current opaque change-ledger cursor for the diary composer.",
+    "body_file": "_pages/diary-composer/state.md",
+    "management": "create-only"
+  },
   "automations/guideline-consistency-review/instructions": {
     "title": "Guideline consistency review",
     "summary": "Instructions for reporting inconsistencies between recently changed pages and the owner's current root-to-leaf guidelines.",

@@ -10,9 +10,11 @@ the knowledge base. There is no evaluation-specific prompt and no evaluation-spe
 It does not score anything yet.
 
 **Scenario scoring** (`bun run eval run`) is the earlier, hand-written four-step
-trajectory with deterministic assertions about entities, timelines, diary synchronization
-and reconciliation. It will be replaced by scoring over corpus days, at which point the
-hand-written scenario goes away.
+trajectory with deterministic assertions about entities, timelines and reconciliation. It
+runs in two phases: each step writes entity pages and dated timeline entries, then the
+diary composer runs once over the change ledger and its output is scored separately, in
+the direction the links actually run — diary to entity, never back. It will be replaced by
+scoring over corpus days, at which point the hand-written scenario goes away.
 
 ## The corpus
 

@@ -32,6 +32,10 @@ the path to the target; do not repeat inherited guidance in a child.
   maintained by the default template.
 - [[automations/activity-distiller/state|Activity distiller state]] — created by the
   template when absent, then owned by the automation.
+- [[automations/diary-composer/instructions|Diary composer instructions]] — maintained by
+  the default template. The only writer of the diary.
+- [[automations/diary-composer/state|Diary composer state]] — created by the template when
+  absent, then owned by the automation.
 
 The links identify the guide or page that owns each convention. They do not imply a
 schema beyond what the linked guide says.
@@ -94,11 +98,12 @@ pages would have kept. When a source marks its own references with a stable iden
 path, treat matching markers as the same entity and differing markers as different ones,
 whatever the visible labels do.
 
-Anything with durable identity is represented by a folder, entered through `intro`;
-other pages in that folder are views of the same entity. The owning directory guide
-defines the useful views and the evidence required to create the entity. If a flat page
-later needs a second independently useful view, promote it to a folder and repair its
-inbound links in the same coherent change.
+Every entity is a folder, entered through `intro`; other pages in that folder are views
+of the same entity. There are no flat entity pages: an entity that currently needs only
+one page is still a folder holding `intro` and `timeline`, because both a second view and
+a dated entry arrive without warning and a page that has to be promoted first usually is
+not. The owning directory guide defines the further useful views and the evidence
+required to create the entity.
 
 `intro` is the entry point in fact and not only in name: every other page in the folder is
 reachable from it, through the sentence that says what that view holds. A `timeline`, lens
@@ -128,60 +133,100 @@ Versions retain replaced wording, so the live page need not preserve superseded 
 Do not append `Updates`, repeated snapshots or chronological tails to a canonical page.
 Reconciliation may leave a page unchanged when new evidence adds no durable value.
 
-## Diary and entity timelines
+## Three homes
 
-Durable pages explain their subjects. The [[about/diary/agents|diary]] records lived
-chronology, including current activity and why it matters. A durable entity may also
-have a `timeline`: a concise, dated index of the material events and state changes that
-make its history intelligible. It is not an exhaustive activity feed.
+Durable pages explain their subjects; the [[about/diary/agents|diary]] records lived
+chronology. Between them, what is known about an entity divides three ways, and putting a
+fact in the wrong home is the most common way this base decays.
 
-Two questions, two homes. A canonical page answers *what is this?* — what the subject is,
-what it does, who it involves, what the owner makes of it — and is written so it stays
-true as weeks pass. Anything answering *what happened, and when?* belongs on the timeline
-and in the diary: a status, a stage reached, a decision taken on a day, a figure reported
-at a moment, what someone said they would do next.
+**What the subject is now** lives on the entity's pages. It is written to stay true as
+weeks pass, and it is corrected in place when later evidence shows it wrong. Page history
+preserves the replaced wording, so a live page never has to carry a superseded claim.
 
-The test is whether a sentence will still be true in three months. *Combines satellite
-imagery with foundation models for carbon verification* will be. *Moved into deeper
-diligence last week*, *reported $2.1M ARR in Q1*, *is leaning toward passing* will not —
-each is an event with a date, and each belongs as a milestone linked to the day it
-happened, not as a paragraph on the entity.
+**What happened, and when** lives on the entity's `timeline`, one line for each.
+
+**A past state that is independently worth reading** earns its own page in the folder,
+linked from `intro` and from the timeline entry that marks the transition.
+
+The choice between the last two is whether anyone would read the old state for itself. A
+project's earlier iteration would: it had its own shape, and the account of it is still
+worth reading. A filing deadline that turned out to be wrong would not — the whole of its
+value is one line saying it was wrong and why.
+
+The test for the first is whether a sentence will still be true in three months.
+*Combines satellite imagery with foundation models for carbon verification* will be.
+*Moved into deeper diligence last week*, *reported $2.1M ARR in Q1*, *is leaning toward
+passing* will not — each is an event with a date, and each belongs on the timeline.
 
 The exception is a durable fact that can change: a role, a headquarters, an ownership
 stake. That stays on the canonical page with an inline `— as of 27 July 2026`, and the
-change itself earns a milestone. That is the only kind of date a canonical page carries.
-Relationships are durable and stay on it: who works there, who introduced whom, which
-decision it belongs to. Moving a date off a page never takes its connections with it.
+change itself earns a timeline entry. That is the only kind of date a canonical page
+carries. Relationships are durable and stay on it: who works there, who introduced whom,
+which decision it belongs to. Moving a date off a page never takes its connections with
+it.
 
-A useful common shape uses descending year headings and newest-first entries within
-each year:
+## The timeline
+
+Every entity folder has a `timeline`. It records what the owner did, experienced or
+learned involving this entity, dated to when it happened — not only what materially
+changed about the subject itself. Descending year headings, descending month headings
+within them, newest first:
 
     ## 2026
-    - **28 July** — [[about/diary/…|Diary entry]] · [[area/…|Occurrence]] — what
-      materially changed.
 
-Omit the occurrence link when no canonical occurrence page exists.
+    ### August
 
-For a material change recorded as it happens, keep the diary and entity timeline
-synchronized in the same write:
+    - **9 August** — [[places/…|Da Enzo]] — dinner here; best carbonara I have had in Rome.
 
-- The diary account links the entity and any canonical meeting, event or other
-  occurrence page.
-- The entity timeline links the exact diary entry and, when one exists, the canonical
-  occurrence page. It adds only a short statement of what materially changed.
-- The date and factual claim agree across both directions; the detailed narrative lives
-  in its canonical source rather than being copied into the timeline.
+    ### July
 
-Historical milestones from before diary coverage link the best available source; never
-invent a retrospective diary entry solely to satisfy the pattern. Casual mentions,
-routine activity and repeated non-changes do not earn milestones. The latest relevant
-milestone should make a major state change—such as starting, changing direction,
-handover, completion or resolution—easy to find, while transient status and next actions
-remain in the recent diary.
+    - **28 July** — [[meetings/…|Partner review]] — agreed to pass on the round.
 
-When correcting a timeline event, check its linked diary and occurrence pages in the
-same pass. Correct wrong or misleading claims wherever they appear, preserve any useful
-contemporaneous context, and keep the links and dates in agreement.
+One entry is one line: the date, the links that place it, and what happened. An entry
+wanting a paragraph is describing either the current state or a past state worth reading,
+and belongs on a page under the rule above. Keep the month in the entry as well as the
+heading, because entries are read away from their page — quoted into a diary entry,
+returned by search — and a line that does not say its own date is useless there.
+
+Never link the diary from a timeline entry. The date is already the link: a day's entry
+is always at `about/diary/<YYYY>/<MM>/<DD>/log`. Writing it out asserts a page that
+usually does not exist yet, because the diary is composed afterwards by
+[[automations/diary-composer/instructions|the diary composer]], which reads timelines and
+links back to the entities it finds there. Nothing else writes the diary, and an agent
+recording an entity event should not try.
+
+Date an entry to when the thing happened, which is not always when it was written. An old
+project written up today, a book finished years ago and a conference attended last week
+each take their own date. Dating an entry into the past creates no diary day in the past;
+the composer files the act of writing under the day it was written.
+
+When a timeline grows unwieldy, promote it to `timeline/<YYYY>` pages and repair inbound
+links in the same coherent change. Most entities never need this.
+
+Correcting a timeline entry is ordinary reconciliation: fix the claim where it appears
+and leave the surrounding entries as contemporaneous record.
+
+## Which entity does it belong to
+
+Anything the owner says is worth recording, because they chose to say it. The selection
+thresholds in this base exist for harvested sources, which arrive by the thousand and are
+mostly noise; they are not a filter on the owner's own account of their day.
+
+So the question is rarely whether to record something. It is which entity it belongs to.
+Name the most specific entity the evidence actually identifies, and climb until you reach
+one it does. A named dish at a named restaurant identifies both. A photograph of a meal
+with no place and no name identifies neither, and a topic such as `topics/food` is what
+the evidence supports. Climbing is the safe direction: a coarse entity can be split later,
+once repeated entries give one of its parts a subject of its own, whereas a specific
+entity invented on a guess produces near-duplicates that no evidence will ever merge.
+
+A topic is therefore the holding area for activity that has not yet individuated. It
+accumulates entries until a dish, a place or a practice has enough history to be worth
+retrieving on its own; that part then becomes its own entity and its entries move there.
+Diary entries written before the split keep pointing at the topic, which is where the
+material lived at the time. A long topic timeline is the expected shape and the signal to
+split, not a defect — and for this class `intro` is thin at first, distilled from the
+timeline as it accumulates rather than known in advance the way a company's is.
 
 ## Sources and links
 

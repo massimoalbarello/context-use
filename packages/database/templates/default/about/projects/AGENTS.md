@@ -9,10 +9,10 @@ work or maintained system.
 
     about/projects/<slug>/
     ├── intro       — what the project is, why it exists and its durable boundaries
-    └── timeline    — optional, curated milestones that materially changed it
+    └── timeline    — curated milestones that materially changed it
 
-A project can use one folder with `intro` as its entry point. A `timeline` becomes useful
-once there are meaningful milestones to navigate. Another page—such as `architecture`,
+A project is a folder entered through `intro`, with `timeline` beside it from the start.
+Another page—such as `architecture`,
 `principles` or `history`—helps only when that subject is independently worth reading,
 retrieving or linking.
 
@@ -22,7 +22,7 @@ Keep the project's purpose, boundaries, durable design, principles, important ou
 and project-specific reasoning. Link related tasks and entities rather than absorbing
 their accounts.
 
-Under the inherited [[agents#diary-and-entity-timelines|root timeline contract]], project
+Under the inherited [[agents#the-timeline|root timeline contract]], project
 milestones may include a launch, material direction change, major release, handover or
 similarly consequential outcome. A project timeline is not a commit log or an exhaustive
 list of releases.

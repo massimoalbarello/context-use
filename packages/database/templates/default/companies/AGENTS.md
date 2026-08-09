@@ -88,5 +88,5 @@ one.
 
 Fact pages should distinguish supported fact from uncertainty. Lens pages use the
 owner's expressed point of view; additional reasoning is labelled as inference. The
-timeline indexes only material company-relationship milestones under the root timeline
-contract and leaves the full account on its linked diary and occurrence pages.
+timeline records material company-relationship events under the root timeline contract,
+one line each, and leaves the full account on the occurrence pages it links.

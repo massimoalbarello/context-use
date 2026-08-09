@@ -72,8 +72,7 @@ participant-list entry can be omitted altogether. A meeting page whose participa
 all plain names records that a conversation happened and loses who the owner had it with.
 
 Keep what another participant said distinct from what the owner concluded. A commitment
-records what was agreed then; its later state follows the root diary and timeline
-contract.
+records what was agreed then; its later state follows the root timeline contract.
 
 Index the meeting only where it is a material relationship milestone: for the relevant
 identifiable people, and for a company when the conversation materially concerned the

@@ -44,6 +44,12 @@ true:
   about*, *the thing you keep saying*. Being told what one is known for is inbound pressure
   of the strongest kind, and it usually arrives long before the base has three pages that
   need to point at it.
+- The owner recounts something the evidence places nowhere more specific. Under the root
+  rule for [[agents#which-entity-does-it-belong-to|choosing the entity]], a topic is where
+  activity lands when nothing below it is identifiable: a meal with no named dish or place
+  belongs to `food`, a mood to `mood`. This condition holds only for what the owner
+  actually tells you, never for harvested records, which climb to nothing and stay in the
+  account that mentioned them.
 
 A position the owner keeps applying is a topic even when it is inconvenient to name. The
 owner's own words are the clearest signal that one already exists: *my thesis*, *our
@@ -85,7 +91,15 @@ discipline the owner practises records that practice here. What happened on a gi
 stays in the diary, and a body of work built around a topic stays a project; the topic
 explains the subject both of them keep referring to.
 
-Topic-specific timeline milestones include the subject's own material developments and
-the changes in what the owner does about it — taking it up, turning away from it, coming
-back to it. Reconcile rather than accumulate: a topic left unreferenced and unchanged for
-roughly six months should be folded back into whatever still needs it, or archived.
+Topic-specific timeline entries include the subject's own material developments, the
+changes in what the owner does about it — taking it up, turning away from it, coming back
+to it — and, for a topic serving as a holding area, each occasion the owner recounts under
+it. A holding-area timeline is expected to grow long, and length is the signal to split:
+when a dish, a place or a practice inside it has enough entries to be worth retrieving on
+its own, give it its own entity under the guide that owns it and move those entries there,
+leaving earlier diary logs pointing where the material lived at the time.
+
+Reconcile rather than accumulate. A topic left unreferenced and unchanged for roughly six
+months should be folded back into whatever still needs it, or archived — but a holding area
+the owner keeps adding to is referenced by definition, and its thin `intro` is a page still
+waiting to be distilled from its timeline, not a candidate for archiving.

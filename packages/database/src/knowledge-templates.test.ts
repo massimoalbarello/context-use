@@ -27,6 +27,7 @@ const DEFAULT_DIRECTORY_PATHS = [
   "about/projects",
   "about/tasks",
   "automations/activity-distiller",
+  "automations/diary-composer",
   "automations/guideline-consistency-review",
 ];
 
@@ -210,18 +211,21 @@ describe("knowledge templates", () => {
       "about/projects",
       "about/tasks",
       "automations/activity-distiller",
+      "automations/diary-composer",
       "automations/guideline-consistency-review",
     ]);
     expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(15);
     expect(result.actions.filter(({ action }) => action === "create-page").map(({ path }) => path)).toEqual([
       "automations/activity-distiller/instructions",
       "automations/activity-distiller/state",
+      "automations/diary-composer/instructions",
+      "automations/diary-composer/state",
       "automations/guideline-consistency-review/instructions",
     ]);
     expect(state.createdDirectories).toEqual([]);
     expect(state.createdPages).toEqual([]);
     expect(formatTemplateResult(result)).toContain("+ create-directory library");
-    expect(formatTemplateResult(result)).toContain("✓ Planned 34 changes; 0 conflicts.");
+    expect(formatTemplateResult(result)).toContain("✓ Planned 37 changes; 0 conflicts.");
     expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
   });
 
@@ -269,7 +273,7 @@ describe("knowledge templates", () => {
       path: "places",
       detail: "Directory metadata differs from the template; preserve local metadata",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 20 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 22 changes; 1 conflict.");
   });
 
   test("surfaces directory metadata drift without overwriting local presentation", async () => {
@@ -509,13 +513,13 @@ describe("knowledge templates", () => {
     const result = await reconcileKnowledgeTemplate(state.value, "default", true);
 
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(state.createdPages).toHaveLength(16);
+    expect(state.createdPages).toHaveLength(18);
     expect(result.actions).toContainEqual({
       action: "conflict",
       path: "people/agents",
       detail: "Preserve locally modified guide",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 17 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 19 changes; 1 conflict.");
     expect(formatTemplateResult(result)).toContain("~ update-guide     agents");
     expect(formatTemplateResult(result)).toContain("! conflict         people/agents");
     expect(formatTemplateResult(result, true)).toContain("\u001B[31m!\u001B[0m conflict");
@@ -567,7 +571,7 @@ describe("knowledge templates", () => {
 
     const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(formatTemplateResult(applied)).toContain("Applied 17 changes; 1 conflict.");
+    expect(formatTemplateResult(applied)).toContain("Applied 19 changes; 1 conflict.");
   });
 
   test("reports page collisions without removing or overwriting existing knowledge", async () => {
@@ -763,6 +767,8 @@ describe("knowledge templates", () => {
       "topics/agents",
       "automations/activity-distiller/instructions",
       "automations/activity-distiller/state",
+      "automations/diary-composer/instructions",
+      "automations/diary-composer/state",
     ]);
 
     for (const guide of [
@@ -787,13 +793,16 @@ describe("knowledge templates", () => {
     expect(normalizedRoot).toContain("smallest account that preserves what is useful to the owner");
     expect(normalizedRoot).toContain("When a page speaks as the owner, use first person");
     expect(normalizedRoot).toContain("without asking for a preview or proposal");
-    expect(normalizedRoot).toContain("Anything with durable identity is represented by a folder");
+    expect(normalizedRoot).toContain("Every entity is a folder, entered through `intro`");
     expect(normalizedRoot).toContain("Repeated attention across saved works, research and the owner's own pages");
     expect(normalizedRoot).toContain("Attention is not interaction and is not agreement");
-    expect(guides.root).toContain("## Diary and entity timelines");
-    expect(normalizedRoot).toContain("descending year headings and newest-first entries");
-    expect(guides.root).toContain("[[about/diary/…|Diary entry]] · [[area/…|Occurrence]]");
-    expect(normalizedRoot).toContain("keep the diary and entity timeline synchronized in the same write");
+    expect(guides.root).toContain("## The timeline");
+    expect(normalizedRoot).toContain("Descending year headings, descending month headings");
+    expect(normalizedRoot).toContain("Never link the diary from a timeline entry");
+    expect(normalizedRoot).toContain("Nothing else writes the diary");
+    expect(guides.root).toContain("## Three homes");
+    expect(guides.root).toContain("## Which entity does it belong to");
+    expect(normalizedRoot).toContain("climb until you reach one it does");
     expect(normalizedRoot).toContain("Rewrite or remove claims that later evidence shows to be wrong or misleading");
     expect(guides.root).toContain("## Write, then report");
     expect(normalizedRoot).toContain("Highlight newly created entities");
@@ -806,7 +815,7 @@ describe("knowledge templates", () => {
 
     for (const child of Object.values(guides).filter((guide) => guide !== guides.root)) {
       expect(child).not.toContain("## Reconcile the canonical account");
-      expect(child).not.toContain("## Diary and entity timelines");
+      expect(child).not.toContain("## The timeline");
       expect(child).not.toContain("## Write, then report");
       expect(child).not.toContain("not a mandatory template");
       expect(child).not.toContain("required scaffolding");
@@ -820,10 +829,10 @@ describe("knowledge templates", () => {
     expect(guides.about).toContain("[[about/tasks/agents|");
     expect(normalize(guides.diary)).toContain("Repetition is a signal to review placement, not proof");
     expect(normalize(guides.diary)).toContain("Do correct content that is wrong or misleading");
-    expect(guides.diary).toContain("[[agents#diary-and-entity-timelines|root guide]]");
+    expect(guides.diary).toContain("[[automations/diary-composer/instructions|diary composer]]");
     expect(guides.projects).toContain("about/projects/<slug>/");
     expect(guides.tasks).toContain("about/tasks/<slug>/");
-    expect(normalize(guides.tasks)).toContain("Resolution always earns a dated timeline milestone");
+    expect(normalize(guides.tasks)).toContain("Resolution always earns a dated timeline entry");
 
     expect(normalizedRoot).toContain("A common template is a vocabulary, not a quota");
     expect(normalize(guides.companies)).toContain("Split out a topic only when it is useful");

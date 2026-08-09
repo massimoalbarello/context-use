@@ -4,6 +4,16 @@ This subtree inherits the [[about/agents|About conventions]]. The diary is the o
 working memory: a curated day-by-day account of what they did, thought, decided and
 worried about, with links to the durable subjects that explain it.
 
+The diary is composed, not written alongside the knowledge it describes. An agent
+recording something that happened puts it on the entity's `timeline` and stops there; the
+[[automations/diary-composer/instructions|diary composer]] later reads the timelines that
+changed and assembles the day from them. Nothing else writes a log. This keeps each writer
+to one job, and lets a day be assembled once from everything in it rather than accreted by
+whoever happened to write last.
+
+The owner writes here directly whenever they want to. What they add is theirs, and the
+composer preserves it.
+
 ## Structure
 
 Use one folder per day at `about/diary/<YYYY>/<MM>/<DD>/`, with zero-padded path
@@ -39,19 +49,17 @@ Write the log summary last, from the finished entry.
     ## Threads
     - [[about/projects/…|Project]] — what moved · continues [[about/diary/…|24 Jul]]
 
-    ## Companion pages
-    - [[about/diary/…|Title]] — one line (automation: `<automation-slug>`)
-
 Keep these headings and order when the sections are useful; omit empty sections. The
-narrative carries the lived texture, `On my mind` holds emerging thoughts, `Threads` is
-the day's edge list, and `Companion pages` points to substantial material kept outside
-the log.
+narrative carries the lived texture and `Threads` is the day's edge list.
 
-A linked day is easier to retrieve than an isolated one. When the day contains a
-material entity event or state change, apply the bidirectional diary/timeline contract
-in the [[agents#diary-and-entity-timelines|root guide]]. A durable fact left only in a
-log is hard to find from its subject: reconcile it into the canonical page, then let the
-log say what happened that day and link the result.
+`On my mind` belongs to the owner. The composer never writes it and never infers a mood, a
+doubt or a half-formed idea from what the pages happen to say. An interior state nobody
+recorded is not recoverable from a timeline, and inventing one is worse than leaving the
+section out.
+
+Link every durable subject the day touched, and link the entity rather than its timeline:
+a reader arriving at a day should be able to walk out to everything it involved. The log
+says what happened and points at the subjects that explain it; the detail stays on them.
 
 ## Continuity
 
@@ -68,25 +76,6 @@ When work genuinely resumes from an earlier day, add one backward link on the re
 A chain that becomes cumbersome is evidence that the subject may need a durable page,
 project or task. Repetition is a signal to review placement, not proof that a new entity
 or page is necessary.
-
-## Automation companion pages
-
-The general automation contract is in [[automations/agents|the automation guide]]. For
-automation-owned material inside a day folder:
-
-- Keep at most one page per automation per affected day, at
-  `<DD>/<automation-slug>`. Keep the slug stable across days; title the page
-  `<Automation name> — <D Month YYYY>` and summarize the activity on that date rather
-  than the pipeline run.
-- Use the date when the recorded activity happened, not the date the automation ran.
-  One run may therefore create or revise several affected days.
-- Reconcile reruns into one concise account of the material activity. Do not append run
-  logs or create a page per input item.
-- When linking output from the log, maintain one automation-owned bullet under
-  `Companion pages`. Leave the owner's narrative, `On my mind`, `Threads`, and other
-  automations' pages and bullets unchanged.
-- Create no filler page when there is nothing useful to report. Keep execution state and
-  operational metadata outside the diary.
 
 ## Reading and maintenance
 
@@ -105,6 +94,10 @@ Do not rewrite a past log merely to tidy its prose or make a link chain neater. 
 correct content that is wrong or misleading under the root reconciliation rule, while
 preserving useful contemporaneous experience. When the correction itself matters to the
 story, make it explicit and link the later evidence.
+
+A past log keeps the links it was written with. When an entity is later split out of a
+topic, the entries move to the new entity but the logs that pointed at the topic stay as
+they were: that is where the material lived on the day they describe.
 
 ## Diary privacy
 

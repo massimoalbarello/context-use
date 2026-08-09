@@ -43,16 +43,16 @@ people still get theirs, the leaning is still recorded — on the page that owns
 rather than on a task page that only restates it. Folding a decision back into its subject
 must never mean writing less about the subject.
 
-Under the inherited [[agents#diary-and-entity-timelines|root timeline contract]], task
+Under the inherited [[agents#the-timeline|root timeline contract]], task
 milestones may include the pursuit being framed, a consequential change in scope or
-direction, a decision, handoff, abandonment or resolution. Routine progress and
-transient status remain in the diary.
+direction, a decision, handoff, abandonment or resolution. Routine progress and transient
+status earn no entry at all, and reach the diary only if the day's other entries make them
+worth mentioning.
 
 ## Resolution
 
-Resolution always earns a dated timeline milestone. Link the exact diary entry when the
-resolution is recorded during diary coverage; for an older resolution, use the root
-contract's best-available-source fallback. Say whether the task was completed, decided,
+Resolution always earns a dated timeline entry, at the date the task was actually
+resolved. Say whether the task was completed, decided,
 abandoned or superseded and link the resulting outcome or durable page when one exists.
 This keeps closure visible from the task without turning its `intro` into a progress log.
 
