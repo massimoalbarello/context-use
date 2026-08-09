@@ -135,6 +135,24 @@ chronology, including current activity and why it matters. A durable entity may 
 have a `timeline`: a concise, dated index of the material events and state changes that
 make its history intelligible. It is not an exhaustive activity feed.
 
+Two questions, two homes. A canonical page answers *what is this?* — what the subject is,
+what it does, who it involves, what the owner makes of it — and is written so it stays
+true as weeks pass. Anything answering *what happened, and when?* belongs on the timeline
+and in the diary: a status, a stage reached, a decision taken on a day, a figure reported
+at a moment, what someone said they would do next.
+
+The test is whether a sentence will still be true in three months. *Combines satellite
+imagery with foundation models for carbon verification* will be. *Moved into deeper
+diligence last week*, *reported $2.1M ARR in Q1*, *is leaning toward passing* will not —
+each is an event with a date, and each belongs as a milestone linked to the day it
+happened, not as a paragraph on the entity.
+
+The exception is a durable fact that can change: a role, a headquarters, an ownership
+stake. That stays on the canonical page with an inline `— as of 27 July 2026`, and the
+change itself earns a milestone. That is the only kind of date a canonical page carries.
+Relationships are durable and stay on it: who works there, who introduced whom, which
+decision it belongs to. Moving a date off a page never takes its connections with it.
+
 A useful common shape uses descending year headings and newest-first entries within
 each year:
 

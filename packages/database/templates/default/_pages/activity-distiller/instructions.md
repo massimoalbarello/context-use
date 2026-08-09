@@ -43,10 +43,18 @@ not pages to mirror.
 4. Select the evidence, then reconcile the whole batch — the cast above, its connected
    subjects, and pages changed by earlier batches in this run — before reading again. A
    batch may legitimately produce no semantic change.
-5. After every intended knowledge mutation succeeds, replace state with this call's
+5. Before saving the checkpoint, check the cast from step 3 against what was written, and
+   finish whatever is missing:
+   - each conversation that took place has its meeting page, each person and organization
+     its own, each decision in flight its task page;
+   - every material state change exists in both directions — the day's diary entry, and
+     the dated milestone on the entity's `timeline` linking that entry;
+   - no canonical page carries a dated status, stage or figure that belongs on its
+     timeline, and no name sits bare where a link belongs.
+6. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
-6. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
+7. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
    Never hold a second unread batch before the first is reconciled and checkpointed.
 
 The reader omits records whose latest source update is more than 30 days old and
@@ -130,11 +138,6 @@ occurrence is the clearest evidence it mattered.
 
 An occurrence page is half of a write. The people, organizations and questions it names are
 the other half — each a page to create or update and link in the same coherent change.
-
-Before saving the checkpoint, walk the pages this run touched twice: once for names left
-bare, and once for links whose target says nothing back. Finish both. A link the other end
-does not answer is a one-way street, and a base full of them can be read forwards from the
-day it was written and never backwards from the subject someone actually remembers.
 
 ## Prepare from future signals
 
