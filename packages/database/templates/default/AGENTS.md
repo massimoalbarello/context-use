@@ -100,10 +100,15 @@ whatever the visible labels do.
 
 Every entity is a folder, entered through `intro`; other pages in that folder are views
 of the same entity. There are no flat entity pages: an entity that currently needs only
-one page is still a folder holding `intro` and `timeline`, because both a second view and
-a dated entry arrive without warning and a page that has to be promoted first usually is
-not. The owning directory guide defines the further useful views and the evidence
-required to create the entity.
+one page is still a folder, so a later view or a `timeline` can be added without promoting
+the page and repairing its inbound links first. The owning directory guide defines the
+further useful views and the evidence required to create the entity.
+
+Add the `timeline` when there is a dated event to record, not before; an empty one is
+scaffolding. Someone the owner knows, with nothing yet that happened on a day, is a
+complete entity with an `intro` alone. An occurrence never takes one at all: a meeting or
+event already happened on its own date, so its page is its account and a timeline beneath
+it would index a single entry that is the page itself.
 
 `intro` is the entry point in fact and not only in name: every other page in the folder is
 reachable from it, through the sentence that says what that view holds. A `timeline`, lens
