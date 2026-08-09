@@ -43,10 +43,15 @@ not pages to mirror.
 4. Select the evidence, then reconcile the whole batch — the cast above, its connected
    subjects, and pages changed by earlier batches in this run — before reading again. A
    batch may legitimately produce no semantic change.
-5. After every intended knowledge mutation succeeds, replace state with this call's
+5. Before saving the checkpoint, check the cast from step 3 against what was written. Each
+   conversation that took place has its meeting page; each decision in flight has its task
+   page; each person and organization has its own. For every material change recorded, both
+   directions exist — the diary entry for the day, and the dated milestone on the entity's
+   `timeline` linking it. Finish whatever is missing before continuing.
+6. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
-6. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
+7. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
    Never hold a second unread batch before the first is reconciled and checkpointed.
 
 The reader omits records whose latest source update is more than 30 days old and

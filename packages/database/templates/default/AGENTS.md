@@ -47,14 +47,45 @@ Give every page a one-sentence summary; directory indexes and search use it.
 
 The owner's own engagement is the threshold. Someone they met, wrote to or heard from; an
 organization they dealt with, evaluated or decided about; a question they took a position
-on — each earns a page the first time it happens, not once it repeats. A name that appears
-only inside someone else's account, with no engagement by the owner, stays plain text
-under the page that mentioned it.
+on — each earns a page the first time it happens, not once it repeats.
+
+Engagement is not the same as authorship. Most of what the owner is involved in reaches
+them through someone else's words: a colleague reporting that a payment cleared, that a
+review is under way, that the owner is travelling to a board meeting. The subject of that
+report is the owner's own business and earns its page exactly as if they had written it
+themselves. Ask who the activity belongs to, not who typed it.
+
+What stays plain text is a subject with no claim on the owner at all — an aside, a passing
+comparison, a company someone mentions to make a point about something else. The test is
+whether anyone is doing anything about it on the owner's behalf.
 
 Identity, not importance, is the reason to hold back. Create the page when the evidence
 identifies the subject clearly enough to avoid a likely duplicate. Two people who share a
 name, or two organizations that share a word, are two entities until something in the
 evidence actually joins them.
+
+## Diary and entity timelines
+
+Two axes have to stay navigable: what happened on a given day across every subject, and
+what happened to one subject across time. The [[about/diary/agents|diary]] carries the
+first. A durable entity carries the second in a `timeline` — a dated index of the material
+events and state changes that make its history intelligible, not an activity feed.
+
+    ## 2026
+    - **28 July** — [[about/diary/…|Diary entry]] · [[area/…|Occurrence]] — what
+      materially changed.
+
+Record a material change on both axes in the same write. The diary entry links the entity
+and any canonical occurrence page; the entity's timeline links that exact diary entry, and
+the occurrence page when one exists, and adds a short statement of what changed. A
+milestone with no diary entry cannot be found by date; a day whose durable facts never
+reach their subject cannot be found by subject. The date and the factual claim agree in
+both directions, and the detailed narrative stays in its canonical source rather than being
+copied into the timeline.
+
+Casual mentions, routine activity and repeated non-changes do not earn milestones. For a
+milestone from before diary coverage, link the best available source instead; never invent
+a retrospective diary entry to satisfy the pattern.
 
 ## Reconcile rather than append
 
