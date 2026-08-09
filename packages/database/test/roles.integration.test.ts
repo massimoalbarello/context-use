@@ -174,6 +174,9 @@ describeDatabase("PostgreSQL security roles", () => {
         [role],
       )).rows[0]?.allowed).toBe(true);
     }
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_sequence_privilege('context_use_backup','knowledge_page_changes_change_sequence_seq','SELECT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
     for (const role of ["context_use_auth", "context_use_public", "context_use_confirmation", "context_use_storage"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege($1,'knowledge_page_changes','SELECT') AS allowed",
