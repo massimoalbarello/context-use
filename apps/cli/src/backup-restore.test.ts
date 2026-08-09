@@ -4,9 +4,13 @@ import { nangoRestoreCommands } from "./commands/nango/restore.ts";
 
 test("manual backup creates both database backups and requires Nango support", () => {
   const script = databaseBackupCommands(true).join("\n");
+  const permissionRepair = "GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO context_use_backup";
   const contextBackup = "run --rm backup once";
   const nangoBackup = "run --rm nango-backup once";
 
+  expect(script).toContain("sed -n 's/^POSTGRES_PASSWORD=//p' /data/context-use/secrets/runtime.env");
+  expect(script).toContain("exec -T -e PGPASSWORD postgres psql -X -v ON_ERROR_STOP=1");
+  expect(script.indexOf(permissionRepair)).toBeLessThan(script.indexOf(contextBackup));
   expect(script).toContain("config --services | grep -Fx nango-backup >/dev/null");
   expect(script.indexOf(contextBackup)).toBeLessThan(script.indexOf(nangoBackup));
   expect(script).toContain("This deployment does not define the nango-backup service");
@@ -16,6 +20,8 @@ test("manual backup creates both database backups and requires Nango support", (
 test("pre-update backup skips Nango only when upgrading an older deployment", () => {
   const script = databaseBackupCommands(false).join("\n");
 
+  expect(script.indexOf("GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO context_use_backup"))
+    .toBeLessThan(script.indexOf("run --rm backup once"));
   expect(script).toContain("run --rm backup once");
   expect(script).toContain("run --rm nango-backup once");
   expect(script).toContain("--no-deps --entrypoint psql nango-backup -X -tAc 'SELECT 1' | grep -qx 1");
