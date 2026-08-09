@@ -21,6 +21,28 @@ Keep the durable frame, relevant constraints, alternatives and the owner's reaso
 Activity alone does not make a task: the evidence should identify a real finite pursuit
 or decision whose frame will remain useful beyond the day.
 
+An open question the owner is visibly working through — whether to commit, hire, buy,
+ship, accept or walk away — is a task as soon as the evidence shows them weighing it, not
+once it resolves. Framing it early is what gives the later evidence somewhere to attach:
+without the page, each new consideration lands in a different day's diary and the question
+itself is never anywhere. Name the task for the question, and let the entities it concerns
+keep their own pages and link here.
+
+A task has to say more than its subject's own page already says. Read the two side by
+side: if the task adds nothing the organization, person or project page would not carry
+anyway, there is no frame yet, only a leaning — and a leaning is a dated fact about that
+subject, recorded there. The task earns its page once there is a question with more than
+one defensible answer and something worth recording about how the owner is choosing: the
+constraint, what has been ruled out and why, what would change the answer, who has to
+agree. One inclination expressed once is not that.
+
+This decides where a decision is written down, never whether the subjects behind it exist.
+The thresholds in the [[agents#place-and-identify|root guide]] and in the people, companies
+and other entity guides are untouched by it: the organization still gets its page, the
+people still get theirs, the leaning is still recorded — on the page that owns the subject
+rather than on a task page that only restates it. Folding a decision back into its subject
+must never mean writing less about the subject.
+
 Under the inherited [[agents#diary-and-entity-timelines|root timeline contract]], task
 milestones may include the pursuit being framed, a consequential change in scope or
 direction, a decision, handoff, abandonment or resolution. Routine progress and

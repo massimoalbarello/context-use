@@ -60,11 +60,16 @@ the important few paragraphs harder to retrieve.
     ## Commitments made
     - What someone agreed during the meeting, stated as a historical fact.
 
-Include only participants who help someone understand the meeting and whose identity is
-clear. Link an existing or newly useful person/company entity when confidently matched;
-otherwise a clear plain-text name is enough, with a role only as context. There is no
-need to create an entity for every attendee, and uncertain participant-list entries can
-be omitted.
+An attendee is by definition someone the owner engaged with, so a clearly identified
+attendee meets the [[people/agents#when-a-person-is-useful|people threshold]]: create the
+person and link them from the `With:` line rather than naming them in plain text, in the
+same write as the meeting itself. The same applies to the organization whose business the
+meeting concerned, and to anyone named in a decision or commitment recorded here — an
+introduction promised to someone is an engagement with that person.
+
+Only genuine doubt about who an attendee is keeps them in plain text; an uncertain
+participant-list entry can be omitted altogether. A meeting page whose participants are
+all plain names records that a conversation happened and loses who the owner had it with.
 
 Keep what another participant said distinct from what the owner concluded. A commitment
 records what was agreed then; its later state follows the root diary and timeline
