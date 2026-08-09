@@ -531,7 +531,7 @@ test("the pinned Docker address pools hold every compose network and exclude the
 });
 
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
-  const [userData, deployScript, caddy, nangoPublicCaddy, nangoAuthCaddy, compute, update, setup, resume, data, deployCompose, backupScript, cliUpdate] = await Promise.all([
+  const [userData, deployScript, caddy, nangoPublicCaddy, nangoAuthCaddy, compute, update, setup, resume, data, deployCompose, backupScript, backupDockerfile, cliUpdate] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/deploy.sh", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile", import.meta.url)).text(),
@@ -544,6 +544,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     Bun.file(new URL("../../../infra/data/main.tf", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/docker-compose.yml", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/backup/backup.sh", import.meta.url)).text(),
+    Bun.file(new URL("../../../deploy/backup/Dockerfile", import.meta.url)).text(),
     Bun.file(new URL("./cli-update.ts", import.meta.url)).text(),
   ]);
   expect(deployScript).toContain('source "${root}/deploy/compose-env.sh"');
@@ -903,6 +904,10 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(backupScript).toContain("gzip -t");
   expect(backupScript.indexOf('aws s3 cp "${metadata}"')).toBeLessThan(backupScript.indexOf('aws s3 cp "${file}"'));
   expect(backupScript).not.toContain("delete-object");
+  expect(backupDockerfile).toContain("public.ecr.aws/aws-cli/aws-cli:2.34.63@sha256:c95ab0642137f55a12b95b6956dd03cefdbd73e760e0e7b870afc9b47f9c8150");
+  expect(backupDockerfile).toContain("postgres:17-bookworm@sha256:9b18b78397054fce88a9552e9d5a3ad5bb7fd258c5b3cc1c5028e46373d6ea8f");
+  expect(backupDockerfile).toContain("COPY --from=awscli /usr/local/aws-cli /usr/local/aws-cli");
+  expect(backupDockerfile).not.toContain("apk add");
   expect(deployCompose).toContain("storage-socket-init: { condition: service_completed_successfully }");
   expect(deployCompose).toContain("storage: { condition: service_healthy }");
   expect(caddy).toContain("max_size 5GB");
