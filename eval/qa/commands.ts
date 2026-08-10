@@ -1,9 +1,11 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { LOCAL_STACK, runStackCommand } from "../../scripts/local-stack.ts";
 import { ROOT, type EvalProvider } from "../agent.ts";
-import { corpusIsUnchanged, diffCorpus } from "../corpus-integrity.ts";
-import type { PageSnapshot } from "../snapshot.ts";
+import { corpusDirectory, corpusIsUnchanged, diffCorpus } from "../corpus-integrity.ts";
+import { loadCorpus } from "../corpus-records.ts";
+import { snapshotKnowledge, type PageSnapshot } from "../snapshot.ts";
 import { style } from "../terminal.ts";
 import { askQuestions } from "./ask.ts";
 import {
@@ -129,6 +131,68 @@ function dueQuestions(
   const dueBy = new Map(answers.map((answer) => [answer.id, answer.due_batch]));
   const due = questions.filter((question) => (dueBy.get(question.id) ?? "") <= through);
   return { due, through, skipped: questions.length - due.length };
+}
+
+/**
+ * Seeds `world-v1` into the knowledge base and records it as a run, so `qa:ask` and
+ * `qa:score` work against it exactly as they do against a distillation run.
+ *
+ * Seeded rather than distilled because the corpus has no owner — see [seed.ts](seed.ts)
+ * for why, and [README.md](README.md) for what that means for the number.
+ */
+export async function seedCommand(options: { batches?: number | undefined }): Promise<void> {
+  const difference = diffCorpus(QA_CORPUS);
+  if (!corpusIsUnchanged(difference)) {
+    throw new Error(`The vendored ${QA_CORPUS} corpus has been modified, so results would not be comparable:\n${
+      JSON.stringify(difference, null, 2)}`);
+  }
+
+  const corpus = loadCorpus(corpusDirectory(QA_CORPUS));
+  const batches = options.batches ? corpus.batches.slice(0, options.batches) : corpus.batches;
+  const through = batches.at(-1)!;
+  const records = corpus.records.filter((record) => record.batch <= through);
+
+  const startedAt = new Date().toISOString();
+  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-seed-${QA_CORPUS}`;
+  const directory = join(RESULTS_ROOT, runId);
+  await mkdir(directory, { recursive: true });
+
+  console.log(style.heading(`\nSeeding ${QA_CORPUS}: ${runId}`));
+  console.log(`${records.length} pages through ${through} · ${batches.length} of ${corpus.batches.length} batches`);
+  console.log(style.dim("Seeded, not distilled: world-v1 has no owner, so the activity distiller"));
+  console.log(style.dim("correctly declines it. This measures retrieval only.\n"));
+
+  // The server reads the corpus at startup and the reset restores the default template,
+  // so the seed always lands on a known base — the same contract a distillation run has.
+  process.env.EVAL_CORPUS_PATH = `/app/eval/corpus/${QA_CORPUS}`;
+  runStackCommand("reset");
+
+  // Applied inside the container: Postgres is not published on a host port, and the
+  // workspace packages only resolve where /app/node_modules is mounted.
+  const child = Bun.spawnSync([
+    "docker", "compose", "--project-name", LOCAL_STACK.project, "exec", "-T", "private-mcp",
+    "bun", "/app/eval/qa/seed-worker.ts", through,
+  ], { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
+  if (child.exitCode !== 0) {
+    throw new Error(`Seeding failed:\n${child.stderr.toString() || child.stdout.toString()}`);
+  }
+  console.log(style.dim(child.stdout.toString().trim()));
+
+  const pages = snapshotKnowledge();
+  // Named as a batch snapshot so `qa:ask` and `qa:score` find it, and so the due-batch
+  // filter selects exactly the questions this seed has served the evidence for.
+  await Bun.write(join(directory, `batch-${through}-snapshot.json`), `${JSON.stringify(pages, null, 2)}\n`);
+  await Bun.write(join(directory, "report.json"), `${JSON.stringify({
+    runId, corpusId: QA_CORPUS, mode: "seed", window: "full",
+    startedAt, completedAt: new Date().toISOString(),
+    batches: batches.map((batch, index) => ({ batch, index })),
+  }, null, 2)}\n`);
+  await Bun.write(join(RESULTS_ROOT, "latest-distill"), `${runId}\n`);
+
+  const due = readAnswers(QA_CORPUS).filter((answer) => answer.due_batch <= through);
+  console.log(style.green(`\n✓ Seeded · ${pages.length} pages in the knowledge base`));
+  console.log(`${due.length} question(s) are answerable from it. Ask them with ${
+    style.blue("bun run eval qa:ask")}`);
 }
 
 const ANSWERS_FILE = "qa-answers.json";

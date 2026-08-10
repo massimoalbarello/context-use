@@ -4,13 +4,42 @@ This is the retrieval-facing evaluation: a question goes in, the agent answers i
 knowledge base a distillation run built, and the answer is compared to a sealed key.
 
 ```sh
-bun run eval distill --corpus world-v1 --batches 2   # build the knowledge base
-bun run eval qa:ask                                  # ask, one session per question
-bun run eval qa:score                                # compare to the sealed answers
+bun run eval qa:seed --batches 2   # put world-v1 into the knowledge base
+bun run eval qa:ask                # ask, one session per question
+bun run eval qa:score              # compare to the sealed answers
 ```
 
 `qa:ask` records answers; `qa:score` is offline and deterministic, so a run can be rescored
 whenever the key changes without asking anything again.
+
+## Why world-v1 is seeded, not distilled
+
+`world-v1` has no owner. Its 240 pages are third-person profiles of a VC world with no "me"
+at the centre: twenty partners at twenty *different* firms, no person in more than four of
+its fifty meetings, seventy-five distinct attendees. There is no protagonist to find,
+individual or institutional.
+
+The activity distiller selects on owner engagement — "maintain this knowledge base from the
+owner's connected activity… this is curation, not ingestion" — so on this corpus it
+correctly imports almost nothing. Running it produces a number that measures the mismatch
+rather than the system. Inventing an owner would assert a relationship the corpus does not
+contain, which is the same thing the [eval README](../README.md) refuses to do with
+upstream's fabricated email threading.
+
+Upstream does not distil it either. `before-after.ts` calls `putPage` for all 240 pages and
+then queries: the corpus *is* the knowledge base in their harness, and seeding is the step
+they perform too — so this makes a later comparison closer rather than further.
+
+Pages are written through `PageRepository`, the same path an MCP write takes, so the search
+vector, link normalisation and version row are production behaviour and a seeded page is
+indistinguishable from a written one. They keep upstream's own slug — `people/adam-lee-19` —
+because `Gold.relevant` labels those slugs and renaming them would throw away the one thing
+that makes a retrieval comparison possible.
+
+**So this measures retrieval, and nothing else.** It says nothing about the distiller or
+about our own taxonomy; those belong to `amara-life-v1`, which has a real owner and real
+activity. `distill --corpus world-v1` still works, because demonstrating that the distiller
+declines a corpus with no owner is itself worth being able to show.
 
 ## Iterating on a subset
 
@@ -144,44 +173,6 @@ attendee is invisible — naming one costs nothing and omitting one costs nothin
 means a score reads as *correct on the entities the corpus profiles*, not *correct on who
 attended*. Widening the key to unfiltered `_facts` would diverge from upstream's 145 and
 ask for people the corpus never profiles, so it stays as it is.
-
-## What it found
-
-First recorded run, 10 August 2026: two batches distilled with codex, then the 31 questions
-due by `batch-02`.
-
-| | |
-| --- | --- |
-| earned | **11%** — 3/27 |
-| accuracy | 16% — 5/31 |
-| names never written | 34 |
-| names held but not found | 10 |
-
-Three quarters of the loss is the write path, not retrieval. By template:
-
-| Template | Correct |
-| --- | --- |
-| `Who attended X?` | 5/10 |
-| `Who works at X?` | 0/7 |
-| `Who invested in X?` | 0/10 |
-| `Who advises X?` | 0/4 |
-
-The cause is visible in what got filed. Of the 48 pages served, **4 of 16 people, 1 of 16
-companies and 0 of 10 meetings** got a folder — yet the knowledge base holds 16 people
-folders, most of them people the corpus never served a page for. Ian Anderson has a folder
-and no corpus page at all.
-
-So the distiller is filing **the entities mentioned inside a document rather than the
-subject of the document it was handed**. On `amara-life-v1` that is correct: an email is not
-about anyone in particular and the subject has to be inferred from mentions. On `world-v1`,
-where each record *is* a page about one entity, it is backwards — which is why `attended`
-scores at all (meeting prose names its attendees, and mentions get filed) and the three
-company-shaped templates score zero.
-
-That is worth reading as a finding about fit as much as about quality. `world-v1` was
-introduced as the easier corpus; it is not easier, it is differently shaped, and the
-distiller's evidence selection assumes activity. Treat this as a floor and a diagnostic,
-never a target.
 
 ## What this does not measure
 
