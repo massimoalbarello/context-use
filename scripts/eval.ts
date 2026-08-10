@@ -18,7 +18,7 @@ function usage(): never {
   bun run eval gold:profile [--write]              amara-life-v1 structural check
   bun run eval gold:check [run-id]
   bun run eval qa:derive [--write]                 regenerate world-v1 questions from _facts
-  bun run eval qa:ask [run-id] [--provider <codex|claude>] [--only <q-0007>] [--limit <n>]
+  bun run eval qa:ask [run-id] [--provider <codex|claude>] [--only <q-0007>] [--limit <n>] [--all]
   bun run eval qa:score [run-id]
 
 A batch is the unit one automation run consumes: a calendar day for amara-life-v1, a
@@ -97,6 +97,7 @@ if (command === "connect") {
     provider: providerFrom(args),
     only: optionFrom(args, "only"),
     limit: countFrom(args, "limit"),
+    all: args.includes("--all"),
   });
 } else if (command === "qa:score") {
   scoreAnswersCommand(positional(args));

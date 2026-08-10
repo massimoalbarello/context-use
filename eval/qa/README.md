@@ -4,13 +4,37 @@ This is the retrieval-facing evaluation: a question goes in, the agent answers i
 knowledge base a distillation run built, and the answer is compared to a sealed key.
 
 ```sh
-bun run eval distill --corpus world-v1        # build the knowledge base
-bun run eval qa:ask --limit 20                # ask, one session per question
-bun run eval qa:score                         # compare to the sealed answers
+bun run eval distill --corpus world-v1 --batches 2   # build the knowledge base
+bun run eval qa:ask                                  # ask, one session per question
+bun run eval qa:score                                # compare to the sealed answers
 ```
 
 `qa:ask` records answers; `qa:score` is offline and deterministic, so a run can be rescored
 whenever the key changes without asking anything again.
+
+## Iterating on a subset
+
+A short run is scored against what it was served. Every answer carries the `due_batch` by
+which the corpus has served the pages that state it, and `qa:ask` and `qa:score` work on
+the questions due by the last batch a run recorded:
+
+| Batches processed | Questions due | Of those, earned |
+| --- | --- | --- |
+| 1 | 12 | 10 |
+| 2 | 31 | 27 |
+| 3 | 43 | 37 |
+| 5 | 70 | 60 |
+| 10 | 145 | 120 |
+
+So two distillation runs already give 31 answerable questions. This changes nothing about
+the question set — a full ten-batch run is still upstream's 145 — and it is the same
+discipline [gold/score.ts](../gold/score.ts) applies with `knowableFrom`, where a
+three-day amara run is scored against the 107 entities knowable by then rather than all
+158. Without it a two-batch run would spend most of its budget on questions nothing could
+answer and then report the blanks as failures.
+
+`--all` asks everything regardless, which is only useful for checking that a question is
+genuinely unanswerable rather than merely unasked.
 
 ## The question set is derived, not authored
 
@@ -79,9 +103,19 @@ scores full marks with an empty knowledge base. They are flagged on the sealed s
 kept rather than dropped, because dropping them would diverge from upstream's 145 and cost
 the comparison this file exists to make possible.
 
-Three of the 261 expected answers are stated only in `_facts` and in nobody's prose
-(`q-0055`, `q-0066`, `q-0081`). A system reading content alone cannot know them, so they
-are reported and never counted against a run.
+All 261 expected answers are recoverable from prose. `unstated_in_prose` exists to catch
+any that are not — an answer the corpus states only in `_facts` could not be known by a
+system reading content alone, so it would be reported and never counted — and it is empty
+today.
+
+Getting that right depended on matching **slugs** rather than page titles. Prose writes
+"a senior engineer at [Beta](companies/beta-1)" and never "Beta - Cybersecurity Startup",
+which is the page title, so a title match reported three answers as unknowable that the
+corpus states plainly. This matters more than it sounds: it is also why upstream's
+`employees` never appear on a company page. The prose generator was handed founders,
+investors and advisors but never employees, so "who works at X" is answerable only from
+the *person's* side, and matching the wrong string there hides that the corpus states it
+at all.
 
 ## Reading a failure
 

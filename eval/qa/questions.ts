@@ -56,6 +56,17 @@ export type SealedAnswer = {
   /** Upstream's link types for this template, carried for the same reason as `relevant`. */
   link_types: string[];
   /**
+   * The batch by which the corpus has served every page needed to answer this.
+   *
+   * A short run processes the first N batches, so most pages do not exist yet and most
+   * questions cannot be answered from anything. Scoring those would report a system
+   * failure where the harness simply had not served the evidence. `qa:ask` and `qa:score`
+   * therefore work on the questions due by the last batch a run processed — the same
+   * discipline `gold/score.ts` already applies with `knowableFrom`, and it changes
+   * nothing about the question set itself, so a full run is still upstream's 145.
+   */
+  due_batch: string;
+  /**
    * Expected names the corpus states only in `_facts` and never in anyone's prose. A
    * system reading content alone cannot know these, so the scorer reports them rather
    * than counting them against a run.

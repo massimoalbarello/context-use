@@ -92,6 +92,29 @@ describe("world-v1 question set", () => {
     }
   });
 
+  test("every answer is recoverable from prose alone", () => {
+    // Matching on slugs rather than page titles is what makes this true: prose writes
+    // "[Beta](companies/beta-1)" and never the title "Beta - Cybersecurity Startup".
+    const answers = readAnswers(CORPUS);
+    expect(answers.flatMap((answer) => answer.unstated_in_prose ?? [])).toEqual([]);
+  });
+
+  test("marks each question with the batch that makes it answerable", () => {
+    const answers = readAnswers(CORPUS);
+    const batches = new Set(answers.map((answer) => answer.due_batch));
+    // Ten batches, and every one of them brings new questions into play.
+    expect([...batches].sort()).toEqual(
+      Array.from({ length: 10 }, (_, index) => `batch-${String(index + 1).padStart(2, "0")}`));
+    // A short run is scored against what it was served, so the counts have to grow.
+    let previous = 0;
+    for (const batch of [...batches].sort()) {
+      const due = answers.filter((answer) => answer.due_batch <= batch).length;
+      expect(due).toBeGreaterThan(previous);
+      previous = due;
+    }
+    expect(previous).toBe(145);
+  });
+
   test("names every person the corpus can attribute an answer to", () => {
     const people = worldPeopleNames();
     expect(people).toHaveLength(80);
@@ -113,6 +136,7 @@ const ANSWER: SealedAnswer = {
   expected_names: ["Mia Brown", "Chris Jackson"],
   seed: "meetings/board-acme-2025-q1-0",
   link_types: ["attended"],
+  due_batch: "batch-01",
 };
 
 const PEOPLE = ["Mia Brown", "Chris Jackson", "Ian Anderson"];

@@ -12,7 +12,8 @@
     "seed": "meetings/board-acme-2025-q1-0",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0002",
@@ -25,7 +26,8 @@
     "seed": "meetings/board-beta-2025-q2-1",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0003",
@@ -42,7 +44,8 @@
     "seed": "meetings/board-delta-2025-q4-3",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0004",
@@ -61,7 +64,8 @@
     "seed": "meetings/board-epsilon-2025-q1-4",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0005",
@@ -74,7 +78,8 @@
     "seed": "meetings/board-gamma-2025-q3-2",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0006",
@@ -87,7 +92,8 @@
     "seed": "meetings/board-helix-2025-q2-9",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0007",
@@ -100,7 +106,8 @@
     "seed": "meetings/board-nimbus-2025-q2-5",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0008",
@@ -115,7 +122,8 @@
     "seed": "meetings/board-pulse-2025-q1-8",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0009",
@@ -128,7 +136,8 @@
     "seed": "meetings/board-quantum-2025-q4-7",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0010",
@@ -145,7 +154,8 @@
     "seed": "meetings/board-vector-2025-q3-6",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0011",
@@ -166,7 +176,8 @@
     "seed": "meetings/demo-day-2024-01-15-batch-0",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0012",
@@ -187,7 +198,8 @@
     "seed": "meetings/demo-day-2024-02-16-batch-1",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0013",
@@ -208,7 +220,8 @@
     "seed": "meetings/demo-day-2024-03-17-batch-2",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0014",
@@ -229,7 +242,8 @@
     "seed": "meetings/demo-day-2024-04-18-batch-3",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0015",
@@ -250,7 +264,8 @@
     "seed": "meetings/demo-day-2024-05-19-batch-4",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0016",
@@ -271,7 +286,8 @@
     "seed": "meetings/demo-day-2024-06-20-batch-5",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0017",
@@ -292,7 +308,8 @@
     "seed": "meetings/demo-day-2024-07-21-batch-6",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0018",
@@ -313,7 +330,8 @@
     "seed": "meetings/demo-day-2024-08-22-batch-7",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0019",
@@ -334,7 +352,8 @@
     "seed": "meetings/demo-day-2024-09-23-batch-8",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0020",
@@ -355,7 +374,8 @@
     "seed": "meetings/demo-day-2024-10-24-batch-9",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0021",
@@ -374,7 +394,8 @@
     "seed": "meetings/demo-day-2024-11-15-batch-10",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0022",
@@ -393,7 +414,8 @@
     "seed": "meetings/demo-day-2024-12-16-batch-11",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0023",
@@ -412,7 +434,8 @@
     "seed": "meetings/demo-day-2025-01-17-batch-12",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0024",
@@ -431,7 +454,8 @@
     "seed": "meetings/demo-day-2025-02-18-batch-13",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0025",
@@ -450,7 +474,8 @@
     "seed": "meetings/demo-day-2025-03-19-batch-14",
     "link_types": [
       "attended"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0026",
@@ -466,6 +491,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-06",
     "self_answering": true
   },
   {
@@ -482,6 +508,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-07",
     "self_answering": true
   },
   {
@@ -498,6 +525,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-08",
     "self_answering": true
   },
   {
@@ -514,6 +542,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-09",
     "self_answering": true
   },
   {
@@ -530,6 +559,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-10",
     "self_answering": true
   },
   {
@@ -546,6 +576,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-01",
     "self_answering": true
   },
   {
@@ -562,6 +593,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-02",
     "self_answering": true
   },
   {
@@ -578,6 +610,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-03",
     "self_answering": true
   },
   {
@@ -594,6 +627,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-04",
     "self_answering": true
   },
   {
@@ -610,6 +644,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-05",
     "self_answering": true
   },
   {
@@ -626,6 +661,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-06",
     "self_answering": true
   },
   {
@@ -642,6 +678,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-07",
     "self_answering": true
   },
   {
@@ -658,6 +695,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-08",
     "self_answering": true
   },
   {
@@ -672,6 +710,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-09",
     "self_answering": true
   },
   {
@@ -686,6 +725,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-10",
     "self_answering": true
   },
   {
@@ -700,6 +740,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-01",
     "self_answering": true
   },
   {
@@ -714,6 +755,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-02",
     "self_answering": true
   },
   {
@@ -728,6 +770,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-03",
     "self_answering": true
   },
   {
@@ -744,6 +787,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-04",
     "self_answering": true
   },
   {
@@ -760,6 +804,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-05",
     "self_answering": true
   },
   {
@@ -776,6 +821,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-06",
     "self_answering": true
   },
   {
@@ -792,6 +838,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-07",
     "self_answering": true
   },
   {
@@ -808,6 +855,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-08",
     "self_answering": true
   },
   {
@@ -824,6 +872,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-09",
     "self_answering": true
   },
   {
@@ -840,6 +889,7 @@
     "link_types": [
       "attended"
     ],
+    "due_batch": "batch-10",
     "self_answering": true
   },
   {
@@ -856,7 +906,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0052",
@@ -870,7 +921,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0053",
@@ -884,7 +936,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0054",
@@ -898,7 +951,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0055",
@@ -915,9 +969,7 @@
       "works_at",
       "founded"
     ],
-    "unstated_in_prose": [
-      "Tara Kapoor"
-    ]
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0056",
@@ -931,7 +983,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0057",
@@ -945,7 +998,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0058",
@@ -959,7 +1013,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0059",
@@ -973,7 +1028,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0060",
@@ -989,7 +1045,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0061",
@@ -1003,7 +1060,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0062",
@@ -1017,7 +1075,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0063",
@@ -1033,7 +1092,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0064",
@@ -1047,7 +1107,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0065",
@@ -1061,7 +1122,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0066",
@@ -1078,9 +1140,7 @@
       "works_at",
       "founded"
     ],
-    "unstated_in_prose": [
-      "Tina Jones"
-    ]
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0067",
@@ -1094,7 +1154,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0068",
@@ -1108,7 +1169,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0069",
@@ -1122,7 +1184,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0070",
@@ -1138,7 +1201,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0071",
@@ -1152,7 +1216,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0072",
@@ -1166,7 +1231,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0073",
@@ -1180,7 +1246,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0074",
@@ -1194,7 +1261,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0075",
@@ -1208,7 +1276,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0076",
@@ -1222,7 +1291,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0077",
@@ -1236,7 +1306,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0078",
@@ -1250,7 +1321,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0079",
@@ -1264,7 +1336,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0080",
@@ -1280,7 +1353,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0081",
@@ -1297,9 +1371,7 @@
       "works_at",
       "founded"
     ],
-    "unstated_in_prose": [
-      "Xavier Nakamura"
-    ]
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0082",
@@ -1315,7 +1387,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0083",
@@ -1329,7 +1402,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0084",
@@ -1343,7 +1417,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0085",
@@ -1357,7 +1432,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0086",
@@ -1371,7 +1447,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0087",
@@ -1387,7 +1464,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0088",
@@ -1401,7 +1479,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0089",
@@ -1415,7 +1494,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0090",
@@ -1429,7 +1509,8 @@
     "link_types": [
       "works_at",
       "founded"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0091",
@@ -1442,7 +1523,8 @@
     "seed": "companies/acme-0",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0092",
@@ -1455,7 +1537,8 @@
     "seed": "companies/acme-labs-50",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0093",
@@ -1468,7 +1551,8 @@
     "seed": "companies/anchor-28",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0094",
@@ -1481,7 +1565,8 @@
     "seed": "companies/apex-18",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0095",
@@ -1494,7 +1579,8 @@
     "seed": "companies/beacon-10",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0096",
@@ -1509,7 +1595,8 @@
     "seed": "companies/beta-labs-51",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0097",
@@ -1524,7 +1611,8 @@
     "seed": "companies/delta-3",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0098",
@@ -1539,7 +1627,8 @@
     "seed": "companies/delta-labs-53",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0099",
@@ -1558,7 +1647,8 @@
     "seed": "companies/drift-31",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0100",
@@ -1573,7 +1663,8 @@
     "seed": "companies/echo-32",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0101",
@@ -1590,7 +1681,8 @@
     "seed": "companies/epsilon-4",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0102",
@@ -1603,7 +1695,8 @@
     "seed": "companies/epsilon-labs-54",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0103",
@@ -1616,7 +1709,8 @@
     "seed": "companies/forge-19",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0104",
@@ -1629,7 +1723,8 @@
     "seed": "companies/foundry-33",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0105",
@@ -1644,7 +1739,8 @@
     "seed": "companies/gamma-labs-52",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0106",
@@ -1661,7 +1757,8 @@
     "seed": "companies/gravity-17",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0107",
@@ -1674,7 +1771,8 @@
     "seed": "companies/gust-34",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0108",
@@ -1689,7 +1787,8 @@
     "seed": "companies/helix-labs-59",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0109",
@@ -1702,7 +1801,8 @@
     "seed": "companies/iris-36",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0110",
@@ -1715,7 +1815,8 @@
     "seed": "companies/jolt-37",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0111",
@@ -1728,7 +1829,8 @@
     "seed": "companies/keel-38",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0112",
@@ -1741,7 +1843,8 @@
     "seed": "companies/lucid-21",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0113",
@@ -1754,7 +1857,8 @@
     "seed": "companies/lumen-12",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0114",
@@ -1769,7 +1873,8 @@
     "seed": "companies/meridian-40",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0115",
@@ -1782,7 +1887,8 @@
     "seed": "companies/mosaic-14",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0116",
@@ -1795,7 +1901,8 @@
     "seed": "companies/orbit-42",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0117",
@@ -1812,7 +1919,8 @@
     "seed": "companies/prism-43",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0118",
@@ -1825,7 +1933,8 @@
     "seed": "companies/pulse-8",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0119",
@@ -1842,7 +1951,8 @@
     "seed": "companies/pulse-labs-58",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0120",
@@ -1857,7 +1967,8 @@
     "seed": "companies/quantum-labs-57",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0121",
@@ -1870,7 +1981,8 @@
     "seed": "companies/quasar-44",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0122",
@@ -1883,7 +1995,8 @@
     "seed": "companies/ranger-22",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0123",
@@ -1900,7 +2013,8 @@
     "seed": "companies/spire-46",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0124",
@@ -1913,7 +2027,8 @@
     "seed": "companies/talon-47",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-01"
   },
   {
     "id": "q-0125",
@@ -1926,7 +2041,8 @@
     "seed": "companies/tessera-15",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0126",
@@ -1939,7 +2055,8 @@
     "seed": "companies/vector-6",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0127",
@@ -1952,7 +2069,8 @@
     "seed": "companies/vector-labs-56",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0128",
@@ -1965,7 +2083,8 @@
     "seed": "companies/vellum-49",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0129",
@@ -1978,7 +2097,8 @@
     "seed": "companies/vox-25",
     "link_types": [
       "invested_in"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0130",
@@ -1991,7 +2111,8 @@
     "seed": "companies/acme-labs-50",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-03"
   },
   {
     "id": "q-0131",
@@ -2004,7 +2125,8 @@
     "seed": "companies/apex-18",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-07"
   },
   {
     "id": "q-0132",
@@ -2017,7 +2139,8 @@
     "seed": "companies/delta-labs-53",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-09"
   },
   {
     "id": "q-0133",
@@ -2030,7 +2153,8 @@
     "seed": "companies/epsilon-4",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0134",
@@ -2043,7 +2167,8 @@
     "seed": "companies/forge-19",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0135",
@@ -2056,7 +2181,8 @@
     "seed": "companies/foundry-33",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0136",
@@ -2069,7 +2195,8 @@
     "seed": "companies/gravity-17",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0137",
@@ -2082,7 +2209,8 @@
     "seed": "companies/keel-38",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0138",
@@ -2095,7 +2223,8 @@
     "seed": "companies/lucid-21",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-08"
   },
   {
     "id": "q-0139",
@@ -2110,7 +2239,8 @@
     "seed": "companies/prism-43",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-10"
   },
   {
     "id": "q-0140",
@@ -2123,7 +2253,8 @@
     "seed": "companies/ranger-22",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0141",
@@ -2136,7 +2267,8 @@
     "seed": "companies/tempo-24",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-02"
   },
   {
     "id": "q-0142",
@@ -2149,7 +2281,8 @@
     "seed": "companies/umbra-48",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-04"
   },
   {
     "id": "q-0143",
@@ -2162,7 +2295,8 @@
     "seed": "companies/vector-6",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-05"
   },
   {
     "id": "q-0144",
@@ -2175,7 +2309,8 @@
     "seed": "companies/vector-labs-56",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-06"
   },
   {
     "id": "q-0145",
@@ -2188,6 +2323,7 @@
     "seed": "companies/vellum-49",
     "link_types": [
       "advises"
-    ]
+    ],
+    "due_batch": "batch-07"
   }
 ]

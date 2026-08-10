@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { corpusDirectory } from "../corpus-integrity.ts";
+import { loadWorldCorpus } from "../corpus-world.ts";
 import type { PublicQuery, QuestionSet, SealedAnswer } from "./questions.ts";
 
 /**
@@ -101,6 +102,11 @@ export function deriveWorldQuestions(directory = corpusDirectory("world-v1")): Q
   const bySlug = new Map(shards.map((shard) => [shard.slug, shard]));
   const allProse = shards.map(prose);
 
+  // Taken from the loader rather than recomputed, so the batch a question is due in can
+  // never drift from the batch the reader actually serves that page in.
+  const batchOf = new Map(loadWorldCorpus(directory).records.map((record) => [record.slug, record.batch]));
+  const proseByBatch = shards.map((shard) => ({ batch: batchOf.get(shard.slug)!, text: prose(shard) }));
+
   const questions: PublicQuery[] = [];
   const answers: SealedAnswer[] = [];
 
@@ -126,19 +132,39 @@ export function deriveWorldQuestions(directory = corpusDirectory("world-v1")): Q
        * name — every entity's own page names itself, so checking for the name alone would
        * call everything knowable.
        *
+       * Both sides are matched on their **slug**, because that is the anchor upstream
+       * actually writes: prose says "senior engineer at [Beta](companies/beta-1)" and
+       * never "Beta - Cybersecurity Startup", which is the page title. Matching titles
+       * reported three answers as unknowable that the corpus states plainly.
+       *
        * Two ways a relationship is stated. On the seed page the subject is implicit,
        * because the page is about it, so naming the answer there is enough: "Mia Brown
        * led the session" on Acme's board-meeting page. Anywhere else both have to appear
-       * together: "Adam Lopez is a senior engineer at Delta" on Adam's own page answers
-       * who works at Delta.
+       * together: "Adam Lopez is a senior engineer at [Delta](companies/delta-3)" on
+       * Adam's own page answers who works at Delta.
        */
       const seedProse = prose(shard);
-      const subject = shard.title.toLowerCase();
+      const mentions = (text: string, slug: string): boolean =>
+        text.includes(slug.toLowerCase()) || text.includes(displayName(bySlug.get(slug)!).toLowerCase());
       const unstated = expected.filter((slug) => {
-        const name = displayName(bySlug.get(slug)!).toLowerCase();
-        if (seedProse.includes(name)) return false;
-        return !allProse.some((text) => text.includes(name) && text.includes(subject));
+        if (mentions(seedProse, slug)) return false;
+        return !allProse.some((text) => mentions(text, slug) && mentions(text, shard.slug));
       }).map((slug) => displayName(bySlug.get(slug)!));
+
+      /**
+       * The batch by which every answer has become knowable: for each expected answer,
+       * the earliest batch holding a page that states its relationship to the seed, and
+       * then the latest of those — plus the seed's own batch, since the question names
+       * the entity and a knowledge base that has never seen it cannot be asked about it.
+       */
+      const dueBatch = expected.reduce((latest, slug) => {
+        const stating = proseByBatch
+          .filter((page) => mentions(page.text, slug) && mentions(page.text, shard.slug))
+          .map((page) => page.batch)
+          .concat(mentions(seedProse, slug) ? [batchOf.get(shard.slug)!] : []);
+        const earliest = stating.sort()[0] ?? batchOf.get(slug)!;
+        return earliest > latest ? earliest : latest;
+      }, batchOf.get(shard.slug)!);
 
       const expectedNames = expected.map((slug) => displayName(bySlug.get(slug)!));
       // Upstream titles its one-on-ones `1:1 Wendy Hernandez + Mia Brown`, so "who
@@ -152,6 +178,7 @@ export function deriveWorldQuestions(directory = corpusDirectory("world-v1")): Q
         expected_names: expectedNames,
         seed: shard.slug,
         link_types: template.linkTypes,
+        due_batch: dueBatch,
         ...(unstated.length ? { unstated_in_prose: unstated } : {}),
         ...(selfAnswering ? { self_answering: true } : {}),
       });

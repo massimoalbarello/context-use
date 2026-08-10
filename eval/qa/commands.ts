@@ -13,6 +13,7 @@ import {
   readQuestions,
   serialise,
   type PublicQuery,
+  type SealedAnswer,
 } from "./questions.ts";
 import { scoreRun, type RecordedAnswer } from "./score.ts";
 import { deriveWorldQuestions, worldPeopleNames } from "./world-derive.ts";
@@ -94,12 +95,40 @@ function assertRunMatches(directory: string): void {
   }
 }
 
+/** Batch snapshots a run recorded, ascending. Read from disk so a partial run still works. */
+function recordedBatches(directory: string): string[] {
+  return readdirSync(directory)
+    .flatMap((file) => /^batch-(.+)-snapshot\.json$/.exec(file)?.[1] ?? [])
+    .sort();
+}
+
 /** The knowledge base as the final batch left it, which is what the questions are asked of. */
 function finalSnapshot(directory: string): PageSnapshot[] {
-  const snapshots = readdirSync(directory).filter((file) => /^batch-.+-snapshot\.json$/.test(file)).sort();
-  const last = snapshots.at(-1);
+  const last = recordedBatches(directory).at(-1);
   if (!last) throw new Error(`Run ${directory} holds no batch snapshots`);
-  return JSON.parse(readFileSync(join(directory, last), "utf8")) as PageSnapshot[];
+  return JSON.parse(readFileSync(join(directory, `batch-${last}-snapshot.json`), "utf8")) as PageSnapshot[];
+}
+
+/**
+ * The questions a run has actually served the evidence for.
+ *
+ * A two-batch run has seen 48 of 240 pages, so asking all 145 questions would spend most
+ * of the budget on questions nothing could answer and then report the blanks as failures.
+ * Restricting to what is due is the same discipline `gold/score.ts` applies with
+ * `knowableFrom`, and it leaves the question set itself untouched — a full ten-batch run
+ * is still upstream's 145.
+ */
+function dueQuestions(
+  directory: string,
+  questions: PublicQuery[],
+  answers: SealedAnswer[],
+  all: boolean,
+): { due: PublicQuery[]; through: string | undefined; skipped: number } {
+  const through = recordedBatches(directory).at(-1);
+  if (all || !through) return { due: questions, through, skipped: 0 };
+  const dueBy = new Map(answers.map((answer) => [answer.id, answer.due_batch]));
+  const due = questions.filter((question) => (dueBy.get(question.id) ?? "") <= through);
+  return { due, through, skipped: questions.length - due.length };
 }
 
 const ANSWERS_FILE = "qa-answers.json";
@@ -109,6 +138,8 @@ export type AskOptions = {
   provider: EvalProvider;
   only?: string | undefined;
   limit?: number | undefined;
+  /** Ask every question, including ones the run has not served the evidence for. */
+  all?: boolean | undefined;
 };
 
 export async function askQuestionsCommand(options: AskOptions): Promise<void> {
@@ -121,15 +152,25 @@ export async function askQuestionsCommand(options: AskOptions): Promise<void> {
   const directory = runDirectory(options.runId);
   assertRunMatches(directory);
 
-  let questions: PublicQuery[] = readQuestions(QA_CORPUS);
+  const { due, through, skipped } = dueQuestions(
+    directory, readQuestions(QA_CORPUS), readAnswers(QA_CORPUS), options.all ?? false);
+  let questions: PublicQuery[] = due;
   if (options.only) questions = questions.filter((question) => question.id === options.only);
   if (options.limit) questions = questions.slice(0, options.limit);
-  if (questions.length === 0) throw new Error("No questions selected");
+  if (questions.length === 0) {
+    throw new Error(options.only
+      ? `${options.only} is not due by ${through}. Pass --all to ask it anyway.`
+      : "No questions selected");
+  }
 
   const answerDirectory = join(directory, "qa");
   await mkdir(answerDirectory, { recursive: true });
 
   console.log(style.heading(`\nAsking ${questions.length} question(s) · ${directory.split("/").at(-1)}`));
+  if (skipped) {
+    console.log(style.dim(`Run processed through ${through}, so ${skipped} question(s) whose evidence`));
+    console.log(style.dim("it never served are held back. Pass --all to ask them anyway."));
+  }
   console.log(style.dim("One session per question, against the knowledge base the run left.\n"));
 
   const recorded = await askQuestions({
@@ -178,7 +219,9 @@ export function scoreAnswersCommand(runId?: string): void {
   });
   const { scores } = result;
 
+  const through = recordedBatches(directory).at(-1);
   console.log(style.heading(`\nQA score · ${QA_CORPUS} · ${directory.split("/").at(-1)}`));
+  if (through) console.log(style.dim(`Knowledge base built through ${through}.`));
   for (const score of scores) {
     const mark = score.verdict === "correct" ? style.green("✓")
       : score.verdict === "void" ? style.yellow("–") : style.red("✗");
