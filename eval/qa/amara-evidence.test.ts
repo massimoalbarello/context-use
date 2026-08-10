@@ -125,6 +125,12 @@ describe("grading the authored set", () => {
     expect({ verdict: result.verdict, extra: result.extra }).toEqual({ verdict: "correct", extra: [] });
   });
 
+  test("accepts the multiplication sign for the letter x", () => {
+    const id = idOf("2-3x longer than quoted");
+    expect(score(id, "Both former customers said timelines ran 2\u20133\u00d7 longer than quoted.").verdict)
+      .toBe("correct");
+  });
+
   test("accepts a number the agent spelled out", () => {
     const id = idOf("Around 8 months");
     expect(score(id, "NovaTech Labs had roughly eight months of runway.").verdict).toBe("correct");
