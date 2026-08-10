@@ -827,8 +827,8 @@ describe("knowledge templates", () => {
     expect(guides.about).toContain("[[about/diary/agents|");
     expect(guides.about).toContain("[[about/projects/agents|");
     expect(guides.about).toContain("[[about/tasks/agents|");
-    expect(normalize(guides.diary)).toContain("Repetition is a signal to review placement, not proof");
-    expect(normalize(guides.diary)).toContain("Do correct content that is wrong or misleading");
+    expect(normalize(guides.diary)).toContain("Repeated mention is not continuation");
+    expect(normalize(guides.diary)).toContain("Do correct what is wrong or misleading");
     expect(guides.diary).toContain("[[automations/diary-composer/instructions|diary composer]]");
     expect(guides.projects).toContain("about/projects/<slug>/");
     expect(guides.tasks).toContain("about/tasks/<slug>/");
@@ -853,7 +853,7 @@ describe("knowledge templates", () => {
     expect(normalize(guides.automations)).toContain("Automations do not coordinate through one another's instruction pages");
     expect(normalize(guides.automations)).toContain("preserve every other byte as found");
     expect(normalize(guides.automations)).toContain("a local exception to the root `intro` entry-point convention");
-    expect(normalize(guides.diary)).toContain("A day folder is a chronological container, not a durable entity");
+    expect(normalize(guides.diary)).toContain("A day folder is a chronological container rather than a durable entity");
 
     expect(normalizedDistiller).toContain("Before the first mutation in a guidance scope");
     expect(activityDistiller).toContain("[[agents|root guide]]");
