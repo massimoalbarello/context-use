@@ -47,10 +47,11 @@ not pages to mirror.
    finish whatever is missing:
    - each conversation that took place has its meeting page, each person and organization
      its own, each decision in flight its task page;
-   - every material state change exists in both directions — the day's diary entry, and
-     the dated milestone on the entity's `timeline` linking that entry;
+   - every material state change is a timeline event on the entity's `timeline`, dated to
+     when the thing happened;
    - no canonical page carries a dated status, stage or figure that belongs on its
-     timeline, and no name sits bare where a link belongs.
+     timeline, and no name sits bare where a link belongs;
+   - `about/intro` exists and still describes the owner the batch has just shown you.
 6. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
@@ -72,7 +73,8 @@ event never happened. Reconcile the affected account from remaining evidence. A 
 deletion with null Markdown supports no semantic change.
 
 Apply the root guide's evidence distinctions and use the date of the underlying
-activity. Without a reliable subject or activity date, do not create diary knowledge.
+activity. Without a reliable activity date, record what is durable about the subject and
+leave the timeline alone rather than dating one by guess.
 
 Keep only evidence that changes future understanding: a decision and rationale,
 consequential outcome, meaningful change of direction, milestone, important commitment,
@@ -109,7 +111,7 @@ Determine targets from the actual subjects across the whole evidence batch, neve
 the provider, record type, repository, email thread or calendar-item shape. Search
 existing knowledge and connected evidence before preparing each unfamiliar exact
 target, then let its guide chain decide the useful pages. Apply the root timeline
-contract in the same coherent write whenever an entity milestone is recorded.
+contract in the same coherent write whenever a timeline event is recorded.
 
 Take the cast named in step 3 to its owning guides and reconcile every subject that meets
 the threshold there. Records are how the cast becomes visible; they are not themselves the
@@ -166,21 +168,14 @@ For a useful meeting prep:
 After the available research, keep unresolved identities out of the connected write and
 group their ambiguity into one concise report item for the meeting.
 
-## Maintain the diary companion
+## Leave the diary alone
 
-For each actual activity date that warrants a companion under the diary guide,
-reconcile at most one page at
-`about/diary/<YYYY>/<MM>/<DD>/activity-distiller`. Title it
-`Activity distiller — <D Month YYYY>`. Follow the diary guide for date choice, synthesis,
-reruns, no-filler behavior and ownership boundaries.
-
-When a companion page exists, ensure the day's `log` exists. If missing, create it after
-the companion using the diary guide's title and summary conventions. Its body contains
-only the title and a `## Companion pages` section with this automation's single bullet.
-Derive its summary and bullet from the material activity; do not invent a location,
-narrative, `On my mind` or `Threads` content. In an existing log, change only this
-automation's companion bullet. Operational state, record identifiers and diagnostics
-never belong in the diary.
+Never create or edit a page under `about/diary/`. Record what happened as a timeline event
+on the entity's `timeline` and stop there; the
+[[automations/diary-composer/instructions|diary composer]] reads those events afterwards
+and assembles each day. A timeline event dated correctly is the whole of this automation's
+contribution to the chronology, and a timeline event that links a day log asserts one
+that does not exist yet.
 
 ## Checkpoint and report
 
@@ -204,6 +199,6 @@ invocation start after the source lifecycle changes covered by this run. Finish 
 - `Created`, `Updated` and `Archived` lists containing every semantic page mutation,
   each with the exact path and a short description.
 
-Include entity, diary, log and companion pages in those lists. Exclude structural
-directories and the operational state page. Write `None` for an empty list. On failure,
+Include every entity page and timeline in those lists. Exclude structural directories and
+the operational state page. Write `None` for an empty list. On failure,
 report what failed and leave the prior checkpoint available for replay.

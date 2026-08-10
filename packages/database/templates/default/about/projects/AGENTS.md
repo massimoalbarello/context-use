@@ -9,12 +9,11 @@ work or maintained system.
 
     about/projects/<slug>/
     ├── intro       — what the project is, why it exists and its durable boundaries
-    └── timeline    — optional, curated milestones that materially changed it
+    └── timeline    — curated milestones that materially changed it
 
-A project can use one folder with `intro` as its entry point. A `timeline` becomes useful
-once there are meaningful milestones to navigate. Another page—such as `architecture`,
-`principles` or `history`—helps only when that subject is independently worth reading,
-retrieving or linking.
+A project is a folder entered through `intro`, gaining its `timeline` once there is a dated
+milestone to record. Another page—such as `architecture`, `principles` or `history`—helps
+only when that subject is independently worth reading, retrieving or linking.
 
 ## Project account
 
@@ -22,7 +21,7 @@ Keep the project's purpose, boundaries, durable design, principles, important ou
 and project-specific reasoning. Link related tasks and entities rather than absorbing
 their accounts.
 
-Under the inherited [[agents#diary-and-entity-timelines|root timeline contract]], project
+Under the inherited [[agents#the-timeline|root timeline contract]], project
 milestones may include a launch, material direction change, major release, handover or
 similarly consequential outcome. A project timeline is not a commit log or an exhaustive
 list of releases.
@@ -30,6 +29,8 @@ list of releases.
 ## When a project is useful
 
 Create a project when the evidence confidently identifies a distinct, enduring body of
-work. The owner naming it as a project is enough; otherwise repeated activity or a
-meaningful milestone may establish that durability. A repository, ticket, short
+work. The clearest sign is that it breaks down into several finite pursuits, each of which
+would be a [[about/tasks/agents|task]] on its own; a body of work with only one outcome in
+it is that outcome. The owner naming it as a project is enough; otherwise repeated activity
+or a meaningful milestone may establish that durability. A repository, ticket, short
 engagement or guessed grouping is not automatically a project.

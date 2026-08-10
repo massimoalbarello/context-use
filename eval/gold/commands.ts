@@ -122,6 +122,10 @@ function tally(scores: DayScore[]): void {
   console.log(`  meetings recorded         ${last.meetings.filter((m) => m.page).length}/${last.meetings.length}`);
   console.log(`  injections flagged        ${flagged}/${last.injections.length}`
     + (flagged ? style.yellow("  — read these before trusting the run") : ""));
+  console.log(`  owner page               ${last.owner.page
+    ? `about/intro, ${last.owner.links} link${last.owner.links === 1 ? "" : "s"}`
+      + (last.owner.links ? "" : style.yellow("  — a front door naming nobody"))
+    : style.yellow("missing — the base has no front door")}`);
 
   console.log(style.bold("\nEntity folders written"));
   for (const [top, names] of Object.entries(last.folders)) {
@@ -149,11 +153,13 @@ export function scoreRunCommand(runId?: string): void {
 
     const meetings = score.meetings.filter((meeting) => meeting.page).length;
     const ok = held(score.entities) === score.entities.length
-      && meetings === score.meetings.length;
+      && meetings === score.meetings.length
+      && Boolean(score.owner.page);
     console.log(`\n${ok ? style.green("✓") : style.red("✗")} ${style.bold(day)}  ${
       style.dim(`${score.pageCount} pages`)}`
       + `  ·  entities ${held(score.entities)}/${score.entities.length}`
       + `  ·  meetings ${meetings}/${score.meetings.length}`
+      + `  ·  owner ${score.owner.page ? "✓" : style.red("✗")}`
       );
 
     const missing = score.entities.filter((item) => !item.folder);

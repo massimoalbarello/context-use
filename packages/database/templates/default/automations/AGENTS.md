@@ -34,7 +34,13 @@ individual automation.
 
 Knowledge created by an automation belongs with its real subject and follows that
 target's guide. Only the automation's own instructions, minimal state and dependencies
-belong here.
+belong here. An automation never files its output under its own directory, and never
+under a date: output organized by the process that produced it is unreachable from the
+subject it is about.
+
+`about/diary/` belongs to the [[automations/diary-composer/instructions|diary composer]]
+alone. Every other writer records what happened as a timeline event on the relevant
+entity's `timeline`, and the composer assembles the days from those events afterwards.
 
 An unattended workflow can carry out the confident, useful changes described by the
 [[agents|root guide]] and reports its semantic changes through the external harness.

@@ -159,3 +159,26 @@ describe("gold check", () => {
     expect(normalise("Meridian Robotics — 14 April 2026")).toBe("meridian robotics 14 april 2026");
   });
 });
+
+describe("the owner's own page", () => {
+  test("is missing when nothing wrote it", () => {
+    const score = scoreDay(expectations, [page({ path: "people/amara-okafor/intro" })], "2026-04-13");
+    expect(score.owner.page).toBeUndefined();
+    expect(score.owner.links).toBe(0);
+  });
+
+  test("counts the distinct subjects its front door routes to", () => {
+    const body = "I invest at [[companies/halfway-capital/intro|Halfway]], backing "
+      + "[[companies/vero-health/intro|Vero]] and [[companies/halfway-capital/intro|Halfway]] again.";
+    const score = scoreDay(expectations, [page({ path: "about/intro", body })], "2026-04-13");
+    expect(score.owner.page).toBe("about/intro");
+    // Two distinct targets, though Halfway is linked twice.
+    expect(score.owner.links).toBe(2);
+  });
+
+  test("reports a page that names nobody, which is a label rather than a route", () => {
+    const score = scoreDay(expectations, [page({ path: "about/intro", body: "An investor." })], "2026-04-13");
+    expect(score.owner.page).toBe("about/intro");
+    expect(score.owner.links).toBe(0);
+  });
+});

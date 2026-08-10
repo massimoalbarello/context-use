@@ -30,6 +30,45 @@ function linksTo(page: PageSnapshot | undefined, path: string): boolean {
   });
 }
 
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function diaryPathFor(date: string): string {
+  return `about/diary/${date.replaceAll("-", "/")}/log`;
+}
+
+/** The root guide's entry shape: `- **9 August** — …` under a year and month heading. */
+function hasDatedEntry(page: PageSnapshot | undefined, date: string): boolean {
+  if (!page) return false;
+  const [, month, day] = date.split("-");
+  const label = `${Number(day)} ${MONTHS[Number(month) - 1]}`;
+  return new RegExp(`\\*\\*${label}\\*\\*`, "i").test(page.body);
+}
+
+function mentionsDiary(page: PageSnapshot | undefined): boolean {
+  return page ? /\[\[about\/diary\//i.test(page.body) : false;
+}
+
+const MONTH_PATTERN = MONTHS.join("|");
+const DATE_PATTERN = new RegExp(
+  `\\b(?:\\d{1,2} )?(?:${MONTH_PATTERN})(?: \\d{4})?\\b|\\bQ[1-4](?: \\d{4})?\\b`,
+  "gi",
+);
+
+/**
+ * A canonical page carries one kind of date only: an inline `— as of <date>` on a durable
+ * fact that can change. Any other date is a status, stage or figure that belongs on the
+ * timeline. Returns the offending fragments so a failure names what to move.
+ */
+function undatedStatus(page: PageSnapshot | undefined): string[] {
+  if (!page) return [];
+  return [...page.body.matchAll(DATE_PATTERN)]
+    .filter((match) => !/as of\s*$/i.test(page.body.slice(Math.max(0, match.index - 8), match.index)))
+    .map((match) => match[0]);
+}
+
 function add(
   assertions: AssertionResult[],
   id: string,
@@ -54,27 +93,23 @@ export function scoreStep(
   previousPages: PageSnapshot[] = [],
 ): StepScore {
   const assertions: AssertionResult[] = [];
-  const diaryPath = `about/diary/${step.date.replaceAll("-", "/")}/log`;
-  const diary = pageAt(pages, diaryPath);
-
-  add(assertions, "diary.exists", Boolean(diary), `Daily diary exists at ${diaryPath}`);
 
   for (const entity of step.entities) {
     const introPath = `${entity.path}/intro`;
     const timelinePath = `${entity.path}/timeline`;
     const intro = pageAt(pages, introPath);
     const timeline = pageAt(pages, timelinePath);
-    const previousIntro = pageAt(previousPages, introPath);
     const previousTimeline = pageAt(previousPages, timelinePath);
 
     add(assertions, `${entity.path}.intro`, Boolean(intro), `${entity.label} has a canonical intro page`);
     add(assertions, `${entity.path}.timeline`, Boolean(timeline), `${entity.label} has its own timeline`);
+    const dated = undatedStatus(intro);
     add(
       assertions,
-      `${entity.path}.intro-reconciled`,
-      intro !== undefined && (!previousIntro || intro.version > previousIntro.version),
-      `${entity.label}'s canonical account was ${previousIntro ? "updated" : "created"} for this step`,
-      intro ? `${intro.path} v${intro.version}` : undefined,
+      `${entity.path}.intro-undated`,
+      intro !== undefined && dated.length === 0,
+      `${entity.label}'s canonical account carries no date outside an "as of" fact`,
+      dated.join(", ") || undefined,
     );
     add(
       assertions,
@@ -85,17 +120,17 @@ export function scoreStep(
     );
     add(
       assertions,
-      `${entity.path}.diary-backlink`,
-      linksTo(timeline, diaryPath),
-      `${entity.label}'s timeline links the exact daily diary`,
+      `${entity.path}.timeline-dated`,
+      hasDatedEntry(timeline, step.date),
+      `${entity.label}'s timeline carries an entry dated ${step.date}`,
       timeline?.path,
     );
     add(
       assertions,
-      `diary.${entity.path}`,
-      linksTo(diary, introPath),
-      `The daily diary links ${entity.label}`,
-      diary?.path,
+      `${entity.path}.no-diary-link`,
+      !mentionsDiary(timeline),
+      `${entity.label}'s timeline links no diary page; the composer owns that direction`,
+      timeline?.path,
     );
 
     const duplicateIntros = pages.filter((page) => page.path.startsWith(`${entity.path}-`)
@@ -140,13 +175,6 @@ export function scoreStep(
     const meeting = findMeeting(pages, step.date, step.entities.map((entity) => entity.path));
     add(assertions, "meeting.exists", Boolean(meeting), `A canonical meeting account exists for ${step.date}`);
     if (meeting) {
-      add(
-        assertions,
-        "diary.meeting-link",
-        linksTo(diary, meeting.path),
-        "The daily diary links the canonical meeting",
-        meeting.path,
-      );
       for (const entity of step.entities) {
         add(
           assertions,
@@ -168,6 +196,52 @@ export function scoreStep(
 
   return {
     stepId: step.id,
+    passed: assertions.filter((assertion) => assertion.passed).length,
+    total: assertions.length,
+    assertions,
+  };
+}
+
+/**
+ * The diary is composed after the fact by the diary composer, not written by the agent
+ * that recorded the events. It is therefore scored once, over the final snapshot, in the
+ * direction the links actually run: diary → entity.
+ */
+export function scoreDiary(steps: EvalStep[], pages: PageSnapshot[]): StepScore {
+  const assertions: AssertionResult[] = [];
+
+  for (const date of [...new Set(steps.map((step) => step.date))].sort()) {
+    const diaryPath = diaryPathFor(date);
+    const diary = pageAt(pages, diaryPath);
+    add(assertions, `diary.${date}.exists`, Boolean(diary), `Daily diary exists at ${diaryPath}`);
+
+    const entities = steps
+      .filter((step) => step.date === date)
+      .flatMap((step) => step.entities);
+    for (const entity of entities) {
+      add(
+        assertions,
+        `diary.${date}.${entity.path}`,
+        linksTo(diary, `${entity.path}/intro`),
+        `The ${date} diary links ${entity.label}`,
+        diary?.path,
+      );
+    }
+
+    for (const step of steps.filter((candidate) => candidate.date === date && candidate.meetingExpected)) {
+      const meeting = findMeeting(pages, date, step.entities.map((entity) => entity.path));
+      add(
+        assertions,
+        `diary.${date}.meeting-link`,
+        Boolean(meeting) && linksTo(diary, meeting!.path),
+        `The ${date} diary links the canonical meeting`,
+        meeting?.path,
+      );
+    }
+  }
+
+  return {
+    stepId: "diary-composer",
     passed: assertions.filter((assertion) => assertion.passed).length,
     total: assertions.length,
     assertions,
