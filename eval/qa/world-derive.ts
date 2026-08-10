@@ -152,17 +152,26 @@ export function deriveWorldQuestions(directory = corpusDirectory("world-v1")): Q
       }).map((slug) => displayName(bySlug.get(slug)!));
 
       /**
-       * The batch by which every answer has become knowable: for each expected answer,
-       * the earliest batch holding a page that states its relationship to the seed, and
-       * then the latest of those — plus the seed's own batch, since the question names
-       * the entity and a knowledge base that has never seen it cannot be asked about it.
+       * The batch by which every answer has become knowable.
+       *
+       * Two pages can state a relationship: the seed's, which names the answer directly
+       * ("Mia Brown led the session"), or the answer's own, which names the seed ("Adam
+       * Lopez is a senior engineer at [Delta](companies/delta-3)"). So an answer is
+       * knowable once *either* has been served, and the question is due once every answer
+       * is — never before the seed itself, since the question names it.
+       *
+       * Co-occurrence elsewhere deliberately does not count. An earlier version accepted
+       * any page mentioning both, and a demo-day page naming Chris Smith alongside Acme
+       * made "who works at Acme?" due eight batches before Chris Smith's page existed.
+       * Appearing in the same room is not employment.
        */
       const dueBatch = expected.reduce((latest, slug) => {
-        const stating = proseByBatch
-          .filter((page) => mentions(page.text, slug) && mentions(page.text, shard.slug))
-          .map((page) => page.batch)
-          .concat(mentions(seedProse, slug) ? [batchOf.get(shard.slug)!] : []);
-        const earliest = stating.sort()[0] ?? batchOf.get(slug)!;
+        const onSeed = mentions(seedProse, slug) ? batchOf.get(shard.slug)! : undefined;
+        const onOwn = mentions(prose(bySlug.get(slug)!), shard.slug) ? batchOf.get(slug)! : undefined;
+        const knowable = [onSeed, onOwn].filter((batch): batch is string => batch !== undefined);
+        // Neither states it, so the answer is only ever knowable once both pages exist.
+        const earliest = knowable.sort()[0]
+          ?? [batchOf.get(shard.slug)!, batchOf.get(slug)!].sort().at(-1)!;
         return earliest > latest ? earliest : latest;
       }, batchOf.get(shard.slug)!);
 
