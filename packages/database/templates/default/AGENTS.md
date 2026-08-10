@@ -188,8 +188,8 @@ Descending year headings, descending month headings within them, newest first:
 One entry is one line: the date, the links that place it, and what happened. An entry
 wanting a paragraph is describing either the current state or a past state worth reading,
 and belongs on a page under the rule above. Keep the month in the entry as well as the
-heading, because entries are read away from their page — quoted into a diary entry,
-returned by search — and a line that does not say its own date is useless there.
+heading, because entries are read away from their page — quoted into a day's log, returned
+by search — and a line that does not say its own date is useless there.
 
 Never link the diary from a timeline entry. The date is already the link: a day's entry
 is always at `about/diary/<YYYY>/<MM>/<DD>/log`. Writing it out asserts a page that

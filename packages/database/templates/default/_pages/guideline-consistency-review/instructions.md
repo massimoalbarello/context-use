@@ -17,7 +17,7 @@ automation.
   persists the new cursor only after the complete review has been delivered
   successfully.
 - Context-use, not this automation, records the page-change ledger. Never reconstruct
-  it from diary entries, page prose, timestamps or agent recollection. Never write a
+  it from day logs, page prose, timestamps or agent recollection. Never write a
   cursor, scan log, proposal or review result into the knowledge base.
 - This is a read-only review. Never publish, create, update, move, archive or delete a
   page.

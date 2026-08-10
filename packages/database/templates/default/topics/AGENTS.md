@@ -6,7 +6,7 @@ adds only topic selection and shape.
 `topics/` is for a subject the owner keeps returning to — an idea, a field, a discipline,
 a practice or a piece of regulation. The topic page is the canonical home for that
 recurring subject, so the account of it lives in one retrievable place instead of being
-restated inside whichever chapter, project or diary entry happened to mention it first.
+restated inside whichever chapter, project or day's log happened to mention it first.
 
 What makes a subject a topic rather than a task is that it has no start and no finish. How
 the owner eats, trains or travels; a lens they apply to portfolio companies; the standard
