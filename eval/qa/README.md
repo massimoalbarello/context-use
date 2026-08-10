@@ -271,29 +271,63 @@ Which of the two a run can even produce depends on how its base was built. A see
 distilled `amara-life-v1` base can lose a fact either way, and this line is how you tell —
 it is the reason the label exists.
 
-## What the first runs found
+## What the first full run found
 
-Both legs, run locally against the same stack on 10 August 2026 with Codex.
+Both legs, run locally on 10 August 2026 with Codex against the same stack.
 
 | | `world-v1`, seeded | `amara-life-v1`, distilled |
 | --- | --- | --- |
-| Knowledge base | 68 pages, 2 batches | 141 pages, 13–14 April |
-| Asked | 6 of the 31 due | 8 of the 25 due |
-| Correct | 6/6 | 7/8 |
+| Knowledge base | 68 pages, 2 batches | **180 pages, all 8 dense batches** |
+| Asked | 6 of the 31 due | **85 of the 85 due** |
+| Correct | 6/6 | **26/85 — 31%** |
 
-Small samples, and the point is not the percentages. It is that the two numbers fail in
-different places, which is the whole reason for keeping the corpora apart.
+Retrieval over a seeded base was clean. Building the base first costs most of the score, and
+the interesting part is where.
 
-Retrieval on a seeded base was clean: every expected name found, including on five-attendee
-meetings. The one amara miss was **Meridian Health**, Capacitor Labs' first enterprise
-healthcare customer — and the scorer labelled it `never written to the knowledge base`
-rather than `held but not found`. That is true: the base holds `companies/meridian-robotics`
-and no Meridian Health page at all, so the distiller kept one Meridian and dropped the
-other. Exactly the confusion `q-0003` was written to probe, found by the machine rather
-than by reading 141 pages.
+**By the record the answer lives in:**
 
-The agent answered `NOT FOUND` rather than guessing a Meridian, which is the behaviour the
-prompt asks for and the reason `wrong` and `not answered` are counted separately.
+| Source | Correct |
+| --- | --- |
+| Meeting write-ups | 17/28 |
+| Email | 6/34 |
+| Slack | 2/20 |
+| Calendar | 0/2 |
+
+The distiller reads meeting write-ups well and loses most of what is only ever said in an
+email or a Slack message. That is one finding, not fifty-nine.
+
+**By how much joining the answer needs:** 25/76 for a single record, 1/9 for anything
+needing two or three. **By tier:** 0/5 on the `adversarial` questions — asked whether its
+records disagree about where Marcus Reid works or who Nadia Freeman works for, the base
+answers with one confident affiliation. It has flattened the contradiction rather than kept
+it, which is the failure those five exist to detect.
+
+**Forty-one of the fifty-nine misses were `NOT FOUND`.** The agent declined rather than
+guessed, so only eighteen answers were confidently wrong. `gold:check` on the same run
+agrees about the cause: 59 of 158 entities filed, 8/8 meetings, and 53 expected names that
+never reached the knowledge base against 34 that are held in it but were not retrieved.
+
+That split is the whole point of running the two corpora together. A 31% here next to 6/6
+there is not a retrieval problem.
+
+### The run also found two bugs in this harness
+
+Both were false negatives — the system was right and the grader said otherwise — and both
+are fixed with a regression test:
+
+- A person the **question itself names** counted as a wrong attribution. "Who introduced
+  Sarah Chen to the Vela founders?" answered "Marcus Reid introduced Sarah Chen to them"
+  scored `partial` for repeating the question's own subject.
+- `8 months` did not match "roughly **eight** months", and `180-220M` did not match
+  "$180–220 **million**".
+
+Rescoring the recorded answers with the fix took no new agent calls and moved 24/85 to
+26/85 — which is the argument for offline scoring in one line.
+
+Every remaining failure was read against the corpus by hand. They are the system's: the
+base says Terraform Energy has traction in grid optimization where the corpus says
+industrial heat pumps, names Sequoia where the corpus says Crossbeam looked at GridMatrix,
+and reports board-seat language where the corpus says Amara flagged liquidation preferences.
 
 ## The key is lenient, and knowing why matters
 

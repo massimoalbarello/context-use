@@ -94,12 +94,22 @@ function asserts(text: string, element: string | string[]): boolean {
  * A person whose name overlaps a required one is never extra: the corpus states some
  * people by first name only, and answering "Daria Novak" where the key says "Daria" is
  * more precise, not a different person.
+ *
+ * Neither is a person the question itself names. "Who introduced Sarah Chen to the Vela
+ * founders?" is answered "Marcus Reid introduced Sarah Chen to them", and penalising that
+ * answer for repeating the question's own subject would mark a perfect answer wrong.
  */
-function wrongAttributions(text: string, expected: (string | string[])[], people: string[]): string[] {
+function wrongAttributions(
+  text: string,
+  question: string,
+  expected: (string | string[])[],
+  people: string[],
+): string[] {
   const required = expected.flatMap(forms);
   if (!required.every((element) => people.some((person) => names(person, element)))) return [];
   return people.filter((person) =>
     !required.some((element) => names(person, element) || names(element, person))
+    && !names(question, person)
     && names(text, person));
 }
 
@@ -146,7 +156,7 @@ export function scoreQuestion(
 
   const found = answer.expected_names.filter((element) => asserts(recorded.text, element)).map(label);
   const missing = answer.expected_names.filter((element) => !found.includes(label(element))).map(label);
-  const extra = wrongAttributions(recorded.text, answer.expected_names, people);
+  const extra = wrongAttributions(recorded.text, question.text, answer.expected_names, people);
 
   const corpusWide = pages.map((page) => `${page.title} ${page.summary} ${page.body}`).join("\n");
   const missingButHeld = answer.expected_names

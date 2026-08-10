@@ -255,6 +255,7 @@
     "expected_names": [
       [
         "180-220M",
+        "180-220 million",
         "180M to $220M",
         "180 million to $220 million"
       ],
@@ -1346,7 +1347,10 @@
     "id": "q-0064",
     "relevant": [],
     "expected_names": [
-      "8 months"
+      [
+        "8 months",
+        "eight months"
+      ]
     ],
     "seed": "meeting/mtg-0006",
     "link_types": [],
@@ -1646,7 +1650,10 @@
     "id": "q-0076",
     "relevant": [],
     "expected_names": [
-      "two weeks",
+      [
+        "two weeks",
+        "2 weeks"
+      ],
       "Vancouver"
     ],
     "seed": "meeting/mtg-0003",

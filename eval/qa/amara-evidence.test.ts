@@ -117,6 +117,19 @@ describe("grading the authored set", () => {
     expect({ verdict: result.verdict, extra: result.extra }).toEqual({ verdict: "correct", extra: [] });
   });
 
+  test("does not penalise an answer for repeating a person the question names", () => {
+    // "Who introduced Sarah Chen to the Vela founders?" answered "Marcus Reid introduced
+    // Sarah Chen to them" is a perfect answer, and Sarah Chen is in the people list.
+    const id = idOf("Marcus Reid — he made the original introduction");
+    const result = score(id, "Marcus Reid originally introduced Sarah Chen to the Vela Robotics founders.");
+    expect({ verdict: result.verdict, extra: result.extra }).toEqual({ verdict: "correct", extra: [] });
+  });
+
+  test("accepts a number the agent spelled out", () => {
+    const id = idOf("Around 8 months");
+    expect(score(id, "NovaTech Labs had roughly eight months of runway.").verdict).toBe("correct");
+  });
+
   test("still catches a wrong attribution when the answer is a person", () => {
     const id = idOf("Anna Petrov");
     const result = score(id, "Bill Hart covered it.");
