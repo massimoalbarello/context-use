@@ -14,6 +14,12 @@ they hold themselves to when giving founders feedback — each is a consistent a
 their life or thinking rather than something that resolves. A pursuit that can close
 belongs in [[about/tasks/agents|tasks]] instead, however long it runs.
 
+What makes it a topic rather than a page under [[about/agents|about]] is whose subject it
+is. Food, running and travel would all still exist if the owner did not; the topic records
+what they are to them. The owner's medical record, finances and schooling would not exist
+without them, and belong under `about/` as their own particulars. Personal engagement never
+moves a subject out of `topics/` — it is the reason the topic is here.
+
 It is not a tag index, a glossary or a list of interests. A topic exists because the base
 already needs the subject or because the owner recounted something that belongs nowhere
 more specific — never because the subject is interesting.
