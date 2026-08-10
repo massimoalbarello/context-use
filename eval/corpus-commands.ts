@@ -4,28 +4,31 @@ import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { loadCorpus } from "./corpus-records.ts";
 import {
-  CORPUS_DIRECTORY,
   CORPUS_UPSTREAM,
+  corpusDirectory,
   corpusIsUnchanged,
   diffCorpus,
   hashCorpusFiles,
+  type CorpusId,
 } from "./corpus-integrity.ts";
 
-/** Operator commands for the vendored corpus. Neither one rewrites it. */
+/** Operator commands for the vendored corpora. Neither one rewrites them. */
 
-export function verifyCorpus(): void {
-  const difference = diffCorpus();
+export function verifyCorpus(id: CorpusId): void {
+  const difference = diffCorpus(id);
   if (!corpusIsUnchanged(difference)) {
-    console.error("The vendored corpus differs from corpus.lock.json:");
+    console.error(`The vendored ${id} corpus differs from ${id}.lock.json:`);
     for (const path of difference.changed) console.error(`  changed     ${path}`);
     for (const path of difference.missing) console.error(`  missing     ${path}`);
     for (const path of difference.unexpected) console.error(`  unexpected  ${path}`);
     process.exit(1);
   }
-  const corpus = loadCorpus(CORPUS_DIRECTORY);
-  console.log(`${corpus.corpusId}: ${Object.keys(hashCorpusFiles()).length} files, ${
-    corpus.records.length} items over ${corpus.days.length} days — unchanged.`);
-  console.log(`Upstream ${CORPUS_UPSTREAM.repository}@${CORPUS_UPSTREAM.commit.slice(0, 12)}`);
+  const corpus = loadCorpus(corpusDirectory(id));
+  const span = corpus.days.length ? `${corpus.days.length} days` : `${corpus.batches.length} batches`;
+  console.log(`${corpus.corpusId}: ${Object.keys(hashCorpusFiles(id)).length} files, ${
+    corpus.records.length} records over ${span} — unchanged.`);
+  const upstream = CORPUS_UPSTREAM[id];
+  console.log(`Upstream ${upstream.repository}@${upstream.commit.slice(0, 12)} ${upstream.path}`);
 }
 
 function filesUnder(directory: string): Map<string, string> {
@@ -43,15 +46,16 @@ function filesUnder(directory: string): Map<string, string> {
 
 /**
  * Re-extracts the pinned upstream commit into a temporary directory and reports any
- * difference. It never writes to the working copy: re-pinning the corpus invalidates
+ * difference. It never writes to the working copy: re-pinning a corpus invalidates
  * every score measured against the previous one, so it has to be a deliberate commit.
  */
-export async function refreshCorpus(): Promise<void> {
+export async function refreshCorpus(id: CorpusId): Promise<void> {
+  const upstream = CORPUS_UPSTREAM[id];
   const work = mkdtempSync(join(tmpdir(), "corpus-refresh-"));
   try {
     const archive = join(work, "upstream.tar.gz");
     const download = Bun.spawnSync([
-      "gh", "api", `repos/${CORPUS_UPSTREAM.repository}/tarball/${CORPUS_UPSTREAM.commit}`,
+      "gh", "api", `repos/${upstream.repository}/tarball/${upstream.commit}`,
     ], { stdout: "pipe", stderr: "pipe" });
     if (download.exitCode !== 0) {
       throw new Error(`Could not download the upstream corpus:\n${download.stderr.toString()}`);
@@ -62,31 +66,31 @@ export async function refreshCorpus(): Promise<void> {
     const archiveRoot = list.stdout.toString().split("\n")[0]?.split("/")[0];
     if (!archiveRoot) throw new Error("The upstream archive is empty");
     const extract = Bun.spawnSync([
-      "tar", "-xzf", archive, "-C", work, `${archiveRoot}/${CORPUS_UPSTREAM.path}`,
+      "tar", "-xzf", archive, "-C", work, `${archiveRoot}/${upstream.path}`,
     ], { stdout: "pipe", stderr: "pipe" });
     if (extract.exitCode !== 0) {
       throw new Error(`Could not extract the upstream corpus:\n${extract.stderr.toString()}`);
     }
 
-    const upstream = filesUnder(join(work, archiveRoot, CORPUS_UPSTREAM.path));
-    const local = filesUnder(CORPUS_DIRECTORY);
+    const extracted = filesUnder(join(work, archiveRoot, upstream.path));
+    const local = filesUnder(corpusDirectory(id));
     const differences: string[] = [];
-    for (const [path, digest] of upstream) {
+    for (const [path, digest] of extracted) {
       if (!local.has(path)) differences.push(`  missing locally  ${path}`);
       else if (local.get(path) !== digest) differences.push(`  differs          ${path}`);
     }
     for (const path of local.keys()) {
-      if (!upstream.has(path)) differences.push(`  extra locally    ${path}`);
+      if (!extracted.has(path)) differences.push(`  extra locally    ${path}`);
     }
 
-    console.log(`Upstream ${CORPUS_UPSTREAM.repository}@${CORPUS_UPSTREAM.commit.slice(0, 12)}`);
+    console.log(`Upstream ${upstream.repository}@${upstream.commit.slice(0, 12)} ${upstream.path}`);
     if (differences.length === 0) {
-      console.log(`The vendored corpus matches upstream exactly (${upstream.size} files).`);
+      console.log(`The vendored ${id} corpus matches upstream exactly (${extracted.size} files).`);
       return;
     }
-    console.error("The vendored corpus differs from the pinned upstream commit:");
+    console.error(`The vendored ${id} corpus differs from the pinned upstream commit:`);
     for (const line of differences) console.error(line);
-    console.error("\nRe-pin deliberately: copy the files in, regenerate corpus.lock.json, and commit.");
+    console.error(`\nRe-pin deliberately: copy the files in, regenerate ${id}.lock.json, and commit.`);
     process.exit(1);
   } finally {
     rmSync(work, { recursive: true, force: true });

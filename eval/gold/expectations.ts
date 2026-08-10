@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadCorpus, type CorpusRecord } from "../corpus-records.ts";
+import { loadCorpus } from "../corpus-records.ts";
+import { datedRecords, type DatedCorpusRecord } from "../corpus-types.ts";
 
 /**
  * The entities an ideal knowledge base built from this corpus would hold.
@@ -80,7 +81,7 @@ export function readEntities(): EntityExpectation[] {
   return JSON.parse(readFileSync(ENTITIES_PATH, "utf8")) as EntityExpectation[];
 }
 
-function meetingExpectation(record: CorpusRecord): MeetingExpectation {
+function meetingExpectation(record: DatedCorpusRecord): MeetingExpectation {
   const attendees = (/^attendees:\s*\[(.*)\]/m.exec(record.markdown)?.[1] ?? "")
     .split(",").map((entry) => entry.trim()).filter((entry) => entry && entry !== OWNER)
     .map((entry) => {
@@ -103,7 +104,8 @@ function meetingExpectation(record: CorpusRecord): MeetingExpectation {
  * must not fall due on the first day of a dense run that never served it.
  */
 export function deriveExpectations(directory: string, from = "2026-04-13"): Expectations {
-  const records = loadCorpus(directory).records.filter((record) => record.day >= from);
+  // These expectations are amara-life-v1's and are due by calendar day throughout.
+  const records = datedRecords(loadCorpus(directory)).filter((record) => record.day >= from);
   return {
     entities: readEntities().filter((entity) => entity.knowableFrom >= from),
     meetings: records.filter((record) => record.type === "meeting").map(meetingExpectation)

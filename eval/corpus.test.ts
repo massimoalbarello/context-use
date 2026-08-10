@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { loadCorpus } from "./corpus-records.ts";
+import { datedRecords } from "./corpus-types.ts";
 import {
   CORPUS_DIRECTORY,
   CORPUS_UPSTREAM,
@@ -20,9 +21,9 @@ describe("vendored evaluation corpus", () => {
   });
 
   test("records the exact upstream commit it came from", () => {
-    const lock = readCorpusLock();
-    expect(lock.upstream).toEqual(CORPUS_UPSTREAM);
-    expect(CORPUS_UPSTREAM.commit).toMatch(/^[a-f0-9]{40}$/);
+    const lock = readCorpusLock("amara-life-v1");
+    expect(lock.upstream).toEqual(CORPUS_UPSTREAM["amara-life-v1"]);
+    expect(CORPUS_UPSTREAM["amara-life-v1"].commit).toMatch(/^[a-f0-9]{40}$/);
   });
 
   test("reproduces every upstream note and meeting hash while loading", () => {
@@ -75,12 +76,13 @@ describe("vendored evaluation corpus", () => {
     expect(corpus.days[0]).toBe("2026-01-25");
     expect(corpus.days.at(-1)).toBe("2026-04-20");
 
-    const dense = corpus.records.filter((record) => record.day >= "2026-04-13");
+    const dense = datedRecords(corpus).filter((record) => record.day >= "2026-04-13");
     expect(new Set(dense.map((record) => record.day)).size).toBe(8);
   });
 
   test("gives every record a usable timestamp and body", () => {
-    for (const record of loadCorpus(CORPUS_DIRECTORY).records) {
+    // Every amara record is dated; `datedRecords` throws if one is not.
+    for (const record of datedRecords(loadCorpus(CORPUS_DIRECTORY))) {
       expect(record.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
       expect(record.day).toBe(record.timestamp.slice(0, 10));
       expect(record.markdown.trim().length).toBeGreaterThan(0);

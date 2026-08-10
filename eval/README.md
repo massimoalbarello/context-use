@@ -1,63 +1,86 @@
 # Local knowledge evals
 
-Two things live here.
+Three things live here.
 
 **Corpus distillation** (`bun run eval distill`) runs the activity distiller over a fixed,
-vendored corpus, one automation run per corpus day, and reports the pages it wrote. This
+vendored corpus, one automation run per corpus batch, and reports the pages it wrote. This
 is the write path end to end: the private MCP serves the corpus through the production
 `read_source_records` tool, and the agent follows the automation instructions installed in
 the knowledge base. There is no evaluation-specific prompt and no evaluation-specific tool.
-It does not score anything yet.
+
+**Question answering** (`bun run eval qa:ask`, `qa:score`) puts questions to the knowledge
+base a distillation run built and compares each answer to a sealed key — the read path. See
+[qa/README.md](qa/README.md).
 
 **Scenario scoring** (`bun run eval run`) is the earlier, hand-written four-step
 trajectory with deterministic assertions about entities, timelines and reconciliation. It
-runs in two phases: each step writes entity pages and dated timeline entries, then the
-diary composer runs once over the change ledger and its output is scored separately, in
-the direction the links actually run — diary to entity, never back. It will be replaced by
-scoring over corpus days, at which point the hand-written scenario goes away.
+will be replaced by scoring over corpus batches, at which point the hand-written scenario
+goes away.
 
-## The corpus
+## Two corpora
 
-`corpus/amara-life-v1/` is copied verbatim from [`garrytan/gbrain-evals`][upstream] and is
-never edited — see [corpus/UPSTREAM.md](corpus/UPSTREAM.md) for the pinned commit and how
-integrity is enforced. 418 items over 47 days: 300 Slack messages, 50 emails, 40 notes, 20
-calendar events and 8 meetings. Thirty-nine days hold one note each; the eight days from
-13 to 20 April 2026 hold 379 of the 418 items.
+Both are copied verbatim from [`garrytan/gbrain-evals`][upstream] and never edited — see
+[corpus/UPSTREAM.md](corpus/UPSTREAM.md) for the pinned commits and how integrity is
+enforced.
+
+| | `amara-life-v1` | `world-v1` |
+| --- | --- | --- |
+| What it is | raw activity: email, Slack, calendar, meetings, notes | 240 already-distilled biographical pages |
+| Size | 418 items over 47 days | 240 pages over 10 batches |
+| Measures | extraction, distillation and retrieval | prose reconciliation and retrieval |
+| Answer key | entities and meetings ([gold/](gold/README.md)) | 145 questions ([qa/](qa/README.md)) |
+| Scored by | `gold:check` | `qa:score` |
+
+`amara-life-v1` is the corpus that matches what Context Use actually does. `world-v1` is
+the easier and narrower one, and it is here because **it is the only corpus upstream ships
+with a populated answer key** — every `gold/*.json` file for `amara-life-v1` is still an
+empty stub with a single `_example` row, and the question sets upstream does populate are
+keyed to `world-v1` slugs.
 
 ```sh
-bun run eval corpus:verify    # working copy against corpus.lock.json
-bun run eval corpus:refresh   # working copy against the pinned upstream commit
+bun run eval corpus:verify --corpus world-v1     # working copy against <id>.lock.json
+bun run eval corpus:refresh --corpus world-v1    # working copy against the pinned commit
 ```
 
-Both are read-only. Re-pinning the corpus has to be a deliberate commit, because changing
-it invalidates every result measured against the previous version.
+Both are read-only. Re-pinning a corpus has to be a deliberate commit, because changing it
+invalidates every result measured against the previous version.
 
 ## Running the distillation
 
 ```sh
 bun run local up
 bun run eval connect codex
-bun run eval distill --window dense --days 2
+bun run eval distill --corpus world-v1 --batches 2
 ```
 
-`--window dense` selects the eight busy days; `full` walks all 47. `--days N` stops after
-N days, which is how to try it cheaply — the full dense window is eight agent runs over
-379 records, and the full corpus is 47.
+A **batch** is what one automation run consumes. For `amara-life-v1` a batch is a calendar
+day; for `world-v1` it is a slice of the page order, since those pages carry no chronology
+of their own and dating them would invent one. `--batches N` stops after N of them, which
+is how to try a corpus cheaply — `world-v1` is 10 runs over 240 pages, the amara dense
+window is 8 runs over 379 records, and the full amara corpus is 47. `--days` is accepted
+as an alias where a batch is a day.
 
-`--window` is the single source of truth. The server reads the window at startup, so the
-run exports it, resets the stack with it, and then reads it back out of the running
-container before the first agent run. A client and server that disagree would label days
-the server never served, so the run fails instead.
+`--window dense` selects amara's eight busy days; `full` walks all 47. It selects a span of
+days, so asking for it on `world-v1` fails rather than quietly serving everything.
+
+`--corpus` and `--window` are the single source of truth. The server reads both at startup,
+so the run exports them, resets the stack, and then reads them back out of the running
+container before the first agent run. A client and server that disagree would label batches
+the server never served — or score a `world-v1` run against amara's key — so the run fails
+instead.
 
 Every run resets semantic knowledge and assets in this local instance to the default
 template while preserving the owner passkey and OAuth authorization. Do not keep
-development data in it. Snapshots, per-day agent logs and a Markdown report land in
+development data in it. Snapshots, per-batch agent logs and a Markdown report land in
 `.eval-results/`.
 
 ## What counts as one source record
 
-One manifest item is one record: 418 items, 418 records. `loadCorpus` fails if any
-manifest item is not carried, so nothing can be silently dropped.
+One upstream item is one record. For `amara-life-v1` that is 418 manifest items and 418
+records, and `loadCorpus` fails if any manifest item is not carried, so nothing can be
+silently dropped. For `world-v1` it is 240 pages; its two non-content files —
+`_ledger.json`, generation metadata, and `world.html`, a rendered explorer — are vendored
+because the corpus is copied verbatim, and never served.
 
 The obvious alternative — group a thread into one record, the way a meeting already is
 one record — is wrong for this corpus, because **its threading carries no meaning**.
@@ -102,7 +125,7 @@ continued, and the entity sprawl — upstream designed a cast of sixteen, and th
 generator, told to write `[Name](people/slug)` without a closed vocabulary, invented
 thirty-seven more people. `bun run eval gold:profile` reports both sets separately.
 
-## How one run equals one day
+## How one run equals one batch
 
 `CorpusRecordReader` in [corpus-records.ts](corpus-records.ts) implements the same
 `SourceRecordReader` interface as the Nango pipeline, so `read_source_records` behaves
@@ -110,10 +133,18 @@ exactly as it does in production — opaque checkpoints, `has_more` batching, an
 automation persisting its own checkpoint into `automations/activity-distiller/state`.
 
 The one difference is where a batch ends. `has_more` stays true only while the current
-corpus day still has records; when the day is exhausted the checkpoint advances to the
-next day that has any. An automation run therefore consumes one day and stops, the way a
-scheduled production run consumes whatever the source produced since its last checkpoint.
-The harness just triggers the next run.
+corpus batch still has records; when it is exhausted the checkpoint advances to the next
+one. An automation run therefore consumes one batch and stops, the way a scheduled
+production run consumes whatever the source produced since its last checkpoint. The
+harness just triggers the next run.
+
+What a batch *means* belongs to the corpus, and nothing above that layer needs to know.
+`amara-life-v1` is a time series, so a batch is a calendar day. `world-v1` is a set of
+biographical pages, so a batch is a stride of ten over the slug-sorted order — giving
+every batch the same proportional mix of people, companies, meetings and concepts. A
+contiguous slice would serve all 80 companies before any of the people who work at them
+and measure ordering rather than capability; a date would invent a chronology the corpus
+does not have.
 
 Nango's 30-day source-freshness window is deliberately absent rather than disabled by a
 flag. It belongs to Nango's semantics, because Nango backfills historical records; a fixed
