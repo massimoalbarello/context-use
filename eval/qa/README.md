@@ -131,6 +131,58 @@ knowledge base` is a distillation failure. They have different fixes, and a bare
 number cannot tell them apart — which matters here, because `world-v1` exercises
 distillation and retrieval end to end rather than retrieval alone.
 
+## The key is lenient, and knowing why matters
+
+Upstream's derivation keeps only entities that have their own page — `filterExisting`,
+because a page that does not exist cannot be retrieved. That is right for their scoring and
+loose for ours: **37% of the relationship entries in `_facts` are dropped that way** (152 of
+413). The Acme board meeting lists three attendees and the prose says plainly that "Ian
+Anderson attended in person"; he has no profile page, so the sealed answer names two.
+
+Nothing breaks, because the scorer's vocabulary is built from pages too, so a page-less
+attendee is invisible — naming one costs nothing and omitting one costs nothing. But it
+means a score reads as *correct on the entities the corpus profiles*, not *correct on who
+attended*. Widening the key to unfiltered `_facts` would diverge from upstream's 145 and
+ask for people the corpus never profiles, so it stays as it is.
+
+## What it found
+
+First recorded run, 10 August 2026: two batches distilled with codex, then the 31 questions
+due by `batch-02`.
+
+| | |
+| --- | --- |
+| earned | **11%** — 3/27 |
+| accuracy | 16% — 5/31 |
+| names never written | 34 |
+| names held but not found | 10 |
+
+Three quarters of the loss is the write path, not retrieval. By template:
+
+| Template | Correct |
+| --- | --- |
+| `Who attended X?` | 5/10 |
+| `Who works at X?` | 0/7 |
+| `Who invested in X?` | 0/10 |
+| `Who advises X?` | 0/4 |
+
+The cause is visible in what got filed. Of the 48 pages served, **4 of 16 people, 1 of 16
+companies and 0 of 10 meetings** got a folder — yet the knowledge base holds 16 people
+folders, most of them people the corpus never served a page for. Ian Anderson has a folder
+and no corpus page at all.
+
+So the distiller is filing **the entities mentioned inside a document rather than the
+subject of the document it was handed**. On `amara-life-v1` that is correct: an email is not
+about anyone in particular and the subject has to be inferred from mentions. On `world-v1`,
+where each record *is* a page about one entity, it is backwards — which is why `attended`
+scores at all (meeting prose names its attendees, and mentions get filed) and the three
+company-shaped templates score zero.
+
+That is worth reading as a finding about fit as much as about quality. `world-v1` was
+introduced as the easier corpus; it is not easier, it is differently shaped, and the
+distiller's evidence selection assumes activity. Treat this as a floor and a diagnostic,
+never a target.
+
 ## What this does not measure
 
 Recall, precision, P@5 and nDCG. `Gold.relevant` carries the page slugs upstream would
