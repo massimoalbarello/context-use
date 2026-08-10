@@ -9,6 +9,10 @@ bun run eval qa:ask                                  # ask, one session per ques
 bun run eval qa:score                                # compare to the sealed answers
 ```
 
+Both corpora have a set: `world-v1/` (145 questions, derived) and `amara-life-v1/` (99,
+authored). A run records which corpus it processed, so `qa:ask` and `qa:score` put that
+corpus's own questions to it — there is nothing to select.
+
 `qa:ask` records answers; `qa:score` is offline and deterministic, so a run can be rescored
 whenever the key changes without asking anything again.
 
@@ -36,7 +40,7 @@ answer and then report the blanks as failures.
 `--all` asks everything regardless, which is only useful for checking that a question is
 genuinely unanswerable rather than merely unasked.
 
-## The question set is derived, not authored
+## `world-v1`'s set is derived, not authored
 
 `world-v1/questions.json` holds 145 questions and `world-v1/answers.json` their answers.
 Both are derived from each corpus page's `_facts` block by [world-derive.ts](world-derive.ts),
@@ -59,10 +63,77 @@ Both files are committed so that a change in the corpus or in the derivation is 
 reviewable diff rather than a silent shift under a measurement. `qa:derive` fails if the
 committed copies are stale; `--write` updates them.
 
-**`amara-life-v1` has no question set yet.** Its raw activity carries no `_facts` to read a
-key off, so its questions have to be authored the way [gold/entities.json](../gold/entities.json)
-was. The one template that ports for free is `Who attended X?`, because
-`meetingExpectation` already parses attendees out of meeting front matter.
+## `amara-life-v1`'s set is authored, and that is the harder claim
+
+`amara-life-v1/questions.json` holds 99 questions. Nothing derived them, because there is
+nothing to derive them from: the corpus is raw email, Slack, notes and meeting write-ups
+with no `_facts` and no key of any kind. They were read out of it, the way
+[gold/entities.json](../gold/entities.json) was.
+
+That makes them the more valuable set and the less trustworthy one, so the process is worth
+stating. Nine readers each took a slice of the corpus — one per dense day, one for the 39
+sparse notes, one for the calendar, one reading the whole thing for questions that only a
+join can answer — and proposed candidates with a verbatim quote for every claim, having
+first grepped the whole corpus to check nothing elsewhere contradicted it. A second reader
+then answered each question again **from the whole corpus, never having seen the proposed
+answer**, and marked it `single`, `ambiguous`, `contradicted`, `not-found` or `ill-posed`.
+A third read the whole corpus trying to *refute* each candidate: re-checking every quote,
+hunting for a second entity the question could mean, and attacking the grading in both
+directions. 123 candidates went in; 99 came out.
+
+The 24 that did not are as interesting as the ones that did, because they are all the
+corpus's own mess rather than the readers':
+
+- **Seven** asked something the corpus answers two ways. Jordan Park quotes NovaMind's seed
+  at `$4M` on 15 April, `$6M` on 17 April and `$4M` again on 19 April, so "how much is he
+  raising" has no answer — it survives only as `q-0098`, which asks what the conflicting
+  figures *are*. A note gives Halfway `14.2%` of a bare "Meridian" where a meeting gives
+  `14%` of Meridian Health, and `14%` is a substring of `14.2%`, so the wrong figure would
+  have passed the right question.
+- **Fifteen** were duplicates of a better-scoped sibling.
+- **Two** presupposed something the corpus does not state — that two ops-sync messages a day
+  apart describe the same meeting, and that five scattered NovaMind efficiency claims are a
+  disagreement rather than different metrics.
+
+### What is checked, and what is judged
+
+Everything the corpus can settle is settled by [amara-evidence.ts](amara-evidence.ts) on
+every test run, so a key that drifts fails the build:
+
+- every quote is an exact substring of the record it names;
+- `due_batch` is the day the last of those records arrives, so a short run is scored only
+  against what it was served;
+- the reference answer satisfies its own `expected_names`;
+- no `expected_names` element already appears in the question — the self-answering problem
+  upstream has to live with, which an authored set can simply not have.
+
+What is left to judgement is that the quotes entail the answer and that no other record
+contradicts it. That is what the three independent reads bought, and it is the part a
+reviewer should spend their time on: every answer carries its quotes and the record they
+came from, so any one of the 99 can be checked in seconds.
+
+```sh
+bun run eval qa:verify    # re-check the authored key against the corpus, and report its shape
+```
+
+### What it asks about
+
+| | |
+| --- | --- |
+| Settled by one record | 87 |
+| Needing a join across records | 12 |
+| Contradiction questions (`adversarial`) | 5 |
+| Distinct records quoted | 79 |
+| Days on which a question first becomes answerable | 20 |
+
+The five `adversarial` questions ask about the corpus's own inconsistencies rather than
+around them — where Marcus Reid works, which firm Sarah Chen is at, what Jordan Park says
+NovaMind builds. A knowledge base that has flattened those into one confident answer gets
+them wrong, which is the point: this corpus disagrees with itself, and a system that hides
+that is worse than one that reports it.
+
+The questions reach every source type the corpus serves, and are spread over 20 of its 47
+days rather than mined out of the richest meeting.
 
 ## Sealing
 
@@ -89,8 +160,16 @@ wordings.
 
 A question is **correct** when every expected name appears and no one else is named.
 Naming someone who was not at the meeting is a wrong answer, not a partially right one.
-Only people count as a wrong attribution — every template asks "who", so a company named
-as context is background.
+Only people count as a wrong attribution, and only when the answer is itself a person: for
+`Who attended X?` a second name is a wrong claim, but for `What was the Q1 ARR?` whoever
+reported the figure is context, and failing that would mark a correct answer wrong.
+
+`amara-life-v1`'s answers are often numbers rather than names, and `$18.2M` and
+`$18.2 million` are the same fact. So an `expected_names` entry may be a list of
+interchangeable renderings, any one of which satisfies it. The alternatives are
+alternatives and never additional requirements — widening one cannot let a wrong answer
+pass, only stop a right one from failing. `world-v1`'s answers are all person names and use
+the plain string form, unchanged.
 
 Two numbers are reported, and the second is the headline:
 
@@ -136,6 +215,7 @@ distillation and retrieval end to end rather than retrieval alone.
 Recall, precision, P@5 and nDCG. `Gold.relevant` carries the page slugs upstream would
 score, so a later retrieval comparison needs no new authoring, but nothing scores it yet.
 
-Nor temporal reasoning, contradiction resolution or abstention: `world-v1` has no
-questions of that kind, and neither does anything else upstream ships with a populated key.
-Those belong to the `amara-life-v1` set when it is authored.
+Nor abstention. Neither set asks a question the corpus cannot answer, because proving a
+negative over 418 records is a claim that has to be authored as carefully as a positive one
+and nothing here does that yet. Contradiction is covered, by `amara-life-v1`'s five
+`adversarial` questions; `world-v1` has none, its pages being already reconciled.

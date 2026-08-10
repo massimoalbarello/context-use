@@ -1,6 +1,6 @@
 import type { PageSnapshot } from "../snapshot.ts";
 import { normalise } from "../gold/score.ts";
-import type { PublicQuery, SealedAnswer } from "./questions.ts";
+import { forms, label, type PublicQuery, type SealedAnswer } from "./questions.ts";
 
 /**
  * Scores recorded answers against the sealed key. No model is involved.
@@ -77,6 +77,32 @@ function names(text: string, name: string): boolean {
   return ` ${normalise(text)} `.includes(` ${needle} `);
 }
 
+/** True when any rendering of the required element is asserted in `text`. */
+function asserts(text: string, element: string | string[]): boolean {
+  return forms(element).some((form) => names(text, form));
+}
+
+/**
+ * People named in the answer who do not belong there.
+ *
+ * Only applied when every required element is itself a person, which is what makes the
+ * check meaningful: for `Who attended X?` a second name is a wrong attribution, but for
+ * `What was the Q1 ARR?` the person who reported the figure is context, and penalising it
+ * would mark a correct answer wrong. World-v1's answers are all person names, so this
+ * reads exactly as it did before amara-life-v1 arrived.
+ *
+ * A person whose name overlaps a required one is never extra: the corpus states some
+ * people by first name only, and answering "Daria Novak" where the key says "Daria" is
+ * more precise, not a different person.
+ */
+function wrongAttributions(text: string, expected: (string | string[])[], people: string[]): string[] {
+  const required = expected.flatMap(forms);
+  if (!required.every((element) => people.some((person) => names(person, element)))) return [];
+  return people.filter((person) =>
+    !required.some((element) => names(person, element) || names(element, person))
+    && names(text, person));
+}
+
 export type ScoreInput = {
   questions: PublicQuery[];
   answers: SealedAnswer[];
@@ -100,7 +126,7 @@ export function scoreQuestion(
     text: question.text,
     selfAnswering,
     found: [],
-    missing: answer.expected_names,
+    missing: answer.expected_names.map(label),
     extra: [],
     missingButHeld: [],
     unstatedInProse,
@@ -118,15 +144,14 @@ export function scoreQuestion(
     };
   }
 
-  const found = answer.expected_names.filter((name) => names(recorded.text, name));
-  const missing = answer.expected_names.filter((name) => !found.includes(name));
-  // Only people are candidates for a wrong attribution: every template asks "who", so a
-  // company named as context is background, not an answer.
-  const extra = people.filter((name) =>
-    !answer.expected_names.includes(name) && names(recorded.text, name));
+  const found = answer.expected_names.filter((element) => asserts(recorded.text, element)).map(label);
+  const missing = answer.expected_names.filter((element) => !found.includes(label(element))).map(label);
+  const extra = wrongAttributions(recorded.text, answer.expected_names, people);
 
   const corpusWide = pages.map((page) => `${page.title} ${page.summary} ${page.body}`).join("\n");
-  const missingButHeld = missing.filter((name) => names(corpusWide, name));
+  const missingButHeld = answer.expected_names
+    .filter((element) => missing.includes(label(element)) && asserts(corpusWide, element))
+    .map(label);
 
   // A name the corpus never states cannot be held against a system reading content alone.
   const countedMissing = missing.filter((name) => !unstatedInProse.includes(name));

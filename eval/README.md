@@ -28,14 +28,19 @@ enforced.
 | What it is | raw activity: email, Slack, calendar, meetings, notes | 240 already-distilled biographical pages |
 | Size | 418 items over 47 days | 240 pages over 10 batches |
 | Measures | extraction, distillation and retrieval | prose reconciliation and retrieval |
-| Answer key | entities and meetings ([gold/](gold/README.md)) | 145 questions ([qa/](qa/README.md)) |
-| Scored by | `gold:check` | `qa:score` |
+| Answer key | entities and meetings ([gold/](gold/README.md)), plus 99 authored questions ([qa/](qa/README.md)) | 145 derived questions ([qa/](qa/README.md)) |
+| Scored by | `gold:check` and `qa:score` | `qa:score` |
 
 `amara-life-v1` is the corpus that matches what Context Use actually does. `world-v1` is
 the easier and narrower one, and it is here because **it is the only corpus upstream ships
-with a populated answer key** — every `gold/*.json` file for `amara-life-v1` is still an
+with an answer key of its own** — every `gold/*.json` file for `amara-life-v1` is still an
 empty stub with a single `_example` row, and the question sets upstream does populate are
 keyed to `world-v1` slugs.
+
+So `amara-life-v1`'s two keys are both this repository's: the entity list in
+[gold/](gold/README.md), and 99 questions authored against the corpus and checked back
+against it quote by quote. Between them they ask the two halves of the same question —
+whether the right things were written down, and whether they can be got back out.
 
 ```sh
 bun run eval corpus:verify --corpus world-v1     # working copy against <id>.lock.json

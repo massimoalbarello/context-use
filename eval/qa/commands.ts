@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { ROOT, type EvalProvider } from "../agent.ts";
-import { corpusIsUnchanged, diffCorpus } from "../corpus-integrity.ts";
+import { corpusIsUnchanged, diffCorpus, isCorpusId, type CorpusId } from "../corpus-integrity.ts";
 import type { PageSnapshot } from "../snapshot.ts";
 import { style } from "../terminal.ts";
 import { askQuestions } from "./ask.ts";
@@ -16,16 +16,17 @@ import {
   type SealedAnswer,
 } from "./questions.ts";
 import { scoreRun, type RecordedAnswer } from "./score.ts";
+import { amaraPeopleNames, verifyAmaraAnswers } from "./amara-evidence.ts";
 import { deriveWorldQuestions, worldPeopleNames } from "./world-derive.ts";
 
 const RESULTS_ROOT = join(ROOT, ".eval-results");
 
 /**
- * `world-v1` is the only corpus with a question set so far. `amara-life-v1`'s has to be
- * authored rather than derived, because its raw activity carries no `_facts` to read a
- * key off — see [README.md](README.md).
+ * The corpus `qa:derive` regenerates. Only `world-v1`'s questions are derived: they are
+ * read off its `_facts` blocks. `amara-life-v1`'s are authored, because its raw activity
+ * carries no key to read — see [README.md](README.md).
  */
-const QA_CORPUS = "world-v1";
+const DERIVED_CORPUS = "world-v1";
 
 /**
  * The questions and answers are committed rather than regenerated on demand, so that a
@@ -35,8 +36,8 @@ const QA_CORPUS = "world-v1";
 export function deriveQuestionsCommand(options: { write: boolean }): void {
   const set = deriveWorldQuestions();
   const files: [string, unknown][] = [
-    [questionsPath(QA_CORPUS), set.questions],
-    [answersPath(QA_CORPUS), set.answers],
+    [questionsPath(DERIVED_CORPUS), set.questions],
+    [answersPath(DERIVED_CORPUS), set.answers],
   ];
 
   if (options.write) {
@@ -59,7 +60,7 @@ export function deriveQuestionsCommand(options: { write: boolean }): void {
     return counts;
   }, {});
 
-  console.log(`${QA_CORPUS}: ${set.questions.length} questions over ${pairs} expected answers`);
+  console.log(`${DERIVED_CORPUS}: ${set.questions.length} questions over ${pairs} expected answers`);
   for (const [tag, count] of Object.entries(byTag)) console.log(`  ${tag.padEnd(12)} ${count}`);
   console.log(`\nknowable from prose alone: ${pairs - unstated}/${pairs}`);
   if (unstated) {
@@ -68,6 +69,48 @@ export function deriveQuestionsCommand(options: { write: boolean }): void {
       console.log(style.dim(`  ${answer.id} ${answer.seed} -> ${answer.unstated_in_prose!.join(", ")}`));
     }
   }
+}
+
+/**
+ * Re-checks `amara-life-v1`'s authored key against the corpus, and reports the shape of
+ * the set.
+ *
+ * `world-v1` has `qa:derive`, which regenerates its questions and fails if the committed
+ * copies have drifted. Nothing can regenerate an authored set, so this is its equivalent:
+ * every claim the key makes that the corpus can settle is settled against the corpus, and
+ * the rest of the review is the reader's.
+ */
+export function verifyQuestionsCommand(): void {
+  const corpusId = "amara-life-v1";
+  const questions = readQuestions(corpusId);
+  const answers = readAnswers(corpusId);
+  const issues = verifyAmaraAnswers(questions, answers);
+
+  const byDay = new Map<string, number>();
+  const byTier = new Map<string, number>();
+  let joins = 0;
+  for (const question of questions) byTier.set(question.tier, (byTier.get(question.tier) ?? 0) + 1);
+  for (const answer of answers) {
+    byDay.set(answer.due_batch, (byDay.get(answer.due_batch) ?? 0) + 1);
+    if (new Set(answer.evidence?.map((entry) => entry.record)).size > 1) joins += 1;
+  }
+  const cited = new Set(answers.flatMap((answer) => answer.evidence?.map((entry) => entry.record) ?? []));
+
+  console.log(style.heading(`\n${corpusId} · ${questions.length} authored questions\n`));
+  console.log(`grounded in ${cited.size} distinct records, quoted verbatim`);
+  console.log(`${joins} need more than one record; ${questions.length - joins} are settled by one\n`);
+  console.log(style.bold("By tier"));
+  for (const [tier, count] of [...byTier].sort()) console.log(`  ${tier.padEnd(14)} ${String(count).padStart(3)}`);
+  console.log(style.bold("\nBy the batch that first answers it"));
+  for (const [day, count] of [...byDay].sort()) console.log(`  ${day.padEnd(14)} ${String(count).padStart(3)}`);
+
+  if (issues.length === 0) {
+    console.log(style.green("\n\u2713 every answer is grounded in the corpus it is asked about"));
+    return;
+  }
+  console.log(style.red(`\n\u2717 ${issues.length} problem(s)`));
+  for (const issue of issues) console.log(style.red(`  ${issue.id}  ${issue.problem}`));
+  process.exitCode = 1;
 }
 
 /** Scoring is offline, so a run is found the same way `gold:check` finds one. */
@@ -87,12 +130,24 @@ function runCorpusId(directory: string): string | undefined {
   }
 }
 
-function assertRunMatches(directory: string): void {
-  const corpusId = runCorpusId(directory);
-  if (corpusId && corpusId !== QA_CORPUS) {
-    throw new Error(`Run ${directory.split("/").at(-1)} processed ${corpusId}, and the question set is ${QA_CORPUS}'s. `
-      + "Use `bun run eval gold:check` for amara-life-v1.");
+/**
+ * The question set to put to a run: its own corpus's.
+ *
+ * Both corpora have one now, so the run decides rather than a constant. A run that
+ * recorded no corpus id predates `--corpus` and can only be `world-v1`, which is what the
+ * harness served before amara-life-v1 had questions.
+ */
+function corpusOf(directory: string): CorpusId {
+  const corpusId = runCorpusId(directory) ?? "world-v1";
+  if (!isCorpusId(corpusId) || !existsSync(questionsPath(corpusId))) {
+    throw new Error(`Run ${directory.split("/").at(-1)} processed ${corpusId}, which has no question set.`);
   }
+  return corpusId;
+}
+
+/** Every person the corpus can name, used to spot a confidently wrong attribution. */
+function peopleNames(corpusId: CorpusId): string[] {
+  return corpusId === "world-v1" ? worldPeopleNames() : amaraPeopleNames();
 }
 
 /** Batch snapshots a run recorded, ascending. Read from disk so a partial run still works. */
@@ -143,17 +198,17 @@ export type AskOptions = {
 };
 
 export async function askQuestionsCommand(options: AskOptions): Promise<void> {
-  const difference = diffCorpus(QA_CORPUS);
+  const directory = runDirectory(options.runId);
+  const corpusId = corpusOf(directory);
+
+  const difference = diffCorpus(corpusId);
   if (!corpusIsUnchanged(difference)) {
-    throw new Error(`The vendored ${QA_CORPUS} corpus has been modified, so answers would not be comparable:\n${
+    throw new Error(`The vendored ${corpusId} corpus has been modified, so answers would not be comparable:\n${
       JSON.stringify(difference, null, 2)}`);
   }
 
-  const directory = runDirectory(options.runId);
-  assertRunMatches(directory);
-
   const { due, through, skipped } = dueQuestions(
-    directory, readQuestions(QA_CORPUS), readAnswers(QA_CORPUS), options.all ?? false);
+    directory, readQuestions(corpusId), readAnswers(corpusId), options.all ?? false);
   let questions: PublicQuery[] = due;
   if (options.only) questions = questions.filter((question) => question.id === options.only);
   if (options.limit) questions = questions.slice(0, options.limit);
@@ -166,7 +221,7 @@ export async function askQuestionsCommand(options: AskOptions): Promise<void> {
   const answerDirectory = join(directory, "qa");
   await mkdir(answerDirectory, { recursive: true });
 
-  console.log(style.heading(`\nAsking ${questions.length} question(s) · ${directory.split("/").at(-1)}`));
+  console.log(style.heading(`\nAsking ${questions.length} ${corpusId} question(s) · ${directory.split("/").at(-1)}`));
   if (skipped) {
     console.log(style.dim(`Run processed through ${through}, so ${skipped} question(s) whose evidence`));
     console.log(style.dim("it never served are held back. Pass --all to ask them anyway."));
@@ -199,7 +254,7 @@ export async function askQuestionsCommand(options: AskOptions): Promise<void> {
 
 export function scoreAnswersCommand(runId?: string): void {
   const directory = runDirectory(runId);
-  assertRunMatches(directory);
+  const corpusId = corpusOf(directory);
 
   const path = join(directory, ANSWERS_FILE);
   if (!existsSync(path)) throw new Error(`Run ${directory} holds no ${ANSWERS_FILE}. Run \`bun run eval qa:ask\` first.`);
@@ -208,19 +263,19 @@ export function scoreAnswersCommand(runId?: string): void {
   // Only the questions actually asked. Asking a subset is the normal cheap case, and
   // counting the rest as unanswered would bury a real result under 141 blanks.
   const asked = new Set(recorded.map((entry) => entry.id));
-  const questions = readQuestions(QA_CORPUS).filter((question) => asked.has(question.id));
+  const questions = readQuestions(corpusId).filter((question) => asked.has(question.id));
 
   const result = scoreRun({
     questions,
-    answers: readAnswers(QA_CORPUS),
+    answers: readAnswers(corpusId),
     recorded,
     pages: finalSnapshot(directory),
-    people: worldPeopleNames(),
+    people: peopleNames(corpusId),
   });
   const { scores } = result;
 
   const through = recordedBatches(directory).at(-1);
-  console.log(style.heading(`\nQA score · ${QA_CORPUS} · ${directory.split("/").at(-1)}`));
+  console.log(style.heading(`\nQA score · ${corpusId} · ${directory.split("/").at(-1)}`));
   if (through) console.log(style.dim(`Knowledge base built through ${through}.`));
   for (const score of scores) {
     const mark = score.verdict === "correct" ? style.green("✓")

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { PageSnapshot } from "../snapshot.ts";
 import { askPrompt } from "./ask.ts";
 import {
+  forms,
   goldFieldsIn,
   readAnswers,
   readQuestions,
@@ -61,7 +62,7 @@ describe("world-v1 question set", () => {
     expect(answers.filter((answer) => answer.self_answering)).toHaveLength(25);
     for (const answer of answers) {
       const text = questions.get(answer.id)!.text;
-      const givesItself = answer.expected_names.some((name) => text.includes(name));
+      const givesItself = answer.expected_names.some((name) => forms(name).some((form) => text.includes(form)));
       expect(answer.self_answering ?? false).toBe(givesItself);
     }
   });

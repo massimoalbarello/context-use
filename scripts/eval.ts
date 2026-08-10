@@ -3,7 +3,12 @@ import { runDistillation } from "../eval/distill.ts";
 import { verifyCorpus, refreshCorpus } from "../eval/corpus-commands.ts";
 import { DEFAULT_CORPUS_ID, isCorpusId, type CorpusId } from "../eval/corpus-integrity.ts";
 import { profileCorpusCommand, scoreRunCommand } from "../eval/gold/commands.ts";
-import { askQuestionsCommand, deriveQuestionsCommand, scoreAnswersCommand } from "../eval/qa/commands.ts";
+import {
+  askQuestionsCommand,
+  deriveQuestionsCommand,
+  scoreAnswersCommand,
+  verifyQuestionsCommand,
+} from "../eval/qa/commands.ts";
 import { connectProvider, runEval, scoreEval, type EvalProvider } from "../eval/runner.ts";
 
 function usage(): never {
@@ -18,6 +23,7 @@ function usage(): never {
   bun run eval gold:profile [--write]              amara-life-v1 structural check
   bun run eval gold:check [run-id]
   bun run eval qa:derive [--write]                 regenerate world-v1 questions from _facts
+  bun run eval qa:verify                           check amara-life-v1's authored questions
   bun run eval qa:ask [run-id] [--provider <codex|claude>] [--only <q-0007>] [--limit <n>] [--all]
   bun run eval qa:score [run-id]
 
@@ -91,6 +97,8 @@ if (command === "connect") {
   scoreRunCommand(positional(args));
 } else if (command === "qa:derive") {
   deriveQuestionsCommand({ write: args.includes("--write") });
+} else if (command === "qa:verify") {
+  verifyQuestionsCommand();
 } else if (command === "qa:ask") {
   await askQuestionsCommand({
     runId: positional(args),
