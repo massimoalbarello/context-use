@@ -1,8 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { loadAmaraCorpus } from "../corpus-amara.ts";
 import { datedRecords } from "../corpus-types.ts";
 import { corpusDirectory } from "../corpus-integrity.ts";
 import { amaraPeopleNames, verifyAmaraAnswers } from "./amara-evidence.ts";
+import { dueQuestions } from "./commands.ts";
 import { goldFieldsIn, readAnswers, readQuestions, type SealedAnswer } from "./questions.ts";
 import { scoreQuestion } from "./score.ts";
 
@@ -126,6 +130,42 @@ describe("grading the authored set", () => {
     const result = scoreQuestion(question, answer,
       { id: answer.id, text: answer.answer!, toolsUsed: ["read_source_records"] }, [], amaraPeopleNames());
     expect(result.verdict).toBe("void");
+  });
+});
+
+describe("which questions a run is asked", () => {
+  const run = (batches: string[]): string => {
+    const directory = mkdtempSync(join(tmpdir(), "qa-due-"));
+    for (const batch of batches) writeFileSync(join(directory, `batch-${batch}-snapshot.json`), "[]");
+    return directory;
+  };
+
+  test("holds back questions whose evidence the run has not reached yet", () => {
+    const { due, skipped } = dueQuestions(run(["2026-04-13"]), questions, answers, false);
+    expect(due.length).toBe(11);
+    expect(skipped).toBe(questions.length - 11);
+  });
+
+  test("holds back questions from days a dense run never serves", () => {
+    // The dense window starts on 13 April and never serves the thirty-nine sparse note
+    // days before it, so a question due on 2 February is not due for this run however far
+    // past 2 February its last batch is. Treating the window as a ceiling asked fourteen
+    // questions about notes the agent was never handed.
+    const dense = dueQuestions(run(["2026-04-13", "2026-04-14"]), questions, answers, false);
+    expect(dense.due.length).toBe(25);
+    const dueIds = new Set(dense.due.map((question) => question.id));
+    const sparse = answers.filter((answer) => answer.due_batch < "2026-04-13");
+    expect(sparse.length).toBeGreaterThan(0);
+    for (const answer of sparse) expect(dueIds.has(answer.id)).toBe(false);
+  });
+
+  test("asks a full run's sparse days once it has served them", () => {
+    const full = dueQuestions(run(["2026-02-02", "2026-04-14"]), questions, answers, false);
+    expect(full.due.length).toBeGreaterThan(25);
+  });
+
+  test("--all overrides the window", () => {
+    expect(dueQuestions(run(["2026-04-13"]), questions, answers, true).due).toHaveLength(questions.length);
   });
 });
 

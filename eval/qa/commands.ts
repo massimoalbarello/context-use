@@ -172,17 +172,28 @@ function finalSnapshot(directory: string): PageSnapshot[] {
  * Restricting to what is due is the same discipline `gold/score.ts` applies with
  * `knowableFrom`, and it leaves the question set itself untouched — a full ten-batch run
  * is still upstream's 145.
+ *
+ * The window is a range, not a ceiling, because a run does not always start at the
+ * beginning. `--window dense` serves amara-life-v1's eight busy days and never serves the
+ * thirty-nine sparse note days before them, so a question due on 2 February is not due for
+ * it however far past 2 February the last batch is. Comparing against the first recorded
+ * batch as well as the last is what keeps those out.
  */
-function dueQuestions(
+export function dueQuestions(
   directory: string,
   questions: PublicQuery[],
   answers: SealedAnswer[],
   all: boolean,
 ): { due: PublicQuery[]; through: string | undefined; skipped: number } {
-  const through = recordedBatches(directory).at(-1);
-  if (all || !through) return { due: questions, through, skipped: 0 };
+  const batches = recordedBatches(directory);
+  const from = batches.at(0);
+  const through = batches.at(-1);
+  if (all || !through || !from) return { due: questions, through, skipped: 0 };
   const dueBy = new Map(answers.map((answer) => [answer.id, answer.due_batch]));
-  const due = questions.filter((question) => (dueBy.get(question.id) ?? "") <= through);
+  const due = questions.filter((question) => {
+    const batch = dueBy.get(question.id) ?? "";
+    return batch >= from && batch <= through;
+  });
   return { due, through, skipped: questions.length - due.length };
 }
 
