@@ -54,6 +54,5 @@ fact about that person or the owner; state it there and link the place. The plac
 does not need an exhaustive occupant or visitor list. Meetings, events and diary pages
 remain the accounts of what happened there.
 
-Use the least sensitive location that is still useful. Exact home addresses and access
-instructions belong only in page bodies when genuinely needed, never in titles, paths
-or summaries.
+Use the least sensitive location that is still useful. Exact addresses and access
+instructions are the sensitive detail the root privacy rule governs here.

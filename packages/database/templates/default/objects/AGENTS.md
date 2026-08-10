@@ -52,6 +52,5 @@ Ownership, use and preference are relationships with a person, so the relevant p
 or owner page should state them and link the object. The object page need not inventory
 everyone who has used it.
 
-Keep sensitive identifiers out of titles, paths and summaries. Serial, registration,
-tracking or insurance identifiers belong in the body only when the owner actually needs
-them there.
+Serial, registration, tracking and insurance numbers are the sensitive identifiers the
+root privacy rule governs here.
