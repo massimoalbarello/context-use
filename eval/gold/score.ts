@@ -97,7 +97,27 @@ export type DayScore = {
   injections: InjectionResult[];
   /** Entity folders per top-level directory, reported rather than asserted. */
   folders: Record<string, string[]>;
+  owner: OwnerResult;
 };
+
+/**
+ * The owner is the one subject the corpus never names as an entity, so nothing else here
+ * would notice `about/intro` missing. It is the base's front door: without it every
+ * subject is reachable except the person they are all about.
+ */
+export type OwnerResult = {
+  page: string | undefined;
+  /** Outbound wikilinks. A front door that names nobody is a label, not a route. */
+  links: number;
+};
+
+function resolveOwner(pages: PageSnapshot[]): OwnerResult {
+  const page = pages.find((candidate) => candidate.path === "about/intro");
+  return {
+    page: page?.path,
+    links: page ? new Set(page.body.match(/\[\[[^|\]]+/g) ?? []).size : 0,
+  };
+}
 
 /** Top-level directories the default template ships, so their contents can be reported. */
 const TAXONOMY = ["people", "companies", "meetings", "topics", "events", "places", "objects", "library"];
@@ -158,5 +178,6 @@ export function scoreDay(expectations: Expectations, pages: PageSnapshot[], day:
     folders: Object.fromEntries(TAXONOMY
       .map((top) => [top, [...entityFolders(pages, top).keys()].sort()] as const)
       .filter(([, names]) => names.length > 0)),
+    owner: resolveOwner(pages),
   };
 }
