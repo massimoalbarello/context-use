@@ -65,7 +65,6 @@ whom, at which company, about which question" is not concise, it is missing its 
   owner's view or fill a gap merely to make a page look complete.
 - When a page speaks as the owner, use first person and ground it in what they expressed;
   label inference rather than silently turning it into their memory, motive or position.
-- Date facts that can change, using an inline form such as `— as of 27 July 2026`.
 
 ## Place and identify
 
@@ -172,10 +171,9 @@ it.
 
 ## The timeline
 
-Every entity folder has a `timeline`. It records what the owner did, experienced or
-learned involving this entity, dated to when it happened — not only what materially
-changed about the subject itself. Descending year headings, descending month headings
-within them, newest first:
+A `timeline` records what the owner did, experienced or learned involving its entity,
+dated to when it happened — not only what materially changed about the subject itself.
+Descending year headings, descending month headings within them, newest first:
 
     ## 2026
 

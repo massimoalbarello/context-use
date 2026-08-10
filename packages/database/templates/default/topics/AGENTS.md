@@ -4,19 +4,19 @@ Follow the [[agents|root guide]] for every convention not specific to topics. Th
 adds only topic selection and shape.
 
 `topics/` is for a subject the owner keeps returning to — an idea, a field, a discipline,
-a practice or a piece of regulation — that several other pages already need to point at.
+a practice or a piece of regulation. The topic page is the canonical home for that
+recurring subject, so the account of it lives in one retrievable place instead of being
+restated inside whichever chapter, project or diary entry happened to mention it first.
 
 What makes a subject a topic rather than a task is that it has no start and no finish. How
 the owner eats, trains or travels; a lens they apply to portfolio companies; the standard
 they hold themselves to when giving founders feedback — each is a consistent aspect of
 their life or thinking rather than something that resolves. A pursuit that can close
 belongs in [[about/tasks/agents|tasks]] instead, however long it runs.
-The topic page is the canonical home for that recurring subject, so the account of it
-lives in one retrievable place instead of being restated inside whichever chapter,
-project or diary entry happened to mention it first.
 
-It is not a tag index, a glossary or a list of interests. A topic exists because the
-knowledge base already refers to the subject, not because the subject is interesting.
+It is not a tag index, a glossary or a list of interests. A topic exists because the base
+already needs the subject or because the owner recounted something that belongs nowhere
+more specific — never because the subject is interesting.
 
 ## Suggested shape
 
@@ -37,8 +37,9 @@ headings, not three thin folders.
 
 ## When a topic is useful
 
-The test is inbound pressure, not interest. Create a topic when any of these is already
-true:
+The usual test is inbound pressure, not interest: the base needs somewhere to point. The
+last condition is the exception, and it comes from the owner rather than the base. Create
+a topic when any of these is already true:
 
 - Three or more existing pages refer to the subject and have nowhere canonical to link.
 - It recurs in the diary across two or more months, so the owner keeps returning to it.
@@ -69,7 +70,8 @@ let the pages that apply it link there instead of restating the reasoning each t
 Creating the page is not the whole change. In the same coherent write, repoint at least
 one existing reference at the new topic and thin the passage it came from to what that
 page still needs to say for itself. A subject mentioned once belongs in the account that
-mentioned it, and a topic page with no inbound links is not yet a topic.
+mentioned it, and a topic page with no inbound links is not yet a topic — unless it is a
+holding area, which the owner's own account is the inbound link for.
 
 ## Keep it the owner's
 

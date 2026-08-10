@@ -29,7 +29,10 @@ or the setting for several meaningful occurrences.
 
 A one-off occurrence can state its location directly. A city, restaurant or address
 mentioned in passing need not become an entity until its repetition or significance
-makes a canonical page useful.
+makes a canonical page useful. A place the owner recounts being at is not a passing
+mention: under the root rule for
+[[agents#which-entity-does-it-belong-to|choosing the entity]], a named venue they tell you
+about is the most specific entity the evidence identifies, and it takes the entry.
 
 ## Example intro
 
@@ -41,9 +44,10 @@ makes a canonical page useful.
     What makes this place independently relevant, without retelling the occurrences or
     relationships connected to it.
 
-Place-specific timeline milestones include a move, renovation, opening, closure or a
-change in significance. Ordinary visits stay on their occurrence pages. Follow the
-root contract for dates, diary synchronization and canonical links.
+Place-specific timeline entries include a move, renovation, opening, closure, a change in
+significance, and an occasion the owner recounts here. Routine visits with nothing to
+record stay on their occurrence pages. Follow the root timeline contract for dates and
+canonical links.
 
 A person's residence, favourite venue or other relationship with a place is a dated
 fact about that person or the owner; state it there and link the place. The place page
