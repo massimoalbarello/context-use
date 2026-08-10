@@ -225,6 +225,18 @@ the evidence supports. Climbing is the safe direction: a coarse entity can be sp
 once repeated entries give one of its parts a subject of its own, whereas a specific
 entity invented on a guess produces near-duplicates that no evidence will ever merge.
 
+A subject that is not a person, organization, place or occurrence is usually one of three
+things, told apart by how it sits in time. An enduring aspect of the owner's life or
+thinking, with no start and no finish, is a [[topics/agents|topic]]: how they eat, how they
+train, a lens they apply, a principle they hold. A finite pursuit that can resolve or close
+is a [[about/tasks/agents|task]]. A body of work large enough that it breaks into several
+such pursuits is a [[about/projects/agents|project]].
+
+Read the page rather than its name. Something called *founder feedback during diligence*
+sounds like an episode inside one diligence, but if what it records is the rule the owner
+applies every time, it has no start and no finish and it is a topic. Names follow content
+here; content never follows a name.
+
 A topic is therefore the holding area for activity that has not yet individuated. It
 accumulates entries until a dish, a place or a practice has enough history to be worth
 retrieving on its own; that part then becomes its own entity and its entries move there.

@@ -21,6 +21,12 @@ Keep the durable frame, relevant constraints, alternatives and the owner's reaso
 Activity alone does not make a task: the evidence should identify a real finite pursuit
 or decision whose frame will remain useful beyond the day.
 
+Finite is the word that separates a task from its neighbours. Something the owner will
+still be doing indefinitely, with no state it could resolve into, is a
+[[topics/agents|topic]] however concrete it sounds; something that decomposes into several
+finite pursuits of its own is a [[about/projects/agents|project]]. Decide from what the
+evidence says the subject is, not from a name that happens to read like an activity.
+
 An open question the owner is visibly working through — whether to commit, hire, buy,
 ship, accept or walk away — is a task as soon as the evidence shows them weighing it, not
 once it resolves. Framing it early is what gives the later evidence somewhere to attach:

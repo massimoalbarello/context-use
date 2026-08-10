@@ -30,9 +30,11 @@ that fit this instance. Add a local guide only when its subtree needs recurring 
 
 - Use the diary for what happened on a day, what the owner was thinking or feeling, and
   where active work currently stands.
-- Use a project for a body of work whose identity persists across several outcomes.
+- Use a project for a body of work that breaks down into several finite pursuits.
 - Use a task for a finite pursuit, experiment or consequential decision that can resolve
   or close and whose frame remains useful beyond a simple to-do.
+- Use a [[topics/agents|topic]] for something with no start and no finish — a practice, a
+  lens, a standing preference — which lives outside this subtree.
 - Use another durable owner page when the subject is the owner's lasting context but is
   neither a body of work nor a finite pursuit — their health, finances, education, family,
   history, household or working conditions.

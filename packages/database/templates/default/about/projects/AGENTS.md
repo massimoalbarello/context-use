@@ -11,10 +11,9 @@ work or maintained system.
     ├── intro       — what the project is, why it exists and its durable boundaries
     └── timeline    — curated milestones that materially changed it
 
-A project is a folder entered through `intro`, with `timeline` beside it from the start.
-Another page—such as `architecture`,
-`principles` or `history`—helps only when that subject is independently worth reading,
-retrieving or linking.
+A project is a folder entered through `intro`, gaining its `timeline` once there is a dated
+milestone to record. Another page—such as `architecture`, `principles` or `history`—helps
+only when that subject is independently worth reading, retrieving or linking.
 
 ## Project account
 
@@ -30,6 +29,8 @@ list of releases.
 ## When a project is useful
 
 Create a project when the evidence confidently identifies a distinct, enduring body of
-work. The owner naming it as a project is enough; otherwise repeated activity or a
-meaningful milestone may establish that durability. A repository, ticket, short
+work. The clearest sign is that it breaks down into several finite pursuits, each of which
+would be a [[about/tasks/agents|task]] on its own; a body of work with only one outcome in
+it is that outcome. The owner naming it as a project is enough; otherwise repeated activity
+or a meaningful milestone may establish that durability. A repository, ticket, short
 engagement or guessed grouping is not automatically a project.

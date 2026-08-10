@@ -5,6 +5,12 @@ adds only topic selection and shape.
 
 `topics/` is for a subject the owner keeps returning to — an idea, a field, a discipline,
 a practice or a piece of regulation — that several other pages already need to point at.
+
+What makes a subject a topic rather than a task is that it has no start and no finish. How
+the owner eats, trains or travels; a lens they apply to portfolio companies; the standard
+they hold themselves to when giving founders feedback — each is a consistent aspect of
+their life or thinking rather than something that resolves. A pursuit that can close
+belongs in [[about/tasks/agents|tasks]] instead, however long it runs.
 The topic page is the canonical home for that recurring subject, so the account of it
 lives in one retrievable place instead of being restated inside whichever chapter,
 project or diary entry happened to mention it first.
