@@ -271,6 +271,30 @@ Which of the two a run can even produce depends on how its base was built. A see
 distilled `amara-life-v1` base can lose a fact either way, and this line is how you tell —
 it is the reason the label exists.
 
+## What the first runs found
+
+Both legs, run locally against the same stack on 10 August 2026 with Codex.
+
+| | `world-v1`, seeded | `amara-life-v1`, distilled |
+| --- | --- | --- |
+| Knowledge base | 68 pages, 2 batches | 141 pages, 13–14 April |
+| Asked | 6 of the 31 due | 8 of the 25 due |
+| Correct | 6/6 | 7/8 |
+
+Small samples, and the point is not the percentages. It is that the two numbers fail in
+different places, which is the whole reason for keeping the corpora apart.
+
+Retrieval on a seeded base was clean: every expected name found, including on five-attendee
+meetings. The one amara miss was **Meridian Health**, Capacitor Labs' first enterprise
+healthcare customer — and the scorer labelled it `never written to the knowledge base`
+rather than `held but not found`. That is true: the base holds `companies/meridian-robotics`
+and no Meridian Health page at all, so the distiller kept one Meridian and dropped the
+other. Exactly the confusion `q-0003` was written to probe, found by the machine rather
+than by reading 141 pages.
+
+The agent answered `NOT FOUND` rather than guessing a Meridian, which is the behaviour the
+prompt asks for and the reason `wrong` and `not answered` are counted separately.
+
 ## The key is lenient, and knowing why matters
 
 Upstream's derivation keeps only entities that have their own page — `filterExisting`,
