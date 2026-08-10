@@ -52,12 +52,12 @@ must never mean writing less about the subject.
 Under the inherited [[agents#the-timeline|root timeline contract]], task
 milestones may include the pursuit being framed, a consequential change in scope or
 direction, a decision, handoff, abandonment or resolution. Routine progress and transient
-status earn no entry at all, and reach the diary only if the day's other entries make them
-worth mentioning.
+status earn no timeline event at all, and reach the diary only if the day's other events
+make them worth mentioning.
 
 ## Resolution
 
-Resolution always earns a dated timeline entry, at the date the task was actually
+Resolution always earns a dated timeline event, at the date the task was actually
 resolved. Say whether the task was completed, decided,
 abandoned or superseded and link the resulting outcome or durable page when one exists.
 This keeps closure visible from the task without turning its `intro` into a progress log.

@@ -798,7 +798,7 @@ describe("knowledge templates", () => {
     expect(normalizedRoot).toContain("Attention is not interaction and is not agreement");
     expect(guides.root).toContain("## The timeline");
     expect(normalizedRoot).toContain("Descending year headings, descending month headings");
-    expect(normalizedRoot).toContain("Never link the diary from a timeline entry");
+    expect(normalizedRoot).toContain("Never link the diary from a timeline event");
     expect(normalizedRoot).toContain("Nothing else writes the diary");
     expect(guides.root).toContain("## Three homes");
     expect(guides.root).toContain("## Which entity does it belong to");
@@ -832,7 +832,7 @@ describe("knowledge templates", () => {
     expect(guides.diary).toContain("[[automations/diary-composer/instructions|diary composer]]");
     expect(guides.projects).toContain("about/projects/<slug>/");
     expect(guides.tasks).toContain("about/tasks/<slug>/");
-    expect(normalize(guides.tasks)).toContain("Resolution always earns a dated timeline entry");
+    expect(normalize(guides.tasks)).toContain("Resolution always earns a dated timeline event");
 
     expect(normalizedRoot).toContain("A common template is a vocabulary, not a quota");
     expect(normalize(guides.companies)).toContain("Split out a topic only when it is useful");

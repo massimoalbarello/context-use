@@ -102,13 +102,13 @@ discipline the owner practises records that practice here. What happened on a gi
 stays in the diary, and a body of work built around a topic stays a project; the topic
 explains the subject both of them keep referring to.
 
-Topic-specific timeline entries include the subject's own material developments, the
+Topic-specific timeline events include the subject's own material developments, the
 changes in what the owner does about it — taking it up, turning away from it, coming back
 to it — and, for a topic serving as a holding area, each occasion the owner recounts under
 it. A holding-area timeline is expected to grow long, and length is the signal to split:
-when a dish, a place or a practice inside it has enough entries to be worth retrieving on
-its own, give it its own entity under the guide that owns it and move those entries there,
-leaving earlier diary logs pointing where the material lived at the time.
+when a dish, a place or a practice inside it has enough timeline events to be worth
+retrieving on its own, give it its own entity under the guide that owns it and move those
+events there, leaving earlier day logs pointing where the material lived at the time.
 
 Reconcile rather than accumulate. A topic left unreferenced and unchanged for roughly six
 months should be folded back into whatever still needs it, or archived — but a holding area

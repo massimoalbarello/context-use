@@ -39,8 +39,8 @@ under a date: output organized by the process that produced it is unreachable fr
 subject it is about.
 
 `about/diary/` belongs to the [[automations/diary-composer/instructions|diary composer]]
-alone. Every other writer records what happened as a dated entry on the relevant entity's
-`timeline`, and the composer assembles the days from those entries afterwards.
+alone. Every other writer records what happened as a timeline event on the relevant
+entity's `timeline`, and the composer assembles the days from those events afterwards.
 
 An unattended workflow can carry out the confident, useful changes described by the
 [[agents|root guide]] and reports its semantic changes through the external harness.

@@ -103,11 +103,11 @@ one page is still a folder, so a later view or a `timeline` can be added without
 the page and repairing its inbound links first. The owning directory guide defines the
 further useful views and the evidence required to create the entity.
 
-Add the `timeline` when there is a dated event to record, not before; an empty one is
+Add the `timeline` when there is a timeline event to record, not before; an empty one is
 scaffolding. Someone the owner knows, with nothing yet that happened on a day, is a
 complete entity with an `intro` alone. An occurrence never takes one at all: a meeting or
 event already happened on its own date, so its page is its account and a timeline beneath
-it would index a single entry that is the page itself.
+it would index a single timeline event that is the page itself.
 
 `intro` is the entry point in fact and not only in name: every other page in the folder is
 reachable from it, through the sentence that says what that view holds. A `timeline`, lens
@@ -150,7 +150,7 @@ preserves the replaced wording, so a live page never has to carry a superseded c
 **What happened, and when** lives on the entity's `timeline`, one line for each.
 
 **A past state that is independently worth reading** earns its own page in the folder,
-linked from `intro` and from the timeline entry that marks the transition.
+linked from `intro` and from the timeline event that marks the transition.
 
 The choice between the last two is whether anyone would read the old state for itself. A
 project's earlier iteration would: it had its own shape, and the account of it is still
@@ -164,7 +164,7 @@ passing* will not — each is an event with a date, and each belongs on the time
 
 The exception is a durable fact that can change: a role, a headquarters, an ownership
 stake. That stays on the canonical page with an inline `— as of 27 July 2026`, and the
-change itself earns a timeline entry. That is the only kind of date a canonical page
+change itself earns a timeline event. That is the only kind of date a canonical page
 carries. Relationships are durable and stay on it: who works there, who introduced whom,
 which decision it belongs to. Moving a date off a page never takes its connections with
 it.
@@ -173,7 +173,8 @@ it.
 
 A `timeline` records what the owner did, experienced or learned involving its entity,
 dated to when it happened — not only what materially changed about the subject itself.
-Descending year headings, descending month headings within them, newest first:
+Each line on it is one **timeline event**. Descending year headings, descending month
+headings within them, newest first:
 
     ## 2026
 
@@ -185,29 +186,34 @@ Descending year headings, descending month headings within them, newest first:
 
     - **28 July** — [[meetings/…|Partner review]] — agreed to pass on the round.
 
-One entry is one line: the date, the links that place it, and what happened. An entry
-wanting a paragraph is describing either the current state or a past state worth reading,
-and belongs on a page under the rule above. Keep the month in the entry as well as the
-heading, because entries are read away from their page — quoted into a day's log, returned
-by search — and a line that does not say its own date is useless there.
+A timeline event is a line, never a page, and it is not an [[events/agents|event]] in the
+`events/` sense — an occasion with its own folder, such as a conference, trip or wedding.
+A timeline event may link one of those; it never becomes one. Keep the qualifier: bare
+"event" in this base means the page, not the line.
 
-Never link the diary from a timeline entry. The date is already the link: a day's entry
+One timeline event is one line: the date, the links that place it, and what happened. One
+wanting a paragraph is describing either the current state or a past state worth reading,
+and belongs on a page under the rule above. Keep the month in the line as well as the
+heading, because these lines are read away from their page — quoted into a day's log,
+returned by search — and a line that does not say its own date is useless there.
+
+Never link the diary from a timeline event. The date is already the link: a day's log
 is always at `about/diary/<YYYY>/<MM>/<DD>/log`. Writing it out asserts a page that
 usually does not exist yet, because the diary is composed afterwards by
 [[automations/diary-composer/instructions|the diary composer]], which reads timelines and
 links back to the entities it finds there. Nothing else writes the diary, and an agent
-recording an entity event should not try.
+recording a timeline event should not try.
 
-Date an entry to when the thing happened, which is not always when it was written. An old
-project written up today, a book finished years ago and a conference attended last week
-each take their own date. Dating an entry into the past creates no diary day in the past;
+Date a timeline event to when the thing happened, which is not always when it was written.
+An old project written up today, a book finished years ago and a conference attended last
+week each take their own date. Dating one into the past creates no diary day in the past;
 the composer files the act of writing under the day it was written.
 
 When a timeline grows unwieldy, promote it to `timeline/<YYYY>` pages and repair inbound
 links in the same coherent change. Most entities never need this.
 
-Correcting a timeline entry is ordinary reconciliation: fix the claim where it appears
-and leave the surrounding entries as contemporaneous record.
+Correcting a timeline event is ordinary reconciliation: fix the claim where it appears
+and leave the surrounding lines as contemporaneous record.
 
 ## Which entity does it belong to
 
@@ -220,7 +226,7 @@ Name the most specific entity the evidence actually identifies, and climb until 
 one it does. A named dish at a named restaurant identifies both. A photograph of a meal
 with no place and no name identifies neither, and a topic such as `topics/food` is what
 the evidence supports. Climbing is the safe direction: a coarse entity can be split later,
-once repeated entries give one of its parts a subject of its own, whereas a specific
+once repeated timeline events give one of its parts a subject of its own, whereas a specific
 entity invented on a guess produces near-duplicates that no evidence will ever merge.
 
 A subject that is not a person, organization, place or occurrence is usually one of three
@@ -236,9 +242,10 @@ applies every time, it has no start and no finish and it is a topic. Names follo
 here; content never follows a name.
 
 A topic is therefore the holding area for activity that has not yet individuated. It
-accumulates entries until a dish, a place or a practice has enough history to be worth
-retrieving on its own; that part then becomes its own entity and its entries move there.
-Diary entries written before the split keep pointing at the topic, which is where the
+accumulates timeline events until a dish, a place or a practice has enough history to be
+worth retrieving on its own; that part then becomes its own entity and its events move
+there.
+Day logs written before the split keep pointing at the topic, which is where the
 material lived at the time. A long topic timeline is the expected shape and the signal to
 split, not a defect — and for this class `intro` is thin at first, distilled from the
 timeline as it accumulates rather than known in advance the way a company's is.

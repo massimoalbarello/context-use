@@ -32,7 +32,7 @@ mentioned in passing need not become an entity until its repetition or significa
 makes a canonical page useful. A place the owner recounts being at is not a passing
 mention: under the root rule for
 [[agents#which-entity-does-it-belong-to|choosing the entity]], a named venue they tell you
-about is the most specific entity the evidence identifies, and it takes the entry.
+about is the most specific entity the evidence identifies, and it takes the event.
 
 ## Example intro
 
@@ -44,7 +44,7 @@ about is the most specific entity the evidence identifies, and it takes the entr
     What makes this place independently relevant, without retelling the occurrences or
     relationships connected to it.
 
-Place-specific timeline entries include a move, renovation, opening, closure, a change in
+Place-specific timeline events include a move, renovation, opening, closure, a change in
 significance, and an occasion the owner recounts here. Routine visits with nothing to
 record stay on their occurrence pages. Follow the root timeline contract for dates and
 canonical links.

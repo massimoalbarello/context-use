@@ -32,7 +32,7 @@ A day folder is a chronological container, not a durable entity. It therefore us
 
 The day folder contains only pages and assets belonging to that day. Give long or
 structured day-specific material its own descriptive page and link it from the log.
-Write the log summary last, from the finished entry.
+Write the log summary last, from the finished log.
 
 ## The log
 
@@ -68,7 +68,7 @@ When work genuinely resumes from an earlier day, add one backward link on the re
 
 - Link one hop to the most specific earlier page. Following the chain recovers older
   context, so repeating its whole ancestry is unnecessary.
-- Do not edit an earlier entry merely to add a forward pointer; it records what was known
+- Do not edit an earlier log merely to add a forward pointer; it records what was known
   then.
 - Repeated mention is not automatically continuation. Use the link only when work picks
   up where it left off.
@@ -81,7 +81,7 @@ or page is necessary.
 
 - Start with today's log and work backward, usually about a week. Follow continuity
   links for active threads and outward links for durable context.
-- Treat an old mood, plan or open loop as a historical snapshot until later entries
+- Treat an old mood, plan or open loop as a historical snapshot until later logs
   confirm it.
 - Periodically review recent logs for repeated or durable material that is difficult to
   retrieve from its subject. Promote only what earns a durable home.
@@ -96,8 +96,8 @@ preserving useful contemporaneous experience. When the correction itself matters
 story, make it explicit and link the later evidence.
 
 A past log keeps the links it was written with. When an entity is later split out of a
-topic, the entries move to the new entity but the logs that pointed at the topic stay as
-they were: that is where the material lived on the day they describe.
+topic, its timeline events move to the new entity but the logs that pointed at the topic
+stay as they were: that is where the material lived on the day they describe.
 
 ## Diary privacy
 

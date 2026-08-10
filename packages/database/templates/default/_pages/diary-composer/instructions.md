@@ -34,31 +34,54 @@ It is the only writer of `about/diary/`.
 The remaining rows split by path, and the two halves answer different questions.
 
 - **Paths ending in `/timeline`** carry what happened. Read each one's current body and
-  take its entries dated inside the coverage window below. A timeline that did not change
-  cannot have gained an entry, so the rest of the base needs no reading.
+  take its timeline events dated inside the coverage window below. A timeline that did not
+  change cannot have gained one, so the rest of the base needs no reading.
 - **Every other path** says only that something was written, and when. Use it for the
-  writing-up case below. Do not narrate page maintenance: a page reshaped, relinked or
-  corrected without a timeline entry is not something that happened to the owner, and it
-  never reaches the diary.
+  writing-up case below and for the gap check. Do not narrate page maintenance: a page
+  reshaped, relinked or corrected without a timeline event is not something that happened
+  to the owner, and it never reaches the diary.
+
+## Check for entities that recorded nothing
+
+Comparing the two halves costs no extra reading, and it catches the one failure this
+design cannot otherwise survive: a writer that recorded a real occurrence on the entity's
+pages and forgot its timeline event. Nothing downstream can repair that. A canonical page
+carries no dated status by design, so once the timeline event is missing the date is not
+anywhere to recover — only the writer ever had the evidence.
+
+So detect it and say so. For each entity folder with a changed page in this window whose
+timeline recorded no event dated inside it:
+
+- Name it in the run report as a gap, with the path and the day its page changed. The
+  repair belongs at the source, on that entity's timeline.
+- Where the change was a newly created entity, or a rewrite whose content plainly
+  describes something the owner did, mention it in the log for the day the page changed —
+  as what it honestly is, that the owner recorded or worked on this subject, never as a
+  dated occurrence invented to fill the gap. Link the entity.
+- Where the change altered only wording, links, headings or placement, leave it out of the
+  diary entirely. It still belongs in the gap list if the page describes an occurrence.
+
+This is a net, not a second source. Prefer one accurate line over a reconstruction, and
+never guess a date the evidence does not carry.
 
 ## Coverage window
 
 A run may create or revise the thirty days preceding it, matching the source freshness
 boundary the [[automations/activity-distiller/instructions|activity distiller]] works to.
 
-An entry dated before that window is historical: a project written up long after it ran, a
-book finished years ago, a conference recorded from an old note. It belongs on its entity's
-timeline at its own date and creates no diary day in the past. What it does create is one
-line under the day it was written, because writing it up is itself something the owner did:
-*wrote up [[about/projects/…|the first iteration]] today*.
+A timeline event dated before that window is historical: a project written up long after
+it ran, a book finished years ago, a conference recorded from an old note. It belongs on
+its entity's timeline at its own date and creates no diary day in the past. What it does
+create is one line under the day it was written, because writing it up is itself something
+the owner did: *wrote up [[about/projects/…|the first iteration]] today*.
 
 ## Assemble each day
 
-Take every entry dated to the day, from every timeline in the worklist, and write the day's
-`log` under the [[about/diary/agents|diary guide]].
+Take every timeline event dated to the day, from every timeline in the worklist, and write
+the day's `log` under the [[about/diary/agents|diary guide]].
 
-1. Write the narrative from what the entries say, linking each entity at its `intro`
-   rather than at its timeline. The entries are the evidence; the log is prose, not a list
+1. Write the narrative from what those events say, linking each entity at its `intro`
+   rather than at its timeline. The events are the evidence; the log is prose, not a list
    of them.
 2. Fill `Threads` with the projects and tasks that moved, adding a continuity link where
    the day's work resumes an earlier one.
@@ -67,22 +90,22 @@ Take every entry dated to the day, from every timeline in the worklist, and writ
    recover.
 4. Derive the title and summary from the day's material activity. Do not invent a location.
 
-Revise a day only when this window carries a timeline entry dated to it. A day nothing new
+Revise a day only when this window carries a timeline event dated to it. A day nothing new
 was recorded for stays exactly as it is.
 
-Reconcile rather than append. On a rerun the entries are read again from the current
+Reconcile rather than append. On a rerun the events are read again from the current
 timelines, so rewrite the day into one coherent account instead of adding a second pass
 over it. Preserve every sentence the owner wrote, `On my mind` in full, and any page in the
 day folder this automation did not create.
 
-Create no log for a day whose entries carry nothing worth recording. A valid run may
+Create no log for a day whose events carry nothing worth recording. A valid run may
 update only the checkpoint.
 
 ## Checkpoint and report
 
 Writes must be replay-safe, because a failed state update returns the window on the next
 run. Re-reading current timelines is naturally safe: it derives the same day from the same
-entries rather than accumulating.
+events rather than accumulating.
 
 After every intended write succeeds, replace the state body with exactly:
 
@@ -97,7 +120,11 @@ stop, and report the failure.
 Finish with:
 
 - the days created or revised, and whether the change ledger is caught up;
-- a concise summary and any unresolved ambiguity, including any timeline entry whose date
+- a concise summary and any unresolved ambiguity, including any timeline event whose date
   could not be read;
 - `Created` and `Updated` lists naming every day log written, each with its exact path and
-  a short description. Write `None` for an empty list.
+  a short description;
+- `Recorded nothing dated` listing each entity whose pages changed in this window while its
+  timeline gained no event, so the owner can put the date back where it belongs.
+
+Write `None` for an empty list.

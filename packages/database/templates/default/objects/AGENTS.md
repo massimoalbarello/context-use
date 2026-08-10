@@ -43,7 +43,7 @@ too.
 
     Why this particular instance matters and the minimum context needed to recognize it.
 
-Object-specific timeline entries include acquisition, material repair, modification and
+Object-specific timeline events include acquisition, material repair, modification and
 transfer, and any occasion the owner recounts involving this particular thing. Follow the
 root timeline contract for dates and for links to the canonical occurrence or maintenance
 account.

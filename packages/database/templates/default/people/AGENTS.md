@@ -89,8 +89,8 @@ doing, which is the one thing the folder was created to do.
 
 The timeline is for material interactions and changes, not every contact. Record a
 meaningful change in what the person is doing—such as starting a role, company or
-project—as a dated timeline entry instead of keeping an undated “currently” snapshot in
-`intro`. `work` can hold the fuller role history without duplicating the entry.
+project—as a dated timeline event instead of keeping an undated “currently” snapshot in
+`intro`. `work` can hold the fuller role history without duplicating the timeline event.
 
 Keep judgements specific, relevant to the owner's relationship and grounded in
 something that happened. Write with the care appropriate to a real person.

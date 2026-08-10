@@ -47,8 +47,8 @@ not pages to mirror.
    finish whatever is missing:
    - each conversation that took place has its meeting page, each person and organization
      its own, each decision in flight its task page;
-   - every material state change is a dated entry on the entity's `timeline`, at the date
-     the thing happened;
+   - every material state change is a timeline event on the entity's `timeline`, dated to
+     when the thing happened;
    - no canonical page carries a dated status, stage or figure that belongs on its
      timeline, and no name sits bare where a link belongs.
 6. After every intended knowledge mutation succeeds, replace state with this call's
@@ -73,7 +73,7 @@ deletion with null Markdown supports no semantic change.
 
 Apply the root guide's evidence distinctions and use the date of the underlying
 activity. Without a reliable activity date, record what is durable about the subject and
-leave the timeline alone rather than dating an entry by guess.
+leave the timeline alone rather than dating one by guess.
 
 Keep only evidence that changes future understanding: a decision and rationale,
 consequential outcome, meaningful change of direction, milestone, important commitment,
@@ -110,7 +110,7 @@ Determine targets from the actual subjects across the whole evidence batch, neve
 the provider, record type, repository, email thread or calendar-item shape. Search
 existing knowledge and connected evidence before preparing each unfamiliar exact
 target, then let its guide chain decide the useful pages. Apply the root timeline
-contract in the same coherent write whenever a dated entry is recorded.
+contract in the same coherent write whenever a timeline event is recorded.
 
 Take the cast named in step 3 to its owning guides and reconcile every subject that meets
 the threshold there. Records are how the cast becomes visible; they are not themselves the
@@ -169,11 +169,11 @@ group their ambiguity into one concise report item for the meeting.
 
 ## Leave the diary alone
 
-Never create or edit a page under `about/diary/`. Record what happened as a dated entry on
-the entity's `timeline` and stop there; the
-[[automations/diary-composer/instructions|diary composer]] reads those entries afterwards
-and assembles each day. An entry dated correctly is the whole of this automation's
-contribution to the chronology, and a timeline entry that links a diary page asserts one
+Never create or edit a page under `about/diary/`. Record what happened as a timeline event
+on the entity's `timeline` and stop there; the
+[[automations/diary-composer/instructions|diary composer]] reads those events afterwards
+and assembles each day. A timeline event dated correctly is the whole of this automation's
+contribution to the chronology, and a timeline event that links a day log asserts one
 that does not exist yet.
 
 ## Checkpoint and report
