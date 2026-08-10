@@ -141,6 +141,9 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   const report = {
     runId,
     corpusId: corpus.corpusId,
+    // Recorded so `qa:score` can say what its number covers: a distilled base carries
+    // every extraction decision the agent made, where a seeded one carries none.
+    mode: "distill",
     window: options.window,
     provider: options.provider,
     startedAt,

@@ -8,9 +8,12 @@ is the write path end to end: the private MCP serves the corpus through the prod
 `read_source_records` tool, and the agent follows the automation instructions installed in
 the knowledge base. There is no evaluation-specific prompt and no evaluation-specific tool.
 
-**Question answering** (`bun run eval qa:ask`, `qa:score`) puts questions to the knowledge
-base a distillation run built and compares each answer to a sealed key — the read path. See
-[qa/README.md](qa/README.md).
+**Question answering** (`bun run eval qa:ask`, `qa:score`) puts questions to a knowledge
+base and compares each answer to a sealed key — the read path. Both corpora go through the
+same two commands and differ only in how that knowledge base came to exist: `world-v1` is
+seeded with pages that are already finished knowledge, so it measures retrieval alone;
+`amara-life-v1` is distilled from raw activity first, so it measures distillation and
+retrieval together. See [qa/README.md](qa/README.md).
 
 **Scenario scoring** (`bun run eval run`) is the earlier, hand-written four-step
 trajectory with deterministic assertions about entities, timelines and reconciliation. It
@@ -28,6 +31,7 @@ enforced.
 | What it is | raw activity: email, Slack, calendar, meetings, notes | 240 already-distilled biographical pages |
 | Size | 418 items over 47 days | 240 pages over 10 batches |
 | Measures | extraction, distillation and retrieval | prose reconciliation and retrieval |
+| Knowledge base under test | built by `distill` | seeded by `qa:seed` |
 | Answer key | entities and meetings ([gold/](gold/README.md)), plus 99 authored questions ([qa/](qa/README.md)) | 145 derived questions ([qa/](qa/README.md)) |
 | Scored by | `gold:check` and `qa:score` | `qa:score` |
 

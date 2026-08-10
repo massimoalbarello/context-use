@@ -7,6 +7,7 @@ import {
   askQuestionsCommand,
   deriveQuestionsCommand,
   scoreAnswersCommand,
+  seedCommand,
   verifyQuestionsCommand,
 } from "../eval/qa/commands.ts";
 import { connectProvider, runEval, scoreEval, type EvalProvider } from "../eval/runner.ts";
@@ -22,13 +23,23 @@ function usage(): never {
   bun run eval corpus:refresh [--corpus <id>]
   bun run eval gold:profile [--write]              amara-life-v1 structural check
   bun run eval gold:check [run-id]
-  bun run eval qa:derive [--write]                 regenerate world-v1 questions from _facts
-  bun run eval qa:verify                           check amara-life-v1's authored questions
   bun run eval qa:ask [run-id] [--provider <codex|claude>] [--only <q-0007>] [--limit <n>] [--all]
   bun run eval qa:score [run-id]
 
-A batch is the unit one automation run consumes: a calendar day for amara-life-v1, a
-slice of the page order for world-v1. --days is accepted as an alias for --batches.`);
+Per corpus, before asking:
+  bun run eval qa:seed [--batches <n>]             world-v1: put its pages in as they are
+  bun run eval qa:derive [--write]                 world-v1: rebuild its questions from _facts
+  bun run eval qa:verify                           amara-life-v1: check its authored questions
+
+Both corpora are asked and scored by the same two commands. They differ only in how the
+knowledge base under test comes to exist, and a run records which so a score can say what
+it covers:
+
+  world-v1       qa:seed  -> qa:ask -> qa:score    retrieval only
+  amara-life-v1  distill  -> qa:ask -> qa:score    distillation and retrieval
+
+A batch is the unit one run consumes: a calendar day for amara-life-v1, a slice of the page
+order for world-v1. --days is accepted as an alias for --batches.`);
   process.exit(1);
 }
 
@@ -99,6 +110,8 @@ if (command === "connect") {
   deriveQuestionsCommand({ write: args.includes("--write") });
 } else if (command === "qa:verify") {
   verifyQuestionsCommand();
+} else if (command === "qa:seed") {
+  await seedCommand({ batches: countFrom(args, "batches") });
 } else if (command === "qa:ask") {
   await askQuestionsCommand({
     runId: positional(args),

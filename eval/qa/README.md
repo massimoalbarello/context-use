@@ -1,20 +1,77 @@
 # Can the agent answer the question?
 
-This is the retrieval-facing evaluation: a question goes in, the agent answers it from the
-knowledge base a distillation run built, and the answer is compared to a sealed key.
+A question goes in, the agent answers it from the knowledge base, and the answer is
+compared to a sealed key. Both corpora are asked and scored by the same two commands:
 
 ```sh
-bun run eval distill --corpus world-v1 --batches 2   # build the knowledge base
-bun run eval qa:ask                                  # ask, one session per question
-bun run eval qa:score                                # compare to the sealed answers
+bun run eval qa:ask     # ask, one session per question
+bun run eval qa:score   # compare to the sealed answers
 ```
 
-Both corpora have a set: `world-v1/` (145 questions, derived) and `amara-life-v1/` (99,
-authored). A run records which corpus it processed, so `qa:ask` and `qa:score` put that
-corpus's own questions to it — there is nothing to select.
+They differ only in **how the knowledge base under test comes to exist**, and that is the
+whole design:
+
+| | `world-v1` | `amara-life-v1` |
+| --- | --- | --- |
+| Knowledge base | `qa:seed` puts its 240 pages in as they are | `distill` builds it from raw activity |
+| Questions | 145, derived from `_facts` | 99, authored and quote-checked |
+| A score measures | retrieval | distillation **and** retrieval |
+
+```sh
+bun run eval qa:seed --batches 2                           # world-v1
+bun run eval distill --corpus amara-life-v1 --batches 2    # amara-life-v1
+```
+
+Everything downstream of that is shared: one question file format, one sealed answer
+format, one scorer, one pair of commands. A run records its corpus and its mode in
+`report.json`, so `qa:ask` and `qa:score` select the right question set and state what the
+number covers — there is nothing to pass.
 
 `qa:ask` records answers; `qa:score` is offline and deterministic, so a run can be rescored
 whenever the key changes without asking anything again.
+
+## Why the split is real, and not two benchmarks in a trenchcoat
+
+`world-v1` has no owner, so the activity distiller correctly declines it (below), and its
+pages are already someone's finished knowledge. Seeding them isolates retrieval — and it is
+what upstream does too, so a later comparison is closer rather than further.
+
+`amara-life-v1` is the opposite: a real owner, raw email and Slack and notes, nothing
+pre-reconciled. Its knowledge base has to be *built* before it can be asked, so a score over
+it carries every extraction and merge decision the agent made. That is the harder and more
+representative measurement, and it is why the amara questions are worth authoring by hand.
+
+Read together, the two localise a failure that one number cannot: if `world-v1` retrieval is
+strong and `amara-life-v1` is weak, the gap is in distillation, not in search.
+
+## Why world-v1 is seeded, not distilled
+
+`world-v1` has no owner. Its 240 pages are third-person profiles of a VC world with no "me"
+at the centre: twenty partners at twenty *different* firms, no person in more than four of
+its fifty meetings, seventy-five distinct attendees. There is no protagonist to find,
+individual or institutional.
+
+The activity distiller selects on owner engagement — "maintain this knowledge base from the
+owner's connected activity… this is curation, not ingestion" — so on this corpus it
+correctly imports almost nothing. Running it produces a number that measures the mismatch
+rather than the system. Inventing an owner would assert a relationship the corpus does not
+contain, which is the same thing the [eval README](../README.md) refuses to do with
+upstream's fabricated email threading.
+
+Upstream does not distil it either. `before-after.ts` calls `putPage` for all 240 pages and
+then queries: the corpus *is* the knowledge base in their harness, and seeding is the step
+they perform too — so this makes a later comparison closer rather than further.
+
+Pages are written through `PageRepository`, the same path an MCP write takes, so the search
+vector, link normalisation and version row are production behaviour and a seeded page is
+indistinguishable from a written one. They keep upstream's own slug — `people/adam-lee-19` —
+because `Gold.relevant` labels those slugs and renaming them would throw away the one thing
+that makes a retrieval comparison possible.
+
+**So this measures retrieval, and nothing else.** It says nothing about the distiller or
+about our own taxonomy; those belong to `amara-life-v1`, which has a real owner and real
+activity. `distill --corpus world-v1` still works, because demonstrating that the distiller
+declines a corpus with no owner is itself worth being able to show.
 
 ## Iterating on a subset
 
@@ -207,8 +264,26 @@ Every missing name is labelled with which half of the system lost it:
 
 `held in the knowledge base but not found` is a retrieval failure. `never written to the
 knowledge base` is a distillation failure. They have different fixes, and a bare accuracy
-number cannot tell them apart — which matters here, because `world-v1` exercises
-distillation and retrieval end to end rather than retrieval alone.
+number cannot tell them apart.
+
+Which of the two a run can even produce depends on how its base was built. A seeded
+`world-v1` base holds every page by construction, so every miss there is retrieval. A
+distilled `amara-life-v1` base can lose a fact either way, and this line is how you tell —
+it is the reason the label exists.
+
+## The key is lenient, and knowing why matters
+
+Upstream's derivation keeps only entities that have their own page — `filterExisting`,
+because a page that does not exist cannot be retrieved. That is right for their scoring and
+loose for ours: **37% of the relationship entries in `_facts` are dropped that way** (152 of
+413). The Acme board meeting lists three attendees and the prose says plainly that "Ian
+Anderson attended in person"; he has no profile page, so the sealed answer names two.
+
+Nothing breaks, because the scorer's vocabulary is built from pages too, so a page-less
+attendee is invisible — naming one costs nothing and omitting one costs nothing. But it
+means a score reads as *correct on the entities the corpus profiles*, not *correct on who
+attended*. Widening the key to unfiltered `_facts` would diverge from upstream's 145 and
+ask for people the corpus never profiles, so it stays as it is.
 
 ## What this does not measure
 

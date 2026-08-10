@@ -159,9 +159,26 @@ describe("which questions a run is asked", () => {
     for (const answer of sparse) expect(dueIds.has(answer.id)).toBe(false);
   });
 
-  test("asks a full run's sparse days once it has served them", () => {
-    const full = dueQuestions(run(["2026-02-02", "2026-04-14"]), questions, answers, false);
-    expect(full.due.length).toBeGreaterThan(25);
+  test("asks a sparse day once the run has served that day", () => {
+    // Membership, not a range: serving 2 February and 14 April does not imply serving the
+    // seventy days between them, so only questions due on those two days are asked.
+    const { due } = dueQuestions(run(["2026-02-02", "2026-04-14"]), questions, answers, false);
+    const dueBatches = new Set(due.map((question) =>
+      answers.find((answer) => answer.id === question.id)!.due_batch));
+    expect([...dueBatches].sort()).toEqual(["2026-02-02", "2026-04-14"]);
+  });
+
+  test("reads the served batches from the run's report, not its snapshot files", () => {
+    // A seed applies every batch at once and snapshots only the result, so counting
+    // snapshot files would say a ten-batch seed served one batch and hold back every
+    // question but the last batch's.
+    const directory = run(["2026-04-14"]);
+    writeFileSync(join(directory, "report.json"), JSON.stringify({
+      corpusId: "amara-life-v1",
+      mode: "seed",
+      batches: [{ batch: "2026-04-13" }, { batch: "2026-04-14" }],
+    }));
+    expect(dueQuestions(directory, questions, answers, false).due.length).toBe(25);
   });
 
   test("--all overrides the window", () => {
