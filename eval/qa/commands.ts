@@ -269,10 +269,15 @@ export function scoreAnswersCommand(runId?: string): void {
   if (!existsSync(path)) throw new Error(`Run ${directory} holds no ${ANSWERS_FILE}. Run \`bun run eval qa:ask\` first.`);
 
   const recorded = JSON.parse(readFileSync(path, "utf8")) as RecordedAnswer[];
-  // Only the questions actually asked. Asking a subset is the normal cheap case, and
-  // counting the rest as unanswered would bury a real result under 141 blanks.
+  // Asked *and* due. Asking a subset is the normal cheap case, and counting the rest as
+  // unanswered would bury a real result under 141 blanks. Re-checking due-ness here rather
+  // than trusting what `qa:ask` selected is what makes an offline rescore meaningful: when
+  // the key is corrected, a question whose evidence was never served stops being scored
+  // instead of being recorded forever as a failure it never had a chance at.
   const asked = new Set(recorded.map((entry) => entry.id));
-  const questions = readQuestions(QA_CORPUS).filter((question) => asked.has(question.id));
+  const { due } = dueQuestions(directory, readQuestions(QA_CORPUS), readAnswers(QA_CORPUS), false);
+  const questions = due.filter((question) => asked.has(question.id));
+  const dropped = asked.size - questions.length;
 
   const result = scoreRun({
     questions,
@@ -286,6 +291,10 @@ export function scoreAnswersCommand(runId?: string): void {
   const through = recordedBatches(directory).at(-1);
   console.log(style.heading(`\nQA score · ${QA_CORPUS} · ${directory.split("/").at(-1)}`));
   if (through) console.log(style.dim(`Knowledge base built through ${through}.`));
+  if (dropped) {
+    console.log(style.dim(`${dropped} recorded answer(s) are not scored: the key now places their`));
+    console.log(style.dim("evidence in a later batch than this run served."));
+  }
   for (const score of scores) {
     const mark = score.verdict === "correct" ? style.green("✓")
       : score.verdict === "void" ? style.yellow("–") : style.red("✗");
