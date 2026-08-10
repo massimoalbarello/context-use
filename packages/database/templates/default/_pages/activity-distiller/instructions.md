@@ -40,22 +40,28 @@ not pages to mirror.
    place and the positions they argued from. This list is drawn from every record
    returned, because selection decides what is written about and this decides who and what
    is known to exist. Keep it for the rest of the batch.
-4. Select the evidence, then reconcile the whole batch — the cast above, its connected
+4. With the cast, note what each record actually establishes — the figures, terms, dates,
+   names and reasons stated in it. A record earns its place through these; they are what
+   the owner comes back for, and they are the first thing lost when a batch is summarised.
+   A message can be too routine to write about while the number inside it is worth
+   keeping: what fails the selection rules below is the record, never the fact.
+5. Select the evidence, then reconcile the whole batch — the cast above, its connected
    subjects, and pages changed by earlier batches in this run — before reading again. A
    batch may legitimately produce no semantic change.
-5. Before saving the checkpoint, check the cast from step 3 against what was written, and
+6. Before saving the checkpoint, check the cast from step 3 against what was written, and
    finish whatever is missing:
    - each conversation that took place has its meeting page, each person and organization
      its own, each decision in flight its task page;
    - every material state change is a timeline event on the entity's `timeline`, dated to
-     when the thing happened;
+     when the thing happened, stating the particulars from step 4 rather than that a
+     conversation about them took place;
    - no canonical page carries a dated status, stage or figure that belongs on its
      timeline, and no name sits bare where a link belongs;
    - `about/intro` exists and still describes the owner the batch has just shown you.
-6. After every intended knowledge mutation succeeds, replace state with this call's
+7. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
-7. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
+8. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
    Never hold a second unread batch before the first is reconciled and checkpointed.
 
 The reader omits records whose latest source update is more than 30 days old and
