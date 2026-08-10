@@ -133,20 +133,38 @@ function tally(scores: DayScore[]): void {
   }
 }
 
+/** The corpus a recorded run processed, so a run is never scored against another's key. */
+function runCorpusId(directory: string): string | undefined {
+  try {
+    return (JSON.parse(readFileSync(join(directory, "report.json"), "utf8")) as { corpusId?: string }).corpusId;
+  } catch {
+    return undefined;
+  }
+}
+
 export function scoreRunCommand(runId?: string): void {
   const directory = runDirectory(runId);
+  const corpusId = runCorpusId(directory);
+  if (corpusId && corpusId !== "amara-life-v1") {
+    throw new Error(`Run ${directory.split("/").at(-1)} processed ${corpusId}. `
+      + "The gold expectations are amara-life-v1's; use `bun run eval qa:score` for world-v1.");
+  }
   const expectations = deriveExpectations(CORPUS_DIRECTORY);
-  const days = readdirSync(directory)
-    .map((file) => /^day-(\d{4}-\d{2}-\d{2})-snapshot\.json$/.exec(file)?.[1])
-    .filter((day): day is string => Boolean(day))
-    .sort();
+  // A batch of amara-life-v1 is a calendar day, which is what these expectations are due
+  // by. `day-` is what runs recorded before the batch rename wrote, and they stay
+  // scoreable: scoring is offline precisely so an old run can be rescored later.
+  const snapshots = new Map(readdirSync(directory).flatMap((file) => {
+    const day = /^(?:batch|day)-(\d{4}-\d{2}-\d{2})-snapshot\.json$/.exec(file)?.[1];
+    return day ? [[day, file] as const] : [];
+  }));
+  const days = [...snapshots.keys()].sort();
   if (days.length === 0) throw new Error(`Run ${directory} holds no day snapshots`);
 
   console.log(style.heading(`\nGold check · ${directory.split("/").at(-1)}`));
   const scores: DayScore[] = [];
   for (const day of days) {
     const pages = JSON.parse(
-      readFileSync(join(directory, `day-${day}-snapshot.json`), "utf8"),
+      readFileSync(join(directory, snapshots.get(day)!), "utf8"),
     ) as PageSnapshot[];
     const score = scoreDay(expectations, pages, day);
     scores.push(score);

@@ -1,0 +1,1452 @@
+[
+  {
+    "id": "q-0001",
+    "tier": "medium",
+    "text": "Who attended Acme Board Meeting Q1 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0002",
+    "tier": "medium",
+    "text": "Who attended Beta Board Meeting Q2 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0003",
+    "tier": "medium",
+    "text": "Who attended Delta Board Meeting Q4 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0004",
+    "tier": "medium",
+    "text": "Who attended Epsilon Board Meeting Q1 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0005",
+    "tier": "medium",
+    "text": "Who attended Gamma Board Meeting Q3 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0006",
+    "tier": "medium",
+    "text": "Who attended Helix Board Meeting Q2 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0007",
+    "tier": "medium",
+    "text": "Who attended Nimbus Board Meeting Q2 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0008",
+    "tier": "medium",
+    "text": "Who attended Pulse Board Meeting Q1 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0009",
+    "tier": "medium",
+    "text": "Who attended Quantum Board Meeting Q4 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0010",
+    "tier": "medium",
+    "text": "Who attended Vector Board Meeting Q3 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0011",
+    "tier": "medium",
+    "text": "Who attended Demo Day W24 — Acme?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0012",
+    "tier": "medium",
+    "text": "Who attended Demo Day W25 - Beta Cybersecurity Pitch?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0013",
+    "tier": "medium",
+    "text": "Who attended Demo Day W26 – Gamma Presentation?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0014",
+    "tier": "medium",
+    "text": "Who attended Demo Day W27 - Delta Biotech Presentation?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0015",
+    "tier": "medium",
+    "text": "Who attended Demo Day W28 – Epsilon Pitch?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0016",
+    "tier": "medium",
+    "text": "Who attended Demo Day W29 – Nimbus Pitch?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0017",
+    "tier": "medium",
+    "text": "Who attended Demo Day W30?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0018",
+    "tier": "medium",
+    "text": "Who attended Demo Day W31 – Quantum?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0019",
+    "tier": "medium",
+    "text": "Who attended Demo Day W32 – Pulse?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0020",
+    "tier": "medium",
+    "text": "Who attended Demo Day W33 – Helix Pitch?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0021",
+    "tier": "medium",
+    "text": "Who attended Demo Day W34 – Beacon Pitch?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0022",
+    "tier": "medium",
+    "text": "Who attended Demo Day W35 – Compass?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0023",
+    "tier": "medium",
+    "text": "Who attended Demo Day W36 — Lumen (Batch 12)?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0024",
+    "tier": "medium",
+    "text": "Who attended Demo Day W37 – Cipher Batch 13 Presentation?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0025",
+    "tier": "medium",
+    "text": "Who attended Demo Day W38 – Mosaic Pitch?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0026",
+    "tier": "medium",
+    "text": "Who attended 1:1 Wendy Hernandez + Mia Brown?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0027",
+    "tier": "medium",
+    "text": "Who attended 1:1 Carol Jackson + Victor Taylor?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0028",
+    "tier": "medium",
+    "text": "Who attended 1:1 Rosa Jackson + David Wang?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0029",
+    "tier": "medium",
+    "text": "Who attended 1:1 Chris Jackson + Mark Thomas?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0030",
+    "tier": "medium",
+    "text": "Who attended 1:1 Sarah Williams + Henry Johnson?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0031",
+    "tier": "medium",
+    "text": "Who attended 1:1 Eric Martinez + Mia Lee – February 2025?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0032",
+    "tier": "medium",
+    "text": "Who attended 1:1 Rosa Nakamura + Vera Chen?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0033",
+    "tier": "medium",
+    "text": "Who attended 1:1 Rachel Brown + Noah Kapoor?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0034",
+    "tier": "medium",
+    "text": "Who attended 1:1 Chris Singh + Ulrich Wang?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0035",
+    "tier": "medium",
+    "text": "Who attended 1:1 Tina Hernandez + Quinten Wang?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0036",
+    "tier": "medium",
+    "text": "Who attended 1:1 Rosa Miller + Nina Rodriguez?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0037",
+    "tier": "medium",
+    "text": "Who attended 1:1 Kate Lopez + Adam Lee?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0038",
+    "tier": "medium",
+    "text": "Who attended 1:1 Iris Lee + Mark Jones?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0039",
+    "tier": "medium",
+    "text": "Who attended 1:1 Zoe Gonzalez + Vera Singh?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0040",
+    "tier": "medium",
+    "text": "Who attended 1:1 Chris Miller + Eric Lee?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0041",
+    "tier": "medium",
+    "text": "Who attended 1:1 Kevin Taylor + Quinten Rodriguez?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0042",
+    "tier": "medium",
+    "text": "Who attended 1:1 Vera Gonzalez + Paul Anderson?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0043",
+    "tier": "medium",
+    "text": "Who attended 1:1 Sarah Wang + Quinten Lee?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0044",
+    "tier": "medium",
+    "text": "Who attended 1:1 David Zhang + Victor Wilson?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0045",
+    "tier": "medium",
+    "text": "Who attended 1:1 Sarah Lopez + Paul Rodriguez?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0046",
+    "tier": "medium",
+    "text": "Who attended 1:1 Priya Taylor + Mia Anderson?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0047",
+    "tier": "medium",
+    "text": "Who attended 1:1 Julia Davis + Uma Brown?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0048",
+    "tier": "medium",
+    "text": "Who attended 1:1 Helen Martinez + Ulrich Johnson?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0049",
+    "tier": "medium",
+    "text": "Who attended 1:1 Fiona Moore + Yara Johnson?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0050",
+    "tier": "medium",
+    "text": "Who attended 1:1 Jack Davis + Rachel Garcia?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "attended"
+    ]
+  },
+  {
+    "id": "q-0051",
+    "tier": "medium",
+    "text": "Who works at Acme?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0052",
+    "tier": "medium",
+    "text": "Who works at Anchor - Data Infrastructure Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0053",
+    "tier": "medium",
+    "text": "Who works at Apex?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0054",
+    "tier": "medium",
+    "text": "Who works at Beacon?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0055",
+    "tier": "medium",
+    "text": "Who works at Beta - Cybersecurity Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0056",
+    "tier": "medium",
+    "text": "Who works at Brink?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0057",
+    "tier": "medium",
+    "text": "Who works at Cascade?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0058",
+    "tier": "medium",
+    "text": "Who works at Cipher?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0059",
+    "tier": "medium",
+    "text": "Who works at Compass?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0060",
+    "tier": "medium",
+    "text": "Who works at Delta?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0061",
+    "tier": "medium",
+    "text": "Who works at Drift?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0062",
+    "tier": "medium",
+    "text": "Who works at Echo - Robotics Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0063",
+    "tier": "medium",
+    "text": "Who works at Epsilon?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0064",
+    "tier": "medium",
+    "text": "Who works at Forge?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0065",
+    "tier": "medium",
+    "text": "Who works at Foundry?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0066",
+    "tier": "medium",
+    "text": "Who works at Gamma - Fintech Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0067",
+    "tier": "medium",
+    "text": "Who works at Gravity?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0068",
+    "tier": "medium",
+    "text": "Who works at Gust?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0069",
+    "tier": "medium",
+    "text": "Who works at Hatch?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0070",
+    "tier": "medium",
+    "text": "Who works at Helix?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0071",
+    "tier": "medium",
+    "text": "Who works at Iris?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0072",
+    "tier": "medium",
+    "text": "Who works at Jolt - AI Applications Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0073",
+    "tier": "medium",
+    "text": "Who works at Keel?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0074",
+    "tier": "medium",
+    "text": "Who works at Kindle - Climate Tech Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0075",
+    "tier": "medium",
+    "text": "Who works at Lattice - Enterprise SaaS Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0076",
+    "tier": "medium",
+    "text": "Who works at Lucid?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0077",
+    "tier": "medium",
+    "text": "Who works at Lumen - Biotech Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0078",
+    "tier": "medium",
+    "text": "Who works at Mantle?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0079",
+    "tier": "medium",
+    "text": "Who works at Mosaic - Consumer Social Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0080",
+    "tier": "medium",
+    "text": "Who works at Nimbus?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0081",
+    "tier": "medium",
+    "text": "Who works at Pulse - EdTech Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0082",
+    "tier": "medium",
+    "text": "Who works at Quantum?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0083",
+    "tier": "medium",
+    "text": "Who works at Ranger?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0084",
+    "tier": "medium",
+    "text": "Who works at Sentinel?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0085",
+    "tier": "medium",
+    "text": "Who works at Tempo?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0086",
+    "tier": "medium",
+    "text": "Who works at Tessera?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0087",
+    "tier": "medium",
+    "text": "Who works at Vector?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0088",
+    "tier": "medium",
+    "text": "Who works at Vox - AI Applications Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0089",
+    "tier": "medium",
+    "text": "Who works at Wisp?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0090",
+    "tier": "medium",
+    "text": "Who works at Zenith?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "works-at"
+    ]
+  },
+  {
+    "id": "q-0091",
+    "tier": "medium",
+    "text": "Who invested in Acme?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0092",
+    "tier": "medium",
+    "text": "Who invested in Acme Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0093",
+    "tier": "medium",
+    "text": "Who invested in Anchor - Data Infrastructure Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0094",
+    "tier": "medium",
+    "text": "Who invested in Apex?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0095",
+    "tier": "medium",
+    "text": "Who invested in Beacon?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0096",
+    "tier": "medium",
+    "text": "Who invested in Beta Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0097",
+    "tier": "medium",
+    "text": "Who invested in Delta?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0098",
+    "tier": "medium",
+    "text": "Who invested in Delta Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0099",
+    "tier": "medium",
+    "text": "Who invested in Drift?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0100",
+    "tier": "medium",
+    "text": "Who invested in Echo - Robotics Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0101",
+    "tier": "medium",
+    "text": "Who invested in Epsilon?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0102",
+    "tier": "medium",
+    "text": "Who invested in Epsilon Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0103",
+    "tier": "medium",
+    "text": "Who invested in Forge?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0104",
+    "tier": "medium",
+    "text": "Who invested in Foundry?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0105",
+    "tier": "medium",
+    "text": "Who invested in Gamma Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0106",
+    "tier": "medium",
+    "text": "Who invested in Gravity?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0107",
+    "tier": "medium",
+    "text": "Who invested in Gust?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0108",
+    "tier": "medium",
+    "text": "Who invested in Helix Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0109",
+    "tier": "medium",
+    "text": "Who invested in Iris?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0110",
+    "tier": "medium",
+    "text": "Who invested in Jolt - AI Applications Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0111",
+    "tier": "medium",
+    "text": "Who invested in Keel?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0112",
+    "tier": "medium",
+    "text": "Who invested in Lucid?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0113",
+    "tier": "medium",
+    "text": "Who invested in Lumen - Biotech Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0114",
+    "tier": "medium",
+    "text": "Who invested in Meridian?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0115",
+    "tier": "medium",
+    "text": "Who invested in Mosaic - Consumer Social Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0116",
+    "tier": "medium",
+    "text": "Who invested in Orbit - Biotech Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0117",
+    "tier": "medium",
+    "text": "Who invested in Prism?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0118",
+    "tier": "medium",
+    "text": "Who invested in Pulse - EdTech Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0119",
+    "tier": "medium",
+    "text": "Who invested in Pulse Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0120",
+    "tier": "medium",
+    "text": "Who invested in Quantum Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0121",
+    "tier": "medium",
+    "text": "Who invested in Quasar?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0122",
+    "tier": "medium",
+    "text": "Who invested in Ranger?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0123",
+    "tier": "medium",
+    "text": "Who invested in Spire?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0124",
+    "tier": "medium",
+    "text": "Who invested in Talon?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0125",
+    "tier": "medium",
+    "text": "Who invested in Tessera?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0126",
+    "tier": "medium",
+    "text": "Who invested in Vector?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0127",
+    "tier": "medium",
+    "text": "Who invested in Vector Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0128",
+    "tier": "medium",
+    "text": "Who invested in Vellum?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0129",
+    "tier": "medium",
+    "text": "Who invested in Vox - AI Applications Startup?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "invested-in"
+    ]
+  },
+  {
+    "id": "q-0130",
+    "tier": "medium",
+    "text": "Who advises Acme Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0131",
+    "tier": "medium",
+    "text": "Who advises Apex?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0132",
+    "tier": "medium",
+    "text": "Who advises Delta Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0133",
+    "tier": "medium",
+    "text": "Who advises Epsilon?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0134",
+    "tier": "medium",
+    "text": "Who advises Forge?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0135",
+    "tier": "medium",
+    "text": "Who advises Foundry?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0136",
+    "tier": "medium",
+    "text": "Who advises Gravity?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0137",
+    "tier": "medium",
+    "text": "Who advises Keel?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0138",
+    "tier": "medium",
+    "text": "Who advises Lucid?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0139",
+    "tier": "medium",
+    "text": "Who advises Prism?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0140",
+    "tier": "medium",
+    "text": "Who advises Ranger?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0141",
+    "tier": "medium",
+    "text": "Who advises Tempo?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0142",
+    "tier": "medium",
+    "text": "Who advises Umbra?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0143",
+    "tier": "medium",
+    "text": "Who advises Vector?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0144",
+    "tier": "medium",
+    "text": "Who advises Vector Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  },
+  {
+    "id": "q-0145",
+    "tier": "medium",
+    "text": "Who advises Vellum?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "relational",
+      "advises"
+    ]
+  }
+]

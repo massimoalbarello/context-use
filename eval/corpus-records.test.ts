@@ -66,16 +66,16 @@ function buildCorpus(options: { corruptNote?: boolean } = {}): string {
   return directory;
 }
 
-async function drainDay(reader: CorpusRecordReader, checkpoint?: string) {
+async function drainBatch(reader: CorpusRecordReader, checkpoint?: string) {
   const slugs: string[] = [];
-  let batches = 0;
+  let reads = 0;
   let cursor = checkpoint;
   for (;;) {
     const result = await reader.read(cursor ? { checkpoint: cursor } : {});
-    batches += 1;
+    reads += 1;
     cursor = result.next_checkpoint;
     slugs.push(...result.records.map((record) => record.record_ref.split(":").at(-1)!));
-    if (!result.has_more) return { slugs, batches, checkpoint: cursor };
+    if (!result.has_more) return { slugs, reads, checkpoint: cursor };
   }
 }
 
@@ -123,16 +123,17 @@ describe("corpus source records", () => {
   });
 
   test("serves exactly one day per run and advances to the next", async () => {
+    // For a time-series corpus a batch is a calendar day, so these are the same thing.
     const reader = new CorpusRecordReader({ directory: buildCorpus() });
-    expect(reader.days).toEqual(["2026-04-13", "2026-04-14", "2026-04-15"]);
+    expect(reader.batches).toEqual(["2026-04-13", "2026-04-14", "2026-04-15"]);
 
-    const first = await drainDay(reader);
+    const first = await drainBatch(reader);
     expect(first.slugs).toEqual(["note/a", "emails/em-0", "slack/sl-0"]);
 
-    const second = await drainDay(reader, first.checkpoint);
+    const second = await drainBatch(reader, first.checkpoint);
     expect(second.slugs).toEqual(["cal/evt-0", "emails/em-1"]);
 
-    const third = await drainDay(reader, second.checkpoint);
+    const third = await drainBatch(reader, second.checkpoint);
     expect(third.slugs).toEqual(["note/b"]);
 
     // Past the final day the reader is exhausted and stays that way.
@@ -156,7 +157,7 @@ describe("corpus source records", () => {
   test("restricts the dense window to the busy days", async () => {
     const reader = new CorpusRecordReader({ directory: buildCorpus(), window: "dense" });
     // The miniature corpus predates the real dense boundary, so every day survives.
-    expect(reader.days).toEqual(["2026-04-13", "2026-04-14", "2026-04-15"]);
+    expect(reader.batches).toEqual(["2026-04-13", "2026-04-14", "2026-04-15"]);
   });
 
   test("serves authored Markdown verbatim and renders structured sources", async () => {
@@ -177,7 +178,7 @@ describe("corpus source records", () => {
 
   test("rejects a tampered or foreign checkpoint", async () => {
     const reader = new CorpusRecordReader({ directory: buildCorpus() });
-    expect(reader.read({ checkpoint: "cu-corpus-v1.not-a-real-checkpoint" }))
+    expect(reader.read({ checkpoint: "cu-corpus-v2.not-a-real-checkpoint" }))
       .rejects.toThrow(SourceRecordCheckpointError);
 
     const other = new CorpusRecordReader({ directory: buildCorpus() });

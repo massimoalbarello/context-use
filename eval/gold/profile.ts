@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadCorpus, type Corpus, type CorpusRecord } from "../corpus-records.ts";
+import { loadCorpus, type Corpus } from "../corpus-records.ts";
+import { datedRecords, type DatedCorpusRecord } from "../corpus-types.ts";
 
 /**
  * Stage 0 of the gold-standard workflow: a purely descriptive, fully deterministic
@@ -174,7 +175,7 @@ function entityKind(namespaces: Set<string>): EntityKind {
   return "other";
 }
 
-function profileEntities(records: CorpusRecord[]): ProfiledEntity[] {
+function profileEntities(records: DatedCorpusRecord[]): ProfiledEntity[] {
   type Accumulator = {
     namespaces: Set<string>;
     labels: Set<string>;
@@ -218,7 +219,7 @@ function profileEntities(records: CorpusRecord[]): ProfiledEntity[] {
   }).sort((left, right) => left.slug.localeCompare(right.slug));
 }
 
-function profileConfusions(records: CorpusRecord[], entities: ProfiledEntity[]): CorpusProfile["confusions"] {
+function profileConfusions(records: DatedCorpusRecord[], entities: ProfiledEntity[]): CorpusProfile["confusions"] {
   const byLabel = new Map<string, Set<string>>();
   for (const entity of entities) {
     for (const label of entity.labels) {
@@ -260,7 +261,7 @@ function profileConfusions(records: CorpusRecord[], entities: ProfiledEntity[]):
 type EmailEnvelope = { slug: string; thread_id: string | null; body_text: string };
 
 function profileArtifacts(
-  corpus: Corpus,
+  records: DatedCorpusRecord[],
   entities: ProfiledEntity[],
   emails: EmailEnvelope[],
 ): CorpusProfile["generatorArtifacts"] {
@@ -289,13 +290,13 @@ function profileArtifacts(
   }
   nominalEmailThreads.sort((left, right) => left.threadId.localeCompare(right.threadId));
 
-  const calendar = new Map(corpus.records
+  const calendar = new Map(records
     .filter((record) => record.type === "calendar-event")
     .map((record) => [record.slug, record]));
   const linkedCalendarMismatch: CorpusProfile["generatorArtifacts"]["linkedCalendarMismatch"] = [];
   const recurring = new Map<string, string[]>();
 
-  for (const record of corpus.records) {
+  for (const record of records) {
     if (record.type === "note") {
       const topic = frontMatter(record.markdown).topic;
       if (topic) recurring.set(topic, [...(recurring.get(topic) ?? []), record.day]);
@@ -367,9 +368,11 @@ function profilePerturbations(
 }
 
 export function profileCorpus(corpus: Corpus, directory: string): CorpusProfile {
-  const entities = profileEntities(corpus.records);
-  const byDay = new Map<string, CorpusRecord[]>();
-  for (const record of corpus.records) {
+  // The profile is keyed to calendar days throughout, which only a time series has.
+  const records = datedRecords(corpus);
+  const entities = profileEntities(records);
+  const byDay = new Map<string, DatedCorpusRecord[]>();
+  for (const record of records) {
     byDay.set(record.day, [...(byDay.get(record.day) ?? []), record]);
   }
 
@@ -399,9 +402,9 @@ export function profileCorpus(corpus: Corpus, directory: string): CorpusProfile 
       }, {}),
     })),
     entities,
-    confusions: profileConfusions(corpus.records, entities),
+    confusions: profileConfusions(records, entities),
     perturbations: profilePerturbations([...emailEnvelopes, ...slackEnvelopes]),
-    generatorArtifacts: profileArtifacts(corpus, entities, emailEnvelopes),
+    generatorArtifacts: profileArtifacts(records, entities, emailEnvelopes),
   };
 }
 
