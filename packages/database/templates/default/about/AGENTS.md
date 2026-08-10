@@ -5,11 +5,17 @@ whose subject is the owner.
 
 ## Entry point and local organization
 
-`about/intro` is the instance-owned overview of the owner and the routes into their
-knowledge. Create it on the first write that establishes who they are and what they spend
-their time on, and reconcile it as that changes: a base whose subjects are all reachable
-except the person they are about has no front door. Its content is not managed by the
-default template.
+**Create `about/intro` on the first write that establishes who the owner is**, and
+reconcile it as that changes. It is the overview of the owner and the routes into their
+knowledge — who they are, what they do, what they are working on and who they work with.
+
+This is the one page the base cannot do without. Every other subject is reachable from
+somewhere, but a base whose subjects are all reachable except the person they are about
+has no front door, and nothing else will create it later: the evidence that establishes
+the owner arrives constantly and never announces itself as being about them. Write it from
+the first batch that shows what they spend their time on, however thin, and let it grow.
+
+Its content is not managed by the default template.
 
 The template supplies three subdirectories — [[about/diary/agents|Diary]],
 [[about/projects/agents|Projects]] and [[about/tasks/agents|Tasks]]. Other owner-subject

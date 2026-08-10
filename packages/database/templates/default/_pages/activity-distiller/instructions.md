@@ -50,7 +50,8 @@ not pages to mirror.
    - every material state change is a timeline event on the entity's `timeline`, dated to
      when the thing happened;
    - no canonical page carries a dated status, stage or figure that belongs on its
-     timeline, and no name sits bare where a link belongs.
+     timeline, and no name sits bare where a link belongs;
+   - `about/intro` exists and still describes the owner the batch has just shown you.
 6. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
