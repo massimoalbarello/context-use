@@ -76,8 +76,14 @@ const STATE_PATH = "automations/activity-distiller/state";
  * batch, and the harness would move to the next day and score the abandoned one as a day
  * that produced nothing. The checkpoint is the only honest signal of whether the records
  * were consumed, so read it and trigger again until it has moved on.
+ *
+ * Retrying only helps when the previous session left something behind. The distiller reads
+ * a whole batch at once, so its checkpoint advances only at the end — a session that stops
+ * partway persists nothing, and an identical retry would produce an identical stop. So a
+ * retry that neither moved the checkpoint nor wrote a page ends the batch instead of
+ * burning the remaining attempts on the same failure.
  */
-const MAX_SESSIONS_PER_BATCH = 12;
+const MAX_SESSIONS_PER_BATCH = 4;
 
 function persistedCheckpoint(pages: PageSnapshot[]): string | undefined {
   const state = pages.find((page) => page.path === STATE_PATH);
@@ -158,6 +164,7 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
       if (sessions > 1) {
         console.log(style.dim(`\n  Checkpoint is still inside ${batch}; triggering run ${sessions}…`));
       }
+      const before = pages;
       await runAgentSession({
         provider: options.provider,
         id: `batch-${batch}-run-${sessions}`,
@@ -166,6 +173,10 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
       });
       pages = snapshotKnowledge();
       if (batchIsFinished(pages, batch)) break;
+      if (sessions > 1 && pageChanges(before, pages).length === 0) {
+        console.log(style.red(`  Run ${sessions} changed nothing and did not advance the checkpoint; not retrying.`));
+        break;
+      }
     }
 
     const finished = batchIsFinished(pages, batch);

@@ -56,20 +56,15 @@ and writing one record at a time is what stops that width collapsing into a summ
 
 1. Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwise
    pass the exact opaque value without interpreting it.
-2. Call `read_source_records` with that checkpoint and a `limit` of about **ten**. Ten is a
-   working set that can be written up completely before the next read, and it makes the
-   checkpoint advance every ten records rather than once at the end, so an interruption
-   costs one cycle rather than everything read so far.
+2. Call `read_source_records` with that checkpoint and a `limit` at the maximum the tool's
+   schema allows, so the run takes everything the source has ready in as few reads as
+   possible. The schema states that maximum and the call is rejected above it — read the
+   ceiling rather than guessing a large number.
 
-   Do not raise it to take a whole day at once. Reading wider adds no attention — every
-   record read in this run stays in context either way, and that is where attention across
-   the day comes from — while it makes a single cycle too large to finish, which is how a
-   run ends up writing a summary or stopping partway.
-
-   Read once per position. The records stay in context afterwards, so never re-read the
-   same checkpoint to look at them again. Treat all returned records across services as one
-   evidence set. `source` and `record_ref` are reasoning provenance only and never
-   knowledge content.
+   Read once per position. The records stay in context for the rest of the run, so never
+   re-read the same checkpoint to look at them again. Treat all returned records across
+   services as one evidence set. `source` and `record_ref` are reasoning provenance only
+   and never knowledge content.
 3. Name the run's cast before judging any record: the people the owner dealt with, the
    organizations at stake, the open questions they are weighing, the occurrences that took
    place and the positions they argued from. This list is drawn from every record
@@ -129,16 +124,25 @@ and writing one record at a time is what stops that width collapsing into a summ
    in this same run, so the new records are read against what is already in context. Never
    hold a second unread set of records before the first is written and checkpointed.
 
-**A run ends when `has_more` is false, and not before.** Reading ten at a time is what makes
-that reachable: every cycle is small, and there is always another cycle. Do not stop because
-the source looks busy, because many records remain, because the run has been going a while,
-or because finishing looks like a lot of work. None of those is a reason. A run that stops
-early leaves the rest of the day unwritten and nothing downstream can tell that it did.
+**A run ends when `has_more` is false, and not before.** Every record read is written or
+dropped, however many there are.
 
-If a cycle genuinely cannot be completed — a tool failing repeatedly, a record that will not
+Do not stop because the source looks busy, because many records remain, because the run has
+been going a while, or because finishing looks like a lot of work. None of those is a
+reason, and none of them becomes one by being phrased as capacity. A long run is the normal
+shape of a busy day, and there is no threshold at which the remaining records stop being
+worth writing.
+
+The checkpoint is what makes this consequential. It advances once per read, so a run that
+abandons a set of records part-written has persisted nothing about them: the work is
+repeated from the start next time, and the day's knowledge exists nowhere until some run
+finishes it. Stopping early is not a partial result. It is no result.
+
+If the run genuinely cannot continue — a tool failing repeatedly, a record that will not
 read — stop on the last saved checkpoint and report which record and which error, so the
-next run resumes from a known point. Report the real failure. Never report a run as
-finished, and never claim the source is caught up, while records remain unread.
+next run resumes from a known point. Report the real failure and say plainly how many
+records were left unread. Never report a run as finished, and never claim the source is
+caught up, while records remain.
 
 The reader omits records whose latest source update is more than 30 days old and
 advances past them. This applies equally to an existing backlog and a newly discovered
