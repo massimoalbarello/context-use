@@ -22,6 +22,7 @@ const DEFAULT_DIRECTORY_PATHS = [
   "people",
   "places",
   "skills",
+  "threads",
   "topics",
   "about/diary",
   "about/projects",
@@ -206,6 +207,7 @@ describe("knowledge templates", () => {
       "people",
       "places",
       "skills",
+      "threads",
       "topics",
       "about/diary",
       "about/projects",
@@ -214,7 +216,7 @@ describe("knowledge templates", () => {
       "automations/diary-composer",
       "automations/guideline-consistency-review",
     ]);
-    expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(15);
+    expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(16);
     expect(result.actions.filter(({ action }) => action === "create-page").map(({ path }) => path)).toEqual([
       "automations/activity-distiller/instructions",
       "automations/activity-distiller/state",
@@ -225,7 +227,7 @@ describe("knowledge templates", () => {
     expect(state.createdDirectories).toEqual([]);
     expect(state.createdPages).toEqual([]);
     expect(formatTemplateResult(result)).toContain("+ create-directory library");
-    expect(formatTemplateResult(result)).toContain("✓ Planned 37 changes; 0 conflicts.");
+    expect(formatTemplateResult(result)).toContain("✓ Planned 39 changes; 0 conflicts.");
     expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
   });
 
@@ -273,7 +275,7 @@ describe("knowledge templates", () => {
       path: "places",
       detail: "Directory metadata differs from the template; preserve local metadata",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 22 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 23 changes; 1 conflict.");
   });
 
   test("surfaces directory metadata drift without overwriting local presentation", async () => {
@@ -513,13 +515,13 @@ describe("knowledge templates", () => {
     const result = await reconcileKnowledgeTemplate(state.value, "default", true);
 
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(state.createdPages).toHaveLength(18);
+    expect(state.createdPages).toHaveLength(19);
     expect(result.actions).toContainEqual({
       action: "conflict",
       path: "people/agents",
       detail: "Preserve locally modified guide",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 19 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 20 changes; 1 conflict.");
     expect(formatTemplateResult(result)).toContain("~ update-guide     agents");
     expect(formatTemplateResult(result)).toContain("! conflict         people/agents");
     expect(formatTemplateResult(result, true)).toContain("\u001B[31m!\u001B[0m conflict");
@@ -571,7 +573,7 @@ describe("knowledge templates", () => {
 
     const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(formatTemplateResult(applied)).toContain("Applied 19 changes; 1 conflict.");
+    expect(formatTemplateResult(applied)).toContain("Applied 20 changes; 1 conflict.");
   });
 
   test("reports page collisions without removing or overwriting existing knowledge", async () => {
@@ -735,6 +737,7 @@ describe("knowledge templates", () => {
       people: await Bun.file(new URL("../templates/default/people/AGENTS.md", import.meta.url)).text(),
       places: await Bun.file(new URL("../templates/default/places/AGENTS.md", import.meta.url)).text(),
       skills: await Bun.file(new URL("../templates/default/skills/AGENTS.md", import.meta.url)).text(),
+      threads: await Bun.file(new URL("../templates/default/threads/AGENTS.md", import.meta.url)).text(),
       topics: await Bun.file(new URL("../templates/default/topics/AGENTS.md", import.meta.url)).text(),
     };
     const activityDistiller = await Bun.file(
@@ -764,6 +767,7 @@ describe("knowledge templates", () => {
       "people/agents",
       "places/agents",
       "skills/agents",
+      "threads/agents",
       "topics/agents",
       "automations/activity-distiller/instructions",
       "automations/activity-distiller/state",
@@ -782,6 +786,7 @@ describe("knowledge templates", () => {
       guides.people,
       guides.places,
       guides.skills,
+      guides.threads,
       guides.topics,
     ]) {
       expect(guide).toContain("[[agents|root guide]]");
@@ -888,6 +893,7 @@ describe("knowledge templates", () => {
       guides.projects,
       guides.tasks,
       guides.skills,
+      guides.threads,
       guides.topics,
     ].join("\n").toLowerCase();
     for (const detail of ["read_source_records", "record_ref", "next_checkpoint", "has_more", "pruned deletion"]) {

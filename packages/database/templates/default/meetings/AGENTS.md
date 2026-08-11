@@ -30,6 +30,11 @@ An [[events/agents|event]] is defined by its occasion; a meeting is defined by i
 conversation. A conversation at an event can have its own meeting page when it matters
 independently, with links between the two accounts.
 
+A meeting is one bounded conversation, which is what makes it a dated folder. A written
+exchange that runs over days with no scheduled end is a [[threads/agents|thread]] instead.
+Correspondence that only arranges a meeting is neither: it belongs to the meeting, and
+usually to nothing at all.
+
 ## Distil the conversation
 
 Prefer the useful account over a recording dump, transcript export or pasted raw notes,

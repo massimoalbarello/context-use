@@ -55,6 +55,10 @@
     "title": "Skills",
     "summary": "Reusable Agent Skills stored as versioned SKILL.md pages."
   },
+  "threads": {
+    "title": "Threads",
+    "summary": "Lines of written correspondence worth remembering, preserving what each exchange established and the parties, terms, and conditions that connect it."
+  },
   "topics": {
     "title": "Topics",
     "summary": "Recurring subjects the owner returns to, each the canonical home for what the rest of the knowledge base keeps referring to."
