@@ -296,7 +296,7 @@ Never create or edit a page under `about/diary/`. Record what happened as a time
 on the entity's `timeline` and stop there; the
 [[automations/diary-composer/instructions|diary composer]] reads those events afterwards
 and assembles each day. A timeline event dated correctly is the whole of this automation's
-contribution to the chronology, and a timeline event that links a day log asserts one
+contribution to the chronology, and a timeline event that links a day intro asserts one
 that does not exist yet.
 
 ## Checkpoint and report

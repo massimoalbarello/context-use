@@ -46,6 +46,7 @@ export type KnowledgePageChange = {
   page_id: string;
   version_id: string;
   version_number: number;
+  previous_version_number?: number | null;
   change_kind: "created" | "updated" | "archived" | "deleted";
   path: string;
   title: string;

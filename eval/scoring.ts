@@ -36,7 +36,7 @@ const MONTHS = [
 ];
 
 function diaryPathFor(date: string): string {
-  return `about/diary/${date.replaceAll("-", "/")}/log`;
+  return `about/diary/${date.replaceAll("-", "/")}/intro`;
 }
 
 function wikilinkTargets(page: PageSnapshot): string[] {
@@ -44,18 +44,18 @@ function wikilinkTargets(page: PageSnapshot): string[] {
     .map((match) => match[1]!.split("#", 1)[0]!);
 }
 
-/** Day pages reachable from the log form one small hypermedia; orphaned views do not count. */
+/** Day pages reachable from the intro form one small hypermedia; orphaned views do not count. */
 function reachableDiaryPages(pages: PageSnapshot[], date: string): PageSnapshot[] {
-  const logPath = diaryPathFor(date);
-  const dayPrefix = `${logPath.slice(0, -"/log".length)}/`;
+  const introPath = diaryPathFor(date);
+  const dayPrefix = `${introPath.slice(0, -"/intro".length)}/`;
   const byPath = new Map(pages
     .filter((page) => page.path.startsWith(dayPrefix))
     .map((page) => [page.path, page]));
-  const log = byPath.get(logPath);
-  if (!log) return [];
+  const intro = byPath.get(introPath);
+  if (!intro) return [];
 
   const reachable: PageSnapshot[] = [];
-  const pending = [log];
+  const pending = [intro];
   const seen = new Set<string>();
   while (pending.length > 0) {
     const page = pending.shift()!;

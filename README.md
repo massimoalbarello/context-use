@@ -179,72 +179,13 @@ reads a known instruction page with `get_page`—for example,
 asset tools. Scheduling, retries, and run history stay in the harness. An incremental
 automation may keep exactly one non-secret opaque checkpoint on its stable `state` page.
 
-### Activity distillation automation
+### Knowledge automations
 
-The first record-to-knowledge pipeline is intentionally agent-driven. The default
-knowledge template installs `automations/activity-distiller/instructions` and a
-create-only `automations/activity-distiller/state`; existing installations receive them
-with `context-use template apply`. Authorize the trusted MCP client, then schedule an
-external harness once or twice a day with the prompt: “Open and follow
-`automations/activity-distiller/instructions`; execute exactly one run.” Its run contract
-is:
-
-1. Read the instruction and state pages, call `read_source_records` with the stored
-   checkpoint and no explicit limit. Records whose latest source update or deletion is
-   more than 30 days old are skipped by the reader; recently updated records about older
-   activity are processed normally.
-2. Read the returned set widely enough to establish its cast, then process kept records
-   one at a time. Discard only the instruction page's garbage sources. For every other
-   record, extract every identifiable subject it names and every particular it establishes,
-   including names that occur only in the body.
-3. Search existing knowledge before writing each record. Reconcile its occurrence or unit
-   of work and all identified people, organizations, places, works, questions and topics
-   into their own connected pages. Identity, not repetition or perceived importance, is
-   the threshold for a page.
-4. Record dated activity on the timelines of the materially involved entities, linking
-   occurrence pages where applicable. Never create, edit or link the diary; the diary
-   composer owns that direction on its independent schedule.
-5. Save the returned `next_checkpoint` only after every intended mutation for the working
-   set succeeds. If `has_more` is true, read the next set in the same run and continue until
-   it is false. On failure, keep the last successfully saved checkpoint for replay.
-
-The default knowledge template carries the detailed placement and maintenance rules,
-including `about/projects/` for enduring work, finite future-facing frames under
-`about/tasks/`, and whole-page reconciliation instead of append-only updates.
-
-### Diary composition automation
-
-The default template also installs `automations/diary-composer/instructions` and its
-create-only checkpoint state. Schedule it independently with the prompt: “Open and follow
-`automations/diary-composer/instructions`; execute exactly one run.” Running it well after
-the usual activity-distillation schedule makes a complete day likely, but there is no
-coordination contract between the two automations: the composer never reads or waits on
-the distiller's instructions, state or report.
-
-The composer reads changed timeline versions, collapses the same activity repeated across
-several entity timelines and writes prose under `about/diary/<YYYY>/<MM>/<DD>/`. Entity
-pages keep the particulars; the diary links them into the day's movement and links genuine
-continuations to the latest useful earlier day. Unrelated subjects remain separate through
-descriptive headings or connected day views instead of being forced into one narrative.
-There is no required section schema: a day may be one `log` or a small hypermedia of
-day-specific pages entered through it.
-
-The composer advances its change-ledger checkpoint only after every affected day succeeds.
-If another writer is still working when it starts, the fixed window remains safe. Changes
-committed during the run stay beyond its saved cursor, and the next scheduled composition
-reconciles them into the affected day.
-
-### Guideline consistency review automation
-
-The default template also installs
-`automations/guideline-consistency-review/instructions`. Schedule an external harness
-to open and follow that page periodically. The harness keeps the opaque cursor returned
-by `get_knowledge_changes` and supplies it to the next run; Context Use records the
-underlying body-free page ledger automatically and collapses repeated edits to one page
-within each fixed review window. The automation reviews only those changed pages
-against the currently installed root-to-leaf guides, proposes corrections without
-writing them, and returns its report for delivery through the harness-managed user
-channel. Persist the new cursor only after the full review and delivery succeed.
+The default template installs managed instruction pages for activity distillation, diary
+composition and guideline consistency review, with checkpoint state where required.
+Apply template updates with `context-use template apply`, then schedule an external harness
+to open and execute the relevant instruction page. Those pages are the canonical operating
+contracts; the README does not duplicate their logic.
 
 The dashboard's **History** section shows the same durable page ledger, including
 creates, updates, archives, and deletion tombstones without page bodies or diffs.

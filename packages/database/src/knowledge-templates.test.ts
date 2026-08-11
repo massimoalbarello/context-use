@@ -818,6 +818,7 @@ describe("knowledge templates", () => {
     expect(normalizedRoot).toContain("Never link the diary from a timeline event");
     expect(normalizedRoot).toContain("No activity writer also writes the diary");
     expect(normalizedRoot).toContain("an automation maintaining knowledge is not diary activity");
+    expect(normalizedRoot).toContain("however far in the past that day is");
     expect(guides.root).toContain("## Three homes");
     expect(guides.root).toContain("## Which entity does it belong to");
     expect(normalizedRoot).toContain("climb until you reach one it does");
@@ -849,7 +850,7 @@ describe("knowledge templates", () => {
     expect(normalize(guides.diary)).toContain("Correct what is wrong or misleading");
     expect(guides.diary).toContain("[[automations/diary-composer/instructions|diary composer]]");
     expect(normalize(guides.diary)).toContain("The diary is the route through the knowledge, not a second copy of it");
-    expect(normalize(guides.diary)).toContain("Most days need only `log`");
+    expect(normalize(guides.diary)).toContain("Most days need only `intro`");
     expect(normalize(guides.diary)).toContain("one page or become several connected views");
     expect(normalize(guides.diary)).toContain("There are no required sections");
     expect(normalize(guides.diary)).toContain("Never invent cause, mood or a unifying theme");
@@ -936,7 +937,7 @@ describe("knowledge templates", () => {
     expect(normalize(guides.automations)).toContain("a local exception to the root `intro` entry-point convention");
     expect(normalize(guides.automations)).toContain("Run logs, retry histories, source records");
     expect(normalize(guides.automations)).not.toContain("about/diary/");
-    expect(normalize(guides.diary)).toContain("A day folder is a chronological container rather than a durable entity");
+    expect(normalize(guides.diary)).toContain("Its `intro` is the entry point");
 
     expect(diaryComposer).toContain("[[agents|root guide]]");
     expect(diaryComposer).toContain("[[automations/agents|automation guide]]");
@@ -947,7 +948,12 @@ describe("knowledge templates", () => {
     expect(normalizedComposerLower).toContain("never use another automation's checkpoint or report as a precondition");
     expect(normalizedComposerLower).not.toContain("activity distiller has completed");
     expect(normalizedComposerLower).toContain("call `get_knowledge_changes` with that cursor and no `limit`");
-    expect(normalizedComposerLower).toContain("a changed entity page with no timeline event is therefore not a diary gap");
+    expect(normalizedComposerLower).toContain("only the semantic difference between the versions is evidence newly reaching this run");
+    expect(normalizedComposerLower).toContain("a one-word correction contributes only the corrected meaning");
+    expect(normalizedComposerLower).toContain("there is no recency cutoff");
+    expect(normalizedComposerLower).toContain("creates or reconciles its historical day");
+    expect(normalizedComposerLower).toContain("its `changed_at`, creation time, commit time and the composer's run date never choose a diary day");
+    expect(normalizedComposerLower).toContain("make `intro` the prose entry point");
     expect(normalizedComposerLower).toContain("the same meeting, exchange, decision or movement recorded from several entity sides is one activity");
     expect(normalizedComposerLower).toContain("do not mine those pages for facts to repeat in the diary");
     expect(normalizedComposerLower).toContain("use `get_page_history` as far as needed");

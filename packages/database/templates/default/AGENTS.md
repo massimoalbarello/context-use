@@ -331,11 +331,11 @@ the particulars that made it worth recording. *Reviewed the quarterly numbers* n
 category of happening; *ARR reached 640k, up a third on the quarter* is the event. One
 wanting a paragraph is describing either the current state or a past state worth reading,
 and belongs on a page under the rule above. Keep the month in the line as well as the
-heading, because these lines are read away from their page — quoted into a day's log,
+heading, because these lines are read away from their page — quoted into a day's intro,
 returned by search — and a line that does not say its own date is useless there.
 
-Never link the diary from a timeline event. The date is already the link: a day's log
-is always at `about/diary/<YYYY>/<MM>/<DD>/log`. Writing it out asserts a page that
+Never link the diary from a timeline event. The date is already the link: a day's intro
+is always at `about/diary/<YYYY>/<MM>/<DD>/intro`. Writing it out asserts a page that
 usually does not exist yet, because the diary is composed afterwards by
 [[automations/diary-composer/instructions|the diary composer]], which reads timelines and
 links back to the entities it finds there. No activity writer also writes the diary, and
@@ -346,8 +346,8 @@ Date a timeline event to when the thing happened, which is not always when it wa
 An old project written up today, a book finished years ago and a conference attended last
 week each take their own date. Dating one into the past does not make the page's write time
 an event in the owner's life: an automation maintaining knowledge is not diary activity.
-The diary composer includes the event only when its actual date is inside the day window it
-is reconciling.
+Whenever that event first reaches the diary composer, it creates or reconciles the day of
+the event itself, however far in the past that day is.
 
 When a timeline grows unwieldy, promote it to `timeline/<YYYY>` pages and repair inbound
 links in the same coherent change. Most entities never need this.
@@ -390,7 +390,7 @@ A topic is therefore the holding area for activity that has not yet individuated
 accumulates timeline events until a dish, a place or a practice has enough history to be
 worth retrieving on its own; that part then becomes its own entity and its events move
 there.
-Day logs written before the split keep pointing at the topic, which is where the
+Diary intros written before the split keep pointing at the topic, which is where the
 material lived at the time. A long topic timeline is the expected shape and the signal to
 split, not a defect — and for this class `intro` is thin at first, distilled from the
 timeline as it accumulates rather than known in advance the way a company's is.

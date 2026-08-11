@@ -7,33 +7,30 @@ pages carry the full account of each subject.
 
 It is composed after the knowledge it describes. An agent recording activity puts the
 particulars on the relevant entities and their timelines, then stops; the
-[[automations/diary-composer/instructions|diary composer]] later turns those timeline events
-into the day's account. It is the only unattended writer here. The owner may write in the
-diary directly, and their words are part of the day rather than material for the composer
-to replace.
+[[automations/diary-composer/instructions|diary composer]] later turns the dated activity on
+those pages, normally their timeline events, into the day's account. It is the only
+unattended writer here. The owner may write in the diary directly, and their words are part
+of the day rather than material for the composer to replace.
 
 ## A day is a small hypermedia
 
-One folder represents one day at `about/diary/<YYYY>/<MM>/<DD>/`, zero-padded. Its `log` is
-the entry point. A day folder is a chronological container rather than a durable entity,
-so `log` is a local exception to the root `intro` convention; do not add a redundant
-`intro`.
+One folder represents one day at `about/diary/<YYYY>/<MM>/<DD>/`, zero-padded. Its `intro`
+is the entry point, as it is for every other small hypermedia in the knowledge base.
 
-Most days need only `log`. When part of a day is independently worth reading, or distinct
-material would make the log harder to follow, give it a descriptive page in the same day
-folder. This is not a prescribed set of companion pages: the day may remain one page or
-become several connected views according to what actually happened.
+Most days need only `intro`. When part of a day is independently worth reading, or distinct
+material would make the introduction harder to follow, give it a descriptive page in the
+same day folder. This is not a prescribed set of companion pages: the day may remain one
+page or become several connected views according to what actually happened.
 
-The log introduces every companion view in the sentence that says what it contributes.
+The intro introduces every companion view in the sentence that says what it contributes.
 The views link one another when their material bears on one another, under the root
-hypermedia rule; they do not all route back through the log as a hub. The folder holds only
-pages and assets belonging to that day. Give the log the title `Log — <weekday>, <day>
-<month> <year>` and give any other page a descriptive title that remains clear away from
-the folder.
+hypermedia rule; they do not all route back through the intro as a hub. The folder holds
+only pages and assets belonging to that day. Give the intro a title that clearly names the
+date, and give any other page a descriptive title that remains clear away from the folder.
 
-## What the log establishes
+## What the intro establishes
 
-Write prose, not a digest of timeline bullets. The log carries the thread between the
+Write prose, not a digest of timeline bullets. The intro carries the thread between the
 day's activities: what led to what, which work resumed, where attention shifted and what
 was left open. Every distinct activity the evidence records appears, with inline links to
 the most specific occurrences and durable subjects that let a reader continue into the
@@ -70,7 +67,7 @@ with several independent arcs may link a different earlier page from each passag
 Repeated mention is not continuation, even when it is the same entity. Neither is mere
 chronological adjacency: the generated calendar already places one day after another. If
 today's topics are separate from the previous day's, let them be separate rather than
-writing a false transition. Never edit an earlier log merely to add a forward pointer,
+writing a false transition. Never edit an earlier intro merely to add a forward pointer,
 because it records what was known then.
 
 A continuity chain that becomes cumbersome is evidence that the underlying subject needs
@@ -79,20 +76,20 @@ than absorbing its account.
 
 ## Reading and maintenance
 
-Enter through a day's log, follow its views and links, and move backward through the
+Enter through a day's intro, follow its views and links, and move backward through the
 continuity links relevant to the question. Treat an old mood, plan or open loop as a
 historical snapshot until later evidence changes it. An optional monthly overview may
 narrate what mattered across a month as a considered review, never as an automatic digest
 or substitute for the days.
 
-Reconcile a day when new timeline evidence for it arrives, but preserve every owner-written
-passage exactly. The composer may add its prose around an owner-created log; it never
-reorders that prose, restructures or archives a page it did not create, or claims uncertain
-wording as its own. Do not rewrite a past log merely to polish its prose or neaten its link
-graph. Correct what is wrong or misleading under the root reconciliation rule; when the
-correction itself changes the story, say so and link the later evidence.
+Reconcile a day when new dated activity evidence for it arrives, but preserve every
+owner-written passage exactly. The composer may add its prose around an owner-created
+intro; it never reorders that prose, restructures or archives a page it did not create, or
+claims uncertain wording as its own. Do not rewrite a past intro merely to polish its prose
+or neaten its link graph. Correct what is wrong or misleading under the root reconciliation
+rule; when the correction itself changes the story, say so and link the later evidence.
 
-A past log otherwise keeps the links it was written with. When an entity is later split
+A past intro otherwise keeps the links it was written with. When an entity is later split
 out of a topic, its timeline events may move but the day continues to point where the
 material lived when the day was composed.
 

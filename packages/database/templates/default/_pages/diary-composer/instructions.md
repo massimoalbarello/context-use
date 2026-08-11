@@ -1,16 +1,15 @@
 # Diary composer
 
-Compose the owner's diary from activity already written to the knowledge base. The durable
-pages say what each subject is and the timelines carry the particulars of what happened.
-This automation writes the connective layer: linked prose showing how the activities
-formed a day and how genuine lines of work continue across days, without copying the
-entity pages into a second account.
+Compose the owner's diary from activity already written to the knowledge base. Durable
+pages explain the subjects and their timelines carry what happened. This automation writes
+the connective layer: linked prose showing how the activities formed a day and how genuine
+lines of work continue across days, without copying the entity pages into a second account.
 
 Run on its own schedule. Never read, wait on or mutate another automation's instructions or
 state, and never use another automation's checkpoint or report as a precondition. The fixed
-knowledge-change window is the whole input to this run. If another writer adds timeline
-events while composition is underway, those changes remain after the saved cursor for the
-next scheduled run, which reconciles them into the day then.
+knowledge-change window is the whole input to this run. If another writer commits while
+composition is underway, that change remains after the saved cursor for the next scheduled
+run.
 
 ## Authority and boundaries
 
@@ -29,9 +28,8 @@ next scheduled run, which reconciles them into the day then.
   pages; do not repair them from here.
 - The owner is another writer. Preserve their passages exactly. Never reorder, restructure
   or archive a day page this automation did not create; when adding to an owner-created
-  log, write around the existing text. Use page history when authorship matters, and treat
-  any passage whose ownership remains unclear as the owner's. Access to the diary never
-  grants ownership of all its words.
+  intro, write around the existing text. Use page history when authorship matters, and
+  treat any passage whose ownership remains unclear as the owner's.
 - Never put a cursor, scan log, page identifier, run report or other operational metadata
   in a day folder.
 
@@ -43,85 +41,100 @@ next scheduled run, which reconciles them into the day then.
    call it again with `next_page_token` as `page_token` and no cursor. Continue until
    `has_more` is false. The first call fixes the window, so changes made during this run
    remain for the next one.
-3. For every timeline row, read its returned exact `page_id` and `version_number` with
-   `get_page_version`. If that immutable version is unavailable, read the current page and
-   disclose the fallback in the report. A timeline is either a path ending in `/timeline`
-   or a promoted year page beneath `/timeline/`.
-4. Rows under `about/diary/` and `automations/diary-composer/` are not activity inputs.
-   Read existing day pages later when their day is affected, but do not narrate their edits.
-   Every other non-timeline row is context only: it may be read when a timeline links it,
-   but the fact that an entity page was created or revised is not something the owner did.
+3. Ignore rows under `about/diary/` and `automations/diary-composer/` as activity input.
+   For every other non-deleted row, read the exact `page_id` and `version_number` with
+   `get_page_version`. When the row has a `previous_version_number`, read that exact version
+   too. Compare the two versions' paths, titles, summaries and bodies. The later whole page
+   is context; only the semantic difference between the versions is evidence newly reaching
+   this run.
+4. When `previous_version_number` is null, the row represents either a page created in this
+   window or the initial scan. Treat the returned version as baseline evidence, while still
+   taking activity dates only from what the page says. If an exact version has fallen out of
+   retention, use `get_page_history` to find the nearest useful retained comparison. Never
+   substitute an entire current page as newly happened activity; report the ambiguity when
+   the delta cannot be recovered safely.
 
-After the activity distiller's identifiability rule, a kept record can create many entity
-pages merely because it names many subjects. **A changed entity page with no timeline event
-is therefore not a diary gap.** Do not report one, turn page maintenance into a diary item
-or invent a date for it. The distiller owns its own timeline completeness check; this
-automation trusts the chronology it receives.
+A changed page is not itself an activity. Its `changed_at`, creation time, commit time and
+the composer's run date never choose a diary day. A one-word correction contributes only
+the corrected meaning, not the rest of the page around it. Unchanged passages may help
+identify a link or understand the correction, but they do not become today's story.
 
-A deleted timeline row or a correction can invalidate prose already composed. For an
-affected entity, inspect recent day pages that link it and reconcile only the passages the
-remaining timeline evidence no longer supports. Deletion is withdrawn evidence, not proof
-that the opposite happened.
+Timeline rows are paths ending in `/timeline` or promoted year pages beneath `/timeline/`.
+Their changed event lines are the primary chronology. A non-timeline delta may corroborate
+or identify an activity only when the changed material itself clearly establishes what the
+owner did, experienced or learned and supplies a reliable activity date. Creating or
+rewording an entity account, adding a durable fact, repairing links or moving material is
+not diary activity. Under the root identifiability rule, many pages can change only because
+one piece of evidence named their subjects; do not attribute all those pages to the day.
 
-## Choose the affected days
+For a deleted row, the version may no longer be readable. Use the tombstone only to find
+existing diary passages that linked the removed page, then reconcile a passage only when
+retained evidence shows exactly what support was withdrawn. Deletion does not prove that an
+activity never happened or that the opposite happened.
 
-The composer may create or revise days in the rolling thirty-day window ending on the run
-day. This is the diary's revision horizon, not an interpretation of the distiller's
-source-freshness rule: a recently modified source can describe older activity.
+## Choose the affected days from the delta
 
-Collect every timeline event in that horizon from the changed timeline versions. The dates
-of the events, never their page-change timestamps, choose the day. An older event remains
-on its entity's timeline but does not cause an old diary to be created merely because an
-automation wrote the page today. A knowledge write is not owner activity.
+Collect each dated activity that the semantic deltas add, materially revise or withdraw.
+The activity's own date chooses its day. There is no recency cutoff: an activity from years
+ago that first reaches the knowledge base today creates or reconciles its historical day,
+not the day on which the distiller or composer happened to run.
 
-Timeline events have already passed the activity distiller's selection and root timeline
-rules, so do not filter them a second time for looking routine, small or repetitive. Every
-distinct activity they establish belongs in its day. Repetition across timelines is the
-exception: the same meeting, exchange, decision or movement recorded from several entity
-sides is one activity with several useful links, not several diary beats.
+When a correction moves an activity to another date, reconcile both the formerly supported
+day and the corrected day. When a small edit changes a detail that the diary neither states
+nor needs for its connective account, the affected day may require no write at all. Never
+re-narrate the whole page merely because one fragment changed.
 
-Revise a day when the window contains an event dated to it, or when a correction or
-deletion in the window removes support for a passage in it. A day unaffected by the window
-stays exactly as it is. A valid run may therefore update only the checkpoint.
+A timeline event has already been selected as lived chronology by its writer under the root
+timeline rules, so do not discard a changed event for looking routine, small or repetitive.
+Repetition across pages is different: the same meeting, exchange, decision or movement
+recorded from several entity sides is one activity with several useful links, not several
+diary beats.
+
+Revise only days whose support changed in this fixed window. A day unaffected by the
+semantic deltas stays exactly as it is. A valid run may therefore update only the
+checkpoint.
 
 ## Build the day's connected evidence
 
 For each affected day:
 
-1. Group its timeline events into distinct activities. A shared occurrence link, date,
-   participants, terms or outcome can show that several lines describe the same activity.
+1. Group its changed evidence into distinct activities. A shared occurrence link, date,
+   participants, terms or outcome can show that several deltas describe the same activity.
    Collapse only what the evidence actually joins; two things on the same date are not one
    thing for that reason.
-2. Read the current log and every companion view it reaches. Existing diary prose is the
-   account of activity composed in earlier windows; integrate new evidence with it rather
-   than rebuilding from only the latest ledger rows and erasing the rest. When a page has
-   more than one writer, use `get_page_history` as far as needed to distinguish the
-   composer's prior material from owner additions. Preserve uncertain passages.
+2. Read the current `intro` and every companion view it reaches. Existing diary prose is
+   the account composed from earlier windows; preserve it and integrate only the changed
+   support instead of rebuilding the day from a changed page's current body. When a page
+   has more than one writer, use `get_page_history` as far as needed to distinguish the
+   composer's material from owner additions. Preserve uncertain passages.
+   If a legacy day has `log` but no `intro`, preserve `log` as a companion view and create
+   an `intro` that reaches it in context; do not copy the old page into the new entry point.
 3. Read linked occurrence pages and the smallest amount of current entity context needed
-   to identify the relationship and choose the useful destination link. Do not mine those
-   pages for facts to repeat in the diary. The timeline event tells what moved; the entity
-   pages tell where the detail lives.
+   to identify the relationship and choose useful destination links. Do not mine those
+   pages for facts to repeat in the diary. The changed evidence tells what moved; the
+   entity pages tell where the detail lives.
 4. Use `browse_directory` on the relevant year or month to find the latest earlier diary
    day, and use `search_pages` with the canonical subject path to find the most recent
    diary page connected to each project, task, thread or other arc that genuinely
-   continues today. Follow existing continuity links when they lead to the nearer context.
-   Reading an earlier page is evidence for a link, not a requirement to manufacture a
-   continuation.
+   continues on this day. Follow existing continuity links when they lead to nearer
+   context. Reading an earlier page is evidence for a link, not a requirement to
+   manufacture a continuation.
 
 When two activities remain unrelated after that reading, keep them unrelated. Their place
 on the same date is chronology, not causality.
 
 ## Compose prose and views
 
-Write the affected day under the [[about/diary/agents|diary guide]]. Let its material choose
-the shape; no section or heading is mandatory.
+Write each affected day under the [[about/diary/agents|diary guide]]. Let its material
+choose the shape; no section or heading is mandatory.
 
-- Make `log` the prose entry point. Tell the transitions, consequences and open threads
+- Make `intro` the prose entry point. Tell the transitions, consequences and open threads
   that make the day intelligible, not one bullet or sentence per timeline event.
-- Represent every distinct activity, linking its most specific occurrence and the durable
-  subjects that route a reader to what it established. Name a subject once as a link under
-  the root rule. Do not duplicate the figure, terms, biography or reasoning held on those
-  pages unless one particular is necessary to understand what changed next.
+- Represent every distinct activity supported by the changed evidence, linking its most
+  specific occurrence and the durable subjects that route a reader to the full account.
+  Name a subject once as a link under the root rule. Do not duplicate figures, terms,
+  biography or reasoning held on those pages unless one particular is necessary to
+  understand what changed next.
 - Where evidence establishes a real relationship between activities, make the connection
   explicit. Where it does not, use separate paragraphs, descriptive headings or separate
   day views. Never invent a theme, causal transition or mood merely to smooth the prose.
@@ -131,9 +144,9 @@ the shape; no section or heading is mandatory.
 - Include thoughts, feelings and first-person positions only when the evidence records
   them as the owner's. Preserve owner-written material even when its voice or structure
   differs from the composed prose, and build around it without silently paraphrasing it.
-- Keep one `log` when it reads well as one page. Create a descriptively named companion
+- Keep one `intro` when it reads well as one page. Create a descriptively named companion
   view only when its day-specific material is independently worth reading or interrupts
-  the log. Link it from the log in context and connect it directly to any other view it
+  the intro. Link it from the intro in context and connect it directly to any other view it
   bears on. Never create companion pages to fill a pattern.
 - Derive each title and summary from the finished material. Do not invent a location or
   framing line.
@@ -160,7 +173,7 @@ Finish with:
 
 - the number of affected days composed and whether the change ledger is caught up;
 - a concise account of the continuity established, the topics deliberately kept separate
-  and any unresolved ambiguity or unreadable timeline date; and
+  and any unresolved version delta or activity date; and
 - `Created`, `Updated` and `Archived` lists naming every diary page mutated, each with its
   exact path and a short description.
 

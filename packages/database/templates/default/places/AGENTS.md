@@ -37,7 +37,7 @@ record stay on their occurrence pages.
 
 A person's residence or favourite venue is a fact about that person; state it there and
 link the place. The place page needs no occupant or visitor list, and meetings, events and
-day logs remain the accounts of what happened there.
+day intros remain the accounts of what happened there.
 
 Use the least sensitive location that is still useful. Exact addresses and access
 instructions are the sensitive detail the root privacy rule governs here.

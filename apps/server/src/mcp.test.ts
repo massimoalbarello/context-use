@@ -893,6 +893,7 @@ describe("MCP knowledge tools", () => {
             page_id: "11111111-1111-4111-8111-111111111111",
             version_id: "22222222-2222-4222-8222-222222222222",
             version_number: 4,
+            previous_version_number: 2,
             change_kind: "updated",
             path: "about/intro",
             title: "Introduction",
@@ -919,7 +920,7 @@ describe("MCP knowledge tools", () => {
 
     expect(calls).toEqual([{ cursor: "cu-page-changes-v1.5", limit: 25 }]);
     expect(response.result?.structuredContent).toMatchObject({
-      changes: [{ path: "about/intro", version_number: 4 }],
+      changes: [{ path: "about/intro", version_number: 4, previous_version_number: 2 }],
       next_cursor: "cu-page-changes-v1.c",
       has_more: true,
     });

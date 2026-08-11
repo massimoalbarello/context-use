@@ -17,7 +17,7 @@ const step: EvalStep = {
 
 const MEETING = "meetings/2026/01/2026-01-27_novamind/intro";
 const MEETING_DIRECTORY = MEETING.slice(0, -"/intro".length);
-const DIARY = "about/diary/2026/01/27/log";
+const DIARY = "about/diary/2026/01/27/intro";
 
 function page(path: string, body: string): PageSnapshot {
   return { id: path, path, version: 1, title: path, summary: path, body };
@@ -110,7 +110,7 @@ describe("knowledge eval scoring", () => {
     expect(score.passed).toBe(score.total);
   });
 
-  test("walks connected day views instead of requiring every entity link on the log", () => {
+  test("walks connected day views instead of requiring every entity link on the intro", () => {
     const view = "about/diary/2026/01/27/novamind-review";
     const pages = [
       page(DIARY, `The diligence work has its own [[${view}|account]].`),

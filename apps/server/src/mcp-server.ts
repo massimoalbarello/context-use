@@ -324,7 +324,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("get_knowledge_changes", {
-    description: "Read the durable, context-use-recorded page changes after the opaque cursor from the previous successful automation run. The ledger contains paths and commit metadata but never bodies or diffs. Within the fixed scan window, multiple edits to one page collapse to its latest change. Omit cursor only on the first run. When has_more is true, call again with next_page_token and no cursor; persist next_cursor in the external harness only after every page has been reviewed and the run has completed successfully. Use get_page_version with each returned page_id and version_number to inspect that exact changed version.",
+    description: "Read the durable, context-use-recorded page changes after the opaque cursor from the previous successful automation run. The ledger contains paths and commit metadata but never bodies or diffs. Within the fixed scan window, multiple edits to one page collapse to its latest change. Each row includes previous_version_number for the version current at the input cursor, or null when there was no prior version, so callers can compare the exact semantic delta across the collapsed window with get_page_version. Omit cursor only on the first run. When has_more is true, call again with next_page_token and no cursor; persist next_cursor only after every page has been processed and the run has completed successfully.",
     inputSchema: z.object({
       cursor: z.string().regex(/^cu-page-changes-v1\.[0-9a-z]+$/).optional()
         .describe("Opaque next_cursor persisted by the harness after the previous successful complete scan."),

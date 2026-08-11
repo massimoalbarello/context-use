@@ -13,7 +13,7 @@
   },
   "automations/diary-composer/instructions": {
     "title": "Diary composer",
-    "summary": "Instructions for composing changed timelines into connected prose and flexible day views without duplicating entity pages.",
+    "summary": "Instructions for composing activity deltas into connected prose and flexible day views without duplicating entity pages.",
     "body_file": "_pages/diary-composer/instructions.md",
     "management": "managed"
   },
