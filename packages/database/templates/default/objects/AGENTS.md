@@ -7,17 +7,6 @@ This guide adds only object selection and shape.
 specific car, computer, camera, instrument or heirloom. It is not a product catalogue or an
 inventory.
 
-## Suggested shape
-
-    objects/<object-slug>/
-    ├── intro          — what this particular object is and why it matters
-    ├── specifications — useful durable technical facts
-    ├── maintenance    — the canonical care and service record
-    └── timeline       — material events in the object's history
-
-Use the name the owner would recognize, adding a model, year or nickname only to
-disambiguate the instance. `intro` is often enough.
-
 ## What identifies an object
 
 The unit here is a **particular instance**, and that is what the
@@ -30,14 +19,15 @@ Where the evidence names a class, climb to the topic that covers it under the ro
 [[agents#which-entity-does-it-belong-to|choosing the entity]] rather than inventing an
 instance the evidence does not support.
 
-## Example intro
+## What an object page establishes
 
-    # <Recognizable name>                          ← intro
-
-    **What:** make / model / kind.
-    **Associated with:** [[people/…|Person]] or [[companies/…|Company]], when useful.
-
-    Why this particular instance matters and the minimum context needed to recognize it.
+`intro` says what the thing is — make, model or kind — the minimum context needed to
+recognize it, and why this particular instance matters. Use the name the owner would
+recognize, adding a model, year or nickname only to disambiguate the instance, and link the
+person or company it belongs with in the sentence that says what that association is.
+`intro` is often enough; a further page earns its place when one aspect is independently
+worth reading or maintaining, such as durable technical facts or a care and service record
+that is genuinely being kept.
 
 Object timeline events include acquisition, material repair, modification and transfer, and
 any occasion the owner recounts involving this particular thing.

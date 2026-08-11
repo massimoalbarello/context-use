@@ -847,6 +847,50 @@ describe("knowledge templates", () => {
     expect(normalize(guides.tasks)).toContain("Resolution always earns a dated timeline event");
 
     expect(normalizedRoot).toContain("A common template is a vocabulary, not a quota");
+    expect(guides.root).toContain("## Shape follows the content");
+    expect(normalizedRoot).toContain(
+      "A guide says what a page has to establish, never what it has to look like",
+    );
+    expect(normalizedRoot).toContain("it is one way a page has met its obligation and not the way");
+    expect(normalizedRoot).toContain("What binds is the obligations");
+
+    // Entity guides state what a page must establish; they never hand over a skeleton to copy.
+    // The diary is excluded: its log format is a deliberate fixed shape owned by the composer.
+    const entityGuides = [
+      guides.companies,
+      guides.events,
+      guides.library,
+      guides.meetings,
+      guides.objects,
+      guides.people,
+      guides.places,
+      guides.projects,
+      guides.tasks,
+      guides.threads,
+      guides.topics,
+    ].join("\n");
+    for (const skeleton of [
+      "Suggested shape",
+      "Example intro",
+      "Example pages",
+      "**How the owner knows them:**",
+      "**What they do:**",
+      "**Kind:**",
+      "**Associated with:**",
+      "**With:**",
+      "## What was said",
+      "## What I took away",
+      "## Commitments made",
+      "## What happened",
+      "## Why it matters to me",
+      "## Where it stands",
+      "## Owner's note",
+      "## Summary",
+      "├──",
+    ]) {
+      expect(entityGuides).not.toContain(skeleton);
+    }
+
     expect(normalize(guides.companies)).toContain("Most folders remain a single `intro`");
     expect(guides.companies).not.toContain("as soon as `intro` starts having sections");
     expect(normalize(guides.meetings)).toContain("A confirmed future meeting may begin with `prep` alone");
@@ -855,7 +899,11 @@ describe("knowledge templates", () => {
     expect(normalize(guides.people)).toContain("Most people need only `intro`");
     expect(guides.people).not.toContain("`interests`");
     expect(normalize(guides.people)).toContain("meaningful change in what the person is doing");
-    expect(normalize(guides.people)).toContain("Omit the `Timeline` link from `intro`");
+    expect(normalize(guides.people)).toContain("nothing filled in to make the set look complete");
+    expect(normalize(guides.meetings)).toContain("Let the page take the shape the conversation had");
+    for (const guide of [guides.companies, guides.library, guides.objects, guides.people, guides.places, guides.topics]) {
+      expect(guide).toMatch(/## What an? [a-z ]+ establishes/);
+    }
     expect(DEFAULT_DIRECTORY_PRESENTATIONS.about!.summary).not.toContain("themes, practices, and interests");
     expect(DEFAULT_DIRECTORY_PRESENTATIONS.meetings!.summary).not.toContain("recording who was there");
     expect(guides.skills).toContain("page metadata title is exactly `SKILL.md`");

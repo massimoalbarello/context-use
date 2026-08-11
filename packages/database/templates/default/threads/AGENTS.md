@@ -87,11 +87,9 @@ A thread may be the origin of a [[about/tasks/agents|task]], a [[topics/agents|t
 own guide says so and link the two. The thread keeps what was exchanged; the task keeps the
 question and how the owner is deciding it. Neither replaces the other.
 
-## Suggested shape
+## Shape
 
     threads/<thread-slug>/
-    ├── intro     — where the exchange stands, and what it has established
-    └── timeline  — one line per material exchange, dated — always present
 
 Threads are flat and undated as folders, unlike [[meetings/agents|meetings]] and
 [[events/agents|events]]: a thread has no single date to file it under. Both pages are
@@ -100,20 +98,13 @@ written together; a thread folder holding only an `intro` is incomplete.
 Prefer the useful account over a message log. Never paste message bodies, quote blocks or
 `>` reply chains; the goal is what the correspondence established, not that it occurred.
 
-    # <What the exchange is about>                 ← intro
-
-    **With:** [[people/…|Name]] ([[companies/…|Company]]) · **Since:** <Month YYYY>
-    **Why:** one line — what is at stake in it.
-
-    ## Where it stands
-    The current position, written to stay true as weeks pass.
-
-    ## What has been established
-    The particulars: figures, terms, dates, conditions and the reasons given for them,
-    with who holds which position where that is the knowledge.
-
-    ## Open
-    What is unresolved, and what would resolve it.
+`intro` establishes who is in the exchange, since when and what is at stake in it; where
+things currently stand, written to stay true as weeks pass; the particulars the exchange has
+produced — figures, terms, dates, conditions and the reasons given for them, with who holds
+which position where that is the knowledge; and what is unresolved, together with what would
+resolve it. An exchange that has produced one figure and one open question is that, in a
+paragraph. A negotiation that has moved four times over three terms needs the room to say
+so, and its headings are those terms.
 
 Keep what a correspondent asserted distinct from what the owner concluded. A commitment
 records what was agreed then; its later state follows the root timeline contract.

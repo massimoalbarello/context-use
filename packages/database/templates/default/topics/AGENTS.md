@@ -14,17 +14,14 @@ world**, so food, running and travel are topics while the owner's medical record
 and schooling are their own particulars under [[about/agents|about]]. Personal engagement
 never moves a subject out of `topics/`; it is the reason the topic is here.
 
-## Suggested shape
+## Shape
 
-    topics/<topic-slug>/
-    ├── intro     — the canonical account of the subject and the owner's position on it
-    └── timeline  — material changes in the subject or in the owner's relation to it
-
-`intro` is usually enough. Keep `topics/` flat: a topic folder holds pages, never another
-topic, and relationships between topics are wikilinks between their `intro` pages, because
-a hierarchy that looks obvious now is expensive to unpick later. Prefer the broader name
-when it is honest — closely related subjects always read together are one topic with
-linkable headings, not three thin folders.
+`intro` is usually enough, gaining a `timeline` once there are material changes in the
+subject or in the owner's relation to it. Keep `topics/` flat: a topic folder holds pages,
+never another topic, and relationships between topics are wikilinks between their `intro`
+pages, because a hierarchy that looks obvious now is expensive to unpick later. Prefer the
+broader name when it is honest — closely related subjects always read together are one topic
+with linkable headings, not three thin folders.
 
 ## What identifies a topic
 
@@ -62,16 +59,13 @@ Remove every sentence that is the owner's position, practice or connection to th
 the base. If a useful page survives that subtraction, it is an encyclopedia entry and does
 not belong here.
 
-## Example intro
+## What a topic page establishes
 
-    # <Topic>                                      ← intro
-
-    What the subject is, and what is true about it.
-
-    ## Why it matters to me
-
-    The owner's position, in first person and grounded in what they expressed, linking
-    the projects, works and occurrences that formed it rather than retelling them.
+`intro` says what the subject is and what is true about it, and then the owner's position on
+it — in first person, grounded in what they actually expressed, linking the projects, works
+and occurrences that formed the position rather than retelling them. That second half is
+what makes the page a topic here rather than an encyclopedia entry, and its length follows
+how much the owner has actually said about the subject.
 
 `library/` holds the works; `topics/` holds what the works are about, so link the saved
 work instead of summarizing it again. A company, person or place a topic runs through keeps

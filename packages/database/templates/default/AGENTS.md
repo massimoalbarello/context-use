@@ -194,6 +194,27 @@ and what goes on it is what the evidence says — not a relationship that never 
 not a claim adopted as the owner's view. Say who asserted it, and leave the owner's
 position absent until they take one.
 
+## Shape follows the content
+
+A guide says what a page has to establish, never what it has to look like. There is no
+layout to reproduce: the headings, the label lines and the order of a page are chosen each
+time, for the material actually in front of you, and a page that discharges its obligations
+in three paragraphs and no headings is finished.
+
+Where a guide names a heading or a phrasing, it is one way a page has met its obligation and
+not the way. Reproducing it over content it does not fit is the failure this rule exists to
+prevent: a `## Commitments made` under which nothing was committed, a **How the owner knows
+them:** line above someone the owner has never met, a `## Where it stands` on an exchange
+that has not moved. Each is scaffolding, and scaffolding is read as knowledge by whoever
+arrives next — by the reader who takes an empty heading for an absence of facts, and by the
+agent who fills it to make the page look complete.
+
+What binds is the obligations, and they are the same everywhere. Every entity is a folder
+entered through `intro`. A `timeline` carries what happened. A part of the subject worth
+retrieving on its own becomes a page of its own in the folder, reachable from `intro`. The
+sentence that names another subject carries the link to it. None of that constrains the
+prose, which follows the material.
+
 ## Reconcile the canonical account
 
 New evidence is a reason to reconsider the existing account, not to append another
