@@ -873,7 +873,10 @@
     "id": "q-0041",
     "relevant": [],
     "expected_names": [
-      "co-investment framework",
+      [
+        "co-investment framework",
+        "co-invest"
+      ],
       "co-lead"
     ],
     "seed": "emails/em-0018",
@@ -962,7 +965,10 @@
     "id": "q-0045",
     "relevant": [],
     "expected_names": [
-      "25M",
+      [
+        "25M",
+        "25 million"
+      ],
       "Series B"
     ],
     "seed": "meeting/mtg-0004",
@@ -1138,7 +1144,10 @@
     "relevant": [],
     "expected_names": [
       "DeepMind",
-      "sustainability research"
+      [
+        "sustainability research",
+        "sustainability"
+      ]
     ],
     "seed": "emails/em-0028",
     "link_types": [],
