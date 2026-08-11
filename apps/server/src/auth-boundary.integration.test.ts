@@ -296,6 +296,8 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       const rootWithoutSlash = await application!.handle(new Request("http://localhost:3000/p"));
       const llms = await application!.handle(new Request("http://localhost:3000/llms.txt"));
       const llmsFull = await application!.handle(new Request("http://localhost:3000/llms-full.txt"));
+      const robots = await application!.handle(new Request("http://localhost:3000/robots.txt"));
+      const sitemap = await application!.handle(new Request("http://localhost:3000/sitemap.xml"));
 
       expect(published.status).toBe(200);
       const publishedHtml = await published.text();
@@ -306,6 +308,10 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       expect(publishedHtml).toContain('href="/llms.txt"');
       expect(publishedMarkdown.status).toBe(200);
       expect(publishedMarkdown.headers.get("content-type")).toBe("text/markdown; charset=utf-8");
+      expect(publishedMarkdown.headers.get("x-robots-tag")).toBe("noindex, follow");
+      expect(publishedMarkdown.headers.get("link")).toBe(
+        `<${config.APP_ORIGIN}/p/${publicPath}>; rel="canonical"`,
+      );
       const publishedMarkdownText = await publishedMarkdown.text();
       expect(publishedMarkdownText).toContain("# Nested public page");
       expect(publishedMarkdownText).toContain("PUBLIC-SUMMARY-CANARY");
@@ -335,13 +341,23 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       expect(parentHtml).toContain(`href="/p/${publicPath}"`);
       expect(parentHtml).toContain('href="/llms.txt"');
       expect(llms.status).toBe(200);
+      expect(llms.headers.get("x-robots-tag")).toBeNull();
       const llmsText = await llms.text();
       expect(llmsText).toContain(`${config.APP_ORIGIN}/p/${publicPath}.md`);
       expect(llmsText).not.toContain(privatePath);
       expect(llmsFull.status).toBe(200);
+      expect(llmsFull.headers.get("x-robots-tag")).toBe("noindex, follow");
       const llmsFullText = await llmsFull.text();
       expect(llmsFullText).toContain("PUBLIC-NESTED-CANARY");
       expect(llmsFullText).not.toContain("PRIVATE-NESTED-CANARY");
+      expect(robots.status).toBe(200);
+      expect(robots.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+      expect(await robots.text()).toContain(`Sitemap: ${config.APP_ORIGIN}/sitemap.xml`);
+      expect(sitemap.status).toBe(200);
+      expect(sitemap.headers.get("content-type")).toBe("application/xml; charset=utf-8");
+      const sitemapXml = await sitemap.text();
+      expect(sitemapXml).toContain(`<loc>${config.APP_ORIGIN}/p/${publicPath}</loc>`);
+      expect(sitemapXml).not.toContain(privatePath);
       for (const privateCanary of [
         "PRIVATE-TITLE-CANARY",
         "PRIVATE-SUMMARY-CANARY",

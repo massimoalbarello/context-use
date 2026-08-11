@@ -192,6 +192,25 @@ export async function verifyDeployment(config: DeploymentConfig, releaseVersion:
   }
   const about = await fetch(`${origin}/p/about/intro`);
   if (!about.ok) throw new Error("The public About empty state is unavailable");
+  const [robots, sitemap, llms] = await Promise.all([
+    fetch(`${origin}/robots.txt`),
+    fetch(`${origin}/sitemap.xml`),
+    fetch(`${origin}/llms.txt`),
+  ]);
+  const [robotsText, sitemapXml, llmsText] = await Promise.all([
+    robots.text(),
+    sitemap.text(),
+    llms.text(),
+  ]);
+  if (!robots.ok || !robotsText.includes(`Sitemap: ${origin}/sitemap.xml`)) {
+    throw new Error("Public crawler discovery is unavailable or incomplete");
+  }
+  if (!sitemap.ok || !sitemapXml.includes("<urlset")) {
+    throw new Error("The public sitemap is unavailable or incomplete");
+  }
+  if (!llms.ok || !llmsText.includes(`${origin}/llms-full.txt`)) {
+    throw new Error("The AI-readable public index is unavailable or incomplete");
+  }
 
   let nangoError = "health check did not complete";
   for (let attempt = 0; attempt < 60; attempt += 1) {

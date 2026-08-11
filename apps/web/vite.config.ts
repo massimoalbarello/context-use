@@ -21,6 +21,8 @@ export default defineConfig({
       "/a/": forwarded,
       "/llms.txt": forwarded,
       "/llms-full.txt": forwarded,
+      "/robots.txt": forwarded,
+      "/sitemap.xml": forwarded,
       "/.well-known": forwarded,
       "/public.css": forwarded,
       "/content.css": forwarded,

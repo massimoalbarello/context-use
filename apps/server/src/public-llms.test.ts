@@ -35,11 +35,16 @@ describe("public LLM context", () => {
     const content = renderLlmsTxt(pages, options);
 
     expect(content).toBe([
-      "# massimo.example public knowledge",
+      "# Massimo's public knowledge",
       "",
       "> Massimo's public introduction.",
       "",
       "Only explicitly published knowledge is included.",
+      "",
+      "## Discovery",
+      "",
+      "- [Human-readable knowledge index](https://massimo.example/p/): Browse every published branch.",
+      "- [XML sitemap](https://massimo.example/sitemap.xml): Canonical HTML URLs for every published page.",
       "",
       "## Complete public context",
       "",
@@ -63,6 +68,7 @@ describe("public LLM context", () => {
       "",
       "- Canonical URL: [https://massimo.example/p/about/intro](https://massimo.example/p/about/intro)",
       "- Site index: [https://massimo.example/llms.txt](https://massimo.example/llms.txt)",
+      "- Knowledge index: [https://massimo.example/p/](https://massimo.example/p/)",
       "- Last edited: 2026-07-27T10:30:00.000Z",
       "",
     ].join("\n"));

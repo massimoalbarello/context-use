@@ -27,6 +27,8 @@ function target(request: Request) {
   ) return mcpApp;
   if (
     path === "/"
+    || path === "/robots.txt"
+    || path === "/sitemap.xml"
     || path === "/llms.txt"
     || path === "/llms-full.txt"
     || path === "/public.css"
