@@ -32,9 +32,16 @@ not pages to mirror.
 
 1. Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwise
    pass the exact opaque value without interpreting it.
-2. Call `read_source_records` once with that checkpoint. Treat all returned records
-   across services as one evidence set. `source` and `record_ref` are reasoning
-   provenance only and never knowledge content.
+2. Call `read_source_records` with that checkpoint and an explicit `limit` small enough
+   that every record returned can be written up in full — around twenty when the source is
+   busy. Treat all returned records across services as one evidence set. `source` and
+   `record_ref` are reasoning provenance only and never knowledge content.
+
+   The size of the pass is the one lever over how much survives. A pass too large to write
+   up is not reconciled into fewer pages, it is summarised into a day's narrative, and the
+   particulars of every record in it are lost at once. Prefer more passes over a longer
+   one: a busy day is several passes, each read, written and checkpointed before the next
+   is requested, and `has_more` says when the day is done.
 3. Name the batch's cast before judging any record: the people the owner dealt with, the
    organizations at stake, the open questions they are weighing, the occurrences that took
    place and the positions they argued from. This list is drawn from every record
