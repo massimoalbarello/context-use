@@ -149,6 +149,19 @@ The second half is the one that gets dropped, and dropping it is what leaves a b
 that a conversation happened and not who was in it. A meeting page whose participants are
 plain text has recorded the conversation and lost the people.
 
+**A subject named in passing counts exactly as much as the one the evidence is about.** This
+is where the second half actually fails, because a record makes some of its subjects
+obvious and buries the rest. An email announces its sender and its headline deal; the
+competitor weighed up in the third paragraph, the company someone says they are tracking,
+the person named as a counterpart are all mentioned once and never in a header. Those are
+the ones that go missing, and they are frequently the answer to what someone comes back
+asking.
+
+So read the whole record for names, not the parts that announce themselves. Sender,
+recipient, subject line and title are where extraction starts, never where it stops. A
+subject appearing in one clause of one sentence is identified if that clause resolves it,
+and it earns its page on the same terms as the subject in the title.
+
 Evidence and pages are not one-to-one, and forcing them either way fails. Two pull requests
 continuing one line of work are one [[about/tasks/agents|task]] that discusses both and
 links the [[about/projects/agents|project]] they serve. One meeting is a meeting page, four
