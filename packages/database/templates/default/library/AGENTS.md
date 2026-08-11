@@ -3,9 +3,9 @@
 Follow the [[agents|root guide]] for every convention not specific to saved works. This
 guide adds only library selection and shape.
 
-`library/` is the owner's collection of external works worth finding again: articles,
-videos, podcast episodes, papers, talks, threads and similar material. It is not a feed,
-reading queue or archive of everything encountered.
+`library/` holds external works: articles, videos, podcast episodes, papers, talks, threads
+and similar material. It is not a feed or a reading queue — an entry is the account of a
+work, not a record that it passed by.
 
 ## One work as the unit
 
@@ -18,8 +18,11 @@ title or `<creator>-<topic>` usually beats a mechanically copied long one. The w
 its delivery format, is the unit: a talk and its transcript are one entry with two source
 links, while distinct podcast episodes are separate works.
 
-Save a work when its ideas, the owner's reaction or its connection to existing knowledge
-makes it useful to retrieve again.
+A work the evidence resolves to a particular piece — by title, creator, URL or enough
+description to find it again — earns its entry under the
+[[agents#identifiability-is-the-threshold|root threshold]], whether the owner saved it,
+was sent it or saw it cited. A reference to "that piece about pricing" resolves to nothing
+and stays plain text.
 
 ## Example `intro`
 

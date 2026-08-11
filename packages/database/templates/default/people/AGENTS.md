@@ -15,30 +15,24 @@ adds only person selection and shape.
 Most people need only `intro`, commonly at `people/<first-last>/`. Add an aspect when its
 subject becomes independently useful to read or maintain, and name it for that subject.
 
-## When a person is useful
+## What identifies a person
 
-Engagement under the [[agents#place-and-identify|root threshold]] means the owner and
-this person were actually in contact or consequentially involved with each other. Any one
-of these is enough, the first time it happens:
+Under the [[agents#identifiability-is-the-threshold|root threshold]], anyone the evidence
+resolves gets a page. Someone the owner met, someone who wrote to a channel they read,
+someone named in passing as a colleague at a company under discussion — all the same, and
+all the first time they appear.
 
-- they attended the same meeting, call or recurring one-to-one;
-- either wrote to the other, or both took part in the same working conversation;
-- the owner made or received a commitment, introduction or request involving them;
-- they are a party to a decision the owner is making — a counterparty, a principal of the
-  organization concerned, or the person whose work the decision rests on;
-- they work alongside the owner day to day, which the shared channels of ordinary work
-  already establish without any single notable exchange.
+What resolves a person here is a supported name plus enough context — company, role,
+profile, contact detail or a specific interaction — to distinguish them from plausible
+namesakes and existing aliases. That context can come from anywhere in the evidence, not
+only from the sentence naming them: a given name offered as someone's counterpart is
+resolved by the organization they are counterpart on, and a given name standing in on a
+recurring duty by the team that duty belongs to. Read outward before deciding a name is
+unresolvable.
 
-Do not weigh how significant the person seems; a colleague the owner works with constantly
-is exactly the kind of page that never gets written if importance has to be argued first.
-An attendee list the owner did not join, or a third-party account they merely read about,
-is not engagement.
-
-Identity, not importance, is the reason to hold back. What identifies a person here is a
-supported name plus enough context — company, role, profile, contact detail or a specific
-interaction — to distinguish them from plausible namesakes and existing aliases. A lone
-display name, email address or handle is insufficient while genuine doubt remains, and
-where one display name genuinely stands for two people, say so on both pages.
+A lone display name, given name or handle with nothing around it stays plain text while
+genuine doubt remains, and where one display name genuinely stands for two people, say so
+on both pages. That is the only reason to hold back — never how minor the person seems.
 
 ## Example intro
 

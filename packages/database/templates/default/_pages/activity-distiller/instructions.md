@@ -56,9 +56,13 @@ and writing one record at a time is what stops that width collapsing into a summ
 
 1. Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwise
    pass the exact opaque value without interpreting it.
-2. Call `read_source_records` with that checkpoint and a `limit` large enough to take
-   everything the source has ready, up to what the tool allows. Read wide: a record held
-   back is a record the others cannot be read against. Treat all returned records across
+2. Call `read_source_records` with that checkpoint and the largest `limit` the tool
+   accepts, so the run sees as much at once as it can: a record held back is a record the
+   others cannot be read against. The tool states its own maximum and rejects anything
+   above it — take the ceiling from the schema rather than guessing a large number, and if
+   a call is rejected for the limit, lower it to the stated maximum rather than retrying.
+   Read once per position in the source; the records are in context after that, so do not
+   re-read the same checkpoint to look at them again. Treat all returned records across
    services as one evidence set. `source` and `record_ref` are reasoning provenance only
    and never knowledge content.
 3. Name the run's cast before judging any record: the people the owner dealt with, the
@@ -68,27 +72,33 @@ and writing one record at a time is what stops that width collapsing into a summ
    is known to exist. Keep it for the rest of the run.
 4. Now work through the records **one at a time**, in the order the activity happened.
    For each one:
-   - name what it establishes — the figures, terms, dates, names and reasons stated in it;
-   - decide whether the record is noise under the selection rules below. If it is, drop it
-     and say so; its cast still counts, and the run moves on;
-   - otherwise write what it establishes into the knowledge base **before reading the next
-     record**, on the pages of the subjects it is about.
+   - check it against the garbage list below. Only a record from one of those sources is
+     dropped, and dropping it is the last judgement of value made about it;
+   - name every subject it identifies — the occurrence the record is, and each person,
+     organization, place, work, question and topic it names — and what it establishes about
+     them: the figures, terms, dates, names and reasons stated in it;
+   - write those subjects and those particulars into the knowledge base **before reading
+     the next record**.
 
    Nothing advances past a record while something it established is still unwritten. This
    is the whole point of the loop: a run that reads forty records and then writes is a run
    that writes a summary of forty records, and every particular in them is lost at once.
 
-   **One record at a time is an accounting discipline, not a page shape.** Records and pages
-   are many-to-many, and the shape follows what the record turns out to be. A meeting note
-   becomes that meeting's page, and in the same write updates every participant, company and
-   question it touched. A single message becomes one timeline event on a page that already
-   exists. Five exchanges over a week become one thread. A record that establishes nothing
-   durable becomes nothing at all.
+   Records and pages are many-to-many, and the shape follows what the record turns out to
+   be. A record that clearly identifies an occurrence or a unit of work usually **does** get
+   its own page — a meeting note becomes that meeting's page, a substantive exchange becomes
+   a thread — and in the same write updates every participant, company and question it
+   touched. Others do not: a single message becomes a timeline event on a page that already
+   exists, and two pull requests continuing one line of work become one
+   [[about/tasks/agents|task]] that discusses both. Do not force either direction. Let the
+   owning guide say what the evidence identifies.
 
-   What is never right is moving a record across. The loop is per record so that nothing is
-   missed; the writes it produces are per subject, and each is distilled — read, interpreted,
-   placed and linked. A run whose pages line up one-to-one with its records has copied rather
-   than distilled, and produced the feed this base exists not to be.
+   What is never right is **copying** the record across. A page whose content is the record
+   restated has been moved, not distilled: the work is to read it, interpret what it
+   establishes, place it on the subject it belongs to, link it to what it relates to, and
+   correct what earlier evidence got wrong. A page that does all of that and happens to
+   correspond to one record is correct. A page that does none of it is a feed entry however
+   the ratio comes out.
 
    Later records revise what earlier ones established: a figure corrected, a position moved,
    a name resolved to someone already known. Reconcile the page in place when that happens,
@@ -139,48 +149,46 @@ Apply the root guide's evidence distinctions and use the date of the underlying
 activity. Without a reliable activity date, record what is durable about the subject and
 leave the timeline alone rather than dating one by guess.
 
-Keep only evidence that changes future understanding: a decision and rationale,
-consequential outcome, meaningful change of direction, milestone, important commitment,
-substantive external interaction, or progress needed to explain a material state
-change. For high-volume sources, substantive owner participation, a consequential
-relationship, durable fact or decision, real commitment, or connection to an already
-important subject demonstrates value. Volume, recency and availability do not.
+### Discard garbage, then extract everything
 
-Ignore by default:
+There is **one** filter, it runs once per record, and it asks where the record came from
+rather than how interesting it looks. Discard:
 
-- unsolicited messages without meaningful owner engagement;
-- newsletters, receipts, automated alerts and platform notifications;
-- cold outreach, acknowledgements, routine scheduling and administrative mail; and
-- ordinary commits, routine reviews and repeated corroboration with no consequential
-  effect.
+- newsletters, marketing mail, receipts, automated alerts and platform notifications;
+- cold outreach from a stranger the owner never answered; and
+- pure delivery mechanics — read receipts, calendar accept and decline notices, bounce
+  messages, "seen", "+1", a bare emoji reaction.
 
-None of these exclusions turns on who was speaking. A fact reported by someone else about
-a subject this base already holds is that subject's, whether or not the owner replied: the
-root guide's engagement threshold decides which subjects exist, not what is known about
-one that exists already. The first exclusion above is about strangers, not about the
-owner's own channels.
+That is the whole list. It is a list of **sources**, not of subjects, and nothing else is
+dropped for being routine, short, one-sided or unremarkable.
 
-An email or chat exchange matters only through the knowledge it establishes—for example, a
-substantive reply, commitment, relationship development, decision, or material advance to a
-project or task. When it establishes any of those, its account is a
-[[threads/agents|thread]], written as fully as a meeting page and on the same terms: named
-for the line of work, never for a channel, a counterparty or a provider thread id. Do not
-copy message bodies or create correspondence-feed pages.
-Several low-value records do not become important merely by accumulation. A valid run
-may update only the checkpoint.
+Everything else is kept, and from every kept record extract each subject it identifies
+under the root guide's
+[[agents#identifiability-is-the-threshold|identifiability threshold]] — the occurrence the
+record is, and every person, organization, place, work, question and topic it names — then
+write the particulars onto those subjects.
 
-These exclusions drop the noise around the owner's activity; they do not shrink the
-activity itself. A run carrying the owner's own meetings, decisions, commitments and
-working conversations is a substantial run, and reducing such a day to one narrative page
-is a failure of the same kind as mirroring every record. They are also the whole of the
-filtering: a record that survives them is written up in the particulars it establishes, and
-there is no second, quieter filter that decides which of those particulars are interesting
-enough to keep.
+**The judgement that must not happen is "this message is minor".** One line naming a person
+and what they are handling, an organization and where it stands, or a figure and the terms
+attached to it is not noise: it is a fact plus the subjects it identifies, and it is the
+single most common thing a base like this loses. Brevity is not triviality, a message the
+owner did not reply to is still a message they read, and a record that names nothing new
+still confirms who is in their working world. Judge the source; never judge the content
+down.
 
-The test for a record is whether it changes future understanding. The test for the run is
-whether someone reading the result afterwards can reach every person the owner dealt with,
-every organization at stake and every question they were weighing that day — and find, on
-each, what was actually said about it.
+Volume changes nothing about this. Sixty short messages are sixty records to extract from,
+not a body of traffic to summarise, and the same fact arriving twice is corroboration to
+reconcile rather than a reason to skip the second. A record whose subjects are all already
+written and whose particulars are all already recorded produces no change, and that is a
+legitimate outcome — reached by checking, not by assuming.
+
+An exchange that establishes something gets its [[threads/agents|thread]], written as fully
+as a meeting page and named for the line of work, never for a channel, a counterparty or a
+provider thread id. Do not copy message bodies or create correspondence-feed pages.
+
+The test for the run is whether someone reading the result afterwards can reach every person
+named, every organization at stake and every question in play that day — and find, on each,
+what was actually said about it.
 
 ## Reconcile connected subjects
 
@@ -190,9 +198,9 @@ existing knowledge and connected evidence before preparing each unfamiliar exact
 target, then let its guide chain decide the useful pages. Apply the root timeline
 contract in the same coherent write whenever a timeline event is recorded.
 
-Take the cast named in step 3 to its owning guides and reconcile every subject that meets
-the threshold there. Records are how the cast becomes visible; they are not themselves the
-subjects.
+Take the cast named in step 3 to its owning guides and reconcile every subject the evidence
+resolves. Records are how the cast becomes visible, and under the root rule they are also
+subjects themselves where they identify an occurrence.
 
 Two of those lists are the ones that vanish. The **open questions**, because no record is
 shaped like a decision: whether to commit, hire, buy, build, accept or decline is a subject
@@ -202,13 +210,11 @@ they are never news: when the owner says *our approach*, *what I look for*, *the
 said no*, they are reasoning from something they hold and keep applying, and every decision
 citing it restates it instead of pointing at it.
 
-Discarding a record does not discard its cast. A message carrying no durable fact still
-shows who is in the owner's working world: the colleagues in the channels they belong to,
-the counterparty who keeps appearing, the organization everyone is discussing. Build the
-cast from every record read, discarded ones included, and let the owning guides decide
-which of them earn a page. The selection rules above govern what is written about, not who
-is known to exist — though they still exclude the stranger's unsolicited message, since
-someone who wrote to the owner and got no engagement back is not yet part of that world.
+Discarding a record does not discard its cast. Even a discarded source can name a colleague
+or an organization the owner deals with, so build the cast from every record read and let
+the identifiability threshold decide. The only names that stay out are the ones nothing
+resolves — and the stranger behind a cold pitch, whose page would record a pitch and nothing
+else.
 
 An occurrence is placed by when it happened, not by when a record mentions it: a
 conference the owner attended last week, an earlier meeting everyone is following up on, a

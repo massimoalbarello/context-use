@@ -18,16 +18,17 @@ inventory.
 Use the name the owner would recognize, adding a model, year or nickname only to
 disambiguate the instance. `intro` is often enough.
 
-## When an object is useful
+## What identifies an object
 
-An object page is worthwhile when the particular instance has continuing relevance: it is
-repeatedly used, maintained, repaired, modified, insured, transferred, strongly valued or
-linked from several meaningful contexts.
+The unit here is a **particular instance**, and that is what the
+[[agents#identifiability-is-the-threshold|root threshold]] asks of the evidence: not that
+the object matters, but that it resolves to one thing rather than a class of things. A
+named boat, a specific car, the camera someone keeps repairing — each is identified. A model
+name on its own is a product, not an instance, and identifies nothing here.
 
-A generic product, disposable item or passing purchase does not become an object page. If
-the owner recounted it, climb to the topic that covers it under the root rule for
-[[agents#which-entity-does-it-belong-to|choosing the entity]]; if it merely appeared in a
-harvested record, leave it in the account that mentioned it.
+Where the evidence names a class, climb to the topic that covers it under the root rule for
+[[agents#which-entity-does-it-belong-to|choosing the entity]] rather than inventing an
+instance the evidence does not support.
 
 ## Example intro
 

@@ -3,9 +3,9 @@
 Follow the [[agents|root guide]] for every convention not specific to places. This guide
 adds only place selection and shape.
 
-`places/` is for locations that matter as durable subjects: a home, venue, café, office,
-neighbourhood, city or landscape the owner returns to, makes decisions about, or connects
-to several meaningful parts of the base. It is not a gazetteer of every location mentioned.
+`places/` is for locations as durable subjects: a home, venue, café, office, neighbourhood,
+city or landscape. What keeps it from becoming a gazetteer is that a place must be
+identified rather than merely mentioned — see below.
 
 ## Suggested shape
 
@@ -17,17 +17,21 @@ to several meaningful parts of the base. It is not a gazetteer of every location
 Prefer the name people actually use, adding a locality only to disambiguate. `intro` is
 often enough.
 
-## When a place is useful
+## What identifies a place
 
-A place page is worthwhile when the location itself will be retrieved or linked again: a
-home, recurring venue, favourite haunt, the subject of a decision or project, or the
-setting for several meaningful occurrences.
+A named location the evidence resolves to a particular place gets its folder under the
+[[agents#identifiability-is-the-threshold|root threshold]] — a home, an office, a venue, a
+neighbourhood, a city. Whether the owner returns to it decides nothing; a restaurant named
+once is an identified restaurant.
 
-A one-off occurrence can state its location directly, and a city or address mentioned in
-passing need not become an entity. But a place the owner recounts being at is not a passing
-mention: under the root rule for
-[[agents#which-entity-does-it-belong-to|choosing the entity]], a named venue they tell you
-about is the most specific entity the evidence identifies, and it takes the event.
+What resolves a place is a name plus enough to pin it to one location: a locality, an
+address, the person or organization it belongs to, or the occurrence that happened there.
+An unqualified city name inside a postal address is part of that address rather than a
+subject of its own, and "the usual place" resolves to nothing until something says which.
+
+Climbing still applies under the root rule for
+[[agents#which-entity-does-it-belong-to|choosing the entity]]: a meal with no named venue
+identifies no place, and belongs to the topic that covers it.
 
 ## Example intro
 

@@ -802,7 +802,11 @@ describe("knowledge templates", () => {
     expect(normalizedRoot).toContain("When a page speaks as the owner, use first person");
     expect(normalizedRoot).toContain("without asking for a preview or proposal");
     expect(normalizedRoot).toContain("Every entity is a folder, entered through `intro`");
-    expect(normalizedRoot).toContain("Repeated attention across saved works, research and the owner's own pages");
+    expect(guides.root).toContain("### Identifiability is the threshold");
+    expect(guides.root).toContain("### A subject arrives one of two ways");
+    expect(normalizedRoot).toContain("A subject earns its page as soon as the evidence resolves which subject it is");
+    expect(normalizedRoot).toContain("What holds a subject back is doubt about *which* subject it is");
+    expect(normalizedRoot).toContain("This threshold runs **after** the noise filter above");
     expect(normalizedRoot).toContain("Attention is not interaction and is not agreement");
     expect(guides.root).toContain("## The timeline");
     expect(normalizedRoot).toContain("Descending year headings, descending month headings");
@@ -847,7 +851,7 @@ describe("knowledge templates", () => {
     expect(guides.companies).not.toContain("as soon as `intro` starts having sections");
     expect(normalize(guides.meetings)).toContain("A confirmed future meeting may begin with `prep` alone");
     expect(normalize(guides.meetings)).toContain("a lifecycle exception to the root `intro` entry-point convention");
-    expect(normalize(guides.meetings)).toContain("a clearly identified attendee meets the");
+    expect(normalize(guides.meetings)).toContain("Every resolvable attendee gets their page on the");
     expect(normalize(guides.people)).toContain("Most people need only `intro`");
     expect(guides.people).not.toContain("`interests`");
     expect(normalize(guides.people)).toContain("meaningful change in what the person is doing");

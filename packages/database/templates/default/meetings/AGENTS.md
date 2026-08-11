@@ -20,11 +20,18 @@ Reserve `transcript` for a record whose source will not survive; mark it as raw 
 distil an `intro`. Photos, whiteboards and shared decks sit in the folder and embed from
 the relevant page.
 
-## When a meeting is useful
+## What identifies a meeting
 
-A meeting folder is useful when forgetting the conversation would lose a meaningful
-decision, insight, introduction, commitment or relationship milestone. Routine syncs and
-purely administrative calls usually do not need one.
+A conversation the evidence resolves — who was in it, roughly when, what it was about —
+is a meeting under the [[agents#a-subject-arrives-one-of-two-ways|root rule]] that the
+evidence is itself a subject. A meeting record, a call, a scheduled conversation that
+demonstrably happened: each gets its folder. Do not weigh the conversation's importance
+first; a routine sync where a decision turned out to be made is exactly the page that never
+gets written when importance has to be argued.
+
+What does not earn one is a conversation that cannot be resolved — an invitation with no
+evidence it took place, or a reference to "the call" with nothing to say which. A recurring
+sync is one folder per occurrence, not one page mixing them.
 
 An [[events/agents|event]] is defined by its occasion; a meeting is defined by its
 conversation. A conversation at an event can have its own meeting page when it matters
@@ -54,13 +61,12 @@ linking a recording where it supports the relevant claim.
     ## Commitments made
     - What someone agreed during the meeting, stated as a historical fact.
 
-An attendee is by definition someone the owner engaged with, so a clearly identified
-attendee meets the [[people/agents#when-a-person-is-useful|people threshold]]: create the
-person and link them from the `With:` line in the same write as the meeting. The same
-applies to the organization whose business the meeting concerned, and to anyone named in a
-decision or commitment recorded here — an introduction promised to someone is an engagement
-with that person. Only genuine doubt about who an attendee is keeps them in plain text, and
-an uncertain participant-list entry can be omitted altogether.
+The people and organizations are the other half of the write, under the root rule that
+evidence names subjects as well as being one. Every resolvable attendee gets their page on
+the [[people/agents#what-identifies-a-person|people threshold]] and a link from the `With:`
+line, in the same write as the meeting; so does the organization whose business the
+conversation concerned, and anyone named inside a decision, commitment or introduction
+recorded here. Only genuine doubt about who someone is keeps them in plain text.
 
 Keep what another participant said distinct from what the owner concluded. A commitment
 records what was agreed then; its later state follows the root timeline contract.

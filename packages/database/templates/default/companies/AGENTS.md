@@ -22,23 +22,15 @@ who to talk to, and it is the edge that connects an organization to the rest of 
 instead of leaving it hanging off whichever occurrence created it. Only those people: the
 page is not a staff directory.
 
-## When a company is useful
+## What identifies a company
 
-Engagement under the [[agents#place-and-identify|root threshold]] means the organization
-is something the owner is actually dealing with. Any one of these is enough, the first
-time it happens:
+Under the [[agents#identifiability-is-the-threshold|root threshold]], any organization the
+evidence resolves gets its folder — one the owner works with, one they are evaluating, one
+a colleague mentioned in passing, one named only as somebody's employer. The folder comes
+before the relationship has any history to record, and often before there is a relationship
+at all.
 
-- the owner employs, works for, or works inside it;
-- it was the subject of a meeting, call or working conversation the owner took part in;
-- the owner is evaluating, negotiating with, buying from, selling to, investing in or
-  partnering with it, or has decided not to;
-- the owner corresponds with its people about its business;
-- it is the affiliation of someone the owner engages with, and that affiliation matters to
-  why they engage.
-
-One such engagement earns the folder, before the relationship has any history to record.
-
-What identifies an organization here is its canonical name plus what it does, corroborated
+What resolves an organization here is its canonical name plus what it does, corroborated
 where needed by an official domain, relevant people, products, location or legal name. A
 sender domain, signature, logo or abbreviated name is evidence, not proof, while several
 organizations remain plausible. What actually joins two similarly named organizations is a
