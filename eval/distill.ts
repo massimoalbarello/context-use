@@ -60,31 +60,26 @@ export type BatchResult = {
   index: number;
   changes: PageChange[];
   pageCount: number;
-  /** Agent sessions this batch needed. More than one means a run stopped before finishing. */
-  runs: number;
-  /** False when the batch was abandoned with records still unread. */
+  /** False when the run left records of this batch unread. */
   finished: boolean;
 };
 
 const STATE_PATH = "automations/activity-distiller/state";
 
 /**
- * A batch takes as many agent sessions as it takes.
+ * Whether a run actually consumed the batch it was given.
  *
- * One session per batch was the original assumption, and it silently mis-measures the case
- * it was most likely to meet: an agent that stops partway leaves its checkpoint inside the
- * batch, and the harness would move to the next day and score the abandoned one as a day
- * that produced nothing. The checkpoint is the only honest signal of whether the records
- * were consumed, so read it and trigger again until it has moved on.
+ * One run per batch is the measurement: it reproduces a scheduled production trigger, and
+ * changing that would change what the number means. But a run that stops partway leaves its
+ * checkpoint inside the batch, and without this check the harness moves to the next day and
+ * records the abandoned one as a day whose records produced nothing — the same shape as a
+ * quiet day, and indistinguishable from one in the report. The checkpoint is the only honest
+ * signal, so read it and say so.
  *
- * Retrying only helps when the previous session left something behind. The distiller reads
- * a whole batch at once, so its checkpoint advances only at the end — a session that stops
- * partway persists nothing, and an identical retry would produce an identical stop. So a
- * retry that neither moved the checkpoint nor wrote a page ends the batch instead of
- * burning the remaining attempts on the same failure.
+ * This detects; it does not repair. Whether the harness should re-trigger an abandoned batch
+ * is a separate question about how faithful to production scheduling the eval should be, and
+ * a retry inflates a batch's output by giving it more attempts than a scheduled run gets.
  */
-const MAX_SESSIONS_PER_BATCH = 4;
-
 function persistedCheckpoint(pages: PageSnapshot[]): string | undefined {
   const state = pages.find((page) => page.path === STATE_PATH);
   return state?.body.match(/\*\*Checkpoint:\*\*\s*`([^`]+)`/)?.[1];
@@ -157,37 +152,25 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
     console.log(style.dim(`  ${[...new Set(batchRecords.map((record) => record.type))].sort().join(" · ")}`));
     console.log(style.dim("  Agent is reading its instructions and reconciling the batch…"));
 
-    let pages = previous;
-    let sessions = 0;
-    while (sessions < MAX_SESSIONS_PER_BATCH) {
-      sessions += 1;
-      if (sessions > 1) {
-        console.log(style.dim(`\n  Checkpoint is still inside ${batch}; triggering run ${sessions}…`));
-      }
-      const before = pages;
-      await runAgentSession({
-        provider: options.provider,
-        id: `batch-${batch}-run-${sessions}`,
-        prompt: triggerPrompt(),
-        runDirectory,
-      });
-      pages = snapshotKnowledge();
-      if (batchIsFinished(pages, batch)) break;
-      if (sessions > 1 && pageChanges(before, pages).length === 0) {
-        console.log(style.red(`  Run ${sessions} changed nothing and did not advance the checkpoint; not retrying.`));
-        break;
-      }
-    }
+    await runAgentSession({
+      provider: options.provider,
+      id: `batch-${batch}`,
+      prompt: triggerPrompt(),
+      runDirectory,
+    });
 
+    const pages = snapshotKnowledge();
     const finished = batchIsFinished(pages, batch);
     await Bun.write(join(runDirectory, `batch-${batch}-snapshot.json`), `${JSON.stringify(pages, null, 2)}\n`);
     const changes = pageChanges(previous, pages);
-    results.push({ batch, index, changes, pageCount: pages.length, runs: sessions, finished });
+    results.push({ batch, index, changes, pageCount: pages.length, finished });
     previous = pages;
-    const runLabel = sessions === 1 ? "" : ` · ${sessions} runs`;
-    console.log(style.green(`\n  ${batch} complete · ${summarise(changes)} · ${pages.length} pages total${runLabel}`));
+    console.log(style.green(`\n  ${batch} complete · ${summarise(changes)} · ${pages.length} pages total`));
     if (!finished) {
-      console.log(style.red(`  ${batch} was abandoned with records unread after ${sessions} runs.`));
+      console.log(style.red(
+        `  ${batch} was abandoned with records unread — its checkpoint is still inside the batch,\n`
+        + "  so what follows is scored against a partial day.",
+      ));
     }
   }
 
@@ -216,7 +199,6 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   ];
   for (const result of results) {
     const detail = [summarise(result.changes)];
-    if (result.runs > 1) detail.push(`${result.runs} runs`);
     if (!result.finished) detail.push("**abandoned with records unread**");
     lines.push(`## ${result.batch} — ${detail.join(" · ")}`, "");
     for (const change of result.changes) {

@@ -113,33 +113,25 @@ the entities the corpus profiles*, not *correct on who attended*.
 means the name sits on a page that is also about what the question asks — the weaker test,
 that the string appears anywhere, counted an unrelated page's "40%" as the answer.
 
-## What the runs found
+## Reading a result
 
-The first full amara run scored 27/85, and reading every failure against the corpus found
-one cause behind most of them: the base recorded that a conversation happened rather than
-what it established — *"supplied cap-table context"* where the evidence said *"came in at 8%
-equity for that initial $1.2M check"*. Three changes to the guides followed, each ablated
-over the full eight days with only the guides differing:
+Scores live in `.eval-results/`, not in this file. A number here would describe whichever
+run happened to be current when someone wrote it down, and would then quietly misdescribe
+every run after that.
 
-| | score | email | Slack |
-| --- | --- | --- | --- |
-| before | 27/85 | 6/34 | 2/20 |
-| [particulars over narration](../../packages/database/templates/default/AGENTS.md) | 38/85 | 12/34 | 4/20 |
-| [+ batches read in small passes](../../packages/database/templates/default/_pages/activity-distiller/instructions.md) | 47/85 | 14/34 | 10/20 |
-| **+ engagement scoped to which subjects exist** | **55/85** | **21/34** | 8/20 |
+Three things are worth knowing before comparing two runs at all.
 
-Expected names never written to the base fell from 73 to 44, against five written and not
-retrieved.
+**A single run is not a measurement.** Volume varies widely between runs of an identical
+configuration, so a difference has to be large, or repeated, before it means anything.
 
-Still wrong: 2/5 on the contradiction questions — the base keeps the particulars now and
-still flattens the disagreement between them — 5/9 on joins, and 0/2 on calendar. Slack fell
-back with the third change while email gained.
+**A run that stopped early is not a quiet day.** The distiller can abandon a batch partway,
+leaving its checkpoint inside that batch. `distill` reports this as *abandoned with records
+unread*; a score over such a run is a score over a partial corpus and is not comparable to
+one over a complete run.
 
-Each row is a single run and volume is noisy: two runs of the identical config produced 71
-and 113 pages. These deltas are far outside that band, but they are not repeated
-measurements. Ten grader defects were found and fixed along the way, every one a false
-negative where the system was right and the key was pinned to one rendering, and every run
-is scored on the final key.
+**Only compare runs whose harness matched.** Changing what a run is — how many sessions a
+batch gets, how records are served — changes the number independently of anything being
+tested. Ablate one thing at a time.
 
 ## What this does not measure
 
