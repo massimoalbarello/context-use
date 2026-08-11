@@ -9,11 +9,9 @@ is the write path end to end: the private MCP serves the corpus through the prod
 the knowledge base. There is no evaluation-specific prompt and no evaluation-specific tool.
 
 **Question answering** (`bun run eval qa:ask`, `qa:score`) puts questions to a knowledge
-base and compares each answer to a sealed key — the read path. Both corpora go through the
-same two commands and differ only in how that knowledge base came to exist: `world-v1` is
-seeded with pages that are already finished knowledge, so it measures retrieval alone;
-`amara-life-v1` is distilled from raw activity first, so it measures distillation and
-retrieval together. See [qa/README.md](qa/README.md).
+base and compares each answer to a sealed key — the read path. `world-v1` is seeded, so it
+measures retrieval alone; `amara-life-v1` is distilled first, so it measures distillation
+and retrieval together. See [qa/README.md](qa/README.md).
 
 **Scenario scoring** (`bun run eval run`) is the earlier, hand-written four-step
 trajectory with deterministic assertions about entities, timelines and reconciliation. It
@@ -41,10 +39,9 @@ with an answer key of its own** — every `gold/*.json` file for `amara-life-v1`
 empty stub with a single `_example` row, and the question sets upstream does populate are
 keyed to `world-v1` slugs.
 
-So `amara-life-v1`'s two keys are both this repository's: the entity list in
-[gold/](gold/README.md), and 99 questions authored against the corpus and checked back
-against it quote by quote. Between them they ask the two halves of the same question —
-whether the right things were written down, and whether they can be got back out.
+Both of `amara-life-v1`'s keys are therefore this repository's: the entity list in
+[gold/](gold/README.md), and 99 authored questions in [qa/](qa/README.md). Between them
+they ask whether the right things were written down, and whether they can be got back out.
 
 ```sh
 bun run eval corpus:verify --corpus world-v1     # working copy against <id>.lock.json
