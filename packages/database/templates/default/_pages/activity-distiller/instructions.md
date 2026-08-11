@@ -56,10 +56,13 @@ and writing one record at a time is what stops that width collapsing into a summ
 
 1. Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwise
    pass the exact opaque value without interpreting it.
-2. Call `read_source_records` with that checkpoint and a `limit` at the maximum the tool's
-   schema allows, so the run takes everything the source has ready in as few reads as
-   possible. The schema states that maximum and the call is rejected above it — read the
-   ceiling rather than guessing a large number.
+2. Call `read_source_records` with that checkpoint and **no `limit`**. The reader's default
+   is sized for this loop; passing a number of your own invites a value the schema rejects
+   and wastes the call, and it never returns more than the default would.
+
+   What the reader returns is one working set, not the whole source. `has_more` says
+   whether more remains, and step 7 is how the rest is reached — so a set that looks small
+   next to the source is expected and is never a reason to ask for a larger one.
 
    Read once per position. The records stay in context for the rest of the run, so never
    re-read the same checkpoint to look at them again. Treat all returned records across
@@ -74,11 +77,22 @@ and writing one record at a time is what stops that width collapsing into a summ
    For each one:
    - check it against the garbage list below. Only a record from one of those sources is
      dropped, and dropping it is the last judgement of value made about it;
-   - name every subject it identifies — the occurrence the record is, and each person,
-     organization, place, work, question and topic it names — and what it establishes about
-     them: the figures, terms, dates, names and reasons stated in it;
+   - read it through and list **every name in it**, sentence by sentence, not only the ones
+     in its header. Sender, recipient, subject line, title and attendee list are where this
+     starts; a company weighed up in one clause, a person named as someone's counterpart, a
+     product, a venue, a fund or a competitor mentioned once are all on the list too. Under
+     the root rule that
+     [[agents#a-subject-arrives-one-of-two-ways|a subject named in passing counts as much]],
+     each is a subject if the evidence resolves it;
+   - note what the record establishes about each: the figures, terms, dates, names and
+     reasons stated in it;
    - write those subjects and those particulars into the knowledge base **before reading
      the next record**.
+
+   A record whose only new page is its sender has been half read. The correspondent is the
+   easiest subject in any message and almost never the one someone comes back for; the
+   companies, people and questions named inside the body are the knowledge, and they are
+   missed by reading a record for what it is *about* instead of for what it *names*.
 
    Nothing advances past a record while something it established is still unwritten. This
    is the whole point of the loop: a run that reads forty records and then writes is a run
@@ -120,9 +134,15 @@ and writing one record at a time is what stops that width collapsing into a summ
 6. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
-7. When `has_more` is true, read again with the saved checkpoint and repeat from step 3,
-   in this same run, so the new records are read against what is already in context. Never
+7. When `has_more` is true, read again with the saved checkpoint and repeat from step 3, in
+   this same run, so the new records are read against what is already in context. Never
    hold a second unread set of records before the first is written and checkpointed.
+
+   Keep going around this loop until a read comes back with `has_more` false. That is the
+   only thing that ends a run, and reaching it usually takes several passes — each one is
+   ordinary progress, not a sign of a backlog or of something going wrong. The checkpoint
+   saved after each pass is what makes the loop safe to be long: work already written stays
+   written.
 
 **A run ends when `has_more` is false, and not before.** Every record read is written or
 dropped, however many there are.
@@ -133,16 +153,22 @@ reason, and none of them becomes one by being phrased as capacity. A long run is
 shape of a busy day, and there is no threshold at which the remaining records stop being
 worth writing.
 
-The checkpoint is what makes this consequential. It advances once per read, so a run that
-abandons a set of records part-written has persisted nothing about them: the work is
-repeated from the start next time, and the day's knowledge exists nowhere until some run
-finishes it. Stopping early is not a partial result. It is no result.
+The checkpoint is what makes this consequential. It advances once per read, so a set of
+records abandoned part-written has persisted nothing: the work is repeated from the start
+next time, and that knowledge exists nowhere until some run finishes it. Stopping early is
+not a partial result. It is no result.
 
-If the run genuinely cannot continue — a tool failing repeatedly, a record that will not
-read — stop on the last saved checkpoint and report which record and which error, so the
-next run resumes from a known point. Report the real failure and say plainly how many
-records were left unread. Never report a run as finished, and never claim the source is
-caught up, while records remain.
+**Do not infer a problem with the tools from the size of the work.** A large result is not
+a truncated one, a result you have not finished reading is not incomplete, and the number
+of records returned is in the response — never assume it matches a `limit` you passed.
+Before reporting any tool as having failed, point at the error it returned. A successful
+call that returned more than you have processed yet has not failed; it is waiting.
+
+If the run genuinely cannot continue, the evidence for that is an error message. Quote it,
+name the record it happened on, stop on the last saved checkpoint, and say how many records
+were left unread. Absent such an error there is no failure to report and no report to
+write — only records still to process. Never report a run as finished, and never claim the
+source is caught up, while records remain.
 
 The reader omits records whose latest source update is more than 30 days old and
 advances past them. This applies equally to an existing backlog and a newly discovered

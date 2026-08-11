@@ -149,6 +149,13 @@ The second half is the one that gets dropped, and dropping it is what leaves a b
 that a conversation happened and not who was in it. A meeting page whose participants are
 plain text has recorded the conversation and lost the people.
 
+**A subject named in passing counts exactly as much as the subject the evidence is about.**
+Evidence gives some of its subjects prominence and leaves the rest in a clause — the
+competitor weighed up in one sentence, the company someone mentions they are tracking, the
+person named as a counterpart. Prominence is not importance, and the subject in the clause
+is frequently the one someone comes back asking about. If the clause resolves it, it earns
+its page on the same terms as the subject in the title.
+
 Evidence and pages are not one-to-one, and forcing them either way fails. Two pull requests
 continuing one line of work are one [[about/tasks/agents|task]] that discusses both and
 links the [[about/projects/agents|project]] they serve. One meeting is a meeting page, four
@@ -245,8 +252,25 @@ valuable merely because they were written first. When a mistaken belief is itsel
 history, label it as what was believed at the time and connect it to the correction.
 Versions retain replaced wording, so the live page need not preserve superseded prose.
 
+Later is not the same as correct. When two sources disagree and nothing settles which is
+right — a role given differently in two places, a figure quoted at three values inside a
+week — **the disagreement is itself the knowledge**, and taking the most recent value
+destroys it. Keep both, say where each came from and when, and say plainly that they
+conflict. A reader who knows the sources disagree can go and check; one handed a single
+confident value cannot, and has no reason to doubt it.
+
+One concise current account does not mean one value per question. It means the page says
+what is known, and where the evidence is in conflict, what is known is that it conflicts.
+Reconcile to a single claim when the evidence actually resolves it, and not before.
+
 Do not append `Updates`, repeated snapshots or chronological tails to a canonical page.
 Reconciliation may leave a page unchanged when new evidence adds no durable value.
+
+A page may have more than one writer, and none of them should assume otherwise. Access to a
+page is not permission to rewrite material someone else owns: correct what your evidence
+actually covers, and preserve every other byte as found. Writers do not coordinate through
+each other's pages, and a section you did not write and cannot evaluate is not yours to
+tidy.
 
 ## Three homes
 
