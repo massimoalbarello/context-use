@@ -987,15 +987,30 @@ describe("MCP knowledge tools", () => {
     expect(response.result?.content?.[0]?.text).not.toContain("# Timeline");
   });
 
-  test("reports unavailable exact page versions without substituting current content", async () => {
+  test("falls back to the oldest retained version when the exact baseline was pruned", async () => {
+    const fallbackCalls: unknown[] = [];
     const pages = pagesWithGuidance({
       async version(_pageId: string, versionNumber: number) {
         return versionNumber === 8 ? {
           path: "people/ada/intro",
           title: "Ada",
           summary: "A collaborator.",
-          body_markdown: "Current content that must not be returned.",
+          body_markdown: "# Ada\n\nStarted a new role.\n",
         } : null;
+      },
+      async oldestRetainedVersionAfter(
+        pageId: string,
+        afterVersionNumber: number,
+        throughVersionNumber: number,
+      ) {
+        fallbackCalls.push({ pageId, afterVersionNumber, throughVersionNumber });
+        return {
+          version_number: 4,
+          path: "people/ada/intro",
+          title: "Ada",
+          summary: "A collaborator.",
+          body_markdown: "# Ada\n\nConsidered a new role.\n",
+        };
       },
     });
     const response = await mcpRequest(serverWith(pages), {
@@ -1012,11 +1027,47 @@ describe("MCP knowledge tools", () => {
       },
     });
 
+    expect(fallbackCalls).toEqual([{
+      pageId: "11111111-1111-4111-8111-111111111111",
+      afterVersionNumber: 3,
+      throughVersionNumber: 8,
+    }]);
+    expect(response.result?.structuredContent).toMatchObject({
+      status: "partial",
+      previous_version_number: 3,
+      compared_from_version_number: 4,
+      version_number: 8,
+      markdown_changes: [{
+        before_markdown: "Considered a new role.\n",
+        after_markdown: "Started a new role.\n",
+      }],
+    });
+  });
+
+  test("reports an unavailable window end without substituting another version", async () => {
+    const pages = pagesWithGuidance({
+      async version() {
+        return null;
+      },
+    });
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 18,
+      method: "tools/call",
+      params: {
+        name: "get_page_delta",
+        arguments: {
+          page_id: "11111111-1111-4111-8111-111111111111",
+          previous_version_number: 3,
+          version_number: 8,
+        },
+      },
+    });
+
     expect(response.result?.structuredContent).toMatchObject({
       status: "unavailable",
-      missing_version_numbers: [3],
+      missing_version_numbers: [8],
     });
-    expect(response.result?.content?.[0]?.text).not.toContain("Current content");
   });
 
   test("returns ready-to-paste formatting Markdown for image uploads", async () => {

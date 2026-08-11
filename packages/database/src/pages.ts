@@ -361,6 +361,23 @@ export class PageRepository {
     return result.rows[0] ?? null;
   }
 
+  async oldestRetainedVersionAfter(
+    pageId: string,
+    afterVersionNumber: number,
+    throughVersionNumber: number,
+  ) {
+    const result = await this.pool.query(
+      `SELECT id,page_id,version_number,path,title,summary,body_markdown,commit_message,
+        actor_kind,actor_subject,created_at
+       FROM knowledge_page_versions
+       WHERE page_id=$1 AND version_number>$2 AND version_number<=$3
+       ORDER BY version_number ASC
+       LIMIT 1`,
+      [pageId, afterVersionNumber, throughVersionNumber],
+    );
+    return result.rows[0] ?? null;
+  }
+
   async changesSince(options: {
     cursor?: string;
     pageToken?: string;

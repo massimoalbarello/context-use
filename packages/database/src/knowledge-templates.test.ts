@@ -954,6 +954,8 @@ describe("knowledge templates", () => {
     expect(normalizedComposerLower).toContain("call `get_knowledge_changes` with that cursor and no `limit`");
     expect(normalizedComposerLower).toContain("call `get_page_delta` once");
     expect(normalizedComposerLower).toContain("do not compute another diff");
+    expect(normalizedComposerLower).toContain("a `partial` delta means the requested baseline was pruned");
+    expect(normalizedComposerLower).toContain("do not infer the omitted changes");
     expect(normalizedComposerLower).toContain("the compact deltas are candidates, not an outline to reproduce");
     expect(normalizedComposerLower).toContain("if omitting a change leaves the day's movements");
     expect(normalizedComposerLower).toContain("a one-word correction contributes only the corrected meaning");

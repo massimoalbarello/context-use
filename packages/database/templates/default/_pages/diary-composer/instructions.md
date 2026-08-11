@@ -48,10 +48,11 @@ run.
    reaching this run; `inline_changes` make small replacements easier to see. Do not compute
    another diff.
 4. When `previous_version_number` is null, the delta presents the page as baseline evidence,
-   while activity dates still come only from what the page says. When the delta is
-   `unavailable`, report the missing version and do not reconstruct it from the current page
-   or guess what changed. The retained window can be retried after the version problem is
-   repaired.
+   while activity dates still come only from what the page says. A `partial` delta means the
+   requested baseline was pruned: use the returned delta from
+   `compared_from_version_number` through `version_number` and do not infer the omitted
+   changes. When the delta is `unavailable`, report it and do not reconstruct it from the
+   current page or guess what changed.
 
 A changed page is not itself an activity. Its `changed_at`, creation time, commit time and
 the composer's run date never choose a diary day. A one-word correction contributes only

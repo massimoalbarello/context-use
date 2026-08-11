@@ -82,6 +82,32 @@ describe("durable page change cursor", () => {
   });
 });
 
+describe("retained page versions", () => {
+  test("finds the oldest retained version inside a requested comparison range", async () => {
+    const calls: Array<{ sql: string; values: unknown[] | undefined }> = [];
+    const pool = {
+      async query(sql: string, values?: unknown[]) {
+        calls.push({ sql, values });
+        return { rows: [{ version_number: 6, body_markdown: "Oldest retained body" }] };
+      },
+    } as unknown as Pool;
+    const pages = new PageRepository(pool);
+
+    expect(await pages.oldestRetainedVersionAfter(
+      "11111111-1111-4111-8111-111111111111",
+      3,
+      10,
+    )).toMatchObject({ version_number: 6, body_markdown: "Oldest retained body" });
+    expect(calls[0]?.sql).toContain("version_number>$2 AND version_number<=$3");
+    expect(calls[0]?.sql).toContain("ORDER BY version_number ASC");
+    expect(calls[0]?.values).toEqual([
+      "11111111-1111-4111-8111-111111111111",
+      3,
+      10,
+    ]);
+  });
+});
+
 describe("dashboard page change history", () => {
   test("orders by change time with sequence as a stable pagination tie-breaker", async () => {
     const calls: Array<{ sql: string; values: unknown[] | undefined }> = [];

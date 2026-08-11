@@ -348,7 +348,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("get_page_delta", {
-    description: "Compare the exact immutable page versions named by a get_knowledge_changes row. Returns only changed path, title and summary fields plus exact line-numbered before/after Markdown blocks; small replacements also identify their changed words or whitespace. The rest of the page is omitted. A null previous_version_number treats the current version as newly available baseline evidence. If either requested version is unavailable, the response says so rather than substituting the current page. Use get_page separately only when the compact delta needs current entity context.",
+    description: "Compare the immutable page versions named by a get_knowledge_changes row. Normally this is the exact cursor-baseline-to-window-end delta. If that baseline was pruned, the tool instead compares the oldest retained version after it and at or before the window end, returning partial status and the actual compared_from_version_number. Returns only changed path, title and summary fields plus exact line-numbered before/after Markdown blocks; small replacements also identify their changed words or whitespace. The rest of the page is omitted. A null previous_version_number treats the end version as newly available baseline evidence. Use get_page separately only when the compact delta needs current entity context.",
     inputSchema: z.object({
       page_id: z.string().uuid(),
       previous_version_number: z.number().int().positive().nullable(),
@@ -364,29 +364,36 @@ export async function createMcpServer(
     }),
     annotations: { readOnlyHint: true },
   }, async ({ page_id, previous_version_number, version_number }) => {
-    const [previous, current] = await Promise.all([
+    const [requestedPrevious, current] = await Promise.all([
       previous_version_number === null
         ? Promise.resolve(null)
         : pages.version(page_id, previous_version_number),
       pages.version(page_id, version_number),
     ]);
-    const missingVersions = [
-      ...(previous_version_number !== null && !previous ? [previous_version_number] : []),
-      ...(!current ? [version_number] : []),
-    ];
-    if (!current || missingVersions.length) {
+    if (!current) {
       return jsonObjectContent({
         status: "unavailable",
         page_id,
         previous_version_number,
         version_number,
-        missing_version_numbers: missingVersions,
+        missing_version_numbers: [version_number],
       });
     }
+    const retainedPrevious = previous_version_number !== null && !requestedPrevious
+      ? await pages.oldestRetainedVersionAfter(
+        page_id,
+        previous_version_number,
+        version_number,
+      ) ?? current
+      : null;
+    const previous = requestedPrevious ?? retainedPrevious;
     return jsonObjectContent({
-      status: "available",
+      status: retainedPrevious ? "partial" : "available",
       page_id,
       previous_version_number,
+      ...(retainedPrevious
+        ? { compared_from_version_number: retainedPrevious.version_number }
+        : {}),
       version_number,
       ...await pageDelta(previous, current),
     });
