@@ -915,9 +915,13 @@ describe("knowledge templates", () => {
     expect(guides.skills).toContain("page path leaf and YAML frontmatter `name` are exactly equal");
     expect(normalize(guides.skills)).toContain("page metadata summary is the discovery mechanism");
     expect(normalize(guides.skills)).toContain("a local exception to the root entity-folder default");
-    expect(normalize(guides.automations)).toContain("Automations do not coordinate through one another's instruction pages");
-    expect(normalize(guides.automations)).toContain("preserve every other byte as found");
+    // The multi-writer rule governs every writer, not only automations, so it lives in the
+    // root guide; this one keeps only the layout of its own directory.
+    expect(normalizedRoot).toContain("preserve every other byte as found");
+    expect(normalize(guides.automations)).not.toContain("preserve every other byte as found");
     expect(normalize(guides.automations)).toContain("a local exception to the root `intro` entry-point convention");
+    expect(normalize(guides.automations)).toContain("Run logs, retry histories, source records");
+    expect(normalize(guides.automations)).not.toContain("about/diary/");
     expect(normalize(guides.diary)).toContain("A day folder is a chronological container rather than a durable entity");
 
     expect(normalizedDistiller).toContain("Before the first mutation in a guidance scope");

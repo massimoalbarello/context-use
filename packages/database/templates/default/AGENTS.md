@@ -266,6 +266,12 @@ Reconcile to a single claim when the evidence actually resolves it, and not befo
 Do not append `Updates`, repeated snapshots or chronological tails to a canonical page.
 Reconciliation may leave a page unchanged when new evidence adds no durable value.
 
+A page may have more than one writer, and none of them should assume otherwise. Access to a
+page is not permission to rewrite material someone else owns: correct what your evidence
+actually covers, and preserve every other byte as found. Writers do not coordinate through
+each other's pages, and a section you did not write and cannot evaluate is not yours to
+tidy.
+
 ## Three homes
 
 Durable pages explain their subjects; the [[about/diary/agents|diary]] records lived
