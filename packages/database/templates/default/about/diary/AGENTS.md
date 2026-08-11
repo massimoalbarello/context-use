@@ -32,14 +32,22 @@ date, and give any other page a descriptive title that remains clear away from t
 
 Write prose, not a digest of timeline bullets. The intro carries the thread between the
 day's activities: what led to what, which work resumed, where attention shifted and what
-was left open. Every distinct activity the evidence records appears, with inline links to
-the most specific occurrences and durable subjects that let a reader continue into the
-detail.
+was left open. Include the distinct activities that matter to that day-level account, with
+inline links to the most specific occurrences and durable subjects that let a reader
+continue into the detail.
 
 That link is usually enough. Figures, terms, participant biographies, full reasoning and
 other particulars already explained by an entity page stay there. Repeat one only when the
 day's transition, decision or consequence cannot be understood without it. The diary is
 the route through the knowledge, not a second copy of it.
+
+An entity or timeline change is a candidate, not a quota. Keep it in the diary when omitting
+it would hide something meaningful the owner did, experienced, decided or learned, a
+movement in an ongoing thread, a consequence or open loop, or a real connection needed to
+understand the day. Maintenance, supporting facts, routine details without day-level
+meaning and duplicated views of the same evidence stay on their durable pages. Judge the
+change by its role in the story rather than its size, and never invent importance so every
+changed page gets a mention.
 
 Several timeline events may be different entity-side views of the same activity. In the
 diary they become one passage carrying all useful links, not one sentence per timeline.

@@ -850,6 +850,8 @@ describe("knowledge templates", () => {
     expect(normalize(guides.diary)).toContain("Correct what is wrong or misleading");
     expect(guides.diary).toContain("[[automations/diary-composer/instructions|diary composer]]");
     expect(normalize(guides.diary)).toContain("The diary is the route through the knowledge, not a second copy of it");
+    expect(normalize(guides.diary)).toContain("An entity or timeline change is a candidate, not a quota");
+    expect(normalize(guides.diary)).toContain("Judge the change by its role in the story rather than its size");
     expect(normalize(guides.diary)).toContain("Most days need only `intro`");
     expect(normalize(guides.diary)).toContain("one page or become several connected views");
     expect(normalize(guides.diary)).toContain("There are no required sections");
@@ -950,14 +952,17 @@ describe("knowledge templates", () => {
     expect(diaryComposer).not.toContain("automations/activity-distiller/");
     expect(activityDistiller).not.toContain("automations/diary-composer/");
     expect(normalizedComposerLower).toContain("call `get_knowledge_changes` with that cursor and no `limit`");
-    expect(normalizedComposerLower).toContain("only the semantic difference between the versions is evidence newly reaching this run");
+    expect(normalizedComposerLower).toContain("call `get_page_delta` once");
+    expect(normalizedComposerLower).toContain("do not compute another diff");
+    expect(normalizedComposerLower).toContain("the compact deltas are candidates, not an outline to reproduce");
+    expect(normalizedComposerLower).toContain("if omitting a change leaves the day's movements");
     expect(normalizedComposerLower).toContain("a one-word correction contributes only the corrected meaning");
     expect(normalizedComposerLower).toContain("there is no recency cutoff");
     expect(normalizedComposerLower).toContain("creates or reconciles its historical day");
     expect(normalizedComposerLower).toContain("its `changed_at`, creation time, commit time and the composer's run date never choose a diary day");
     expect(normalizedComposerLower).toContain("make `intro` the prose entry point");
     expect(normalizedComposerLower).toContain("the same meeting, exchange, decision or movement recorded from several entity sides is one activity");
-    expect(normalizedComposerLower).toContain("do not mine those pages for facts to repeat in the diary");
+    expect(normalizedComposerLower).toContain("do not mine it for facts to repeat in the diary");
     expect(normalizedComposerLower).toContain("use `get_page_history` as far as needed");
     expect(normalizedComposerLower).toContain("use `search_pages` with the canonical subject path to find the most recent diary page");
     expect(normalizedComposerLower).toContain("use separate paragraphs, descriptive headings or separate day views");

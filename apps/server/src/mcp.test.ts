@@ -843,6 +843,7 @@ describe("MCP knowledge tools", () => {
       "delete_directory",
       "get_page",
       "get_knowledge_changes",
+      "get_page_delta",
       "prepare_knowledge_write",
       "load_skill",
       "create_page",
@@ -925,6 +926,97 @@ describe("MCP knowledge tools", () => {
       has_more: true,
     });
     expect(response.result?.content?.[0]?.text).not.toContain("body_markdown");
+  });
+
+  test("returns one compact delta for the exact versions in a change row", async () => {
+    const calls: unknown[] = [];
+    const pages = pagesWithGuidance({
+      async version(pageId: string, versionNumber: number) {
+        calls.push({ pageId, versionNumber });
+        const versions = {
+          2: {
+            path: "projects/context-use/timeline",
+            title: "Context Use timeline",
+            summary: "Important project developments.",
+            body_markdown: "# Timeline\n\n## 2026\n\n- 2026-08-10 — Opened the draft.\n",
+          },
+          4: {
+            path: "projects/context-use/timeline",
+            title: "Context Use timeline",
+            summary: "Important project developments.",
+            body_markdown: "# Timeline\n\n## 2026\n\n- 2026-08-10 — Opened the pull request.\n",
+          },
+        };
+        return versions[versionNumber as keyof typeof versions] ?? null;
+      },
+    });
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 16,
+      method: "tools/call",
+      params: {
+        name: "get_page_delta",
+        arguments: {
+          page_id: "11111111-1111-4111-8111-111111111111",
+          previous_version_number: 2,
+          version_number: 4,
+        },
+      },
+    });
+
+    expect(calls).toEqual([
+      { pageId: "11111111-1111-4111-8111-111111111111", versionNumber: 2 },
+      { pageId: "11111111-1111-4111-8111-111111111111", versionNumber: 4 },
+    ]);
+    expect(response.result?.structuredContent).toMatchObject({
+      status: "available",
+      previous_version_number: 2,
+      version_number: 4,
+      metadata_changes: [],
+      markdown_changes: [{
+        old_start_line: 5,
+        new_start_line: 5,
+        before_markdown: "- 2026-08-10 — Opened the draft.\n",
+        after_markdown: "- 2026-08-10 — Opened the pull request.\n",
+        inline_changes: [
+          { kind: "removed", value: "draft" },
+          { kind: "added", value: "pull request" },
+        ],
+      }],
+    });
+    expect(response.result?.content?.[0]?.text).not.toContain("# Timeline");
+  });
+
+  test("reports unavailable exact page versions without substituting current content", async () => {
+    const pages = pagesWithGuidance({
+      async version(_pageId: string, versionNumber: number) {
+        return versionNumber === 8 ? {
+          path: "people/ada/intro",
+          title: "Ada",
+          summary: "A collaborator.",
+          body_markdown: "Current content that must not be returned.",
+        } : null;
+      },
+    });
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 17,
+      method: "tools/call",
+      params: {
+        name: "get_page_delta",
+        arguments: {
+          page_id: "11111111-1111-4111-8111-111111111111",
+          previous_version_number: 3,
+          version_number: 8,
+        },
+      },
+    });
+
+    expect(response.result?.structuredContent).toMatchObject({
+      status: "unavailable",
+      missing_version_numbers: [3],
+    });
+    expect(response.result?.content?.[0]?.text).not.toContain("Current content");
   });
 
   test("returns ready-to-paste formatting Markdown for image uploads", async () => {

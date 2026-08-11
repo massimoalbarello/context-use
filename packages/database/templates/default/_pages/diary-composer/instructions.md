@@ -42,22 +42,23 @@ run.
    `has_more` is false. The first call fixes the window, so changes made during this run
    remain for the next one.
 3. Ignore rows under `about/diary/` and `automations/diary-composer/` as activity input.
-   For every other non-deleted row, read the exact `page_id` and `version_number` with
-   `get_page_version`. When the row has a `previous_version_number`, read that exact version
-   too. Compare the two versions' paths, titles, summaries and bodies. The later whole page
-   is context; only the semantic difference between the versions is evidence newly reaching
-   this run.
-4. When `previous_version_number` is null, the row represents either a page created in this
-   window or the initial scan. Treat the returned version as baseline evidence, while still
-   taking activity dates only from what the page says. If an exact version has fallen out of
-   retention, use `get_page_history` to find the nearest useful retained comparison. Never
-   substitute an entire current page as newly happened activity; report the ambiguity when
-   the delta cannot be recovered safely.
+   For every other non-deleted row, call `get_page_delta` once with its exact `page_id`,
+   `previous_version_number` and `version_number`. Its metadata changes and line-numbered
+   `before_markdown` and `after_markdown` blocks are the complete worklist of evidence newly
+   reaching this run; `inline_changes` make small replacements easier to see. Do not compute
+   another diff.
+4. When `previous_version_number` is null, the delta presents the page as baseline evidence,
+   while activity dates still come only from what the page says. When the delta is
+   `unavailable`, report the missing version and do not reconstruct it from the current page
+   or guess what changed. The retained window can be retried after the version problem is
+   repaired.
 
 A changed page is not itself an activity. Its `changed_at`, creation time, commit time and
 the composer's run date never choose a diary day. A one-word correction contributes only
-the corrected meaning, not the rest of the page around it. Unchanged passages may help
-identify a link or understand the correction, but they do not become today's story.
+the corrected meaning, not the rest of the page around it. If a changed block is ambiguous,
+call `get_page` for the latest page only to identify its subject, relationship, activity
+date or best link. Unchanged passages are context, never new evidence or a reason to retell
+the page.
 
 Timeline rows are paths ending in `/timeline` or promoted year pages beneath `/timeline/`.
 Their changed event lines are the primary chronology. A non-timeline delta may corroborate
@@ -72,23 +73,34 @@ existing diary passages that linked the removed page, then reconcile a passage o
 retained evidence shows exactly what support was withdrawn. Deletion does not prove that an
 activity never happened or that the opposite happened.
 
-## Choose the affected days from the delta
+## Select the diary-worthy changes and their days
 
-Collect each dated activity that the semantic deltas add, materially revise or withdraw.
-The activity's own date chooses its day. There is no recency cutoff: an activity from years
-ago that first reaches the knowledge base today creates or reconciles its historical day,
-not the day on which the distiller or composer happened to run.
+The compact deltas are candidates, not an outline to reproduce. Keep a changed activity
+when it matters to the day-level account: it records something the owner did, experienced,
+decided or learned; moves an ongoing thread; creates a consequence or open loop; or supplies
+a real connection without which the day's story would be misleading or hard to follow.
+Diary-worthiness is about narrative role, not size: a quiet action can matter, and a large
+entity-page edit can still be only reference detail.
+
+Leave a change on its entity page when it is maintenance, a duplicated view of evidence
+already selected, a routine detail with no bearing on the day-level thread, or a fact whose
+only value is the fuller durable account. A timeline event is strong dated evidence, not an
+automatic diary sentence. If omitting a change leaves the day's movements, decisions,
+consequences and continuities intact, it does not need a diary beat. Do not manufacture
+importance merely to use every delta.
+
+For every selected activity, its own date chooses its day. There is no recency cutoff: an
+activity from years ago that first reaches the knowledge base today creates or reconciles
+its historical day, not the day on which the composer happened to run.
 
 When a correction moves an activity to another date, reconcile both the formerly supported
 day and the corrected day. When a small edit changes a detail that the diary neither states
 nor needs for its connective account, the affected day may require no write at all. Never
 re-narrate the whole page merely because one fragment changed.
 
-A timeline event has already been selected as lived chronology by its writer under the root
-timeline rules, so do not discard a changed event for looking routine, small or repetitive.
-Repetition across pages is different: the same meeting, exchange, decision or movement
-recorded from several entity sides is one activity with several useful links, not several
-diary beats.
+The same meeting, exchange, decision or movement recorded from several entity sides is one
+activity with several useful links, not several diary beats. Select it once, using the delta
+that states it most clearly and the other changed pages only for links or corroboration.
 
 Revise only days whose support changed in this fixed window. A day unaffected by the
 semantic deltas stays exactly as it is. A valid run may therefore update only the
@@ -98,7 +110,7 @@ checkpoint.
 
 For each affected day:
 
-1. Group its changed evidence into distinct activities. A shared occurrence link, date,
+1. Group its selected changed evidence into distinct activities. A shared occurrence link, date,
    participants, terms or outcome can show that several deltas describe the same activity.
    Collapse only what the evidence actually joins; two things on the same date are not one
    thing for that reason.
@@ -109,10 +121,10 @@ For each affected day:
    composer's material from owner additions. Preserve uncertain passages.
    If a legacy day has `log` but no `intro`, preserve `log` as a companion view and create
    an `intro` that reaches it in context; do not copy the old page into the new entry point.
-3. Read linked occurrence pages and the smallest amount of current entity context needed
-   to identify the relationship and choose useful destination links. Do not mine those
-   pages for facts to repeat in the diary. The changed evidence tells what moved; the
-   entity pages tell where the detail lives.
+3. Read a latest occurrence or entity page only when the compact delta does not provide
+   enough context to identify the relationship, understand the day-level consequence or
+   choose a useful destination link. Do not mine it for facts to repeat in the diary. The
+   changed evidence tells what moved; the current page tells where the detail lives.
 4. Use `browse_directory` on the relevant year or month to find the latest earlier diary
    day, and use `search_pages` with the canonical subject path to find the most recent
    diary page connected to each project, task, thread or other arc that genuinely
@@ -130,7 +142,7 @@ choose the shape; no section or heading is mandatory.
 
 - Make `intro` the prose entry point. Tell the transitions, consequences and open threads
   that make the day intelligible, not one bullet or sentence per timeline event.
-- Represent every distinct activity supported by the changed evidence, linking its most
+- Represent every distinct selected activity, linking its most
   specific occurrence and the durable subjects that route a reader to the full account.
   Name a subject once as a link under the root rule. Do not duplicate figures, terms,
   biography or reasoning held on those pages unless one particular is necessary to

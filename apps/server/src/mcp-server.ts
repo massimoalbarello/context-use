@@ -26,6 +26,7 @@ import {
   verifyGuidanceReceipt,
 } from "./mcp-guidance-receipt.ts";
 import type { SourceRecordReader } from "./nango-records.ts";
+import { pageDelta } from "./page-delta.ts";
 
 export type McpContext = {
   clientId: string;
@@ -324,7 +325,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("get_knowledge_changes", {
-    description: "Read the durable, context-use-recorded page changes after the opaque cursor from the previous successful automation run. The ledger contains paths and commit metadata but never bodies or diffs. Within the fixed scan window, multiple edits to one page collapse to its latest change. Each row includes previous_version_number for the version current at the input cursor, or null when there was no prior version, so callers can compare the exact semantic delta across the collapsed window with get_page_version. Omit cursor only on the first run. When has_more is true, call again with next_page_token and no cursor; persist next_cursor only after every page has been processed and the run has completed successfully.",
+    description: "Read the durable, context-use-recorded page changes after the opaque cursor from the previous successful automation run. The ledger contains paths and commit metadata but never bodies or diffs. Within the fixed scan window, multiple edits to one page collapse to its latest change. Each row includes previous_version_number for the version current at the input cursor, or null when there was no prior version; pass it with page_id and version_number to get_page_delta for one compact comparison. Omit cursor only on the first run. When has_more is true, call again with next_page_token and no cursor; persist next_cursor only after every page has been processed and the run has completed successfully.",
     inputSchema: z.object({
       cursor: z.string().regex(/^cu-page-changes-v1\.[0-9a-z]+$/).optional()
         .describe("Opaque next_cursor persisted by the harness after the previous successful complete scan."),
@@ -344,6 +345,51 @@ export async function createMcpServer(
       ...(page_token ? { pageToken: page_token } : {}),
       limit,
     }));
+  });
+
+  server.registerTool("get_page_delta", {
+    description: "Compare the exact immutable page versions named by a get_knowledge_changes row. Returns only changed path, title and summary fields plus exact line-numbered before/after Markdown blocks; small replacements also identify their changed words or whitespace. The rest of the page is omitted. A null previous_version_number treats the current version as newly available baseline evidence. If either requested version is unavailable, the response says so rather than substituting the current page. Use get_page separately only when the compact delta needs current entity context.",
+    inputSchema: z.object({
+      page_id: z.string().uuid(),
+      previous_version_number: z.number().int().positive().nullable(),
+      version_number: z.number().int().positive(),
+    }).strict().superRefine((value, context) => {
+      if (value.previous_version_number !== null
+        && value.previous_version_number >= value.version_number) {
+        context.addIssue({
+          code: "custom",
+          message: "previous_version_number must be less than version_number",
+        });
+      }
+    }),
+    annotations: { readOnlyHint: true },
+  }, async ({ page_id, previous_version_number, version_number }) => {
+    const [previous, current] = await Promise.all([
+      previous_version_number === null
+        ? Promise.resolve(null)
+        : pages.version(page_id, previous_version_number),
+      pages.version(page_id, version_number),
+    ]);
+    const missingVersions = [
+      ...(previous_version_number !== null && !previous ? [previous_version_number] : []),
+      ...(!current ? [version_number] : []),
+    ];
+    if (!current || missingVersions.length) {
+      return jsonObjectContent({
+        status: "unavailable",
+        page_id,
+        previous_version_number,
+        version_number,
+        missing_version_numbers: missingVersions,
+      });
+    }
+    return jsonObjectContent({
+      status: "available",
+      page_id,
+      previous_version_number,
+      version_number,
+      ...await pageDelta(previous, current),
+    });
   });
 
   server.registerTool("get_page_history", {

@@ -346,8 +346,10 @@ Date a timeline event to when the thing happened, which is not always when it wa
 An old project written up today, a book finished years ago and a conference attended last
 week each take their own date. Dating one into the past does not make the page's write time
 an event in the owner's life: an automation maintaining knowledge is not diary activity.
-Whenever that event first reaches the diary composer, it creates or reconciles the day of
-the event itself, however far in the past that day is.
+Whenever that event first reaches the diary composer, the event's own date is the only day
+it may create or reconcile for that evidence, however far in the past that day is. The
+[[about/diary/agents|diary guide]] decides whether it belongs in the day's connective
+account; its entity timeline remains the full chronology either way.
 
 When a timeline grows unwieldy, promote it to `timeline/<YYYY>` pages and repair inbound
 links in the same coherent change. Most entities never need this.

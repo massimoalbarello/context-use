@@ -17,7 +17,7 @@
   },
   "automations/diary-composer": {
     "title": "Diary composer",
-    "summary": "Canonical instructions and minimal checkpoint state for composing dated activity deltas into linked day narratives."
+    "summary": "Canonical instructions and minimal checkpoint state for composing diary-worthy activity deltas into linked day narratives."
   },
   "automations/guideline-consistency-review": {
     "title": "Guideline consistency review",
