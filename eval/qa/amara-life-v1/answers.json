@@ -427,7 +427,12 @@
     "id": "q-0020",
     "relevant": [],
     "expected_names": [
-      "2-3x"
+      [
+        "2-3x",
+        "2-3",
+        "two to three times",
+        "2 to 3 times"
+      ]
     ],
     "seed": "slack/sl-0085",
     "link_types": [],
@@ -761,7 +766,10 @@
     "id": "q-0036",
     "relevant": [],
     "expected_names": [
-      "8M",
+      [
+        "8M",
+        "8 million"
+      ],
       [
         "mid-February",
         "mid February"

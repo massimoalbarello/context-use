@@ -98,7 +98,15 @@ met, wrote to or heard from; an organization they evaluated, decided about, work
 or transacted with; a question they took a position on — each is part of what the owner
 did, and earns its page the first time it happens rather than after it repeats. A name
 that appears only inside someone else's account, with no engagement by the owner, stays
-plain text under the page that mentioned it. Each directory guide says what engagement
+plain text under the page that mentioned it.
+
+That threshold decides which subjects exist. It does not decide what belongs on a subject
+that already exists. Once something is in this base, what the evidence says about it is its
+own, whoever said it and whether or not the owner replied: a colleague reporting a
+portfolio company's quarter in a shared channel is that company's news, and it belongs on
+that company's timeline exactly as the owner's own account of it would. Requiring the owner
+to have engaged with each piece of evidence keeps only the days they happened to speak, and
+loses the days they were told something — which are the days a knowledge base is for. Each directory guide says what engagement
 means in its subtree and may narrow the threshold for its own kind of subject; none of
 them replaces it with a requirement to wait for repetition.
 

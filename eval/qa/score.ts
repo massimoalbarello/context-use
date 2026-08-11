@@ -74,7 +74,14 @@ function names(text: string, name: string): boolean {
   const needle = normalise(name);
   if (!needle) return false;
   // Padded so "Mia Brown" cannot match inside a longer token run that merely contains it.
-  return ` ${normalise(text)} `.includes(` ${needle} `);
+  const haystack = ` ${normalise(text)} `;
+  // A key written singular is satisfied by the plural and the other way round: "power
+  // purchase agreements" is the same term as "power purchase agreement", and pinning the
+  // number of the last word grades grammar rather than knowledge. No wrong answer becomes
+  // right this way, because a different term matches neither form.
+  return haystack.includes(` ${needle} `)
+    || haystack.includes(` ${needle}s `)
+    || (needle.endsWith("s") && haystack.includes(` ${needle.slice(0, -1)} `));
 }
 
 /** True when any rendering of the required element is asserted in `text`. */
