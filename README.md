@@ -190,34 +190,49 @@ external harness once or twice a day with the prompt: “Open and follow
 is:
 
 1. Read the instruction and state pages, call `read_source_records` with the stored
-   checkpoint, and process exactly that returned batch. Records whose latest source
-   update or deletion is more than 30 days old are skipped by the reader; recently
-   updated records about older activity are processed normally.
-2. Interpret all source Markdown in the batch together. Connections are provenance, not
-   page boundaries: records from different services can describe or corroborate the same
-   day, project, decision or entity. Treat a `deleted` action as withdrawn evidence, not
-   as current source material.
-3. Search and read existing knowledge before writing, including changes made for earlier
-   batches in the same run. Reconcile new evidence into the current canonical account by
-   rewriting and reorganizing it; merge overlaps, remove superseded detail, and create a
-   new semantic page only when no existing subject fits.
-4. Put only material temporal activity on at most one automation-owned diary page for
-   each date when it actually happened, with links to its projects, tasks and useful
-   entities. Ensure the date also has its required `log`; when creating one, keep it to
-   the distiller's companion-page bullet without inventing owner narrative. Omit routine
-   activity. Never put cursors, run metadata or one page per source in the diary.
-5. Create project, task, person and company pages selectively. Repetition and material
-   involvement can justify an entity; a participant list, repository name or isolated
-   record cannot.
-6. After every intended knowledge write for that batch succeeds, replace the stable
-   state page with its `next_checkpoint`. Only then, if `has_more` is true, read and
-   reconcile the next batch. Continue until `has_more` is false. On failure, do not save
-   the failed batch's checkpoint. A completed run leaves the next scheduled invocation
-   with only later lifecycle changes to process.
+   checkpoint and no explicit limit. Records whose latest source update or deletion is
+   more than 30 days old are skipped by the reader; recently updated records about older
+   activity are processed normally.
+2. Read the returned set widely enough to establish its cast, then process kept records
+   one at a time. Discard only the instruction page's garbage sources. For every other
+   record, extract every identifiable subject it names and every particular it establishes,
+   including names that occur only in the body.
+3. Search existing knowledge before writing each record. Reconcile its occurrence or unit
+   of work and all identified people, organizations, places, works, questions and topics
+   into their own connected pages. Identity, not repetition or perceived importance, is
+   the threshold for a page.
+4. Record dated activity on the timelines of the materially involved entities, linking
+   occurrence pages where applicable. Never create, edit or link the diary; the diary
+   composer owns that direction on its independent schedule.
+5. Save the returned `next_checkpoint` only after every intended mutation for the working
+   set succeeds. If `has_more` is true, read the next set in the same run and continue until
+   it is false. On failure, keep the last successfully saved checkpoint for replay.
 
 The default knowledge template carries the detailed placement and maintenance rules,
 including `about/projects/` for enduring work, finite future-facing frames under
 `about/tasks/`, and whole-page reconciliation instead of append-only updates.
+
+### Diary composition automation
+
+The default template also installs `automations/diary-composer/instructions` and its
+create-only checkpoint state. Schedule it independently with the prompt: “Open and follow
+`automations/diary-composer/instructions`; execute exactly one run.” Running it well after
+the usual activity-distillation schedule makes a complete day likely, but there is no
+coordination contract between the two automations: the composer never reads or waits on
+the distiller's instructions, state or report.
+
+The composer reads changed timeline versions, collapses the same activity repeated across
+several entity timelines and writes prose under `about/diary/<YYYY>/<MM>/<DD>/`. Entity
+pages keep the particulars; the diary links them into the day's movement and links genuine
+continuations to the latest useful earlier day. Unrelated subjects remain separate through
+descriptive headings or connected day views instead of being forced into one narrative.
+There is no required section schema: a day may be one `log` or a small hypermedia of
+day-specific pages entered through it.
+
+The composer advances its change-ledger checkpoint only after every affected day succeeds.
+If another writer is still working when it starts, the fixed window remains safe. Changes
+committed during the run stay beyond its saved cursor, and the next scheduled composition
+reconciles them into the affected day.
 
 ### Guideline consistency review automation
 

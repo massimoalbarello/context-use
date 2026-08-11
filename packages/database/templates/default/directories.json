@@ -17,7 +17,7 @@
   },
   "automations/diary-composer": {
     "title": "Diary composer",
-    "summary": "Canonical instructions and minimal cursor state for composing each day's diary from the entity timelines that changed."
+    "summary": "Canonical instructions and minimal checkpoint state for composing changed timelines into linked day narratives."
   },
   "automations/guideline-consistency-review": {
     "title": "Guideline consistency review",
@@ -65,7 +65,7 @@
   },
   "about/diary": {
     "title": "Diary",
-    "summary": "The owner's chronological record of lived context, actions, decisions, and current state."
+    "summary": "The owner's prose chronology, connecting each day's activity to its durable subjects and genuine earlier threads."
   },
   "about/projects": {
     "title": "Projects",
