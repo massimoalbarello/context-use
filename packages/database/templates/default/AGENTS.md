@@ -149,18 +149,12 @@ The second half is the one that gets dropped, and dropping it is what leaves a b
 that a conversation happened and not who was in it. A meeting page whose participants are
 plain text has recorded the conversation and lost the people.
 
-**A subject named in passing counts exactly as much as the one the evidence is about.** This
-is where the second half actually fails, because a record makes some of its subjects
-obvious and buries the rest. An email announces its sender and its headline deal; the
-competitor weighed up in the third paragraph, the company someone says they are tracking,
-the person named as a counterpart are all mentioned once and never in a header. Those are
-the ones that go missing, and they are frequently the answer to what someone comes back
-asking.
-
-So read the whole record for names, not the parts that announce themselves. Sender,
-recipient, subject line and title are where extraction starts, never where it stops. A
-subject appearing in one clause of one sentence is identified if that clause resolves it,
-and it earns its page on the same terms as the subject in the title.
+**A subject named in passing counts exactly as much as the subject the evidence is about.**
+Evidence gives some of its subjects prominence and leaves the rest in a clause — the
+competitor weighed up in one sentence, the company someone mentions they are tracking, the
+person named as a counterpart. Prominence is not importance, and the subject in the clause
+is frequently the one someone comes back asking about. If the clause resolves it, it earns
+its page on the same terms as the subject in the title.
 
 Evidence and pages are not one-to-one, and forcing them either way fails. Two pull requests
 continuing one line of work are one [[about/tasks/agents|task]] that discusses both and
@@ -257,6 +251,17 @@ claims that later evidence shows to be wrong or misleading; those claims do not 
 valuable merely because they were written first. When a mistaken belief is itself useful
 history, label it as what was believed at the time and connect it to the correction.
 Versions retain replaced wording, so the live page need not preserve superseded prose.
+
+Later is not the same as correct. When two sources disagree and nothing settles which is
+right — a role given differently in two places, a figure quoted at three values inside a
+week — **the disagreement is itself the knowledge**, and taking the most recent value
+destroys it. Keep both, say where each came from and when, and say plainly that they
+conflict. A reader who knows the sources disagree can go and check; one handed a single
+confident value cannot, and has no reason to doubt it.
+
+One concise current account does not mean one value per question. It means the page says
+what is known, and where the evidence is in conflict, what is known is that it conflicts.
+Reconcile to a single claim when the evidence actually resolves it, and not before.
 
 Do not append `Updates`, repeated snapshots or chronological tails to a canonical page.
 Reconciliation may leave a page unchanged when new evidence adds no durable value.
