@@ -947,6 +947,8 @@ describe("knowledge templates", () => {
     expect(normalizedComposerLower).toContain("never read, wait on or mutate another automation's instructions or state");
     expect(normalizedComposerLower).toContain("never use another automation's checkpoint or report as a precondition");
     expect(normalizedComposerLower).not.toContain("activity distiller has completed");
+    expect(diaryComposer).not.toContain("automations/activity-distiller/");
+    expect(activityDistiller).not.toContain("automations/diary-composer/");
     expect(normalizedComposerLower).toContain("call `get_knowledge_changes` with that cursor and no `limit`");
     expect(normalizedComposerLower).toContain("only the semantic difference between the versions is evidence newly reaching this run");
     expect(normalizedComposerLower).toContain("a one-word correction contributes only the corrected meaning");

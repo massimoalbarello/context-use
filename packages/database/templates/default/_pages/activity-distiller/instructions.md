@@ -290,15 +290,6 @@ For a useful meeting prep:
 After the available research, keep unresolved identities out of the connected write and
 group their ambiguity into one concise report item for the meeting.
 
-## Leave the diary alone
-
-Never create or edit a page under `about/diary/`. Record what happened as a timeline event
-on the entity's `timeline` and stop there; the
-[[automations/diary-composer/instructions|diary composer]] reads those events afterwards
-and assembles each day. A timeline event dated correctly is the whole of this automation's
-contribution to the chronology, and a timeline event that links a day intro asserts one
-that does not exist yet.
-
 ## Checkpoint and report
 
 Writes must be replay-safe because a failed state update returns those records on the next
