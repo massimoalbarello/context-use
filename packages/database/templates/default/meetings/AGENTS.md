@@ -3,18 +3,16 @@
 Follow the [[agents|root guide]] for every convention not specific to meetings. This
 guide adds only meeting selection and shape.
 
-## Suggested shape and lifecycle
+## Path and lifecycle
 
     meetings/<YYYY>/<MM>/<YYYY-MM-DD>_<meeting-slug>/
-    ├── prep        — background, relationship context, unknowns and questions
-    ├── intro       — the useful account after the conversation happens
-    └── transcript  — exceptional raw source when no durable source survives
 
-A confirmed future meeting may begin with `prep` alone; this is a lifecycle exception to
-the root `intro` entry-point convention, because `intro` becomes useful only after the
-conversation happens. Leave `prep` in its pre-meeting form afterwards: it preserves what
-was known going in. If the meeting is cancelled, keep or archive it according to whether
-its research remains independently useful.
+`intro` carries the account once the conversation has happened. A confirmed future meeting
+may begin with `prep` alone — background, relationship context, unknowns and the questions
+the owner wants answered; this is a lifecycle exception to the root `intro` entry-point
+convention, because `intro` becomes useful only after the conversation happens. Leave `prep`
+in its pre-meeting form afterwards: it preserves what was known going in. If the meeting is
+cancelled, keep or archive it according to whether its research remains independently useful.
 
 Reserve `transcript` for a record whose source will not survive; mark it as raw and still
 distil an `intro`. Photos, whiteboards and shared decks sit in the folder and embed from
@@ -47,26 +45,24 @@ usually to nothing at all.
 Prefer the useful account over a recording dump, transcript export or pasted raw notes,
 linking a recording where it supports the relevant claim.
 
-    # <What it was> — <D Month YYYY>               ← intro
+`intro` establishes what the conversation was — who was in it, when, in person or by call,
+and what it was for — and then what it produced: the substance of what was said, in the
+figures, names, dates and conditions it was said in; what the owner concluded or came to
+understand differently; and what anyone agreed to, stated as a historical fact about that
+moment.
 
-    **With:** [[people/…|Name]] ([[companies/…|Company]]) or <plain name> (<role, when useful>)
-    **Where:** in person / call · **Why:** one line.
-
-    ## What was said
-    The substance, distilled rather than transcribed.
-
-    ## What I took away
-    The owner's conclusion or changed understanding at the time.
-
-    ## Commitments made
-    - What someone agreed during the meeting, stated as a historical fact.
+Let the page take the shape the conversation had. A meeting where nothing was committed
+simply says nothing about commitments. A meeting that was three people talking around one
+number is mostly that number and the account of how they got there. A conversation that
+ranged over five subjects is best read under headings named for those five subjects, not
+for the categories above.
 
 The people and organizations are the other half of the write, under the root rule that
 evidence names subjects as well as being one. Every resolvable attendee gets their page on
-the [[people/agents#what-identifies-a-person|people threshold]] and a link from the `With:`
-line, in the same write as the meeting; so does the organization whose business the
-conversation concerned, and anyone named inside a decision, commitment or introduction
-recorded here. Only genuine doubt about who someone is keeps them in plain text.
+the [[people/agents#what-identifies-a-person|people threshold]] and a link where the page
+says who was there, in the same write as the meeting; so does the organization whose
+business the conversation concerned, and anyone named inside a decision, commitment or
+introduction recorded here. Only genuine doubt about who someone is keeps them in plain text.
 
 Keep what another participant said distinct from what the owner concluded. A commitment
 records what was agreed then; its later state follows the root timeline contract.

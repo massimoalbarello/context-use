@@ -20,18 +20,16 @@ These are functional discovery constraints rather than stylistic preferences. An
 uses the metadata summary to decide whether to load the page; trigger-poor or drifting
 metadata makes the skill effectively invisible.
 
-The page body is the complete skill:
+The page body is the complete skill, opening with the frontmatter that carries those values:
 
     ---
     name: <skill-name>
     description: <what it does and the phrasings that should trigger it>
     ---
 
-    # <Skill name>
-
-    ## Use when
-    ## Method
-    ## Output
+Below it, write what an agent needs in order to use the skill: when to reach for it, how to
+carry it out, and what it should produce. How that divides into headings follows the skill —
+a fixed procedure and a judgement call with no fixed procedure do not want the same page.
 
 Page history provides versioning, so another copy is unnecessary.
 

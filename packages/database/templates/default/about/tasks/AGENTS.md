@@ -4,14 +4,13 @@ This subtree inherits the [[about/agents|About conventions]]. A task here is a f
 outcome, experiment or consequential decision frame that can resolve or close and whose
 reasoning is useful beyond a simple to-do.
 
-## Suggested shape
+## Shape
 
     about/tasks/<slug>/
-    ├── intro       — what the pursuit is, why it matters and how the owner frames it
-    └── timeline    — material changes including its resolution
 
-`intro` is the entry point, with `timeline` added once the task has state changes to
-record. Name other pages for what they contain rather than imposing a uniform template.
+`intro` says what the pursuit is, why it matters and how the owner frames it. `timeline`
+follows once the task has state changes to record, including its resolution. Name any
+further page for what it contains.
 
 ## Task account
 

@@ -5,15 +5,14 @@ body of work the owner builds, operates or stewards whose identity survives indi
 deliverables: for example a product, organization, research programme, creative body of
 work or maintained system.
 
-## Suggested shape
+## Shape
 
     about/projects/<slug>/
-    ├── intro       — what the project is, why it exists and its durable boundaries
-    └── timeline    — curated milestones that materially changed it
 
-A project is a folder entered through `intro`, gaining its `timeline` once there is a dated
-milestone to record. Another page—such as `architecture`, `principles` or `history`—helps
-only when that subject is independently worth reading, retrieving or linking.
+`intro` says what the project is, why it exists and where its durable boundaries lie. Its
+`timeline` follows once there is a dated milestone to record, and stays curated. Another
+page—such as `architecture`, `principles` or `history`—helps only when that subject is
+independently worth reading, retrieving or linking.
 
 ## Project account
 

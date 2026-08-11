@@ -7,16 +7,6 @@ adds only place selection and shape.
 city or landscape. What keeps it from becoming a gazetteer is that a place must be
 identified rather than merely mentioned — see below.
 
-## Suggested shape
-
-    places/<place-slug>/
-    ├── intro       — what and where it is, and why it matters
-    ├── practical   — durable access, travel or other useful details
-    └── timeline    — material changes in the place's history or significance
-
-Prefer the name people actually use, adding a locality only to disambiguate. `intro` is
-often enough.
-
 ## What identifies a place
 
 A named location the evidence resolves to a particular place gets its folder under the
@@ -33,15 +23,13 @@ Climbing still applies under the root rule for
 [[agents#which-entity-does-it-belong-to|choosing the entity]]: a meal with no named venue
 identifies no place, and belongs to the topic that covers it.
 
-## Example intro
+## What a place page establishes
 
-    # <Place>                                      ← intro
-
-    **Kind:** home / venue / city / landscape.
-    **Where:** locality and country; exact address only when genuinely useful.
-
-    What makes this place independently relevant, without retelling the occurrences or
-    relationships connected to it.
+`intro` says what kind of place it is — a home, a venue, a city, a landscape — where it is,
+and what makes it independently relevant, without retelling the occurrences or relationships
+connected to it. Prefer the name people actually use, adding a locality only to
+disambiguate. `intro` is often enough; a further page earns its place when one aspect is
+independently worth reading or maintaining, such as durable access or travel details.
 
 Place timeline events include a move, renovation, opening, closure, a change in
 significance, and an occasion the owner recounts here. Routine visits with nothing to
