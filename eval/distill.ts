@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { loadCorpus, windowRecords, type CorpusWindow } from "./corpus-records.ts";
+import { checkpointPosition, loadCorpus, windowRecords, type CorpusWindow } from "./corpus-records.ts";
 import { LOCAL_STACK, runStackCommand } from "../scripts/local-stack.ts";
 import { EVAL_URL, MCP_NAME, ROOT, runAgentSession, type EvalProvider } from "./agent.ts";
 import { corpusDirectory, corpusIsUnchanged, diffCorpus, type CorpusId } from "./corpus-integrity.ts";
@@ -60,7 +60,35 @@ export type BatchResult = {
   index: number;
   changes: PageChange[];
   pageCount: number;
+  /** Agent sessions this batch needed. More than one means a run stopped before finishing. */
+  runs: number;
+  /** False when the batch was abandoned with records still unread. */
+  finished: boolean;
 };
+
+const STATE_PATH = "automations/activity-distiller/state";
+
+/**
+ * A batch takes as many agent sessions as it takes.
+ *
+ * One session per batch was the original assumption, and it silently mis-measures the case
+ * it was most likely to meet: an agent that stops partway leaves its checkpoint inside the
+ * batch, and the harness would move to the next day and score the abandoned one as a day
+ * that produced nothing. The checkpoint is the only honest signal of whether the records
+ * were consumed, so read it and trigger again until it has moved on.
+ */
+const MAX_SESSIONS_PER_BATCH = 12;
+
+function persistedCheckpoint(pages: PageSnapshot[]): string | undefined {
+  const state = pages.find((page) => page.path === STATE_PATH);
+  return state?.body.match(/\*\*Checkpoint:\*\*\s*`([^`]+)`/)?.[1];
+}
+
+/** True once the persisted checkpoint has moved past `batch`, which is what finishing means. */
+function batchIsFinished(pages: PageSnapshot[], batch: string): boolean {
+  const position = checkpointPosition(persistedCheckpoint(pages));
+  return position !== null && position.batch !== batch;
+}
 
 function triggerPrompt(): string {
   return `You are the Context Use activity distiller running as a scheduled, unattended automation.
@@ -123,19 +151,33 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
     console.log(style.dim(`  ${[...new Set(batchRecords.map((record) => record.type))].sort().join(" · ")}`));
     console.log(style.dim("  Agent is reading its instructions and reconciling the batch…"));
 
-    await runAgentSession({
-      provider: options.provider,
-      id: `batch-${batch}`,
-      prompt: triggerPrompt(),
-      runDirectory,
-    });
+    let pages = previous;
+    let sessions = 0;
+    while (sessions < MAX_SESSIONS_PER_BATCH) {
+      sessions += 1;
+      if (sessions > 1) {
+        console.log(style.dim(`\n  Checkpoint is still inside ${batch}; triggering run ${sessions}…`));
+      }
+      await runAgentSession({
+        provider: options.provider,
+        id: `batch-${batch}-run-${sessions}`,
+        prompt: triggerPrompt(),
+        runDirectory,
+      });
+      pages = snapshotKnowledge();
+      if (batchIsFinished(pages, batch)) break;
+    }
 
-    const pages = snapshotKnowledge();
+    const finished = batchIsFinished(pages, batch);
     await Bun.write(join(runDirectory, `batch-${batch}-snapshot.json`), `${JSON.stringify(pages, null, 2)}\n`);
     const changes = pageChanges(previous, pages);
-    results.push({ batch, index, changes, pageCount: pages.length });
+    results.push({ batch, index, changes, pageCount: pages.length, runs: sessions, finished });
     previous = pages;
-    console.log(style.green(`\n  ${batch} complete · ${summarise(changes)} · ${pages.length} pages total`));
+    const runLabel = sessions === 1 ? "" : ` · ${sessions} runs`;
+    console.log(style.green(`\n  ${batch} complete · ${summarise(changes)} · ${pages.length} pages total${runLabel}`));
+    if (!finished) {
+      console.log(style.red(`  ${batch} was abandoned with records unread after ${sessions} runs.`));
+    }
   }
 
   const report = {
@@ -162,7 +204,10 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
     "",
   ];
   for (const result of results) {
-    lines.push(`## ${result.batch} — ${summarise(result.changes)}`, "");
+    const detail = [summarise(result.changes)];
+    if (result.runs > 1) detail.push(`${result.runs} runs`);
+    if (!result.finished) detail.push("**abandoned with records unread**");
+    lines.push(`## ${result.batch} — ${detail.join(" · ")}`, "");
     for (const change of result.changes) {
       lines.push(`- ${change.change === "created" ? "NEW" : "UPD"} ${change.path} (v${change.version})`);
     }
