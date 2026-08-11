@@ -7,6 +7,12 @@ import { renderMarkdown } from "./markdown.ts";
 import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import { renderLlmsFullTxt, renderLlmsTxt, renderPublicPageMarkdown } from "./public-llms.ts";
 import {
+  INTRO_PATH,
+  externalProfileLinks,
+  renderRobotsTxt,
+  renderSitemapXml,
+} from "./public-discovery.ts";
+import {
   IMAGE_LAYOUT_STYLES,
   publicPageStyles,
   publicPageHref,
@@ -27,7 +33,13 @@ const storage = new BrokeredStorage({
 const publicAssetContent = createPublicAssetContentHandler(publicData, storage, config.ASSET_ORIGIN);
 const htmlHeaders = { ...securityHeaders, "content-type": "text/html; charset=utf-8" };
 const textHeaders = { ...securityHeaders, "content-type": "text/plain; charset=utf-8" };
-const markdownHeaders = { ...securityHeaders, "content-type": "text/markdown; charset=utf-8" };
+const agentTextHeaders = { ...textHeaders, "x-robots-tag": "noindex, follow" };
+const markdownHeaders = {
+  ...securityHeaders,
+  "content-type": "text/markdown; charset=utf-8",
+  "x-robots-tag": "noindex, follow",
+};
+const xmlHeaders = { ...securityHeaders, "content-type": "application/xml; charset=utf-8" };
 const unavailableResolvers = {
   page: async () => ({ available: false as const }),
   directory: async () => ({ available: false as const }),
@@ -50,7 +62,10 @@ const unavailableResolvers = {
 async function publicDirectoryResponse(rawPath: string): Promise<Response> {
   const parsedPath = DirectoryPath.safeParse(rawPath);
   if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
-  const index = await publicData.directoryIndex(parsedPath.data);
+  const [index, introduction] = await Promise.all([
+    publicData.directoryIndex(parsedPath.data),
+    publicData.pageByPublicPath(INTRO_PATH),
+  ]);
   if (!index) return new Response("Not found", { status: 404, headers: securityHeaders });
   const defaultPageHref = publicPageHref(index.default_page_path);
   if (defaultPageHref) {
@@ -59,14 +74,23 @@ async function publicDirectoryResponse(rawPath: string): Promise<Response> {
       headers: { ...securityHeaders, location: defaultPageHref },
     });
   }
-  return new Response(renderPublicIndexDocument(index), { headers: htmlHeaders });
+  return new Response(renderPublicIndexDocument({
+    ...index,
+    siteOrigin: config.APP_ORIGIN,
+    introduction,
+  }), { headers: htmlHeaders });
 }
 
 async function publicLlmsResponse(full: boolean): Promise<Response> {
   const pages = await publicData.publishedPages();
   const options = { siteOrigin: config.APP_ORIGIN, assetOrigin: config.ASSET_ORIGIN };
   const content = full ? renderLlmsFullTxt(pages, options) : renderLlmsTxt(pages, options);
-  return new Response(content, { headers: textHeaders });
+  return new Response(content, { headers: full ? agentTextHeaders : textHeaders });
+}
+
+async function publicSitemapResponse(): Promise<Response> {
+  const pages = await publicData.publishedPages();
+  return new Response(renderSitemapXml(pages, config.APP_ORIGIN), { headers: xmlHeaders });
 }
 
 export const publicApp = new Elysia({ strictPath: true })
@@ -75,6 +99,8 @@ export const publicApp = new Elysia({ strictPath: true })
     : routeError(error))
   .get("/health", () => json({ status: "ok", service: "public-web" }))
   .get("/a/*", ({ request, params }) => publicAssetContent(request, params["*"]))
+  .get("/robots.txt", () => new Response(renderRobotsTxt(config.APP_ORIGIN), { headers: textHeaders }))
+  .get("/sitemap.xml", () => publicSitemapResponse())
   .get("/llms.txt", () => publicLlmsResponse(false))
   .get("/llms-full.txt", () => publicLlmsResponse(true))
   .get("/p", () => new Response(null, {
@@ -90,10 +116,19 @@ export const publicApp = new Elysia({ strictPath: true })
     if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
     const publicPath = parsedPath.data;
     const page = await publicData.pageByPublicPath(publicPath);
-    if (!page && publicPath === "about/intro" && !markdown) {
+    if (!page && publicPath === INTRO_PATH && !markdown) {
       return new Response(renderPublicPageDocument(
         "Nothing published yet",
         "<p>The owner has not published an introduction yet. Please check back later.</p>",
+        undefined,
+        undefined,
+        {
+          siteOrigin: config.APP_ORIGIN,
+          summary: "The owner has not published an introduction yet.",
+          introduction: null,
+          indexable: false,
+          canonicalPath: `/p/${INTRO_PATH}`,
+        },
       ), {
         headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
       });
@@ -115,17 +150,50 @@ export const publicApp = new Elysia({ strictPath: true })
       return new Response(renderPublicPageMarkdown(page, {
         siteOrigin: config.APP_ORIGIN,
         assetOrigin: config.ASSET_ORIGIN,
-      }), { headers: markdownHeaders });
+      }), {
+        headers: {
+          ...markdownHeaders,
+          link: `<${config.APP_ORIGIN}/p/${page.public_path}>; rel="canonical"`,
+        },
+      });
     }
+    const introduction = publicPath === INTRO_PATH
+      ? page
+      : await publicData.pageByPublicPath(INTRO_PATH);
+    const profileLinks = publicPath === INTRO_PATH
+      ? externalProfileLinks(
+          (await publicData.pageByPublicPath("about/contacts"))?.body_markdown ?? "",
+          config.APP_ORIGIN,
+        )
+      : undefined;
     // The database projection has already removed every private identifier and
     // replaced independently public targets with public paths. The renderer can
     // resolve a published asset path but has no UUID/private-path capability.
     const content = await renderMarkdown(page.body_markdown, unavailableResolvers);
-    return new Response(renderPublicPageDocument(page.title, content, page.public_path, page.last_edited_at), { headers: htmlHeaders });
+    return new Response(renderPublicPageDocument(
+      page.title,
+      content,
+      page.public_path,
+      page.last_edited_at,
+      {
+        siteOrigin: config.APP_ORIGIN,
+        summary: page.summary,
+        introduction,
+        profileLinks,
+      },
+    ), { headers: htmlHeaders });
   })
-  .get("/", () => new Response(renderPublicLandingDocument(), {
-    headers: htmlHeaders,
-  }))
+  .get("/", async () => {
+    const [introduction, contacts] = await Promise.all([
+      publicData.pageByPublicPath(INTRO_PATH),
+      publicData.pageByPublicPath("about/contacts"),
+    ]);
+    return new Response(renderPublicLandingDocument({
+      siteOrigin: config.APP_ORIGIN,
+      introduction,
+      profileLinks: externalProfileLinks(contacts?.body_markdown ?? "", config.APP_ORIGIN),
+    }), { headers: htmlHeaders });
+  })
   .get("/public.css", () => new Response(publicPageStyles, {
     headers: { ...securityHeaders, "content-type": "text/css; charset=utf-8" },
   }))

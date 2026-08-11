@@ -1,6 +1,6 @@
 import type { PublicPage } from "@context-use/database";
+import { INTRO_PATH, publicSiteName } from "./public-discovery.ts";
 
-const INTRO_PATH = "about/intro";
 const PRIVATE_UUID = "[private identifier]";
 
 type PublicLlmsOptions = {
@@ -99,19 +99,21 @@ function absolutePublicMarkdown(
   return redactPrivateReferences(result);
 }
 
-function siteName(siteOrigin: string): string {
-  return `${new URL(siteOrigin).host} public knowledge`;
-}
-
 export function renderLlmsTxt(pages: PublicPage[], options: PublicLlmsOptions): string {
   const siteOrigin = normalizedOrigin(options.siteOrigin);
   const ordered = orderedPages(pages);
+  const introduction = ordered.find(({ public_path }) => public_path === INTRO_PATH);
   const lines = [
-    `# ${siteName(siteOrigin)}`,
+    `# ${publicSiteName(siteOrigin, introduction)}`,
     "",
     `> ${descriptionFor(ordered)}`,
     "",
     "Only explicitly published knowledge is included.",
+    "",
+    "## Discovery",
+    "",
+    `- [Human-readable knowledge index](${siteOrigin}/p/): Browse every published branch.`,
+    `- [XML sitemap](${siteOrigin}/sitemap.xml): Canonical HTML URLs for every published page.`,
     "",
     "## Complete public context",
     "",
@@ -139,6 +141,7 @@ export function renderPublicPageMarkdown(page: PublicPage, options: PublicLlmsOp
     "",
     `- Canonical URL: [${canonicalUrl}](${canonicalUrl})`,
     `- Site index: [${siteOrigin}/llms.txt](${siteOrigin}/llms.txt)`,
+    `- Knowledge index: [${siteOrigin}/p/](${siteOrigin}/p/)`,
   ];
   const edited = dateIso(page.last_edited_at);
   if (edited !== null) lines.push(`- Last edited: ${edited}`);
@@ -151,14 +154,16 @@ export function renderLlmsFullTxt(pages: PublicPage[], options: PublicLlmsOption
   const siteOrigin = normalizedOrigin(options.siteOrigin);
   const assetOrigin = normalizedOrigin(options.assetOrigin);
   const ordered = orderedPages(pages);
+  const introduction = ordered.find(({ public_path }) => public_path === INTRO_PATH);
   const lines = [
-    `# ${siteName(siteOrigin)} — full public context`,
+    `# ${publicSiteName(siteOrigin, introduction)} — full public context`,
     "",
     `> ${descriptionFor(ordered)}`,
     "",
     "This document contains every explicitly published page.",
     "",
     `- Concise index: [${siteOrigin}/llms.txt](${siteOrigin}/llms.txt)`,
+    `- Human-readable knowledge index: [${siteOrigin}/p/](${siteOrigin}/p/)`,
     `- Published pages: ${ordered.length}`,
   ];
   const lastEdited = latestEdit(ordered);

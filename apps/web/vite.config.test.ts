@@ -14,6 +14,13 @@ describe("Vite development proxy", () => {
     expect(proxyTable()).not.toHaveProperty("/a");
   });
 
+  test("forwards crawler and agent discovery documents", () => {
+    const paths = Object.keys(proxyTable());
+    for (const path of ["/robots.txt", "/sitemap.xml", "/llms.txt", "/llms-full.txt"]) {
+      expect(paths).toContain(path);
+    }
+  });
+
   test("forwards the browser Host so origin checks still match APP_ORIGIN", () => {
     const proxy = proxyTable();
     expect(Object.keys(proxy).length).toBeGreaterThan(0);

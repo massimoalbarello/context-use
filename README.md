@@ -19,6 +19,7 @@ The longer-term vision is an autobiography that writes itself. As Context Use co
 - Exports a portable Markdown vault with page metadata, directory metadata, generated `index.md` files where navigation requires them, and local links. One-page leaf folders link directly to their sole page.
 - Provides a public profile at `about/intro`, plus public pages for anything else you choose to share.
 - Generates `/llms.txt`, `/llms-full.txt`, and a clean `.md` alternate for every page deterministically from only the explicitly published page projection.
+- Publishes `/robots.txt`, a complete `/sitemap.xml`, canonical and social metadata, and structured profile identity derived from the published introduction and contact links.
 - Runs locally or on your own AWS account.
 
 ## Run locally

@@ -25,8 +25,14 @@ describe("public page presentation", () => {
       "notes",
     );
 
-    expect(html).toContain("<title>Notes &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</title>");
+    expect(html).toContain("<title>Notes &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt; | localhost:3000 public knowledge</title>");
     expect(html).toContain('<li aria-current="page"><span class="breadcrumb-separator" aria-hidden="true">/</span>Notes &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</li>');
+    expect(html).toContain("<h1>Notes &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</h1>");
+    expect(html).toContain('name="description" content="Published knowledge from localhost:3000 public knowledge."');
+    expect(html).toContain('rel="canonical" href="http://localhost:3000/p/notes"');
+    expect(html).toContain('<script type="application/ld+json">');
+    expect(html).toContain('"@type":"WebPage"');
+    expect(html).not.toContain('"name":"Notes </title>');
     expect(html).toContain("<p>Already sanitized content</p>");
     expect(html).toContain('<link rel="stylesheet" href="/content.css">');
   });
@@ -59,6 +65,35 @@ describe("public page presentation", () => {
     expect(html).toContain('<article><h1>Hello</h1></article><footer class="context-use-footnote"><p class="context-use-credit">');
     expect(html).toContain('<span class="page-last-edited"><strong>Last edited</strong> <time datetime="2026-07-21T13:45:00.000Z">21 July 2026</time></span>');
     expect(html).toContain('<span class="footer-separator" aria-hidden="true">·</span><a href="/p/notes.md" type="text/markdown">View as Markdown</a>');
+  });
+
+  test("identifies a published introduction as a canonical biography", () => {
+    const introduction = {
+      title: "Intro",
+      summary: "Massimo Albarello's introduction: a builder from Como.",
+    };
+    const html = renderPublicPageDocument(
+      introduction.title,
+      "<p>Biography body.</p>",
+      "about/intro",
+      "2026-08-07T11:25:59.777Z",
+      {
+        siteOrigin: "https://massimo.example",
+        summary: introduction.summary,
+        introduction,
+        profileLinks: ["https://github.com/massimoalbarello"],
+      },
+    );
+
+    expect(html).toContain("<title>Massimo Albarello — Biography</title>");
+    expect(html).toContain("<h1>Massimo Albarello</h1>");
+    expect(html).toContain('rel="canonical" href="https://massimo.example/p/about/intro"');
+    expect(html).toContain('property="og:type" content="profile"');
+    expect(html).toContain('"@type":"ProfilePage"');
+    expect(html).toContain('"mainEntity":{"@id":"https://massimo.example/p/about/intro#person"}');
+    expect(html).toContain('"@type":"Person"');
+    expect(html).toContain('"sameAs":["https://github.com/massimoalbarello"]');
+    expect(html).toContain('"dateModified":"2026-08-07T11:25:59.777Z"');
   });
 
   test("renders generated public indexes from published pages and branches", () => {
@@ -94,7 +129,9 @@ describe("public page presentation", () => {
     expect(html).toContain('<a href="/llms.txt" type="text/plain">AI-readable site index</a>');
     expect(html).not.toContain("Generated index");
     expect(html).not.toContain("Chapters index");
-    expect(rootHtml).toContain("<title>Knowledge</title>");
+    expect(rootHtml).toContain("<title>Knowledge | localhost:3000 public knowledge</title>");
+    expect(rootHtml).toContain('rel="canonical" href="http://localhost:3000/p/"');
+    expect(rootHtml).toContain('"@type":"CollectionPage"');
     expect(rootHtml).toContain('<nav class="knowledge-navigation" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li><li aria-current="page"><span class="breadcrumb-separator" aria-hidden="true">/</span>Knowledge</li>');
     expect(rootHtml).toContain('<header class="public-index-header"><h1>Knowledge</h1></header>');
     expect(rootHtml).not.toContain("<p>Contents</p>");
@@ -102,12 +139,25 @@ describe("public page presentation", () => {
   });
 
   test("renders the first-person billboard and optional introduction link", () => {
-    const html = renderPublicLandingDocument();
+    const html = renderPublicLandingDocument({
+      siteOrigin: "https://massimo.example",
+      introduction: {
+        title: "Intro",
+        summary: "Massimo Albarello's introduction: a builder from Como.",
+      },
+      profileLinks: ["https://github.com/massimoalbarello"],
+    });
 
-    expect(html).toContain("A public billboard<br>for what I choose to share");
-    expect(html).toContain("what I choose to share");
+    expect(html).toContain("<title>Massimo Albarello&#39;s public knowledge</title>");
+    expect(html).toContain("Massimo Albarello’s public context.");
+    expect(html).toContain("Massimo Albarello&#39;s introduction: a builder from Como.");
     expect(html).toContain('href="/p/about/intro"');
-    expect(html).toContain("Explore my knowledge base");
+    expect(html).toContain("Read my biography");
+    expect(html).toContain('<a class="landing-secondary" href="/p/">Browse all published knowledge</a>');
+    expect(html).toContain('rel="canonical" href="https://massimo.example/"');
+    expect(html).toContain('"@type":"Person"');
+    expect(html).toContain('"name":"Massimo Albarello"');
+    expect(html).toContain('"sameAs":["https://github.com/massimoalbarello"]');
     expect(html).toContain('<a href="/llms.txt" type="text/plain">AI-readable site index</a>');
     expect(html).toContain('<p class="landing-credit">self-hosted with ❤️ using');
     expect(html).not.toContain("MCP");
