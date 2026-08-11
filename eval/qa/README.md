@@ -284,17 +284,23 @@ distinct figures survived across a hundred and eighty pages.
 Two changes to the guides followed, each ablated over the full eight dense days with only
 the guides differing:
 
-| | score | Slack | email | distinct figures | pages |
-| --- | --- | --- | --- | --- | --- |
-| before | 27/85 | 2/20 | 6/34 | 18 | 180 |
-| [particulars](../../packages/database/templates/default/AGENTS.md) | 38/85 | 4/20 | 12/34 | — | 207 |
-| **+ [passes](../../packages/database/templates/default/_pages/activity-distiller/instructions.md)** | **47/85** | **10/20** | **14/34** | **32** | **276** |
+| | score | Slack | email | pages |
+| --- | --- | --- | --- | --- |
+| before | 27/85 | 2/20 | 6/34 | 180 |
+| [particulars](../../packages/database/templates/default/AGENTS.md) | 38/85 | 4/20 | 12/34 | 207 |
+| + [passes](../../packages/database/templates/default/_pages/activity-distiller/instructions.md) | 47/85 | 10/20 | 14/34 | 276 |
+| **+ [engagement scoping](../../packages/database/templates/default/AGENTS.md)** | **55/85** | 8/20 | **21/34** | 232 |
 
 The first says brevity is a budget on words rather than on precision, and gives the batch
 process a step for what each record establishes where it had one only for who was in the
 batch. The second reads a batch in passes small enough to write up rather than fifty
-records at a time. Expected names never written to the base fell from 73 to 53, against
-six that are written and not retrieved — this is a distillation gap almost end to end.
+records at a time. The third stops the engagement threshold — written for cold outreach and
+newsletters — from deciding what belongs on a subject that already exists: the base was
+recording the days the owner acted and dropping the days a colleague told her something,
+which is why email, where colleagues report things, gained most from it.
+
+Expected names never written to the base fell from 73 to 44, against five that are written
+and not retrieved. This is a distillation gap almost end to end.
 
 Neither is tuned to these questions. Both were written from the shape of the failure —
 speech acts in place of content, and a pass too large to finish — with invented examples
@@ -302,16 +308,18 @@ rather than anything drawn from this corpus, and both would apply to any source.
 
 ### What is still wrong
 
-`qa:score` on the current guides, by where the answer lives: meetings 20/28, email 14/34,
-Slack 10/20, calendar 0/2. By what it takes to answer: 42/76 from one record, 3/9 from a
-join. And **1/5 on the `adversarial` questions** — asked whether its records disagree about
+`qa:score` on the current guides, by where the answer lives: meetings 22/28, email 21/34,
+Slack 8/20, calendar 0/2. By what it takes to answer: 47/76 from one record, 5/9 from a
+join. And **2/5 on the `adversarial` questions** — asked whether its records disagree about
 where Marcus Reid works, the base still answers with one or two affiliations rather than
 the conflict. It is keeping the particulars now and still flattening the disagreement
 between them, which is the next thing to fix rather than a scoring artifact.
 
-Twenty-six of the remaining failures are `NOT FOUND` against fourteen confidently wrong
-answers, so the base still declines more often than it invents. Fifty-three expected names
-are still never written, which is where the remaining headroom is.
+Twenty-two of the remaining failures are `NOT FOUND` against eleven confidently wrong
+answers, so the base still declines more often than it invents. Forty-four expected names
+are still never written, which is where the remaining headroom is. Slack fell 10/20 to 8/20
+against email's gain — small numbers, one run each, and worth watching rather than reading
+as a regression.
 
 ### On trusting these numbers
 
@@ -324,7 +332,7 @@ somewhere in the base, which counted an unrelated page's "40%" and another compa
 "DeepMind" as the answer being present, and inflated the retrieval share fourfold. It now
 requires the name to sit on a page that is also about what the question asks about.
 
-Seven grader defects were found and fixed along the way, every one a false negative where
+Ten grader defects were found and fixed along the way, every one a false negative where
 the system was right and the key was pinned to one rendering: `eight months` against
 `8 months`, `2–3×` against `2-3x`, `$25 million` against `25M`, and a person named in the
 question counted as a wrong attribution. Both runs are rescored on the final key, so the
