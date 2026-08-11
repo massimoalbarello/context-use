@@ -853,6 +853,11 @@ describe("knowledge templates", () => {
     );
     expect(normalizedRoot).toContain("it is one way a page has met its obligation and not the way");
     expect(normalizedRoot).toContain("What binds is the obligations");
+    expect(normalizedRoot).toContain(
+      "An entity that has accumulated views is a small hypermedia of its own",
+    );
+    expect(normalizedRoot).toContain("Outward links are the other half of the same fabric");
+    expect(normalizedRoot).toContain("This holds inside an entity folder as much as across the base");
 
     // Entity guides state what a page must establish; they never hand over a skeleton to copy.
     // The diary is excluded: its log format is a deliberate fixed shape owned by the composer.

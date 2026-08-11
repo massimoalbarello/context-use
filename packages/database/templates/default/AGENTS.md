@@ -188,6 +188,23 @@ reachable from it, through the sentence that says what that view holds. A `timel
 or fact page nothing links to is unreachable from the entity it belongs to, and a reader
 arriving at the entity will never learn it exists.
 
+That is the minimum, and it is not the shape a grown folder should keep. **An entity that
+has accumulated views is a small hypermedia of its own**, and the rules that govern the base
+govern the inside of a folder unchanged: a page says what another one is to it, in the
+sentence that says it, and both ends record the relationship. The lens links the fact page
+whose facts it reads; the maintenance record links the specifications it works against; the
+timeline event marking a transition links the page describing the state that was left, and
+that page links forward to the account which replaced it. Without those the folder is a hub
+with spokes — the failure described under [[agents#sources-and-links|sources and links]], at
+the scale of one entity — and a reader who arrives at a company's `as-supplier` has to go
+back to `intro` and start again to reach the `products` its reasoning already rests on.
+
+Outward links are the other half of the same fabric, and they are not `intro`'s alone to
+carry. Each view names the other entities it actually concerns, on its own terms: the fact
+page links the people the facts are about, the timeline event links the meeting where it
+happened, the lens links the effort the relationship bears on. `intro` is where an entity is
+entered, never where its connections are collected.
+
 Attention is not interaction and is not agreement. A subject the owner reads about, is told
 about or keeps encountering gets its page on the identifiability threshold like any other,
 and what goes on it is what the evidence says — not a relationship that never happened and
@@ -211,9 +228,9 @@ agent who fills it to make the page look complete.
 
 What binds is the obligations, and they are the same everywhere. Every entity is a folder
 entered through `intro`. A `timeline` carries what happened. A part of the subject worth
-retrieving on its own becomes a page of its own in the folder, reachable from `intro`. The
-sentence that names another subject carries the link to it. None of that constrains the
-prose, which follows the material.
+retrieving on its own becomes a page of its own in the folder, reachable from `intro` and
+linked from the views it bears on. The sentence that names another subject carries the link
+to it. None of that constrains the prose, which follows the material.
 
 ## Reconcile the canonical account
 
@@ -410,7 +427,8 @@ with there and each of their pages names the organization; a subject that depend
 displaced or competes with another says so from both sides. Watch for the shape where
 every page links one or two hubs and nothing links sideways: it looks well connected and
 is not, because every route between two related subjects runs through the hub. The links
-worth adding are the ones between peers.
+worth adding are the ones between peers. This holds inside an entity folder as much as
+across the base, where the hub everything routes through is `intro`.
 
 None of this is a reason to write fewer pages. It raises what a page must do, never how
 many of the owner's subjects are represented: a subject that earns a page under its guide
