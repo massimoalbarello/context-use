@@ -271,63 +271,58 @@ Which of the two a run can even produce depends on how its base was built. A see
 distilled `amara-life-v1` base can lose a fact either way, and this line is how you tell —
 it is the reason the label exists.
 
-## What the first full run found
+## What the runs found, and what changed because of them
 
-Both legs, run locally on 10 August 2026 with Codex against the same stack.
+The first full run scored **27/85**, and reading every failure against the corpus found one
+cause behind most of them. The base was answering `NOT FOUND` about pages it already had:
+the evidence said *"we came in at 8% equity for that initial $1.2M check, which gave us a
+board observer seat"* and the page said *"supplied cap-table context for the diligence,
+including his pre-seed investment and board-observer position"*. Right entity, right date,
+right links, every number gone. Forty of fifty-nine failures had that shape, and eighteen
+distinct figures survived across a hundred and eighty pages.
 
-| | `world-v1`, seeded | `amara-life-v1`, distilled |
-| --- | --- | --- |
-| Knowledge base | 68 pages, 2 batches | **180 pages, all 8 dense batches** |
-| Asked | 6 of the 31 due | **85 of the 85 due** |
-| Correct | 6/6 | **26/85 — 31%** |
+Two changes to the guides followed, each ablated over the full eight dense days with only
+the guides differing:
 
-Retrieval over a seeded base was clean. Building the base first costs most of the score, and
-the interesting part is where.
+| | score | Slack | email | distinct figures | pages |
+| --- | --- | --- | --- | --- | --- |
+| before | 27/85 | 2/20 | 6/34 | 18 | 180 |
+| [particulars](../../packages/database/templates/default/AGENTS.md) | 38/85 | 4/20 | 12/34 | — | 207 |
+| **+ [passes](../../packages/database/templates/default/_pages/activity-distiller/instructions.md)** | **47/85** | **10/20** | **14/34** | **32** | **276** |
 
-**By the record the answer lives in:**
+The first says brevity is a budget on words rather than on precision, and gives the batch
+process a step for what each record establishes where it had one only for who was in the
+batch. The second reads a batch in passes small enough to write up rather than fifty
+records at a time. Names never written to the base fell from 53 to 33.
 
-| Source | Correct |
-| --- | --- |
-| Meeting write-ups | 17/28 |
-| Email | 6/34 |
-| Slack | 2/20 |
-| Calendar | 0/2 |
+Neither is tuned to these questions. Both were written from the shape of the failure —
+speech acts in place of content, and a pass too large to finish — with invented examples
+rather than anything drawn from this corpus, and both would apply to any source.
 
-The distiller reads meeting write-ups well and loses most of what is only ever said in an
-email or a Slack message. That is one finding, not fifty-nine.
+### What is still wrong
 
-**By how much joining the answer needs:** 25/76 for a single record, 1/9 for anything
-needing two or three. **By tier:** 0/5 on the `adversarial` questions — asked whether its
-records disagree about where Marcus Reid works or who Nadia Freeman works for, the base
-answers with one confident affiliation. It has flattened the contradiction rather than kept
-it, which is the failure those five exist to detect.
+`qa:score` on the current guides, by where the answer lives: meetings 20/28, email 14/34,
+Slack 10/20, calendar 0/2. By what it takes to answer: 42/76 from one record, 3/9 from a
+join. And **1/5 on the `adversarial` questions** — asked whether its records disagree about
+where Marcus Reid works, the base still answers with one or two affiliations rather than
+the conflict. It is keeping the particulars now and still flattening the disagreement
+between them, which is the next thing to fix rather than a scoring artifact.
 
-**Forty-one of the fifty-nine misses were `NOT FOUND`.** The agent declined rather than
-guessed, so only eighteen answers were confidently wrong. `gold:check` on the same run
-agrees about the cause: 59 of 158 entities filed, 8/8 meetings, and 53 expected names that
-never reached the knowledge base against 34 that are held in it but were not retrieved.
+Twenty-six of the remaining failures are `NOT FOUND` against fourteen confidently wrong
+answers, so the base still declines more often than it invents.
 
-That split is the whole point of running the two corpora together. A 31% here next to 6/6
-there is not a retrieval problem.
+### On trusting these numbers
 
-### The run also found two bugs in this harness
+Volume is noisy: two runs of the identical config produced 71 and 113 pages. Ratios are
+steadier, and the deltas here — twenty questions on eighty-five — are far outside that
+band, but each row is a single run and should be read as one.
 
-Both were false negatives — the system was right and the grader said otherwise — and both
-are fixed with a regression test:
-
-- A person the **question itself names** counted as a wrong attribution. "Who introduced
-  Sarah Chen to the Vela founders?" answered "Marcus Reid introduced Sarah Chen to them"
-  scored `partial` for repeating the question's own subject.
-- `8 months` did not match "roughly **eight** months", and `180-220M` did not match
-  "$180–220 **million**".
-
-Rescoring the recorded answers with the fix took no new agent calls and moved 24/85 to
-26/85 — which is the argument for offline scoring in one line.
-
-Every remaining failure was read against the corpus by hand. They are the system's: the
-base says Terraform Energy has traction in grid optimization where the corpus says
-industrial heat pumps, names Sequoia where the corpus says Crossbeam looked at GridMatrix,
-and reports board-seat language where the corpus says Amara flagged liquidation preferences.
+Seven grader defects were found and fixed along the way, every one a false negative where
+the system was right and the key was pinned to one rendering: `eight months` against
+`8 months`, `2–3×` against `2-3x`, `$25 million` against `25M`, and a person named in the
+question counted as a wrong attribution. Both runs are rescored on the final key, so the
+comparison is like for like. That direction of error matters: a key too strict understates
+every system measured with it, which is the same failure as one too loose.
 
 ## The key is lenient, and knowing why matters
 
