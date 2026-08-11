@@ -24,6 +24,7 @@ the path to the target; do not repeat inherited guidance in a child.
 - [[people/agents|People]]
 - [[places/agents|Places]]
 - [[skills/agents|Skills]]
+- [[threads/agents|Threads]]
 - [[topics/agents|Topics]]
 
 ### Managed pages
@@ -127,9 +128,14 @@ further useful views and the evidence required to create the entity.
 
 Add the `timeline` when there is a timeline event to record, not before; an empty one is
 scaffolding. Someone the owner knows, with nothing yet that happened on a day, is a
-complete entity with an `intro` alone. An occurrence never takes one at all: a meeting or
-event already happened on its own date, so its page is its account and a timeline beneath
-it would index a single timeline event that is the page itself.
+complete entity with an `intro` alone. An occurrence with a date of its own never takes one
+at all: a meeting or event already happened on that date, so its page is its account and a
+timeline beneath it would index a single timeline event that is the page itself.
+
+A [[threads/agents|thread]] is the exception, and the reason it is a separate entity. It is
+an occurrence that runs on rather than happening once, so it has no date of its own to be
+filed under and no single account to be. Its `timeline` is how the exchange moved, it is
+written from the first save, and its `intro` carries only where things stand now.
 
 `intro` is the entry point in fact and not only in name: every other page in the folder is
 reachable from it, through the sentence that says what that view holds. A `timeline`, lens
@@ -252,6 +258,14 @@ with no place and no name identifies neither, and a topic such as `topics/food` 
 the evidence supports. Climbing is the safe direction: a coarse entity can be split later,
 once repeated timeline events give one of its parts a subject of its own, whereas a specific
 entity invented on a guess produces near-duplicates that no evidence will ever merge.
+
+An occurrence is one of three things, told apart the same way. An [[events/agents|event]]
+is defined by its occasion, a [[meetings/agents|meeting]] by one bounded conversation, and
+a [[threads/agents|thread]] by a written exchange that runs on with no scheduled end. A
+substantive exchange earns its thread on the same terms a substantive conversation earns
+its meeting page: correspondence is where most of what the owner learns arrives, and it
+carries the account of what it established rather than leaving that to be split one line
+at a time across the parties to it.
 
 A subject that is not a person, organization, place or occurrence is usually one of three
 things, told apart by how it sits in time. An enduring aspect of the owner's life or

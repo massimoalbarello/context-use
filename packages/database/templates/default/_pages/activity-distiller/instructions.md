@@ -63,8 +63,9 @@ point of keeping it.
    batch may legitimately produce no semantic change.
 6. Before saving the checkpoint, check the cast from step 3 against what was written, and
    finish whatever is missing:
-   - each conversation that took place has its meeting page, each person and organization
-     its own, each decision in flight its task page;
+   - each conversation that took place has its meeting page, each running written exchange
+     its thread page and that thread's `timeline`, each person and organization its own,
+     each decision in flight its task page;
    - every material state change is a timeline event on the entity's `timeline`, dated to
      when the thing happened, stating the particulars from step 4 rather than that a
      conversation about them took place;
@@ -116,9 +117,12 @@ root guide's engagement threshold decides which subjects exist, not what is know
 one that exists already. The first exclusion above is about strangers, not about the
 owner's own channels.
 
-An email thread matters only through the knowledge it establishes—for example, a
-substantive reply, commitment, relationship development, decision, or material advance
-to a project or task. Do not copy message bodies or create correspondence-feed pages.
+An email or chat exchange matters only through the knowledge it establishes—for example, a
+substantive reply, commitment, relationship development, decision, or material advance to a
+project or task. When it establishes any of those, its account is a
+[[threads/agents|thread]], written as fully as a meeting page and on the same terms: named
+for the line of work, never for a channel, a counterparty or a provider thread id. Do not
+copy message bodies or create correspondence-feed pages.
 Several low-value records do not become important merely by accumulation. A valid run
 may update only the checkpoint.
 
