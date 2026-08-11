@@ -1,0 +1,1083 @@
+[
+  {
+    "id": "q-0001",
+    "tier": "medium",
+    "text": "What was Capacitor Labs' Q1 2026 ARR, and how much did it grow over Q4?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0002",
+    "tier": "medium",
+    "text": "How did Capacitor Labs' Q1 net retention compare to the target we set at board level?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0003",
+    "tier": "medium",
+    "text": "Which customer did Capacitor Labs close last month as their first enterprise healthcare customer?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0004",
+    "tier": "medium",
+    "text": "What did Hannah Liu and I decide about Capacitor Labs hiring a CFO?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision"
+    ]
+  },
+  {
+    "id": "q-0005",
+    "tier": "medium",
+    "text": "What stake does Hannah Liu hold in Vero Health?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0006",
+    "tier": "medium",
+    "text": "What is Vero Health's ARR?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0007",
+    "tier": "medium",
+    "text": "Elena Rossi described 'orange-mode' operations to me — which company was she talking about, and what does the term mean?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0008",
+    "tier": "medium",
+    "text": "How much did we raise in the first close of Halfway Capital Fund III, and what's the final close target?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "date",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0009",
+    "tier": "medium",
+    "text": "What Q1 revenue growth did Nexus Robotics report on the call with their CFO?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0010",
+    "tier": "medium",
+    "text": "Whose bridge round did Kofi Mensah remind the partners we need to finalize our positions on before Thursday's partner meeting?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "meeting"
+    ]
+  },
+  {
+    "id": "q-0011",
+    "tier": "medium",
+    "text": "What stake does Halfway Capital hold in Meridian Robotics after its Series A?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0012",
+    "tier": "medium",
+    "text": "Which retailer is Meridian Robotics running its warehouse automation pilot with, and what efficiency gain is it producing?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0013",
+    "tier": "medium",
+    "text": "What pre-money valuation range is Meridian Robotics modelling for its Series B, and where would that leave existing investors' ownership?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "temporal"
+    ]
+  },
+  {
+    "id": "q-0014",
+    "tier": "medium",
+    "text": "Bill Hart says he led Helios Climate Systems' pre-seed — what did his firm put in, and what did they get for it?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0015",
+    "tier": "medium",
+    "text": "For the Terraform Dynamics round, who did Marcus Reid name as the point person on his side, and what allocation did he say makes sense?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0016",
+    "tier": "medium",
+    "text": "Who flagged the Fervo Energy co-investment opportunity to me, and what round is it?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0017",
+    "tier": "medium",
+    "text": "On the Helion Energy deal, what did I ask Sarah Chen to walk me through?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0018",
+    "tier": "medium",
+    "text": "What did I tell Jordan Park I want to dig into on a follow-up call with them and their CTO?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0019",
+    "tier": "medium",
+    "text": "Which carbon accounting company did Tomoko Sato say she has been tracking closely?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0020",
+    "tier": "medium",
+    "text": "What came out of the Kuiper Labs reference calls?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0021",
+    "tier": "medium",
+    "text": "Who covered the weekly ops sync while I was travelling for the Cortex Robotics board meeting?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "meeting",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0022",
+    "tier": "medium",
+    "text": "Who raised IP concerns in the legal review of Vela Bio?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0023",
+    "tier": "medium",
+    "text": "How many pre-vetted executives has Nadia Freeman sourced for the talent network she's building?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0024",
+    "tier": "medium",
+    "text": "Which portfolio company got a CFO placed through Nadia Freeman's talent network in Q1?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0025",
+    "tier": "medium",
+    "text": "Why is Nadia Freeman taking two weeks off in May?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "date",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0026",
+    "tier": "medium",
+    "text": "What did Nadia Freeman say we should wait for before hiring a junior portfolio ops person to support her?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "decision",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0027",
+    "tier": "medium",
+    "text": "Kofi Mensah corrected me on the size of the Helios Climate Systems seed round — what did he say it actually closed at?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0028",
+    "tier": "medium",
+    "text": "Where did GridScale's founding team come from?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0029",
+    "tier": "medium",
+    "text": "What personal news did Bill Hart share about his daughter?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0030",
+    "tier": "medium",
+    "text": "What space is Terraform Energy getting its traction in?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company"
+    ]
+  },
+  {
+    "id": "q-0031",
+    "tier": "medium",
+    "text": "What pre-money valuation is the Cognivault founder now asking for?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0032",
+    "tier": "medium",
+    "text": "What time did the Synthesis Bio funds clear?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0033",
+    "tier": "medium",
+    "text": "What growth are the Terraform Labs founders reporting, and when are they trying to close their Series A?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "date",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0034",
+    "tier": "medium",
+    "text": "Who did Elena Rossi confirm for the Stratos deep dive on their infrastructure roadmap?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "meeting",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0035",
+    "tier": "medium",
+    "text": "What did I flag as a concern on the Nexus Robotics term sheet?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision"
+    ]
+  },
+  {
+    "id": "q-0036",
+    "tier": "medium",
+    "text": "At what pre-money valuation did Halfway lead GridMind's seed round, and when did it close?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "date",
+      "decision",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0037",
+    "tier": "medium",
+    "text": "Why did Kofi Mensah pass on GridMind?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0038",
+    "tier": "medium",
+    "text": "How many engineers is Jordan Park planning to hire, of what kind, and by when?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "date",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0039",
+    "tier": "medium",
+    "text": "Which vendor's contract pricing did Jordan Park use to refine NovaMind's GPU cluster cost assumptions?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0040",
+    "tier": "medium",
+    "text": "Who is the CEO of Aurora Grid?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0041",
+    "tier": "medium",
+    "text": "What did Mina Kapoor propose that Halfway and Threshold do together instead of competing for allocation?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0042",
+    "tier": "medium",
+    "text": "Which firm had already looked at GridMatrix earlier this year, before I started considering leading their Series A?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0043",
+    "tier": "medium",
+    "text": "Which company did Sarah Chen suggest I look at more closely, and that we've now started preliminary diligence on?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0044",
+    "tier": "medium",
+    "text": "What are Sarah Chen and I meeting for coffee next Thursday to discuss?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "date",
+      "meeting",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0045",
+    "tier": "medium",
+    "text": "How much is the Atlanta logistics automation company Nadia Freeman flagged looking to raise, and at what stage?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "meeting",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0046",
+    "tier": "medium",
+    "text": "Who referred a late-stage fintech deal to Nadia Freeman?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "meeting",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0047",
+    "tier": "medium",
+    "text": "How is our Q2 budget tracking against forecast?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0048",
+    "tier": "medium",
+    "text": "What has changed at Quantum Mesh since we passed on them?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0049",
+    "tier": "medium",
+    "text": "What still needs to come in today for the Aerion technical review to close by end of week?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "decision"
+    ]
+  },
+  {
+    "id": "q-0050",
+    "tier": "medium",
+    "text": "What ARR did Vela Robotics hit last month, according to Sarah Chen?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "meeting",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0051",
+    "tier": "medium",
+    "text": "Who originally introduced Sarah Chen to the Vela Robotics founders?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "meeting",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0052",
+    "tier": "medium",
+    "text": "What concern about GridScale AI's unit economics did Sequoia raise, and what did I ask GridScale's CFO to walk us through as a result?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "decision"
+    ]
+  },
+  {
+    "id": "q-0053",
+    "tier": "medium",
+    "text": "What did Nadia Freeman push me to dig deeper on in my Axiom Infrastructure diligence memo, and who did she suggest I talk to?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0054",
+    "tier": "medium",
+    "text": "Where did Anna Petrov say the Terraform Dynamics founding team came from?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0055",
+    "tier": "medium",
+    "text": "Anna Petrov offered to send me her firm's old diligence notes on Terraform Dynamics — at what stage had they looked at and passed on the company?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0056",
+    "tier": "medium",
+    "text": "On the Helion Energy comparison, what did Elena Rossi say she finds genuinely differentiated, and who had she spoken with the day before?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0057",
+    "tier": "medium",
+    "text": "Who is pushing back on the pro-rata rights in the Tideline term sheet, and what does Kofi think we could flex on to find middle ground?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0058",
+    "tier": "medium",
+    "text": "What is Mina Kapoor's objection to the Qubit deal?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0059",
+    "tier": "medium",
+    "text": "In the Q1 compliance review, which portfolio company's filings were not current, and what is still outstanding from them?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company"
+    ]
+  },
+  {
+    "id": "q-0060",
+    "tier": "medium",
+    "text": "Which two portfolio companies does Jordan Park want the partners to set reserve strategy for, and when are they expected to raise?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "temporal"
+    ]
+  },
+  {
+    "id": "q-0061",
+    "tier": "medium",
+    "text": "By when did I ask the partners to raise any remaining concerns about the Cognito Labs term sheet?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "date",
+      "decision"
+    ]
+  },
+  {
+    "id": "q-0062",
+    "tier": "adversarial",
+    "text": "Who does Nadia Freeman work for, and is what I know about her affiliation consistent?",
+    "expected_output_type": "contradiction-explanation",
+    "tags": [
+      "contradiction",
+      "multi-hop",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0063",
+    "tier": "medium",
+    "text": "What stake does Halfway Capital hold in Meridian Health after its last round?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "meeting",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0064",
+    "tier": "medium",
+    "text": "How much runway does NovaTech Labs have left?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "meeting",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0065",
+    "tier": "medium",
+    "text": "In their April 18 portfolio catch-up, where did Kofi Mensah say he was heading the following month, and for what?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "meeting",
+      "person",
+      "temporal"
+    ]
+  },
+  {
+    "id": "q-0066",
+    "tier": "medium",
+    "text": "What were Vespera Dynamics' Q1 ARR and net revenue retention?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "meeting",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0067",
+    "tier": "medium",
+    "text": "What is Vespera Dynamics' monthly burn, and how far does its runway extend?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "meeting",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0068",
+    "tier": "medium",
+    "text": "By when is Elena Rossi supposed to send the updated Q2 hiring scenarios for Vespera Dynamics?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "date",
+      "meeting"
+    ]
+  },
+  {
+    "id": "q-0069",
+    "tier": "medium",
+    "text": "Where do Diego Alvarez's partners stand on the Terraform Energy Series A, and what is their reason?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0070",
+    "tier": "medium",
+    "text": "Which company did Amara flag to Tomoko Sato at Khosla as building modular power solutions for edge AI deployments?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0071",
+    "tier": "medium",
+    "text": "What was Hannah Liu's main reservation about Terraform Labs?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0072",
+    "tier": "medium",
+    "text": "Which company is Amara looking at for model observability on Hannah Liu's recommendation?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0073",
+    "tier": "medium",
+    "text": "What results did Jordan Park report from Novamind's cement plant pilot?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0074",
+    "tier": "adversarial",
+    "text": "What conflicting accounts has Jordan Park given about what NovaMind is building?",
+    "expected_output_type": "contradiction-explanation",
+    "tags": [
+      "company",
+      "contradiction",
+      "multi-hop",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0075",
+    "tier": "medium",
+    "text": "Who is the CEO of Vero Health, and which firm is expected to lead their Series A?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0076",
+    "tier": "medium",
+    "text": "How much time is Nadia Freeman taking off in May, and why?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "date",
+      "person",
+      "preference"
+    ]
+  },
+  {
+    "id": "q-0077",
+    "tier": "medium",
+    "text": "What percentage of Vela Robotics does Sarah Chen personally hold?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0078",
+    "tier": "medium",
+    "text": "Where is my sync with Kofi Mensah taking place?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "date",
+      "meeting",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0079",
+    "tier": "adversarial",
+    "text": "What conflicting information exists in my records about where Marcus Reid works?",
+    "expected_output_type": "contradiction-explanation",
+    "tags": [
+      "company",
+      "contradiction",
+      "multi-hop",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0080",
+    "tier": "adversarial",
+    "text": "What conflicting information exists in my records about which firm Sarah Chen is at?",
+    "expected_output_type": "contradiction-explanation",
+    "tags": [
+      "company",
+      "contradiction",
+      "multi-hop",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0081",
+    "tier": "medium",
+    "text": "What pre-money valuation did the Solunarc term sheet land at?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0082",
+    "tier": "medium",
+    "text": "How much is Lucia-3 raising in its seed round, and how much of it had already been soft-circled?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0083",
+    "tier": "medium",
+    "text": "In the milestone structure being negotiated with Diego Alvarez for his Series A, how is the money split and what unlocks the later tranches?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "decision",
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0084",
+    "tier": "medium",
+    "text": "What compromise did I decide to propose on the second-tranche revenue milestone for the Heliogen follow-on?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "decision",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0085",
+    "tier": "medium",
+    "text": "What share of Cirrus Systems' ARR is concentrated in their top three enterprise contracts?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "meeting",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0086",
+    "tier": "medium",
+    "text": "How much did Canopy Analytics' burn rate rise last quarter, and what drove the increase?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "meeting",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0087",
+    "tier": "medium",
+    "text": "What discrepancy did I notice in the BloombergNEF Q1 climate tech report about Terraform Grid's Series C size?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "temporal"
+    ]
+  },
+  {
+    "id": "q-0088",
+    "tier": "medium",
+    "text": "What reduction in peak power draw did Anna Petrov report they're seeing during orange-mode events?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "metric",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0089",
+    "tier": "medium",
+    "text": "How much CO2 does our climate portfolio collectively avoid each year, and across how many companies?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric"
+    ]
+  },
+  {
+    "id": "q-0090",
+    "tier": "medium",
+    "text": "What rule did Sarah Chen suggest so that we'd pass on deals faster?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "decision",
+      "person",
+      "preference"
+    ]
+  },
+  {
+    "id": "q-0091",
+    "tier": "medium",
+    "text": "What split between AI-climate infrastructure and deep tech hardware did I plan to propose formalizing at the offsite?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "decision",
+      "preference"
+    ]
+  },
+  {
+    "id": "q-0092",
+    "tier": "hard",
+    "text": "Tomoko Sato and Marcus Reid each used the phrase \"orange mode\" to mean something different — what did each of them mean by it?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "contradiction",
+      "multi-hop",
+      "preference"
+    ]
+  },
+  {
+    "id": "q-0093",
+    "tier": "hard",
+    "text": "How much did Halfway Capital Fund III raise at its first close, and what hire are we holding until after Fund III closes?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "decision",
+      "metric",
+      "multi-hop"
+    ]
+  },
+  {
+    "id": "q-0094",
+    "tier": "hard",
+    "text": "Who introduced me to the Terraform Industries team, and at what valuation did Terraform Industries close their Series B?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "multi-hop",
+      "person",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0095",
+    "tier": "hard",
+    "text": "What is Axiom Energy building, and what next step did I agree to with Diego Alvarez on that deal?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "action-item",
+      "company",
+      "date",
+      "decision",
+      "multi-hop"
+    ]
+  },
+  {
+    "id": "q-0096",
+    "tier": "hard",
+    "text": "On Terraform Energy's Series A, which firm did I propose co-leading the round with, and what is the deadline on the round?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "date",
+      "decision",
+      "multi-hop",
+      "relationship"
+    ]
+  },
+  {
+    "id": "q-0097",
+    "tier": "hard",
+    "text": "Who leads GridSense's technical strategy, and what number did I want that person to double-check after the BloombergNEF report?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "company",
+      "metric",
+      "multi-hop",
+      "person"
+    ]
+  },
+  {
+    "id": "q-0098",
+    "tier": "adversarial",
+    "text": "Jordan Park has quoted me more than one number for the size of NovaMind's seed round — what are the figures?",
+    "expected_output_type": "contradiction-explanation",
+    "tags": [
+      "company",
+      "contradiction",
+      "metric",
+      "multi-hop",
+      "temporal"
+    ]
+  },
+  {
+    "id": "q-0099",
+    "tier": "hard",
+    "text": "What is Halfway's standard liquidation preference, and what ARR milestone do we normally require before a second tranche unlocks on climate infrastructure deals?",
+    "expected_output_type": "answer-string",
+    "tags": [
+      "decision",
+      "metric",
+      "multi-hop",
+      "preference"
+    ]
+  }
+]

@@ -3,7 +3,13 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { LOCAL_STACK, runStackCommand } from "../../scripts/local-stack.ts";
 import { ROOT, type EvalProvider } from "../agent.ts";
-import { corpusDirectory, corpusIsUnchanged, diffCorpus } from "../corpus-integrity.ts";
+import {
+  corpusDirectory,
+  corpusIsUnchanged,
+  diffCorpus,
+  isCorpusId,
+  type CorpusId,
+} from "../corpus-integrity.ts";
 import { loadCorpus } from "../corpus-records.ts";
 import { snapshotKnowledge, type PageSnapshot } from "../snapshot.ts";
 import { style } from "../terminal.ts";
@@ -18,16 +24,21 @@ import {
   type SealedAnswer,
 } from "./questions.ts";
 import { scoreRun, type RecordedAnswer } from "./score.ts";
+import { amaraPeopleNames, verifyAmaraAnswers } from "./amara-evidence.ts";
 import { deriveWorldQuestions, worldPeopleNames } from "./world-derive.ts";
 
 const RESULTS_ROOT = join(ROOT, ".eval-results");
 
 /**
- * `world-v1` is the only corpus with a question set so far. `amara-life-v1`'s has to be
- * authored rather than derived, because its raw activity carries no `_facts` to read a
- * key off — see [README.md](README.md).
+ * The corpus `qa:derive` and `qa:seed` act on.
+ *
+ * Both are `world-v1`-only, and for the same underlying reason: its pages carry a `_facts`
+ * block to read a key off, and they are already a finished knowledge base, so the harness
+ * puts them straight in rather than distilling them. `amara-life-v1` is the other half —
+ * its questions are authored because there is no key to read, and its knowledge base is
+ * distilled because raw activity is the thing being tested. See [README.md](README.md).
  */
-const QA_CORPUS = "world-v1";
+const WORLD_CORPUS = "world-v1";
 
 /**
  * The questions and answers are committed rather than regenerated on demand, so that a
@@ -37,8 +48,8 @@ const QA_CORPUS = "world-v1";
 export function deriveQuestionsCommand(options: { write: boolean }): void {
   const set = deriveWorldQuestions();
   const files: [string, unknown][] = [
-    [questionsPath(QA_CORPUS), set.questions],
-    [answersPath(QA_CORPUS), set.answers],
+    [questionsPath(WORLD_CORPUS), set.questions],
+    [answersPath(WORLD_CORPUS), set.answers],
   ];
 
   if (options.write) {
@@ -61,7 +72,7 @@ export function deriveQuestionsCommand(options: { write: boolean }): void {
     return counts;
   }, {});
 
-  console.log(`${QA_CORPUS}: ${set.questions.length} questions over ${pairs} expected answers`);
+  console.log(`${WORLD_CORPUS}: ${set.questions.length} questions over ${pairs} expected answers`);
   for (const [tag, count] of Object.entries(byTag)) console.log(`  ${tag.padEnd(12)} ${count}`);
   console.log(`\nknowable from prose alone: ${pairs - unstated}/${pairs}`);
   if (unstated) {
@@ -70,6 +81,48 @@ export function deriveQuestionsCommand(options: { write: boolean }): void {
       console.log(style.dim(`  ${answer.id} ${answer.seed} -> ${answer.unstated_in_prose!.join(", ")}`));
     }
   }
+}
+
+/**
+ * Re-checks `amara-life-v1`'s authored key against the corpus, and reports the shape of
+ * the set.
+ *
+ * `world-v1` has `qa:derive`, which regenerates its questions and fails if the committed
+ * copies have drifted. Nothing can regenerate an authored set, so this is its equivalent:
+ * every claim the key makes that the corpus can settle is settled against the corpus, and
+ * the rest of the review is the reader's.
+ */
+export function verifyQuestionsCommand(): void {
+  const corpusId = "amara-life-v1";
+  const questions = readQuestions(corpusId);
+  const answers = readAnswers(corpusId);
+  const issues = verifyAmaraAnswers(questions, answers);
+
+  const byDay = new Map<string, number>();
+  const byTier = new Map<string, number>();
+  let joins = 0;
+  for (const question of questions) byTier.set(question.tier, (byTier.get(question.tier) ?? 0) + 1);
+  for (const answer of answers) {
+    byDay.set(answer.due_batch, (byDay.get(answer.due_batch) ?? 0) + 1);
+    if (new Set(answer.evidence?.map((entry) => entry.record)).size > 1) joins += 1;
+  }
+  const cited = new Set(answers.flatMap((answer) => answer.evidence?.map((entry) => entry.record) ?? []));
+
+  console.log(style.heading(`\n${corpusId} · ${questions.length} authored questions\n`));
+  console.log(`grounded in ${cited.size} distinct records, quoted verbatim`);
+  console.log(`${joins} need more than one record; ${questions.length - joins} are settled by one\n`);
+  console.log(style.bold("By tier"));
+  for (const [tier, count] of [...byTier].sort()) console.log(`  ${tier.padEnd(14)} ${String(count).padStart(3)}`);
+  console.log(style.bold("\nBy the batch that first answers it"));
+  for (const [day, count] of [...byDay].sort()) console.log(`  ${day.padEnd(14)} ${String(count).padStart(3)}`);
+
+  if (issues.length === 0) {
+    console.log(style.green("\n\u2713 every answer is grounded in the corpus it is asked about"));
+    return;
+  }
+  console.log(style.red(`\n\u2717 ${issues.length} problem(s)`));
+  for (const issue of issues) console.log(style.red(`  ${issue.id}  ${issue.problem}`));
+  process.exitCode = 1;
 }
 
 /** Scoring is offline, so a run is found the same way `gold:check` finds one. */
@@ -81,24 +134,79 @@ function runDirectory(runId?: string): string {
   return directory;
 }
 
-function runCorpusId(directory: string): string | undefined {
+function runReport(directory: string): { corpusId?: string; mode?: string } {
   try {
-    return (JSON.parse(readFileSync(join(directory, "report.json"), "utf8")) as { corpusId?: string }).corpusId;
+    return JSON.parse(readFileSync(join(directory, "report.json"), "utf8")) as {
+      corpusId?: string; mode?: string;
+    };
   } catch {
-    return undefined;
+    return {};
   }
 }
 
-function assertRunMatches(directory: string): void {
-  const corpusId = runCorpusId(directory);
-  if (corpusId && corpusId !== QA_CORPUS) {
-    throw new Error(`Run ${directory.split("/").at(-1)} processed ${corpusId}, and the question set is ${QA_CORPUS}'s. `
-      + "Use `bun run eval gold:check` for amara-life-v1.");
-  }
+/**
+ * How the knowledge base under test came to exist, which decides what a score means.
+ *
+ * A seeded base was written from pages that were already someone's finished knowledge, so a
+ * score over it is retrieval alone. A distilled base was built by the agent out of raw
+ * activity, so the same score also carries every extraction and reconciliation decision
+ * that went into it. One number cannot mean both things silently.
+ */
+function runMode(directory: string): "seed" | "distill" {
+  return runReport(directory).mode === "seed" ? "seed" : "distill";
 }
 
-/** Batch snapshots a run recorded, ascending. Read from disk so a partial run still works. */
-function recordedBatches(directory: string): string[] {
+const MEASURES: Record<"seed" | "distill", string> = {
+  seed: "retrieval only — the pages were seeded, not built",
+  distill: "distillation and retrieval — the agent built these pages from raw activity",
+};
+
+/**
+ * The question set to put to a run: its own corpus's.
+ *
+ * Both corpora have one now, so the run decides rather than a constant. A run that
+ * recorded no corpus id predates `--corpus` and can only be `world-v1`, which is what the
+ * harness served before amara-life-v1 had questions.
+ */
+function corpusOf(directory: string): CorpusId {
+  const corpusId = runReport(directory).corpusId ?? "world-v1";
+  if (!isCorpusId(corpusId) || !existsSync(questionsPath(corpusId))) {
+    throw new Error(`Run ${directory.split("/").at(-1)} processed ${corpusId}, which has no question set.`);
+  }
+  return corpusId;
+}
+
+/** Every person the corpus can name, used to spot a confidently wrong attribution. */
+function peopleNames(corpusId: CorpusId): string[] {
+  return corpusId === "world-v1" ? worldPeopleNames() : amaraPeopleNames();
+}
+
+/**
+ * The batches a run served, ascending.
+ *
+ * Read from `report.json`, which both run shapes write and which is the only place that
+ * knows the answer: a distillation run snapshots each batch as it goes, but a seed applies
+ * every batch at once and snapshots only the result, so counting snapshot files would say a
+ * ten-batch seed served one batch. The snapshot filenames are the fallback for a run that
+ * died before writing its report.
+ */
+function servedBatches(directory: string): string[] {
+  try {
+    const report = JSON.parse(readFileSync(join(directory, "report.json"), "utf8")) as {
+      batches?: { batch?: string }[];
+    };
+    const batches = (report.batches ?? []).flatMap((entry) => entry.batch ?? []);
+    if (batches.length) return [...batches].sort();
+  } catch {
+    // No readable report: fall back to what is on disk.
+  }
+  return readdirSync(directory)
+    .flatMap((file) => /^batch-(.+)-snapshot\.json$/.exec(file)?.[1] ?? [])
+    .sort();
+}
+
+/** Snapshots a run wrote, ascending. The last is the knowledge base questions are asked of. */
+function recordedSnapshots(directory: string): string[] {
   return readdirSync(directory)
     .flatMap((file) => /^batch-(.+)-snapshot\.json$/.exec(file)?.[1] ?? [])
     .sort();
@@ -106,7 +214,7 @@ function recordedBatches(directory: string): string[] {
 
 /** The knowledge base as the final batch left it, which is what the questions are asked of. */
 function finalSnapshot(directory: string): PageSnapshot[] {
-  const last = recordedBatches(directory).at(-1);
+  const last = recordedSnapshots(directory).at(-1);
   if (!last) throw new Error(`Run ${directory} holds no batch snapshots`);
   return JSON.parse(readFileSync(join(directory, `batch-${last}-snapshot.json`), "utf8")) as PageSnapshot[];
 }
@@ -119,17 +227,23 @@ function finalSnapshot(directory: string): PageSnapshot[] {
  * Restricting to what is due is the same discipline `gold/score.ts` applies with
  * `knowableFrom`, and it leaves the question set itself untouched — a full ten-batch run
  * is still upstream's 145.
+ *
+ * Membership of the served set, not `<= through`, because a run does not always start at
+ * the beginning. `--window dense` serves amara-life-v1's eight busy days and never serves
+ * the thirty-nine sparse note days before them, so a question due on 2 February is not due
+ * for it however far past 2 February the last batch is.
  */
-function dueQuestions(
+export function dueQuestions(
   directory: string,
   questions: PublicQuery[],
   answers: SealedAnswer[],
   all: boolean,
 ): { due: PublicQuery[]; through: string | undefined; skipped: number } {
-  const through = recordedBatches(directory).at(-1);
+  const served = new Set(servedBatches(directory));
+  const through = [...served].sort().at(-1);
   if (all || !through) return { due: questions, through, skipped: 0 };
   const dueBy = new Map(answers.map((answer) => [answer.id, answer.due_batch]));
-  const due = questions.filter((question) => (dueBy.get(question.id) ?? "") <= through);
+  const due = questions.filter((question) => served.has(dueBy.get(question.id) ?? ""));
   return { due, through, skipped: questions.length - due.length };
 }
 
@@ -141,30 +255,30 @@ function dueQuestions(
  * for why, and [README.md](README.md) for what that means for the number.
  */
 export async function seedCommand(options: { batches?: number | undefined }): Promise<void> {
-  const difference = diffCorpus(QA_CORPUS);
+  const difference = diffCorpus(WORLD_CORPUS);
   if (!corpusIsUnchanged(difference)) {
-    throw new Error(`The vendored ${QA_CORPUS} corpus has been modified, so results would not be comparable:\n${
+    throw new Error(`The vendored ${WORLD_CORPUS} corpus has been modified, so results would not be comparable:\n${
       JSON.stringify(difference, null, 2)}`);
   }
 
-  const corpus = loadCorpus(corpusDirectory(QA_CORPUS));
+  const corpus = loadCorpus(corpusDirectory(WORLD_CORPUS));
   const batches = options.batches ? corpus.batches.slice(0, options.batches) : corpus.batches;
   const through = batches.at(-1)!;
   const records = corpus.records.filter((record) => record.batch <= through);
 
   const startedAt = new Date().toISOString();
-  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-seed-${QA_CORPUS}`;
+  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-seed-${WORLD_CORPUS}`;
   const directory = join(RESULTS_ROOT, runId);
   await mkdir(directory, { recursive: true });
 
-  console.log(style.heading(`\nSeeding ${QA_CORPUS}: ${runId}`));
+  console.log(style.heading(`\nSeeding ${WORLD_CORPUS}: ${runId}`));
   console.log(`${records.length} pages through ${through} · ${batches.length} of ${corpus.batches.length} batches`);
   console.log(style.dim("Seeded, not distilled: world-v1 has no owner, so the activity distiller"));
   console.log(style.dim("correctly declines it. This measures retrieval only.\n"));
 
   // The server reads the corpus at startup and the reset restores the default template,
   // so the seed always lands on a known base — the same contract a distillation run has.
-  process.env.EVAL_CORPUS_PATH = `/app/eval/corpus/${QA_CORPUS}`;
+  process.env.EVAL_CORPUS_PATH = `/app/eval/corpus/${WORLD_CORPUS}`;
   runStackCommand("reset");
 
   // Applied inside the container: Postgres is not published on a host port, and the
@@ -183,13 +297,13 @@ export async function seedCommand(options: { batches?: number | undefined }): Pr
   // filter selects exactly the questions this seed has served the evidence for.
   await Bun.write(join(directory, `batch-${through}-snapshot.json`), `${JSON.stringify(pages, null, 2)}\n`);
   await Bun.write(join(directory, "report.json"), `${JSON.stringify({
-    runId, corpusId: QA_CORPUS, mode: "seed", window: "full",
+    runId, corpusId: WORLD_CORPUS, mode: "seed", window: "full",
     startedAt, completedAt: new Date().toISOString(),
     batches: batches.map((batch, index) => ({ batch, index })),
   }, null, 2)}\n`);
   await Bun.write(join(RESULTS_ROOT, "latest-distill"), `${runId}\n`);
 
-  const due = readAnswers(QA_CORPUS).filter((answer) => answer.due_batch <= through);
+  const due = readAnswers(WORLD_CORPUS).filter((answer) => answer.due_batch <= through);
   console.log(style.green(`\n✓ Seeded · ${pages.length} pages in the knowledge base`));
   console.log(`${due.length} question(s) are answerable from it. Ask them with ${
     style.blue("bun run eval qa:ask")}`);
@@ -207,17 +321,17 @@ export type AskOptions = {
 };
 
 export async function askQuestionsCommand(options: AskOptions): Promise<void> {
-  const difference = diffCorpus(QA_CORPUS);
+  const directory = runDirectory(options.runId);
+  const corpusId = corpusOf(directory);
+
+  const difference = diffCorpus(corpusId);
   if (!corpusIsUnchanged(difference)) {
-    throw new Error(`The vendored ${QA_CORPUS} corpus has been modified, so answers would not be comparable:\n${
+    throw new Error(`The vendored ${corpusId} corpus has been modified, so answers would not be comparable:\n${
       JSON.stringify(difference, null, 2)}`);
   }
 
-  const directory = runDirectory(options.runId);
-  assertRunMatches(directory);
-
   const { due, through, skipped } = dueQuestions(
-    directory, readQuestions(QA_CORPUS), readAnswers(QA_CORPUS), options.all ?? false);
+    directory, readQuestions(corpusId), readAnswers(corpusId), options.all ?? false);
   let questions: PublicQuery[] = due;
   if (options.only) questions = questions.filter((question) => question.id === options.only);
   if (options.limit) questions = questions.slice(0, options.limit);
@@ -230,7 +344,8 @@ export async function askQuestionsCommand(options: AskOptions): Promise<void> {
   const answerDirectory = join(directory, "qa");
   await mkdir(answerDirectory, { recursive: true });
 
-  console.log(style.heading(`\nAsking ${questions.length} question(s) · ${directory.split("/").at(-1)}`));
+  console.log(style.heading(`\nAsking ${questions.length} ${corpusId} question(s) · ${directory.split("/").at(-1)}`));
+  console.log(style.dim(`Measures ${MEASURES[runMode(directory)]}.`));
   if (skipped) {
     console.log(style.dim(`Run processed through ${through}, so ${skipped} question(s) whose evidence`));
     console.log(style.dim("it never served are held back. Pass --all to ask them anyway."));
@@ -263,38 +378,31 @@ export async function askQuestionsCommand(options: AskOptions): Promise<void> {
 
 export function scoreAnswersCommand(runId?: string): void {
   const directory = runDirectory(runId);
-  assertRunMatches(directory);
+  const corpusId = corpusOf(directory);
 
   const path = join(directory, ANSWERS_FILE);
   if (!existsSync(path)) throw new Error(`Run ${directory} holds no ${ANSWERS_FILE}. Run \`bun run eval qa:ask\` first.`);
 
   const recorded = JSON.parse(readFileSync(path, "utf8")) as RecordedAnswer[];
-  // Asked *and* due. Asking a subset is the normal cheap case, and counting the rest as
-  // unanswered would bury a real result under 141 blanks. Re-checking due-ness here rather
-  // than trusting what `qa:ask` selected is what makes an offline rescore meaningful: when
-  // the key is corrected, a question whose evidence was never served stops being scored
-  // instead of being recorded forever as a failure it never had a chance at.
+  // Only the questions actually asked. Asking a subset is the normal cheap case, and
+  // counting the rest as unanswered would bury a real result under 141 blanks.
   const asked = new Set(recorded.map((entry) => entry.id));
-  const { due } = dueQuestions(directory, readQuestions(QA_CORPUS), readAnswers(QA_CORPUS), false);
-  const questions = due.filter((question) => asked.has(question.id));
-  const dropped = asked.size - questions.length;
+  const questions = readQuestions(corpusId).filter((question) => asked.has(question.id));
 
   const result = scoreRun({
     questions,
-    answers: readAnswers(QA_CORPUS),
+    answers: readAnswers(corpusId),
     recorded,
     pages: finalSnapshot(directory),
-    people: worldPeopleNames(),
+    people: peopleNames(corpusId),
   });
   const { scores } = result;
 
-  const through = recordedBatches(directory).at(-1);
-  console.log(style.heading(`\nQA score · ${QA_CORPUS} · ${directory.split("/").at(-1)}`));
-  if (through) console.log(style.dim(`Knowledge base built through ${through}.`));
-  if (dropped) {
-    console.log(style.dim(`${dropped} recorded answer(s) are not scored: the key now places their`));
-    console.log(style.dim("evidence in a later batch than this run served."));
-  }
+  const mode = runMode(directory);
+  const through = [...servedBatches(directory)].sort().at(-1);
+  console.log(style.heading(`\nQA score · ${corpusId} · ${directory.split("/").at(-1)}`));
+  console.log(style.dim(`Measures ${MEASURES[mode]}.`));
+  if (through) console.log(style.dim(`Knowledge base ${mode === "seed" ? "seeded" : "built"} through ${through}.`));
   for (const score of scores) {
     const mark = score.verdict === "correct" ? style.green("✓")
       : score.verdict === "void" ? style.yellow("–") : style.red("✗");

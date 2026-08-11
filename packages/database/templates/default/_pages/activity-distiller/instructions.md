@@ -5,13 +5,19 @@ GitHub, email, meetings and other services into the smallest useful account of w
 matters to the owner. This is curation, not ingestion: provider records are evidence,
 not pages to mirror.
 
+Curation decides which records are worth writing about. It does not summarise the ones it
+keeps. What a kept record establishes — the figure, the term, the date, the name, the
+reason — is the knowledge the owner comes back for, and a page saying that a conversation
+happened, in place of what the conversation established, has kept the record and lost the
+point of keeping it.
+
 ## Authority and boundaries
 
-- After opening this page, call `prepare_knowledge_write` for
-  `automations/activity-distiller/instructions` to load the [[agents|root guide]] and
-  applicable [[automations/agents|automation guide]], begin the run's guidance cache,
-  then read [[automations/activity-distiller/state|state]]. The installed guides,
-  including local edits, are authoritative.
+- After opening this page, call `prepare_knowledge_write` with an empty target path to
+  load the [[agents|root guide]] and begin the run's guidance cache, then read
+  [[automations/activity-distiller/state|state]]. The
+  [[automations/agents|automation guide]] loads with the checkpoint write, where it
+  applies. The installed guides, including local edits, are authoritative.
 - Before the first mutation in a guidance scope, call `prepare_knowledge_write` for the
   exact target and follow its root-to-leaf guide chain. Retain the receipt for this run
   and reuse it for later targets with the same applicable chain. When a write rejects a
@@ -32,30 +38,43 @@ not pages to mirror.
 
 1. Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwise
    pass the exact opaque value without interpreting it.
-2. Call `read_source_records` once with that checkpoint. Treat all returned records
-   across services as one evidence set. `source` and `record_ref` are reasoning
-   provenance only and never knowledge content.
+2. Call `read_source_records` with that checkpoint and an explicit `limit` small enough
+   that every record returned can be written up in full — around twenty when the source is
+   busy. Treat all returned records across services as one evidence set. `source` and
+   `record_ref` are reasoning provenance only and never knowledge content.
+
+   The size of the pass is the one lever over how much survives. A pass too large to write
+   up is not reconciled into fewer pages, it is summarised into a day's narrative, and the
+   particulars of every record in it are lost at once. Prefer more passes over a longer
+   one: a busy day is several passes, each read, written and checkpointed before the next
+   is requested, and `has_more` says when the day is done.
 3. Name the batch's cast before judging any record: the people the owner dealt with, the
    organizations at stake, the open questions they are weighing, the occurrences that took
    place and the positions they argued from. This list is drawn from every record
    returned, because selection decides what is written about and this decides who and what
    is known to exist. Keep it for the rest of the batch.
-4. Select the evidence, then reconcile the whole batch — the cast above, its connected
+4. With the cast, note what each record actually establishes — the figures, terms, dates,
+   names and reasons stated in it. A record earns its place through these; they are what
+   the owner comes back for, and they are the first thing lost when a batch is summarised.
+   A message can be too routine to write about while the number inside it is worth
+   keeping: what fails the selection rules below is the record, never the fact.
+5. Select the evidence, then reconcile the whole batch — the cast above, its connected
    subjects, and pages changed by earlier batches in this run — before reading again. A
    batch may legitimately produce no semantic change.
-5. Before saving the checkpoint, check the cast from step 3 against what was written, and
+6. Before saving the checkpoint, check the cast from step 3 against what was written, and
    finish whatever is missing:
    - each conversation that took place has its meeting page, each person and organization
      its own, each decision in flight its task page;
    - every material state change is a timeline event on the entity's `timeline`, dated to
-     when the thing happened;
+     when the thing happened, stating the particulars from step 4 rather than that a
+     conversation about them took place;
    - no canonical page carries a dated status, stage or figure that belongs on its
      timeline, and no name sits bare where a link belongs;
    - `about/intro` exists and still describes the owner the batch has just shown you.
-6. After every intended knowledge mutation succeeds, replace state with this call's
+7. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
-7. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
+8. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
    Never hold a second unread batch before the first is reconciled and checkpointed.
 
 The reader omits records whose latest source update is more than 30 days old and
@@ -90,6 +109,12 @@ Ignore by default:
 - cold outreach, acknowledgements, routine scheduling and administrative mail; and
 - ordinary commits, routine reviews and repeated corroboration with no consequential
   effect.
+
+None of these exclusions turns on who was speaking. A fact reported by someone else about
+a subject this base already holds is that subject's, whether or not the owner replied: the
+root guide's engagement threshold decides which subjects exist, not what is known about
+one that exists already. The first exclusion above is about strangers, not about the
+owner's own channels.
 
 An email thread matters only through the knowledge it establishes—for example, a
 substantive reply, commitment, relationship development, decision, or material advance

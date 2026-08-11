@@ -249,7 +249,10 @@ async function runClaudeSession({ id, prompt, runDirectory }: AgentSession): Pro
   const child = Bun.spawn([
     binary, "-p", "--no-session-persistence", "--strict-mcp-config",
     "--mcp-config", mcpConfig, "--permission-mode", "dontAsk",
-    "--allowedTools", `mcp__${MCP_NAME}__*`, "--output-format", "stream-json",
+    "--allowedTools", `mcp__${MCP_NAME}__*`,
+    // `stream-json` is what `finalAnswer` and `toolsUsed` read back, and under `-p` the
+    // CLI only emits it with `--verbose`.
+    "--output-format", "stream-json", "--verbose",
   ], { cwd: join(ROOT, "eval", "workspace"), stdin: "pipe", stdout: "pipe", stderr: "pipe" });
   child.stdin.write(prompt);
   child.stdin.end();

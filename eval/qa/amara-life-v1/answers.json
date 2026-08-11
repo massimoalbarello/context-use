@@ -1,0 +1,2272 @@
+[
+  {
+    "id": "q-0001",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$2.1M",
+        "$2.1 million"
+      ],
+      "34%"
+    ],
+    "seed": "meeting/mtg-0000",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "Capacitor Labs hit $2.1M ARR in Q1 2026, up 34% from Q4.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "Revenue hit $2.1M ARR, up 34% from Q4."
+      },
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Amara Okafor](user/amara-okafor) and [Hannah Liu](people/hannah-liu) connected to review [Capacitor Labs](companies/capacitor-labs) Q1 2026 performance and discuss the upcoming Series B process."
+      }
+    ]
+  },
+  {
+    "id": "q-0002",
+    "relevant": [],
+    "expected_names": [
+      "118%",
+      "125%"
+    ],
+    "seed": "meeting/mtg-0000",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "Net retention came in at 118%, slightly below the 125% board-level target.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "Net retention came in at 118%, which [Amara](user/amara-okafor) noted was solid but slightly below the 125% target they'd set at board level."
+      }
+    ]
+  },
+  {
+    "id": "q-0003",
+    "relevant": [],
+    "expected_names": [
+      "Meridian Health"
+    ],
+    "seed": "meeting/mtg-0000",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "Meridian Health.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Hannah](people/hannah-liu) mentioned they closed [Meridian Health](companies/meridian-health) last month, their first enterprise healthcare customer, which validates the compliance work they prioritized in H2 2025."
+      },
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Amara Okafor](user/amara-okafor) and [Hannah Liu](people/hannah-liu) connected to review [Capacitor Labs](companies/capacitor-labs) Q1 2026 performance and discuss the upcoming Series B process."
+      }
+    ]
+  },
+  {
+    "id": "q-0004",
+    "relevant": [],
+    "expected_names": [
+      [
+        "hold off",
+        "wait",
+        "defer",
+        "postpone"
+      ],
+      "Series B"
+    ],
+    "seed": "meeting/mtg-0000",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "Hold off on the CFO hire until after the Series B closes.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "- Hold off on CFO hire until after Series B closes"
+      },
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Amara Okafor](user/amara-okafor) and [Hannah Liu](people/hannah-liu) connected to review [Capacitor Labs](companies/capacitor-labs) Q1 2026 performance and discuss the upcoming Series B process."
+      }
+    ]
+  },
+  {
+    "id": "q-0005",
+    "relevant": [],
+    "expected_names": [
+      "2.3%"
+    ],
+    "seed": "meeting/mtg-0001",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "A 2.3% stake, from her angel investment in the seed round.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "[Hannah](people/hannah-liu) gave an update on [Vero Health](companies/vero-health), which she joined as an angel investor back in their seed round."
+      },
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "She confirmed she holds a **2.3% stake** in the company from her early investment."
+      },
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "Quick sync with [Hannah Liu](people/hannah-liu) to discuss her portfolio and potential co-investment opportunities."
+      }
+    ]
+  },
+  {
+    "id": "q-0006",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$4.2M",
+        "$4.2 million"
+      ]
+    ],
+    "seed": "meeting/mtg-0001",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "ARR just crossed $4.2M.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "[Hannah](people/hannah-liu) gave an update on [Vero Health](companies/vero-health), which she joined as an angel investor back in their seed round. She mentioned the company is doing really well—ARR just crossed $4.2M and they're seeing strong traction in the employer wellness space."
+      }
+    ]
+  },
+  {
+    "id": "q-0007",
+    "relevant": [],
+    "expected_names": [
+      "GridSync"
+    ],
+    "seed": "note/2026-04-13-orange-mode",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "GridSync. Orange-mode is a middle state between normal operations and full emergency protocols, when the grid is stressed but not yet failing.",
+    "evidence": [
+      {
+        "record": "note/2026-04-13-orange-mode",
+        "quote": "Had a long call with [Elena Rossi](people/elena-rossi) this morning about what she's calling \"orange-mode\" operations at GridSync. Basically a middle state between normal ops and full emergency protocols—when the grid is stressed but not yet failing."
+      }
+    ]
+  },
+  {
+    "id": "q-0008",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$85M",
+        "$85 million"
+      ],
+      [
+        "$150M",
+        "$150 million"
+      ]
+    ],
+    "seed": "slack/sl-0000",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "$85M at the first close, targeting a $150M final close by the end of Q3.",
+    "evidence": [
+      {
+        "record": "slack/sl-0000",
+        "quote": "Quick update: just wrapped the first close for [Halfway Capital Fund III](fund/halfway-capital-fund-iii) at $85M. Still targeting $150M final close by end of Q3—will share the LP breakdown at Wednesday's partner meeting."
+      }
+    ]
+  },
+  {
+    "id": "q-0009",
+    "relevant": [],
+    "expected_names": [
+      "40%"
+    ],
+    "seed": "slack/sl-0001",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "Revenue was up 40% QoQ.",
+    "evidence": [
+      {
+        "record": "slack/sl-0001",
+        "quote": "Quick update on [Nexus Robotics](companies/nexus-robotics) — just got off a call with their CFO and the Q1 numbers look strong. Revenue up 40% QoQ, should have the full deck by EOD tomorrow."
+      }
+    ]
+  },
+  {
+    "id": "q-0010",
+    "relevant": [],
+    "expected_names": [
+      "Vela Optics"
+    ],
+    "seed": "slack/sl-0020",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "Vela Optics' bridge round — and he asked me to pull together the updated cap table analysis.",
+    "evidence": [
+      {
+        "record": "slack/sl-0020",
+        "quote": "Quick reminder that we need to finalize our positions on the [Vela Optics](companies/vela-optics) bridge round before Thursday's partner meeting. @amara can you pull together the updated cap table analysis?"
+      },
+      {
+        "record": "slack/sl-0020",
+        "quote": "**From:** Kofi Mensah (@kofi)"
+      }
+    ]
+  },
+  {
+    "id": "q-0011",
+    "relevant": [],
+    "expected_names": [
+      "8.5%"
+    ],
+    "seed": "meeting/mtg-0002",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "8.5% ownership.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0002",
+        "quote": "confirmed [Halfway Capital](companies/halfway-capital) currently holds **8.5% ownership** in [Meridian](companies/meridian-robotics) post-Series A"
+      }
+    ]
+  },
+  {
+    "id": "q-0012",
+    "relevant": [],
+    "expected_names": [
+      "Target",
+      "40%"
+    ],
+    "seed": "meeting/mtg-0002",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "The pilot is with Target, and they are seeing 40% efficiency gains in the initial deployment.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0002",
+        "quote": "The warehouse automation pilot with Target is going well—they're seeing 40% efficiency gains in the initial deployment. Team has grown to 47 people"
+      }
+    ]
+  },
+  {
+    "id": "q-0013",
+    "relevant": [],
+    "expected_names": [
+      [
+        "180-220M",
+        "180-220 million",
+        "180M to $220M",
+        "180 million to $220 million"
+      ],
+      "6-7"
+    ],
+    "seed": "meeting/mtg-0002",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "A $180-220M pre-money, which would dilute existing investors to roughly the 6-7% range.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0002",
+        "quote": "they're modeling the B at a $180-220M pre, which would likely dilute existing investors to the 6-7% range"
+      }
+    ]
+  },
+  {
+    "id": "q-0014",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$1.2M",
+        "$1.2 million"
+      ],
+      "8%"
+    ],
+    "seed": "emails/em-0004",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "A $1.2M check for 8% equity, which also came with a board observer seat.",
+    "evidence": [
+      {
+        "record": "emails/em-0004",
+        "quote": "regarding [Helios Climate Systems](companies/helios-climate-systems)"
+      },
+      {
+        "record": "emails/em-0004",
+        "quote": "I actually led their pre-seed back in Q3 2023 – we came in at 8% equity for that initial $1.2M check, which gave us a board observer seat."
+      }
+    ]
+  },
+  {
+    "id": "q-0015",
+    "relevant": [],
+    "expected_names": [
+      "Ben",
+      [
+        "$4M",
+        "$4 million"
+      ]
+    ],
+    "seed": "emails/em-0007",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "Ben is leading their climate infrastructure thesis and will be the point person; Marcus said the $4M allocation makes sense.",
+    "evidence": [
+      {
+        "record": "emails/em-0007",
+        "quote": "**From:** Marcus Reid <mreid@a16z.com>"
+      },
+      {
+        "record": "emails/em-0007",
+        "quote": "we're still very much interested in participating in the Terraform Dynamics round"
+      },
+      {
+        "record": "emails/em-0007",
+        "quote": "Ben is still leading our climate infrastructure thesis, so he'll be the point person on our side"
+      },
+      {
+        "record": "emails/em-0007",
+        "quote": "I think the $4M allocation we discussed makes sense"
+      }
+    ]
+  },
+  {
+    "id": "q-0016",
+    "relevant": [],
+    "expected_names": [
+      "Mina Kapoor",
+      "Series B"
+    ],
+    "seed": "emails/em-0009",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "Mina Kapoor flagged it; it is Fervo Energy's Series B, and she hears they will close allocation by end of month.",
+    "evidence": [
+      {
+        "record": "emails/em-0009",
+        "quote": "**From:** Mina Kapoor <mina@threshold-ventures.com>"
+      },
+      {
+        "record": "emails/em-0009",
+        "quote": "I've been doing more digging into [Fervo Energy](companies/fervo-energy) and their enhanced geothermal approach"
+      },
+      {
+        "record": "emails/em-0009",
+        "quote": "Their Series B is moving fast—I'm hearing they'll close allocation by end of month"
+      }
+    ]
+  },
+  {
+    "id": "q-0017",
+    "relevant": [],
+    "expected_names": [
+      "IP licensing"
+    ],
+    "seed": "emails/em-0005",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "Her thinking on the IP licensing terms — I asked for 30 minutes that week before finalising our position.",
+    "evidence": [
+      {
+        "record": "emails/em-0005",
+        "quote": "**To:** Sarah Chen <sarah@chen.dev>"
+      },
+      {
+        "record": "emails/em-0005",
+        "quote": "Thanks for the detailed breakdown on the [Helion Energy](orgs/helion-energy) deal structure"
+      },
+      {
+        "record": "emails/em-0005",
+        "quote": "would you have 30 minutes this week to walk me through your thinking on the IP licensing terms?"
+      }
+    ]
+  },
+  {
+    "id": "q-0018",
+    "relevant": [],
+    "expected_names": [
+      "GPU cluster"
+    ],
+    "seed": "emails/em-0003",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "The infrastructure cost projections, particularly the GPU cluster scaling assumptions.",
+    "evidence": [
+      {
+        "record": "emails/em-0003",
+        "quote": "**To:** Jordan Park <jordan@novamind.ai>"
+      },
+      {
+        "record": "emails/em-0003",
+        "quote": "dig deeper into the infrastructure cost projections, particularly around the GPU cluster scaling assumptions"
+      }
+    ]
+  },
+  {
+    "id": "q-0019",
+    "relevant": [],
+    "expected_names": [
+      "Watershed"
+    ],
+    "seed": "emails/em-0006",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "Watershed.",
+    "evidence": [
+      {
+        "record": "emails/em-0006",
+        "quote": "**From:** Tomoko Sato <tomoko@khosla.com>"
+      },
+      {
+        "record": "emails/em-0006",
+        "quote": "We've been tracking [Watershed](companies/watershed) closely"
+      }
+    ]
+  },
+  {
+    "id": "q-0020",
+    "relevant": [],
+    "expected_names": [
+      [
+        "2-3x",
+        "2-3",
+        "two to three times",
+        "2 to 3 times"
+      ]
+    ],
+    "seed": "slack/sl-0085",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "Two former customers both flagged implementation timelines running 2-3x longer than quoted.",
+    "evidence": [
+      {
+        "record": "slack/sl-0085",
+        "quote": "Quick update on the [Kuiper Labs](companies/kuiper-labs) reference calls - spoke with two former customers today and both flagged concerns about implementation timelines running 2-3x longer than quoted"
+      }
+    ]
+  },
+  {
+    "id": "q-0021",
+    "relevant": [],
+    "expected_names": [
+      "Anna Petrov"
+    ],
+    "seed": "slack/sl-0050",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "Anna Petrov.",
+    "evidence": [
+      {
+        "record": "slack/sl-0050",
+        "quote": "**From:** Anna Petrov (@anna)"
+      },
+      {
+        "record": "slack/sl-0050",
+        "quote": "I'll be running the weekly ops sync today since [Amara](people/amara-okafor) is traveling for the [Cortex Robotics](companies/cortex-robotics) board meeting"
+      }
+    ]
+  },
+  {
+    "id": "q-0022",
+    "relevant": [],
+    "expected_names": [
+      "Daria"
+    ],
+    "seed": "slack/sl-0092",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "Daria, during her legal review.",
+    "evidence": [
+      {
+        "record": "slack/sl-0092",
+        "quote": "Quick flag that [Daria](people/daria-novak) mentioned some IP concerns during her legal review of [Vela Bio](companies/vela-bio)"
+      }
+    ]
+  },
+  {
+    "id": "q-0023",
+    "relevant": [],
+    "expected_names": [
+      "47"
+    ],
+    "seed": "meeting/mtg-0003",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "47 pre-vetted executives, across finance, engineering, and GTM functions.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "She's sourced 47 pre-vetted executives across finance, engineering, and GTM functions."
+      }
+    ]
+  },
+  {
+    "id": "q-0024",
+    "relevant": [],
+    "expected_names": [
+      "Modular Labs"
+    ],
+    "seed": "meeting/mtg-0003",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "Modular Labs — one of three Q1 placements.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "three placements in Q1 alone, including a CFO for [Modular Labs](companies/modular-labs)."
+      }
+    ]
+  },
+  {
+    "id": "q-0025",
+    "relevant": [],
+    "expected_names": [
+      "Vancouver",
+      "sister"
+    ],
+    "seed": "meeting/mtg-0003",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "For her sister's wedding in Vancouver.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "she's taking two weeks off in May for her sister's wedding in Vancouver."
+      }
+    ]
+  },
+  {
+    "id": "q-0026",
+    "relevant": [],
+    "expected_names": [
+      "Fund III"
+    ],
+    "seed": "meeting/mtg-0003",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "Waiting until after Fund III closes, so there's clarity on team budget.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "I raised the possibility of bringing on a junior portfolio ops person to support"
+      },
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "suggested waiting until after Fund III closes so we have clarity on team budget"
+      }
+    ]
+  },
+  {
+    "id": "q-0027",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$4.2M",
+        "$4.2 million"
+      ]
+    ],
+    "seed": "emails/em-0011",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "$4.2M, not the $3.8M figure Amara had cited; Kofi said the CFO confirmed the final number after a late strategic investor came in.",
+    "evidence": [
+      {
+        "record": "emails/em-0011",
+        "quote": "**From:** Kofi Mensah <kofi@beacon.vc>"
+      },
+      {
+        "record": "emails/em-0011",
+        "quote": "I believe the [Helios Climate Systems](companies/helios-climate-systems) seed round actually closed at $4.2M, not the $3.8M figure you mentioned."
+      }
+    ]
+  },
+  {
+    "id": "q-0028",
+    "relevant": [],
+    "expected_names": [
+      "DeepMind",
+      [
+        "energy optimization",
+        "energy optimisation"
+      ]
+    ],
+    "seed": "emails/em-0014",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "Google DeepMind's energy optimization group.",
+    "evidence": [
+      {
+        "record": "emails/em-0014",
+        "quote": "**From:** Elena Rossi <elena@crossbeam.capital>"
+      },
+      {
+        "record": "emails/em-0014",
+        "quote": "a company called [GridScale](companies/gridscale) that's building AI-driven load balancing for renewable microgrids"
+      },
+      {
+        "record": "emails/em-0014",
+        "quote": "the founding team came out of Google DeepMind's energy optimization group"
+      }
+    ]
+  },
+  {
+    "id": "q-0029",
+    "relevant": [],
+    "expected_names": [
+      "Stanford"
+    ],
+    "seed": "emails/em-0010",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "She just got into Stanford's sustainability program.",
+    "evidence": [
+      {
+        "record": "emails/em-0010",
+        "quote": "**From:** Bill Hart <bill@hart-ventures.com>"
+      },
+      {
+        "record": "emails/em-0010",
+        "quote": "my daughter just got into Stanford's sustainability program"
+      }
+    ]
+  },
+  {
+    "id": "q-0030",
+    "relevant": [],
+    "expected_names": [
+      [
+        "heat pumps",
+        "heat pump"
+      ]
+    ],
+    "seed": "emails/em-0013",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "Industrial heat pumps.",
+    "evidence": [
+      {
+        "record": "emails/em-0013",
+        "quote": "Thanks for the heads up on the [Terraform Energy](companies/terraform-energy) round"
+      },
+      {
+        "record": "emails/em-0013",
+        "quote": "the traction they're seeing in the industrial heat pump space"
+      }
+    ]
+  },
+  {
+    "id": "q-0031",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$45M",
+        "$45 million"
+      ]
+    ],
+    "seed": "slack/sl-0121",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "$45M pre-money, which Tomoko Sato flagged as a stretch given current traction.",
+    "evidence": [
+      {
+        "record": "slack/sl-0121",
+        "quote": "**From:** Tomoko Sato (@tomoko)"
+      },
+      {
+        "record": "slack/sl-0121",
+        "quote": "Just got off a call with the [Cognivault](companies/cognivault) founder - they're now asking for a $45M pre-money which feels like a stretch given current traction."
+      }
+    ]
+  },
+  {
+    "id": "q-0032",
+    "relevant": [],
+    "expected_names": [
+      [
+        "6:47am",
+        "6:47 am",
+        "6:47"
+      ]
+    ],
+    "seed": "slack/sl-0118",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "6:47am PT — Anna Petrov confirmed it with First Republic.",
+    "evidence": [
+      {
+        "record": "slack/sl-0118",
+        "quote": "**From:** Anna Petrov (@anna)"
+      },
+      {
+        "record": "slack/sl-0118",
+        "quote": "I've confirmed with First Republic that [Synthesis Bio](companies/synthesis-bio) funds cleared at 6:47am PT."
+      }
+    ]
+  },
+  {
+    "id": "q-0033",
+    "relevant": [],
+    "expected_names": [
+      "40%",
+      "end of May"
+    ],
+    "seed": "slack/sl-0125",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "40% month-over-month growth, with the Series A targeted to close by end of May.",
+    "evidence": [
+      {
+        "record": "slack/sl-0125",
+        "quote": "**From:** Priya Patel (@priya)"
+      },
+      {
+        "record": "slack/sl-0125",
+        "quote": "Just got off a call with the [Terraform Labs](companies/terraform-labs) founders - they're seeing 40% MoM growth and looking to close their Series A by end of May."
+      }
+    ]
+  },
+  {
+    "id": "q-0034",
+    "relevant": [],
+    "expected_names": [
+      "Mira Patel"
+    ],
+    "seed": "slack/sl-0164",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "Mira Patel, confirmed for Thursday's deep dive.",
+    "evidence": [
+      {
+        "record": "slack/sl-0164",
+        "quote": "Circling back on the [Mira Patel](people/mira-patel) intro for [Stratos](companies/stratos) — she's confirmed for Thursday's deep dive on their infrastructure roadmap."
+      }
+    ]
+  },
+  {
+    "id": "q-0035",
+    "relevant": [],
+    "expected_names": [
+      [
+        "liquidation preferences",
+        "liquidation preference"
+      ]
+    ],
+    "seed": "slack/sl-0124",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "The liquidation preferences.",
+    "evidence": [
+      {
+        "record": "slack/sl-0124",
+        "quote": "Just got off a call with [Amara](people/amara-okafor) about the [Nexus Robotics](companies/nexus-robotics) term sheet — she flagged some concerns about the liquidation preferences"
+      }
+    ]
+  },
+  {
+    "id": "q-0036",
+    "relevant": [],
+    "expected_names": [
+      [
+        "8M",
+        "8 million"
+      ],
+      [
+        "mid-February",
+        "mid February"
+      ]
+    ],
+    "seed": "emails/em-0019",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "Halfway led GridMind's seed at $8M pre-money, and it closed mid-February.",
+    "evidence": [
+      {
+        "record": "emails/em-0019",
+        "quote": "Wanted to circle back on [GridMind](companies/gridmind)"
+      },
+      {
+        "record": "emails/em-0019",
+        "quote": "We ended up leading their seed at $8M pre, which closed mid-February."
+      }
+    ]
+  },
+  {
+    "id": "q-0037",
+    "relevant": [],
+    "expected_names": [
+      [
+        "prior exit terms",
+        "exit terms"
+      ]
+    ],
+    "seed": "emails/em-0019",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "He passed because of the founding team's prior exit terms.",
+    "evidence": [
+      {
+        "record": "emails/em-0019",
+        "quote": "**To:** Kofi Mensah <kofi@beacon.vc>"
+      },
+      {
+        "record": "emails/em-0019",
+        "quote": "I remember you mentioned you'd passed because of the founding team's prior exit terms"
+      }
+    ]
+  },
+  {
+    "id": "q-0038",
+    "relevant": [],
+    "expected_names": [
+      [
+        "two senior ML engineers",
+        "2 senior ML engineers"
+      ],
+      "end of Q2"
+    ],
+    "seed": "emails/em-0017",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "Two senior ML engineers by end of Q2, assuming the round closes by early May.",
+    "evidence": [
+      {
+        "record": "emails/em-0017",
+        "quote": "**From:** Jordan Park <jordan@novamind.ai>"
+      },
+      {
+        "record": "emails/em-0017",
+        "quote": "we're planning to bring on two senior ML engineers by end of Q2, assuming we close this round by early May"
+      }
+    ]
+  },
+  {
+    "id": "q-0039",
+    "relevant": [],
+    "expected_names": [
+      "CoreWeave"
+    ],
+    "seed": "emails/em-0017",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "CoreWeave — he refined the assumptions using the latest pricing from NovaMind's CoreWeave contract.",
+    "evidence": [
+      {
+        "record": "emails/em-0017",
+        "quote": "**From:** Jordan Park <jordan@novamind.ai>"
+      },
+      {
+        "record": "emails/em-0017",
+        "quote": "GPU cluster costs based on the latest pricing from our [CoreWeave](companies/coreweave) contract"
+      }
+    ]
+  },
+  {
+    "id": "q-0040",
+    "relevant": [],
+    "expected_names": [
+      "Marcus Chen"
+    ],
+    "seed": "emails/em-0022",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "Marcus Chen is Aurora Grid's CEO.",
+    "evidence": [
+      {
+        "record": "emails/em-0022",
+        "quote": "I'm still seeing [Aurora Grid](companies/aurora-grid) as one of the most compelling plays in the sector right now. Their CEO Marcus Chen is doing impressive work scaling their predictive load balancing"
+      }
+    ]
+  },
+  {
+    "id": "q-0041",
+    "relevant": [],
+    "expected_names": [
+      [
+        "co-investment framework",
+        "co-invest"
+      ],
+      "co-lead"
+    ],
+    "seed": "emails/em-0018",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "She proposed a more formal co-investment framework so the two firms co-lead seed rounds rather than compete for allocation.",
+    "evidence": [
+      {
+        "record": "emails/em-0018",
+        "quote": "**From:** Mina Kapoor <mina@threshold-ventures.com>"
+      },
+      {
+        "record": "emails/em-0018",
+        "quote": "I think there's a real opportunity for us to co-lead on some of these seed rounds rather than competing for allocation."
+      },
+      {
+        "record": "emails/em-0018",
+        "quote": "Would you be open to grabbing coffee next week to sketch out what a more formal co-investment framework might look like between Halfway and Threshold?"
+      }
+    ]
+  },
+  {
+    "id": "q-0042",
+    "relevant": [],
+    "expected_names": [
+      "Crossbeam"
+    ],
+    "seed": "emails/em-0016",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "Crossbeam had looked at GridMatrix earlier this year.",
+    "evidence": [
+      {
+        "record": "emails/em-0016",
+        "quote": "**To:** Elena Rossi <elena@crossbeam.capital>"
+      },
+      {
+        "record": "emails/em-0016",
+        "quote": "I've been digging into [GridMatrix](companies/gridmatrix) as a potential Series A lead, and I remember you mentioned Crossbeam looked at them earlier this year."
+      }
+    ]
+  },
+  {
+    "id": "q-0043",
+    "relevant": [],
+    "expected_names": [
+      "Axiom Energy"
+    ],
+    "seed": "emails/em-0020",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "Axiom Energy.",
+    "evidence": [
+      {
+        "record": "emails/em-0020",
+        "quote": "**To:** Sarah Chen <sarah@chen.dev>"
+      },
+      {
+        "record": "emails/em-0020",
+        "quote": "I wanted to follow up on your suggestion to look more closely at [Axiom Energy](companies/axiom-energy) — we've started preliminary diligence"
+      }
+    ]
+  },
+  {
+    "id": "q-0044",
+    "relevant": [],
+    "expected_names": [
+      "board observer"
+    ],
+    "seed": "emails/em-0021",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "The board observer role.",
+    "evidence": [
+      {
+        "record": "emails/em-0021",
+        "quote": "**From:** Sarah Chen <sarah@chen.dev>"
+      },
+      {
+        "record": "emails/em-0021",
+        "quote": "are we still on for coffee next Thursday to discuss the board observer role?"
+      }
+    ]
+  },
+  {
+    "id": "q-0045",
+    "relevant": [],
+    "expected_names": [
+      [
+        "25M",
+        "25 million"
+      ],
+      "Series B"
+    ],
+    "seed": "meeting/mtg-0004",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "$25M, as a Series B.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0004",
+        "quote": "[Nadia](people/nadia-freeman) raised a potential Series B opportunity in a logistics automation company based in Atlanta. The company is looking to raise $25M"
+      }
+    ]
+  },
+  {
+    "id": "q-0046",
+    "relevant": [],
+    "expected_names": [
+      "Priya Patel"
+    ],
+    "seed": "meeting/mtg-0004",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "Priya Patel referred it to her.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0004",
+        "quote": "She mentioned that [Priya Patel](people/priya-patel) had referred a late-stage fintech deal her way that's looking promising."
+      }
+    ]
+  },
+  {
+    "id": "q-0047",
+    "relevant": [],
+    "expected_names": [
+      "8%",
+      [
+        "under forecast",
+        "under budget"
+      ]
+    ],
+    "seed": "slack/sl-0182",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "We're tracking 8% under forecast.",
+    "evidence": [
+      {
+        "record": "slack/sl-0182",
+        "quote": "Following up on [Amara](people/amara-okafor)'s question about the Q2 budget - I've pulled together the numbers and we're actually tracking 8% under forecast."
+      }
+    ]
+  },
+  {
+    "id": "q-0048",
+    "relevant": [],
+    "expected_names": [
+      "40%",
+      [
+        "two enterprise contracts",
+        "2 enterprise contracts"
+      ]
+    ],
+    "seed": "slack/sl-0185",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "Their revenue is up 40% and they closed two enterprise contracts.",
+    "evidence": [
+      {
+        "record": "slack/sl-0185",
+        "quote": "Pulled the [Quantum Mesh](companies/quantum-mesh) deck from last quarter and their metrics have actually improved since we passed—revenue up 40% and they closed two enterprise contracts."
+      }
+    ]
+  },
+  {
+    "id": "q-0049",
+    "relevant": [],
+    "expected_names": [
+      "API documentation"
+    ],
+    "seed": "slack/sl-0188",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "The API documentation.",
+    "evidence": [
+      {
+        "record": "slack/sl-0188",
+        "quote": "Just got off a call with [Marcus](people/marcus-chen) about the [Aerion](companies/aerion) due diligence timeline — he's confident we can close the technical review by end of week if we get the API documentation today."
+      }
+    ]
+  },
+  {
+    "id": "q-0050",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$4.2M",
+        "$4.2 million"
+      ]
+    ],
+    "seed": "meeting/mtg-0005",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "$4.2M ARR — ahead of their internal projections.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0005",
+        "quote": "Sarah mentioned she's been spending a lot of time with her [Vela Robotics](companies/vela-robotics) investment lately. They're scaling faster than expected—apparently hit $4.2M ARR last month"
+      }
+    ]
+  },
+  {
+    "id": "q-0051",
+    "relevant": [],
+    "expected_names": [
+      "Marcus Reid"
+    ],
+    "seed": "meeting/mtg-0005",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "Marcus Reid — he made the original introduction and also advises Vela informally on supply chain.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0005",
+        "quote": "I asked about [Marcus Reid](people/marcus-reid)—apparently he introduced her to the Vela founders originally. Small world. She mentioned Marcus is also advising them informally on supply chain stuff."
+      }
+    ]
+  },
+  {
+    "id": "q-0052",
+    "relevant": [],
+    "expected_names": [
+      "power purchase agreement",
+      "hedging"
+    ],
+    "seed": "emails/em-0025",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "Margin compression risk in the current power purchase agreement structure; I asked their CFO to walk us through their hedging strategy in more detail.",
+    "evidence": [
+      {
+        "record": "emails/em-0025",
+        "quote": "Thanks for the quick reply on the [GridScale AI](companies/gridscale-ai) round"
+      },
+      {
+        "record": "emails/em-0025",
+        "quote": "Your point about the margin compression risk in the current power purchase agreement structure is well taken, and I've asked their CFO to walk us through their hedging strategy in more detail."
+      }
+    ]
+  },
+  {
+    "id": "q-0053",
+    "relevant": [],
+    "expected_names": [
+      "permitting",
+      "DOE"
+    ],
+    "seed": "emails/em-0027",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "Their go-to-market timeline, which she thought was aggressive given current permitting bottlenecks; she suggested talking to someone at DOE about how those timelines are actually playing out.",
+    "evidence": [
+      {
+        "record": "emails/em-0027",
+        "quote": "Thanks for the thoughtful note and for sharing your diligence memo on [Axiom Infrastructure](axiom-infrastructure)"
+      },
+      {
+        "record": "emails/em-0027",
+        "quote": "their go-to-market timeline feels aggressive given current permitting bottlenecks in the markets they're targeting. Have you had a chance to talk with anyone at DOE"
+      }
+    ]
+  },
+  {
+    "id": "q-0054",
+    "relevant": [],
+    "expected_names": [
+      "DeepMind",
+      [
+        "sustainability research",
+        "sustainability"
+      ]
+    ],
+    "seed": "emails/em-0028",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "DeepMind's sustainability research group.",
+    "evidence": [
+      {
+        "record": "emails/em-0028",
+        "quote": "a company called [Terraform Dynamics](companies/terraform-dynamics) that seems right in your wheelhouse"
+      },
+      {
+        "record": "emails/em-0028",
+        "quote": "The founding team apparently came out of DeepMind's sustainability research group, which caught my attention."
+      }
+    ]
+  },
+  {
+    "id": "q-0055",
+    "relevant": [],
+    "expected_names": [
+      "pre-seed"
+    ],
+    "seed": "emails/em-0029",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "At pre-seed.",
+    "evidence": [
+      {
+        "record": "emails/em-0029",
+        "quote": "I do think the [Terraform Dynamics](companies/terraform-dynamics) opportunity is worth a deeper look, especially given their grid-edge computing approach. Happy to share our diligence notes from when we passed at pre-seed."
+      }
+    ]
+  },
+  {
+    "id": "q-0056",
+    "relevant": [],
+    "expected_names": [
+      "thermal storage",
+      "CTO"
+    ],
+    "seed": "emails/em-0023",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "The thermal storage angle — she called it genuinely differentiated; she had spoken with the CTO the day before and came away more convinced on the unit economics.",
+    "evidence": [
+      {
+        "record": "emails/em-0023",
+        "quote": "Thanks for the quick reply on the [Helion Energy](helion-energy) comparison"
+      },
+      {
+        "record": "emails/em-0023",
+        "quote": "I think the thermal storage angle here is genuinely differentiated. I spoke with their CTO yesterday and came away more convinced on the unit economics than I expected."
+      }
+    ]
+  },
+  {
+    "id": "q-0057",
+    "relevant": [],
+    "expected_names": [
+      "Marcus Chen",
+      "board observer"
+    ],
+    "seed": "slack/sl-0284",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "Marcus Chen is pushing back on the pro-rata rights; Kofi thinks we can find middle ground by flexing on the board observer seat.",
+    "evidence": [
+      {
+        "record": "slack/sl-0284",
+        "quote": "Just spoke with [Marcus Chen](people/marcus-chen) about the [Tideline](companies/tideline) term sheet."
+      },
+      {
+        "record": "slack/sl-0284",
+        "quote": "He's pushing back on the pro-rata rights but I think we can find middle ground if we flex on the board observer seat."
+      }
+    ]
+  },
+  {
+    "id": "q-0058",
+    "relevant": [],
+    "expected_names": [
+      "valuation",
+      "government contract"
+    ],
+    "seed": "slack/sl-0272",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "She re-ran the numbers and thinks the valuation still feels stretched even with the government contract pipeline.",
+    "evidence": [
+      {
+        "record": "slack/sl-0272",
+        "quote": "Following up on [Amara](people/amara-okafor)'s point about the [Qubit](companies/qubit) deal — I ran the numbers again and the valuation still feels stretched even with the government contract pipeline."
+      }
+    ]
+  },
+  {
+    "id": "q-0059",
+    "relevant": [],
+    "expected_names": [
+      "Stratos",
+      "cap table"
+    ],
+    "seed": "slack/sl-0254",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "Stratos — they still owe their updated cap table, due by end of week.",
+    "evidence": [
+      {
+        "record": "slack/sl-0254",
+        "quote": "all portfolio company filings are current except [Stratos](companies/stratos) which needs their updated cap table by EOW"
+      }
+    ]
+  },
+  {
+    "id": "q-0060",
+    "relevant": [],
+    "expected_names": [
+      "Tempo AI",
+      "Quilted",
+      "Q3"
+    ],
+    "seed": "slack/sl-0280",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "Tempo AI and Quilted — both likely raising bridge rounds in Q3.",
+    "evidence": [
+      {
+        "record": "slack/sl-0280",
+        "quote": "reserve strategy for [Tempo AI](companies/tempo-ai) and [Quilted](companies/quilted) — both likely raising bridge rounds in Q3"
+      }
+    ]
+  },
+  {
+    "id": "q-0061",
+    "relevant": [],
+    "expected_names": [
+      "Friday"
+    ],
+    "seed": "slack/sl-0240",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "By EOD Friday — otherwise I planned to move forward with the term sheet early the following week.",
+    "evidence": [
+      {
+        "record": "slack/sl-0240",
+        "quote": "I'm planning to move forward with the [Cognito Labs](company/cognito-labs) term sheet early next week unless anyone has outstanding concerns."
+      },
+      {
+        "record": "slack/sl-0240",
+        "quote": "Let me know by EOD Friday if you need more time to review the diligence materials."
+      }
+    ]
+  },
+  {
+    "id": "q-0062",
+    "relevant": [],
+    "expected_names": [
+      "Halfway",
+      "fund"
+    ],
+    "seed": "meeting/mtg-0003",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "It is not consistent. One quarterly sync has her inside Halfway Capital running its portfolio operations — the bulk of founder support calls, stretched thin across 12 active companies, with talk of hiring a junior portfolio ops person under her. A check-in the next day instead has her reporting that her own fund closed Q1 stronger than expected, and the day after that she writes from nadia@unionsq.vc as an outside investor commenting on my diligence memo.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "Met with [Nadia Freeman](people/nadia-freeman) for our quarterly sync on portfolio company support and ops infrastructure at Halfway."
+      },
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "She's been handling the bulk of founder support calls and is feeling stretched thin across the 12 active companies."
+      },
+      {
+        "record": "meeting/mtg-0004",
+        "quote": "shared that her fund closed Q1 stronger than expected, with two portfolio companies hitting profitability milestones"
+      },
+      {
+        "record": "emails/em-0027",
+        "quote": "**From:** Nadia Freeman <nadia@unionsq.vc>"
+      }
+    ]
+  },
+  {
+    "id": "q-0063",
+    "relevant": [],
+    "expected_names": [
+      "14%"
+    ],
+    "seed": "meeting/mtg-0006",
+    "link_types": [],
+    "due_batch": "2026-04-18",
+    "answer": "14% of Meridian Health.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0006",
+        "quote": "Kofi mentioned that [Meridian Health](companies/meridian-health) is performing well post-Series A."
+      },
+      {
+        "record": "meeting/mtg-0006",
+        "quote": "He confirmed that [Halfway Capital](companies/halfway-capital) owns 14% of the company after the last round."
+      }
+    ]
+  },
+  {
+    "id": "q-0064",
+    "relevant": [],
+    "expected_names": [
+      [
+        "8 months",
+        "eight months"
+      ]
+    ],
+    "seed": "meeting/mtg-0006",
+    "link_types": [],
+    "due_batch": "2026-04-18",
+    "answer": "Around 8 months.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0006",
+        "quote": "Kofi flagged some concerns about [NovaTech Labs](companies/novatech-labs)."
+      },
+      {
+        "record": "meeting/mtg-0006",
+        "quote": "Burn rate has increased significantly, and runway is now around 8 months."
+      }
+    ]
+  },
+  {
+    "id": "q-0065",
+    "relevant": [],
+    "expected_names": [
+      "Lagos",
+      "fintech"
+    ],
+    "seed": "meeting/mtg-0006",
+    "link_types": [],
+    "due_batch": "2026-04-18",
+    "answer": "To Lagos, for a fintech conference.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0006",
+        "quote": "Kofi mentioned he's heading to Lagos next month for a fintech conference and offered to scout any interesting early-stage companies for the fund."
+      }
+    ]
+  },
+  {
+    "id": "q-0066",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$18.2M",
+        "$18.2 million"
+      ],
+      "112%"
+    ],
+    "seed": "meeting/mtg-0007",
+    "link_types": [],
+    "due_batch": "2026-04-19",
+    "answer": "ARR of $18.2M, up 34% year over year, with net revenue retention of 112%.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0007",
+        "quote": "# Portfolio Review: Vespera Dynamics Q1 Performance"
+      },
+      {
+        "record": "meeting/mtg-0007",
+        "quote": "ARR grew 34% YoY to $18.2M, with net revenue retention at 112%."
+      }
+    ]
+  },
+  {
+    "id": "q-0067",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$1.4M",
+        "$1.4 million"
+      ],
+      "Q3 2027"
+    ],
+    "seed": "meeting/mtg-0007",
+    "link_types": [],
+    "due_batch": "2026-04-19",
+    "answer": "About $1.4M a month, with $31M in the bank, giving runway through Q3 2027.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0007",
+        "quote": "# Portfolio Review: Vespera Dynamics Q1 Performance"
+      },
+      {
+        "record": "meeting/mtg-0007",
+        "quote": "Current monthly burn is approximately $1.4M. With $31M in the bank, runway extends through Q3 2027."
+      }
+    ]
+  },
+  {
+    "id": "q-0068",
+    "relevant": [],
+    "expected_names": [
+      [
+        "April 28",
+        "28 April",
+        "April 28th"
+      ]
+    ],
+    "seed": "meeting/mtg-0007",
+    "link_types": [],
+    "due_batch": "2026-04-19",
+    "answer": "By April 28.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0007",
+        "quote": "# Portfolio Review: Vespera Dynamics Q1 Performance"
+      },
+      {
+        "record": "meeting/mtg-0007",
+        "quote": "[Elena](people/elena-rossi) to send updated Q2 hiring scenarios by April 28"
+      }
+    ]
+  },
+  {
+    "id": "q-0069",
+    "relevant": [],
+    "expected_names": [
+      [
+        "passing",
+        "pass"
+      ],
+      "cap table"
+    ],
+    "seed": "emails/em-0045",
+    "link_types": [],
+    "due_batch": "2026-04-20",
+    "answer": "They are leaning toward passing, because of the cap table complexity.",
+    "evidence": [
+      {
+        "record": "emails/em-0045",
+        "quote": "**From:** Diego Alvarez <diego@tartan.vc>"
+      },
+      {
+        "record": "emails/em-0045",
+        "quote": "our conversation about [Terraform Energy](companies/terraform-energy) since we're both tracking their Series A"
+      },
+      {
+        "record": "emails/em-0045",
+        "quote": "My partners are leaning toward passing given the cap table complexity"
+      }
+    ]
+  },
+  {
+    "id": "q-0070",
+    "relevant": [],
+    "expected_names": [
+      "Axiom Energy"
+    ],
+    "seed": "emails/em-0048",
+    "link_types": [],
+    "due_batch": "2026-04-20",
+    "answer": "Axiom Energy.",
+    "evidence": [
+      {
+        "record": "emails/em-0048",
+        "quote": "**To:** Tomoko Sato <tomoko@khosla.com>"
+      },
+      {
+        "record": "emails/em-0048",
+        "quote": "I wanted to flag a company we're currently evaluating called [Axiom Energy](companies/axiom-energy) — they're building modular power solutions specifically for edge AI deployments."
+      },
+      {
+        "record": "emails/em-0048",
+        "quote": "Given Khosla's deep bench in both climate and AI"
+      }
+    ]
+  },
+  {
+    "id": "q-0071",
+    "relevant": [],
+    "expected_names": [
+      "enterprise sales",
+      "headcount"
+    ],
+    "seed": "emails/em-0031",
+    "link_types": [],
+    "due_batch": "2026-04-18",
+    "answer": "Whether they can scale the enterprise sales motion fast enough given their current headcount.",
+    "evidence": [
+      {
+        "record": "emails/em-0031",
+        "quote": "**From:** Hannah Liu <hannah@datastream.io>"
+      },
+      {
+        "record": "emails/em-0031",
+        "quote": "I've had a chance to dig into the [Terraform Labs](companies/terraform-labs) materials you shared"
+      },
+      {
+        "record": "emails/em-0031",
+        "quote": "My main concern is whether they can scale the enterprise sales motion fast enough given their current headcount."
+      }
+    ]
+  },
+  {
+    "id": "q-0072",
+    "relevant": [],
+    "expected_names": [
+      "Vantage AI"
+    ],
+    "seed": "emails/em-0040",
+    "link_types": [],
+    "due_batch": "2026-04-19",
+    "answer": "Vantage AI.",
+    "evidence": [
+      {
+        "record": "emails/em-0040",
+        "quote": "**To:** Hannah Liu <hannah@datastream.io>"
+      },
+      {
+        "record": "emails/em-0040",
+        "quote": "I've been digging deeper into [Vantage AI](companies/vantage-ai) based on your recommendation"
+      },
+      {
+        "record": "emails/em-0040",
+        "quote": "especially given their approach to model observability"
+      }
+    ]
+  },
+  {
+    "id": "q-0073",
+    "relevant": [],
+    "expected_names": [
+      "23%"
+    ],
+    "seed": "emails/em-0046",
+    "link_types": [],
+    "due_batch": "2026-04-20",
+    "answer": "A 23% improvement in detection accuracy versus the plants' existing sensor networks, across two cement plants in the Midwest.",
+    "evidence": [
+      {
+        "record": "emails/em-0046",
+        "quote": "**From:** Jordan Park <jordan@novamind.ai>"
+      },
+      {
+        "record": "emails/em-0046",
+        "quote": "We've just closed our pilot with two cement plants in the Midwest and the early results are promising: 23% improvement in detection accuracy compared to their existing sensor networks."
+      }
+    ]
+  },
+  {
+    "id": "q-0074",
+    "relevant": [],
+    "expected_names": [
+      "inference",
+      "emissions monitoring"
+    ],
+    "seed": "emails/em-0042",
+    "link_types": [],
+    "due_batch": "2026-04-20",
+    "answer": "He describes NovaMind two different ways one day apart: as an AI compute infrastructure company building a distributed inference architecture with 40% cost reduction, and as a climate company doing AI-powered emissions monitoring for industrial facilities, piloted at cement plants.",
+    "evidence": [
+      {
+        "record": "emails/em-0042",
+        "quote": "**From:** Jordan Park <jordan@novamind.ai>"
+      },
+      {
+        "record": "emails/em-0042",
+        "quote": "the infrastructure layer we're building at [NovaMind](companies/novamind). We've made significant progress on the distributed inference architecture"
+      },
+      {
+        "record": "emails/em-0042",
+        "quote": "early benchmarks are showing 40% cost reduction compared to existing solutions"
+      },
+      {
+        "record": "emails/em-0046",
+        "quote": "**From:** Jordan Park <jordan@novamind.ai>"
+      },
+      {
+        "record": "emails/em-0046",
+        "quote": "[Novamind](companies/novamind)'s approach to AI-powered emissions monitoring for industrial facilities"
+      },
+      {
+        "record": "emails/em-0046",
+        "quote": "We've just closed our pilot with two cement plants in the Midwest and the early results are promising: 23% improvement in detection accuracy compared to their existing sensor networks."
+      }
+    ]
+  },
+  {
+    "id": "q-0075",
+    "relevant": [],
+    "expected_names": [
+      "David Okonkwo",
+      "Threshold Ventures"
+    ],
+    "seed": "meeting/mtg-0001",
+    "link_types": [],
+    "due_batch": "2026-04-13",
+    "answer": "David Okonkwo is the CEO, and Threshold Ventures is expected to lead the Series A.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "[Hannah](people/hannah-liu) mentioned [Vero Health](companies/vero-health) is gearing up for a Series A, likely Q3 this year. She's heard [Threshold Ventures](companies/threshold-ventures) is leading the round"
+      },
+      {
+        "record": "meeting/mtg-0001",
+        "quote": "She said she'd make an intro to the CEO, [David Okonkwo](people/david-okonkwo), whenever we're ready."
+      }
+    ]
+  },
+  {
+    "id": "q-0076",
+    "relevant": [],
+    "expected_names": [
+      [
+        "two weeks",
+        "2 weeks"
+      ],
+      "Vancouver"
+    ],
+    "seed": "meeting/mtg-0003",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "She's taking two weeks off in May for her sister's wedding in Vancouver.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "[Nadia](people/nadia-freeman) mentioned she's taking two weeks off in May for her sister's wedding in Vancouver."
+      }
+    ]
+  },
+  {
+    "id": "q-0077",
+    "relevant": [],
+    "expected_names": [
+      "8.5%"
+    ],
+    "seed": "meeting/mtg-0005",
+    "link_types": [],
+    "due_batch": "2026-04-17",
+    "answer": "8.5%, from her angel investment in the seed round.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0005",
+        "quote": "Sarah mentioned she's been spending a lot of time with her [Vela Robotics](companies/vela-robotics) investment lately."
+      },
+      {
+        "record": "meeting/mtg-0005",
+        "quote": "Sarah confirmed she personally holds **8.5% of Vela** through her angel investment from the seed round."
+      }
+    ]
+  },
+  {
+    "id": "q-0078",
+    "relevant": [],
+    "expected_names": [
+      "Halfway HQ"
+    ],
+    "seed": "cal/evt-0009",
+    "link_types": [],
+    "due_batch": "2026-04-16",
+    "answer": "At Halfway HQ.",
+    "evidence": [
+      {
+        "record": "cal/evt-0009",
+        "quote": "# Kofi sync"
+      },
+      {
+        "record": "cal/evt-0009",
+        "quote": "**Location:** Halfway HQ"
+      },
+      {
+        "record": "cal/evt-0009",
+        "quote": "**Attendees:** Amara Okafor <amara@halfway.vc>, Kofi Mensah <kofi@beacon.vc>"
+      }
+    ]
+  },
+  {
+    "id": "q-0079",
+    "relevant": [],
+    "expected_names": [
+      "a16z",
+      "Foundry Group",
+      "Helios"
+    ],
+    "seed": "cal/evt-0008",
+    "link_types": [],
+    "due_batch": "2026-04-19",
+    "answer": "His affiliation is inconsistent across records: his email address is at a16z, one portfolio review places him at Foundry Group, another describes him as being from Helios, he is said to have a procurement startup of his own, and he also appears as an internal Halfway colleague posting in #halfway-partners as @marcus.",
+    "evidence": [
+      {
+        "record": "cal/evt-0008",
+        "quote": "**Attendees:** Amara Okafor <amara@halfway.vc>, Marcus Reid <mreid@a16z.com>"
+      },
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Sarah Chen](people/sarah-chen) at Northgate Partners and [Marcus Reid](people/marcus-reid) at Foundry Group"
+      },
+      {
+        "record": "meeting/mtg-0007",
+        "quote": "connect [Elena](people/elena-rossi) with [Marcus Reid](people/marcus-reid) from [Helios](companies/helios)"
+      }
+    ]
+  },
+  {
+    "id": "q-0080",
+    "relevant": [],
+    "expected_names": [
+      "Northgate Partners",
+      "Redpoint"
+    ],
+    "seed": "meeting/mtg-0000",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "Her affiliation is inconsistent: one portfolio review places her at Northgate Partners, another at Redpoint, and she also appears as an internal Halfway colleague — posting in #halfway-partners as @sarah and reachable at sarah@chen.dev.",
+    "evidence": [
+      {
+        "record": "meeting/mtg-0000",
+        "quote": "[Sarah Chen](people/sarah-chen) at Northgate Partners and [Marcus Reid](people/marcus-reid) at Foundry Group"
+      },
+      {
+        "record": "meeting/mtg-0002",
+        "quote": "[Sarah Chen](people/sarah-chen) at Redpoint has been sniffing around, apparently reached out after the TechCrunch piece last month."
+      }
+    ]
+  },
+  {
+    "id": "q-0081",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$85M",
+        "$85 million"
+      ]
+    ],
+    "seed": "note/2026-02-02-weekly-review",
+    "link_types": [],
+    "due_batch": "2026-02-02",
+    "answer": "$85M pre-money, for a Series A in the carbon capture monitoring space.",
+    "evidence": [
+      {
+        "record": "note/2026-02-02-weekly-review",
+        "quote": "Finally closed the Solunarc term sheet after three rounds of negotiation with [Derek Zhang](people/derek-zhang)."
+      },
+      {
+        "record": "note/2026-02-02-weekly-review",
+        "quote": "The valuation landed where we wanted—$85M pre, which feels right for a Series A in the carbon capture monitoring space"
+      }
+    ]
+  },
+  {
+    "id": "q-0082",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$12M",
+        "$12 million"
+      ],
+      [
+        "$8M",
+        "$8 million"
+      ]
+    ],
+    "seed": "note/2026-02-10-sourcing-queue",
+    "link_types": [],
+    "due_batch": "2026-02-10",
+    "answer": "Lucia-3 is raising a $12M seed and has already soft-circled about $8M of it.",
+    "evidence": [
+      {
+        "record": "note/2026-02-10-sourcing-queue",
+        "quote": "the one I keep circling back to is Lucia-3"
+      },
+      {
+        "record": "note/2026-02-10-sourcing-queue",
+        "quote": "They're raising a $12M seed, and from what I understand, they've already soft-circled about $8M of it."
+      }
+    ]
+  },
+  {
+    "id": "q-0083",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$8M",
+        "$8 million"
+      ],
+      [
+        "$3M",
+        "$3 million"
+      ],
+      [
+        "$2M",
+        "$2 million"
+      ]
+    ],
+    "seed": "note/2026-03-08-threshold-terms",
+    "link_types": [],
+    "due_batch": "2026-03-08",
+    "answer": "An initial $8M at close, plus two $3M tranches tied to ARR thresholds of $2M and $5M.",
+    "evidence": [
+      {
+        "record": "note/2026-03-08-threshold-terms",
+        "quote": "Had a lengthy back-and-forth with [Diego Alvarez](people/diego-alvarez) today about threshold-based milestone terms for their Series A."
+      },
+      {
+        "record": "note/2026-03-08-threshold-terms",
+        "quote": "The structure we're converging on: initial $8M at close, with two $3M tranches tied to ARR thresholds ($2M and $5M respectively)."
+      }
+    ]
+  },
+  {
+    "id": "q-0084",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$5M",
+        "$5 million"
+      ],
+      [
+        "90-day",
+        "90 day"
+      ]
+    ],
+    "seed": "note/2026-04-01-threshold-terms",
+    "link_types": [],
+    "due_batch": "2026-04-01",
+    "answer": "$5M ARR, but measured on a 90-day trailing basis rather than point-in-time.",
+    "evidence": [
+      {
+        "record": "note/2026-04-01-threshold-terms",
+        "quote": "threshold terms for the Heliogen follow-on"
+      },
+      {
+        "record": "note/2026-04-01-threshold-terms",
+        "quote": "He's pushing for a lower revenue milestone before the second tranche unlocks—$4M ARR instead of our standard $6M"
+      },
+      {
+        "record": "note/2026-04-01-threshold-terms",
+        "quote": "Going to suggest a compromise—$5M ARR but with a 90-day trailing requirement instead of point-in-time measurement."
+      }
+    ]
+  },
+  {
+    "id": "q-0085",
+    "relevant": [],
+    "expected_names": [
+      "67%"
+    ],
+    "seed": "note/2026-03-04-board-prep",
+    "link_types": [],
+    "due_batch": "2026-03-04",
+    "answer": "67% of ARR comes from three enterprise contracts.",
+    "evidence": [
+      {
+        "record": "note/2026-03-04-board-prep",
+        "quote": "preparing materials for the [Cirrus Systems](people/cirrus-systems) board meeting next week"
+      },
+      {
+        "record": "note/2026-03-04-board-prep",
+        "quote": "Three enterprise contracts account for 67% of ARR right now."
+      }
+    ]
+  },
+  {
+    "id": "q-0086",
+    "relevant": [],
+    "expected_names": [
+      "18%"
+    ],
+    "seed": "note/2026-02-08-board-prep",
+    "link_types": [],
+    "due_batch": "2026-02-08",
+    "answer": "Their burn rate crept up 18% last quarter, mostly from headcount in the ML ops team.",
+    "evidence": [
+      {
+        "record": "note/2026-02-08-board-prep",
+        "quote": "prepping for the Canopy Analytics board meeting next week"
+      },
+      {
+        "record": "note/2026-02-08-board-prep",
+        "quote": "their burn rate crept up 18% last quarter, mostly headcount in the ML ops team"
+      }
+    ]
+  },
+  {
+    "id": "q-0087",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$180M",
+        "$180 million"
+      ],
+      [
+        "$165M",
+        "$165 million"
+      ]
+    ],
+    "seed": "note/2026-03-10-market-report-reactions",
+    "link_types": [],
+    "due_batch": "2026-03-10",
+    "answer": "The report cited it as $180M, but I believe it was actually $165M when we looked at the deal in December.",
+    "evidence": [
+      {
+        "record": "note/2026-03-10-market-report-reactions",
+        "quote": "they cited Terraform Grid's Series C as $180M. I'm pretty sure it was actually $165M when we looked at the deal in December."
+      }
+    ]
+  },
+  {
+    "id": "q-0088",
+    "relevant": [],
+    "expected_names": [
+      "34%"
+    ],
+    "seed": "note/2026-03-20-orange-mode",
+    "link_types": [],
+    "due_batch": "2026-03-20",
+    "answer": "A 34% reduction in peak power draw.",
+    "evidence": [
+      {
+        "record": "note/2026-03-20-orange-mode",
+        "quote": "Had a long call with [Anna Petrov](people/anna-petrov) today about their orange-mode implementation."
+      },
+      {
+        "record": "note/2026-03-20-orange-mode",
+        "quote": "She mentioned they're seeing 34% reduction in peak power draw during orange-mode events"
+      }
+    ]
+  },
+  {
+    "id": "q-0089",
+    "relevant": [],
+    "expected_names": [
+      "2.3 million",
+      [
+        "twelve",
+        "12"
+      ]
+    ],
+    "seed": "note/2026-02-04-morning-reflection",
+    "link_types": [],
+    "due_batch": "2026-02-04",
+    "answer": "Twelve companies, collectively avoiding 2.3 million tons of CO2 annually.",
+    "evidence": [
+      {
+        "record": "note/2026-02-04-morning-reflection",
+        "quote": "twelve companies that didn't exist five years ago, now collectively avoiding 2.3 million tons of CO2 annually"
+      }
+    ]
+  },
+  {
+    "id": "q-0090",
+    "relevant": [],
+    "expected_names": [
+      [
+        "48-hour",
+        "48 hour"
+      ]
+    ],
+    "seed": "note/2026-03-14-next-quarter-plan",
+    "link_types": [],
+    "due_batch": "2026-03-14",
+    "answer": "A 48-hour flag system: if neither of us can articulate a clear reason for conviction within two days of an intro call, we pass.",
+    "evidence": [
+      {
+        "record": "note/2026-03-14-next-quarter-plan",
+        "quote": "Sarah suggested we implement a 48-hour flag system"
+      },
+      {
+        "record": "note/2026-03-14-next-quarter-plan",
+        "quote": "if neither of us can articulate a clear reason for conviction within two days of an intro call, we pass"
+      }
+    ]
+  },
+  {
+    "id": "q-0091",
+    "relevant": [],
+    "expected_names": [
+      [
+        "70/30",
+        "70 30"
+      ]
+    ],
+    "seed": "note/2026-02-22-climate-thesis",
+    "link_types": [],
+    "due_batch": "2026-02-22",
+    "answer": "A 70/30 split — AI-climate infra versus deep tech hardware.",
+    "evidence": [
+      {
+        "record": "note/2026-02-22-climate-thesis",
+        "quote": "Going to propose we formalize a 70/30 split—AI-climate infra vs. deep tech hardware—at next month's offsite."
+      }
+    ]
+  },
+  {
+    "id": "q-0092",
+    "relevant": [],
+    "expected_names": [
+      "early warning",
+      [
+        "human-in-the-loop",
+        "human in the loop"
+      ]
+    ],
+    "seed": "note/2026-01-31-orange-mode",
+    "link_types": [],
+    "due_batch": "2026-02-24",
+    "answer": "Tomoko Sato used it for the liminal phase where a portfolio company isn't in crisis yet but the early warning signals are blinking; Marcus Reid used it for Terraform's intermediate state between full autonomy and human-in-the-loop in their grid optimization systems.",
+    "evidence": [
+      {
+        "record": "note/2026-01-31-orange-mode",
+        "quote": "Spent most of today working through what [Tomoko](people/tomoko-sato) has been calling \"orange mode\""
+      },
+      {
+        "record": "note/2026-01-31-orange-mode",
+        "quote": "that liminal phase where a portfolio company isn't quite in crisis, but the early warning signals are blinking"
+      },
+      {
+        "record": "note/2026-02-24-orange-mode",
+        "quote": "Had a long call with [Marcus Reid](people/marcus-reid) today about what he's calling \"orange-mode\" operations at Terraform"
+      },
+      {
+        "record": "note/2026-02-24-orange-mode",
+        "quote": "basically the intermediate state between full autonomy and human-in-the-loop for their grid optimization systems"
+      }
+    ]
+  },
+  {
+    "id": "q-0093",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$85M",
+        "$85 million"
+      ],
+      [
+        "portfolio ops",
+        "portfolio operations"
+      ]
+    ],
+    "seed": "slack/sl-0000",
+    "link_types": [],
+    "due_batch": "2026-04-15",
+    "answer": "Fund III's first close came in at $85M, and the junior portfolio ops role supporting Nadia Freeman is on hold until after Fund III closes.",
+    "evidence": [
+      {
+        "record": "slack/sl-0000",
+        "quote": "just wrapped the first close for [Halfway Capital Fund III](fund/halfway-capital-fund-iii) at $85M. Still targeting $150M final close by end of Q3"
+      },
+      {
+        "record": "meeting/mtg-0003",
+        "quote": "I raised the possibility of bringing on a junior portfolio ops person to support [Nadia](people/nadia-freeman). She was enthusiastic but pragmatic about timing—suggested waiting until after Fund III closes so we have clarity on team budget."
+      }
+    ]
+  },
+  {
+    "id": "q-0094",
+    "relevant": [],
+    "expected_names": [
+      "Bill Hart",
+      [
+        "$180M",
+        "$180 million"
+      ]
+    ],
+    "seed": "emails/em-0001",
+    "link_types": [],
+    "due_batch": "2026-04-14",
+    "answer": "Bill Hart made the introduction, and Terraform Industries closed their Series B at a $180M valuation.",
+    "evidence": [
+      {
+        "record": "emails/em-0001",
+        "quote": "Bill,\n\nThank you so much for the introduction to the [Terraform Industries](companies/terraform-industries) team last week"
+      },
+      {
+        "record": "slack/sl-0049",
+        "quote": "Flagging that [Terraform Industries](companies/terraform-industries) just closed their Series B at a $180M valuation"
+      }
+    ]
+  },
+  {
+    "id": "q-0095",
+    "relevant": [],
+    "expected_names": [
+      "modular power",
+      "edge AI",
+      "Thursday"
+    ],
+    "seed": "emails/em-0039",
+    "link_types": [],
+    "due_batch": "2026-04-20",
+    "answer": "Axiom Energy is building modular power solutions specifically for edge AI deployments. On that deal I told Diego Alvarez I'm comfortable moving forward with the diligence call he proposed for next week, and asked him to confirm that Thursday at 2pm PT still works.",
+    "evidence": [
+      {
+        "record": "emails/em-0039",
+        "quote": "Diego,\n\nThanks for the quick response on the [Axiom Energy](axiom-energy) deal. I agree the cap table is cleaner than it looked at first glance, and the technical team's background in grid optimization is exactly what we look for in climate infrastructure plays.\n\nI'm comfortable moving forward with the diligence call you proposed for next week. Can you confirm Thursday at 2pm PT still works on your end?"
+      },
+      {
+        "record": "emails/em-0048",
+        "quote": "I wanted to flag a company we're currently evaluating called [Axiom Energy](companies/axiom-energy) — they're building modular power solutions specifically for edge AI deployments."
+      }
+    ]
+  },
+  {
+    "id": "q-0096",
+    "relevant": [],
+    "expected_names": [
+      "Beacon",
+      [
+        "28th",
+        "April 28",
+        "28 April"
+      ]
+    ],
+    "seed": "emails/em-0038",
+    "link_types": [],
+    "due_batch": "2026-04-20",
+    "answer": "I proposed that Beacon and Halfway co-lead it; the round's deadline is the 28th.",
+    "evidence": [
+      {
+        "record": "emails/em-0038",
+        "quote": "I wanted to follow up on our conversation about [Terraform Energy](companies/terraform-energy) and their Series A. We've been tracking them for a few months now, and I think there could be real synergy if Beacon and Halfway co-lead this round together."
+      },
+      {
+        "record": "emails/em-0045",
+        "quote": "I wanted to follow up on our conversation about [Terraform Energy](companies/terraform-energy) since we're both tracking their Series A. My partners are leaning toward passing given the cap table complexity, but I know you had a different read on their tech differentiation.\n\nWould love to get 30 minutes on your calendar this week to compare notes before their deadline on the 28th."
+      },
+      {
+        "record": "emails/em-0011",
+        "quote": "**From:** Kofi Mensah <kofi@beacon.vc>"
+      }
+    ]
+  },
+  {
+    "id": "q-0097",
+    "relevant": [],
+    "expected_names": [
+      "Priya Anand",
+      "Terraform Grid",
+      [
+        "$165M",
+        "$165 million"
+      ]
+    ],
+    "seed": "note/2026-03-06-sourcing-queue",
+    "link_types": [],
+    "due_batch": "2026-03-10",
+    "answer": "Priya Anand. I wanted her to double-check Terraform Grid's Series C size — the report cited $180M, but I remembered $165M from when we looked at the deal in December.",
+    "evidence": [
+      {
+        "record": "note/2026-03-06-sourcing-queue",
+        "quote": "[Priya](people/priya-anand) is still leading GridSense's technical strategy, and her background in distributed systems is exactly what makes their approach to demand response so compelling."
+      },
+      {
+        "record": "note/2026-03-10-market-report-reactions",
+        "quote": "they cited Terraform Grid's Series C as $180M. I'm pretty sure it was actually $165M when we looked at the deal in December. Small discrepancy but makes me wonder what else they're getting wrong. [Priya Anand](people/priya-anand) was closer to that process—I should ask her to double-check."
+      }
+    ]
+  },
+  {
+    "id": "q-0098",
+    "relevant": [],
+    "expected_names": [
+      [
+        "$4M",
+        "$4 million"
+      ],
+      [
+        "$6M",
+        "$6 million"
+      ]
+    ],
+    "seed": "emails/em-0012",
+    "link_types": [],
+    "due_batch": "2026-04-19",
+    "answer": "He has said $4M in two emails and $6M in another.",
+    "evidence": [
+      {
+        "record": "emails/em-0012",
+        "quote": "We're targeting a $4M seed round to expand the engineering team and build out our multi-cloud orchestration capabilities."
+      },
+      {
+        "record": "emails/em-0024",
+        "quote": "We're targeting a $6M seed round and have soft commitments from a few angels"
+      },
+      {
+        "record": "emails/em-0042",
+        "quote": "We're targeting $4M to expand the engineering team and secure additional compute partnerships before the summer."
+      }
+    ]
+  },
+  {
+    "id": "q-0099",
+    "relevant": [],
+    "expected_names": [
+      "2x participating",
+      [
+        "$6M",
+        "$6 million"
+      ]
+    ],
+    "seed": "note/2026-02-12-threshold-terms",
+    "link_types": [],
+    "due_batch": "2026-04-01",
+    "answer": "A 2x participating preferred, and $6M ARR before the second tranche unlocks.",
+    "evidence": [
+      {
+        "record": "note/2026-02-12-threshold-terms",
+        "quote": "She's pushing back on our standard 2x participating preferred"
+      },
+      {
+        "record": "note/2026-04-01-threshold-terms",
+        "quote": "He's pushing for a lower revenue milestone before the second tranche unlocks—$4M ARR instead of our standard $6M for climate infrastructure deals at this stage."
+      }
+    ]
+  }
+]

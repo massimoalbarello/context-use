@@ -49,12 +49,41 @@ export type SealedAnswer = {
    * scores it yet — it is carried so a later retrieval comparison needs no new authoring.
    */
   relevant: string[];
-  /** What a correct answer has to name. This is what `qa:score` actually checks. */
-  expected_names: string[];
+  /**
+   * What a correct answer has to name. This is what `qa:score` actually checks.
+   *
+   * An entry is one required element. A plain string is the element written the one way
+   * the corpus writes it; an array is that element and the other renderings that mean the
+   * same thing, any one of which satisfies it. `world-v1`'s answers are all person names
+   * and use only the string form. `amara-life-v1` needs the array form because its answers
+   * are often numbers, and `$18.2M` and `$18.2 million` are the same fact — an element
+   * pinned to one rendering would fail an answer that is right and worded differently,
+   * which understates every system measured with it.
+   *
+   * The alternatives are alternatives, never additional requirements: widening a group
+   * cannot make a wrong answer pass, only stop a correct one from failing.
+   */
+  expected_names: (string | string[])[];
   /** The page the question is asked about, so a failure can be read back to its source. */
   seed: string;
   /** Upstream's link types for this template, carried for the same reason as `relevant`. */
   link_types: string[];
+  /**
+   * The reference answer in full, for a person reading a failure. Nothing scores it —
+   * `expected_names` is what `qa:score` checks — but a bare list of required tokens does
+   * not tell a reviewer what the corpus actually says, and an unreadable key is an
+   * unreviewable one. `world-v1`'s answers are their own `expected_names`, so it omits it.
+   */
+  answer?: string;
+  /**
+   * Verbatim quotes from the records that force the answer, with the record each came
+   * from. This is what makes an authored key auditable: `world-v1`'s answers are derived
+   * from `_facts` and can be re-derived, whereas `amara-life-v1`'s were read by hand out
+   * of raw email and Slack, and a claim about a corpus that cannot be checked against it
+   * is a claim on trust. Every quote is re-checked against the pinned corpus by
+   * [amara-evidence.ts](amara-evidence.ts), so a key that drifts fails the build.
+   */
+  evidence?: { record: string; quote: string }[];
   /**
    * The batch by which the corpus has served every page needed to answer this.
    *
@@ -126,4 +155,14 @@ const PUBLIC_FIELDS = new Set([
 
 export function goldFieldsIn(question: PublicQuery): string[] {
   return Object.keys(question).filter((key) => !PUBLIC_FIELDS.has(key));
+}
+
+/** The renderings that satisfy one required element, canonical form first. */
+export function forms(element: string | string[]): string[] {
+  return Array.isArray(element) ? element : [element];
+}
+
+/** How a required element is named in a report: its canonical rendering. */
+export function label(element: string | string[]): string {
+  return forms(element)[0]!;
 }

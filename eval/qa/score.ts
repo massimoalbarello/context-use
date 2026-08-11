@@ -1,6 +1,6 @@
 import type { PageSnapshot } from "../snapshot.ts";
 import { normalise } from "../gold/score.ts";
-import type { PublicQuery, SealedAnswer } from "./questions.ts";
+import { forms, label, type PublicQuery, type SealedAnswer } from "./questions.ts";
 
 /**
  * Scores recorded answers against the sealed key. No model is involved.
@@ -74,7 +74,72 @@ function names(text: string, name: string): boolean {
   const needle = normalise(name);
   if (!needle) return false;
   // Padded so "Mia Brown" cannot match inside a longer token run that merely contains it.
-  return ` ${normalise(text)} `.includes(` ${needle} `);
+  const haystack = ` ${normalise(text)} `;
+  // A key written singular is satisfied by the plural and the other way round: "power
+  // purchase agreements" is the same term as "power purchase agreement", and pinning the
+  // number of the last word grades grammar rather than knowledge. No wrong answer becomes
+  // right this way, because a different term matches neither form.
+  return haystack.includes(` ${needle} `)
+    || haystack.includes(` ${needle}s `)
+    || (needle.endsWith("s") && haystack.includes(` ${needle.slice(0, -1)} `));
+}
+
+/** True when any rendering of the required element is asserted in `text`. */
+function asserts(text: string, element: string | string[]): boolean {
+  return forms(element).some((form) => names(text, form));
+}
+
+/**
+ * People named in the answer who do not belong there.
+ *
+ * Only applied when every required element is itself a person, which is what makes the
+ * check meaningful: for `Who attended X?` a second name is a wrong attribution, but for
+ * `What was the Q1 ARR?` the person who reported the figure is context, and penalising it
+ * would mark a correct answer wrong. World-v1's answers are all person names, so this
+ * reads exactly as it did before amara-life-v1 arrived.
+ *
+ * A person whose name overlaps a required one is never extra: the corpus states some
+ * people by first name only, and answering "Daria Novak" where the key says "Daria" is
+ * more precise, not a different person.
+ *
+ * Neither is a person the question itself names. "Who introduced Sarah Chen to the Vela
+ * founders?" is answered "Marcus Reid introduced Sarah Chen to them", and penalising that
+ * answer for repeating the question's own subject would mark a perfect answer wrong.
+ */
+function wrongAttributions(
+  text: string,
+  question: string,
+  expected: (string | string[])[],
+  people: string[],
+): string[] {
+  const required = expected.flatMap(forms);
+  if (!required.every((element) => people.some((person) => names(person, element)))) return [];
+  return people.filter((person) =>
+    !required.some((element) => names(person, element) || names(element, person))
+    && !names(question, person)
+    && names(text, person));
+}
+
+/**
+ * Whether the knowledge base holds this element *as the answer to this question*.
+ *
+ * The weaker test — does the string appear anywhere in the base — reads as evidence and is
+ * not. On the amara corpus it reported "40%" as held because an unrelated page carried a
+ * different 40%, and "DeepMind" as held because a different company's founders also came
+ * from there. That turns a distillation gap into a retrieval gap in the report, which is
+ * the one distinction this field exists to draw.
+ *
+ * So the element has to appear on a page that is also about what the question asks about,
+ * judged by the proper names the question itself uses. A question that names nothing
+ * specific cannot support the claim either way, and gets no credit for it.
+ */
+function heldAbout(question: string, element: string | string[], pages: PageSnapshot[]): boolean {
+  const subjects = [...question.matchAll(/\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)\b/g)].map((match) => match[1]!);
+  if (subjects.length === 0) return false;
+  return pages.some((page) => {
+    const text = `${page.title} ${page.summary} ${page.body}`;
+    return asserts(text, element) && subjects.some((subject) => names(text, subject));
+  });
 }
 
 export type ScoreInput = {
@@ -100,7 +165,7 @@ export function scoreQuestion(
     text: question.text,
     selfAnswering,
     found: [],
-    missing: answer.expected_names,
+    missing: answer.expected_names.map(label),
     extra: [],
     missingButHeld: [],
     unstatedInProse,
@@ -118,15 +183,13 @@ export function scoreQuestion(
     };
   }
 
-  const found = answer.expected_names.filter((name) => names(recorded.text, name));
-  const missing = answer.expected_names.filter((name) => !found.includes(name));
-  // Only people are candidates for a wrong attribution: every template asks "who", so a
-  // company named as context is background, not an answer.
-  const extra = people.filter((name) =>
-    !answer.expected_names.includes(name) && names(recorded.text, name));
+  const found = answer.expected_names.filter((element) => asserts(recorded.text, element)).map(label);
+  const missing = answer.expected_names.filter((element) => !found.includes(label(element))).map(label);
+  const extra = wrongAttributions(recorded.text, question.text, answer.expected_names, people);
 
-  const corpusWide = pages.map((page) => `${page.title} ${page.summary} ${page.body}`).join("\n");
-  const missingButHeld = missing.filter((name) => names(corpusWide, name));
+  const missingButHeld = answer.expected_names
+    .filter((element) => missing.includes(label(element)) && heldAbout(question.text, element, pages))
+    .map(label);
 
   // A name the corpus never states cannot be held against a system reading content alone.
   const countedMissing = missing.filter((name) => !unstatedInProse.includes(name));

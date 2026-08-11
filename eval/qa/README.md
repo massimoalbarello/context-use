@@ -1,184 +1,149 @@
 # Can the agent answer the question?
 
-This is the retrieval-facing evaluation: a question goes in, the agent answers it from the
-knowledge base a distillation run built, and the answer is compared to a sealed key.
+A question goes in, the agent answers it from the knowledge base, and the answer is
+compared to a sealed key.
 
 ```sh
-bun run eval qa:seed --batches 2   # put world-v1 into the knowledge base
-bun run eval qa:ask                # ask, one session per question
-bun run eval qa:score              # compare to the sealed answers
+bun run eval qa:ask     # ask, one session per question
+bun run eval qa:score   # compare to the sealed answers
 ```
 
-`qa:ask` records answers; `qa:score` is offline and deterministic, so a run can be rescored
-whenever the key changes without asking anything again.
+Both corpora use those two commands and differ only in how the knowledge base under test
+comes to exist:
 
-## Why world-v1 is seeded, not distilled
-
-`world-v1` has no owner. Its 240 pages are third-person profiles of a VC world with no "me"
-at the centre: twenty partners at twenty *different* firms, no person in more than four of
-its fifty meetings, seventy-five distinct attendees. There is no protagonist to find,
-individual or institutional.
-
-The activity distiller selects on owner engagement — "maintain this knowledge base from the
-owner's connected activity… this is curation, not ingestion" — so on this corpus it
-correctly imports almost nothing. Running it produces a number that measures the mismatch
-rather than the system. Inventing an owner would assert a relationship the corpus does not
-contain, which is the same thing the [eval README](../README.md) refuses to do with
-upstream's fabricated email threading.
-
-Upstream does not distil it either. `before-after.ts` calls `putPage` for all 240 pages and
-then queries: the corpus *is* the knowledge base in their harness, and seeding is the step
-they perform too — so this makes a later comparison closer rather than further.
-
-Pages are written through `PageRepository`, the same path an MCP write takes, so the search
-vector, link normalisation and version row are production behaviour and a seeded page is
-indistinguishable from a written one. They keep upstream's own slug — `people/adam-lee-19` —
-because `Gold.relevant` labels those slugs and renaming them would throw away the one thing
-that makes a retrieval comparison possible.
-
-**So this measures retrieval, and nothing else.** It says nothing about the distiller or
-about our own taxonomy; those belong to `amara-life-v1`, which has a real owner and real
-activity. `distill --corpus world-v1` still works, because demonstrating that the distiller
-declines a corpus with no owner is itself worth being able to show.
-
-## Iterating on a subset
-
-A short run is scored against what it was served. Every answer carries the `due_batch` by
-which the corpus has served the pages that state it, and `qa:ask` and `qa:score` work on
-the questions due by the last batch a run recorded:
-
-| Batches processed | Questions due | Of those, earned |
+| | `world-v1` | `amara-life-v1` |
 | --- | --- | --- |
-| 1 | 12 | 10 |
-| 2 | 31 | 27 |
-| 3 | 43 | 37 |
-| 5 | 70 | 60 |
-| 10 | 145 | 120 |
+| Knowledge base | `qa:seed` puts its 240 pages in as they are | `distill` builds it from raw activity |
+| Questions | 145, derived from `_facts` | 99, authored and quote-checked |
+| A score measures | retrieval | distillation **and** retrieval |
 
-So two distillation runs already give 31 answerable questions. This changes nothing about
-the question set — a full ten-batch run is still upstream's 145 — and it is the same
-discipline [gold/score.ts](../gold/score.ts) applies with `knowableFrom`, where a
-three-day amara run is scored against the 107 entities knowable by then rather than all
-158. Without it a two-batch run would spend most of its budget on questions nothing could
-answer and then report the blanks as failures.
+```sh
+bun run eval qa:seed --batches 2                           # world-v1
+bun run eval distill --corpus amara-life-v1 --batches 2    # amara-life-v1
+```
 
-`--all` asks everything regardless, which is only useful for checking that a question is
-genuinely unanswerable rather than merely unasked.
+A run records its corpus and mode in `report.json`, so both commands pick the right question
+set and say what the number covers. `qa:score` is offline, so a run can be rescored whenever
+the key changes without asking anything again.
 
-## The question set is derived, not authored
+Read together the two localise a failure: strong `world-v1` next to weak `amara-life-v1`
+puts the gap in distillation rather than in search.
 
-`world-v1/questions.json` holds 145 questions and `world-v1/answers.json` their answers.
-Both are derived from each corpus page's `_facts` block by [world-derive.ts](world-derive.ts),
-which is a faithful port of `buildRelationalQueries` in gbrain-evals'
-`eval/runner/before-after.ts` — the same four templates, the same "only entities with their
-own page count as answers" filter, the same 145 questions:
+## Why world-v1 is seeded
 
-| Template | Questions |
-| --- | --- |
-| `Who attended <meeting>?` | 50 |
-| `Who works at <company>?` | 40 |
-| `Who invested in <company>?` | 39 |
-| `Who advises <company>?` | 16 |
+It has no owner — twenty partners at twenty different firms, no protagonist. The activity
+distiller selects on owner engagement, so it correctly imports almost nothing, and running
+it would measure the mismatch rather than the system. Upstream does not distil it either:
+`before-after.ts` calls `putPage` for all 240 pages and then queries. Pages are written
+through `PageRepository`, so a seeded page is indistinguishable from a written one, and they
+keep upstream's slugs because `Gold.relevant` labels those slugs.
 
-Matching their derivation is the point. The question file is upstream's `PublicQuery`
-shape and the answer file is upstream's `Gold`, so the same questions can be put to gbrain
-later and the two systems compared on one set rather than on two that merely sound alike.
+## Only the questions a run has served the evidence for
 
-Both files are committed so that a change in the corpus or in the derivation is a
-reviewable diff rather than a silent shift under a measurement. `qa:derive` fails if the
-committed copies are stale; `--write` updates them.
+Every answer carries the `due_batch` by which the corpus has served what states it, and both
+commands work on the questions due by the batches a run actually recorded. Two distillation
+batches give 25 amara questions and 31 world ones; the full runs give 85 and 145. `--all`
+overrides it, which is only useful for checking that a question is genuinely unanswerable
+rather than merely unasked.
 
-**`amara-life-v1` has no question set yet.** Its raw activity carries no `_facts` to read a
-key off, so its questions have to be authored the way [gold/entities.json](../gold/entities.json)
-was. The one template that ports for free is `Who attended X?`, because
-`meetingExpectation` already parses attendees out of meeting front matter.
+Membership of the served batches, not `<= last`: `--window dense` never serves amara's
+thirty-nine sparse note days, so a question due in February is not due for it.
+
+## The two question sets
+
+**`world-v1`** is derived from each page's `_facts` block by [world-derive.ts](world-derive.ts),
+a port of upstream's `buildRelationalQueries` — the same four templates and the same 145
+questions, in upstream's `PublicQuery` and `Gold` shapes so the set can be put to gbrain
+later. `qa:derive` fails if the committed copies are stale; `--write` updates them.
+
+**`amara-life-v1`** is authored, because raw email and Slack carry no key to read. Nine
+readers each took a slice and proposed candidates with a verbatim quote per claim; a second
+answered each question again from the whole corpus without seeing the proposed answer; a
+third tried to refute each one. 123 went in, 99 came out — most of the 24 dropped were the
+corpus contradicting itself, such as a founder quoting his seed round at $4M, $6M and $4M
+again inside five days.
+
+Every claim the corpus can settle is re-checked by [amara-evidence.ts](amara-evidence.ts) on
+each test run, so a key that drifts fails the build: quotes are exact substrings of the
+records they name, `due_batch` is the last evidence day, each reference answer satisfies its
+own key, and no required element already appears in the question. What is left to judgement
+— that the quotes entail the answer — is why every answer carries its quotes, so any one of
+the 99 can be checked in seconds.
+
+```sh
+bun run eval qa:verify    # re-check the authored key against the corpus
+```
 
 ## Sealing
 
-The agent is handed the question and nothing else — no entity, no slug, no expected shape.
-Three things hold that line, and each is asserted in [qa.test.ts](qa.test.ts):
-
-- `questions.json` carries only upstream's public fields, and no expected name appears
-  anywhere in it.
-- The prompt is the question text plus instructions, and never a slug.
-- `_facts` is stripped by the corpus loader itself, so the serving path cannot reach the
-  answer key even in principle. [world-derive.ts](world-derive.ts) is the one module that
-  reads it, and nothing in the serving path imports it.
-
-A session that calls `read_source_records` is **voided rather than scored**: that tool
-serves the corpus, so answering with it measures the corpus instead of what was built from
-it. The check reads the provider's own transcript, so it holds for both providers.
+The agent gets the question and nothing else. `questions.json` carries only upstream's
+public fields, the prompt is the question text plus instructions and never a slug, and
+`_facts` is stripped by the corpus loader itself. A session that calls `read_source_records`
+is **voided rather than scored**: that tool serves the corpus, so answering with it measures
+the corpus instead of what was built from it.
 
 ## What the score means
 
-Every answer is a set of names, so scoring is a set comparison with no model involved —
-free, instant and exactly reproducible. A judge would buy nothing here and cost
-determinism; it earns its place only when an answer is prose that can be right in several
-wordings.
+Correctness is a set comparison with no model involved. A question is **correct** when every
+required element appears and no one else is named; naming a non-attendee is wrong, not
+partially right. Wrong attribution applies only when the answer is itself a person, so for
+`What was the Q1 ARR?` whoever reported the figure is context.
 
-A question is **correct** when every expected name appears and no one else is named.
-Naming someone who was not at the meeting is a wrong answer, not a partially right one.
-Only people count as a wrong attribution — every template asks "who", so a company named
-as context is background.
+An `expected_names` entry may be a list of interchangeable renderings, because `$18.2M` and
+`$18.2 million` are the same fact. Alternatives never add requirements — widening one can
+only stop a right answer failing.
 
-Two numbers are reported, and the second is the headline:
+Two numbers for `world-v1`, and the second is the headline: **accuracy** over everything
+asked, and **earned** over the questions that do not give away their own answer. Twenty-five
+do, because upstream titles its one-on-ones `1:1 Wendy Hernandez + Mia Brown` and then asks
+who attended. They are kept rather than dropped, so the set stays upstream's 145.
 
-- **accuracy** — over every question asked.
-- **earned** — over the questions that do not give away their own answer.
-
-Twenty-five of the 145 do give it away: upstream titles its one-on-ones
-`1:1 Wendy Hernandez + Mia Brown` and then asks who attended, so echoing the question
-scores full marks with an empty knowledge base. They are flagged on the sealed side and
-kept rather than dropped, because dropping them would diverge from upstream's 145 and cost
-the comparison this file exists to make possible.
-
-All 261 expected answers are recoverable from prose. `unstated_in_prose` exists to catch
-any that are not — an answer the corpus states only in `_facts` could not be known by a
-system reading content alone, so it would be reported and never counted — and it is empty
-today.
-
-Getting that right depended on matching **slugs** rather than page titles. Prose writes
-"a senior engineer at [Beta](companies/beta-1)" and never "Beta - Cybersecurity Startup",
-which is the page title, so a title match reported three answers as unknowable that the
-corpus states plainly. This matters more than it sounds: it is also why upstream's
-`employees` never appear on a company page. The prose generator was handed founders,
-investors and advisors but never employees, so "who works at X" is answerable only from
-the *person's* side, and matching the wrong string there hides that the corpus states it
-at all.
+Its key is also lenient in a way worth knowing: upstream keeps only entities that have their
+own page, which drops 37% of the `_facts` relationships. A score there reads as *correct on
+the entities the corpus profiles*, not *correct on who attended*.
 
 ## Reading a failure
-
-Every missing name is labelled with which half of the system lost it:
 
 ```
 ✗ q-0002  Who attended Beta Board Meeting Q2 2025?
     missing Victor Taylor — held in the knowledge base but not found
 ```
 
-`held in the knowledge base but not found` is a retrieval failure. `never written to the
-knowledge base` is a distillation failure. They have different fixes, and a bare accuracy
-number cannot tell them apart — which matters here, because `world-v1` exercises
-distillation and retrieval end to end rather than retrieval alone.
+`held … but not found` is a retrieval failure and `never written` a distillation one. Held
+means the name sits on a page that is also about what the question asks — the weaker test,
+that the string appears anywhere, counted an unrelated page's "40%" as the answer.
 
-## The key is lenient, and knowing why matters
+## What the runs found
 
-Upstream's derivation keeps only entities that have their own page — `filterExisting`,
-because a page that does not exist cannot be retrieved. That is right for their scoring and
-loose for ours: **37% of the relationship entries in `_facts` are dropped that way** (152 of
-413). The Acme board meeting lists three attendees and the prose says plainly that "Ian
-Anderson attended in person"; he has no profile page, so the sealed answer names two.
+The first full amara run scored 27/85, and reading every failure against the corpus found
+one cause behind most of them: the base recorded that a conversation happened rather than
+what it established — *"supplied cap-table context"* where the evidence said *"came in at 8%
+equity for that initial $1.2M check"*. Three changes to the guides followed, each ablated
+over the full eight days with only the guides differing:
 
-Nothing breaks, because the scorer's vocabulary is built from pages too, so a page-less
-attendee is invisible — naming one costs nothing and omitting one costs nothing. But it
-means a score reads as *correct on the entities the corpus profiles*, not *correct on who
-attended*. Widening the key to unfiltered `_facts` would diverge from upstream's 145 and
-ask for people the corpus never profiles, so it stays as it is.
+| | score | email | Slack |
+| --- | --- | --- | --- |
+| before | 27/85 | 6/34 | 2/20 |
+| [particulars over narration](../../packages/database/templates/default/AGENTS.md) | 38/85 | 12/34 | 4/20 |
+| [+ batches read in small passes](../../packages/database/templates/default/_pages/activity-distiller/instructions.md) | 47/85 | 14/34 | 10/20 |
+| **+ engagement scoped to which subjects exist** | **55/85** | **21/34** | 8/20 |
+
+Expected names never written to the base fell from 73 to 44, against five written and not
+retrieved.
+
+Still wrong: 2/5 on the contradiction questions — the base keeps the particulars now and
+still flattens the disagreement between them — 5/9 on joins, and 0/2 on calendar. Slack fell
+back with the third change while email gained.
+
+Each row is a single run and volume is noisy: two runs of the identical config produced 71
+and 113 pages. These deltas are far outside that band, but they are not repeated
+measurements. Ten grader defects were found and fixed along the way, every one a false
+negative where the system was right and the key was pinned to one rendering, and every run
+is scored on the final key.
 
 ## What this does not measure
 
-Recall, precision, P@5 and nDCG. `Gold.relevant` carries the page slugs upstream would
-score, so a later retrieval comparison needs no new authoring, but nothing scores it yet.
-
-Nor temporal reasoning, contradiction resolution or abstention: `world-v1` has no
-questions of that kind, and neither does anything else upstream ships with a populated key.
-Those belong to the `amara-life-v1` set when it is authored.
+Recall, precision and nDCG — `Gold.relevant` carries the slugs so a retrieval comparison
+needs no new authoring, but nothing scores it yet. Nor abstention: neither set asks something
+the corpus cannot answer, because proving a negative over 418 records has to be authored as
+carefully as a positive one.

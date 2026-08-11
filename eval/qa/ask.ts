@@ -25,9 +25,10 @@ Search and read the knowledge base to find the answer. Do not inspect files, run
 commands, or browse the web. Do not call read_source_records: you are answering from the
 knowledge base, not from its sources.
 
-Answer with the names, and nothing else. If the knowledge base does not contain the
-answer, say exactly: NOT FOUND. Do not guess, and do not pad the answer with names you
-cannot support — a name you are unsure of counts against you.`;
+Answer in one or two sentences, carrying the specific names, numbers and dates the answer
+turns on and nothing else. If the knowledge base does not contain the answer, say exactly:
+NOT FOUND. Do not guess, and do not pad the answer with names you cannot support — a name
+you are unsure of counts against you.`;
 }
 
 /** Every tool a session called, read back from the provider's own transcript. */

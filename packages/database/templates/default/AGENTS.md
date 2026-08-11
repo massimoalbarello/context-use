@@ -52,6 +52,18 @@ subjects are represented. Each page stays short; the base still covers everyone 
 dealt with and everything they decided. A base that answers "what happened" but not "to
 whom, at which company, about which question" is not concise, it is missing its subjects.
 
+Brevity is a budget on words, not on precision. A page gets shorter by dropping whole
+claims, never by blurring the ones that remain — the particulars are the knowledge: the
+figure, the name, the date, the term, the reason.
+
+The failure to watch for is a sentence that records an exchange instead of what the
+exchange established. *Sent over the pricing context*, *flagged concerns about the
+timeline* and *shared her thesis and offered an introduction* each name a speech act and
+drop its content, and none is shorter than the version that keeps it: *quoted 4k a month
+on a two-year term*, *thinks the June deadline will slip*, *holds 12% from the seed and
+will introduce the CEO*. When a sentence has to give, cut who said it to whom and keep
+what was said.
+
 - Prefer the fewest coherent pages, each no larger than useful. Split a page only when
   its parts have distinct subjects or are independently worth retrieving.
 - Prefer several small linked pages over one page that absorbs its neighbours' subjects.
@@ -86,9 +98,19 @@ met, wrote to or heard from; an organization they evaluated, decided about, work
 or transacted with; a question they took a position on — each is part of what the owner
 did, and earns its page the first time it happens rather than after it repeats. A name
 that appears only inside someone else's account, with no engagement by the owner, stays
-plain text under the page that mentioned it. Each directory guide says what engagement
-means in its subtree and may narrow the threshold for its own kind of subject; none of
-them replaces it with a requirement to wait for repetition.
+plain text under the page that mentioned it.
+
+That threshold decides which subjects exist. It does not decide what belongs on a subject
+that already exists. Once something is in this base, what the evidence says about it is its
+own, whoever said it and whether or not the owner replied: a colleague reporting a
+portfolio company's quarter in a shared channel is that company's news, and it belongs on
+that company's timeline exactly as the owner's own account of it would. Requiring the owner
+to have engaged with each piece of evidence keeps only the days they happened to speak, and
+loses the days they were told something — which are the days a knowledge base is for.
+
+Each directory guide says what engagement means in its subtree and may narrow the
+threshold for its own kind of subject; none of them replaces it with a requirement to wait
+for repetition.
 
 Identity is decided by evidence, not by resemblance. Two people who share a given name,
 or two organizations that share a first word, are two entities until something in the
@@ -191,7 +213,9 @@ A timeline event is a line, never a page, and it is not an [[events/agents|event
 A timeline event may link one of those; it never becomes one. Keep the qualifier: bare
 "event" in this base means the page, not the line.
 
-One timeline event is one line: the date, the links that place it, and what happened. One
+One timeline event is one line: the date, the links that place it, and what happened, in
+the particulars that made it worth recording. *Reviewed the quarterly numbers* names a
+category of happening; *ARR reached 640k, up a third on the quarter* is the event. One
 wanting a paragraph is describing either the current state or a past state worth reading,
 and belongs on a page under the rule above. Keep the month in the line as well as the
 heading, because these lines are read away from their page — quoted into a day's log,

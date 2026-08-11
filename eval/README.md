@@ -8,9 +8,10 @@ is the write path end to end: the private MCP serves the corpus through the prod
 `read_source_records` tool, and the agent follows the automation instructions installed in
 the knowledge base. There is no evaluation-specific prompt and no evaluation-specific tool.
 
-**Question answering** (`bun run eval qa:ask`, `qa:score`) puts questions to the knowledge
-base a distillation run built and compares each answer to a sealed key — the read path. See
-[qa/README.md](qa/README.md).
+**Question answering** (`bun run eval qa:ask`, `qa:score`) puts questions to a knowledge
+base and compares each answer to a sealed key — the read path. `world-v1` is seeded, so it
+measures retrieval alone; `amara-life-v1` is distilled first, so it measures distillation
+and retrieval together. See [qa/README.md](qa/README.md).
 
 **Scenario scoring** (`bun run eval run`) is the earlier, hand-written four-step
 trajectory with deterministic assertions about entities, timelines and reconciliation. It
@@ -28,14 +29,19 @@ enforced.
 | What it is | raw activity: email, Slack, calendar, meetings, notes | 240 already-distilled biographical pages |
 | Size | 418 items over 47 days | 240 pages over 10 batches |
 | Measures | extraction, distillation and retrieval | prose reconciliation and retrieval |
-| Answer key | entities and meetings ([gold/](gold/README.md)) | 145 questions ([qa/](qa/README.md)) |
-| Scored by | `gold:check` | `qa:score` |
+| Knowledge base under test | built by `distill` | seeded by `qa:seed` |
+| Answer key | entities and meetings ([gold/](gold/README.md)), plus 99 authored questions ([qa/](qa/README.md)) | 145 derived questions ([qa/](qa/README.md)) |
+| Scored by | `gold:check` and `qa:score` | `qa:score` |
 
 `amara-life-v1` is the corpus that matches what Context Use actually does. `world-v1` is
 the easier and narrower one, and it is here because **it is the only corpus upstream ships
-with a populated answer key** — every `gold/*.json` file for `amara-life-v1` is still an
+with an answer key of its own** — every `gold/*.json` file for `amara-life-v1` is still an
 empty stub with a single `_example` row, and the question sets upstream does populate are
 keyed to `world-v1` slugs.
+
+Both of `amara-life-v1`'s keys are therefore this repository's: the entity list in
+[gold/](gold/README.md), and 99 authored questions in [qa/](qa/README.md). Between them
+they ask whether the right things were written down, and whether they can be got back out.
 
 ```sh
 bun run eval corpus:verify --corpus world-v1     # working copy against <id>.lock.json
