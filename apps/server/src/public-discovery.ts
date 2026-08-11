@@ -1,6 +1,16 @@
 import type { PublicPage } from "@context-use/database";
 
+/**
+ * Optional well-known introduction path. A published page here supplies public
+ * profile identity; otherwise the public app serves its existing empty state.
+ */
 export const INTRO_PATH = "about/intro";
+
+/**
+ * Optional convention, not a required framework page. When an instance publishes
+ * this page, its external links can enrich the structured profile identity.
+ */
+export const OPTIONAL_CONTACTS_PATH = "about/contacts";
 
 type Introduction = Pick<PublicPage, "title" | "summary"> | null | undefined;
 

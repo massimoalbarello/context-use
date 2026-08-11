@@ -163,6 +163,20 @@ describe("public page presentation", () => {
     expect(html).not.toContain("MCP");
   });
 
+  test("does not require an optional contacts page for profile identity", () => {
+    const html = renderPublicLandingDocument({
+      siteOrigin: "https://massimo.example",
+      introduction: {
+        title: "Intro",
+        summary: "Massimo Albarello's introduction: a builder from Como.",
+      },
+    });
+
+    expect(html).toContain('"@type":"Person"');
+    expect(html).toContain('"name":"Massimo Albarello"');
+    expect(html).not.toContain('"sameAs"');
+  });
+
   test("styles the footnote, billboard, and published media", () => {
     expect(publicPageStyles).toContain(".context-use-footnote{");
     expect(publicPageStyles).toContain(".context-use-credit{");

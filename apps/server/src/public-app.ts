@@ -8,6 +8,7 @@ import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import { renderLlmsFullTxt, renderLlmsTxt, renderPublicPageMarkdown } from "./public-llms.ts";
 import {
   INTRO_PATH,
+  OPTIONAL_CONTACTS_PATH,
   externalProfileLinks,
   renderRobotsTxt,
   renderSitemapXml,
@@ -93,6 +94,13 @@ async function publicSitemapResponse(): Promise<Response> {
   return new Response(renderSitemapXml(pages, config.APP_ORIGIN), { headers: xmlHeaders });
 }
 
+async function optionalProfileLinks(): Promise<string[]> {
+  const contacts = await publicData.pageByPublicPath(OPTIONAL_CONTACTS_PATH);
+  return contacts
+    ? externalProfileLinks(contacts.body_markdown, config.APP_ORIGIN)
+    : [];
+}
+
 export const publicApp = new Elysia({ strictPath: true })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
@@ -161,10 +169,7 @@ export const publicApp = new Elysia({ strictPath: true })
       ? page
       : await publicData.pageByPublicPath(INTRO_PATH);
     const profileLinks = publicPath === INTRO_PATH
-      ? externalProfileLinks(
-          (await publicData.pageByPublicPath("about/contacts"))?.body_markdown ?? "",
-          config.APP_ORIGIN,
-        )
+      ? await optionalProfileLinks()
       : undefined;
     // The database projection has already removed every private identifier and
     // replaced independently public targets with public paths. The renderer can
@@ -184,14 +189,14 @@ export const publicApp = new Elysia({ strictPath: true })
     ), { headers: htmlHeaders });
   })
   .get("/", async () => {
-    const [introduction, contacts] = await Promise.all([
+    const [introduction, profileLinks] = await Promise.all([
       publicData.pageByPublicPath(INTRO_PATH),
-      publicData.pageByPublicPath("about/contacts"),
+      optionalProfileLinks(),
     ]);
     return new Response(renderPublicLandingDocument({
       siteOrigin: config.APP_ORIGIN,
       introduction,
-      profileLinks: externalProfileLinks(contacts?.body_markdown ?? "", config.APP_ORIGIN),
+      profileLinks,
     }), { headers: htmlHeaders });
   })
   .get("/public.css", () => new Response(publicPageStyles, {
