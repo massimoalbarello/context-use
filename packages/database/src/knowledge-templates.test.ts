@@ -366,8 +366,8 @@ describe("knowledge templates", () => {
     expect(state.createdPageInputs.find(({ path }) => path === "automations/activity-distiller/instructions"))
       .toMatchObject({
         title: "Activity distiller",
-        summary: "Instructions for reconciling connected activity one checkpointed batch at a time into concise canonical knowledge.",
-        body_markdown: expect.stringContaining("## Process one batch at a time"),
+        summary: "Instructions for distilling connected activity one record at a time into dense, linked canonical knowledge.",
+        body_markdown: expect.stringContaining("## One run, one record at a time"),
       });
     expect(state.createdPageInputs.find(({ path }) => path === "automations/activity-distiller/state"))
       .toMatchObject({
@@ -388,7 +388,7 @@ describe("knowledge templates", () => {
       pages: {
         "automations/activity-distiller/instructions": {
           title: "Activity distiller",
-          summary: "Instructions for reconciling connected activity one checkpointed batch at a time into concise canonical knowledge.",
+          summary: "Instructions for distilling connected activity one record at a time into dense, linked canonical knowledge.",
           body: "Old template instructions.\n",
           actor: "context-use-template/default",
         },
@@ -499,7 +499,7 @@ describe("knowledge templates", () => {
     expect(state.updatedPages).toEqual(["automations/activity-distiller/instructions"]);
     expect(state.updatedPageInputs).toContainEqual(expect.objectContaining({
       path: "automations/activity-distiller/instructions",
-      body_markdown: expect.stringContaining("## Process one batch at a time"),
+      body_markdown: expect.stringContaining("## One run, one record at a time"),
     }));
     expect(formatTemplateResult(applied)).toContain("~ update-page      automations/activity-distiller/instructions");
   });
@@ -748,7 +748,7 @@ describe("knowledge templates", () => {
     const normalizedDistiller = normalize(activityDistiller);
     const rootIndex = guides.root.slice(
       guides.root.indexOf("## Guide and managed-page index"),
-      guides.root.indexOf("## Keep only what matters"),
+      guides.root.indexOf("## Curate, do not filter"),
     );
 
     const indexedPaths = [...rootIndex.matchAll(/\[\[([^|#\]]+)(?:#[^|\]]+)?\|/g)]
@@ -795,7 +795,10 @@ describe("knowledge templates", () => {
       expect(guide).toContain("[[about/agents|About conventions]]");
     }
 
-    expect(normalizedRoot).toContain("smallest account that preserves what is useful to the owner");
+    expect(guides.root).toContain("## Curate, do not filter");
+    expect(normalizedRoot).toContain("A detail is never dropped for being small");
+    expect(normalizedRoot).toContain("a page stays readable through **placement, not omission**");
+    expect(normalizedRoot).toContain("None of this licenses copying the source in");
     expect(normalizedRoot).toContain("When a page speaks as the owner, use first person");
     expect(normalizedRoot).toContain("without asking for a preview or proposal");
     expect(normalizedRoot).toContain("Every entity is a folder, entered through `intro`");
@@ -876,7 +879,7 @@ describe("knowledge templates", () => {
       "has_more",
       "more than 30 days",
       "pruned deletion",
-      "process one batch at a time",
+      "one run, one record at a time",
     ]) {
       expect(normalizedDistiller.toLowerCase()).toContain(detail);
     }

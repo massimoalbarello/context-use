@@ -41,21 +41,20 @@ the path to the target; do not repeat inherited guidance in a child.
 The links identify the guide or page that owns each convention. They do not imply a
 schema beyond what the linked guide says.
 
-## Keep only what matters
+## Curate, do not filter
 
-Keep the smallest account that preserves what is useful to the owner: the facts, dates,
-evidence, rationale, uncertainty and connections needed to understand the subject. The
-context in which the owner interacted with a subject is the best signal of what matters;
-a canonical page is not an encyclopedia entry or a container for every available fact.
+This base is built by distillation: raw activity turned into connected, durable knowledge.
+Distillation is not compression. What comes out is smaller than what went in because the
+noise was left behind — the newsletters, receipts, notifications, cold outreach and
+scheduling back-and-forth — not because the substance was thinned on the way through.
 
-Brevity governs how much is written about a subject, never how many of the owner's
-subjects are represented. Each page stays short; the base still covers everyone the owner
-dealt with and everything they decided. A base that answers "what happened" but not "to
-whom, at which company, about which question" is not concise, it is missing its subjects.
-
-Brevity is a budget on words, not on precision. A page gets shorter by dropping whole
-claims, never by blurring the ones that remain — the particulars are the knowledge: the
-figure, the name, the date, the term, the reason.
+Two judgements are involved, and merging them is how a base ends up empty. **Whether a
+record is worth writing about at all** is a filter, and a coarse one: what is genuinely the
+owner's activity passes it, and only garbage fails. **What to write about a record that
+passes** is not a filter. Every particular it establishes — the figure, the name, the date,
+the term, the condition, the reason — is the knowledge, and it goes in. A detail is never
+dropped for being small. It is only ever dropped along with the record, when that record
+was noise.
 
 The failure to watch for is a sentence that records an exchange instead of what the
 exchange established. *Sent over the pricing context*, *flagged concerns about the
@@ -65,19 +64,35 @@ on a two-year term*, *thinks the June deadline will slip*, *holds 12% from the s
 will introduce the CEO*. When a sentence has to give, cut who said it to whom and keep
 what was said.
 
-- Prefer the fewest coherent pages, each no larger than useful. Split a page only when
-  its parts have distinct subjects or are independently worth retrieving.
+None of this licenses copying the source in. A transcript, a message body or a mirrored
+record is raw material that has not been distilled, and pasting it is the opposite failure
+from smoothing it away: both leave the reader to do the work. The knowledge is what the
+record establishes, written as prose that stays true, placed on the subject it belongs to
+and linked to what it connects with.
+
+So a page stays readable through **placement, not omission**. When a page grows past what
+it can hold, the material moves to the page that owns it and a link goes in its place; it
+is never deleted to make room. Say a thing once, where it belongs, and link from
+everywhere else that needs it.
+
+- Give every page a one-sentence summary; directory indexes and search use it.
 - Prefer several small linked pages over one page that absorbs its neighbours' subjects.
   A paragraph about a person, company or question inside someone else's page is a page
   that has not been written yet.
-- Give every page a one-sentence summary; directory indexes and search use it.
-- Link to canonical context instead of restating it. Say a thing once, where it belongs.
+- Split a page when its parts have distinct subjects or are independently worth
+  retrieving. Length alone is not a reason to split, and it is never a reason to cut.
 - Connect what happened, who or what was involved, what preceded it and what followed.
 - Remove empty headings and scaffolding. A common template is a vocabulary, not a quota.
 - Distinguish observation, report and inference. Do not turn a suggestion into the
   owner's view or fill a gap merely to make a page look complete.
 - When a page speaks as the owner, use first person and ground it in what they expressed;
   label inference rather than silently turning it into their memory, motive or position.
+
+Coverage is the other half, and it is not traded against depth. The base holds everyone the
+owner dealt with and everything they decided, at the particulars each was established in. A
+base that answers "what happened" but not "to whom, at which company, about which question"
+is missing its subjects; one that names them but not what was said about them has kept the
+index and lost the knowledge.
 
 ## Place and identify
 
@@ -89,8 +104,8 @@ process, preference and intention stay with that person.
 
 Search for the canonical target across names, aliases and nearby context before writing.
 When the evidence identifies a distinct entity confidently, create or update its
-canonical page without asking for a preview or proposal. Start with the smallest useful
-account and include only material supported by the interaction. If identity remains
+canonical page without asking for a preview or proposal. Write everything the evidence
+actually supports about it, and nothing it does not. If identity remains
 genuinely ambiguous, do not guess or create duplicates: keep the reference in plain text
 or ask for the detail that distinguishes the candidates.
 

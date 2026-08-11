@@ -1,7 +1,7 @@
 {
   "automations/activity-distiller/instructions": {
     "title": "Activity distiller",
-    "summary": "Instructions for reconciling connected activity one checkpointed batch at a time into concise canonical knowledge.",
+    "summary": "Instructions for distilling connected activity one record at a time into dense, linked canonical knowledge.",
     "body_file": "_pages/activity-distiller/instructions.md",
     "management": "managed"
   },

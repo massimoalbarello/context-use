@@ -62,7 +62,7 @@ not belong here.
 
     # <Topic>                                      ← intro
 
-    The smallest account of the subject that makes the rest of the page useful.
+    What the subject is, and what is true about it.
 
     ## Why it matters to me
 
