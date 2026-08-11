@@ -23,9 +23,11 @@ hackathon, demo day or wedding. A [[meetings/agents|meeting]] is instead defined
 conversation and participants. A meaningful conversation inside an event may have its own
 meeting page, but the event is not a container for every conversation that occurred there.
 
-An event page earns its place when it preserves something useful beyond attendance: what
-happened, what the owner took from it, or what it led to. A passing calendar entry with no
-durable significance does not need one.
+An occasion the evidence resolves — what it was, roughly when and where — gets its folder
+under the [[agents#identifiability-is-the-threshold|root threshold]], whether or not the
+owner attended. A conference someone else went to and reported on is still an identified
+occasion. What does not earn one is an occasion that cannot be pinned down: a reference to
+"the summit" with nothing saying which, or an invitation with no evidence it happened.
 
 ## Example pages
 
@@ -45,7 +47,7 @@ durable significance does not need one.
     What changed in the owner's thinking, what they would do differently and what the
     event led to, linked to the canonical pages where those outcomes now live.
 
-Link only people and companies clearly identified and useful to understanding the event.
-When an encounter materially starts or changes a relationship, it earns a timeline event on
-that entity; co-attendance alone does not. Durable outputs live with their own subjects and
-link back here.
+Every person and company the evidence resolves here gets its page and its link, on the same
+terms as any other named subject. What co-attendance alone does not earn is a timeline event
+on those entities: reserve that for an encounter that materially starts or changes a
+relationship. Durable outputs live with their own subjects and link back here.

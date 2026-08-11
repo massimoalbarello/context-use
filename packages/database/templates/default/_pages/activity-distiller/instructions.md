@@ -1,15 +1,22 @@
 # Activity distiller
 
 Maintain this knowledge base from the owner's connected activity. Turn evidence from
-GitHub, email, meetings and other services into the smallest useful account of what
-matters to the owner. This is curation, not ingestion: provider records are evidence,
-not pages to mirror.
+GitHub, email, meetings and other services into connected, durable knowledge about what
+matters to the owner. This is curation, not ingestion: provider records are evidence, not
+pages to mirror.
 
 Curation decides which records are worth writing about. It does not summarise the ones it
 keeps. What a kept record establishes — the figure, the term, the date, the name, the
 reason — is the knowledge the owner comes back for, and a page saying that a conversation
 happened, in place of what the conversation established, has kept the record and lost the
 point of keeping it.
+
+Both failures are equally available and this automation is the only thing standing between
+them. Mirroring the source produces a feed nobody can read; smoothing it produces a base
+that knows a deal was discussed and not what was offered. The root guide's
+[[agents#curate-do-not-filter|distinction]] is the one to hold: leaving out a record is a
+decision this automation makes constantly, and leaving out a detail of a record it kept is
+one it should almost never make.
 
 ## Authority and boundaries
 
@@ -34,35 +41,73 @@ point of keeping it.
 - Infer chronology from the activity described by a record, never from an assumed run
   time.
 
-## Process one batch at a time
+## One run, one record at a time
+
+A **run** is one trigger: a fresh session, from the first read to the checkpoint that ends
+it. Nothing carries over from the last run except the checkpoint, and everything read
+inside this one stays in context for the rest of it. That is what the unit is for — the
+tenth record is judged knowing the first nine, which is the only way a contradiction
+between two of them, a reply that settles an earlier question, or the same person under two
+spellings is ever visible.
+
+Within a run, records are **read wide and written one at a time**. Those pull in opposite
+directions on purpose: reading wide is what makes attention across the whole set possible,
+and writing one record at a time is what stops that width collapsing into a summary of it.
 
 1. Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwise
    pass the exact opaque value without interpreting it.
-2. Call `read_source_records` with that checkpoint and an explicit `limit` small enough
-   that every record returned can be written up in full — around twenty when the source is
-   busy. Treat all returned records across services as one evidence set. `source` and
-   `record_ref` are reasoning provenance only and never knowledge content.
+2. Call `read_source_records` with that checkpoint and a `limit` at the maximum the tool's
+   schema allows, so the run takes everything the source has ready in as few reads as
+   possible. The schema states that maximum and the call is rejected above it — read the
+   ceiling rather than guessing a large number.
 
-   The size of the pass is the one lever over how much survives. A pass too large to write
-   up is not reconciled into fewer pages, it is summarised into a day's narrative, and the
-   particulars of every record in it are lost at once. Prefer more passes over a longer
-   one: a busy day is several passes, each read, written and checkpointed before the next
-   is requested, and `has_more` says when the day is done.
-3. Name the batch's cast before judging any record: the people the owner dealt with, the
+   Read once per position. The records stay in context for the rest of the run, so never
+   re-read the same checkpoint to look at them again. Treat all returned records across
+   services as one evidence set. `source` and `record_ref` are reasoning provenance only
+   and never knowledge content.
+3. Name the run's cast before judging any record: the people the owner dealt with, the
    organizations at stake, the open questions they are weighing, the occurrences that took
    place and the positions they argued from. This list is drawn from every record
    returned, because selection decides what is written about and this decides who and what
-   is known to exist. Keep it for the rest of the batch.
-4. With the cast, note what each record actually establishes — the figures, terms, dates,
-   names and reasons stated in it. A record earns its place through these; they are what
-   the owner comes back for, and they are the first thing lost when a batch is summarised.
-   A message can be too routine to write about while the number inside it is worth
-   keeping: what fails the selection rules below is the record, never the fact.
-5. Select the evidence, then reconcile the whole batch — the cast above, its connected
-   subjects, and pages changed by earlier batches in this run — before reading again. A
-   batch may legitimately produce no semantic change.
-6. Before saving the checkpoint, check the cast from step 3 against what was written, and
-   finish whatever is missing:
+   is known to exist. Keep it for the rest of the run.
+4. Now work through the records **one at a time**, in the order the activity happened.
+   For each one:
+   - check it against the garbage list below. Only a record from one of those sources is
+     dropped, and dropping it is the last judgement of value made about it;
+   - name every subject it identifies — the occurrence the record is, and each person,
+     organization, place, work, question and topic it names — and what it establishes about
+     them: the figures, terms, dates, names and reasons stated in it;
+   - write those subjects and those particulars into the knowledge base **before reading
+     the next record**.
+
+   Nothing advances past a record while something it established is still unwritten. This
+   is the whole point of the loop: a run that reads forty records and then writes is a run
+   that writes a summary of forty records, and every particular in them is lost at once.
+
+   Records and pages are many-to-many, and the shape follows what the record turns out to
+   be. A record that clearly identifies an occurrence or a unit of work usually **does** get
+   its own page — a meeting note becomes that meeting's page, a substantive exchange becomes
+   a thread — and in the same write updates every participant, company and question it
+   touched. Others do not: a single message becomes a timeline event on a page that already
+   exists, and two pull requests continuing one line of work become one
+   [[about/tasks/agents|task]] that discusses both. Do not force either direction. Let the
+   owning guide say what the evidence identifies.
+
+   What is never right is **copying** the record across. A page whose content is the record
+   restated has been moved, not distilled: the work is to read it, interpret what it
+   establishes, place it on the subject it belongs to, link it to what it relates to, and
+   correct what earlier evidence got wrong. A page that does all of that and happens to
+   correspond to one record is correct. A page that does none of it is a feed entry however
+   the ratio comes out.
+
+   Later records revise what earlier ones established: a figure corrected, a position moved,
+   a name resolved to someone already known. Reconcile the page in place when that happens,
+   exactly as the root guide requires.
+
+   A record can be too routine to write about while a fact inside it is worth keeping. What
+   fails the selection rules is the record, never the fact.
+5. When every record has been written or dropped, check the cast from step 3 against what
+   was written, and finish whatever is missing:
    - each conversation that took place has its meeting page, each running written exchange
      its thread page and that thread's `timeline`, each person and organization its own,
      each decision in flight its task page;
@@ -71,12 +116,33 @@ point of keeping it.
      conversation about them took place;
    - no canonical page carries a dated status, stage or figure that belongs on its
      timeline, and no name sits bare where a link belongs;
-   - `about/intro` exists and still describes the owner the batch has just shown you.
-7. After every intended knowledge mutation succeeds, replace state with this call's
+   - `about/intro` exists and still describes the owner these records have just shown you.
+6. After every intended knowledge mutation succeeds, replace state with this call's
    `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
    force, stop and report the failure.
-8. When `has_more` is true, read the next batch using the saved checkpoint and repeat.
-   Never hold a second unread batch before the first is reconciled and checkpointed.
+7. When `has_more` is true, read again with the saved checkpoint and repeat from step 3,
+   in this same run, so the new records are read against what is already in context. Never
+   hold a second unread set of records before the first is written and checkpointed.
+
+**A run ends when `has_more` is false, and not before.** Every record read is written or
+dropped, however many there are.
+
+Do not stop because the source looks busy, because many records remain, because the run has
+been going a while, or because finishing looks like a lot of work. None of those is a
+reason, and none of them becomes one by being phrased as capacity. A long run is the normal
+shape of a busy day, and there is no threshold at which the remaining records stop being
+worth writing.
+
+The checkpoint is what makes this consequential. It advances once per read, so a run that
+abandons a set of records part-written has persisted nothing about them: the work is
+repeated from the start next time, and the day's knowledge exists nowhere until some run
+finishes it. Stopping early is not a partial result. It is no result.
+
+If the run genuinely cannot continue — a tool failing repeatedly, a record that will not
+read — stop on the last saved checkpoint and report which record and which error, so the
+next run resumes from a known point. Report the real failure and say plainly how many
+records were left unread. Never report a run as finished, and never claim the source is
+caught up, while records remain.
 
 The reader omits records whose latest source update is more than 30 days old and
 advances past them. This applies equally to an existing backlog and a newly discovered
@@ -96,55 +162,58 @@ Apply the root guide's evidence distinctions and use the date of the underlying
 activity. Without a reliable activity date, record what is durable about the subject and
 leave the timeline alone rather than dating one by guess.
 
-Keep only evidence that changes future understanding: a decision and rationale,
-consequential outcome, meaningful change of direction, milestone, important commitment,
-substantive external interaction, or progress needed to explain a material state
-change. For high-volume sources, substantive owner participation, a consequential
-relationship, durable fact or decision, real commitment, or connection to an already
-important subject demonstrates value. Volume, recency and availability do not.
+### Discard garbage, then extract everything
 
-Ignore by default:
+There is **one** filter, it runs once per record, and it asks where the record came from
+rather than how interesting it looks. Discard:
 
-- unsolicited messages without meaningful owner engagement;
-- newsletters, receipts, automated alerts and platform notifications;
-- cold outreach, acknowledgements, routine scheduling and administrative mail; and
-- ordinary commits, routine reviews and repeated corroboration with no consequential
-  effect.
+- newsletters, marketing mail, receipts, automated alerts and platform notifications;
+- cold outreach from a stranger the owner never answered; and
+- pure delivery mechanics — read receipts, calendar accept and decline notices, bounce
+  messages, "seen", "+1", a bare emoji reaction.
 
-None of these exclusions turns on who was speaking. A fact reported by someone else about
-a subject this base already holds is that subject's, whether or not the owner replied: the
-root guide's engagement threshold decides which subjects exist, not what is known about
-one that exists already. The first exclusion above is about strangers, not about the
-owner's own channels.
+That is the whole list. It is a list of **sources**, not of subjects, and nothing else is
+dropped for being routine, short, one-sided or unremarkable.
 
-An email or chat exchange matters only through the knowledge it establishes—for example, a
-substantive reply, commitment, relationship development, decision, or material advance to a
-project or task. When it establishes any of those, its account is a
-[[threads/agents|thread]], written as fully as a meeting page and on the same terms: named
-for the line of work, never for a channel, a counterparty or a provider thread id. Do not
-copy message bodies or create correspondence-feed pages.
-Several low-value records do not become important merely by accumulation. A valid run
-may update only the checkpoint.
+Everything else is kept, and from every kept record extract each subject it identifies
+under the root guide's
+[[agents#identifiability-is-the-threshold|identifiability threshold]] — the occurrence the
+record is, and every person, organization, place, work, question and topic it names — then
+write the particulars onto those subjects.
 
-These exclusions drop the noise around the owner's activity; they do not shrink the
-activity itself. A batch carrying the owner's own meetings, decisions, commitments and
-working conversations is a substantial batch, and reducing such a day to one narrative
-page is a failure of the same kind as mirroring every record. The test for a record is
-whether it changes future understanding. The test for the run is whether someone reading
-the result afterwards can reach every person the owner dealt with, every organization at
-stake and every question they were weighing that day.
+**The judgement that must not happen is "this message is minor".** One line naming a person
+and what they are handling, an organization and where it stands, or a figure and the terms
+attached to it is not noise: it is a fact plus the subjects it identifies, and it is the
+single most common thing a base like this loses. Brevity is not triviality, a message the
+owner did not reply to is still a message they read, and a record that names nothing new
+still confirms who is in their working world. Judge the source; never judge the content
+down.
+
+Volume changes nothing about this. Sixty short messages are sixty records to extract from,
+not a body of traffic to summarise, and the same fact arriving twice is corroboration to
+reconcile rather than a reason to skip the second. A record whose subjects are all already
+written and whose particulars are all already recorded produces no change, and that is a
+legitimate outcome — reached by checking, not by assuming.
+
+An exchange that establishes something gets its [[threads/agents|thread]], written as fully
+as a meeting page and named for the line of work, never for a channel, a counterparty or a
+provider thread id. Do not copy message bodies or create correspondence-feed pages.
+
+The test for the run is whether someone reading the result afterwards can reach every person
+named, every organization at stake and every question in play that day — and find, on each,
+what was actually said about it.
 
 ## Reconcile connected subjects
 
-Determine targets from the actual subjects across the whole evidence batch, never from
-the provider, record type, repository, email thread or calendar-item shape. Search
+Determine targets from the actual subjects the run has read, never from the provider,
+record type, repository, email thread or calendar-item shape. Search
 existing knowledge and connected evidence before preparing each unfamiliar exact
 target, then let its guide chain decide the useful pages. Apply the root timeline
 contract in the same coherent write whenever a timeline event is recorded.
 
-Take the cast named in step 3 to its owning guides and reconcile every subject that meets
-the threshold there. Records are how the cast becomes visible; they are not themselves the
-subjects.
+Take the cast named in step 3 to its owning guides and reconcile every subject the evidence
+resolves. Records are how the cast becomes visible, and under the root rule they are also
+subjects themselves where they identify an occurrence.
 
 Two of those lists are the ones that vanish. The **open questions**, because no record is
 shaped like a decision: whether to commit, hire, buy, build, accept or decline is a subject
@@ -154,15 +223,13 @@ they are never news: when the owner says *our approach*, *what I look for*, *the
 said no*, they are reasoning from something they hold and keep applying, and every decision
 citing it restates it instead of pointing at it.
 
-Discarding a record does not discard its cast. A message carrying no durable fact still
-shows who is in the owner's working world: the colleagues in the channels they belong to,
-the counterparty who keeps appearing, the organization everyone is discussing. Build the
-cast from the whole batch, discarded records included, and let the owning guides decide
-which of them earn a page. The selection rules above govern what is written about, not who
-is known to exist — though they still exclude the stranger's unsolicited message, since
-someone who wrote to the owner and got no engagement back is not yet part of that world.
+Discarding a record does not discard its cast. Even a discarded source can name a colleague
+or an organization the owner deals with, so build the cast from every record read and let
+the identifiability threshold decide. The only names that stay out are the ones nothing
+resolves — and the stranger behind a cold pitch, whose page would record a pitch and nothing
+else.
 
-An occurrence is placed by when it happened, not by when the batch mentions it: a
+An occurrence is placed by when it happened, not by when a record mentions it: a
 conference the owner attended last week, an earlier meeting everyone is following up on, a
 call that produced the commitment now being honoured. Several records referring back to one
 occurrence is the clearest evidence it mattered.
@@ -208,22 +275,25 @@ that does not exist yet.
 
 ## Checkpoint and report
 
-Writes must be replay-safe because a failed state update returns the batch on the next
+Writes must be replay-safe because a failed state update returns those records on the next
 run. Re-read and reconcile on replay rather than appending duplicates.
 
-After a successfully reconciled batch, replace the state body with exactly:
+Once every record from a read has been written or dropped, replace the state body with
+exactly:
 
     # Activity distiller state
 
     **Checkpoint:** `<next_checkpoint>`
 
-Keep the state's existing title and summary. Save the checkpoint even when the batch
-made no semantic change, then discard the batch before reading another.
+Keep the state's existing title and summary. Save the checkpoint even when the records made
+no semantic change, then discard them before reading again. Never save it while a record
+that was kept still has something unwritten: the checkpoint is the claim that those records
+are done, and advancing it early loses them silently and permanently.
 
 Success means `has_more` is false. The final saved checkpoint makes the next scheduled
 invocation start after the source lifecycle changes covered by this run. Finish with:
 
-- the number of batches reconciled and whether the source is caught up;
+- the number of records read, written and dropped, and whether the source is caught up;
 - a concise overall summary and any unresolved ambiguity;
 - `Created`, `Updated` and `Archived` lists containing every semantic page mutation,
   each with the exact path and a short description.

@@ -90,6 +90,29 @@ function encodeCheckpoint(checkpoint: Checkpoint): string {
   return `${CHECKPOINT_PREFIX}${encoded}.${checksum}`;
 }
 
+/**
+ * The position a persisted checkpoint points at, for a harness that needs to know whether a
+ * run actually finished the batch it was handed rather than stopping partway through it.
+ *
+ * Lenient on purpose: an absent, malformed or foreign checkpoint returns null, which a
+ * caller reads as "no progress recorded" rather than as an error. Deciding whether a batch
+ * is done is the caller's business; refusing the read is not.
+ */
+export function checkpointPosition(value: string | undefined): { batch: string | null; index: number } | null {
+  if (!value || !value.startsWith(CHECKPOINT_PREFIX)) return null;
+  const envelope = value.slice(CHECKPOINT_PREFIX.length);
+  const separator = envelope.lastIndexOf(".");
+  if (separator < 1) return null;
+  const encoded = envelope.slice(0, separator);
+  if (!/^[A-Za-z0-9_-]+$/.test(encoded)) return null;
+  try {
+    const parsed = checkpointSchema.parse(JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")));
+    return { batch: parsed.batch, index: parsed.index };
+  } catch {
+    return null;
+  }
+}
+
 function decodeCheckpoint(corpusId: string, firstBatch: string | null, value?: string): Checkpoint {
   if (!value) return { version: 2, corpus_id: corpusId, batch: firstBatch, index: 0 };
   try {

@@ -26,11 +26,16 @@ milestones may include a launch, material direction change, major release, hando
 similarly consequential outcome. A project timeline is not a commit log or an exhaustive
 list of releases.
 
-## When a project is useful
+## What identifies a project
 
-Create a project when the evidence confidently identifies a distinct, enduring body of
-work. The clearest sign is that it breaks down into several finite pursuits, each of which
-would be a [[about/tasks/agents|task]] on its own; a body of work with only one outcome in
-it is that outcome. The owner naming it as a project is enough; otherwise repeated activity
-or a meaningful milestone may establish that durability. A repository, ticket, short
-engagement or guessed grouping is not automatically a project.
+Under the [[agents#identifiability-is-the-threshold|root threshold]], what has to resolve
+here is a distinct, enduring body of work — not merely that work happened. The clearest
+sign is that it breaks down into several finite pursuits, each of which would be a
+[[about/tasks/agents|task]] on its own; a body of work with only one outcome in it is that
+outcome. The owner naming it as a project settles it; otherwise repeated activity or a
+meaningful milestone establishes the durability.
+
+A repository, ticket or short engagement is an artefact of work rather than the body of
+work, and a guessed grouping identifies nothing. Where the evidence supports the pursuit
+but not the project, write the [[about/tasks/agents|task]] — climbing later is cheap and
+splitting an invented project is not.

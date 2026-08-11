@@ -9,11 +9,13 @@ stands: a conversation happened, and this is the account of it. A meeting happen
 is dated; a thread has a first message and no scheduled end, which is why its folder
 carries no date.
 
-A substantive exchange earns a thread the way a substantive conversation earns a meeting
-page. The bar is the meeting's bar and is not raised for being written instead of spoken —
-correspondence is where most of what the owner learns actually arrives, and leaving it to
-be split one line at a time across the pages of the parties to it is how a base ends up
-knowing that things were discussed and not what was said.
+An exchange the evidence resolves — who is in it and what line of work it is about — earns
+its thread on exactly the terms a conversation earns its
+[[meetings/agents#what-identifies-a-meeting|meeting page]], and the bar is not raised for
+being written instead of spoken. Correspondence is where most of what the owner learns
+actually arrives, and leaving it to be split one line at a time across the pages of the
+parties to it is how a base ends up knowing that things were discussed and not what was
+said.
 
 ## The thread carries the account
 
@@ -44,8 +46,8 @@ including the one that created the thread.
 A thread that holds knowledge its entities do not is a failure. In the same write:
 
 - every person and organization the exchange identifies gets its page and a link from
-  here, on the [[people/agents#when-a-person-is-useful|people threshold]] the meeting guide
-  applies to attendees — a correspondent is someone the owner dealt with;
+  here, on the [[people/agents#what-identifies-a-person|people threshold]] — including
+  those merely named in the exchange, not only its correspondents;
 - every durable fact with a clear owner is also written on that owner's page or
   `timeline`, in its particulars;
 - a material development earns a timeline event on the entity it happened to, linking here.
@@ -71,13 +73,14 @@ fewer of them.
 
 ## What does not earn one
 
-The exclusions are the meeting guide's, no more: routine scheduling, acknowledgements,
-administrative back-and-forth, newsletters and notifications. An exchange that only
-arranges a meeting belongs to that meeting.
+The exclusions are the root guide's noise filter, no more: newsletters, notifications,
+receipts and cold outreach. An exchange that only arranges a meeting belongs to that
+meeting.
 
 A single message can be a thread when it establishes enough that its parts have to be read
 together — a figure, the condition attached to it and what it changes. One message carrying
-one fact is not a thread; it is a timeline event on the entity that fact is about.
+one fact is not a thread; it is a timeline event on the entity that fact is about, and the
+subjects it names still get their pages.
 
 A thread may be the origin of a [[about/tasks/agents|task]], a [[topics/agents|topic]] or a
 [[about/projects/agents|project]], and often is when it runs long. Create that page when its

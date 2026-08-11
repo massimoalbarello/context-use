@@ -158,22 +158,17 @@ What stays deliberately loose is the shape *inside* a folder. `intro`, `timeline
 rest are the guides' business and are expected to change, so an entity counts as held when
 its folder exists with any page in it, under any ordering of its name.
 
-### What it found
+### Reading a result
 
-Scored to 15 April, the two recorded three-day runs file **6 and 9 of 107** entities due by
-then, with meetings at 4/4 in both.
+Scores live in `.eval-results/`, not in this file, for the reason given under
+[Reading a result](../qa/README.md#reading-a-result): a number written down here describes
+one run and then misdescribes every run after it.
 
-| | 7 Aug | 8 Aug |
-| --- | --- | --- |
-| entities filed | 6/107 | 9/107 |
-| meetings recorded | 4/4 | 4/4 |
-| person folders | 3 | 1 |
-| company folders | 2 | 7 |
+Two properties of this metric are worth carrying into any reading of it. Entity recall
+swings widely between runs of an identical configuration, so treat a single run as a
+diagnostic rather than a measurement. And the informative part is never the fraction — it is
+*which* entities are missing, since the ones a run drops usually share a cause, and that
+cause is the thing a guide change has to address.
 
-Missing from both: `Halfway Capital` — Amara's own firm, on sixteen pages of the resulting
-knowledge base without ever getting a folder — along with Priya Patel, Sarah Chen, Marcus
-Reid and Anna Petrov.
-
-That is the shape of the gap the guides have to close. Treat it as a floor and a diagnostic,
-never a target: the system already swings this far on identical input, and a noisy metric
-optimised against is worse than no metric.
+Treat the number as a floor and a diagnostic, never a target. A noisy metric optimised
+against is worse than no metric.

@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { loadCorpus, windowRecords, type CorpusWindow } from "./corpus-records.ts";
+import { checkpointPosition, loadCorpus, windowRecords, type CorpusWindow } from "./corpus-records.ts";
 import { LOCAL_STACK, runStackCommand } from "../scripts/local-stack.ts";
 import { EVAL_URL, MCP_NAME, ROOT, runAgentSession, type EvalProvider } from "./agent.ts";
 import { corpusDirectory, corpusIsUnchanged, diffCorpus, type CorpusId } from "./corpus-integrity.ts";
@@ -60,7 +60,36 @@ export type BatchResult = {
   index: number;
   changes: PageChange[];
   pageCount: number;
+  /** False when the run left records of this batch unread. */
+  finished: boolean;
 };
+
+const STATE_PATH = "automations/activity-distiller/state";
+
+/**
+ * Whether a run actually consumed the batch it was given.
+ *
+ * One run per batch is the measurement: it reproduces a scheduled production trigger, and
+ * changing that would change what the number means. But a run that stops partway leaves its
+ * checkpoint inside the batch, and without this check the harness moves to the next day and
+ * records the abandoned one as a day whose records produced nothing — the same shape as a
+ * quiet day, and indistinguishable from one in the report. The checkpoint is the only honest
+ * signal, so read it and say so.
+ *
+ * This detects; it does not repair. Whether the harness should re-trigger an abandoned batch
+ * is a separate question about how faithful to production scheduling the eval should be, and
+ * a retry inflates a batch's output by giving it more attempts than a scheduled run gets.
+ */
+function persistedCheckpoint(pages: PageSnapshot[]): string | undefined {
+  const state = pages.find((page) => page.path === STATE_PATH);
+  return state?.body.match(/\*\*Checkpoint:\*\*\s*`([^`]+)`/)?.[1];
+}
+
+/** True once the persisted checkpoint has moved past `batch`, which is what finishing means. */
+function batchIsFinished(pages: PageSnapshot[], batch: string): boolean {
+  const position = checkpointPosition(persistedCheckpoint(pages));
+  return position !== null && position.batch !== batch;
+}
 
 function triggerPrompt(): string {
   return `You are the Context Use activity distiller running as a scheduled, unattended automation.
@@ -131,11 +160,18 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
     });
 
     const pages = snapshotKnowledge();
+    const finished = batchIsFinished(pages, batch);
     await Bun.write(join(runDirectory, `batch-${batch}-snapshot.json`), `${JSON.stringify(pages, null, 2)}\n`);
     const changes = pageChanges(previous, pages);
-    results.push({ batch, index, changes, pageCount: pages.length });
+    results.push({ batch, index, changes, pageCount: pages.length, finished });
     previous = pages;
     console.log(style.green(`\n  ${batch} complete · ${summarise(changes)} · ${pages.length} pages total`));
+    if (!finished) {
+      console.log(style.red(
+        `  ${batch} was abandoned with records unread — its checkpoint is still inside the batch,\n`
+        + "  so what follows is scored against a partial day.",
+      ));
+    }
   }
 
   const report = {
@@ -162,7 +198,9 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
     "",
   ];
   for (const result of results) {
-    lines.push(`## ${result.batch} — ${summarise(result.changes)}`, "");
+    const detail = [summarise(result.changes)];
+    if (!result.finished) detail.push("**abandoned with records unread**");
+    lines.push(`## ${result.batch} — ${detail.join(" · ")}`, "");
     for (const change of result.changes) {
       lines.push(`- ${change.change === "created" ? "NEW" : "UPD"} ${change.path} (v${change.version})`);
     }

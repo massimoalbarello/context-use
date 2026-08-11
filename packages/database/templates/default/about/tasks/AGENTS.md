@@ -43,6 +43,24 @@ This decides where a decision is written down, never whether the subjects behind
 The organization still gets its page, the people still get theirs, and folding a decision
 back into its subject must never mean writing less about the subject.
 
+## A unit of work, not a unit of evidence
+
+A task is also where several pieces of evidence about one pursuit come together. Two pull
+requests continuing the same scope of work are one task that discusses both and links the
+[[about/projects/agents|project]] they serve — not two pages, and not one page per
+repository artefact. The same holds for a ticket reopened under a new number, a design
+document and the change that implemented it, or a review thread and the work it reviews.
+
+This is the counterweight to the root rule that
+[[agents#a-subject-arrives-one-of-two-ways|evidence is itself a subject]]. That rule gives
+an occurrence its page because a conversation or an exchange is a thing that happened once.
+A unit of work is not: it continues across artefacts, and the pursuit is the subject while
+each artefact is evidence of it. Ask what the owner would look for afterwards — they
+remember the piece of work, not which pull request carried it.
+
+Link every artefact from the task in the sentence saying what it contributed, and keep the
+particulars each established. Merging them into one page is not a reason to write less.
+
 Task timeline events include the pursuit being framed, a consequential change in scope or
 direction, a decision, handoff, abandonment or resolution. Routine progress and transient
 status earn none.

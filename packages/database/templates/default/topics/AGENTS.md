@@ -26,31 +26,35 @@ a hierarchy that looks obvious now is expensive to unpick later. Prefer the broa
 when it is honest — closely related subjects always read together are one topic with
 linkable headings, not three thin folders.
 
-## When a topic is useful
+## What identifies a topic
 
-The usual test is inbound pressure, not interest: the base needs somewhere to point. The
-last condition is the exception, and comes from the owner rather than the base. Create a
-topic when any of these is already true:
+Under the [[agents#identifiability-is-the-threshold|root threshold]], a subject discussed
+in the evidence gets its page as soon as it resolves to a **subject** rather than a passing
+noun. That is the whole of the local test, and it does more work here than anywhere else:
+most nouns in a conversation are not topics. A field someone works in, a practice the owner
+follows, a piece of regulation, a thesis being argued — each is a subject. *Timelines*,
+*pricing* and *the market*, used as ordinary words inside a sentence about something else,
+are not.
 
-- Three or more existing pages refer to the subject and have nowhere canonical to link.
-- It recurs in the diary across two or more months.
-- The owner holds a stated position on the subject and reasons from it — a thesis, a
-  principle, a standard, a preference they apply to more than one decision. The decisions
-  it governs need somewhere to point from the first time it is written down rather than
-  the third, and the owner's own words are the signal: *my thesis*, *what I look for*,
-  *the way I do this*.
-- Other people describe the owner as holding it — *your position on this*, *the thing you
-  keep saying*. That usually arrives long before three pages need to point at it.
-- The owner recounts something the evidence places nowhere more specific. Under the root
-  rule for [[agents#which-entity-does-it-belong-to|choosing the entity]], a topic is where
-  activity lands when nothing below it is identifiable: a meal with no named dish or place
-  belongs to `food`, a mood to `mood`. This holds only for what the owner tells you, never
-  for harvested records, which stay in the account that mentioned them.
+Two cases resolve reliably and should never be left out:
 
-Creating the page is not the whole change. In the same write, repoint at least one existing
-reference at the new topic and thin the passage it came from. A topic with no inbound links
-is not yet a topic — unless it is a holding area, which the owner's own account is the
-inbound link for.
+- **A position the owner reasons from** — a thesis, principle, standard or preference they
+  apply to more than one decision. Their own words are the signal: *my thesis*, *what I look
+  for*, *the way I do this*. So is someone else's: *your position on this*, *the thing you
+  keep saying*. Every decision citing a position restates it unless there is a page to point
+  at, which is why this earns one the first time it is stated rather than the third.
+- **Activity the evidence places nowhere more specific.** Under the root rule for
+  [[agents#which-entity-does-it-belong-to|choosing the entity]], a topic is where activity
+  lands when nothing below it is identifiable: a meal with no named dish or place belongs to
+  `food`, a mood to `mood`.
+
+Inbound pressure — several pages needing somewhere to point — is no longer a gate to pass
+before creating a topic. It is the signal that an existing one has become too coarse and
+should split.
+
+Creating the page is not the whole change. In the same write, repoint the references that
+should now point here and link the topic from the account that raised it, so it is reachable
+rather than orphaned.
 
 ## Keep it the owner's
 
@@ -62,7 +66,7 @@ not belong here.
 
     # <Topic>                                      ← intro
 
-    The smallest account of the subject that makes the rest of the page useful.
+    What the subject is, and what is true about it.
 
     ## Why it matters to me
 

@@ -41,21 +41,20 @@ the path to the target; do not repeat inherited guidance in a child.
 The links identify the guide or page that owns each convention. They do not imply a
 schema beyond what the linked guide says.
 
-## Keep only what matters
+## Curate, do not filter
 
-Keep the smallest account that preserves what is useful to the owner: the facts, dates,
-evidence, rationale, uncertainty and connections needed to understand the subject. The
-context in which the owner interacted with a subject is the best signal of what matters;
-a canonical page is not an encyclopedia entry or a container for every available fact.
+This base is built by distillation: raw activity turned into connected, durable knowledge.
+Distillation is not compression. What comes out is smaller than what went in because the
+noise was left behind — the newsletters, receipts, notifications, cold outreach and
+scheduling back-and-forth — not because the substance was thinned on the way through.
 
-Brevity governs how much is written about a subject, never how many of the owner's
-subjects are represented. Each page stays short; the base still covers everyone the owner
-dealt with and everything they decided. A base that answers "what happened" but not "to
-whom, at which company, about which question" is not concise, it is missing its subjects.
-
-Brevity is a budget on words, not on precision. A page gets shorter by dropping whole
-claims, never by blurring the ones that remain — the particulars are the knowledge: the
-figure, the name, the date, the term, the reason.
+Two judgements are involved, and merging them is how a base ends up empty. **Whether a
+record is worth writing about at all** is a filter, and a coarse one: what is genuinely the
+owner's activity passes it, and only garbage fails. **What to write about a record that
+passes** is not a filter. Every particular it establishes — the figure, the name, the date,
+the term, the condition, the reason — is the knowledge, and it goes in. A detail is never
+dropped for being small. It is only ever dropped along with the record, when that record
+was noise.
 
 The failure to watch for is a sentence that records an exchange instead of what the
 exchange established. *Sent over the pricing context*, *flagged concerns about the
@@ -65,19 +64,35 @@ on a two-year term*, *thinks the June deadline will slip*, *holds 12% from the s
 will introduce the CEO*. When a sentence has to give, cut who said it to whom and keep
 what was said.
 
-- Prefer the fewest coherent pages, each no larger than useful. Split a page only when
-  its parts have distinct subjects or are independently worth retrieving.
+None of this licenses copying the source in. A transcript, a message body or a mirrored
+record is raw material that has not been distilled, and pasting it is the opposite failure
+from smoothing it away: both leave the reader to do the work. The knowledge is what the
+record establishes, written as prose that stays true, placed on the subject it belongs to
+and linked to what it connects with.
+
+So a page stays readable through **placement, not omission**. When a page grows past what
+it can hold, the material moves to the page that owns it and a link goes in its place; it
+is never deleted to make room. Say a thing once, where it belongs, and link from
+everywhere else that needs it.
+
+- Give every page a one-sentence summary; directory indexes and search use it.
 - Prefer several small linked pages over one page that absorbs its neighbours' subjects.
   A paragraph about a person, company or question inside someone else's page is a page
   that has not been written yet.
-- Give every page a one-sentence summary; directory indexes and search use it.
-- Link to canonical context instead of restating it. Say a thing once, where it belongs.
+- Split a page when its parts have distinct subjects or are independently worth
+  retrieving. Length alone is not a reason to split, and it is never a reason to cut.
 - Connect what happened, who or what was involved, what preceded it and what followed.
 - Remove empty headings and scaffolding. A common template is a vocabulary, not a quota.
 - Distinguish observation, report and inference. Do not turn a suggestion into the
   owner's view or fill a gap merely to make a page look complete.
 - When a page speaks as the owner, use first person and ground it in what they expressed;
   label inference rather than silently turning it into their memory, motive or position.
+
+Coverage is the other half, and it is not traded against depth. The base holds everyone the
+owner dealt with and everything they decided, at the particulars each was established in. A
+base that answers "what happened" but not "to whom, at which company, about which question"
+is missing its subjects; one that names them but not what was said about them has kept the
+index and lost the knowledge.
 
 ## Place and identify
 
@@ -89,29 +104,60 @@ process, preference and intention stay with that person.
 
 Search for the canonical target across names, aliases and nearby context before writing.
 When the evidence identifies a distinct entity confidently, create or update its
-canonical page without asking for a preview or proposal. Start with the smallest useful
-account and include only material supported by the interaction. If identity remains
+canonical page without asking for a preview or proposal. Write everything the evidence
+actually supports about it, and nothing it does not. If identity remains
 genuinely ambiguous, do not guess or create duplicates: keep the reference in plain text
 or ask for the detail that distinguishes the candidates.
 
-The owner's own engagement is the general threshold for a canonical page. Someone they
-met, wrote to or heard from; an organization they evaluated, decided about, worked with
-or transacted with; a question they took a position on — each is part of what the owner
-did, and earns its page the first time it happens rather than after it repeats. A name
-that appears only inside someone else's account, with no engagement by the owner, stays
-plain text under the page that mentioned it.
+### Identifiability is the threshold
 
-That threshold decides which subjects exist. It does not decide what belongs on a subject
-that already exists. Once something is in this base, what the evidence says about it is its
-own, whoever said it and whether or not the owner replied: a colleague reporting a
-portfolio company's quarter in a shared channel is that company's news, and it belongs on
-that company's timeline exactly as the owner's own account of it would. Requiring the owner
-to have engaged with each piece of evidence keeps only the days they happened to speak, and
-loses the days they were told something — which are the days a knowledge base is for.
+**A subject earns its page as soon as the evidence resolves which subject it is** — from
+the name itself, or from the context it appears in. A person, organization, place, work,
+occurrence, question or topic: if you can say which one it is, it belongs here. Whether the
+owner met them, replied to them, or merely heard them mentioned decides nothing.
 
-Each directory guide says what engagement means in its subtree and may narrow the
-threshold for its own kind of subject; none of them replaces it with a requirement to wait
-for repetition.
+Engagement used to be the test and it was the wrong one. Requiring the owner to have taken
+part keeps only the days they happened to speak and loses the days they were told
+something — which are the days a knowledge base is for. A colleague reporting a portfolio
+company's quarter in a shared channel puts that company, that quarter and that colleague
+into the base, and none of it needed the owner to answer.
+
+What holds a subject back is doubt about *which* subject it is, and nothing else. A first
+name with nothing to pin it to, a company whose sender domain fits three candidates, a
+venue named only as "the usual place" — those stay plain text until the evidence resolves
+them. Never withhold a page because a subject looks unimportant: importance is not
+knowable at write time, and the subject that turns out to matter is usually the one that
+looked incidental when it first appeared.
+
+This threshold runs **after** the noise filter above, not instead of it. A newsletter or a
+platform notification is discarded whole, and nothing is extracted from it. Once a record
+is kept, everything identifiable inside it is written.
+
+### A subject arrives one of two ways
+
+Evidence is itself a subject, and it names others. Both halves get written.
+
+**The evidence is a subject** when it identifies an occurrence or a unit of work — a
+meeting, a call, a written exchange, a pull request, a document, a review. That gets its
+own page: the account of what it was and what it established.
+
+**The evidence names subjects** — everyone who took part, every organization, place, work,
+question and topic that came up. Each is a page too, and the sentence naming it is where
+the link goes.
+
+The second half is the one that gets dropped, and dropping it is what leaves a base knowing
+that a conversation happened and not who was in it. A meeting page whose participants are
+plain text has recorded the conversation and lost the people.
+
+Evidence and pages are not one-to-one, and forcing them either way fails. Two pull requests
+continuing one line of work are one [[about/tasks/agents|task]] that discusses both and
+links the [[about/projects/agents|project]] they serve. One meeting is a meeting page, four
+people, two companies and an open question. Read what the evidence identifies and write
+that, rather than counting records.
+
+Each directory guide says what identifies a subject in its subtree, and may add what it
+takes to tell two of them apart. None of them reinstates engagement, and none waits for
+repetition.
 
 Identity is decided by evidence, not by resemblance. Two people who share a given name,
 or two organizations that share a first word, are two entities until something in the
@@ -142,12 +188,11 @@ reachable from it, through the sentence that says what that view holds. A `timel
 or fact page nothing links to is unreachable from the entity it belongs to, and a reader
 arriving at the entity will never learn it exists.
 
-Repeated attention across saved works, research and the owner's own pages can be
-evidence that an entity matters, even without direct interaction. One passing mention
-or saved work is not enough, and recurring attention never relaxes the owning guide's
-identity threshold. Attention is not interaction and is not agreement: link the
-attending evidence without inventing a relationship or adopting its claims as the
-owner's view.
+Attention is not interaction and is not agreement. A subject the owner reads about, is told
+about or keeps encountering gets its page on the identifiability threshold like any other,
+and what goes on it is what the evidence says — not a relationship that never happened and
+not a claim adopted as the owner's view. Say who asserted it, and leave the owner's
+position absent until they take one.
 
 ## Reconcile the canonical account
 
@@ -247,11 +292,8 @@ and leave the surrounding lines as contemporaneous record.
 
 ## Which entity does it belong to
 
-Anything the owner says is worth recording, because they chose to say it. The selection
-thresholds in this base exist for harvested sources, which arrive by the thousand and are
-mostly noise; they are not a filter on the owner's own account of their day.
-
-So the question is rarely whether to record something. It is which entity it belongs to.
+Under the threshold above, the question is rarely whether to record something. It is which
+entity it belongs to.
 Name the most specific entity the evidence actually identifies, and climb until you reach
 one it does. A named dish at a named restaurant identifies both. A photograph of a meal
 with no place and no name identifies neither, and a topic such as `topics/food` is what
