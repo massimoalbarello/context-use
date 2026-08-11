@@ -24,11 +24,8 @@ retries, credentials and run history.
 - Supporting assets sit beside the instructions only when the automation actually
   consumes them.
 
-The instruction page should make the automation runnable without hidden conventions:
-describe its purpose, inputs, intended knowledge effects, tool and selection policy,
-checkpoint and replay behavior, success and failure semantics, and workflow-specific
-reporting contract. Keep this directory guide general; those details belong to the
-individual automation.
+An instruction page should make its automation runnable without hidden conventions, and
+the details of how belong to that page rather than to this guide.
 
 ## Boundaries
 
@@ -38,20 +35,13 @@ belong here. An automation never files its output under its own directory, and n
 under a date: output organized by the process that produced it is unreachable from the
 subject it is about.
 
-`about/diary/` belongs to the [[automations/diary-composer/instructions|diary composer]]
-alone. Every other writer records what happened as a timeline event on the relevant
-entity's `timeline`, and the composer assembles the days from those events afterwards.
-
-An unattended workflow can carry out the confident, useful changes described by the
-[[agents|root guide]] and reports its semantic changes through the external harness.
-Its own instructions should say how unresolved ambiguity or failure is reported.
-Copied provider data is not automation-page content.
-
 Automations do not coordinate through one another's instruction pages or assume that
-they are the only writer. Each workflow owns only its own instructions, state,
-dependencies and the exact knowledge fragments its contract tells it to maintain. On a
-shared page, preserve every other byte as found. Access to a page is not permission to
-rewrite material owned by another workflow or by the user.
+they are the only writer. On a shared page, preserve every other byte as found; access to
+a page is not permission to rewrite material owned by another workflow or by the user.
+`about/diary/` belongs to the [[automations/diary-composer/instructions|diary composer]]
+alone, and every other writer records what happened as a timeline event on the relevant
+entity's `timeline`.
 
 Maintain instructions, state and assets as their current canonical forms. Page history
-provides versioning; run-specific copies add no useful knowledge.
+provides versioning; run-specific copies add no useful knowledge. Copied provider data is
+not automation-page content.

@@ -5,13 +5,19 @@ GitHub, email, meetings and other services into the smallest useful account of w
 matters to the owner. This is curation, not ingestion: provider records are evidence,
 not pages to mirror.
 
+Curation decides which records are worth writing about. It does not summarise the ones it
+keeps. What a kept record establishes — the figure, the term, the date, the name, the
+reason — is the knowledge the owner comes back for, and a page saying that a conversation
+happened, in place of what the conversation established, has kept the record and lost the
+point of keeping it.
+
 ## Authority and boundaries
 
-- After opening this page, call `prepare_knowledge_write` for
-  `automations/activity-distiller/instructions` to load the [[agents|root guide]] and
-  applicable [[automations/agents|automation guide]], begin the run's guidance cache,
-  then read [[automations/activity-distiller/state|state]]. The installed guides,
-  including local edits, are authoritative.
+- After opening this page, call `prepare_knowledge_write` with an empty target path to
+  load the [[agents|root guide]] and begin the run's guidance cache, then read
+  [[automations/activity-distiller/state|state]]. The
+  [[automations/agents|automation guide]] loads with the checkpoint write, where it
+  applies. The installed guides, including local edits, are authoritative.
 - Before the first mutation in a guidance scope, call `prepare_knowledge_write` for the
   exact target and follow its root-to-leaf guide chain. Retain the receipt for this run
   and reuse it for later targets with the same applicable chain. When a write rejects a
@@ -103,6 +109,12 @@ Ignore by default:
 - cold outreach, acknowledgements, routine scheduling and administrative mail; and
 - ordinary commits, routine reviews and repeated corroboration with no consequential
   effect.
+
+None of these exclusions turns on who was speaking. A fact reported by someone else about
+a subject this base already holds is that subject's, whether or not the owner replied: the
+root guide's engagement threshold decides which subjects exist, not what is known about
+one that exists already. The first exclusion above is about strangers, not about the
+owner's own channels.
 
 An email thread matters only through the knowledge it establishes—for example, a
 substantive reply, commitment, relationship development, decision, or material advance
