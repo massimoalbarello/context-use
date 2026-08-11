@@ -174,7 +174,7 @@ describe("scoring recorded answers", () => {
   });
 
   test("separates a distillation gap from a retrieval one", () => {
-    const held = [page("Chris Jackson chaired the session.")];
+    const held = [page("Chris Jackson chaired Acme Board Meeting Q1 2025.")];
     const score = scoreQuestion(QUESTION, ANSWER, recorded("Mia Brown."), held, PEOPLE);
     expect(score.verdict).toBe("partial");
     expect(score.missing).toEqual(["Chris Jackson"]);
@@ -183,6 +183,16 @@ describe("scoring recorded answers", () => {
 
     const empty = scoreQuestion(QUESTION, ANSWER, recorded("Mia Brown."), [], PEOPLE);
     expect(empty.missingButHeld).toEqual([]);
+  });
+
+  test("does not call a name held when the page carrying it is about something else", () => {
+    // The weaker test — the string appears somewhere — turns a distillation gap into a
+    // retrieval one in the report. On amara it counted an unrelated page's "40%" and a
+    // different company's "DeepMind" as the answer being present.
+    const elsewhere = [page("Chris Jackson spoke at the Beta offsite.")];
+    const score = scoreQuestion(QUESTION, ANSWER, recorded("Mia Brown."), elsewhere, PEOPLE);
+    expect(score.missing).toEqual(["Chris Jackson"]);
+    expect(score.missingButHeld).toEqual([]);
   });
 
   test("voids an answer that read the corpus instead of the knowledge base", () => {

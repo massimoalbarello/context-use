@@ -293,7 +293,8 @@ the guides differing:
 The first says brevity is a budget on words rather than on precision, and gives the batch
 process a step for what each record establishes where it had one only for who was in the
 batch. The second reads a batch in passes small enough to write up rather than fifty
-records at a time. Names never written to the base fell from 53 to 33.
+records at a time. Expected names never written to the base fell from 73 to 53, against
+six that are written and not retrieved — this is a distillation gap almost end to end.
 
 Neither is tuned to these questions. Both were written from the shape of the failure —
 speech acts in place of content, and a pass too large to finish — with invented examples
@@ -309,13 +310,19 @@ the conflict. It is keeping the particulars now and still flattening the disagre
 between them, which is the next thing to fix rather than a scoring artifact.
 
 Twenty-six of the remaining failures are `NOT FOUND` against fourteen confidently wrong
-answers, so the base still declines more often than it invents.
+answers, so the base still declines more often than it invents. Fifty-three expected names
+are still never written, which is where the remaining headroom is.
 
 ### On trusting these numbers
 
 Volume is noisy: two runs of the identical config produced 71 and 113 pages. Ratios are
 steadier, and the deltas here — twenty questions on eighty-five — are far outside that
 band, but each row is a single run and should be read as one.
+
+`held in the knowledge base but not found` once meant only that the string appeared
+somewhere in the base, which counted an unrelated page's "40%" and another company's
+"DeepMind" as the answer being present, and inflated the retrieval share fourfold. It now
+requires the name to sit on a page that is also about what the question asks about.
 
 Seven grader defects were found and fixed along the way, every one a false negative where
 the system was right and the key was pinned to one rendering: `eight months` against

@@ -113,6 +113,28 @@ function wrongAttributions(
     && names(text, person));
 }
 
+/**
+ * Whether the knowledge base holds this element *as the answer to this question*.
+ *
+ * The weaker test — does the string appear anywhere in the base — reads as evidence and is
+ * not. On the amara corpus it reported "40%" as held because an unrelated page carried a
+ * different 40%, and "DeepMind" as held because a different company's founders also came
+ * from there. That turns a distillation gap into a retrieval gap in the report, which is
+ * the one distinction this field exists to draw.
+ *
+ * So the element has to appear on a page that is also about what the question asks about,
+ * judged by the proper names the question itself uses. A question that names nothing
+ * specific cannot support the claim either way, and gets no credit for it.
+ */
+function heldAbout(question: string, element: string | string[], pages: PageSnapshot[]): boolean {
+  const subjects = [...question.matchAll(/\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)\b/g)].map((match) => match[1]!);
+  if (subjects.length === 0) return false;
+  return pages.some((page) => {
+    const text = `${page.title} ${page.summary} ${page.body}`;
+    return asserts(text, element) && subjects.some((subject) => names(text, subject));
+  });
+}
+
 export type ScoreInput = {
   questions: PublicQuery[];
   answers: SealedAnswer[];
@@ -158,9 +180,8 @@ export function scoreQuestion(
   const missing = answer.expected_names.filter((element) => !found.includes(label(element))).map(label);
   const extra = wrongAttributions(recorded.text, question.text, answer.expected_names, people);
 
-  const corpusWide = pages.map((page) => `${page.title} ${page.summary} ${page.body}`).join("\n");
   const missingButHeld = answer.expected_names
-    .filter((element) => missing.includes(label(element)) && asserts(corpusWide, element))
+    .filter((element) => missing.includes(label(element)) && heldAbout(question.text, element, pages))
     .map(label);
 
   // A name the corpus never states cannot be held against a system reading content alone.
