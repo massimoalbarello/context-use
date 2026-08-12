@@ -181,7 +181,14 @@ export function createStorageBrokerApp(input: {
   .put("/private/export", async ({ request, query }) => {
     if (privateCapability(request, tokens) !== "dashboard") return denied();
     const objectKey = generatedObjectKeySchema.parse(query.key);
-    if (activeWrites.has(objectKey) || await storage.inspectGenerated(objectKey)) {
+    const existing = await storage.inspectGenerated(objectKey);
+    if (existing) {
+      return Response.json({
+        size_bytes: existing.sizeBytes,
+        content_hash: existing.contentHash,
+      }, { headers: { "cache-control": "no-store" } });
+    }
+    if (activeWrites.has(objectKey)) {
       return new Response("Export already exists", { status: 409, headers: { "cache-control": "no-store" } });
     }
     activeWrites.add(objectKey);

@@ -300,6 +300,7 @@ describe("storage broker capabilities", () => {
     try {
       const client = new BrokeredStorage({ socketPath, token: tokens.dashboard });
       const written = await client.writeGenerated(exportKey, new Blob([bytes]).stream());
+      expect(await client.writeGenerated(exportKey, new Blob(["different bytes"]).stream())).toEqual(written);
       expect(await client.inspectGenerated(exportKey)).toEqual(written);
       const ranged = await client.read(exportKey, { start: 9, end: 17 });
       expect(await new Response(ranged).text()).toBe("knowledge");

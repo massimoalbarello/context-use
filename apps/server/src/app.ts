@@ -40,8 +40,7 @@ import {
   requestMatchesOrigin,
   securityHeaders,
 } from "./security.ts";
-import { AssetIntegrityError } from "./storage.ts";
-import type { GeneratedObjectMetadata } from "./storage.ts";
+import { AssetIntegrityError, type GeneratedObjectMetadata } from "./storage.ts";
 import { BrokeredStorage } from "./storage-client.ts";
 import {
   MAX_KNOWLEDGE_EXPORT_BYTES,
@@ -73,22 +72,10 @@ function stageKnowledgeExport(
 ): Promise<GeneratedObjectMetadata> {
   const existing = stagedExportBuilds.get(intentId);
   if (existing) return existing;
-  const objectKey = stagedExportKey(intentId);
-  const build = (async () => {
-    try {
-      const written = await storage.writeGenerated(objectKey, streamKnowledgeExport(snapshot, storage));
-      const committed = await storage.inspectGenerated(objectKey);
-      if (!committed
-          || committed.sizeBytes !== written.sizeBytes
-          || committed.contentHash !== written.contentHash) {
-        throw new Error("Knowledge export staging verification failed");
-      }
-      return committed;
-    } catch (error) {
-      await storage.deleteGenerated(objectKey).catch(() => undefined);
-      throw error;
-    }
-  })();
+  const build = storage.writeGenerated(
+    stagedExportKey(intentId),
+    streamKnowledgeExport(snapshot, storage),
+  );
   stagedExportBuilds.set(intentId, build);
   void build.finally(() => stagedExportBuilds.delete(intentId)).catch(() => undefined);
   return build;
