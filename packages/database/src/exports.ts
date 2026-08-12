@@ -54,10 +54,11 @@ export class KnowledgeExportRepository {
 
   async createIntent(principal: KnowledgeExportPrincipal) {
     return transaction(this.dashboardPool, async (client) => {
-      await client.query(
+      const discarded = await client.query<{ id: string }>(
         `DELETE FROM knowledge_export_intents
          WHERE expires_at <= now()
-            OR (owner_user_id=$1 AND session_id=$2 AND download_started_at IS NULL)`,
+            OR (owner_user_id=$1 AND session_id=$2 AND download_started_at IS NULL)
+         RETURNING id`,
         [principal.ownerUserId, principal.sessionId],
       );
       const id = randomUUID();
@@ -108,6 +109,7 @@ export class KnowledgeExportRepository {
         page_count: Number(summary.rows[0]!.page_count),
         asset_count: Number(summary.rows[0]!.asset_count),
         total_bytes: Number(summary.rows[0]!.total_bytes),
+        discarded_export_ids: discarded.rows.map(({ id: discardedId }) => discardedId),
       };
     });
   }

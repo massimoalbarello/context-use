@@ -1,8 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { KnowledgeExportSnapshot } from "@context-use/database";
 import { BlobReader, BlobWriter, TextWriter, ZipReader } from "@zip.js/zip.js";
-import { planKnowledgeExport, streamKnowledgeExport } from "./knowledge-export.ts";
+import {
+  planKnowledgeExport,
+  streamKnowledgeExport,
+} from "./knowledge-export.ts";
 import type { ObjectStorage } from "./storage.ts";
+import { isFinalizedZipFooter, zipFooterRange } from "./zip-footer.ts";
 
 const pageOne = "11111111-1111-4111-8111-111111111111";
 const pageTwo = "22222222-2222-4222-8222-222222222222";
@@ -154,6 +158,8 @@ describe("portable knowledge export", () => {
     };
     const archive = await new Response(streamKnowledgeExport(snapshot(), storage)).blob();
     const archiveBytes = new Uint8Array(await archive.arrayBuffer());
+    const footerRange = zipFooterRange(archiveBytes.byteLength)!;
+    expect(isFinalizedZipFooter(archiveBytes.slice(footerRange.start, footerRange.end + 1))).toBe(true);
     expect(archiveBytes.findIndex((byte, index) => (
       byte === 0x50
       && archiveBytes[index + 1] === 0x4b

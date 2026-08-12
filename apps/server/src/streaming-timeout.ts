@@ -1,12 +1,12 @@
-export const LARGE_RESPONSE_IDLE_TIMEOUT_SECONDS = 120;
+export const STREAMING_REQUEST_IDLE_TIMEOUT_SECONDS = 0;
 
 type RequestTimeoutServer = {
   timeout(request: Request, seconds: number): void;
 };
 
-export function extendLargeResponseIdleTimeout(
+export function disableStreamingRequestIdleTimeout(
   server: RequestTimeoutServer | null | undefined,
   request: Request,
 ): void {
-  server?.timeout(request, LARGE_RESPONSE_IDLE_TIMEOUT_SECONDS);
+  server?.timeout(request, STREAMING_REQUEST_IDLE_TIMEOUT_SECONDS);
 }

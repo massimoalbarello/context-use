@@ -82,7 +82,7 @@ describe("API-proxied asset content", () => {
       new Request("https://context.example/api/dashboard/assets/id/content", {
         headers: { range: "bytes=2-5" },
       }),
-      asset,
+      { ...asset, content_hash: "a".repeat(64) },
       storage,
       true,
     );
@@ -90,6 +90,7 @@ describe("API-proxied asset content", () => {
     expect(response.status).toBe(206);
     expect(response.headers.get("content-range")).toBe("bytes 2-5/10");
     expect(response.headers.get("content-length")).toBe("4");
+    expect(response.headers.get("etag")).toBe(`"sha256:${"a".repeat(64)}"`);
     expect(new TextDecoder().decode(await response.arrayBuffer())).toBe("2345");
     expect(reads).toEqual([{ objectKey: "objects/private-object", range: { start: 2, end: 5 } }]);
   });

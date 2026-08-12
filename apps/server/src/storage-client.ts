@@ -1,4 +1,4 @@
-import type { ByteRange, ObjectStorage, StoredAsset } from "./storage.ts";
+import type { ByteRange, GeneratedObjectMetadata, ObjectStorage, StoredAsset } from "./storage.ts";
 import { AssetNotFoundError } from "./storage.ts";
 
 type StorageClientOptions = {
@@ -63,13 +63,53 @@ export class BrokeredStorage implements ObjectStorage {
     // immutable object key selected by their private metadata repository.
     const query = this.options.publicOnly
       ? `/public/object?path=${encodeURIComponent(objectKey)}`
-      : `/private/object?key=${encodeURIComponent(objectKey)}`;
+      : objectKey.startsWith("exports/")
+        ? `/private/export?key=${encodeURIComponent(objectKey)}`
+        : `/private/object?key=${encodeURIComponent(objectKey)}`;
     const response = await this.request(query, {
       headers: range ? { range: `bytes=${range.start}-${range.end}` } : {},
     });
     if (response.status === 404) throw new AssetNotFoundError();
     if (!response.ok || !response.body) throw new Error(`Storage read failed (${response.status})`);
     return response.body;
+  }
+
+  async writeGenerated(
+    objectKey: string,
+    body: ReadableStream<Uint8Array> | null,
+  ): Promise<GeneratedObjectMetadata> {
+    if (this.options.publicOnly) throw new Error("Published storage is read-only");
+    const response = await this.request(`/private/export?key=${encodeURIComponent(objectKey)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/zip" },
+      body,
+    });
+    if (!response.ok) throw new Error(`Generated storage write failed (${response.status})`);
+    const result = await response.json() as { size_bytes?: unknown; content_hash?: unknown };
+    if (!Number.isSafeInteger(result.size_bytes) || Number(result.size_bytes) <= 0
+        || typeof result.content_hash !== "string" || !/^[a-f0-9]{64}$/.test(result.content_hash)) {
+      throw new Error("Generated storage returned invalid metadata");
+    }
+    return { sizeBytes: Number(result.size_bytes), contentHash: result.content_hash };
+  }
+
+  async inspectGenerated(objectKey: string): Promise<GeneratedObjectMetadata | null> {
+    if (this.options.publicOnly) return null;
+    const response = await this.request(`/private/export?key=${encodeURIComponent(objectKey)}`, { method: "HEAD" });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Generated storage inspection failed (${response.status})`);
+    const sizeBytes = Number(response.headers.get("content-length"));
+    const contentHash = response.headers.get("x-content-sha256") ?? "";
+    if (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0 || !/^[a-f0-9]{64}$/.test(contentHash)) {
+      throw new Error("Generated storage returned invalid metadata");
+    }
+    return { sizeBytes, contentHash };
+  }
+
+  async deleteGenerated(objectKey: string): Promise<void> {
+    if (this.options.publicOnly) throw new Error("Published storage is read-only");
+    const response = await this.request(`/private/export?key=${encodeURIComponent(objectKey)}`, { method: "DELETE" });
+    if (!response.ok) throw new Error(`Generated storage deletion failed (${response.status})`);
   }
 
   async verify(objectKey: string, sizeBytes: number, contentHash: string): Promise<boolean> {
