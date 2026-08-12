@@ -60,8 +60,8 @@ call `get_page` for the latest page only to identify its subject, relationship, 
 date or best link. Unchanged passages are context, never new evidence or a reason to retell
 the page.
 
-Timeline rows are paths ending in `/timeline` or promoted year pages beneath `/timeline/`.
-Their changed event lines are the primary chronology. A non-timeline delta may corroborate
+Timeline rows are paths ending in `/timeline`. Their changed event lines are the primary
+chronology. A non-timeline delta may corroborate
 or identify an activity only when the changed material itself clearly establishes what the
 owner did, experienced or learned and supplies a reliable activity date. Creating or
 rewording an entity account, adding a durable fact, repairing links or moving material is
