@@ -41,9 +41,13 @@ import {
   securityHeaders,
 } from "./security.ts";
 import { AssetIntegrityError } from "./storage.ts";
+import type { GeneratedObjectMetadata } from "./storage.ts";
 import { BrokeredStorage } from "./storage-client.ts";
-import { MAX_KNOWLEDGE_EXPORT_BYTES, streamKnowledgeExport } from "./knowledge-export.ts";
-import { extendLargeResponseIdleTimeout } from "./streaming-timeout.ts";
+import {
+  MAX_KNOWLEDGE_EXPORT_BYTES,
+  streamKnowledgeExport,
+} from "./knowledge-export.ts";
+import { disableStreamingRequestIdleTimeout } from "./streaming-timeout.ts";
 
 const dashboardPool = createPool(config.DATABASE_URL);
 const storage = new BrokeredStorage({
@@ -57,6 +61,38 @@ const pageDeletions = new PageDeletionRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
 const publications = new PublicationRepository(dashboardPool);
 const knowledgeExports = new KnowledgeExportRepository(dashboardPool);
+const stagedExportBuilds = new Map<string, Promise<GeneratedObjectMetadata>>();
+
+function stagedExportKey(intentId: string): string {
+  return `exports/${intentId}.zip`;
+}
+
+function stageKnowledgeExport(
+  intentId: string,
+  snapshot: KnowledgeExportSnapshot,
+): Promise<GeneratedObjectMetadata> {
+  const existing = stagedExportBuilds.get(intentId);
+  if (existing) return existing;
+  const objectKey = stagedExportKey(intentId);
+  const build = (async () => {
+    try {
+      const written = await storage.writeGenerated(objectKey, streamKnowledgeExport(snapshot, storage));
+      const committed = await storage.inspectGenerated(objectKey);
+      if (!committed
+          || committed.sizeBytes !== written.sizeBytes
+          || committed.contentHash !== written.contentHash) {
+        throw new Error("Knowledge export staging verification failed");
+      }
+      return committed;
+    } catch (error) {
+      await storage.deleteGenerated(objectKey).catch(() => undefined);
+      throw error;
+    }
+  })();
+  stagedExportBuilds.set(intentId, build);
+  void build.finally(() => stagedExportBuilds.delete(intentId)).catch(() => undefined);
+  return build;
+}
 
 async function ownerRequest(request: Request, mutation = false) {
   if (!requestMatchesOrigin(request, config.APP_ORIGIN)) throw new SecurityError("Not found", 404);
@@ -241,6 +277,9 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     emptyObjectSchema.parse(await bodyJson(request));
     const exportPrincipal = { ownerUserId: principal.userId, sessionId: principal.sessionId };
     const intent = await knowledgeExports.createIntent(exportPrincipal);
+    await Promise.allSettled(intent.discarded_export_ids.map((id) => (
+      storage.deleteGenerated(stagedExportKey(id))
+    )));
     if (intent.total_bytes > MAX_KNOWLEDGE_EXPORT_BYTES) {
       await knowledgeExports.discard(intent.id, exportPrincipal);
       return problem(
@@ -284,7 +323,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     }, 201);
   })
   .get("/api/dashboard/knowledge-exports/:id/download", async ({ request, params, server }) => {
-    extendLargeResponseIdleTimeout(server, request);
+    disableStreamingRequestIdleTimeout(server, request);
     if (!requestMatchesOrigin(request, config.APP_ORIGIN)) throw new SecurityError("Not found", 404);
     const principal = await authorizeDashboardRequest(request, "download");
     if (!principal) throw new SecurityError("Dashboard session required", 401);
@@ -293,36 +332,40 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
     if (!intent || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
       return problem("Knowledge export intent not found", 404, "not_found");
     }
-    if (!intent.confirmed_at || intent.download_started_at || new Date(intent.expires_at).getTime() <= Date.now()) {
+    if (!intent.confirmed_at || new Date(intent.expires_at).getTime() <= Date.now()) {
       return problem("A fresh passkey confirmation is required", 403, "passkey_required");
     }
     await claimConfirmedExport(intentId, principal);
-    const snapshot = await knowledgeExports.currentSnapshot();
-    if (exportSize(snapshot) > MAX_KNOWLEDGE_EXPORT_BYTES) {
-      return problem(
-        "Knowledge changed after confirmation and the current export is now larger than 5 GiB. Remove some active assets and try again.",
-        413,
-        "export_too_large",
-      );
-    }
-    const missing = await unavailableExportAssets(snapshot.assets);
-    if (missing.length) {
-      const examples = missing.slice(0, 3).join(", ");
-      const remaining = missing.length > 3 ? ` and ${missing.length - 3} more` : "";
-      return problem(
-        `Export stopped because current knowledge includes ${missing.length} asset file${missing.length === 1 ? " that is" : "s that are"} missing or failed integrity verification: ${examples}${remaining}`,
-        409,
-        "asset_incomplete",
-      );
+    const objectKey = stagedExportKey(intentId);
+    let staged = await storage.inspectGenerated(objectKey);
+    if (!staged) {
+      const snapshot = await knowledgeExports.currentSnapshot();
+      if (exportSize(snapshot) > MAX_KNOWLEDGE_EXPORT_BYTES) {
+        return problem(
+          "Knowledge changed after confirmation and the current export is now larger than 5 GiB. Remove some active assets and try again.",
+          413,
+          "export_too_large",
+        );
+      }
+      const missing = await unavailableExportAssets(snapshot.assets);
+      if (missing.length) {
+        const examples = missing.slice(0, 3).join(", ");
+        const remaining = missing.length > 3 ? ` and ${missing.length - 3} more` : "";
+        return problem(
+          `Export stopped because current knowledge includes ${missing.length} asset file${missing.length === 1 ? " that is" : "s that are"} missing or failed integrity verification: ${examples}${remaining}`,
+          409,
+          "asset_incomplete",
+        );
+      }
+      staged = await stageKnowledgeExport(intentId, snapshot);
     }
     const date = new Date().toISOString().slice(0, 10);
-    return new Response(streamKnowledgeExport(snapshot, storage), {
-      headers: {
-        ...securityHeaders,
-        "content-type": "application/zip",
-        "content-disposition": `attachment; filename="context-use-export-${date}.zip"`,
-      },
-    });
+    return assetContentResponse(request, {
+      filename: `context-use-export-${date}.zip`,
+      content_type: "application/zip",
+      size_bytes: staged.sizeBytes,
+      content_hash: staged.contentHash,
+    }, storage, false, objectKey);
   })
   .get("/api/dashboard/pages", async ({ request, query }) => {
     await ownerRequest(request);

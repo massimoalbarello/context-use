@@ -7,9 +7,10 @@ import { Elysia } from "elysia";
 import { z } from "zod";
 import { config } from "./config.ts";
 import { FilesystemStorage, S3Storage, type ByteRange, type ObjectStorageBackend } from "./storage.ts";
-import { extendLargeResponseIdleTimeout } from "./streaming-timeout.ts";
+import { disableStreamingRequestIdleTimeout } from "./streaming-timeout.ts";
 
 const objectKeySchema = z.string().regex(/^objects\/[a-f0-9-]{36}$/);
+const generatedObjectKeySchema = z.string().regex(/^exports\/[a-f0-9-]{36}\.zip$/);
 const verificationSchema = z.object({
   object_key: objectKeySchema,
   size_bytes: z.number().int().nonnegative().max(5_000_000_000),
@@ -106,6 +107,31 @@ async function readObject(
   }
 }
 
+async function generatedObjectResponse(
+  request: Request,
+  storage: ObjectStorageBackend,
+  objectKey: string,
+): Promise<Response> {
+  const metadata = await storage.inspectGenerated(objectKey);
+  if (!metadata) return denied();
+  const range = parseRange(request.headers.get("range"));
+  if (request.headers.has("range") && !range) return denied();
+  if (range && (range.start >= metadata.sizeBytes || range.end >= metadata.sizeBytes)) return denied();
+  const body = request.method === "HEAD" ? null : await storage.read(objectKey, range);
+  const contentLength = range ? range.end - range.start + 1 : metadata.sizeBytes;
+  return new Response(body, {
+    status: range ? 206 : 200,
+    headers: {
+      "accept-ranges": "bytes",
+      "cache-control": "no-store",
+      "content-length": String(contentLength),
+      "content-type": "application/zip",
+      "x-content-sha256": metadata.contentHash,
+      ...(range ? { "content-range": `bytes ${range.start}-${range.end}/${metadata.sizeBytes}` } : {}),
+    },
+  });
+}
+
 export function createStorageBrokerApp(input: {
   storage: ObjectStorageBackend;
   privateAssets: PrivateAssetLookup;
@@ -114,7 +140,7 @@ export function createStorageBrokerApp(input: {
 }) {
   const { storage, privateAssets, publicAssets, tokens } = input;
   const activeWrites = new Set<string>();
-  return new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
+  return new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
   .onError(() => denied())
   .get("/health", () => ({ status: "ok" }))
   .put("/private/object", async ({ request }) => {
@@ -151,6 +177,36 @@ export function createStorageBrokerApp(input: {
   .get("/private/object", async ({ request, query }) => {
     if (!privateCapability(request, tokens)) return denied();
     return readObject(storage, objectKeySchema.parse(query.key), parseRange(request.headers.get("range")));
+  })
+  .put("/private/export", async ({ request, query }) => {
+    if (privateCapability(request, tokens) !== "dashboard") return denied();
+    const objectKey = generatedObjectKeySchema.parse(query.key);
+    if (activeWrites.has(objectKey) || await storage.inspectGenerated(objectKey)) {
+      return new Response("Export already exists", { status: 409, headers: { "cache-control": "no-store" } });
+    }
+    activeWrites.add(objectKey);
+    try {
+      const metadata = await storage.writeGenerated(objectKey, request.body);
+      return Response.json({
+        size_bytes: metadata.sizeBytes,
+        content_hash: metadata.contentHash,
+      }, { status: 201, headers: { "cache-control": "no-store" } });
+    } finally {
+      activeWrites.delete(objectKey);
+    }
+  }, { parse: "none" })
+  .head("/private/export", async ({ request, query }) => {
+    if (privateCapability(request, tokens) !== "dashboard") return denied();
+    return generatedObjectResponse(request, storage, generatedObjectKeySchema.parse(query.key));
+  })
+  .get("/private/export", async ({ request, query }) => {
+    if (privateCapability(request, tokens) !== "dashboard") return denied();
+    return generatedObjectResponse(request, storage, generatedObjectKeySchema.parse(query.key));
+  })
+  .delete("/private/export", async ({ request, query }) => {
+    if (privateCapability(request, tokens) !== "dashboard") return denied();
+    await storage.deleteGenerated(generatedObjectKeySchema.parse(query.key));
+    return new Response(null, { status: 204 });
   })
   .delete("/private/object", async ({ request, query }) => {
     if (privateCapability(request, tokens) !== "dashboard") return denied();
@@ -192,9 +248,11 @@ export async function listenStorageSocket(): Promise<void> {
   await unlink(socketPath).catch(() => undefined);
   Bun.serve({
     unix: socketPath,
+    maxRequestBodySize: 5_500_000_000,
     fetch(request, server) {
-      if (request.method === "GET" && new URL(request.url).pathname === "/private/object") {
-        extendLargeResponseIdleTimeout(server, request);
+      if (["GET", "PUT"].includes(request.method)
+          && ["/private/object", "/private/export"].includes(new URL(request.url).pathname)) {
+        disableStreamingRequestIdleTimeout(server, request);
       }
       return storageApp.handle(request);
     },

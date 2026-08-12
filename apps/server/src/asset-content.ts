@@ -6,6 +6,7 @@ type AssetMetadata = {
   filename: string;
   content_type: string;
   size_bytes: number | string;
+  content_hash?: string;
 };
 
 type AssetContent = AssetMetadata & { s3_object_key: string };
@@ -103,6 +104,9 @@ export async function assetContentResponse(
       asset.filename,
       rendersInline,
     ),
+    ...(asset.content_hash && /^[a-f0-9]{64}$/.test(asset.content_hash)
+      ? { etag: `"sha256:${asset.content_hash}"` }
+      : {}),
   };
   if (range === "unsatisfiable") {
     return new Response(null, {

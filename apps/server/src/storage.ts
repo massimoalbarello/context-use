@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, readFile, rename, unlink } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
+import { isFinalizedZipFooter, zipFooterRange } from "./zip-footer.ts";
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
@@ -28,6 +29,11 @@ export type StoredAsset = {
 
 export type ByteRange = { start: number; end: number };
 
+export type GeneratedObjectMetadata = {
+  sizeBytes: number;
+  contentHash: string;
+};
+
 export interface ObjectStorage {
   write(asset: StoredAsset, body: ReadableStream<Uint8Array> | null): Promise<void>;
   delete(objectKey: string): Promise<void>;
@@ -37,6 +43,9 @@ export interface ObjectStorage {
 
 export interface ObjectStorageBackend extends ObjectStorage {
   exists(objectKey: string): Promise<boolean>;
+  writeGenerated(objectKey: string, body: ReadableStream<Uint8Array> | null): Promise<GeneratedObjectMetadata>;
+  inspectGenerated(objectKey: string): Promise<GeneratedObjectMetadata | null>;
+  deleteGenerated(objectKey: string): Promise<void>;
 }
 
 export type S3StorageConfig = {
@@ -97,6 +106,26 @@ function nodeStream(body: ReadableStream<Uint8Array> | null): Readable {
 }
 
 const S3_MULTIPART_PART_SIZE = 8 * 1024 * 1024;
+const MAX_GENERATED_OBJECT_BYTES = 5 * 1024 ** 3 + 64 * 1024 ** 2;
+
+function generatedManifestKey(objectKey: string): string {
+  return `${objectKey}.json`;
+}
+
+function parseGeneratedManifest(input: string): GeneratedObjectMetadata | null {
+  try {
+    const value = JSON.parse(input) as Record<string, unknown>;
+    if (!Number.isSafeInteger(value.size_bytes) || Number(value.size_bytes) <= 0) return null;
+    if (typeof value.content_hash !== "string" || !/^[a-f0-9]{64}$/.test(value.content_hash)) return null;
+    return { sizeBytes: Number(value.size_bytes), contentHash: value.content_hash };
+  } catch {
+    return null;
+  }
+}
+
+function generatedManifest(metadata: GeneratedObjectMetadata): string {
+  return JSON.stringify({ size_bytes: metadata.sizeBytes, content_hash: metadata.contentHash });
+}
 
 class ChunkAccumulator {
   private readonly chunks: Uint8Array[] = [];
@@ -268,6 +297,138 @@ export class S3Storage implements ObjectStorageBackend {
     }
   }
 
+  async writeGenerated(
+    objectKey: string,
+    body: ReadableStream<Uint8Array> | null,
+  ): Promise<GeneratedObjectMetadata> {
+    if (!body) throw new Error("Generated object body is missing");
+    const created = await this.client.send(new CreateMultipartUploadCommand({
+      Bucket: this.options.bucket,
+      Key: objectKey,
+      ContentType: "application/zip",
+      ChecksumAlgorithm: "SHA256",
+      Metadata: { generated: "knowledge-export" },
+      ServerSideEncryption: "aws:kms",
+      SSEKMSKeyId: this.options.kmsKeyId,
+    }));
+    if (!created.UploadId) throw new Error("S3 did not create an export multipart upload");
+    const uploadId = created.UploadId;
+    const parts: Array<{ ETag: string; PartNumber: number; ChecksumSHA256: string }> = [];
+    const buffered = new ChunkAccumulator();
+    const hash = createHash("sha256");
+    let sizeBytes = 0;
+    let completed = false;
+    const uploadPart = async (bytes: Buffer) => {
+      const partNumber = parts.length + 1;
+      const partChecksum = createHash("sha256").update(bytes).digest("base64");
+      const uploaded = await this.client.send(new UploadPartCommand({
+        Bucket: this.options.bucket,
+        Key: objectKey,
+        UploadId: uploadId,
+        PartNumber: partNumber,
+        Body: bytes,
+        ContentLength: bytes.byteLength,
+        ChecksumSHA256: partChecksum,
+      }));
+      if (!uploaded.ETag) throw new Error("S3 did not return an export part ETag");
+      parts.push({ ETag: uploaded.ETag, PartNumber: partNumber, ChecksumSHA256: partChecksum });
+    };
+    try {
+      const reader = body.getReader();
+      try {
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          sizeBytes += chunk.value.byteLength;
+          if (sizeBytes > MAX_GENERATED_OBJECT_BYTES) throw new Error("Generated object is too large");
+          hash.update(chunk.value);
+          buffered.push(chunk.value);
+          while (buffered.byteLength >= S3_MULTIPART_PART_SIZE) {
+            await uploadPart(buffered.take(S3_MULTIPART_PART_SIZE));
+          }
+        }
+      } catch (error) {
+        await reader.cancel(error).catch(() => undefined);
+        throw error;
+      }
+      if (!sizeBytes) throw new Error("Generated object is empty");
+      if (buffered.byteLength) await uploadPart(buffered.take());
+      await this.client.send(new CompleteMultipartUploadCommand({
+        Bucket: this.options.bucket,
+        Key: objectKey,
+        UploadId: uploadId,
+        MultipartUpload: { Parts: parts },
+      }));
+      completed = true;
+    } finally {
+      if (!completed) {
+        await this.client.send(new AbortMultipartUploadCommand({
+          Bucket: this.options.bucket,
+          Key: objectKey,
+          UploadId: uploadId,
+        })).catch(() => undefined);
+      }
+    }
+
+    const metadata = { sizeBytes, contentHash: hash.digest("hex") };
+    const footerRange = zipFooterRange(sizeBytes);
+    if (!footerRange) {
+      await this.delete(objectKey);
+      throw new Error("Generated ZIP is too short to be finalized");
+    }
+    const footerResult = await this.client.send(new GetObjectCommand({
+      Bucket: this.options.bucket,
+      Key: objectKey,
+      Range: `bytes=${footerRange.start}-${footerRange.end}`,
+    }));
+    if (!footerResult.Body
+        || !isFinalizedZipFooter(await footerResult.Body.transformToByteArray())) {
+      await this.delete(objectKey);
+      throw new Error("Generated ZIP central directory was not finalized");
+    }
+    const manifest = generatedManifest(metadata);
+    const manifestHash = createHash("sha256").update(manifest).digest("base64");
+    await this.client.send(new PutObjectCommand({
+      Bucket: this.options.bucket,
+      Key: generatedManifestKey(objectKey),
+      Body: manifest,
+      ContentType: "application/json",
+      ContentLength: Buffer.byteLength(manifest),
+      ChecksumSHA256: manifestHash,
+      ServerSideEncryption: "aws:kms",
+      SSEKMSKeyId: this.options.kmsKeyId,
+    }));
+    return metadata;
+  }
+
+  async inspectGenerated(objectKey: string): Promise<GeneratedObjectMetadata | null> {
+    try {
+      const [manifestResult, objectResult] = await Promise.all([
+        this.client.send(new GetObjectCommand({
+          Bucket: this.options.bucket,
+          Key: generatedManifestKey(objectKey),
+        })),
+        this.client.send(new HeadObjectCommand({
+          Bucket: this.options.bucket,
+          Key: objectKey,
+        })),
+      ]);
+      if (!manifestResult.Body) return null;
+      const metadata = parseGeneratedManifest(await manifestResult.Body.transformToString());
+      return metadata && objectResult.ContentLength === metadata.sizeBytes ? metadata : null;
+    } catch (error) {
+      if (error instanceof Error && ["NoSuchKey", "NotFound"].includes(error.name)) return null;
+      throw error;
+    }
+  }
+
+  async deleteGenerated(objectKey: string): Promise<void> {
+    await Promise.all([
+      this.delete(objectKey),
+      this.delete(generatedManifestKey(objectKey)),
+    ]);
+  }
+
   async delete(objectKey: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.options.bucket, Key: objectKey }));
   }
@@ -348,6 +509,68 @@ export class FilesystemStorage implements ObjectStorageBackend {
       await unlink(temporaryPath).catch(() => undefined);
       throw error;
     }
+  }
+
+  async writeGenerated(
+    objectKey: string,
+    body: ReadableStream<Uint8Array> | null,
+  ): Promise<GeneratedObjectMetadata> {
+    if (!body) throw new Error("Generated object body is missing");
+    const path = this.path(objectKey);
+    const manifestPath = this.path(generatedManifestKey(objectKey));
+    const temporaryPath = `${path}.upload-${crypto.randomUUID()}`;
+    const temporaryManifestPath = `${manifestPath}.upload-${crypto.randomUUID()}`;
+    await mkdir(resolve(path, ".."), { recursive: true });
+    let sizeBytes = 0;
+    const hash = createHash("sha256");
+    try {
+      const verifier = new Transform({
+        transform(chunk: Buffer, _encoding, callback) {
+          sizeBytes += chunk.byteLength;
+          if (sizeBytes > MAX_GENERATED_OBJECT_BYTES) {
+            callback(new Error("Generated object is too large"));
+            return;
+          }
+          hash.update(chunk);
+          callback(null, chunk);
+        },
+      });
+      await pipeline(nodeStream(body), verifier, createWriteStream(temporaryPath, { flags: "wx" }));
+      if (!sizeBytes) throw new Error("Generated object is empty");
+      const metadata = { sizeBytes, contentHash: hash.digest("hex") };
+      const footerRange = zipFooterRange(sizeBytes);
+      const footer = footerRange
+        ? await Bun.file(temporaryPath).slice(footerRange.start, footerRange.end + 1).bytes()
+        : new Uint8Array();
+      if (!isFinalizedZipFooter(footer)) {
+        throw new Error("Generated ZIP central directory was not finalized");
+      }
+      await writeFile(temporaryManifestPath, generatedManifest(metadata), { flag: "wx", mode: 0o600 });
+      await rename(temporaryPath, path);
+      await rename(temporaryManifestPath, manifestPath);
+      return metadata;
+    } catch (error) {
+      await Promise.all([
+        unlink(temporaryPath).catch(() => undefined),
+        unlink(temporaryManifestPath).catch(() => undefined),
+      ]);
+      throw error;
+    }
+  }
+
+  async inspectGenerated(objectKey: string): Promise<GeneratedObjectMetadata | null> {
+    const file = Bun.file(this.path(objectKey));
+    const manifest = Bun.file(this.path(generatedManifestKey(objectKey)));
+    if (!await file.exists() || !await manifest.exists()) return null;
+    const metadata = parseGeneratedManifest(await manifest.text());
+    return metadata && file.size === metadata.sizeBytes ? metadata : null;
+  }
+
+  async deleteGenerated(objectKey: string): Promise<void> {
+    await Promise.all([
+      this.delete(objectKey),
+      this.delete(generatedManifestKey(objectKey)),
+    ]);
   }
 
   async delete(objectKey: string): Promise<void> {

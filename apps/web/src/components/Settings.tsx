@@ -215,7 +215,7 @@ export function Settings({
         body: JSON.stringify({ intent_id: exportIntent.intent.id, response }),
       });
       setExportIntent(null);
-      setMessage("Passkey verified. Your private knowledge export is downloading.");
+      setMessage("Passkey verified. Your private knowledge export is being finalized; the download will begin when it is complete.");
       window.location.assign(confirmed.download_url);
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "Knowledge export failed");

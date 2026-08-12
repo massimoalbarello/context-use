@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createStorageBrokerApp } from "./storage-app.ts";
 import { BrokeredStorage } from "./storage-client.ts";
-import type { ByteRange, ObjectStorageBackend, StoredAsset } from "./storage.ts";
+import type { ByteRange, GeneratedObjectMetadata, ObjectStorageBackend, StoredAsset } from "./storage.ts";
 
 const tokens = {
   dashboard: "dashboard-token-that-is-long-and-private",
@@ -15,6 +15,7 @@ const tokens = {
 const publishedKey = "objects/11111111-1111-4111-8111-111111111111";
 const privateKey = "objects/22222222-2222-4222-8222-222222222222";
 const newKey = "objects/33333333-3333-4333-8333-333333333333";
+const exportKey = "exports/44444444-4444-4444-8444-444444444444.zip";
 
 function privateAssets(
   rows: Record<string, { filename: string; contentType: string; bytes: string | Uint8Array }>,
@@ -46,6 +47,7 @@ class MemoryStorage implements ObjectStorageBackend {
     [publishedKey, Buffer.from("published")],
     [privateKey, Buffer.from("private")],
   ]);
+  readonly generated = new Map<string, GeneratedObjectMetadata>();
 
   async write(asset: StoredAsset, body: ReadableStream<Uint8Array> | null): Promise<void> {
     this.objects.set(asset.objectKey, new Uint8Array(await new Response(body).arrayBuffer()));
@@ -53,6 +55,26 @@ class MemoryStorage implements ObjectStorageBackend {
 
   async delete(objectKey: string): Promise<void> {
     this.objects.delete(objectKey);
+  }
+
+  async writeGenerated(objectKey: string, body: ReadableStream<Uint8Array> | null): Promise<GeneratedObjectMetadata> {
+    const bytes = new Uint8Array(await new Response(body).arrayBuffer());
+    const metadata = {
+      sizeBytes: bytes.byteLength,
+      contentHash: createHash("sha256").update(bytes).digest("hex"),
+    };
+    this.objects.set(objectKey, bytes);
+    this.generated.set(objectKey, metadata);
+    return metadata;
+  }
+
+  async inspectGenerated(objectKey: string): Promise<GeneratedObjectMetadata | null> {
+    return this.generated.get(objectKey) ?? null;
+  }
+
+  async deleteGenerated(objectKey: string): Promise<void> {
+    this.objects.delete(objectKey);
+    this.generated.delete(objectKey);
   }
 
   async exists(objectKey: string): Promise<boolean> {
@@ -215,5 +237,77 @@ describe("storage broker capabilities", () => {
     expect((await app.handle(authorized(tokens.dashboard, `/private/object?key=${privateKey}`, { method: "DELETE" }))).status).toBe(204);
     expect(storage.objects.has(privateKey)).toBe(false);
     expect((await app.handle(authorized("invalid-token-that-is-long-enough-for-parser", `/private/object?key=${publishedKey}`))).status).toBe(404);
+  });
+
+  test("only the dashboard can stage and range-read a committed generated export", async () => {
+    const storage = new MemoryStorage();
+    const app = createStorageBrokerApp({
+      storage,
+      privateAssets: privateAssets({}),
+      publicAssets: { assetByPublicPath: async () => null },
+      tokens,
+    });
+    const bytes = Buffer.from("complete-knowledge-export");
+
+    expect((await app.handle(authorized(tokens.mcp, `/private/export?key=${encodeURIComponent(exportKey)}`, {
+      method: "PUT",
+      body: bytes,
+    }))).status).toBe(404);
+    const staged = await app.handle(authorized(tokens.dashboard, `/private/export?key=${encodeURIComponent(exportKey)}`, {
+      method: "PUT",
+      body: bytes,
+    }));
+    expect(staged.status).toBe(201);
+    expect(await staged.json()).toEqual({
+      size_bytes: bytes.byteLength,
+      content_hash: createHash("sha256").update(bytes).digest("hex"),
+    });
+
+    const inspected = await app.handle(authorized(tokens.dashboard, `/private/export?key=${encodeURIComponent(exportKey)}`, {
+      method: "HEAD",
+    }));
+    expect(inspected.status).toBe(200);
+    expect(inspected.headers.get("content-length")).toBe(String(bytes.byteLength));
+    expect(inspected.headers.get("accept-ranges")).toBe("bytes");
+
+    const ranged = await app.handle(authorized(tokens.dashboard, `/private/export?key=${encodeURIComponent(exportKey)}`, {
+      headers: { range: "bytes=9-17" },
+    }));
+    expect(ranged.status).toBe(206);
+    expect(ranged.headers.get("content-range")).toBe(`bytes 9-17/${bytes.byteLength}`);
+    expect(await ranged.text()).toBe("knowledge");
+    expect((await app.handle(authorized(tokens.mcp, `/private/export?key=${encodeURIComponent(exportKey)}`))).status).toBe(404);
+
+    expect((await app.handle(authorized(tokens.dashboard, `/private/export?key=${encodeURIComponent(exportKey)}`, {
+      method: "DELETE",
+    }))).status).toBe(204);
+    expect(await storage.inspectGenerated(exportKey)).toBeNull();
+  });
+
+  test("dashboard storage client round-trips generated metadata and resumable bytes", async () => {
+    const storage = new MemoryStorage();
+    const app = createStorageBrokerApp({
+      storage,
+      privateAssets: privateAssets({}),
+      publicAssets: { assetByPublicPath: async () => null },
+      tokens,
+    });
+    const directory = await mkdtemp(join(tmpdir(), "context-use-generated-storage-"));
+    const socketPath = join(directory, "storage.sock");
+    const server = Bun.serve({ unix: socketPath, fetch: app.handle });
+    const bytes = Buffer.from("complete-knowledge-export");
+
+    try {
+      const client = new BrokeredStorage({ socketPath, token: tokens.dashboard });
+      const written = await client.writeGenerated(exportKey, new Blob([bytes]).stream());
+      expect(await client.inspectGenerated(exportKey)).toEqual(written);
+      const ranged = await client.read(exportKey, { start: 9, end: 17 });
+      expect(await new Response(ranged).text()).toBe("knowledge");
+      await client.deleteGenerated(exportKey);
+      expect(await client.inspectGenerated(exportKey)).toBeNull();
+    } finally {
+      server.stop(true);
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });

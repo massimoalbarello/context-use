@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
-  extendLargeResponseIdleTimeout,
-  LARGE_RESPONSE_IDLE_TIMEOUT_SECONDS,
+  disableStreamingRequestIdleTimeout,
+  STREAMING_REQUEST_IDLE_TIMEOUT_SECONDS,
 } from "./streaming-timeout.ts";
 
 describe("large response idle timeout", () => {
-  test("allows a two-minute pause without disabling idle protection", () => {
+  test("disables the idle timer for bounded streaming work", () => {
     const calls: Array<{ request: Request; seconds: number }> = [];
     const request = new Request("https://context.example/export");
 
-    extendLargeResponseIdleTimeout({
+    disableStreamingRequestIdleTimeout({
       timeout(receivedRequest, seconds) {
         calls.push({ request: receivedRequest, seconds });
       },
@@ -17,13 +17,13 @@ describe("large response idle timeout", () => {
 
     expect(calls).toEqual([{
       request,
-      seconds: LARGE_RESPONSE_IDLE_TIMEOUT_SECONDS,
+      seconds: STREAMING_REQUEST_IDLE_TIMEOUT_SECONDS,
     }]);
-    expect(LARGE_RESPONSE_IDLE_TIMEOUT_SECONDS).toBe(120);
+    expect(STREAMING_REQUEST_IDLE_TIMEOUT_SECONDS).toBe(0);
   });
 
   test("is a no-op when an Elysia app is handled without a live Bun server", () => {
     const request = new Request("https://context.example/export");
-    expect(() => extendLargeResponseIdleTimeout(undefined, request)).not.toThrow();
+    expect(() => disableStreamingRequestIdleTimeout(undefined, request)).not.toThrow();
   });
 });

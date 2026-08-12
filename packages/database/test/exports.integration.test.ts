@@ -71,7 +71,7 @@ describeDatabase("passkey-bound current knowledge exports", () => {
     await pool.end();
   });
 
-  test("exports active knowledge as of download and permits one same-session claim", async () => {
+  test("exports active knowledge as of download and permits resumable same-session claims", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     fixtureRoot = `tests/export-${suffix}`;
     await pool.query(
@@ -146,6 +146,8 @@ describeDatabase("passkey-bound current knowledge exports", () => {
       current_path: `${fixtureRoot}/asset`,
     });
     expect(await exports.getIntent(intent.id)).toMatchObject({ download_started_at: expect.any(Date) });
-    await expect(confirmations.claimExport(intent.id, principal)).rejects.toThrow();
+    const confirmedIntent = await exports.getIntent(intent.id);
+    expect(new Date(confirmedIntent!.expires_at).getTime()).toBeGreaterThan(Date.now() + 23 * 60 * 60 * 1_000);
+    await confirmations.claimExport(intent.id, principal);
   });
 });
