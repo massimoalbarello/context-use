@@ -85,7 +85,11 @@ and writing one record at a time is what stops that width collapsing into a summ
      [[agents#a-subject-arrives-one-of-two-ways|a subject named in passing counts as much]],
      each is a subject if the evidence resolves it;
    - note what the record establishes about each: the figures, terms, dates, names and
-     reasons stated in it;
+     reasons stated in it, and equally the
+     [[agents#curate-do-not-filter|personal particulars]] — where someone is going and why,
+     what is happening in their family, what they are away for, what they are dealing with.
+     Those arrive in the aside a business message ends on, which is exactly why a run
+     reading for the deal drops them;
    - write those subjects and those particulars into the knowledge base **before reading
      the next record**.
 
@@ -132,8 +136,14 @@ and writing one record at a time is what stops that width collapsing into a summ
      timeline, and no name sits bare where a link belongs;
    - `about/intro` exists and still describes the owner these records have just shown you.
 6. After every intended knowledge mutation succeeds, replace state with this call's
-   `next_checkpoint`. If a mutation or state update fails, leave the old checkpoint in
-   force, stop and report the failure.
+   `next_checkpoint`. A rejected write is usually a mistake in the call rather than a broken
+   tool: a `page_id` that resolves to nothing, an `expected_version_number` that has moved
+   on, a receipt the target no longer accepts, an argument the schema refuses. Those are
+   correctable. Read the page again, copy its id and version out of that response exactly,
+   and retry the write. A uuid is the one part of a write copied by hand, and one wrong
+   character is the ordinary cause — so never conclude the tool is unusable from a rejected
+   write while `get_page` on the same path still answers. Only a failure that survives
+   correction leaves the old checkpoint in force and ends the run.
 7. When `has_more` is true, read again with the saved checkpoint and repeat from step 3, in
    this same run, so the new records are read against what is already in context. Never
    hold a second unread set of records before the first is written and checkpointed.
@@ -157,6 +167,14 @@ The checkpoint is what makes this consequential. It advances once per read, so a
 records abandoned part-written has persisted nothing: the work is repeated from the start
 next time, and that knowledge exists nowhere until some run finishes it. Stopping early is
 not a partial result. It is no result.
+
+Replay safety is not a reason to stop, and it is the one most easily mistaken for a good
+one. The checkpoint protects work that was *finished*; it says nothing in favour of a batch
+left halfway. *The batch will replay safely* describes what happens next — every record
+read again, every page written again, by a later run with none of this run's context — and
+that is a description of the cost of stopping, not a licence to stop. A run that reports
+records read, almost none written and a checkpoint deliberately left in place has not
+protected anything. It has spent the reading and thrown the writing away.
 
 **Do not infer a problem with the tools from the size of the work.** A large result is not
 a truncated one, a result you have not finished reading is not incomplete, and the number

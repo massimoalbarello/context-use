@@ -355,6 +355,62 @@ describe("MCP knowledge tools", () => {
     expect(calls).toEqual([]);
   });
 
+  test("says a write's page id resolves to nothing instead of returning a bare null", async () => {
+    const pages = pagesWithGuidance({
+      async update() {
+        return null;
+      },
+      async get() {
+        return null;
+      },
+    });
+    const missingId = "88888888-8888-4888-8888-888888888888";
+    const update = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 12,
+      method: "tools/call",
+      params: {
+        name: "update_page",
+        arguments: {
+          page_id: missingId,
+          path: "companies/novamind/timeline",
+          title: "NovaMind — Timeline",
+          summary: "Dated developments involving NovaMind.",
+          body_markdown: "## 2026",
+          commit_message: "Record the deep dive",
+          expected_version_number: 2,
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+
+    expect(update.result?.isError).toBe(true);
+    const text = update.result?.content?.[0]?.text ?? "";
+    expect(text).toContain("PAGE_NOT_FOUND");
+    expect(text).toContain(`No page has id ${missingId}`);
+    expect(text).toContain("the page at companies/novamind/timeline");
+    expect(text).toContain("retry update_page");
+    expect(text).not.toBe("null");
+
+    const archive = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 13,
+      method: "tools/call",
+      params: {
+        name: "archive_page",
+        arguments: {
+          page_id: missingId,
+          expected_version_number: 2,
+          commit_message: "Archive it",
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+
+    expect(archive.result?.isError).toBe(true);
+    expect(archive.result?.content?.[0]?.text).toContain("PAGE_NOT_FOUND");
+  });
+
   test("reuses a receipt across stateless calls and targets with the same guide chain", async () => {
     const calls: unknown[] = [];
     const pages = pagesWithGuidance({

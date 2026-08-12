@@ -64,6 +64,15 @@ on a two-year term*, *thinks the June deadline will slip*, *holds 12% from the s
 will introduce the CEO*. When a sentence has to give, cut who said it to whom and keep
 what was said.
 
+A particular is not only a commercial one. Where someone is going and why, whose wedding
+it is, which programme their daughter got into, what they are recovering from, what they
+are reading, the two weeks they are away in May — these establish as much about the owner's
+world as a valuation does, and they are the ones a base built out of working correspondence
+loses first, because they arrive in the aside rather than the substance of a message. This
+is a record of a life and not a deal pipeline. *Is away for two weeks in May* has kept the
+calendar and lost the person; *is away for two weeks in May for her sister's wedding in
+Vancouver* is the fact, and it costs eight words.
+
 None of this licenses copying the source in. A transcript, a message body or a mirrored
 record is raw material that has not been distilled, and pasting it is the opposite failure
 from smoothing it away: both leave the reader to do the work. The knowledge is what the
@@ -258,6 +267,20 @@ week — **the disagreement is itself the knowledge**, and taking the most recen
 destroys it. Keep both, say where each came from and when, and say plainly that they
 conflict. A reader who knows the sources disagree can go and check; one handed a single
 confident value cannot, and has no reason to doubt it.
+
+A claim already on the page is evidence too, and the writer replacing it usually cannot see
+what put it there. So a conflicting claim already recorded **stays**, with the date and the
+source it came with, and the new one joins it. Removing it is right only when the new
+evidence actually settles it — a correction, a retraction, someone restating their own
+affiliation or figure — and not merely when it is newer or when the earlier wording is
+inconvenient to keep. A rewrite that drops what an earlier record established has destroyed
+knowledge no later evidence will restore, because the record that carried it will not come
+back.
+
+Say what conflicts and never assert that nothing does. *Consistently described as X*
+carries the weight of a survey, and a page whose own account holds three affiliations has
+not run one. Where the page does not know, it says so; silence about a conflict reads as
+its absence.
 
 One concise current account does not mean one value per question. It means the page says
 what is known, and where the evidence is in conflict, what is known is that it conflicts.

@@ -55,6 +55,16 @@ function assertServed(corpus: CorpusId, window: CorpusWindow): void {
   }
 }
 
+/**
+ * Where the checkpoint sits relative to the batch this session was triggered for.
+ *
+ * `inside` is a session that stopped partway through its own batch. `behind` is the state
+ * that follows one: the checkpoint never left an earlier batch, so this session re-read that
+ * batch and never saw its own. Both were reported as finished while the corpus fell 26
+ * records short, because "not inside this batch" is also true of every batch in front of it.
+ */
+export type BatchProgress = "finished" | "inside" | "behind" | "unknown";
+
 export type BatchResult = {
   batch: string;
   index: number;
@@ -62,33 +72,67 @@ export type BatchResult = {
   pageCount: number;
   /** False when the run left records of this batch unread. */
   finished: boolean;
+  progress: BatchProgress;
+  /** Corpus records the reader actually served this session, from the checkpoint delta. */
+  recordsServed: number;
 };
 
 const STATE_PATH = "automations/activity-distiller/state";
 
-/**
- * Whether a run actually consumed the batch it was given.
- *
- * One run per batch is the measurement: it reproduces a scheduled production trigger, and
- * changing that would change what the number means. But a run that stops partway leaves its
- * checkpoint inside the batch, and without this check the harness moves to the next day and
- * records the abandoned one as a day whose records produced nothing — the same shape as a
- * quiet day, and indistinguishable from one in the report. The checkpoint is the only honest
- * signal, so read it and say so.
- *
- * This detects; it does not repair. Whether the harness should re-trigger an abandoned batch
- * is a separate question about how faithful to production scheduling the eval should be, and
- * a retry inflates a batch's output by giving it more attempts than a scheduled run gets.
- */
+/** The opaque checkpoint the automation persisted, which is the only honest signal here. */
 function persistedCheckpoint(pages: PageSnapshot[]): string | undefined {
   const state = pages.find((page) => page.path === STATE_PATH);
   return state?.body.match(/\*\*Checkpoint:\*\*\s*`([^`]+)`/)?.[1];
 }
 
-/** True once the persisted checkpoint has moved past `batch`, which is what finishing means. */
-function batchIsFinished(pages: PageSnapshot[], batch: string): boolean {
+/**
+ * How far the reader has been consumed, as an offset into the records this window serves.
+ *
+ * The checkpoint names a batch and an index within it, so turning it into one number needs
+ * the batch sizes ahead of it. A drained corpus has a null batch and sits at the end; no
+ * checkpoint at all sits at the start.
+ */
+export function servedOffset(
+  position: { batch: string | null; index: number } | null,
+  batches: string[],
+  sizes: Map<string, number>,
+  total: number,
+): number | null {
+  if (position === null) return null;
+  if (position.batch === null) return total;
+  const batchIndex = batches.indexOf(position.batch);
+  if (batchIndex === -1) return null;
+  const before = batches.slice(0, batchIndex).reduce((sum, batch) => sum + (sizes.get(batch) ?? 0), 0);
+  return before + Math.min(position.index, sizes.get(position.batch) ?? 0);
+}
+
+/**
+ * Where the checkpoint left this batch.
+ *
+ * One run per batch is the measurement: it reproduces a scheduled production trigger, and
+ * changing that would change what the number means. `finished` is the checkpoint standing
+ * past the batch, and it is the only outcome that means every record of it was written or
+ * dropped. The two failures are told apart rather than merged, because a session that
+ * abandoned its own batch and one that never reached it read differently: the first is a
+ * partial day, the second says every later batch is a session behind.
+ *
+ * This detects; it does not repair. Whether the harness should re-trigger an abandoned batch
+ * is a separate question about how faithful to production scheduling the eval should be, and
+ * a retry inflates a batch's output by giving it more attempts than a scheduled run gets.
+ */
+export function batchProgress(
+  pages: PageSnapshot[],
+  batch: string,
+  batches: string[],
+): BatchProgress {
   const position = checkpointPosition(persistedCheckpoint(pages));
-  return position !== null && position.batch !== batch;
+  if (position === null) return "unknown";
+  if (position.batch === null) return "finished";
+  const reached = batches.indexOf(position.batch);
+  const current = batches.indexOf(batch);
+  if (reached === -1 || current === -1) return "unknown";
+  if (reached > current) return "finished";
+  return reached === current ? "inside" : "behind";
 }
 
 function triggerPrompt(): string {
@@ -145,6 +189,17 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   let previous: PageSnapshot[] = snapshotKnowledge();
   await Bun.write(join(runDirectory, "initial-snapshot.json"), `${JSON.stringify(previous, null, 2)}\n`);
 
+  // What the reader served this session, measured from the checkpoint rather than from the
+  // agent's own account of it. A session reporting sixty-nine records written while the
+  // knowledge base gained twenty-four pages is the shape worth seeing, and only the first
+  // half of that ratio was ever recorded.
+  const sizes = new Map(allBatches.map((batch) => [
+    batch, selected.filter((record) => record.batch === batch).length,
+  ]));
+  const windowTotal = [...sizes.values()].reduce((sum, size) => sum + size, 0);
+  let servedBefore = servedOffset(
+    checkpointPosition(persistedCheckpoint(previous)), allBatches, sizes, windowTotal) ?? 0;
+
   const results: BatchResult[] = [];
   for (const [index, batch] of batches.entries()) {
     const batchRecords = selected.filter((record) => record.batch === batch);
@@ -160,17 +215,34 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
     });
 
     const pages = snapshotKnowledge();
-    const finished = batchIsFinished(pages, batch);
+    const progress = batchProgress(pages, batch, allBatches);
+    const servedAfter = servedOffset(
+      checkpointPosition(persistedCheckpoint(pages)), allBatches, sizes, windowTotal) ?? servedBefore;
+    const recordsServed = Math.max(0, servedAfter - servedBefore);
+    servedBefore = servedAfter;
     await Bun.write(join(runDirectory, `batch-${batch}-snapshot.json`), `${JSON.stringify(pages, null, 2)}\n`);
     const changes = pageChanges(previous, pages);
-    results.push({ batch, index, changes, pageCount: pages.length, finished });
+    results.push({
+      batch, index, changes, pageCount: pages.length,
+      finished: progress === "finished", progress, recordsServed,
+    });
     previous = pages;
-    console.log(style.green(`\n  ${batch} complete · ${summarise(changes)} · ${pages.length} pages total`));
-    if (!finished) {
+    console.log(style.green(`\n  ${batch} complete · ${recordsServed} records consumed · ${
+      summarise(changes)} · ${pages.length} pages total`));
+    if (progress === "inside") {
       console.log(style.red(
         `  ${batch} was abandoned with records unread — its checkpoint is still inside the batch,\n`
         + "  so what follows is scored against a partial day.",
       ));
+    }
+    if (progress === "behind") {
+      console.log(style.red(
+        `  This session never reached ${batch}: the checkpoint is still in an earlier batch, so it\n`
+        + "  re-read that one instead. Every batch after this is a session behind until one catches up.",
+      ));
+    }
+    if (progress === "unknown") {
+      console.log(style.red(`  ${batch} left no readable checkpoint, so what it consumed is not known.`));
     }
   }
 
@@ -188,29 +260,51 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   };
   await Bun.write(join(runDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
 
+  // What the window held against what the reader actually gave out. A run can finish every
+  // batch it was triggered for and still leave the corpus short, which is how twenty-six
+  // records went unread behind a report that ended in a tick.
+  const requested = batches.reduce((sum, batch) => sum + (sizes.get(batch) ?? 0), 0);
+  const served = results.reduce((sum, result) => sum + result.recordsServed, 0);
+
   const lines = [
     `# Corpus distillation — ${runId}`,
     "",
     `- **Corpus:** ${corpus.corpusId}`,
     `- **Window:** ${options.window} (${batches.length} batches)`,
     `- **Provider:** ${options.provider}`,
+    `- **Records served:** ${served} of ${requested} requested`,
+    ...(served < requested ? [`- **Unread:** ${requested - served} records the run never saw`] : []),
     `- **Pages after the final run:** ${previous.length}`,
     "",
   ];
+  const PROGRESS_NOTE: Record<BatchProgress, string> = {
+    finished: "",
+    inside: "**abandoned with records unread**",
+    behind: "**never reached this batch — re-read an earlier one**",
+    unknown: "**left no readable checkpoint**",
+  };
   for (const result of results) {
-    const detail = [summarise(result.changes)];
-    if (!result.finished) detail.push("**abandoned with records unread**");
+    const detail = [`${result.recordsServed} records consumed`, summarise(result.changes)];
+    if (PROGRESS_NOTE[result.progress]) detail.push(PROGRESS_NOTE[result.progress]);
     lines.push(`## ${result.batch} — ${detail.join(" · ")}`, "");
     for (const change of result.changes) {
       lines.push(`- ${change.change === "created" ? "NEW" : "UPD"} ${change.path} (v${change.version})`);
     }
     lines.push("");
   }
+
   const reportPath = join(runDirectory, "report.md");
   await Bun.write(reportPath, `${lines.join("\n")}\n`);
   await Bun.write(join(RESULTS_ROOT, "latest-distill"), `${runId}\n`);
 
   console.log(style.heading(`\n\n✓ Distillation complete · ${previous.length} pages · ${batches.length} batches`));
+  console.log(`${served} of ${requested} records were served to the agent.`);
+  if (served < requested) {
+    console.log(style.red(
+      `${requested - served} record(s) were never read. A score over this run is a score over a\n`
+      + "partial corpus, and questions whose evidence sits in those records cannot be answered.",
+    ));
+  }
   console.log(`Report: ${style.blue(reportPath)}`);
   return reportPath;
 }
