@@ -142,8 +142,14 @@ and writing one record at a time is what stops that width collapsing into a summ
    correctable. Read the page again, copy its id and version out of that response exactly,
    and retry the write. A uuid is the one part of a write copied by hand, and one wrong
    character is the ordinary cause — so never conclude the tool is unusable from a rejected
-   write while `get_page` on the same path still answers. Only a failure that survives
-   correction leaves the old checkpoint in force and ends the run.
+   write while `get_page` on the same path still answers.
+
+   A write that still cannot be made to succeed costs that record, not the batch. Hold the
+   checkpoint where it is, carry on through the records that remain, and name the record
+   that could not be written in the report. Holding the checkpoint is what protects the
+   unwritten record; stopping protects nothing, and it throws away every record after it
+   that would have been written. Only the state update itself failing ends a run, because
+   after that there is nothing to advance.
 7. When `has_more` is true, read again with the saved checkpoint and repeat from step 3, in
    this same run, so the new records are read against what is already in context. Never
    hold a second unread set of records before the first is written and checkpointed.
@@ -182,11 +188,13 @@ of records returned is in the response — never assume it matches a `limit` you
 Before reporting any tool as having failed, point at the error it returned. A successful
 call that returned more than you have processed yet has not failed; it is waiting.
 
-If the run genuinely cannot continue, the evidence for that is an error message. Quote it,
-name the record it happened on, stop on the last saved checkpoint, and say how many records
-were left unread. Absent such an error there is no failure to report and no report to
-write — only records still to process. Never report a run as finished, and never claim the
-source is caught up, while records remain.
+If the run genuinely cannot continue, the evidence for that is an error message, and it has
+to be one that stops the whole loop rather than one write: reads failing, or the state page
+refusing to save. Quote it, name the record it happened on, stop on the last saved
+checkpoint, and say how many records were left unread. One record that cannot be written is
+not that error — it is a line in the report and the run goes on. Absent such an error there
+is no failure to report and no report to write — only records still to process. Never report
+a run as finished, and never claim the source is caught up, while records remain.
 
 The reader omits records whose latest source update is more than 30 days old and
 advances past them. This applies equally to an existing backlog and a newly discovered
@@ -329,6 +337,7 @@ Success means `has_more` is false. The final saved checkpoint makes the next sch
 invocation start after the source lifecycle changes covered by this run. Finish with:
 
 - the number of records read, written and dropped, and whether the source is caught up;
+- every record whose writes could not be completed, named, with the error that stopped them;
 - a concise overall summary and any unresolved ambiguity;
 - `Created`, `Updated` and `Archived` lists containing every semantic page mutation,
   each with the exact path and a short description.
