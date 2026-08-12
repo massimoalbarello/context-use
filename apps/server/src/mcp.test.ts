@@ -93,7 +93,8 @@ describe("MCP knowledge tools", () => {
     expect(response.result?.instructions).not.toContain("about/intro");
     expect(response.result?.instructions).toContain("guides are authoritative");
     expect(response.result?.instructions).toContain("AGENTS.md");
-    expect(response.result?.instructions).toContain("Available reusable skills");
+    // The catalogue lives in load_skill's description, not here.
+    expect(response.result?.instructions).not.toContain("Available reusable skills");
   });
 
   test("exposes one unified checkpointed source reader when Nango access is configured", async () => {
@@ -128,13 +129,9 @@ describe("MCP knowledge tools", () => {
         clientInfo: { name: "test-client", version: "1.0.0" },
       },
     });
-    // The record contract travels in the tool description, not here. Server instructions are
-    // capped by the client — 2048 characters in one — and a second paragraph pushed the skill
-    // catalogue past the cut while advertising load_skill above it.
-    expect(initialized.result?.instructions).toContain(KNOWLEDGE_BASE_INSTRUCTIONS);
-    expect(initialized.result?.instructions).toContain("Available reusable skills");
+    // The record contract travels in the tool description, which arrives whole, rather than
+    // in server instructions, where a client cap cut it and the skill catalogue after it.
     expect(initialized.result?.instructions).not.toContain("For an ingestion automation");
-    expect(initialized.result?.instructions?.length).toBeLessThan(2048);
 
     const listed = await mcpRequest(serverWith(
       {} as PageRepository,
@@ -890,36 +887,6 @@ describe("MCP knowledge tools", () => {
       current_path: "skills/job-search-review",
       title: "SKILL.md",
     });
-  });
-
-  test("keeps the skill catalogue inside the instruction budget instead of letting a client cut it", async () => {
-    const many = Array.from({ length: 40 }, (_, index) => ({
-      id: `${index}`.padStart(8, "0") + "-0000-4000-8000-000000000000",
-      path: `skills/skill-number-${index}`,
-      version_number: 1,
-      title: "SKILL.md",
-      summary: "A summary long enough that forty of them would run well past any client cap on instructions.",
-    }));
-    const pages = { async metadataInDirectory() { return many; } } as unknown as PageRepository;
-    const response = await mcpRequest(serverWith(pages), {
-      jsonrpc: "2.0",
-      id: 24,
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-06-18",
-        capabilities: {},
-        clientInfo: { name: "test-client", version: "1.0.0" },
-      },
-    });
-
-    const instructions = response.result?.instructions ?? "";
-    expect(instructions.length).toBeLessThanOrEqual(2048);
-    // Degraded, and saying so — never a list cut mid-entry that names a skill and drops its
-    // summary, or names one that is not there.
-    expect(instructions).toContain("Available reusable skills:");
-    expect(instructions).toContain("skill-number-0");
-    expect(instructions).toMatch(/\(\+\d+ more; call get_page on skills\/<name> to read them\.\)|call browse_directory on skills/);
-    expect(instructions).toContain(KNOWLEDGE_BASE_INSTRUCTIONS);
   });
 
   test("exposes knowledge and asset tools without publication capabilities", async () => {

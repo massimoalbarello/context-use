@@ -146,48 +146,6 @@ function unknownPage(pageId: string, retryTool: string, path?: string) {
 
 export const KNOWLEDGE_BASE_INSTRUCTIONS = "Explore knowledge with browse_directory or get_directory, beginning at the root path when you do not yet know where relevant pages live. Read pages by UUID or semantic path with get_page. Before choosing a destination, ensure the root AGENTS.md guide at MCP path agents has been loaded; prepare_knowledge_write with an empty target path loads it and returns a reusable receipt. Before the first mutation in a guidance scope, call prepare_knowledge_write with the intended target path, follow the root-to-leaf guidance it returns, and pass its guidance_receipt to the mutation tool. Retain receipts for the current task and reuse one for later mutations or other targets with the same applicable guide chain. If a mutation returns GUIDANCE_REQUIRED, call prepare_knowledge_write for that target and pass the rejected receipt as cached_guidance_receipt so only new, changed, or removed guidance is reported, then retry with the new receipt. Do not persist receipts in knowledge. The returned guides are authoritative for placement, structure, editorial policy, privacy, and reporting; these bootstrap instructions do not define an entity schema. Create a directory before adding pages beneath a new path. Link pages and directories with [[path|label]], link headings with [[path#heading-slug|label]], and use context-use://directory/<uuid> for a stable directory reference. Use load_skill when a listed reusable skill is relevant.";
 
-/**
- * Server instructions are a scarce channel, and the source-record contract no longer uses it.
- *
- * A client puts this string in the model's context, and at least one caps what it takes at
- * 2048 characters — enough for the knowledge-base text and two thirds of the ingestion
- * paragraph that used to follow it, after which the skill catalogue was silently dropped and
- * `load_skill` was advertised with nothing to call it on. Everything that paragraph said
- * about reading records now lives in `read_source_records`' own description, which every
- * client receives whole through `tools/list` and which no other text has to share room with.
- */
-
-/** The smallest client cap seen on server instructions. Anything past it never arrives. */
-const INSTRUCTION_BUDGET = 2048;
-
-/**
- * The skill catalogue, cut to fit rather than left to be cut by the client.
- *
- * A catalogue truncated mid-entry names a skill whose summary is missing and may name one
- * that does not exist; the budget is also what a growing `skills/` directory spends first.
- * So it degrades on purpose: summaries first, then names, then a bare count, and it always
- * says what it left out.
- */
-function fitCatalog(skills: { name: string; summary: string }[], budget: number): string {
-  const render = (lines: string[], omitted: number) => [
-    "Available reusable skills:",
-    ...lines,
-    ...(omitted ? [`(+${omitted} more; call get_page on skills/<name> to read them.)`] : []),
-  ].join("\n");
-
-  const full = render(skills.map((skill) => `- ${skill.name}: ${skill.summary}`), 0);
-  if (full.length <= budget) return full;
-
-  const named = render(skills.map((skill) => `- ${skill.name}`), 0);
-  if (named.length <= budget) return named;
-
-  for (let kept = skills.length - 1; kept > 0; kept -= 1) {
-    const trimmed = render(skills.slice(0, kept).map((skill) => `- ${skill.name}`), skills.length - kept);
-    if (trimmed.length <= budget) return trimmed;
-  }
-  return `Available reusable skills: ${skills.length}; call browse_directory on skills to list them.`;
-}
-
 export async function createMcpServer(
   context: McpContext,
   pages: PageRepository,
@@ -204,13 +162,12 @@ export async function createMcpServer(
       summary: page.summary,
     }));
   const skillCatalog = skills.length
-    ? fitCatalog(skills, INSTRUCTION_BUDGET - KNOWLEDGE_BASE_INSTRUCTIONS.length - 2)
+    ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
   const server = new McpServer({ name: "context-use", version: "0.1.63" }, {
-    instructions: [
-      KNOWLEDGE_BASE_INSTRUCTIONS,
-      skillCatalog,
-    ].filter(Boolean).join("\n\n"),
+    // The catalogue is `load_skill`'s own description, which arrives whole through
+    // tools/list; a second copy here only competes for the client's instruction cap.
+    instructions: KNOWLEDGE_BASE_INSTRUCTIONS,
   });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
