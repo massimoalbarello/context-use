@@ -69,10 +69,10 @@ jobs:
         image: postgres:17-alpine
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: context_use
+          POSTGRES_DB: context_use_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U postgres -d context_use"
+          --health-cmd "pg_isready -U postgres -d context_use_test"
           --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v7
@@ -87,8 +87,8 @@ jobs:
       - run: bun test apps packages
       - name: Apply migrations and verify database roles
         env:
-          MIGRATOR_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use
+          MIGRATOR_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use_test
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use_test
           DB_AUTH_PASSWORD: test-auth
           DB_DASHBOARD_PASSWORD: test-dashboard
           DB_MCP_PASSWORD: test-mcp
@@ -97,11 +97,11 @@ jobs:
           DB_STORAGE_PASSWORD: test-storage
           DB_BACKUP_PASSWORD: test-backup
           TEST_APP_DATABASE_URL: "1"
-          DATABASE_URL: postgres://context_use_dashboard:test-dashboard@localhost:5432/context_use
-          AUTH_DATABASE_URL: postgres://context_use_auth:test-auth@localhost:5432/context_use
-          MCP_DATABASE_URL: postgres://context_use_mcp:test-mcp@localhost:5432/context_use
-          PUBLIC_DATABASE_URL: postgres://context_use_public:test-public@localhost:5432/context_use
-          CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:test-confirmation@localhost:5432/context_use
+          DATABASE_URL: postgres://context_use_dashboard:test-dashboard@localhost:5432/context_use_test
+          AUTH_DATABASE_URL: postgres://context_use_auth:test-auth@localhost:5432/context_use_test
+          MCP_DATABASE_URL: postgres://context_use_mcp:test-mcp@localhost:5432/context_use_test
+          PUBLIC_DATABASE_URL: postgres://context_use_public:test-public@localhost:5432/context_use_test
+          CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:test-confirmation@localhost:5432/context_use_test
           OWNER_EMAIL: owner@example.com
           OWNER_SETUP_TOKEN_HASH: 0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cfa864a96a0efe17b1694
         run: |
@@ -230,7 +230,7 @@ jobs:
           fi
           if docker run --rm --network host --entrypoint psql \
             -e PGPASSWORD=test-nango-app \
-            context-use-backup:test -h 127.0.0.1 -U nango_app -d context_use \
+            context-use-backup:test -h 127.0.0.1 -U nango_app -d context_use_test \
             -v ON_ERROR_STOP=1 -c "SELECT 1"; then
             echo "nango_app unexpectedly connected to the Context Use database" >&2
             exit 1

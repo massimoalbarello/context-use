@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
+import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
-const adminUrl = process.env.TEST_DATABASE_URL;
+const adminUrl = disposableDatabaseUrl();
 const describeDatabase = adminUrl ? describe : describe.skip;
 
 describeDatabase("owner passkey schema", () => {

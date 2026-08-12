@@ -2,8 +2,9 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { AssetRepository, ConfirmationRepository, KnowledgeExportRepository, PageRepository } from "../src/index.ts";
+import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
-const databaseUrl = process.env.TEST_DATABASE_URL;
+const databaseUrl = disposableDatabaseUrl();
 const describeDatabase = databaseUrl ? describe : describe.skip;
 
 describeDatabase("passkey-bound current knowledge exports", () => {
@@ -15,12 +16,18 @@ describeDatabase("passkey-bound current knowledge exports", () => {
   const actor = { kind: "dashboard" as const, subject: "knowledge-export-test" };
   let fixtureRoot = "";
   let fixtureIntentId = "";
+  let createdOwner = false;
 
   beforeAll(async () => {
-    await pool.query(
+    // The owner identity is a singleton, so this suite adopts one that another
+    // suite already left behind rather than colliding with it — and records
+    // whether it created the row, because teardown must only remove its own.
+    const owner = await pool.query(
       `INSERT INTO "user"(id,name,email,"emailVerified")
-       VALUES ('context-use-owner','Owner','owner@example.com',true)`,
+       VALUES ('context-use-owner','Owner','owner@example.com',true)
+       ON CONFLICT (id) DO NOTHING`,
     );
+    createdOwner = owner.rowCount === 1;
     await pool.query(
       `INSERT INTO passkey(id,"publicKey","userId","credentialID",counter,"deviceType","backedUp")
        VALUES ('export-test-passkey','public-key','context-use-owner','verified-credential',0,'multiDevice',true)`,
@@ -62,7 +69,7 @@ describeDatabase("passkey-bound current knowledge exports", () => {
         await pool.query("DELETE FROM knowledge_directories WHERE current_path=$1", [fixtureRoot]);
       }
       await pool.query("DELETE FROM passkey WHERE id='export-test-passkey'");
-      await pool.query("DELETE FROM \"user\" WHERE id='context-use-owner'");
+      if (createdOwner) await pool.query("DELETE FROM \"user\" WHERE id='context-use-owner'");
       await pool.query("COMMIT");
     } catch (error) {
       await pool.query("ROLLBACK");

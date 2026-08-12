@@ -2,8 +2,9 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Client, type Pool } from "pg";
 import { randomBytes, randomUUID } from "node:crypto";
 import { PublicRepository } from "../src/index.ts";
+import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
-const adminUrl = process.env.TEST_DATABASE_URL;
+const adminUrl = disposableDatabaseUrl();
 const describeDatabase = adminUrl ? describe : describe.skip;
 
 describeDatabase("PostgreSQL security roles", () => {
