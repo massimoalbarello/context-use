@@ -69,10 +69,12 @@ jobs:
         image: postgres:17-alpine
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: context_use_test
+          # The installation database, named as a deployment names it, so the
+          # Nango role-isolation step below exercises the real init script.
+          POSTGRES_DB: context_use
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U postgres -d context_use_test"
+          --health-cmd "pg_isready -U postgres -d context_use"
           --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v7
@@ -85,6 +87,11 @@ jobs:
       - run: bun run typecheck
       - run: bun --cwd apps/server build
       - run: bun test apps packages
+      - name: Create the disposable integration-test database
+        run: |
+          docker run --rm --network host -e PGPASSWORD=postgres postgres:17-alpine \
+            psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE context_use_test"
       - name: Apply migrations and verify database roles
         env:
           MIGRATOR_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use_test
@@ -230,7 +237,7 @@ jobs:
           fi
           if docker run --rm --network host --entrypoint psql \
             -e PGPASSWORD=test-nango-app \
-            context-use-backup:test -h 127.0.0.1 -U nango_app -d context_use_test \
+            context-use-backup:test -h 127.0.0.1 -U nango_app -d context_use \
             -v ON_ERROR_STOP=1 -c "SELECT 1"; then
             echo "nango_app unexpectedly connected to the Context Use database" >&2
             exit 1
