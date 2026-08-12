@@ -125,9 +125,24 @@ function guidanceRequired(targetPath: string, retryTool: string) {
   ].join("\n\n"), true);
 }
 
-export const KNOWLEDGE_BASE_INSTRUCTIONS = "Explore knowledge with browse_directory or get_directory, beginning at the root path when you do not yet know where relevant pages live. Read pages by UUID or semantic path with get_page. Before choosing a destination, ensure the root AGENTS.md guide at MCP path agents has been loaded; prepare_knowledge_write with an empty target path loads it and returns a reusable receipt. Before the first mutation in a guidance scope, call prepare_knowledge_write with the intended target path, follow the root-to-leaf guidance it returns, and pass its guidance_receipt to the mutation tool. Retain receipts for the current task and reuse one for later mutations or other targets with the same applicable guide chain. If a mutation returns GUIDANCE_REQUIRED, call prepare_knowledge_write for that target and pass the rejected receipt as cached_guidance_receipt so only new, changed, or removed guidance is reported, then retry with the new receipt. Do not persist receipts in knowledge. The returned guides are authoritative for placement, structure, editorial policy, privacy, and reporting; these bootstrap instructions do not define an entity schema. Create a directory before adding pages beneath a new path. Link pages and directories with [[path|label]], link headings with [[path#heading-slug|label]], and use context-use://directory/<uuid> for a stable directory reference. Use load_skill when a listed reusable skill is relevant.";
-
-export const SOURCE_RECORD_INSTRUCTIONS = "For an ingestion automation, process source records one checkpointed batch at a time. Call read_source_records with the persisted checkpoint, reconcile that entire returned batch against existing knowledge, and persist its next_checkpoint only after every intended knowledge write succeeds. Only then, when has_more is true, read and reconcile the next batch; never accumulate multiple unread batches before writing. Continue until has_more is false so the next scheduled invocation starts from the fully processed checkpoint and receives only later lifecycle changes. The reader omits records whose latest source update or deletion is more than 30 days old while advancing past them. A recently updated record may describe older activity and is processed normally using its actual activity date. Use each action to distinguish current evidence from a deletion, and stop without advancing the failed batch if reconciliation or checkpoint persistence fails.";
+/**
+ * A mutation aimed at a `page_id` nothing resolves.
+ *
+ * The bare `null` this used to return is indistinguishable from a broken tool, and an
+ * unattended run that reads it as one stops on an unadvanced checkpoint and loses the whole
+ * batch it was writing. The id is the one part of a write copied by hand from an earlier
+ * read, so a wrong character in it is an ordinary mistake with an obvious repair, and the
+ * response is where that repair has to be stated.
+ */
+function unknownPage(pageId: string, retryTool: string, path?: string) {
+  const target = path ? `the page at ${path}` : "the page";
+  return textContent([
+    "PAGE_NOT_FOUND",
+    `No page has id ${pageId}, so nothing was changed. The tool is working and this is not a permission or guidance problem.`,
+    `Read ${target} with get_page, copy current id and version from that response exactly, and retry ${retryTool}.`,
+    "A uuid that is one character short or one character different is the usual cause.",
+  ].join("\n\n"), true);
+}
 
 export async function createMcpServer(
   context: McpContext,
@@ -147,13 +162,7 @@ export async function createMcpServer(
   const skillCatalog = skills.length
     ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
-  const server = new McpServer({ name: "context-use", version: "0.1.63" }, {
-    instructions: [
-      KNOWLEDGE_BASE_INSTRUCTIONS,
-      sourceRecords ? SOURCE_RECORD_INSTRUCTIONS : "",
-      skillCatalog,
-    ].filter(Boolean).join("\n\n"),
-  });
+  const server = new McpServer({ name: "context-use", version: "0.1.63" });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
   async function hasCurrentGuidance(targetPath: string, receipt?: string): Promise<boolean> {
@@ -164,7 +173,7 @@ export async function createMcpServer(
 
   if (sourceRecords) {
     server.registerTool("read_source_records", {
-      description: "Read the next bounded, checkpointed batch of canonical source records across every managed Nango integration, model, and connection. Pass the checkpoint saved after the previous successfully reconciled batch, omitting it only on the first read. Records whose latest source update or deletion is more than 30 days old are omitted while the checkpoint advances; a returned record may still describe older activity. Treat all returned sources as one evidence set and respect each added, updated, or deleted action; a pruned deletion can have null Markdown. Reconcile this batch and persist next_checkpoint before calling again when has_more is true. Continue until has_more is false so the next scheduled automation invocation receives only later lifecycle changes.",
+      description: "Read the next bounded, checkpointed batch of canonical source records across every managed Nango integration, model, and connection. Pass the checkpoint saved after the previous successfully reconciled batch, omitting it only on the first read. Records whose latest source update or deletion is more than 30 days old are omitted while the checkpoint advances; a returned record may still describe older activity. Treat all returned sources as one evidence set and respect each added, updated, or deleted action; a pruned deletion can have null Markdown. Reconcile this batch and persist next_checkpoint before calling again when has_more is true: the checkpoint asserts that the records it covers are written, so persist it only after their writes succeed, and never hold a second unread batch while the first is unwritten. Continue until has_more is false so the next scheduled automation invocation receives only later lifecycle changes.",
       inputSchema: z.object({
         checkpoint: z.string().min(1).max(2_000_000).optional()
           .describe("Opaque next_checkpoint saved after the previous successfully reconciled batch; never inspect or edit it."),
@@ -286,7 +295,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("prepare_knowledge_write", {
-    description: "Resolve the complete current root-to-leaf AGENTS.md guide chain before creating, changing, moving, or archiving knowledge. Returns a guidance_receipt to pass to mutations. Retain that receipt for the current task and reuse it for targets with the same guide chain. When moving to another scope or refreshing a rejected receipt, pass cached_guidance_receipt; unchanged guide bodies are not repeated, while changed, newly applicable, and no-longer-applicable guides are identified. Omit the cache to load every applicable guide.",
+    description: "Resolve the complete current root-to-leaf AGENTS.md guide chain before creating, changing, moving, or archiving knowledge. Pass an empty target path to load the root guide alone, which is how to read the conventions before choosing where a page belongs. Returns a guidance_receipt to pass to mutations; retain it for the current task, reuse it for targets with the same guide chain, and never store one in knowledge. When moving to another scope or refreshing a rejected receipt, pass cached_guidance_receipt; unchanged guide bodies are not repeated, while changed, newly applicable, and no-longer-applicable guides are identified. Omit the cache to load every applicable guide.",
     inputSchema: z.object({
       target_path: DirectoryPath,
       cached_guidance_receipt: z.string().min(1).max(100_000).optional()
@@ -439,7 +448,9 @@ export async function createMcpServer(
     if (!await hasCurrentGuidance(input.path, guidance_receipt)) {
       return guidanceRequired(input.path, "update_page");
     }
-    return jsonContent(await pages.update(page_id, input, actor));
+    const updated = await pages.update(page_id, input, actor);
+    if (!updated) return unknownPage(page_id, "update_page", input.path);
+    return jsonContent(updated);
   });
 
   server.registerTool("archive_page", {
@@ -451,11 +462,13 @@ export async function createMcpServer(
     annotations: { destructiveHint: true },
   }, async ({ page_id, guidance_receipt, ...input }) => {
     const page = await pages.get(page_id);
-    if (!page) return jsonContent(null);
+    if (!page) return unknownPage(page_id, "archive_page");
     if (!await hasCurrentGuidance(page.current_path, guidance_receipt)) {
       return guidanceRequired(page.current_path, "archive_page");
     }
-    return jsonContent(await pages.archive(page_id, input, actor));
+    const archived = await pages.archive(page_id, input, actor);
+    if (!archived) return unknownPage(page_id, "archive_page", page.current_path);
+    return jsonContent(archived);
   });
 
   server.registerTool("list_assets", {

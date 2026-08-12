@@ -125,9 +125,11 @@ Three things are worth knowing before comparing two runs at all.
 configuration, so a difference has to be large, or repeated, before it means anything.
 
 **A run that stopped early is not a quiet day.** The distiller can abandon a batch partway,
-leaving its checkpoint inside that batch. `distill` reports this as *abandoned with records
-unread*; a score over such a run is a score over a partial corpus and is not comparable to
-one over a complete run.
+leaving its checkpoint inside that batch — `distill` reports that as *abandoned with records
+unread*. The session after it then re-reads that batch and never reaches its own, which is
+reported separately as *never reached this batch*, because one stall puts every later
+session a batch behind. Each run ends with the records served against the records requested,
+and a run that served fewer scored a partial corpus whatever its batches say.
 
 **Only compare runs whose harness matched.** Changing what a run is — how many sessions a
 batch gets, how records are served — changes the number independently of anything being

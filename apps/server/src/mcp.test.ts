@@ -4,7 +4,7 @@ import { DirectoryNotEmptyError } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
 import { createGuidanceReceipt, verifyGuidanceReceipt } from "./mcp-guidance-receipt.ts";
-import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS, SOURCE_RECORD_INSTRUCTIONS } from "./mcp-server.ts";
+import { createMcpServer } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
 import type { SourceRecordReader } from "./nango-records.ts";
 
@@ -77,7 +77,7 @@ function pagesWithGuidance(overrides: Record<string, unknown> = {}): PageReposit
 const rootGuidanceReceipt = createGuidanceReceipt([rootGuide]);
 
 describe("MCP knowledge tools", () => {
-  test("gives clients the canonical knowledge structure during initialization", async () => {
+  test("carries the write contract in the tools rather than in server instructions", async () => {
     const response = await mcpRequest(serverWith(), {
       jsonrpc: "2.0",
       id: 0,
@@ -88,12 +88,17 @@ describe("MCP knowledge tools", () => {
         clientInfo: { name: "test-client", version: "1.0.0" },
       },
     });
+    expect(response.result?.instructions).toBeUndefined();
 
-    expect(response.result?.instructions).toContain(KNOWLEDGE_BASE_INSTRUCTIONS);
-    expect(response.result?.instructions).not.toContain("about/intro");
-    expect(response.result?.instructions).toContain("guides are authoritative");
-    expect(response.result?.instructions).toContain("AGENTS.md");
-    expect(response.result?.instructions).toContain("Available reusable skills");
+    const listed = await mcpRequest(serverWith(), {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/list",
+      params: {},
+    });
+    const prepare = listed.result?.tools?.find(({ name }) => name === "prepare_knowledge_write");
+    expect(prepare?.description).toContain("Pass an empty target path to load the root guide");
+    expect(prepare?.description).toContain("never store one in knowledge");
   });
 
   test("exposes one unified checkpointed source reader when Nango access is configured", async () => {
@@ -113,23 +118,6 @@ describe("MCP knowledge tools", () => {
         };
       },
     } as SourceRecordReader;
-    const initialized = await mcpRequest(serverWith(
-      {} as PageRepository,
-      {} as AssetRepository,
-      {} as DirectoryRepository,
-      sourceRecords,
-    ), {
-      jsonrpc: "2.0",
-      id: 20,
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-06-18",
-        capabilities: {},
-        clientInfo: { name: "test-client", version: "1.0.0" },
-      },
-    });
-    expect(initialized.result?.instructions).toContain(SOURCE_RECORD_INSTRUCTIONS);
-
     const listed = await mcpRequest(serverWith(
       {} as PageRepository,
       {} as AssetRepository,
@@ -146,6 +134,8 @@ describe("MCP knowledge tools", () => {
     expect(tool?.description).toContain("more than 30 days old");
     expect(tool?.description).toContain("added, updated, or deleted action");
     expect(tool?.description).toContain("Reconcile this batch and persist next_checkpoint before calling again");
+    expect(tool?.description).toContain("persist it only after their writes succeed");
+    expect(tool?.description).toContain("never hold a second unread batch while the first is unwritten");
     expect(tool?.description).toContain("only later lifecycle changes");
     expect(tool?.inputSchema?.properties?.max_bytes).toBeUndefined();
 
@@ -353,6 +343,62 @@ describe("MCP knowledge tools", () => {
     ].join("\n\n"));
     expect(response.result?.structuredContent).toBeUndefined();
     expect(calls).toEqual([]);
+  });
+
+  test("says a write's page id resolves to nothing instead of returning a bare null", async () => {
+    const pages = pagesWithGuidance({
+      async update() {
+        return null;
+      },
+      async get() {
+        return null;
+      },
+    });
+    const missingId = "88888888-8888-4888-8888-888888888888";
+    const update = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 12,
+      method: "tools/call",
+      params: {
+        name: "update_page",
+        arguments: {
+          page_id: missingId,
+          path: "companies/novamind/timeline",
+          title: "NovaMind — Timeline",
+          summary: "Dated developments involving NovaMind.",
+          body_markdown: "## 2026",
+          commit_message: "Record the deep dive",
+          expected_version_number: 2,
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+
+    expect(update.result?.isError).toBe(true);
+    const text = update.result?.content?.[0]?.text ?? "";
+    expect(text).toContain("PAGE_NOT_FOUND");
+    expect(text).toContain(`No page has id ${missingId}`);
+    expect(text).toContain("the page at companies/novamind/timeline");
+    expect(text).toContain("retry update_page");
+    expect(text).not.toBe("null");
+
+    const archive = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 13,
+      method: "tools/call",
+      params: {
+        name: "archive_page",
+        arguments: {
+          page_id: missingId,
+          expected_version_number: 2,
+          commit_message: "Archive it",
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+
+    expect(archive.result?.isError).toBe(true);
+    expect(archive.result?.content?.[0]?.text).toContain("PAGE_NOT_FOUND");
   });
 
   test("reuses a receipt across stateless calls and targets with the same guide chain", async () => {
