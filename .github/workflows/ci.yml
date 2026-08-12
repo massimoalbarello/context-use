@@ -69,8 +69,6 @@ jobs:
         image: postgres:17-alpine
         env:
           POSTGRES_PASSWORD: postgres
-          # The installation database, named as a deployment names it, so the
-          # Nango role-isolation step below exercises the real init script.
           POSTGRES_DB: context_use
         ports: ["5432:5432"]
         options: >-
@@ -87,15 +85,10 @@ jobs:
       - run: bun run typecheck
       - run: bun --cwd apps/server build
       - run: bun test apps packages
-      - name: Create the disposable integration-test database
-        run: |
-          docker run --rm --network host -e PGPASSWORD=postgres postgres:17-alpine \
-            psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE DATABASE context_use_test"
       - name: Apply migrations and verify database roles
         env:
-          MIGRATOR_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use_test
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use_test
+          MIGRATOR_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/context_use
           DB_AUTH_PASSWORD: test-auth
           DB_DASHBOARD_PASSWORD: test-dashboard
           DB_MCP_PASSWORD: test-mcp
@@ -104,15 +97,16 @@ jobs:
           DB_STORAGE_PASSWORD: test-storage
           DB_BACKUP_PASSWORD: test-backup
           TEST_APP_DATABASE_URL: "1"
-          DATABASE_URL: postgres://context_use_dashboard:test-dashboard@localhost:5432/context_use_test
-          AUTH_DATABASE_URL: postgres://context_use_auth:test-auth@localhost:5432/context_use_test
-          MCP_DATABASE_URL: postgres://context_use_mcp:test-mcp@localhost:5432/context_use_test
-          PUBLIC_DATABASE_URL: postgres://context_use_public:test-public@localhost:5432/context_use_test
-          CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:test-confirmation@localhost:5432/context_use_test
+          DATABASE_URL: postgres://context_use_dashboard:test-dashboard@localhost:5432/context_use
+          AUTH_DATABASE_URL: postgres://context_use_auth:test-auth@localhost:5432/context_use
+          MCP_DATABASE_URL: postgres://context_use_mcp:test-mcp@localhost:5432/context_use
+          PUBLIC_DATABASE_URL: postgres://context_use_public:test-public@localhost:5432/context_use
+          CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:test-confirmation@localhost:5432/context_use
           OWNER_EMAIL: owner@example.com
           OWNER_SETUP_TOKEN_HASH: 0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cfa864a96a0efe17b1694
         run: |
           bun run db:initialize
+          bun run db:test mark
           bun test apps packages
       - run: bun --cwd apps/web build
       - name: Validate Terraform

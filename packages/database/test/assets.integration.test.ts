@@ -7,7 +7,7 @@ import {
 } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
-const databaseUrl = disposableDatabaseUrl();
+const databaseUrl = await disposableDatabaseUrl();
 const mcpDatabaseUrl = process.env.MCP_DATABASE_URL;
 const describeDatabase = databaseUrl ? describe : describe.skip;
 const describeMcpDatabase = databaseUrl && mcpDatabaseUrl ? describe : describe.skip;

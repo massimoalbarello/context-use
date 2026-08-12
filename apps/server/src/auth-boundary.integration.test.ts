@@ -5,7 +5,7 @@ import { disposableDatabaseUrl } from "@context-use/database/disposable-database
 import { config } from "./config.ts";
 import { csrfToken } from "./security.ts";
 
-const databaseUrl = disposableDatabaseUrl();
+const databaseUrl = await disposableDatabaseUrl();
 const requireDatabase = (): string => {
   if (!databaseUrl) throw new Error("TEST_DATABASE_URL is required");
   return databaseUrl;

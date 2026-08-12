@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Client } from "pg";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
-const adminUrl = disposableDatabaseUrl();
+const adminUrl = await disposableDatabaseUrl();
 const describeDatabase = adminUrl ? describe : describe.skip;
 
 describeDatabase("owner passkey schema", () => {

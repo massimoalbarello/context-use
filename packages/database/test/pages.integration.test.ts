@@ -7,7 +7,7 @@ import {
 } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
-const databaseUrl = disposableDatabaseUrl();
+const databaseUrl = await disposableDatabaseUrl();
 const describeDatabase = databaseUrl ? describe : describe.skip;
 
 describeDatabase("immutable page history", () => {

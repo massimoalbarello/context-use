@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import { AssetRepository, ConfirmationRepository, KnowledgeExportRepository, PageRepository } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
-const databaseUrl = disposableDatabaseUrl();
+const databaseUrl = await disposableDatabaseUrl();
 const describeDatabase = databaseUrl ? describe : describe.skip;
 
 describeDatabase("passkey-bound current knowledge exports", () => {

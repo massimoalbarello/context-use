@@ -58,16 +58,19 @@ bun run local purge    # erase every volume, including owner and passkeys
 
 Database integration suites commit fixtures and clean them up with trigger and
 foreign-key enforcement suspended, so they run against a PostgreSQL server of their own
-and refuse any database not named for disposal. Start one, run them, and throw it away:
+and refuse any database that has not been marked disposable. Start one, run them, and
+throw it away:
 
 ```sh
-bun run db:test up     # start and migrate a disposable PostgreSQL on 127.0.0.1:55432
+bun run db:test up     # start, migrate, and mark a disposable PostgreSQL on 127.0.0.1:55432
 TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/context_use_test bun test apps packages
 bun run db:test down   # discard it
 ```
 
-Never point `TEST_DATABASE_URL` at the local stack above: these suites would delete the
-owner identity it and the evals sign in with.
+The mark is `ALTER DATABASE … SET "context_use.disposable_test_database" = 'true'`, applied
+by `bun run db:test mark`, which refuses any database with an owner passkey registered
+against it. The local stack above is therefore never eligible: these suites would delete
+the owner identity it and the evals sign in with.
 
 ## Run knowledge evals locally
 

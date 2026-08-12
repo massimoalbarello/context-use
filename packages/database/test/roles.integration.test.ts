@@ -4,7 +4,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { PublicRepository } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
-const adminUrl = disposableDatabaseUrl();
+const adminUrl = await disposableDatabaseUrl();
 const describeDatabase = adminUrl ? describe : describe.skip;
 
 describeDatabase("PostgreSQL security roles", () => {
