@@ -193,22 +193,8 @@ Add the `timeline` when there is a timeline event to record, not before; an empt
 scaffolding. Someone the owner knows, with nothing yet that happened on a day, is a
 complete entity with an `intro` alone. An occurrence with a date of its own never takes one
 at all: a meeting or event already happened on that date, so its page is its account and a
-timeline beneath it would index a single timeline event that is the page itself.
-
-**The owner never takes one either**, for the opposite reason, and `about/timeline` is never
-created. Every other entity's timeline is bounded by what involved that entity; the owner is
-involved in all of it, so theirs would be the union of every timeline in the base, re-typed.
-Their chronology already exists at a finer grain and in prose: the
-[[about/diary/agents|diary]] is the owner's timeline. What the owner did involving a company,
-a person, a place or a topic is a timeline event on that entity — which is where the diary
-composer reads it from — and an aspect of the owner that accumulates dated changes of its
-own, such as their health or their finances, is a folder under `about/` with an `intro` and a
-`timeline` like any other entity.
-
-An `about/timeline` already in place is not left to grow. Move each of its lines to the
-entity it involved, creating that entity where it does not exist yet, and archive the page
-once nothing on it is unplaced — ordinary reconciliation, done as the lines come up rather
-than as one migration. Never add a line to it in the meantime.
+timeline beneath it would index a single timeline event that is the page itself. The owner
+never takes one either, on grounds the [[about/agents|about guide]] gives.
 
 A [[threads/agents|thread]] is the exception, and the reason it is a separate entity. It is
 an occurrence that runs on rather than happening once, so it has no date of its own to be
@@ -382,12 +368,7 @@ it.
 ## The timeline
 
 A `timeline` records what the owner did, experienced or learned involving its entity,
-dated to when it happened — not only what materially changed about the subject itself. That
-entity is never the owner themselves, under the rule above, so a timeline event is filed on
-the company, person, place, topic or occurrence it involved; where the evidence identifies
-none, [[agents#which-entity-does-it-belong-to|climbing to a topic]] is what places it, and
-the diary is composed from there.
-
+dated to when it happened — not only what materially changed about the subject itself.
 Each line on it is one **timeline event**. Descending year headings, descending month
 headings within them, newest first:
 

@@ -43,12 +43,18 @@ accumulates dated changes of its own is a folder with an `intro` and a `timeline
 ordinary entity terms — a health record with test results across years, a mortgage that was
 refinanced.
 
-There is no `about/timeline`, and the root guide
-[[agents#place-and-identify|says why]]: the owner is party to everything, so a timeline
-scoped to them is every other timeline in the base written twice, and their chronology is
-already the diary at a finer grain. Activity involving a company, person, place or topic is
-a timeline event there. Activity the evidence places nowhere more specific climbs to a
-[[topics/agents|topic]], which is what topics are for; the diary composer reads both.
+`about/` itself takes no `timeline`. Every other entity's timeline is bounded by what
+involved that entity; the owner is involved in all of it, so `about/timeline` would be the
+union of every timeline in the base, re-typed. Their chronology already exists at a finer
+grain and in prose — the [[about/diary/agents|diary]] is the owner's timeline.
+
+So activity involving a company, person, place or topic is a timeline event there, which is
+where the [[automations/diary-composer/instructions|diary composer]] reads it from, and
+activity the evidence places nowhere more specific climbs to a [[topics/agents|topic]],
+which is what topics are for. An `about/timeline` already in place is not left to grow:
+move each of its lines to the entity it involved, creating that entity where it does not
+exist yet, and archive the page once nothing on it is unplaced — as the lines come up,
+rather than as one migration. Never add a line to it in the meantime.
 
 ## Choosing where owner knowledge goes
 
