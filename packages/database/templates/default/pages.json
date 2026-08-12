@@ -13,13 +13,13 @@
   },
   "automations/diary-composer/instructions": {
     "title": "Diary composer",
-    "summary": "Instructions for composing each day's diary log from the entity timelines that changed.",
+    "summary": "Instructions for selecting diary-worthy activity deltas and composing them into connected prose without duplicating entity pages.",
     "body_file": "_pages/diary-composer/instructions.md",
     "management": "managed"
   },
   "automations/diary-composer/state": {
     "title": "Diary composer state",
-    "summary": "The current opaque change-ledger cursor for the diary composer.",
+    "summary": "The current opaque change-ledger checkpoint for the diary composer.",
     "body_file": "_pages/diary-composer/state.md",
     "management": "create-only"
   },

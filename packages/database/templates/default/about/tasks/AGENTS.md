@@ -27,7 +27,7 @@ the subject is, not from a name that reads like an activity.
 An open question the owner is visibly working through — whether to commit, hire, buy, ship,
 accept or walk away — is a task as soon as the evidence shows them weighing it, not once it
 resolves. Framing it early gives the later evidence somewhere to attach; without the page,
-each new consideration lands in a different day's log and the question itself is never
+each new consideration lands in a different day's intro and the question itself is never
 anywhere. Name the task for the question, and let the entities it concerns keep their own
 pages and link here.
 

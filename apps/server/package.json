@@ -1,6 +1,6 @@
 {
   "name": "@context-use/server",
-  "version": "0.1.62",
+  "version": "0.1.63",
   "private": true,
   "type": "module",
   "scripts": {
@@ -21,6 +21,7 @@
     "@simplewebauthn/server": "13.3.2",
     "@zip.js/zip.js": "2.8.34",
     "better-auth": "1.7.0-rc.1",
+    "diff": "9.0.0",
     "elysia": "1.4.29",
     "jose": "6.2.6",
     "marked": "18.0.7",

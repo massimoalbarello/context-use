@@ -179,57 +179,13 @@ reads a known instruction page with `get_page`—for example,
 asset tools. Scheduling, retries, and run history stay in the harness. An incremental
 automation may keep exactly one non-secret opaque checkpoint on its stable `state` page.
 
-### Activity distillation automation
+### Knowledge automations
 
-The first record-to-knowledge pipeline is intentionally agent-driven. The default
-knowledge template installs `automations/activity-distiller/instructions` and a
-create-only `automations/activity-distiller/state`; existing installations receive them
-with `context-use template apply`. Authorize the trusted MCP client, then schedule an
-external harness once or twice a day with the prompt: “Open and follow
-`automations/activity-distiller/instructions`; execute exactly one run.” Its run contract
-is:
-
-1. Read the instruction and state pages, call `read_source_records` with the stored
-   checkpoint, and process exactly that returned batch. Records whose latest source
-   update or deletion is more than 30 days old are skipped by the reader; recently
-   updated records about older activity are processed normally.
-2. Interpret all source Markdown in the batch together. Connections are provenance, not
-   page boundaries: records from different services can describe or corroborate the same
-   day, project, decision or entity. Treat a `deleted` action as withdrawn evidence, not
-   as current source material.
-3. Search and read existing knowledge before writing, including changes made for earlier
-   batches in the same run. Reconcile new evidence into the current canonical account by
-   rewriting and reorganizing it; merge overlaps, remove superseded detail, and create a
-   new semantic page only when no existing subject fits.
-4. Put only material temporal activity on at most one automation-owned diary page for
-   each date when it actually happened, with links to its projects, tasks and useful
-   entities. Ensure the date also has its required `log`; when creating one, keep it to
-   the distiller's companion-page bullet without inventing owner narrative. Omit routine
-   activity. Never put cursors, run metadata or one page per source in the diary.
-5. Create project, task, person and company pages selectively. Repetition and material
-   involvement can justify an entity; a participant list, repository name or isolated
-   record cannot.
-6. After every intended knowledge write for that batch succeeds, replace the stable
-   state page with its `next_checkpoint`. Only then, if `has_more` is true, read and
-   reconcile the next batch. Continue until `has_more` is false. On failure, do not save
-   the failed batch's checkpoint. A completed run leaves the next scheduled invocation
-   with only later lifecycle changes to process.
-
-The default knowledge template carries the detailed placement and maintenance rules,
-including `about/projects/` for enduring work, finite future-facing frames under
-`about/tasks/`, and whole-page reconciliation instead of append-only updates.
-
-### Guideline consistency review automation
-
-The default template also installs
-`automations/guideline-consistency-review/instructions`. Schedule an external harness
-to open and follow that page periodically. The harness keeps the opaque cursor returned
-by `get_knowledge_changes` and supplies it to the next run; Context Use records the
-underlying body-free page ledger automatically and collapses repeated edits to one page
-within each fixed review window. The automation reviews only those changed pages
-against the currently installed root-to-leaf guides, proposes corrections without
-writing them, and returns its report for delivery through the harness-managed user
-channel. Persist the new cursor only after the full review and delivery succeed.
+The default template installs managed instruction pages for activity distillation, diary
+composition and guideline consistency review, with checkpoint state where required.
+Apply template updates with `context-use template apply`, then schedule an external harness
+to open and execute the relevant instruction page. Those pages are the canonical operating
+contracts; the README does not duplicate their logic.
 
 The dashboard's **History** section shows the same durable page ledger, including
 creates, updates, archives, and deletion tombstones without page bodies or diffs.

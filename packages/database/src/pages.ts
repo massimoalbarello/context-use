@@ -21,6 +21,7 @@ export type KnowledgePageChange = {
   page_id: string;
   version_id: string;
   version_number: number;
+  previous_version_number?: number | null;
   change_kind: KnowledgePageChangeKind;
   path: string;
   title: string;
@@ -360,6 +361,23 @@ export class PageRepository {
     return result.rows[0] ?? null;
   }
 
+  async oldestRetainedVersionAfter(
+    pageId: string,
+    afterVersionNumber: number,
+    throughVersionNumber: number,
+  ) {
+    const result = await this.pool.query(
+      `SELECT id,page_id,version_number,path,title,summary,body_markdown,commit_message,
+        actor_kind,actor_subject,created_at
+       FROM knowledge_page_versions
+       WHERE page_id=$1 AND version_number>$2 AND version_number<=$3
+       ORDER BY version_number ASC
+       LIMIT 1`,
+      [pageId, afterVersionNumber, throughVersionNumber],
+    );
+    return result.rows[0] ?? null;
+  }
+
   async changesSince(options: {
     cursor?: string;
     pageToken?: string;
@@ -388,11 +406,21 @@ export class PageRepository {
          WHERE change_sequence>$1::bigint AND change_sequence<=$2::bigint
          ORDER BY page_id,change_sequence DESC
        )
-       SELECT change_sequence::text AS change_sequence,page_id,version_id,version_number,
-         change_kind,path,title,commit_message,actor_kind,actor_subject,changed_at
-       FROM latest_per_page
-       WHERE change_sequence>$3::bigint
-       ORDER BY change_sequence
+       SELECT latest.change_sequence::text AS change_sequence,latest.page_id,
+         latest.version_id,latest.version_number,
+         baseline.version_number AS previous_version_number,latest.change_kind,
+         latest.path,latest.title,latest.commit_message,latest.actor_kind,
+         latest.actor_subject,latest.changed_at
+       FROM latest_per_page latest
+       LEFT JOIN LATERAL (
+         SELECT prior.version_number
+         FROM knowledge_page_changes prior
+         WHERE prior.page_id=latest.page_id AND prior.change_sequence<=$1::bigint
+         ORDER BY prior.change_sequence DESC
+         LIMIT 1
+       ) baseline ON true
+       WHERE latest.change_sequence>$3::bigint
+       ORDER BY latest.change_sequence
        LIMIT $4`,
       [after.toString(), through.toString(), position.toString(), limit + 1],
     );

@@ -1,83 +1,105 @@
 # Diary conventions
 
-This subtree inherits the [[about/agents|About conventions]]. The diary is the owner's
-working memory: a curated day-by-day account of what they did, thought, decided and
-worried about, with links to the durable subjects that explain it.
+This subtree inherits the [[about/agents|About conventions]]. The diary is the chronological
+connective tissue of the owner's knowledge: it tells how the subjects they moved among,
+the decisions they made and the things they experienced formed a day, while the durable
+pages carry the full account of each subject.
 
-It is composed, not written alongside the knowledge it describes. An agent recording
-something that happened puts it on the entity's `timeline` and stops there; the
-[[automations/diary-composer/instructions|diary composer]] later reads the timelines that
-changed and assembles the day from them. Nothing else writes a log, so a day is assembled
-once from everything in it rather than accreted by whoever wrote last. The owner writes
-here directly whenever they want to, and the composer preserves what they add.
+It is composed after the knowledge it describes. An agent recording activity puts the
+particulars on the relevant entities and their timelines, then stops; the
+[[automations/diary-composer/instructions|diary composer]] later turns the dated activity on
+those pages, normally their timeline events, into the day's account. It is the only
+unattended writer here. The owner may write in the diary directly, and their words are part
+of the day rather than material for the composer to replace.
 
-## Structure
+## A day is a small hypermedia
 
-One folder per day at `about/diary/<YYYY>/<MM>/<DD>/`, zero-padded, with `<DD>/log` as the
-entry point. Create a day only when there is something useful to record. A day folder is a
-chronological container rather than a durable entity, which is why it uses `log` instead of
-the root `intro` convention; do not add a redundant `intro`.
+One folder represents one day at `about/diary/<YYYY>/<MM>/<DD>/`, zero-padded. Its `intro`
+is the entry point, as it is for every other small hypermedia in the knowledge base.
 
-| Resource | Title |
-| --- | --- |
-| Year / month directory | `2026` · `July 2026` |
-| Day directory | `Monday, 27 July 2026` |
-| `log` page | `Log — Monday, 27 July 2026` |
-| Other day pages | descriptive, date-suffixed |
+Most days need only `intro`. When part of a day is independently worth reading, or distinct
+material would make the introduction harder to follow, give it a descriptive page in the
+same day folder. This is not a prescribed set of companion pages: the day may remain one
+page or become several connected views according to what actually happened.
 
-The folder holds only pages and assets belonging to that day. Give long or structured
-day-specific material its own page and link it from the log.
+The intro introduces every companion view in the sentence that says what it contributes.
+The views link one another when their material bears on one another, under the root
+hypermedia rule; they do not all route back through the intro as a hub. The folder holds
+only pages and assets belonging to that day. Give the intro a title that clearly names the
+date, and give any other page a descriptive title that remains clear away from the folder.
 
-## The log
+## What the intro establishes
 
-    # Log — Monday, 27 July 2026
+Write prose, not a digest of timeline bullets. The intro carries the thread between the
+day's activities: what led to what, which work resumed, where attention shifted and what
+was left open. Include the distinct activities that matter to that day-level account, with
+inline links to the most specific occurrences and durable subjects that let a reader
+continue into the detail.
 
-    *<Location> · one line framing the day*
+That link is usually enough. Figures, terms, participant biographies, full reasoning and
+other particulars already explained by an entity page stay there. Repeat one only when the
+day's transition, decision or consequence cannot be understood without it. The diary is
+the route through the knowledge, not a second copy of it.
 
-    Narrative prose about what happened, what it felt like and what changed, with
-    durable subjects linked inline.
+An entity or timeline change is a candidate, not a quota. Keep it in the diary when omitting
+it would hide something meaningful the owner did, experienced, decided or learned, a
+movement in an ongoing thread, a consequence or open loop, or a real connection needed to
+understand the day. Maintenance, supporting facts, routine details without day-level
+meaning and duplicated views of the same evidence stay on their durable pages. Judge the
+change by its role in the story rather than its size, and never invent importance so every
+changed page gets a mention.
 
-    ## On my mind
-    - Short thoughts, doubts and half-formed ideas.
+Several timeline events may be different entity-side views of the same activity. In the
+diary they become one passage carrying all useful links, not one sentence per timeline.
+Conversely, proximity in time is not a relationship. When a day contains genuinely
+separate subjects, keep them separate with descriptive headings, distinct passages or
+companion views. Never invent cause, mood or a unifying theme to make unrelated work read
+as one story.
 
-    ## Threads
-    - [[about/projects/…|Project]] — what moved · continues [[about/diary/…|24 Jul]]
+The shape follows the material under the root guide. There are no required sections,
+heading order, opening line, location, thread list or mood block. Use headings when they
+name real divisions in the day and omit them when the prose already reads clearly. Write
+the page summary last, from the finished day.
 
-Keep these headings and order when the sections are useful; omit empty ones. Write the
-summary last, from the finished log.
+The composer may include a thought, feeling or first-person position only when the owner
+actually recorded it. It does not infer an interior state from activity, and it never
+turns somebody else's view into the owner's voice.
 
-`On my mind` belongs to the owner. The composer never writes it and never infers a mood or
-doubt from what the pages happen to say: an interior state nobody recorded is not
-recoverable from a timeline, and inventing one is worse than omitting the section.
+## Continuity between days
 
-Link every durable subject the day touched, and link the entity rather than its timeline,
-so a reader arriving at a day can walk out to everything it involved.
+When an activity genuinely resumes, follows from or changes the meaning of an earlier one,
+link the most specific earlier diary page inline where that relationship is told. One hop
+to the latest useful account is enough; following its links recovers the older path. A day
+with several independent arcs may link a different earlier page from each passage.
 
-## Continuity
+Repeated mention is not continuation, even when it is the same entity. Neither is mere
+chronological adjacency: the generated calendar already places one day after another. If
+today's topics are separate from the previous day's, let them be separate rather than
+writing a false transition. Never edit an earlier intro merely to add a forward pointer,
+because it records what was known then.
 
-When work genuinely resumes from an earlier day, add one backward link on the relevant
-`Threads` bullet: `· continues [[about/diary/…|24 Jul]]`. Link one hop to the most specific
-earlier page, since following the chain recovers older context. Repeated mention is not
-continuation — use the link only when work picks up where it left off — and never edit an
-earlier log to add a forward pointer, because it records what was known then.
-
-A chain that becomes cumbersome suggests the subject needs a durable page, project or task.
+A continuity chain that becomes cumbersome is evidence that the underlying subject needs
+a better durable page, project, task or thread. The diary still links that subject rather
+than absorbing its account.
 
 ## Reading and maintenance
 
-Start with today's log and work backward, usually about a week, following continuity links
-for active threads. Treat an old mood, plan or open loop as a historical snapshot until
-later logs confirm it. Periodically review recent logs for durable material that is hard to
-retrieve from its subject, and promote only what earns a durable home. An optional
-`about/diary/<YYYY>/<MM>/overview` may narrate what mattered in a month as a considered
-review, not an automatic digest.
+Enter through a day's intro, follow its views and links, and move backward through the
+continuity links relevant to the question. Treat an old mood, plan or open loop as a
+historical snapshot until later evidence changes it. An optional monthly overview may
+narrate what mattered across a month as a considered review, never as an automatic digest
+or substitute for the days.
 
-Do not rewrite a past log to tidy its prose or neaten a link chain. Do correct what is
-wrong or misleading under the root reconciliation rule, preserving useful contemporaneous
-experience; when the correction itself matters to the story, make it explicit and link the
-later evidence. A past log otherwise keeps the links it was written with: when an entity is
-split out of a topic, its timeline events move but the logs that pointed at the topic stay,
-because that is where the material lived on the day they describe.
+Reconcile a day when new dated activity evidence for it arrives, but preserve every
+owner-written passage exactly. The composer may add its prose around an owner-created
+intro; it never reorders that prose, restructures or archives a page it did not create, or
+claims uncertain wording as its own. Do not rewrite a past intro merely to polish its prose
+or neaten its link graph. Correct what is wrong or misleading under the root reconciliation
+rule; when the correction itself changes the story, say so and link the later evidence.
+
+A past intro otherwise keeps the links it was written with. When an entity is later split
+out of a topic, its timeline events may move but the day continues to point where the
+material lived when the day was composed.
 
 ## Diary privacy
 

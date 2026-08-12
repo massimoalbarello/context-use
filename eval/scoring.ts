@@ -36,7 +36,38 @@ const MONTHS = [
 ];
 
 function diaryPathFor(date: string): string {
-  return `about/diary/${date.replaceAll("-", "/")}/log`;
+  return `about/diary/${date.replaceAll("-", "/")}/intro`;
+}
+
+function wikilinkTargets(page: PageSnapshot): string[] {
+  return [...page.body.matchAll(/\[\[([^|\]]+)(?:\|[^\]]*)?\]\]/g)]
+    .map((match) => match[1]!.split("#", 1)[0]!);
+}
+
+/** Day pages reachable from the intro form one small hypermedia; orphaned views do not count. */
+function reachableDiaryPages(pages: PageSnapshot[], date: string): PageSnapshot[] {
+  const introPath = diaryPathFor(date);
+  const dayPrefix = `${introPath.slice(0, -"/intro".length)}/`;
+  const byPath = new Map(pages
+    .filter((page) => page.path.startsWith(dayPrefix))
+    .map((page) => [page.path, page]));
+  const intro = byPath.get(introPath);
+  if (!intro) return [];
+
+  const reachable: PageSnapshot[] = [];
+  const pending = [intro];
+  const seen = new Set<string>();
+  while (pending.length > 0) {
+    const page = pending.shift()!;
+    if (seen.has(page.path)) continue;
+    seen.add(page.path);
+    reachable.push(page);
+    for (const target of wikilinkTargets(page)) {
+      const linked = byPath.get(target);
+      if (linked && !seen.has(linked.path)) pending.push(linked);
+    }
+  }
+  return reachable;
 }
 
 /** The root guide's entry shape: `- **9 August** — …` under a year and month heading. */
@@ -204,8 +235,8 @@ export function scoreStep(
 
 /**
  * The diary is composed after the fact by the diary composer, not written by the agent
- * that recorded the events. It is therefore scored once, over the final snapshot, in the
- * direction the links actually run: diary → entity.
+ * that recorded the events. It is therefore scored once, over the final snapshot, by
+ * walking the day's connected views in the direction the links run: diary → entity.
  */
 export function scoreDiary(steps: EvalStep[], pages: PageSnapshot[]): StepScore {
   const assertions: AssertionResult[] = [];
@@ -214,6 +245,8 @@ export function scoreDiary(steps: EvalStep[], pages: PageSnapshot[]): StepScore 
     const diaryPath = diaryPathFor(date);
     const diary = pageAt(pages, diaryPath);
     add(assertions, `diary.${date}.exists`, Boolean(diary), `Daily diary exists at ${diaryPath}`);
+    const dayPages = reachableDiaryPages(pages, date);
+    const dayEvidence = dayPages.map((page) => page.path).join(", ") || undefined;
 
     const entities = steps
       .filter((step) => step.date === date)
@@ -222,9 +255,9 @@ export function scoreDiary(steps: EvalStep[], pages: PageSnapshot[]): StepScore 
       add(
         assertions,
         `diary.${date}.${entity.path}`,
-        linksTo(diary, `${entity.path}/intro`),
-        `The ${date} diary links ${entity.label}`,
-        diary?.path,
+        dayPages.some((page) => linksTo(page, `${entity.path}/intro`)),
+        `The ${date} diary hypermedia links ${entity.label}`,
+        dayEvidence,
       );
     }
 
@@ -233,9 +266,9 @@ export function scoreDiary(steps: EvalStep[], pages: PageSnapshot[]): StepScore 
       add(
         assertions,
         `diary.${date}.meeting-link`,
-        Boolean(meeting) && linksTo(diary, meeting!.path),
-        `The ${date} diary links the canonical meeting`,
-        meeting?.path,
+        Boolean(meeting) && dayPages.some((page) => linksTo(page, meeting!.path)),
+        `The ${date} diary hypermedia links the canonical meeting`,
+        dayEvidence,
       );
     }
   }

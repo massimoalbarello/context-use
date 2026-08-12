@@ -26,6 +26,7 @@ import {
   verifyGuidanceReceipt,
 } from "./mcp-guidance-receipt.ts";
 import type { SourceRecordReader } from "./nango-records.ts";
+import { pageDelta } from "./page-delta.ts";
 
 export type McpContext = {
   clientId: string;
@@ -146,7 +147,7 @@ export async function createMcpServer(
   const skillCatalog = skills.length
     ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
-  const server = new McpServer({ name: "context-use", version: "0.1.62" }, {
+  const server = new McpServer({ name: "context-use", version: "0.1.63" }, {
     instructions: [
       KNOWLEDGE_BASE_INSTRUCTIONS,
       sourceRecords ? SOURCE_RECORD_INSTRUCTIONS : "",
@@ -324,7 +325,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("get_knowledge_changes", {
-    description: "Read the durable, context-use-recorded page changes after the opaque cursor from the previous successful automation run. The ledger contains paths and commit metadata but never bodies or diffs. Within the fixed scan window, multiple edits to one page collapse to its latest change. Omit cursor only on the first run. When has_more is true, call again with next_page_token and no cursor; persist next_cursor in the external harness only after every page has been reviewed and the run has completed successfully. Use get_page_version with each returned page_id and version_number to inspect that exact changed version.",
+    description: "Read the durable, context-use-recorded page changes after the opaque cursor from the previous successful automation run. The ledger contains paths and commit metadata but never bodies or diffs. Within the fixed scan window, multiple edits to one page collapse to its latest change. Each row includes previous_version_number for the version current at the input cursor, or null when there was no prior version; pass it with page_id and version_number to get_page_delta for one compact comparison. Omit cursor only on the first run. When has_more is true, call again with next_page_token and no cursor; persist next_cursor only after every page has been processed and the run has completed successfully.",
     inputSchema: z.object({
       cursor: z.string().regex(/^cu-page-changes-v1\.[0-9a-z]+$/).optional()
         .describe("Opaque next_cursor persisted by the harness after the previous successful complete scan."),
@@ -344,6 +345,60 @@ export async function createMcpServer(
       ...(page_token ? { pageToken: page_token } : {}),
       limit,
     }));
+  });
+
+  server.registerTool("get_page_delta", {
+    description: "Compare the immutable page versions named by a get_knowledge_changes row. Returns explicit requested, actual and ending comparison versions; exact changed path, title and summary values; and separate before/after Markdown fragments for each changed part of the body. Unchanged body content is omitted. Normally the requested and actual baselines match. If the requested baseline was pruned, the oldest retained version after it and at or before the window end becomes the actual baseline and comparison.complete is false. A null previous_version_number treats the end version as newly available baseline evidence. If the end version is unavailable, the tool returns an error rather than substituting another version. Use get_page separately only when a changed fragment needs current entity context.",
+    inputSchema: z.object({
+      page_id: z.string().uuid(),
+      previous_version_number: z.number().int().positive().nullable(),
+      version_number: z.number().int().positive(),
+    }).strict().superRefine((value, context) => {
+      if (value.previous_version_number !== null
+        && value.previous_version_number >= value.version_number) {
+        context.addIssue({
+          code: "custom",
+          message: "previous_version_number must be less than version_number",
+        });
+      }
+    }),
+    annotations: { readOnlyHint: true },
+  }, async ({ page_id, previous_version_number, version_number }) => {
+    const [requestedPrevious, current] = await Promise.all([
+      previous_version_number === null
+        ? Promise.resolve(null)
+        : pages.version(page_id, previous_version_number),
+      pages.version(page_id, version_number),
+    ]);
+    if (!current) {
+      return textContent([
+        "PAGE_DELTA_UNAVAILABLE",
+        `Page ${page_id} version ${version_number} is not retained; no safe comparison was produced.`,
+      ].join("\n\n"), true);
+    }
+    const retainedPrevious = previous_version_number !== null && !requestedPrevious
+      ? await pages.oldestRetainedVersionAfter(
+        page_id,
+        previous_version_number,
+        version_number,
+      ) ?? current
+      : null;
+    const previous = requestedPrevious ?? retainedPrevious;
+    const actualFromVersion = previous_version_number === null
+      ? null
+      : requestedPrevious
+        ? previous_version_number
+        : retainedPrevious!.version_number;
+    return jsonObjectContent({
+      page_id,
+      comparison: {
+        requested_from_version: previous_version_number,
+        actual_from_version: actualFromVersion,
+        to_version: version_number,
+        complete: actualFromVersion === previous_version_number,
+      },
+      ...await pageDelta(previous, current),
+    });
   });
 
   server.registerTool("get_page_history", {
