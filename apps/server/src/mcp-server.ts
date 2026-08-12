@@ -348,7 +348,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("get_page_delta", {
-    description: "Compare the immutable page versions named by a get_knowledge_changes row. Normally this is the exact cursor-baseline-to-window-end delta. If that baseline was pruned, the tool instead compares the oldest retained version after it and at or before the window end, returning partial status and the actual compared_from_version_number. Returns only changed path, title and summary fields plus exact line-numbered before/after Markdown blocks; small replacements also identify their changed words or whitespace. The rest of the page is omitted. A null previous_version_number treats the end version as newly available baseline evidence. Use get_page separately only when the compact delta needs current entity context.",
+    description: "Compare the immutable page versions named by a get_knowledge_changes row. Returns explicit requested, actual and ending comparison versions; exact changed path, title and summary values; and separate before/after Markdown fragments for each changed part of the body. Unchanged body content is omitted. Normally the requested and actual baselines match. If the requested baseline was pruned, the oldest retained version after it and at or before the window end becomes the actual baseline and comparison.complete is false. A null previous_version_number treats the end version as newly available baseline evidence. If the end version is unavailable, the tool returns an error rather than substituting another version. Use get_page separately only when a changed fragment needs current entity context.",
     inputSchema: z.object({
       page_id: z.string().uuid(),
       previous_version_number: z.number().int().positive().nullable(),
@@ -371,13 +371,10 @@ export async function createMcpServer(
       pages.version(page_id, version_number),
     ]);
     if (!current) {
-      return jsonObjectContent({
-        status: "unavailable",
-        page_id,
-        previous_version_number,
-        version_number,
-        missing_version_numbers: [version_number],
-      });
+      return textContent([
+        "PAGE_DELTA_UNAVAILABLE",
+        `Page ${page_id} version ${version_number} is not retained; no safe comparison was produced.`,
+      ].join("\n\n"), true);
     }
     const retainedPrevious = previous_version_number !== null && !requestedPrevious
       ? await pages.oldestRetainedVersionAfter(
@@ -387,14 +384,19 @@ export async function createMcpServer(
       ) ?? current
       : null;
     const previous = requestedPrevious ?? retainedPrevious;
+    const actualFromVersion = previous_version_number === null
+      ? null
+      : requestedPrevious
+        ? previous_version_number
+        : retainedPrevious!.version_number;
     return jsonObjectContent({
-      status: retainedPrevious ? "partial" : "available",
       page_id,
-      previous_version_number,
-      ...(retainedPrevious
-        ? { compared_from_version_number: retainedPrevious.version_number }
-        : {}),
-      version_number,
+      comparison: {
+        requested_from_version: previous_version_number,
+        actual_from_version: actualFromVersion,
+        to_version: version_number,
+        complete: actualFromVersion === previous_version_number,
+      },
       ...await pageDelta(previous, current),
     });
   });

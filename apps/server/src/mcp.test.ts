@@ -928,7 +928,7 @@ describe("MCP knowledge tools", () => {
     expect(response.result?.content?.[0]?.text).not.toContain("body_markdown");
   });
 
-  test("returns one compact delta for the exact versions in a change row", async () => {
+  test("returns one clean compact delta for multiple distant changes", async () => {
     const calls: unknown[] = [];
     const pages = pagesWithGuidance({
       async version(pageId: string, versionNumber: number) {
@@ -938,13 +938,33 @@ describe("MCP knowledge tools", () => {
             path: "projects/context-use/timeline",
             title: "Context Use timeline",
             summary: "Important project developments.",
-            body_markdown: "# Timeline\n\n## 2026\n\n- 2026-08-10 — Opened the draft.\n",
+            body_markdown: [
+              "# Timeline\n",
+              "\n",
+              "## 2026\n",
+              "\n",
+              "- 2026-08-10 — Opened the draft.\n",
+              "\n",
+              "This context remains unchanged.\n",
+              "\n",
+              "No follow-up was planned.\n",
+            ].join(""),
           },
           4: {
             path: "projects/context-use/timeline",
             title: "Context Use timeline",
             summary: "Important project developments.",
-            body_markdown: "# Timeline\n\n## 2026\n\n- 2026-08-10 — Opened the pull request.\n",
+            body_markdown: [
+              "# Timeline\n",
+              "\n",
+              "## 2026\n",
+              "\n",
+              "- 2026-08-10 — Opened the pull request.\n",
+              "\n",
+              "This context remains unchanged.\n",
+              "\n",
+              "Scheduled a follow-up for Friday.\n",
+            ].join(""),
           },
         };
         return versions[versionNumber as keyof typeof versions] ?? null;
@@ -968,23 +988,28 @@ describe("MCP knowledge tools", () => {
       { pageId: "11111111-1111-4111-8111-111111111111", versionNumber: 2 },
       { pageId: "11111111-1111-4111-8111-111111111111", versionNumber: 4 },
     ]);
-    expect(response.result?.structuredContent).toMatchObject({
-      status: "available",
-      previous_version_number: 2,
-      version_number: 4,
+    const expectedDelta = {
+      page_id: "11111111-1111-4111-8111-111111111111",
+      comparison: {
+        requested_from_version: 2,
+        actual_from_version: 2,
+        to_version: 4,
+        complete: true,
+      },
       metadata_changes: [],
-      markdown_changes: [{
-        old_start_line: 5,
-        new_start_line: 5,
-        before_markdown: "- 2026-08-10 — Opened the draft.\n",
-        after_markdown: "- 2026-08-10 — Opened the pull request.\n",
-        inline_changes: [
-          { kind: "removed", value: "draft" },
-          { kind: "added", value: "pull request" },
-        ],
-      }],
-    });
-    expect(response.result?.content?.[0]?.text).not.toContain("# Timeline");
+      markdown_changes: [
+        {
+          before: "- 2026-08-10 — Opened the draft.\n",
+          after: "- 2026-08-10 — Opened the pull request.\n",
+        },
+        {
+          before: "No follow-up was planned.\n",
+          after: "Scheduled a follow-up for Friday.\n",
+        },
+      ],
+    };
+    expect(response.result?.structuredContent).toEqual(expectedDelta);
+    expect(response.result?.content?.[0]?.text).toBe(JSON.stringify(expectedDelta, null, 2));
   });
 
   test("falls back to the oldest retained version when the exact baseline was pruned", async () => {
@@ -1032,14 +1057,18 @@ describe("MCP knowledge tools", () => {
       afterVersionNumber: 3,
       throughVersionNumber: 8,
     }]);
-    expect(response.result?.structuredContent).toMatchObject({
-      status: "partial",
-      previous_version_number: 3,
-      compared_from_version_number: 4,
-      version_number: 8,
+    expect(response.result?.structuredContent).toEqual({
+      page_id: "11111111-1111-4111-8111-111111111111",
+      comparison: {
+        requested_from_version: 3,
+        actual_from_version: 4,
+        to_version: 8,
+        complete: false,
+      },
+      metadata_changes: [],
       markdown_changes: [{
-        before_markdown: "Considered a new role.\n",
-        after_markdown: "Started a new role.\n",
+        before: "Considered a new role.\n",
+        after: "Started a new role.\n",
       }],
     });
   });
@@ -1064,10 +1093,12 @@ describe("MCP knowledge tools", () => {
       },
     });
 
-    expect(response.result?.structuredContent).toMatchObject({
-      status: "unavailable",
-      missing_version_numbers: [8],
-    });
+    expect(response.result?.isError).toBe(true);
+    expect(response.result?.structuredContent).toBeUndefined();
+    expect(response.result?.content?.[0]?.text).toBe([
+      "PAGE_DELTA_UNAVAILABLE",
+      "Page 11111111-1111-4111-8111-111111111111 version 8 is not retained; no safe comparison was produced.",
+    ].join("\n\n"));
   });
 
   test("returns ready-to-paste formatting Markdown for image uploads", async () => {

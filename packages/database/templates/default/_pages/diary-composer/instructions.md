@@ -43,15 +43,14 @@ run.
    remain for the next one.
 3. Ignore rows under `about/diary/` and `automations/diary-composer/` as activity input.
    For every other non-deleted row, call `get_page_delta` once with its exact `page_id`,
-   `previous_version_number` and `version_number`. Its metadata changes and line-numbered
-   `before_markdown` and `after_markdown` blocks are the complete worklist of evidence newly
-   reaching this run; `inline_changes` make small replacements easier to see. Do not compute
-   another diff.
+   `previous_version_number` and `version_number`. Its metadata changes and separate exact
+   `before` and `after` Markdown fragments are the complete worklist of evidence newly
+   reaching this run. Do not compute another diff.
 4. When `previous_version_number` is null, the delta presents the page as baseline evidence,
-   while activity dates still come only from what the page says. A `partial` delta means the
-   requested baseline was pruned: use the returned delta from
-   `compared_from_version_number` through `version_number` and do not infer the omitted
-   changes. When the delta is `unavailable`, report it and do not reconstruct it from the
+   while activity dates still come only from what the page says. When
+   `comparison.complete` is false, the requested baseline was pruned: use the returned delta
+   from `actual_from_version` through `to_version` and do not infer the omitted changes. When
+   the tool returns `PAGE_DELTA_UNAVAILABLE`, report it and do not reconstruct it from the
    current page or guess what changed.
 
 A changed page is not itself an activity. Its `changed_at`, creation time, commit time and
