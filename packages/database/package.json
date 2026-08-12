@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./disposable-database": "./src/disposable-database.ts"
   },
   "scripts": {
     "dev": "bun --watch src/index.ts",
@@ -16,6 +17,7 @@
     "initialize": "bun src/initialize.ts",
     "migrate": "bun src/migrate.ts",
     "reset:development": "bun src/reset-development.ts",
+    "mark:disposable": "bun src/mark-disposable.ts",
     "test:roles": "bun test test/roles.integration.test.ts"
   },
   "dependencies": {

@@ -23,6 +23,7 @@
     "db:bootstrap": "bun --cwd packages/database bootstrap",
     "db:initialize": "bun --cwd packages/database initialize",
     "db:migrate": "bun --cwd packages/database migrate",
+    "db:test": "bun scripts/test-database.ts",
     "db:test:roles": "bun --cwd packages/database test:roles"
   },
   "devDependencies": {

@@ -5,8 +5,9 @@ import {
   PageRepository,
   VersionConflictError,
 } from "../src/index.ts";
+import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
-const databaseUrl = process.env.TEST_DATABASE_URL;
+const databaseUrl = await disposableDatabaseUrl();
 const describeDatabase = databaseUrl ? describe : describe.skip;
 
 describeDatabase("immutable page history", () => {

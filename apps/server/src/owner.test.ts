@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, test } from "bun:test";
-import { isVerifiedOwner, ownerSetupContext } from "./owner.ts";
+import { isVerifiedOwner, ownerSessionRejection, ownerSetupContext } from "./owner.ts";
 
 describe("single verified owner identity", () => {
   test("requires the exact normalized configured email and internal verification flag", () => {
@@ -19,5 +19,23 @@ describe("single verified owner identity", () => {
     expect(ownerSetupContext(JSON.stringify({ email: "attacker@example.com", token }), "owner@example.com", hash)).toBeNull();
     expect(ownerSetupContext(JSON.stringify({ email: "owner@example.com", token: "b".repeat(43) }), "owner@example.com", hash)).toBeNull();
     expect(ownerSetupContext(JSON.stringify({ email: "owner@example.com", token, extra: true }), "owner@example.com", hash)).toBeNull();
+  });
+
+  test("distinguishes why a verified passkey cannot be given a session", () => {
+    // The state a stray integration-test run left behind: passkey and session
+    // rows intact, owner row gone. Better Auth reported only "Authentication
+    // failed", so the cause has to be named before the session insert.
+    expect(ownerSessionRejection(null)).toEqual({
+      message: "This installation has no owner identity",
+      code: "OWNER_IDENTITY_MISSING",
+    });
+    expect(ownerSessionRejection({ email: "attacker@example.com", emailVerified: true })).toEqual({
+      message: "The owner identity does not match this installation",
+      code: "OWNER_IDENTITY_MISMATCHED",
+    });
+    expect(ownerSessionRejection({ email: "owner@example.com", emailVerified: false })).toMatchObject({
+      code: "OWNER_IDENTITY_MISMATCHED",
+    });
+    expect(ownerSessionRejection({ email: "owner@example.com", emailVerified: true })).toBeNull();
   });
 });

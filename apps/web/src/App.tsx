@@ -57,6 +57,7 @@ function sectionFromLocation(): Section {
 
 export function App() {
   const { data: authSession, isPending } = authClient.useSession();
+  const [sessionResolved, setSessionResolved] = useState(false);
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [pages, setPages] = useState<PageMetadata[]>([]);
   const [directories, setDirectories] = useState<Directory[]>([]);
@@ -89,6 +90,7 @@ export function App() {
     if (query) parameters.set("q", query);
     setDirectories(await api<Directory[]>(`/api/dashboard/directories${parameters.size ? `?${parameters}` : ""}`));
   };
+  useEffect(() => { if (!isPending) setSessionResolved(true); }, [isPending]);
   useEffect(() => { if (authSession) loadSession().catch(() => setSession(null)); }, [authSession]);
   useEffect(() => { if (session) loadPages().catch(() => undefined); }, [session, query, showArchived]);
   useEffect(() => { if (session) loadAssets().catch(() => undefined); }, [session]);
@@ -154,7 +156,11 @@ export function App() {
   }, [assets, query]);
   const selectedAsset = selected?.kind === "asset" ? assets.find((asset) => asset.id === selected.id) ?? null : null;
 
-  if (isPending) return <main className="center-card">Loading…</main>;
+  // Only the first session lookup replaces the page. A failed passkey attempt
+  // makes Better Auth re-read the session, and swapping in a loading screen
+  // would unmount Login and discard the error it just set — which is what made
+  // a rejected sign-in look like nothing had happened at all.
+  if (isPending && !sessionResolved) return <main className="center-card">Loading…</main>;
   if (!authSession) return <Login />;
   if (consent) return <OAuthConsent />;
   if (!session) return <main className="center-card">Verifying owner session…</main>;

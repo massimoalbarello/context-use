@@ -1,11 +1,11 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { authClient } from "../auth-client.ts";
-
-function continuesOAuthAuthorization(data: unknown): boolean {
-  if (!data || typeof data !== "object") return false;
-  const value = data as Record<string, unknown>;
-  return value.redirect === true && typeof value.url === "string";
-}
+import {
+  continuesOAuthAuthorization,
+  establishedSession,
+  failureMessage,
+  thrownFailureMessage,
+} from "../login-feedback.ts";
 
 export function Login() {
   const [entry] = useState(() => {
@@ -29,10 +29,12 @@ export function Login() {
     setError("");
     try {
       const result = await authClient.signIn.passkey();
-      if (result.error) setError(result.error.message ?? "Passkey sign-in failed");
-      else if (!continuesOAuthAuthorization(result.data)) window.location.assign("/app");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Passkey sign-in failed");
+      if (result.error) setError(failureMessage(result.error));
+      else if (continuesOAuthAuthorization(result.data)) return;
+      else if (!establishedSession(result.data)) setError("Your passkey was accepted, but no session was created. Try again.");
+      else window.location.assign("/app");
+    } catch {
+      setError(thrownFailureMessage());
     } finally {
       setWorking(false);
     }
@@ -48,14 +50,16 @@ export function Login() {
         context: JSON.stringify({ email, token: entry.setupToken }),
       });
       if (result.error) {
-        setError(result.error.message ?? "Passkey setup failed");
+        setError(failureMessage(result.error));
         return;
       }
       const signedIn = await authClient.signIn.passkey();
-      if (signedIn.error) setError("Your passkey was created. Reload this page and use Sign in with passkey.");
-      else if (!continuesOAuthAuthorization(signedIn.data)) window.location.assign("/app");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Passkey setup failed");
+      if (signedIn.error) setError(`Your passkey was created. ${failureMessage(signedIn.error)} Reload this page and use Sign in with passkey.`);
+      else if (continuesOAuthAuthorization(signedIn.data)) return;
+      else if (!establishedSession(signedIn.data)) setError("Your passkey was created but no session was started. Reload this page and use Sign in with passkey.");
+      else window.location.assign("/app");
+    } catch {
+      setError(thrownFailureMessage());
     } finally {
       setWorking(false);
     }
@@ -69,14 +73,16 @@ export function Login() {
         context: JSON.stringify({ enrollment_claim: entry.enrollmentClaim }),
       });
       if (result.error) {
-        setError(result.error.message ?? "Passkey setup failed");
+        setError(failureMessage(result.error));
         return;
       }
       const signedIn = await authClient.signIn.passkey();
-      if (signedIn.error) setError("Your passkey was created. Reload this page and sign in with it.");
-      else if (!continuesOAuthAuthorization(signedIn.data)) window.location.assign("/app/settings");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Passkey setup failed");
+      if (signedIn.error) setError(`Your passkey was created. ${failureMessage(signedIn.error)} Reload this page and sign in with it.`);
+      else if (continuesOAuthAuthorization(signedIn.data)) return;
+      else if (!establishedSession(signedIn.data)) setError("Your passkey was created but no session was started. Reload this page and sign in with it.");
+      else window.location.assign("/app/settings");
+    } catch {
+      setError(thrownFailureMessage());
     } finally {
       setWorking(false);
     }

@@ -1,9 +1,15 @@
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { makeSignature } from "better-auth/crypto";
 import { Client } from "pg";
+import { disposableDatabaseUrl } from "@context-use/database/disposable-database";
 import { config } from "./config.ts";
 import { csrfToken } from "./security.ts";
 
+const databaseUrl = await disposableDatabaseUrl();
+const requireDatabase = (): string => {
+  if (!databaseUrl) throw new Error("TEST_DATABASE_URL is required");
+  return databaseUrl;
+};
 const enabled = process.env.TEST_APP_DATABASE_URL === "1";
 const application = enabled ? (await import("./combined-app.ts")).combinedApp : null;
 const authentication = enabled ? (await import("./auth-app.ts")).authApp : null;
@@ -13,8 +19,8 @@ const createdClients: string[] = [];
 
 describeApplication("HTTP credential and OAuth boundary", () => {
   afterAll(async () => {
-    if (!process.env.TEST_DATABASE_URL) return;
-    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    if (!databaseUrl) return;
+    const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     for (const clientId of createdClients) await client.query(`DELETE FROM "oauthClient" WHERE "clientId"=$1`, [clientId]);
     await client.end();
@@ -239,8 +245,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("nested /p paths resolve every published page and no private page", async () => {
-    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
-    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const client = new Client({ connectionString: requireDatabase() });
     const suffix = crypto.randomUUID().slice(0, 8);
     const publicPageId = crypto.randomUUID();
     const publicVersionId = crypto.randomUUID();
@@ -427,8 +432,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("passkey authentication cannot create a session while owner revocation holds its lock", async () => {
-    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
-    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const client = new Client({ connectionString: requireDatabase() });
     await client.connect();
     try {
       await client.query("SELECT pg_advisory_lock(hashtextextended($1,0))", ["context-use-owner"]);
@@ -449,8 +453,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("OAuth grants cannot issue tokens while owner revocation holds its lock", async () => {
-    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
-    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const client = new Client({ connectionString: requireDatabase() });
     await client.connect();
     try {
       await client.query("SELECT pg_advisory_lock(hashtextextended($1,0))", ["context-use-owner"]);
@@ -480,8 +483,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("OAuth token bodies are fully received before taking the owner lock", async () => {
-    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
-    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const client = new Client({ connectionString: requireDatabase() });
     await client.connect();
     let releaseBody: () => void = () => {};
     let bodyReadStarted: () => void = () => {};
@@ -596,7 +598,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("a retried refresh rotation replays its replacement without invalidating the token family", async () => {
-    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const connectionString = requireDatabase();
     const registration = await application!.handle(new Request("http://localhost:3000/api/auth/oauth2/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -616,7 +618,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     const originalRefreshToken = `refresh-${crypto.randomUUID()}`;
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(originalRefreshToken));
     const storedRefreshToken = Buffer.from(digest).toString("base64url");
-    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const client = new Client({ connectionString });
     await client.connect();
     let createdOwner = false;
     try {
@@ -697,8 +699,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("idle and absolute session deadlines cannot be refreshed before authorization", async () => {
-    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
-    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const client = new Client({ connectionString: requireDatabase() });
     const sessions = [
       {
         id: crypto.randomUUID(),
@@ -790,8 +791,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("the fixed Nango client and live owner session are both required by the internal gateway", async () => {
-    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
-    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const client = new Client({ connectionString: requireDatabase() });
     const sessionId = crypto.randomUUID();
     const sessionToken = `nango-session-${crypto.randomUUID()}`;
     const accessToken = `nango-access-${crypto.randomUUID()}`;
@@ -921,7 +921,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("the MCP gateway requires an active token bound to a live owner session", async () => {
-    if (!process.env.TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required");
+    const connectionString = requireDatabase();
     const registration = await application!.handle(new Request("http://localhost:3000/api/auth/oauth2/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -938,7 +938,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     const registered = await registration.json() as { client_id: string };
     createdClients.push(registered.client_id);
 
-    const client = new Client({ connectionString: process.env.TEST_DATABASE_URL });
+    const client = new Client({ connectionString });
     const sessionId = crypto.randomUUID();
     const sessionToken = `mcp-session-${crypto.randomUUID()}`;
     const refreshToken = `mcp-refresh-${crypto.randomUUID()}`;

@@ -1,0 +1,21 @@
+# A PostgreSQL server of the integration suites' own. They mutate cluster-wide
+# roles and clean their fixtures up with trigger and foreign-key enforcement
+# suspended, so sharing a server with the local stack the evals sign in to would
+# put that installation's owner identity and login roles within their reach.
+# Its data lives in memory: nothing here is meant to survive the container.
+name: context-use-test
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    environment:
+      POSTGRES_DB: context_use_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports: ["127.0.0.1:55432:5432"]
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d context_use_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
