@@ -27,7 +27,6 @@ describe("public page presentation", () => {
 
     expect(html).toContain("<title>Notes &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt; | localhost:3000 public knowledge</title>");
     expect(html).toContain('<li aria-current="page"><span class="breadcrumb-separator" aria-hidden="true">/</span>Notes &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</li>');
-    expect(html).toContain("<h1>Notes &lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</h1>");
     expect(html).toContain('name="description" content="Published knowledge from localhost:3000 public knowledge."');
     expect(html).toContain('rel="canonical" href="http://localhost:3000/p/notes"');
     expect(html).toContain('<script type="application/ld+json">');
@@ -35,6 +34,26 @@ describe("public page presentation", () => {
     expect(html).not.toContain('"name":"Notes </title>');
     expect(html).toContain("<p>Already sanitized content</p>");
     expect(html).toContain('<link rel="stylesheet" href="/content.css">');
+  });
+
+  test("keeps the page title and summary out of the published body", () => {
+    const html = renderPublicPageDocument(
+      "Intro",
+      "<p>Biography body.</p>",
+      "about/intro",
+      undefined,
+      {
+        siteOrigin: "https://massimo.example",
+        summary: "Massimo Albarello's introduction: a builder from Como.",
+        introduction: { title: "Intro", summary: "Massimo Albarello's introduction: a builder from Como." },
+      },
+    );
+
+    expect(html).toContain('<nav class="knowledge-navigation"');
+    expect(html).toContain("</nav><article><p>Biography body.</p></article>");
+    expect(html).not.toContain("public-page-header");
+    expect(html).not.toContain("<h1>");
+    expect(html).toContain('name="description" content="Massimo Albarello&#39;s introduction: a builder from Como."');
   });
 
   test("adds a complete folder breadcrumb to published pages", () => {
@@ -86,7 +105,6 @@ describe("public page presentation", () => {
     );
 
     expect(html).toContain("<title>Massimo Albarello — Biography</title>");
-    expect(html).toContain("<h1>Massimo Albarello</h1>");
     expect(html).toContain('rel="canonical" href="https://massimo.example/p/about/intro"');
     expect(html).toContain('property="og:type" content="profile"');
     expect(html).toContain('"@type":"ProfilePage"');
@@ -153,7 +171,7 @@ describe("public page presentation", () => {
     expect(html).toContain("Massimo Albarello&#39;s introduction: a builder from Como.");
     expect(html).toContain('href="/p/about/intro"');
     expect(html).toContain("Read my biography");
-    expect(html).toContain('<a class="landing-secondary" href="/p/">Browse all published knowledge</a>');
+    expect(html).not.toContain("Browse all published knowledge");
     expect(html).toContain('rel="canonical" href="https://massimo.example/"');
     expect(html).toContain('"@type":"Person"');
     expect(html).toContain('"name":"Massimo Albarello"');
@@ -161,6 +179,16 @@ describe("public page presentation", () => {
     expect(html).toContain('<a href="/llms.txt" type="text/plain">AI-readable site index</a>');
     expect(html).toContain('<p class="landing-credit">self-hosted with ❤️ using');
     expect(html).not.toContain("MCP");
+  });
+
+  test("sends visitors to the knowledge index when no introduction is published", () => {
+    const html = renderPublicLandingDocument({ siteOrigin: "https://someone.example" });
+
+    expect(html).toContain('<a class="landing-cta" href="/p/">Explore my knowledge base');
+    expect(html).not.toContain("/p/about/intro");
+    expect(html).toContain("A public billboard<br>for what I choose to share.");
+    expect(html).toContain("<title>someone.example public knowledge</title>");
+    expect(html).not.toContain('"@type":"Person"');
   });
 
   test("does not require an optional contacts page for profile identity", () => {
