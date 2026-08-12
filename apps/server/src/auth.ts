@@ -149,15 +149,18 @@ async function ownerIdentity(): Promise<{ email: string; emailVerified: boolean 
 }
 
 /**
- * Better Auth creates the session immediately after a passkey verifies, so the
- * session's own precondition is checked here — while the cause can still be
- * named rather than collapsing into "Authentication failed". A missing or
- * foreign owner row is a fault in the installation, not in the passkey the
- * owner just presented, and the login screen says which.
+ * Better Auth creates the session immediately after a passkey verifies and
+ * reports anything that fails from there as "Authentication failed", so the
+ * session's own precondition is checked here instead. A missing or foreign
+ * owner row is a fault in the installation rather than in the passkey just
+ * presented; the login screen only says which of the two it was, so the cause
+ * itself is recorded here.
  */
 async function assertOwnerCanHoldSession(): Promise<void> {
   const rejection = ownerSessionRejection(await ownerIdentity());
-  if (rejection) throw new APIError("INTERNAL_SERVER_ERROR", rejection);
+  if (!rejection) return;
+  console.error("passkey_authentication_failed", { reason: rejection.code, owner: ownerUserId });
+  throw new APIError("INTERNAL_SERVER_ERROR", rejection);
 }
 
 async function createOwner(): Promise<void> {

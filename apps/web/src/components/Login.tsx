@@ -29,12 +29,12 @@ export function Login() {
     setError("");
     try {
       const result = await authClient.signIn.passkey();
-      if (result.error) setError(failureMessage(result.error, "Sign-in failed. Try again."));
+      if (result.error) setError(failureMessage(result.error));
       else if (continuesOAuthAuthorization(result.data)) return;
       else if (!establishedSession(result.data)) setError("Your passkey was accepted, but no session was created. Try again.");
       else window.location.assign("/app");
-    } catch (cause) {
-      setError(thrownFailureMessage(cause, "Sign-in could not reach this installation. Check that it is running and try again."));
+    } catch {
+      setError(thrownFailureMessage());
     } finally {
       setWorking(false);
     }
@@ -50,16 +50,16 @@ export function Login() {
         context: JSON.stringify({ email, token: entry.setupToken }),
       });
       if (result.error) {
-        setError(failureMessage(result.error, "Creating the passkey failed. Try again."));
+        setError(failureMessage(result.error));
         return;
       }
       const signedIn = await authClient.signIn.passkey();
-      if (signedIn.error) setError(`Your passkey was created. ${failureMessage(signedIn.error, "Signing in with it failed.")} Reload this page and use Sign in with passkey.`);
+      if (signedIn.error) setError(`Your passkey was created. ${failureMessage(signedIn.error)} Reload this page and use Sign in with passkey.`);
       else if (continuesOAuthAuthorization(signedIn.data)) return;
       else if (!establishedSession(signedIn.data)) setError("Your passkey was created but no session was started. Reload this page and use Sign in with passkey.");
       else window.location.assign("/app");
-    } catch (cause) {
-      setError(thrownFailureMessage(cause, "Passkey setup could not reach this installation. Check that it is running and try again."));
+    } catch {
+      setError(thrownFailureMessage());
     } finally {
       setWorking(false);
     }
@@ -73,16 +73,16 @@ export function Login() {
         context: JSON.stringify({ enrollment_claim: entry.enrollmentClaim }),
       });
       if (result.error) {
-        setError(failureMessage(result.error, "Creating the passkey failed. Try again."));
+        setError(failureMessage(result.error));
         return;
       }
       const signedIn = await authClient.signIn.passkey();
-      if (signedIn.error) setError(`Your passkey was created. ${failureMessage(signedIn.error, "Signing in with it failed.")} Reload this page and sign in with it.`);
+      if (signedIn.error) setError(`Your passkey was created. ${failureMessage(signedIn.error)} Reload this page and sign in with it.`);
       else if (continuesOAuthAuthorization(signedIn.data)) return;
       else if (!establishedSession(signedIn.data)) setError("Your passkey was created but no session was started. Reload this page and sign in with it.");
       else window.location.assign("/app/settings");
-    } catch (cause) {
-      setError(thrownFailureMessage(cause, "Passkey setup could not reach this installation. Check that it is running and try again."));
+    } catch {
+      setError(thrownFailureMessage());
     } finally {
       setWorking(false);
     }
