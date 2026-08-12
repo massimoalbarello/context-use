@@ -6,8 +6,8 @@ whose subject is the owner.
 ## Entry point and local organization
 
 **Create `about/intro` on the first write that establishes who the owner is**, and
-reconcile it as that changes. It is the overview of the owner and the routes into their
-knowledge — who they are, what they do, what they are working on and who they work with.
+reconcile it as that changes. It says who the owner is, what they do and what they are
+working on now, and it routes onward to the pages holding the rest.
 
 This is the one page the base cannot do without. Every other subject is reachable from
 somewhere, but a base whose subjects are all reachable except the person they are about
@@ -17,16 +17,44 @@ the first batch that shows what they spend their time on, however thin, and let 
 
 Its content is not managed by the default template.
 
+`about/` is an entity folder like any other, and the owner is the entity whose `intro` is
+most certain to overflow, because every record in the base touches them. It does not survive
+that as one page, and the
+[[agents#several-small-pages-not-one-long-one|root rule against the long page]] is enforced
+here first. An aspect of the owner independently worth reading — the work itself, their
+history, a standing arrangement, a body of personal particulars — becomes a page in this
+folder named for that aspect, and `intro` reaches it through the sentence saying what it
+holds.
+
+The people the owner deals with are not one of those aspects and never become a page or a
+paragraph here. Each already has a page under [[people/agents|People]] saying what they are
+to the owner, written from that person's side where it can be maintained. A run of names on
+`about/intro` records nothing those pages do not already record, is stale the moment the
+relationship moves, and is the single fastest way to make the base's front door unreadable.
+Link the few people without whom the owner cannot be described, in the sentence describing
+them, and leave the rest to be reached from the subjects they belong to.
+
 The template supplies three subdirectories — [[about/diary/agents|Diary]],
 [[about/projects/agents|Projects]] and [[about/tasks/agents|Tasks]]. Other owner-subject
 knowledge might include a medical record, finances, education, family, personal history or
 important documents. These are examples, not categories. Preserve the organization already
-present, and add a local guide only when a subtree needs recurring rules.
+present, and add a local guide only when a subtree needs recurring rules. One of them that
+accumulates dated changes of its own is a folder with an `intro` and a `timeline`, on the
+ordinary entity terms — a health record with test results across years, a mortgage that was
+refinanced.
+
+There is no `about/timeline`, and the root guide
+[[agents#place-and-identify|says why]]: the owner is party to everything, so a timeline
+scoped to them is every other timeline in the base written twice, and their chronology is
+already the diary at a finer grain. Activity involving a company, person, place or topic is
+a timeline event there. Activity the evidence places nowhere more specific climbs to a
+[[topics/agents|topic]], which is what topics are for; the diary composer reads both.
 
 ## Choosing where owner knowledge goes
 
 - The **diary** holds what happened on a day, what the owner was thinking or feeling, and
-  where active work currently stands.
+  where active work currently stands. It is the owner's own timeline; a project, task or
+  other folder in this subtree still keeps its own.
 - A **project** is a body of work that breaks down into several finite pursuits.
 - A **task** is a finite pursuit, experiment or consequential decision that can resolve or
   close and whose frame remains useful beyond a to-do.

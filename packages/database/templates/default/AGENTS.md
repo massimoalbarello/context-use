@@ -89,7 +89,8 @@ everywhere else that needs it.
   A paragraph about a person, company or question inside someone else's page is a page
   that has not been written yet.
 - Split a page when its parts have distinct subjects or are independently worth
-  retrieving. Length alone is not a reason to split, and it is never a reason to cut.
+  retrieving. Length is the signal to look for that split, never the split itself, and it
+  is never a reason to cut.
 - Connect what happened, who or what was involved, what preceded it and what followed.
 - Remove empty headings and scaffolding. A common template is a vocabulary, not a quota.
 - Distinguish observation, report and inference. Do not turn a suggestion into the
@@ -194,6 +195,21 @@ complete entity with an `intro` alone. An occurrence with a date of its own neve
 at all: a meeting or event already happened on that date, so its page is its account and a
 timeline beneath it would index a single timeline event that is the page itself.
 
+**The owner never takes one either**, for the opposite reason, and `about/timeline` is never
+created. Every other entity's timeline is bounded by what involved that entity; the owner is
+involved in all of it, so theirs would be the union of every timeline in the base, re-typed.
+Their chronology already exists at a finer grain and in prose: the
+[[about/diary/agents|diary]] is the owner's timeline. What the owner did involving a company,
+a person, a place or a topic is a timeline event on that entity — which is where the diary
+composer reads it from — and an aspect of the owner that accumulates dated changes of its
+own, such as their health or their finances, is a folder under `about/` with an `intro` and a
+`timeline` like any other entity.
+
+An `about/timeline` already in place is not left to grow. Move each of its lines to the
+entity it involved, creating that entity where it does not exist yet, and archive the page
+once nothing on it is unplaced — ordinary reconciliation, done as the lines come up rather
+than as one migration. Never add a line to it in the meantime.
+
 A [[threads/agents|thread]] is the exception, and the reason it is a separate entity. It is
 an occurrence that runs on rather than happening once, so it has no date of its own to be
 filed under and no single account to be. Its `timeline` is how the exchange moved, it is
@@ -247,6 +263,42 @@ entered through `intro`. A `timeline` carries what happened. A part of the subje
 retrieving on its own becomes a page of its own in the folder, reachable from `intro` and
 linked from the views it bears on. The sentence that names another subject carries the link
 to it. None of that constrains the prose, which follows the material.
+
+### Several small pages, not one long one
+
+This base is a hypermedia and so is every part of it. **A long page is the default failure,
+and splitting it is the default repair.** A subject with several aspects is several pages
+that link one another, never one page that runs through them in sequence: a reader who wants
+one aspect should arrive at it, read it and leave, and on a long page they must read the
+whole thing to find out whether the part they came for is there.
+
+`intro` is where this goes wrong, and it goes wrong on every entity that grows. Every aspect
+of a subject is plausibly introductory, so nothing stops the entry point absorbing them one
+at a time until it is the entity's only page and its longest. The check is the same one the
+folder rule already states: what `intro` keeps is what the subject is and the routes onward,
+and each aspect worth reading on its own is lifted out into a page named for it, reachable
+from the sentence saying what it holds.
+
+Prose is not the alternative to structure, and a page does not earn its length by being
+well written. A paragraph that names twenty people in a row is a directory typed as a
+sentence — longer than the directory, harder to read than the directory, and holding nothing
+the twenty pages do not already hold from their own side. When material resists being split
+into pages because it is genuinely one account, it still has divisions, and the next rule is
+how they are marked.
+
+### Headings mark the divisions a page has
+
+A page that keeps several aspects together marks them with Markdown headings. A heading is
+not decoration: it says what is below it so a reader can skip what they do not need, and it
+is addressable, so another page can link the exact part it depends on with
+`[[path#heading-slug|label]]` instead of the whole page. Unbroken prose offers neither, and
+several screens of it are read by nobody.
+
+This does not license the empty heading. A heading exists because material sits under it,
+never to complete a pattern — write the page, then name the divisions it turned out to have.
+The rule against scaffolding and the rule against the undifferentiated wall are the same
+rule seen from two sides: the page shows the structure the material actually has, no more
+and no less.
 
 ## Reconcile the canonical account
 
@@ -330,7 +382,12 @@ it.
 ## The timeline
 
 A `timeline` records what the owner did, experienced or learned involving its entity,
-dated to when it happened — not only what materially changed about the subject itself.
+dated to when it happened — not only what materially changed about the subject itself. That
+entity is never the owner themselves, under the rule above, so a timeline event is filed on
+the company, person, place, topic or occurrence it involved; where the evidence identifies
+none, [[agents#which-entity-does-it-belong-to|climbing to a topic]] is what places it, and
+the diary is composed from there.
+
 Each line on it is one **timeline event**. Descending year headings, descending month
 headings within them, newest first:
 
@@ -374,8 +431,9 @@ it may create or reconcile for that evidence, however far in the past that day i
 [[about/diary/agents|diary guide]] decides whether it belongs in the day's connective
 account; its entity timeline remains the full chronology either way.
 
-When a timeline grows unwieldy, promote it to `timeline/<YYYY>` pages and repair inbound
-links in the same coherent change. Most entities never need this.
+A timeline is one page however long it grows. Its value is that its events sit next to one
+another and read as a trajectory, which splitting it by year or by day would destroy, so
+length is never a reason to break one up.
 
 Correcting a timeline event is ordinary reconciliation: fix the claim where it appears
 and leave the surrounding lines as contemporaneous record.
