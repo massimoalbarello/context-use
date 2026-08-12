@@ -1,40 +1,28 @@
 # Projects conventions
 
-This subtree inherits the [[about/agents|About conventions]]. A project is an enduring
-body of work the owner builds, operates or stewards whose identity survives individual
-deliverables: for example a product, organization, research programme, creative body of
-work or maintained system.
+This subtree inherits the [[about/agents|About conventions]]. A project is an enduring body of
+work the owner builds, operates or stewards whose identity survives individual deliverables.
 
-## Shape
+## Identity and boundary
+
+Apply the root [[agents#identifiability-is-the-threshold|identifiability invariant]] to a
+distinct body of work, not merely evidence that work happened. The owner naming it as a
+project resolves it. Otherwise, repeated activity or a meaningful milestone can establish
+durability when the work clearly breaks into several finite [[about/tasks/agents|tasks]].
+
+A repository, ticket, pull request or short engagement is evidence or an artifact of work,
+not automatically the project. When evidence resolves only one finite outcome, write the task
+and link a project later if one becomes identifiable.
+
+## Shape and account
 
     about/projects/<slug>/
 
-`intro` says what the project is, why it exists and where its durable boundaries lie. Its
-`timeline` follows once there is a dated milestone to record, and stays curated. Another
-page—such as `architecture`, `principles` or `history`—helps only when that subject is
-independently worth reading, retrieving or linking.
+`intro` says what the project is, why it exists, its durable boundaries and important
+project-specific reasoning. Link tasks, artifacts and external entities rather than absorbing
+their accounts. Add another page such as `architecture`, `principles` or `history` only when
+that aspect is independently useful.
 
-## Project account
-
-Keep the project's purpose, boundaries, durable design, principles, important outcomes
-and project-specific reasoning. Link related tasks and entities rather than absorbing
-their accounts.
-
-Under the inherited [[agents#the-timeline|root timeline contract]], project
-milestones may include a launch, material direction change, major release, handover or
-similarly consequential outcome. A project timeline is not a commit log or an exhaustive
-list of releases.
-
-## What identifies a project
-
-Under the [[agents#identifiability-is-the-threshold|root threshold]], what has to resolve
-here is a distinct, enduring body of work — not merely that work happened. The clearest
-sign is that it breaks down into several finite pursuits, each of which would be a
-[[about/tasks/agents|task]] on its own; a body of work with only one outcome in it is that
-outcome. The owner naming it as a project settles it; otherwise repeated activity or a
-meaningful milestone establishes the durability.
-
-A repository, ticket or short engagement is an artefact of work rather than the body of
-work, and a guessed grouping identifies nothing. Where the evidence supports the pursuit
-but not the project, write the [[about/tasks/agents|task]] — climbing later is cheap and
-splitting an invented project is not.
+Project timeline events are consequential milestones: launch, material direction change,
+major release, handover or similarly durable outcome. A project timeline is not a commit log
+or exhaustive release list.

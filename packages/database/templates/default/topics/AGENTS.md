@@ -1,83 +1,52 @@
 # Topics conventions
 
-Follow the [[agents|root guide]] for every convention not specific to topics. This guide
-adds only topic selection and shape.
+This subtree inherits the [[agents|root guide]]. A topic is an enduring subject in the world
+that the owner returns to: an idea, field, discipline, practice, lens, principle or piece of
+regulation. It is not a tag, glossary entry or interest list.
 
-`topics/` is for a subject the owner keeps returning to — an idea, a field, a discipline, a
-practice or a piece of regulation — so the account of it lives in one retrievable place
-instead of being restated wherever it was first mentioned. It is not a tag index, a
-glossary or a list of interests.
+## Boundary and identity
 
-Two boundaries define it. A topic has **no start and no finish**, so a pursuit that can
-close is a [[about/tasks/agents|task]] however long it runs. And its **subject is in the
-world**, so food, running and travel are topics while the owner's medical record, finances
-and schooling are their own particulars under [[about/agents|about]]. Personal engagement
-never moves a subject out of `topics/`; it is the reason the topic is here.
+A topic has no start or finish; a finite pursuit belongs under [[about/tasks/agents|Tasks]].
+Its subject exists outside the owner; medical results or a mortgage belong under
+[[about/agents|About]], while health as a practice or finance as a field can be topics.
 
-## Shape
+Apply the root [[agents#identifiability-is-the-threshold|identifiability invariant]] when the
+evidence resolves a subject rather than merely using a noun. A field someone works in, a
+practice the owner follows, a regulation or a thesis being argued can resolve topics;
+ordinary uses of “pricing” or “the market” inside another account do not.
 
-`intro` is usually enough, gaining a `timeline` once there are material changes in the
-subject or in the owner's relation to it. Keep `topics/` flat: a topic folder holds pages,
-never another topic, and relationships between topics are wikilinks between their `intro`
-pages, because a hierarchy that looks obvious now is expensive to unpick later. Prefer the
-broader name when it is honest — closely related subjects always read together are one topic
-with linkable headings, not three thin folders.
+Two cases reliably identify a topic:
 
-## What identifies a topic
+- a position the owner reasons from across decisions—a thesis, principle, standard or
+  preference expressed as their own; and
+- activity with no more specific identifiable subject, such as a meal with no named dish or
+  venue, which can land on `food` until evidence resolves something narrower.
 
-Under the [[agents#identifiability-is-the-threshold|root threshold]], a subject discussed
-in the evidence gets its page as soon as it resolves to a **subject** rather than a passing
-noun. That is the whole of the local test, and it does more work here than anywhere else:
-most nouns in a conversation are not topics. A field someone works in, a practice the owner
-follows, a piece of regulation, a thesis being argued — each is a subject. *Timelines*,
-*pricing* and *the market*, used as ordinary words inside a sentence about something else,
-are not.
+Creating the topic and repointing the references that now belong to it are one coherent
+change.
 
-Two cases resolve reliably and should never be left out:
+## Shape and account
 
-- **A position the owner reasons from** — a thesis, principle, standard or preference they
-  apply to more than one decision. Their own words are the signal: *my thesis*, *what I look
-  for*, *the way I do this*. So is someone else's: *your position on this*, *the thing you
-  keep saying*. Every decision citing a position restates it unless there is a page to point
-  at, which is why this earns one the first time it is stated rather than the third.
-- **Activity the evidence places nowhere more specific.** Under the root rule for
-  [[agents#which-entity-does-it-belong-to|choosing the entity]], a topic is where activity
-  lands when nothing below it is identifiable: a meal with no named dish or place belongs to
-  `food`, a mood to `mood`.
+Keep `topics/` flat. One folder holds one topic's pages, never nested topics; related topics
+link one another. Prefer a broader honest topic when closely related material is always read
+together, and split when parts become independently retrievable.
 
-Inbound pressure — several pages needing somewhere to point — is no longer a gate to pass
-before creating a topic. It is the signal that an existing one has become too coarse and
-should split.
+`intro` says what the subject is and then records the owner's supported position, practice or
+connection to it in first person. If removing every owner-specific sentence leaves a useful
+encyclopedia article, that remainder does not belong here.
 
-Creating the page is not the whole change. In the same write, repoint the references that
-should now point here and link the topic from the account that raised it, so it is reachable
-rather than orphaned.
+Most topics begin with `intro`. Add a timeline for material developments in the subject,
+changes in what the owner does about it, or individual occasions placed here while the topic
+acts as a holding area.
 
-## Keep it the owner's
+A holding-area timeline may grow long. When a dish, place, practice or other part becomes
+independently identifiable and retrievable, create its entity and move the relevant timeline
+events there. Earlier diary pages keep the links they had when composed.
 
-Remove every sentence that is the owner's position, practice or connection to the rest of
-the base. If a useful page survives that subtraction, it is an encyclopedia entry and does
-not belong here.
+Link saved works rather than summarizing them again; `library/` owns works and `topics/` owns
+what they are about. Companies, people, places, projects and decisions retain their own
+accounts and judgements.
 
-## What a topic page establishes
-
-`intro` says what the subject is and what is true about it, and then the owner's position on
-it — in first person, grounded in what they actually expressed, linking the projects, works
-and occurrences that formed the position rather than retelling them. That second half is
-what makes the page a topic here rather than an encyclopedia entry, and its length follows
-how much the owner has actually said about the subject.
-
-`library/` holds the works; `topics/` holds what the works are about, so link the saved
-work instead of summarizing it again. A company, person or place a topic runs through keeps
-its own page and its own judgement.
-
-Topic timeline events include the subject's own material developments, changes in what the
-owner does about it, and for a holding area each occasion they recount under it. A
-holding-area timeline is expected to grow long, and length is the signal to split: when a
-dish, a place or a practice inside it has enough events to be worth retrieving on its own,
-give it its own entity and move those events there.
-
-A topic left unreferenced and unchanged for roughly six months should be folded back into
-whatever still needs it, or archived — but a holding area the owner keeps adding to is
-referenced by definition, and its thin `intro` is waiting to be distilled from its
-timeline, not a candidate for archiving.
+A topic unreferenced and unchanged for roughly six months may be folded into the pages that
+still need it or archived. A holding area receiving activity is referenced by definition and
+its initially thin `intro` is not a reason to archive it.

@@ -1,37 +1,28 @@
 # Objects conventions
 
-Follow the [[agents|root guide]] for every convention not specific to physical objects.
-This guide adds only object selection and shape.
+This subtree inherits the [[agents|root guide]]. It contains particular physical things whose
+identity or history matters over time, not a product catalogue or inventory.
 
-`objects/` is for particular physical things whose identity or history matters over time: a
-specific car, computer, camera, instrument or heirloom. It is not a product catalogue or an
-inventory.
+## Resolve an object
 
-## What identifies an object
+Apply the root [[agents#identifiability-is-the-threshold|identifiability invariant]] to one
+specific instance. A named boat, a particular car or the camera someone keeps repairing may
+resolve an object. A make or model alone identifies a class, not an instance; place that
+knowledge on the applicable topic instead of inventing an object.
 
-The unit here is a **particular instance**, and that is what the
-[[agents#identifiability-is-the-threshold|root threshold]] asks of the evidence: not that
-the object matters, but that it resolves to one thing rather than a class of things. A
-named boat, a specific car, the camera someone keeps repairing — each is identified. A model
-name on its own is a product, not an instance, and identifies nothing here.
+## Object account
 
-Where the evidence names a class, climb to the topic that covers it under the root rule for
-[[agents#which-entity-does-it-belong-to|choosing the entity]] rather than inventing an
-instance the evidence does not support.
+`intro` says what the thing is, the minimum context needed to recognize this instance, and
+why it matters. Use the name the owner would recognize, adding model, year or nickname only
+to disambiguate. Link its owner or associated organization in the sentence explaining the
+relationship.
 
-## What an object page establishes
+Most objects need only `intro`. Add another view for an independently maintained aspect such
+as durable technical facts or a service record.
 
-`intro` says what the thing is — make, model or kind — the minimum context needed to
-recognize it, and why this particular instance matters. Use the name the owner would
-recognize, adding a model, year or nickname only to disambiguate the instance, and link the
-person or company it belongs with in the sentence that says what that association is.
-`intro` is often enough; a further page earns its place when one aspect is independently
-worth reading or maintaining, such as durable technical facts or a care and service record
-that is genuinely being kept.
+Timeline events include acquisition, material repair, modification, transfer and occasions
+the owner recounts involving this instance. The relevant person's page also records ownership,
+use or preference and links the object.
 
-Object timeline events include acquisition, material repair, modification and transfer, and
-any occasion the owner recounts involving this particular thing.
-
-Ownership, use and preference are relationships with a person, so the relevant person page
-states them and links the object. Serial, registration, tracking and insurance numbers are
-the sensitive identifiers the root privacy rule governs here.
+Serial, registration, tracking and insurance numbers are sensitive identifiers under the
+root privacy rule.

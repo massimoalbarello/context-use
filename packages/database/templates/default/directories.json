@@ -25,31 +25,31 @@
   },
   "companies": {
     "title": "Companies",
-    "summary": "Companies the owner works with, is considering, competes with, or follows, described factually and with dates."
+    "summary": "Identified organizations and their factual, relational, and dated context in the owner's world."
   },
   "events": {
     "title": "Events",
-    "summary": "Conferences, trips, dinners, hackathons, and other happenings the owner took part in, grouped by date."
+    "summary": "Identified occasions such as conferences, trips, dinners, hackathons, and weddings, grouped by date."
   },
   "library": {
     "title": "Library",
-    "summary": "External works saved for recall, with their useful ideas, the owner's reaction, and connections to existing knowledge."
+    "summary": "Identified external works, their useful content, the owner's grounded reaction, and connected subjects."
   },
   "meetings": {
     "title": "Meetings",
-    "summary": "Meetings and calls worth remembering, preserving the useful conversation, clearly identified relevant participants, and what followed."
+    "summary": "Bounded conversations, their identified participants, substantive account, and resulting relationships."
   },
   "objects": {
     "title": "Objects",
-    "summary": "Individually meaningful physical things whose identity or history matters over time."
+    "summary": "Identified physical instances whose particulars or history are maintained over time."
   },
   "people": {
     "title": "People",
-    "summary": "People in the owner's life and work: who they are, how the owner knows them, and the material history of that relationship."
+    "summary": "Identified people, who they are, their supported relationship to the owner, and relevant history."
   },
   "places": {
     "title": "Places",
-    "summary": "Locations that matter because the owner returns to them, makes decisions about them, or connects them to several parts of the knowledge base."
+    "summary": "Identified homes, venues, offices, neighbourhoods, cities, and other particular locations."
   },
   "skills": {
     "title": "Skills",
@@ -57,11 +57,11 @@
   },
   "threads": {
     "title": "Threads",
-    "summary": "Lines of written correspondence worth remembering, preserving what each exchange established and the parties, terms, and conditions that connect it."
+    "summary": "Resolved lines of written correspondence, preserving what each exchange established and how it moved."
   },
   "topics": {
     "title": "Topics",
-    "summary": "Recurring subjects the owner returns to, each the canonical home for what the rest of the knowledge base keeps referring to."
+    "summary": "Enduring subjects in the world, including the owner's supported positions, practices, and connections."
   },
   "about/diary": {
     "title": "Diary",

@@ -1,38 +1,33 @@
 # Events conventions
 
-Follow the [[agents|root guide]] for every convention not specific to events. This guide
-adds only event selection and shape.
+This subtree inherits the [[agents|root guide]]. An event is an occurrence defined by an
+occasion with a time and place: a conference, trip, dinner, hackathon, demo day or wedding.
 
-## Path and shape
+## Resolve an event
+
+Apply the root [[agents#identifiability-is-the-threshold|identifiability invariant]] to a
+particular occasion that evidence establishes happened and locates roughly in time and place.
+An invitation alone or an unresolved reference such as “the summit” does not establish which
+occurrence happened.
+
+A [[meetings/agents|meeting]] is defined by one bounded conversation rather than its occasion.
+A conversation inside an event gets its own meeting page only when it is independently useful,
+with links between the two accounts.
+
+## Path and account
 
     events/<YYYY>/<MM>/<YYYY-MM-DD>_<event-slug>/
 
-Use the start date. A multi-day event is one occurrence and usually one folder; a recurring
-conference gets one folder per occurrence, linked across years, rather than one page mixing
-them. Pictures and other assets sit in the folder and embed from the page that discusses
-them.
+Use the start date. A multi-day event is normally one folder; recurring occasions receive one
+folder per occurrence linked across years.
 
-`intro` should make the occurrence intelligible to someone who was not there: what it was,
-where and when, why the owner went if they did, what actually happened and who mattered to
-it. Separate `takeaways` only when the owner's changed thinking or new connections are
-independently worth revisiting — what they would do differently, what the event led to —
-linked to the canonical pages where those outcomes now live.
+`intro` establishes what the occasion was, where and when it happened, why the owner attended
+when they did, what happened and who mattered to it. Create `takeaways` only when changed
+thinking, new connections or consequences are independently worth revisiting. Assets belong
+in the event folder and embed from the page that discusses them.
 
-## What counts as an event
+Create and link every identified participant, organization and place under its own guide.
+Co-attendance alone does not require timeline events on every participant; record one when the
+occasion materially starts or changes that subject's relationship with the owner.
 
-An event is defined by an occasion with a time and place: a conference, trip, dinner,
-hackathon, demo day or wedding. A [[meetings/agents|meeting]] is instead defined by its
-conversation and participants. A meaningful conversation inside an event may have its own
-meeting page, but the event is not a container for every conversation that occurred there.
-
-An occasion the evidence resolves — what it was, roughly when and where — gets its folder
-under the [[agents#identifiability-is-the-threshold|root threshold]], whether or not the
-owner attended. A conference someone else went to and reported on is still an identified
-occasion. What does not earn one is an occasion that cannot be pinned down: a reference to
-"the summit" with nothing saying which, or an invitation with no evidence it happened.
-
-Every person and company the evidence resolves here gets its page and its link, on the same
-terms as any other named subject, in the sentence saying what they were to the occasion.
-What co-attendance alone does not earn is a timeline event on those entities: reserve that
-for an encounter that materially starts or changes a relationship. Durable outputs live with
-their own subjects and link back here.
+An event has no separate timeline because the dated occurrence page is already its account.

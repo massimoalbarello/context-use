@@ -1,0 +1,4 @@
+interface:
+  display_name: "Maintain Knowledge Template"
+  short_description: "Refactor template guidance without semantic drift"
+  default_prompt: "Use $maintain-knowledge-template to update the default knowledge-template guidance while preserving rule ownership and eval-critical behavior."
