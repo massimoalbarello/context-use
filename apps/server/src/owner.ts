@@ -8,6 +8,24 @@ export function isVerifiedOwner(email: string | null | undefined, verified: bool
   return Boolean(verified && email?.trim().toLowerCase() === normalizedOwnerEmail);
 }
 
+/**
+ * Why a verified passkey still cannot be given a session. Better Auth reports
+ * anything that goes wrong once a passkey verifies as a bare "Authentication
+ * failed", so these causes are distinguished before it gets that far and the
+ * login screen turns each `code` into a sentence the owner can act on.
+ */
+export function ownerSessionRejection(
+  owner: { email: string; emailVerified: boolean } | null,
+): { message: string; code: string } | null {
+  if (!owner) {
+    return { message: "This installation has no owner identity", code: "OWNER_IDENTITY_MISSING" };
+  }
+  if (!isVerifiedOwner(owner.email, owner.emailVerified)) {
+    return { message: "The owner identity does not match this installation", code: "OWNER_IDENTITY_MISMATCHED" };
+  }
+  return null;
+}
+
 export function ownerSetupContext(
   context: string | null | undefined,
   expectedEmail = normalizedOwnerEmail,

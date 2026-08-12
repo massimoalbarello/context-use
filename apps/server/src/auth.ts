@@ -9,6 +9,7 @@ import { config, production } from "./config.ts";
 import {
   isVerifiedOwner,
   normalizedOwnerEmail,
+  ownerSessionRejection,
   ownerSetupContext,
   ownerUserId,
 } from "./owner.ts";
@@ -139,6 +140,26 @@ async function resolvePasskeyRegistration(context: string | null | undefined) {
   };
 }
 
+async function ownerIdentity(): Promise<{ email: string; emailVerified: boolean } | null> {
+  const owner = await authPool.query<{ email: string; emailVerified: boolean }>(
+    `SELECT email,"emailVerified" FROM "user" WHERE id=$1`,
+    [ownerUserId],
+  );
+  return owner.rows[0] ?? null;
+}
+
+/**
+ * Better Auth creates the session immediately after a passkey verifies, so the
+ * session's own precondition is checked here — while the cause can still be
+ * named rather than collapsing into "Authentication failed". A missing or
+ * foreign owner row is a fault in the installation, not in the passkey the
+ * owner just presented, and the login screen says which.
+ */
+async function assertOwnerCanHoldSession(): Promise<void> {
+  const rejection = ownerSessionRejection(await ownerIdentity());
+  if (rejection) throw new APIError("INTERNAL_SERVER_ERROR", rejection);
+}
+
 async function createOwner(): Promise<void> {
   try {
     await authPool.query(
@@ -149,11 +170,8 @@ async function createOwner(): Promise<void> {
   } catch (error) {
     throw new APIError("CONFLICT", { message: "The owner identity could not be created", cause: error });
   }
-  const owner = await authPool.query<{ email: string; emailVerified: boolean }>(
-    `SELECT email,"emailVerified" FROM "user" WHERE id=$1`,
-    [ownerUserId],
-  );
-  if (!owner.rows[0] || !isVerifiedOwner(owner.rows[0].email, owner.rows[0].emailVerified)) {
+  const owner = await ownerIdentity();
+  if (!owner || !isVerifiedOwner(owner.email, owner.emailVerified)) {
     throw new APIError("FORBIDDEN", { message: "The owner identity does not match this installation" });
   }
 }
@@ -271,10 +289,14 @@ export const auth = betterAuth({
         },
       },
       authentication: {
-        afterVerification: ({ verification }) => {
+        afterVerification: async ({ verification }) => {
           if (!verification.authenticationInfo.userVerified) {
-            throw new APIError("FORBIDDEN", { message: "User verification is required" });
+            throw new APIError("FORBIDDEN", {
+              message: "User verification is required",
+              code: "USER_VERIFICATION_REQUIRED",
+            });
           }
+          await assertOwnerCanHoldSession();
         },
       },
     }),
