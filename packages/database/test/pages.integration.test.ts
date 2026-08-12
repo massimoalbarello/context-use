@@ -50,6 +50,7 @@ describeDatabase("immutable page history", () => {
     createdIds.push(created.id);
     expect(created.version_number).toBe(1);
     expect(created.body_markdown).toBe(`[Related](context-use://page/${linkedPageId})`);
+    const afterCreate = (await pages.changesSince({ limit: 500 })).next_cursor;
 
     const updated = await pages.update(created.id, {
       path: `tests/${suffix}/renamed`, title: "Updated", summary: "The updated test page.", body_markdown: "Searchable updated body",
@@ -101,6 +102,14 @@ describeDatabase("immutable page history", () => {
       }),
     ]);
     expect(incremental.next_cursor).toMatch(/^cu-page-changes-v1\.[0-9a-z]+$/);
+    const sinceCreate = await pages.changesSince({ cursor: afterCreate, limit: 500 });
+    expect(sinceCreate.changes.filter(({ page_id }) => page_id === created.id)).toEqual([
+      expect.objectContaining({
+        change_kind: "archived",
+        version_number: 3,
+        previous_version_number: 1,
+      }),
+    ]);
   });
 
   test("retains five recent versions plus an older published snapshot and searches only current content", async () => {

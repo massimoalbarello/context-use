@@ -17,7 +17,7 @@ const step: EvalStep = {
 
 const MEETING = "meetings/2026/01/2026-01-27_novamind/intro";
 const MEETING_DIRECTORY = MEETING.slice(0, -"/intro".length);
-const DIARY = "about/diary/2026/01/27/log";
+const DIARY = "about/diary/2026/01/27/intro";
 
 function page(path: string, body: string): PageSnapshot {
   return { id: path, path, version: 1, title: path, summary: path, body };
@@ -108,6 +108,31 @@ describe("knowledge eval scoring", () => {
 
     const score = scoreDiary([step], pages);
     expect(score.passed).toBe(score.total);
+  });
+
+  test("walks connected day views instead of requiring every entity link on the intro", () => {
+    const view = "about/diary/2026/01/27/novamind-review";
+    const pages = [
+      page(DIARY, `The diligence work has its own [[${view}|account]].`),
+      page(view, `[[companies/novamind|NovaMind]] [[people/chen-wei|Chen]] [[${MEETING_DIRECTORY}|Meeting]]`),
+      page("companies/novamind/intro", "Led by Chen Wei."),
+      page("people/chen-wei/intro", "CEO of NovaMind."),
+      page(MEETING, "[[companies/novamind|NovaMind]] [[people/chen-wei|Chen Wei]]"),
+    ];
+
+    const score = scoreDiary([step], pages);
+    expect(score.passed).toBe(score.total);
+  });
+
+  test("does not count an orphaned day view as part of the diary", () => {
+    const pages = [
+      page(DIARY, "A short day."),
+      page("about/diary/2026/01/27/orphan", `[[companies/novamind|NovaMind]]`),
+    ];
+
+    const score = scoreDiary([step], pages);
+    expect(score.assertions.find((assertion) => assertion.id === "diary.2026-01-27.companies/novamind")?.passed)
+      .toBe(false);
   });
 
   test("reports a day the composer never wrote", () => {

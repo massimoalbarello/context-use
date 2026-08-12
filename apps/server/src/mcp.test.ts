@@ -843,6 +843,7 @@ describe("MCP knowledge tools", () => {
       "delete_directory",
       "get_page",
       "get_knowledge_changes",
+      "get_page_delta",
       "prepare_knowledge_write",
       "load_skill",
       "create_page",
@@ -893,6 +894,7 @@ describe("MCP knowledge tools", () => {
             page_id: "11111111-1111-4111-8111-111111111111",
             version_id: "22222222-2222-4222-8222-222222222222",
             version_number: 4,
+            previous_version_number: 2,
             change_kind: "updated",
             path: "about/intro",
             title: "Introduction",
@@ -919,11 +921,184 @@ describe("MCP knowledge tools", () => {
 
     expect(calls).toEqual([{ cursor: "cu-page-changes-v1.5", limit: 25 }]);
     expect(response.result?.structuredContent).toMatchObject({
-      changes: [{ path: "about/intro", version_number: 4 }],
+      changes: [{ path: "about/intro", version_number: 4, previous_version_number: 2 }],
       next_cursor: "cu-page-changes-v1.c",
       has_more: true,
     });
     expect(response.result?.content?.[0]?.text).not.toContain("body_markdown");
+  });
+
+  test("returns one clean compact delta for multiple distant changes", async () => {
+    const calls: unknown[] = [];
+    const pages = pagesWithGuidance({
+      async version(pageId: string, versionNumber: number) {
+        calls.push({ pageId, versionNumber });
+        const versions = {
+          2: {
+            path: "projects/context-use/timeline",
+            title: "Context Use timeline",
+            summary: "Important project developments.",
+            body_markdown: [
+              "# Timeline\n",
+              "\n",
+              "## 2026\n",
+              "\n",
+              "- 2026-08-10 — Opened the draft.\n",
+              "\n",
+              "This context remains unchanged.\n",
+              "\n",
+              "No follow-up was planned.\n",
+            ].join(""),
+          },
+          4: {
+            path: "projects/context-use/timeline",
+            title: "Context Use timeline",
+            summary: "Important project developments.",
+            body_markdown: [
+              "# Timeline\n",
+              "\n",
+              "## 2026\n",
+              "\n",
+              "- 2026-08-10 — Opened the pull request.\n",
+              "\n",
+              "This context remains unchanged.\n",
+              "\n",
+              "Scheduled a follow-up for Friday.\n",
+            ].join(""),
+          },
+        };
+        return versions[versionNumber as keyof typeof versions] ?? null;
+      },
+    });
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 16,
+      method: "tools/call",
+      params: {
+        name: "get_page_delta",
+        arguments: {
+          page_id: "11111111-1111-4111-8111-111111111111",
+          previous_version_number: 2,
+          version_number: 4,
+        },
+      },
+    });
+
+    expect(calls).toEqual([
+      { pageId: "11111111-1111-4111-8111-111111111111", versionNumber: 2 },
+      { pageId: "11111111-1111-4111-8111-111111111111", versionNumber: 4 },
+    ]);
+    const expectedDelta = {
+      page_id: "11111111-1111-4111-8111-111111111111",
+      comparison: {
+        requested_from_version: 2,
+        actual_from_version: 2,
+        to_version: 4,
+        complete: true,
+      },
+      metadata_changes: [],
+      markdown_changes: [
+        {
+          before: "- 2026-08-10 — Opened the draft.\n",
+          after: "- 2026-08-10 — Opened the pull request.\n",
+        },
+        {
+          before: "No follow-up was planned.\n",
+          after: "Scheduled a follow-up for Friday.\n",
+        },
+      ],
+    };
+    expect(response.result?.structuredContent).toEqual(expectedDelta);
+    expect(response.result?.content?.[0]?.text).toBe(JSON.stringify(expectedDelta, null, 2));
+  });
+
+  test("falls back to the oldest retained version when the exact baseline was pruned", async () => {
+    const fallbackCalls: unknown[] = [];
+    const pages = pagesWithGuidance({
+      async version(_pageId: string, versionNumber: number) {
+        return versionNumber === 8 ? {
+          path: "people/ada/intro",
+          title: "Ada",
+          summary: "A collaborator.",
+          body_markdown: "# Ada\n\nStarted a new role.\n",
+        } : null;
+      },
+      async oldestRetainedVersionAfter(
+        pageId: string,
+        afterVersionNumber: number,
+        throughVersionNumber: number,
+      ) {
+        fallbackCalls.push({ pageId, afterVersionNumber, throughVersionNumber });
+        return {
+          version_number: 4,
+          path: "people/ada/intro",
+          title: "Ada",
+          summary: "A collaborator.",
+          body_markdown: "# Ada\n\nConsidered a new role.\n",
+        };
+      },
+    });
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 17,
+      method: "tools/call",
+      params: {
+        name: "get_page_delta",
+        arguments: {
+          page_id: "11111111-1111-4111-8111-111111111111",
+          previous_version_number: 3,
+          version_number: 8,
+        },
+      },
+    });
+
+    expect(fallbackCalls).toEqual([{
+      pageId: "11111111-1111-4111-8111-111111111111",
+      afterVersionNumber: 3,
+      throughVersionNumber: 8,
+    }]);
+    expect(response.result?.structuredContent).toEqual({
+      page_id: "11111111-1111-4111-8111-111111111111",
+      comparison: {
+        requested_from_version: 3,
+        actual_from_version: 4,
+        to_version: 8,
+        complete: false,
+      },
+      metadata_changes: [],
+      markdown_changes: [{
+        before: "Considered a new role.\n",
+        after: "Started a new role.\n",
+      }],
+    });
+  });
+
+  test("reports an unavailable window end without substituting another version", async () => {
+    const pages = pagesWithGuidance({
+      async version() {
+        return null;
+      },
+    });
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 18,
+      method: "tools/call",
+      params: {
+        name: "get_page_delta",
+        arguments: {
+          page_id: "11111111-1111-4111-8111-111111111111",
+          previous_version_number: 3,
+          version_number: 8,
+        },
+      },
+    });
+
+    expect(response.result?.isError).toBe(true);
+    expect(response.result?.structuredContent).toBeUndefined();
+    expect(response.result?.content?.[0]?.text).toBe([
+      "PAGE_DELTA_UNAVAILABLE",
+      "Page 11111111-1111-4111-8111-111111111111 version 8 is not retained; no safe comparison was produced.",
+    ].join("\n\n"));
   });
 
   test("returns ready-to-paste formatting Markdown for image uploads", async () => {

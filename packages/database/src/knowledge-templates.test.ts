@@ -743,9 +743,14 @@ describe("knowledge templates", () => {
     const activityDistiller = await Bun.file(
       new URL("../templates/default/_pages/activity-distiller/instructions.md", import.meta.url),
     ).text();
+    const diaryComposer = await Bun.file(
+      new URL("../templates/default/_pages/diary-composer/instructions.md", import.meta.url),
+    ).text();
     const normalize = (value: string) => value.replaceAll(/\s+/g, " ");
     const normalizedRoot = normalize(guides.root);
     const normalizedDistiller = normalize(activityDistiller);
+    const normalizedComposer = normalize(diaryComposer);
+    const normalizedComposerLower = normalizedComposer.toLowerCase();
     const rootIndex = guides.root.slice(
       guides.root.indexOf("## Guide and managed-page index"),
       guides.root.indexOf("## Curate, do not filter"),
@@ -811,7 +816,9 @@ describe("knowledge templates", () => {
     expect(guides.root).toContain("## The timeline");
     expect(normalizedRoot).toContain("Descending year headings, descending month headings");
     expect(normalizedRoot).toContain("Never link the diary from a timeline event");
-    expect(normalizedRoot).toContain("Nothing else writes the diary");
+    expect(normalizedRoot).toContain("No activity writer also writes the diary");
+    expect(normalizedRoot).toContain("an automation maintaining knowledge is not diary activity");
+    expect(normalizedRoot).toContain("however far in the past that day is");
     expect(guides.root).toContain("## Three homes");
     expect(guides.root).toContain("## Which entity does it belong to");
     expect(normalizedRoot).toContain("climb until you reach one it does");
@@ -840,8 +847,17 @@ describe("knowledge templates", () => {
     expect(guides.about).toContain("[[about/projects/agents|");
     expect(guides.about).toContain("[[about/tasks/agents|");
     expect(normalize(guides.diary)).toContain("Repeated mention is not continuation");
-    expect(normalize(guides.diary)).toContain("Do correct what is wrong or misleading");
+    expect(normalize(guides.diary)).toContain("Correct what is wrong or misleading");
     expect(guides.diary).toContain("[[automations/diary-composer/instructions|diary composer]]");
+    expect(normalize(guides.diary)).toContain("The diary is the route through the knowledge, not a second copy of it");
+    expect(normalize(guides.diary)).toContain("An entity or timeline change is a candidate, not a quota");
+    expect(normalize(guides.diary)).toContain("Judge the change by its role in the story rather than its size");
+    expect(normalize(guides.diary)).toContain("Most days need only `intro`");
+    expect(normalize(guides.diary)).toContain("one page or become several connected views");
+    expect(normalize(guides.diary)).toContain("There are no required sections");
+    expect(normalize(guides.diary)).toContain("Never invent cause, mood or a unifying theme");
+    expect(guides.diary).not.toContain("## On my mind");
+    expect(guides.diary).not.toContain("## Threads");
     expect(guides.projects).toContain("about/projects/<slug>/");
     expect(guides.tasks).toContain("about/tasks/<slug>/");
     expect(normalize(guides.tasks)).toContain("Resolution always earns a dated timeline event");
@@ -859,9 +875,10 @@ describe("knowledge templates", () => {
     expect(normalizedRoot).toContain("Outward links are the other half of the same fabric");
     expect(normalizedRoot).toContain("This holds inside an entity folder as much as across the base");
 
-    // Entity guides state what a page must establish; they never hand over a skeleton to copy.
-    // The diary is excluded: its log format is a deliberate fixed shape owned by the composer.
-    const entityGuides = [
+    // Content guides state what a page must establish; none hands over a skeleton to copy.
+    // A diary day may have different views, but its prose and headings follow the material too.
+    const contentGuides = [
+      guides.diary,
       guides.companies,
       guides.events,
       guides.library,
@@ -893,7 +910,7 @@ describe("knowledge templates", () => {
       "## Summary",
       "├──",
     ]) {
-      expect(entityGuides).not.toContain(skeleton);
+      expect(contentGuides).not.toContain(skeleton);
     }
 
     expect(normalize(guides.companies)).toContain("Most folders remain a single `intro`");
@@ -922,7 +939,39 @@ describe("knowledge templates", () => {
     expect(normalize(guides.automations)).toContain("a local exception to the root `intro` entry-point convention");
     expect(normalize(guides.automations)).toContain("Run logs, retry histories, source records");
     expect(normalize(guides.automations)).not.toContain("about/diary/");
-    expect(normalize(guides.diary)).toContain("A day folder is a chronological container rather than a durable entity");
+    expect(normalize(guides.diary)).toContain("Its `intro` is the entry point");
+
+    expect(diaryComposer).toContain("[[agents|root guide]]");
+    expect(diaryComposer).toContain("[[automations/agents|automation guide]]");
+    expect(diaryComposer).toContain("[[about/diary/agents|diary guide]]");
+    expect(diaryComposer).toContain("`cached_guidance_receipt`");
+    expect(normalizedComposerLower).toContain("run on its own schedule");
+    expect(normalizedComposerLower).toContain("never read, wait on or mutate another automation's instructions or state");
+    expect(normalizedComposerLower).toContain("never use another automation's checkpoint or report as a precondition");
+    expect(normalizedComposerLower).not.toContain("activity distiller has completed");
+    expect(diaryComposer).not.toContain("automations/activity-distiller/");
+    expect(activityDistiller).not.toContain("automations/diary-composer/");
+    expect(normalizedComposerLower).toContain("call `get_knowledge_changes` with that cursor and no `limit`");
+    expect(normalizedComposerLower).toContain("call `get_page_delta` once");
+    expect(normalizedComposerLower).toContain("do not compute another diff");
+    expect(normalizedComposerLower).toContain("when `comparison.complete` is false, the requested baseline was pruned");
+    expect(normalizedComposerLower).toContain("do not infer the omitted changes");
+    expect(normalizedComposerLower).toContain("the compact deltas are candidates, not an outline to reproduce");
+    expect(normalizedComposerLower).toContain("if omitting a change leaves the day's movements");
+    expect(normalizedComposerLower).toContain("a one-word correction contributes only the corrected meaning");
+    expect(normalizedComposerLower).toContain("there is no recency cutoff");
+    expect(normalizedComposerLower).toContain("creates or reconciles its historical day");
+    expect(normalizedComposerLower).toContain("its `changed_at`, creation time, commit time and the composer's run date never choose a diary day");
+    expect(normalizedComposerLower).toContain("make `intro` the prose entry point");
+    expect(normalizedComposerLower).toContain("the same meeting, exchange, decision or movement recorded from several entity sides is one activity");
+    expect(normalizedComposerLower).toContain("do not mine it for facts to repeat in the diary");
+    expect(normalizedComposerLower).toContain("use `get_page_history` as far as needed");
+    expect(normalizedComposerLower).toContain("use `search_pages` with the canonical subject path to find the most recent diary page");
+    expect(normalizedComposerLower).toContain("use separate paragraphs, descriptive headings or separate day views");
+    expect(normalizedComposerLower).toContain("`created`, `updated` and `archived` lists");
+    expect(diaryComposer).not.toContain("## On my mind");
+    expect(diaryComposer).not.toContain("## Threads");
+    expect(diaryComposer).not.toContain("Recorded nothing dated");
 
     expect(normalizedDistiller).toContain("Before the first mutation in a guidance scope");
     expect(activityDistiller).toContain("[[agents|root guide]]");
