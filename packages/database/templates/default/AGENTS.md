@@ -550,6 +550,19 @@ applicable guide wins and says so explicitly.
 
 ## Referencing uploaded assets
 
+**An asset is never added on its own.** Uploading one and writing no page leaves a file
+nothing in the base points at — unreachable by any reader following links, and invisible to
+the next write, which has no way to learn it exists. Every upload therefore lands in the same
+coherent change as a page, new or updated, that says what the asset is and what it has to do
+with everything else. The upload is half the write and the sentence naming it is the other
+half, exactly as an occurrence page is half a write and its participants the other.
+
+Which page is decided by the asset's subject, like any other placement. A signed contract
+belongs to the thing it is a contract for, a photograph of a meal to the place or the topic
+it identifies, an issue a run produced to the automation that produced it. An asset dropped
+on whichever page was already open is as lost as one dropped nowhere, because nothing about
+where it landed says what it is.
+
 Every uploaded asset is referenced with the image form, leading `!` included, whatever
 the file actually is:
 
