@@ -4,7 +4,7 @@ import { DirectoryNotEmptyError } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
 import { createGuidanceReceipt, verifyGuidanceReceipt } from "./mcp-guidance-receipt.ts";
-import { createMcpServer, KNOWLEDGE_BASE_INSTRUCTIONS } from "./mcp-server.ts";
+import { createMcpServer } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
 import type { SourceRecordReader } from "./nango-records.ts";
 
@@ -77,7 +77,7 @@ function pagesWithGuidance(overrides: Record<string, unknown> = {}): PageReposit
 const rootGuidanceReceipt = createGuidanceReceipt([rootGuide]);
 
 describe("MCP knowledge tools", () => {
-  test("gives clients the canonical knowledge structure during initialization", async () => {
+  test("carries the write contract in the tools rather than in server instructions", async () => {
     const response = await mcpRequest(serverWith(), {
       jsonrpc: "2.0",
       id: 0,
@@ -88,13 +88,17 @@ describe("MCP knowledge tools", () => {
         clientInfo: { name: "test-client", version: "1.0.0" },
       },
     });
+    expect(response.result?.instructions).toBeUndefined();
 
-    expect(response.result?.instructions).toContain(KNOWLEDGE_BASE_INSTRUCTIONS);
-    expect(response.result?.instructions).not.toContain("about/intro");
-    expect(response.result?.instructions).toContain("guides are authoritative");
-    expect(response.result?.instructions).toContain("AGENTS.md");
-    // The catalogue lives in load_skill's description, not here.
-    expect(response.result?.instructions).not.toContain("Available reusable skills");
+    const listed = await mcpRequest(serverWith(), {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/list",
+      params: {},
+    });
+    const prepare = listed.result?.tools?.find(({ name }) => name === "prepare_knowledge_write");
+    expect(prepare?.description).toContain("Pass an empty target path to load the root guide");
+    expect(prepare?.description).toContain("never store one in knowledge");
   });
 
   test("exposes one unified checkpointed source reader when Nango access is configured", async () => {
@@ -114,25 +118,6 @@ describe("MCP knowledge tools", () => {
         };
       },
     } as SourceRecordReader;
-    const initialized = await mcpRequest(serverWith(
-      {} as PageRepository,
-      {} as AssetRepository,
-      {} as DirectoryRepository,
-      sourceRecords,
-    ), {
-      jsonrpc: "2.0",
-      id: 20,
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-06-18",
-        capabilities: {},
-        clientInfo: { name: "test-client", version: "1.0.0" },
-      },
-    });
-    // The record contract travels in the tool description, which arrives whole, rather than
-    // in server instructions, where a client cap cut it and the skill catalogue after it.
-    expect(initialized.result?.instructions).not.toContain("For an ingestion automation");
-
     const listed = await mcpRequest(serverWith(
       {} as PageRepository,
       {} as AssetRepository,

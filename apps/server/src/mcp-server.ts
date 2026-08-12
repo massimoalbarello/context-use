@@ -144,8 +144,6 @@ function unknownPage(pageId: string, retryTool: string, path?: string) {
   ].join("\n\n"), true);
 }
 
-export const KNOWLEDGE_BASE_INSTRUCTIONS = "Explore knowledge with browse_directory or get_directory, beginning at the root path when you do not yet know where relevant pages live. Read pages by UUID or semantic path with get_page. Before choosing a destination, ensure the root AGENTS.md guide at MCP path agents has been loaded; prepare_knowledge_write with an empty target path loads it and returns a reusable receipt. Before the first mutation in a guidance scope, call prepare_knowledge_write with the intended target path, follow the root-to-leaf guidance it returns, and pass its guidance_receipt to the mutation tool. Retain receipts for the current task and reuse one for later mutations or other targets with the same applicable guide chain. If a mutation returns GUIDANCE_REQUIRED, call prepare_knowledge_write for that target and pass the rejected receipt as cached_guidance_receipt so only new, changed, or removed guidance is reported, then retry with the new receipt. Do not persist receipts in knowledge. The returned guides are authoritative for placement, structure, editorial policy, privacy, and reporting; these bootstrap instructions do not define an entity schema. Create a directory before adding pages beneath a new path. Link pages and directories with [[path|label]], link headings with [[path#heading-slug|label]], and use context-use://directory/<uuid> for a stable directory reference. Use load_skill when a listed reusable skill is relevant.";
-
 export async function createMcpServer(
   context: McpContext,
   pages: PageRepository,
@@ -164,11 +162,7 @@ export async function createMcpServer(
   const skillCatalog = skills.length
     ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
-  const server = new McpServer({ name: "context-use", version: "0.1.63" }, {
-    // The catalogue is `load_skill`'s own description, which arrives whole through
-    // tools/list; a second copy here only competes for the client's instruction cap.
-    instructions: KNOWLEDGE_BASE_INSTRUCTIONS,
-  });
+  const server = new McpServer({ name: "context-use", version: "0.1.63" });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
   async function hasCurrentGuidance(targetPath: string, receipt?: string): Promise<boolean> {
@@ -301,7 +295,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("prepare_knowledge_write", {
-    description: "Resolve the complete current root-to-leaf AGENTS.md guide chain before creating, changing, moving, or archiving knowledge. Returns a guidance_receipt to pass to mutations. Retain that receipt for the current task and reuse it for targets with the same guide chain. When moving to another scope or refreshing a rejected receipt, pass cached_guidance_receipt; unchanged guide bodies are not repeated, while changed, newly applicable, and no-longer-applicable guides are identified. Omit the cache to load every applicable guide.",
+    description: "Resolve the complete current root-to-leaf AGENTS.md guide chain before creating, changing, moving, or archiving knowledge. Pass an empty target path to load the root guide alone, which is how to read the conventions before choosing where a page belongs. Returns a guidance_receipt to pass to mutations; retain it for the current task, reuse it for targets with the same guide chain, and never store one in knowledge. When moving to another scope or refreshing a rejected receipt, pass cached_guidance_receipt; unchanged guide bodies are not repeated, while changed, newly applicable, and no-longer-applicable guides are identified. Omit the cache to load every applicable guide.",
     inputSchema: z.object({
       target_path: DirectoryPath,
       cached_guidance_receipt: z.string().min(1).max(100_000).optional()
