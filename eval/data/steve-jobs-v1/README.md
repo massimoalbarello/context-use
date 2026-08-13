@@ -11,8 +11,9 @@ historical quotations.
 
 ## Shape
 
-- `suite.ts` defines the common second-brain prelude, registered stories, and chronological
-  journey.
+- `suite.ts` defines the common owner-context prelude, registered stories, and chronological
+  journey. The prelude identifies Steve and resolves “we” and “us” to Apple without
+  prescribing a knowledge shape.
 - `stories/` contains the fixed user turns, logical subjects, and atomic expectations.
 - `implicit-write-trigger` is the only story that omits the explicit second-brain prelude.
 - Reusable conversation, graph resolution, and partial scoring live in

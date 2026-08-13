@@ -55,7 +55,7 @@ describe("steve-jobs-v1 fixture integrity", () => {
     expect(dates).toEqual([...dates].sort());
   });
 
-  test("renders the generic prelude once per historical conversation and never for the trigger probe", () => {
+  test("renders the owner-context prelude once per historical conversation and never for the trigger probe", () => {
     const historical = steveJobsV1.stories.find((story) => story.id === "microsoft-partnership")!;
     const trigger = steveJobsV1.stories.find((story) => story.id === "implicit-write-trigger")!;
     expect(renderStoryTurn(steveJobsV1, historical, historical.turns[0]!, true))
@@ -64,5 +64,15 @@ describe("steve-jobs-v1 fixture integrity", () => {
       .not.toContain(steveJobsV1.conversationPrelude);
     expect(renderStoryTurn(steveJobsV1, trigger, trigger.turns[0]!, true))
       .not.toContain(steveJobsV1.conversationPrelude);
+  });
+
+  test("makes Apple visible owner context wherever the fixture expects Apple", () => {
+    expect(steveJobsV1.conversationPrelude).toMatch(/Apple is my\s+company/);
+    expect(steveJobsV1.conversationPrelude).toContain('"we" or "us" I mean Apple');
+    for (const story of steveJobsV1.stories) {
+      if (!story.subjects.apple) continue;
+      const first = renderStoryTurn(steveJobsV1, story, story.turns[0]!, true);
+      expect(first, story.id).toMatch(/\bApple\b/);
+    }
   });
 });
