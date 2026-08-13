@@ -11,6 +11,7 @@ import {
   seedCommand,
   verifyQuestionsCommand,
 } from "../eval/cli/qa.ts";
+import { listStories, runJourney, runStories } from "../eval/cli/story.ts";
 
 function usage(): never {
   console.error(`Usage:
@@ -23,6 +24,9 @@ function usage(): never {
   bun run eval gold:check [run-id]
   bun run eval qa:ask [run-id] [--provider <codex|claude>] [--only <q-0007>] [--limit <n>] [--all]
   bun run eval qa:score [run-id]
+  bun run eval story:list
+  bun run eval story:run (--story <id> | --all) [--provider <codex|claude>] [--repeat <n>]
+  bun run eval journey:run [--provider <codex|claude>] [--repeat <n>]
 
 Per corpus, before asking:
   bun run eval qa:seed [--batches <n>]             world-v1: put its pages in as they are
@@ -116,6 +120,20 @@ if (command === "connect") {
   });
 } else if (command === "qa:score") {
   scoreAnswersCommand(positional(args));
+} else if (command === "story:list") {
+  listStories();
+} else if (command === "story:run") {
+  await runStories({
+    provider: providerFrom(args),
+    story: optionFrom(args, "story"),
+    all: args.includes("--all"),
+    repeat: countFrom(args, "repeat"),
+  });
+} else if (command === "journey:run") {
+  await runJourney({
+    provider: providerFrom(args),
+    repeat: countFrom(args, "repeat"),
+  });
 } else {
   usage();
 }

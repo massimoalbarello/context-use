@@ -11,7 +11,7 @@ export const ROOT = join(import.meta.dir, "..", "..");
 export const EVAL_URL = stackUrl();
 export const MCP_NAME = "context_use_eval";
 export const MCP_URL = `${EVAL_URL}/mcp`;
-const WORKSPACE = join(import.meta.dir, "workspace");
+export const EVAL_WORKSPACE = join(import.meta.dir, "workspace");
 const CODEX_APP_BINARY = "/Applications/ChatGPT.app/Contents/Resources/codex";
 
 export function executable(name: EvalProvider): string {
@@ -192,7 +192,7 @@ async function runCodexSession({ id, prompt, runDirectory }: AgentSession): Prom
     "exec", "--ephemeral", "--ignore-user-config", "--ignore-rules",
     "--skip-git-repo-check", "--sandbox", "read-only", "--json",
     "--output-last-message", join(runDirectory, `${id}-final.md`),
-    "-C", WORKSPACE,
+    "-C", EVAL_WORKSPACE,
     "-c", 'approval_policy="never"',
     "-c", `mcp_servers.${MCP_NAME}.url="${MCP_URL}"`,
     "-c", `mcp_servers.${MCP_NAME}.required=true`,
@@ -232,7 +232,7 @@ async function runClaudeSession({ id, prompt, runDirectory }: AgentSession): Pro
     // `stream-json` is what `finalAnswer` and `toolsUsed` read back, and under `-p` the
     // CLI only emits it with `--verbose`.
     "--output-format", "stream-json", "--verbose",
-  ], { cwd: WORKSPACE, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
+  ], { cwd: EVAL_WORKSPACE, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
   child.stdin.write(prompt);
   child.stdin.end();
   const [stdoutChunks, stderrChunks, exitCode] = await Promise.all([

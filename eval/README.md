@@ -1,6 +1,6 @@
 # Local knowledge evals
 
-Two things live here.
+Three things live here.
 
 **Corpus distillation** (`bun run eval distill`) runs the activity distiller over a fixed,
 vendored corpus, one automation run per corpus batch, and reports the pages it wrote. This
@@ -13,6 +13,14 @@ base and compares each answer to a sealed key — the read path. `world-v1` is s
 measures retrieval alone; `amara-life-v1` is distilled first, so it measures distillation
 and retrieval together. See [the shared QA runner](runner/qa/README.md).
 
+**Interactive story writing** (`bun run eval story:run`, `journey:run`) gives an agent
+short, dated user conversations and scores the connected knowledge it creates after every
+turn. [`steve-jobs-v1`](data/steve-jobs-v1/README.md) treats Context Use as Steve Jobs's
+second brain across the iMac, iPod, iTunes, and iPhone years. Subjects are resolved from
+names, dates, facts, and graph relationships rather than expected filenames or titles.
+Their semantic homes are still scored: people under `people/`, companies under `companies/`,
+meetings under `meetings/`, and events under `events/`.
+
 ## Layout
 
 The layout follows gbrain-evals' `data`, `runner`, and `cli` boundaries while keeping each
@@ -22,14 +30,35 @@ local evaluation self-contained:
 eval/
 ├── data/
 │   ├── amara-life-v1/     corpus, lockfile, loader, QA, and structural gold
-│   └── world-v1/          corpus, lockfile, loader, QA derivation, and seeding
-├── runner/                reusable corpus, distillation, QA, agent, and snapshot code
+│   ├── world-v1/          corpus, lockfile, loader, QA derivation, and seeding
+│   └── steve-jobs-v1/     interactive stories, expectations, journey, and sources
+├── runner/                reusable corpus, distillation, QA, story, agent, and snapshot code
 └── cli/                   command composition over the data packages and runner
 ```
 
-Everything specific to one fixed input belongs under `data/<corpus-id>/`. Code that can
-run another corpus or question set belongs under `runner/`; `cli/` composes those pieces
-into the existing `bun run eval` commands.
+Everything specific to one fixed input belongs under `data/<eval-id>/`. Code that can run
+another corpus, question set, or interactive story belongs under `runner/`; `cli/`
+composes those pieces into the existing `bun run eval` commands.
+
+## Running interactive stories
+
+```sh
+bun run eval story:list
+bun run eval story:run --story imac-design-and-launch
+bun run eval story:run --all --repeat 3
+bun run eval journey:run
+```
+
+An isolated story resets the knowledge base before it starts and keeps one agent
+conversation across its turns. A journey resets once, starts a fresh conversation for
+each story, and preserves the knowledge base across the complete chronology. Reports and
+per-turn snapshots, resolutions, tool activity, and scores land under
+`.eval-results/stories/`.
+
+Historical stories share one generic user instruction to keep Context Use updated. The
+single `implicit-write-trigger` story omits it and separately measures whether the agent
+uses Context Use without being asked. In both cases the real default-template `AGENTS.md`
+guides are the only knowledge-organization instructions.
 
 ## Two corpora
 
