@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
-import { AssetRepository, ConfirmationRepository, KnowledgeExportRepository, PageRepository } from "../src/index.ts";
+import {
+  AssetRepository,
+  ConfirmationRepository,
+  KnowledgeArchiveRepository,
+  KnowledgeExportRepository,
+  PageRepository,
+} from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
 const databaseUrl = await disposableDatabaseUrl();
@@ -12,10 +18,11 @@ describeDatabase("passkey-bound current knowledge exports", () => {
   const pages = new PageRepository(pool);
   const assets = new AssetRepository(pool);
   const exports = new KnowledgeExportRepository(pool);
+  const archives = new KnowledgeArchiveRepository(pool);
   const confirmations = new ConfirmationRepository(pool);
   const actor = { kind: "dashboard" as const, subject: "knowledge-export-test" };
   let fixtureRoot = "";
-  let fixtureIntentId = "";
+  const fixtureIntentIds: string[] = [];
   let createdOwner = false;
 
   beforeAll(async () => {
@@ -42,7 +49,7 @@ describeDatabase("passkey-bound current knowledge exports", () => {
     await pool.query("BEGIN");
     try {
       await pool.query("SET LOCAL session_replication_role=replica");
-      if (fixtureIntentId) {
+      for (const fixtureIntentId of fixtureIntentIds) {
         await pool.query("DELETE FROM confirmation_challenges WHERE intent_id=$1", [fixtureIntentId]);
         await pool.query("DELETE FROM knowledge_export_intents WHERE id=$1", [fixtureIntentId]);
       }
@@ -117,7 +124,7 @@ describeDatabase("passkey-bound current knowledge exports", () => {
 
     const principal = { ownerUserId: "context-use-owner", sessionId: `session-${suffix}` };
     const intent = await exports.createIntent(principal);
-    fixtureIntentId = intent.id;
+    fixtureIntentIds.push(intent.id);
     await confirmations.issueChallenge("knowledge_export", intent.id, randomBytes(32).toString("base64url"));
     expect(intent.page_count).toBeGreaterThanOrEqual(1);
     expect(intent.asset_count).toBeGreaterThanOrEqual(1);
@@ -156,5 +163,19 @@ describeDatabase("passkey-bound current knowledge exports", () => {
     const confirmedIntent = await exports.getIntent(intent.id);
     expect(new Date(confirmedIntent!.expires_at).getTime()).toBeGreaterThan(Date.now() + 23 * 60 * 60 * 1_000);
     await confirmations.claimExport(intent.id, principal);
+
+    const fullArchive = await exports.createIntent(principal, "restorable");
+    fixtureIntentIds.push(fullArchive.id);
+    expect(fullArchive.export_kind).toBe("restorable");
+    expect(fullArchive.page_count).toBeGreaterThanOrEqual(intent.page_count + 1);
+    expect(await exports.getIntent(fullArchive.id)).toMatchObject({ export_kind: "restorable" });
+    const fullSnapshot = await archives.snapshot();
+    expect(fullSnapshot.pages.find(({ id }) => id === archived.id)?.archived_at).not.toBeNull();
+    expect(fullSnapshot.page_versions.some(({ page_id }) => page_id === archived.id)).toBeTrue();
+    expect(fullSnapshot.assets.find(({ id }) => id === asset.id)).toMatchObject({
+      s3_object_key: `objects/${asset.id}`,
+      size_bytes: "123",
+    });
+    expect(fullSnapshot.page_changes.some(({ page_id }) => page_id === archived.id)).toBeTrue();
   });
 });

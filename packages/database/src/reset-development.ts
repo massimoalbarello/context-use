@@ -5,6 +5,7 @@ export const DEVELOPMENT_RESET_TABLES = [
   "confirmation_challenges",
   "publication_intents",
   "knowledge_export_intents",
+  "knowledge_import_intents",
   "page_deletion_intents",
   "knowledge_asset_links",
   "knowledge_page_changes",

@@ -446,6 +446,10 @@ export const authApp = new Elysia()
     const principal = await ownerRequest(request, true);
     return forwardBrowserConfirmation("knowledge_export", await bodyJson(request), principal);
   })
+  .post("/api/dashboard/knowledge-imports/confirm", async ({ request }) => {
+    const principal = await ownerRequest(request, true);
+    return forwardBrowserConfirmation("knowledge_import", await bodyJson(request), principal);
+  })
   .post("/api/dashboard/page-deletions/confirm", async ({ request }) => {
     const principal = await ownerRequest(request, true);
     return forwardBrowserConfirmation("page_deletion", await bodyJson(request), principal);

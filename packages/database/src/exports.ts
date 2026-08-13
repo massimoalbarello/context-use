@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 
 export type KnowledgeExportPrincipal = { ownerUserId: string; sessionId: string };
+export type KnowledgeExportKind = "portable" | "restorable";
 
 export type KnowledgeExportPage = {
   id: string;
@@ -52,7 +53,7 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
 export class KnowledgeExportRepository {
   constructor(private readonly dashboardPool: Pool) {}
 
-  async createIntent(principal: KnowledgeExportPrincipal) {
+  async createIntent(principal: KnowledgeExportPrincipal, exportKind: KnowledgeExportKind = "portable") {
     return transaction(this.dashboardPool, async (client) => {
       const discarded = await client.query<{ id: string }>(
         `DELETE FROM knowledge_export_intents
@@ -64,10 +65,10 @@ export class KnowledgeExportRepository {
       const id = randomUUID();
       const inserted = await client.query<{ id: string; expires_at: Date }>(
         `INSERT INTO knowledge_export_intents(
-           id,owner_user_id,session_id,expires_at
-         ) VALUES ($1,$2,$3,now()+interval '5 minutes')
+           id,owner_user_id,session_id,export_kind,expires_at
+         ) VALUES ($1,$2,$3,$4,now()+interval '5 minutes')
          RETURNING id,expires_at`,
-        [id, principal.ownerUserId, principal.sessionId],
+        [id, principal.ownerUserId, principal.sessionId, exportKind],
       );
       const summary = await client.query<{
         page_count: string;
@@ -75,7 +76,8 @@ export class KnowledgeExportRepository {
         total_bytes: string;
       }>(
         `SELECT
-           (SELECT count(*)::text FROM knowledge_pages WHERE archived_at IS NULL) AS page_count,
+           (SELECT count(*)::text FROM knowledge_pages
+             WHERE $1='restorable' OR archived_at IS NULL) AS page_count,
            (SELECT count(*)::text FROM assets WHERE deleted_at IS NULL) AS asset_count,
            (
              coalesce((
@@ -91,10 +93,11 @@ export class KnowledgeExportRepository {
                  + octet_length(version.summary)
                  + octet_length(version.body_markdown)
                )
-               FROM knowledge_pages page
-               JOIN knowledge_page_versions version
-                 ON version.id=page.current_version_id AND version.page_id=page.id
-               WHERE page.archived_at IS NULL
+               FROM knowledge_page_versions version
+               JOIN knowledge_pages page ON page.id=version.page_id
+               WHERE ($1='restorable' OR (
+                 page.archived_at IS NULL AND version.id=page.current_version_id
+               ))
              ),0)
              + coalesce((
                SELECT sum(size_bytes)
@@ -102,6 +105,7 @@ export class KnowledgeExportRepository {
                WHERE deleted_at IS NULL
              ),0)
            )::text AS total_bytes`,
+        [exportKind],
       );
       return {
         id,
@@ -109,6 +113,7 @@ export class KnowledgeExportRepository {
         page_count: Number(summary.rows[0]!.page_count),
         asset_count: Number(summary.rows[0]!.asset_count),
         total_bytes: Number(summary.rows[0]!.total_bytes),
+        export_kind: exportKind,
         discarded_export_ids: discarded.rows.map(({ id: discardedId }) => discardedId),
       };
     });
@@ -122,8 +127,9 @@ export class KnowledgeExportRepository {
       expires_at: Date;
       confirmed_at: Date | null;
       download_started_at: Date | null;
+      export_kind: KnowledgeExportKind;
     }>(
-      `SELECT id,owner_user_id,session_id,expires_at,confirmed_at,download_started_at
+      `SELECT id,owner_user_id,session_id,expires_at,confirmed_at,download_started_at,export_kind
        FROM knowledge_export_intents
        WHERE id=$1`,
       [id],

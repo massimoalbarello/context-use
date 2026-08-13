@@ -115,6 +115,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "assets" {
     abort_incomplete_multipart_upload { days_after_initiation = 1 }
   }
   rule {
+    id     = "expire-staged-knowledge-imports"
+    status = "Enabled"
+    filter { prefix = "imports/" }
+    expiration { days = 1 }
+    noncurrent_version_expiration { noncurrent_days = 1 }
+    abort_incomplete_multipart_upload { days_after_initiation = 1 }
+  }
+  rule {
     id     = "retain-recoverable-noncurrent-assets"
     status = "Enabled"
     filter {}
