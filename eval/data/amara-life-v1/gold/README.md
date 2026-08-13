@@ -160,9 +160,9 @@ its folder exists with any page in it, under any ordering of its name.
 
 ### Reading a result
 
-Scores live in `.eval-results/`, not in this file, for the reason given under
-[Reading a result](../../../runner/qa/README.md#reading-a-result): a number written down here describes
-one run and then misdescribes every run after it.
+Scores live with their run under `eval/results/corpus/`, not in this file, for the reason
+given under [Reading a result](../../../runner/qa/README.md#reading-a-result): a number
+written down here describes one run and then misdescribes every run after it.
 
 Two properties of this metric are worth carrying into any reading of it. Entity recall
 swings widely between runs of an identical configuration, so treat a single run as a

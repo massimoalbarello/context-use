@@ -13,6 +13,7 @@ import {
 import { loadCorpus } from "../runner/corpus/records.ts";
 import { snapshotKnowledge, type PageSnapshot } from "../runner/snapshot.ts";
 import { style } from "../runner/terminal.ts";
+import { EVAL_CORPUS_RESULTS_ROOT, resolveEvalRunDirectory } from "../runner/results.ts";
 import { askQuestions } from "../runner/qa/ask.ts";
 import {
   answersPath,
@@ -26,8 +27,6 @@ import { scoreRun, type RecordedAnswer } from "../runner/qa/score.ts";
 import { dueQuestions, servedBatches } from "../runner/qa/run.ts";
 import { amaraPeopleNames, verifyAmaraAnswers } from "../data/amara-life-v1/qa/evidence.ts";
 import { deriveWorldQuestions, worldPeopleNames } from "../data/world-v1/qa/derive.ts";
-
-const RESULTS_ROOT = join(ROOT, ".eval-results");
 
 /**
  * The corpus `qa:derive` and `qa:seed` act on.
@@ -127,11 +126,7 @@ export function verifyQuestionsCommand(): void {
 
 /** Scoring is offline, so a run is found the same way `gold:check` finds one. */
 function runDirectory(runId?: string): string {
-  if (runId && existsSync(runId)) return runId;
-  const resolved = runId ?? readFileSync(join(RESULTS_ROOT, "latest-distill"), "utf8").trim();
-  const directory = join(RESULTS_ROOT, resolved);
-  if (!existsSync(directory)) throw new Error(`No such run: ${runId ?? directory}`);
-  return directory;
+  return resolveEvalRunDirectory(runId);
 }
 
 function runReport(directory: string): { corpusId?: string; mode?: string } {
@@ -231,7 +226,7 @@ export async function seedCommand(options: { batches?: number | undefined }): Pr
 
   const startedAt = new Date().toISOString();
   const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-seed-${WORLD_CORPUS}`;
-  const directory = join(RESULTS_ROOT, runId);
+  const directory = join(EVAL_CORPUS_RESULTS_ROOT, runId);
   await mkdir(directory, { recursive: true });
 
   console.log(style.heading(`\nSeeding ${WORLD_CORPUS}: ${runId}`));
@@ -264,7 +259,7 @@ export async function seedCommand(options: { batches?: number | undefined }): Pr
     startedAt, completedAt: new Date().toISOString(),
     batches: batches.map((batch, index) => ({ batch, index })),
   }, null, 2)}\n`);
-  await Bun.write(join(RESULTS_ROOT, "latest-distill"), `${runId}\n`);
+  await Bun.write(join(EVAL_CORPUS_RESULTS_ROOT, "latest-distill"), `${runId}\n`);
 
   const due = readAnswers(WORLD_CORPUS).filter((answer) => answer.due_batch <= through);
   console.log(style.green(`\n✓ Seeded · ${pages.length} pages in the knowledge base`));
@@ -359,9 +354,15 @@ export function scoreAnswersCommand(runId?: string): void {
     pages: finalSnapshot(directory),
     people: peopleNames(corpusId),
   });
+  const mode = runMode(directory);
+  writeFileSync(join(directory, "qa-score.json"), serialise({
+    corpusId,
+    mode,
+    scoredAt: new Date().toISOString(),
+    ...result,
+  }), "utf8");
   const { scores } = result;
 
-  const mode = runMode(directory);
   const through = [...servedBatches(directory)].sort().at(-1);
   console.log(style.heading(`\nQA score · ${corpusId} · ${directory.split("/").at(-1)}`));
   console.log(style.dim(`Measures ${MEASURES[mode]}.`));

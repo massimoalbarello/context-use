@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT } from "../../../runner/agent.ts";
 import { CORPUS_DIRECTORY } from "../../../runner/corpus/integrity.ts";
+import { resolveEvalRunDirectory } from "../../../runner/results.ts";
 import type { PageSnapshot } from "../../../runner/snapshot.ts";
 import { style } from "../../../runner/terminal.ts";
 import { deriveExpectations } from "./expectations.ts";
@@ -94,19 +94,13 @@ export function profileCorpusCommand(options: { write: boolean }): void {
   report(profile);
 }
 
-const RESULTS_ROOT = join(ROOT, ".eval-results");
-
 /**
  * Reads a recorded run's per-day snapshots. Scoring is offline, so a run can be scored
  * once it exists and rescored whenever the expectations change — including runs recorded
  * from another checkout, which is why a path is accepted as well as a run id.
  */
 function runDirectory(runId?: string): string {
-  if (runId && existsSync(runId)) return runId;
-  const resolved = runId ?? readFileSync(join(RESULTS_ROOT, "latest-distill"), "utf8").trim();
-  const directory = join(RESULTS_ROOT, resolved);
-  if (!existsSync(directory)) throw new Error(`No such run: ${runId ?? directory}`);
-  return directory;
+  return resolveEvalRunDirectory(runId);
 }
 
 function held(entities: { folder?: string | undefined }[]): number {
@@ -195,4 +189,9 @@ export function scoreRunCommand(runId?: string): void {
     }
   }
   tally(scores);
+  writeFileSync(join(directory, "gold-score.json"), `${JSON.stringify({
+    corpusId: "amara-life-v1",
+    scoredAt: new Date().toISOString(),
+    days: scores,
+  }, null, 2)}\n`, "utf8");
 }
