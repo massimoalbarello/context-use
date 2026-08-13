@@ -148,6 +148,10 @@ button:disabled {
   background: var(--canvas);
 }
 
+.mobile-topbar,
+.mobile-sidebar-scrim,
+.sidebar-close-button { display: none; }
+
 .shell > main {
   min-width: 0;
   min-height: 0;
@@ -206,7 +210,7 @@ button:disabled {
   gap: 10px;
 }
 
-.sidebar-brand > div:last-child {
+.sidebar-brand-copy {
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -272,8 +276,6 @@ button:disabled {
 }
 
 .sidebar-section-nav button.active svg { color: var(--accent); }
-
-.sidebar-section-nav .mobile-knowledge-nav { display: none; }
 
 .sidebar-search {
   min-height: 38px;
@@ -2010,7 +2012,7 @@ button:disabled {
   .empty-content { padding-inline: 48px; }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 960px) {
   .passkey-kind { grid-template-columns: 1fr; }
 
   .shell {
@@ -2021,44 +2023,182 @@ button:disabled {
     gap: 0;
   }
 
+  .mobile-topbar {
+    position: relative;
+    z-index: 12;
+    min-height: 58px;
+    padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left));
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(241, 238, 231, .96);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-topbar button {
+    min-height: 42px;
+    padding: 7px 9px;
+    gap: 5px;
+    border: 0;
+    background: transparent;
+    color: #625e57;
+    font-size: 10px;
+    font-weight: 590;
+  }
+
+  .mobile-topbar button:hover,
+  .mobile-topbar button.active {
+    background: rgba(255, 255, 255, .9);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(45, 40, 32, .06), inset 0 0 0 1px rgba(45, 40, 32, .04);
+  }
+
+  .mobile-topbar button.active svg { color: var(--accent); }
+
+  .mobile-topbar svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.45;
+  }
+
+  .mobile-sidebar-toggle {
+    width: 42px;
+    min-width: 42px;
+    padding: 7px;
+  }
+
+  .mobile-section-nav {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .mobile-section-nav button {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .mobile-section-nav button span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .shell > main {
+    width: 100%;
+    min-height: 0;
     flex: 1;
     border: 0;
     border-radius: 0;
   }
 
   .sidebar {
-    z-index: 5;
-    min-height: auto;
-    padding: 8px;
-    border-bottom: 1px solid var(--line);
-    background: rgba(241, 238, 231, .95);
-    backdrop-filter: blur(16px);
+    position: fixed;
+    z-index: 30;
+    inset: 0 auto 0 0;
+    width: min(86vw, 360px);
+    min-height: 0;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom));
+    overflow: hidden;
+    border-right: 1px solid var(--line-strong);
+    background: rgba(247, 244, 238, .985);
+    box-shadow: 24px 0 70px rgba(36, 31, 24, .18);
+    visibility: hidden;
+    transform: translateX(-104%);
+    transition: transform 220ms cubic-bezier(.22, 1, .36, 1), visibility 220ms;
+  }
+
+  .sidebar.mobile-open {
+    visibility: visible;
+    transform: translateX(0);
   }
 
   .sidebar-resizer { display: none; }
 
-  .sidebar-brand,
-  .sidebar-search,
-  .archive-toggle,
-  .page-tree,
-  .sidebar footer { display: none; }
-
-  .sidebar-section-nav {
-    margin: 0;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 4px;
+  .sidebar-brand {
+    padding: 2px 4px 14px;
   }
 
-  .sidebar-section-nav button {
-    gap: 4px;
-    padding-inline: 4px;
-    justify-content: center;
-    font-size: 9px;
+  .sidebar-close-button {
+    width: 38px;
+    min-height: 38px;
+    margin-left: auto;
+    padding: 9px;
+    display: inline-flex;
+    flex: 0 0 38px;
+    border-radius: 50%;
+    background: transparent;
+    color: #625e57;
   }
 
-  .sidebar-section-nav .mobile-knowledge-nav { display: inline-flex; }
+  .sidebar-close-button svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 1.5;
+  }
+
+  .sidebar-section-nav { display: none; }
+
+  .sidebar-search {
+    min-height: 44px;
+    margin-bottom: 10px;
+    padding-inline: 11px;
+    flex: 0 0 auto;
+  }
+
+  .sidebar-search .search { font-size: 14px; }
+
+  .page-tree .tree-row {
+    min-height: 40px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .page-tree .tree-label { font-size: 13px; }
+
+  .archive-toggle {
+    min-height: 38px;
+    font-size: 11px;
+  }
+
+  .sidebar footer { margin-top: 6px; }
+
+  .mobile-sidebar-scrim {
+    position: fixed;
+    z-index: 20;
+    inset: 0;
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+    display: block;
+    border: 0;
+    border-radius: 0;
+    background: rgba(28, 25, 21, .32);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+
+  .mobile-sidebar-scrim.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mobile-sidebar-scrim:hover { background: rgba(28, 25, 21, .32); }
+  .mobile-sidebar-scrim:active { transform: none; }
+
+  body.mobile-sidebar-open { overflow: hidden; }
 
   .empty-content { padding: 44px 28px; }
   .empty-sigil { display: none; }
@@ -2129,4 +2269,39 @@ button:disabled {
     flex-direction: column;
     gap: 6px;
   }
+}
+
+@media (max-width: 430px) {
+  .mobile-topbar {
+    padding-right: 5px;
+    padding-left: 5px;
+    gap: 3px;
+  }
+
+  .mobile-topbar button {
+    padding-right: 6px;
+    padding-left: 6px;
+    font-size: 9px;
+  }
+
+  .mobile-sidebar-toggle { min-width: 42px; }
+
+  .empty-content { padding-inline: 22px; }
+
+  .editor-header,
+  .tabs,
+  .editor-fields,
+  .markdown-editor,
+  .save-bar,
+  .rendered,
+  .directory-index,
+  .history-list {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .mobile-sidebar-scrim { transition: none; }
 }
