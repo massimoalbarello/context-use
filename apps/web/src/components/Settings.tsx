@@ -1,6 +1,6 @@
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useEffect, useState } from "react";
-import { ApiError, api, uploadKnowledgeArchive } from "../api.ts";
+import { api, uploadKnowledgeArchive } from "../api.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
 import { KnowledgeTemplateSettings } from "./KnowledgeTemplate.tsx";
 import { IntrinsicServices } from "./Services.tsx";
@@ -20,50 +20,23 @@ type KnowledgeExportIntent = {
 };
 
 type KnowledgeExportConfirmation = {
-  prepare_url: string;
-  status_url: string;
   download_url: string;
 };
 
 type KnowledgeExportStatus =
   | { status: "processing"; status_url: string }
   | { status: "ready"; download_url: string; filename: string; size_bytes: number }
-  | { status: "failed"; message: string; code: string; retry_url: string };
+  | { status: "failed"; message: string; code: string };
 
 export type KnowledgeExportJob = {
   intentId: string;
   kind: "portable" | "restorable";
   status: "processing" | "ready" | "failed";
-  prepareUrl: string;
-  statusUrl: string;
   downloadUrl: string;
   filename?: string | undefined;
   sizeBytes?: number | undefined;
   error?: string | undefined;
-  checkError?: string | undefined;
 };
-
-const exportJobStorageKey = "context-use.knowledge-export-job";
-
-function storedExportJob(): KnowledgeExportJob | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const value = JSON.parse(window.sessionStorage.getItem(exportJobStorageKey) ?? "null") as Partial<KnowledgeExportJob> | null;
-    if (!value || typeof value.intentId !== "string" || !/^[a-f0-9-]{36}$/.test(value.intentId)
-        || (value.kind !== "portable" && value.kind !== "restorable")) return null;
-    const root = `/api/dashboard/knowledge-exports/${encodeURIComponent(value.intentId)}`;
-    return {
-      intentId: value.intentId,
-      kind: value.kind,
-      status: "processing",
-      prepareUrl: `${root}/prepare`,
-      statusUrl: `${root}/status`,
-      downloadUrl: `${root}/download`,
-    };
-  } catch {
-    return null;
-  }
-}
 
 type KnowledgeImportIntent = {
   intent: { id: string; expires_at: string };
@@ -124,12 +97,10 @@ export function formatExportBytes(bytes: number): string {
 export function KnowledgeExportPreparationStatus({
   job,
   onDownload,
-  onRetry,
   onReset,
 }: {
   job: KnowledgeExportJob;
   onDownload: () => void;
-  onRetry: () => void;
   onReset: () => void;
 }) {
   return <div className={`export-preparation ${job.status}`} role="status" aria-live="polite">
@@ -141,10 +112,9 @@ export function KnowledgeExportPreparationStatus({
           : job.status === "ready"
             ? "Archive ready to download"
             : "Archive preparation stopped"}</strong>
-        {job.status === "processing" && <small>The ZIP is being assembled and checked. You can leave Settings; progress will resume when you return.</small>}
+        {job.status === "processing" && <small>The ZIP is being assembled and checked. The download button will appear when it is ready.</small>}
         {job.status === "ready" && <small>{job.filename}{job.sizeBytes ? ` · ${formatExportBytes(job.sizeBytes)}` : ""}</small>}
-        {job.status === "failed" && <small className="error">{job.error || job.checkError || "The archive could not be prepared."}</small>}
-        {job.status === "processing" && job.checkError && <small className="error">Progress check delayed: {job.checkError}. Retrying automatically…</small>}
+        {job.status === "failed" && <small className="error">{job.error || "The archive could not be prepared."}</small>}
       </div>
     </div>
     {job.status === "ready" && <div className="export-preparation-actions">
@@ -152,8 +122,7 @@ export function KnowledgeExportPreparationStatus({
       <button onClick={onReset}>Prepare another</button>
     </div>}
     {job.status === "failed" && <div className="export-preparation-actions">
-      <button className="primary" onClick={onRetry}>Retry preparation</button>
-      <button onClick={onReset}>Start over</button>
+      <button className="primary" onClick={onReset}>Start over</button>
     </div>}
   </div>;
 }
@@ -184,7 +153,7 @@ export function Settings({
   const [exportPreparing, setExportPreparing] = useState(false);
   const [exportWorking, setExportWorking] = useState(false);
   const [exportError, setExportError] = useState("");
-  const [exportJob, setExportJob] = useState<KnowledgeExportJob | null>(storedExportJob);
+  const [exportJob, setExportJob] = useState<KnowledgeExportJob | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importIntent, setImportIntent] = useState<KnowledgeImportIntent | null>(null);
   const [importPreparing, setImportPreparing] = useState(false);
@@ -202,23 +171,14 @@ export function Settings({
   }, []);
 
   useEffect(() => {
-    if (exportJob) {
-      window.sessionStorage.setItem(exportJobStorageKey, JSON.stringify({
-        intentId: exportJob.intentId,
-        kind: exportJob.kind,
-      }));
-    } else {
-      window.sessionStorage.removeItem(exportJobStorageKey);
-    }
-  }, [exportJob?.intentId, exportJob?.kind]);
-
-  useEffect(() => {
     if (!exportJob || exportJob.status !== "processing") return;
     let active = true;
     let timeout: number | undefined;
     const poll = async () => {
       try {
-        const status = await api<KnowledgeExportStatus>(exportJob.statusUrl);
+        const status = await api<KnowledgeExportStatus>(
+          `/api/dashboard/knowledge-exports/${encodeURIComponent(exportJob.intentId)}/status`,
+        );
         if (!active) return;
         if (status.status === "ready") {
           setExportJob((current) => current && current.intentId === exportJob.intentId ? {
@@ -228,7 +188,6 @@ export function Settings({
             filename: status.filename,
             sizeBytes: status.size_bytes,
             error: undefined,
-            checkError: undefined,
           } : current);
           return;
         }
@@ -236,24 +195,18 @@ export function Settings({
           setExportJob((current) => current && current.intentId === exportJob.intentId ? {
             ...current,
             status: "failed",
-            prepareUrl: status.retry_url,
             error: status.message,
-            checkError: undefined,
           } : current);
           return;
         }
-        setExportJob((current) => current && current.intentId === exportJob.intentId
-          ? { ...current, checkError: undefined }
-          : current);
       } catch (error) {
         if (!active) return;
         setExportJob((current) => current && current.intentId === exportJob.intentId ? {
           ...current,
-          ...(error instanceof ApiError && (error.status === 403 || error.status === 404)
-            ? { status: "failed" as const, error: error.message }
-            : {}),
-          checkError: error instanceof Error ? error.message : "Could not check archive progress",
+          status: "failed",
+          error: error instanceof Error ? error.message : "Could not check archive progress",
         } : current);
+        return;
       }
       if (active) timeout = window.setTimeout(() => void poll(), 2_000);
     };
@@ -262,7 +215,7 @@ export function Settings({
       active = false;
       if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [exportJob?.intentId, exportJob?.status, exportJob?.statusUrl]);
+  }, [exportJob?.intentId, exportJob?.status]);
 
   const prepareEnrollment = async () => {
     const name = passkeyName.trim();
@@ -459,66 +412,12 @@ export function Settings({
         intentId,
         kind,
         status: "processing",
-        prepareUrl: confirmed.prepare_url,
-        statusUrl: confirmed.status_url,
         downloadUrl: confirmed.download_url,
       });
-      try {
-        const preparation = await api<KnowledgeExportStatus>(confirmed.prepare_url, { method: "POST", body: "{}" });
-        if (preparation.status === "ready") {
-          setExportJob((current) => current && current.intentId === intentId ? {
-            ...current,
-            status: "ready",
-            downloadUrl: preparation.download_url,
-            filename: preparation.filename,
-            sizeBytes: preparation.size_bytes,
-          } : current);
-        } else if (preparation.status === "failed") {
-          setExportJob((current) => current && current.intentId === intentId ? {
-            ...current,
-            status: "failed",
-            prepareUrl: preparation.retry_url,
-            error: preparation.message,
-          } : current);
-        }
-      } catch (error) {
-        // The status poll remains authoritative if this request loses its
-        // response after the server has already started preparation.
-        setExportJob((current) => current && current.intentId === intentId ? {
-          ...current,
-          checkError: error instanceof Error ? error.message : "Could not start archive preparation",
-        } : current);
-      }
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "Knowledge export failed");
     } finally {
       setExportWorking(false);
-    }
-  };
-
-  const retryExport = async () => {
-    if (!exportJob || exportJob.status === "processing") return;
-    const intentId = exportJob.intentId;
-    setExportJob({ ...exportJob, status: "processing", error: undefined, checkError: undefined });
-    try {
-      const preparation = await api<KnowledgeExportStatus>(exportJob.prepareUrl, { method: "POST", body: "{}" });
-      if (preparation.status === "ready") {
-        setExportJob((current) => current && current.intentId === intentId ? {
-          ...current,
-          status: "ready",
-          downloadUrl: preparation.download_url,
-          filename: preparation.filename,
-          sizeBytes: preparation.size_bytes,
-        } : current);
-      }
-    } catch (error) {
-      setExportJob((current) => current && current.intentId === intentId ? {
-        ...current,
-        ...(error instanceof ApiError && (error.status === 403 || error.status === 404)
-          ? { status: "failed" as const, error: error.message }
-          : {}),
-        checkError: error instanceof Error ? error.message : "Could not restart archive preparation",
-      } : current);
     }
   };
   return <main className="content-page settings-page"><header><div><span className="eyebrow">Owner-only controls</span><h1>Settings</h1></div></header>
@@ -549,7 +448,6 @@ export function Settings({
       {exportJob && <KnowledgeExportPreparationStatus
         job={exportJob}
         onDownload={() => setMessage("Archive download started.")}
-        onRetry={() => void retryExport()}
         onReset={() => setExportJob(null)}
       />}
     </section>

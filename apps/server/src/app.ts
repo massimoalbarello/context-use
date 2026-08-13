@@ -54,10 +54,6 @@ import {
   streamRestorableKnowledgeArchive,
 } from "./knowledge-archive.ts";
 import { streamKnowledgeExport } from "./knowledge-export.ts";
-import {
-  KnowledgeExportPreparationError,
-  KnowledgeExportPreparationQueue,
-} from "./knowledge-export-preparation.ts";
 import { MAX_KNOWLEDGE_ARCHIVE_BYTES } from "./knowledge-zip.ts";
 import { disableStreamingRequestIdleTimeout } from "./streaming-timeout.ts";
 
@@ -74,11 +70,23 @@ const dashboardAssets = new AssetRepository(dashboardPool);
 const publications = new PublicationRepository(dashboardPool);
 const knowledgeExports = new KnowledgeExportRepository(dashboardPool);
 const knowledgeArchives = new KnowledgeArchiveRepository(dashboardPool);
-const exportPreparations = new KnowledgeExportPreparationQueue((intentId, error) => {
-  console.error("knowledge_export_preparation_failed", error instanceof Error
-    ? { intentId, name: error.name, message: error.message }
-    : { intentId, type: typeof error });
-});
+
+class KnowledgeExportBuildError extends Error {
+  constructor(
+    message: string,
+    readonly httpStatus: number,
+    readonly code: string,
+  ) {
+    super(message);
+  }
+}
+
+type KnowledgeExportFailure = { message: string; httpStatus: number; code: string };
+type KnowledgeExportPreparation =
+  | { status: "processing" }
+  | ({ status: "failed" } & KnowledgeExportFailure);
+
+const exportPreparations = new Map<string, KnowledgeExportPreparation>();
 
 function stagedExportKey(intentId: string): string {
   return `exports/${intentId}.zip`;
@@ -218,10 +226,6 @@ function exportStatusUrl(intentId: string): string {
   return `/api/dashboard/knowledge-exports/${encodeURIComponent(intentId)}/status`;
 }
 
-function exportPrepareUrl(intentId: string): string {
-  return `/api/dashboard/knowledge-exports/${encodeURIComponent(intentId)}/prepare`;
-}
-
 function exportDownloadUrl(intentId: string): string {
   return `/api/dashboard/knowledge-exports/${encodeURIComponent(intentId)}/download`;
 }
@@ -233,50 +237,96 @@ function exportFilename(kind: KnowledgeExportKind): string {
     : `context-use-export-${date}.zip`;
 }
 
+type KnowledgeExportSource = {
+  sizeBytes: number;
+  assets: Array<Pick<KnowledgeExportAsset, "s3_object_key" | "size_bytes" | "content_hash" | "current_path">>;
+  stream: ReadableStream<Uint8Array>;
+};
+
+async function knowledgeExportSource(exportKind: KnowledgeExportKind): Promise<KnowledgeExportSource> {
+  if (exportKind === "portable") {
+    const snapshot = await knowledgeExports.currentSnapshot();
+    return {
+      sizeBytes: exportSize(snapshot),
+      assets: snapshot.assets,
+      stream: streamKnowledgeExport(snapshot, storage),
+    };
+  }
+  const snapshot = await knowledgeArchives.snapshot();
+  return {
+    sizeBytes: archiveSize(snapshot),
+    assets: snapshot.assets.filter((asset) => !asset.deleted_at),
+    stream: streamRestorableKnowledgeArchive(snapshot, storage),
+  };
+}
+
 async function buildKnowledgeExport(
   intentId: string,
   exportKind: KnowledgeExportKind,
 ): Promise<GeneratedObjectMetadata> {
-  let currentSize: number;
-  let assets: Array<Pick<KnowledgeExportAsset, "s3_object_key" | "size_bytes" | "content_hash" | "current_path">>;
-  let stream: ReadableStream<Uint8Array>;
-  if (exportKind === "portable") {
-    const snapshot = await knowledgeExports.currentSnapshot();
-    currentSize = exportSize(snapshot);
-    assets = snapshot.assets;
-    stream = streamKnowledgeExport(snapshot, storage);
-  } else {
-    const snapshot = await knowledgeArchives.snapshot();
-    currentSize = archiveSize(snapshot);
-    assets = snapshot.assets.filter((asset) => !asset.deleted_at);
-    stream = streamRestorableKnowledgeArchive(snapshot, storage);
-  }
-  if (currentSize > MAX_KNOWLEDGE_ARCHIVE_BYTES) {
-    throw new KnowledgeExportPreparationError(
+  const source = await knowledgeExportSource(exportKind);
+  if (source.sizeBytes > MAX_KNOWLEDGE_ARCHIVE_BYTES) {
+    throw new KnowledgeExportBuildError(
       "Knowledge changed after confirmation and the current export is now larger than 5 GiB. Remove some active assets and try again.",
       413,
       "export_too_large",
     );
   }
-  const missing = await unavailableExportAssets(assets);
+  const missing = await unavailableExportAssets(source.assets);
   if (missing.length) {
     const examples = missing.slice(0, 3).join(", ");
     const remaining = missing.length > 3 ? ` and ${missing.length - 3} more` : "";
-    throw new KnowledgeExportPreparationError(
+    throw new KnowledgeExportBuildError(
       `Export stopped because current knowledge includes ${missing.length} asset file${missing.length === 1 ? " that is" : "s that are"} missing or failed integrity verification: ${examples}${remaining}`,
       409,
       "asset_incomplete",
     );
   }
-  return storage.writeGenerated(stagedExportKey(intentId), stream);
+  return storage.writeGenerated(stagedExportKey(intentId), source.stream);
 }
 
 function startKnowledgeExportPreparation(
   intentId: string,
   exportKind: KnowledgeExportKind,
-  retry = false,
 ): void {
-  exportPreparations.start(intentId, () => buildKnowledgeExport(intentId, exportKind), retry);
+  if (exportPreparations.has(intentId)) return;
+  exportPreparations.set(intentId, { status: "processing" });
+  void buildKnowledgeExport(intentId, exportKind).then(() => {
+    exportPreparations.delete(intentId);
+  }).catch((error: unknown) => {
+    const failure: KnowledgeExportFailure = error instanceof KnowledgeExportBuildError
+      ? { message: error.message, httpStatus: error.httpStatus, code: error.code }
+      : {
+          message: "The knowledge archive could not be prepared. Start a new export and try again.",
+          httpStatus: 500,
+          code: "export_preparation_failed",
+        };
+    exportPreparations.set(intentId, { status: "failed", ...failure });
+    if (!(error instanceof KnowledgeExportBuildError)) {
+      console.error("knowledge_export_preparation_failed", error instanceof Error
+        ? { intentId, name: error.name, message: error.message }
+        : { intentId, type: typeof error });
+    }
+  });
+}
+
+type PreparedKnowledgeExport =
+  | { status: "processing" }
+  | ({ status: "failed" } & KnowledgeExportFailure)
+  | { status: "ready"; staged: GeneratedObjectMetadata };
+
+async function ensureKnowledgeExport(
+  intentId: string,
+  exportKind: KnowledgeExportKind,
+  onStart: () => Promise<void>,
+): Promise<PreparedKnowledgeExport> {
+  const staged = await storage.inspectGenerated(stagedExportKey(intentId));
+  if (staged) return { status: "ready", staged };
+  const preparation = exportPreparations.get(intentId);
+  if (preparation) return preparation;
+  await onStart();
+  startKnowledgeExportPreparation(intentId, exportKind);
+  return { status: "processing" };
 }
 
 function processingExportResponse(intentId: string): Response {
@@ -392,7 +442,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
     const exportPrincipal = { ownerUserId: principal.userId, sessionId: principal.sessionId };
     const intent = await knowledgeExports.createIntent(exportPrincipal, kind);
     await Promise.allSettled(intent.discarded_export_ids.map((id) => {
-      exportPreparations.forget(id);
+      exportPreparations.delete(id);
       return storage.deleteGenerated(stagedExportKey(id));
     }));
     if (intent.total_bytes > MAX_KNOWLEDGE_ARCHIVE_BYTES) {
@@ -551,23 +601,6 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
       .map((asset) => storage.cleanupImport(intentId, asset.id)));
     return json({ cancelled: true });
   })
-  .post("/api/dashboard/knowledge-exports/:id/prepare", async ({ request, params }) => {
-    const principal = await ownerRequest(request, true);
-    emptyObjectSchema.parse(await bodyJson(request));
-    const intentId = z.string().uuid().parse(params.id);
-    const intent = await knowledgeExports.getIntent(intentId);
-    if (!intent || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
-      return problem("Knowledge export intent not found", 404, "not_found");
-    }
-    if (!intent.confirmed_at || new Date(intent.expires_at).getTime() <= Date.now()) {
-      return problem("A fresh passkey confirmation is required", 403, "passkey_required");
-    }
-    await claimConfirmedExport(intentId, principal);
-    const staged = await storage.inspectGenerated(stagedExportKey(intentId));
-    if (staged) return readyExportResponse(intentId, intent.export_kind, staged);
-    startKnowledgeExportPreparation(intentId, intent.export_kind, true);
-    return processingExportResponse(intentId);
-  })
   .get("/api/dashboard/knowledge-exports/:id/status", async ({ request, params }) => {
     const principal = await ownerRequest(request);
     const intentId = z.string().uuid().parse(params.id);
@@ -578,23 +611,20 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
     if (!intent.confirmed_at || new Date(intent.expires_at).getTime() <= Date.now()) {
       return problem("A fresh passkey confirmation is required", 403, "passkey_required");
     }
-    const staged = await storage.inspectGenerated(stagedExportKey(intentId));
-    if (staged) return readyExportResponse(intentId, intent.export_kind, staged);
-    const preparation = exportPreparations.state(intentId);
+    const preparation = await ensureKnowledgeExport(
+      intentId,
+      intent.export_kind,
+      () => claimConfirmedExport(intentId, principal),
+    );
+    if (preparation.status === "ready") {
+      return readyExportResponse(intentId, intent.export_kind, preparation.staged);
+    }
     if (preparation.status === "failed") {
       return json({
         status: "failed",
         message: preparation.message,
         code: preparation.code,
-        retry_url: exportPrepareUrl(intentId),
       });
-    }
-    if (preparation.status === "idle") {
-      // A confirmed preparation may outlive a dashboard process. Resume it
-      // when the settings page reconnects; the committed object remains the
-      // durable source of truth for readiness.
-      await claimConfirmedExport(intentId, principal);
-      startKnowledgeExportPreparation(intentId, intent.export_kind);
     }
     return processingExportResponse(intentId);
   })
@@ -612,24 +642,21 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
       return problem("A fresh passkey confirmation is required", 403, "passkey_required");
     }
     const objectKey = stagedExportKey(intentId);
-    const staged = await storage.inspectGenerated(objectKey);
-    if (!staged) {
-      const preparation = exportPreparations.state(intentId);
-      if (preparation.status === "failed") {
-        return problem(preparation.message, preparation.httpStatus, preparation.code);
-      }
-      await claimConfirmedExport(intentId, principal);
-      if (preparation.status === "idle") {
-        startKnowledgeExportPreparation(intentId, intent.export_kind);
-      }
-      return processingExportResponse(intentId);
+    const preparation = await ensureKnowledgeExport(
+      intentId,
+      intent.export_kind,
+      () => claimConfirmedExport(intentId, principal),
+    );
+    if (preparation.status === "failed") {
+      return problem(preparation.message, preparation.httpStatus, preparation.code);
     }
+    if (preparation.status === "processing") return processingExportResponse(intentId);
     await claimConfirmedExport(intentId, principal);
     return assetContentResponse(request, {
       filename: exportFilename(intent.export_kind),
       content_type: "application/zip",
-      size_bytes: staged.sizeBytes,
-      content_hash: staged.contentHash,
+      size_bytes: preparation.staged.sizeBytes,
+      content_hash: preparation.staged.contentHash,
     }, storage, false, objectKey);
   })
   .get("/api/dashboard/pages", async ({ request, query }) => {

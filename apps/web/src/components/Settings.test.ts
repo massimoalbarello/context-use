@@ -12,8 +12,6 @@ const processing: KnowledgeExportJob = {
   intentId: "11111111-1111-4111-8111-111111111111",
   kind: "portable",
   status: "processing",
-  prepareUrl: "/api/dashboard/knowledge-exports/11111111-1111-4111-8111-111111111111/prepare",
-  statusUrl: "/api/dashboard/knowledge-exports/11111111-1111-4111-8111-111111111111/status",
   downloadUrl: "/api/dashboard/knowledge-exports/11111111-1111-4111-8111-111111111111/download",
 };
 
@@ -40,7 +38,6 @@ describe("knowledge export settings", () => {
     const html = renderToStaticMarkup(KnowledgeExportPreparationStatus({
       job: processing,
       onDownload: noop,
-      onRetry: noop,
       onReset: noop,
     }));
     expect(html).toContain("Preparing latest snapshot");
@@ -59,7 +56,6 @@ describe("knowledge export settings", () => {
         sizeBytes: 5_000_000_000,
       },
       onDownload: noop,
-      onRetry: noop,
       onReset: noop,
     }));
     expect(html).toContain("Archive ready to download");
