@@ -162,7 +162,7 @@ export async function createMcpServer(
   const skillCatalog = skills.length
     ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
-  const server = new McpServer({ name: "context-use", version: "0.1.64" });
+  const server = new McpServer({ name: "context-use", version: "0.1.65" });
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
   async function hasCurrentGuidance(targetPath: string, receipt?: string): Promise<boolean> {
