@@ -48,15 +48,12 @@ import {
 import { AssetIntegrityError, type GeneratedObjectMetadata } from "./storage.ts";
 import { BrokeredStorage } from "./storage-client.ts";
 import {
-  MAX_RESTORABLE_ARCHIVE_BYTES,
   InvalidKnowledgeArchiveError,
   readRestorableKnowledgeArchive,
   streamRestorableKnowledgeArchive,
 } from "./knowledge-archive.ts";
-import {
-  MAX_KNOWLEDGE_EXPORT_BYTES,
-  streamKnowledgeExport,
-} from "./knowledge-export.ts";
+import { streamKnowledgeExport } from "./knowledge-export.ts";
+import { MAX_KNOWLEDGE_ARCHIVE_BYTES } from "./knowledge-zip.ts";
 import { disableStreamingRequestIdleTimeout } from "./streaming-timeout.ts";
 
 const dashboardPool = createPool(config.DATABASE_URL);
@@ -297,7 +294,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
     await Promise.allSettled(intent.discarded_export_ids.map((id) => (
       storage.deleteGenerated(stagedExportKey(id))
     )));
-    if (intent.total_bytes > MAX_KNOWLEDGE_EXPORT_BYTES) {
+    if (intent.total_bytes > MAX_KNOWLEDGE_ARCHIVE_BYTES) {
       await knowledgeExports.discard(intent.id, exportPrincipal);
       return problem(
         "Knowledge exports are limited to 5 GiB. Remove some active assets and try again.",
@@ -347,7 +344,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
       return problem("A Context Use ZIP archive is required", 415, "archive_type");
     }
     const declaredSize = Number(request.headers.get("content-length") ?? "0");
-    if (declaredSize > MAX_RESTORABLE_ARCHIVE_BYTES + 64 * 1024 ** 2) {
+    if (declaredSize > MAX_KNOWLEDGE_ARCHIVE_BYTES + 64 * 1024 ** 2) {
       return problem("Knowledge archives are limited to 5 GiB", 413, "archive_too_large");
     }
     const intentId = randomUUID();
@@ -478,7 +475,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
         assets = snapshot.assets.filter((asset) => !asset.deleted_at);
         stream = streamRestorableKnowledgeArchive(snapshot, storage);
       }
-      if (currentSize > MAX_KNOWLEDGE_EXPORT_BYTES) {
+      if (currentSize > MAX_KNOWLEDGE_ARCHIVE_BYTES) {
         return problem(
           "Knowledge changed after confirmation and the current export is now larger than 5 GiB. Remove some active assets and try again.",
           413,

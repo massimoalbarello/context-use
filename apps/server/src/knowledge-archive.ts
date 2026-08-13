@@ -4,16 +4,21 @@ import type {
   RestorableKnowledgeRecords,
 } from "@context-use/database";
 import { RESTORABLE_KNOWLEDGE_FORMAT } from "@context-use/database";
-import { TextReader, ZipReaderStream, ZipWriter } from "@zip.js/zip.js";
+import { ZipReaderStream } from "@zip.js/zip.js";
 import { z } from "zod";
 import type { ObjectStorage } from "./storage.ts";
+import {
+  MAX_KNOWLEDGE_ARCHIVE_BYTES,
+  addKnowledgeZipText,
+  addStoredKnowledgeAsset,
+  streamKnowledgeZip,
+  type KnowledgeZipWriter,
+} from "./knowledge-zip.ts";
 
 const ARCHIVE_ROOT = "context-use-restorable-archive";
 const MANIFEST_PATH = `${ARCHIVE_ROOT}/manifest.json`;
 const RECORDS_PATH = `${ARCHIVE_ROOT}/records.json`;
-const ZIP_DATE = new Date("1980-01-01T00:00:00.000Z");
-export const MAX_RESTORABLE_ARCHIVE_BYTES = 5 * 1024 ** 3;
-const MAX_RECORDS_BYTES = MAX_RESTORABLE_ARCHIVE_BYTES;
+const MAX_RECORDS_BYTES = MAX_KNOWLEDGE_ARCHIVE_BYTES;
 
 const uuid = z.string().uuid();
 const timestamp = z.string().min(1).max(64).refine((value) => Number.isFinite(Date.parse(value)), "Invalid timestamp");
@@ -106,7 +111,7 @@ const manifestSchema = z.object({
     asset_links: z.number().int().nonnegative(),
     page_changes: z.number().int().nonnegative(),
   }).strict(),
-  active_asset_bytes: z.number().int().nonnegative().max(MAX_RESTORABLE_ARCHIVE_BYTES),
+  active_asset_bytes: z.number().int().nonnegative().max(MAX_KNOWLEDGE_ARCHIVE_BYTES),
 }).strict();
 
 export type RestorableKnowledgeManifest = z.infer<typeof manifestSchema>;
@@ -223,74 +228,26 @@ function manifestFor(records: RestorableKnowledgeRecords, recordsJson: string): 
 }
 
 async function writeArchive(
-  writable: WritableStream<Uint8Array>,
+  zip: KnowledgeZipWriter,
   records: RestorableKnowledgeRecords,
   storage: ObjectStorage,
   signal: AbortSignal,
 ): Promise<void> {
   const recordsJson = JSON.stringify(records);
   const manifest = manifestFor(records, recordsJson);
-  const zip = new ZipWriter(writable, { useWebWorkers: false });
-  await zip.add(MANIFEST_PATH, new TextReader(`${JSON.stringify(manifest, null, 2)}\n`), {
-    compressionMethod: 0, lastModDate: ZIP_DATE, signal,
-  });
-  await zip.add(RECORDS_PATH, new TextReader(recordsJson), {
-    compressionMethod: 0, lastModDate: ZIP_DATE, signal,
-  });
+  await addKnowledgeZipText(zip, MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`, signal);
+  await addKnowledgeZipText(zip, RECORDS_PATH, recordsJson, signal);
   for (const asset of records.assets) {
     if (asset.deleted_at) continue;
-    const content = new Response(await storage.read(asset.s3_object_key)).body;
-    if (!content) throw new Error(`Asset content is missing for ${asset.current_path}`);
-    await zip.add(`${ARCHIVE_ROOT}/assets/${asset.id}`, {
-      readable: content,
-      size: Number(asset.size_bytes),
-    }, { compressionMethod: 0, lastModDate: ZIP_DATE, signal });
+    await addStoredKnowledgeAsset(zip, `${ARCHIVE_ROOT}/assets/${asset.id}`, asset, storage, signal);
   }
-  await zip.close();
 }
 
 export function streamRestorableKnowledgeArchive(
   records: RestorableKnowledgeRecords,
   storage: ObjectStorage,
 ): ReadableStream<Uint8Array> {
-  const bridge = new TransformStream<Uint8Array, Uint8Array>();
-  const reader = bridge.readable.getReader();
-  const abort = new AbortController();
-  let finished = false;
-  const producer = writeArchive(bridge.writable, records, storage, abort.signal);
-  return new ReadableStream<Uint8Array>({
-    start(controller) {
-      void producer.catch(async (error) => {
-        if (finished) return;
-        finished = true;
-        controller.error(error);
-        await reader.cancel(error).catch(() => undefined);
-      });
-    },
-    async pull(controller) {
-      if (finished) return;
-      try {
-        const chunk = await reader.read();
-        if (chunk.done) {
-          finished = true;
-          controller.close();
-        } else {
-          controller.enqueue(chunk.value);
-        }
-      } catch (error) {
-        if (!finished) {
-          finished = true;
-          controller.error(error);
-        }
-      }
-    },
-    async cancel(reason) {
-      if (finished) return;
-      finished = true;
-      abort.abort(reason);
-      await reader.cancel(reason).catch(() => undefined);
-    },
-  });
+  return streamKnowledgeZip((zip, signal) => writeArchive(zip, records, storage, signal));
 }
 
 async function readText(readable: ReadableStream<Uint8Array> | undefined, maxBytes: number): Promise<string> {
@@ -365,7 +322,7 @@ export async function readRestorableKnowledgeArchive(
         }
         records = validateRestorableKnowledgeRecords(JSON.parse(raw));
         validateManifest(manifest, records);
-        if (Buffer.byteLength(raw) + manifest.active_asset_bytes > MAX_RESTORABLE_ARCHIVE_BYTES) {
+        if (Buffer.byteLength(raw) + manifest.active_asset_bytes > MAX_KNOWLEDGE_ARCHIVE_BYTES) {
           throw new Error("Archive contents exceed the 5 GiB restore limit");
         }
         expectedAssets = new Map(records.assets.filter((asset) => !asset.deleted_at).map((asset) => [asset.id, asset]));

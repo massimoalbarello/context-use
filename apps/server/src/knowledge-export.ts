@@ -6,12 +6,16 @@ import type {
   KnowledgeExportSnapshot,
 } from "@context-use/database";
 import { normalizeInternalPageLinks } from "@context-use/database";
-import { TextReader, ZipWriter } from "@zip.js/zip.js";
 import type { ObjectStorage } from "./storage.ts";
+import {
+  addKnowledgeZipDirectory,
+  addKnowledgeZipText,
+  addStoredKnowledgeAsset,
+  streamKnowledgeZip,
+  type KnowledgeZipWriter,
+} from "./knowledge-zip.ts";
 
 const EXPORT_ROOT = "context-use-export";
-export const MAX_KNOWLEDGE_EXPORT_BYTES = 5 * 1024 ** 3;
-const ZIP_DATE = new Date("1980-01-01T00:00:00.000Z");
 const MAX_COMPONENT_BYTES = 180;
 const UUID = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
 const FRAGMENT = "(#[a-z0-9][a-z0-9_-]*)?";
@@ -368,51 +372,21 @@ export function planKnowledgeExport(snapshot: KnowledgeExportSnapshot): PlannedK
 }
 
 async function writeKnowledgeExport(
-  writable: WritableStream<Uint8Array>,
+  zip: KnowledgeZipWriter,
   planned: PlannedKnowledgeExport,
   storage: ObjectStorage,
   signal: AbortSignal,
 ): Promise<void> {
-  const zip = new ZipWriter(writable, {
-    useWebWorkers: false,
-    keepOrder: true,
-  });
-  await zip.add(`${EXPORT_ROOT}/`, undefined, {
-    directory: true,
-    lastModDate: ZIP_DATE,
-    signal,
-  });
+  await addKnowledgeZipDirectory(zip, `${EXPORT_ROOT}/`, signal);
   for (const directory of planned.directories) {
-    await zip.add(`${EXPORT_ROOT}/${directory.vaultPath}`, new TextReader(directory.body), {
-      compressionMethod: 8,
-      level: 6,
-      lastModDate: ZIP_DATE,
-      signal,
-    });
+    await addKnowledgeZipText(zip, `${EXPORT_ROOT}/${directory.vaultPath}`, directory.body, signal, { compress: true });
   }
   for (const page of planned.pages) {
-    await zip.add(`${EXPORT_ROOT}/${page.vaultPath}`, new TextReader(page.body), {
-      compressionMethod: 8,
-      level: 6,
-      lastModDate: ZIP_DATE,
-      signal,
-    });
+    await addKnowledgeZipText(zip, `${EXPORT_ROOT}/${page.vaultPath}`, page.body, signal, { compress: true });
   }
   for (const asset of planned.assets) {
-    const content = new Response(await storage.read(asset.s3_object_key)).body;
-    if (!content) throw new Error(`Asset content is missing for ${asset.current_path}`);
-    // zip.js promotes unknown-length streams to Zip64, which macOS Archive Utility
-    // rejects in some cases. The captured size keeps ordinary exports as classic ZIP.
-    await zip.add(`${EXPORT_ROOT}/${asset.vaultPath}`, {
-      readable: content,
-      size: Number(asset.size_bytes),
-    }, {
-      compressionMethod: 0,
-      lastModDate: ZIP_DATE,
-      signal,
-    });
+    await addStoredKnowledgeAsset(zip, `${EXPORT_ROOT}/${asset.vaultPath}`, asset, storage, signal);
   }
-  await zip.close();
 }
 
 export function streamKnowledgeExport(
@@ -420,44 +394,5 @@ export function streamKnowledgeExport(
   storage: ObjectStorage,
 ): ReadableStream<Uint8Array> {
   const planned = planKnowledgeExport(snapshot);
-  const bridge = new TransformStream<Uint8Array, Uint8Array>();
-  const reader = bridge.readable.getReader();
-  const abort = new AbortController();
-  let finished = false;
-  const producer = writeKnowledgeExport(bridge.writable, planned, storage, abort.signal);
-
-  return new ReadableStream<Uint8Array>({
-    start(nextController) {
-      void producer.catch(async (error) => {
-        if (finished) return;
-        finished = true;
-        nextController.error(error);
-        await reader.cancel(error).catch(() => undefined);
-      });
-    },
-    async pull(nextController) {
-      if (finished) return;
-      try {
-        const chunk = await reader.read();
-        if (chunk.done) {
-          finished = true;
-          nextController.close();
-          return;
-        }
-        nextController.enqueue(chunk.value);
-      } catch (error) {
-        if (!finished) {
-          finished = true;
-          nextController.error(error);
-        }
-      }
-    },
-    async cancel(reason) {
-      if (finished) return;
-      finished = true;
-      abort.abort(reason);
-      await reader.cancel(reason).catch(() => undefined);
-      await producer.catch(() => undefined);
-    },
-  });
+  return streamKnowledgeZip((zip, signal) => writeKnowledgeExport(zip, planned, storage, signal));
 }
