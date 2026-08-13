@@ -95,9 +95,17 @@ Every page has a one-sentence summary for search and generated indexes. Write th
 from the finished page.
 
 Every entity is a folder entered through `intro`, unless its local guide defines a runtime or
-lifecycle exception. `intro` says what the entity is and routes to every other view through
-the sentence explaining what that view contains. Add `timeline` only when the entity has a
-timeline event, unless the local guide requires it from the first write.
+lifecycle exception. `intro` is the entity's stable front door: it identifies the subject,
+gives the durable orientation needed to understand it and routes to every other view through
+the sentence explaining what that view contains. Keep it concise enough to serve as the
+entity's published introduction after owner review; the privacy rule still applies.
+
+Do not edit `intro` merely because activity occurred or a new dated particular arrived. Put
+the development on `timeline` and sustained detail on a specifically named view, then link
+those views from the introductory context that makes them relevant. Reconcile `intro` only
+when the entity's durable identity or high-level current account changed, or when it needs to
+route to a new view. Add `timeline` only when the entity has a timeline event, unless the local
+guide requires it from the first write.
 
 ### Several small pages, not one long one
 
@@ -117,7 +125,9 @@ divisions and make them linkable. Never add a heading merely to complete a patte
 Put knowledge in the home that matches how it changes:
 
 1. **What the subject is now** lives on its current account and is reconciled in place.
-2. **What happened and when** lives as a dated line on its `timeline`.
+2. **What happened and when** lives as a dated line on its `timeline`. A development admitted
+   by the local timeline criteria appears there even when it also changes the current account
+   or receives a detailed page; when it has a page, link that page from the timeline line.
 3. **A past state independently worth reading** gets its own page, linked from `intro` and
    the timeline event marking the transition.
 
@@ -151,6 +161,10 @@ One **timeline event** is one line containing its full date, contextual links an
 particulars of what happened. *Reviewed the quarterly numbers* names activity;
 *ARR reached 640k, up a third on the quarter* records knowledge. If the account needs a
 paragraph, it is probably current state or an independently useful past-state page.
+
+Do not leave a dated development only on `intro` or another detail page. If the local guide
+admits it to the entity's history, record the line on `timeline` and link any page carrying
+the fuller account.
 
 A timeline event is not an `events/` entity. The former is a line; the latter is an occasion
 with its own folder. A line may link an occurrence page.

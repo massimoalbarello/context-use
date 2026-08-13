@@ -21,13 +21,18 @@ Use a shortened title or `<creator>-<topic>` slug that remains recognizable in t
 Assets belong in the work folder and embed from the page that discusses them.
 
 `intro` identifies the work well enough to find it again: canonical source, format, creator,
-publisher and publication date when known. Keep alternate links when they supply a distinct
-form such as a transcript.
+publisher and publication date when known, plus a concise orientation to its useful argument,
+evidence or story. Keep alternate links when they supply a distinct form such as a transcript.
 
-Then preserve the work's useful argument, evidence or story concisely. Timestamped links may
-point into audio or video. Represent the work's claims as its claims, keeping the owner's
-reaction distinct and grounded in their words. If neither the work nor a reliable account is
-available, retain the source and owner note without inferring content from the title.
+Give independently useful notes, analysis or owner reaction a specifically named view rather
+than accumulating them in `intro`. Timestamped links may point into audio or video. Represent
+the work's claims as its claims, keeping the owner's reaction distinct and grounded in their
+words. If neither the work nor a reliable account is available, retain the source and owner
+note without inferring content from the title.
+
+Dated owner activity that materially changes the work's place in the base—such as testing,
+applying, revisiting or changing an assessment of it—belongs on its timeline. Publication
+date identifies the work; it is not itself an event in the owner's activity.
 
 Link topics, projects and related works in the prose explaining why the work matters; do not
 move another subject's durable conclusion into the library entry.

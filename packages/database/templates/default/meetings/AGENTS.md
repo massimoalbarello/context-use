@@ -1,13 +1,20 @@
 # Meetings conventions
 
-This subtree inherits the [[agents|root guide]]. A meeting is one bounded conversation.
+This subtree inherits the [[agents|root guide]]. A meeting is one bounded, synchronous
+conversation among people.
 
 ## Resolve a meeting
 
 Apply the root [[agents#identifiability-is-the-threshold|identifiability invariant]] when
-evidence resolves who participated, roughly when the conversation happened and what it was
-about. A record, call or note can establish that it happened. An invitation without evidence
-of the conversation cannot.
+evidence resolves at least two human participants, roughly when the conversation happened
+and what it was about. A record, call or note can establish that it happened. An invitation
+without evidence of the conversation cannot.
+
+Classify by who exchanged the substance, not by whether the source looks like a transcript or
+uses conversational language. An interactive session with software or an AI agent is not a
+meeting; reconcile it to the task, project or topic it advanced, or to a thread when the
+written exchange itself is a durable subject. A conversation among people remains a meeting
+when software recorded, transcribed or summarized it.
 
 A recurring sync receives one folder per occurrence. A written exchange running over time is
 a [[threads/agents|thread]]. Correspondence that only arranges a meeting belongs with that
