@@ -218,20 +218,16 @@ people name the organization. Peer links matter as much as links to hubs.
 
 ## Referencing uploaded assets
 
-An asset is never uploaded alone. In the same coherent change, create or update the page that
-explains what it is and how it relates to the page's subject. Place the asset with that
-subject, not with the process that happened to upload it.
+An asset is never uploaded alone or treated as an appendix. In the same coherent change,
+create or update the page that explains what it is and how it relates to that page's subject.
+Place it with that subject, not the uploading process, and embed it beside that context.
+Interleave related assets and prose when evidence establishes a sequence, comparison or other
+connection. Do not group assets at the end under a generic `Photographs`, `Videos` or `Assets`
+heading merely because they share a file type.
 
-Assets are part of the account, not appendices to it. Embed each photograph, video, document
-or other asset at the point where supported context explains its role in the story. When
-several assets form a supported sequence, comparison or other relationship, interleave them
-with the prose that explains that connection. Do not collect them at the end under a generic
-`Photographs`, `Videos` or `Assets` heading merely because they share a file type.
-
-Interpret an asset only from context the owner or source provided. Do not infer identities,
-places, dates, intentions, emotions, causes or narrative meaning from its contents alone. If
-no such context exists, connect it objectively through only an already verified subject,
-source or reliable date, and state that its context is unknown rather than inventing one.
+Interpret only from context the owner or source supplied. Never infer identities, places,
+dates, intentions, emotions, causes or narrative meaning from an asset alone. Without such
+context, state only its verified subject, source or reliable date and say what remains unknown.
 
 Reference every asset with image syntax, including documents:
 

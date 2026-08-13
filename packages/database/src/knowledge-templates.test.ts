@@ -773,10 +773,10 @@ describe("knowledge templates", () => {
       "later is not automatically correct",
       "preserve every other byte as found",
       "never link a page that does not exist",
-      "assets are part of the account, not appendices",
-      "do not collect them at the end under a generic",
-      "interpret an asset only from context the owner or source provided",
-      "state that its context is unknown rather than inventing one",
+      "an asset is never uploaded alone or treated as an appendix",
+      "do not group assets at the end under a generic",
+      "interpret only from context the owner or source supplied",
+      "say what remains unknown",
       "never store credentials, access tokens, access codes or recovery secrets",
     ]) {
       expect(normalizedRoot.toLowerCase()).toContain(invariant);
