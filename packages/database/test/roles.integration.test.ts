@@ -60,7 +60,7 @@ describeDatabase("PostgreSQL security roles", () => {
   }
 
   async function issueChallenge(
-    kind: "publication" | "knowledge_export" | "page_deletion",
+    kind: "publication" | "knowledge_export" | "knowledge_import" | "page_deletion",
     intentId: string,
     value = challenge(),
   ): Promise<string> {
@@ -111,6 +111,7 @@ describeDatabase("PostgreSQL security roles", () => {
     const functions = [
       "issue_confirmation_challenge(confirmation_intent_kind,uuid,text)",
       "confirm_publication_intent(uuid,text,text,text,integer,integer)",
+      "confirm_knowledge_import_intent(uuid,text,text,text,integer,integer)",
       "confirm_page_deletion_intent(uuid,text,text,text,integer,integer)",
     ];
     for (const role of ["context_use_mcp", "context_use_dashboard", "context_use_public", "context_use_auth", "context_use_storage", "context_use_backup"]) {
@@ -285,6 +286,38 @@ describeDatabase("PostgreSQL security roles", () => {
     )).rows[0]?.allowed).toBe(false);
   });
 
+  test("knowledge restore requires confirmation and exposes one guarded dashboard procedure", async () => {
+    const confirm = "confirm_knowledge_import_intent(uuid,text,text,text,integer,integer)";
+    const restore = "restore_knowledge_import(uuid,text,text)";
+    for (const role of ["context_use_auth", "context_use_dashboard", "context_use_mcp", "context_use_public", "context_use_backup"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed", [role, confirm],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_function_privilege('context_use_confirmation',$1,'EXECUTE') AS allowed", [confirm],
+    )).rows[0]?.allowed).toBe(true);
+    for (const role of ["context_use_auth", "context_use_confirmation", "context_use_mcp", "context_use_public", "context_use_backup"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed", [role, restore],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_function_privilege('context_use_dashboard',$1,'EXECUTE') AS allowed", [restore],
+    )).rows[0]?.allowed).toBe(true);
+    for (const column of ["confirmed_at", "consumed_at"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege('context_use_dashboard','knowledge_import_intents',$1,'INSERT') AS allowed", [column],
+      )).rows[0]?.allowed).toBe(false);
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege('context_use_dashboard','knowledge_import_intents',$1,'UPDATE') AS allowed", [column],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_column_privilege('context_use_confirmation','knowledge_import_intents','archive','SELECT') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+  });
+
   test("service roles cannot create database objects or assume internal owner roles", async () => {
     const serviceRoles = [
       "context_use_auth",
@@ -308,7 +341,7 @@ describeDatabase("PostgreSQL security roles", () => {
         "SELECT has_schema_privilege($1,'public','CREATE') AS allowed",
         [role],
       )).rows[0]?.allowed).toBe(false);
-      for (const ownerRole of ["context_use_projection_owner", "context_use_boundary_owner"]) {
+      for (const ownerRole of ["context_use_projection_owner", "context_use_boundary_owner", "context_use_restore_owner"]) {
         expect((await admin.query<{ allowed: boolean }>(
           "SELECT pg_has_role($1,$2,'MEMBER') AS allowed",
           [role, ownerRole],
@@ -327,7 +360,7 @@ describeDatabase("PostgreSQL security roles", () => {
     }>(
       `SELECT rolname,rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls
        FROM pg_roles
-       WHERE rolname IN ('context_use_projection_owner','context_use_boundary_owner')
+       WHERE rolname IN ('context_use_projection_owner','context_use_boundary_owner','context_use_restore_owner')
        ORDER BY rolname`,
     );
     expect(internalOwners.rows).toEqual([
@@ -342,6 +375,15 @@ describeDatabase("PostgreSQL security roles", () => {
       },
       {
         rolname: "context_use_projection_owner",
+        rolcanlogin: false,
+        rolsuper: false,
+        rolcreatedb: false,
+        rolcreaterole: false,
+        rolinherit: false,
+        rolbypassrls: false,
+      },
+      {
+        rolname: "context_use_restore_owner",
         rolcanlogin: false,
         rolsuper: false,
         rolcreatedb: false,
@@ -390,11 +432,13 @@ describeDatabase("PostgreSQL security roles", () => {
            'consume_confirmation_challenge',
            'confirm_publication_intent',
            'confirm_knowledge_export_intent',
+           'confirm_knowledge_import_intent',
            'confirm_page_deletion_intent',
            'claim_knowledge_export_download',
            'delete_empty_knowledge_directory',
            'prune_page_versions',
            'remove_owner_passkey',
+           'restore_knowledge_import',
            'project_public_markdown'
          )
        ORDER BY proname`,
@@ -402,6 +446,7 @@ describeDatabase("PostgreSQL security roles", () => {
     expect(procedures.rows).toEqual([
       { proname: "claim_knowledge_export_download", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_knowledge_export_intent", owner: "context_use_boundary_owner", security_definer: true },
+      { proname: "confirm_knowledge_import_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_page_deletion_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_publication_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "consume_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
@@ -410,6 +455,7 @@ describeDatabase("PostgreSQL security roles", () => {
       { proname: "project_public_markdown", owner: "context_use_projection_owner", security_definer: true },
       { proname: "prune_page_versions", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "remove_owner_passkey", owner: "context_use_boundary_owner", security_definer: true },
+      { proname: "restore_knowledge_import", owner: "context_use_restore_owner", security_definer: true },
     ]);
 
     for (const [relation, column] of [

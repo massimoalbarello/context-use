@@ -27,14 +27,16 @@ function forward(request: Request): Promise<Response> | Response {
 // Caddy reaches only this credentialless process. The private dashboard
 // authority remains responsible for owner-session, origin, CSRF, and upload /
 // download checks on every request that reaches its isolated network.
-export const dashboardEdgeApp = new Elysia({ serve: { maxRequestBodySize: 5_100_000_000 } })
+export const dashboardEdgeApp = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
   .get("/health", () => json({ status: "ok", service: "dashboard-edge" }))
   .all("/api/dashboard/*", ({ request, server }) => {
-    if (request.method === "GET"
-        && /^\/api\/dashboard\/knowledge-exports\/[^/]+\/download$/.test(new URL(request.url).pathname)) {
+    const pathname = new URL(request.url).pathname;
+    if ((request.method === "GET"
+        && /^\/api\/dashboard\/knowledge-exports\/[^/]+\/download$/.test(pathname))
+        || (request.method === "POST" && pathname === "/api/dashboard/knowledge-import-intents")) {
       disableStreamingRequestIdleTimeout(server, request);
     }
     return forward(request);

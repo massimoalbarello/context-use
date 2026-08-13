@@ -1,6 +1,6 @@
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useState } from "react";
-import { api } from "../api.ts";
+import { api, uploadKnowledgeArchive } from "../api.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
 import { IntrinsicServices } from "./Services.tsx";
 
@@ -14,7 +14,23 @@ export type PasskeySummary = {
 
 type KnowledgeExportIntent = {
   intent: { id: string; expires_at: string };
-  summary: { page_count: number; asset_count: number; total_bytes: number };
+  summary: { kind: "portable" | "restorable"; page_count: number; asset_count: number; total_bytes: number };
+  authentication_options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
+};
+
+type KnowledgeImportIntent = {
+  intent: { id: string; expires_at: string };
+  summary: {
+    directories: number;
+    pages: number;
+    page_versions: number;
+    assets: number;
+    active_assets: number;
+    asset_links: number;
+    page_changes: number;
+    active_asset_bytes: number;
+    created_at: string;
+  };
   authentication_options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
 };
 
@@ -78,9 +94,15 @@ export function Settings({
   const [removalWorking, setRemovalWorking] = useState(false);
   const [removalError, setRemovalError] = useState("");
   const [exportIntent, setExportIntent] = useState<KnowledgeExportIntent | null>(null);
+  const [exportKind, setExportKind] = useState<"portable" | "restorable">("portable");
   const [exportPreparing, setExportPreparing] = useState(false);
   const [exportWorking, setExportWorking] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importIntent, setImportIntent] = useState<KnowledgeImportIntent | null>(null);
+  const [importPreparing, setImportPreparing] = useState(false);
+  const [importWorking, setImportWorking] = useState(false);
+  const [importError, setImportError] = useState("");
 
   const prepareEnrollment = async () => {
     const name = passkeyName.trim();
@@ -195,13 +217,63 @@ export function Settings({
     try {
       setExportIntent(await api<KnowledgeExportIntent>("/api/dashboard/knowledge-export-intents", {
         method: "POST",
-        body: "{}",
+        body: JSON.stringify({ kind: exportKind }),
       }));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not prepare the knowledge export");
     } finally {
       setExportPreparing(false);
     }
+  };
+
+  const prepareImport = async () => {
+    if (!importFile) {
+      setImportError("Choose a full Context Use archive first.");
+      return;
+    }
+    setImportPreparing(true);
+    setImportError("");
+    setMessage("");
+    try {
+      setImportIntent(await uploadKnowledgeArchive<KnowledgeImportIntent>(importFile));
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Could not validate the knowledge archive");
+    } finally {
+      setImportPreparing(false);
+    }
+  };
+
+  const restoreImport = async () => {
+    if (!importIntent) return;
+    setImportWorking(true);
+    setImportError("");
+    try {
+      const response = await startAuthentication({ optionsJSON: importIntent.authentication_options });
+      const confirmed = await api<{ restore_url: string }>("/api/dashboard/knowledge-imports/confirm", {
+        method: "POST",
+        body: JSON.stringify({ intent_id: importIntent.intent.id, response }),
+      });
+      await api(confirmed.restore_url, { method: "POST", body: "{}" });
+      setImportIntent(null);
+      setImportFile(null);
+      setMessage("The full knowledge archive was restored with its original IDs, history, links, assets, and publication state.");
+      window.location.assign("/app");
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Knowledge import failed");
+    } finally {
+      setImportWorking(false);
+    }
+  };
+
+  const cancelImport = async () => {
+    if (!importIntent || importWorking) return;
+    const intent = importIntent;
+    setImportIntent(null);
+    setImportError("");
+    await api(`/api/dashboard/knowledge-import-intents/${encodeURIComponent(intent.intent.id)}`, {
+      method: "DELETE",
+      body: "{}",
+    }).catch(() => undefined);
   };
 
   const downloadExport = async () => {
@@ -240,7 +312,23 @@ export function Settings({
         {enrollmentLink && <div className="passkey-link"><strong>One-time setup link</strong><p>Open this on the device you are adding. It expires five minutes after authorization.</p><div><input readOnly value={enrollmentLink} onFocus={(event) => event.currentTarget.select()} /><button onClick={() => void copyEnrollmentLink()}>Copy</button></div></div>}
       </div>
     </section>
-    <section><h2>Export knowledge</h2><p>Download the latest version of every active page and asset as a navigable Markdown vault. Private references become local links, and no publication or account metadata is included.</p><button className="primary" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport()}>{exportPreparing ? "Checking assets…" : "Export with passkey"}</button></section>
+    <section><h2>Export knowledge</h2>
+      <p>The default export is a readable Markdown vault. Choose the full archive only for moving or restoring a Context Use instance.</p>
+      <div className="passkey-kind" role="group" aria-label="Knowledge export type">
+        <label><input type="radio" name="export-kind" checked={exportKind === "portable"} onChange={() => setExportKind("portable")} /><span><strong>Latest snapshot</strong><small>Current active pages and assets, rewritten as a navigable Markdown vault.</small></span></label>
+        <label><input type="radio" name="export-kind" checked={exportKind === "restorable"} onChange={() => setExportKind("restorable")} /><span><strong>Full restorable archive</strong><small>Stable IDs, all retained versions, archived pages, publication state, link records, history, and active asset bytes.</small></span></label>
+      </div>
+      <button className="primary" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport()}>{exportPreparing ? "Checking assets…" : "Export with passkey"}</button>
+    </section>
+    <section><h2>Import full archive</h2>
+      <p>Restore a full archive onto a fresh Context Use instance. This replaces only the destination knowledge base; account credentials and integrations stay local to the new instance.</p>
+      <p><strong>Important:</strong> import is refused after you add personal knowledge or assets to the destination.</p>
+      <div className="archive-import">
+        <label>Context Use archive<input type="file" accept=".zip,application/zip" onChange={(event) => { setImportFile(event.target.files?.[0] ?? null); setImportError(""); }} /></label>
+        {importError && !importIntent && <p className="error">{importError}</p>}
+        <button className="primary" disabled={!importFile || importPreparing || importWorking} onClick={() => void prepareImport()}>{importPreparing ? "Validating and staging…" : "Validate archive"}</button>
+      </div>
+    </section>
     {enrollmentIntent && <ActionDialog
       eyebrow="Passkey enrollment"
       title={`Authorize ${enrollmentIntent.intent.name}?`}
@@ -267,8 +355,10 @@ export function Settings({
     />}
     {exportIntent && <ActionDialog
       eyebrow="Private knowledge export"
-      title="Download your knowledge base?"
-      description="The ZIP contains all private and public knowledge that is current when the download starts. It will be unencrypted on this computer. A fresh owner-passkey verification is required, and this authorization can be used only once from this dashboard session."
+      title={exportIntent.summary.kind === "restorable" ? "Download a full restorable archive?" : "Download your knowledge snapshot?"}
+      description={exportIntent.summary.kind === "restorable"
+        ? "The ZIP can recreate the complete knowledge state on a fresh instance, including private history and publication state. It is unencrypted and requires a fresh owner-passkey verification."
+        : "The ZIP contains the current private and public knowledge as a readable Markdown vault. It is unencrypted and requires a fresh owner-passkey verification."}
       confirmLabel="Verify passkey and download"
       workingLabel="Waiting for passkey…"
       working={exportWorking}
@@ -277,9 +367,27 @@ export function Settings({
       onConfirm={() => void downloadExport()}
     >
       <dl className="action-dialog-details">
-        <div><dt>Current pages</dt><dd>about {exportIntent.summary.page_count}</dd></div>
-        <div><dt>Current assets</dt><dd>about {exportIntent.summary.asset_count}</dd></div>
-        <div><dt>Current size</dt><dd>about {formatExportBytes(exportIntent.summary.total_bytes)}</dd></div>
+        <div><dt>{exportIntent.summary.kind === "restorable" ? "Pages" : "Current pages"}</dt><dd>about {exportIntent.summary.page_count}</dd></div>
+        <div><dt>Active assets</dt><dd>about {exportIntent.summary.asset_count}</dd></div>
+        <div><dt>Size</dt><dd>about {formatExportBytes(exportIntent.summary.total_bytes)}</dd></div>
+      </dl>
+    </ActionDialog>}
+    {importIntent && <ActionDialog
+      eyebrow="Full knowledge restore"
+      title="Replace this instance’s knowledge?"
+      description="The archive passed structural and integrity checks. A fresh owner-passkey verification is required. The restore is allowed only on an untouched instance and preserves the source IDs, retained history, archived content, internal links, asset metadata, and publication state."
+      confirmLabel="Verify passkey and restore"
+      workingLabel="Restoring knowledge…"
+      working={importWorking}
+      error={importError}
+      onCancel={() => void cancelImport()}
+      onConfirm={() => void restoreImport()}
+    >
+      <dl className="action-dialog-details">
+        <div><dt>Pages</dt><dd>{importIntent.summary.pages}</dd></div>
+        <div><dt>Retained versions</dt><dd>{importIntent.summary.page_versions}</dd></div>
+        <div><dt>Active assets</dt><dd>{importIntent.summary.active_assets}</dd></div>
+        <div><dt>Asset bytes</dt><dd>{formatExportBytes(importIntent.summary.active_asset_bytes)}</dd></div>
       </dl>
     </ActionDialog>}
   </main>;

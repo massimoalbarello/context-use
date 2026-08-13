@@ -16,7 +16,8 @@ The longer-term vision is an autobiography that writes itself. As Context Use co
 - Publishes only the exact pages and assets you approve.
 - Manages named owner passkeys from Dashboard Settings, including hardware security keys and one-time enrollment links for another device.
 - Lets only the dashboard owner permanently delete an archived page after fresh passkey confirmation.
-- Exports a portable Markdown vault with page metadata, directory metadata, generated `index.md` files where navigation requires them, and local links. One-page leaf folders link directly to their sole page.
+- Exports a portable latest-snapshot Markdown vault with page metadata, directory metadata, generated `index.md` files where navigation requires them, and local links. One-page leaf folders link directly to their sole page.
+- Exports and passkey-restores a versioned full knowledge archive with stable IDs, retained page history, archived content, publication state, link records, change history, and integrity-checked active asset bytes. Restore is limited to a fresh instance and leaves its account credentials and integrations untouched.
 - Provides a public profile at `about/intro`, plus public pages for anything else you choose to share.
 - Generates `/llms.txt`, `/llms-full.txt`, and a clean `.md` alternate for every page deterministically from only the explicitly published page projection.
 - Publishes `/robots.txt`, a complete `/sitemap.xml`, canonical and social metadata, and structured profile identity derived from the published introduction and any optional contact links.
