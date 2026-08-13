@@ -8,6 +8,7 @@ import {
   createPageSchema,
   publicationIntentSchema,
   PAGE_MARKDOWN_BODY_DESCRIPTION,
+  summarizeTemplateResult,
   updatePageSchema,
 } from "./index.ts";
 
@@ -130,4 +131,19 @@ describe("strict mutation schemas", () => {
     }).success).toBe(false);
   });
 
+});
+
+describe("knowledge template results", () => {
+  test("summarizes shared CLI and dashboard actions from structural replacement metadata", () => {
+    expect(summarizeTemplateResult({
+      template: "default",
+      applied: false,
+      actions: [
+        { action: "create-directory", path: "topics", detail: "Create Topics" },
+        { action: "replace-guide", path: "agents", detail: "Replace the guide", replaces_local: true },
+        { action: "conflict", path: "people/agents", detail: "Preserve archived guide" },
+        { action: "unchanged", path: "about/agents", detail: "Already current" },
+      ],
+    })).toEqual({ changes: 2, conflicts: 1, unchanged: 1, replacements: 1 });
+  });
 });

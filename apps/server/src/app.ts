@@ -18,6 +18,7 @@ import {
   extractDirectoryLinks,
   extractPageLinks,
   extractWikiLinks,
+  reconcileKnowledgeTemplate,
   wikiLinkCandidatePaths,
 } from "@context-use/database";
 import {
@@ -233,6 +234,9 @@ function storedImportAsset(asset: RestorableKnowledgeAsset) {
 
 const emptyObjectSchema = z.object({}).strict();
 const exportIntentSchema = z.object({ kind: z.enum(["portable", "restorable"]).default("portable") }).strict();
+const templateApplySchema = z.object({
+  force_template: z.boolean(),
+}).strict();
 
 const webRoot = resolve(config.WEB_DIST);
 function webFile(path: string): Bun.BunFile | null {
@@ -269,6 +273,24 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
   .get("/api/dashboard/services", async ({ request }) => {
     await ownerRequest(request);
     return json({ services: dashboardServices(config) });
+  })
+  .get("/api/dashboard/knowledge-template/plan", async ({ request, query }) => {
+    await ownerRequest(request);
+    const forceTemplate = query.force_template === undefined
+      ? false
+      : z.enum(["true", "false"]).transform((value) => value === "true").parse(query.force_template);
+    return json(await reconcileKnowledgeTemplate({
+      directories: dashboardDirectories,
+      pages: dashboardPages,
+    }, "default", false, forceTemplate));
+  })
+  .post("/api/dashboard/knowledge-template/apply", async ({ request }) => {
+    await ownerRequest(request, true);
+    const input = templateApplySchema.parse(await bodyJson(request));
+    return json(await reconcileKnowledgeTemplate({
+      directories: dashboardDirectories,
+      pages: dashboardPages,
+    }, "default", true, input.force_template));
   })
 
   .get("/app", async () => {

@@ -1,11 +1,18 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createPageSchema, DirectoryPath, PagePath } from "@context-use/shared";
+import {
+  createPageSchema,
+  DirectoryPath,
+  PagePath,
+  summarizeTemplateResult,
+} from "@context-use/shared";
 import type {
   Actor,
   ArchivePageInput,
   CreateDirectoryInput,
   CreatePageInput,
+  TemplateAction,
+  TemplateResult,
   UpdateDirectoryInput,
   UpdatePageInput,
 } from "@context-use/shared";
@@ -61,18 +68,6 @@ type TemplateRetirements = {
 export type TemplateRepositories = {
   directories: Pick<DirectoryRepository, "getByPath" | "create" | "update">;
   pages: Pick<PageRepository, "getByPath" | "create" | "update" | "archive" | "version">;
-};
-
-export type TemplateAction = {
-  action: "create-directory" | "update-directory" | "create-guide" | "adopt-guide" | "update-guide" | "replace-guide" | "create-page" | "adopt-page" | "update-page" | "retire-page" | "unchanged" | "conflict";
-  path: string;
-  detail: string;
-};
-
-export type TemplateResult = {
-  template: string;
-  applied: boolean;
-  actions: TemplateAction[];
 };
 
 const RESULT_INDICATORS = {
@@ -384,6 +379,7 @@ export async function reconcileKnowledgeTemplate(
             action: "update-directory",
             path,
             detail: "Overwrite local directory metadata with the template",
+            replaces_local: true,
           });
           if (apply) {
             const input: UpdateDirectoryInput = {
@@ -494,7 +490,12 @@ export async function reconcileKnowledgeTemplate(
       continue;
     }
     if (forceTemplate) {
-      actions.push({ action: "replace-guide", path, detail: "Overwrite locally modified guide" });
+      actions.push({
+        action: "replace-guide",
+        path,
+        detail: "Overwrite locally modified guide",
+        replaces_local: true,
+      });
       if (apply) {
         const update: UpdatePageInput = { ...input, expected_version_number: existing.version_number };
         await repositories.pages.update(existing.id, update, templateActor(templateName));
@@ -560,7 +561,12 @@ export async function reconcileKnowledgeTemplate(
       continue;
     }
     if (forceTemplate) {
-      actions.push({ action: "update-page", path: input.path, detail: "Overwrite locally modified template page" });
+      actions.push({
+        action: "update-page",
+        path: input.path,
+        detail: "Overwrite locally modified template page",
+        replaces_local: true,
+      });
       if (apply) {
         const update: UpdatePageInput = { ...input, expected_version_number: existing.version_number };
         await repositories.pages.update(existing.id, update, templateActor(templateName));
@@ -634,9 +640,10 @@ export function formatTemplateResult(result: TemplateResult, color = false): str
       : "change";
     return `${resultIndicator(kind, color)} ${action.padEnd(16)} ${path || "/"}  ${detail}`;
   });
-  const conflicts = result.actions.filter(({ action }) => action === "conflict").length;
-  const changes = result.actions.filter(({ action }) => action.startsWith("create-") || action.startsWith("update-") || action === "adopt-guide" || action === "adopt-page" || action === "replace-guide" || action === "retire-page").length;
+  const { changes, conflicts } = summarizeTemplateResult(result);
   const summaryKind = conflicts ? "conflict" : "success";
   lines.push(`${resultIndicator(summaryKind, color)} ${result.applied ? "Applied" : "Planned"} ${changes} change${changes === 1 ? "" : "s"}; ${conflicts} conflict${conflicts === 1 ? "" : "s"}.`);
   return lines.join("\n");
 }
+
+export type { TemplateAction, TemplateResult } from "@context-use/shared";

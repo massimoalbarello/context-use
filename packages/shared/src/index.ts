@@ -136,6 +136,53 @@ export type Actor = {
   subject: string;
 };
 
+export const TEMPLATE_ACTIONS = [
+  "create-directory",
+  "update-directory",
+  "create-guide",
+  "adopt-guide",
+  "update-guide",
+  "replace-guide",
+  "create-page",
+  "adopt-page",
+  "update-page",
+  "retire-page",
+  "unchanged",
+  "conflict",
+] as const;
+
+export type TemplateActionKind = typeof TEMPLATE_ACTIONS[number];
+
+export type TemplateAction = {
+  action: TemplateActionKind;
+  path: string;
+  detail: string;
+  replaces_local?: true;
+};
+
+export type TemplateResult = {
+  template: string;
+  applied: boolean;
+  actions: TemplateAction[];
+};
+
+export type TemplateSummary = {
+  changes: number;
+  conflicts: number;
+  unchanged: number;
+  replacements: number;
+};
+
+export function summarizeTemplateResult(result: TemplateResult): TemplateSummary {
+  return result.actions.reduce<TemplateSummary>((summary, action) => {
+    if (action.action === "conflict") summary.conflicts += 1;
+    else if (action.action === "unchanged") summary.unchanged += 1;
+    else summary.changes += 1;
+    if (action.replaces_local) summary.replacements += 1;
+    return summary;
+  }, { changes: 0, conflicts: 0, unchanged: 0, replacements: 0 });
+}
+
 export type Page = {
   id: string;
   current_path: string;
