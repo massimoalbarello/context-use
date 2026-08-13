@@ -19,10 +19,6 @@
     "title": "Diary composer",
     "summary": "Canonical instructions and minimal checkpoint state for composing diary-worthy activity deltas into linked day narratives."
   },
-  "automations/guideline-consistency-review": {
-    "title": "Guideline consistency review",
-    "summary": "Canonical instructions for reviewing only recently changed pages against the owner's current guide hierarchy."
-  },
   "companies": {
     "title": "Companies",
     "summary": "Identified organizations and their factual, relational, and dated context in the owner's world."

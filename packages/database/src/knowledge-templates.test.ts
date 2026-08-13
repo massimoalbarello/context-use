@@ -29,7 +29,6 @@ const DEFAULT_DIRECTORY_PATHS = [
   "about/tasks",
   "automations/activity-distiller",
   "automations/diary-composer",
-  "automations/guideline-consistency-review",
 ];
 
 function repositories(options: {
@@ -214,7 +213,6 @@ describe("knowledge templates", () => {
       "about/tasks",
       "automations/activity-distiller",
       "automations/diary-composer",
-      "automations/guideline-consistency-review",
     ]);
     expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(16);
     expect(result.actions.filter(({ action }) => action === "create-page").map(({ path }) => path)).toEqual([
@@ -222,12 +220,11 @@ describe("knowledge templates", () => {
       "automations/activity-distiller/state",
       "automations/diary-composer/instructions",
       "automations/diary-composer/state",
-      "automations/guideline-consistency-review/instructions",
     ]);
     expect(state.createdDirectories).toEqual([]);
     expect(state.createdPages).toEqual([]);
     expect(formatTemplateResult(result)).toContain("+ create-directory library");
-    expect(formatTemplateResult(result)).toContain("✓ Planned 39 changes; 0 conflicts.");
+    expect(formatTemplateResult(result)).toContain("✓ Planned 37 changes; 0 conflicts.");
     expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
   });
 
@@ -275,7 +272,7 @@ describe("knowledge templates", () => {
       path: "places",
       detail: "Directory metadata differs from the template; preserve local metadata",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 23 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 22 changes; 1 conflict.");
   });
 
   test("surfaces directory metadata drift without overwriting local presentation", async () => {
@@ -374,11 +371,6 @@ describe("knowledge templates", () => {
         title: "Activity distiller state",
         summary: "The current opaque source checkpoint for the activity distiller.",
         body_markdown: "# Activity distiller state\n\n**Checkpoint:** _none_\n",
-      });
-    expect(state.createdPageInputs.find(({ path }) => path === "automations/guideline-consistency-review/instructions"))
-      .toMatchObject({
-        title: "Guideline consistency review",
-        body_markdown: expect.stringContaining("### 1. Select the fixed change window"),
       });
   });
 
@@ -515,13 +507,13 @@ describe("knowledge templates", () => {
     const result = await reconcileKnowledgeTemplate(state.value, "default", true);
 
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(state.createdPages).toHaveLength(19);
+    expect(state.createdPages).toHaveLength(18);
     expect(result.actions).toContainEqual({
       action: "conflict",
       path: "people/agents",
       detail: "Preserve locally modified guide",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 20 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 19 changes; 1 conflict.");
     expect(formatTemplateResult(result)).toContain("~ update-guide     agents");
     expect(formatTemplateResult(result)).toContain("! conflict         people/agents");
     expect(formatTemplateResult(result, true)).toContain("\u001B[31m!\u001B[0m conflict");
@@ -573,7 +565,7 @@ describe("knowledge templates", () => {
 
     const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(formatTemplateResult(applied)).toContain("Applied 20 changes; 1 conflict.");
+    expect(formatTemplateResult(applied)).toContain("Applied 19 changes; 1 conflict.");
   });
 
   test("reports page collisions without removing or overwriting existing knowledge", async () => {
@@ -898,9 +890,6 @@ describe("knowledge templates", () => {
     const diaryComposer = await Bun.file(
       new URL("../templates/default/_pages/diary-composer/instructions.md", import.meta.url),
     ).text();
-    const guidelineReviewer = await Bun.file(
-      new URL("../templates/default/_pages/guideline-consistency-review/instructions.md", import.meta.url),
-    ).text();
     const normalize = (value: string) => value.replaceAll(/\s+/g, " ").toLowerCase();
     const normalizedAutomationGuide = normalize(automationGuide);
     const normalizedDistiller = normalize(activityDistiller);
@@ -947,13 +936,7 @@ describe("knowledge templates", () => {
       "### 6. Reconcile each affected day",
       "### 7. Save the checkpoint and report",
     ]);
-    expectOrdered(guidelineReviewer, [
-      "### 1. Select the fixed change window",
-      "### 2. Review each latest changed version",
-      "### 3. Report through the harness",
-    ]);
-
-    for (const runtimeInstructions of [activityDistiller, diaryComposer, guidelineReviewer]) {
+    for (const runtimeInstructions of [activityDistiller, diaryComposer]) {
       expect(runtimeInstructions).toMatch(/^- \*\*a\.\*\*/m);
       expect(runtimeInstructions).not.toMatch(/^\s*\d+\.\s/m);
     }
@@ -1013,7 +996,7 @@ describe("knowledge templates", () => {
     expect(diaryComposer).not.toContain("Write connective prose");
     expect(diaryComposer).not.toContain("Repeated mention is not continuation");
     expect(diaryComposer).not.toContain("automations/activity-distiller/");
-    for (const runtimeInstructions of [activityDistiller, diaryComposer, guidelineReviewer]) {
+    for (const runtimeInstructions of [activityDistiller, diaryComposer]) {
       expect(normalize(runtimeInstructions)).not.toContain("[[automations/agents|automation guide]]");
     }
 
