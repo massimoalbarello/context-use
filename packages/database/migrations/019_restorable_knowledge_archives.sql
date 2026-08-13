@@ -27,7 +27,12 @@ CREATE TABLE knowledge_import_intents (
   confirmed_at timestamptz,
   consumed_at timestamptz,
   CONSTRAINT knowledge_import_intents_expiry CHECK (
-    expires_at>created_at AND expires_at<=created_at+interval '15 minutes'
+    expires_at>created_at
+    AND (
+      (confirmed_at IS NULL AND expires_at<=created_at+interval '15 minutes')
+      OR
+      (confirmed_at IS NOT NULL AND expires_at<=confirmed_at+interval '24 hours')
+    )
   ),
   CONSTRAINT knowledge_import_intents_consumption CHECK (
     consumed_at IS NULL OR confirmed_at IS NOT NULL
@@ -147,7 +152,9 @@ BEGIN
     p_credential_id,p_expected_counter,p_new_counter
   );
 
-  UPDATE knowledge_import_intents SET confirmed_at=now() WHERE id=p_intent_id;
+  UPDATE knowledge_import_intents
+  SET confirmed_at=now(),expires_at=now()+interval '24 hours'
+  WHERE id=p_intent_id;
 END;
 $$;
 
@@ -406,7 +413,7 @@ GRANT INSERT (
 GRANT DELETE ON knowledge_import_intents TO context_use_dashboard;
 GRANT SELECT (id,owner_user_id,session_id,expires_at,confirmed_at,consumed_at)
   ON knowledge_import_intents TO context_use_confirmation,context_use_boundary_owner;
-GRANT UPDATE (confirmed_at) ON knowledge_import_intents TO context_use_boundary_owner;
+GRANT UPDATE (confirmed_at,expires_at) ON knowledge_import_intents TO context_use_boundary_owner;
 GRANT SELECT (id,owner_user_id,session_id,archive,expires_at,confirmed_at,consumed_at),
   UPDATE (consumed_at) ON knowledge_import_intents TO context_use_restore_owner;
 GRANT SELECT,INSERT,UPDATE,DELETE ON
