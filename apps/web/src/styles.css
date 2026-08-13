@@ -1773,6 +1773,8 @@ button:disabled {
   line-height: 1.45;
 }
 
+.export-start-button { margin-top: 16px; }
+
 .archive-import {
   width: min(680px, 100%);
   margin-top: 16px;
@@ -1941,6 +1943,90 @@ button:disabled {
   border-color: rgba(230, 83, 51, .18);
   background: var(--accent-soft);
   color: var(--accent-hover);
+}
+
+.export-preparation {
+  width: min(680px, 100%);
+  margin-top: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .62);
+}
+
+.export-preparation.processing {
+  border-color: rgba(77, 93, 198, .25);
+  background: var(--blue-soft);
+}
+
+.export-preparation.ready {
+  border-color: rgba(47, 107, 80, .24);
+  background: var(--green-soft);
+}
+
+.export-preparation-copy,
+.export-preparation-copy > div {
+  min-width: 0;
+  display: flex;
+}
+
+.export-preparation-copy {
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.export-preparation-copy > div {
+  flex-direction: column;
+  gap: 5px;
+}
+
+.export-preparation-copy strong {
+  font-size: 12px;
+}
+
+.export-preparation-copy small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.export-preparation-copy small.error { color: #9d382d; }
+
+.export-spinner {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(77, 93, 198, .22);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: export-spin 800ms linear infinite;
+}
+
+.export-preparation-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+@keyframes export-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .export-spinner { animation: none; }
+}
+
+@media (max-width: 620px) {
+  .export-preparation {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .export-preparation-actions { flex-wrap: wrap; }
 }
 
 .passkey-link {

@@ -160,6 +160,8 @@ export const confirmationApp = new Elysia()
     });
     return json({
       download_url: `/api/dashboard/knowledge-exports/${encodeURIComponent(intent.id)}/download`,
+      prepare_url: `/api/dashboard/knowledge-exports/${encodeURIComponent(intent.id)}/prepare`,
+      status_url: `/api/dashboard/knowledge-exports/${encodeURIComponent(intent.id)}/status`,
     });
   })
   .post("/internal/browser-confirmation/knowledge_import", async ({ request }) => {
