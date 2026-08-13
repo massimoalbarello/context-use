@@ -11,8 +11,8 @@ An invitation alone or an unresolved reference such as “the summit” does not
 occurrence happened.
 
 A [[meetings/agents|meeting]] is defined by one bounded conversation rather than its occasion.
-A conversation inside an event gets its own meeting page only when it is independently useful,
-with links between the two accounts.
+A conversation inside an event follows that guide; when it independently resolves a meeting,
+create and link both accounts.
 
 ## Path and account
 

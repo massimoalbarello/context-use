@@ -840,6 +840,19 @@ describe("knowledge templates", () => {
     expect(guides.tasks).toContain("about/tasks/<slug>/");
     expect(normalize(guides.tasks)).toContain("Resolution always receives a dated timeline event");
     expect(normalize(guides.meetings)).toContain("A confirmed future meeting may begin with `prep` alone");
+    expect(normalize(guides.meetings)).toContain(
+      "confirmed consequential future meeting, create or reconcile `prep`",
+    );
+    expect(normalize(guides.meetings)).toContain(
+      "reading earlier occurrences, correspondence, tasks and shared entities",
+    );
+    expect(normalize(guides.meetings)).toContain("Research only missing identity or role facts");
+    expect(normalize(guides.meetings)).toContain("without claiming the meeting happened");
+    expect(normalize(guides.meetings)).toContain(
+      "When evidence independently resolves both the occasion and a bounded conversation",
+    );
+    expect(normalize(guides.events)).toContain("A conversation inside an event follows that guide");
+    expect(normalize(guides.events)).not.toContain("only when it is independently useful");
     expect(normalize(guides.skills)).toContain("local runtime exception to the root entity-folder default");
     expect(normalize(guides.threads)).toContain("Every thread begins with both `intro` and `timeline`");
     expect(normalize(guides.threads)).toContain("corrections to existing lines follow the root reconciliation rule");
@@ -972,6 +985,9 @@ describe("knowledge templates", () => {
     expect(normalizedDistiller).not.toContain("record_ref");
     expect(activityDistiller).not.toContain("Discarding a record does not discard its cast");
     expect(activityDistiller).not.toContain("automations/diary-composer/");
+    expect(normalizedDistiller).not.toContain("confirmed consequential future meeting");
+    expect(normalizedDistiller).not.toContain("research only missing identity or role facts");
+    expect(normalizedDistiller).not.toContain("do not create both a meeting and event");
 
     for (const detail of [
       "[[agents|root guide]]",

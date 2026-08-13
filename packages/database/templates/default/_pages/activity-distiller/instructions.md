@@ -109,12 +109,6 @@ For every subject and account extracted in step 4:
 When later records correct, resolve or contradict earlier ones, revisit the canonical pages
 they affect before proceeding.
 
-For a confirmed consequential future meeting, apply the meeting guide's `prep` lifecycle:
-read earlier occurrences, correspondence, tasks and shared entities; research only missing
-identity or role facts needed for the conversation; then reconcile useful context, unknowns
-and questions without claiming the meeting happened. Do not create both a meeting and event
-unless their guides independently support both.
-
 ### 6. Audit and close the working set
 
 After every retained record has been processed, compare the working-set cast and extracted
