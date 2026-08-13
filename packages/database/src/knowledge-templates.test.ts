@@ -323,6 +323,7 @@ describe("knowledge templates", () => {
       action: "update-directory",
       path: "people",
       detail: "Overwrite local directory metadata with the template",
+      replaces_local: true,
     });
     expect(state.updatedDirectoryInputs).toContainEqual({
       title: DEFAULT_DIRECTORY_PRESENTATIONS.people!.title,
@@ -333,11 +334,13 @@ describe("knowledge templates", () => {
       action: "replace-guide",
       path: "agents",
       detail: "Overwrite locally modified guide",
+      replaces_local: true,
     });
     expect(result.actions).toContainEqual({
       action: "update-page",
       path: "automations/activity-distiller/instructions",
       detail: "Overwrite locally modified template page",
+      replaces_local: true,
     });
     expect(result.actions).toContainEqual({
       action: "unchanged",
@@ -479,6 +482,7 @@ describe("knowledge templates", () => {
       action: "update-page",
       path: "automations/activity-distiller/instructions",
       detail: "Overwrite locally modified template page",
+      replaces_local: true,
     });
     expect(overwritePlan.actions).toContainEqual({
       action: "unchanged",
@@ -555,6 +559,7 @@ describe("knowledge templates", () => {
       action: "replace-guide",
       path: "agents",
       detail: "Overwrite locally modified guide",
+      replaces_local: true,
     });
     expect(overwritePlan.actions).toContainEqual({
       action: "conflict",
