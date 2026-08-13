@@ -5,6 +5,7 @@ import { resolveStorySubjects } from "./resolver.ts";
 import { scoreStoryTurn } from "./scoring.ts";
 import { storySessionInternals } from "./session.ts";
 import {
+  created,
   exists,
   durableSubject,
   linked,
@@ -218,6 +219,25 @@ describe("story partial scoring", () => {
     expect(score.assertions.find((assertion) => assertion.id === "home.review")?.score).toBe(0);
     expect(score.dimensions.find((dimension) => dimension.dimension === "placement")?.score).toBe(0);
     expect(score.score).toBe(0.5);
+  });
+
+  test("credits a canonical subject reused from an earlier story", () => {
+    const graph = buildKnowledgeGraph(fixture());
+    const resolution = resolveStorySubjects(graph, definitions);
+    const evalStory = story({
+      id: "fixture", title: "Fixture", description: "Fixture", subjects: definitions,
+      turns: [{ id: "turn", date: "1998-03-12", user: "Fixture", expect: [created("review")] }],
+    });
+    const score = scoreStoryTurn({
+      story: evalStory,
+      turn: evalStory.turns[0]!,
+      before: graph,
+      after: graph,
+      resolution,
+      activity: noActivity,
+    });
+    expect(score.assertions.find((assertion) => assertion.id === "created.review"))
+      .toMatchObject({ score: 1, message: "review was reused without duplication" });
   });
 
   test("uses the containing entity timeline for a durable aspect page", () => {

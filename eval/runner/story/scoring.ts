@@ -154,7 +154,6 @@ function scoreExpectation(
   after: KnowledgeGraph,
   resolution: StoryResolution,
   activity: TurnToolActivity,
-  mode: "isolated" | "journey",
 ): AssertionScore {
   const weight = expectation.weight ?? 1;
   const result = (score: number, message: string, evidence?: string): AssertionScore => ({
@@ -198,11 +197,11 @@ function scoreExpectation(
     const found = resolution.subjects.get(expectation.subject);
     const current = found?.candidate;
     const existed = current ? before.byId.has(current.id) : false;
-    const score = current ? (!existed || mode === "journey" ? 1 : 0) : resolutionCredit(found) * 0.25;
+    const score = current ? 1 : resolutionCredit(found) * 0.25;
     return result(
       score,
-      mode === "journey"
-        ? `${expectation.subject} was created or reused without duplication`
+      existed
+        ? `${expectation.subject} was reused without duplication`
         : `${expectation.subject} was created in this turn`,
       evidenceFor(found),
     );
@@ -295,7 +294,6 @@ export function scoreStoryTurn(input: {
   after: KnowledgeGraph;
   resolution: StoryResolution;
   activity: TurnToolActivity;
-  mode?: "isolated" | "journey";
 }): TurnScore {
   const expectedAssertions = input.turn.expect.map((expectation) => scoreExpectation(
     expectation,
@@ -304,7 +302,6 @@ export function scoreStoryTurn(input: {
     input.after,
     input.resolution,
     input.activity,
-    input.mode ?? "isolated",
   ));
   const activeSubjects = new Set(input.turn.expect.flatMap(expectationSubjects));
   const placementAssertions = [...activeSubjects].flatMap((subject) => {

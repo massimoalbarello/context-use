@@ -49,10 +49,11 @@ bun run eval story:run --all --repeat 3
 bun run eval journey:run
 ```
 
-An isolated story resets the knowledge base before it starts and keeps one agent
-conversation across its turns. A journey resets once, starts a fresh conversation for
-each story, and preserves the knowledge base across the complete chronology. Reports and
-per-turn snapshots, resolutions, tool activity, and scores land under
+A story run resets the knowledge base once before the selected suite, then preserves it as
+each story builds on the ones before it. Every story gets a fresh agent conversation, and
+every repetition starts another clean suite. `journey:run` selects the historical stories
+in chronological order; `story:run --all` uses the suite's declared story order. Reports
+and per-turn snapshots, resolutions, tool activity, and scores land under
 `.eval-results/stories/`.
 
 Historical stories share one generic user instruction to keep Context Use updated. The

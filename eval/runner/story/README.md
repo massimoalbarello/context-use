@@ -43,11 +43,12 @@ not a pass/fail gate, and dimension scores make regressions diagnosable.
 
 ## Run modes
 
-- Isolated mode resets the knowledge base per story and keeps one agent conversation across
-  that story's turns.
-- Journey mode resets once, preserves the knowledge base across the full chronology, and
-  opens a fresh conversation per story. Reused canonical entities receive creation credit;
-  ambiguous matches remain visible to identity and hygiene scoring.
+- Suite mode resets once, preserves the knowledge base across all selected stories, and
+  opens a fresh conversation per story. `--repeat` starts each suite repetition from a new
+  reset so separate story sets cannot leak knowledge into one another.
+- Journey mode has the same reset boundary but selects the suite's historical stories in
+  chronological order. Reused canonical entities receive creation credit; ambiguous
+  matches remain visible to identity and hygiene scoring.
 
 Each run writes initial and per-turn snapshots, resolver evidence, tool traces, assertion
 scores, agent logs, and a final report under `.eval-results/stories/`.

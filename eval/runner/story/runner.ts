@@ -29,7 +29,7 @@ export type StoryRunReport = {
   runId: string;
   suiteId: string;
   provider: EvalProvider;
-  mode: "isolated" | "journey";
+  mode: "suite" | "journey";
   startedAt: string;
   completedAt: string;
   stories: StoryRun[];
@@ -87,7 +87,6 @@ async function runOneStory(input: {
   provider: EvalProvider;
   directory: string;
   initial: KnowledgeSnapshot;
-  mode: "isolated" | "journey";
 }): Promise<{ score: StoryScore; final: KnowledgeSnapshot }> {
   await mkdir(input.directory, { recursive: true });
   await writeSnapshot(join(input.directory, "initial-snapshot.json"), input.initial);
@@ -114,7 +113,6 @@ async function runOneStory(input: {
         after: afterGraph,
         resolution,
         activity,
-        mode: input.mode,
       });
       scores.push(score);
       const stem = `${String(index + 1).padStart(2, "0")}-${turn.id}`;
@@ -189,28 +187,19 @@ function selectedStories(suite: EvalStorySuite, options: StoryRunOptions): EvalS
 
 export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOptions): Promise<string> {
   const startedAt = new Date().toISOString();
-  const mode = options.journey ? "journey" : "isolated";
+  const mode = options.journey ? "journey" : "suite";
   const runId = `${suite.id}-${mode}-${startedAt.replaceAll(":", "-").replace(".", "-")}-${options.provider}`;
   const runDirectory = join(RESULTS_ROOT, runId);
   await mkdir(runDirectory, { recursive: true });
   const stories = selectedStories(suite, options);
   const repeat = options.repeat ?? 1;
   const runs: StoryRun[] = [];
-  let journeyState: KnowledgeSnapshot | undefined;
 
   for (let repetition = 1; repetition <= repeat; repetition += 1) {
-    if (mode === "journey") {
-      console.log(`Resetting knowledge for journey repetition ${repetition}…`);
-      runStackCommand("reset");
-      journeyState = snapshotKnowledgeState();
-    }
+    console.log(`Resetting knowledge for ${mode} repetition ${repetition}…`);
+    runStackCommand("reset");
+    let suiteState = snapshotKnowledgeState();
     for (const story of stories) {
-      if (mode === "isolated") {
-        console.log(`Resetting knowledge for ${story.id}…`);
-        runStackCommand("reset");
-        journeyState = snapshotKnowledgeState();
-      }
-      if (!journeyState) throw new Error("Story run has no initial knowledge snapshot.");
       console.log(`\n=== ${story.title} ===`);
       const directory = join(runDirectory, `${String(repetition).padStart(2, "0")}-${story.id}`);
       const result = await runOneStory({
@@ -218,11 +207,10 @@ export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOpti
         story,
         provider: options.provider,
         directory,
-        initial: journeyState,
-        mode,
+        initial: suiteState,
       });
       runs.push({ storyId: story.id, repetition, score: result.score });
-      journeyState = result.final;
+      suiteState = result.final;
     }
   }
 

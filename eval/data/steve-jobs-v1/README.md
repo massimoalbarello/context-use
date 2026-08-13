@@ -18,9 +18,10 @@ historical quotations.
 - Reusable conversation, graph resolution, and partial scoring live in
   [`../../runner/story/`](../../runner/story/).
 
-Every historical story can run independently against a reset knowledge base. The journey
-runs the same fixtures chronologically against one persistent knowledge base, starting a
-fresh agent conversation for each story.
+One selected story runs against a reset knowledge base. A multi-story suite preserves the
+knowledge created by earlier stories while starting a fresh agent conversation for each;
+the journey selects the historical fixtures in chronological order. Each repeated suite
+starts from another reset knowledge base.
 
 ```sh
 bun run eval story:run --story imac-design-and-launch
