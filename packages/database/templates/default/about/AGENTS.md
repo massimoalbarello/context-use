@@ -6,9 +6,9 @@ owner.
 ## Owner entry point
 
 Create `about/intro` on the first write that establishes who the owner is. Reconcile it as
-that changes. It says who they are, what they do and what they are working on now, and it
-routes to independently useful owner-specific pages. Its content is not managed by the
-default template.
+that changes. It says who they are, what they do and the durable high-level context needed to
+orient a reader, and it routes to independently useful owner-specific pages. Its content is
+not managed by the default template.
 
 The owner is the subject most likely to overflow `intro`. Move an independently retrievable
 aspect—medical history, finances, schooling, family, personal history or an important

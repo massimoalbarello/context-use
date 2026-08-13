@@ -18,11 +18,11 @@ and link a project later if one becomes identifiable.
 
     about/projects/<slug>/
 
-`intro` says what the project is, why it exists, its durable boundaries and important
-project-specific reasoning. Link tasks, artifacts and external entities rather than absorbing
-their accounts. Add another page such as `architecture`, `principles` or `history` only when
-that aspect is independently useful.
+`intro` says what the project is, why it exists, its durable boundaries and the high-level
+project-specific reasoning that defines it. Link tasks, artifacts and external entities
+rather than absorbing their accounts. Add another page such as `architecture`, `principles`,
+`releases` or `history` when that aspect is independently useful.
 
-Project timeline events are consequential milestones: launch, material direction change,
-major release, handover or similarly durable outcome. A project timeline is not a commit log
-or exhaustive release list.
+Project timeline events are consequential milestones: launch, material direction change, a
+release with a durable user-facing or architectural effect, handover or similarly durable
+outcome. A project timeline is not a commit log or a list of build numbers.

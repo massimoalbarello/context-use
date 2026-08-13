@@ -763,6 +763,9 @@ describe("knowledge templates", () => {
       "a record discarded as noise is discarded whole",
       "every identifiable subject in a retained record is written",
       "every entity is a folder entered through `intro`",
+      "`intro` is the entity's stable front door",
+      "do not edit `intro` merely because activity occurred",
+      "do not leave a dated development only on `intro` or another detail page",
       "date activity to when it happened",
       "what the owner did, experienced or learned involving its entity",
       "never link the diary from a timeline event",
@@ -825,6 +828,8 @@ describe("knowledge templates", () => {
     }
 
     expect(normalize(guides.about)).toContain("`about/` has no `timeline`");
+    expect(normalize(guides.about)).toContain("durable high-level context needed to orient a reader");
+    expect(normalize(guides.about)).not.toContain("what they are working on now");
     expect(normalize(guides.diary)).toContain("An entity or timeline change is a candidate, not a quota");
     expect(normalize(guides.diary)).toContain("Repeated mention is not continuation");
     expect(normalize(guides.diary)).toContain("Preserve every owner-written passage exactly");
@@ -843,6 +848,13 @@ describe("knowledge templates", () => {
     expect(normalize(guides.meetings)).toContain(
       "When evidence independently resolves both the occasion and a bounded conversation",
     );
+    expect(normalize(guides.meetings)).toContain("at least two human participants");
+    expect(normalize(guides.meetings)).toContain(
+      "An interactive session with software or an AI agent is not a meeting",
+    );
+    expect(normalize(guides.meetings)).toContain(
+      "A conversation among people remains a meeting when software recorded",
+    );
     expect(normalize(guides.events)).toContain("A conversation inside an event follows that guide");
     expect(normalize(guides.events)).not.toContain("only when it is independently useful");
     expect(normalize(guides.skills)).toContain("local runtime exception to the root entity-folder default");
@@ -850,6 +862,14 @@ describe("knowledge templates", () => {
     expect(normalize(guides.threads)).toContain("corrections to existing lines follow the root reconciliation rule");
     expect(guides.threads).not.toContain("only ever appended");
     expect(normalize(guides.library)).toContain("Every resolvable creator and publisher receives its own canonical entity");
+    expect(normalize(guides.library)).toContain(
+      "independently useful notes, analysis or owner reaction a specifically named view",
+    );
+    expect(normalize(guides.library)).toContain("belongs on its timeline");
+    expect(normalize(guides.projects)).toContain("`releases` or `history`");
+    expect(DEFAULT_DIRECTORY_PRESENTATIONS.meetings?.summary.toLowerCase()).toContain(
+      "synchronous conversations among people",
+    );
 
     const contentGuides = [
       guides.diary,
@@ -971,6 +991,8 @@ describe("knowledge templates", () => {
     expect(normalizedDistiller).not.toContain("confirmed consequential future meeting");
     expect(normalizedDistiller).not.toContain("research only missing identity or role facts");
     expect(normalizedDistiller).not.toContain("do not create both a meeting and event");
+    expect(normalizedDistiller).not.toContain("interactive session with software or an ai agent");
+    expect(normalizedDistiller).not.toContain("entity's stable front door");
 
     for (const detail of [
       "[[agents|root guide]]",
