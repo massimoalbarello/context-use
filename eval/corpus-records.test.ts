@@ -67,15 +67,15 @@ function buildCorpus(options: { corruptNote?: boolean } = {}): string {
 }
 
 async function drainBatch(reader: CorpusRecordReader, checkpoint?: string) {
-  const slugs: string[] = [];
+  const bodies: Array<string | null> = [];
   let reads = 0;
   let cursor = checkpoint;
   for (;;) {
     const result = await reader.read(cursor ? { checkpoint: cursor } : {});
     reads += 1;
     cursor = result.next_checkpoint;
-    slugs.push(...result.records.map((record) => record.record_ref.split(":").at(-1)!));
-    if (!result.has_more) return { slugs, reads, checkpoint: cursor };
+    bodies.push(...result.records.map((record) => record.markdown));
+    if (!result.has_more) return { bodies, reads, checkpoint: cursor };
   }
 }
 
@@ -128,13 +128,19 @@ describe("corpus source records", () => {
     expect(reader.batches).toEqual(["2026-04-13", "2026-04-14", "2026-04-15"]);
 
     const first = await drainBatch(reader);
-    expect(first.slugs).toEqual(["note/a", "emails/em-0", "slack/sl-0"]);
+    expect(first.bodies).toHaveLength(3);
+    expect(first.bodies[0]).toContain("First day note.");
+    expect(first.bodies[1]).toContain("# Hello");
+    expect(first.bodies[2]).toContain("# #general — A");
 
     const second = await drainBatch(reader, first.checkpoint);
-    expect(second.slugs).toEqual(["cal/evt-0", "emails/em-1"]);
+    expect(second.bodies).toHaveLength(2);
+    expect(second.bodies[0]).toContain("# Sync");
+    expect(second.bodies[1]).toContain("# Reply");
 
     const third = await drainBatch(reader, second.checkpoint);
-    expect(third.slugs).toEqual(["note/b"]);
+    expect(third.bodies).toHaveLength(1);
+    expect(third.bodies[0]).toContain("Third day note.");
 
     // Past the final day the reader is exhausted and stays that way.
     const exhausted = await reader.read({ checkpoint: third.checkpoint });
@@ -163,17 +169,16 @@ describe("corpus source records", () => {
   test("serves authored Markdown verbatim and renders structured sources", async () => {
     const reader = new CorpusRecordReader({ directory: buildCorpus() });
     const { records } = await reader.read({});
-    const noteRecord = records.find((record) => record.record_ref.endsWith("note/a"))!;
-    expect(noteRecord.source).toBe("Notes");
+    const noteRecord = records.find((record) => record.markdown?.includes("First day note."))!;
     expect(noteRecord.action).toBe("added");
     expect(noteRecord.markdown).toContain("date: 2026-04-13");
     expect(noteRecord.markdown).toContain("First day note.");
 
-    const emailRecord = records.find((record) => record.record_ref.endsWith("emails/em-0"))!;
-    expect(emailRecord.source).toBe("Email");
+    const emailRecord = records.find((record) => record.markdown?.startsWith("# Hello"))!;
     expect(emailRecord.markdown).toContain("# Hello");
     expect(emailRecord.markdown).toContain("**From:** A <a@example.com>");
     expect(emailRecord.markdown).toContain("Body text.");
+    expect(records.every((record) => Object.keys(record).sort().join(",") === "action,markdown")).toBe(true);
   });
 
   test("rejects a tampered or foreign checkpoint", async () => {

@@ -1,7 +1,8 @@
 # Automations conventions
 
-This subtree inherits the [[agents|root guide]]. It contains only the operating contracts,
-minimal state and genuine dependencies of jobs run by an external harness.
+This subtree inherits the [[agents|root guide]]. This guide is for agents creating or changing
+an automation. A running automation follows its own instructions and the guides applicable to
+its output; do not make reading this authoring guide a runtime prerequisite.
 
 The harness owns scheduling, execution, retries, credentials, run history and delivery. Each
 automation runs independently: never read, wait on, mutate or use another automation's
@@ -16,9 +17,15 @@ instructions, state, checkpoint or report as a precondition.
     └── <YYYY>/<MM>/<DD>/<produced-artifact>
 
 `instructions` is the harness-addressed entry point, a local exception to the root `intro`
-default. It contains an executable workflow for gathering and processing inputs,
-checkpointing progress, handling failures and reporting results. It links the guides that
-own knowledge structure and writing; it does not copy their rules.
+default. Write it as a numbered state machine for gathering and processing inputs,
+checkpointing progress, handling failures and reporting results. Make inputs, actions,
+completion conditions and failure transitions explicit. Unfinished work loops back into
+processing; only objective failure conditions named by the workflow enter a failure
+transition.
+
+Instructions must be runnable without remembered conventions. Link the guides that own the
+structure and writing of output instead of copying their rules. State an operational safeguard
+once, where it changes control flow, rather than repeating warnings elsewhere.
 
 An incremental workflow may keep one `state` page containing only its current opaque
 checkpoint and, when useful, its last successful completion time. Instructions must define
@@ -34,7 +41,3 @@ Knowledge an automation learns belongs to its subject under that subject's guide
 the process that found it. A produced artifact is the exception: an issue, digest or other
 thing the automation itself made may live beneath the automation, dated when separate runs
 produce separate artifacts. Facts learned while producing it still belong to their subjects.
-
-An automation instructions page must be runnable without remembered conventions, while
-remaining procedural: it says how to acquire and process information and delegates the shape
-of resulting knowledge to the applicable `AGENTS.md` chain.

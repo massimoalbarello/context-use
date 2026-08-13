@@ -77,7 +77,6 @@ const RECORD_FRESHNESS_MS = 30 * 24 * 60 * 60 * 1_000;
 
 export type PipelineRecordSource = {
   integrationId: string;
-  displayName: string;
   model: string;
 };
 
@@ -89,17 +88,11 @@ export const PIPELINE_RECORD_SOURCES: PipelineRecordSource[] = MANAGED_FUNCTIONS
     if (!integration) {
       throw new Error(`Managed function ${managedFunction.name} has no managed integration`);
     }
-    return {
-      integrationId: integration.id,
-      displayName: integration.displayName,
-      model,
-    };
+    return { integrationId: integration.id, model };
   }),
 );
 
 export type SourceRecord = {
-  record_ref: string;
-  source: string;
   action: "added" | "updated" | "deleted";
   markdown: string | null;
 };
@@ -161,18 +154,6 @@ function streamKey(
   return createHash("sha256")
     .update(JSON.stringify([integrationId, connectionInstanceId, connectionId, model]))
     .digest("hex");
-}
-
-function recordReference(stream: Stream, id: string): string {
-  return `nango:${createHash("sha256")
-    .update(JSON.stringify([
-      stream.integrationId,
-      stream.connectionInstanceId,
-      stream.connectionId,
-      stream.model,
-      id,
-    ]))
-    .digest("hex")}`;
 }
 
 function encodeCheckpoint(checkpoint: Checkpoint): string {
@@ -389,8 +370,6 @@ export class NangoRecordReader implements SourceRecordReader {
           continue;
         }
         const record: SourceRecord = {
-          record_ref: recordReference(stream, sourceRecord.id),
-          source: stream.displayName,
           action,
           markdown,
         };

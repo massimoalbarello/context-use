@@ -885,6 +885,9 @@ describe("knowledge templates", () => {
     const diaryComposer = await Bun.file(
       new URL("../templates/default/_pages/diary-composer/instructions.md", import.meta.url),
     ).text();
+    const guidelineReviewer = await Bun.file(
+      new URL("../templates/default/_pages/guideline-consistency-review/instructions.md", import.meta.url),
+    ).text();
     const normalize = (value: string) => value.replaceAll(/\s+/g, " ").toLowerCase();
     const normalizedAutomationGuide = normalize(automationGuide);
     const normalizedDistiller = normalize(activityDistiller);
@@ -893,7 +896,10 @@ describe("knowledge templates", () => {
     expect(normalizedAutomationGuide).toContain("instructions");
     expect(normalizedAutomationGuide).toContain("state");
     expect(normalizedAutomationGuide).toContain("each automation runs independently");
-    expect(normalizedAutomationGuide).toContain("does not copy their rules");
+    expect(normalizedAutomationGuide).toContain("instead of copying their rules");
+    expect(normalizedAutomationGuide).toContain("creating or changing an automation");
+    expect(normalizedAutomationGuide).toContain("numbered state machine");
+    expect(normalizedAutomationGuide).toContain("objective failure conditions named by the workflow");
     expect(normalizedAutomationGuide).not.toContain("read_source_records");
     expect(normalizedAutomationGuide).not.toContain("get_knowledge_changes");
 
@@ -927,11 +933,9 @@ describe("knowledge templates", () => {
 
     for (const detail of [
       "[[agents|root guide]]",
-      "[[automations/agents|automation guide]]",
       "`cached_guidance_receipt`",
       "`read_source_records`",
       "no `limit`",
-      "`record_ref`",
       "next_checkpoint",
       "`has_more`",
       "more than 30 days",
@@ -951,12 +955,12 @@ describe("knowledge templates", () => {
     expect(auditLoop).toBeGreaterThan(-1);
     expect(checkpointWrite).toBeGreaterThan(auditLoop);
     expect(normalizedDistiller).not.toContain("50 records");
+    expect(normalizedDistiller).not.toContain("record_ref");
     expect(activityDistiller).not.toContain("Discarding a record does not discard its cast");
     expect(activityDistiller).not.toContain("automations/diary-composer/");
 
     for (const detail of [
       "[[agents|root guide]]",
-      "[[automations/agents|automation guide]]",
       "[[about/diary/agents|diary guide]]",
       "`cached_guidance_receipt`",
       "`get_knowledge_changes`",
@@ -979,6 +983,9 @@ describe("knowledge templates", () => {
     expect(diaryComposer).not.toContain("Write connective prose");
     expect(diaryComposer).not.toContain("Repeated mention is not continuation");
     expect(diaryComposer).not.toContain("automations/activity-distiller/");
+    for (const runtimeInstructions of [activityDistiller, diaryComposer, guidelineReviewer]) {
+      expect(normalize(runtimeInstructions)).not.toContain("[[automations/agents|automation guide]]");
+    }
 
     const nonAutomationGuides = [
       "../templates/default/about/AGENTS.md",
@@ -999,7 +1006,7 @@ describe("knowledge templates", () => {
     const knowledgeGuides = (await Promise.all(nonAutomationGuides.map(
       async (path) => Bun.file(new URL(path, import.meta.url)).text(),
     ))).join("\n").toLowerCase();
-    for (const detail of ["read_source_records", "record_ref", "next_checkpoint", "has_more", "pruned deletion"]) {
+    for (const detail of ["read_source_records", "next_checkpoint", "has_more", "pruned deletion"]) {
       expect(knowledgeGuides).not.toContain(detail);
     }
   });

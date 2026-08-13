@@ -13,16 +13,8 @@ Start from the latest remote default branch and inspect the complete affected gu
 metadata, template tests and relevant eval assertions. Read recent history when wording may
 encode a regression fix.
 
-Record the behaviors that must survive before editing. In particular, protect:
-
-- whole-record noise rejection followed by exhaustive item-by-item extraction from retained
-  evidence, including every side of compound or conflicting claims;
-- global identifiability without engagement, repetition or importance gates;
-- one-record-at-a-time reconciliation, audit gaps looping back to unfinished work, and
-  checkpoints advancing only after a complete working set;
-- canonical entities, contextual mutual links and dated entity timelines;
-- diary composition from exact changed evidence rather than page rewrites or run time;
-- owner-authored material, conflicting evidence and multi-writer boundaries.
+Record the behaviors that must survive from the authoritative guides, managed instructions,
+tests and history. Treat that as an edit-specific inventory; do not restate their rules here.
 
 ## 2. Assign one owner to every rule
 
@@ -31,7 +23,7 @@ Use this ownership model:
 - Root `AGENTS.md`: invariants that apply to every knowledge write.
 - Entity or subtree `AGENTS.md`: subject boundary, paths, local page responsibilities,
   timeline eligibility and genuine exceptions within that subtree.
-- `automations/AGENTS.md`: storage and harness conventions shared by automations.
+- `automations/AGENTS.md`: conventions for creating and maintaining automations.
 - Automation `instructions`: ordered input, processing, checkpoint, failure and reporting
   workflow only.
 - Tool descriptions: argument and response semantics already enforced by the tool surface.
@@ -42,16 +34,10 @@ apply that guide. Do not leave two normative versions behind.
 
 ## 3. Make workflows executable
 
-Write automation instructions as numbered state machines. Each step must state its input,
-action, completion condition and failure transition. Make extraction, reconciliation,
-checkpointing and loop termination visually distinct.
-
-Make terminal states objective. Work found by an audit loops back into processing; only an
-actual tool error enters a failure transition. When workload or replay has previously been
-mistaken for a reason to stop, keep one compact statement of its cost at the decision point.
-
-Do not bury required behavior in repeated warnings. State it once at the step where the
-agent acts, then add a compact invariant or failure rule only when it changes control flow.
+For automation edits, read the complete `automations/AGENTS.md` and the target instructions.
+The guide owns shared authoring conventions; each instructions page owns its job-specific
+transitions. Verify that the resulting workflow is executable without copying either contract
+into this skill.
 
 ## 4. Protect information density
 

@@ -8,17 +8,14 @@ import {
 
 const GITHUB: PipelineRecordSource = {
   integrationId: "github",
-  displayName: "GitHub",
   model: "GitHubPullRequest",
 };
 const GRANOLA: PipelineRecordSource = {
   integrationId: "granola",
-  displayName: "Granola",
   model: "GranolaMeeting",
 };
 const AGENT_CONVERSATIONS: PipelineRecordSource = {
   integrationId: "agent-conversations",
-  displayName: "Agent Conversations",
   model: "AgentConversation",
 };
 const NOW = new Date("2026-08-01T12:00:00.000Z");
@@ -75,7 +72,7 @@ describe("Nango source-record reader", () => {
   test("combines canonical Markdown across integrations and connections without exposing provider JSON", async () => {
     const sources = [
       GITHUB,
-      { integrationId: "slack", displayName: "Slack", model: "SlackThread" },
+      { integrationId: "slack", model: "SlackThread" },
     ];
     const seen: Request[] = [];
     const sourceReader = reader(async (request) => {
@@ -108,14 +105,12 @@ describe("Nango source-record reader", () => {
 
     expect(result.has_more).toBe(false);
     expect(result.records).toHaveLength(2);
-    expect(result.records.map(({ source }) => source).sort()).toEqual(["GitHub", "Slack"]);
     expect(result.records.map(({ markdown }) => markdown).sort()).toEqual([
       "# github activity\n\nCanonical source Markdown.",
       "# slack activity\n\nCanonical source Markdown.",
     ]);
-    expect(result.records.every((record) => Object.keys(record).sort().join(",") === "action,markdown,record_ref,source")).toBe(true);
+    expect(result.records.every((record) => Object.keys(record).sort().join(",") === "action,markdown")).toBe(true);
     expect(result.records.every(({ action }) => action === "added")).toBe(true);
-    expect(result.records.every(({ record_ref }) => /^nango:[a-f0-9]{64}$/.test(record_ref))).toBe(true);
     expect(seen.filter((request) => new URL(request.url).pathname === "/connections")).toHaveLength(2);
     expect(seen.some((request) => new URL(request.url).pathname === "/scripts/config")).toBe(false);
   });
@@ -362,7 +357,7 @@ describe("Nango source-record reader", () => {
         ? [pipelineRecord("1", "A".repeat(100), "cursor-one"), pipelineRecord("2", "B".repeat(100), "cursor-two")]
         : [pipelineRecord("2", "B".repeat(100), "cursor-two")];
       return Response.json({ records, next_cursor: null });
-    }, { sources: [GITHUB], responseByteBudget: 300 });
+    }, { sources: [GITHUB], responseByteBudget: 200 });
 
     const first = await sourceReader.read({ limit: 10 });
     expect(first.records).toHaveLength(1);

@@ -12,8 +12,8 @@ structured and written.
 - Before the first mutation in a scope, prepare the exact diary target. Reuse its receipt for
   the same guide chain; pass the prior receipt as `cached_guidance_receipt` when the scope
   changes or a receipt is rejected.
-- Follow the [[automations/agents|automation guide]]. Run independently from every other
-  automation and treat the fixed knowledge-change window as the entire input.
+- Run independently from every other automation and treat the fixed knowledge-change window
+  as the entire input.
 - Mutate only pages beneath `about/diary/` and this automation's state. Read entity pages for
   evidence and links; never repair them from this workflow.
 - Preserve owner-authored and uncertain material exactly as the diary guide requires. Never

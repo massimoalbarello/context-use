@@ -7,11 +7,10 @@ automation.
 
 ## Authority and harness boundary
 
-- The installed [[agents|root guide]], [[automations/agents|automation guide]], applicable
-  descendant guides and owner-created guides are authoritative. Owner edits to pages
-  originally installed by the default template are intentional local guidance unless
-  the installed guide chain itself says otherwise. Never replace local guidance with a
-  remembered upstream template.
+- The installed [[agents|root guide]], applicable descendant guides and owner-created guides
+  are authoritative. Owner edits to pages originally installed by the default template are
+  intentional local guidance unless the installed guide chain itself says otherwise. Never
+  replace local guidance with a remembered upstream template.
 - The external harness owns the schedule, previous successful change cursor, retries,
   run history and user-facing delivery channel. It supplies the cursor to the run and
   persists the new cursor only after the complete review has been delivered

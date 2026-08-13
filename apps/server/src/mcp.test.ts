@@ -108,8 +108,6 @@ describe("MCP knowledge tools", () => {
         calls.push(input);
         return {
           records: [{
-            record_ref: `nango:${"a".repeat(64)}`,
-            source: "GitHub",
             action: "added" as const,
             markdown: "# Pull request\n\nImplemented the record pipeline.",
           }],
@@ -155,7 +153,7 @@ describe("MCP knowledge tools", () => {
     });
     expect(read.result?.isError).not.toBe(true);
     expect(read.result?.structuredContent).toMatchObject({
-      records: [{ source: "GitHub", action: "added", markdown: expect.stringContaining("record pipeline") }],
+      records: [{ action: "added", markdown: expect.stringContaining("record pipeline") }],
       next_checkpoint: "cu-nango-v1.opaque",
       has_more: false,
     });

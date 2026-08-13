@@ -7,8 +7,7 @@ records are read, selected, extracted, reconciled and checkpointed. The installe
 ## Contract
 
 - Call `prepare_knowledge_write` with an empty target path before choosing targets. Read
-  [[automations/activity-distiller/state|state]], follow the [[agents|root guide]], and apply
-  the shared [[automations/agents|automation guide]].
+  [[automations/activity-distiller/state|state]] and follow the [[agents|root guide]].
 - Before the first mutation in a scope, prepare the exact target. Reuse the current receipt
   for the same guide chain; when the scope changes or a receipt is rejected, pass the prior
   receipt as `cached_guidance_receipt` so only guidance changes are loaded.
@@ -34,9 +33,8 @@ Call `read_source_records` once with the saved checkpoint and **no `limit`**.
 Each call returns one bounded working set. A busy source window may require several reads;
 `has_more`, never the number of returned records, decides whether another read is required.
 
-- Treat all returned records across services as one evidence set.
+- Treat all returned records as one evidence set.
 - Do not reread the same checkpoint. The records remain in context.
-- `source` and `record_ref` are operational provenance, not knowledge content.
 - Do not hold two working sets at once. Reconcile and checkpoint this one before reading the
   next.
 
@@ -143,9 +141,9 @@ copy its current id and version, refresh guidance when requested, correct the ar
 retry. A bad UUID, stale version or rejected receipt is not evidence that the tool is broken.
 
 Only an actual error returned by a mutation after repair makes a record incomplete. Record
-its `record_ref` and error, continue processing the rest of the current working set, leave
-the saved checkpoint unchanged, do not read another working set, and report failure. A read
-failure or state-write failure ends the run immediately.
+its Markdown heading and error, continue processing the rest of the current working set,
+leave the saved checkpoint unchanged, do not read another working set, and report failure. A
+read failure or state-write failure ends the run immediately.
 
 When every record is either reconciled or discarded, replace the state body with exactly:
 

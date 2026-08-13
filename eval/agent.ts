@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { stackUrl } from "../scripts/local-stack.ts";
-import { style, terminalWidth, truncate, wrapList } from "./terminal.ts";
+import { style, terminalWidth, truncate } from "./terminal.ts";
 
 /** Agent session plumbing shared by the scenario eval and the corpus distillation run. */
 
@@ -88,43 +88,21 @@ function callSubject(item: ToolCallItem): string {
   return "";
 }
 
-/**
- * Turns one `read_source_records` result into the batch the agent was just handed,
- * grouped by source so a day of eighty records stays a handful of lines.
- */
+/** Turns one `read_source_records` result into a compact count for the live trace. */
 function batchLines(item: ToolCallItem): string[] {
   const text = item.result?.content?.find((entry) => entry.text)?.text;
   if (!text) return [];
-  let parsed: { records?: { record_ref?: string }[]; has_more?: boolean };
+  let parsed: { records?: unknown[]; has_more?: boolean };
   try {
     parsed = JSON.parse(text) as typeof parsed;
   } catch {
     return [];
   }
   const records = parsed.records ?? [];
-  const grouped = new Map<string, string[]>();
-  for (const record of records) {
-    // `corpus:amara-life-v1:meeting/mtg-0000` reads better as `meeting mtg-0000`.
-    const ref = (record.record_ref ?? "").replace(/^corpus:[^:]+:/, "");
-    const separator = ref.indexOf("/");
-    const source = separator === -1 ? "other" : ref.slice(0, separator);
-    grouped.set(source, [...(grouped.get(source) ?? []), ref.slice(separator + 1)]);
-  }
-  const width = Math.max(...[...grouped.keys()].map((source) => source.length));
-  // Built by concatenation rather than nesting: one style's reset ends the other early.
-  const lines = [
+  return [
     style.cyan("  ← ") + style.bold(String(records.length)) + style.cyan(" records served")
       + (parsed.has_more ? style.dim(" · more in this day") : ""),
   ];
-  for (const [source, refs] of [...grouped].sort(([left], [right]) => left.localeCompare(right))) {
-    const indent = 8 + width + 2;
-    const [first, ...rest] = wrapList(refs, indent);
-    lines.push(
-      `      ${style.cyan(source.padEnd(width))}  ${style.dim((first ?? "").trimStart())}`,
-      ...rest.map((line) => style.dim(line)),
-    );
-  }
-  return lines;
 }
 
 /**
