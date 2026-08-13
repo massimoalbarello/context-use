@@ -81,14 +81,14 @@ A window may legitimately affect no diary day.
 
 For each affected date:
 
-1. Read the current `intro` and every companion view reachable from it. If a legacy day has a
+- **a.** Read the current `intro` and every companion view reachable from it. If a legacy day has a
    `log` but no `intro`, retain `log` as a companion and create an entry point that reaches it.
-2. Use `get_page_history` only as far as needed to distinguish composer-owned passages from
+- **b.** Use `get_page_history` only as far as needed to distinguish composer-owned passages from
    owner additions. Treat uncertain authorship as the owner's.
-3. Read a current occurrence or entity page only when the delta does not provide enough
+- **c.** Read a current occurrence or entity page only when the delta does not provide enough
    context to understand the relationship or choose the destination link. Do not mine it for
    unchanged facts to repeat.
-4. Use `browse_directory` on the relevant year or month to locate earlier days. Use
+- **d.** Use `browse_directory` on the relevant year or month to locate earlier days. Use
    `search_pages` with canonical subject paths, and follow existing continuity links, to find
    the latest useful diary context for each arc that genuinely continues.
 

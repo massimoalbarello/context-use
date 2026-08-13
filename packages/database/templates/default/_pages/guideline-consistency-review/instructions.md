@@ -21,18 +21,20 @@ automation.
 - This is a read-only review. Never publish, create, update, move, archive or delete a
   page.
 
-## Select the fixed change window
+## State machine
 
-1. Call `get_knowledge_changes` with the opaque cursor supplied by the harness. Omit
+### 1. Select the fixed change window
+
+- **a.** Call `get_knowledge_changes` with the opaque cursor supplied by the harness. Omit
    `cursor` only when the harness has no prior successful cursor.
-2. When `has_more` is true, call it again with `next_page_token` as `page_token` and no
+- **b.** When `has_more` is true, call it again with `next_page_token` as `page_token` and no
    cursor. Continue until `has_more` is false. The scan window is fixed by the first
    call, so changes made while the review runs remain for the next run.
-3. Treat the returned rows as the complete worklist. Context-use has already collapsed
+- **c.** Treat the returned rows as the complete worklist. Context-use has already collapsed
    repeated changes to the same page within this window to that page's latest change.
    Do not broaden the review to unchanged pages merely because they are nearby or
    linked.
-4. A `deleted` row is a durable tombstone, not a page to review. Mention it only if the
+- **d.** A `deleted` row is a durable tombstone, not a page to review. Mention it only if the
    deletion itself creates a clear inconsistency in another changed page; otherwise
    skip it.
 
@@ -40,7 +42,7 @@ The final call's `next_cursor` is the candidate cursor for the harness. Returnin
 seeing that cursor is not success: the harness must leave its previous cursor in force
 if any page cannot be reviewed, the report cannot be produced, or delivery fails.
 
-## Review each latest changed version
+### 2. Review each latest changed version
 
 For every non-deleted row, read the exact `page_id` and `version_number` with
 `get_page_version`. If retention has removed that exact version, read the current page
@@ -63,7 +65,7 @@ language and useful information. Do not compare against an unavailable or rememb
 template snapshot. When guidance conflicts, the most specific installed guide wins;
 when it is genuinely ambiguous, report that ambiguity instead of inventing a rule.
 
-## Report through the harness
+### 3. Report through the harness
 
 Return a concise report for delivery through the harness-managed user channel:
 

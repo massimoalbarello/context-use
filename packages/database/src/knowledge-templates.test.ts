@@ -378,7 +378,7 @@ describe("knowledge templates", () => {
     expect(state.createdPageInputs.find(({ path }) => path === "automations/guideline-consistency-review/instructions"))
       .toMatchObject({
         title: "Guideline consistency review",
-        body_markdown: expect.stringContaining("## Select the fixed change window"),
+        body_markdown: expect.stringContaining("### 1. Select the fixed change window"),
       });
   });
 
@@ -898,7 +898,11 @@ describe("knowledge templates", () => {
     expect(normalizedAutomationGuide).toContain("each automation runs independently");
     expect(normalizedAutomationGuide).toContain("instead of copying their rules");
     expect(normalizedAutomationGuide).toContain("creating or changing an automation");
-    expect(normalizedAutomationGuide).toContain("numbered state machine");
+    expect(normalizedAutomationGuide).toContain("numbered headings for states");
+    expect(normalizedAutomationGuide).toContain("lettered labels for ordered substeps");
+    expect(normalizedAutomationGuide).toContain(
+      "ordinary bullets for unordered criteria and invariants",
+    );
     expect(normalizedAutomationGuide).toContain("objective failure conditions named by the workflow");
     expect(normalizedAutomationGuide).not.toContain("read_source_records");
     expect(normalizedAutomationGuide).not.toContain("get_knowledge_changes");
@@ -930,6 +934,16 @@ describe("knowledge templates", () => {
       "### 6. Reconcile each affected day",
       "### 7. Save the checkpoint and report",
     ]);
+    expectOrdered(guidelineReviewer, [
+      "### 1. Select the fixed change window",
+      "### 2. Review each latest changed version",
+      "### 3. Report through the harness",
+    ]);
+
+    for (const runtimeInstructions of [activityDistiller, diaryComposer, guidelineReviewer]) {
+      expect(runtimeInstructions).toMatch(/^- \*\*a\.\*\*/m);
+      expect(runtimeInstructions).not.toMatch(/^\s*\d+\.\s/m);
+    }
 
     for (const detail of [
       "[[agents|root guide]]",

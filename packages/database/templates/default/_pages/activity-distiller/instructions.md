@@ -72,16 +72,16 @@ replace record-by-record writing.
 
 Then process retained records **one at a time, in activity order**. For the current record:
 
-1. Read the header and body sentence by sentence. List every resolvable subject, including
+- **a.** Read the header and body sentence by sentence. List every resolvable subject, including
    senders, recipients, attendees and subjects mentioned only in a clause or aside.
-2. Determine whether the record itself resolves an occurrence, exchange, work or continuing
+- **b.** Determine whether the record itself resolves an occurrence, exchange, work or continuing
    unit of work under the applicable entity guide.
-3. Extract every supported particular about every subject: figures, terms, dates, names,
+- **c.** Extract every supported particular about every subject: figures, terms, dates, names,
    conditions, reasons, commitments, positions and personal particulars. Preserve what was
    established, not merely that somebody discussed, sent or flagged it.
-4. Split lists, comparisons, paired commitments and conflicting values into independently
+- **d.** Split lists, comparisons, paired commitments and conflicting values into independently
    checkable particulars. Retain every item and both sides of a conflict.
-5. Reconcile all knowledge from this record through step 5 before moving to the next record.
+- **e.** Reconcile all knowledge from this record through step 5 before moving to the next record.
 
 A record whose only extracted subject is its sender has usually been half read. A record may
 produce many pages, one page, or no semantic change after reconciliation. Never force one
@@ -92,18 +92,18 @@ base.
 
 For every subject and account extracted in step 4:
 
-1. Search names, aliases, stable references and connected context for its canonical target.
-2. Choose the most specific supported target, prepare its exact guide chain, and follow that
+- **a.** Search names, aliases, stable references and connected context for its canonical target.
+- **b.** Choose the most specific supported target, prepare its exact guide chain, and follow that
    guide's identity, path, page and timeline contract.
-3. Create or update the occurrence or unit-of-work account when the evidence resolves one.
+- **c.** Create or update the occurrence or unit-of-work account when the evidence resolves one.
    In the same coherent change, create or reconcile every other identified subject and the
    contextual links between them.
-4. Put durable current knowledge on the subject's current account. Put dated activity on its
+- **d.** Put durable current knowledge on the subject's current account. Put dated activity on its
    timeline using the activity's actual date and particulars. Without a reliable activity
    date, leave the timeline unchanged.
-5. Reconcile corrections and conflicts rather than appending snapshots. Keep assertions
+- **e.** Reconcile corrections and conflicts rather than appending snapshots. Keep assertions
    attributed when the owner did not adopt them.
-6. Make the write replay-safe: rereading the same evidence must converge on the same semantic
+- **f.** Make the write replay-safe: rereading the same evidence must converge on the same semantic
    pages and timeline entries rather than append duplicates.
 
 When later records correct, resolve or contradict earlier ones, revisit the canonical pages

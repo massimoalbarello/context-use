@@ -17,10 +17,10 @@ instructions, state, checkpoint or report as a precondition.
     └── <YYYY>/<MM>/<DD>/<produced-artifact>
 
 `instructions` is the harness-addressed entry point, a local exception to the root `intro`
-default. Write it as a numbered state machine for gathering and processing inputs,
-checkpointing progress, handling failures and reporting results. Make inputs, actions,
-completion conditions and failure transitions explicit. Unfinished work loops back into
-processing; only objective failure conditions named by the workflow enter a failure
+default. Write it as a state machine with numbered headings for states and lettered labels for
+ordered substeps. Use ordinary bullets for unordered criteria and invariants. Make inputs,
+actions, completion conditions and failure transitions explicit. Unfinished work loops back
+into processing; only objective failure conditions named by the workflow enter a failure
 transition.
 
 Instructions must be runnable without remembered conventions. Link the guides that own the
