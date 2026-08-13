@@ -27,15 +27,18 @@ Read the state page. When its checkpoint is `_none_`, omit `checkpoint`; otherwi
 opaque value exactly. A run retains the evidence it reads until it either saves the next
 checkpoint or reports a failure.
 
-### 2. Read one working batch
+### 2. Read one working set
 
 Call `read_source_records` once with the saved checkpoint and **no `limit`**.
 
-- Treat every returned service as one evidence set.
+Each call returns one bounded working set. A busy source window may require several reads;
+`has_more`, never the number of returned records, decides whether another read is required.
+
+- Treat all returned records across services as one evidence set.
 - Do not reread the same checkpoint. The records remain in context.
 - `source` and `record_ref` are operational provenance, not knowledge content.
-- `has_more` describes whether another batch follows this one. Never read that next batch
-  until the current batch is fully reconciled and checkpointed.
+- Do not hold two working sets at once. Reconcile and checkpoint this one before reading the
+  next.
 
 The reader advances past records whose latest source update is more than 30 days old. Do not
 recover or interpret those omitted records. The freshness rule concerns source modification
@@ -64,7 +67,7 @@ step 4.
 
 ### 4. Extract every retained record
 
-First scan the retained batch to name its cast: the occurrences and units of work it
+First scan the retained working set to name its cast: the occurrences and units of work it
 contains; every person, organization, place and work it names; and every question, pursuit,
 topic or position it reveals. This scan supplies cross-record context only. It does not
 replace record-by-record writing.
@@ -78,7 +81,9 @@ Then process retained records **one at a time, in activity order**. For the curr
 3. Extract every supported particular about every subject: figures, terms, dates, names,
    conditions, reasons, commitments, positions and personal particulars. Preserve what was
    established, not merely that somebody discussed, sent or flagged it.
-4. Reconcile all knowledge from this record through step 5 before moving to the next record.
+4. Split lists, comparisons, paired commitments and conflicting values into independently
+   checkable particulars. Retain every item and both sides of a conflict.
+5. Reconcile all knowledge from this record through step 5 before moving to the next record.
 
 A record whose only extracted subject is its sender has usually been half read. A record may
 produce many pages, one page, or no semantic change after reconciliation. Never force one
@@ -112,27 +117,35 @@ identity or role facts needed for the conversation; then reconcile useful contex
 and questions without claiming the meeting happened. Do not create both a meeting and event
 unless their guides independently support both.
 
-### 6. Audit and close the batch
+### 6. Audit and close the working set
 
-After every retained record has been processed, compare the batch cast with the mutations:
+After every retained record has been processed, compare the working-set cast and extracted
+particulars with the mutations:
 
 - every resolvable named subject has its canonical page and contextual link;
 - every resolved occurrence or running exchange has the account its guide requires;
 - every identified decision or continuing pursuit has the applicable task or project account;
+- every extracted particular was written, was already present, or remains as an attributed
+  unresolved conflict;
 - every supported dated development appears on the correct subject timeline; and
-- `about/intro` exists and remains consistent with what this batch establishes about the
+- `about/intro` exists and remains consistent with what this working set establishes about the
   owner.
 
-Finish missing work before checkpointing.
+If the audit finds missing work, return to steps 4 and 5 and finish it. An audit gap is
+unfinished work, not failure.
+
+Working-set size, elapsed work, remaining work and replay safety are not errors and never
+authorize stopping or reporting. An unsaved working set persists no progress: replay is
+recovery after an actual failure, not a reason to choose one.
 
 If a mutation is rejected, treat the returned error as a repair task. Re-read the exact page,
 copy its current id and version, refresh guidance when requested, correct the arguments and
 retry. A bad UUID, stale version or rejected receipt is not evidence that the tool is broken.
 
-If one record still cannot be completed, record its `record_ref` and actual error, continue
-processing the rest of the current batch, and **do not save the batch checkpoint or read the
-next batch**. The old checkpoint preserves the failed record for replay. A read failure or
-state-write failure ends the run immediately.
+Only an actual error returned by a mutation after repair makes a record incomplete. Record
+its `record_ref` and error, continue processing the rest of the current working set, leave
+the saved checkpoint unchanged, do not read another working set, and report failure. A read
+failure or state-write failure ends the run immediately.
 
 When every record is either reconciled or discarded, replace the state body with exactly:
 
@@ -141,11 +154,10 @@ When every record is either reconciled or discarded, replace the state body with
     **Checkpoint:** `<next_checkpoint>`
 
 Keep the state's existing title and summary. Saving the checkpoint asserts that the whole
-batch is complete, including batches that required no semantic knowledge change.
+working set is complete, including one that required no semantic knowledge change.
 
 If `has_more` is true, return to step 2 with the saved checkpoint. If it is false, the source
-is caught up and the run succeeds. Batch size, elapsed work and replay safety are never
-reasons to stop early.
+is caught up and the run succeeds.
 
 ### 7. Report the run
 
@@ -159,4 +171,4 @@ Report:
 
 Include entity pages and timelines. Exclude structural directories and the operational state
 page. Write `None` for an empty list. Never claim success or a caught-up source while a
-record, batch or state update remains incomplete.
+record, working set or state update remains incomplete.

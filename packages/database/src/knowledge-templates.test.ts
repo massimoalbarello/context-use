@@ -908,11 +908,11 @@ describe("knowledge templates", () => {
 
     expectOrdered(activityDistiller, [
       "### 1. Initialize the run",
-      "### 2. Read one working batch",
+      "### 2. Read one working set",
       "### 3. Apply lifecycle semantics and discard noise",
       "### 4. Extract every retained record",
       "### 5. Reconcile the current record",
-      "### 6. Audit and close the batch",
+      "### 6. Audit and close the working set",
       "### 7. Report the run",
     ]);
     expectOrdered(diaryComposer, [
@@ -937,12 +937,20 @@ describe("knowledge templates", () => {
       "more than 30 days",
       "pruned deletion",
       "one at a time",
+      "bounded working set",
       "do not extract subjects from a discarded record",
-      "do not save the batch checkpoint or read the next batch",
+      "an audit gap is unfinished work, not failure",
+      "only an actual error returned by a mutation",
+      "replay is recovery after an actual failure",
       "`created`, `updated` and `archived` lists",
     ]) {
       expect(normalizedDistiller).toContain(detail);
     }
+    const auditLoop = normalizedDistiller.indexOf("an audit gap is unfinished work, not failure");
+    const checkpointWrite = normalizedDistiller.indexOf("replace the state body");
+    expect(auditLoop).toBeGreaterThan(-1);
+    expect(checkpointWrite).toBeGreaterThan(auditLoop);
+    expect(normalizedDistiller).not.toContain("50 records");
     expect(activityDistiller).not.toContain("Discarding a record does not discard its cast");
     expect(activityDistiller).not.toContain("automations/diary-composer/");
 
