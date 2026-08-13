@@ -123,8 +123,9 @@ Every run resets semantic knowledge and assets in this local instance to the def
 template while preserving the owner passkey and OAuth authorization. Do not keep
 development data in it. Snapshots, per-batch agent logs, QA answers and scores,
 structural scores, and Markdown reports stay together in a timestamped run directory
-under `eval/results/`. The directory is gitignored so repeated local runs remain available
-without entering commits.
+under `eval/results/corpus/`. Story suites use the parallel `eval/results/stories/`
+directory. Their shared `eval/results/` parent is gitignored so repeated local runs remain
+available without entering commits.
 
 ## What counts as one source record
 

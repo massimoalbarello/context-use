@@ -6,7 +6,7 @@ import { EVAL_URL, MCP_NAME, ROOT, runAgentSession, type EvalProvider } from "./
 import { corpusDirectory, corpusIsUnchanged, diffCorpus, type CorpusId } from "./corpus/integrity.ts";
 import { pageChanges, snapshotKnowledge, type PageChange, type PageSnapshot } from "./snapshot.ts";
 import { style, terminalWidth } from "./terminal.ts";
-import { EVAL_RESULTS_ROOT } from "./results.ts";
+import { EVAL_CORPUS_RESULTS_ROOT } from "./results.ts";
 
 /**
  * Drives the activity distiller over the vendored corpus, one run per corpus day.
@@ -167,7 +167,7 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
 
   const startedAt = new Date().toISOString();
   const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-distill-${options.corpus}-${options.provider}`;
-  const runDirectory = join(EVAL_RESULTS_ROOT, runId);
+  const runDirectory = join(EVAL_CORPUS_RESULTS_ROOT, runId);
   await mkdir(runDirectory, { recursive: true });
 
   console.log(style.heading(`\nDistillation run: ${runId}`));
@@ -294,7 +294,7 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
 
   const reportPath = join(runDirectory, "report.md");
   await Bun.write(reportPath, `${lines.join("\n")}\n`);
-  await Bun.write(join(EVAL_RESULTS_ROOT, "latest-distill"), `${runId}\n`);
+  await Bun.write(join(EVAL_CORPUS_RESULTS_ROOT, "latest-distill"), `${runId}\n`);
 
   console.log(style.heading(`\n\n✓ Distillation complete · ${previous.length} pages · ${batches.length} batches`));
   console.log(`${served} of ${requested} records were served to the agent.`);

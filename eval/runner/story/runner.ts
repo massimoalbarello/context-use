@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { runStackCommand } from "../../../scripts/local-stack.ts";
 import type { EvalProvider } from "../agent.ts";
-import { EVAL_RESULTS_ROOT } from "../results.ts";
+import { EVAL_STORY_RESULTS_ROOT } from "../results.ts";
 import { snapshotKnowledgeState, type KnowledgeSnapshot } from "../snapshot.ts";
 import { buildKnowledgeGraph } from "./graph.ts";
 import { resolveStorySubjects, type StoryResolution } from "./resolver.ts";
@@ -10,7 +10,7 @@ import { aggregateStoryScore, scoreStoryTurn, type StoryScore } from "./scoring.
 import { openStoryConversation } from "./session.ts";
 import type { EvalStory, EvalStorySuite, StoryTurn } from "./types.ts";
 
-const RESULTS_ROOT = join(EVAL_RESULTS_ROOT, "stories");
+const RESULTS_ROOT = EVAL_STORY_RESULTS_ROOT;
 
 export type StoryRunOptions = {
   provider: EvalProvider;

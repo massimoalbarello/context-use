@@ -13,7 +13,7 @@ import {
 import { loadCorpus } from "../runner/corpus/records.ts";
 import { snapshotKnowledge, type PageSnapshot } from "../runner/snapshot.ts";
 import { style } from "../runner/terminal.ts";
-import { EVAL_RESULTS_ROOT, resolveEvalRunDirectory } from "../runner/results.ts";
+import { EVAL_CORPUS_RESULTS_ROOT, resolveEvalRunDirectory } from "../runner/results.ts";
 import { askQuestions } from "../runner/qa/ask.ts";
 import {
   answersPath,
@@ -226,7 +226,7 @@ export async function seedCommand(options: { batches?: number | undefined }): Pr
 
   const startedAt = new Date().toISOString();
   const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-seed-${WORLD_CORPUS}`;
-  const directory = join(EVAL_RESULTS_ROOT, runId);
+  const directory = join(EVAL_CORPUS_RESULTS_ROOT, runId);
   await mkdir(directory, { recursive: true });
 
   console.log(style.heading(`\nSeeding ${WORLD_CORPUS}: ${runId}`));
@@ -259,7 +259,7 @@ export async function seedCommand(options: { batches?: number | undefined }): Pr
     startedAt, completedAt: new Date().toISOString(),
     batches: batches.map((batch, index) => ({ batch, index })),
   }, null, 2)}\n`);
-  await Bun.write(join(EVAL_RESULTS_ROOT, "latest-distill"), `${runId}\n`);
+  await Bun.write(join(EVAL_CORPUS_RESULTS_ROOT, "latest-distill"), `${runId}\n`);
 
   const due = readAnswers(WORLD_CORPUS).filter((answer) => answer.due_batch <= through);
   console.log(style.green(`\n✓ Seeded · ${pages.length} pages in the knowledge base`));
