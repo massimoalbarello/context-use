@@ -3,6 +3,7 @@ import { verifyCorpus, refreshCorpus } from "../eval/cli/corpus.ts";
 import { DEFAULT_CORPUS_ID, isCorpusId, type CorpusId } from "../eval/runner/corpus/integrity.ts";
 import type { CorpusWindow } from "../eval/runner/corpus/records.ts";
 import { runDistillation } from "../eval/runner/distill.ts";
+import { connectProvider, type EvalProvider } from "../eval/runner/agent.ts";
 import {
   askQuestionsCommand,
   deriveQuestionsCommand,
@@ -10,20 +11,12 @@ import {
   seedCommand,
   verifyQuestionsCommand,
 } from "../eval/cli/qa.ts";
-import {
-  connectProvider,
-  runEval,
-  scoreEval,
-  type EvalProvider,
-} from "../eval/scenarios/amara-novamind/runner.ts";
 
 function usage(): never {
   console.error(`Usage:
   bun run eval connect <codex|claude>
   bun run eval distill [--corpus <amara-life-v1|world-v1>] [--provider <codex|claude>]
                        [--window <dense|full>] [--batches <n>]
-  bun run eval run [--provider <codex|claude>]
-  bun run eval score [run-id]
   bun run eval corpus:verify [--corpus <id>]
   bun run eval corpus:refresh [--corpus <id>]
   bun run eval gold:profile [--write]              amara-life-v1 structural check
@@ -99,10 +92,6 @@ if (command === "connect") {
     window: windowFrom(args),
     batches: countFrom(args, "batches", "days"),
   });
-} else if (command === "run") {
-  await runEval(providerFrom(args));
-} else if (command === "score") {
-  await scoreEval(args[0]);
 } else if (command === "corpus:verify") {
   verifyCorpus(corpusFrom(args));
 } else if (command === "corpus:refresh") {

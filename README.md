@@ -86,8 +86,6 @@ bun run eval distill --window dense --days 2
 The corpus is copied verbatim from [`garrytan/gbrain-evals`](https://github.com/garrytan/gbrain-evals)
 and served through the production `read_source_records` tool, one automation run per
 corpus day, so this exercises the real ingestion path rather than an eval-only prompt.
-`bun run eval run` still runs the earlier hand-written trajectory with deterministic
-scoring.
 
 Each run resets local knowledge and assets before it starts, so do not keep development
 data in this disposable instance. The owner, passkeys, sessions, and MCP OAuth grants
@@ -95,9 +93,8 @@ are preserved.
 
 Add `--provider claude` after `claude auth login` to use Claude Code instead. Reports,
 complete agent logs, and per-run snapshots are written beneath the gitignored
-`.eval-results/` directory. `bun run eval score` deterministically rescores saved
-scenario snapshots without using model credits, and `bun run eval corpus:verify` confirms
-the corpus is unchanged. See [`eval/README.md`](eval/README.md) for details.
+`.eval-results/` directory. `bun run eval corpus:verify` confirms the corpus is unchanged.
+See [`eval/README.md`](eval/README.md) for details.
 
 ## Self-host on AWS
 

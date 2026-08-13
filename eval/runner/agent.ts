@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { stackUrl } from "../../scripts/local-stack.ts";
 import { style, terminalWidth, truncate } from "./terminal.ts";
 
-/** Agent session plumbing shared by the scenario eval and the corpus distillation run. */
+/** Agent session plumbing shared by corpus distillation and question answering. */
 
 export type EvalProvider = "codex" | "claude";
 

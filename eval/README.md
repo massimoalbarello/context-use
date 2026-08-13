@@ -1,6 +1,6 @@
 # Local knowledge evals
 
-Three things live here.
+Two things live here.
 
 **Corpus distillation** (`bun run eval distill`) runs the activity distiller over a fixed,
 vendored corpus, one automation run per corpus batch, and reports the pages it wrote. This
@@ -13,11 +13,6 @@ base and compares each answer to a sealed key — the read path. `world-v1` is s
 measures retrieval alone; `amara-life-v1` is distilled first, so it measures distillation
 and retrieval together. See [the shared QA runner](runner/qa/README.md).
 
-**Scenario scoring** (`bun run eval run`) is the earlier, hand-written four-step
-trajectory with deterministic assertions about entities, timelines and reconciliation. It
-will be replaced by scoring over corpus batches, at which point the hand-written scenario
-goes away.
-
 ## Layout
 
 The layout follows gbrain-evals' `data`, `runner`, and `cli` boundaries while keeping each
@@ -29,9 +24,7 @@ eval/
 │   ├── amara-life-v1/     corpus, lockfile, loader, QA, and structural gold
 │   └── world-v1/          corpus, lockfile, loader, QA derivation, and seeding
 ├── runner/                reusable corpus, distillation, QA, agent, and snapshot code
-├── cli/                   command composition over the data packages and runner
-└── scenarios/
-    └── amara-novamind/    the self-contained legacy scenario eval
+└── cli/                   command composition over the data packages and runner
 ```
 
 Everything specific to one fixed input belongs under `data/<corpus-id>/`. Code that can
