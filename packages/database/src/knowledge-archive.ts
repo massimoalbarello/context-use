@@ -103,24 +103,18 @@ export class KnowledgeArchiveRepository {
   constructor(private readonly dashboardPool: Pool) {}
 
   async importAvailable(): Promise<boolean> {
-    // This is an early UX/upload preflight; restore_knowledge_import remains the
-    // race-safe authority and must reject the same non-template knowledge.
+    // The durable change ledger covers every retained and deleted page version,
+    // so only assets and otherwise-invisible empty directories need separate checks.
+    // restore_knowledge_import remains the race-safe authority.
     const result = await this.dashboardPool.query<{ eligible: boolean }>(
-      `SELECT NOT (
-         EXISTS (SELECT 1 FROM assets)
-         OR EXISTS (
-           SELECT 1 FROM knowledge_page_versions
-           WHERE actor_subject<>'context-use-bootstrap'
-             AND actor_subject NOT LIKE 'context-use-template/%'
-         )
-         OR EXISTS (
+      `SELECT
+         NOT EXISTS (SELECT 1 FROM assets)
+         AND NOT EXISTS (
            SELECT 1 FROM knowledge_page_changes
-           WHERE actor_subject IS NULL OR (
-             actor_subject<>'context-use-bootstrap'
-             AND actor_subject NOT LIKE 'context-use-template/%'
-           )
+           WHERE coalesce(actor_subject,'')<>'context-use-bootstrap'
+             AND coalesce(actor_subject,'') NOT LIKE 'context-use-template/%'
          )
-         OR EXISTS (
+         AND NOT EXISTS (
            SELECT 1
            FROM knowledge_directories directory
            WHERE directory.current_path NOT IN ('','automations')
@@ -129,7 +123,7 @@ export class KnowledgeArchiveRepository {
                WHERE page.current_path LIKE directory.current_path||'/%'
              )
          )
-       ) AS eligible`,
+       AS eligible`,
     );
     return result.rows[0]?.eligible === true;
   }
