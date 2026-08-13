@@ -1,16 +1,21 @@
-import type { CorpusWindow } from "../eval/corpus-records.ts";
-import { runDistillation } from "../eval/distill.ts";
-import { verifyCorpus, refreshCorpus } from "../eval/corpus-commands.ts";
-import { DEFAULT_CORPUS_ID, isCorpusId, type CorpusId } from "../eval/corpus-integrity.ts";
-import { profileCorpusCommand, scoreRunCommand } from "../eval/gold/commands.ts";
+import { profileCorpusCommand, scoreRunCommand } from "../eval/data/amara-life-v1/gold/commands.ts";
+import { verifyCorpus, refreshCorpus } from "../eval/cli/corpus.ts";
+import { DEFAULT_CORPUS_ID, isCorpusId, type CorpusId } from "../eval/runner/corpus/integrity.ts";
+import type { CorpusWindow } from "../eval/runner/corpus/records.ts";
+import { runDistillation } from "../eval/runner/distill.ts";
 import {
   askQuestionsCommand,
   deriveQuestionsCommand,
   scoreAnswersCommand,
   seedCommand,
   verifyQuestionsCommand,
-} from "../eval/qa/commands.ts";
-import { connectProvider, runEval, scoreEval, type EvalProvider } from "../eval/runner.ts";
+} from "../eval/cli/qa.ts";
+import {
+  connectProvider,
+  runEval,
+  scoreEval,
+  type EvalProvider,
+} from "../eval/scenarios/amara-novamind/runner.ts";
 
 function usage(): never {
   console.error(`Usage:

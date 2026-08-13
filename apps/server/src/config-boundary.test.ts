@@ -138,7 +138,7 @@ describe("production process credential boundaries", () => {
 
   test("no service accepts the local evaluation corpus settings in production", () => {
     for (const service of Object.keys(validByService)) {
-      expect(load(service, { EVAL_CORPUS_PATH: "/app/eval/corpus/amara-life-v1" }).exitCode).not.toBe(0);
+      expect(load(service, { EVAL_CORPUS_PATH: "/app/eval/data/amara-life-v1/corpus" }).exitCode).not.toBe(0);
       expect(load(service, { EVAL_CORPUS_WINDOW: "dense" }).exitCode).not.toBe(0);
     }
   });

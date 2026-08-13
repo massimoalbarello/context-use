@@ -11,26 +11,46 @@ the knowledge base. There is no evaluation-specific prompt and no evaluation-spe
 **Question answering** (`bun run eval qa:ask`, `qa:score`) puts questions to a knowledge
 base and compares each answer to a sealed key — the read path. `world-v1` is seeded, so it
 measures retrieval alone; `amara-life-v1` is distilled first, so it measures distillation
-and retrieval together. See [qa/README.md](qa/README.md).
+and retrieval together. See [the shared QA runner](runner/qa/README.md).
 
 **Scenario scoring** (`bun run eval run`) is the earlier, hand-written four-step
 trajectory with deterministic assertions about entities, timelines and reconciliation. It
 will be replaced by scoring over corpus batches, at which point the hand-written scenario
 goes away.
 
+## Layout
+
+The layout follows gbrain-evals' `data`, `runner`, and `cli` boundaries while keeping each
+local evaluation self-contained:
+
+```text
+eval/
+├── data/
+│   ├── amara-life-v1/     corpus, lockfile, loader, QA, and structural gold
+│   └── world-v1/          corpus, lockfile, loader, QA derivation, and seeding
+├── runner/                reusable corpus, distillation, QA, agent, and snapshot code
+├── cli/                   command composition over the data packages and runner
+└── scenarios/
+    └── amara-novamind/    the self-contained legacy scenario eval
+```
+
+Everything specific to one fixed input belongs under `data/<corpus-id>/`. Code that can
+run another corpus or question set belongs under `runner/`; `cli/` composes those pieces
+into the existing `bun run eval` commands.
+
 ## Two corpora
 
 Both are copied verbatim from [`garrytan/gbrain-evals`][upstream] and never edited — see
-[corpus/UPSTREAM.md](corpus/UPSTREAM.md) for the pinned commits and how integrity is
+[data/UPSTREAM.md](data/UPSTREAM.md) for the pinned commits and how integrity is
 enforced.
 
-| | `amara-life-v1` | `world-v1` |
+| | [`amara-life-v1`](data/amara-life-v1/README.md) | [`world-v1`](data/world-v1/README.md) |
 | --- | --- | --- |
 | What it is | raw activity: email, Slack, calendar, meetings, notes | 240 already-distilled biographical pages |
 | Size | 418 items over 47 days | 240 pages over 10 batches |
 | Measures | extraction, distillation and retrieval | prose reconciliation and retrieval |
 | Knowledge base under test | built by `distill` | seeded by `qa:seed` |
-| Answer key | entities and meetings ([gold/](gold/README.md)), plus 99 authored questions ([qa/](qa/README.md)) | 145 derived questions ([qa/](qa/README.md)) |
+| Answer key | entities and meetings ([gold](data/amara-life-v1/gold/README.md)), plus 99 authored questions ([QA](data/amara-life-v1/qa/)) | 145 derived questions ([QA](data/world-v1/qa/)) |
 | Scored by | `gold:check` and `qa:score` | `qa:score` |
 
 `amara-life-v1` is the corpus that matches what Context Use actually does. `world-v1` is
@@ -40,11 +60,12 @@ empty stub with a single `_example` row, and the question sets upstream does pop
 keyed to `world-v1` slugs.
 
 Both of `amara-life-v1`'s keys are therefore this repository's: the entity list in
-[gold/](gold/README.md), and 99 authored questions in [qa/](qa/README.md). Between them
+[gold](data/amara-life-v1/gold/README.md), and 99 authored questions in
+[QA](data/amara-life-v1/qa/). Between them
 they ask whether the right things were written down, and whether they can be got back out.
 
 ```sh
-bun run eval corpus:verify --corpus world-v1     # working copy against <id>.lock.json
+bun run eval corpus:verify --corpus world-v1     # working copy against corpus.lock.json
 bun run eval corpus:refresh --corpus world-v1    # working copy against the pinned commit
 ```
 
@@ -133,7 +154,7 @@ thirty-seven more people. `bun run eval gold:profile` reports both sets separate
 
 ## How one run equals one batch
 
-`CorpusRecordReader` in [corpus-records.ts](corpus-records.ts) implements the same
+`CorpusRecordReader` in [runner/corpus/records.ts](runner/corpus/records.ts) implements the same
 `SourceRecordReader` interface as the Nango pipeline, so `read_source_records` behaves
 exactly as it does in production — opaque checkpoints, `has_more` batching, and the
 automation persisting its own checkpoint into `automations/activity-distiller/state`.
@@ -163,7 +184,7 @@ Nothing under `eval/` reaches a production deployment, by three independent mean
 
 The reader lives here rather than in `apps/server/src`, and the production image copies
 only `apps/`, `packages/` and one file from `nango-integrations/` — so
-`corpus-records.ts` is not in the image at all. `mcp-app.ts` reaches it through a
+`runner/corpus/records.ts` is not in the image at all. `mcp-app.ts` reaches it through a
 specifier assembled at runtime, so it is not in the module graph and a production bundle
 does not contain it either; only the six-line loader survives bundling. And
 `EVAL_CORPUS_PATH` and `EVAL_CORPUS_WINDOW` are rejected outright in production by the

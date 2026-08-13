@@ -168,7 +168,7 @@ services:
       STORAGE_MCP_TOKEN: development-storage-private-mcp-token
       # Serves the vendored evaluation corpus through read_source_records. The repository
       # is already bind-mounted at /app, so no extra volume is needed.
-      EVAL_CORPUS_PATH: ${EVAL_CORPUS_PATH-/app/eval/corpus/amara-life-v1}
+      EVAL_CORPUS_PATH: ${EVAL_CORPUS_PATH-/app/eval/data/amara-life-v1/corpus}
       EVAL_CORPUS_WINDOW: ${EVAL_CORPUS_WINDOW-full}
     command: ["bun", "--watch", "apps/server/src/mcp-index.ts"]
     volumes:

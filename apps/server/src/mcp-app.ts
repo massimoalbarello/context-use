@@ -23,7 +23,7 @@ import { BrokeredStorage } from "./storage-client.ts";
  * the config boundary in production, so this never runs there.
  */
 async function loadCorpusRecordReader(): Promise<SourceRecordReader> {
-  const specifier = ["..", "..", "..", "eval", "corpus-records.ts"].join("/");
+  const specifier = ["..", "..", "..", "eval", "runner", "corpus", "records.ts"].join("/");
   const { CorpusRecordReader } = await import(specifier) as {
     CorpusRecordReader: new (options: { directory: string; window: string }) => SourceRecordReader;
   };
