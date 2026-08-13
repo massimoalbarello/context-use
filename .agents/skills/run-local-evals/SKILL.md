@@ -195,4 +195,4 @@ Report at least:
 
 A single stochastic run is a baseline, not proof of a regression or improvement. Compare repeated runs only when their corpus, provider, batch/window, repeat count, and harness revision match.
 
-Do not write an eval result into the local knowledge base under test: it contaminates subsequent inspection and disappears at the next reset. Keep the generated gitignored report, and when the user asks for a durable remembered baseline, add a tracked repository note. Read [references/baseline-runs.md](references/baseline-runs.md) only when comparing with a recorded baseline or appending a requested durable record.
+Do not write an eval result into the local knowledge base under test: it contaminates subsequent inspection and disappears at the next reset. Keep the generated gitignored report as the local record of the run.
