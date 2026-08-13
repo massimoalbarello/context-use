@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run Local Evals"
+  short_description: "Run Context Use evals safely and sequentially"
+  default_prompt: "Use $run-local-evals to run the requested Context Use eval safely."
