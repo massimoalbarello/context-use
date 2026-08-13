@@ -18,18 +18,6 @@ export const ITEM_TYPES = [
 
 export type CorpusItemType = (typeof ITEM_TYPES)[number];
 
-/** How `read_source_records` labels each record's origin. */
-export const SOURCE_LABELS: Record<CorpusItemType, string> = {
-  note: "Notes",
-  meeting: "Meeting notes",
-  email: "Email",
-  slack: "Slack",
-  "calendar-event": "Calendar",
-  person: "Profiles",
-  company: "Profiles",
-  concept: "Reference",
-};
-
 export type CorpusRecord = {
   /** The upstream slug. One record carries exactly one upstream item. */
   slug: string;
@@ -49,8 +37,8 @@ export type CorpusRecord = {
   day?: string;
   timestamp?: string;
   /**
-   * Upstream's own answer key for items it deliberately seeded. `read()` maps only four
-   * fields into a `SourceRecord`, so this never reaches the agent; a test asserts as much.
+   * Upstream's own answer key for items it deliberately seeded. `read()` maps only lifecycle
+   * action and Markdown into a `SourceRecord`, so this never reaches the agent.
    */
   perturbation?: { kind: string; fixtureId: string };
 };

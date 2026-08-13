@@ -1,603 +1,244 @@
-# Knowledge base conventions
+# Knowledge base invariants
 
 This knowledge base is a durable hypermedia representation of the owner's life, work,
-interests and thinking. Design it to remain useful beyond 100,000 pages.
+interests and thinking. These invariants apply everywhere. A directory's `AGENTS.md` adds
+only the rules needed for its own subtree.
 
-This root guide contains only conventions that apply everywhere. A directory guide adds
-the few rules specific to its subtree. Before writing, read this guide and each guide on
-the path to the target; do not repeat inherited guidance in a child.
-
-## Guide and managed-page index
-
-### Guides
-
-- [[about/agents|About]]
-  - [[about/diary/agents|Diary]]
-  - [[about/projects/agents|Projects]]
-  - [[about/tasks/agents|Tasks]]
-- [[automations/agents|Automations]]
-- [[companies/agents|Companies]]
-- [[events/agents|Events]]
-- [[library/agents|Library]]
-- [[meetings/agents|Meetings]]
-- [[objects/agents|Objects]]
-- [[people/agents|People]]
-- [[places/agents|Places]]
-- [[skills/agents|Skills]]
-- [[threads/agents|Threads]]
-- [[topics/agents|Topics]]
-
-### Managed pages
-
-- [[automations/activity-distiller/instructions|Activity distiller instructions]] —
-  maintained by the default template.
-- [[automations/activity-distiller/state|Activity distiller state]] — created by the
-  template when absent, then owned by the automation.
-- [[automations/diary-composer/instructions|Diary composer instructions]] — maintained by
-  the default template. The only automation that composes the diary.
-- [[automations/diary-composer/state|Diary composer state]] — created by the template when
-  absent, then owned by the automation.
-
-The links identify the guide or page that owns each convention. They do not imply a
-schema beyond what the linked guide says.
+Before writing, read this guide and every guide on the path to the target. Parent rules
+remain in force unless a child states a genuine local exception. Do not copy parent rules
+into child guides or automation instructions; link the rule that owns them.
 
 ## Curate, do not filter
 
-This base is built by distillation: raw activity turned into connected, durable knowledge.
-Distillation is not compression. What comes out is smaller than what went in because the
-noise was left behind — the newsletters, receipts, notifications, cold outreach and
-scheduling back-and-forth — not because the substance was thinned on the way through.
+Build the base by distilling evidence into knowledge, not by mirroring records or thinning
+them into activity labels.
 
-Two judgements are involved, and merging them is how a base ends up empty. **Whether a
-record is worth writing about at all** is a filter, and a coarse one: what is genuinely the
-owner's activity passes it, and only garbage fails. **What to write about a record that
-passes** is not a filter. Every particular it establishes — the figure, the name, the date,
-the term, the condition, the reason — is the knowledge, and it goes in. A detail is never
-dropped for being small. It is only ever dropped along with the record, when that record
-was noise.
+Discard a record whole only when it is actual noise. Once a record is kept, **a detail is
+never dropped for being small**. The figure, term, date, name, condition, reason and personal
+particular are the knowledge. *Discussed pricing* loses what *quoted 4k a month on a two-year
+term* preserves. When words have to give, remove the speech act and keep what it established.
 
-The failure to watch for is a sentence that records an exchange instead of what the
-exchange established. *Sent over the pricing context*, *flagged concerns about the
-timeline* and *shared her thesis and offered an introduction* each name a speech act and
-drop its content, and none is shorter than the version that keeps it: *quoted 4k a month
-on a two-year term*, *thinks the June deadline will slip*, *holds 12% from the seed and
-will introduce the CEO*. When a sentence has to give, cut who said it to whom and keep
-what was said.
+This includes the asides a work-focused summary loses first: where someone is going and why,
+whose wedding it is, what they are recovering from, what they are reading, or why they will
+be away. Importance and commercial relevance are not extraction criteria.
 
-A particular is not only a commercial one. Where someone is going and why, whose wedding
-it is, which programme their daughter got into, what they are recovering from, what they
-are reading, the two weeks they are away in May — these establish as much about the owner's
-world as a valuation does, and they are the ones a base built out of working correspondence
-loses first, because they arrive in the aside rather than the substance of a message. This
-is a record of a life and not a deal pipeline. *Is away for two weeks in May* has kept the
-calendar and lost the person; *is away for two weeks in May for her sister's wedding in
-Vancouver* is the fact, and it costs eight words.
+None of this licenses copying the source in. A message body, transcript, provider record or
+chronological feed is undistilled evidence. Interpret what it establishes, write it as
+readable prose on the subjects it belongs to, and link those subjects.
 
-None of this licenses copying the source in. A transcript, a message body or a mirrored
-record is raw material that has not been distilled, and pasting it is the opposite failure
-from smoothing it away: both leave the reader to do the work. The knowledge is what the
-record establishes, written as prose that stays true, placed on the subject it belongs to
-and linked to what it connects with.
+A page stays readable through **placement, not omission**. Say a fact completely where it
+belongs and link it from the other contexts that need it. Repetition is justified only when
+another subject's account needs the particular to remain intelligible.
 
-So a page stays readable through **placement, not omission**. When a page grows past what
-it can hold, the material moves to the page that owns it and a link goes in its place; it
-is never deleted to make room. Say a thing once, where it belongs, and link from
-everywhere else that needs it.
-
-- Give every page a one-sentence summary; directory indexes and search use it.
-- Prefer several small linked pages over one page that absorbs its neighbours' subjects.
-  A paragraph about a person, company or question inside someone else's page is a page
-  that has not been written yet.
-- Split a page when its parts have distinct subjects or are independently worth
-  retrieving. Length is the signal to look for that split, never the split itself, and it
-  is never a reason to cut.
-- Connect what happened, who or what was involved, what preceded it and what followed.
-- Remove empty headings and scaffolding. A common template is a vocabulary, not a quota.
-- Distinguish observation, report and inference. Do not turn a suggestion into the
-  owner's view or fill a gap merely to make a page look complete.
-- When a page speaks as the owner, use first person and ground it in what they expressed;
-  label inference rather than silently turning it into their memory, motive or position.
-
-Coverage is the other half, and it is not traded against depth. The base holds everyone the
-owner dealt with and everything they decided, at the particulars each was established in. A
-base that answers "what happened" but not "to whom, at which company, about which question"
-is missing its subjects; one that names them but not what was said about them has kept the
-index and lost the knowledge.
-
-## Place and identify
-
-Place a page by its subject, not by the request that produced it or the person doing the
-writing. If a page could be handed to someone else's knowledge base and remain true,
-its subject is probably a person, organization, occurrence, work, place or other entity
-rather than the owner. Judgement stays with the subject being judged; a person's own
-process, preference and intention stay with that person.
-
-Search for the canonical target across names, aliases and nearby context before writing.
-When the evidence identifies a distinct entity confidently, create or update its
-canonical page without asking for a preview or proposal. Write everything the evidence
-actually supports about it, and nothing it does not. If identity remains
-genuinely ambiguous, do not guess or create duplicates: keep the reference in plain text
-or ask for the detail that distinguishes the candidates.
+- Distinguish direct observation, somebody's report and inference.
+- Do not turn another person's position into the owner's, or attention into agreement.
+- When a page speaks as the owner, use first person only for what they expressed. Label a
+  paraphrase or inference rather than silently inventing memory, motive or belief.
+- Put a source link on the claim it supports. An unpublished source may link to the relevant
+  private page.
 
 ### Identifiability is the threshold
 
-**A subject earns its page as soon as the evidence resolves which subject it is** — from
-the name itself, or from the context it appears in. A person, organization, place, work,
-occurrence, question or topic: if you can say which one it is, it belongs here. Whether the
-owner met them, replied to them, or merely heard them mentioned decides nothing.
+**A subject earns its canonical page as soon as the evidence resolves which subject it is.**
+Owner engagement, repetition, prominence and predicted importance do not decide whether it
+exists. A subject named once or in passing qualifies on the same terms as the main subject.
 
-Engagement used to be the test and it was the wrong one. Requiring the owner to have taken
-part keeps only the days they happened to speak and loses the days they were told
-something — which are the days a knowledge base is for. A colleague reporting a portfolio
-company's quarter in a shared channel puts that company, that quarter and that colleague
-into the base, and none of it needed the owner to answer.
+Search existing pages, aliases and nearby context before creating one. Identity follows
+evidence, not resemblance: matching stable source identifiers support one entity; differing
+identifiers support separate entities even when their labels look alike.
 
-What holds a subject back is doubt about *which* subject it is, and nothing else. A first
-name with nothing to pin it to, a company whose sender domain fits three candidates, a
-venue named only as "the usual place" — those stay plain text until the evidence resolves
-them. Never withhold a page because a subject looks unimportant: importance is not
-knowable at write time, and the subject that turns out to matter is usually the one that
-looked incidental when it first appeared.
+Only genuine ambiguity holds a subject back. Keep an unresolved reference in plain text, or
+ask for the smallest fact that distinguishes the candidates. Never guess, create a duplicate,
+or withhold a resolved subject because it looks minor.
 
-This threshold runs **after** the noise filter above, not instead of it. A newsletter or a
-platform notification is discarded whole, and nothing is extracted from it. Once a record
-is kept, everything identifiable inside it is written.
+This threshold follows curation. A record discarded as noise is discarded whole; do not mine
+its names for pages. Every identifiable subject in a retained record is written.
 
 ### A subject arrives one of two ways
 
-Evidence is itself a subject, and it names others. Both halves get written.
+Evidence may identify a subject that the evidence itself is: an occurrence, exchange, work or
+unit of work. It also names other subjects: people, organizations, places, works, questions,
+topics and pursuits. Write both halves when their applicable guides say the evidence resolves
+them.
 
-**The evidence is a subject** when it identifies an occurrence or a unit of work — a
-meeting, a call, a written exchange, a pull request, a document, a review. That gets its
-own page: the account of what it was and what it established.
+Records and pages are many-to-many. One meeting can establish an occurrence, several people,
+two companies and a question. Several artifacts can be evidence for one continuing task.
+Follow the subjects the evidence identifies rather than creating one page per provider record
+or one page for the record's headline subject only.
 
-**The evidence names subjects** — everyone who took part, every organization, place, work,
-question and topic that came up. Each is a page too, and the sentence naming it is where
-the link goes.
+## Place and identify
 
-The second half is the one that gets dropped, and dropping it is what leaves a base knowing
-that a conversation happened and not who was in it. A meeting page whose participants are
-plain text has recorded the conversation and lost the people.
+Place knowledge by its subject, not by its source, provider, author or the request that
+produced it. Write on the most specific subject the evidence actually identifies; when that
+identity is unresolved, climb to the broader subject the evidence does support.
 
-**A subject named in passing counts exactly as much as the subject the evidence is about.**
-Evidence gives some of its subjects prominence and leaves the rest in a clause — the
-competitor weighed up in one sentence, the company someone mentions they are tracking, the
-person named as a counterpart. Prominence is not importance, and the subject in the clause
-is frequently the one someone comes back asking about. If the clause resolves it, it earns
-its page on the same terms as the subject in the title.
+If an account could move unchanged to somebody else's base, its subject is probably an
+external person, organization, occurrence, work, place or topic rather than the owner. A
+person's own process, intention and preference stay with that person; a judgement stays with
+the subject being judged.
 
-Evidence and pages are not one-to-one, and forcing them either way fails. Two pull requests
-continuing one line of work are one [[about/tasks/agents|task]] that discusses both and
-links the [[about/projects/agents|project]] they serve. One meeting is a meeting page, four
-people, two companies and an open question. Read what the evidence identifies and write
-that, rather than counting records.
+The target directory guide owns that subject's identity boundary, path, required account and
+local timeline criteria. Creating the subject and connecting it to the evidence that revealed
+it are one coherent change.
 
-Each directory guide says what identifies a subject in its subtree, and may add what it
-takes to tell two of them apart. None of them reinstates engagement, and none waits for
-repetition.
-
-Identity is decided by evidence, not by resemblance. Two people who share a given name,
-or two organizations that share a first word, are two entities until something in the
-evidence actually joins them; merging them silently destroys knowledge that separate
-pages would have kept. When a source marks its own references with a stable identifier or
-path, treat matching markers as the same entity and differing markers as different ones,
-whatever the visible labels do.
-
-Every entity is a folder, entered through `intro`; other pages in that folder are views
-of the same entity. There are no flat entity pages: an entity that currently needs only
-one page is still a folder, so a later view or a `timeline` can be added without promoting
-the page and repairing its inbound links first. The owning directory guide defines the
-further useful views and the evidence required to create the entity.
-
-Add the `timeline` when there is a timeline event to record, not before; an empty one is
-scaffolding. Someone the owner knows, with nothing yet that happened on a day, is a
-complete entity with an `intro` alone. An occurrence with a date of its own never takes one
-at all: a meeting or event already happened on that date, so its page is its account and a
-timeline beneath it would index a single timeline event that is the page itself. The owner
-never takes one either, on grounds the [[about/agents|about guide]] gives.
-
-A [[threads/agents|thread]] is the exception, and the reason it is a separate entity. It is
-an occurrence that runs on rather than happening once, so it has no date of its own to be
-filed under and no single account to be. Its `timeline` is how the exchange moved, it is
-written from the first save, and its `intro` carries only where things stand now.
-
-`intro` is the entry point in fact and not only in name: every other page in the folder is
-reachable from it, through the sentence that says what that view holds. A `timeline`, lens
-or fact page nothing links to is unreachable from the entity it belongs to, and a reader
-arriving at the entity will never learn it exists.
-
-That is the minimum, and it is not the shape a grown folder should keep. **An entity that
-has accumulated views is a small hypermedia of its own**, and the rules that govern the base
-govern the inside of a folder unchanged: a page says what another one is to it, in the
-sentence that says it, and both ends record the relationship. The lens links the fact page
-whose facts it reads; the maintenance record links the specifications it works against; the
-timeline event marking a transition links the page describing the state that was left, and
-that page links forward to the account which replaced it. Without those the folder is a hub
-with spokes — the failure described under [[agents#sources-and-links|sources and links]], at
-the scale of one entity — and a reader who arrives at a company's `as-supplier` has to go
-back to `intro` and start again to reach the `products` its reasoning already rests on.
-
-Outward links are the other half of the same fabric, and they are not `intro`'s alone to
-carry. Each view names the other entities it actually concerns, on its own terms: the fact
-page links the people the facts are about, the timeline event links the meeting where it
-happened, the lens links the effort the relationship bears on. `intro` is where an entity is
-entered, never where its connections are collected.
-
-Attention is not interaction and is not agreement. A subject the owner reads about, is told
-about or keeps encountering gets its page on the identifiability threshold like any other,
-and what goes on it is what the evidence says — not a relationship that never happened and
-not a claim adopted as the owner's view. Say who asserted it, and leave the owner's
-position absent until they take one.
+Attention is not interaction and is not agreement. Record what the evidence says, who said
+it and how the subject relates to the owner; do not invent a relationship or adopt a claim on
+the owner's behalf.
 
 ## Shape follows the content
 
-A guide says what a page has to establish, never what it has to look like. There is no
-layout to reproduce: the headings, the label lines and the order of a page are chosen each
-time, for the material actually in front of you, and a page that discharges its obligations
-in three paragraphs and no headings is finished.
+A guide says what a page must establish, never what its headings or labels must look like.
+There is no skeleton to reproduce. Remove empty headings and boilerplate; a common page shape
+is a vocabulary, not a quota.
 
-Where a guide names a heading or a phrasing, it is one way a page has met its obligation and
-not the way. Reproducing it over content it does not fit is the failure this rule exists to
-prevent: a `## Commitments made` under which nothing was committed, a **How the owner knows
-them:** line above someone the owner has never met, a `## Where it stands` on an exchange
-that has not moved. Each is scaffolding, and scaffolding is read as knowledge by whoever
-arrives next — by the reader who takes an empty heading for an absence of facts, and by the
-agent who fills it to make the page look complete.
+Every page has a one-sentence summary for search and generated indexes. Write the summary
+from the finished page.
 
-What binds is the obligations, and they are the same everywhere. Every entity is a folder
-entered through `intro`. A `timeline` carries what happened. A part of the subject worth
-retrieving on its own becomes a page of its own in the folder, reachable from `intro` and
-linked from the views it bears on. The sentence that names another subject carries the link
-to it. None of that constrains the prose, which follows the material.
+Every entity is a folder entered through `intro`, unless its local guide defines a runtime or
+lifecycle exception. `intro` says what the entity is and routes to every other view through
+the sentence explaining what that view contains. Add `timeline` only when the entity has a
+timeline event, unless the local guide requires it from the first write.
 
 ### Several small pages, not one long one
 
-This base is a hypermedia and so is every part of it. **A long page is the default failure,
-and splitting it is the default repair.** A subject with several aspects is several pages
-that link one another, never one page that runs through them in sequence: a reader who wants
-one aspect should arrive at it, read it and leave, and on a long page they must read the
-whole thing to find out whether the part they came for is there.
+Prefer several linked pages when parts of an entity have distinct subjects or are
+independently worth retrieving. Length is a signal to look for a split, never a reason to
+delete detail. `intro` remains an entry point, not a container for every aspect of the entity.
 
-`intro` is where this goes wrong, and it goes wrong on every entity that grows. Every aspect
-of a subject is plausibly introductory, so nothing stops the entry point absorbing them one
-at a time until it is the entity's only page and its longest. The check is the same one the
-folder rule already states: what `intro` keeps is what the subject is and the routes onward,
-and each aspect worth reading on its own is lifted out into a page named for it, reachable
-from the sentence saying what it holds.
+Within a grown entity folder, link views directly when one bears on another; do not force
+every route back through `intro`. A view also links the external subjects it actually concerns.
+The folder is a small hypermedia, not a hub with disconnected spokes.
 
-Prose is not the alternative to structure, and a page does not earn its length by being
-well written. A paragraph that names twenty people in a row is a directory typed as a
-sentence — longer than the directory, harder to read than the directory, and holding nothing
-the twenty pages do not already hold from their own side. When material resists being split
-into pages because it is genuinely one account, it still has divisions, and the next rule is
-how they are marked.
-
-### Headings mark the divisions a page has
-
-A page that keeps several aspects together marks them with Markdown headings. A heading is
-not decoration: it says what is below it so a reader can skip what they do not need, and it
-is addressable, so another page can link the exact part it depends on with
-`[[path#heading-slug|label]]` instead of the whole page. Unbroken prose offers neither, and
-several screens of it are read by nobody.
-
-This does not license the empty heading. A heading exists because material sits under it,
-never to complete a pattern — write the page, then name the divisions it turned out to have.
-The rule against scaffolding and the rule against the undifferentiated wall are the same
-rule seen from two sides: the page shows the structure the material actually has, no more
-and no less.
-
-## Reconcile the canonical account
-
-New evidence is a reason to reconsider the existing account, not to append another
-update block. Read the canonical page and nearby pages that may overlap, then make the
-smallest coherent change: rewrite, reorder, combine, move, split, merge or archive as
-needed so there is one concise current account.
-
-Preserve useful information, including meaningful historical context. Rewrite or remove
-claims that later evidence shows to be wrong or misleading; those claims do not become
-valuable merely because they were written first. When a mistaken belief is itself useful
-history, label it as what was believed at the time and connect it to the correction.
-Versions retain replaced wording, so the live page need not preserve superseded prose.
-
-Later is not the same as correct. When two sources disagree and nothing settles which is
-right — a role given differently in two places, a figure quoted at three values inside a
-week — **the disagreement is itself the knowledge**, and taking the most recent value
-destroys it. Keep both, say where each came from and when, and say plainly that they
-conflict. A reader who knows the sources disagree can go and check; one handed a single
-confident value cannot, and has no reason to doubt it.
-
-A claim already on the page is evidence too, and the writer replacing it usually cannot see
-what put it there. So a conflicting claim already recorded **stays**, with the date and the
-source it came with, and the new one joins it. Removing it is right only when the new
-evidence actually settles it — a correction, a retraction, someone restating their own
-affiliation or figure — and not merely when it is newer or when the earlier wording is
-inconvenient to keep. A rewrite that drops what an earlier record established has destroyed
-knowledge no later evidence will restore, because the record that carried it will not come
-back.
-
-Say what conflicts and never assert that nothing does. *Consistently described as X*
-carries the weight of a survey, and a page whose own account holds three affiliations has
-not run one. Where the page does not know, it says so; silence about a conflict reads as
-its absence.
-
-One concise current account does not mean one value per question. It means the page says
-what is known, and where the evidence is in conflict, what is known is that it conflicts.
-Reconcile to a single claim when the evidence actually resolves it, and not before.
-
-Do not append `Updates`, repeated snapshots or chronological tails to a canonical page.
-Reconciliation may leave a page unchanged when new evidence adds no durable value.
-
-A page may have more than one writer, and none of them should assume otherwise. Access to a
-page is not permission to rewrite material someone else owns: correct what your evidence
-actually covers, and preserve every other byte as found. Writers do not coordinate through
-each other's pages, and a section you did not write and cannot evaluate is not yours to
-tidy.
+When one page genuinely carries several aspects, use descriptive headings that mark its real
+divisions and make them linkable. Never add a heading merely to complete a pattern.
 
 ## Three homes
 
-Durable pages explain their subjects; the [[about/diary/agents|diary]] records lived
-chronology. Between them, what is known about an entity divides three ways, and putting a
-fact in the wrong home is the most common way this base decays.
+Put knowledge in the home that matches how it changes:
 
-**What the subject is now** lives on the entity's pages. It is written to stay true as
-weeks pass, and it is corrected in place when later evidence shows it wrong. Page history
-preserves the replaced wording, so a live page never has to carry a superseded claim.
+1. **What the subject is now** lives on its current account and is reconciled in place.
+2. **What happened and when** lives as a dated line on its `timeline`.
+3. **A past state independently worth reading** gets its own page, linked from `intro` and
+   the timeline event marking the transition.
 
-**What happened, and when** lives on the entity's `timeline`, one line for each.
+A current-account sentence should normally remain true in three months. Dated status,
+reported figures, changing positions and milestones belong on the timeline. A durable fact
+that can change, such as a role or headquarters, may stay current with an inline
+`— as of <date>` while the change itself also receives a timeline event.
 
-**A past state that is independently worth reading** earns its own page in the folder,
-linked from `intro` and from the timeline event that marks the transition.
-
-The choice between the last two is whether anyone would read the old state for itself. A
-project's earlier iteration would: it had its own shape, and the account of it is still
-worth reading. A filing deadline that turned out to be wrong would not — the whole of its
-value is one line saying it was wrong and why.
-
-The test for the first is whether a sentence will still be true in three months.
-*Combines satellite imagery with foundation models for carbon verification* will be.
-*Moved into deeper diligence last week*, *reported $2.1M ARR in Q1*, *is leaning toward
-passing* will not — each is an event with a date, and each belongs on the timeline.
-
-The exception is a durable fact that can change: a role, a headquarters, an ownership
-stake. That stays on the canonical page with an inline `— as of 27 July 2026`, and the
-change itself earns a timeline event. That is the only kind of date a canonical page
-carries. Relationships are durable and stay on it: who works there, who introduced whom,
-which decision it belongs to. Moving a date off a page never takes its connections with
-it.
+Relationships remain on the pages they connect even when the event that established them is
+historical. Moving chronology off a current account must not remove its useful links.
 
 ## The timeline
 
-A `timeline` records what the owner did, experienced or learned involving its entity,
-dated to when it happened — not only what materially changed about the subject itself.
-Each line on it is one **timeline event**. Descending year headings, descending month
-headings within them, newest first:
+The root contract defines how timelines are written; each directory guide defines which
+developments belong on its subjects and any local exception.
+
+A timeline records what the owner did, experienced or learned involving its entity, not only
+what materially changed about the entity itself. The local guide may exclude routine activity
+that establishes nothing worth retaining for that subject.
+
+Use one `timeline` page with descending year headings, descending month headings and newest
+entries first:
 
     ## 2026
 
     ### August
 
-    - **9 August** — [[places/…|Da Enzo]] — dinner here; best carbonara I have had in Rome.
+    - **9 August** — [[places/…/intro|Da Enzo]] — dinner here; best carbonara I have had in Rome.
 
-    ### July
+One **timeline event** is one line containing its full date, contextual links and the
+particulars of what happened. *Reviewed the quarterly numbers* names activity;
+*ARR reached 640k, up a third on the quarter* records knowledge. If the account needs a
+paragraph, it is probably current state or an independently useful past-state page.
 
-    - **28 July** — [[meetings/…|Partner review]] — agreed to pass on the round.
+A timeline event is not an `events/` entity. The former is a line; the latter is an occasion
+with its own folder. A line may link an occurrence page.
 
-A timeline event is a line, never a page, and it is not an [[events/agents|event]] in the
-`events/` sense — an occasion with its own folder, such as a conference, trip or wedding.
-A timeline event may link one of those; it never becomes one. Keep the qualifier: bare
-"event" in this base means the page, not the line.
+Date activity to when it happened, not when the evidence arrived or the page was written.
+Without a reliable activity date, update durable knowledge and leave the timeline alone.
+An automation maintaining knowledge is not activity in the owner's life.
 
-One timeline event is one line: the date, the links that place it, and what happened, in
-the particulars that made it worth recording. *Reviewed the quarterly numbers* names a
-category of happening; *ARR reached 640k, up a third on the quarter* is the event. One
-wanting a paragraph is describing either the current state or a past state worth reading,
-and belongs on a page under the rule above. Keep the month in the line as well as the
-heading, because these lines are read away from their page — quoted into a day's intro,
-returned by search — and a line that does not say its own date is useless there.
+Never link the diary from a timeline event and never write the diary while recording
+activity. The diary is composed afterwards under its own guide and links back to the
+entities. Historical activity first written today still belongs to its historical date.
 
-Never link the diary from a timeline event. The date is already the link: a day's intro
-is always at `about/diary/<YYYY>/<MM>/<DD>/intro`. Writing it out asserts a page that
-usually does not exist yet, because the diary is composed afterwards by
-[[automations/diary-composer/instructions|the diary composer]], which reads timelines and
-links back to the entities it finds there. No activity writer also writes the diary, and
-an agent recording a timeline event should not try; the owner may still write there
-directly under the [[about/diary/agents|diary guide]].
+A timeline remains one page however long it grows because its value is the trajectory.
+Correct an inaccurate event in place and preserve the surrounding contemporaneous record.
 
-Date a timeline event to when the thing happened, which is not always when it was written.
-An old project written up today, a book finished years ago and a conference attended last
-week each take their own date. Dating one into the past does not make the page's write time
-an event in the owner's life: an automation maintaining knowledge is not diary activity.
-Whenever that event first reaches the diary composer, the event's own date is the only day
-it may create or reconcile for that evidence, however far in the past that day is. The
-[[about/diary/agents|diary guide]] decides whether it belongs in the day's connective
-account; its entity timeline remains the full chronology either way.
+## Reconcile the canonical account
 
-A timeline is one page however long it grows. Its value is that its events sit next to one
-another and read as a trajectory, which splitting it by year or by day would destroy, so
-length is never a reason to break one up.
+New evidence updates the existing account; it does not create an `Updates` section, repeated
+snapshot or duplicate page. Read the canonical target and nearby overlapping views, then
+make the smallest coherent change: rewrite, move, split, combine, merge or archive as needed.
+A write may correctly make no semantic change.
 
-Correcting a timeline event is ordinary reconciliation: fix the claim where it appears
-and leave the surrounding lines as contemporaneous record.
+Preserve useful supported knowledge. Page history retains replaced prose, so the live page
+does not need obsolete wording. Keep a former belief only when the belief itself is useful
+history, clearly labelled and connected to its correction.
 
-## Which entity does it belong to
+Later is not automatically correct. When supported claims conflict and nothing resolves the
+conflict, keep both with their dates and sources and say plainly that they disagree. Remove a
+prior claim only when evidence actually corrects, retracts or supersedes it.
 
-Under the threshold above, the question is rarely whether to record something. It is which
-entity it belongs to.
-Name the most specific entity the evidence actually identifies, and climb until you reach
-one it does. A named dish at a named restaurant identifies both. A photograph of a meal
-with no place and no name identifies neither, and a topic such as `topics/food` is what
-the evidence supports. Climbing is the safe direction: a coarse entity can be split later,
-once repeated timeline events give one of its parts a subject of its own, whereas a specific
-entity invented on a guess produces near-duplicates that no evidence will ever merge.
-
-An occurrence is one of three things, told apart the same way. An [[events/agents|event]]
-is defined by its occasion, a [[meetings/agents|meeting]] by one bounded conversation, and
-a [[threads/agents|thread]] by a written exchange that runs on with no scheduled end. A
-substantive exchange earns its thread on the same terms a substantive conversation earns
-its meeting page: correspondence is where most of what the owner learns arrives, and it
-carries the account of what it established rather than leaving that to be split one line
-at a time across the parties to it.
-
-A subject that is not a person, organization, place or occurrence is usually one of three
-things, told apart by how it sits in time. An enduring aspect of the owner's life or
-thinking, with no start and no finish, is a [[topics/agents|topic]]: how they eat, how they
-train, a lens they apply, a principle they hold. A finite pursuit that can resolve or close
-is a [[about/tasks/agents|task]]. A body of work large enough that it breaks into several
-such pursuits is a [[about/projects/agents|project]].
-
-Read the page rather than its name. Something called *founder feedback during diligence*
-sounds like an episode inside one diligence, but if what it records is the rule the owner
-applies every time, it has no start and no finish and it is a topic. Names follow content
-here; content never follows a name.
-
-A topic is therefore the holding area for activity that has not yet individuated. It
-accumulates timeline events until a dish, a place or a practice has enough history to be
-worth retrieving on its own; that part then becomes its own entity and its events move
-there.
-Diary intros written before the split keep pointing at the topic, which is where the
-material lived at the time. A long topic timeline is the expected shape and the signal to
-split, not a defect — and for this class `intro` is thin at first, distilled from the
-timeline as it accumulates rather than known in advance the way a company's is.
+A page may have multiple writers. Correct only what the current evidence covers and preserve
+every other byte as found. Do not tidy, reorder or reinterpret material whose ownership or
+support you cannot establish.
 
 ## Sources and links
 
-Put a source link on the text that makes the claim, not in a list of bare URLs at the
-end. An unpublished source can link to the relevant private page.
+Use wikilinks in the sentence that explains a relationship. Do not collect unexplained links
+under `Related`, `Connections`, `Sources` or `See also`.
 
-    Good: Announced in [June 2026](https://example.com/post), it ages out stale facts.
-    Bad:  It ages out stale facts.
-          ## Sources
-          example.com/post (4 Jun 2026)
+Link the first mention of every canonical subject on a page, whatever form that mention takes;
+later mentions remain plain for readable prose. Link an entity's entry page, normally
+`[[area/entity/intro|Name]]`, not the directory around it.
 
-Use wikilinks for knowledge-base relationships. In copyable examples, use unresolved
-placeholders such as `[[area/…|label]]`, because real wikilinks resolve even inside code
-blocks.
+Never link a page that does not exist. If a retained record resolves a new subject, create it
+in the same coherent change and then link it. If identity remains ambiguous, use plain text.
 
-The same rule governs relationships between pages. Put the wikilink on the sentence that
-explains the relationship, never in a `Connections`, `Related` or `See also` list at the
-end. Such a list asserts that two subjects are connected without saying how, and generated
-directory indexes already provide navigation. If a relationship is worth recording, it is
-worth a sentence saying what it is.
-
-### Name a subject once, as a link
-
-Every page names other subjects, and each of those names is either a link or a gap. The
-first mention of a person, organization, place, work, topic, project, task or occurrence
-that has a canonical page is a wikilink to it, in the sentence saying what it was to this
-subject; later mentions on the same page stay plain so the prose reads. A subject counts
-as mentioned however it is actually written — full name, given name, surname, initials, a
-nickname, or a bare `the company`, `the conference`, `the project` — and the first of
-those forms carries the link. Waiting for the canonical spelling is how a page names
-someone four times without ever linking them.
-
-Link the page that carries the account, not the folder around it: an entity is entered
-through `intro`, so `[[area/…/intro|Name]]` lands a reader on what is known, while
-`[[area/…|Label]]` names a collection and belongs only where the collection is itself the
-subject. Both forms resolve, which is what makes mixing them easy and costly.
-
-If a page names a subject that earns a canonical page under its own guide but does not
-have one yet, the write is unfinished: create it in the same coherent change and link it.
-Conversely, a page that links nothing is not yet placed — whatever the subject is to the
-owner is itself a subject here, and the sentence saying so is where the link goes. Only
-genuine doubt about identity justifies a plain name; doubt about whether a subject matters
-enough is answered by the owning guide's threshold, not by omitting the link.
-
-Never write a link to a page that does not exist. A wikilink is a claim that the target is
-there, and one aimed at a path never created is a dead end for every reader who follows it
-and a page that no later write knows is missing. The two halves are one decision: if the
-subject earns a page, create it in this write and then link it; if it does not, name it in
-plain text. Writing the link first and leaving the page for later is how both end up
-undone.
-
-Connection is mutual, and mutual connection is what makes this base crawlable: someone
-arriving at any subject — a reader, or an agent following links for them — should reach
-everything related to it by walking outward, without going back to search. So both ends
-record a relationship. An occurrence names its participants and each participant's page
-says what that occurrence was to them; an organization names the people the owner deals
-with there and each of their pages names the organization; a subject that depends on,
-displaced or competes with another says so from both sides. Watch for the shape where
-every page links one or two hubs and nothing links sideways: it looks well connected and
-is not, because every route between two related subjects runs through the hub. The links
-worth adding are the ones between peers. This holds inside an entity folder as much as
-across the base, where the hub everything routes through is `intro`.
-
-None of this is a reason to write fewer pages. It raises what a page must do, never how
-many of the owner's subjects are represented: a subject that earns a page under its guide
-gets one, and gets the sentence that connects it. Leaving a subject out because connecting
-it looked like work is the failure these rules exist to prevent.
-
-## Write, then report
-
-Make confident, in-scope writes directly. Afterward, tell the owner which pages were
-created, materially rewritten, merged or archived and briefly why. Highlight newly
-created entities so the owner can correct, remove or archive them if they are not useful.
-Do not turn this report into a request for retroactive approval.
-
-Ask before writing only when unresolved identity or scope would make a confident choice
-unsafe. An unattended automation follows the same knowledge rules and the additional
-operational contract in its [[automations/agents|guide]].
-
-## Directories and guide layering
-
-Every directory is linkable and its index is generated from its immediate children.
-Do not hand-maintain an `index` page; generated indexes are navigation, not a substitute
-for an authored overview.
-
-A directory guide lives at `<directory>/agents`, titled `AGENTS.md`. Every child guide
-links its direct parent guide and contains only local refinements. Inherited rules remain
-in force without being copied; when a genuine local exception exists, the most specific
-applicable guide wins and says so explicitly.
+Relationships are recorded from both relevant sides in prose that says what the connection
+is. An occurrence names its participants and their pages name the occurrence when it is
+material to them. An organization names the people the owner deals with there and those
+people name the organization. Peer links matter as much as links to hubs.
 
 ## Referencing uploaded assets
 
-**An asset is never added on its own.** Uploading one and writing no page leaves a file
-nothing in the base points at — unreachable by any reader following links, and invisible to
-the next write, which has no way to learn it exists. Every upload therefore lands in the same
-coherent change as a page, new or updated, that says what the asset is and what it has to do
-with everything else. The upload is half the write and the sentence naming it is the other
-half, exactly as an occurrence page is half a write and its participants the other.
+An asset is never uploaded alone. In the same coherent change, create or update the page that
+explains what it is and how it relates to the page's subject. Place the asset with that
+subject, not with the process that happened to upload it.
 
-Which page is decided by the asset's subject, like any other placement. A signed contract
-belongs to the thing it is a contract for, a photograph of a meal to the place or the topic
-it identifies, an issue a run produced to the automation that produced it. An asset dropped
-on whichever page was already open is as lost as one dropped nowhere, because nothing about
-where it landed says what it is.
-
-Every uploaded asset is referenced with the image form, leading `!` included, whatever
-the file actually is:
+Reference every asset with image syntax, including documents:
 
     ![Cover letter](context-use://asset/<uuid>)
 
-The `!` is what makes it an asset reference. Without it nothing resolves the target and
-the page renders the literal words `Private reference` where the file should be — the
-most common way an asset reference is broken. Never write the plain link form
-`[label](context-use://asset/…)`, never leave a bare `context-use://asset/<uuid>` in the
-prose, and never paste a dashboard or download URL.
-
-Presentation follows the asset's own content type, not the syntax. Images and videos
-embed inline; every other type — PDFs and other documents — renders as a hyperlink
-labelled with the bracket text. So a document needs a label that reads as a link:
-`![Cover letter](…)`, not the raw filename and not `![](…)`, which falls back to a bare
-`Open PDF`. An empty label is acceptable only on an image, where it is alt text.
-
-The optional `{size=… align=… shape=… layout=…}` attributes apply to images and videos
-only; they are ignored on a document, and one unrecognised key prints the whole brace
-group verbatim on the page.
-
-Copy the UUID from the asset's own reference field rather than retyping it. A UUID that
-resolves to nothing renders as `Private reference` exactly like a missing `!`, so check
-the rendered page rather than assuming the reference took.
-
-An asset is published separately from the page embedding it, so a published page shows
-`Private asset unavailable` wherever its asset is still private.
+The leading `!` is required. Use a meaningful label for documents; images may use empty alt
+text when appropriate. Copy the UUID from the asset reference and verify the rendered page.
+Formatting attributes apply only to images and videos. Publishing a page does not publish
+its embedded assets.
 
 ## Privacy
 
-Knowledge is private by default, and an agent cannot publish it. Ask the owner to review
-and publish anything intended for the public. Publishing a page makes its directory
-ancestry navigable and exposes published titles and summaries, so even deliberately
-public-safe material needs review before publication.
+Knowledge is private by default, and an agent cannot publish it. Ask the owner to review and
+publish material intended for public access; publishing also exposes navigable ancestry,
+titles and summaries.
 
-Never store credentials, access tokens, access codes or recovery secrets. Keep a
-sensitive identifier or exact location only when it is genuinely useful to the owner,
-and never expose one in a title, path or summary.
+Never store credentials, access tokens, access codes or recovery secrets. Store a sensitive
+identifier or exact location only when it is genuinely useful, and never expose one in a
+title, path or summary.
+
+## Write, then report
+
+Make confident in-scope writes without a preview or proposal. Ask first only when unresolved
+identity or scope makes a safe choice impossible.
+
+After writing, report every page created, materially updated, merged or archived and why.
+Highlight new entities so the owner can correct them. An unattended automation follows the
+same knowledge rules plus the operational contract in its own instructions.
+
+## Directories and guide layering
+
+Generated directory indexes provide navigation; do not hand-maintain `index` pages. A guide
+lives at `<directory>/AGENTS.md`, links its direct parent, and contains only local refinements.
+When a true local exception exists, state it explicitly; otherwise inherited guidance is the
+single source of truth.

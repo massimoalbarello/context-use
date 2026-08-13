@@ -22,11 +22,5 @@
     "summary": "The current opaque change-ledger checkpoint for the diary composer.",
     "body_file": "_pages/diary-composer/state.md",
     "management": "create-only"
-  },
-  "automations/guideline-consistency-review/instructions": {
-    "title": "Guideline consistency review",
-    "summary": "Instructions for reporting inconsistencies between recently changed pages and the owner's current root-to-leaf guidelines.",
-    "body_file": "_pages/guideline-consistency-review/instructions.md",
-    "management": "managed"
   }
 }

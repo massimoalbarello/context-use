@@ -144,9 +144,9 @@ describe("vendored world-v1 corpus", () => {
   test("serves prose with upstream's own inline entity references intact", async () => {
     const reader = new CorpusRecordReader({ directory: DIRECTORY });
     const { records } = await reader.read({ limit: 100 });
-    const person = records.find((record) => record.record_ref.includes("people/"))!;
+    const expectedPerson = loadCorpus(DIRECTORY).records.find((record) => record.type === "person")!;
+    const person = records.find((record) => record.markdown === expectedPerson.markdown)!;
     expect(person).toBeDefined();
-    expect(person.source).toBe("Profiles");
     expect(person.action).toBe("added");
     expect(person.markdown).toMatch(/^# /);
     // Rewriting these would modify the corpus and disadvantage any system built to read

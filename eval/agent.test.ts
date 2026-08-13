@@ -27,7 +27,7 @@ const completedCall = (id: string, tool: string, args: object, extra: object = {
 });
 
 describe("codex progress trace", () => {
-  test("reports each batch of records grouped by source", () => {
+  test("reports the size and continuation state of each served batch", () => {
     const lines = trace([completedCall("item_1", "read_source_records", { limit: 100 }, {
       result: {
         content: [{
@@ -35,18 +35,15 @@ describe("codex progress trace", () => {
           text: JSON.stringify({
             has_more: true,
             records: [
-              { record_ref: "corpus:amara-life-v1:meeting/mtg-0000" },
-              { record_ref: "corpus:amara-life-v1:slack/sl-0001" },
-              { record_ref: "corpus:amara-life-v1:slack/sl-0002" },
+              { action: "added", markdown: "# Meeting" },
+              { action: "added", markdown: "# Message one" },
+              { action: "added", markdown: "# Message two" },
             ],
           }),
         }],
       },
     })]);
-    expect(lines[0]).toBe("  ← 3 records served · more in this day");
-    expect(lines[1]).toContain("meeting");
-    expect(lines[1]).toContain("mtg-0000");
-    expect(lines[2]).toContain("sl-0001, sl-0002");
+    expect(lines).toEqual(["  ← 3 records served · more in this day"]);
   });
 
   test("reports a failed call as a failure rather than a write", () => {

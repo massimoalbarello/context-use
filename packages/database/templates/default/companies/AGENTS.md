@@ -1,45 +1,31 @@
 # Companies conventions
 
-Follow the [[agents|root guide]] for every convention not specific to companies. This
-guide covers only company selection and shape.
+This subtree inherits the [[agents|root guide]]. It contains organizations as subjects.
 
-## What a company page establishes
+## Resolve an organization
 
-`intro` answers what the organization actually does, in a line a reader could repeat, and
-what it is to the owner — a client, a portfolio company, an employer, a competitor, a name a
-colleague mentioned once. An organization the owner has no relationship with says so by
-saying nothing about one; the page is not waiting for a relationship section to be filled.
+Apply the root [[agents#identifiability-is-the-threshold|identifiability invariant]]. Resolve
+an organization from its canonical name and what it does, corroborated when necessary by an
+official domain, relevant people, products, location, legal name or a source's stable id.
 
-Name and link the people the owner actually deals with at the organization, in the
-sentence that says what each of them does there. This is where someone looks to remember
-who to talk to, and it is the edge that connects an organization to the rest of the base
-instead of leaving it hanging off whichever occurrence created it. Only those people: the
-page is not a staff directory.
+A sender domain, signature, logo or abbreviation is evidence, not proof while several
+organizations remain plausible. Shared domains, people or explicit relationships can join
+aliases; evidence for distinct organizations requires distinct pages even when names resemble
+one another.
 
-Most folders remain a single `intro`, and two kinds of further page recur once one does not
-suffice. A **fact page** takes a plain topic name such as `history`, `products` or
-`leadership`, describes the company rather than the owner's opinion of it, and distinguishes
-supported fact from uncertainty. A **lens page** at `as-<relationship>` keeps a relationship
-that changes on its own schedule apart from those facts; it is built on the owner's expressed
-point of view, with further reasoning labelled as inference, and it names the effort or
-decision the relationship bears on by linking it. Reuse an established aspect name when it
-means the same thing. Neither page is owed, and either is written only once its subject is
-independently worth reading.
+## Company account
 
-Company timeline events include meetings, collaborations, transactions and relationship
-changes; research alone usually does not call for a timeline.
+`intro` explains what the organization actually does and what it is to the owner when a
+relationship exists. Absence of a relationship needs no placeholder section.
 
-## What identifies a company
+Name and link the people the owner actually deals with there, in the sentence explaining
+their role. Do not turn the page into a staff directory.
 
-Under the [[agents#identifiability-is-the-threshold|root threshold]], any organization the
-evidence resolves gets its folder — one the owner works with, one they are evaluating, one
-a colleague mentioned in passing, one named only as somebody's employer. The folder comes
-before the relationship has any history to record, and often before there is a relationship
-at all.
+Most company folders need only `intro`. A fact page such as `products`, `leadership` or
+`history` holds an independently useful aspect of the company. A lens page named
+`as-<relationship>` holds the owner's grounded view of a relationship that changes on its own
+schedule and links the effort or decision it concerns. Neither view is mandatory.
 
-What resolves an organization here is its canonical name plus what it does, corroborated
-where needed by an official domain, relevant people, products, location or legal name. A
-sender domain, signature, logo or abbreviated name is evidence, not proof, while several
-organizations remain plausible. What actually joins two similarly named organizations is a
-shared domain, shared people, a stated relationship or a source's own stable reference;
-where several appear, give each its own page and say on each what distinguishes it.
+Company timeline events include material meetings, collaborations, transactions, operating
+developments and relationship changes. Research that only improves the current account is
+not itself a timeline event.

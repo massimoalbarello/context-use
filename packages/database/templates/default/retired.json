@@ -1,4 +1,8 @@
 {
-  "directories": [],
-  "pages": []
+  "directories": [
+    "automations/guideline-consistency-review"
+  ],
+  "pages": [
+    "automations/guideline-consistency-review/instructions"
+  ]
 }

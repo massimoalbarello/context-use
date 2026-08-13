@@ -10,7 +10,7 @@ import { SourceRecordCheckpointError } from "../apps/server/src/nango-records.ts
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { DENSE_WINDOW_START, loadAmaraCorpus } from "./corpus-amara.ts";
-import { SOURCE_LABELS, type Corpus, type CorpusRecord } from "./corpus-types.ts";
+import type { Corpus, CorpusRecord } from "./corpus-types.ts";
 import { loadWorldCorpus } from "./corpus-world.ts";
 
 /**
@@ -202,8 +202,6 @@ export class CorpusRecordReader implements SourceRecordReader {
     while (index < batchRecords.length && records.length < limit) {
       const record = batchRecords[index]!;
       const source: SourceRecord = {
-        record_ref: `corpus:${this.#corpus.corpusId}:${record.slug}`,
-        source: SOURCE_LABELS[record.type],
         action: record.action,
         markdown: record.markdown,
       };

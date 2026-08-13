@@ -1,52 +1,43 @@
 # Automations conventions
 
-Follow the [[agents|root guide]] for every convention not specific to automations. This
-guide adds only how the `automations/` directory is laid out.
+This subtree inherits the [[agents|root guide]]. This guide is for agents creating or changing
+an automation. A running automation follows its own instructions and the guides applicable to
+its output; do not make reading this authoring guide a runtime prerequisite.
 
-`automations/` holds the versioned instructions, minimal durable state and true supporting
-assets of jobs run by an **external harness**. The harness owns scheduling, execution,
-retries, credentials and run history.
+The harness owns scheduling, execution, retries, credentials, run history and delivery. Each
+automation runs independently: never read, wait on, mutate or use another automation's
+instructions, state, checkpoint or report as a precondition.
 
-## Suggested shape
+## Shape
 
     automations/<automation-name>/
-    ├── instructions  — the canonical operating contract
-    ├── state         — an optional opaque incremental checkpoint
-    ├── <asset>       — a prompt fragment, template or other real dependency
-    └── <YYYY>/<MM>/<DD>/<artifact>  — a dated artifact the run produces, where it makes one
+    ├── instructions
+    ├── state
+    ├── <real dependency>
+    └── <YYYY>/<MM>/<DD>/<produced-artifact>
 
-- A stable kebab-case directory gives an automation a durable identity.
-- `instructions` is the useful default leaf for its canonical operating contract. This is a
-  local exception to the root `intro` entry-point convention: the harness addresses
-  `instructions` directly, so do not add a redundant `intro` page.
-- Incremental workflows may use one stable `state` page holding only the current opaque
-  checkpoint and, when useful, the last successful completion time.
-- Supporting assets sit beside the instructions only when the automation actually consumes
-  them.
+`instructions` is the harness-addressed entry point, a local exception to the root `intro`
+default. Write it as a state machine with numbered headings for states and lettered labels for
+ordered substeps. Use ordinary bullets for unordered criteria and invariants. Make inputs,
+actions, completion conditions and failure transitions explicit. Unfinished work loops back
+into processing; only objective failure conditions named by the workflow enter a failure
+transition.
 
-## What does not belong here
+Instructions must be runnable without remembered conventions. Link the guides that own the
+structure and writing of output instead of copying their rules. State an operational safeguard
+once, where it changes control flow, rather than repeating warnings elsewhere.
 
-Only an automation's own instructions, state and dependencies. Run logs, retry histories,
-source records, dated checkpoint pages and copied provider data are the harness's business
-and have no page here.
+An incremental workflow may keep one `state` page containing only its current opaque
+checkpoint and, when useful, its last successful completion time. Instructions must define
+the exact state representation. Supporting assets sit beside the instructions only when the
+workflow actually consumes them.
 
-Knowledge an automation produces is not automation content either: it belongs to its
-subject, under that subject's guide. An automation never files knowledge beneath its own
-directory or under a date, because knowledge organized by the process that made it is
-unreachable from the subject it is about.
+## Storage boundary
 
-An artifact the automation itself produces is the narrow exception. A published issue, a
-generated digest, and the owner's reaction to one particular issue have no subject but the
-automation: nothing else in the base is about them, and filing them by subject would mean
-inventing one. Those sit under the automation's directory, and under a date when each run
-produces a separate one.
+Never store source records, proposals, intermediate observations, scan logs, retry history,
+page identifiers, credentials or harness metadata here.
 
-The boundary is what the artifact is, never where it came from. What a run **made**, and what
-the owner said about that particular thing it made, are the automation's. What a run
-**learned** is not: a fact about a person, company or work belongs to that subject like any
-other knowledge, however it was discovered, and a dated artifact is never a place to keep
-one. An automation that starts filing what it learned beside what it produced has rebuilt the
-run log this guide already refuses.
-
-How an automation actually works belongs to its own `instructions` page rather than to this
-guide, and that page should make it runnable without hidden conventions.
+Knowledge an automation learns belongs to its subject under that subject's guide, not under
+the process that found it. A produced artifact is the exception: an issue, digest or other
+thing the automation itself made may live beneath the automation, dated when separate runs
+produce separate artifacts. Facts learned while producing it still belong to their subjects.
