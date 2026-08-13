@@ -16,6 +16,7 @@ type SessionInfo = { owner: { id: string; email: string }; passkey_count: number
 type Section = "knowledge" | "history" | "mcp" | "settings";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "context-use.sidebar.width.v1";
+const MOBILE_LAYOUT_QUERY = "(max-width: 960px)";
 const DEFAULT_SIDEBAR_WIDTH = 258;
 const MIN_SIDEBAR_WIDTH = 220;
 const MAX_SIDEBAR_WIDTH = 520;
@@ -40,6 +41,14 @@ function SectionIcon({ section }: { section: Section }) {
 
 function SignOutIcon() {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3.5H4.5v13H8" /><path d="M11.5 6.5 15 10l-3.5 3.5M7 10h8" /></svg>;
+}
+
+function SidebarToggleIcon() {
+  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 5.25h13M3.5 10h13M3.5 14.75h13" /></svg>;
+}
+
+function CloseIcon() {
+  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>;
 }
 
 function selectionFromLocation(): KnowledgeSelection | null {
@@ -68,8 +77,12 @@ export function App() {
   const [showArchived, setShowArchived] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(restoredSidebarWidth);
   const [resizingSidebar, setResizingSidebar] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [message, setMessage] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const mobileSidebarToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileSidebarCloseRef = useRef<HTMLButtonElement>(null);
   const sidebarResizeStart = useRef({ pointerX: 0, width: DEFAULT_SIDEBAR_WIDTH });
   const consent = window.location.pathname === "/app/oauth/consent";
 
@@ -107,6 +120,7 @@ export function App() {
     const syncLocation = () => {
       setSelected(selectionFromLocation());
       setSection(sectionFromLocation());
+      setMobileSidebarOpen(false);
     };
     window.addEventListener("popstate", syncLocation);
     return () => window.removeEventListener("popstate", syncLocation);
@@ -115,6 +129,7 @@ export function App() {
     const focusSearch = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k") return;
       event.preventDefault();
+      if (window.matchMedia(MOBILE_LAYOUT_QUERY).matches) setMobileSidebarOpen(true);
       window.setTimeout(() => { searchRef.current?.focus(); searchRef.current?.select(); });
     };
     window.addEventListener("keydown", focusSearch);
@@ -148,6 +163,38 @@ export function App() {
     };
   }, [resizingSidebar]);
 
+  useEffect(() => {
+    if (!mobileSidebarOpen) return;
+    const sidebar = sidebarRef.current;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileSidebarOpen(false);
+        window.setTimeout(() => mobileSidebarToggleRef.current?.focus());
+        return;
+      }
+      if (event.key !== "Tab" || !sidebar) return;
+      const focusable = [...sidebar.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex='-1'])")]
+        .filter((element) => element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.body.classList.add("mobile-sidebar-open");
+    window.addEventListener("keydown", handleKeyDown);
+    window.setTimeout(() => mobileSidebarCloseRef.current?.focus());
+    return () => {
+      document.body.classList.remove("mobile-sidebar-open");
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileSidebarOpen]);
+
   const visibleAssets = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return normalized
@@ -169,27 +216,34 @@ export function App() {
   const selectKnowledge = (selection: KnowledgeSelection) => {
     setSelected(selection);
     setSection("knowledge");
+    // Keep the drawer open while expanding directories so nested pages remain
+    // reachable with a single browsing pass on small screens.
+    if (selection.kind !== "directory") setMobileSidebarOpen(false);
     const collection = selection.kind === "page" ? "pages" : selection.kind === "directory" ? "directories" : "assets";
     history.pushState({}, "", `/app/${collection}/${selection.id}`);
   };
 
   const openSettings = () => {
     setSection("settings");
+    setMobileSidebarOpen(false);
     if (window.location.pathname !== "/app/settings") history.pushState({}, "", "/app/settings");
   };
 
   const openMcpClients = () => {
     setSection("mcp");
+    setMobileSidebarOpen(false);
     history.pushState({}, "", "/app/mcp");
   };
 
   const openHistory = () => {
     setSection("history");
+    setMobileSidebarOpen(false);
     history.pushState({}, "", "/app/history");
   };
 
   const openKnowledge = () => {
     setSection("knowledge");
+    setMobileSidebarOpen(false);
     const collection = selected?.kind === "page" ? "pages" : selected?.kind === "directory" ? "directories" : "assets";
     history.pushState({}, "", selected ? `/app/${collection}/${selected.id}` : "/app");
   };
@@ -211,10 +265,32 @@ export function App() {
   };
 
   return <div className="shell" style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
-    <aside className="sidebar">
-      <div className="sidebar-brand"><div className="brand-mark small">cu</div><div><strong>context-use</strong><span>Private workspace</span></div></div>
+    <header className="mobile-topbar">
+      <button
+        ref={mobileSidebarToggleRef}
+        type="button"
+        className={`mobile-sidebar-toggle${mobileSidebarOpen ? " active" : ""}`}
+        aria-label={mobileSidebarOpen ? "Close knowledge folders" : "Open knowledge folders"}
+        aria-controls="knowledge-sidebar"
+        aria-expanded={mobileSidebarOpen}
+        onClick={() => setMobileSidebarOpen((open) => !open)}
+      ><SidebarToggleIcon /></button>
+      <nav className="mobile-section-nav" aria-label="Dashboard sections">
+        <button className={section === "knowledge" ? "active" : ""} onClick={openKnowledge}><SectionIcon section="knowledge" /><span>Knowledge</span></button>
+        <button className={section === "history" ? "active" : ""} onClick={openHistory}><SectionIcon section="history" /><span>History</span></button>
+        <button className={section === "mcp" ? "active" : ""} onClick={openMcpClients}><SectionIcon section="mcp" /><span>MCP clients</span></button>
+      </nav>
+    </header>
+    <button
+      type="button"
+      className={`mobile-sidebar-scrim${mobileSidebarOpen ? " open" : ""}`}
+      aria-label="Close knowledge browser"
+      tabIndex={-1}
+      onClick={() => setMobileSidebarOpen(false)}
+    />
+    <aside ref={sidebarRef} id="knowledge-sidebar" className={`sidebar${mobileSidebarOpen ? " mobile-open" : ""}`} aria-label="Knowledge browser">
+      <div className="sidebar-brand"><div className="brand-mark small">cu</div><div className="sidebar-brand-copy"><strong>context-use</strong><span>Private workspace</span></div><button ref={mobileSidebarCloseRef} type="button" className="sidebar-close-button" aria-label="Close knowledge browser" onClick={() => setMobileSidebarOpen(false)}><CloseIcon /></button></div>
       <nav className="sidebar-section-nav">
-        <button className={`mobile-knowledge-nav${section === "knowledge" ? " active" : ""}`} onClick={openKnowledge}><SectionIcon section="knowledge" /><span>Knowledge</span></button>
         <button className={section === "history" ? "active" : ""} onClick={openHistory}><SectionIcon section="history" /><span>History</span></button>
         <button className={section === "mcp" ? "active" : ""} onClick={openMcpClients}><SectionIcon section="mcp" /><span>MCP clients</span></button>
       </nav>
