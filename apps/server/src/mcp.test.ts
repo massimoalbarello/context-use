@@ -77,7 +77,7 @@ function pagesWithGuidance(overrides: Record<string, unknown> = {}): PageReposit
 const rootGuidanceReceipt = createGuidanceReceipt([rootGuide]);
 
 describe("MCP knowledge tools", () => {
-  test("carries the write contract in the tools rather than in server instructions", async () => {
+  test("exposes one proactive-use instruction while keeping the write contract in the tools", async () => {
     const response = await mcpRequest(serverWith(), {
       jsonrpc: "2.0",
       id: 0,
@@ -88,7 +88,11 @@ describe("MCP knowledge tools", () => {
         clientInfo: { name: "test-client", version: "1.0.0" },
       },
     });
-    expect(response.result?.instructions).toBeUndefined();
+    expect(response.result?.instructions).toBe(
+      "Use Context Use proactively when the user states a concrete durable fact, decision, "
+        + "correction, relationship, plan, or completed activity about their life or work, "
+        + "even if they do not explicitly say “remember.”",
+    );
 
     const listed = await mcpRequest(serverWith(), {
       jsonrpc: "2.0",

@@ -33,6 +33,10 @@ export type McpContext = {
   sessionId: string;
 };
 
+const SERVER_INSTRUCTIONS = "Use Context Use proactively when the user states a concrete "
+  + "durable fact, decision, correction, relationship, plan, or completed activity about "
+  + "their life or work, even if they do not explicitly say “remember.”";
+
 const jsonContent = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
@@ -162,7 +166,10 @@ export async function createMcpServer(
   const skillCatalog = skills.length
     ? `Available reusable skills:\n${skills.map((skill) => `- ${skill.name}: ${skill.summary}`).join("\n")}`
     : "Available reusable skills: none.";
-  const server = new McpServer({ name: "context-use", version: "0.1.65" });
+  const server = new McpServer(
+    { name: "context-use", version: "0.1.65" },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
   const actor = { kind: "mcp" as const, subject: context.clientId };
 
   async function hasCurrentGuidance(targetPath: string, receipt?: string): Promise<boolean> {

@@ -8,7 +8,7 @@ import { buildKnowledgeGraph } from "./graph.ts";
 import { resolveStorySubjects, type StoryResolution } from "./resolver.ts";
 import { aggregateStoryScore, scoreStoryTurn, type StoryScore } from "./scoring.ts";
 import { openStoryConversation } from "./session.ts";
-import type { EvalStory, EvalStorySuite, StoryTurn } from "./types.ts";
+import { storyTurnSubjectIds, type EvalStory, type EvalStorySuite, type StoryTurn } from "./types.ts";
 
 const RESULTS_ROOT = EVAL_STORY_RESULTS_ROOT;
 
@@ -119,7 +119,12 @@ async function runOneStory(input: {
       const current = snapshotKnowledgeState();
       const beforeGraph = buildKnowledgeGraph(previous);
       const afterGraph = buildKnowledgeGraph(current);
-      const resolution = resolveStorySubjects(afterGraph, input.story.subjects, bindings);
+      const resolution = resolveStorySubjects(
+        afterGraph,
+        input.story.subjects,
+        bindings,
+        storyTurnSubjectIds(turn),
+      );
       bindings = resolution.bindings;
       const score = scoreStoryTurn({
         story: input.story,

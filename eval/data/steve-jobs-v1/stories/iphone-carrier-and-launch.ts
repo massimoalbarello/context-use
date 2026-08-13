@@ -6,6 +6,8 @@ import {
   hasView,
   linked,
   meeting,
+  noOccurrence,
+  noWriteUnder,
   organization,
   person,
   relationship,
@@ -18,7 +20,7 @@ import {
 export const iphoneCarrierAndLaunch = story({
   id: "iphone-carrier-and-launch",
   title: "iPhone carrier meeting and launches",
-  description: "A planned carrier meeting completes, becomes a public announcement, and survives the Cingular-to-AT&T transition.",
+  description: "A planned carrier meeting completes before a public announcement and the Cingular-to-AT&T transition.",
   subjects: {
     stan: person({ names: ["Stan Sigman"] }),
     apple: organization({ names: ["Apple", "Apple Computer", "Apple Inc."] }),
@@ -32,10 +34,6 @@ export const iphoneCarrierAndLaunch = story({
       names: ["Macworld 2007", "iPhone announcement"], date: "2007-01-09",
       participants: ["stan"], organizations: ["apple", "carrier"], about: ["iphone"],
       concepts: ["499", "599"],
-    }),
-    retailLaunch: event({
-      names: ["iPhone retail launch", "iPhone goes on sale"], date: "2007-06-29",
-      organizations: ["apple", "carrier"], about: ["iphone"], concepts: ["6 p.m."],
     }),
   },
   turns: [
@@ -54,6 +52,7 @@ The product combines a phone, a widescreen iPod and an internet communicator usi
         relationship("carrier", "stan", { any: ["CEO", "chief executive"] }),
         relationship("carrier", "iphone", { all: ["exclusive", "US"] }),
         fact("iphone", { all: ["phone", "widescreen iPod", "internet communicator", "multi-touch"] }),
+        noWriteUnder("about/diary"),
       ],
     },
     {
@@ -70,6 +69,7 @@ iPhone at Macworld. It ships in June at $499 for 4 GB and $599 for 8 GB.`,
         timelineEvent("carrier", { date: "2007-01-09", occurrence: "macworld" }),
         timelineEvent("apple", { date: "2007-01-09", occurrence: "macworld" }),
         timelineEvent("iphone", { date: "2007-01-09", occurrence: "macworld" }),
+        noWriteUnder("about/diary"),
       ],
     },
     {
@@ -78,13 +78,13 @@ iPhone at Macworld. It ships in June at $499 for 4 GB and $599 for 8 GB.`,
       user: `Cingular is now branded AT&T. iPhone went on sale today at 6 p.m. through Apple and
 AT&T stores. Keep the carrier relationship continuous with the one we announced in January.`,
       expect: [
-        created("retailLaunch"), updated("carrier"), updated("iphone"), updated("apple"),
-        linked("retailLaunch", "iphone"), linked("retailLaunch", "apple"),
+        updated("carrier"), updated("iphone"), updated("apple"),
         fact("carrier", { all: ["AT&T"], any: ["branded", "renamed", "successor"] }),
         relationship("carrier", "iphone", { any: ["exclusive", "carrier", "January"] }),
-        timelineEvent("carrier", { date: "2007-06-29", occurrence: "retailLaunch" }),
-        timelineEvent("apple", { date: "2007-06-29", occurrence: "retailLaunch" }),
-        timelineEvent("iphone", { date: "2007-06-29", occurrence: "retailLaunch" }),
+        timelineEvent("carrier", { date: "2007-06-29" }),
+        timelineEvent("apple", { date: "2007-06-29" }),
+        timelineEvent("iphone", { date: "2007-06-29" }),
+        noOccurrence("event", "2007-06-29", { any: ["iPhone retail launch"] }),
       ],
     },
   ],

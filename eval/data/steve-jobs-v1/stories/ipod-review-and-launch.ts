@@ -1,10 +1,10 @@
 import {
   created,
   durableSubject,
-  event,
   fact,
   linked,
   meeting,
+  noOccurrence,
   organization,
   person,
   relationship,
@@ -17,7 +17,7 @@ import {
 export const ipodReviewAndLaunch = story({
   id: "ipod-review-and-launch",
   title: "iPod final review and introduction",
-  description: "A final product review establishes people and specifications before a separate launch event.",
+  description: "A final product review establishes people and specifications before the introduction milestone.",
   subjects: {
     jon: person({ names: ["Jon Rubinstein"] }),
     tony: person({ names: ["Tony Fadell"] }),
@@ -27,10 +27,6 @@ export const ipodReviewAndLaunch = story({
     finalReview: meeting({
       date: "2001-10-22", participants: ["jon", "tony"], organizations: ["apple"],
       about: ["ipod", "itunes"], concepts: ["5 GB", "399", "FireWire"],
-    }),
-    introduction: event({
-      names: ["iPod introduction"], date: "2001-10-23", organizations: ["apple"],
-      about: ["ipod"], concepts: ["1000 songs", "November 10"],
     }),
   },
   turns: [
@@ -57,11 +53,11 @@ $399 price.`,
       user: `The iPod introduction is done. We announced it as 1,000 songs in your pocket, and it
 ships November 10.`,
       expect: [
-        created("introduction"), updated("ipod"), updated("apple"),
-        linked("introduction", "ipod"), linked("introduction", "apple"),
+        updated("ipod"), updated("apple"),
         fact("ipod", { all: ["1000 songs", "November 10"] }),
-        timelineEvent("ipod", { date: "2001-10-23", occurrence: "introduction" }),
-        timelineEvent("apple", { date: "2001-10-23", occurrence: "introduction" }),
+        timelineEvent("ipod", { date: "2001-10-23" }),
+        timelineEvent("apple", { date: "2001-10-23" }),
+        noOccurrence("event", "2001-10-23", { any: ["iPod introduction"] }),
       ],
     },
   ],

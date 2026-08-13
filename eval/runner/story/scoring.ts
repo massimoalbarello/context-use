@@ -9,6 +9,7 @@ import {
   type KnowledgeGraph,
 } from "./graph.ts";
 import { candidateMatches, type StoryResolution, type SubjectResolution } from "./resolver.ts";
+import { storyTurnSubjectIds } from "./types.ts";
 import type {
   EvalStory,
   ScoreDimension,
@@ -64,21 +65,6 @@ function evidenceFor(resolution: SubjectResolution | undefined): string | undefi
   const alternatives = resolution.alternatives.map((match) =>
     `${match.candidate.path} (${match.confidence.toFixed(2)})`);
   return alternatives.join(", ") || undefined;
-}
-
-function expectationSubjects(expectation: StoryExpectation): string[] {
-  if (expectation.kind === "exists" || expectation.kind === "created"
-    || expectation.kind === "updated" || expectation.kind === "unique"
-    || expectation.kind === "view" || expectation.kind === "fact") {
-    return [expectation.subject];
-  }
-  if (expectation.kind === "timeline") {
-    return [expectation.subject, ...(expectation.occurrence ? [expectation.occurrence] : [])];
-  }
-  if (expectation.kind === "linked" || expectation.kind === "relationship") {
-    return [expectation.from, expectation.to];
-  }
-  return [];
 }
 
 function placementAssertion(
@@ -182,6 +168,17 @@ function scoreExpectation(
       matches.length === 0 ? 1 : 1 / (matches.length + 1),
       `No unsupported ${expectation.occurrenceKind} was created for ${expectation.date}`,
       matches.map((match) => match.path).join(", ") || undefined,
+    );
+  }
+  if (expectation.kind === "no-write-under") {
+    const prefix = expectation.pathPrefix.replace(/\/$/, "");
+    const writes = after.candidates.filter((current) =>
+      (current.path === prefix || current.path.startsWith(`${prefix}/`))
+      && (!before.byId.has(current.id) || candidateChanged(before.byId.get(current.id), current)));
+    return result(
+      writes.length === 0 ? 1 : 0,
+      `No knowledge was written under ${prefix}`,
+      writes.map((candidate) => candidate.path).join(", ") || undefined,
     );
   }
 
@@ -303,8 +300,7 @@ export function scoreStoryTurn(input: {
     input.resolution,
     input.activity,
   ));
-  const activeSubjects = new Set(input.turn.expect.flatMap(expectationSubjects));
-  const placementAssertions = [...activeSubjects].flatMap((subject) => {
+  const placementAssertions = storyTurnSubjectIds(input.turn).flatMap((subject) => {
     const definition = input.story.subjects[subject];
     if (!definition) return [];
     return placementAssertion(subject, definition, input.resolution.subjects.get(subject)) ?? [];

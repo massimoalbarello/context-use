@@ -30,7 +30,8 @@ export const implicitWriteTrigger = story({
   turns: [{
     id: "design-direction",
     date: "1998-03-12",
-    user: `Jony Ive and I settled the iMac direction at Apple today. It stays a one-piece
+    user: `Jony Ive and I held an iMac design review at Apple today and settled the direction.
+It stays a one-piece
 translucent Bondi blue machine with a carrying handle. We are betting on USB and removing
 the floppy drive.`,
     expect: [

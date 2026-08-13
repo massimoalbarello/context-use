@@ -1,9 +1,9 @@
 import {
   created,
   durableSubject,
-  event,
   fact,
   linked,
+  noOccurrence,
   organization,
   person,
   relationship,
@@ -23,11 +23,6 @@ export const rokrPartnership = story({
     motorola: organization({ names: ["Motorola"] }),
     cingular: organization({ names: ["Cingular Wireless", "Cingular"] }),
     rokr: durableSubject({ names: ["Motorola ROKR", "ROKR"] }),
-    launch: event({
-      names: ["Motorola ROKR launch"], date: "2005-09-07",
-      participants: ["ed", "ralph"], organizations: ["apple", "motorola", "cingular"],
-      about: ["rokr"], concepts: ["100 songs", "249.99"],
-    }),
   },
   turns: [
     {
@@ -39,17 +34,18 @@ iTunes songs. Cingular has exclusive US distribution, and the phone is $249.99 w
 two-year commitment.`,
       expect: [
         created("ed"), created("ralph"), created("apple"), created("motorola"),
-        created("cingular"), created("rokr"), created("launch"),
-        linked("launch", "ed"), linked("launch", "ralph"), linked("launch", "apple"),
-        linked("launch", "motorola"), linked("launch", "cingular"), linked("launch", "rokr"),
+        created("cingular"), created("rokr"),
+        linked("rokr", "ed"), linked("rokr", "ralph"), linked("rokr", "apple"),
+        linked("rokr", "motorola"), linked("rokr", "cingular"),
         relationship("ed", "motorola", { any: ["CEO", "chairman"] }),
         relationship("motorola", "ed", { any: ["CEO", "chairman"] }),
         relationship("ralph", "cingular", { any: ["COO", "chief operating"] }),
         relationship("cingular", "ralph", { any: ["COO", "chief operating"] }),
         fact("rokr", { all: ["100", "iTunes", "249.99", "two-year"] }),
-        timelineEvent("apple", { date: "2005-09-07", occurrence: "launch" }),
-        timelineEvent("motorola", { date: "2005-09-07", occurrence: "launch" }),
-        timelineEvent("cingular", { date: "2005-09-07", occurrence: "launch" }),
+        timelineEvent("apple", { date: "2005-09-07" }),
+        timelineEvent("motorola", { date: "2005-09-07" }),
+        timelineEvent("cingular", { date: "2005-09-07" }),
+        noOccurrence("event", "2005-09-07", { any: ["Motorola ROKR launch"] }),
       ],
     },
     {

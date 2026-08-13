@@ -1,7 +1,6 @@
 import {
   created,
   durableSubject,
-  event,
   fact,
   linked,
   noOccurrence,
@@ -24,10 +23,6 @@ export const itunesLabelPartnerships = story({
     universal: organization({ names: ["Universal Music Group", "Universal"] }),
     warner: organization({ names: ["Warner Music Group", "Warner"] }),
     store: durableSubject({ names: ["iTunes Music Store"], concepts: ["99 cents", "no subscription"] }),
-    launch: event({
-      names: ["iTunes Music Store launch"], date: "2003-04-28", organizations: ["apple"],
-      about: ["store"], concepts: ["200000 songs", "iTunes 4"],
-    }),
   },
   turns: [
     {
@@ -56,11 +51,11 @@ personal-use rights.`,
       user: `We launched the iTunes Music Store today with more than 200,000 songs in iTunes 4,
 initially for US Mac users.`,
       expect: [
-        created("launch"), updated("store"), updated("apple"),
-        linked("launch", "store"), linked("launch", "apple"),
+        updated("store"), updated("apple"),
         fact("store", { all: ["200000", "iTunes 4", "US", "Mac"] }),
-        timelineEvent("apple", { date: "2003-04-28", occurrence: "launch" }),
-        timelineEvent("store", { date: "2003-04-28", occurrence: "launch" }),
+        timelineEvent("apple", { date: "2003-04-28" }),
+        timelineEvent("store", { date: "2003-04-28" }),
+        noOccurrence("event", "2003-04-28", { any: ["iTunes Music Store launch"] }),
       ],
     },
   ],
