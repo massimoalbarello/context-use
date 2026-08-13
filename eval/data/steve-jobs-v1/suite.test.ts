@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { renderStoryTurn } from "../../runner/story/runner.ts";
+import { renderStoryTurn, storyRunnerInternals } from "../../runner/story/runner.ts";
 import { steveJobsV1 } from "./suite.ts";
 
 function expectationReferences(expectation: (typeof steveJobsV1.stories)[number]["turns"][number]["expect"][number]): string[] {
@@ -55,24 +55,30 @@ describe("steve-jobs-v1 fixture integrity", () => {
     expect(dates).toEqual([...dates].sort());
   });
 
-  test("renders the owner-context prelude once per historical conversation and never for the trigger probe", () => {
-    const historical = steveJobsV1.stories.find((story) => story.id === "microsoft-partnership")!;
-    const trigger = steveJobsV1.stories.find((story) => story.id === "implicit-write-trigger")!;
-    expect(renderStoryTurn(steveJobsV1, historical, historical.turns[0]!, true))
-      .toStartWith(steveJobsV1.conversationPrelude);
-    expect(renderStoryTurn(steveJobsV1, historical, historical.turns[1]!, false))
-      .not.toContain(steveJobsV1.conversationPrelude);
-    expect(renderStoryTurn(steveJobsV1, trigger, trigger.turns[0]!, true))
-      .not.toContain(steveJobsV1.conversationPrelude);
+  test("plans one fresh conversation per story and supplies owner context only once", () => {
+    const historical = steveJobsV1.journey.map((id) =>
+      steveJobsV1.stories.find((story) => story.id === id)!);
+    const plan = storyRunnerInternals.planStoryConversations(historical);
+    expect(plan.map(({ story }) => story.id)).toEqual(steveJobsV1.journey);
+    expect(plan.map(({ includeSuitePrelude }) => includeSuitePrelude))
+      .toEqual([true, false, false, false, false, false]);
+
+    const prompts = plan.map(({ story, includeSuitePrelude }) =>
+      renderStoryTurn(steveJobsV1, story, story.turns[0]!, true, includeSuitePrelude));
+    expect(prompts[0]).toStartWith("I'm Steve Jobs, co-founder of Apple.");
+    for (const prompt of prompts.slice(1)) {
+      expect(prompt).not.toContain(steveJobsV1.conversationPrelude);
+    }
   });
 
-  test("makes Apple visible owner context wherever the fixture expects Apple", () => {
-    expect(steveJobsV1.conversationPrelude).toMatch(/Apple is my\s+company/);
-    expect(steveJobsV1.conversationPrelude).toContain('"we" or "us" I mean Apple');
-    for (const story of steveJobsV1.stories) {
-      if (!story.subjects.apple) continue;
-      const first = renderStoryTurn(steveJobsV1, story, story.turns[0]!, true);
-      expect(first, story.id).toMatch(/\bApple\b/);
-    }
+  test("keeps the implicit trigger prelude-free without consuming suite context", () => {
+    const plan = storyRunnerInternals.planStoryConversations(steveJobsV1.stories);
+    expect(plan.slice(0, 2).map(({ story, includeSuitePrelude }) => ({
+      story: story.id,
+      includeSuitePrelude,
+    }))).toEqual([
+      { story: "implicit-write-trigger", includeSuitePrelude: false },
+      { story: "microsoft-partnership", includeSuitePrelude: true },
+    ]);
   });
 });

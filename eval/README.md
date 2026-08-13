@@ -56,12 +56,12 @@ in chronological order; `story:run --all` uses the suite's declared story order.
 and per-turn snapshots, resolutions, tool activity, and scores land under
 `eval/results/stories/`.
 
-Historical stories share minimal owner context: the speaker is Steve Jobs, Apple is his
-company, and “we” or “us” means Apple. This makes the fixture's implicit actor explicit
-without prescribing how to store it. The single `implicit-write-trigger` story omits that
-prelude and separately measures whether the agent uses Context Use without being asked. In
-both cases the real default-template `AGENTS.md` guides are the only knowledge-organization
-instructions.
+The first historical story gets one short suite introduction: the speaker is Steve Jobs,
+co-founder of Apple. Every later story starts a fresh agent conversation with no repeated
+owner context, so resolving “we” to Apple measures whether the accumulated knowledge base
+carries context across sessions. The single `implicit-write-trigger` story suppresses even
+the suite introduction. In every case the real default-template `AGENTS.md` guides are the
+only knowledge-organization instructions.
 
 ## Two corpora
 

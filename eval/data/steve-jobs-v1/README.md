@@ -11,18 +11,19 @@ historical quotations.
 
 ## Shape
 
-- `suite.ts` defines the common owner-context prelude, registered stories, and chronological
-  journey. The prelude identifies Steve and resolves “we” and “us” to Apple without
-  prescribing a knowledge shape.
+- `suite.ts` defines the one-time owner introduction, registered stories, and chronological
+  journey. The introduction identifies Steve as Apple's co-founder without resolving later
+  pronouns or prescribing a knowledge shape.
 - `stories/` contains the fixed user turns, logical subjects, and atomic expectations.
-- `implicit-write-trigger` is the only story that omits the explicit second-brain prelude.
+- `implicit-write-trigger` is the only story that suppresses the suite's owner introduction.
 - Reusable conversation, graph resolution, and partial scoring live in
   [`../../runner/story/`](../../runner/story/).
 
 One selected story runs against a reset knowledge base. A multi-story suite preserves the
-knowledge created by earlier stories while starting a fresh agent conversation for each;
-the journey selects the historical fixtures in chronological order. Each repeated suite
-starts from another reset knowledge base.
+knowledge created by earlier stories while starting a fresh agent conversation for each.
+Only the first eligible conversation receives the suite introduction; later sessions must
+recover shared context through Context Use. The journey selects the historical fixtures in
+chronological order, and each repeated suite starts from another reset knowledge base.
 
 ```sh
 bun run eval story:run --story imac-design-and-launch

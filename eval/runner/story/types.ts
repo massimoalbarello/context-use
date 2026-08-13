@@ -135,7 +135,7 @@ export type EvalStory = {
   id: string;
   title: string;
   description: string;
-  /** Null only for the one case that measures spontaneous Context Use activation. */
+  /** Null suppresses suite context; a string supplies story-specific context. */
   conversationPrelude?: string | null;
   subjects: Record<string, SubjectDefinition>;
   turns: StoryTurn[];
@@ -145,6 +145,7 @@ export type EvalStorySuite = {
   id: string;
   title: string;
   description: string;
+  /** Sent once to the first selected story that does not suppress or override it. */
   conversationPrelude: string;
   stories: EvalStory[];
   /** Story ids in chronological order for a persistent-knowledge journey. */

@@ -48,9 +48,10 @@ export function renderStoryTurn(
   story: EvalStory,
   turn: StoryTurn,
   first: boolean,
+  includeSuitePrelude = true,
 ): string {
   const prelude = story.conversationPrelude === undefined
-    ? suite.conversationPrelude
+    ? (includeSuitePrelude ? suite.conversationPrelude : null)
     : story.conversationPrelude;
   return [
     first && prelude ? prelude : "",
@@ -88,9 +89,12 @@ async function runOneStory(input: {
   provider: EvalProvider;
   directory: string;
   initial: KnowledgeSnapshot;
+  includeSuitePrelude: boolean;
 }): Promise<{ score: StoryScore; final: KnowledgeSnapshot }> {
   await mkdir(input.directory, { recursive: true });
   await writeSnapshot(join(input.directory, "initial-snapshot.json"), input.initial);
+  // A conversation belongs to exactly one story. The knowledge snapshot crosses this
+  // boundary; provider thread/session state does not.
   const conversation = openStoryConversation(input.provider, input.directory);
   const scores = [];
   let previous = input.initial;
@@ -100,7 +104,13 @@ async function runOneStory(input: {
       console.log(`\n  ${index + 1}/${input.story.turns.length} ${turn.id} · ${turn.date}`);
       const activity = await conversation.send({
         id: `${String(index + 1).padStart(2, "0")}-${turn.id}`,
-        prompt: renderStoryTurn(input.suite, input.story, turn, index === 0),
+        prompt: renderStoryTurn(
+          input.suite,
+          input.story,
+          turn,
+          index === 0,
+          input.includeSuitePrelude,
+        ),
       });
       const current = snapshotKnowledgeState();
       const beforeGraph = buildKnowledgeGraph(previous);
@@ -186,6 +196,18 @@ function selectedStories(suite: EvalStorySuite, options: StoryRunOptions): EvalS
   throw new Error("Choose --story <id> or --all, or run the journey command.");
 }
 
+function planStoryConversations(stories: EvalStory[]): Array<{
+  story: EvalStory;
+  includeSuitePrelude: boolean;
+}> {
+  let suitePreludePending = true;
+  return stories.map((story) => {
+    const includeSuitePrelude = suitePreludePending && story.conversationPrelude === undefined;
+    if (includeSuitePrelude) suitePreludePending = false;
+    return { story, includeSuitePrelude };
+  });
+}
+
 export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOptions): Promise<string> {
   const startedAt = new Date().toISOString();
   const mode = options.journey ? "journey" : "suite";
@@ -193,6 +215,7 @@ export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOpti
   const runDirectory = join(RESULTS_ROOT, runId);
   await mkdir(runDirectory, { recursive: true });
   const stories = selectedStories(suite, options);
+  const conversations = planStoryConversations(stories);
   const repeat = options.repeat ?? 1;
   const runs: StoryRun[] = [];
 
@@ -200,7 +223,8 @@ export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOpti
     console.log(`Resetting knowledge for ${mode} repetition ${repetition}…`);
     runStackCommand("reset");
     let suiteState = snapshotKnowledgeState();
-    for (const story of stories) {
+    for (const planned of conversations) {
+      const { story } = planned;
       console.log(`\n=== ${story.title} ===`);
       const directory = join(runDirectory, `${String(repetition).padStart(2, "0")}-${story.id}`);
       const result = await runOneStory({
@@ -209,6 +233,7 @@ export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOpti
         provider: options.provider,
         directory,
         initial: suiteState,
+        includeSuitePrelude: planned.includeSuitePrelude,
       });
       runs.push({ storyId: story.id, repetition, score: result.score });
       suiteState = result.final;
@@ -231,3 +256,5 @@ export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOpti
   console.log(`\nReport: ${reportPath}`);
   return reportPath;
 }
+
+export const storyRunnerInternals = { planStoryConversations };

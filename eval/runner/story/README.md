@@ -44,8 +44,10 @@ not a pass/fail gate, and dimension scores make regressions diagnosable.
 ## Run modes
 
 - Suite mode resets once, preserves the knowledge base across all selected stories, and
-  opens a fresh conversation per story. `--repeat` starts each suite repetition from a new
-  reset so separate story sets cannot leak knowledge into one another.
+  opens a fresh provider conversation per story. The suite prelude is sent only to the first
+  eligible conversation, so later sessions must recover shared context from the knowledge
+  base. `--repeat` starts each suite repetition from a new reset so separate story sets
+  cannot leak knowledge into one another.
 - Journey mode has the same reset boundary but selects the suite's historical stories in
   chronological order. Reused canonical entities receive creation credit; ambiguous
   matches remain visible to identity and hygiene scoring.
