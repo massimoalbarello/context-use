@@ -218,9 +218,16 @@ people name the organization. Peer links matter as much as links to hubs.
 
 ## Referencing uploaded assets
 
-An asset is never uploaded alone. In the same coherent change, create or update the page that
-explains what it is and how it relates to the page's subject. Place the asset with that
-subject, not with the process that happened to upload it.
+An asset is never uploaded alone or treated as an appendix. In the same coherent change,
+create or update the page that explains what it is and how it relates to that page's subject.
+Place it with that subject, not the uploading process, and embed it beside that context.
+Interleave related assets and prose when evidence establishes a sequence, comparison or other
+connection. Do not group assets at the end under a generic `Photographs`, `Videos` or `Assets`
+heading merely because they share a file type.
+
+Interpret only from context the owner or source supplied. Never infer identities, places,
+dates, intentions, emotions, causes or narrative meaning from an asset alone. Without such
+context, state only its verified subject, source or reliable date and say what remains unknown.
 
 Reference every asset with image syntax, including documents:
 

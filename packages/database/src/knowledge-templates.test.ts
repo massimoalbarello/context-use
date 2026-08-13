@@ -778,6 +778,10 @@ describe("knowledge templates", () => {
       "later is not automatically correct",
       "preserve every other byte as found",
       "never link a page that does not exist",
+      "an asset is never uploaded alone or treated as an appendix",
+      "do not group assets at the end under a generic",
+      "interpret only from context the owner or source supplied",
+      "say what remains unknown",
       "never store credentials, access tokens, access codes or recovery secrets",
     ]) {
       expect(normalizedRoot.toLowerCase()).toContain(invariant);
