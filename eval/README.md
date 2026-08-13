@@ -54,7 +54,7 @@ each story builds on the ones before it. Every story gets a fresh agent conversa
 every repetition starts another clean suite. `journey:run` selects the historical stories
 in chronological order; `story:run --all` uses the suite's declared story order. Reports
 and per-turn snapshots, resolutions, tool activity, and scores land under
-`.eval-results/stories/`.
+`eval/results/stories/`.
 
 Historical stories share one generic user instruction to keep Context Use updated. The
 single `implicit-write-trigger` story omits it and separately measures whether the agent
@@ -121,8 +121,10 @@ instead.
 
 Every run resets semantic knowledge and assets in this local instance to the default
 template while preserving the owner passkey and OAuth authorization. Do not keep
-development data in it. Snapshots, per-batch agent logs and a Markdown report land in
-`.eval-results/`.
+development data in it. Snapshots, per-batch agent logs, QA answers and scores,
+structural scores, and Markdown reports stay together in a timestamped run directory
+under `eval/results/`. The directory is gitignored so repeated local runs remain available
+without entering commits.
 
 ## What counts as one source record
 

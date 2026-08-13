@@ -121,9 +121,9 @@ that the string appears anywhere, counted an unrelated page's "40%" as the answe
 
 ## Reading a result
 
-Scores live in `.eval-results/`, not in this file. A number here would describe whichever
-run happened to be current when someone wrote it down, and would then quietly misdescribe
-every run after that.
+Scores live with their run under `eval/results/`, not in this file. A number here would
+describe whichever run happened to be current when someone wrote it down, and would then
+quietly misdescribe every run after that.
 
 Three things are worth knowing before comparing two runs at all.
 

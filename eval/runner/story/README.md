@@ -51,4 +51,4 @@ not a pass/fail gate, and dimension scores make regressions diagnosable.
   matches remain visible to identity and hygiene scoring.
 
 Each run writes initial and per-turn snapshots, resolver evidence, tool traces, assertion
-scores, agent logs, and a final report under `.eval-results/stories/`.
+scores, agent logs, and a final report under `eval/results/stories/`.
