@@ -50,11 +50,15 @@ export function renderStoryTurn(
   first: boolean,
   includeSuitePrelude = true,
 ): string {
-  const prelude = story.conversationPrelude === undefined
-    ? (includeSuitePrelude ? suite.conversationPrelude : null)
+  const conversationPrelude = story.conversationPrelude === undefined
+    ? suite.conversationPrelude
     : story.conversationPrelude;
+  const suitePrelude = includeSuitePrelude && story.conversationPrelude !== null
+    ? suite.suitePrelude
+    : null;
   return [
-    first && prelude ? prelude : "",
+    first && conversationPrelude ? conversationPrelude : "",
+    first && suitePrelude ? suitePrelude : "",
     `[Current date: ${dateLabel(turn.date)} (${turn.date})]`,
     turn.user,
   ].filter(Boolean).join("\n\n");
@@ -202,7 +206,7 @@ function planStoryConversations(stories: EvalStory[]): Array<{
 }> {
   let suitePreludePending = true;
   return stories.map((story) => {
-    const includeSuitePrelude = suitePreludePending && story.conversationPrelude === undefined;
+    const includeSuitePrelude = suitePreludePending && story.conversationPrelude !== null;
     if (includeSuitePrelude) suitePreludePending = false;
     return { story, includeSuitePrelude };
   });

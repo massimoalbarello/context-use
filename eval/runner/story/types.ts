@@ -135,7 +135,7 @@ export type EvalStory = {
   id: string;
   title: string;
   description: string;
-  /** Null suppresses suite context; a string supplies story-specific context. */
+  /** Null suppresses the per-conversation instruction and one-time suite context. */
   conversationPrelude?: string | null;
   subjects: Record<string, SubjectDefinition>;
   turns: StoryTurn[];
@@ -145,8 +145,10 @@ export type EvalStorySuite = {
   id: string;
   title: string;
   description: string;
-  /** Sent once to the first selected story that does not suppress or override it. */
+  /** Sent at the start of every story conversation unless that story suppresses it. */
   conversationPrelude: string;
+  /** Sent once to the first selected story that does not suppress suite context. */
+  suitePrelude: string;
   stories: EvalStory[];
   /** Story ids in chronological order for a persistent-knowledge journey. */
   journey: string[];

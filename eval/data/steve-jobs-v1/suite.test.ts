@@ -55,7 +55,7 @@ describe("steve-jobs-v1 fixture integrity", () => {
     expect(dates).toEqual([...dates].sort());
   });
 
-  test("plans one fresh conversation per story and supplies owner context only once", () => {
+  test("prompts every fresh conversation to use Context Use but supplies owner context only once", () => {
     const historical = steveJobsV1.journey.map((id) =>
       steveJobsV1.stories.find((story) => story.id === id)!);
     const plan = storyRunnerInternals.planStoryConversations(historical);
@@ -65,13 +65,16 @@ describe("steve-jobs-v1 fixture integrity", () => {
 
     const prompts = plan.map(({ story, includeSuitePrelude }) =>
       renderStoryTurn(steveJobsV1, story, story.turns[0]!, true, includeSuitePrelude));
-    expect(prompts[0]).toStartWith("I'm Steve Jobs, co-founder of Apple.");
+    for (const prompt of prompts) {
+      expect(prompt).toStartWith(steveJobsV1.conversationPrelude);
+    }
+    expect(prompts[0]).toContain(steveJobsV1.suitePrelude);
     for (const prompt of prompts.slice(1)) {
-      expect(prompt).not.toContain(steveJobsV1.conversationPrelude);
+      expect(prompt).not.toContain(steveJobsV1.suitePrelude);
     }
   });
 
-  test("keeps the implicit trigger prelude-free without consuming suite context", () => {
+  test("keeps the implicit trigger fully unprompted without consuming suite context", () => {
     const plan = storyRunnerInternals.planStoryConversations(steveJobsV1.stories);
     expect(plan.slice(0, 2).map(({ story, includeSuitePrelude }) => ({
       story: story.id,
@@ -80,5 +83,15 @@ describe("steve-jobs-v1 fixture integrity", () => {
       { story: "implicit-write-trigger", includeSuitePrelude: false },
       { story: "microsoft-partnership", includeSuitePrelude: true },
     ]);
+    const trigger = plan[0]!;
+    const prompt = renderStoryTurn(
+      steveJobsV1,
+      trigger.story,
+      trigger.story.turns[0]!,
+      true,
+      trigger.includeSuitePrelude,
+    );
+    expect(prompt).not.toContain(steveJobsV1.conversationPrelude);
+    expect(prompt).not.toContain(steveJobsV1.suitePrelude);
   });
 });

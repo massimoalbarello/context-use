@@ -56,12 +56,13 @@ in chronological order; `story:run --all` uses the suite's declared story order.
 and per-turn snapshots, resolutions, tool activity, and scores land under
 `eval/results/stories/`.
 
-The first historical story gets one short suite introduction: the speaker is Steve Jobs,
-co-founder of Apple. Every later story starts a fresh agent conversation with no repeated
-owner context, so resolving “we” to Apple measures whether the accumulated knowledge base
-carries context across sessions. The single `implicit-write-trigger` story suppresses even
-the suite introduction. In every case the real default-template `AGENTS.md` guides are the
-only knowledge-organization instructions.
+Every historical story starts a fresh agent conversation with the same minimal operational
+instruction to use the Context Use MCP as Steve's second brain. Only the first gets the
+suite introduction identifying him as Apple's co-founder, so later sessions must resolve
+“we” from the accumulated knowledge base rather than conversation history. The single
+`implicit-write-trigger` story suppresses both prompts and separately measures spontaneous
+tool activation. The real default-template `AGENTS.md` guides remain the only
+knowledge-organization instructions.
 
 ## Two corpora
 

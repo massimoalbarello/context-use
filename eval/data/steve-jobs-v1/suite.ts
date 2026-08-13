@@ -11,7 +11,9 @@ export const steveJobsV1 = suite({
   id: "steve-jobs-v1",
   title: "Steve Jobs's Apple second act",
   description: "Interactive second-brain stories spanning Apple's return, iMac, iPod, iTunes, and iPhone.",
-  conversationPrelude: "I'm Steve Jobs, co-founder of Apple.",
+  conversationPrelude: "Use the Context Use MCP as my second brain and keep it up to date "
+    + "as I tell you things.",
+  suitePrelude: "I'm Steve Jobs, co-founder of Apple.",
   stories: [
     implicitWriteTrigger,
     microsoftPartnership,
