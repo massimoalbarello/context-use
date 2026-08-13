@@ -1,6 +1,6 @@
 {
   "name": "context-use",
-  "version": "0.1.65",
+  "version": "0.1.66",
   "private": true,
   "packageManager": "bun@1.3.11",
   "workspaces": [
@@ -9,7 +9,7 @@
   ],
   "overrides": {
     "kysely": "0.28.17",
-    "nanoid": "3.3.17"
+    "nanoid": "3.3.18"
   },
   "scripts": {
     "dev": "bun run --filter '@context-use/*' dev",
