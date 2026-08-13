@@ -359,9 +359,16 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
       authentication_options: authenticationOptions,
     }, 201);
   })
+  .get("/api/dashboard/knowledge-import-eligibility", async ({ request }) => {
+    await ownerRequest(request);
+    return json({ eligible: await knowledgeArchives.importAvailable() });
+  })
   .post("/api/dashboard/knowledge-import-intents", async ({ request, server }) => {
     disableStreamingRequestIdleTimeout(server, request);
     const principal = await ownerRequest(request, "upload");
+    if (!await knowledgeArchives.importAvailable()) {
+      return problem("Knowledge imports require a fresh Context Use instance", 409, "import_requires_fresh_instance");
+    }
     if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/zip")) {
       return problem("A Context Use ZIP archive is required", 415, "archive_type");
     }

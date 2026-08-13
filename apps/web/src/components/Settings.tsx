@@ -1,6 +1,6 @@
 import { startAuthentication } from "@simplewebauthn/browser";
-import { useState } from "react";
-import { api, uploadKnowledgeArchive } from "../api.ts";
+import { useEffect, useState } from "react";
+import { api, ApiError, uploadKnowledgeArchive } from "../api.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
 import { KnowledgeTemplateSettings } from "./KnowledgeTemplate.tsx";
 import { IntrinsicServices } from "./Services.tsx";
@@ -106,6 +106,16 @@ export function Settings({
   const [importPreparing, setImportPreparing] = useState(false);
   const [importWorking, setImportWorking] = useState(false);
   const [importError, setImportError] = useState("");
+  const [importEligible, setImportEligible] = useState<boolean | null>(null);
+  const [importEligibilityError, setImportEligibilityError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    api<{ eligible: boolean }>("/api/dashboard/knowledge-import-eligibility")
+      .then(({ eligible }) => { if (active) setImportEligible(eligible); })
+      .catch(() => { if (active) setImportEligibilityError("Import availability could not be checked. Reload Settings to try again."); });
+    return () => { active = false; };
+  }, []);
 
   const prepareEnrollment = async () => {
     const name = passkeyName.trim();
@@ -240,6 +250,11 @@ export function Settings({
     try {
       setImportIntent(await uploadKnowledgeArchive<KnowledgeImportIntent>(importFile));
     } catch (error) {
+      if (error instanceof ApiError && error.code === "import_requires_fresh_instance") {
+        setImportFile(null);
+        setImportEligible(false);
+        return;
+      }
       setImportError(error instanceof Error ? error.message : "Could not validate the knowledge archive");
     } finally {
       setImportPreparing(false);
@@ -326,11 +341,30 @@ export function Settings({
     </section>
     <section><h2>Import full archive</h2>
       <p>Restore a full archive onto a fresh Context Use instance. This replaces only the destination knowledge base; account credentials and integrations stay local to the new instance.</p>
-      <p><strong>Important:</strong> import is refused after you add personal knowledge or assets to the destination.</p>
+      <p><strong>Important:</strong> the untouched default template is okay, but import becomes unavailable after you add or change knowledge or assets.</p>
       <div className="archive-import">
-        <label>Context Use archive<input type="file" accept=".zip,application/zip" onChange={(event) => { setImportFile(event.target.files?.[0] ?? null); setImportError(""); }} /></label>
-        {importError && !importIntent && <p className="error">{importError}</p>}
-        <button className="primary" disabled={!importFile || importPreparing || importWorking} onClick={() => void prepareImport()}>{importPreparing ? "Validating and staging…" : "Validate archive"}</button>
+        {importEligibilityError
+          ? <p className="error" role="alert">{importEligibilityError}</p>
+          : importEligible === null
+            ? <p className="archive-import-checking" role="status">Checking import availability…</p>
+            : !importEligible
+              ? <div className="archive-import-locked"><strong>Import unavailable</strong><span>This knowledge base already contains personal knowledge or assets. Full archives can only be restored onto an untouched instance.</span></div>
+              : <>
+                <div className="archive-import-field">
+                  <span className="archive-import-label">Context Use archive</span>
+                  <label className={`archive-picker${importFile ? " has-file" : ""}${importPreparing || importWorking ? " is-disabled" : ""}`}>
+                    <input className="archive-picker-input" type="file" accept=".zip,application/zip" aria-label="Context Use archive" disabled={importPreparing || importWorking} onChange={(event) => { setImportFile(event.currentTarget.files?.[0] ?? null); setImportError(""); }} />
+                    <span className="archive-picker-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3.75h7l3 3v13.5H7z" /><path d="M14 3.75v3h3M10 9.25h2m-2 2.5h2m-2 2.5h2M11 17v.01" /></svg></span>
+                    <span className="archive-picker-copy">
+                      <strong>{importFile ? importFile.name : "Choose a full archive"}</strong>
+                      <small>{importFile ? `${formatExportBytes(importFile.size)} · Ready to validate` : "Select a .zip export from Context Use"}</small>
+                    </span>
+                    <span className="archive-picker-action">{importFile ? "Replace" : "Browse files"}</span>
+                  </label>
+                </div>
+                {importError && !importIntent && <p className="error">{importError}</p>}
+                <button className="primary" disabled={!importFile || importPreparing || importWorking} onClick={() => void prepareImport()}>{importPreparing ? "Validating and staging…" : "Validate archive"}</button>
+              </>}
       </div>
     </section>
     {enrollmentIntent && <ActionDialog
