@@ -783,6 +783,9 @@ describe("knowledge templates", () => {
       "interpret only from context the owner or source supplied",
       "say what remains unknown",
       "never store credentials, access tokens, access codes or recovery secrets",
+      "check the completed write against the retained evidence",
+      "material relationships are recorded from both relevant sides",
+      "no diary entry was written while recording activity",
     ]) {
       expect(normalizedRoot.toLowerCase()).toContain(invariant);
     }

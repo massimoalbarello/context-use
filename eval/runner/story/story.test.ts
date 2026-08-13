@@ -10,10 +10,12 @@ import {
   durableSubject,
   linked,
   meeting,
+  noWriteUnder,
   organization,
   person,
   story,
   timelineEvent,
+  unique,
   type TurnToolActivity,
 } from "./types.ts";
 
@@ -158,6 +160,76 @@ describe("story subject resolution", () => {
     expect(candidateLinksTo(review, graph.byId.get("directory:people-jony")!)).toBe(true);
     expect(candidateLinksTo(review, graph.byId.get("directory:company-apple")!)).toBe(true);
   });
+
+  test("does not let a durable mention consume a dated meeting", () => {
+    const snapshot: KnowledgeSnapshot = {
+      directories: [{
+        id: "meeting-ipod-review",
+        path: "meetings/2001/10/2001-10-22_ipod-final-review",
+        version: 1,
+        title: "iPod final review",
+        summary: "Final review of the iPod before its introduction.",
+      }],
+      pages: [page({
+        id: "ipod-review-intro",
+        directoryId: "meeting-ipod-review",
+        path: "meetings/2001/10/2001-10-22_ipod-final-review/intro",
+        title: "iPod final review",
+        body: "On 22 October 2001 we confirmed FireWire transfer and automatic iTunes sync.",
+      })],
+    };
+    const resolved = resolveStorySubjects(buildKnowledgeGraph(snapshot), {
+      itunes: durableSubject({ names: ["iTunes"] }),
+      finalReview: meeting({ date: "2001-10-22", concepts: ["FireWire", "iTunes"] }),
+    });
+    expect(resolved.subjects.get("itunes")?.status).toBe("missing");
+    expect(resolved.subjects.get("finalReview")?.candidate?.path)
+      .toBe("meetings/2001/10/2001-10-22_ipod-final-review");
+  });
+
+  test("identifies durable folders from metadata instead of mentions in other entity bodies", () => {
+    const snapshot: KnowledgeSnapshot = {
+      directories: [
+        { id: "store", path: "about/projects/itunes-music-store", version: 1, title: "iTunes Music Store", summary: "Apple's online music store." },
+        { id: "rokr", path: "topics/motorola-rokr", version: 1, title: "Motorola ROKR", summary: "The Motorola phone with iTunes." },
+        { id: "diary", path: "about/diary/2007/01/08", version: 1, title: "8 January 2007", summary: "Prepared for tomorrow's carrier meeting." },
+        { id: "iphone", path: "about/projects/iphone", version: 1, title: "iPhone", summary: "Apple's phone project." },
+      ],
+      pages: [
+        page({ id: "store-intro", directoryId: "store", path: "about/projects/itunes-music-store/intro", title: "iTunes Music Store", body: "The store later connected to the Motorola ROKR launch." }),
+        page({ id: "rokr-intro", directoryId: "rokr", path: "topics/motorola-rokr/intro", title: "Motorola ROKR", body: "The Motorola ROKR carries iTunes songs." }),
+        page({ id: "diary-intro", directoryId: "diary", path: "about/diary/2007/01/08/intro", title: "8 January 2007", body: "I prepared the iPhone carrier announcement." }),
+        page({ id: "iphone-intro", directoryId: "iphone", path: "about/projects/iphone/intro", title: "iPhone", body: "The iPhone combines a phone and widescreen iPod." }),
+      ],
+    };
+    const resolved = resolveStorySubjects(buildKnowledgeGraph(snapshot), {
+      rokr: durableSubject({ names: ["Motorola ROKR", "ROKR"], concepts: ["iTunes"] }),
+      iphone: durableSubject({ names: ["iPhone"], concepts: ["widescreen iPod"] }),
+    });
+    expect(resolved.subjects.get("rokr")?.candidate?.path).toBe("topics/motorola-rokr");
+    expect(resolved.subjects.get("iphone")?.candidate?.path).toBe("about/projects/iphone");
+  });
+
+  test("resolves only requested turn subjects and their identity dependencies", () => {
+    const resolved = resolveStorySubjects(
+      buildKnowledgeGraph(fixture()),
+      {
+        ...definitions,
+        futureLaunch: {
+          kind: "event" as const,
+          names: ["Future launch"],
+          date: "1998-05-06",
+          organizations: ["apple"],
+        },
+      },
+      new Map(),
+      ["review"],
+    );
+    expect(resolved.subjects.has("review")).toBe(true);
+    expect(resolved.subjects.has("jony")).toBe(true);
+    expect(resolved.subjects.has("apple")).toBe(true);
+    expect(resolved.subjects.has("futureLaunch")).toBe(false);
+  });
 });
 
 describe("story partial scoring", () => {
@@ -277,6 +349,54 @@ describe("story partial scoring", () => {
     });
     expect(score.score).toBe(1);
     expect(score.assertions[0]?.evidence).toContain("companies/apple-computer/timeline");
+  });
+
+  test("counts only identity-qualified meetings as canonical duplicates", () => {
+    const graph = buildKnowledgeGraph(fixture());
+    const resolution = resolveStorySubjects(graph, definitions);
+    const evalStory = story({
+      id: "fixture", title: "Fixture", description: "Fixture", subjects: definitions,
+      turns: [{ id: "turn", date: "1998-03-12", user: "Fixture", expect: [unique("review")] }],
+    });
+    const score = scoreStoryTurn({
+      story: evalStory,
+      turn: evalStory.turns[0]!,
+      before: buildKnowledgeGraph({ directories: [], pages: [] }),
+      after: graph,
+      resolution,
+      activity: noActivity,
+    });
+    expect(score.assertions.find((assertion) => assertion.id === "unique.review")?.score).toBe(1);
+  });
+
+  test("detects writes beneath a forbidden subtree", () => {
+    const snapshot = fixture();
+    snapshot.directories.push({
+      id: "diary-day", path: "about/diary/1998/03/12", version: 1,
+      title: "12 March 1998", summary: "The iMac design-review day.",
+    });
+    snapshot.pages.push(page({
+      id: "diary-intro", directoryId: "diary-day", path: "about/diary/1998/03/12/intro",
+      title: "12 March 1998", body: "Jony and I reviewed the iMac.",
+    }));
+    const graph = buildKnowledgeGraph(snapshot);
+    const evalStory = story({
+      id: "fixture", title: "Fixture", description: "Fixture", subjects: definitions,
+      turns: [{
+        id: "turn", date: "1998-03-12", user: "Fixture",
+        expect: [noWriteUnder("about/diary")],
+      }],
+    });
+    const score = scoreStoryTurn({
+      story: evalStory,
+      turn: evalStory.turns[0]!,
+      before: buildKnowledgeGraph(fixture()),
+      after: graph,
+      resolution: resolveStorySubjects(graph, definitions, new Map(), []),
+      activity: noActivity,
+    });
+    expect(score.assertions[0]).toMatchObject({ score: 0, dimension: "hygiene" });
+    expect(score.assertions[0]?.evidence).toBe("about/diary/1998/03/12");
   });
 });
 

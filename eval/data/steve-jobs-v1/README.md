@@ -38,3 +38,8 @@ as “today” and “tomorrow” are deterministic. Apart from asking the agent
 as a second brain, it supplies no instructions about entity paths, meetings, links,
 timelines, or reconciliation. Those decisions must come from the real Context Use
 `AGENTS.md` guides loaded through the MCP.
+
+The fixtures distinguish product milestones from occurrence entities. Saying that a product
+was launched or introduced requires the applicable entity timelines, but it requires an
+`events/` page only when the evidence also resolves a particular occasion under the event
+guide.

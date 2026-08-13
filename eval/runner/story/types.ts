@@ -67,6 +67,7 @@ export type StoryExpectation =
     date: string;
     terms?: TextTerms;
   })
+  | (ExpectationBase & { kind: "no-write-under"; pathPrefix: string })
   | (ExpectationBase & {
     kind: "tool-stage";
     stage: "any-context-use" | "guidance" | "mutation-attempted" | "mutation-succeeded";
@@ -118,6 +119,10 @@ export const noOccurrence = (
   kind: "no-occurrence", occurrenceKind, date, terms,
   id: `no-${occurrenceKind}.${date}`, dimension: "hygiene",
 });
+export const noWriteUnder = (pathPrefix: string): StoryExpectation => ({
+  kind: "no-write-under", pathPrefix,
+  id: `no-write-under.${pathPrefix}`, dimension: "hygiene",
+});
 export const toolStage = (
   stage: "any-context-use" | "guidance" | "mutation-attempted" | "mutation-succeeded",
 ): StoryExpectation => ({
@@ -130,6 +135,23 @@ export type StoryTurn = {
   user: string;
   expect: StoryExpectation[];
 };
+
+export function storyTurnSubjectIds(turn: StoryTurn): string[] {
+  return [...new Set(turn.expect.flatMap((expectation) => {
+    if (expectation.kind === "exists" || expectation.kind === "created"
+      || expectation.kind === "updated" || expectation.kind === "unique"
+      || expectation.kind === "view" || expectation.kind === "fact") {
+      return [expectation.subject];
+    }
+    if (expectation.kind === "timeline") {
+      return [expectation.subject, ...(expectation.occurrence ? [expectation.occurrence] : [])];
+    }
+    if (expectation.kind === "linked" || expectation.kind === "relationship") {
+      return [expectation.from, expectation.to];
+    }
+    return [];
+  }))];
+}
 
 export type EvalStory = {
   id: string;
