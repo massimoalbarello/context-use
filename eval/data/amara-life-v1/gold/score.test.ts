@@ -100,6 +100,23 @@ describe("gold check", () => {
       .toBe("people/liu-hannah");
   });
 
+  test("prefers the full entity name over a loose alias", () => {
+    const pages = [
+      page({ path: "companies/vela-bio/intro", title: "Vela Bio" }),
+      page({ path: "companies/vela-robotics/intro", title: "Vela Robotics" }),
+    ];
+    expect(find("2026-04-16", pages, "Vela Robotics")?.folder)
+      .toBe("companies/vela-robotics");
+  });
+
+  test("does not guess between equally loose namesake folders", () => {
+    const pages = [
+      page({ path: "companies/beacon-health/intro", title: "Beacon Health" }),
+      page({ path: "companies/beacon-ventures/intro", title: "Beacon Ventures" }),
+    ];
+    expect(find("2026-04-15", pages, "Beacon")?.folder).toBeUndefined();
+  });
+
   test("does not count a meeting page that merely bears the person's name", () => {
     const pages = [page({
       path: "meetings/2026/04/2026-04-13_hannah-liu-vero-health/intro",
@@ -111,7 +128,7 @@ describe("gold check", () => {
     expect(hannah?.folder).toBeUndefined();
     // She was noticed, just never filed — which is the distinction worth reporting.
     expect(hannah?.mentions).toBe(1);
-    expect(score.meetings.every((meeting) => meeting.page)).toBe(true);
+    expect(score.meetings.filter((meeting) => meeting.page)).toHaveLength(1);
   });
 
   test("counts a meeting titled by its subject rather than its attendee", () => {
@@ -123,6 +140,26 @@ describe("gold check", () => {
     })], "2026-04-14");
     expect(score.meetings.find((meeting) => meeting.record === "meeting/mtg-0002")?.page)
       .toBe("meetings/2026/04/2026-04-14_meridian-robotics-check-in/intro");
+  });
+
+  test("keeps same-day meetings with the same attendee one-to-one", () => {
+    const pages = [
+      page({
+        path: "meetings/2026/04/2026-04-13_capacitor-labs-q1-review/intro",
+        title: "Capacitor Labs Q1 portfolio review — 13 April 2026",
+        body: "Amara Okafor and Hannah Liu reviewed Capacitor Labs.",
+      }),
+      page({
+        path: "meetings/2026/04/2026-04-13_hannah-liu-vero-health-update/intro",
+        title: "Vero Health update with Hannah Liu — 13 April 2026",
+        body: "Amara Okafor and Hannah Liu discussed Vero Health.",
+      }),
+    ];
+    const score = scoreDay(expectations, pages, "2026-04-13");
+    expect(score.meetings.map((meeting) => meeting.page)).toEqual([
+      "meetings/2026/04/2026-04-13_capacitor-labs-q1-review/intro",
+      "meetings/2026/04/2026-04-13_hannah-liu-vero-health-update/intro",
+    ]);
   });
 
   test("requires the day in the title or path, not merely somewhere in the body", () => {
