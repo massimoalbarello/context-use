@@ -64,6 +64,7 @@ export type AgentSyncConnectionMetadata = {
     token_sha256: string;
   };
   deployment_id: string;
+  instance_id?: string | undefined;
   label: string;
   daemon_version: string;
   updated_at: string;

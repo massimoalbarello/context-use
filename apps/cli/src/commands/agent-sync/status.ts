@@ -31,6 +31,8 @@ export const command = defineCommand("agent-sync status", {
     state.close();
     console.log(JSON.stringify({
       state: daemon && remote ? "healthy" : "unhealthy",
+      connectionId: config.connectionId,
+      instanceId: config.schemaVersion === 2 ? config.instanceId : null,
       label: config.label,
       deploymentId: config.deploymentId,
       installedAt: config.installedAt,

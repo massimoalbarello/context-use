@@ -4,7 +4,6 @@ import { defineCommand } from "@parshjs/core";
 import { readAgentSyncConfig, removeAgentSyncFiles } from "../../agent-sync/config.ts";
 import { uninstallLaunchAgent } from "../../agent-sync/launchd.ts";
 import {
-  AGENT_SYNC_CONNECTION_ID,
   AGENT_SYNC_INTEGRATION_ID,
   parseAgentSyncMetadata,
   revokedAgentSyncMetadata,
@@ -21,7 +20,8 @@ export const command = defineCommand("agent-sync uninstall", {
     const { config, data, compute } = await readInfrastructure();
     if (!data || !compute) throw new Error("No active deployment");
     const localConfig = await readAgentSyncConfig();
-    if (localConfig && localConfig.deploymentId !== config.installationId) {
+    if (!localConfig) throw new Error("Agent sync is not installed on this computer");
+    if (localConfig.deploymentId !== config.installationId) {
       throw new Error(
         `The local agent sync belongs to deployment ${localConfig.deploymentId}; run uninstall from that deployment directory`,
       );
@@ -35,7 +35,7 @@ export const command = defineCommand("agent-sync uninstall", {
       baseUrl,
       managerKey,
       AGENT_SYNC_INTEGRATION_ID,
-      AGENT_SYNC_CONNECTION_ID,
+      localConfig.connectionId,
       nango,
     );
     const metadata = parseAgentSyncMetadata(connection?.metadata);
@@ -45,12 +45,15 @@ export const command = defineCommand("agent-sync uninstall", {
     if (metadata && metadata.deployment_id !== config.installationId) {
       throw new Error("The Nango agent-sync connection belongs to a different Context Use deployment");
     }
+    if (metadata && localConfig.schemaVersion === 2 && metadata.instance_id !== localConfig.instanceId) {
+      throw new Error("The Nango agent-sync connection belongs to a different local instance");
+    }
     if (metadata) {
       await putAgentSyncConnection(
         baseUrl,
         managerKey,
         AGENT_SYNC_INTEGRATION_ID,
-        AGENT_SYNC_CONNECTION_ID,
+        localConfig.connectionId,
         revokedAgentSyncMetadata(metadata, config.releaseVersion),
         nango,
       );

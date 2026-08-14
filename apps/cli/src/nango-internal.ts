@@ -53,6 +53,14 @@ const managedIntegrations = {
 } as const;
 const managedIntegrationIds = new Set(Object.keys(managedIntegrations));
 const requestPrefixPattern = /^\/context-use\/[a-z0-9-]+\/[a-z0-9-]+\/internal-requests$/;
+const agentSyncConnectionPattern = /^agent-sync(?:-([a-f0-9]{32}))?$/;
+
+function agentSyncInstanceId(connectionId: unknown): string | null | undefined {
+  if (typeof connectionId !== "string") return undefined;
+  const match = connectionId.match(agentSyncConnectionPattern);
+  if (!match) return undefined;
+  return match[1] ?? null;
+}
 
 function hasExactQuery(url: URL, expected: Record<string, string>): boolean {
   const entries = [...url.searchParams.entries()];
@@ -86,7 +94,7 @@ export function assertInternalNangoRoute(access: InternalNangoAccess, method: st
       && (noQuery || hasExactQuery(url, { include: "webhook" }))) return;
 
     const connectionId = identifierPath(url.pathname, "/connections/");
-    if (connectionId === "agent-sync" && method === "GET") {
+    if (agentSyncInstanceId(connectionId) !== undefined && method === "GET") {
       const provider = url.searchParams.get("provider_config_key");
       if (provider === "agent-conversations" && hasExactQuery(url, { provider_config_key: provider })) return;
     }
@@ -113,8 +121,17 @@ function boundedRequestString(value: unknown, maximum: number): value is string 
   return typeof value === "string" && value.length > 0 && value.length <= maximum && !/[\r\n\0]/.test(value);
 }
 
-function validAgentMetadata(value: unknown): boolean {
+function validAgentMetadata(value: unknown, connectionId: unknown): boolean {
+  const instanceId = agentSyncInstanceId(connectionId);
+  if (instanceId === undefined) return false;
   const metadata = exactObject(value, [
+    "authenticated_webhook",
+    "daemon_version",
+    "deployment_id",
+    "instance_id",
+    "label",
+    "updated_at",
+  ]) ?? exactObject(value, [
     "authenticated_webhook",
     "daemon_version",
     "deployment_id",
@@ -132,7 +149,10 @@ function validAgentMetadata(value: unknown): boolean {
     && boundedRequestString(metadata.label, 256)
     && boundedRequestString(metadata.daemon_version, 128)
     && boundedRequestString(metadata.updated_at, 64)
-    && Number.isFinite(Date.parse(metadata.updated_at as string)),
+    && Number.isFinite(Date.parse(metadata.updated_at as string))
+    && (instanceId === null
+      ? metadata.instance_id === undefined
+      : metadata.instance_id === instanceId),
   );
 }
 
@@ -209,17 +229,17 @@ export function assertInternalNangoRequestBody(
     valid = Boolean(
       value
       && value.provider_config_key === "agent-conversations"
-      && value.connection_id === "agent-sync"
+      && agentSyncInstanceId(value.connection_id) !== undefined
       && credentials?.type === "NONE"
-      && validAgentMetadata(value.metadata),
+      && validAgentMetadata(value.metadata, value.connection_id),
     );
   } else if (url.pathname === "/connections/metadata" && method === "POST") {
     const value = exactObject(parsed, ["provider_config_key", "connection_id", "metadata"]);
     valid = Boolean(
       value
       && value.provider_config_key === "agent-conversations"
-      && value.connection_id === "agent-sync"
-      && validAgentMetadata(value.metadata),
+      && agentSyncInstanceId(value.connection_id) !== undefined
+      && validAgentMetadata(value.metadata, value.connection_id),
     );
   }
   if (!valid) throw new Error(`Nango controller request body denied for ${method} ${url.pathname}`);
@@ -234,6 +254,11 @@ const chunks = [];
 const identifier = (value) => {
   if (typeof value !== "string" || !/^[a-z][a-z0-9_-]{0,254}$/.test(value)) throw new Error();
   return value;
+};
+const agentSyncInstanceId = (value) => {
+  if (typeof value !== "string") return undefined;
+  const match = value.match(/^agent-sync(?:-([a-f0-9]{32}))?$/);
+  return match ? (match[1] ?? null) : undefined;
 };
 const boundedString = (value, maximum = 512) => {
   if (typeof value !== "string" || value.length < 1 || value.length > maximum) throw new Error();
@@ -259,10 +284,15 @@ const projectIntegration = (payload) => {
   }
   return { data: result };
 };
-const projectAgentMetadata = (value) => {
+const projectAgentMetadata = (value, connectionId) => {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error();
-  const expected = ["authenticated_webhook", "daemon_version", "deployment_id", "label", "updated_at"];
+  const instanceId = agentSyncInstanceId(connectionId);
+  if (instanceId === undefined) throw new Error();
+  const expected = instanceId === null
+    ? ["authenticated_webhook", "daemon_version", "deployment_id", "label", "updated_at"]
+    : ["authenticated_webhook", "daemon_version", "deployment_id", "instance_id", "label", "updated_at"];
   if (Object.keys(value).sort().join("|") !== expected.sort().join("|")) throw new Error();
+  if (instanceId !== null && value.instance_id !== instanceId) throw new Error();
   const webhook = value.authenticated_webhook;
   if (!webhook || typeof webhook !== "object" || Array.isArray(webhook)
     || Object.keys(webhook).sort().join("|") !== "state|token_sha256"
@@ -273,6 +303,7 @@ const projectAgentMetadata = (value) => {
   return {
     authenticated_webhook: { state: webhook.state, token_sha256: webhook.token_sha256 },
     deployment_id: boundedString(value.deployment_id, 256),
+    ...(instanceId === null ? {} : { instance_id: instanceId }),
     label: boundedString(value.label, 256),
     daemon_version: boundedString(value.daemon_version, 128),
     updated_at: updatedAt,
@@ -330,15 +361,15 @@ const assertRequestBody = (request, url) => {
   if (url.pathname === "/connections" && request.method === "POST") {
     const value = exactObject(parsed, ["provider_config_key", "connection_id", "credentials", "metadata"]);
     const credentials = exactObject(value.credentials, ["type"]);
-    if (value.provider_config_key !== "agent-conversations" || value.connection_id !== "agent-sync"
+    if (value.provider_config_key !== "agent-conversations" || agentSyncInstanceId(value.connection_id) === undefined
       || credentials.type !== "NONE") throw new Error();
-    projectAgentMetadata(value.metadata);
+    projectAgentMetadata(value.metadata, value.connection_id);
     return;
   }
   if (url.pathname === "/connections/metadata" && request.method === "POST") {
     const value = exactObject(parsed, ["provider_config_key", "connection_id", "metadata"]);
-    if (value.provider_config_key !== "agent-conversations" || value.connection_id !== "agent-sync") throw new Error();
-    projectAgentMetadata(value.metadata);
+    if (value.provider_config_key !== "agent-conversations" || agentSyncInstanceId(value.connection_id) === undefined) throw new Error();
+    projectAgentMetadata(value.metadata, value.connection_id);
     return;
   }
   throw new Error();
@@ -350,8 +381,8 @@ const projectConnection = (value, includeMetadata) => {
     provider_config_key: identifier(value.provider_config_key),
   };
   if (includeMetadata) {
-    if (result.connection_id !== "agent-sync" || result.provider_config_key !== "agent-conversations") throw new Error();
-    result.metadata = value.metadata === null ? null : projectAgentMetadata(value.metadata);
+    if (agentSyncInstanceId(result.connection_id) === undefined || result.provider_config_key !== "agent-conversations") throw new Error();
+    result.metadata = value.metadata === null ? null : projectAgentMetadata(value.metadata, result.connection_id);
   }
   return result;
 };
@@ -371,7 +402,8 @@ const projectSuccess = (payload, request) => {
   if (url.pathname === "/integrations" || url.pathname.startsWith("/integrations/")) {
     return projectIntegration(payload);
   }
-  if (url.pathname === "/connections/agent-sync" || url.pathname === "/connections/metadata"
+  if ((url.pathname.startsWith("/connections/") && url.pathname !== "/connections/metadata")
+    || url.pathname === "/connections/metadata"
     || (url.pathname === "/connections" && request.method === "POST")) {
     return projectConnection(payload, true);
   }

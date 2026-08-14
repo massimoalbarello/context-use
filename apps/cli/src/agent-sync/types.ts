@@ -39,11 +39,21 @@ export type CapturedConversation = {
   record: AgentConversationRecord;
 };
 
-export type AgentSyncConfig = {
-  schemaVersion: 1;
+type AgentSyncConfigBase = {
   deploymentId: string;
   connectionId: string;
   webhookUrl: string;
   installedAt: string;
   label: string;
 };
+
+export type LegacyAgentSyncConfig = AgentSyncConfigBase & {
+  schemaVersion: 1;
+};
+
+export type InstanceAgentSyncConfig = AgentSyncConfigBase & {
+  schemaVersion: 2;
+  instanceId: string;
+};
+
+export type AgentSyncConfig = LegacyAgentSyncConfig | InstanceAgentSyncConfig;

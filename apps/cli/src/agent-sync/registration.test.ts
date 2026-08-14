@@ -2,8 +2,11 @@ import { expect, test } from "bun:test";
 
 import {
   activeAgentSyncMetadata,
+  agentSyncConnectionId,
   agentSyncTokenVerifier,
   assertAgentSyncActivationAllowed,
+  isAgentSyncConnectionId,
+  newAgentSyncInstanceId,
   parseAgentSyncMetadata,
   revokedAgentSyncMetadata,
 } from "./registration.ts";
@@ -46,13 +49,13 @@ test("an active fixed connection fails closed for a different local token", () =
     metadata,
     localToken: null,
     deploymentId: "deployment",
-  })).toThrow("already registered on another computer");
+  })).toThrow("different local credential");
   expect(() => assertAgentSyncActivationAllowed({
     connectionExists: true,
     metadata,
     localToken: "b".repeat(43),
     deploymentId: "deployment",
-  })).toThrow("already registered on another computer");
+  })).toThrow("different local credential");
   expect(() => assertAgentSyncActivationAllowed({
     connectionExists: true,
     metadata,
@@ -65,4 +68,42 @@ test("an active fixed connection fails closed for a different local token", () =
     localToken: token,
     deploymentId: "deployment",
   })).toThrow("unrecognized metadata");
+});
+
+test("new installations receive stable-shape machine-scoped connection identities", () => {
+  const instanceId = newAgentSyncInstanceId();
+  expect(instanceId).toMatch(/^[a-f0-9]{32}$/);
+  expect(agentSyncConnectionId(instanceId)).toBe(`agent-sync-${instanceId}`);
+  expect(isAgentSyncConnectionId("agent-sync")).toBe(true);
+  expect(isAgentSyncConnectionId(`agent-sync-${instanceId}`)).toBe(true);
+  expect(isAgentSyncConnectionId("agent-sync-owner-mac")).toBe(false);
+  expect(() => agentSyncConnectionId("owner-mac")).toThrow("Invalid agent-sync instance ID");
+});
+
+test("instance metadata binds a connection credential to one local identity", () => {
+  const token = "c".repeat(43);
+  const instanceId = "d".repeat(32);
+  const metadata = activeAgentSyncMetadata({
+    token,
+    deploymentId: "deployment",
+    instanceId,
+    label: "second-laptop",
+    version: "v1.2.3",
+  });
+  expect(metadata.instance_id).toBe(instanceId);
+  expect(parseAgentSyncMetadata(metadata)).toEqual(metadata);
+  expect(() => assertAgentSyncActivationAllowed({
+    connectionExists: true,
+    metadata,
+    localToken: token,
+    deploymentId: "deployment",
+    instanceId,
+  })).not.toThrow();
+  expect(() => assertAgentSyncActivationAllowed({
+    connectionExists: true,
+    metadata,
+    localToken: token,
+    deploymentId: "deployment",
+    instanceId: "e".repeat(32),
+  })).toThrow("different local instance");
 });
