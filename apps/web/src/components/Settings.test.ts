@@ -5,6 +5,7 @@ import {
   formatExportBytes,
   KnowledgeExportPreparationStatus,
   Settings,
+  storedExportJob,
   type KnowledgeExportJob,
 } from "./Settings.tsx";
 
@@ -24,6 +25,20 @@ describe("knowledge export settings", () => {
     expect(formatExportBytes(5_000_000_000)).toBe("4.66 GB");
   });
 
+  test("recovers a confirmed export after Settings is remounted", () => {
+    const intentId = "11111111-1111-4111-8111-111111111111";
+    const recovered = storedExportJob({
+      getItem: () => JSON.stringify({ intentId, kind: "restorable" }),
+    });
+    expect(recovered).toEqual({
+      intentId,
+      kind: "restorable",
+      status: "processing",
+      downloadUrl: `/api/dashboard/knowledge-exports/${intentId}/download`,
+    });
+    expect(storedExportJob({ getItem: () => "not json" })).toBeNull();
+  });
+
   test("does not expose archive input before eligibility is confirmed", () => {
     const html = renderToStaticMarkup(createElement(Settings, {
       passkeys: [],
@@ -41,7 +56,7 @@ describe("knowledge export settings", () => {
       onReset: noop,
     }));
     expect(html).toContain("Preparing latest snapshot");
-    expect(html).toContain("ZIP is being assembled and checked");
+    expect(html).toContain("leave Settings and return");
     expect(html).toContain('role="status"');
     expect(html).not.toContain("Download archive");
   });
