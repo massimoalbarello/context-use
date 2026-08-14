@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError, uploadKnowledgeArchive } from "../api.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
 import { KnowledgeTemplateSettings } from "./KnowledgeTemplate.tsx";
+import { RunningRelease } from "./RunningRelease.tsx";
 import { IntrinsicServices } from "./Services.tsx";
 
 export type PasskeySummary = {
@@ -456,7 +457,7 @@ export function Settings({
       setExportWorking(false);
     }
   };
-  return <main className="content-page settings-page"><header><div><span className="eyebrow">Owner-only controls</span><h1>Settings</h1></div></header>
+  return <main className="content-page settings-page"><header><div><span className="eyebrow">Owner-only controls</span><h1>Settings</h1></div><RunningRelease /></header>
     {message && <p>{message}</p>}
     <IntrinsicServices />
     <KnowledgeTemplateSettings onKnowledgeChanged={onKnowledgeChanged} />
