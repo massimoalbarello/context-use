@@ -65,7 +65,7 @@ function summarizeActivity(calls: ToolCallRecord[]): TurnToolActivity {
   return {
     calls,
     anyContextUse: calls.length > 0,
-    guidancePrepared: calls.some((call) => call.tool === "prepare_knowledge_write" && call.status === "succeeded"),
+    guidancePrepared: calls.some((call) => call.tool === "prepare_change" && call.status === "succeeded"),
     mutationAttempted: calls.some((call) => MUTATION_TOOLS.has(call.tool)),
     mutationSucceeded: calls.some((call) => MUTATION_TOOLS.has(call.tool) && call.status === "succeeded"),
   };

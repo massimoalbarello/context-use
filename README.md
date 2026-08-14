@@ -197,7 +197,7 @@ https://YOUR_HOST/mcp
 
 Context Use stores automation instructions and supporting assets as ordinary
 private knowledge. An external harness such as OpenClaw can schedule a job that
-reads a known instruction page with `get_page`—for example,
+reads a known instruction page with `read_page`—for example,
 `automations/daily-fabric/instructions`—and then uses the ordinary knowledge and
 asset tools. Scheduling, retries, and run history stay in the harness. An incremental
 automation may keep exactly one non-secret opaque checkpoint on its stable `state` page.

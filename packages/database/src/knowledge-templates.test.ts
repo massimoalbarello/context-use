@@ -939,7 +939,7 @@ describe("knowledge templates", () => {
     );
     expect(normalizedAutomationGuide).toContain("objective failure conditions named by the workflow");
     expect(normalizedAutomationGuide).not.toContain("read_source_records");
-    expect(normalizedAutomationGuide).not.toContain("get_knowledge_changes");
+    expect(normalizedAutomationGuide).not.toContain("list_page_changes");
 
     const expectOrdered = (body: string, headings: string[]) => {
       let previous = -1;
@@ -975,7 +975,9 @@ describe("knowledge templates", () => {
 
     for (const detail of [
       "[[agents|root guide]]",
+      "`prepare_change`",
       "`cached_guidance_receipt`",
+      "every applicable guide is loaded again",
       "`read_source_records`",
       "no `limit`",
       "next_checkpoint",
@@ -1009,20 +1011,22 @@ describe("knowledge templates", () => {
     for (const detail of [
       "[[agents|root guide]]",
       "[[about/diary/agents|diary guide]]",
+      "`prepare_change`",
       "`cached_guidance_receipt`",
-      "`get_knowledge_changes`",
+      "every applicable guide is loaded again",
+      "`list_page_changes`",
       "`next_page_token`",
-      "`get_page_delta` once",
+      "`compare_page_versions` once",
       "`comparison.complete` is false",
       "`page_delta_unavailable`",
       "do not calculate another diff",
       "`changed_at`, creation time, commit time and this run's date never choose a diary day",
       "a one-word correction contributes only its corrected meaning",
       "there is no recency cutoff",
-      "`get_page_history`",
+      "`list_page_versions`",
       "`browse_directory`",
       "`search_pages`",
-      "`get_directory` for the year, month and day",
+      "`read_directory` for the year, month and day",
       "`create_directory`",
       "shallowest first",
       "replay reuses any directories already created",

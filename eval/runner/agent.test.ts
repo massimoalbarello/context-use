@@ -62,11 +62,11 @@ describe("codex progress trace", () => {
   test("prints a repeated item once within a session but never across sessions", () => {
     const call = completedCall("item_1", "create_page", { path: "people/x/intro" });
     // Codex can emit the same completed item twice, so one session prints it once.
-    expect(trace([call, call])).toEqual(["  ✓ create_page             people/x/intro"]);
+    expect(trace([call, call])).toEqual(["  ✓ create_page           people/x/intro"]);
     // A second day reuses `item_1` for different work, and must not be silenced.
     const printer = createCodexProgressPrinter();
     expect(printer).not.toBe(createCodexProgressPrinter());
-    expect(trace([call])).toEqual(["  ✓ create_page             people/x/intro"]);
+    expect(trace([call])).toEqual(["  ✓ create_page           people/x/intro"]);
   });
 
   test("shows the agent's own account of the batch", () => {
@@ -77,18 +77,18 @@ describe("codex progress trace", () => {
     expect(lines).toEqual(["", "  » Kept the meeting.", "  » Dropped the chatter."]);
   });
 
-  test("names the page a knowledge-write preparation targets", () => {
-    // `prepare_knowledge_write` uses `target_path`, so a `path`-only reader showed nothing.
-    const lines = trace([completedCall("item_3", "prepare_knowledge_write", {
+  test("names the page a change preparation targets", () => {
+    // `prepare_change` uses `target_path`, so a `path`-only reader showed nothing.
+    const lines = trace([completedCall("item_3", "prepare_change", {
       target_path: "companies/acme/intro",
     })]);
-    expect(lines).toEqual(["    prepare_knowledge_write companies/acme/intro"]);
+    expect(lines).toEqual(["    prepare_change        companies/acme/intro"]);
   });
 
   test("shows a tool it has never seen rather than dropping it", () => {
     // Reads are anything that is not a write, so a new tool needs no code change.
     expect(trace([completedCall("item_4", "some_new_tool", { path: "a/b" })]))
-      .toEqual(["    some_new_tool           a/b"]);
+      .toEqual(["    some_new_tool         a/b"]);
   });
 
   test("ignores output that is not an event", () => {

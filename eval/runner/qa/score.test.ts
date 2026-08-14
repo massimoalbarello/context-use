@@ -29,7 +29,7 @@ function page(body: string): PageSnapshot {
   return { id: "1", path: "meetings/acme-q1", version: 1, title: "Acme Board Q1", summary: "", body };
 }
 
-function recorded(text: string, toolsUsed: string[] = ["search_pages", "get_page"]): RecordedAnswer {
+function recorded(text: string, toolsUsed: string[] = ["search_pages", "read_page"]): RecordedAnswer {
   return { id: "q-0001", text, toolsUsed };
 }
 

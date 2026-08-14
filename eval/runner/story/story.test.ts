@@ -434,7 +434,7 @@ describe("story session traces", () => {
   test("extracts a resumable Codex thread id and mutation stages", () => {
     const output = [
       JSON.stringify({ type: "thread.started", thread_id: "thread-123" }),
-      JSON.stringify({ type: "item.completed", item: { id: "1", type: "mcp_tool_call", tool: "prepare_knowledge_write", status: "completed" } }),
+      JSON.stringify({ type: "item.completed", item: { id: "1", type: "mcp_tool_call", tool: "prepare_change", status: "completed" } }),
       JSON.stringify({ type: "item.completed", item: { id: "2", type: "mcp_tool_call", tool: "create_page", status: "completed" } }),
     ].join("\n");
     expect(storySessionInternals.threadIdFrom(output)).toBe("thread-123");

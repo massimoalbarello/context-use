@@ -6,11 +6,13 @@ records are read, selected, extracted, reconciled and checkpointed. The installe
 
 ## Contract
 
-- Call `prepare_knowledge_write` with an empty target path before choosing targets. Read
+- Call `prepare_change` with an empty target path before choosing targets. Read
   [[automations/activity-distiller/state|state]] and follow the [[agents|root guide]].
 - Before the first mutation in a scope, prepare the exact target. Reuse the current receipt
   for the same guide chain; when the scope changes or a receipt is rejected, pass the prior
-  receipt as `cached_guidance_receipt` so only guidance changes are loaded.
+  receipt as `cached_guidance_receipt` so only guidance changes are loaded. Omit the cached
+  receipt whenever the previously returned guide bodies are no longer in context, so every
+  applicable guide is loaded again.
 - Carry out confident writes without a preview. Leave genuinely ambiguous identity
   unresolved and report the candidates plus the smallest fact needed to decide.
 - Write knowledge only to its subject. Under this automation directory, mutate only the
