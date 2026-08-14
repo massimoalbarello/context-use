@@ -254,11 +254,10 @@ Make confident in-scope writes without a preview or proposal. Ask first only whe
 identity or scope makes a safe choice impossible.
 
 Before reporting, check the completed write against the retained evidence: every resolved
-subject has one canonical home; every supported particular is present where it belongs; every
-link target exists; material relationships are recorded from both relevant sides; qualifying
-developments appear on the applicable most-specific entity timelines; occurrence pages exist
-only when their local identity rule is met; and no diary entry was written while recording
-activity. Repair omissions before reporting.
+subject has one canonical home; every link target exists; material relationships are recorded
+from both relevant sides; qualifying developments appear on the applicable most-specific
+entity timelines; occurrence pages exist only when their local identity rule is met; and no
+diary entry was written while recording activity. Repair omissions before reporting.
 
 After writing, report every page created, materially updated, merged or archived and why.
 Highlight new entities so the owner can correct them. An unattended automation follows the
