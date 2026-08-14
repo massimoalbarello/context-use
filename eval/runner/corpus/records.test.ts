@@ -183,11 +183,12 @@ describe("corpus source records", () => {
 
   test("rejects a tampered or foreign checkpoint", async () => {
     const reader = new CorpusRecordReader({ directory: buildCorpus() });
-    expect(reader.read({ checkpoint: "cu-corpus-v2.not-a-real-checkpoint" }))
+    expect(reader.read({ checkpoint: "cu-corpus-v3.not-a-real-checkpoint" }))
       .rejects.toThrow(SourceRecordCheckpointError);
 
     const other = new CorpusRecordReader({ directory: buildCorpus() });
     const stolen = await other.read({});
+    expect(stolen.next_checkpoint.length).toBeLessThan(80);
     // Same corpus id here, so tamper with the payload instead.
     const tampered = `${stolen.next_checkpoint.slice(0, -1)}${stolen.next_checkpoint.at(-1) === "a" ? "b" : "a"}`;
     expect(reader.read({ checkpoint: tampered })).rejects.toThrow(SourceRecordCheckpointError);

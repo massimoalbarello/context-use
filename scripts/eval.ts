@@ -12,6 +12,13 @@ import {
   verifyQuestionsCommand,
 } from "../eval/cli/qa.ts";
 import { listStories, runJourney, runStories } from "../eval/cli/story.ts";
+import {
+  fetchLongMemEval,
+  listLongMemEval,
+  runLongMemEvalCommand,
+  scoreLongMemEvalCommand,
+  verifyLongMemEval,
+} from "../eval/cli/longmemeval.ts";
 
 function usage(): never {
   console.error(`Usage:
@@ -27,6 +34,13 @@ function usage(): never {
   bun run eval story:list
   bun run eval story:run (--story <id> | --all) [--provider <codex|claude>] [--repeat <n>]
   bun run eval journey:run [--provider <codex|claude>] [--repeat <n>]
+  bun run eval longmem:fetch [--dataset-path <path>]
+  bun run eval longmem:verify [--dataset-path <path>]
+  bun run eval longmem:list [--dataset-path <path>] [--limit <n>]
+  bun run eval longmem:run (--case <id> | --limit <n> | --stratify <n> | --all)
+                            [--provider <codex|claude>] [--dataset-path <path>]
+                            [--sessions-per-batch <n>]
+  bun run eval longmem:score [run-id]
 
 Per corpus, before asking:
   bun run eval qa:seed [--batches <n>]             world-v1: put its pages in as they are
@@ -134,6 +148,24 @@ if (command === "connect") {
     provider: providerFrom(args),
     repeat: countFrom(args, "repeat"),
   });
+} else if (command === "longmem:fetch") {
+  await fetchLongMemEval(optionFrom(args, "dataset-path"));
+} else if (command === "longmem:verify") {
+  await verifyLongMemEval(optionFrom(args, "dataset-path"));
+} else if (command === "longmem:list") {
+  await listLongMemEval(optionFrom(args, "dataset-path"), countFrom(args, "limit"));
+} else if (command === "longmem:run") {
+  await runLongMemEvalCommand({
+    provider: providerFrom(args),
+    datasetPath: optionFrom(args, "dataset-path"),
+    caseId: optionFrom(args, "case"),
+    limit: countFrom(args, "limit"),
+    stratify: countFrom(args, "stratify"),
+    all: args.includes("--all"),
+    sessionsPerBatch: countFrom(args, "sessions-per-batch"),
+  });
+} else if (command === "longmem:score") {
+  await scoreLongMemEvalCommand(positional(args));
 } else {
   usage();
 }

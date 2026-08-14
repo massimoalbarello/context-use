@@ -9,6 +9,7 @@ coverage/
 # Local evaluation runs (the root path is retained for pre-migration artifacts).
 .eval-results/
 /eval/results/
+/.eval-data/
 .terraform/
 *.tfstate
 *.tfstate.*

@@ -10,6 +10,10 @@ import { SourceRecordCheckpointError } from "../../../apps/server/src/nango-reco
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { DENSE_WINDOW_START, loadAmaraCorpus } from "../../data/amara-life-v1/corpus.ts";
+import {
+  loadLongMemEvalCaseCorpus,
+  LONGMEMEVAL_WORKING_SET_BYTE_BUDGET,
+} from "../../data/longmemeval-v1/corpus.ts";
 import { loadWorldCorpus } from "../../data/world-v1/corpus.ts";
 import type { Corpus, CorpusRecord } from "./types.ts";
 
@@ -40,16 +44,23 @@ export type { Corpus, CorpusRecord } from "./types.ts";
 export const CORPUS_WINDOWS = ["dense", "full"] as const;
 export type CorpusWindow = (typeof CORPUS_WINDOWS)[number];
 
-// Bumped from v1 when the checkpoint's `day` became a corpus-defined `batch`. A
-// checkpoint written by the previous format fails the schema and is rejected as invalid
-// rather than being read as something it is not.
-const CHECKPOINT_PREFIX = "cu-corpus-v2.";
+// Evaluation checkpoints cross an agent boundary twice: the agent saves one and the next
+// agent supplies it. Keep that opaque token compact enough to copy reliably. V2 embedded
+// the complete corpus id in base64 plus a full checksum; LongMemEval exposed that models
+// sometimes reconstructed the payload instead of copying it byte-for-byte. V3 carries the
+// batch, index, a corpus fingerprint, and a compact integrity checksum instead.
+const CHECKPOINT_PREFIX = "cu-corpus-v3.";
+const CHECKPOINT_CORPUS_DIGEST_LENGTH = 12;
+const CHECKPOINT_CHECKSUM_LENGTH = 16;
 const DEFAULT_RECORD_LIMIT = 50;
 const MAX_RECORD_LIMIT = 100;
 const DEFAULT_RESPONSE_BYTE_BUDGET = 5_000_000;
+// LongMemEval sessions are much larger than email/calendar records. Its materializer
+// normally closes each batch at this same provider-safe boundary; the reader enforces it
+// as a second guard. A single exceptionally large session is still served atomically.
 
 const checkpointSchema = z.object({
-  version: z.literal(2),
+  version: z.literal(3),
   corpus_id: z.string().min(1),
   batch: z.string().min(1).nullable(),
   index: z.number().int().min(0),
@@ -65,8 +76,9 @@ type Checkpoint = z.infer<typeof checkpointSchema>;
  */
 export function loadCorpus(directory: string): Corpus {
   if (existsSync(join(directory, "corpus-manifest.json"))) return loadAmaraCorpus(directory);
+  if (existsSync(join(directory, "longmemeval-case.json"))) return loadLongMemEvalCaseCorpus(directory);
   if (existsSync(join(directory, "_ledger.json"))) return loadWorldCorpus(directory);
-  throw new Error(`${directory} holds neither a corpus-manifest.json nor a _ledger.json, so its format is unknown.`);
+  throw new Error(`${directory} holds no recognized corpus descriptor.`);
 }
 
 /**
@@ -84,10 +96,24 @@ export function windowRecords(corpus: Corpus, window: CorpusWindow): CorpusRecor
   return corpus.records.filter((record) => (record.day ?? "") >= DENSE_WINDOW_START);
 }
 
+function checkpointCorpusDigest(corpusId: string): string {
+  return createHash("sha256").update(corpusId).digest("hex").slice(0, CHECKPOINT_CORPUS_DIGEST_LENGTH);
+}
+
+function checkpointPayload(checkpoint: Checkpoint): string {
+  const batch = checkpoint.batch === null
+    ? "0"
+    : `1${Buffer.from(checkpoint.batch, "utf8").toString("base64url")}`;
+  return `${batch}.${checkpoint.index.toString(36)}.${checkpointCorpusDigest(checkpoint.corpus_id)}`;
+}
+
+function checkpointChecksum(payload: string): string {
+  return createHash("sha256").update(payload).digest("hex").slice(0, CHECKPOINT_CHECKSUM_LENGTH);
+}
+
 function encodeCheckpoint(checkpoint: Checkpoint): string {
-  const encoded = Buffer.from(JSON.stringify(checkpoint), "utf8").toString("base64url");
-  const checksum = createHash("sha256").update(encoded).digest("hex");
-  return `${CHECKPOINT_PREFIX}${encoded}.${checksum}`;
+  const payload = checkpointPayload(checkpoint);
+  return `${CHECKPOINT_PREFIX}${payload}.${checkpointChecksum(payload)}`;
 }
 
 /**
@@ -100,43 +126,51 @@ function encodeCheckpoint(checkpoint: Checkpoint): string {
  */
 export function checkpointPosition(value: string | undefined): { batch: string | null; index: number } | null {
   if (!value || !value.startsWith(CHECKPOINT_PREFIX)) return null;
-  const envelope = value.slice(CHECKPOINT_PREFIX.length);
-  const separator = envelope.lastIndexOf(".");
-  if (separator < 1) return null;
-  const encoded = envelope.slice(0, separator);
-  if (!/^[A-Za-z0-9_-]+$/.test(encoded)) return null;
+  const parts = value.slice(CHECKPOINT_PREFIX.length).split(".");
+  if (parts.length !== 4) return null;
+  const [encodedBatch, encodedIndex, corpusDigest, checksum] = parts as [string, string, string, string];
+  const payload = `${encodedBatch}.${encodedIndex}.${corpusDigest}`;
+  if (!/^(?:0|1[A-Za-z0-9_-]+)$/.test(encodedBatch)
+    || !/^[0-9a-z]+$/.test(encodedIndex)
+    || !/^[a-f0-9]{12}$/.test(corpusDigest)
+    || !/^[a-f0-9]{16}$/.test(checksum)
+    || checkpointChecksum(payload) !== checksum) return null;
   try {
-    const parsed = checkpointSchema.parse(JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")));
-    return { batch: parsed.batch, index: parsed.index };
+    const batch = encodedBatch === "0"
+      ? null
+      : Buffer.from(encodedBatch.slice(1), "base64url").toString("utf8");
+    const index = Number.parseInt(encodedIndex, 36);
+    if ((batch !== null && !batch) || !Number.isSafeInteger(index) || index < 0) return null;
+    return { batch, index };
   } catch {
     return null;
   }
 }
 
 function decodeCheckpoint(corpusId: string, firstBatch: string | null, value?: string): Checkpoint {
-  if (!value) return { version: 2, corpus_id: corpusId, batch: firstBatch, index: 0 };
+  if (!value) return { version: 3, corpus_id: corpusId, batch: firstBatch, index: 0 };
   try {
-    if (!value.startsWith(CHECKPOINT_PREFIX) || value.length > 100_000) {
-      throw new Error("invalid checkpoint envelope");
+    if (value.length > 1_000) throw new Error("invalid checkpoint envelope");
+    const position = checkpointPosition(value);
+    if (!position) throw new Error("invalid checkpoint");
+    const parts = value.slice(CHECKPOINT_PREFIX.length).split(".");
+    if (parts[2] !== checkpointCorpusDigest(corpusId)) {
+      throw new Error("checkpoint belongs to another corpus");
     }
-    const envelope = value.slice(CHECKPOINT_PREFIX.length);
-    const separator = envelope.lastIndexOf(".");
-    if (separator < 1 || separator !== envelope.length - 65) {
-      throw new Error("invalid checkpoint checksum envelope");
-    }
-    const encoded = envelope.slice(0, separator);
-    if (!encoded || !/^[A-Za-z0-9_-]+$/.test(encoded)) throw new Error("invalid checkpoint encoding");
-    if (envelope.slice(separator + 1) !== createHash("sha256").update(encoded).digest("hex")) {
-      throw new Error("invalid checkpoint checksum");
-    }
-    const checkpoint = checkpointSchema.parse(
-      JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")),
-    );
-    if (checkpoint.corpus_id !== corpusId) throw new Error("checkpoint belongs to another corpus");
-    return checkpoint;
+    return checkpointSchema.parse({
+      version: 3,
+      corpus_id: corpusId,
+      batch: position.batch,
+      index: position.index,
+    });
   } catch {
     throw new SourceRecordCheckpointError();
   }
+}
+
+/** Exact checkpoint for a corpus position, used by an eval harness to repair transcription. */
+export function corpusCheckpoint(corpusId: string, batch: string | null, index = 0): string {
+  return encodeCheckpoint(checkpointSchema.parse({ version: 3, corpus_id: corpusId, batch, index }));
 }
 
 type CorpusRecordReaderOptions = {
@@ -166,7 +200,10 @@ export class CorpusRecordReader implements SourceRecordReader {
     }
     // The corpus decides the order of its batches; a window only removes some of them.
     this.#batches = corpus.batches.filter((batch) => this.#byBatch.has(batch));
-    this.#responseByteBudget = options.responseByteBudget ?? DEFAULT_RESPONSE_BYTE_BUDGET;
+    this.#responseByteBudget = options.responseByteBudget
+      ?? (records.every((record) => record.type === "agent-conversation")
+        ? LONGMEMEVAL_WORKING_SET_BYTE_BUDGET
+        : DEFAULT_RESPONSE_BYTE_BUDGET);
   }
 
   /** Every batch this reader will serve, in order, so a harness can drive one run each. */

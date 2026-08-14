@@ -19,7 +19,7 @@ import type { RecordedAnswer } from "./score.ts";
 export function askPrompt(question: PublicQuery): string {
   return `Answer the following question using only the ${MCP_NAME} MCP server's knowledge base.
 
-Question: ${question.text}
+${question.as_of_date ? `Current date: ${question.as_of_date}\n` : ""}Question: ${question.text}
 
 Search and read the knowledge base to find the answer. Do not inspect files, run shell
 commands, or browse the web. Do not call read_source_records: you are answering from the
