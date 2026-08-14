@@ -1,0 +1,23 @@
+{
+  "name": "@context-use/openclaw-memory",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw memory binding for Context-use",
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.7.1"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  }
+}

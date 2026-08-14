@@ -84,6 +84,16 @@
         "@types/pg": "8.20.0",
       },
     },
+    "packages/openclaw-context-use": {
+      "name": "@context-use/openclaw-memory",
+      "version": "0.1.0",
+      "peerDependencies": {
+        "openclaw": ">=2026.7.1",
+      },
+      "optionalPeers": [
+        "openclaw",
+      ],
+    },
     "packages/shared": {
       "name": "@context-use/shared",
       "version": "0.1.68",
@@ -202,6 +212,8 @@
     "@context-use/cli": ["@context-use/cli@workspace:apps/cli"],
 
     "@context-use/database": ["@context-use/database@workspace:packages/database"],
+
+    "@context-use/openclaw-memory": ["@context-use/openclaw-memory@workspace:packages/openclaw-context-use"],
 
     "@context-use/server": ["@context-use/server@workspace:apps/server"],
 
