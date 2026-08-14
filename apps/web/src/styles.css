@@ -1380,6 +1380,31 @@ button:disabled {
   flex-direction: column;
 }
 
+.running-release {
+  min-width: 112px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .55);
+  color: var(--faint);
+  font-size: 9px;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.running-release strong {
+  color: #4d4942;
+  font: 650 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.running-release.loading strong { color: var(--muted); }
+
 .settings-page section {
   width: min(920px, 100%);
   margin: 0 auto;
