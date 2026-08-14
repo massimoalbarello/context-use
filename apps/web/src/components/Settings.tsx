@@ -1,6 +1,6 @@
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useEffect, useState } from "react";
-import { api, uploadKnowledgeArchive } from "../api.ts";
+import { api, ApiError, uploadKnowledgeArchive } from "../api.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
 import { KnowledgeTemplateSettings } from "./KnowledgeTemplate.tsx";
 import { IntrinsicServices } from "./Services.tsx";
