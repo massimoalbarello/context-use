@@ -1,0 +1,10 @@
+{
+  "harness": {
+    "provider": "codex"
+  },
+  "eval": {
+    "command": "distill",
+    "corpus": "world-v1",
+    "batches": 1
+  }
+}

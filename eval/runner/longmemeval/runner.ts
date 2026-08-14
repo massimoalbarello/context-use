@@ -17,7 +17,7 @@ import {
   LONGMEMEVAL_DATASET,
   LONGMEMEVAL_EVALUATOR,
 } from "../../data/longmemeval-v1/manifest.ts";
-import { ROOT, type EvalProvider } from "../agent.ts";
+import { ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { loadCorpus } from "../corpus/records.ts";
 import { runCorpusDistillation } from "../distill.ts";
 import { askQuestions } from "../qa/ask.ts";
@@ -33,7 +33,7 @@ import {
 } from "./judge.ts";
 
 export type LongMemEvalRunOptions = LongMemEvalSelection & {
-  provider: EvalProvider;
+  harness: EvalHarness;
   datasetPath?: string | undefined;
   sessionsPerBatch?: number | undefined;
 };
@@ -60,6 +60,8 @@ export type LongMemEvalRunReport = {
   dataset: typeof LONGMEMEVAL_DATASET;
   evaluator: typeof LONGMEMEVAL_EVALUATOR;
   provider: EvalProvider;
+  /** Null where the run used the CLI's own default model. */
+  model: string | null;
   sessionsPerBatch: number;
   startedAt: string;
   completedAt: string;
@@ -120,7 +122,9 @@ function markdownReport(report: LongMemEvalRunReport): string {
   const lines = [
     `# LongMemEval QA — ${report.runId}`,
     "",
-    `- **Provider:** ${report.provider}`,
+    `- **Harness:** ${harnessLabel(
+      report.model ? { provider: report.provider, model: report.model } : { provider: report.provider },
+    )}`,
     `- **Cases selected:** ${report.cases.length}`,
     `- **Cases answered:** ${answered.length}`,
     `- **Maximum sessions per distillation batch:** ${report.sessionsPerBatch}`,
@@ -154,7 +158,7 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
   }
 
   const startedAt = new Date().toISOString();
-  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-longmemeval-${options.provider}`;
+  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-longmemeval-${options.harness.provider}`;
   const runDirectory = join(EVAL_LONGMEM_RESULTS_ROOT, runId);
   await mkdir(runDirectory, { recursive: true });
   console.log(style.heading(`\nLongMemEval QA run: ${runId}`));
@@ -180,7 +184,7 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
     );
     const corpus = loadCorpus(sourceDirectory);
     const distillation = await runCorpusDistillation({
-      provider: options.provider,
+      harness: options.harness,
       corpus,
       servedDirectory: containerPath(sourceDirectory),
       window: "full",
@@ -219,7 +223,7 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
     const qaDirectory = join(caseDirectory, "qa");
     await mkdir(qaDirectory, { recursive: true });
     const recorded = (await askQuestions({
-      provider: options.provider,
+      harness: options.harness,
       runDirectory: qaDirectory,
       questions: [publicQuestion(entry)],
     }))[0]!;
@@ -242,7 +246,8 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
     benchmark: "longmemeval-v1",
     dataset: LONGMEMEVAL_DATASET,
     evaluator: LONGMEMEVAL_EVALUATOR,
-    provider: options.provider,
+    provider: options.harness.provider,
+    model: options.harness.model ?? null,
     sessionsPerBatch,
     startedAt,
     completedAt: new Date().toISOString(),

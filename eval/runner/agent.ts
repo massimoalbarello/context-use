@@ -5,7 +5,46 @@ import { style, terminalWidth, truncate } from "./terminal.ts";
 
 /** Agent session plumbing shared by corpus distillation and question answering. */
 
-export type EvalProvider = "codex" | "claude";
+export const PROVIDERS = ["codex", "claude"] as const;
+export type EvalProvider = (typeof PROVIDERS)[number];
+
+/**
+ * The CLI that drives the agent and the model it drives.
+ *
+ * Both belong together because neither alone describes what was measured: the same corpus
+ * run through Codex and through Claude Code, or through two models of one CLI, produces
+ * scores that are not comparable. Every run records the pair for that reason.
+ */
+export type EvalHarness = {
+  provider: EvalProvider;
+  /** Model id handed to the CLI. Omitted leaves the CLI on its own default. */
+  model?: string | undefined;
+};
+
+export function harnessLabel(harness: EvalHarness): string {
+  return `${harness.provider} · ${harness.model ?? "CLI default model"}`;
+}
+
+export function modelArguments(harness: EvalHarness): string[] {
+  return harness.model ? ["--model", harness.model] : [];
+}
+
+/**
+ * The flags that keep local configuration out of a measurement.
+ *
+ * The workspace sits inside this repository, so both CLIs will otherwise read this
+ * repository's own instructions to its maintainers and hand them to the agent under test.
+ * `--ignore-user-config` drops `$CODEX_HOME/config.toml`, where a developer's model,
+ * reasoning effort, sandbox policy and extra MCP servers live, and `--ignore-rules` drops
+ * execpolicy `.rules`; neither touches `AGENTS.md`, which Codex reads from the working
+ * directory upward until `project_doc_max_bytes=0`. `--setting-sources ""` is Claude Code's
+ * equivalent, covering its settings, memory and skills at once.
+ *
+ * None of it affects the MCP server's own `instructions`, which arrive over the wire at
+ * initialize: Claude Code carries them into context and Codex discards them either way.
+ */
+export const CODEX_ISOLATION = ["--ignore-user-config", "--ignore-rules", "-c", "project_doc_max_bytes=0"];
+export const CLAUDE_ISOLATION = ["--setting-sources", ""];
 
 export const ROOT = join(import.meta.dir, "..", "..");
 export const EVAL_URL = stackUrl();
@@ -179,7 +218,7 @@ export function createCodexProgressPrinter(): (line: string) => void {
 }
 
 export type AgentSession = {
-  provider: EvalProvider;
+  harness: EvalHarness;
   /** Stable identifier used to name this session's log files. */
   id: string;
   prompt: string;
@@ -188,7 +227,7 @@ export type AgentSession = {
   knowledgeTools?: boolean | undefined;
 };
 
-function codexArgs({ id, runDirectory, knowledgeTools = true }: AgentSession): string[] {
+function codexArgs({ harness, id, runDirectory, knowledgeTools = true }: AgentSession): string[] {
   const mcpArgs = knowledgeTools
     ? [
         "-c", `mcp_servers.${MCP_NAME}.url="${MCP_URL}"`,
@@ -198,7 +237,7 @@ function codexArgs({ id, runDirectory, knowledgeTools = true }: AgentSession): s
       ]
     : [];
   return [
-    "exec", "--ephemeral", "--ignore-user-config", "--ignore-rules",
+    "exec", ...modelArguments(harness), "--ephemeral", ...CODEX_ISOLATION,
     "--skip-git-repo-check", "--sandbox", "read-only", "--json",
     "--output-last-message", join(runDirectory, `${id}-final.md`),
     "-C", EVAL_WORKSPACE,
@@ -230,12 +269,13 @@ async function runCodexSession(session: AgentSession): Promise<void> {
   }
 }
 
-function claudeArgs({ knowledgeTools = true }: AgentSession): string[] {
+function claudeArgs({ harness, knowledgeTools = true }: AgentSession): string[] {
   const mcpConfig = JSON.stringify({
     mcpServers: knowledgeTools ? { [MCP_NAME]: { type: "http", url: MCP_URL } } : {},
   });
   return [
-    "-p", "--no-session-persistence", "--strict-mcp-config",
+    "-p", "--no-session-persistence", ...modelArguments(harness), ...CLAUDE_ISOLATION,
+    "--strict-mcp-config",
     "--mcp-config", mcpConfig, "--permission-mode", "dontAsk",
     "--allowedTools", knowledgeTools ? `mcp__${MCP_NAME}__*` : "",
     // `stream-json` is what `agentFinalAnswer` and `agentToolsUsed` read back, and under
@@ -270,7 +310,7 @@ async function runClaudeSession(session: AgentSession): Promise<void> {
 }
 
 export async function runAgentSession(session: AgentSession): Promise<void> {
-  if (session.provider === "codex") await runCodexSession(session);
+  if (session.harness.provider === "codex") await runCodexSession(session);
   else await runClaudeSession(session);
 }
 
@@ -356,6 +396,13 @@ export function connectProvider(provider: EvalProvider): void {
     ], { cwd: ROOT, stdin: "inherit", stdout: "inherit", stderr: "inherit" });
     if (added.exitCode !== 0) process.exit(added.exitCode);
   }
-  console.log("Claude MCP configuration is ready.");
-  console.log("Run `claude auth login` if needed, then open Claude Code and use `/mcp` once to complete OAuth.");
+  // The evaluation sessions pass this server inline with `--strict-mcp-config`, so the
+  // registration above is not what they read. The stored OAuth token is, and this is the
+  // flow that obtains it: the local stack has to be up, and the browser asks for the owner
+  // passkey.
+  const login = Bun.spawnSync([binary, "mcp", "login", MCP_NAME], {
+    cwd: ROOT, stdin: "inherit", stdout: "inherit", stderr: "inherit",
+  });
+  if (login.exitCode !== 0) process.exit(login.exitCode);
+  console.log("\nAuthorized. Confirm the whole path with `bun run eval check`.");
 }

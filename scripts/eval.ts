@@ -1,9 +1,12 @@
 import { profileCorpusCommand, scoreRunCommand } from "../eval/data/amara-life-v1/gold/commands.ts";
+import { checkSetup } from "../eval/cli/check.ts";
 import { verifyCorpus, refreshCorpus } from "../eval/cli/corpus.ts";
+import { runConfiguredEval } from "../eval/cli/run.ts";
+import { loadEvalConfig, selectionCorpus, type EvalConfig } from "../eval/config.ts";
 import { DEFAULT_CORPUS_ID, isCorpusId, type CorpusId } from "../eval/runner/corpus/integrity.ts";
 import type { CorpusWindow } from "../eval/runner/corpus/records.ts";
 import { runDistillation } from "../eval/runner/distill.ts";
-import { connectProvider, type EvalProvider } from "../eval/runner/agent.ts";
+import { connectProvider, type EvalHarness, type EvalProvider } from "../eval/runner/agent.ts";
 import {
   askQuestionsCommand,
   deriveQuestionsCommand,
@@ -23,25 +26,32 @@ import type { LongMemEvalJudgeProvider } from "../eval/runner/longmemeval/judge.
 
 function usage(): never {
   console.error(`Usage:
+  bun run eval check [--no-probe]                   prove the configured setup can run
+  bun run eval run                                  run the configured eval on the configured harness
   bun run eval connect <codex|claude>
   bun run eval distill [--corpus <amara-life-v1|world-v1>] [--provider <codex|claude>]
-                       [--window <dense|full>] [--batches <n>]
+                       [--model <id>] [--window <dense|full>] [--batches <n>]
   bun run eval corpus:verify [--corpus <id>]
   bun run eval corpus:refresh [--corpus <id>]
   bun run eval gold:profile [--write]              amara-life-v1 structural check
   bun run eval gold:check [run-id]
-  bun run eval qa:ask [run-id] [--provider <codex|claude>] [--only <q-0007>] [--limit <n>] [--all]
+  bun run eval qa:ask [run-id] [--provider <codex|claude>] [--model <id>]
+                      [--only <q-0007>] [--limit <n>] [--all]
   bun run eval qa:score [run-id]
   bun run eval story:list
-  bun run eval story:run (--story <id> | --all) [--provider <codex|claude>] [--repeat <n>]
-  bun run eval journey:run [--provider <codex|claude>] [--repeat <n>]
+  bun run eval story:run (--story <id> | --all) [--provider <codex|claude>] [--model <id>] [--repeat <n>]
+  bun run eval journey:run [--provider <codex|claude>] [--model <id>] [--repeat <n>]
   bun run eval longmem:fetch [--dataset-path <path>]
   bun run eval longmem:verify [--dataset-path <path>]
   bun run eval longmem:list [--dataset-path <path>] [--limit <n>]
   bun run eval longmem:run (--case <id> | --limit <n> | --stratify <n> | --all)
-                            [--provider <codex|claude>] [--dataset-path <path>]
+                            [--provider <codex|claude>] [--model <id>] [--dataset-path <path>]
                             [--sessions-per-batch <n>]
   bun run eval longmem:score [run-id] [--judge-provider <codex|claude|openai>]
+
+eval/config.json says which harness, which model and which eval a run uses, and every
+command above takes its defaults from it. eval/config.local.json overrides it without
+entering a commit; a flag overrides both for one command only.
 
 Per corpus, before asking:
   bun run eval qa:seed [--batches <n>]             world-v1: put its pages in as they are
@@ -60,15 +70,40 @@ order for world-v1. --days is accepted as an alias for --batches.`);
   process.exit(1);
 }
 
+/**
+ * A configuration this file cannot read is reported as what it is, rather than as a stack
+ * trace: it is a file someone just edited, and the line that names the offending field is
+ * the whole answer.
+ */
+function configuration(): EvalConfig {
+  try {
+    return loadEvalConfig();
+  } catch (error) {
+    console.error(`\nThe evaluation configuration is not usable:\n  ${(error as Error).message}\n`);
+    process.exit(1);
+  }
+}
+
+const config = configuration();
+
 function optionFrom(args: string[], name: string): string | undefined {
   const index = args.indexOf(`--${name}`);
   return index === -1 ? undefined : args[index + 1];
 }
 
-function providerFrom(args: string[]): EvalProvider {
-  const value = optionFrom(args, "provider") ?? "codex";
-  if (value !== "codex" && value !== "claude") usage();
-  return value;
+/**
+ * The harness this command runs on: the configured one unless a flag says otherwise.
+ *
+ * A `--provider` that moves off the configured harness drops the configured model with it,
+ * because a model id belongs to the CLI that understands it and handing Codex a Claude
+ * model id fails in a way that looks like the eval failing.
+ */
+function harnessFrom(args: string[]): EvalHarness {
+  const provider = optionFrom(args, "provider") ?? config.harness.provider;
+  if (provider !== "codex" && provider !== "claude") usage();
+  const inherited = provider === config.harness.provider ? config.harness.model : undefined;
+  const model = optionFrom(args, "model") ?? inherited;
+  return model === undefined ? { provider } : { provider, model };
 }
 
 function longMemJudgeProviderFrom(args: string[]): LongMemEvalJudgeProvider {
@@ -78,14 +113,17 @@ function longMemJudgeProviderFrom(args: string[]): LongMemEvalJudgeProvider {
 }
 
 function corpusFrom(args: string[]): CorpusId {
-  const value = optionFrom(args, "corpus") ?? DEFAULT_CORPUS_ID;
+  const value = optionFrom(args, "corpus") ?? selectionCorpus(config.eval) ?? DEFAULT_CORPUS_ID;
   if (!isCorpusId(value)) usage();
   return value;
 }
 
 function windowFrom(args: string[]): CorpusWindow {
   // Defaults to the same value compose.dev.yml gives the server, so both agree.
-  const value = optionFrom(args, "window") ?? process.env.EVAL_CORPUS_WINDOW ?? "full";
+  const configured = config.eval.command === "distill" || config.eval.command === "qa"
+    ? config.eval.window
+    : undefined;
+  const value = optionFrom(args, "window") ?? configured ?? process.env.EVAL_CORPUS_WINDOW ?? "full";
   if (value !== "dense" && value !== "full") usage();
   return value;
 }
@@ -106,13 +144,19 @@ function positional(args: string[]): string | undefined {
 
 const [command, ...args] = process.argv.slice(2);
 
-if (command === "connect") {
-  const provider = args[0];
+if (command === "check") {
+  // `--provider` and `--model` are honoured here for the same reason as everywhere else:
+  // checking a harness before adopting it is exactly when a one-off override earns itself.
+  await checkSetup({ ...config, harness: harnessFrom(args) }, { probe: !args.includes("--no-probe") });
+} else if (command === "run") {
+  await runConfiguredEval(config);
+} else if (command === "connect") {
+  const provider: string = args[0] ?? config.harness.provider;
   if (provider !== "codex" && provider !== "claude") usage();
-  connectProvider(provider);
+  connectProvider(provider as EvalProvider);
 } else if (command === "distill") {
   await runDistillation({
-    provider: providerFrom(args),
+    harness: harnessFrom(args),
     corpus: corpusFrom(args),
     window: windowFrom(args),
     batches: countFrom(args, "batches", "days"),
@@ -134,7 +178,7 @@ if (command === "connect") {
 } else if (command === "qa:ask") {
   await askQuestionsCommand({
     runId: positional(args),
-    provider: providerFrom(args),
+    harness: harnessFrom(args),
     only: optionFrom(args, "only"),
     limit: countFrom(args, "limit"),
     all: args.includes("--all"),
@@ -145,14 +189,14 @@ if (command === "connect") {
   listStories();
 } else if (command === "story:run") {
   await runStories({
-    provider: providerFrom(args),
+    harness: harnessFrom(args),
     story: optionFrom(args, "story"),
     all: args.includes("--all"),
     repeat: countFrom(args, "repeat"),
   });
 } else if (command === "journey:run") {
   await runJourney({
-    provider: providerFrom(args),
+    harness: harnessFrom(args),
     repeat: countFrom(args, "repeat"),
   });
 } else if (command === "longmem:fetch") {
@@ -163,7 +207,7 @@ if (command === "connect") {
   await listLongMemEval(optionFrom(args, "dataset-path"), countFrom(args, "limit"));
 } else if (command === "longmem:run") {
   await runLongMemEvalCommand({
-    provider: providerFrom(args),
+    harness: harnessFrom(args),
     datasetPath: optionFrom(args, "dataset-path"),
     caseId: optionFrom(args, "case"),
     limit: countFrom(args, "limit"),

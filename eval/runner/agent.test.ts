@@ -98,7 +98,7 @@ describe("codex progress trace", () => {
 
 describe("MCP-free evaluator sessions", () => {
   const session = {
-    provider: "codex" as const,
+    harness: { provider: "codex" as const },
     id: "judge-one",
     prompt: "yes or no",
     runDirectory: "/tmp/judge",
@@ -110,8 +110,39 @@ describe("MCP-free evaluator sessions", () => {
   });
 
   test("gives Claude an empty MCP config and empty allowed-tools list", () => {
-    const args = agentRunnerInternals.claudeArgs({ ...session, provider: "claude" });
+    const args = agentRunnerInternals.claudeArgs({ ...session, harness: { provider: "claude" } });
     expect(args[args.indexOf("--mcp-config") + 1]).toBe('{"mcpServers":{}}');
     expect(args[args.indexOf("--allowedTools") + 1]).toBe("");
+  });
+});
+
+/**
+ * The workspace an agent runs in sits inside this repository, so both CLIs will happily
+ * read this repository's own instructions to its maintainers and hand them to the agent
+ * under test. Both were observed doing it: Claude Code loaded `CLAUDE.md` until
+ * `--setting-sources ""`, and Codex loads any `AGENTS.md` above the workspace until
+ * `project_doc_max_bytes=0` — neither `--ignore-user-config` nor `--ignore-rules` stops
+ * that, which is exactly why the flag is easy to drop by accident.
+ */
+describe("session isolation", () => {
+  const session = { id: "batch-one", prompt: "go", runDirectory: "/tmp/run" };
+
+  test("keeps local Codex configuration and project documents out of a run", () => {
+    const args = agentRunnerInternals.codexArgs({ ...session, harness: { provider: "codex" } });
+    expect(args).toContain("--ignore-user-config");
+    expect(args).toContain("--ignore-rules");
+    expect(args[args.indexOf("project_doc_max_bytes=0") - 1]).toBe("-c");
+  });
+
+  test("keeps local Claude Code settings, memory and skills out of a run", () => {
+    const args = agentRunnerInternals.claudeArgs({ ...session, harness: { provider: "claude" } });
+    expect(args[args.indexOf("--setting-sources") + 1]).toBe("");
+  });
+
+  test("names a model only when one is configured", () => {
+    const harness = { provider: "claude" as const, model: "claude-opus-5" };
+    expect(agentRunnerInternals.claudeArgs({ ...session, harness })).toContain("claude-opus-5");
+    expect(agentRunnerInternals.claudeArgs({ ...session, harness: { provider: "claude" } }))
+      .not.toContain("--model");
   });
 });
