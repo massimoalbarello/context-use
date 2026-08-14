@@ -86,7 +86,7 @@ bun run eval distill --window dense --days 2
 # Or run one end-to-end LongMemEval history and QA question
 bun run eval longmem:list --limit 5
 bun run eval longmem:run --case <question-id>
-OPENAI_API_KEY=... bun run eval longmem:score
+bun run eval longmem:score
 ```
 
 The corpus is copied verbatim from [`garrytan/gbrain-evals`](https://github.com/garrytan/gbrain-evals)

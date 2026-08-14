@@ -22,6 +22,28 @@ describe("LongMemEval run reporting", () => {
     expect(Object.keys(question)).not.toContain("answer");
   });
 
+  test("seals per-case gold and permits only read-only knowledge tools", () => {
+    const publicResult = longMemEvalRunnerInternals.publicCaseResult({
+      questionId: "sealed",
+      questionType: "multi-session",
+      questionDate: "2023/05/30",
+      question: "What happened?",
+      referenceAnswer: "secret",
+      abstention: false,
+      sessions: 40,
+      batches: 4,
+      recordsServed: 40,
+      pages: 2,
+      hypothesis: "answer",
+      toolsUsed: ["search_pages", "get_page"],
+    });
+    expect(publicResult).not.toHaveProperty("referenceAnswer");
+    expect(longMemEvalRunnerInternals.forbiddenQaTools(["search_pages", "get_page"])).toEqual([]);
+    expect(longMemEvalRunnerInternals.forbiddenQaTools([
+      "read_source_records", "create_page", "command_execution", "web_search",
+    ])).toEqual(["read_source_records", "create_page", "command_execution", "web_search"]);
+  });
+
   test("counts void cases against end-to-end accuracy without sending them to the judge", async () => {
     const directory = mkdtempSync(join(tmpdir(), "longmemeval-run-"));
     writeFileSync(join(directory, "report.json"), JSON.stringify({
@@ -62,15 +84,31 @@ describe("LongMemEval run reporting", () => {
       ],
     }));
     let judgeCalls = 0;
-    const score = await scoreLongMemEval(directory, async () => {
+    const score = await scoreLongMemEval(directory, { judge: async () => {
       judgeCalls += 1;
-      return { correct: true, response: "Yes", model: "test" };
-    });
+      return {
+        correct: true,
+        response: "Yes",
+        model: "test",
+        provider: "codex",
+        officialModel: false,
+      };
+    } });
     expect(judgeCalls).toBe(1);
-    expect(score).toMatchObject({ correct: 1, scored: 1, void: 1, accuracy: 0.5, judgeAccuracy: 1 });
+    expect(score).toMatchObject({
+      correct: 1,
+      scored: 1,
+      void: 1,
+      accuracy: 0.5,
+      judgeAccuracy: 1,
+      model: "test",
+      judgeProvider: "codex",
+      officialModel: false,
+    });
     expect(score.byType["multi-session"]).toEqual({
       correct: 1, scored: 1, void: 1, total: 2, accuracy: 0.5,
     });
     expect(JSON.parse(readFileSync(join(directory, "qa-score.json"), "utf8")).accuracy).toBe(0.5);
+    expect(JSON.parse(readFileSync(join(directory, "qa-score-codex.json"), "utf8")).model).toBe("test");
   });
 });

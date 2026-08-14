@@ -12,6 +12,7 @@ import {
   scoreLongMemEval,
   type LongMemEvalRunOptions,
 } from "../runner/longmemeval/runner.ts";
+import type { LongMemEvalJudgeProvider } from "../runner/longmemeval/judge.ts";
 import { style } from "../runner/terminal.ts";
 
 export async function fetchLongMemEval(datasetPath?: string): Promise<void> {
@@ -44,6 +45,9 @@ export async function runLongMemEvalCommand(options: LongMemEvalRunOptions): Pro
   await runLongMemEval(options);
 }
 
-export async function scoreLongMemEvalCommand(runId?: string): Promise<void> {
-  await scoreLongMemEval(runId);
+export async function scoreLongMemEvalCommand(
+  runId?: string,
+  judgeProvider: LongMemEvalJudgeProvider = "codex",
+): Promise<void> {
+  await scoreLongMemEval(runId, { judgeProvider });
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createCodexProgressPrinter } from "./agent.ts";
+import { agentRunnerInternals, createCodexProgressPrinter } from "./agent.ts";
 
 /**
  * The live trace is how a run is watched, so it has to report what actually happened.
@@ -93,5 +93,25 @@ describe("codex progress trace", () => {
 
   test("ignores output that is not an event", () => {
     expect(trace(["not json" as unknown])).toEqual([]);
+  });
+});
+
+describe("MCP-free evaluator sessions", () => {
+  const session = {
+    provider: "codex" as const,
+    id: "judge-one",
+    prompt: "yes or no",
+    runDirectory: "/tmp/judge",
+    knowledgeTools: false,
+  };
+
+  test("does not configure the knowledge MCP for Codex", () => {
+    expect(agentRunnerInternals.codexArgs(session).join(" ")).not.toContain("context_use_eval");
+  });
+
+  test("gives Claude an empty MCP config and empty allowed-tools list", () => {
+    const args = agentRunnerInternals.claudeArgs({ ...session, provider: "claude" });
+    expect(args[args.indexOf("--mcp-config") + 1]).toBe('{"mcpServers":{}}');
+    expect(args[args.indexOf("--allowedTools") + 1]).toBe("");
   });
 });

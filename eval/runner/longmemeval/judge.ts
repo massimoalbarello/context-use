@@ -1,8 +1,16 @@
+import { mkdir } from "node:fs/promises";
 import { z } from "zod";
 import type { LongMemEvalCase } from "../../data/longmemeval-v1/dataset.ts";
+import {
+  agentFinalAnswer,
+  agentToolsUsed,
+  runAgentSession,
+  type EvalProvider,
+} from "../agent.ts";
 
 /** The model pinned by LongMemEval's published `evaluate_qa.py`. */
 export const LONGMEMEVAL_JUDGE_MODEL = "gpt-4o-2024-08-06";
+export type LongMemEvalJudgeProvider = EvalProvider | "openai";
 
 function answerText(answer: unknown): string {
   if (typeof answer === "string") return answer;
@@ -41,7 +49,27 @@ export type LongMemEvalJudgement = {
   correct: boolean;
   response: string;
   model: string;
+  provider: LongMemEvalJudgeProvider;
+  /** True only for the benchmark's exact GPT-4o model, not merely its exact prompt. */
+  officialModel: boolean;
 };
+
+function judgement(
+  response: string,
+  provider: LongMemEvalJudgeProvider,
+  model: string,
+  officialModel: boolean,
+): LongMemEvalJudgement {
+  return {
+    // This deliberately matches upstream evaluate_qa.py rather than imposing a stricter
+    // parser of our own.
+    correct: response.toLowerCase().includes("yes"),
+    response,
+    model,
+    provider,
+    officialModel,
+  };
+}
 
 export async function judgeLongMemEvalAnswer(
   entry: Pick<LongMemEvalCase, "questionType" | "question" | "referenceAnswer" | "abstention">,
@@ -84,15 +112,57 @@ export async function judgeLongMemEvalAnswer(
       }
       const completion = completionSchema.parse(await response.json());
       const judgeResponse = completion.choices[0]!.message.content.trim();
-      return {
-        correct: judgeResponse.toLowerCase().includes("yes"),
-        response: judgeResponse,
-        model: LONGMEMEVAL_JUDGE_MODEL,
-      };
+      return judgement(judgeResponse, "openai", LONGMEMEVAL_JUDGE_MODEL, true);
     } catch (error) {
       lastError = error;
       if (attempt < 2) await pause(500 * 2 ** attempt);
     }
   }
   throw lastError instanceof Error ? lastError : new Error("LongMemEval judge failed");
+}
+
+/**
+ * Runs the published evaluator prompt in a fresh subscription-backed agent session.
+ *
+ * This removes the API-key requirement while preserving the benchmark prompt and label
+ * parser exactly. It is intentionally reported as prompt-compatible, not official-model
+ * comparable: Codex and Claude subscriptions do not expose the pinned GPT-4o judge. The
+ * session has no Context Use MCP, and any provider tool action voids the judgement.
+ */
+export async function judgeLongMemEvalAnswerWithHarness(
+  entry: Pick<LongMemEvalCase, "questionType" | "question" | "referenceAnswer" | "abstention">,
+  hypothesis: string,
+  options: {
+    provider: EvalProvider;
+    runDirectory: string;
+    id: string;
+    runSession?: typeof runAgentSession;
+    finalAnswer?: typeof agentFinalAnswer;
+    toolsUsed?: typeof agentToolsUsed;
+  },
+): Promise<LongMemEvalJudgement> {
+  await mkdir(options.runDirectory, { recursive: true });
+  const runSession = options.runSession ?? runAgentSession;
+  await runSession({
+    provider: options.provider,
+    id: options.id,
+    prompt: longMemEvalJudgePrompt(entry, hypothesis),
+    runDirectory: options.runDirectory,
+    knowledgeTools: false,
+  });
+  const used = (options.toolsUsed ?? agentToolsUsed)(
+    options.runDirectory,
+    options.id,
+    options.provider,
+  );
+  if (used.length) {
+    throw new Error(`LongMemEval harness judge used forbidden tool action(s): ${used.join(", ")}`);
+  }
+  const response = (options.finalAnswer ?? agentFinalAnswer)(
+    options.runDirectory,
+    options.id,
+    options.provider,
+  ).trim();
+  if (!response) throw new Error("LongMemEval harness judge returned no answer");
+  return judgement(response, options.provider, `${options.provider}-subscription`, false);
 }

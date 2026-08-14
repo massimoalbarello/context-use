@@ -57,7 +57,9 @@ bun run eval longmem:fetch
 bun run eval longmem:list --limit 10
 bun run eval longmem:run --case <question-id>
 bun run eval longmem:run --limit 3
-OPENAI_API_KEY=... bun run eval longmem:score
+bun run eval longmem:score
+# For published-score comparability, use the official pinned judge model:
+OPENAI_API_KEY=... bun run eval longmem:score --judge-provider openai
 ```
 
 The download is cached under `.eval-data/` and verified against its pinned size and SHA-256
@@ -65,6 +67,9 @@ on use. One selected row is one independent knowledge base: all of that row's se
 distilled before its one question is asked, then the next row resets the stack. The default
 is at most ten sessions per distillation batch, with a 24 KB agent transport ceiling.
 Results and transcripts land under `eval/results/longmemeval/`.
+The default key-free harness judge uses the exact official prompt but a subscription model;
+the score records that distinction. Only `--judge-provider openai` uses LongMemEval's exact
+`gpt-4o-2024-08-06` judge model.
 
 ## Running interactive stories
 

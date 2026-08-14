@@ -26,8 +26,10 @@ import { EVAL_LONGMEM_RESULTS_ROOT } from "../results.ts";
 import { style } from "../terminal.ts";
 import {
   judgeLongMemEvalAnswer,
+  judgeLongMemEvalAnswerWithHarness,
   LONGMEMEVAL_JUDGE_MODEL,
   type LongMemEvalJudgement,
+  type LongMemEvalJudgeProvider,
 } from "./judge.ts";
 
 export type LongMemEvalRunOptions = LongMemEvalSelection & {
@@ -86,6 +88,31 @@ function publicQuestion(entry: LongMemEvalCase): PublicQuery {
     as_of_date: entry.questionDate,
     tags: ["longmemeval", entry.questionType],
   };
+}
+
+const LONGMEMEVAL_QA_READ_TOOLS = new Set([
+  "get_directory",
+  "browse_directory",
+  "list_directories",
+  "get_page",
+  "load_skill",
+  "search_pages",
+  "get_knowledge_changes",
+  "get_page_delta",
+  "get_page_history",
+  "get_page_version",
+  "list_assets",
+  "get_asset",
+]);
+
+function forbiddenQaTools(tools: string[]): string[] {
+  return tools.filter((tool) => !LONGMEMEVAL_QA_READ_TOOLS.has(tool));
+}
+
+/** Gold stays in memory until every tested agent has exited. */
+function publicCaseResult(result: LongMemEvalCaseResult): Omit<LongMemEvalCaseResult, "referenceAnswer"> {
+  const { referenceAnswer: _sealed, ...publicResult } = result;
+  return publicResult;
 }
 
 function markdownReport(report: LongMemEvalRunReport): string {
@@ -182,7 +209,7 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
         voidReason: `distillation consumed ${distillation.servedRecords} of ${distillation.requestedRecords} sessions`,
       };
       results.push(result);
-      await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(result, null, 2)}\n`);
+      await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(publicCaseResult(result), null, 2)}\n`);
       console.log(style.yellow(`Skipping QA: ${result.voidReason}`));
       continue;
     }
@@ -196,15 +223,15 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
       runDirectory: qaDirectory,
       questions: [publicQuestion(entry)],
     }))[0]!;
-    const forbidden = recorded.toolsUsed.filter((tool) => tool.includes("read_source_records"));
+    const forbidden = forbiddenQaTools(recorded.toolsUsed);
     const result: LongMemEvalCaseResult = forbidden.length
-      ? { ...base, voidReason: `QA bypassed the knowledge base with ${forbidden.join(", ")}` }
+      ? { ...base, voidReason: `QA used non-knowledge or mutating tool action(s): ${forbidden.join(", ")}` }
       : { ...base, hypothesis: recorded.text, toolsUsed: recorded.toolsUsed };
     results.push(result);
     if (result.hypothesis !== undefined) {
       hypotheses.push({ question_id: entry.questionId, hypothesis: result.hypothesis });
     }
-    await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(result, null, 2)}\n`);
+    await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(publicCaseResult(result), null, 2)}\n`);
     console.log(result.voidReason
       ? style.yellow(`Void: ${result.voidReason}`)
       : style.green(`Answer: ${result.hypothesis?.split("\n")[0] ?? ""}`));
@@ -247,6 +274,9 @@ function resolveRun(runId?: string): string {
 export type LongMemEvalScore = {
   scoredAt: string;
   model: string;
+  judgeProvider: LongMemEvalJudgeProvider;
+  /** Whether this used the benchmark's pinned GPT-4o model as well as its exact prompt. */
+  officialModel: boolean;
   correct: number;
   scored: number;
   void: number;
@@ -266,21 +296,33 @@ export type LongMemEvalScore = {
     questionType: LongMemEvalQuestionType;
     correct?: boolean;
     judgeResponse?: string;
+    judgeModel?: string;
+    judgeProvider?: LongMemEvalJudgeProvider;
     voidReason?: string;
   }>;
 };
 
-export async function scoreLongMemEval(
-  runId?: string,
-  judge: (
+export type LongMemEvalScoreOptions = {
+  /** Defaults to the key-free Codex harness; use openai for the official pinned model. */
+  judgeProvider?: LongMemEvalJudgeProvider | undefined;
+  /** Test seam for deterministic unit scoring. */
+  judge?: ((
     entry: Pick<LongMemEvalCase, "questionType" | "question" | "referenceAnswer" | "abstention">,
     hypothesis: string,
-  ) => Promise<LongMemEvalJudgement> = judgeLongMemEvalAnswer,
+  ) => Promise<LongMemEvalJudgement>) | undefined;
+};
+
+export async function scoreLongMemEval(
+  runId?: string,
+  options: LongMemEvalScoreOptions = {},
 ): Promise<LongMemEvalScore> {
   const directory = resolveRun(runId);
   const report = JSON.parse(readFileSync(join(directory, "report.json"), "utf8")) as LongMemEvalRunReport;
+  const judgeProvider = options.judgeProvider ?? "codex";
+  const judgeDirectory = join(directory, "judge", judgeProvider);
   const cases: LongMemEvalScore["cases"] = [];
-  for (const entry of report.cases) {
+  const judgements: LongMemEvalJudgement[] = [];
+  for (const [index, entry] of report.cases.entries()) {
     if (entry.voidReason || entry.hypothesis === undefined) {
       cases.push({
         questionId: entry.questionId,
@@ -289,12 +331,23 @@ export async function scoreLongMemEval(
       });
       continue;
     }
-    const judged = await judge(entry, entry.hypothesis);
+    const judged = options.judge
+      ? await options.judge(entry, entry.hypothesis)
+      : judgeProvider === "openai"
+        ? await judgeLongMemEvalAnswer(entry, entry.hypothesis)
+        : await judgeLongMemEvalAnswerWithHarness(entry, entry.hypothesis, {
+            provider: judgeProvider,
+            runDirectory: judgeDirectory,
+            id: `judge-${String(index + 1).padStart(3, "0")}-${safeId(entry.questionId)}`,
+          });
+    judgements.push(judged);
     cases.push({
       questionId: entry.questionId,
       questionType: entry.questionType,
       correct: judged.correct,
       judgeResponse: judged.response,
+      judgeModel: judged.model,
+      judgeProvider: judged.provider,
     });
     console.log(`${judged.correct ? style.green("✓") : style.red("✗")} ${entry.questionId}  ${entry.question}`);
   }
@@ -315,7 +368,11 @@ export async function scoreLongMemEval(
   }
   const score: LongMemEvalScore = {
     scoredAt: new Date().toISOString(),
-    model: LONGMEMEVAL_JUDGE_MODEL,
+    model: judgements[0]?.model ?? (judgeProvider === "openai"
+      ? LONGMEMEVAL_JUDGE_MODEL
+      : `${judgeProvider}-subscription`),
+    judgeProvider: judgements[0]?.provider ?? judgeProvider,
+    officialModel: judgements[0]?.officialModel ?? judgeProvider === "openai",
     correct,
     scored: answered.length,
     void: cases.length - answered.length,
@@ -324,9 +381,16 @@ export async function scoreLongMemEval(
     byType,
     cases,
   };
-  await Bun.write(join(directory, "qa-score.json"), `${JSON.stringify(score, null, 2)}\n`);
+  const serializedScore = `${JSON.stringify(score, null, 2)}\n`;
+  // Keep judge variants side by side for comparison; qa-score.json remains the most
+  // recently requested view for existing result readers.
+  await Bun.write(join(directory, `qa-score-${score.judgeProvider}.json`), serializedScore);
+  await Bun.write(join(directory, "qa-score.json"), serializedScore);
   console.log(style.heading(`\nEnd-to-end LongMemEval QA accuracy: ${correct}/${cases.length} · ${(
     score.accuracy * 100).toFixed(1)}%`));
+  console.log(score.officialModel
+    ? `Judge: official ${score.model}`
+    : `Judge: ${score.model} · official prompt, non-official model`);
   if (score.void) {
     console.log(style.yellow(
       `${score.void} void case(s) count as end-to-end failures; judge-only accuracy is ${correct}/${answered.length}.`,
@@ -335,4 +399,9 @@ export async function scoreLongMemEval(
   return score;
 }
 
-export const longMemEvalRunnerInternals = { containerPath, publicQuestion };
+export const longMemEvalRunnerInternals = {
+  containerPath,
+  forbiddenQaTools,
+  publicCaseResult,
+  publicQuestion,
+};

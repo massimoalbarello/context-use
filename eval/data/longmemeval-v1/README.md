@@ -43,7 +43,9 @@ Before distillation, the runner writes a temporary `longmemeval-case.json` conta
 session dates and user/assistant turns. It removes `has_answer` and all other upstream turn
 labels. The question, reference answer, answer-session IDs, and question type never enter
 the agent-facing source. The QA agent is started only after every session has been served,
-in a fresh conversation with access to the Context Use MCP only.
+in a fresh conversation. Only read-only knowledge tools are valid: source reads, writes,
+shell, and web actions void the case. Per-case artifacts omit the reference answer; the
+sealed report is written only after every tested agent has exited.
 
 ## Small runs first
 
@@ -85,22 +87,36 @@ attempt count. The ordinary local corpus evals retain their one-attempt behavior
 
 Run artifacts land under `eval/results/longmemeval/`, including the public source copy,
 distillation snapshots, agent transcripts, per-case results, an official-format
-`hypotheses.jsonl`, and the run report. Score the latest or a named run with LongMemEval's
-published question-type prompts and pinned `gpt-4o-2024-08-06` judge:
+`hypotheses.jsonl`, and the run report. By default, scoring runs LongMemEval's published
+question-type prompt in a fresh Codex harness session with no Context Use MCP and enforced
+zero tool actions, so it needs no API key:
 
 ```sh
-OPENAI_API_KEY=... bun run eval longmem:score
-OPENAI_API_KEY=... bun run eval longmem:score <run-id>
+bun run eval longmem:score
+bun run eval longmem:score <run-id>
 ```
 
-The judge is a TypeScript port of LongMemEval's `evaluate_qa.py`, pinned to the upstream
-commit recorded in `manifest.ts`. A case the harness marks void remains visible and counts
-as an end-to-end failure; judge-only accuracy is also reported so infrastructure failures
-cannot silently inflate the headline.
+That mode is prompt-compatible but not model-identical: the subscription-backed model is
+recorded as `codex-subscription`, so its scores must not be presented as official-model
+LongMemEval results. For strict comparison with published results, select the benchmark's
+pinned `gpt-4o-2024-08-06` model explicitly:
+
+```sh
+OPENAI_API_KEY=... bun run eval longmem:score <run-id> --judge-provider openai
+```
+
+The evaluator is a TypeScript port of LongMemEval's `evaluate_qa.py`, pinned to the upstream
+commit recorded in `manifest.ts`; it keeps the exact question-type prompt and upstream's
+`"yes" in response.lower()` label rule. The tested QA agent finishes before gold is loaded
+by the separate score command. Harness judges receive no Context Use MCP, and any judge
+tool action aborts scoring. A case the run marks void remains visible and counts as an
+end-to-end failure; judge-only accuracy is also reported so infrastructure failures cannot
+silently inflate the headline. Judge-specific files such as `qa-score-codex.json` and
+`qa-score-openai.json` remain side by side; `qa-score.json` points to the most recent score.
 
 ## Attribution
 
-LongMemEval and the cleaned dataset are MIT licensed. The benchmark code is published by
-[Snap Research](https://github.com/snap-research/longmemeval); this pin downloads the
+LongMemEval and the cleaned dataset are MIT licensed. The benchmark code is published in
+[the official LongMemEval repository](https://github.com/xiaowu0162/LongMemEval); this pin downloads the
 [cleaned dataset](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned) used by
 the benchmark ecosystem.

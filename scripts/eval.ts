@@ -19,6 +19,7 @@ import {
   scoreLongMemEvalCommand,
   verifyLongMemEval,
 } from "../eval/cli/longmemeval.ts";
+import type { LongMemEvalJudgeProvider } from "../eval/runner/longmemeval/judge.ts";
 
 function usage(): never {
   console.error(`Usage:
@@ -40,7 +41,7 @@ function usage(): never {
   bun run eval longmem:run (--case <id> | --limit <n> | --stratify <n> | --all)
                             [--provider <codex|claude>] [--dataset-path <path>]
                             [--sessions-per-batch <n>]
-  bun run eval longmem:score [run-id]
+  bun run eval longmem:score [run-id] [--judge-provider <codex|claude|openai>]
 
 Per corpus, before asking:
   bun run eval qa:seed [--batches <n>]             world-v1: put its pages in as they are
@@ -67,6 +68,12 @@ function optionFrom(args: string[], name: string): string | undefined {
 function providerFrom(args: string[]): EvalProvider {
   const value = optionFrom(args, "provider") ?? "codex";
   if (value !== "codex" && value !== "claude") usage();
+  return value;
+}
+
+function longMemJudgeProviderFrom(args: string[]): LongMemEvalJudgeProvider {
+  const value = optionFrom(args, "judge-provider") ?? "codex";
+  if (value !== "codex" && value !== "claude" && value !== "openai") usage();
   return value;
 }
 
@@ -165,7 +172,7 @@ if (command === "connect") {
     sessionsPerBatch: countFrom(args, "sessions-per-batch"),
   });
 } else if (command === "longmem:score") {
-  await scoreLongMemEvalCommand(positional(args));
+  await scoreLongMemEvalCommand(positional(args), longMemJudgeProviderFrom(args));
 } else {
   usage();
 }

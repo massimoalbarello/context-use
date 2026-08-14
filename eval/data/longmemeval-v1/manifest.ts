@@ -16,7 +16,7 @@ export const LONGMEMEVAL_DATASET = {
 
 /** The exact upstream evaluator source whose prompts and model pin `judge.ts` ports. */
 export const LONGMEMEVAL_EVALUATOR = {
-  repository: "snap-research/longmemeval",
+  repository: "xiaowu0162/LongMemEval",
   revision: "9e0b455f4ef0e2ab8f2e582289761153549043fc",
   file: "src/evaluation/evaluate_qa.py",
 } as const;
