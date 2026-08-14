@@ -235,7 +235,9 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       expect(await response.json()).toMatchObject({
         resource,
         resource_name: resourceName,
-        scopes_supported: ["mcp:access"],
+        // Clients register with what they read here, so the refresh-token scope has to
+        // be discoverable or their authorization request is rejected for asking.
+        scopes_supported: ["mcp:access", "offline_access"],
       });
     }
     expect((await application!.handle(new Request(

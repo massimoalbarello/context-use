@@ -4,7 +4,7 @@
   },
   "eval": {
     "command": "distill",
-    "corpus": "world-v1",
+    "corpus": "amara-life-v1",
     "batches": 1
   }
 }

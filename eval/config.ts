@@ -77,12 +77,13 @@ export const CONFIG_PATH = join(import.meta.dir, "config.json");
 export const LOCAL_CONFIG_PATH = join(import.meta.dir, "config.local.json");
 
 /**
- * What a run means with no configuration at all: one corpus batch, small enough to be a
- * setup check and real enough that passing it means the write path works end to end.
+ * What a run means with no configuration at all: one day of the corpus that matches what
+ * Context Use actually does, which is small enough to be a setup check and real enough
+ * that passing it means the write path works end to end.
  */
 const BUILT_IN: EvalConfig = {
   harness: { provider: "codex" },
-  eval: { command: "distill", corpus: "world-v1", window: "full", batches: 1 },
+  eval: { command: "distill", corpus: "amara-life-v1", window: "full", batches: 1 },
   sources: [],
 };
 

@@ -27,7 +27,10 @@ describe("the committed configuration", () => {
     const config = loadEvalConfig([CONFIG_PATH]);
     expect(config.sources).toEqual([CONFIG_PATH]);
     expect(config.harness.provider).toBe("codex");
-    expect(config.eval.command).toBe("distill");
+    // One day of the corpus that matches what Context Use actually does.
+    expect(config.eval).toEqual({
+      command: "distill", corpus: "amara-life-v1", window: "full", batches: 1,
+    });
   });
 
   test("keeps a local override out of commits", () => {

@@ -41,8 +41,8 @@ bun run eval run        # run it
 `check` is why the file is worth having. A configuration can name a harness and a model,
 but only a session proves the CLI is installed and signed in, that the MCP authorization
 was completed, that the model id is one the CLI accepts, and that a tool call reaches the
-knowledge base. It runs one live session that must call `list_directories`, and reports the
-model the CLI actually resolved — an alias such as `opus` silently becomes a dated model
+knowledge base. It runs one live session that has to reach the knowledge base, and reports
+the model the CLI actually resolved — an alias such as `opus` silently becomes a dated model
 id, so pin an exact one and two runs stay comparable. `--no-probe` skips the live session;
 `--provider` and `--model` check a harness before adopting it.
 
@@ -54,6 +54,44 @@ that understands it.
 
 An unknown or misspelled field is an error rather than a shrug, since a `batchs` that
 silently kept the default would report one run and measure another.
+
+### What to put in it
+
+The committed default is one day of `amara-life-v1`, the corpus that matches what Context
+Use actually does. It is a day rather than the corpus because a default should be cheap
+enough to run on a whim and real enough that passing it means something.
+
+In order of what is worth measuring: `amara-life-v1` first, then `steve-jobs-v1` and
+LongMemEval, and `world-v1` last — it is the narrowest of the four and is here mainly
+because it is the only corpus that arrived with an answer key of its own.
+
+```jsonc
+// The whole amara corpus, on a pinned Claude Code model.
+{
+  "harness": { "provider": "claude", "model": "claude-opus-5" },
+  "eval": { "command": "distill", "corpus": "amara-life-v1" }
+}
+
+// Its eight busy days rather than all forty-seven, distilled and then asked and scored.
+{ "eval": { "command": "qa", "corpus": "amara-life-v1", "window": "dense" } }
+
+// One Steve Jobs story, three times, because one stochastic run is not a measurement.
+{ "eval": { "command": "story", "story": "imac-design-and-launch", "repeat": 3 } }
+
+// Every story, or the historical ones in chronological order.
+{ "eval": { "command": "story", "story": "all" } }
+{ "eval": { "command": "journey" } }
+
+// LongMemEval: two cases of every question type, or the whole benchmark.
+{ "eval": { "command": "longmem", "stratify": 2 } }
+{ "eval": { "command": "longmem", "all": true } }
+
+// world-v1 seeded and asked, which measures retrieval alone.
+{ "eval": { "command": "qa", "corpus": "world-v1" } }
+```
+
+`config.json` is JSON, not JSONC — the comments above are for this page only. A layer may
+carry `harness` alone, `eval` alone, or both.
 
 ## What reaches the agent, and what does not
 

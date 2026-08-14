@@ -57,7 +57,11 @@ const download = createMcpAssetDownloadHandler(assets, storage);
 const protectedResourceMetadata = () => json({
   resource: config.MCP_RESOURCE,
   authorization_servers: [config.OAUTH_ISSUER],
-  scopes_supported: [...MCP_SCOPES],
+  // `offline_access` is advertised because a client registers with what it discovers here
+  // and then asks for it at the authorization endpoint. Omitting it made Claude Code
+  // register for `mcp:access` alone and then fail its own authorization request with
+  // `invalid_scope`, since a refresh token is what keeps a long-lived MCP client connected.
+  scopes_supported: [...MCP_SCOPES, "offline_access"],
   bearer_methods_supported: ["header"],
   resource_name: "context-use personal knowledge base",
 });
