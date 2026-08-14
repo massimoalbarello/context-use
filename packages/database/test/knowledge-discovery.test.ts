@@ -78,9 +78,9 @@ describe("knowledge discovery repositories", () => {
           return {
             rowCount: 3,
             rows: [
-              { id: "directory-about", path: "about", title: "About", summary: "Owner knowledge.", depth: 0 },
-              { id: "directory-tasks", path: "about/tasks", title: "Tasks", summary: "Current efforts.", depth: 1 },
-              { id: "directory-job", path: "about/tasks/job-search", title: "Job search", summary: "The current search.", depth: 2 },
+              { id: "directory-about", path: "about", title: "About", summary: "Owner knowledge.", depth: 0, directories_omitted: 4 },
+              { id: "directory-tasks", path: "about/tasks", title: "Tasks", summary: "Current efforts.", depth: 1, directories_omitted: 0 },
+              { id: "directory-job", path: "about/tasks/job-search", title: "Job search", summary: "The current search.", depth: 2, directories_omitted: 0 },
             ],
           };
         }
@@ -105,27 +105,33 @@ describe("knowledge discovery repositories", () => {
     } as unknown as Pool;
     const directories = new DirectoryRepository(pool);
 
-    const tree = await directories.treeByPath("about", 2, 2);
+    const tree = await directories.treeByPath("about", 2, 2, 10);
 
-    expect(queries[0]?.parameters).toEqual(["about", 2]);
+    expect(queries[0]?.parameters).toEqual(["about", 2, 10]);
+    expect(queries[0]?.sql).toContain("JOIN LATERAL");
+    expect(queries[0]?.sql).toContain("LIMIT $3");
     expect(queries[2]?.parameters).toEqual([
       ["about", "about/tasks", "about/tasks/job-search"],
       3,
     ]);
     expect(tree).toMatchObject({
       path: "about",
+      directories_omitted: 4,
       guide: { path: "about/agents" },
       pages: [{ path: "about/intro" }],
       directories: [{
         path: "about/tasks",
+        directories_omitted: 0,
         pages: [{ path: "about/tasks/current" }],
         directories: [{
           path: "about/tasks/job-search",
+          directories_omitted: 0,
           guide: { path: "about/tasks/job-search/agents" },
           pages: [],
         }],
       }],
       requested_depth: 2,
+      max_directories: 10,
       max_pages: 2,
       truncated: true,
     });

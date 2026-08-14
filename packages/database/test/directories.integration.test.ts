@@ -19,6 +19,7 @@ describeDatabase("first-class directory indexes", () => {
   const parentPath = `tests/directory-${suffix}`;
   const childPath = `${parentPath}/2020-2024_chapters`;
   const grandchildPath = `${childPath}/details`;
+  const siblingPath = `${parentPath}/2025-present_chapters`;
   const pageIds: string[] = [];
 
   afterAll(async () => {
@@ -29,8 +30,8 @@ describeDatabase("first-class directory indexes", () => {
       await pool.query("DELETE FROM knowledge_page_versions WHERE page_id=ANY($1::uuid[])", [pageIds]);
     }
     await pool.query(
-      "DELETE FROM knowledge_directories WHERE current_path IN ($1,$2,$3)",
-      [grandchildPath, childPath, parentPath],
+      "DELETE FROM knowledge_directories WHERE current_path IN ($1,$2,$3,$4)",
+      [grandchildPath, siblingPath, childPath, parentPath],
     );
     await pool.end();
   });
@@ -123,6 +124,23 @@ describeDatabase("first-class directory indexes", () => {
       path: grandchildPath,
       title: "Details",
       summary: "Supporting details for the chapter.",
+    });
+    await directories.create({
+      path: siblingPath,
+      title: "Recent chapters",
+      summary: "The owner's more recent chapters.",
+    });
+    expect(await directories.treeByPath(parentPath, 1, 200, 1)).toMatchObject({
+      path: parentPath,
+      directories_omitted: 1,
+      directories: [{
+        path: childPath,
+        directories_omitted: 0,
+        directories: [],
+      }],
+      requested_depth: 1,
+      max_directories: 1,
+      truncated: true,
     });
     childEntry = (await directories.indexByPath(parentPath))?.children
       .find(({ id }) => id === child.id);

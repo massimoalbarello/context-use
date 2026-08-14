@@ -791,11 +791,12 @@ describe("MCP knowledge tools", () => {
 
   test("browses nested page metadata with directory guides promoted separately", async () => {
     const directories = {
-      async treeByPath(path: string, depth: number, maxPages: number) {
-        expect({ path, depth, maxPages }).toEqual({
+      async treeByPath(path: string, depth: number, maxPages: number, maxDirectories: number) {
+        expect({ path, depth, maxPages, maxDirectories }).toEqual({
           path: "about",
           depth: 3,
           maxPages: 100,
+          maxDirectories: 7,
         });
         return {
           id: "11111111-1111-4111-8111-111111111111",
@@ -816,6 +817,7 @@ describe("MCP knowledge tools", () => {
             title: "Introduction",
             summary: "A concise introduction to the owner.",
           }],
+          directories_omitted: 2,
           directories: [{
             id: "44444444-4444-4444-8444-444444444444",
             path: "about/tasks",
@@ -824,10 +826,12 @@ describe("MCP knowledge tools", () => {
             guide: null,
             pages: [],
             directories: [],
+            directories_omitted: 0,
           }],
           requested_depth: depth,
+          max_directories: maxDirectories,
           max_pages: maxPages,
-          truncated: false,
+          truncated: true,
         };
       },
     } as unknown as DirectoryRepository;
@@ -841,20 +845,40 @@ describe("MCP knowledge tools", () => {
       method: "tools/call",
       params: {
         name: "browse_directory",
-        arguments: { path: "about", depth: 3, max_pages: 100 },
+        arguments: { path: "about", depth: 3, max_pages: 100, max_directories: 7 },
       },
     });
-    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
+    expect(response.result?.content?.[0]?.text).toContain("# Directory browse");
+    expect(response.result?.content?.[0]?.text).toContain("- **About** `about` — Knowledge about the owner.");
+    expect(response.result?.content?.[0]?.text).toContain("- Guide: **AGENTS.md** `about/agents` (v1)");
+    expect(response.result?.content?.[0]?.text).toContain("- Page: **Introduction** `about/intro` (v2)");
+    expect(response.result?.content?.[0]?.text).toContain("_… 2 more directories not shown_");
+    expect(response.result?.content?.[0]?.text).toContain("Depth: 3 · Directory limit: 7/folder · Page limit: 100 · Truncated: yes");
+    expect(response.result?.structuredContent).toBeUndefined();
+
+    const jsonResponse = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      directories,
+    ), {
+      jsonrpc: "2.0",
+      id: 12,
+      method: "tools/call",
+      params: {
+        name: "browse_directory",
+        arguments: { path: "about", depth: 3, max_pages: 100, max_directories: 7, format: "json" },
+      },
+    });
+    expect(JSON.parse(jsonResponse.result?.content?.[0]?.text ?? "null")).toMatchObject({
       path: "about",
       guide: { path: "about/agents", title: "AGENTS.md" },
       pages: [{ path: "about/intro", title: "Introduction" }],
       directories: [{ path: "about/tasks" }],
-      truncated: false,
+      directories_omitted: 2,
+      max_directories: 7,
+      truncated: true,
     });
-    expect(response.result?.structuredContent).toMatchObject({
-      path: "about",
-      directories: [{ path: "about/tasks" }],
-    });
+    expect(jsonResponse.result?.structuredContent).toBeUndefined();
   });
 
   test("advertises current skill summaries and loads a selected skill", async () => {
@@ -939,6 +963,17 @@ describe("MCP knowledge tools", () => {
     const createPage = knowledge.result?.tools?.find(({ name }) => name === "create_page");
     expect(createPage?.description).toContain("input schema defines summaries");
     expect(createPage?.inputSchema?.properties?.body_markdown?.description).toContain("layout=half");
+    expect(knowledge.result?.tools?.find(({ name }) => name === "browse_directory")
+      ?.inputSchema?.properties?.max_directories).toMatchObject({
+        default: 10,
+        minimum: 1,
+        maximum: 100,
+      });
+    expect(knowledge.result?.tools?.find(({ name }) => name === "browse_directory")
+      ?.inputSchema?.properties?.format).toMatchObject({
+        default: "markdown",
+        enum: ["markdown", "json"],
+      });
     expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_change");
     expect(knowledge.result?.tools?.find(({ name }) => name === "prepare_change")?.inputSchema?.properties)
       .toHaveProperty("cached_guidance_receipt");
