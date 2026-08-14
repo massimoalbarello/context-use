@@ -38,6 +38,28 @@ export type KnowledgeExportJob = {
   error?: string | undefined;
 };
 
+const exportJobStorageKey = "context-use.knowledge-export-job";
+
+export function storedExportJob(storage?: Pick<Storage, "getItem"> | null): KnowledgeExportJob | null {
+  try {
+    const source = storage === undefined
+      ? typeof window === "undefined" ? null : window.localStorage
+      : storage;
+    if (!source) return null;
+    const value = JSON.parse(source.getItem(exportJobStorageKey) ?? "null") as Partial<KnowledgeExportJob> | null;
+    if (!value || typeof value.intentId !== "string" || !/^[a-f0-9-]{36}$/.test(value.intentId)
+        || (value.kind !== "portable" && value.kind !== "restorable")) return null;
+    return {
+      intentId: value.intentId,
+      kind: value.kind,
+      status: "processing",
+      downloadUrl: `/api/dashboard/knowledge-exports/${encodeURIComponent(value.intentId)}/download`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 type KnowledgeImportIntent = {
   intent: { id: string; expires_at: string };
   summary: {
@@ -112,7 +134,7 @@ export function KnowledgeExportPreparationStatus({
           : job.status === "ready"
             ? "Archive ready to download"
             : "Archive preparation stopped"}</strong>
-        {job.status === "processing" && <small>The ZIP is being assembled and checked. The download button will appear when it is ready.</small>}
+        {job.status === "processing" && <small>The ZIP is being assembled and checked. You can leave Settings and return while this export remains available.</small>}
         {job.status === "ready" && <small>{job.filename}{job.sizeBytes ? ` · ${formatExportBytes(job.sizeBytes)}` : ""}</small>}
         {job.status === "failed" && <small className="error">{job.error || "The archive could not be prepared."}</small>}
       </div>
@@ -149,11 +171,11 @@ export function Settings({
   const [removalWorking, setRemovalWorking] = useState(false);
   const [removalError, setRemovalError] = useState("");
   const [exportIntent, setExportIntent] = useState<KnowledgeExportIntent | null>(null);
-  const [exportKind, setExportKind] = useState<"portable" | "restorable">("portable");
+  const [exportJob, setExportJob] = useState<KnowledgeExportJob | null>(storedExportJob);
+  const [exportKind, setExportKind] = useState<"portable" | "restorable">(() => exportJob?.kind ?? "portable");
   const [exportPreparing, setExportPreparing] = useState(false);
   const [exportWorking, setExportWorking] = useState(false);
   const [exportError, setExportError] = useState("");
-  const [exportJob, setExportJob] = useState<KnowledgeExportJob | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importIntent, setImportIntent] = useState<KnowledgeImportIntent | null>(null);
   const [importPreparing, setImportPreparing] = useState(false);
@@ -169,6 +191,21 @@ export function Settings({
       .catch(() => { if (active) setImportEligibilityError("Import availability could not be checked. Reload Settings to try again."); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    try {
+      if (exportJob) {
+        window.localStorage.setItem(exportJobStorageKey, JSON.stringify({
+          intentId: exportJob.intentId,
+          kind: exportJob.kind,
+        }));
+      } else {
+        window.localStorage.removeItem(exportJobStorageKey);
+      }
+    } catch {
+      // The server-side intent remains resumable even when browser storage is unavailable.
+    }
+  }, [exportJob?.intentId, exportJob?.kind]);
 
   useEffect(() => {
     if (!exportJob || exportJob.status !== "processing") return;
@@ -201,12 +238,11 @@ export function Settings({
         }
       } catch (error) {
         if (!active) return;
-        setExportJob((current) => current && current.intentId === exportJob.intentId ? {
-          ...current,
-          status: "failed",
-          error: error instanceof Error ? error.message : "Could not check archive progress",
-        } : current);
-        return;
+        if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+          setExportJob((current) => current?.intentId === exportJob.intentId ? null : current);
+          setMessage(error.message);
+          return;
+        }
       }
       if (active) timeout = window.setTimeout(() => void poll(), 2_000);
     };
@@ -447,7 +483,10 @@ export function Settings({
       {!exportJob && <button className="primary export-start-button" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport()}>{exportPreparing ? "Checking assets…" : "Export with passkey"}</button>}
       {exportJob && <KnowledgeExportPreparationStatus
         job={exportJob}
-        onDownload={() => setMessage("Archive download started.")}
+        onDownload={() => {
+          try { window.localStorage.removeItem(exportJobStorageKey); } catch { /* Browser storage may be unavailable. */ }
+          setMessage("Archive download started.");
+        }}
         onReset={() => setExportJob(null)}
       />}
     </section>

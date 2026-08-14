@@ -176,6 +176,7 @@ describe("portable knowledge export", () => {
       "context-use-export/notes/Other Note.md",
       "context-use-export/projects/acme/site photo.jpg",
     ]);
+    expect(entries.filter(({ directory }) => !directory).every(({ compressionMethod }) => compressionMethod === 0)).toBeTrue();
     const brief = entries.find(({ filename }) => filename.endsWith("Q3 Brief.md"))!;
     if (!("getData" in brief)) throw new Error("Expected the exported page to be a file");
     expect(await brief.getData(new TextWriter())).toContain("../../notes/Other%20Note.md");
