@@ -41,8 +41,13 @@ into this skill.
 
 ## 4. Protect information density
 
-Concise means removing duplication and exposition, not facts or safeguards. Before deleting
-guidance, classify it as:
+Treat every edit as a refactor, not an append. Do not simply add a rule to an `AGENTS.md` or
+automation instruction. First make the complete affected text as clear and concise as
+possible without losing behavior: remove duplication, replace or tighten overlapping prose,
+and move rules to their owner. Add net-new text only for a genuinely missing behavior or
+safeguard.
+
+Before deleting guidance, classify it as:
 
 - duplicated elsewhere: remove the copy;
 - entity-specific: move it to the entity guide;
