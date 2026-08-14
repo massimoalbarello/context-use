@@ -14,8 +14,9 @@ structured and written.
   changes or a receipt is rejected.
 - Run independently from every other automation and treat the fixed knowledge-change window
   as the entire input.
-- Mutate only pages beneath `about/diary/` and this automation's state. Read entity pages for
-  evidence and links; never repair them from this workflow.
+- Mutate only dated directory structure and pages beneath `about/diary/`, plus this
+  automation's state. Read entity pages for evidence and links; never repair them from this
+  workflow.
 - Preserve owner-authored and uncertain material exactly as the diary guide requires. Never
   put cursors, page identifiers, scan logs or reports in a day folder.
 
@@ -96,15 +97,21 @@ Reading an earlier day supplies evidence for a continuity link; it does not requ
 
 ### 6. Reconcile each affected day
 
-Prepare the exact day target and apply the diary guide. Integrate only the support changed in
-this fixed window. Do not rebuild an unaffected day or retell a changed entity's current body.
+- **a.** Prepare the exact day target and apply the diary guide.
+- **b.** Before creating a day page, call `get_directory` for its year, month and day paths.
+  Create every missing directory with `create_directory`, shallowest first, using the prepared
+  guidance receipt. Title them deterministically as `2026`, `August 2026` and
+  `14 August 2026`, substituting the affected date, and leave their optional summaries empty.
+  Never create an unrelated ancestor or an alternate date hierarchy.
+- **c.** Integrate only the support changed in this fixed window. Do not rebuild an unaffected
+  day or retell a changed entity's current body.
+- **d.** On replay, converge on the same semantic day rather than appending a second rendition.
+  Update only composer-owned passages. Archive only a companion page created by this
+  automation whose useful material has moved elsewhere; preserve every other byte.
 
-On replay, the same ledger window must converge on the same semantic day rather than append a
-second rendition. Update only composer-owned passages. Archive only a companion page created
-by this automation whose useful material has moved elsewhere; preserve every other byte.
-
-If a diary mutation fails, leave the old checkpoint in force, stop, and report the actual
-error.
+If a required directory or page mutation fails, leave the old checkpoint in force, stop, and
+report the actual error. Directories already created by a partial attempt remain valid
+structure for the replay.
 
 ### 7. Save the checkpoint and report
 
