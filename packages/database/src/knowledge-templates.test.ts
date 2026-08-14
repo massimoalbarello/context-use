@@ -1022,10 +1022,10 @@ describe("knowledge templates", () => {
       "`get_page_history`",
       "`browse_directory`",
       "`search_pages`",
-      "call `get_directory` for its year, month and day paths",
+      "`get_directory` for the year, month and day",
       "`create_directory`",
       "shallowest first",
-      "directories already created by a partial attempt remain valid structure for the replay",
+      "replay reuses any directories already created",
       "next_cursor",
       "`created`, `updated` and `archived` lists",
     ]) {
