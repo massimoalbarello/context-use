@@ -63,6 +63,11 @@ describeApplication("HTTP credential and OAuth boundary", () => {
   });
 
   test("bearer credentials cannot stage, confirm, or restore a knowledge import", async () => {
+    const eligibility = await application!.handle(new Request(
+      "http://localhost:3000/api/dashboard/knowledge-import-eligibility",
+      { headers: { authorization: "Bearer forged" } },
+    ));
+    expect(eligibility.status).toBe(401);
     const intent = await application!.handle(new Request("http://localhost:3000/api/dashboard/knowledge-import-intents", {
       method: "POST",
       headers: { authorization: "Bearer forged", "content-type": "application/zip" },

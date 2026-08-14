@@ -102,6 +102,32 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
 export class KnowledgeArchiveRepository {
   constructor(private readonly dashboardPool: Pool) {}
 
+  async importAvailable(): Promise<boolean> {
+    // The durable change ledger covers every retained and deleted page version,
+    // so only assets and otherwise-invisible empty directories need separate checks.
+    // restore_knowledge_import remains the race-safe authority.
+    const result = await this.dashboardPool.query<{ eligible: boolean }>(
+      `SELECT
+         NOT EXISTS (SELECT 1 FROM assets)
+         AND NOT EXISTS (
+           SELECT 1 FROM knowledge_page_changes
+           WHERE coalesce(actor_subject,'')<>'context-use-bootstrap'
+             AND coalesce(actor_subject,'') NOT LIKE 'context-use-template/%'
+         )
+         AND NOT EXISTS (
+           SELECT 1
+           FROM knowledge_directories directory
+           WHERE directory.current_path NOT IN ('','automations')
+             AND NOT EXISTS (
+               SELECT 1 FROM knowledge_pages page
+               WHERE page.current_path LIKE directory.current_path||'/%'
+             )
+         )
+       AS eligible`,
+    );
+    return result.rows[0]?.eligible === true;
+  }
+
   async snapshot(): Promise<RestorableKnowledgeRecords> {
     return transaction(this.dashboardPool, async (client) => {
       await client.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY");

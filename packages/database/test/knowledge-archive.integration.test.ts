@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { randomBytes, randomUUID } from "node:crypto";
-import { Client } from "pg";
-import type { RestorableKnowledgeRecords } from "../src/index.ts";
+import { Client, type Pool } from "pg";
+import { KnowledgeArchiveRepository, type RestorableKnowledgeRecords } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
 
 const databaseUrl = await disposableDatabaseUrl();
@@ -18,6 +18,7 @@ describeDatabase("passkey-confirmed full knowledge restore", () => {
     await client.connect();
     await client.query("BEGIN");
     try {
+      const archives = new KnowledgeArchiveRepository(client as unknown as Pool);
       await client.query("SET CONSTRAINTS ALL DEFERRED");
       await client.query("SET LOCAL session_replication_role=replica");
       await client.query(
@@ -60,6 +61,7 @@ describeDatabase("passkey-confirmed full knowledge restore", () => {
          ) VALUES ($1,$2,1,'personal-before-import','Personal','Personal destination knowledge.','Do not overwrite','Create personal page','dashboard','destination-owner')`,
         [personalVersionId, personalPageId],
       );
+      expect(await archives.importAvailable()).toBe(false);
 
       await client.query(
         `INSERT INTO "user"(id,name,email,"emailVerified")
@@ -254,6 +256,7 @@ describeDatabase("passkey-confirmed full knowledge restore", () => {
       await client.query("DELETE FROM knowledge_pages WHERE id=$1", [personalPageId]);
       await client.query("DELETE FROM knowledge_page_changes WHERE page_id=$1", [personalPageId]);
       await client.query("SET LOCAL session_replication_role=origin");
+      expect(await archives.importAvailable()).toBe(true);
 
       await client.query("SET LOCAL ROLE context_use_dashboard");
       const restored = await client.query<{ result: Record<string, number> }>(
