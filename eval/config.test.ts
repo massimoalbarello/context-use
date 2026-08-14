@@ -29,7 +29,7 @@ describe("the committed configuration", () => {
     expect(config.harness.provider).toBe("codex");
     // One day of the corpus that matches what Context Use actually does.
     expect(config.eval).toEqual({
-      command: "distill", corpus: "amara-life-v1", window: "full", batches: 1,
+      command: "distill", corpus: "amara-life-v1", window: "dense", batches: 1,
     });
   });
 

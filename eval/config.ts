@@ -78,12 +78,16 @@ export const LOCAL_CONFIG_PATH = join(import.meta.dir, "config.local.json");
 
 /**
  * What a run means with no configuration at all: one day of the corpus that matches what
- * Context Use actually does, which is small enough to be a setup check and real enough
- * that passing it means the write path works end to end.
+ * Context Use actually does.
+ *
+ * The dense window rather than the whole corpus, because amara's first thirty-nine days
+ * carry one record each and its activity is in the eight busy ones. A default of `full`
+ * with one batch distills a single record, which proves the path is alive and measures
+ * nothing.
  */
 const BUILT_IN: EvalConfig = {
   harness: { provider: "codex" },
-  eval: { command: "distill", corpus: "amara-life-v1", window: "full", batches: 1 },
+  eval: { command: "distill", corpus: "amara-life-v1", window: "dense", batches: 1 },
   sources: [],
 };
 

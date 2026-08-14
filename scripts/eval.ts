@@ -128,6 +128,20 @@ function windowFrom(args: string[]): CorpusWindow {
   return value;
 }
 
+/**
+ * The batch count, from the flag or from the configured selection.
+ *
+ * Falling back matters more here than anywhere else: the configured eval is one day of a
+ * forty-seven day corpus, and a `distill` that took the corpus from the configuration but
+ * not the count would quietly run the other forty-six.
+ */
+function batchesFrom(args: string[]): number | undefined {
+  const configured = config.eval.command === "distill" || config.eval.command === "qa"
+    ? config.eval.batches
+    : undefined;
+  return countFrom(args, "batches", "days") ?? configured;
+}
+
 function countFrom(args: string[], ...names: string[]): number | undefined {
   const value = names.map((name) => optionFrom(args, name)).find((found) => found !== undefined);
   if (value === undefined) return undefined;
@@ -159,7 +173,7 @@ if (command === "check") {
     harness: harnessFrom(args),
     corpus: corpusFrom(args),
     window: windowFrom(args),
-    batches: countFrom(args, "batches", "days"),
+    batches: batchesFrom(args),
   });
 } else if (command === "corpus:verify") {
   verifyCorpus(corpusFrom(args));
@@ -174,7 +188,7 @@ if (command === "check") {
 } else if (command === "qa:verify") {
   verifyQuestionsCommand();
 } else if (command === "qa:seed") {
-  await seedCommand({ batches: countFrom(args, "batches") });
+  await seedCommand({ batches: batchesFrom(args) });
 } else if (command === "qa:ask") {
   await askQuestionsCommand({
     runId: positional(args),

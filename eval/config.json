@@ -5,6 +5,7 @@
   "eval": {
     "command": "distill",
     "corpus": "amara-life-v1",
+    "window": "dense",
     "batches": 1
   }
 }
