@@ -784,6 +784,7 @@ describe("knowledge templates", () => {
       "say what remains unknown",
       "never store credentials, access tokens, access codes or recovery secrets",
       "check the completed write against the retained evidence",
+      "every supported particular is present where it belongs",
       "material relationships are recorded from both relevant sides",
       "no diary entry was written while recording activity",
     ]) {

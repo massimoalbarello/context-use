@@ -125,6 +125,31 @@ describe("story subject resolution", () => {
     expect(resolved.subjects.get("imac")?.candidate?.path).toBe("companies/apple-computer/products");
   });
 
+  test("does not identify an organization from another organization's relationship summary", () => {
+    const snapshot = fixture();
+    snapshot.directories.push({
+      id: "company-microsoft",
+      path: "companies/microsoft",
+      version: 1,
+      title: "Microsoft",
+      summary: "Microsoft reset its partnership with Apple.",
+    });
+    snapshot.pages.push(page({
+      id: "microsoft-intro",
+      directoryId: "company-microsoft",
+      path: "companies/microsoft/intro",
+      title: "Microsoft",
+      body: "Microsoft has a continuing partnership with Apple.",
+    }));
+
+    const resolved = resolveStorySubjects(buildKnowledgeGraph(snapshot), {
+      apple: definitions.apple,
+    });
+
+    expect(resolved.subjects.get("apple")?.status).toBe("resolved");
+    expect(resolved.subjects.get("apple")?.candidate?.path).toBe("companies/apple-computer");
+  });
+
   test("treats a generic entity folder as canonical instead of duplicating its detail pages", () => {
     const snapshot = fixture();
     snapshot.directories.push({
@@ -238,6 +263,11 @@ describe("story partial scoring", () => {
       all: ["1299", "1000", "US"],
     })).toBe(1);
     expect(termsScore("The price is for business users.", { all: ["US"] })).toBe(0);
+  });
+
+  test("treats month-first and day-first dates as equivalent facts", () => {
+    expect(termsScore("The iPod ships on 10 November.", { all: ["November 10"] })).toBe(1);
+    expect(termsScore("The iPod ships on November 10 2001.", { all: ["10 November 2001"] })).toBe(1);
   });
 
   test("awards the dated half of a timeline check when its occurrence link is absent", () => {

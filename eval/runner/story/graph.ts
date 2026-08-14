@@ -170,7 +170,19 @@ export function termsScore(text: string, terms?: TextTerms): number {
     return result;
   };
   const haystack = ` ${comparable(text)} `;
-  const includes = (term: string): boolean => haystack.includes(` ${comparable(term)} `);
+  const includes = (term: string): boolean => {
+    const value = comparable(term);
+    if (haystack.includes(` ${value} `)) return true;
+    const months = "january|february|march|april|may|june|july|august|september|october|november|december";
+    const monthFirst = new RegExp(`^(${months}) (\\d{1,2})( \\d{4})?$`).exec(value);
+    if (monthFirst) {
+      return haystack.includes(` ${monthFirst[2]} ${monthFirst[1]}${monthFirst[3] ?? ""} `);
+    }
+    const dayFirst = new RegExp(`^(\\d{1,2}) (${months})( \\d{4})?$`).exec(value);
+    return dayFirst
+      ? haystack.includes(` ${dayFirst[2]} ${dayFirst[1]}${dayFirst[3] ?? ""} `)
+      : false;
+  };
   const all = terms.all ?? [];
   const any = terms.any ?? [];
   const scores: number[] = [];

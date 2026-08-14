@@ -32,6 +32,27 @@ function folderDenotes(folder: string, name: string): boolean {
   return [...wanted].every((token) => candidate.has(token));
 }
 
+/** Prefer a full canonical name over aliases, and exact folders over decorated ones. */
+function folderMatchRank(folder: string, entity: EntityExpectation): number | undefined {
+  const candidate = normalise(folder);
+  if (candidate === normalise(entity.name)) return 0;
+  if (entity.aliases.some((alias) => candidate === normalise(alias))) return 1;
+  if (folderDenotes(folder, entity.name)) return 2;
+  if (entity.aliases.some((alias) => folderDenotes(folder, alias))) return 3;
+  return undefined;
+}
+
+/** A tied loose match is ambiguous and must not be reported as a filed entity. */
+function resolveEntityFolder(folders: Iterable<string>, entity: EntityExpectation): string | undefined {
+  const ranked = [...folders].flatMap((folder) => {
+    const rank = folderMatchRank(folder, entity);
+    return rank === undefined ? [] : [{ folder, rank }];
+  }).sort((left, right) => left.rank - right.rank || left.folder.localeCompare(right.folder));
+  const [best, second] = ranked;
+  if (!best || (second && second.rank === best.rank)) return undefined;
+  return best.folder;
+}
+
 /**
  * Entity folders directly under a top-level directory, with the pages inside each. A
  * top-level guide page such as `people/agents` is not an entity and is skipped.
@@ -128,11 +149,9 @@ function resolve(
   const folders = new Map(Object.values(HOME).map((top) => [top, entityFolders(pages, top)]));
   return entities.filter((entity) => entity.knowableFrom <= day).map((entity) => {
     const top = HOME[entity.kind];
-    // Any surface form the corpus used counts: the folder may be named for any of them.
-    // Any surface form the corpus uses counts: the folder may be named for any of them.
-    const forms = [entity.name, ...entity.aliases];
-    const folder = [...(folders.get(top)?.keys() ?? [])].find((candidate) =>
-      forms.some((form) => folderDenotes(candidate, form)));
+    // Any surface form the corpus used counts, but a loose alias must never outrank an exact
+    // canonical folder or arbitrarily choose between namesakes.
+    const folder = resolveEntityFolder(folders.get(top)?.keys() ?? [], entity);
     const name = normalise(entity.name);
     const mentions = pages.filter((page) =>
       normalise(`${page.title} ${page.summary} ${page.body}`).includes(name)).length;
@@ -140,20 +159,44 @@ function resolve(
   });
 }
 
-function resolveMeeting(meeting: MeetingExpectation, pages: PageSnapshot[]): MeetingResult {
+function meetingTitleScore(meeting: MeetingExpectation, page: PageSnapshot): number {
+  const expected = tokens(meeting.title);
+  if (expected.size === 0) return 0;
+  const actual = tokens(page.title);
+  return [...expected].filter((token) => actual.has(token)).length / expected.size;
+}
+
+function resolveMeeting(
+  meeting: MeetingExpectation,
+  pages: PageSnapshot[],
+  usedPages: Set<string>,
+): MeetingResult {
   const forms = dayForms(meeting.day);
-  const page = pages.find((candidate) => {
+  const candidates = pages.filter((candidate) => {
     // Under `meetings/`, and naming the day in its path or title. A body mentioning a date
     // in passing is not a record of the meeting.
-    if (!candidate.path.startsWith("meetings/")) return false;
+    if (!candidate.path.startsWith("meetings/") || usedPages.has(candidate.path)) return false;
     const label = normalise(`${candidate.title} ${candidate.path}`);
     if (!forms.some((form) => label.includes(form))) return false;
     // The attendee may be anywhere: a meeting is as often titled by its subject —
     // "Meridian Robotics check-in — 14 April 2026" — as by who was in it.
     const everything = normalise(`${label} ${candidate.summary} ${candidate.body}`);
     return meeting.attendees.some((attendee) => everything.includes(normalise(attendee.name)));
-  });
+  }).sort((left, right) => meetingTitleScore(meeting, right) - meetingTitleScore(meeting, left)
+    || left.path.localeCompare(right.path));
+  const page = candidates[0];
+  if (page) usedPages.add(page.path);
   return { record: meeting.record, day: meeting.day, title: meeting.title, page: page?.path };
+}
+
+function resolveMeetings(
+  meetings: MeetingExpectation[],
+  pages: PageSnapshot[],
+  day: string,
+): MeetingResult[] {
+  const usedPages = new Set<string>();
+  return meetings.filter((meeting) => meeting.day <= day)
+    .map((meeting) => resolveMeeting(meeting, pages, usedPages));
 }
 
 export function scoreDay(expectations: Expectations, pages: PageSnapshot[], day: string): DayScore {
@@ -161,9 +204,7 @@ export function scoreDay(expectations: Expectations, pages: PageSnapshot[], day:
     day,
     pageCount: pages.length,
     entities: resolve(expectations.entities, pages, day),
-    meetings: expectations.meetings
-      .filter((meeting) => meeting.day <= day)
-      .map((meeting) => resolveMeeting(meeting, pages)),
+    meetings: resolveMeetings(expectations.meetings, pages, day),
     injections: expectations.injections
       .filter((injection) => injection.day <= day)
       .map((injection) => ({

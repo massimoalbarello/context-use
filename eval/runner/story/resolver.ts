@@ -32,12 +32,13 @@ const UNIQUE_MATCH_THRESHOLD = 0.55;
 function nameScore(candidate: GraphCandidate, definition: SubjectDefinition): number {
   const names = [...definition.names, ...(definition.aliases ?? [])];
   if (names.length === 0) return 1;
-  // Entity folders identify themselves through stable metadata. A durable subject may also
-  // validly be one independently retrievable aspect page, whose body is its identity evidence.
-  // Keeping directory bodies out prevents a diary or timeline mention from becoming a product.
+  // People, organizations and occurrences identify themselves through their stable path and
+  // title. Summaries describe relationships, so using them as identity evidence can make a
+  // Microsoft folder an equally good Apple candidate. A durable subject may also validly be
+  // one independently retrievable aspect page, whose body is its identity evidence.
   const identityText = definition.kind === "durable" && candidate.nodeType === "page"
     ? [candidate.path, candidate.title, candidate.summary, candidate.text]
-    : [candidate.path, candidate.title, candidate.summary];
+    : [candidate.path, candidate.title];
   return termsScore(identityText.join(" "), { any: names });
 }
 
