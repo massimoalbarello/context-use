@@ -54,6 +54,10 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       { headers: { "sec-fetch-site": "same-origin" } },
     ));
     expect(download.status).toBe(401);
+    const status = await application!.handle(new Request(
+      "http://localhost:3000/api/dashboard/knowledge-exports/11111111-1111-4111-8111-111111111111/status",
+    ));
+    expect(status.status).toBe(401);
     const confirm = await application!.handle(new Request("http://localhost:3000/api/dashboard/knowledge-exports/confirm", {
       method: "POST",
       headers: { authorization: "Bearer forged", "content-type": "application/json" },

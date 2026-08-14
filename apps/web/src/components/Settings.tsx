@@ -19,6 +19,25 @@ type KnowledgeExportIntent = {
   authentication_options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
 };
 
+type KnowledgeExportConfirmation = {
+  download_url: string;
+};
+
+type KnowledgeExportStatus =
+  | { status: "processing"; status_url: string }
+  | { status: "ready"; download_url: string; filename: string; size_bytes: number }
+  | { status: "failed"; message: string; code: string };
+
+export type KnowledgeExportJob = {
+  intentId: string;
+  kind: "portable" | "restorable";
+  status: "processing" | "ready" | "failed";
+  downloadUrl: string;
+  filename?: string | undefined;
+  sizeBytes?: number | undefined;
+  error?: string | undefined;
+};
+
 type KnowledgeImportIntent = {
   intent: { id: string; expires_at: string };
   summary: {
@@ -75,6 +94,39 @@ export function formatExportBytes(bytes: number): string {
   return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} ${unit}`;
 }
 
+export function KnowledgeExportPreparationStatus({
+  job,
+  onDownload,
+  onReset,
+}: {
+  job: KnowledgeExportJob;
+  onDownload: () => void;
+  onReset: () => void;
+}) {
+  return <div className={`export-preparation ${job.status}`} role="status" aria-live="polite">
+    <div className="export-preparation-copy">
+      {job.status === "processing" && <span className="export-spinner" aria-hidden="true" />}
+      <div>
+        <strong>{job.status === "processing"
+          ? `Preparing ${job.kind === "restorable" ? "full archive" : "latest snapshot"}…`
+          : job.status === "ready"
+            ? "Archive ready to download"
+            : "Archive preparation stopped"}</strong>
+        {job.status === "processing" && <small>The ZIP is being assembled and checked. The download button will appear when it is ready.</small>}
+        {job.status === "ready" && <small>{job.filename}{job.sizeBytes ? ` · ${formatExportBytes(job.sizeBytes)}` : ""}</small>}
+        {job.status === "failed" && <small className="error">{job.error || "The archive could not be prepared."}</small>}
+      </div>
+    </div>
+    {job.status === "ready" && <div className="export-preparation-actions">
+      <a className="button primary" href={job.downloadUrl} onClick={onDownload}>Download archive</a>
+      <button onClick={onReset}>Prepare another</button>
+    </div>}
+    {job.status === "failed" && <div className="export-preparation-actions">
+      <button className="primary" onClick={onReset}>Start over</button>
+    </div>}
+  </div>;
+}
+
 export function Settings({
   passkeys,
   onPasskeysChanged,
@@ -101,6 +153,7 @@ export function Settings({
   const [exportPreparing, setExportPreparing] = useState(false);
   const [exportWorking, setExportWorking] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [exportJob, setExportJob] = useState<KnowledgeExportJob | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importIntent, setImportIntent] = useState<KnowledgeImportIntent | null>(null);
   const [importPreparing, setImportPreparing] = useState(false);
@@ -116,6 +169,53 @@ export function Settings({
       .catch(() => { if (active) setImportEligibilityError("Import availability could not be checked. Reload Settings to try again."); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!exportJob || exportJob.status !== "processing") return;
+    let active = true;
+    let timeout: number | undefined;
+    const poll = async () => {
+      try {
+        const status = await api<KnowledgeExportStatus>(
+          `/api/dashboard/knowledge-exports/${encodeURIComponent(exportJob.intentId)}/status`,
+        );
+        if (!active) return;
+        if (status.status === "ready") {
+          setExportJob((current) => current && current.intentId === exportJob.intentId ? {
+            ...current,
+            status: "ready",
+            downloadUrl: status.download_url,
+            filename: status.filename,
+            sizeBytes: status.size_bytes,
+            error: undefined,
+          } : current);
+          return;
+        }
+        if (status.status === "failed") {
+          setExportJob((current) => current && current.intentId === exportJob.intentId ? {
+            ...current,
+            status: "failed",
+            error: status.message,
+          } : current);
+          return;
+        }
+      } catch (error) {
+        if (!active) return;
+        setExportJob((current) => current && current.intentId === exportJob.intentId ? {
+          ...current,
+          status: "failed",
+          error: error instanceof Error ? error.message : "Could not check archive progress",
+        } : current);
+        return;
+      }
+      if (active) timeout = window.setTimeout(() => void poll(), 2_000);
+    };
+    void poll();
+    return () => {
+      active = false;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [exportJob?.intentId, exportJob?.status]);
 
   const prepareEnrollment = async () => {
     const name = passkeyName.trim();
@@ -300,13 +400,20 @@ export function Settings({
     setExportError("");
     try {
       const response = await startAuthentication({ optionsJSON: exportIntent.authentication_options });
-      const confirmed = await api<{ download_url: string }>("/api/dashboard/knowledge-exports/confirm", {
+      const confirmed = await api<KnowledgeExportConfirmation>("/api/dashboard/knowledge-exports/confirm", {
         method: "POST",
         body: JSON.stringify({ intent_id: exportIntent.intent.id, response }),
       });
+      const intentId = exportIntent.intent.id;
+      const kind = exportIntent.summary.kind;
       setExportIntent(null);
-      setMessage("Passkey verified. Your private knowledge export is being finalized; the download will begin when it is complete.");
-      window.location.assign(confirmed.download_url);
+      setMessage("");
+      setExportJob({
+        intentId,
+        kind,
+        status: "processing",
+        downloadUrl: confirmed.download_url,
+      });
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "Knowledge export failed");
     } finally {
@@ -334,10 +441,15 @@ export function Settings({
     <section><h2>Export knowledge</h2>
       <p>The default export is a readable Markdown vault. Choose the full archive only for moving or restoring a Context Use instance.</p>
       <div className="passkey-kind" role="group" aria-label="Knowledge export type">
-        <label><input type="radio" name="export-kind" checked={exportKind === "portable"} onChange={() => setExportKind("portable")} /><span><strong>Latest snapshot</strong><small>Current active pages and assets, rewritten as a navigable Markdown vault.</small></span></label>
-        <label><input type="radio" name="export-kind" checked={exportKind === "restorable"} onChange={() => setExportKind("restorable")} /><span><strong>Full restorable archive</strong><small>Stable IDs, all retained versions, archived pages, publication state, link records, history, and active asset bytes.</small></span></label>
+        <label><input type="radio" name="export-kind" disabled={Boolean(exportJob)} checked={exportKind === "portable"} onChange={() => setExportKind("portable")} /><span><strong>Latest snapshot</strong><small>Current active pages and assets, rewritten as a navigable Markdown vault.</small></span></label>
+        <label><input type="radio" name="export-kind" disabled={Boolean(exportJob)} checked={exportKind === "restorable"} onChange={() => setExportKind("restorable")} /><span><strong>Full restorable archive</strong><small>Stable IDs, all retained versions, archived pages, publication state, link records, history, and active asset bytes.</small></span></label>
       </div>
-      <button className="primary" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport()}>{exportPreparing ? "Checking assets…" : "Export with passkey"}</button>
+      {!exportJob && <button className="primary export-start-button" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport()}>{exportPreparing ? "Checking assets…" : "Export with passkey"}</button>}
+      {exportJob && <KnowledgeExportPreparationStatus
+        job={exportJob}
+        onDownload={() => setMessage("Archive download started.")}
+        onReset={() => setExportJob(null)}
+      />}
     </section>
     <section><h2>Import full archive</h2>
       <p>Restore a full archive onto a fresh Context Use instance. This replaces only the destination knowledge base; account credentials and integrations stay local to the new instance.</p>
