@@ -9,14 +9,28 @@ import {
 } from "./paths.ts";
 import type { AgentSyncConfig } from "./types.ts";
 
-const configSchema = z.object({
-  schemaVersion: z.literal(1),
+const configBaseSchema = z.object({
   deploymentId: z.string().min(1),
   connectionId: z.string().min(1),
   webhookUrl: z.url(),
   installedAt: z.iso.datetime({ offset: true }),
   label: z.string().min(1),
+});
+
+const legacyConfigSchema = configBaseSchema.extend({
+  schemaVersion: z.literal(1),
+  connectionId: z.literal("agent-sync"),
 }).strict();
+
+const instanceConfigSchema = configBaseSchema.extend({
+  schemaVersion: z.literal(2),
+  instanceId: z.string().regex(/^[a-f0-9]{32}$/),
+}).strict().refine(
+  (config) => config.connectionId === `agent-sync-${config.instanceId}`,
+  { message: "Agent-sync connection ID does not match its instance ID", path: ["connectionId"] },
+);
+
+const configSchema = z.union([legacyConfigSchema, instanceConfigSchema]);
 
 export async function readAgentSyncConfig(): Promise<AgentSyncConfig | null> {
   try {

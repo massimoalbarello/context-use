@@ -69,6 +69,7 @@ function decodedRemoteSource(access: "anonymous" | "dashboard" | "integration-ma
 }
 
 test("internal Nango controller routes are an exact method and path allowlist", () => {
+  const instanceConnectionId = `agent-sync-${"a".repeat(32)}`;
   expect(() => assertInternalNangoRoute(
     "dashboard",
     "GET",
@@ -91,6 +92,16 @@ test("internal Nango controller routes are an exact method and path allowlist", 
   )).toThrow("access denied");
   expect(() => assertInternalNangoRoute(
     "integration-manager",
+    "GET",
+    new URL(`https://nango.context.example.com/connections/${instanceConnectionId}?provider_config_key=agent-conversations`),
+  )).not.toThrow();
+  expect(() => assertInternalNangoRoute(
+    "integration-manager",
+    "GET",
+    new URL("https://nango.context.example.com/connections/agent-sync-owner-mac?provider_config_key=agent-conversations"),
+  )).toThrow("access denied");
+  expect(() => assertInternalNangoRoute(
+    "integration-manager",
     "POST",
     new URL("https://nango.context.example.com/proxy"),
   )).toThrow("access denied");
@@ -107,6 +118,7 @@ test("internal Nango controller routes are an exact method and path allowlist", 
 });
 
 test("internal Nango mutation bodies allow only managed integration and agent metadata shapes", () => {
+  const instanceId = "b".repeat(32);
   const metadata = {
     authenticated_webhook: { state: "active", token_sha256: "a".repeat(64) },
     deployment_id: "abcdef123456",
@@ -125,6 +137,28 @@ test("internal Nango mutation bodies allow only managed integration and agent me
       metadata,
     }),
   )).not.toThrow();
+  expect(() => assertInternalNangoRequestBody(
+    "integration-manager",
+    "POST",
+    new URL("https://nango.context.example.com/connections"),
+    JSON.stringify({
+      provider_config_key: "agent-conversations",
+      connection_id: `agent-sync-${instanceId}`,
+      credentials: { type: "NONE" },
+      metadata: { ...metadata, instance_id: instanceId, label: "second-mac" },
+    }),
+  )).not.toThrow();
+  expect(() => assertInternalNangoRequestBody(
+    "integration-manager",
+    "POST",
+    new URL("https://nango.context.example.com/connections"),
+    JSON.stringify({
+      provider_config_key: "agent-conversations",
+      connection_id: `agent-sync-${instanceId}`,
+      credentials: { type: "NONE" },
+      metadata: { ...metadata, instance_id: "c".repeat(32) },
+    }),
+  )).toThrow("request body denied");
   expect(() => assertInternalNangoRequestBody(
     "integration-manager",
     "POST",

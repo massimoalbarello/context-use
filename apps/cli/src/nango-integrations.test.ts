@@ -83,12 +83,15 @@ test("Granola integration creation is left to the dashboard MCP registration flo
 });
 
 test("agent-sync registration uses the scoped connection APIs and stores only metadata", async () => {
+  const instanceId = "c".repeat(32);
+  const connectionId = `agent-sync-${instanceId}`;
   const metadata = {
     authenticated_webhook: {
       state: "active" as const,
       token_sha256: "a".repeat(64),
     },
     deployment_id: "deployment",
+    instance_id: instanceId,
     label: "laptop",
     daemon_version: "v1.2.3",
     updated_at: "2026-08-01T10:00:00.000Z",
@@ -105,7 +108,7 @@ test("agent-sync registration uses the scoped connection APIs and stores only me
     });
     if (method === "GET") return Response.json({}, { status: 404 });
     return Response.json({
-      connection_id: "agent-sync",
+      connection_id: connectionId,
       provider_config_key: "agent-conversations",
       metadata,
     });
@@ -115,14 +118,14 @@ test("agent-sync registration uses the scoped connection APIs and stores only me
     baseUrl,
     apiKey,
     "agent-conversations",
-    "agent-sync",
+    connectionId,
     metadata,
     { fetcher, pause: async () => {} },
   );
   expect(result.metadata).toEqual(metadata);
   expect(requests).toEqual([
     {
-      path: "/connections/agent-sync",
+      path: `/connections/${connectionId}`,
       search: "?provider_config_key=agent-conversations",
       method: "GET",
     },
@@ -132,7 +135,7 @@ test("agent-sync registration uses the scoped connection APIs and stores only me
       method: "POST",
       body: {
         provider_config_key: "agent-conversations",
-        connection_id: "agent-sync",
+        connection_id: connectionId,
         credentials: { type: "NONE" },
         metadata,
       },

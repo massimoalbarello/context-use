@@ -9,10 +9,11 @@ import { installLaunchAgent } from "../../agent-sync/launchd.ts";
 import { agentSyncSourcesPath } from "../../agent-sync/paths.ts";
 import {
   activeAgentSyncMetadata,
-  AGENT_SYNC_CONNECTION_ID,
   AGENT_SYNC_FUNCTION_NAME,
   AGENT_SYNC_INTEGRATION_ID,
+  agentSyncConnectionId,
   assertAgentSyncActivationAllowed,
+  newAgentSyncInstanceId,
   newAgentSyncToken,
   parseAgentSyncMetadata,
 } from "../../agent-sync/registration.ts";
@@ -57,6 +58,15 @@ export const command = defineCommand("agent-sync install", {
         `Agent sync is already installed for deployment ${localConfig.deploymentId}; uninstall it before installing for another deployment`,
       );
     }
+    let instanceId: string | undefined;
+    let connectionId: string;
+    if (localConfig) {
+      instanceId = localConfig.schemaVersion === 2 ? localConfig.instanceId : undefined;
+      connectionId = localConfig.connectionId;
+    } else {
+      instanceId = newAgentSyncInstanceId();
+      connectionId = agentSyncConnectionId(instanceId);
+    }
     await ensureAgentSyncSourceConfig({
       codex: options["codex-path"],
       claudeCode: options["claude-code-path"],
@@ -93,44 +103,58 @@ export const command = defineCommand("agent-sync install", {
       baseUrl,
       managerKey,
       AGENT_SYNC_INTEGRATION_ID,
-      AGENT_SYNC_CONNECTION_ID,
+      connectionId,
       nango,
     );
     const existingMetadata = parseAgentSyncMetadata(existing?.metadata);
-    const localToken = await readAgentSyncToken();
+    const localToken = localConfig ? await readAgentSyncToken() : null;
     assertAgentSyncActivationAllowed({
       connectionExists: existing !== null,
       metadata: existingMetadata,
       localToken,
       deploymentId: config.installationId,
+      instanceId,
     });
 
     const token = localToken ?? newAgentSyncToken();
     const label = localConfig?.label ?? hostname();
     const installedAt = localConfig?.installedAt ?? new Date().toISOString();
     await writeAgentSyncToken(token);
-    await writeAgentSyncConfig({
-      schemaVersion: 1,
-      deploymentId: config.installationId,
-      connectionId: AGENT_SYNC_CONNECTION_ID,
-      webhookUrl,
-      installedAt,
-      label,
-    });
+    if (instanceId) {
+      await writeAgentSyncConfig({
+        schemaVersion: 2,
+        deploymentId: config.installationId,
+        instanceId,
+        connectionId,
+        webhookUrl,
+        installedAt,
+        label,
+      });
+    } else {
+      await writeAgentSyncConfig({
+        schemaVersion: 1,
+        deploymentId: config.installationId,
+        connectionId,
+        webhookUrl,
+        installedAt,
+        label,
+      });
+    }
     await putAgentSyncConnection(
       baseUrl,
       managerKey,
       AGENT_SYNC_INTEGRATION_ID,
-      AGENT_SYNC_CONNECTION_ID,
+      connectionId,
       activeAgentSyncMetadata({
         token,
         deploymentId: config.installationId,
+        instanceId,
         label,
         version: config.releaseVersion,
       }),
       nango,
     );
-    if (!await probeAgentSync(webhookUrl, token, AGENT_SYNC_CONNECTION_ID)) {
+    if (!await probeAgentSync(webhookUrl, token, connectionId)) {
       throw new Error("Nango did not activate the agent-sync connection");
     }
 
