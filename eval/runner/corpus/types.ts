@@ -12,6 +12,8 @@
 export const ITEM_TYPES = [
   // amara-life-v1 — raw activity
   "note", "meeting", "email", "slack", "calendar-event",
+  // longmemeval-v1 — timestamped user/assistant sessions
+  "agent-conversation",
   // world-v1 — already-distilled pages
   "person", "company", "concept",
 ] as const;

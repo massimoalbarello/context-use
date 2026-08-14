@@ -1,10 +1,23 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { checkpointPosition, loadCorpus, windowRecords, type CorpusWindow } from "./corpus/records.ts";
+import {
+  checkpointPosition,
+  corpusCheckpoint,
+  loadCorpus,
+  windowRecords,
+  type CorpusWindow,
+} from "./corpus/records.ts";
+import type { Corpus } from "./corpus/types.ts";
 import { LOCAL_STACK, runStackCommand } from "../../scripts/local-stack.ts";
 import { EVAL_URL, MCP_NAME, ROOT, runAgentSession, type EvalProvider } from "./agent.ts";
 import { corpusDirectory, corpusIsUnchanged, diffCorpus, type CorpusId } from "./corpus/integrity.ts";
-import { pageChanges, snapshotKnowledge, type PageChange, type PageSnapshot } from "./snapshot.ts";
+import {
+  pageChanges,
+  persistActivityDistillerCheckpoint,
+  snapshotKnowledge,
+  type PageChange,
+  type PageSnapshot,
+} from "./snapshot.ts";
 import { style, terminalWidth } from "./terminal.ts";
 import { EVAL_CORPUS_RESULTS_ROOT } from "./results.ts";
 
@@ -26,6 +39,42 @@ export type DistillOptions = {
   batches?: number | undefined;
 };
 
+/**
+ * The production-shaped distillation mechanics for an already resolved corpus location.
+ * Vendored corpora and dynamically materialized isolated cases both use this path; their
+ * wrappers own integrity, selection, and result placement.
+ */
+export type CorpusDistillOptions = {
+  provider: EvalProvider;
+  corpus: Corpus;
+  /** The same directory as mounted inside the development container. */
+  servedDirectory: string;
+  window: CorpusWindow;
+  batches?: number | undefined;
+  runId: string;
+  runDirectory: string;
+  startedAt?: string | undefined;
+  /** Standard corpus runs update qa:ask's pointer; isolated suites keep their own. */
+  updateLatest?: boolean | undefined;
+  /** Retry the same expected batch after a failed or incomplete automation session. */
+  maxAttemptsPerBatch?: number | undefined;
+  /**
+   * Make a completed one-working-set batch's state token byte-exact before the next agent.
+   * Use only when the corpus materializer guarantees one reader call drains each batch.
+   */
+  persistExactBatchCheckpoint?: boolean | undefined;
+};
+
+export type CorpusDistillationResult = {
+  runId: string;
+  runDirectory: string;
+  reportPath: string;
+  pages: PageSnapshot[];
+  batches: BatchResult[];
+  requestedRecords: number;
+  servedRecords: number;
+};
+
 function servedEnvironment(name: string): string {
   const child = Bun.spawnSync([
     "docker", "compose", "--project-name", LOCAL_STACK.project,
@@ -43,10 +92,10 @@ function servedEnvironment(name: string): string {
  * that were never served — the failure mode that produced January pages from an April
  * window, and the one that would let a world-v1 run be scored as an amara run.
  */
-function assertServed(corpus: CorpusId, window: CorpusWindow): void {
+function assertServed(expectedPath: string, window: CorpusWindow): void {
   const servedPath = servedEnvironment("EVAL_CORPUS_PATH");
-  if (!servedPath.endsWith(`/${corpus}`)) {
-    throw new Error(`The private MCP serves ${servedPath} but this run reports the ${corpus} corpus.`);
+  if (servedPath.replace(/\/+$/, "") !== expectedPath.replace(/\/+$/, "")) {
+    throw new Error(`The private MCP serves ${servedPath} but this run expected ${expectedPath}.`);
   }
   const servedWindow = servedEnvironment("EVAL_CORPUS_WINDOW");
   if (servedWindow !== window) {
@@ -74,6 +123,8 @@ export type BatchResult = {
   progress: BatchProgress;
   /** Corpus records the reader actually served this session, from the checkpoint delta. */
   recordsServed: number;
+  /** Agent sessions used for this batch, including bounded recovery attempts. */
+  attempts: number;
 };
 
 const STATE_PATH = "automations/activity-distiller/state";
@@ -82,6 +133,20 @@ const STATE_PATH = "automations/activity-distiller/state";
 function persistedCheckpoint(pages: PageSnapshot[]): string | undefined {
   const state = pages.find((page) => page.path === STATE_PATH);
   return state?.body.match(/\*\*Checkpoint:\*\*\s*`([^`]+)`/)?.[1];
+}
+
+function statePage(pages: PageSnapshot[]): PageSnapshot | undefined {
+  return pages.find((page) => page.path === STATE_PATH);
+}
+
+/** Whether the agent asserted completion by replacing the operational state this attempt. */
+export function stateCheckpointWasPersisted(before: PageSnapshot[], after: PageSnapshot[]): boolean {
+  const prior = statePage(before);
+  const current = statePage(after);
+  return Boolean(prior && current
+    && current.version > prior.version
+    && current.body !== prior.body
+    && persistedCheckpoint(after));
 }
 
 /**
@@ -108,16 +173,12 @@ export function servedOffset(
 /**
  * Where the checkpoint left this batch.
  *
- * One run per batch is the measurement: it reproduces a scheduled production trigger, and
- * changing that would change what the number means. `finished` is the checkpoint standing
- * past the batch, and it is the only outcome that means every record of it was written or
- * dropped. The two failures are told apart rather than merged, because a session that
- * abandoned its own batch and one that never reached it read differently: the first is a
- * partial day, the second says every later batch is a session behind.
- *
- * This detects; it does not repair. Whether the harness should re-trigger an abandoned batch
- * is a separate question about how faithful to production scheduling the eval should be, and
- * a retry inflates a batch's output by giving it more attempts than a scheduled run gets.
+ * `finished` is the checkpoint standing past the batch, and it is the only outcome that
+ * means every record of it was written or dropped. The two failures are told apart rather
+ * than merged, because a session that abandoned its own batch and one that never reached it
+ * read differently: the first is a partial day, the second says every later batch is a
+ * session behind. Standard corpus runs keep one scheduled attempt; isolated suites may opt
+ * into bounded retries and record their attempt count explicitly.
  */
 export function batchProgress(
   pages: PageSnapshot[],
@@ -134,7 +195,7 @@ export function batchProgress(
   return reached === current ? "inside" : "behind";
 }
 
-function triggerPrompt(): string {
+export function triggerPrompt(): string {
   return `You are the Context Use activity distiller running as a scheduled, unattended automation.
 
 Use only the tools from the ${MCP_NAME} MCP server. Do not inspect files, run shell
@@ -160,15 +221,40 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
 
   const directory = corpusDirectory(options.corpus);
   const corpus = loadCorpus(directory);
+  const startedAt = new Date().toISOString();
+  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-distill-${options.corpus}-${options.provider}`;
+  const runDirectory = join(EVAL_CORPUS_RESULTS_ROOT, runId);
+  const result = await runCorpusDistillation({
+    provider: options.provider,
+    corpus,
+    servedDirectory: `/app/eval/data/${options.corpus}/corpus`,
+    window: options.window,
+    batches: options.batches,
+    runId,
+    runDirectory,
+    startedAt,
+    updateLatest: true,
+  });
+  return result.reportPath;
+}
+
+export async function runCorpusDistillation(
+  options: CorpusDistillOptions,
+): Promise<CorpusDistillationResult> {
+  const corpus = options.corpus;
   const selected = windowRecords(corpus, options.window);
   const allBatches = corpus.batches.filter((batch) => selected.some((record) => record.batch === batch));
   const batches = options.batches ? allBatches.slice(0, options.batches) : allBatches;
   if (batches.length === 0) throw new Error(`Corpus window ${options.window} selected no batches`);
 
-  const startedAt = new Date().toISOString();
-  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-distill-${options.corpus}-${options.provider}`;
-  const runDirectory = join(EVAL_CORPUS_RESULTS_ROOT, runId);
+  const startedAt = options.startedAt ?? new Date().toISOString();
+  const runId = options.runId;
+  const runDirectory = options.runDirectory;
   await mkdir(runDirectory, { recursive: true });
+  const maxAttemptsPerBatch = options.maxAttemptsPerBatch ?? 1;
+  if (!Number.isSafeInteger(maxAttemptsPerBatch) || maxAttemptsPerBatch < 1 || maxAttemptsPerBatch > 10) {
+    throw new Error("maxAttemptsPerBatch must be between 1 and 10");
+  }
 
   console.log(style.heading(`\nDistillation run: ${runId}`));
   console.log(`Corpus: ${corpus.corpusId} · window ${options.window} · ${batches.length} of ${allBatches.length} batches · ${
@@ -179,11 +265,11 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   // The server reads both at startup, so the run owns them and recreates the stack with
   // them. Leaving that to the operator lets the client label batches the server never
   // served, which silently measures something other than what the report claims.
-  process.env.EVAL_CORPUS_PATH = `/app/eval/data/${options.corpus}/corpus`;
+  process.env.EVAL_CORPUS_PATH = options.servedDirectory;
   process.env.EVAL_CORPUS_WINDOW = options.window;
-  console.log(style.dim(`\nResetting and serving ${options.corpus} (${options.window} window) while preserving passkeys and OAuth…`));
+  console.log(style.dim(`\nResetting and serving ${corpus.corpusId} (${options.window} window) while preserving passkeys and OAuth…`));
   runStackCommand("reset");
-  assertServed(options.corpus, options.window);
+  assertServed(options.servedDirectory, options.window);
 
   let previous: PageSnapshot[] = snapshotKnowledge();
   await Bun.write(join(runDirectory, "initial-snapshot.json"), `${JSON.stringify(previous, null, 2)}\n`);
@@ -206,28 +292,52 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
     console.log(style.dim(`  ${[...new Set(batchRecords.map((record) => record.type))].sort().join(" · ")}`));
     console.log(style.dim("  Agent is reading its instructions and reconciling the batch…"));
 
-    await runAgentSession({
-      provider: options.provider,
-      id: `batch-${batch}`,
-      prompt: triggerPrompt(),
-      runDirectory,
-    });
+    const beforeBatch = previous;
+    let progress: BatchProgress = "unknown";
+    let recordsServed = 0;
+    let attempts = 0;
+    for (; attempts < maxAttemptsPerBatch; attempts += 1) {
+      const attempt = attempts + 1;
+      if (attempt > 1) {
+        console.log(style.yellow(
+          `\n  Retrying ${batch} (${attempt}/${maxAttemptsPerBatch}) from its last persisted checkpoint…`,
+        ));
+      }
+      await runAgentSession({
+        provider: options.provider,
+        id: `batch-${batch}${attempt > 1 ? `-attempt-${attempt}` : ""}`,
+        prompt: triggerPrompt(),
+        runDirectory,
+      });
 
-    const pages = snapshotKnowledge();
-    const progress = batchProgress(pages, batch, allBatches);
-    const servedAfter = servedOffset(
-      checkpointPosition(persistedCheckpoint(pages)), allBatches, sizes, windowTotal) ?? servedBefore;
-    const recordsServed = Math.max(0, servedAfter - servedBefore);
-    servedBefore = servedAfter;
-    await Bun.write(join(runDirectory, `batch-${batch}-snapshot.json`), `${JSON.stringify(pages, null, 2)}\n`);
-    const changes = pageChanges(previous, pages);
+      let pages = snapshotKnowledge();
+      if (options.persistExactBatchCheckpoint && stateCheckpointWasPersisted(previous, pages)) {
+        const expectedBatch = allBatches[allBatches.indexOf(batch) + 1] ?? null;
+        const expectedCheckpoint = corpusCheckpoint(corpus.corpusId, expectedBatch);
+        if (persistedCheckpoint(pages) !== expectedCheckpoint) {
+          await persistActivityDistillerCheckpoint(expectedCheckpoint);
+          pages = snapshotKnowledge();
+          console.log(style.dim("  ↳ persisted the reader's exact checkpoint for the next agent"));
+        }
+      }
+      progress = batchProgress(pages, batch, allBatches);
+      const servedAfter = servedOffset(
+        checkpointPosition(persistedCheckpoint(pages)), allBatches, sizes, windowTotal) ?? servedBefore;
+      recordsServed += Math.max(0, servedAfter - servedBefore);
+      servedBefore = servedAfter;
+      const snapshotName = `batch-${batch}${attempt > 1 ? `-attempt-${attempt}` : ""}-snapshot.json`;
+      await Bun.write(join(runDirectory, snapshotName), `${JSON.stringify(pages, null, 2)}\n`);
+      previous = pages;
+      if (progress === "finished") break;
+    }
+    const attemptsUsed = attempts + (progress === "finished" ? 1 : 0);
+    const changes = pageChanges(beforeBatch, previous);
     results.push({
-      batch, index, changes, pageCount: pages.length,
-      finished: progress === "finished", progress, recordsServed,
+      batch, index, changes, pageCount: previous.length,
+      finished: progress === "finished", progress, recordsServed, attempts: attemptsUsed,
     });
-    previous = pages;
     console.log(style.green(`\n  ${batch} complete · ${recordsServed} records consumed · ${
-      summarise(changes)} · ${pages.length} pages total`));
+      summarise(changes)} · ${previous.length} pages total · ${attemptsUsed} attempt(s)`));
     if (progress === "inside") {
       console.log(style.red(
         `  ${batch} was abandoned with records unread — its checkpoint is still inside the batch,\n`
@@ -284,6 +394,7 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   };
   for (const result of results) {
     const detail = [`${result.recordsServed} records consumed`, summarise(result.changes)];
+    if (result.attempts > 1) detail.push(`${result.attempts} attempts`);
     if (PROGRESS_NOTE[result.progress]) detail.push(PROGRESS_NOTE[result.progress]);
     lines.push(`## ${result.batch} — ${detail.join(" · ")}`, "");
     for (const change of result.changes) {
@@ -294,7 +405,9 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
 
   const reportPath = join(runDirectory, "report.md");
   await Bun.write(reportPath, `${lines.join("\n")}\n`);
-  await Bun.write(join(EVAL_CORPUS_RESULTS_ROOT, "latest-distill"), `${runId}\n`);
+  if (options.updateLatest) {
+    await Bun.write(join(EVAL_CORPUS_RESULTS_ROOT, "latest-distill"), `${runId}\n`);
+  }
 
   console.log(style.heading(`\n\n✓ Distillation complete · ${previous.length} pages · ${batches.length} batches`));
   console.log(`${served} of ${requested} records were served to the agent.`);
@@ -305,5 +418,13 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
     ));
   }
   console.log(`Report: ${style.blue(reportPath)}`);
-  return reportPath;
+  return {
+    runId,
+    runDirectory,
+    reportPath,
+    pages: previous,
+    batches: results,
+    requestedRecords: requested,
+    servedRecords: served,
+  };
 }

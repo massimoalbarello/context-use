@@ -5,6 +5,7 @@ import { ROOT } from "./agent.ts";
 /** Gitignored home for every locally recorded evaluation run. */
 export const EVAL_RESULTS_ROOT = join(ROOT, "eval", "results");
 export const EVAL_CORPUS_RESULTS_ROOT = join(EVAL_RESULTS_ROOT, "corpus");
+export const EVAL_LONGMEM_RESULTS_ROOT = join(EVAL_RESULTS_ROOT, "longmemeval");
 export const EVAL_STORY_RESULTS_ROOT = join(EVAL_RESULTS_ROOT, "stories");
 
 const LEGACY_RESULTS_ROOT = join(ROOT, ".eval-results");

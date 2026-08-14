@@ -12,6 +12,14 @@ import {
   verifyQuestionsCommand,
 } from "../eval/cli/qa.ts";
 import { listStories, runJourney, runStories } from "../eval/cli/story.ts";
+import {
+  fetchLongMemEval,
+  listLongMemEval,
+  runLongMemEvalCommand,
+  scoreLongMemEvalCommand,
+  verifyLongMemEval,
+} from "../eval/cli/longmemeval.ts";
+import type { LongMemEvalJudgeProvider } from "../eval/runner/longmemeval/judge.ts";
 
 function usage(): never {
   console.error(`Usage:
@@ -27,6 +35,13 @@ function usage(): never {
   bun run eval story:list
   bun run eval story:run (--story <id> | --all) [--provider <codex|claude>] [--repeat <n>]
   bun run eval journey:run [--provider <codex|claude>] [--repeat <n>]
+  bun run eval longmem:fetch [--dataset-path <path>]
+  bun run eval longmem:verify [--dataset-path <path>]
+  bun run eval longmem:list [--dataset-path <path>] [--limit <n>]
+  bun run eval longmem:run (--case <id> | --limit <n> | --stratify <n> | --all)
+                            [--provider <codex|claude>] [--dataset-path <path>]
+                            [--sessions-per-batch <n>]
+  bun run eval longmem:score [run-id] [--judge-provider <codex|claude|openai>]
 
 Per corpus, before asking:
   bun run eval qa:seed [--batches <n>]             world-v1: put its pages in as they are
@@ -53,6 +68,12 @@ function optionFrom(args: string[], name: string): string | undefined {
 function providerFrom(args: string[]): EvalProvider {
   const value = optionFrom(args, "provider") ?? "codex";
   if (value !== "codex" && value !== "claude") usage();
+  return value;
+}
+
+function longMemJudgeProviderFrom(args: string[]): LongMemEvalJudgeProvider {
+  const value = optionFrom(args, "judge-provider") ?? "codex";
+  if (value !== "codex" && value !== "claude" && value !== "openai") usage();
   return value;
 }
 
@@ -134,6 +155,24 @@ if (command === "connect") {
     provider: providerFrom(args),
     repeat: countFrom(args, "repeat"),
   });
+} else if (command === "longmem:fetch") {
+  await fetchLongMemEval(optionFrom(args, "dataset-path"));
+} else if (command === "longmem:verify") {
+  await verifyLongMemEval(optionFrom(args, "dataset-path"));
+} else if (command === "longmem:list") {
+  await listLongMemEval(optionFrom(args, "dataset-path"), countFrom(args, "limit"));
+} else if (command === "longmem:run") {
+  await runLongMemEvalCommand({
+    provider: providerFrom(args),
+    datasetPath: optionFrom(args, "dataset-path"),
+    caseId: optionFrom(args, "case"),
+    limit: countFrom(args, "limit"),
+    stratify: countFrom(args, "stratify"),
+    all: args.includes("--all"),
+    sessionsPerBatch: countFrom(args, "sessions-per-batch"),
+  });
+} else if (command === "longmem:score") {
+  await scoreLongMemEvalCommand(positional(args), longMemJudgeProviderFrom(args));
 } else {
   usage();
 }

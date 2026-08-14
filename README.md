@@ -82,6 +82,11 @@ corpus with your local ChatGPT subscription:
 ```sh
 bun run eval connect codex
 bun run eval distill --window dense --days 2
+
+# Or run one end-to-end LongMemEval history and QA question
+bun run eval longmem:list --limit 5
+bun run eval longmem:run --case <question-id>
+bun run eval longmem:score
 ```
 
 The corpus is copied verbatim from [`garrytan/gbrain-evals`](https://github.com/garrytan/gbrain-evals)
@@ -94,7 +99,9 @@ are preserved.
 
 Add `--provider claude` after `claude auth login` to use Claude Code instead. Reports,
 complete agent logs, and per-run snapshots are written beneath the gitignored
-`.eval-results/` directory. `bun run eval corpus:verify` confirms the corpus is unchanged.
+`eval/results/` directory. `bun run eval corpus:verify` confirms a vendored corpus is
+unchanged; LongMemEval downloads its pinned 277 MB dataset once into the gitignored
+`.eval-data/` cache and verifies it on every use.
 See [`eval/README.md`](eval/README.md) for details.
 
 ## Self-host on AWS

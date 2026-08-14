@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { stackUrl } from "../../scripts/local-stack.ts";
 import { style, terminalWidth, truncate } from "./terminal.ts";
@@ -184,22 +184,34 @@ export type AgentSession = {
   id: string;
   prompt: string;
   runDirectory: string;
+  /** Knowledge MCP access is opt-out for tool-free evaluator sessions. */
+  knowledgeTools?: boolean | undefined;
 };
 
-async function runCodexSession({ id, prompt, runDirectory }: AgentSession): Promise<void> {
-  const binary = executable("codex");
-  const args = [
+function codexArgs({ id, runDirectory, knowledgeTools = true }: AgentSession): string[] {
+  const mcpArgs = knowledgeTools
+    ? [
+        "-c", `mcp_servers.${MCP_NAME}.url="${MCP_URL}"`,
+        "-c", `mcp_servers.${MCP_NAME}.required=true`,
+        "-c", `mcp_servers.${MCP_NAME}.default_tools_approval_mode="approve"`,
+        "-c", `mcp_servers.${MCP_NAME}.scopes=["mcp:access","offline_access"]`,
+      ]
+    : [];
+  return [
     "exec", "--ephemeral", "--ignore-user-config", "--ignore-rules",
     "--skip-git-repo-check", "--sandbox", "read-only", "--json",
     "--output-last-message", join(runDirectory, `${id}-final.md`),
     "-C", EVAL_WORKSPACE,
     "-c", 'approval_policy="never"',
-    "-c", `mcp_servers.${MCP_NAME}.url="${MCP_URL}"`,
-    "-c", `mcp_servers.${MCP_NAME}.required=true`,
-    "-c", `mcp_servers.${MCP_NAME}.default_tools_approval_mode="approve"`,
-    "-c", `mcp_servers.${MCP_NAME}.scopes=["mcp:access","offline_access"]`,
+    ...mcpArgs,
     "-",
   ];
+}
+
+async function runCodexSession(session: AgentSession): Promise<void> {
+  const { id, prompt, runDirectory } = session;
+  const binary = executable("codex");
+  const args = codexArgs(session);
   const child = Bun.spawn([binary, ...args], {
     cwd: ROOT, stdin: "pipe", stdout: "pipe", stderr: "pipe",
   });
@@ -218,21 +230,30 @@ async function runCodexSession({ id, prompt, runDirectory }: AgentSession): Prom
   }
 }
 
-async function runClaudeSession({ id, prompt, runDirectory }: AgentSession): Promise<void> {
+function claudeArgs({ knowledgeTools = true }: AgentSession): string[] {
+  const mcpConfig = JSON.stringify({
+    mcpServers: knowledgeTools ? { [MCP_NAME]: { type: "http", url: MCP_URL } } : {},
+  });
+  return [
+    "-p", "--no-session-persistence", "--strict-mcp-config",
+    "--mcp-config", mcpConfig, "--permission-mode", "dontAsk",
+    "--allowedTools", knowledgeTools ? `mcp__${MCP_NAME}__*` : "",
+    // `stream-json` is what `agentFinalAnswer` and `agentToolsUsed` read back, and under
+    // `-p` the CLI only emits it with `--verbose`.
+    "--output-format", "stream-json", "--verbose",
+  ];
+}
+
+async function runClaudeSession(session: AgentSession): Promise<void> {
+  const { id, prompt, runDirectory } = session;
   const binary = executable("claude");
   const auth = Bun.spawnSync([binary, "auth", "status"], { stdout: "pipe", stderr: "pipe" });
   if (auth.exitCode !== 0 || !auth.stdout.toString().includes('"loggedIn": true')) {
     throw new Error("Claude Code is not logged in. Run `claude auth login`, then retry with --provider claude.");
   }
-  const mcpConfig = JSON.stringify({ mcpServers: { [MCP_NAME]: { type: "http", url: MCP_URL } } });
-  const child = Bun.spawn([
-    binary, "-p", "--no-session-persistence", "--strict-mcp-config",
-    "--mcp-config", mcpConfig, "--permission-mode", "dontAsk",
-    "--allowedTools", `mcp__${MCP_NAME}__*`,
-    // `stream-json` is what `finalAnswer` and `toolsUsed` read back, and under `-p` the
-    // CLI only emits it with `--verbose`.
-    "--output-format", "stream-json", "--verbose",
-  ], { cwd: EVAL_WORKSPACE, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
+  const child = Bun.spawn([binary, ...claudeArgs(session)], {
+    cwd: EVAL_WORKSPACE, stdin: "pipe", stdout: "pipe", stderr: "pipe",
+  });
   child.stdin.write(prompt);
   child.stdin.end();
   const [stdoutChunks, stderrChunks, exitCode] = await Promise.all([
@@ -252,6 +273,68 @@ export async function runAgentSession(session: AgentSession): Promise<void> {
   if (session.provider === "codex") await runCodexSession(session);
   else await runClaudeSession(session);
 }
+
+/** Every provider action a session called, read back from its own transcript. */
+export function agentToolsUsed(runDirectory: string, id: string, provider: EvalProvider): string[] {
+  const path = join(runDirectory, `${id}-${provider}.jsonl`);
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return [];
+  }
+  const tools = new Set<string>();
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const event = JSON.parse(line) as {
+        item?: { type?: string; tool?: string };
+        message?: { content?: Array<{ type?: string; name?: string }> };
+      };
+      const item = event.item;
+      if (item?.type === "mcp_tool_call" && item.tool) tools.add(item.tool);
+      else if (item?.type && !["agent_message", "reasoning"].includes(item.type)) tools.add(item.type);
+      for (const block of event.message?.content ?? []) {
+        if (block.type === "tool_use") tools.add(block.name ?? "tool_use");
+      }
+    } catch {
+      continue;
+    }
+  }
+  return [...tools].sort();
+}
+
+/** The final message a session produced, verbatim. */
+export function agentFinalAnswer(runDirectory: string, id: string, provider: EvalProvider): string {
+  if (provider === "codex") {
+    try {
+      return readFileSync(join(runDirectory, `${id}-final.md`), "utf8").trim();
+    } catch {
+      return "";
+    }
+  }
+  let raw: string;
+  try {
+    raw = readFileSync(join(runDirectory, `${id}-claude.jsonl`), "utf8");
+  } catch {
+    return "";
+  }
+  let answer = "";
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const event = JSON.parse(line) as { type?: string; result?: unknown; is_error?: boolean };
+      if (event.type === "result" && !event.is_error && typeof event.result === "string") {
+        answer = event.result;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return answer.trim();
+}
+
+export const agentRunnerInternals = { codexArgs, claudeArgs };
 
 export function connectProvider(provider: EvalProvider): void {
   if (provider === "codex") {

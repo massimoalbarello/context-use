@@ -1,6 +1,6 @@
 # Local knowledge evals
 
-Three things live here.
+Four things live here.
 
 **Corpus distillation** (`bun run eval distill`) runs the activity distiller over a fixed,
 vendored corpus, one automation run per corpus batch, and reports the pages it wrote. This
@@ -12,6 +12,12 @@ the knowledge base. There is no evaluation-specific prompt and no evaluation-spe
 base and compares each answer to a sealed key — the read path. `world-v1` is seeded, so it
 measures retrieval alone; `amara-life-v1` is distilled first, so it measures distillation
 and retrieval together. See [the shared QA runner](runner/qa/README.md).
+
+**LongMemEval QA** (`bun run eval longmem:run`, `longmem:score`) measures the same write and
+read paths as one end-to-end accuracy: distill one complete conversation history, let a
+fresh agent search the resulting knowledge iteratively, and score its answer with the
+benchmark's official QA rubric. Its large pinned dataset is cached outside git, and every
+top-level case gets an independent reset. See [the LongMemEval package](data/longmemeval-v1/README.md).
 
 **Interactive story writing** (`bun run eval story:run`, `journey:run`) gives an agent
 short, dated user conversations and scores the connected knowledge it creates after every
@@ -30,6 +36,7 @@ local evaluation self-contained:
 eval/
 ├── data/
 │   ├── amara-life-v1/     corpus, lockfile, loader, QA, and structural gold
+│   ├── longmemeval-v1/    pinned external dataset manifest and isolated case loader
 │   ├── world-v1/          corpus, lockfile, loader, QA derivation, and seeding
 │   └── steve-jobs-v1/     interactive stories, expectations, journey, and sources
 ├── runner/                reusable corpus, distillation, QA, story, agent, and snapshot code
@@ -39,6 +46,30 @@ eval/
 Everything specific to one fixed input belongs under `data/<eval-id>/`. Code that can run
 another corpus, question set, or interactive story belongs under `runner/`; `cli/`
 composes those pieces into the existing `bun run eval` commands.
+
+## Running LongMemEval QA
+
+Start with one case or a small deterministic slice; running without a selector fails, and
+the full 500-case suite requires an explicit `--all`:
+
+```sh
+bun run eval longmem:fetch
+bun run eval longmem:list --limit 10
+bun run eval longmem:run --case <question-id>
+bun run eval longmem:run --limit 3
+bun run eval longmem:score
+# For published-score comparability, use the official pinned judge model:
+OPENAI_API_KEY=... bun run eval longmem:score --judge-provider openai
+```
+
+The download is cached under `.eval-data/` and verified against its pinned size and SHA-256
+on use. One selected row is one independent knowledge base: all of that row's sessions are
+distilled before its one question is asked, then the next row resets the stack. The default
+is at most ten sessions per distillation batch, with a 24 KB agent transport ceiling.
+Results and transcripts land under `eval/results/longmemeval/`.
+The default key-free harness judge uses the exact official prompt but a subscription model;
+the score records that distinction. Only `--judge-provider openai` uses LongMemEval's exact
+`gpt-4o-2024-08-06` judge model.
 
 ## Running interactive stories
 
@@ -127,8 +158,8 @@ template while preserving the owner passkey and OAuth authorization. Do not keep
 development data in it. Snapshots, per-batch agent logs, QA answers and scores,
 structural scores, and Markdown reports stay together in a timestamped run directory
 under `eval/results/corpus/`. Story suites use the parallel `eval/results/stories/`
-directory. Their shared `eval/results/` parent is gitignored so repeated local runs remain
-available without entering commits.
+directory, and LongMemEval uses `eval/results/longmemeval/`. Their shared `eval/results/`
+parent is gitignored so repeated local runs remain available without entering commits.
 
 ## What counts as one source record
 

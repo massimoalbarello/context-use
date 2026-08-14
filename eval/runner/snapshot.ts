@@ -1,3 +1,4 @@
+import { createPool, PageRepository } from "../../packages/database/src/index.ts";
 import { LOCAL_STACK } from "../../scripts/local-stack.ts";
 import { ROOT } from "./agent.ts";
 
@@ -47,6 +48,35 @@ export function snapshotKnowledge(): PageSnapshot[] {
     throw new Error(`Could not snapshot the eval knowledge base:\n${child.stderr.toString()}`);
   }
   return JSON.parse(child.stdout.toString().trim()) as PageSnapshot[];
+}
+
+/**
+ * Replaces only the local activity-distiller state with a checkpoint the corpus reader
+ * produced. Long opaque tokens are transport state, not an agent capability: the agent's
+ * successful state mutation remains the completion assertion, while the harness makes its
+ * machine value byte-exact before the next isolated session has to use it.
+ */
+export async function persistActivityDistillerCheckpoint(checkpoint: string): Promise<void> {
+  const pool = createPool(
+    `postgres://context_use_mcp:development-only@127.0.0.1:5432/${LOCAL_STACK.database}`,
+    { application_name: "context-use-eval-checkpoint" },
+  );
+  try {
+    const pages = new PageRepository(pool);
+    const state = await pages.getByPath("automations/activity-distiller/state");
+    if (!state) throw new Error("The activity-distiller state page is missing");
+    const updated = await pages.update(state.id, {
+      expected_version_number: state.version_number,
+      path: state.current_path,
+      title: state.title,
+      summary: state.summary,
+      body_markdown: `# Activity distiller state\n\n**Checkpoint:** \`${checkpoint}\`\n`,
+      commit_message: "Persist exact evaluation source checkpoint",
+    }, { kind: "mcp", subject: "context-use-eval-harness" });
+    if (!updated) throw new Error("The activity-distiller state page disappeared during checkpoint persistence");
+  } finally {
+    await pool.end();
+  }
 }
 
 /** Reads pages and their stable containing directories for path-independent story scoring. */

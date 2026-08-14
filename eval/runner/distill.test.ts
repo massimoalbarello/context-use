@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { CorpusRecordReader } from "./corpus/records.ts";
+import { checkpointPosition, CorpusRecordReader } from "./corpus/records.ts";
 import { corpusDirectory } from "./corpus/integrity.ts";
-import { batchProgress, servedOffset } from "./distill.ts";
+import { batchProgress, servedOffset, stateCheckpointWasPersisted } from "./distill.ts";
 import type { PageSnapshot } from "./snapshot.ts";
 
 /**
@@ -41,9 +41,7 @@ async function checkpointAt(batch: string): Promise<string> {
 }
 
 function checkpointNames(checkpoint: string, batch: string): boolean {
-  const encoded = checkpoint.slice("cu-corpus-v2.".length);
-  const payload = encoded.slice(0, encoded.lastIndexOf("."));
-  return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")).batch === batch;
+  return checkpointPosition(checkpoint)?.batch === batch;
 }
 
 describe("reading a batch's progress from the checkpoint", () => {
@@ -63,7 +61,18 @@ describe("reading a batch's progress from the checkpoint", () => {
   test("treats an unreadable or absent checkpoint as unknown rather than finished", () => {
     expect(batchProgress(stateWith(undefined), "2026-04-17", BATCHES)).toBe("unknown");
     expect(batchProgress([], "2026-04-17", BATCHES)).toBe("unknown");
-    expect(batchProgress(stateWith("cu-corpus-v2.not-a-checkpoint"), "2026-04-17", BATCHES)).toBe("unknown");
+    expect(batchProgress(stateWith("cu-corpus-v3.not-a-checkpoint"), "2026-04-17", BATCHES)).toBe("unknown");
+  });
+
+  test("recognizes a state replacement as the agent's completion assertion", async () => {
+    const checkpoint = await checkpointAt("2026-04-17");
+    const before = stateWith(await checkpointAt("2026-04-16"));
+    const after = stateWith(checkpoint);
+    after[0]!.version = before[0]!.version + 1;
+
+    expect(stateCheckpointWasPersisted(before, after)).toBe(true);
+    after[0]!.body = before[0]!.body;
+    expect(stateCheckpointWasPersisted(before, after)).toBe(false);
   });
 });
 
