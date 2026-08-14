@@ -146,6 +146,51 @@ function batchLines(item: ToolCallItem): string[] {
 }
 
 /**
+ * The agent's own account of what it kept and why, which is the closest thing to a result
+ * for the batch. Set apart so it reads as narration around the tool calls.
+ */
+function printAgentMessage(text: string): void {
+  console.log("");
+  for (const paragraph of text.trim().split("\n")) {
+    if (paragraph.trim()) console.log(`  ${style.yellow("»")} ${paragraph.trim()}`);
+  }
+}
+
+/**
+ * One completed tool call, in the format both harnesses print.
+ *
+ * The two CLIs report a session in different shapes, so each has its own reader, but a run
+ * watched for twenty minutes should look the same whichever one produced it — and a trace
+ * that only one harness emitted is how a Claude run came to spend twenty-one minutes in
+ * total silence.
+ */
+function printToolCall(item: ToolCallItem): void {
+  if (!item.tool) return;
+  // A failed call is followed by a retry, so reporting it as a write would count the
+  // same page twice and hide that the agent had to correct itself.
+  const tool = item.tool.padEnd(TOOL_COLUMN);
+  if (item.status === "failed") {
+    const subject = callSubject(item) || item.tool;
+    const budget = terminalWidth() - TOOL_COLUMN - subject.length - 10;
+    console.log(`  ${style.red("✗")} ${style.red(tool)} ${subject}  ${
+      style.red(failureReason(item, Math.max(20, budget)))}`);
+    return;
+  }
+  // A subject is a path most of the time, but a query or a tool-search selector can run to
+  // hundreds of characters and wrap every line of the trace into three.
+  const subject = truncate(callSubject(item), Math.max(20, terminalWidth() - TOOL_COLUMN - 8));
+  if (item.tool === "read_source_records") {
+    for (const batchLine of batchLines(item)) console.log(batchLine);
+  } else if (WRITE_TOOLS.has(item.tool)) {
+    console.log(`  ${style.green("✓")} ${style.green(tool)} ${subject || "(unknown path)"}`);
+  } else {
+    // Any other tool is a read. Naming it rather than relabelling it keeps the trace
+    // honest about what the agent called, and new tools appear without code changes.
+    console.log(style.dim(`    ${tool} ${subject}`.trimEnd()));
+  }
+}
+
+/**
  * Builds a live trace for one agent session: the records it is handed, what it says about
  * them, the pages it reads to decide, and every write it makes.
  *
@@ -185,36 +230,78 @@ export function createCodexProgressPrinter(): (line: string) => void {
     if (item.id) printed.add(item.id);
 
     if (item.type === "agent_message" && item.text) {
-      // The agent's own account of what it kept and why, which is the closest thing to a
-      // result for the batch. Set apart so it reads as narration around the tool calls.
-      console.log("");
-      for (const paragraph of item.text.trim().split("\n")) {
-        if (paragraph.trim()) console.log(`  ${style.yellow("»")} ${paragraph.trim()}`);
-      }
+      printAgentMessage(item.text);
       return;
     }
-    if (item.type !== "mcp_tool_call" || !item.tool) return;
+    if (item.type !== "mcp_tool_call") return;
+    printToolCall(item);
+  };
+}
 
-    // A failed call is followed by a retry, so reporting it as a write would count the
-    // same page twice and hide that the agent had to correct itself.
-    const tool = item.tool.padEnd(TOOL_COLUMN);
-    if (item.status === "failed") {
-      const subject = callSubject(item) || item.tool;
-      const budget = terminalWidth() - TOOL_COLUMN - subject.length - 10;
-      console.log(`  ${style.red("✗")} ${style.red(tool)} ${subject}  ${
-        style.red(failureReason(item, Math.max(20, budget)))}`);
+/**
+ * The same live trace, read out of Claude Code's `stream-json`.
+ *
+ * Claude reports a call in two events rather than one — the request as an assistant
+ * `tool_use` and its outcome as the next user turn's `tool_result` — so the request is held
+ * until its result names it. Anything still pending when the session ends never completed,
+ * and printing it would claim a write that did not happen.
+ */
+export function createClaudeProgressPrinter(): (line: string) => void {
+  const pending = new Map<string, ToolCallItem>();
+
+  return (line: string): void => {
+    let event: {
+      type?: string;
+      message?: { content?: {
+        type?: string;
+        id?: string;
+        name?: string;
+        text?: string;
+        input?: Record<string, unknown>;
+        tool_use_id?: string;
+        is_error?: boolean | null;
+        content?: unknown;
+      }[] };
+    };
+    try {
+      event = JSON.parse(line) as typeof event;
+    } catch {
+      // Preserve non-JSON output in the log without flooding the terminal.
       return;
     }
-    if (item.tool === "read_source_records") {
-      for (const batchLine of batchLines(item)) console.log(batchLine);
-    } else if (WRITE_TOOLS.has(item.tool)) {
-      console.log(`  ${style.green("✓")} ${style.green(tool)} ${callSubject(item) || "(unknown path)"}`);
-    } else {
-      // Any other tool is a read. Naming it rather than relabelling it keeps the trace
-      // honest about what the agent called, and new tools appear without code changes.
-      console.log(style.dim(`    ${tool} ${callSubject(item)}`.trimEnd()));
+
+    for (const block of event.message?.content ?? []) {
+      if (block.type === "text" && block.text) {
+        printAgentMessage(block.text);
+      } else if (block.type === "tool_use" && block.id && block.name) {
+        // The MCP prefix is the same on every call and would push every subject off the
+        // right of the terminal, so the trace names the tool the way Codex's does.
+        const tool = block.name.startsWith(`mcp__${MCP_NAME}__`)
+          ? block.name.slice(`mcp__${MCP_NAME}__`.length)
+          : block.name;
+        pending.set(block.id, { tool, ...(block.input ? { arguments: block.input } : {}) });
+        if (tool === "read_source_records") console.log(`\n${style.dim("  ← reading source records…")}`);
+      } else if (block.type === "tool_result" && block.tool_use_id) {
+        const call = pending.get(block.tool_use_id);
+        if (!call) continue;
+        pending.delete(block.tool_use_id);
+        printToolCall({
+          ...call,
+          ...(block.is_error ? { status: "failed" } : {}),
+          result: { content: [{ type: "text", text: resultText(block.content) }] },
+        });
+      }
     }
   };
+}
+
+/** A tool result carries either a plain string or the usual content blocks. */
+function resultText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .flatMap((entry) => (entry as { text?: string })?.text ?? [])
+    .join("\n");
 }
 
 export type AgentSession = {
@@ -297,7 +384,7 @@ async function runClaudeSession(session: AgentSession): Promise<void> {
   child.stdin.write(prompt);
   child.stdin.end();
   const [stdoutChunks, stderrChunks, exitCode] = await Promise.all([
-    capture(child.stdout),
+    capture(child.stdout, createClaudeProgressPrinter()),
     capture(child.stderr),
     child.exited,
   ]);

@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { agentRunnerInternals, createCodexProgressPrinter } from "./agent.ts";
+import {
+  agentRunnerInternals,
+  createClaudeProgressPrinter,
+  createCodexProgressPrinter,
+} from "./agent.ts";
 
 /**
  * The live trace is how a run is watched, so it has to report what actually happened.
@@ -144,5 +148,99 @@ describe("session isolation", () => {
     expect(agentRunnerInternals.claudeArgs({ ...session, harness })).toContain("claude-opus-5");
     expect(agentRunnerInternals.claudeArgs({ ...session, harness: { provider: "claude" } }))
       .not.toContain("--model");
+  });
+});
+
+/**
+ * The same trace, from Claude Code's `stream-json`. A run is watched for tens of minutes,
+ * and a harness that printed nothing until it finished left a twenty-one minute
+ * distillation looking like a hung process.
+ */
+function claudeTrace(events: unknown[]): string[] {
+  const lines: string[] = [];
+  const log = console.log;
+  console.log = (line: string) => void lines.push(line);
+  try {
+    const print = createClaudeProgressPrinter();
+    for (const event of events) print(JSON.stringify(event));
+  } finally {
+    console.log = log;
+  }
+  return lines;
+}
+
+const toolUse = (id: string, name: string, input: object) => ({
+  type: "assistant",
+  message: { content: [{ type: "tool_use", id, name: `mcp__context_use_eval__${name}`, input }] },
+});
+
+const toolResult = (id: string, text: string, isError = false) => ({
+  type: "user",
+  message: {
+    content: [{ type: "tool_result", tool_use_id: id, is_error: isError, content: [{ type: "text", text }] }],
+  },
+});
+
+describe("claude progress trace", () => {
+  test("prints a call only once its result names it", () => {
+    // The request alone proves nothing: printing it would report a write that may still fail.
+    expect(claudeTrace([toolUse("t1", "create_page", { path: "people/x/intro" })])).toEqual([]);
+    expect(claudeTrace([
+      toolUse("t1", "create_page", { path: "people/x/intro" }),
+      toolResult("t1", "{}"),
+    ])).toEqual(["  ✓ create_page           people/x/intro"]);
+  });
+
+  test("reports the size and continuation state of each served batch", () => {
+    const lines = claudeTrace([
+      toolUse("t1", "read_source_records", {}),
+      toolResult("t1", JSON.stringify({ has_more: true, records: [{}, {}, {}] })),
+    ]);
+    expect(lines[0]).toContain("reading source records");
+    expect(lines[1]).toBe("  ← 3 records served · more in this day");
+  });
+
+  test("reports a failed call as a failure rather than a write", () => {
+    const lines = claudeTrace([
+      toolUse("t1", "create_page", { path: "people/x/intro" }),
+      toolResult("t1", "MCP error -32602: missing commit_message", true),
+    ]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toStartWith("  ✗ ");
+    expect(lines[0]).toContain("missing commit_message");
+  });
+
+  test("names a tool the way the Codex trace does, and leaves other tools alone", () => {
+    // The MCP prefix is on every call and would push every subject off the right of the
+    // terminal; a tool that has no prefix is still named rather than dropped.
+    const [prefixed] = claudeTrace([
+      toolUse("t1", "read_page", { path: "about/intro" }),
+      toolResult("t1", "{}"),
+    ]);
+    expect(prefixed).toBe(`    ${"read_page".padEnd(21)} about/intro`);
+
+    const [plain] = claudeTrace([
+      { type: "assistant", message: { content: [{ type: "tool_use", id: "t2", name: "ToolSearch", input: {} }] } },
+      toolResult("t2", ""),
+    ]);
+    expect(plain).toBe(`    ${"ToolSearch".padEnd(21)}`.trimEnd());
+  });
+
+  test("shows the agent's own account of the batch", () => {
+    expect(claudeTrace([{
+      type: "assistant",
+      message: { content: [{ type: "text", text: "Kept the meeting.\n\nDropped the chatter." }] },
+    }])).toEqual(["", "  » Kept the meeting.", "  » Dropped the chatter."]);
+  });
+
+  test("keeps a long subject inside one line", () => {
+    const query = "select:".concat("a".repeat(400));
+    const [line] = claudeTrace([toolUse("t1", "search_pages", { query }), toolResult("t1", "{}")]);
+    expect(line!.length).toBeLessThan(120);
+    expect(line).toContain("…");
+  });
+
+  test("ignores output that is not an event", () => {
+    expect(claudeTrace(["not json" as unknown])).toEqual([]);
   });
 });

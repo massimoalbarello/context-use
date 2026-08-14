@@ -8,6 +8,7 @@ import {
   MCP_URL,
   ROOT,
   capture,
+  createClaudeProgressPrinter,
   createCodexProgressPrinter,
   executable,
   modelArguments,
@@ -203,7 +204,13 @@ function claudeConversation(harness: EvalHarness, runDirectory: string): StoryCo
         "--permission-mode", "dontAsk", "--allowedTools", `mcp__${MCP_NAME}__*`,
         "--output-format", "stream-json", "--verbose",
       ];
-      const result = await runProcess({ binary, args, prompt, cwd: EVAL_WORKSPACE });
+      const result = await runProcess({
+        binary,
+        args,
+        prompt,
+        cwd: EVAL_WORKSPACE,
+        progress: createClaudeProgressPrinter(),
+      });
       started = true;
       await Bun.write(join(runDirectory, `${id}-claude.jsonl`), result.stdout);
       await Bun.write(join(runDirectory, `${id}-claude.stderr.log`), result.stderr);
