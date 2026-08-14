@@ -9,7 +9,7 @@ import {
 } from "./corpus/records.ts";
 import type { Corpus } from "./corpus/types.ts";
 import { LOCAL_STACK, runStackCommand } from "../../scripts/local-stack.ts";
-import { EVAL_URL, MCP_NAME, ROOT, runAgentSession, type EvalProvider } from "./agent.ts";
+import { EVAL_URL, MCP_NAME, ROOT, harnessLabel, runAgentSession, type EvalHarness } from "./agent.ts";
 import { corpusDirectory, corpusIsUnchanged, diffCorpus, type CorpusId } from "./corpus/integrity.ts";
 import {
   pageChanges,
@@ -32,7 +32,7 @@ import { EVAL_CORPUS_RESULTS_ROOT } from "./results.ts";
  */
 
 export type DistillOptions = {
-  provider: EvalProvider;
+  harness: EvalHarness;
   corpus: CorpusId;
   window: CorpusWindow;
   /** Stop after this many corpus batches; omit to process the whole window. */
@@ -45,7 +45,7 @@ export type DistillOptions = {
  * wrappers own integrity, selection, and result placement.
  */
 export type CorpusDistillOptions = {
-  provider: EvalProvider;
+  harness: EvalHarness;
   corpus: Corpus;
   /** The same directory as mounted inside the development container. */
   servedDirectory: string;
@@ -222,10 +222,10 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   const directory = corpusDirectory(options.corpus);
   const corpus = loadCorpus(directory);
   const startedAt = new Date().toISOString();
-  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-distill-${options.corpus}-${options.provider}`;
+  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-distill-${options.corpus}-${options.harness.provider}`;
   const runDirectory = join(EVAL_CORPUS_RESULTS_ROOT, runId);
   const result = await runCorpusDistillation({
-    provider: options.provider,
+    harness: options.harness,
     corpus,
     servedDirectory: `/app/eval/data/${options.corpus}/corpus`,
     window: options.window,
@@ -304,7 +304,7 @@ export async function runCorpusDistillation(
         ));
       }
       await runAgentSession({
-        provider: options.provider,
+        harness: options.harness,
         id: `batch-${batch}${attempt > 1 ? `-attempt-${attempt}` : ""}`,
         prompt: triggerPrompt(),
         runDirectory,
@@ -362,7 +362,10 @@ export async function runCorpusDistillation(
     // every extraction decision the agent made, where a seeded one carries none.
     mode: "distill",
     window: options.window,
-    provider: options.provider,
+    provider: options.harness.provider,
+    // Null rather than absent, so a run on the CLI's own default is told apart from an
+    // older run that never recorded a model at all.
+    model: options.harness.model ?? null,
     startedAt,
     completedAt: new Date().toISOString(),
     batches: results,
@@ -380,7 +383,7 @@ export async function runCorpusDistillation(
     "",
     `- **Corpus:** ${corpus.corpusId}`,
     `- **Window:** ${options.window} (${batches.length} batches)`,
-    `- **Provider:** ${options.provider}`,
+    `- **Harness:** ${harnessLabel(options.harness)}`,
     `- **Records served:** ${served} of ${requested} requested`,
     ...(served < requested ? [`- **Unread:** ${requested - served} records the run never saw`] : []),
     `- **Pages after the final run:** ${previous.length}`,

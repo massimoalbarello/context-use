@@ -47,13 +47,25 @@ If the stack is stopped, start the existing stack and volumes:
 bun run local up
 ```
 
-Do not reconnect a provider when authorization already works. If the runner explicitly reports missing provider authorization, connect only that provider and complete its interactive flow:
+Confirm the harness before spending a run on it. `check` prints the configured harness, model and eval, then proves each part of the path, ending with one live session that must reach the knowledge base:
+
+```sh
+bun run eval check
+```
+
+Add `--no-probe` to skip the live session, and `--provider`/`--model` to check a harness other than the configured one.
+
+Do not reconnect a provider when authorization already works. If `check` or the runner reports missing provider authorization, connect only that provider and complete its interactive flow, which needs a browser and this stack's owner passkey:
 
 ```sh
 bun run eval connect codex
 ```
 
 Use `claude` instead of `codex` only when that is the requested provider.
+
+## Know what the configuration decides
+
+`eval/config.json` names the harness, the model and the eval, and every command takes its defaults from it. `bun run eval run` runs exactly what it names; the individual commands below still accept `--provider`, `--model`, `--corpus`, `--window`, `--batches` and `--repeat` for a one-off. Never edit `eval/config.json` to serve a single request — pass flags, or write the gitignored `eval/config.local.json` when the user wants a lasting local default. Report the harness and model with every result, because a score is comparable only to another score from the same pair.
 
 ## Know which commands own state
 
@@ -86,7 +98,7 @@ bun run eval story:list
 bun run eval story:run --story imac-design-and-launch
 ```
 
-Add `--provider claude` only when requested. Add `--repeat <n>` for serial repetitions of the same selection.
+The harness comes from `eval/config.json`; pass `--provider` or `--model` only when the user asks for a different one. Add `--repeat <n>` for serial repetitions of the same selection.
 
 ### The full Steve Jobs story suite
 
@@ -188,11 +200,11 @@ Corpus and QA artifacts live under `eval/results/corpus/<run-id>/`. Inspect `rep
 Report at least:
 
 - exact commit SHA and whether the worktree was dirty;
-- provider, command, run ID, batch/window/repeat configuration, and result path;
+- harness provider and model, command, run ID, batch/window/repeat configuration, and result path;
 - overall and per-case scores;
 - unread or unreached records, voided questions, and other harness caveats;
 - concentrated failure modes rather than only the headline score.
 
-A single stochastic run is a baseline, not proof of a regression or improvement. Compare repeated runs only when their corpus, provider, batch/window, repeat count, and harness revision match.
+A single stochastic run is a baseline, not proof of a regression or improvement. Compare repeated runs only when their corpus, harness provider and model, batch/window, repeat count, and harness revision match.
 
 Do not write an eval result into the local knowledge base under test: it contaminates subsequent inspection and disappears at the next reset. Keep the generated gitignored report as the local record of the run.

@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { runStackCommand } from "../../../scripts/local-stack.ts";
-import type { EvalProvider } from "../agent.ts";
+import { harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { EVAL_STORY_RESULTS_ROOT } from "../results.ts";
 import { snapshotKnowledgeState, type KnowledgeSnapshot } from "../snapshot.ts";
 import { buildKnowledgeGraph } from "./graph.ts";
@@ -13,7 +13,7 @@ import { storyTurnSubjectIds, type EvalStory, type EvalStorySuite, type StoryTur
 const RESULTS_ROOT = EVAL_STORY_RESULTS_ROOT;
 
 export type StoryRunOptions = {
-  provider: EvalProvider;
+  harness: EvalHarness;
   story?: string;
   all?: boolean;
   journey?: boolean;
@@ -30,6 +30,8 @@ export type StoryRunReport = {
   runId: string;
   suiteId: string;
   provider: EvalProvider;
+  /** Null where the run used the CLI's own default model. */
+  model: string | null;
   mode: "suite" | "journey";
   startedAt: string;
   completedAt: string;
@@ -90,7 +92,7 @@ async function writeSnapshot(path: string, snapshot: KnowledgeSnapshot): Promise
 async function runOneStory(input: {
   suite: EvalStorySuite;
   story: EvalStory;
-  provider: EvalProvider;
+  harness: EvalHarness;
   directory: string;
   initial: KnowledgeSnapshot;
   includeSuitePrelude: boolean;
@@ -99,7 +101,7 @@ async function runOneStory(input: {
   await writeSnapshot(join(input.directory, "initial-snapshot.json"), input.initial);
   // A conversation belongs to exactly one story. The knowledge snapshot crosses this
   // boundary; provider thread/session state does not.
-  const conversation = openStoryConversation(input.provider, input.directory);
+  const conversation = openStoryConversation(input.harness, input.directory);
   const scores = [];
   let previous = input.initial;
   let bindings = new Map<string, string>();
@@ -152,6 +154,11 @@ async function runOneStory(input: {
   return { score: aggregateStoryScore(input.story.id, scores), final: previous };
 }
 
+/** The harness a recorded report describes, including reports written before models were. */
+function reportHarness(report: StoryRunReport): EvalHarness {
+  return report.model ? { provider: report.provider, model: report.model } : { provider: report.provider };
+}
+
 function markdownReport(report: StoryRunReport): string {
   const allStories = report.stories;
   const overall = allStories.length
@@ -160,7 +167,7 @@ function markdownReport(report: StoryRunReport): string {
   const lines = [
     `# ${report.suiteId} — ${report.mode}`,
     "",
-    `- Provider: ${report.provider}`,
+    `- Harness: ${harnessLabel(reportHarness(report))}`,
     `- Overall: ${(overall * 100).toFixed(1)}%`,
     `- Started: ${report.startedAt}`,
     `- Completed: ${report.completedAt}`,
@@ -220,7 +227,7 @@ function planStoryConversations(stories: EvalStory[]): Array<{
 export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOptions): Promise<string> {
   const startedAt = new Date().toISOString();
   const mode = options.journey ? "journey" : "suite";
-  const runId = `${suite.id}-${mode}-${startedAt.replaceAll(":", "-").replace(".", "-")}-${options.provider}`;
+  const runId = `${suite.id}-${mode}-${startedAt.replaceAll(":", "-").replace(".", "-")}-${options.harness.provider}`;
   const runDirectory = join(RESULTS_ROOT, runId);
   await mkdir(runDirectory, { recursive: true });
   const stories = selectedStories(suite, options);
@@ -239,7 +246,7 @@ export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOpti
       const result = await runOneStory({
         suite,
         story,
-        provider: options.provider,
+        harness: options.harness,
         directory,
         initial: suiteState,
         includeSuitePrelude: planned.includeSuitePrelude,
@@ -252,7 +259,8 @@ export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOpti
   const report: StoryRunReport = {
     runId,
     suiteId: suite.id,
-    provider: options.provider,
+    provider: options.harness.provider,
+    model: options.harness.model ?? null,
     mode,
     startedAt,
     completedAt: new Date().toISOString(),

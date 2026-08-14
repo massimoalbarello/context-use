@@ -3,7 +3,7 @@ import {
   agentToolsUsed,
   MCP_NAME,
   runAgentSession,
-  type EvalProvider,
+  type EvalHarness,
 } from "../agent.ts";
 import type { PublicQuery } from "./questions.ts";
 import type { RecordedAnswer } from "./score.ts";
@@ -36,7 +36,7 @@ you are unsure of counts against you.`;
 }
 
 export type AskOptions = {
-  provider: EvalProvider;
+  harness: EvalHarness;
   runDirectory: string;
   questions: PublicQuery[];
   onAnswer?: (answer: RecordedAnswer, index: number) => void;
@@ -44,18 +44,19 @@ export type AskOptions = {
 
 export async function askQuestions(options: AskOptions): Promise<RecordedAnswer[]> {
   const recorded: RecordedAnswer[] = [];
+  const { provider } = options.harness;
   for (const [index, question] of options.questions.entries()) {
     const id = `qa-${question.id}`;
     await runAgentSession({
-      provider: options.provider,
+      harness: options.harness,
       id,
       prompt: askPrompt(question),
       runDirectory: options.runDirectory,
     });
     const answer: RecordedAnswer = {
       id: question.id,
-      text: agentFinalAnswer(options.runDirectory, id, options.provider),
-      toolsUsed: agentToolsUsed(options.runDirectory, id, options.provider),
+      text: agentFinalAnswer(options.runDirectory, id, provider),
+      toolsUsed: agentToolsUsed(options.runDirectory, id, provider),
     };
     recorded.push(answer);
     options.onAnswer?.(answer, index);

@@ -1,14 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
+  CLAUDE_ISOLATION,
+  CODEX_ISOLATION,
   EVAL_WORKSPACE,
   MCP_NAME,
   MCP_URL,
   ROOT,
   capture,
+  createClaudeProgressPrinter,
   createCodexProgressPrinter,
   executable,
-  type EvalProvider,
+  modelArguments,
+  type EvalHarness,
 } from "../agent.ts";
 import type { ToolCallRecord, TurnToolActivity } from "./types.ts";
 
@@ -112,24 +116,24 @@ async function runProcess(input: {
   return { stdout, stderr };
 }
 
-function codexConversation(runDirectory: string): StoryConversation {
+function codexConversation(harness: EvalHarness, runDirectory: string): StoryConversation {
   const binary = executable("codex");
   let threadId: string | undefined;
   return {
     async send({ id, prompt }) {
-      const outputPath = join(runDirectory, `${id}-final.md`);
       const common = [
-        "--ignore-user-config", "--ignore-rules", "--skip-git-repo-check", "--json",
-        "--output-last-message", outputPath,
+        ...CODEX_ISOLATION, "--skip-git-repo-check", "--json",
+        "--output-last-message", join(runDirectory, `${id}-final.md`),
         "-c", 'approval_policy="never"',
         "-c", `mcp_servers.${MCP_NAME}.url="${MCP_URL}"`,
         "-c", `mcp_servers.${MCP_NAME}.required=true`,
         "-c", `mcp_servers.${MCP_NAME}.default_tools_approval_mode="approve"`,
         "-c", `mcp_servers.${MCP_NAME}.scopes=["mcp:access","offline_access"]`,
       ];
+      const model = modelArguments(harness);
       const args = threadId
-        ? ["exec", "resume", ...common, threadId, "-"]
-        : ["exec", ...common, "--sandbox", "read-only", "-C", EVAL_WORKSPACE, "-"];
+        ? ["exec", "resume", ...model, ...common, threadId, "-"]
+        : ["exec", ...model, ...common, "--sandbox", "read-only", "-C", EVAL_WORKSPACE, "-"];
       const result = await runProcess({
         binary,
         args,
@@ -185,21 +189,28 @@ function claudeActivity(output: string): TurnToolActivity {
   return summarizeActivity([...calls.values()]);
 }
 
-function claudeConversation(runDirectory: string): StoryConversation {
+function claudeConversation(harness: EvalHarness, runDirectory: string): StoryConversation {
   const binary = executable("claude");
   const sessionId = randomUUID();
-  let started = false;
   const mcpConfig = JSON.stringify({ mcpServers: { [MCP_NAME]: { type: "http", url: MCP_URL } } });
+  let started = false;
   return {
     async send({ id, prompt }) {
       const args = [
         "-p",
         ...(started ? ["--resume", sessionId] : ["--session-id", sessionId]),
+        ...modelArguments(harness), ...CLAUDE_ISOLATION,
         "--strict-mcp-config", "--mcp-config", mcpConfig,
         "--permission-mode", "dontAsk", "--allowedTools", `mcp__${MCP_NAME}__*`,
         "--output-format", "stream-json", "--verbose",
       ];
-      const result = await runProcess({ binary, args, prompt, cwd: EVAL_WORKSPACE });
+      const result = await runProcess({
+        binary,
+        args,
+        prompt,
+        cwd: EVAL_WORKSPACE,
+        progress: createClaudeProgressPrinter(),
+      });
       started = true;
       await Bun.write(join(runDirectory, `${id}-claude.jsonl`), result.stdout);
       await Bun.write(join(runDirectory, `${id}-claude.stderr.log`), result.stderr);
@@ -209,8 +220,10 @@ function claudeConversation(runDirectory: string): StoryConversation {
   };
 }
 
-export function openStoryConversation(provider: EvalProvider, runDirectory: string): StoryConversation {
-  return provider === "codex" ? codexConversation(runDirectory) : claudeConversation(runDirectory);
+export function openStoryConversation(harness: EvalHarness, runDirectory: string): StoryConversation {
+  return harness.provider === "codex"
+    ? codexConversation(harness, runDirectory)
+    : claudeConversation(harness, runDirectory);
 }
 
 export const storySessionInternals = { codexActivity, threadIdFrom };

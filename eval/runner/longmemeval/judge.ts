@@ -144,7 +144,9 @@ export async function judgeLongMemEvalAnswerWithHarness(
   await mkdir(options.runDirectory, { recursive: true });
   const runSession = options.runSession ?? runAgentSession;
   await runSession({
-    provider: options.provider,
+    // Deliberately the CLI's own default model rather than the configured one: a judge that
+    // moved whenever the model under test moved could not compare two runs.
+    harness: { provider: options.provider },
     id: options.id,
     prompt: longMemEvalJudgePrompt(entry, hypothesis),
     runDirectory: options.runDirectory,

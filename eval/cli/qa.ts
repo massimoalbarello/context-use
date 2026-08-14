@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { LOCAL_STACK, runStackCommand } from "../../scripts/local-stack.ts";
-import { ROOT, type EvalProvider } from "../runner/agent.ts";
+import { ROOT, harnessLabel, type EvalHarness } from "../runner/agent.ts";
 import {
   corpusDirectory,
   corpusIsUnchanged,
@@ -271,7 +271,7 @@ const ANSWERS_FILE = "qa-answers.json";
 
 export type AskOptions = {
   runId?: string | undefined;
-  provider: EvalProvider;
+  harness: EvalHarness;
   only?: string | undefined;
   limit?: number | undefined;
   /** Ask every question, including ones the run has not served the evidence for. */
@@ -308,10 +308,11 @@ export async function askQuestionsCommand(options: AskOptions): Promise<void> {
     console.log(style.dim(`Run processed through ${through}, so ${skipped} question(s) whose evidence`));
     console.log(style.dim("it never served are held back. Pass --all to ask them anyway."));
   }
-  console.log(style.dim("One session per question, against the knowledge base the run left.\n"));
+  console.log(style.dim(`One session per question, against the knowledge base the run left · ${
+    harnessLabel(options.harness)}\n`));
 
   const recorded = await askQuestions({
-    provider: options.provider,
+    harness: options.harness,
     runDirectory: answerDirectory,
     questions,
     onAnswer: (answer, index) => {

@@ -27,6 +27,102 @@ names, dates, facts, and graph relationships rather than expected filenames or t
 Their semantic homes are still scored: people under `people/`, companies under `companies/`,
 meetings under `meetings/`, and events under `events/`.
 
+## One configuration per run
+
+[`config.json`](config.json) names the harness, the model, and the evaluation a run uses.
+Every command below takes its defaults from it, so what gets measured is a property of the
+repository rather than of the command line someone happened to type.
+
+```sh
+bun run eval check      # prove this setup can run that evaluation
+bun run eval run        # run it
+```
+
+`check` is why the file is worth having. A configuration can name a harness and a model,
+but only a session proves the CLI is installed and signed in, that the MCP authorization
+was completed, that the model id is one the CLI accepts, and that a tool call reaches the
+knowledge base. It runs one live session that has to reach the knowledge base, and reports
+the model the CLI actually resolved — an alias such as `opus` silently becomes a dated model
+id, so pin an exact one and two runs stay comparable. `--no-probe` skips the live session;
+`--provider` and `--model` check a harness before adopting it.
+
+Three layers, each overriding the last: `config.json`, committed and the answer to what
+this repository runs; `config.local.json`, gitignored, so choosing another harness locally
+never lands in a commit; and flags, which are a one-off and never a new default. Switching
+provider by flag drops the configured model with it, because a model id belongs to the CLI
+that understands it.
+
+An unknown or misspelled field is an error rather than a shrug, since a `batchs` that
+silently kept the default would report one run and measure another.
+
+### What to put in it
+
+The committed default is one day of `amara-life-v1`, the corpus that matches what Context
+Use actually does. It is a day rather than the corpus because a default should be cheap
+enough to run on a whim and real enough that passing it means something.
+
+In order of what is worth measuring: `amara-life-v1` first, then `steve-jobs-v1` and
+LongMemEval, and `world-v1` last — it is the narrowest of the four and is here mainly
+because it is the only corpus that arrived with an answer key of its own.
+
+```jsonc
+// The whole amara corpus, on a pinned Claude Code model.
+{
+  "harness": { "provider": "claude", "model": "claude-opus-5" },
+  "eval": { "command": "distill", "corpus": "amara-life-v1" }
+}
+
+// Its eight busy days rather than all forty-seven, distilled and then asked and scored.
+{ "eval": { "command": "qa", "corpus": "amara-life-v1", "window": "dense" } }
+
+// One Steve Jobs story, three times, because one stochastic run is not a measurement.
+{ "eval": { "command": "story", "story": "imac-design-and-launch", "repeat": 3 } }
+
+// Every story, or the historical ones in chronological order.
+{ "eval": { "command": "story", "story": "all" } }
+{ "eval": { "command": "journey" } }
+
+// LongMemEval: two cases of every question type, or the whole benchmark.
+{ "eval": { "command": "longmem", "stratify": 2 } }
+{ "eval": { "command": "longmem", "all": true } }
+
+// world-v1 seeded and asked, which measures retrieval alone.
+{ "eval": { "command": "qa", "corpus": "world-v1" } }
+```
+
+`config.json` is JSON, not JSONC — the comments above are for this page only. A layer may
+carry `harness` alone, `eval` alone, or both.
+
+## What reaches the agent, and what does not
+
+The agent's workspace sits inside this repository, so both CLIs will read this
+repository's instructions to its own maintainers and hand them to the agent under test
+unless told not to. Both were observed doing it, and each is stopped by a different flag:
+
+| | reads local settings | reads project documents | receives the MCP server's `instructions` |
+| --- | --- | --- | --- |
+| Codex | not with `--ignore-user-config` | not with `-c project_doc_max_bytes=0` | **no — the CLI discards them** |
+| Claude Code | not with `--setting-sources ""` | not with `--setting-sources ""` | yes |
+
+`--ignore-user-config` drops `$CODEX_HOME/config.toml`, where a developer's own model,
+reasoning effort, sandbox policy and extra MCP servers live. `--ignore-rules` drops user
+and project execpolicy `.rules` files. Neither touches `AGENTS.md`, which Codex reads from
+the working directory upward: this repository has no root `AGENTS.md` today, so those
+sessions were clean by circumstance rather than by construction, and
+`project_doc_max_bytes=0` is what actually holds it.
+
+The MCP server's `instructions` — the one line Context Use sends every client at
+initialize — are unaffected by any of the above, because they arrive over the wire rather
+than off the disk. Claude Code carries them into context; Codex discards them, with or
+without those flags. That is a difference between the two harnesses rather than something
+this repository configures, and it is one more reason a Codex score and a Claude score are
+not each other's baseline.
+
+Corpus QA and story runs are scored without a model at all — a sealed key compared by
+string, and structural expectations. LongMemEval's harness judge is the one scorer that is
+an agent session, and it runs with no MCP server and voids its own judgement on any tool
+action, so the isolation above is the whole of what it reads.
+
 ## Layout
 
 The layout follows gbrain-evals' `data`, `runner`, and `cli` boundaries while keeping each
@@ -34,13 +130,15 @@ local evaluation self-contained:
 
 ```text
 eval/
+├── config.json           the harness, model and evaluation a run uses
+├── config.ts             how that configuration is read, layered and validated
 ├── data/
-│   ├── amara-life-v1/     corpus, lockfile, loader, QA, and structural gold
-│   ├── longmemeval-v1/    pinned external dataset manifest and isolated case loader
-│   ├── world-v1/          corpus, lockfile, loader, QA derivation, and seeding
-│   └── steve-jobs-v1/     interactive stories, expectations, journey, and sources
-├── runner/                reusable corpus, distillation, QA, story, agent, and snapshot code
-└── cli/                   command composition over the data packages and runner
+│   ├── amara-life-v1/    corpus, lockfile, loader, QA, and structural gold
+│   ├── longmemeval-v1/   pinned external dataset manifest and isolated case loader
+│   ├── world-v1/         corpus, lockfile, loader, QA derivation, and seeding
+│   └── steve-jobs-v1/    interactive stories, expectations, journey, and sources
+├── runner/               reusable corpus, distillation, QA, story, agent, and snapshot code
+└── cli/                  command composition over the data packages and runner
 ```
 
 Everything specific to one fixed input belongs under `data/<eval-id>/`. Code that can run
@@ -133,9 +231,12 @@ invalidates every result measured against the previous version.
 
 ```sh
 bun run local up
-bun run eval connect codex
+bun run eval connect codex     # once: registers the MCP and completes its OAuth
 bun run eval distill --corpus world-v1 --batches 2
 ```
+
+`connect` takes `codex` or `claude`, and defaults to the configured harness. The browser it
+opens asks for this stack's owner passkey.
 
 A **batch** is what one automation run consumes. For `amara-life-v1` a batch is a calendar
 day; for `world-v1` it is a slice of the page order, since those pages carry no chronology

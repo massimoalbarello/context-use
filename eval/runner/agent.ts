@@ -5,7 +5,46 @@ import { style, terminalWidth, truncate } from "./terminal.ts";
 
 /** Agent session plumbing shared by corpus distillation and question answering. */
 
-export type EvalProvider = "codex" | "claude";
+export const PROVIDERS = ["codex", "claude"] as const;
+export type EvalProvider = (typeof PROVIDERS)[number];
+
+/**
+ * The CLI that drives the agent and the model it drives.
+ *
+ * Both belong together because neither alone describes what was measured: the same corpus
+ * run through Codex and through Claude Code, or through two models of one CLI, produces
+ * scores that are not comparable. Every run records the pair for that reason.
+ */
+export type EvalHarness = {
+  provider: EvalProvider;
+  /** Model id handed to the CLI. Omitted leaves the CLI on its own default. */
+  model?: string | undefined;
+};
+
+export function harnessLabel(harness: EvalHarness): string {
+  return `${harness.provider} · ${harness.model ?? "CLI default model"}`;
+}
+
+export function modelArguments(harness: EvalHarness): string[] {
+  return harness.model ? ["--model", harness.model] : [];
+}
+
+/**
+ * The flags that keep local configuration out of a measurement.
+ *
+ * The workspace sits inside this repository, so both CLIs will otherwise read this
+ * repository's own instructions to its maintainers and hand them to the agent under test.
+ * `--ignore-user-config` drops `$CODEX_HOME/config.toml`, where a developer's model,
+ * reasoning effort, sandbox policy and extra MCP servers live, and `--ignore-rules` drops
+ * execpolicy `.rules`; neither touches `AGENTS.md`, which Codex reads from the working
+ * directory upward until `project_doc_max_bytes=0`. `--setting-sources ""` is Claude Code's
+ * equivalent, covering its settings, memory and skills at once.
+ *
+ * None of it affects the MCP server's own `instructions`, which arrive over the wire at
+ * initialize: Claude Code carries them into context and Codex discards them either way.
+ */
+export const CODEX_ISOLATION = ["--ignore-user-config", "--ignore-rules", "-c", "project_doc_max_bytes=0"];
+export const CLAUDE_ISOLATION = ["--setting-sources", ""];
 
 export const ROOT = join(import.meta.dir, "..", "..");
 export const EVAL_URL = stackUrl();
@@ -107,6 +146,51 @@ function batchLines(item: ToolCallItem): string[] {
 }
 
 /**
+ * The agent's own account of what it kept and why, which is the closest thing to a result
+ * for the batch. Set apart so it reads as narration around the tool calls.
+ */
+function printAgentMessage(text: string): void {
+  console.log("");
+  for (const paragraph of text.trim().split("\n")) {
+    if (paragraph.trim()) console.log(`  ${style.yellow("»")} ${paragraph.trim()}`);
+  }
+}
+
+/**
+ * One completed tool call, in the format both harnesses print.
+ *
+ * The two CLIs report a session in different shapes, so each has its own reader, but a run
+ * watched for twenty minutes should look the same whichever one produced it — and a trace
+ * that only one harness emitted is how a Claude run came to spend twenty-one minutes in
+ * total silence.
+ */
+function printToolCall(item: ToolCallItem): void {
+  if (!item.tool) return;
+  // A failed call is followed by a retry, so reporting it as a write would count the
+  // same page twice and hide that the agent had to correct itself.
+  const tool = item.tool.padEnd(TOOL_COLUMN);
+  if (item.status === "failed") {
+    const subject = callSubject(item) || item.tool;
+    const budget = terminalWidth() - TOOL_COLUMN - subject.length - 10;
+    console.log(`  ${style.red("✗")} ${style.red(tool)} ${subject}  ${
+      style.red(failureReason(item, Math.max(20, budget)))}`);
+    return;
+  }
+  // A subject is a path most of the time, but a query or a tool-search selector can run to
+  // hundreds of characters and wrap every line of the trace into three.
+  const subject = truncate(callSubject(item), Math.max(20, terminalWidth() - TOOL_COLUMN - 8));
+  if (item.tool === "read_source_records") {
+    for (const batchLine of batchLines(item)) console.log(batchLine);
+  } else if (WRITE_TOOLS.has(item.tool)) {
+    console.log(`  ${style.green("✓")} ${style.green(tool)} ${subject || "(unknown path)"}`);
+  } else {
+    // Any other tool is a read. Naming it rather than relabelling it keeps the trace
+    // honest about what the agent called, and new tools appear without code changes.
+    console.log(style.dim(`    ${tool} ${subject}`.trimEnd()));
+  }
+}
+
+/**
  * Builds a live trace for one agent session: the records it is handed, what it says about
  * them, the pages it reads to decide, and every write it makes.
  *
@@ -146,40 +230,82 @@ export function createCodexProgressPrinter(): (line: string) => void {
     if (item.id) printed.add(item.id);
 
     if (item.type === "agent_message" && item.text) {
-      // The agent's own account of what it kept and why, which is the closest thing to a
-      // result for the batch. Set apart so it reads as narration around the tool calls.
-      console.log("");
-      for (const paragraph of item.text.trim().split("\n")) {
-        if (paragraph.trim()) console.log(`  ${style.yellow("»")} ${paragraph.trim()}`);
-      }
+      printAgentMessage(item.text);
       return;
     }
-    if (item.type !== "mcp_tool_call" || !item.tool) return;
+    if (item.type !== "mcp_tool_call") return;
+    printToolCall(item);
+  };
+}
 
-    // A failed call is followed by a retry, so reporting it as a write would count the
-    // same page twice and hide that the agent had to correct itself.
-    const tool = item.tool.padEnd(TOOL_COLUMN);
-    if (item.status === "failed") {
-      const subject = callSubject(item) || item.tool;
-      const budget = terminalWidth() - TOOL_COLUMN - subject.length - 10;
-      console.log(`  ${style.red("✗")} ${style.red(tool)} ${subject}  ${
-        style.red(failureReason(item, Math.max(20, budget)))}`);
+/**
+ * The same live trace, read out of Claude Code's `stream-json`.
+ *
+ * Claude reports a call in two events rather than one — the request as an assistant
+ * `tool_use` and its outcome as the next user turn's `tool_result` — so the request is held
+ * until its result names it. Anything still pending when the session ends never completed,
+ * and printing it would claim a write that did not happen.
+ */
+export function createClaudeProgressPrinter(): (line: string) => void {
+  const pending = new Map<string, ToolCallItem>();
+
+  return (line: string): void => {
+    let event: {
+      type?: string;
+      message?: { content?: {
+        type?: string;
+        id?: string;
+        name?: string;
+        text?: string;
+        input?: Record<string, unknown>;
+        tool_use_id?: string;
+        is_error?: boolean | null;
+        content?: unknown;
+      }[] };
+    };
+    try {
+      event = JSON.parse(line) as typeof event;
+    } catch {
+      // Preserve non-JSON output in the log without flooding the terminal.
       return;
     }
-    if (item.tool === "read_source_records") {
-      for (const batchLine of batchLines(item)) console.log(batchLine);
-    } else if (WRITE_TOOLS.has(item.tool)) {
-      console.log(`  ${style.green("✓")} ${style.green(tool)} ${callSubject(item) || "(unknown path)"}`);
-    } else {
-      // Any other tool is a read. Naming it rather than relabelling it keeps the trace
-      // honest about what the agent called, and new tools appear without code changes.
-      console.log(style.dim(`    ${tool} ${callSubject(item)}`.trimEnd()));
+
+    for (const block of event.message?.content ?? []) {
+      if (block.type === "text" && block.text) {
+        printAgentMessage(block.text);
+      } else if (block.type === "tool_use" && block.id && block.name) {
+        // The MCP prefix is the same on every call and would push every subject off the
+        // right of the terminal, so the trace names the tool the way Codex's does.
+        const tool = block.name.startsWith(`mcp__${MCP_NAME}__`)
+          ? block.name.slice(`mcp__${MCP_NAME}__`.length)
+          : block.name;
+        pending.set(block.id, { tool, ...(block.input ? { arguments: block.input } : {}) });
+        if (tool === "read_source_records") console.log(`\n${style.dim("  ← reading source records…")}`);
+      } else if (block.type === "tool_result" && block.tool_use_id) {
+        const call = pending.get(block.tool_use_id);
+        if (!call) continue;
+        pending.delete(block.tool_use_id);
+        printToolCall({
+          ...call,
+          ...(block.is_error ? { status: "failed" } : {}),
+          result: { content: [{ type: "text", text: resultText(block.content) }] },
+        });
+      }
     }
   };
 }
 
+/** A tool result carries either a plain string or the usual content blocks. */
+function resultText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .flatMap((entry) => (entry as { text?: string })?.text ?? [])
+    .join("\n");
+}
+
 export type AgentSession = {
-  provider: EvalProvider;
+  harness: EvalHarness;
   /** Stable identifier used to name this session's log files. */
   id: string;
   prompt: string;
@@ -188,7 +314,7 @@ export type AgentSession = {
   knowledgeTools?: boolean | undefined;
 };
 
-function codexArgs({ id, runDirectory, knowledgeTools = true }: AgentSession): string[] {
+function codexArgs({ harness, id, runDirectory, knowledgeTools = true }: AgentSession): string[] {
   const mcpArgs = knowledgeTools
     ? [
         "-c", `mcp_servers.${MCP_NAME}.url="${MCP_URL}"`,
@@ -198,7 +324,7 @@ function codexArgs({ id, runDirectory, knowledgeTools = true }: AgentSession): s
       ]
     : [];
   return [
-    "exec", "--ephemeral", "--ignore-user-config", "--ignore-rules",
+    "exec", ...modelArguments(harness), "--ephemeral", ...CODEX_ISOLATION,
     "--skip-git-repo-check", "--sandbox", "read-only", "--json",
     "--output-last-message", join(runDirectory, `${id}-final.md`),
     "-C", EVAL_WORKSPACE,
@@ -230,12 +356,13 @@ async function runCodexSession(session: AgentSession): Promise<void> {
   }
 }
 
-function claudeArgs({ knowledgeTools = true }: AgentSession): string[] {
+function claudeArgs({ harness, knowledgeTools = true }: AgentSession): string[] {
   const mcpConfig = JSON.stringify({
     mcpServers: knowledgeTools ? { [MCP_NAME]: { type: "http", url: MCP_URL } } : {},
   });
   return [
-    "-p", "--no-session-persistence", "--strict-mcp-config",
+    "-p", "--no-session-persistence", ...modelArguments(harness), ...CLAUDE_ISOLATION,
+    "--strict-mcp-config",
     "--mcp-config", mcpConfig, "--permission-mode", "dontAsk",
     "--allowedTools", knowledgeTools ? `mcp__${MCP_NAME}__*` : "",
     // `stream-json` is what `agentFinalAnswer` and `agentToolsUsed` read back, and under
@@ -257,7 +384,7 @@ async function runClaudeSession(session: AgentSession): Promise<void> {
   child.stdin.write(prompt);
   child.stdin.end();
   const [stdoutChunks, stderrChunks, exitCode] = await Promise.all([
-    capture(child.stdout),
+    capture(child.stdout, createClaudeProgressPrinter()),
     capture(child.stderr),
     child.exited,
   ]);
@@ -270,7 +397,7 @@ async function runClaudeSession(session: AgentSession): Promise<void> {
 }
 
 export async function runAgentSession(session: AgentSession): Promise<void> {
-  if (session.provider === "codex") await runCodexSession(session);
+  if (session.harness.provider === "codex") await runCodexSession(session);
   else await runClaudeSession(session);
 }
 
@@ -356,6 +483,13 @@ export function connectProvider(provider: EvalProvider): void {
     ], { cwd: ROOT, stdin: "inherit", stdout: "inherit", stderr: "inherit" });
     if (added.exitCode !== 0) process.exit(added.exitCode);
   }
-  console.log("Claude MCP configuration is ready.");
-  console.log("Run `claude auth login` if needed, then open Claude Code and use `/mcp` once to complete OAuth.");
+  // The evaluation sessions pass this server inline with `--strict-mcp-config`, so the
+  // registration above is not what they read. The stored OAuth token is, and this is the
+  // flow that obtains it: the local stack has to be up, and the browser asks for the owner
+  // passkey.
+  const login = Bun.spawnSync([binary, "mcp", "login", MCP_NAME], {
+    cwd: ROOT, stdin: "inherit", stdout: "inherit", stderr: "inherit",
+  });
+  if (login.exitCode !== 0) process.exit(login.exitCode);
+  console.log("\nAuthorized. Confirm the whole path with `bun run eval check`.");
 }
