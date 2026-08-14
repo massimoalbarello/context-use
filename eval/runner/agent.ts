@@ -55,7 +55,7 @@ export async function capture(
 const WRITE_TOOLS = new Set(["create_directory", "create_page", "update_page", "archive_page"]);
 
 /** One column for every tool name, so subjects line up whether the call read or wrote. */
-const TOOL_COLUMN = "prepare_knowledge_write".length;
+const TOOL_COLUMN = "compare_page_versions".length;
 
 type ToolCallItem = {
   id?: string;

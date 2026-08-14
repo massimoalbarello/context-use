@@ -7,11 +7,12 @@ structured and written.
 
 ## Contract
 
-- Call `prepare_knowledge_write` with an empty target path, follow the [[agents|root guide]],
+- Call `prepare_change` with an empty target path, follow the [[agents|root guide]],
   and read [[automations/diary-composer/state|state]].
 - Before the first mutation in a scope, prepare the exact diary target. Reuse its receipt for
   the same guide chain; pass the prior receipt as `cached_guidance_receipt` when the scope
-  changes or a receipt is rejected.
+  changes or a receipt is rejected. Omit the cached receipt whenever the previously returned
+  guide bodies are no longer in context, so every applicable guide is loaded again.
 - Run independently from every other automation and treat the fixed knowledge-change window
   as the entire input.
 - Mutate only dated directories and pages beneath `about/diary/`, plus this automation's
@@ -28,7 +29,7 @@ value exactly.
 
 ### 2. Freeze the change window
 
-Call `get_knowledge_changes` with that cursor and no `limit`. When `has_more` is true, call it
+Call `list_page_changes` with that cursor and no `limit`. When `has_more` is true, call it
 again with `next_page_token` as `page_token` and no cursor. Continue until `has_more` is false.
 
 The first call fixes the window. Changes committed during this run remain after the returned
@@ -38,7 +39,7 @@ The first call fixes the window. Changes committed during this run remain after 
 
 Ignore rows under `about/diary/` and `automations/diary-composer/` as activity input.
 
-For every other non-deleted row, call `get_page_delta` once with its exact `page_id`,
+For every other non-deleted row, call `compare_page_versions` once with its exact `page_id`,
 `previous_version_number` and `version_number`. Use the returned metadata changes and exact
 `before` and `after` Markdown fragments as the complete new evidence. Do not calculate another
 diff.
@@ -53,7 +54,7 @@ diff.
   removed page. Reconcile one only when retained evidence shows exactly what support was
   withdrawn; deletion alone proves no opposite claim.
 
-Call `get_page` only when a changed fragment needs current context to identify its subject,
+Call `read_page` only when a changed fragment needs current context to identify its subject,
 relationship, activity date or useful link. Unchanged current prose is context, never new
 activity evidence.
 
@@ -83,7 +84,7 @@ For each affected date:
 
 - **a.** Read the current `intro` and every companion view reachable from it. If a legacy day has a
    `log` but no `intro`, retain `log` as a companion and create an entry point that reaches it.
-- **b.** Use `get_page_history` only as far as needed to distinguish composer-owned passages from
+- **b.** Use `list_page_versions` only as far as needed to distinguish composer-owned passages from
    owner additions. Treat uncertain authorship as the owner's.
 - **c.** Read a current occurrence or entity page only when the delta does not provide enough
    context to understand the relationship or choose the destination link. Do not mine it for
@@ -97,7 +98,7 @@ Reading an earlier day supplies evidence for a continuity link; it does not requ
 ### 6. Reconcile each affected day
 
 - **a.** Prepare the exact day target and apply the diary guide.
-- **b.** When `intro` is absent, call `get_directory` for the year, month and day. Create missing
+- **b.** When `intro` is absent, call `read_directory` for the year, month and day. Create missing
   directories shallowest first with `create_directory` and the prepared receipt. Title each
   for its date span (`2026`, `August 2026`, `14 August 2026`) and leave its summary empty.
 - **c.** Integrate only support changed in this window. On replay, converge rather than append.

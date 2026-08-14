@@ -28,6 +28,7 @@ async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body:
           name: string;
           description?: string;
           inputSchema?: { properties?: Record<string, { description?: string }> };
+          outputSchema?: { properties?: Record<string, { description?: string }> };
         }>;
         content?: Array<{ type: string; text: string }>;
         structuredContent?: Record<string, unknown>;
@@ -76,8 +77,25 @@ function pagesWithGuidance(overrides: Record<string, unknown> = {}): PageReposit
 
 const rootGuidanceReceipt = createGuidanceReceipt([rootGuide]);
 
+type PreparedChangeResult = {
+  target_path: string;
+  guidance_receipt: string;
+  guides: Array<{
+    path: string;
+    body_markdown?: string;
+    reuse_from_previous_prepare_change?: true;
+  }>;
+  removed_guides?: string[];
+};
+
+function preparedChangeResult(response: {
+  result?: { structuredContent?: Record<string, unknown> };
+}): PreparedChangeResult {
+  return response.result?.structuredContent as PreparedChangeResult;
+}
+
 describe("MCP knowledge tools", () => {
-  test("exposes one proactive-use instruction while keeping the write contract in the tools", async () => {
+  test("exposes proactive selection at initialization and the change workflow entry point", async () => {
     const response = await mcpRequest(serverWith(), {
       jsonrpc: "2.0",
       id: 0,
@@ -100,9 +118,14 @@ describe("MCP knowledge tools", () => {
       method: "tools/list",
       params: {},
     });
-    const prepare = listed.result?.tools?.find(({ name }) => name === "prepare_knowledge_write");
-    expect(prepare?.description).toContain("Pass an empty target path to load the root guide");
-    expect(prepare?.description).toContain("never store one in knowledge");
+    const prepare = listed.result?.tools?.find(({ name }) => name === "prepare_change");
+    expect(prepare?.description).toStartWith(
+      "Always call this before responding when the user states a concrete durable fact, decision, correction, "
+        + "relationship, plan, or completed activity, even if they did not ask you to remember or save it.",
+    );
+    expect(prepare?.description).toContain("Use an empty target path to read the root guide");
+    expect(prepare?.description).toContain("omit it to reload every guide after context loss or compaction");
+    expect(prepare?.description).toContain("Never store receipts in knowledge");
   });
 
   test("exposes one unified checkpointed source reader when Nango access is configured", async () => {
@@ -165,7 +188,7 @@ describe("MCP knowledge tools", () => {
     expect(calls).toEqual([{ checkpoint: "cu-nango-v1.previous", limit: 25 }]);
   });
 
-  test("reads pages by semantic path and prepares applicable write guides", async () => {
+  test("reads pages by semantic path and prepares applicable change guides", async () => {
     const guides = [
       rootGuide,
       {
@@ -191,7 +214,7 @@ describe("MCP knowledge tools", () => {
       jsonrpc: "2.0",
       id: 9,
       method: "tools/call",
-      params: { name: "get_page", arguments: { path: "agents" } },
+      params: { name: "read_page", arguments: { path: "agents" } },
     });
 
     expect(JSON.parse(pageResponse.result?.content?.[0]?.text ?? "null")).toMatchObject({
@@ -204,19 +227,20 @@ describe("MCP knowledge tools", () => {
       id: 10,
       method: "tools/call",
       params: {
-        name: "prepare_knowledge_write",
+        name: "prepare_change",
         arguments: { target_path: "about/tasks/job-search/criteria" },
       },
     });
-    const prepared = contextResponse.result?.content?.[0]?.text ?? "";
-    expect(prepared).toContain("TARGET_PATH: about/tasks/job-search/criteria");
-    expect(prepared).toContain("BEGIN GUIDE 1/2: Root AGENTS.md");
-    expect(prepared).toContain("BEGIN GUIDE 2/2: about/tasks/job-search/AGENTS.md");
-    expect(prepared.indexOf("Root guide")).toBeLessThan(prepared.indexOf("Local guide"));
-    const receipt = prepared.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
-    expect(receipt).toBeTruthy();
-    expect(verifyGuidanceReceipt(receipt!, guides)).toBe(true);
-    expect(contextResponse.result?.structuredContent).toBeUndefined();
+    const prepared = preparedChangeResult(contextResponse);
+    expect(prepared).toMatchObject({
+      target_path: "about/tasks/job-search/criteria",
+      guides: [
+        { path: "agents", body_markdown: "Root guide" },
+        { path: "about/tasks/job-search/agents", body_markdown: "Local guide" },
+      ],
+    });
+    expect(verifyGuidanceReceipt(prepared.guidance_receipt, guides)).toBe(true);
+    expect(JSON.parse(contextResponse.result?.content?.[0]?.text ?? "null")).toEqual(prepared);
   });
 
   test("prepares only guidance deltas when moving between instruction scopes", async () => {
@@ -256,60 +280,74 @@ describe("MCP knowledge tools", () => {
       id: 40,
       method: "tools/call",
       params: {
-        name: "prepare_knowledge_write",
+        name: "prepare_change",
         arguments: { target_path: "about/profile" },
       },
     });
-    const aboutPrepared = aboutPreparation.result?.content?.[0]?.text ?? "";
-    const aboutReceipt = aboutPrepared.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
-    expect(aboutReceipt).toBeTruthy();
-    expect(aboutPrepared).toContain("Unique root instructions body");
-    expect(aboutPrepared).toContain("Unique about instructions body");
+    const aboutPrepared = preparedChangeResult(aboutPreparation);
+    const aboutReceipt = aboutPrepared.guidance_receipt;
+    expect(aboutPrepared.guides).toEqual([
+      { path: "agents", body_markdown: "Unique root instructions body" },
+      { path: "about/agents", body_markdown: "Unique about instructions body" },
+    ]);
 
     const tasksPreparation = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
       id: 41,
       method: "tools/call",
       params: {
-        name: "prepare_knowledge_write",
+        name: "prepare_change",
         arguments: {
           target_path: "about/tasks/daily-review",
           cached_guidance_receipt: aboutReceipt,
         },
       },
     });
-    const tasksPrepared = tasksPreparation.result?.content?.[0]?.text ?? "";
-    const tasksReceipt = tasksPrepared.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
-    expect(tasksReceipt).toBeTruthy();
-    expect(tasksPrepared).toContain("CACHE_STATUS: Reused 2 unchanged guides; loaded 1 new or changed guide.");
-    expect(tasksPrepared).toContain("CACHED: Root AGENTS.md");
-    expect(tasksPrepared).toContain("CACHED: about/AGENTS.md");
-    expect(tasksPrepared).toContain("LOADED: about/tasks/AGENTS.md");
-    expect(tasksPrepared).not.toContain("Unique root instructions body");
-    expect(tasksPrepared).not.toContain("Unique about instructions body");
-    expect(tasksPrepared).toContain("Unique task instructions body");
-    expect(tasksPrepared).toContain("BEGIN GUIDE 3/3: about/tasks/AGENTS.md");
-    expect(verifyGuidanceReceipt(tasksReceipt!, [rootWithUniqueBody, aboutGuide, tasksGuide])).toBe(true);
+    const tasksPrepared = preparedChangeResult(tasksPreparation);
+    const tasksReceipt = tasksPrepared.guidance_receipt;
+    expect(tasksPrepared.guides).toEqual([
+      { path: "agents", reuse_from_previous_prepare_change: true },
+      { path: "about/agents", reuse_from_previous_prepare_change: true },
+      { path: "about/tasks/agents", body_markdown: "Unique task instructions body" },
+    ]);
+    expect(verifyGuidanceReceipt(tasksReceipt, [rootWithUniqueBody, aboutGuide, tasksGuide])).toBe(true);
 
     const placesPreparation = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
       id: 42,
       method: "tools/call",
       params: {
-        name: "prepare_knowledge_write",
+        name: "prepare_change",
         arguments: {
           target_path: "places/london",
           cached_guidance_receipt: tasksReceipt,
         },
       },
     });
-    const placesPrepared = placesPreparation.result?.content?.[0]?.text ?? "";
-    expect(placesPrepared).toContain("CACHE_STATUS: Reused 1 unchanged guide; loaded 1 new or changed guide.");
-    expect(placesPrepared).not.toContain("Unique root instructions body");
-    expect(placesPrepared).toContain("Unique place instructions body");
-    expect(placesPrepared).toContain("GUIDES_NO_LONGER_APPLICABLE:");
-    expect(placesPrepared).toContain("- about/AGENTS.md");
-    expect(placesPrepared).toContain("- about/tasks/AGENTS.md");
+    const placesPrepared = preparedChangeResult(placesPreparation);
+    expect(placesPrepared.guides).toEqual([
+      { path: "agents", reuse_from_previous_prepare_change: true },
+      { path: "places/agents", body_markdown: "Unique place instructions body" },
+    ]);
+    expect(placesPrepared.removed_guides).toEqual([
+      "about/agents",
+      "about/tasks/agents",
+    ]);
+
+    const reloaded = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 43,
+      method: "tools/call",
+      params: {
+        name: "prepare_change",
+        arguments: { target_path: "about/tasks/daily-review" },
+      },
+    });
+    expect(preparedChangeResult(reloaded).guides).toEqual([
+      { path: "agents", body_markdown: "Unique root instructions body" },
+      { path: "about/agents", body_markdown: "Unique about instructions body" },
+      { path: "about/tasks/agents", body_markdown: "Unique task instructions body" },
+    ]);
   });
 
   test("directs a mutation without current guidance to the exact preparation call", async () => {
@@ -339,8 +377,8 @@ describe("MCP knowledge tools", () => {
     expect(response.result?.isError).toBe(true);
     expect(response.result?.content?.[0]?.text).toBe([
       "GUIDANCE_REQUIRED",
-      'Call prepare_knowledge_write with {"target_path":"about/tasks/daily-review"}.',
-      "If you have a previously returned receipt, also pass it as cached_guidance_receipt so unchanged guides are not repeated.",
+      'Call prepare_change with {"target_path":"about/tasks/daily-review"}.',
+      "If the prior guide bodies remain in context, pass their receipt as cached_guidance_receipt so unchanged guides are not repeated. Otherwise omit it to reload every guide.",
       "Then retry create_page with the returned guidance_receipt.",
     ].join("\n\n"));
     expect(response.result?.structuredContent).toBeUndefined();
@@ -416,12 +454,11 @@ describe("MCP knowledge tools", () => {
       id: 14,
       method: "tools/call",
       params: {
-        name: "prepare_knowledge_write",
+        name: "prepare_change",
         arguments: { target_path: "about/intro" },
       },
     });
-    const receipt = preparation.result?.content?.[0]?.text.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
-    expect(receipt).toBeTruthy();
+    const receipt = preparedChangeResult(preparation).guidance_receipt;
 
     const mutation = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
@@ -514,7 +551,7 @@ describe("MCP knowledge tools", () => {
 
     expect(mutation.result?.isError).toBe(true);
     expect(mutation.result?.content?.[0]?.text).toContain(
-      'prepare_knowledge_write with {"target_path":"library/private/notes"}',
+      'prepare_change with {"target_path":"library/private/notes"}',
     );
     expect(calls).toEqual([]);
   });
@@ -622,7 +659,7 @@ describe("MCP knowledge tools", () => {
 
     expect(response.result?.isError).toBe(true);
     expect(response.result?.content?.[0]?.text).toContain(
-      'prepare_knowledge_write with {"target_path":"about/intro"}',
+      'prepare_change with {"target_path":"about/intro"}',
     );
     expect(calls).toEqual([]);
 
@@ -631,19 +668,18 @@ describe("MCP knowledge tools", () => {
       id: 43,
       method: "tools/call",
       params: {
-        name: "prepare_knowledge_write",
+        name: "prepare_change",
         arguments: {
           target_path: "about/intro",
           cached_guidance_receipt: staleReceipt,
         },
       },
     });
-    const refreshedGuidance = refreshed.result?.content?.[0]?.text ?? "";
-    const refreshedReceipt = refreshedGuidance.match(/^GUIDANCE_RECEIPT: (\S+)/)?.[1];
-    expect(refreshedGuidance).toContain("CACHE_STATUS: Reused 0 unchanged guides; loaded 1 new or changed guide.");
-    expect(refreshedGuidance).toContain("REPLACED_CACHED_GUIDES:\n- Root AGENTS.md");
-    expect(refreshedGuidance).toContain("Changed root guide");
-    expect(verifyGuidanceReceipt(refreshedReceipt!, [changedRoot])).toBe(true);
+    const refreshedGuidance = preparedChangeResult(refreshed);
+    expect(refreshedGuidance.guides).toEqual([
+      { path: "agents", body_markdown: "Changed root guide" },
+    ]);
+    expect(verifyGuidanceReceipt(refreshedGuidance.guidance_receipt, [changedRoot])).toBe(true);
   });
 
   test("resolves an ID-only mutation target before directing guidance recovery", async () => {
@@ -674,8 +710,8 @@ describe("MCP knowledge tools", () => {
     expect(response.result?.isError).toBe(true);
     expect(response.result?.content?.[0]?.text).toBe([
       "GUIDANCE_REQUIRED",
-      'Call prepare_knowledge_write with {"target_path":"library/private/recording"}.',
-      "If you have a previously returned receipt, also pass it as cached_guidance_receipt so unchanged guides are not repeated.",
+      'Call prepare_change with {"target_path":"library/private/recording"}.',
+      "If the prior guide bodies remain in context, pass their receipt as cached_guidance_receipt so unchanged guides are not repeated. Otherwise omit it to reload every guide.",
       "Then retry archive_asset with the returned guidance_receipt.",
     ].join("\n\n"));
     expect(archiveCalls).toEqual([]);
@@ -745,7 +781,7 @@ describe("MCP knowledge tools", () => {
       jsonrpc: "2.0",
       id: 10,
       method: "tools/call",
-      params: { name: "get_directory", arguments: { path: "about/chapters" } },
+      params: { name: "read_directory", arguments: { path: "about/chapters" } },
     });
     expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
       reference: "context-use://directory/11111111-1111-4111-8111-111111111111",
@@ -859,7 +895,7 @@ describe("MCP knowledge tools", () => {
       method: "tools/list",
       params: {},
     });
-    const loadSkill = listed.result?.tools?.find(({ name }) => name === "load_skill");
+    const loadSkill = listed.result?.tools?.find(({ name }) => name === "read_skill");
     expect(loadSkill?.description).toContain("job-search-review");
     expect(loadSkill?.description).toContain("Evaluate roles against");
     expect(loadSkill?.description).not.toContain("skills/agents");
@@ -868,7 +904,7 @@ describe("MCP knowledge tools", () => {
       jsonrpc: "2.0",
       id: 13,
       method: "tools/call",
-      params: { name: "load_skill", arguments: { name: "job-search-review" } },
+      params: { name: "read_skill", arguments: { name: "job-search-review" } },
     });
     expect(JSON.parse(loaded.result?.content?.[0]?.text ?? "null")).toMatchObject({
       current_path: "skills/job-search-review",
@@ -885,15 +921,15 @@ describe("MCP knowledge tools", () => {
     });
     const knowledgeTools = knowledge.result?.tools?.map(({ name }) => name) ?? [];
     expect(knowledgeTools).toEqual(expect.arrayContaining([
-      "get_directory",
+      "read_directory",
       "browse_directory",
       "create_directory",
       "delete_directory",
-      "get_page",
-      "get_knowledge_changes",
-      "get_page_delta",
-      "prepare_knowledge_write",
-      "load_skill",
+      "read_page",
+      "list_page_changes",
+      "compare_page_versions",
+      "prepare_change",
+      "read_skill",
       "create_page",
       "update_page",
       "create_asset_upload",
@@ -901,11 +937,13 @@ describe("MCP knowledge tools", () => {
     ]));
 
     const createPage = knowledge.result?.tools?.find(({ name }) => name === "create_page");
-    expect(createPage?.description).toContain("body_markdown schema");
+    expect(createPage?.description).toContain("input schema defines summaries");
     expect(createPage?.inputSchema?.properties?.body_markdown?.description).toContain("layout=half");
-    expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_knowledge_write");
-    expect(knowledge.result?.tools?.find(({ name }) => name === "prepare_knowledge_write")?.inputSchema?.properties)
+    expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_change");
+    expect(knowledge.result?.tools?.find(({ name }) => name === "prepare_change")?.inputSchema?.properties)
       .toHaveProperty("cached_guidance_receipt");
+    expect(knowledge.result?.tools?.find(({ name }) => name === "prepare_change")?.outputSchema?.properties)
+      .toHaveProperty("guides");
     for (const name of [
       "create_directory",
       "update_directory",
@@ -922,6 +960,18 @@ describe("MCP knowledge tools", () => {
     expect(knowledgeTools.some((name) => name.includes("publish"))).toBe(false);
     expect(knowledgeTools.some((name) => name.includes("automation"))).toBe(false);
     expect(knowledgeTools).not.toContain("list_pages");
+    expect(knowledgeTools).not.toContain("list_directories");
+    expect(knowledgeTools).not.toEqual(expect.arrayContaining([
+      "get_directory",
+      "get_page",
+      "prepare_knowledge_write",
+      "load_skill",
+      "get_knowledge_changes",
+      "get_page_delta",
+      "get_page_history",
+      "get_page_version",
+      "get_asset",
+    ]));
     expect(knowledgeTools).not.toEqual(expect.arrayContaining([
       "list_skills",
       "get_skill",
@@ -962,7 +1012,7 @@ describe("MCP knowledge tools", () => {
       id: 15,
       method: "tools/call",
       params: {
-        name: "get_knowledge_changes",
+        name: "list_page_changes",
         arguments: { cursor: "cu-page-changes-v1.5", limit: 25 },
       },
     });
@@ -1023,7 +1073,7 @@ describe("MCP knowledge tools", () => {
       id: 16,
       method: "tools/call",
       params: {
-        name: "get_page_delta",
+        name: "compare_page_versions",
         arguments: {
           page_id: "11111111-1111-4111-8111-111111111111",
           previous_version_number: 2,
@@ -1091,7 +1141,7 @@ describe("MCP knowledge tools", () => {
       id: 17,
       method: "tools/call",
       params: {
-        name: "get_page_delta",
+        name: "compare_page_versions",
         arguments: {
           page_id: "11111111-1111-4111-8111-111111111111",
           previous_version_number: 3,
@@ -1132,7 +1182,7 @@ describe("MCP knowledge tools", () => {
       id: 18,
       method: "tools/call",
       params: {
-        name: "get_page_delta",
+        name: "compare_page_versions",
         arguments: {
           page_id: "11111111-1111-4111-8111-111111111111",
           previous_version_number: 3,
@@ -1299,7 +1349,7 @@ describe("MCP knowledge tools", () => {
       id: 8,
       method: "tools/call",
       params: {
-        name: "get_asset",
+        name: "read_asset",
         arguments: { asset_id: "11111111-1111-4111-8111-111111111111" },
       },
     });
