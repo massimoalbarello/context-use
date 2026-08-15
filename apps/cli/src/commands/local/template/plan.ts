@@ -1,9 +1,9 @@
-import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { z } from "zod";
-import { runKnowledgeTemplateCommand } from "../../knowledge-template.ts";
+import { reportKnowledgeTemplate } from "../../../instance.ts";
+import { readLocalTarget } from "../../../local.ts";
 
-export const command = defineCommand("template plan", {
+export const command = defineCommand("local template plan", {
   description: "Preview safe default-template changes and local conflicts.",
   options: {
     "force-template": {
@@ -12,9 +12,7 @@ export const command = defineCommand("template plan", {
     },
   },
   handler: async ({ options }) => {
-    const output = (await runKnowledgeTemplateCommand("plan", {
-      forceTemplate: options["force-template"] ?? false,
-    })).trim();
-    p.note(output || "No template changes", "Default template plan");
+    const { target } = await readLocalTarget();
+    await reportKnowledgeTemplate(target, "plan", options["force-template"] ?? false);
   },
 });

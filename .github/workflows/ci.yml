@@ -143,6 +143,10 @@ jobs:
           APP_HOSTNAME: context.example.com
           ASSET_HOSTNAME: assets.context.example.com
           NANGO_HOSTNAME: nango.context.example.com
+          APP_ORIGIN: http://localhost:5173
+          NANGO_ORIGIN: http://localhost:5174
+          APP_PORT: "5173"
+          NANGO_PORT: "5174"
           OWNER_EMAIL: owner@example.com
           OWNER_SETUP_TOKEN_HASH: 0c3f0f8b90068b05d8039bf05db2da4742c31a23e51cfa864a96a0efe17b1694
           BETTER_AUTH_SECRET: test-test-test-test-test-test-test-test
@@ -169,7 +173,8 @@ jobs:
           sh -n deploy/validate-nango-edge.sh
           sh deploy/validate-nango-edge.sh deploy
           docker compose -f deploy/docker-compose.yml config --quiet
-          for caddyfile in Caddyfile Caddyfile.nango-auth Caddyfile.nango-public; do
+          docker compose -f deploy/compose.local.yml config --quiet
+          for caddyfile in Caddyfile Caddyfile.nango-auth Caddyfile.nango-public Caddyfile.local; do
             docker run --rm --network none --read-only --cap-drop ALL --cap-add NET_BIND_SERVICE --security-opt no-new-privileges \
               --tmpfs /tmp:rw,noexec,nosuid,size=8m \
               --tmpfs /data:rw,noexec,nosuid,size=8m \

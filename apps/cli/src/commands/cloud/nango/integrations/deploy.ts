@@ -1,15 +1,15 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { z } from "zod";
-import { MANAGED_INTEGRATIONS } from "../../../../../../nango-integrations/catalog.ts";
-import { readInfrastructure } from "../../../lifecycle.ts";
-import { refreshNangoPipelineRuntime } from "../../../deploy.ts";
-import { deployManagedNangoFunctions } from "../../../nango-integration-deployment.ts";
-import { createInternalNangoFetcher } from "../../../nango-internal.ts";
-import { getNangoIntegration } from "../../../nango-integrations.ts";
-import { ensureNangoApiKeys } from "../../../nango.ts";
+import { MANAGED_INTEGRATIONS } from "../../../../../../../nango-integrations/catalog.ts";
+import { readInfrastructure } from "../../../../lifecycle.ts";
+import { refreshNangoPipelineRuntime } from "../../../../deploy.ts";
+import { deployManagedNangoFunctions } from "../../../../nango-integration-deployment.ts";
+import { createInternalNangoFetcher } from "../../../../nango-internal.ts";
+import { getNangoIntegration } from "../../../../nango-integrations.ts";
+import { ensureNangoApiKeys } from "../../../../nango.ts";
 
-export const command = defineCommand("nango integrations deploy", {
+export const command = defineCommand("cloud nango integrations deploy", {
   description: "Deploy the managed Nango integration functions from this Context Use release.",
   options: {
     "allow-destructive": {
@@ -29,7 +29,7 @@ export const command = defineCommand("nango integrations deploy", {
     for (const integration of MANAGED_INTEGRATIONS.filter((candidate) => !("hidden" in candidate && candidate.hidden))) {
       const configured = await getNangoIntegration(baseUrl, managerKey, integration.id, nango);
       if (!configured) {
-        throw new Error(`Nango integration ${integration.id} is not configured; run \`context-use nango integrations add\``);
+        throw new Error(`Nango integration ${integration.id} is not configured; run \`context-use cloud nango integrations add\``);
       }
       if (configured.provider !== integration.provider) {
         throw new Error(`Nango integration ${integration.id} uses provider ${configured.provider}; expected ${integration.provider}`);

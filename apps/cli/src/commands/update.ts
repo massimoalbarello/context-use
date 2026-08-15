@@ -1,73 +1,24 @@
-import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
-import { bootstrapStateBucket, sendSsmCommands } from "../aws.ts";
-import { continueUpdateWithCli, installCliRelease } from "../cli-update.ts";
-import { retainedDataVolumeExists } from "../data-volume.ts";
-import { deploy, deployedRuntimePresent, prepareCompute, refreshNangoPipelineRuntime } from "../deploy.ts";
-import { ensureNangoApiKeys } from "../nango.ts";
-import { readConfigIfPresent, saveConfig } from "../paths.ts";
-import { currentVersion, deploymentRoot, releaseManifest } from "../release.ts";
-import { ensureRuntimeParameters } from "../setup.ts";
-import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs, currentDataOutputs } from "../terraform.ts";
-import { databaseBackupCommands, releaseIncludesNango } from "./backup.ts";
+import { updateDeployment } from "../update.ts";
 
+/**
+ * Compatibility shim for the release that introduced the `cloud` namespace.
+ *
+ * A CLI installed before that release finishes `update` by downloading the new
+ * binary and spawning it as `context-use update`, so the new binary has to keep
+ * answering that exact invocation. Releases from v0.1.69 onward spawn
+ * `context-use cloud update` instead, so this command can be deleted once no
+ * installation older than v0.1.69 remains. Only the continuation is accepted;
+ * a person typing `context-use update` is sent to the namespaced command.
+ */
 export const command = defineCommand("update", {
-  description: "Update the CLI and deployment to the latest release.",
+  description: "Deprecated alias for `context-use cloud update`.",
+  hidden: true,
   options: {},
   handler: async () => {
-    const manifest = await releaseManifest(process.env.CONTEXT_USE_UPDATE_CONTINUATION === "1" ? currentVersion : "latest");
-    if (currentVersion !== manifest.version) {
-      const executable = await installCliRelease(manifest);
-      p.log.success(`Updated CLI to ${manifest.version}`);
-      await continueUpdateWithCli(executable, manifest.version);
-      return;
+    if (process.env.CONTEXT_USE_UPDATE_CONTINUATION !== "1") {
+      throw new Error("`context-use update` was replaced by `context-use cloud update`");
     }
-
-    const config = await readConfigIfPresent();
-    if (!config) {
-      p.log.info("No active context-use deployment; skipping deployment update");
-      p.outro(`CLI is at ${manifest.version}`);
-      return;
-    }
-    if (config.recovery) throw new Error("Volume recovery is in progress; run `context-use recover`");
-    await assertTerraformVersion(manifest);
-    const root = await deploymentRoot(manifest);
-    await bootstrapStateBucket(config.awsProfile, config.awsRegion, config.stateBucket);
-
-    const [existingData, existingCompute] = await Promise.all([
-      currentDataOutputs(root, config),
-      currentComputeOutputs(root, config),
-    ]);
-    if (existingData && !await retainedDataVolumeExists(config, existingData)) {
-      throw new Error("The retained data volume is missing; run `context-use recover`");
-    }
-    if (!existingCompute) {
-      p.log.info("No active context-use deployment; skipping deployment update");
-      p.outro(`CLI is at ${manifest.version}`);
-      return;
-    }
-    if (!existingData) throw new Error("Retained data state is missing; refusing to update active compute");
-    if (await deployedRuntimePresent(config, existingCompute)) {
-      await sendSsmCommands(
-        config.awsProfile,
-        config.awsRegion,
-        existingCompute.instance_id,
-        databaseBackupCommands(releaseIncludesNango(config.releaseVersion)),
-      );
-    }
-
-    const data = await applyData(root, config);
-    const compute = await applyCompute(root, config, data);
-    await prepareCompute(config, data, compute);
-    await ensureRuntimeParameters(config, data, compute);
-    await deploy(config, compute, manifest);
-    await ensureNangoApiKeys(config, data, compute.instance_id);
-    await refreshNangoPipelineRuntime(config, compute);
-    config.releaseVersion = manifest.version;
-    await saveConfig(config);
-    p.outro(
-      `Updated to ${manifest.version}. If you use managed Nango integrations, run `
-      + "`context-use nango integrations deploy` to apply this release's function code.",
-    );
+    await updateDeployment();
   },
 });

@@ -1,10 +1,10 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
-import { listBackups, sendSsmCommands } from "../../aws.ts";
-import { refreshNangoPipelineRuntime, verifyDeployment } from "../../deploy.ts";
-import { readInfrastructure } from "../../lifecycle.ts";
-import { ensureNangoApiKeys } from "../../nango.ts";
-import type { DataOutputs, DeploymentConfig } from "../../types.ts";
+import { listBackups, sendSsmCommands } from "../../../aws.ts";
+import { refreshNangoPipelineRuntime, verifyDeployment } from "../../../deploy.ts";
+import { readInfrastructure } from "../../../lifecycle.ts";
+import { ensureNangoApiKeys } from "../../../nango.ts";
+import type { DataOutputs, DeploymentConfig } from "../../../types.ts";
 
 const nangoBackupKeyPattern = /^nango-postgres\/[0-9TZ-]+\.sql\.gz$/;
 
@@ -87,12 +87,12 @@ export async function selectOptionalNangoBackup(
   return selected;
 }
 
-export const command = defineCommand("nango restore", {
+export const command = defineCommand("cloud nango restore", {
   description: "Restore Nango's PostgreSQL database from an encrypted backup.",
   options: {},
   handler: async () => {
     const { config, manifest, data, compute } = await readInfrastructure();
-    if (config.recovery) throw new Error("Volume recovery is in progress; run `context-use recover`");
+    if (config.recovery) throw new Error("Volume recovery is in progress; run `context-use cloud recover`");
     if (!compute || !data) throw new Error("No active deployment");
     const selected = await selectNangoBackup(config, data);
     const typed = await p.text({ message: `Type ${config.nangoHostname} to replace the live Nango database` });
@@ -106,6 +106,6 @@ export const command = defineCommand("nango restore", {
     await verifyDeployment(config, manifest.version, compute.instance_id);
     await ensureNangoApiKeys(config, data, compute.instance_id);
     await refreshNangoPipelineRuntime(config, compute);
-    p.outro(`Nango database restored from ${selected}. Run \`context-use nango integrations deploy\` before relying on scheduled syncs; pre-restore artifacts were quarantined on the retained volume.`);
+    p.outro(`Nango database restored from ${selected}. Run \`context-use cloud nango integrations deploy\` before relying on scheduled syncs; pre-restore artifacts were quarantined on the retained volume.`);
   },
 });

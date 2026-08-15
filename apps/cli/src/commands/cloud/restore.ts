@@ -1,9 +1,9 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
-import { listBackups, sendSsmCommands } from "../aws.ts";
-import { verifyDeployment } from "../deploy.ts";
-import { readInfrastructure } from "../lifecycle.ts";
-import type { DataOutputs, DeploymentConfig } from "../types.ts";
+import { listBackups, sendSsmCommands } from "../../aws.ts";
+import { verifyDeployment } from "../../deploy.ts";
+import { readInfrastructure } from "../../lifecycle.ts";
+import type { DataOutputs, DeploymentConfig } from "../../types.ts";
 
 export function restoreCommands(bucket: string, key: string): string[] {
   if (!/^postgres\/[0-9TZ-]+\.sql\.gz$/.test(key)) throw new Error("Invalid backup key");
@@ -46,12 +46,12 @@ export async function selectBackup(config: DeploymentConfig, data: DataOutputs):
   return selected;
 }
 
-export const command = defineCommand("restore", {
+export const command = defineCommand("cloud restore", {
   description: "Restore PostgreSQL from an encrypted backup.",
   options: {},
   handler: async () => {
     const { config, manifest, data, compute } = await readInfrastructure();
-    if (config.recovery) throw new Error("Volume recovery is in progress; run `context-use recover`");
+    if (config.recovery) throw new Error("Volume recovery is in progress; run `context-use cloud recover`");
     if (!compute || !data) throw new Error("No active deployment");
     const selected = await selectBackup(config, data);
     const typed = await p.text({ message: `Type ${config.hostname} to replace the live database` });

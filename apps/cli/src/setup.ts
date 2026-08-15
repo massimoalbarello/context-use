@@ -6,8 +6,11 @@ import { ensureNangoApiKeys } from "./nango.ts";
 import { configPath, isValidOwnerEmail, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
 import { deploymentRoot, releaseManifest } from "./release.ts";
+import { generateNangoEncryptionKey, RUNTIME_SECRET_LENGTHS } from "./runtime-secrets.ts";
 import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs } from "./terraform.ts";
 import type { ComputeOutputs, DataOutputs, DeploymentConfig } from "./types.ts";
+
+export { generateNangoEncryptionKey };
 
 function value<T>(result: T | symbol): T {
   if (p.isCancel(result)) { p.cancel("Setup cancelled"); process.exit(0); }
@@ -23,10 +26,6 @@ function required(result: string | symbol | undefined, label: string): string {
 function validHostname(input: string | undefined): boolean {
   if (!input || input.length > 240 || input.includes("..")) return false;
   return input.split(".").every((label) => label.length > 0 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label));
-}
-
-export function generateNangoEncryptionKey(): string {
-  return randomBytes(32).toString("base64");
 }
 
 export function generateNangoAuthCookieSecret(): string {
@@ -63,34 +62,7 @@ export async function ensureRuntimeParameters(config: DeploymentConfig, data: Da
     KMS_KEY_ID: data.kms_key_arn,
     CLOUDWATCH_LOG_GROUP: compute.cloudwatch_log_group,
   };
-  const secrets = {
-    BETTER_AUTH_SECRET: 48,
-    POSTGRES_PASSWORD: 36,
-    DB_AUTH_PASSWORD: 36,
-    DB_DASHBOARD_PASSWORD: 36,
-    DB_MCP_PASSWORD: 36,
-    DB_PUBLIC_PASSWORD: 36,
-    DB_CONFIRMATION_PASSWORD: 36,
-    DB_STORAGE_PASSWORD: 36,
-    DB_BACKUP_PASSWORD: 36,
-    NANGO_DASHBOARD_PASSWORD: 36,
-    NANGO_ADMIN_KEY: 48,
-    NANGO_ENCRYPTION_KEY: 32,
-    NANGO_OAUTH_CLIENT_ID: 24,
-    NANGO_OAUTH_CLIENT_SECRET: 32,
-    NANGO_AUTH_COOKIE_SECRET: 32,
-    AUTH_NANGO_TOKEN: 32,
-    NANGO_DB_PASSWORD: 36,
-    NANGO_BACKUP_DB_PASSWORD: 36,
-    MCP_ASSET_CAPABILITY_SECRET: 48,
-    CONFIRMATION_GATEWAY_TOKEN: 48,
-    AUTH_DASHBOARD_TOKEN: 48,
-    AUTH_MCP_TOKEN: 48,
-    CONFIRMATION_DASHBOARD_TOKEN: 48,
-    STORAGE_DASHBOARD_TOKEN: 48,
-    STORAGE_MCP_TOKEN: 48,
-    STORAGE_PUBLIC_TOKEN: 48,
-  } as const;
+  const secrets = RUNTIME_SECRET_LENGTHS;
   const progress = p.progress({ max: Object.keys(fixed).length + Object.keys(secrets).length + 2 });
   progress.start("Storing encrypted runtime parameters");
   for (const [name, value] of Object.entries(fixed)) {
@@ -141,7 +113,7 @@ export async function ownerSetupUrl(config: DeploymentConfig): Promise<string> {
   return `https://${config.hostname}/app#setup=${encodeURIComponent(token)}`;
 }
 
-export async function pauseForManualDns(config: DeploymentConfig, compute: ComputeOutputs, nextCommand = "resume"): Promise<boolean> {
+export async function pauseForManualDns(config: DeploymentConfig, compute: ComputeOutputs, nextCommand = "cloud resume"): Promise<boolean> {
   const missing = await manualDnsMismatches(config, compute);
   if (missing.length === 0) return false;
   p.note(`Create these A records pointing to ${compute.public_ip}:\n${missing.join("\n")}\n\nThen run: context-use ${nextCommand}`, "DNS required");

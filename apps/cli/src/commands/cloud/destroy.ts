@@ -7,12 +7,12 @@ import {
   deleteStateBucket,
   emptyVersionedBucket,
   scheduleStateKmsKeyDeletion,
-} from "../aws.ts";
-import { readInfrastructure } from "../lifecycle.ts";
-import { configPath, deleteConfig } from "../paths.ts";
-import { destroyCompute, destroyData } from "../terraform.ts";
+} from "../../aws.ts";
+import { readInfrastructure } from "../../lifecycle.ts";
+import { configPath, deleteConfig } from "../../paths.ts";
+import { destroyCompute, destroyData } from "../../terraform.ts";
 
-export const command = defineCommand("destroy", {
+export const command = defineCommand("cloud destroy", {
   description: "Remove compute while preserving data by default.",
   options: {
     "purge-data": {

@@ -1,13 +1,13 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { z } from "zod";
-import { MANAGED_INTEGRATIONS } from "../../../../../../nango-integrations/catalog.ts";
-import { readInfrastructure } from "../../../lifecycle.ts";
-import { refreshNangoPipelineRuntime } from "../../../deploy.ts";
-import { deployManagedNangoFunctions } from "../../../nango-integration-deployment.ts";
-import { createInternalNangoFetcher } from "../../../nango-internal.ts";
-import { getNangoIntegration, reconcileNangoIntegration, type GitHubOAuthCredentials } from "../../../nango-integrations.ts";
-import { ensureNangoApiKeys } from "../../../nango.ts";
+import { MANAGED_INTEGRATIONS } from "../../../../../../../nango-integrations/catalog.ts";
+import { readInfrastructure } from "../../../../lifecycle.ts";
+import { refreshNangoPipelineRuntime } from "../../../../deploy.ts";
+import { deployManagedNangoFunctions } from "../../../../nango-integration-deployment.ts";
+import { createInternalNangoFetcher } from "../../../../nango-internal.ts";
+import { getNangoIntegration, reconcileNangoIntegration, type GitHubOAuthCredentials } from "../../../../nango-integrations.ts";
+import { ensureNangoApiKeys } from "../../../../nango.ts";
 
 async function promptCredential(message: string, secret = false): Promise<string> {
   const prompt = {
@@ -27,7 +27,7 @@ function printDeploymentOutput(results: Awaited<ReturnType<typeof deployManagedN
   }
 }
 
-export const command = defineCommand("nango integrations add", {
+export const command = defineCommand("cloud nango integrations add", {
   description: "Configure managed Nango integrations and deploy their syncs.",
   options: {
     reconfigure: {

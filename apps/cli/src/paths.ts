@@ -75,7 +75,7 @@ export async function readConfigIfPresent(): Promise<DeploymentConfig | null> {
 
 export async function readConfig(): Promise<DeploymentConfig> {
   const config = await readConfigIfPresent();
-  if (!config) throw new Error("No context-use deployment found. Run `context-use setup` first.");
+  if (!config) throw new Error("No context-use deployment found. Run `context-use cloud setup` first.");
   return config;
 }
 

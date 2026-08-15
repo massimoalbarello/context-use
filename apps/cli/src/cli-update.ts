@@ -103,8 +103,12 @@ export async function installCliRelease(
   }
 }
 
-export async function continueUpdateWithCli(executable: string, version: string): Promise<void> {
-  const subprocess = Bun.spawn([executable, "update"], {
+export async function continueUpdateWithCli(
+  executable: string,
+  version: string,
+  argv: string[] = ["cloud", "update"],
+): Promise<void> {
+  const subprocess = Bun.spawn([executable, ...argv], {
     env: { ...process.env, CONTEXT_USE_UPDATE_CONTINUATION: "1" },
     stdin: "inherit",
     stdout: "inherit",

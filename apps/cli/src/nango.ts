@@ -4,6 +4,7 @@ import {
   type InternalNangoDependencies,
   verifyExternalNangoBoundary,
 } from "./nango-internal.ts";
+import { shellPath } from "./target.ts";
 import type { DataOutputs, DeploymentConfig } from "./types.ts";
 
 const managedApiKeys = [
@@ -137,6 +138,29 @@ void (async () => { try {
   process.stdout.write(key.secret);
 } catch { stop(); } })();
 `;
+
+/**
+ * Create or reconcile one managed Nango API key and write its secret to stdout.
+ *
+ * The cloud installation pipes this into an encrypted SSM parameter; a local
+ * installation captures it and writes it into its own `runtime.env`. Only the
+ * persistence differs, so the worker that talks to Nango is shared.
+ */
+export function nangoApiKeyWriteCommands(options: {
+  deployDirectory: string;
+  compose: string;
+  displayName: string;
+}): string[] {
+  if (!managedApiKeys.some((key) => key.displayName === options.displayName)) {
+    throw new Error(`Unknown managed Nango API key: ${options.displayName}`);
+  }
+  const encodedWorker = Buffer.from(apiKeyWorkerSource).toString("base64");
+  return [
+    `cd ${shellPath(options.deployDirectory)}`,
+    `nango_key_worker='${encodedWorker}'`,
+    `${options.compose} exec -T -e CONTEXT_USE_MANAGED_KEY='${options.displayName}' -e CONTEXT_USE_KEY_MODE=write nango-server node -e "eval(Buffer.from('$nango_key_worker','base64').toString('utf8'))"`,
+  ];
+}
 
 export function nangoApiKeyReconciliationCommands(config: DeploymentConfig, data: DataOutputs): string[] {
   const prefix = `/context-use/${config.installationId}/${config.environment}`;

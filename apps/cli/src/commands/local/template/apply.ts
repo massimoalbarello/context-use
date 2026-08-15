@@ -1,9 +1,9 @@
-import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
 import { z } from "zod";
-import { runKnowledgeTemplateCommand } from "../../knowledge-template.ts";
+import { reportKnowledgeTemplate } from "../../../instance.ts";
+import { readLocalTarget } from "../../../local.ts";
 
-export const command = defineCommand("template apply", {
+export const command = defineCommand("local template apply", {
   description: "Create missing template knowledge and update eligible guides and managed pages.",
   options: {
     "force-template": {
@@ -12,9 +12,7 @@ export const command = defineCommand("template apply", {
     },
   },
   handler: async ({ options }) => {
-    const output = (await runKnowledgeTemplateCommand("apply", {
-      forceTemplate: options["force-template"] ?? false,
-    })).trim();
-    p.note(output || "No template changes", "Default template applied");
+    const { target } = await readLocalTarget();
+    await reportKnowledgeTemplate(target, "apply", options["force-template"] ?? false);
   },
 });

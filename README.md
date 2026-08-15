@@ -23,9 +23,28 @@ The longer-term vision is an autobiography that writes itself. As Context Use co
 - Publishes `/robots.txt`, a complete `/sitemap.xml`, canonical and social metadata, and structured profile identity derived from the published introduction and any optional contact links.
 - Runs locally or on your own AWS account.
 
-## Run locally
+## Run on this computer
 
-You only need Docker:
+The CLI installs and manages Context Use in two places. `context-use local` manages the installation on your own computer and `context-use cloud` manages the one in your AWS account. Both run the same released images and the same services, so knowledge written locally moves to a deployed instance later through the dashboard's knowledge archive.
+
+A local installation needs only Docker and the GitHub CLI, which verifies the release artifacts:
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/massimoalbarello/context-use/releases/latest/download/install.sh | sh
+
+~/.local/bin/context-use local setup
+```
+
+The command asks for your owner email, starts the stack, and prints a one-time link that creates the owner passkey. Manage it afterwards with `context-use local status`, `local open`, `local doctor`, `local update`, and `local destroy`. The dashboard, MCP endpoint, and published pages are served from `http://localhost:5173`; pass `--app-port` and `--nango-port` to move them.
+
+Everything an AWS installation does works locally except reaching the internet. Publishing works and published pages render, but they are served on loopback and nobody else can open them. Nango runs locally too: scheduled syncs call provider APIs outbound, provider OAuth flows complete because the provider redirects your own browser to `http://localhost:5174/oauth/callback`, and a locally installed agent sync reaches Nango over loopback instead of a public edge. Register a separate OAuth app for the local callback URL, since a GitHub OAuth App allows only one. The one capability that does not survive is inbound provider webhooks, so local syncs refresh on their schedule rather than on push. Run `context-use local nango` for the dashboard address and its credentials.
+
+To move a local installation into AWS, export the knowledge archive from **Settings**, run `context-use cloud setup`, and restore the archive into the fresh instance.
+
+## Develop from this repository
+
+The source stack is separate from an installed one: it builds from the working tree, runs with development-only credentials, and shares a well-known owner setup token. Do not keep real knowledge in it.
 
 ```sh
 git clone https://github.com/massimoalbarello/context-use.git
@@ -41,7 +60,7 @@ To use another email on a fresh installation:
 OWNER_EMAIL=me@example.com docker compose up --build
 ```
 
-When developing from this repository, the Bun shortcuts make the stack lifecycle easier:
+The Bun shortcuts make the development stack lifecycle easier:
 
 ```sh
 bun run local up       # build, start, and wait until the app is ready
@@ -112,12 +131,12 @@ The CLI provisions and manages Context Use in your AWS account. You need an auth
 curl --proto '=https' --tlsv1.2 -fsSL \
   https://github.com/massimoalbarello/context-use/releases/latest/download/install.sh | sh
 
-~/.local/bin/context-use setup
+~/.local/bin/context-use cloud setup
 ```
 
-Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use status`, `context-use update`, or `context-use doctor` to manage the installation later.
+Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use cloud status`, `context-use cloud update`, or `context-use cloud doctor` to manage the installation later.
 
-New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use the dashboard's **Settings → Knowledge template** panel or `context-use template plan` to preview missing directories and pages, safe updates, and local conflicts, then apply the reviewed plan from the dashboard or with `context-use template apply`. Existing directories are never removed, local directory-presentation drift and locally edited guides and managed pages are preserved, and create-only state pages are structurally checked but never overwritten. A page explicitly listed in the template's `retired.json` is archived only while it remains unpublished and template-owned; published or locally modified pages are preserved for review. The dashboard can preview and confirm an eligible local-customization replacement; from the CLI, add `--force-template` to both `context-use template plan` and `context-use template apply` for the same behavior.
+New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use the dashboard's **Settings → Knowledge template** panel or `context-use cloud template plan` to preview missing directories and pages, safe updates, and local conflicts, then apply the reviewed plan from the dashboard or with `context-use cloud template apply`. Existing directories are never removed, local directory-presentation drift and locally edited guides and managed pages are preserved, and create-only state pages are structurally checked but never overwritten. A page explicitly listed in the template's `retired.json` is archived only while it remains unpublished and template-owned; published or locally modified pages are preserved for review. The dashboard can preview and confirm an eligible local-customization replacement; from the CLI, add `--force-template` to both `context-use cloud template plan` and `context-use cloud template apply` for the same behavior.
 
 ## Nango data ingestion
 
@@ -146,7 +165,7 @@ The Nango hostname is internet reachable because providers must call a small set
 Create a GitHub OAuth app with `https://nango.YOUR_HOST/oauth/callback` as its authorization callback URL, then run:
 
 ```sh
-context-use nango integrations add
+context-use cloud nango integrations add
 ```
 
 The command sends the prompted client ID and secret directly to Nango, creates or reconciles the `github` integration, and deploys the release-pinned `pull-requests` sync. It does not save those OAuth credentials locally or in SSM. Open the Nango dashboard afterward and create a GitHub connection. By default, the connection syncs pull requests from every accessible repository; set its metadata to `{"repositories":["owner/repository"]}` to limit the source set. GitHub's OAuth `repo` scope is required to include private repositories. Changing that source set stops future refreshes but intentionally does not delete existing records yet; retention and pruning will be introduced as a separate, explicit policy. Each saved PR has the universal pipeline envelope, while its Markdown body contains the PR description, status, branches, participants, change-size summary, commits, reviews, and discussion and code-review comments. Changed-file patches and unused GitHub API fields are discarded. A Markdown warning identifies the unusual case where GitHub caps the commit collection.
@@ -161,7 +180,7 @@ Context Use intentionally refuses to create this integration automatically. Crea
 Granola connection through Nango's browser OAuth flow, then run:
 
 ```sh
-context-use nango integrations add
+context-use cloud nango integrations add
 ```
 
 The hourly `meetings` sync uses only the free-tier-compatible `list_meetings` and
@@ -173,13 +192,13 @@ complete Granola-generated summary. Private notes and transcripts are not stored
 Inspect the managed state or redeploy the exact function version bundled with the installed Context Use release using:
 
 ```sh
-context-use nango integrations status
-context-use nango integrations deploy
+context-use cloud nango integrations status
+context-use cloud nango integrations deploy
 ```
 
-`context-use update` updates the Nango runtime and installs the matching function-deployer image, but it does not mutate live functions automatically. Run the explicit deploy command when a release changes integration code. Destructive model changes remain blocked unless you deliberately pass `--allow-destructive`.
+`context-use cloud update` updates the Nango runtime and installs the matching function-deployer image, but it does not mutate live functions automatically. Run the explicit deploy command when a release changes integration code. Destructive model changes remain blocked unless you deliberately pass `--allow-destructive`.
 
-Nango gets an independent daily PostgreSQL backup stream in the retained backup bucket under `nango-postgres/`, encrypted with the installation KMS key and produced by the scoped `nango_backup` role. `context-use backup` captures both databases, while `context-use nango restore` restores only Nango. Compiled integration artifacts on the retained volume are reproducible rather than authoritative: keep integration source in version control and redeploy it after total-volume recovery. Application logs go to CloudWatch. Dozzle, Elasticsearch, and Nango's optional log backend are deliberately omitted until they provide enough value to justify their operational cost.
+Nango gets an independent daily PostgreSQL backup stream in the retained backup bucket under `nango-postgres/`, encrypted with the installation KMS key and produced by the scoped `nango_backup` role. `context-use cloud backup` captures both databases, while `context-use cloud nango restore` restores only Nango. Compiled integration artifacts on the retained volume are reproducible rather than authoritative: keep integration source in version control and redeploy it after total-volume recovery. Application logs go to CloudWatch. Dozzle, Elasticsearch, and Nango's optional log backend are deliberately omitted until they provide enough value to justify their operational cost.
 
 ### Updating Nango
 
@@ -206,7 +225,7 @@ automation may keep exactly one non-secret opaque checkpoint on its stable `stat
 
 The default template installs managed instruction pages for activity distillation, diary
 composition and guideline consistency review, with checkpoint state where required.
-Apply template updates with `context-use template apply`, then schedule an external harness
+Apply template updates with `context-use cloud template apply`, then schedule an external harness
 to open and execute the relevant instruction page. Those pages are the canonical operating
 contracts; the README does not duplicate their logic.
 

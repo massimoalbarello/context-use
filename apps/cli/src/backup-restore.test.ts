@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { databaseBackupCommands, releaseIncludesNango } from "./commands/backup.ts";
-import { nangoRestoreCommands } from "./commands/nango/restore.ts";
+import { databaseBackupCommands, releaseIncludesNango } from "./backup.ts";
+import { nangoRestoreCommands } from "./commands/cloud/nango/restore.ts";
 
 test("manual backup creates both database backups and requires Nango support", () => {
   const script = databaseBackupCommands(true).join("\n");

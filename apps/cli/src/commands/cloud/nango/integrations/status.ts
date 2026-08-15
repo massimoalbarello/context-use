@@ -1,9 +1,9 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
-import { MANAGED_FUNCTIONS, MANAGED_INTEGRATIONS } from "../../../../../../nango-integrations/catalog.ts";
-import { readInfrastructure } from "../../../lifecycle.ts";
-import { createInternalNangoFetcher } from "../../../nango-internal.ts";
-import { readManagedIntegrationStatus, type ManagedIntegrationStatus } from "../../../nango-integrations.ts";
+import { MANAGED_FUNCTIONS, MANAGED_INTEGRATIONS } from "../../../../../../../nango-integrations/catalog.ts";
+import { readInfrastructure } from "../../../../lifecycle.ts";
+import { createInternalNangoFetcher } from "../../../../nango-internal.ts";
+import { readManagedIntegrationStatus, type ManagedIntegrationStatus } from "../../../../nango-integrations.ts";
 
 export function formatManagedIntegrationStatus(
   releaseVersion: string,
@@ -32,7 +32,7 @@ export function formatManagedIntegrationStatus(
   ].join("\n");
 }
 
-export const command = defineCommand("nango integrations status", {
+export const command = defineCommand("cloud nango integrations status", {
   description: "Show GitHub integration, connection, and sync deployment status.",
   options: {},
   handler: async () => {

@@ -1,20 +1,20 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
-import { bootstrapStateBucket } from "../aws.ts";
-import { retainedDataVolumeExists } from "../data-volume.ts";
-import { deploy, prepareCompute, refreshNangoPipelineRuntime } from "../deploy.ts";
-import { ensureNangoApiKeys } from "../nango.ts";
-import { readConfig } from "../paths.ts";
-import { deploymentRoot, releaseManifest } from "../release.ts";
-import { ensureRuntimeParameters, ownerSetupUrl, pauseForManualDns } from "../setup.ts";
-import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs, currentDataOutputs } from "../terraform.ts";
+import { bootstrapStateBucket } from "../../aws.ts";
+import { retainedDataVolumeExists } from "../../data-volume.ts";
+import { deploy, prepareCompute, refreshNangoPipelineRuntime } from "../../deploy.ts";
+import { ensureNangoApiKeys } from "../../nango.ts";
+import { readConfig } from "../../paths.ts";
+import { deploymentRoot, releaseManifest } from "../../release.ts";
+import { ensureRuntimeParameters, ownerSetupUrl, pauseForManualDns } from "../../setup.ts";
+import { applyCompute, applyData, assertTerraformVersion, currentComputeOutputs, currentDataOutputs } from "../../terraform.ts";
 
-export const command = defineCommand("resume", {
+export const command = defineCommand("cloud resume", {
   description: "Continue an interrupted setup.",
   options: {},
   handler: async () => {
     const config = await readConfig();
-    if (config.recovery) throw new Error("Volume recovery is in progress; run `context-use recover`");
+    if (config.recovery) throw new Error("Volume recovery is in progress; run `context-use cloud recover`");
     const manifest = await releaseManifest(config.releaseVersion);
     await assertTerraformVersion(manifest);
     const root = await deploymentRoot(manifest);
@@ -27,7 +27,7 @@ export const command = defineCommand("resume", {
       throw new Error("Retained data state is missing; refusing to resume active compute");
     }
     if (existingData && !await retainedDataVolumeExists(config, existingData)) {
-      throw new Error("The retained data volume is missing; run `context-use recover`");
+      throw new Error("The retained data volume is missing; run `context-use cloud recover`");
     }
     const data = await applyData(root, config);
     const compute = existingCompute ?? await applyCompute(root, config, data, true);

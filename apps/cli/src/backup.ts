@@ -1,8 +1,3 @@
-import * as p from "@clack/prompts";
-import { defineCommand } from "@parshjs/core";
-import { sendSsmCommands } from "../aws.ts";
-import { readInfrastructure } from "../lifecycle.ts";
-
 export function releaseIncludesNango(version: string): boolean {
   const match = /^v(\d+)\.(\d+)\.(\d+)(?:-[a-z0-9.-]+)?$/.exec(version);
   if (!match) throw new Error(`Invalid installed release version: ${version}`);
@@ -31,15 +26,3 @@ export function databaseBackupCommands(requireNango: boolean): string[] {
     `if ${compose} config --services | grep -Fx nango-backup >/dev/null; then ${backupWhenDefined}; else ${unavailable}; fi`,
   ];
 }
-
-export const command = defineCommand("backup", {
-  description: "Create verified Context Use and Nango database backups now.",
-  options: {},
-  handler: async () => {
-    const { config, compute } = await readInfrastructure();
-    if (config.recovery) throw new Error("Volume recovery is in progress; run `context-use recover`");
-    if (!compute) throw new Error("No active instance");
-    await sendSsmCommands(config.awsProfile, config.awsRegion, compute.instance_id, databaseBackupCommands(true));
-    p.outro("Context Use and Nango backups completed");
-  },
-});

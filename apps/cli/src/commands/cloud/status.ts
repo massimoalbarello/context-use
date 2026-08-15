@@ -1,10 +1,10 @@
 import { defineCommand } from "@parshjs/core";
-import { retainedDataVolumeExists } from "../data-volume.ts";
-import { healthMatchesVersion } from "../deploy.ts";
-import { readInfrastructure } from "../lifecycle.ts";
-import { probeInternalNangoReady, verifyExternalNangoBoundary } from "../nango-internal.ts";
+import { retainedDataVolumeExists } from "../../data-volume.ts";
+import { instanceHealthy } from "../../instance.ts";
+import { readInfrastructure } from "../../lifecycle.ts";
+import { probeInternalNangoReady, verifyExternalNangoBoundary } from "../../nango-internal.ts";
 
-export const command = defineCommand("status", {
+export const command = defineCommand("cloud status", {
   description: "Show deployment status.",
   options: {},
   handler: async () => {
@@ -14,7 +14,7 @@ export const command = defineCommand("status", {
     let nangoHealthy = false;
     if (compute) {
       const [appResult, nangoResult] = await Promise.allSettled([
-        fetch(`https://${config.hostname}/api/health`, { signal: AbortSignal.timeout(5_000) }),
+        instanceHealthy(`https://${config.hostname}`, config.releaseVersion),
         data
           ? Promise.all([
             probeInternalNangoReady(config, compute.instance_id),
@@ -22,11 +22,7 @@ export const command = defineCommand("status", {
           ]).then((checks) => checks.every(Boolean))
           : Promise.resolve(false),
       ]);
-      if (appResult.status === "fulfilled") {
-        try {
-          healthy = appResult.value.ok && healthMatchesVersion(await appResult.value.json(), config.releaseVersion);
-        } catch {}
-      }
+      healthy = appResult.status === "fulfilled" && appResult.value;
       nangoHealthy = nangoResult.status === "fulfilled" && nangoResult.value;
     }
     const state = config.recovery

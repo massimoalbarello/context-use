@@ -14,7 +14,7 @@ import {
   markDataVolumeInitialized,
   retainedDataVolumeExists,
 } from "./data-volume.ts";
-import { restoreCommands } from "./commands/restore.ts";
+import { restoreCommands } from "./commands/cloud/restore.ts";
 import { isValidOwnerEmail, normalizeDeploymentConfig } from "./paths.ts";
 import { redactSensitiveText } from "./process.ts";
 import { ensureRuntimeParameters } from "./setup.ts";
@@ -531,16 +531,17 @@ test("the pinned Docker address pools hold every compose network and exclude the
 });
 
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
-  const [userData, deployScript, caddy, nangoPublicCaddy, nangoAuthCaddy, compute, update, setup, resume, data, deployCompose, backupScript, backupDockerfile, cliUpdate] = await Promise.all([
+  const [userData, deployScript, caddy, nangoPublicCaddy, nangoAuthCaddy, compute, update, setup, runtimeSecrets, resume, data, deployCompose, backupScript, backupDockerfile, cliUpdate] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/deploy.sh", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile.nango-public", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile.nango-auth", import.meta.url)).text(),
     Bun.file(new URL("../../../infra/compute/main.tf", import.meta.url)).text(),
-    Bun.file(new URL("./commands/update.ts", import.meta.url)).text(),
+    Bun.file(new URL("./update.ts", import.meta.url)).text(),
     Bun.file(new URL("./setup.ts", import.meta.url)).text(),
-    Bun.file(new URL("./commands/resume.ts", import.meta.url)).text(),
+    Bun.file(new URL("./runtime-secrets.ts", import.meta.url)).text(),
+    Bun.file(new URL("./commands/cloud/resume.ts", import.meta.url)).text(),
     Bun.file(new URL("../../../infra/data/main.tf", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/docker-compose.yml", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/backup/backup.sh", import.meta.url)).text(),
@@ -959,10 +960,10 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(setup).toContain('instanceType: "t3.large"');
   expect(setup.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(setup.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)"));
   expect(setup.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)")).toBeLessThan(setup.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
-  expect(setup).toContain("NANGO_OAUTH_CLIENT_ID");
-  expect(setup).toContain("NANGO_OAUTH_CLIENT_SECRET");
-  expect(setup).toContain("NANGO_AUTH_COOKIE_SECRET");
-  expect(setup).toContain("AUTH_NANGO_TOKEN");
+  expect(runtimeSecrets).toContain("NANGO_OAUTH_CLIENT_ID");
+  expect(runtimeSecrets).toContain("NANGO_OAUTH_CLIENT_SECRET");
+  expect(runtimeSecrets).toContain("NANGO_AUTH_COOKIE_SECRET");
+  expect(runtimeSecrets).toContain("AUTH_NANGO_TOKEN");
   expect(setup).not.toContain("Nango dashboard credentials:");
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await pauseForManualDns(config, compute)"));

@@ -1,0 +1,402 @@
+# Context Use running on the owner's own computer.
+#
+# This is the same release images and the same services as docker-compose.yml,
+# with everything that exists only to defend a public edge removed: no TLS, no
+# OAuth2 Proxy, no Nango public and auth gateways, no CloudWatch logging, and no
+# S3 or KMS. Assets live on a local volume and both published ports bind to
+# loopback, so nothing here is reachable from the network. The elaborate
+# per-service network segmentation of the cloud deployment is likewise dropped:
+# it isolates blast radius on an internet-facing host, and this stack has no
+# untrusted peer to isolate from.
+#
+# Published pages work exactly as they do in the cloud, but they are served on
+# 127.0.0.1 and are not reachable from the internet.
+
+name: context-use-local
+
+x-app-service: &app-service
+  image: ${APP_IMAGE}
+  restart: unless-stopped
+  security_opt: [no-new-privileges:true]
+
+x-app-environment: &app-environment
+  NODE_ENV: production
+  APP_ORIGIN: ${APP_ORIGIN}
+  ASSET_ORIGIN: ${APP_ORIGIN}
+
+x-nango-service: &nango-service
+  image: ${NANGO_IMAGE}
+  restart: unless-stopped
+  security_opt: [no-new-privileges:true]
+
+x-nango-environment: &nango-environment
+  NODE_ENV: production
+  NANGO_ENTERPRISE: "true"
+  NANGO_ENCRYPTION_KEY: ${NANGO_ENCRYPTION_KEY}
+  NANGO_DB_HOST: postgres
+  NANGO_DB_PORT: "5432"
+  NANGO_DB_NAME: nango
+  NANGO_DB_USER: nango_app
+  NANGO_DB_PASSWORD: ${NANGO_DB_PASSWORD}
+  NANGO_DB_SSL: "false"
+  NANGO_DB_SCHEMA: nango
+  NANGO_DB_POOL_MIN: "0"
+  NANGO_DB_POOL_MAX: "4"
+  RECORDS_DATABASE_URL: postgres://nango_app:${NANGO_DB_PASSWORD}@postgres:5432/nango
+  RECORDS_DATABASE_SCHEMA: nango_records
+  RECORDS_DATABASE_POOL_MIN: "0"
+  RECORDS_DATABASE_POOL_MAX: "4"
+  ORCHESTRATOR_SERVICE_URL: http://nango-orchestrator:3008
+  PERSIST_SERVICE_URL: http://nango-persist:3007
+  JOBS_SERVICE_URL: http://nango-jobs:3005
+  ORCHESTRATOR_DB_POOL_MAX: "4"
+  TASKS_DB_POOL_MAX: "3"
+  FLEET_DB_POOL_MAX: "2"
+  NANGO_REDIS_URL: redis://nango-redis:6379
+  NANGO_LOGS_ENABLED: "false"
+  DD_TRACE_ENABLED: "false"
+  OTEL_PROPAGATORS: none
+  PERSIST_AUTO_PRUNING_INTERVAL_MS: "0"
+  PERSIST_AUTO_DELETING_INTERVAL_MS: "0"
+  LOG_LEVEL: info
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: context_use
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
+    command: ["postgres", "-c", "password_encryption=scram-sha-256", "-c", "listen_addresses=*", "-c", "max_connections=150"]
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d context_use"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    image: ${APP_IMAGE}
+    profiles: [migration]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      MIGRATOR_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/context_use
+      DATABASE_URL: postgres://context_use_dashboard:${DB_DASHBOARD_PASSWORD}@postgres:5432/context_use
+      DB_AUTH_PASSWORD: ${DB_AUTH_PASSWORD}
+      DB_DASHBOARD_PASSWORD: ${DB_DASHBOARD_PASSWORD}
+      DB_MCP_PASSWORD: ${DB_MCP_PASSWORD}
+      DB_PUBLIC_PASSWORD: ${DB_PUBLIC_PASSWORD}
+      DB_CONFIRMATION_PASSWORD: ${DB_CONFIRMATION_PASSWORD}
+      DB_STORAGE_PASSWORD: ${DB_STORAGE_PASSWORD}
+      DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD}
+      CONTEXT_USE_TEMPLATE_INSTALL: ${CONTEXT_USE_TEMPLATE_INSTALL:-}
+    command: ["bun", "packages/database/src/initialize.ts"]
+
+  nango-db-init:
+    image: ${BACKUP_IMAGE}
+    profiles: [nango-init]
+    depends_on:
+      postgres: { condition: service_healthy }
+    entrypoint: ["/usr/local/bin/context-use-nango-db-init"]
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      NANGO_DB_PASSWORD: ${NANGO_DB_PASSWORD}
+      NANGO_BACKUP_DB_PASSWORD: ${NANGO_BACKUP_DB_PASSWORD}
+
+  storage-socket-init:
+    image: ${APP_IMAGE}
+    user: "0:0"
+    restart: "no"
+    network_mode: none
+    command: ["sh", "-c", "chown bun:bun /run/context-use-storage && chmod 0700 /run/context-use-storage"]
+    volumes: [storage-socket:/run/context-use-storage]
+
+  storage:
+    <<: *app-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      storage-socket-init: { condition: service_completed_successfully }
+    environment:
+      <<: *app-environment
+      SERVICE_MODE: storage
+      STORAGE_DATABASE_URL: postgres://context_use_storage:${DB_STORAGE_PASSWORD}@postgres:5432/context_use
+      STORAGE_DRIVER: filesystem
+      STORAGE_PATH: /data/assets
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_DASHBOARD_TOKEN: ${STORAGE_DASHBOARD_TOKEN}
+      STORAGE_MCP_TOKEN: ${STORAGE_MCP_TOKEN}
+      STORAGE_PUBLIC_TOKEN: ${STORAGE_PUBLIC_TOKEN}
+    command: ["bun", "apps/server/src/storage-index.ts"]
+    volumes:
+      - storage-socket:/run/context-use-storage
+      - asset-data:/data/assets
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const http=require('node:http');const request=http.request({socketPath:'/run/context-use-storage/storage.sock',path:'/health'},response=>process.exit(response.statusCode===200?0:1));request.on('error',()=>process.exit(1));request.end()"]
+      interval: 2s
+      timeout: 2s
+      retries: 75
+
+  auth:
+    <<: *app-service
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      <<: *app-environment
+      SERVICE_MODE: auth
+      PORT: "3002"
+      OAUTH_ISSUER: ${APP_ORIGIN}
+      MCP_RESOURCE: ${APP_ORIGIN}/mcp
+      NANGO_ORIGIN: ${NANGO_ORIGIN}
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_RP_NAME: context-use
+      OWNER_EMAIL: ${OWNER_EMAIL}
+      OWNER_SETUP_TOKEN_HASH: ${OWNER_SETUP_TOKEN_HASH}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      AUTH_DASHBOARD_TOKEN: ${AUTH_DASHBOARD_TOKEN}
+      AUTH_MCP_TOKEN: ${AUTH_MCP_TOKEN}
+      CONFIRMATION_INTERNAL_URL: http://confirmation:3004
+      CONFIRMATION_GATEWAY_TOKEN: ${CONFIRMATION_GATEWAY_TOKEN}
+      AUTH_DATABASE_URL: postgres://context_use_auth:${DB_AUTH_PASSWORD}@postgres:5432/context_use
+    command: ["bun", "apps/server/src/auth-index.ts"]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3002/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  confirmation:
+    <<: *app-service
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      <<: *app-environment
+      SERVICE_MODE: confirmation
+      PORT: "3004"
+      WEBAUTHN_RP_ID: localhost
+      CONFIRMATION_DATABASE_URL: postgres://context_use_confirmation:${DB_CONFIRMATION_PASSWORD}@postgres:5432/context_use
+      CONFIRMATION_GATEWAY_TOKEN: ${CONFIRMATION_GATEWAY_TOKEN}
+      CONFIRMATION_DASHBOARD_TOKEN: ${CONFIRMATION_DASHBOARD_TOKEN}
+    command: ["bun", "apps/server/src/confirmation-index.ts"]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3004/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  app:
+    <<: *app-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      auth: { condition: service_healthy }
+      confirmation: { condition: service_healthy }
+      storage: { condition: service_healthy }
+    environment:
+      <<: *app-environment
+      SERVICE_MODE: dashboard
+      PORT: "3000"
+      MCP_RESOURCE: ${APP_ORIGIN}/mcp
+      DATABASE_URL: postgres://context_use_dashboard:${DB_DASHBOARD_PASSWORD}@postgres:5432/context_use
+      AUTH_INTERNAL_URL: http://auth:3002
+      CONFIRMATION_INTERNAL_URL: http://confirmation:3004
+      AUTH_DASHBOARD_TOKEN: ${AUTH_DASHBOARD_TOKEN}
+      CONFIRMATION_DASHBOARD_TOKEN: ${CONFIRMATION_DASHBOARD_TOKEN}
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_DASHBOARD_TOKEN: ${STORAGE_DASHBOARD_TOKEN}
+      NANGO_PUBLIC_URL: ${NANGO_ORIGIN}
+      NANGO_IMAGE_REFERENCE: ${NANGO_IMAGE}
+      WEB_DIST: /app/apps/web/dist
+    command: ["bun", "apps/server/src/dashboard-index.ts"]
+    volumes: [storage-socket:/run/context-use-storage:ro]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3000/api/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  dashboard-edge:
+    <<: *app-service
+    depends_on:
+      app: { condition: service_healthy }
+    environment:
+      <<: *app-environment
+      SERVICE_MODE: dashboard-edge
+      PORT: "3007"
+      DASHBOARD_AUTHORITY_URL: http://app:3000
+    command: ["bun", "apps/server/src/dashboard-edge-index.ts"]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3007/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  private-mcp:
+    <<: *app-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      auth: { condition: service_healthy }
+      storage: { condition: service_healthy }
+    environment:
+      <<: *app-environment
+      SERVICE_MODE: mcp
+      PORT: "3003"
+      OAUTH_ISSUER: ${APP_ORIGIN}
+      MCP_RESOURCE: ${APP_ORIGIN}/mcp
+      MCP_DATABASE_URL: postgres://context_use_mcp:${DB_MCP_PASSWORD}@postgres:5432/context_use
+      AUTH_INTERNAL_URL: http://auth:3002
+      AUTH_MCP_TOKEN: ${AUTH_MCP_TOKEN}
+      MCP_ASSET_CAPABILITY_SECRET: ${MCP_ASSET_CAPABILITY_SECRET}
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_MCP_TOKEN: ${STORAGE_MCP_TOKEN}
+      NANGO_INTERNAL_URL: http://nango-server:3003
+      NANGO_PIPELINE_API_KEY: ${NANGO_PIPELINE_API_KEY:-}
+    command: ["bun", "apps/server/src/mcp-index.ts"]
+    volumes: [storage-socket:/run/context-use-storage:ro]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3003/health'); if (!response.ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  public-web:
+    <<: *app-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      storage: { condition: service_healthy }
+    environment:
+      <<: *app-environment
+      SERVICE_MODE: public
+      PORT: "3005"
+      PUBLIC_DATABASE_URL: postgres://context_use_public:${DB_PUBLIC_PASSWORD}@postgres:5432/context_use
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_PUBLIC_TOKEN: ${STORAGE_PUBLIC_TOKEN}
+    command: ["bun", "apps/server/src/public-index.ts"]
+    volumes: [storage-socket:/run/context-use-storage:ro]
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3005/health'); if (!response.ok) process.exit(1)"]
+      interval: 2s
+      timeout: 2s
+      retries: 75
+
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    depends_on:
+      dashboard-edge: { condition: service_healthy }
+      auth: { condition: service_healthy }
+      private-mcp: { condition: service_healthy }
+      public-web: { condition: service_healthy }
+    ports: ["127.0.0.1:${APP_PORT}:8080"]
+    volumes: [./Caddyfile.local:/etc/caddy/Caddyfile:ro]
+
+  nango-redis:
+    image: redis:8.8.0@sha256:234c902a2db49461a129e2d4aeff85b28cf20187ed274a67f6e50995fa713c7b
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  nango-orchestrator:
+    <<: *nango-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      nango-redis: { condition: service_healthy }
+    environment:
+      <<: *nango-environment
+      NANGO_DB_APPLICATION_NAME: context-use-nango-orchestrator
+      NANGO_ORCHESTRATOR_PORT: "3008"
+    command: ["node", "packages/orchestrator/dist/app.js"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3008/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  nango-persist:
+    <<: *nango-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      nango-redis: { condition: service_healthy }
+    environment:
+      <<: *nango-environment
+      NANGO_DB_APPLICATION_NAME: context-use-nango-persist
+      NANGO_PERSIST_PORT: "3007"
+    command: ["node", "packages/persist/dist/app.js"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3007/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Nango's dashboard and OAuth callback bind to loopback. A provider redirects
+  # the owner's own browser here, which is why the authorization flow still
+  # works without any inbound path from the internet. Provider webhooks do not:
+  # local syncs are poll-only.
+  nango-server:
+    <<: *nango-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      nango-redis: { condition: service_healthy }
+    environment:
+      <<: *nango-environment
+      NANGO_DB_APPLICATION_NAME: context-use-nango-server
+      SERVER_PORT: "3003"
+      NANGO_MIGRATE_AT_START: "true"
+      NANGO_SERVER_URL: ${NANGO_ORIGIN}
+      NANGO_PUBLIC_SERVER_URL: ${NANGO_ORIGIN}
+      NANGO_PUBLIC_CONNECT_URL: ${NANGO_ORIGIN}/connect-ui
+      NANGO_ADMIN_KEY: ${NANGO_ADMIN_KEY}
+      FLAG_AUTH_ENABLED: "false"
+      AUTH_ALLOW_SIGNUP: "false"
+      NANGO_DASHBOARD_USERNAME: ${NANGO_DASHBOARD_USERNAME}
+      NANGO_DASHBOARD_PASSWORD: ${NANGO_DASHBOARD_PASSWORD}
+      FLAG_SERVE_CONNECT_UI: "true"
+      NANGO_CONNECT_UI_PORT: "3009"
+      NANGO_SERVER_WEBSOCKETS_PATH: /connect/ws
+      CSP_REPORT_ONLY: "false"
+    command: ["packages/server/entrypoint.sh"]
+    ports: ["127.0.0.1:${NANGO_PORT}:3003"]
+    volumes: [nango-integrations:/app/nango/packages/shared/dist/nango-integrations]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3003/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+
+  nango-jobs:
+    <<: *nango-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      nango-redis: { condition: service_healthy }
+      nango-orchestrator: { condition: service_healthy }
+      nango-persist: { condition: service_healthy }
+      nango-server: { condition: service_healthy }
+    environment:
+      <<: *nango-environment
+      NANGO_DB_APPLICATION_NAME: context-use-nango-jobs
+      NANGO_JOBS_PORT: "3005"
+      NANGO_SERVER_URL: http://nango-server:3003
+      SERVER_SERVICE_URL: http://nango-server:3003
+      PROVIDERS_URL: http://nango-server:3003/providers.json
+      RUNNER_TYPE: LOCAL
+      NANGO_RUNNER_PATH: /app/nango/packages/runner/dist/app.js
+    command: ["node", "packages/jobs/dist/app.js"]
+    volumes: [nango-integrations:/app/nango/packages/shared/dist/nango-integrations]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3005/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+
+volumes:
+  postgres-data:
+  asset-data:
+  storage-socket:
+  nango-integrations:

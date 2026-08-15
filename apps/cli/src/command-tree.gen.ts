@@ -6,25 +6,38 @@ import type { command as agentsyncInstallCmd } from './commands/agent-sync/insta
 import type { command as agentsyncStatusCmd } from './commands/agent-sync/status.ts';
 import type { command as agentsyncSyncnowCmd } from './commands/agent-sync/sync-now.ts';
 import type { command as agentsyncUninstallCmd } from './commands/agent-sync/uninstall.ts';
-import type { command as backupCmd } from './commands/backup.ts';
-import type { command as destroyCmd } from './commands/destroy.ts';
-import type { command as doctorCmd } from './commands/doctor.ts';
-import type { command as nangoCmd } from './commands/nango.ts';
-import type { command as nangoIntegrationsAddCmd } from './commands/nango/integrations/add.ts';
-import type { command as nangoIntegrationsCmd } from './commands/nango/integrations.ts';
-import type { command as nangoIntegrationsDeployCmd } from './commands/nango/integrations/deploy.ts';
-import type { command as nangoIntegrationsStatusCmd } from './commands/nango/integrations/status.ts';
-import type { command as nangoRestoreCmd } from './commands/nango/restore.ts';
-import type { command as openCmd } from './commands/open.ts';
-import type { command as recoverCmd } from './commands/recover.ts';
-import type { command as restoreCmd } from './commands/restore.ts';
-import type { command as resumeCmd } from './commands/resume.ts';
+import type { command as cloudBackupCmd } from './commands/cloud/backup.ts';
+import type { command as cloudCmd } from './commands/cloud.ts';
+import type { command as cloudDestroyCmd } from './commands/cloud/destroy.ts';
+import type { command as cloudDoctorCmd } from './commands/cloud/doctor.ts';
+import type { command as cloudNangoCmd } from './commands/cloud/nango.ts';
+import type { command as cloudNangoIntegrationsAddCmd } from './commands/cloud/nango/integrations/add.ts';
+import type { command as cloudNangoIntegrationsCmd } from './commands/cloud/nango/integrations.ts';
+import type { command as cloudNangoIntegrationsDeployCmd } from './commands/cloud/nango/integrations/deploy.ts';
+import type { command as cloudNangoIntegrationsStatusCmd } from './commands/cloud/nango/integrations/status.ts';
+import type { command as cloudNangoRestoreCmd } from './commands/cloud/nango/restore.ts';
+import type { command as cloudOpenCmd } from './commands/cloud/open.ts';
+import type { command as cloudRecoverCmd } from './commands/cloud/recover.ts';
+import type { command as cloudRestoreCmd } from './commands/cloud/restore.ts';
+import type { command as cloudResumeCmd } from './commands/cloud/resume.ts';
+import type { command as cloudSetupCmd } from './commands/cloud/setup.ts';
+import type { command as cloudStatusCmd } from './commands/cloud/status.ts';
+import type { command as cloudTemplateApplyCmd } from './commands/cloud/template/apply.ts';
+import type { command as cloudTemplateCmd } from './commands/cloud/template.ts';
+import type { command as cloudTemplatePlanCmd } from './commands/cloud/template/plan.ts';
+import type { command as cloudUpdateCmd } from './commands/cloud/update.ts';
+import type { command as localCmd } from './commands/local.ts';
+import type { command as localDestroyCmd } from './commands/local/destroy.ts';
+import type { command as localDoctorCmd } from './commands/local/doctor.ts';
+import type { command as localNangoCmd } from './commands/local/nango.ts';
+import type { command as localOpenCmd } from './commands/local/open.ts';
+import type { command as localSetupCmd } from './commands/local/setup.ts';
+import type { command as localStatusCmd } from './commands/local/status.ts';
+import type { command as localTemplateApplyCmd } from './commands/local/template/apply.ts';
+import type { command as localTemplateCmd } from './commands/local/template.ts';
+import type { command as localTemplatePlanCmd } from './commands/local/template/plan.ts';
+import type { command as localUpdateCmd } from './commands/local/update.ts';
 import type { command as rootCmd } from './commands/_root.ts';
-import type { command as setupCmd } from './commands/setup.ts';
-import type { command as statusCmd } from './commands/status.ts';
-import type { command as templateApplyCmd } from './commands/template/apply.ts';
-import type { command as templateCmd } from './commands/template.ts';
-import type { command as templatePlanCmd } from './commands/template/plan.ts';
 import type { command as updateCmd } from './commands/update.ts';
 import type { command as versionCmd } from './commands/version.ts';
 
@@ -58,92 +71,197 @@ declare module '@parshjs/core' {
       };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
-    'backup': {
+    'cloud': {
       parents: {};
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
-    'destroy': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'doctor': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'nango': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'nango integrations': {
+    'cloud backup': {
       parents: {
-        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
       };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
-    'nango integrations add': {
+    'cloud destroy': {
       parents: {
-        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
-        'nango integrations': { options: InferForwardedOptions<typeof nangoIntegrationsCmd.options>; params: InferParams<typeof nangoIntegrationsCmd.params> };
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
       };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
-    'nango integrations deploy': {
+    'cloud doctor': {
       parents: {
-        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
-        'nango integrations': { options: InferForwardedOptions<typeof nangoIntegrationsCmd.options>; params: InferParams<typeof nangoIntegrationsCmd.params> };
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
       };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
-    'nango integrations status': {
+    'cloud nango': {
       parents: {
-        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
-        'nango integrations': { options: InferForwardedOptions<typeof nangoIntegrationsCmd.options>; params: InferParams<typeof nangoIntegrationsCmd.params> };
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
       };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
-    'nango restore': {
+    'cloud nango integrations': {
       parents: {
-        'nango': { options: InferForwardedOptions<typeof nangoCmd.options>; params: InferParams<typeof nangoCmd.params> };
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+        'cloud nango': { options: InferForwardedOptions<typeof cloudNangoCmd.options>; params: InferParams<typeof cloudNangoCmd.params> };
       };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
-    'open': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'recover': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'restore': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'resume': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'setup': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'status': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'template': {
-      parents: {};
-      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
-    };
-    'template apply': {
+    'cloud nango integrations add': {
       parents: {
-        'template': { options: InferForwardedOptions<typeof templateCmd.options>; params: InferParams<typeof templateCmd.params> };
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+        'cloud nango': { options: InferForwardedOptions<typeof cloudNangoCmd.options>; params: InferParams<typeof cloudNangoCmd.params> };
+        'cloud nango integrations': { options: InferForwardedOptions<typeof cloudNangoIntegrationsCmd.options>; params: InferParams<typeof cloudNangoIntegrationsCmd.params> };
       };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
-    'template plan': {
+    'cloud nango integrations deploy': {
       parents: {
-        'template': { options: InferForwardedOptions<typeof templateCmd.options>; params: InferParams<typeof templateCmd.params> };
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+        'cloud nango': { options: InferForwardedOptions<typeof cloudNangoCmd.options>; params: InferParams<typeof cloudNangoCmd.params> };
+        'cloud nango integrations': { options: InferForwardedOptions<typeof cloudNangoIntegrationsCmd.options>; params: InferParams<typeof cloudNangoIntegrationsCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud nango integrations status': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+        'cloud nango': { options: InferForwardedOptions<typeof cloudNangoCmd.options>; params: InferParams<typeof cloudNangoCmd.params> };
+        'cloud nango integrations': { options: InferForwardedOptions<typeof cloudNangoIntegrationsCmd.options>; params: InferParams<typeof cloudNangoIntegrationsCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud nango restore': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+        'cloud nango': { options: InferForwardedOptions<typeof cloudNangoCmd.options>; params: InferParams<typeof cloudNangoCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud open': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud recover': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud restore': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud resume': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud setup': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud status': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud template': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud template apply': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+        'cloud template': { options: InferForwardedOptions<typeof cloudTemplateCmd.options>; params: InferParams<typeof cloudTemplateCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud template plan': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+        'cloud template': { options: InferForwardedOptions<typeof cloudTemplateCmd.options>; params: InferParams<typeof cloudTemplateCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'cloud update': {
+      parents: {
+        'cloud': { options: InferForwardedOptions<typeof cloudCmd.options>; params: InferParams<typeof cloudCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local': {
+      parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local destroy': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local doctor': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local nango': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local open': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local setup': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local status': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local template': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local template apply': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
+        'local template': { options: InferForwardedOptions<typeof localTemplateCmd.options>; params: InferParams<typeof localTemplateCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local template plan': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
+        'local template': { options: InferForwardedOptions<typeof localTemplateCmd.options>; params: InferParams<typeof localTemplateCmd.params> };
+      };
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'local update': {
+      parents: {
+        'local': { options: InferForwardedOptions<typeof localCmd.options>; params: InferParams<typeof localCmd.params> };
       };
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
@@ -193,111 +311,192 @@ export const commandTree: RuntimeNode = {
       },
       paramChild: null,
     },
-    'backup': {
-      segment: { kind: 'literal', value: 'backup' },
-      command: { path: 'backup', load: () => import('./commands/backup.ts').then((m) => m.command) },
-      literalChildren: {},
-      paramChild: null,
-    },
-    'destroy': {
-      segment: { kind: 'literal', value: 'destroy' },
-      command: { path: 'destroy', load: () => import('./commands/destroy.ts').then((m) => m.command) },
-      literalChildren: {},
-      paramChild: null,
-    },
-    'doctor': {
-      segment: { kind: 'literal', value: 'doctor' },
-      command: { path: 'doctor', load: () => import('./commands/doctor.ts').then((m) => m.command) },
-      literalChildren: {},
-      paramChild: null,
-    },
-    'nango': {
-      segment: { kind: 'literal', value: 'nango' },
-      command: { path: 'nango', load: () => import('./commands/nango.ts').then((m) => m.command) },
+    'cloud': {
+      segment: { kind: 'literal', value: 'cloud' },
+      command: { path: 'cloud', load: () => import('./commands/cloud.ts').then((m) => m.command) },
       literalChildren: {
-        'integrations': {
-          segment: { kind: 'literal', value: 'integrations' },
-          command: { path: 'nango integrations', load: () => import('./commands/nango/integrations.ts').then((m) => m.command) },
+        'backup': {
+          segment: { kind: 'literal', value: 'backup' },
+          command: { path: 'cloud backup', load: () => import('./commands/cloud/backup.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'destroy': {
+          segment: { kind: 'literal', value: 'destroy' },
+          command: { path: 'cloud destroy', load: () => import('./commands/cloud/destroy.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'doctor': {
+          segment: { kind: 'literal', value: 'doctor' },
+          command: { path: 'cloud doctor', load: () => import('./commands/cloud/doctor.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'nango': {
+          segment: { kind: 'literal', value: 'nango' },
+          command: { path: 'cloud nango', load: () => import('./commands/cloud/nango.ts').then((m) => m.command) },
           literalChildren: {
-            'add': {
-              segment: { kind: 'literal', value: 'add' },
-              command: { path: 'nango integrations add', load: () => import('./commands/nango/integrations/add.ts').then((m) => m.command) },
-              literalChildren: {},
+            'integrations': {
+              segment: { kind: 'literal', value: 'integrations' },
+              command: { path: 'cloud nango integrations', load: () => import('./commands/cloud/nango/integrations.ts').then((m) => m.command) },
+              literalChildren: {
+                'add': {
+                  segment: { kind: 'literal', value: 'add' },
+                  command: { path: 'cloud nango integrations add', load: () => import('./commands/cloud/nango/integrations/add.ts').then((m) => m.command) },
+                  literalChildren: {},
+                  paramChild: null,
+                },
+                'deploy': {
+                  segment: { kind: 'literal', value: 'deploy' },
+                  command: { path: 'cloud nango integrations deploy', load: () => import('./commands/cloud/nango/integrations/deploy.ts').then((m) => m.command) },
+                  literalChildren: {},
+                  paramChild: null,
+                },
+                'status': {
+                  segment: { kind: 'literal', value: 'status' },
+                  command: { path: 'cloud nango integrations status', load: () => import('./commands/cloud/nango/integrations/status.ts').then((m) => m.command) },
+                  literalChildren: {},
+                  paramChild: null,
+                },
+              },
               paramChild: null,
             },
-            'deploy': {
-              segment: { kind: 'literal', value: 'deploy' },
-              command: { path: 'nango integrations deploy', load: () => import('./commands/nango/integrations/deploy.ts').then((m) => m.command) },
-              literalChildren: {},
-              paramChild: null,
-            },
-            'status': {
-              segment: { kind: 'literal', value: 'status' },
-              command: { path: 'nango integrations status', load: () => import('./commands/nango/integrations/status.ts').then((m) => m.command) },
+            'restore': {
+              segment: { kind: 'literal', value: 'restore' },
+              command: { path: 'cloud nango restore', load: () => import('./commands/cloud/nango/restore.ts').then((m) => m.command) },
               literalChildren: {},
               paramChild: null,
             },
           },
           paramChild: null,
         },
+        'open': {
+          segment: { kind: 'literal', value: 'open' },
+          command: { path: 'cloud open', load: () => import('./commands/cloud/open.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'recover': {
+          segment: { kind: 'literal', value: 'recover' },
+          command: { path: 'cloud recover', load: () => import('./commands/cloud/recover.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
         'restore': {
           segment: { kind: 'literal', value: 'restore' },
-          command: { path: 'nango restore', load: () => import('./commands/nango/restore.ts').then((m) => m.command) },
+          command: { path: 'cloud restore', load: () => import('./commands/cloud/restore.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'resume': {
+          segment: { kind: 'literal', value: 'resume' },
+          command: { path: 'cloud resume', load: () => import('./commands/cloud/resume.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'setup': {
+          segment: { kind: 'literal', value: 'setup' },
+          command: { path: 'cloud setup', load: () => import('./commands/cloud/setup.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'status': {
+          segment: { kind: 'literal', value: 'status' },
+          command: { path: 'cloud status', load: () => import('./commands/cloud/status.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'template': {
+          segment: { kind: 'literal', value: 'template' },
+          command: { path: 'cloud template', load: () => import('./commands/cloud/template.ts').then((m) => m.command) },
+          literalChildren: {
+            'apply': {
+              segment: { kind: 'literal', value: 'apply' },
+              command: { path: 'cloud template apply', load: () => import('./commands/cloud/template/apply.ts').then((m) => m.command) },
+              literalChildren: {},
+              paramChild: null,
+            },
+            'plan': {
+              segment: { kind: 'literal', value: 'plan' },
+              command: { path: 'cloud template plan', load: () => import('./commands/cloud/template/plan.ts').then((m) => m.command) },
+              literalChildren: {},
+              paramChild: null,
+            },
+          },
+          paramChild: null,
+        },
+        'update': {
+          segment: { kind: 'literal', value: 'update' },
+          command: { path: 'cloud update', load: () => import('./commands/cloud/update.ts').then((m) => m.command) },
           literalChildren: {},
           paramChild: null,
         },
       },
       paramChild: null,
     },
-    'open': {
-      segment: { kind: 'literal', value: 'open' },
-      command: { path: 'open', load: () => import('./commands/open.ts').then((m) => m.command) },
-      literalChildren: {},
-      paramChild: null,
-    },
-    'recover': {
-      segment: { kind: 'literal', value: 'recover' },
-      command: { path: 'recover', load: () => import('./commands/recover.ts').then((m) => m.command) },
-      literalChildren: {},
-      paramChild: null,
-    },
-    'restore': {
-      segment: { kind: 'literal', value: 'restore' },
-      command: { path: 'restore', load: () => import('./commands/restore.ts').then((m) => m.command) },
-      literalChildren: {},
-      paramChild: null,
-    },
-    'resume': {
-      segment: { kind: 'literal', value: 'resume' },
-      command: { path: 'resume', load: () => import('./commands/resume.ts').then((m) => m.command) },
-      literalChildren: {},
-      paramChild: null,
-    },
-    'setup': {
-      segment: { kind: 'literal', value: 'setup' },
-      command: { path: 'setup', load: () => import('./commands/setup.ts').then((m) => m.command) },
-      literalChildren: {},
-      paramChild: null,
-    },
-    'status': {
-      segment: { kind: 'literal', value: 'status' },
-      command: { path: 'status', load: () => import('./commands/status.ts').then((m) => m.command) },
-      literalChildren: {},
-      paramChild: null,
-    },
-    'template': {
-      segment: { kind: 'literal', value: 'template' },
-      command: { path: 'template', load: () => import('./commands/template.ts').then((m) => m.command) },
+    'local': {
+      segment: { kind: 'literal', value: 'local' },
+      command: { path: 'local', load: () => import('./commands/local.ts').then((m) => m.command) },
       literalChildren: {
-        'apply': {
-          segment: { kind: 'literal', value: 'apply' },
-          command: { path: 'template apply', load: () => import('./commands/template/apply.ts').then((m) => m.command) },
+        'destroy': {
+          segment: { kind: 'literal', value: 'destroy' },
+          command: { path: 'local destroy', load: () => import('./commands/local/destroy.ts').then((m) => m.command) },
           literalChildren: {},
           paramChild: null,
         },
-        'plan': {
-          segment: { kind: 'literal', value: 'plan' },
-          command: { path: 'template plan', load: () => import('./commands/template/plan.ts').then((m) => m.command) },
+        'doctor': {
+          segment: { kind: 'literal', value: 'doctor' },
+          command: { path: 'local doctor', load: () => import('./commands/local/doctor.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'nango': {
+          segment: { kind: 'literal', value: 'nango' },
+          command: { path: 'local nango', load: () => import('./commands/local/nango.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'open': {
+          segment: { kind: 'literal', value: 'open' },
+          command: { path: 'local open', load: () => import('./commands/local/open.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'setup': {
+          segment: { kind: 'literal', value: 'setup' },
+          command: { path: 'local setup', load: () => import('./commands/local/setup.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'status': {
+          segment: { kind: 'literal', value: 'status' },
+          command: { path: 'local status', load: () => import('./commands/local/status.ts').then((m) => m.command) },
+          literalChildren: {},
+          paramChild: null,
+        },
+        'template': {
+          segment: { kind: 'literal', value: 'template' },
+          command: { path: 'local template', load: () => import('./commands/local/template.ts').then((m) => m.command) },
+          literalChildren: {
+            'apply': {
+              segment: { kind: 'literal', value: 'apply' },
+              command: { path: 'local template apply', load: () => import('./commands/local/template/apply.ts').then((m) => m.command) },
+              literalChildren: {},
+              paramChild: null,
+            },
+            'plan': {
+              segment: { kind: 'literal', value: 'plan' },
+              command: { path: 'local template plan', load: () => import('./commands/local/template/plan.ts').then((m) => m.command) },
+              literalChildren: {},
+              paramChild: null,
+            },
+          },
+          paramChild: null,
+        },
+        'update': {
+          segment: { kind: 'literal', value: 'update' },
+          command: { path: 'local update', load: () => import('./commands/local/update.ts').then((m) => m.command) },
           literalChildren: {},
           paramChild: null,
         },
