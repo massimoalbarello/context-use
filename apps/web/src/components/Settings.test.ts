@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
+  ArchiveImportProgressStatus,
+  archiveImportProgressCopy,
   CLEAR_KNOWLEDGE_PHRASE,
   formatExportBytes,
   KnowledgeExportPreparationStatus,
@@ -82,6 +84,61 @@ describe("knowledge export settings", () => {
     expect(html).toContain("context-use-full-archive-2026-08-13.zip · 4.66 GB");
     expect(html).toContain(`href="${processing.downloadUrl}"`);
     expect(html).toContain("Download archive");
+  });
+});
+
+describe("knowledge import progress", () => {
+  test("reports transferred bytes, rate, and remaining time while the archive uploads", () => {
+    const copy = archiveImportProgressCopy({
+      loaded: 100 * 1024 ** 2,
+      total: 400 * 1024 ** 2,
+      startedAt: 1_000,
+      updatedAt: 11_000,
+    });
+    expect(copy.determinate).toBe(true);
+    expect(copy.percent).toBe(25);
+    expect(copy.headline).toBe("Uploading and validating… 25%");
+    expect(copy.detail).toBe("100.0 MB of 400.0 MB · 10.0 MB/s · about 30s left");
+  });
+
+  test("holds short of complete and omits an unmeasured rate", () => {
+    const copy = archiveImportProgressCopy({
+      loaded: 999,
+      total: 1000,
+      startedAt: 1_000,
+      updatedAt: 1_200,
+    });
+    expect(copy.percent).toBe(99);
+    expect(copy.detail).toBe("999 B of 1000 B");
+  });
+
+  test("switches to an indeterminate wait once the server holds the whole archive", () => {
+    const copy = archiveImportProgressCopy({
+      loaded: 1000,
+      total: 1000,
+      startedAt: 1_000,
+      updatedAt: 61_000,
+    });
+    expect(copy.determinate).toBe(false);
+    expect(copy.headline).toBe("Finishing validation and staging…");
+    expect(copy.detail).toContain("a few more minutes");
+  });
+
+  test("renders a live progress bar an assistive reader can follow", () => {
+    const html = renderToStaticMarkup(createElement(ArchiveImportProgressStatus, {
+      progress: { loaded: 50, total: 200, startedAt: 0, updatedAt: 5_000 },
+    }));
+    expect(html).toContain('role="status"');
+    expect(html).toContain('role="progressbar"');
+    expect(html).toContain('aria-valuenow="25"');
+    expect(html).toContain("width:25%");
+    expect(html).not.toContain("is-indeterminate");
+
+    const finishing = renderToStaticMarkup(createElement(ArchiveImportProgressStatus, {
+      progress: { loaded: 200, total: 200, startedAt: 0, updatedAt: 5_000 },
+    }));
+    expect(finishing).toContain("is-indeterminate");
+    expect(finishing).not.toContain("aria-valuenow");
   });
 });
 

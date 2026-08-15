@@ -1,11 +1,14 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { unlink } from "node:fs/promises";
+import { join } from "node:path";
 import type {
   RestorableKnowledgeAsset,
   RestorableKnowledgeRecords,
 } from "@context-use/database";
 import { RESTORABLE_KNOWLEDGE_FORMAT } from "@context-use/database";
-import { ZipReaderStream } from "@zip.js/zip.js";
+import { Reader, ZipReader, type FileEntry } from "@zip.js/zip.js";
 import { z } from "zod";
+import { config } from "./config.ts";
 import type { ObjectStorage } from "./storage.ts";
 import {
   MAX_KNOWLEDGE_ARCHIVE_BYTES,
@@ -287,23 +290,82 @@ function validateManifest(manifest: RestorableKnowledgeManifest, records: Restor
   if (manifest.active_asset_bytes !== bytes) throw new Error("Archive manifest asset size does not match its records");
 }
 
+// Piping an upload straight into a ZipReaderStream keeps the whole archive
+// resident: the reader retains everything it has accepted, so peak memory
+// tracks archive size rather than entry size. Spooling to disk first and then
+// reading entries through a random-access reader keeps memory flat instead,
+// because zip.js only pulls the byte ranges it is currently decoding.
+class SpooledArchiveReader extends Reader<string> {
+  size = 0;
+  initialized = false;
+
+  constructor(private readonly spoolPath: string) {
+    super(spoolPath);
+  }
+
+  override async init(): Promise<void> {
+    this.size = Bun.file(this.spoolPath).size;
+    this.initialized = true;
+  }
+
+  override async readUint8Array(index: number, length: number): Promise<Uint8Array> {
+    const slice = Bun.file(this.spoolPath).slice(index, index + length);
+    return new Uint8Array(await slice.arrayBuffer());
+  }
+}
+
+async function spoolArchive(body: ReadableStream<Uint8Array>, spoolPath: string, maxBytes: number): Promise<void> {
+  const sink = Bun.file(spoolPath).writer();
+  const reader = body.getReader();
+  let size = 0;
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      size += chunk.value.byteLength;
+      if (size > maxBytes) throw new InvalidKnowledgeArchiveError("Archive contents exceed the 5 GiB restore limit");
+      sink.write(chunk.value);
+      // Flushing each chunk keeps the sink's own buffer from becoming the
+      // memory growth this spooling exists to remove.
+      await sink.flush();
+    }
+    await sink.end();
+  } catch (error) {
+    await reader.cancel(error).catch(() => undefined);
+    sink.end();
+    throw error;
+  }
+  if (!size) throw new InvalidKnowledgeArchiveError("Knowledge archive is empty");
+}
+
+function entryReadable(entry: FileEntry): ReadableStream<Uint8Array> {
+  // The transform's own backpressure is what bounds memory here: getData only
+  // advances as the consumer drains, so an entry is never held whole.
+  const stream = new TransformStream<Uint8Array, Uint8Array>();
+  entry.getData(stream.writable).catch((error: unknown) => {
+    void stream.writable.abort(error).catch(() => undefined);
+  });
+  return stream.readable;
+}
+
 export async function readRestorableKnowledgeArchive(
   body: ReadableStream<Uint8Array> | null,
   stageAsset: (asset: RestorableKnowledgeAsset, body: ReadableStream<Uint8Array>) => Promise<void>,
+  options: { spoolDirectory?: string; onProgress?: (staged: number, total: number) => void } = {},
 ): Promise<{ manifest: RestorableKnowledgeManifest; records: RestorableKnowledgeRecords }> {
   if (!body) throw new InvalidKnowledgeArchiveError("Knowledge archive is empty");
-  const zip = new ZipReaderStream<Uint8Array>({ useWebWorkers: false });
-  const piping = body.pipeTo(zip.writable);
+  const spoolPath = join(options.spoolDirectory ?? config.KNOWLEDGE_IMPORT_SPOOL_PATH, `${randomUUID()}.zip`);
   let manifest: RestorableKnowledgeManifest | null = null;
   let records: RestorableKnowledgeRecords | null = null;
   let expectedAssets: Map<string, RestorableKnowledgeAsset> | null = null;
-  const seen = new Set<string>();
-  const entries = zip.readable.getReader();
+  let reader: ZipReader<string> | null = null;
   try {
-    while (true) {
-      const next = await entries.read();
-      if (next.done) break;
-      const entry = next.value;
+    await spoolArchive(body, spoolPath, MAX_KNOWLEDGE_ARCHIVE_BYTES);
+    reader = new ZipReader(new SpooledArchiveReader(spoolPath), { checkSignature: true });
+    const entries = await reader.getEntries();
+    const seen = new Set<string>();
+    let staged = 0;
+    for (const entry of entries) {
       if (entry.directory || entry.encrypted || ((entry.unixMode ?? 0) & 0o170000) === 0o120000) {
         throw new Error("Archive contains an unsupported entry");
       }
@@ -311,12 +373,13 @@ export async function readRestorableKnowledgeArchive(
       seen.add(entry.filename);
       if (!manifest) {
         if (entry.filename !== MANIFEST_PATH) throw new Error("Archive manifest must be the first entry");
-        manifest = manifestSchema.parse(JSON.parse(await readText(entry.readable, 64 * 1024)));
+        if (entry.uncompressedSize > 64 * 1024) throw new Error("Archive metadata is too large");
+        manifest = manifestSchema.parse(JSON.parse(await readText(entryReadable(entry), 64 * 1024)));
         continue;
       }
       if (!records) {
         if (entry.filename !== RECORDS_PATH) throw new Error("Archive records must follow the manifest");
-        const raw = await readText(entry.readable, MAX_RECORDS_BYTES);
+        const raw = await readText(entryReadable(entry), MAX_RECORDS_BYTES);
         if (createHash("sha256").update(raw).digest("hex") !== manifest.records_sha256) {
           throw new Error("Archive records failed integrity verification");
         }
@@ -330,18 +393,17 @@ export async function readRestorableKnowledgeArchive(
       }
       const match = entry.filename.match(new RegExp(`^${ARCHIVE_ROOT}/assets/([0-9a-f-]{36})$`));
       const asset = match ? expectedAssets!.get(match[1]!) : undefined;
-      if (!asset || !entry.readable) throw new Error(`Archive contains an unexpected entry: ${entry.filename}`);
+      if (!asset) throw new Error(`Archive contains an unexpected entry: ${entry.filename}`);
       try {
-        await stageAsset(asset, entry.readable);
+        await stageAsset(asset, entryReadable(entry));
       } catch (error) {
         throw new ArchiveAssetStageError(error);
       }
       expectedAssets!.delete(asset.id);
+      staged += 1;
+      options.onProgress?.(staged, manifest.counts.active_assets);
     }
-    await piping;
   } catch (error) {
-    await entries.cancel(error).catch(() => undefined);
-    await piping.catch(() => undefined);
     if (error instanceof ArchiveAssetStageError) {
       throw error.stageCause instanceof Error ? error.stageCause : new Error("Knowledge archive asset staging failed");
     }
@@ -349,7 +411,8 @@ export async function readRestorableKnowledgeArchive(
       ? error
       : new InvalidKnowledgeArchiveError(error instanceof Error ? error.message : "Knowledge archive is invalid");
   } finally {
-    entries.releaseLock();
+    await reader?.close().catch(() => undefined);
+    await unlink(spoolPath).catch(() => undefined);
   }
   if (!manifest || !records) throw new InvalidKnowledgeArchiveError("Archive is missing its manifest or records");
   if (expectedAssets?.size) throw new InvalidKnowledgeArchiveError("Archive is missing one or more active asset files");

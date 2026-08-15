@@ -61,24 +61,50 @@ export async function uploadAssetContent(assetId: string, file: File, contentTyp
   }
 }
 
-export async function uploadKnowledgeArchive<T>(file: File): Promise<T> {
+// The server validates and stages the archive while it reads the request body, so
+// bytes accepted by the server are a faithful measure of how far the import got.
+// XMLHttpRequest is used instead of fetch because only it reports upload progress.
+export async function uploadKnowledgeArchive<T>(
+  file: File,
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<T> {
   if (!csrfToken) await refreshCsrf();
-  const response = await fetch("/api/dashboard/knowledge-import-intents", {
-    method: "POST",
-    headers: {
-      "content-type": "application/zip",
-      "x-csrf-token": csrfToken,
-    },
-    body: file,
-    credentials: "include",
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "upload_failed", message: response.statusText })) as {
-      error?: string;
-      message?: string;
+  return new Promise<T>((resolve, reject) => {
+    const parseBody = (text: string) => {
+      try {
+        return JSON.parse(text) as { error?: string; message?: string };
+      } catch {
+        return {};
+      }
     };
-    throw new ApiError(response.status, error.error ?? "upload_failed", error.message ?? response.statusText);
-  }
-  return response.json() as Promise<T>;
+    const request = new XMLHttpRequest();
+    request.open("POST", "/api/dashboard/knowledge-import-intents");
+    request.withCredentials = true;
+    request.setRequestHeader("content-type", "application/zip");
+    request.setRequestHeader("x-csrf-token", csrfToken);
+    request.upload.addEventListener("progress", (event) => {
+      onProgress?.(event.loaded, event.lengthComputable ? event.total : file.size);
+    });
+    // The last progress event can land short of the end; the upload is only over here.
+    request.upload.addEventListener("load", () => onProgress?.(file.size, file.size));
+    request.addEventListener("load", () => {
+      const body = parseBody(request.responseText);
+      if (request.status >= 200 && request.status < 300) {
+        resolve(body as T);
+        return;
+      }
+      reject(new ApiError(
+        request.status,
+        body.error ?? "upload_failed",
+        body.message ?? request.statusText ?? "The archive could not be uploaded",
+      ));
+    });
+    request.addEventListener("error", () => reject(
+      new ApiError(0, "upload_failed", "The archive upload lost its connection to Context Use"),
+    ));
+    request.addEventListener("abort", () => reject(
+      new ApiError(0, "upload_aborted", "The archive upload was cancelled"),
+    ));
+    request.send(file);
+  });
 }

@@ -109,6 +109,33 @@ else
   mv -f "$${marker_tmp}" "$${volume_marker}"
 fi
 
+# Without swap the kernel cannot page anything out under memory pressure, so it
+# livelocks in reclaim instead of killing one process: the host stops answering
+# SSH, SSM, and HTTP while still passing EC2 status checks. Swap turns that into
+# a survivable slowdown. It lives on the retained volume, which is sized for it.
+# The file is allocated rather than written from a zero source: this instance
+# must never read or write raw block devices during bootstrap.
+swapfile=/data/swapfile
+if ! swapon --show=NAME --noheadings | grep -qx "$${swapfile}"; then
+  if [ ! -f "$${swapfile}" ]; then
+    rm -f "$${swapfile}.tmp"
+    if fallocate -l 4G "$${swapfile}.tmp"; then
+      chmod 0600 "$${swapfile}.tmp"
+      mkswap "$${swapfile}.tmp" && mv -f "$${swapfile}.tmp" "$${swapfile}"
+    fi
+    rm -f "$${swapfile}.tmp"
+  fi
+  # Swap is a safety net, not a boot requirement: never fail the instance for it.
+  [ -f "$${swapfile}" ] && { swapon "$${swapfile}" || echo "Swap could not be enabled" >&2; }
+fi
+if ! grep -Eq "^$${swapfile}[[:space:]]" /etc/fstab; then
+  printf '%s none swap sw,nofail 0 0\n' "$${swapfile}" >> /etc/fstab
+fi
+# Prefer reclaiming cache over swapping application memory; swap is the safety
+# valve for a spike, not a substitute for RAM.
+sysctl -w vm.swappiness=10
+printf 'vm.swappiness=10\n' > /etc/sysctl.d/60-context-use-swappiness.conf
+
 install -d -m 0700 /var/lib/context-use
 record_tmp="$${initialization_record}.tmp"
 printf '%s\n' "$${volume_id}" > "$${record_tmp}"
