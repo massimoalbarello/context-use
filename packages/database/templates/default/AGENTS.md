@@ -155,7 +155,8 @@ entries first:
 
     ### August
 
-    - **9 August** — [[places/…/intro|Da Enzo]] — dinner here; best carbonara I have had in Rome.
+    - **9 August** — [[events/…/intro|dinner at Da Enzo]] — first night in Rome; best
+      carbonara I have had.
 
 One **timeline event** is one line containing its full date, contextual links and the
 particulars of what happened. *Reviewed the quarterly numbers* names activity;
@@ -166,8 +167,12 @@ Do not leave a dated development only on `intro` or another detail page. If the 
 admits it to the entity's history, record the line on `timeline` and link any page carrying
 the fuller account.
 
-A timeline event is not an `events/` entity. The former is a line; the latter is an occasion
-with its own folder. A line may link an occurrence page.
+An occasion is never recorded only as a timeline line. Something the owner attended or did,
+bounded in time and place and able to carry participants and assets, resolves as its own
+occurrence under [[events/agents|events]] or [[trips/agents|trips]]; the timelines of its
+place, its people and any containing occasion link that page and say what it was. A dated
+fact that simply became true of the subject — a figure, a role, a closure — stays a line
+carrying its own particulars.
 
 Date activity to when it happened, not when the evidence arrived or the page was written.
 Without a reliable activity date, update durable knowledge and leave the timeline alone.

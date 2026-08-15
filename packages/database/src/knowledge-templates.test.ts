@@ -24,6 +24,7 @@ const DEFAULT_DIRECTORY_PATHS = [
   "skills",
   "threads",
   "topics",
+  "trips",
   "about/diary",
   "about/projects",
   "about/tasks",
@@ -208,13 +209,14 @@ describe("knowledge templates", () => {
       "skills",
       "threads",
       "topics",
+      "trips",
       "about/diary",
       "about/projects",
       "about/tasks",
       "automations/activity-distiller",
       "automations/diary-composer",
     ]);
-    expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(16);
+    expect(result.actions.filter(({ action }) => action === "create-guide")).toHaveLength(17);
     expect(result.actions.filter(({ action }) => action === "create-page").map(({ path }) => path)).toEqual([
       "automations/activity-distiller/instructions",
       "automations/activity-distiller/state",
@@ -224,7 +226,7 @@ describe("knowledge templates", () => {
     expect(state.createdDirectories).toEqual([]);
     expect(state.createdPages).toEqual([]);
     expect(formatTemplateResult(result)).toContain("+ create-directory library");
-    expect(formatTemplateResult(result)).toContain("✓ Planned 37 changes; 0 conflicts.");
+    expect(formatTemplateResult(result)).toContain("✓ Planned 39 changes; 0 conflicts.");
     expect(formatTemplateResult(result, true)).toContain("\u001B[32m+\u001B[0m create-directory");
   });
 
@@ -272,7 +274,7 @@ describe("knowledge templates", () => {
       path: "places",
       detail: "Directory metadata differs from the template; preserve local metadata",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 22 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 23 changes; 1 conflict.");
   });
 
   test("surfaces directory metadata drift without overwriting local presentation", async () => {
@@ -511,13 +513,13 @@ describe("knowledge templates", () => {
     const result = await reconcileKnowledgeTemplate(state.value, "default", true);
 
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(state.createdPages).toHaveLength(18);
+    expect(state.createdPages).toHaveLength(19);
     expect(result.actions).toContainEqual({
       action: "conflict",
       path: "people/agents",
       detail: "Preserve locally modified guide",
     });
-    expect(formatTemplateResult(result)).toContain("Applied 19 changes; 1 conflict.");
+    expect(formatTemplateResult(result)).toContain("Applied 20 changes; 1 conflict.");
     expect(formatTemplateResult(result)).toContain("~ update-guide     agents");
     expect(formatTemplateResult(result)).toContain("! conflict         people/agents");
     expect(formatTemplateResult(result, true)).toContain("\u001B[31m!\u001B[0m conflict");
@@ -570,7 +572,7 @@ describe("knowledge templates", () => {
 
     const applied = await reconcileKnowledgeTemplate(state.value, "default", true, true);
     expect(state.updatedPages).toEqual(["agents"]);
-    expect(formatTemplateResult(applied)).toContain("Applied 19 changes; 1 conflict.");
+    expect(formatTemplateResult(applied)).toContain("Applied 20 changes; 1 conflict.");
   });
 
   test("reports page collisions without removing or overwriting existing knowledge", async () => {
@@ -736,6 +738,7 @@ describe("knowledge templates", () => {
       skills: await Bun.file(new URL("../templates/default/skills/AGENTS.md", import.meta.url)).text(),
       threads: await Bun.file(new URL("../templates/default/threads/AGENTS.md", import.meta.url)).text(),
       topics: await Bun.file(new URL("../templates/default/topics/AGENTS.md", import.meta.url)).text(),
+      trips: await Bun.file(new URL("../templates/default/trips/AGENTS.md", import.meta.url)).text(),
     };
     const normalize = (value: string) => value.replaceAll(/\s+/g, " ");
     const normalizedRoot = normalize(guides.root);
@@ -773,6 +776,7 @@ describe("knowledge templates", () => {
       "do not leave a dated development only on `intro` or another detail page",
       "date activity to when it happened",
       "what the owner did, experienced or learned involving its entity",
+      "an occasion is never recorded only as a timeline line",
       "never link the diary from a timeline event",
       "an automation maintaining knowledge is not activity in the owner's life",
       "later is not automatically correct",
@@ -807,6 +811,7 @@ describe("knowledge templates", () => {
       guides.skills,
       guides.threads,
       guides.topics,
+      guides.trips,
     ]) {
       expect(guide).toContain("[[agents|root guide]]");
     }
@@ -826,6 +831,7 @@ describe("knowledge templates", () => {
       guides.tasks,
       guides.threads,
       guides.topics,
+      guides.trips,
     ];
     for (const guide of entityGuides) {
       expect(guide).toContain("[[agents#identifiability-is-the-threshold|identifiability invariant]]");
@@ -869,6 +875,14 @@ describe("knowledge templates", () => {
     );
     expect(normalize(guides.events)).toContain("A conversation inside an event follows that guide");
     expect(normalize(guides.events)).not.toContain("only when it is independently useful");
+    expect(normalize(guides.events)).toContain("Occasions nest");
+    expect(normalize(guides.events)).toContain("An event has no separate timeline");
+    expect(guides.trips).toContain("trips/<YYYY>/<MM>/<YYYY-MM-DD>_<trip-slug>/");
+    expect(normalize(guides.trips)).toContain("Displacement distinguishes a trip from an");
+    expect(normalize(guides.trips)).toContain("Every trip begins with both `intro` and `timeline`");
+    expect(normalize(guides.trips)).toContain(
+      "local exception to the root optional-timeline default",
+    );
     expect(normalize(guides.skills)).toContain("local runtime exception to the root entity-folder default");
     expect(normalize(guides.threads)).toContain("Every thread begins with both `intro` and `timeline`");
     expect(normalize(guides.threads)).toContain("corrections to existing lines follow the root reconciliation rule");
@@ -896,6 +910,7 @@ describe("knowledge templates", () => {
       guides.tasks,
       guides.threads,
       guides.topics,
+      guides.trips,
     ].join("\n");
     for (const skeleton of [
       "Suggested shape",
@@ -1057,6 +1072,7 @@ describe("knowledge templates", () => {
       "../templates/default/skills/AGENTS.md",
       "../templates/default/threads/AGENTS.md",
       "../templates/default/topics/AGENTS.md",
+      "../templates/default/trips/AGENTS.md",
     ];
     const knowledgeGuides = (await Promise.all(nonAutomationGuides.map(
       async (path) => Bun.file(new URL(path, import.meta.url)).text(),
@@ -1086,5 +1102,6 @@ describe("knowledge templates", () => {
     expect(DEFAULT_DIRECTORY_PRESENTATIONS.library!.summary).toContain("Identified external works");
     expect(DEFAULT_DIRECTORY_PRESENTATIONS.people!.summary).toContain("Identified people");
     expect(DEFAULT_DIRECTORY_PRESENTATIONS.places!.summary).toContain("Identified homes");
+    expect(DEFAULT_DIRECTORY_PRESENTATIONS.trips!.summary).toContain("Identified journeys");
   });
 });

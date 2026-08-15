@@ -25,7 +25,7 @@
   },
   "events": {
     "title": "Events",
-    "summary": "Identified occasions such as conferences, trips, dinners, hackathons, and weddings, grouped by date."
+    "summary": "Identified occasions such as conferences, dinners, museum visits, hackathons, and weddings, grouped by date."
   },
   "library": {
     "title": "Library",
@@ -58,6 +58,10 @@
   "topics": {
     "title": "Topics",
     "summary": "Enduring subjects in the world, including the owner's supported positions, practices, and connections."
+  },
+  "trips": {
+    "title": "Trips",
+    "summary": "Identified journeys away from home, the arc of each one, and the occasions it contained."
   },
   "about/diary": {
     "title": "Diary",
