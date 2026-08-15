@@ -798,6 +798,11 @@ describe("knowledge templates", () => {
     expect(guides.root).not.toContain("meetings/<YYYY>");
     expect(guides.root).not.toContain("about/projects/<slug>");
 
+    expect(normalizedRoot).toContain("which entities its lines characteristically link");
+    for (const subtreeGuideLink of ["[[events/agents", "[[trips/agents", "[[places/agents"]) {
+      expect(guides.root).not.toContain(subtreeGuideLink);
+    }
+
     for (const guide of [
       guides.about,
       guides.automations,
@@ -835,6 +840,22 @@ describe("knowledge templates", () => {
     ];
     for (const guide of entityGuides) {
       expect(guide).toContain("[[agents#identifiability-is-the-threshold|identifiability invariant]]");
+    }
+
+    for (const guide of [
+      guides.companies,
+      guides.library,
+      guides.objects,
+      guides.people,
+      guides.places,
+      guides.projects,
+      guides.tasks,
+      guides.threads,
+      guides.topics,
+      guides.trips,
+    ]) {
+      expect(guide).toMatch(/^ {4}- \*\*\d{1,2} [A-Z][a-z]+\*\* — /m);
+      expect(guide).toContain("/…/intro|");
     }
 
     const descendants = Object.values(guides).filter((guide) => guide !== guides.root);

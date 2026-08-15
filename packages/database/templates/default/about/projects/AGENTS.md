@@ -25,4 +25,9 @@ rather than absorbing their accounts. Add another page such as `architecture`, `
 
 Project timeline events are consequential milestones: launch, material direction change, a
 release with a durable user-facing or architectural effect, handover or similarly durable
-outcome. A project timeline is not a commit log or a list of build numbers.
+outcome. A project timeline is not a commit log or a list of build numbers. A line here
+characteristically links the task that produced the milestone, or the person or organization
+it moved to:
+
+    - **30 September** — [[about/tasks/…/intro|billing migration]] — shipped it; self-serve
+      upgrades now work on every plan.

@@ -42,5 +42,9 @@ a departure, a border crossing, a change of plan or a return. Keep each line at 
 granularity and let the linked account carry the substance; a line that grows into a
 paragraph belongs on the occasion's own page.
 
+    - **11 August** — [[events/…/intro|Web Summit talk]] — gave the pricing talk; the room
+      pushed back hard on usage billing.
+    - **9 August** — flew Zurich to Lisbon; [[places/…/intro|Alfama]] for the week.
+
 Do not retell contained events here, and do not write the trip as a day-by-day narrative.
 The owner's day narrative is the [[about/diary/agents|diary]], composed separately.

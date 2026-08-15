@@ -32,7 +32,11 @@ note without inferring content from the title.
 
 Dated owner activity that materially changes the work's place in the base—such as testing,
 applying, revisiting or changing an assessment of it—belongs on its timeline. Publication
-date identifies the work; it is not itself an event in the owner's activity.
+date identifies the work; it is not itself an event in the owner's activity. A line here
+characteristically links the topic, task or project the work was brought to bear on:
+
+    - **7 June** — [[about/tasks/…/intro|plan pricing]] — applied its tiering argument;
+      dropped the per-seat option because of it.
 
 Link topics, projects and related works in the prose explaining why the work matters; do not
 move another subject's durable conclusion into the library entry.
