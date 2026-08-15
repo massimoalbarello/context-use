@@ -48,7 +48,7 @@ export type NangoApiDependencies = {
   pause?: (milliseconds: number) => Promise<void>;
 };
 
-export type GitHubOAuthCredentials = {
+export type OAuthClientCredentials = {
   clientId: string;
   clientSecret: string;
 };
@@ -252,7 +252,7 @@ function assertProvider(integration: NangoIntegration, spec: ManagedIntegration)
   }
 }
 
-function oauthBody(spec: ManagedIntegration, credentials: GitHubOAuthCredentials) {
+function oauthBody(spec: ManagedIntegration, credentials: OAuthClientCredentials) {
   if (!("oauth" in spec)) throw new Error(`${spec.displayName} does not use static OAuth credentials`);
   if (!credentials.clientId.trim() || !credentials.clientSecret.trim()) {
     throw new Error(`${spec.displayName} OAuth client ID and secret are required`);
@@ -269,7 +269,7 @@ export async function reconcileNangoIntegration(
   baseUrl: string,
   apiKey: string,
   spec: ManagedIntegration,
-  credentials: GitHubOAuthCredentials | undefined,
+  credentials: OAuthClientCredentials | undefined,
   dependencies: NangoApiDependencies = {},
 ): Promise<IntegrationReconcileResult> {
   const existing = await getNangoIntegration(baseUrl, apiKey, spec.id, dependencies);
