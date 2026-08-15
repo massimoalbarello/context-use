@@ -108,6 +108,25 @@ export type AssetStatus = {
   public_url: string;
 };
 
+/**
+ * What republishing releases: everything written since the pinned public version, which the
+ * owner has not necessarily seen. `queued_versions` is short by design — version retention
+ * prunes old entries — so `queued_versions_complete` says whether it is the whole story.
+ */
+export type RepublicationReview = {
+  published_version_number: number;
+  metadata_changes: Array<{ field: "path" | "title" | "summary"; before: string | null; after: string }>;
+  markdown_changes: Array<{ before: string; after: string }>;
+  queued_versions: Array<{
+    version_number: number;
+    commit_message: string;
+    actor_kind: "dashboard" | "mcp" | null;
+    actor_subject: string | null;
+    created_at: string;
+  }>;
+  queued_versions_complete: boolean;
+};
+
 export type PublicationPreview = {
   page_id: string;
   version_id: string;
@@ -119,6 +138,7 @@ export type PublicationPreview = {
   current_public_path: string | null;
   warnings: string[];
   references: Array<{ kind: "page" | "directory" | "asset"; id: string; label: string; path: string | null; public: boolean }>;
+  republication: RepublicationReview | null;
 };
 
 export type ConnectedClient = {

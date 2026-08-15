@@ -47,6 +47,7 @@ import {
 import { dashboardServices } from "./dashboard-services.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
+import { republicationReview } from "./republication-review.ts";
 import {
   SecurityError,
   requestMatchesOrigin,
@@ -884,6 +885,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
     const versionNumber = query.version ? z.coerce.number().int().positive().parse(query.version) : page.version_number;
     const version = await dashboardPages.version(pageId, versionNumber);
     if (!version) return problem("Version not found", 404, "not_found");
+    const republication = await republicationReview(dashboardPages, pageId, page, version);
     const html = await renderMarkdown(version.body_markdown, publishedPreviewResolvers(pageId, version.path));
     const references = await Promise.all([
       ...extractPageLinks(version.body_markdown).map(async (id) => {
@@ -956,6 +958,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
       current_public_path: page.public_path,
       warnings: publicationWarnings(version.body_markdown, [version.title, version.summary]),
       references,
+      republication,
     });
   })
 
