@@ -143,6 +143,74 @@ export function formatExportBytes(bytes: number): string {
   return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} ${unit}`;
 }
 
+export type ArchiveImportProgress = {
+  loaded: number;
+  total: number;
+  startedAt: number;
+  updatedAt: number;
+};
+
+function formatTransferEstimate(seconds: number): string {
+  if (seconds < 60) return `about ${Math.max(1, Math.round(seconds))}s left`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `about ${minutes} min left`;
+  const hours = Math.floor(minutes / 60);
+  return `about ${hours}h ${minutes % 60}m left`;
+}
+
+export function archiveImportProgressCopy(progress: ArchiveImportProgress): {
+  percent: number;
+  determinate: boolean;
+  headline: string;
+  detail: string;
+} {
+  const total = Math.max(progress.total, 1);
+  const loaded = Math.min(progress.loaded, total);
+  const percent = Math.min(99, Math.floor((loaded / total) * 100));
+  if (loaded >= total) {
+    return {
+      percent: 100,
+      determinate: false,
+      headline: "Finishing validation and staging…",
+      detail: "The whole archive reached the server. It is checking the manifest and writing the last staged assets — for a large archive this can take a few more minutes. Keep this tab open.",
+    };
+  }
+  const elapsedSeconds = Math.max(0, progress.updatedAt - progress.startedAt) / 1000;
+  const rate = elapsedSeconds >= 1 ? loaded / elapsedSeconds : 0;
+  const parts = [`${formatExportBytes(loaded)} of ${formatExportBytes(total)}`];
+  if (rate > 0) {
+    parts.push(`${formatExportBytes(rate)}/s`);
+    parts.push(formatTransferEstimate((total - loaded) / rate));
+  }
+  return {
+    percent,
+    determinate: true,
+    headline: `Uploading and validating… ${percent}%`,
+    detail: parts.join(" · "),
+  };
+}
+
+export function ArchiveImportProgressStatus({ progress }: { progress: ArchiveImportProgress }) {
+  const { percent, determinate, headline, detail } = archiveImportProgressCopy(progress);
+  return <div className="archive-upload" role="status" aria-live="polite">
+    <div className="archive-upload-copy">
+      <strong>{headline}</strong>
+      <small>{detail}</small>
+    </div>
+    <div
+      className={`archive-upload-track${determinate ? "" : " is-indeterminate"}`}
+      role="progressbar"
+      aria-label="Archive validation progress"
+      aria-valuemin={determinate ? 0 : undefined}
+      aria-valuemax={determinate ? 100 : undefined}
+      aria-valuenow={determinate ? percent : undefined}
+    >
+      <span className="archive-upload-fill" style={determinate ? { width: `${percent}%` } : undefined} />
+    </div>
+    <small className="archive-upload-note">Leaving this page stops the import. Nothing is written to the knowledge base until you confirm with a passkey.</small>
+  </div>;
+}
+
 function exportPreparationCopy(job: KnowledgeExportJob): { headline: string; detail: string } {
   const archive = `${job.filename ?? ""}${job.sizeBytes ? ` · ${formatExportBytes(job.sizeBytes)}` : ""}`;
   if (job.status === "failed") {
@@ -235,6 +303,7 @@ export function Settings({
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importIntent, setImportIntent] = useState<KnowledgeImportIntent | null>(null);
   const [importPreparing, setImportPreparing] = useState(false);
+  const [importProgress, setImportProgress] = useState<ArchiveImportProgress | null>(null);
   const [importWorking, setImportWorking] = useState(false);
   const [importError, setImportError] = useState("");
   const [importEligible, setImportEligible] = useState<boolean | null>(null);
@@ -493,11 +562,15 @@ export function Settings({
       setImportError("Choose a full Context Use archive first.");
       return;
     }
+    const startedAt = Date.now();
     setImportPreparing(true);
+    setImportProgress({ loaded: 0, total: importFile.size, startedAt, updatedAt: startedAt });
     setImportError("");
     setMessage("");
     try {
-      setImportIntent(await uploadKnowledgeArchive<KnowledgeImportIntent>(importFile));
+      setImportIntent(await uploadKnowledgeArchive<KnowledgeImportIntent>(importFile, (loaded, total) => {
+        setImportProgress({ loaded, total, startedAt, updatedAt: Date.now() });
+      }));
     } catch (error) {
       if (error instanceof ApiError && error.code === "import_requires_fresh_instance") {
         setImportFile(null);
@@ -507,6 +580,7 @@ export function Settings({
       setImportError(error instanceof Error ? error.message : "Could not validate the knowledge archive");
     } finally {
       setImportPreparing(false);
+      setImportProgress(null);
     }
   };
 
@@ -631,7 +705,8 @@ export function Settings({
                   </label>
                 </div>
                 {importError && !importIntent && <p className="error">{importError}</p>}
-                <button className="primary" disabled={!importFile || importPreparing || importWorking} onClick={() => void prepareImport()}>{importPreparing ? "Validating and staging…" : "Validate archive"}</button>
+                <button className="primary" disabled={!importFile || importPreparing || importWorking} onClick={() => void prepareImport()}>{importPreparing ? "Validating archive…" : "Validate archive"}</button>
+                {importProgress && <ArchiveImportProgressStatus progress={importProgress} />}
               </>}
       </div>
     </section>
