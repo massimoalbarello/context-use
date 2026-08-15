@@ -54,7 +54,7 @@ To run it on your own machine instead, see [Development](docs/development.md).
 
 ## Connect an agent
 
-Point any OAuth-capable agent at:
+Point any MCP-capable agent at:
 
 ```text
 https://YOUR_HOST/mcp
