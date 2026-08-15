@@ -142,8 +142,8 @@ historical. Moving chronology off a current account must not remove its useful l
 ## The timeline
 
 The root contract defines how timelines are written; each directory guide defines which
-developments belong on its subjects, which entities its lines characteristically link, and
-any local exception.
+developments belong on its subjects, which links are common there rather than a limit of one,
+and any local exception.
 
 A timeline records what the owner did, experienced or learned involving its entity, not only
 what materially changed about the entity itself. The local guide may exclude routine activity
@@ -156,13 +156,14 @@ entries first:
 
     ### August
 
-    - **9 August** — [[…|the subject this development involved]] — what happened, in its
+    - **9 August** — [[…|one subject involved]] and [[…|another]] — what happened, in its
       particulars.
 
-One **timeline event** is one line containing its full date, contextual links and the
-particulars of what happened. *Reviewed the quarterly numbers* names activity;
-*ARR reached 640k, up a third on the quarter* records knowledge. If the account needs a
-paragraph, it is probably current state or an independently useful past-state page.
+One **timeline event** is one line containing its full date, a link to every subject the
+development involved and the particulars of what happened. *Reviewed the quarterly numbers*
+names activity; *ARR reached 640k, up a third on the quarter* records knowledge. If the
+account needs a paragraph, it is probably current state or an independently useful past-state
+page.
 
 Do not leave a dated development only on `intro` or another detail page. If the local guide
 admits it to the entity's history, record the line on `timeline` and link any page carrying

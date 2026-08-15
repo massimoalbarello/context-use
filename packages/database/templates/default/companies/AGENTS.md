@@ -28,8 +28,8 @@ schedule and links the effort or decision it concerns. Neither view is mandatory
 
 Company timeline events include material meetings, collaborations, transactions, operating
 developments and relationship changes. Research that only improves the current account is
-not itself a timeline event. A line here characteristically links the conversation, exchange
-or person through which the development happened:
+not itself a timeline event. Lines here commonly link the conversations, exchanges and people
+through which the development happened:
 
-    - **14 May** — [[meetings/…/intro|renewal call]] — agreed a two-year term at 4k a month,
-      contingent on the migration landing first.
+    - **14 May** — [[meetings/…/intro|renewal call]] with [[people/…/intro|Ana]] — agreed a
+      two-year term at 4k a month, contingent on the migration landing first.

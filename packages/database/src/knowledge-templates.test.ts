@@ -777,6 +777,8 @@ describe("knowledge templates", () => {
       "date activity to when it happened",
       "what the owner did, experienced or learned involving its entity",
       "an occasion is never recorded only as a timeline line",
+      "a link to every subject the development involved",
+      "rather than a limit of one",
       "never link the diary from a timeline event",
       "an automation maintaining knowledge is not activity in the owner's life",
       "later is not automatically correct",
@@ -798,7 +800,6 @@ describe("knowledge templates", () => {
     expect(guides.root).not.toContain("meetings/<YYYY>");
     expect(guides.root).not.toContain("about/projects/<slug>");
 
-    expect(normalizedRoot).toContain("which entities its lines characteristically link");
     for (const subtreeGuideLink of ["[[events/agents", "[[trips/agents", "[[places/agents"]) {
       expect(guides.root).not.toContain(subtreeGuideLink);
     }
@@ -842,6 +843,34 @@ describe("knowledge templates", () => {
       expect(guide).toContain("[[agents#identifiability-is-the-threshold|identifiability invariant]]");
     }
 
+    const timelineExample = (guide: string) => {
+      const lines = guide.split("\n");
+      const start = lines.findIndex((line) => /^ {4}- \*\*\d{1,2} [A-Z][a-z]+\*\* /.test(line));
+      if (start === -1) return "";
+      const block: string[] = [];
+      for (let index = start; index < lines.length && lines[index]!.trim() !== ""; index += 1) {
+        block.push(lines[index]!);
+      }
+      return block.join(" ");
+    };
+
+    for (const guide of [
+      guides.root,
+      guides.companies,
+      guides.library,
+      guides.objects,
+      guides.people,
+      guides.places,
+      guides.projects,
+      guides.tasks,
+      guides.threads,
+      guides.topics,
+      guides.trips,
+    ]) {
+      const example = timelineExample(guide);
+      expect(example).not.toBe("");
+      expect(example.match(/\[\[/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    }
     for (const guide of [
       guides.companies,
       guides.library,
@@ -854,8 +883,8 @@ describe("knowledge templates", () => {
       guides.topics,
       guides.trips,
     ]) {
-      expect(guide).toMatch(/^ {4}- \*\*\d{1,2} [A-Z][a-z]+\*\* — /m);
       expect(guide).toContain("/…/intro|");
+      expect(guide).not.toContain("characteristically links the");
     }
 
     const descendants = Object.values(guides).filter((guide) => guide !== guides.root);
