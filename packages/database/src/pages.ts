@@ -160,19 +160,30 @@ async function insertAssetLinks(
   }
 }
 
+// The published version number is joined into every page read so a caller can tell a
+// published page apart from its unpublished later versions without a second query.
+const PUBLISHED_VERSION_JOIN = `
+  LEFT JOIN knowledge_page_versions pv
+    ON pv.id = p.published_version_id AND pv.page_id = p.id
+`;
+
 const CURRENT_PAGE_SELECT = `
   SELECT p.id, p.current_path, p.current_version_id, p.published_version_id,
     p.public_path, p.archived_at, p.created_at, p.updated_at,
-    v.version_number, v.title, v.summary, v.body_markdown
+    v.version_number, v.title, v.summary, v.body_markdown,
+    pv.version_number AS published_version_number
   FROM knowledge_pages p
   JOIN knowledge_page_versions v ON v.id = p.current_version_id AND v.page_id = p.id
+  ${PUBLISHED_VERSION_JOIN}
 `;
 
 const CURRENT_PAGE_METADATA_SELECT = `
   SELECT p.id,p.current_path,p.current_version_id,p.published_version_id,
-    p.archived_at,p.updated_at,v.version_number,v.title,v.summary
+    p.public_path,p.archived_at,p.updated_at,v.version_number,v.title,v.summary,
+    pv.version_number AS published_version_number
   FROM knowledge_pages p
   JOIN knowledge_page_versions v ON v.id=p.current_version_id AND v.page_id=p.id
+  ${PUBLISHED_VERSION_JOIN}
 `;
 
 export class PageRepository {

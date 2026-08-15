@@ -244,6 +244,11 @@ Knowledge is private by default, and an agent cannot publish it. Ask the owner t
 publish material intended for public access; publishing also exposes navigable ancestry,
 titles and summaries.
 
+A published page is owner-curated. Put new detail on a private page instead of editing a
+published one: the edit never reaches the public page by itself, it waits behind the owner's
+next republication, and a link from a published page to a private one reaches no public
+reader. Edit a published page only when the owner asked for that page itself to change.
+
 Never store credentials, access tokens, access codes or recovery secrets. Store a sensitive
 identifier or exact location only when it is genuinely useful, and never expose one in a
 title, path or summary.

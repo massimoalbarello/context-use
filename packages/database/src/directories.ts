@@ -50,6 +50,19 @@ const CURRENT_DIRECTORY_SELECT = `
   FROM knowledge_directories
 `;
 
+// Navigation surfaces carry publication state so a caller choosing a page to write can see
+// which candidates are owner-curated public pages before it picks one.
+const PAGE_PUBLICATION_COLUMNS = `
+  page.current_version_id,page.published_version_id,page.public_path,
+  published_version.version_number AS published_version_number
+`;
+
+const PAGE_PUBLICATION_JOIN = `
+  LEFT JOIN knowledge_page_versions published_version
+    ON published_version.id=page.published_version_id
+      AND published_version.page_id=page.id
+`;
+
 export class DirectoryRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -155,16 +168,20 @@ export class DirectoryRepository {
     if (!directory) return null;
     const guidePath = directory.current_path ? `${directory.current_path}/agents` : "agents";
     const guide = await this.pool.query<KnowledgePageMetadata>(
-      `SELECT page.id,page.current_path AS path,version.version_number,version.title,version.summary
+      `SELECT page.id,page.current_path AS path,version.version_number,version.title,
+         version.summary,${PAGE_PUBLICATION_COLUMNS}
        FROM knowledge_pages page
        JOIN knowledge_page_versions version
          ON version.id=page.current_version_id AND version.page_id=page.id
+       ${PAGE_PUBLICATION_JOIN}
        WHERE page.current_path=$1 AND page.archived_at IS NULL`,
       [guidePath],
     );
     const children = await this.pool.query<DirectoryIndexEntry>(
       `SELECT 'directory'::text AS kind,directory.id,directory.current_path AS path,
          directory.title,directory.summary,
+         NULL::uuid AS current_version_id,NULL::uuid AS published_version_id,
+         NULL::text AS public_path,NULL::integer AS published_version_number,
          CASE
            WHEN NOT EXISTS (
                SELECT 1 FROM knowledge_directories child
@@ -187,10 +204,12 @@ export class DirectoryRepository {
        WHERE directory.parent_path=$1
        UNION ALL
        SELECT 'page'::text AS kind,page.id,page.current_path AS path,
-         version.title,version.summary,NULL::uuid AS default_page_id
+         version.title,version.summary,${PAGE_PUBLICATION_COLUMNS},
+         NULL::uuid AS default_page_id
        FROM knowledge_pages page
        JOIN knowledge_page_versions version
          ON version.id=page.current_version_id AND version.page_id=page.id
+       ${PAGE_PUBLICATION_JOIN}
        WHERE page.parent_path=$1 AND page.archived_at IS NULL
          AND page.current_path<>$2
        ORDER BY path,kind`,
@@ -253,27 +272,33 @@ export class DirectoryRepository {
 
     const directoryPaths = directories.rows.map((directory) => directory.path);
     const guides = await this.pool.query<KnowledgePageMetadata>(
-      `SELECT p.id,p.current_path AS path,v.version_number,v.title,v.summary
-       FROM knowledge_pages p
-       JOIN knowledge_page_versions v ON v.id=p.current_version_id AND v.page_id=p.id
-       WHERE p.parent_path=ANY($1::text[]) AND p.archived_at IS NULL
-         AND p.current_path=CASE
-           WHEN p.parent_path='' THEN 'agents'
-           ELSE p.parent_path||'/agents'
+      `SELECT page.id,page.current_path AS path,version.version_number,version.title,
+         version.summary,${PAGE_PUBLICATION_COLUMNS}
+       FROM knowledge_pages page
+       JOIN knowledge_page_versions version
+         ON version.id=page.current_version_id AND version.page_id=page.id
+       ${PAGE_PUBLICATION_JOIN}
+       WHERE page.parent_path=ANY($1::text[]) AND page.archived_at IS NULL
+         AND page.current_path=CASE
+           WHEN page.parent_path='' THEN 'agents'
+           ELSE page.parent_path||'/agents'
          END
-       ORDER BY p.current_path`,
+       ORDER BY page.current_path`,
       [directoryPaths],
     );
     const pages = await this.pool.query<KnowledgePageMetadata>(
-      `SELECT p.id,p.current_path AS path,v.version_number,v.title,v.summary
-       FROM knowledge_pages p
-       JOIN knowledge_page_versions v ON v.id=p.current_version_id AND v.page_id=p.id
-       WHERE p.parent_path=ANY($1::text[]) AND p.archived_at IS NULL
-         AND p.current_path<>CASE
-           WHEN p.parent_path='' THEN 'agents'
-           ELSE p.parent_path||'/agents'
+      `SELECT page.id,page.current_path AS path,version.version_number,version.title,
+         version.summary,${PAGE_PUBLICATION_COLUMNS}
+       FROM knowledge_pages page
+       JOIN knowledge_page_versions version
+         ON version.id=page.current_version_id AND version.page_id=page.id
+       ${PAGE_PUBLICATION_JOIN}
+       WHERE page.parent_path=ANY($1::text[]) AND page.archived_at IS NULL
+         AND page.current_path<>CASE
+           WHEN page.parent_path='' THEN 'agents'
+           ELSE page.parent_path||'/agents'
          END
-       ORDER BY p.current_path
+       ORDER BY page.current_path
        LIMIT $2`,
       [directoryPaths, maxPages + 1],
     );

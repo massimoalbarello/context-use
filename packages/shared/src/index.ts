@@ -188,6 +188,7 @@ export type Page = {
   current_path: string;
   current_version_id: string;
   published_version_id: string | null;
+  published_version_number: number | null;
   public_path: string | null;
   archived_at: string | null;
   version_number: number;
@@ -204,12 +205,48 @@ export type PageMetadata = Pick<
   | "current_path"
   | "current_version_id"
   | "published_version_id"
+  | "published_version_number"
+  | "public_path"
   | "archived_at"
   | "version_number"
   | "title"
   | "summary"
   | "updated_at"
 >;
+
+/**
+ * What a reader of a page needs to know before writing to it. Publication pins one immutable
+ * version, so a later edit is private until the owner republishes; `unpublished_changes`
+ * reports that a published page and its current version have diverged.
+ */
+export type PagePublication =
+  | { state: "private" }
+  | {
+    state: "published";
+    public_path: string;
+    published_version_number: number | null;
+    unpublished_changes: boolean;
+  };
+
+/** The publication columns every page read carries, whatever else the query selects. */
+export type PagePublicationSource = {
+  current_version_id?: string | null;
+  published_version_id?: string | null;
+  published_version_number?: number | null;
+  public_path?: string | null;
+};
+
+export function pagePublication(page: PagePublicationSource): PagePublication {
+  if (!page.published_version_id || !page.public_path) return { state: "private" };
+  return {
+    state: "published",
+    public_path: page.public_path,
+    published_version_number: page.published_version_number ?? null,
+    unpublished_changes: Boolean(
+      page.current_version_id && page.current_version_id !== page.published_version_id,
+    ),
+  };
+}
 
 export type Directory = {
   id: string;
@@ -228,7 +265,7 @@ export type DirectoryIndexEntry = {
   title: string;
   summary: string;
   default_page_id: string | null;
-};
+} & PagePublicationSource;
 
 export type DirectoryIndex = Directory & {
   guide: KnowledgePageMetadata | null;
@@ -241,7 +278,7 @@ export type KnowledgePageMetadata = {
   version_number: number;
   title: string;
   summary: string;
-};
+} & PagePublicationSource;
 
 export type DirectoryTreeNode = {
   id: string;
