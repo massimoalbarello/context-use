@@ -259,9 +259,10 @@ export function renderPublicLandingDocument(options: {
   const heading = profileName
     ? `${escapeHtml(profileName)}’s public context.`
     : "A public billboard<br>for what I choose to share.";
-  // The introduction is a convention, not a guarantee: without one, the only
-  // honest destination is whatever the instance has actually published.
-  const primaryHref = options.introduction ? `/p/${INTRO_PATH}` : "/p/";
+  // The introduction is a convention, not a guarantee, but it is the only
+  // destination that always resolves: `/p/${INTRO_PATH}` renders an empty state
+  // when nothing is published, while `/p/` has no index to serve and 404s.
+  const primaryHref = `/p/${INTRO_PATH}`;
   const primaryLabel = options.introduction ? "Read my biography" : "Explore my knowledge base";
   const documentMetadata = renderDocumentMetadata({
     title: profileName ? `${profileName} — Public knowledge` : "My public context",

@@ -186,8 +186,11 @@ export async function verifyDeployment(config: DeploymentConfig, releaseVersion:
   if (cookieMcp.status !== 401) throw new Error("Security check failed: MCP did not reject browser cookies");
   const landing = await fetch(origin);
   const landingHtml = await landing.text();
+  // A fresh instance has published nothing, so the billboard's destination is a
+  // property of the release, not of the deployment. Verify that the CTA rendered
+  // and points into the public tree; the next check proves the target resolves.
   if (!landing.ok
-      || !landingHtml.includes('href="/p/about/intro"')) {
+      || !/<a class="landing-cta" href="\/p\/(?:about\/intro)?"/.test(landingHtml)) {
     throw new Error("The public billboard is unavailable or incomplete");
   }
   const about = await fetch(`${origin}/p/about/intro`);

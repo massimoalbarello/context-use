@@ -181,11 +181,12 @@ describe("public page presentation", () => {
     expect(html).not.toContain("MCP");
   });
 
-  test("sends visitors to the knowledge index when no introduction is published", () => {
+  test("sends visitors to the introduction empty state when nothing is published", () => {
     const html = renderPublicLandingDocument({ siteOrigin: "https://someone.example" });
 
-    expect(html).toContain('<a class="landing-cta" href="/p/">Explore my knowledge base');
-    expect(html).not.toContain("/p/about/intro");
+    // `/p/` has no index to serve until something is published, so the billboard
+    // would otherwise be a dead link on every freshly deployed instance.
+    expect(html).toContain('<a class="landing-cta" href="/p/about/intro">Explore my knowledge base');
     expect(html).toContain("A public billboard<br>for what I choose to share.");
     expect(html).toContain("<title>someone.example public knowledge</title>");
     expect(html).not.toContain('"@type":"Person"');
