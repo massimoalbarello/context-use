@@ -1,0 +1,61 @@
+{
+  tools: {
+    alsoAllow: ["context_use_attachment"],
+  },
+  plugins: {
+    slots: {
+      memory: "context-use-memory",
+    },
+    entries: {
+      "context-use-memory": {
+        enabled: true,
+        hooks: {
+          allowConversationAccess: true,
+          timeouts: {
+            agent_end: 150000,
+          },
+        },
+        subagent: {
+          allowModelOverride: true,
+        },
+        config: {
+          captureEnabled: true,
+          ownerOnly: true,
+          timeoutMs: 120000,
+          maxCaptureChars: 20000,
+          maxInspectBytes: 20000000,
+          retainCuratorTranscripts: false,
+          logging: true,
+        },
+      },
+      "active-memory": {
+        enabled: true,
+        hooks: {
+          allowPromptInjection: true,
+          allowConversationAccess: true,
+        },
+        config: {
+          enabled: true,
+          allowedChatTypes: ["direct", "explicit"],
+          timeoutMs: 60000,
+          queryMode: "recent",
+          recentUserTurns: 2,
+          recentAssistantTurns: 1,
+          promptStyle: "precision-heavy",
+          toolsAllow: [
+            "context-use__search_pages",
+            "context-use__read_page",
+            "context-use__read_directory",
+            "context-use__browse_directory",
+            "context-use__list_assets",
+            "context-use__read_asset",
+          ],
+          promptOverride: "You are a read-only Context-use recall subagent. Search Context-use for knowledge relevant to the current conversation. Use only the configured Context-use read tools; never mutate knowledge. Prefer the most specific canonical pages, distinguish remembered facts from inference, and return only concise context that will materially improve the answer. Include Context-use page paths or asset references when useful. If nothing relevant is found, return NO_REPLY.",
+          maxSummaryChars: 900,
+          persistTranscripts: false,
+          logging: true,
+        },
+      },
+    },
+  },
+}

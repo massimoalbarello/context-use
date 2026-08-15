@@ -1,0 +1,71 @@
+{
+  "id": "context-use-memory",
+  "activation": {
+    "onStartup": true
+  },
+  "name": "Context-use Memory",
+  "description": "Uses Context-use as OpenClaw's durable memory and curates relevant chat facts and assets through a same-model subagent.",
+  "kind": "memory",
+  "contracts": {
+    "tools": ["context_use_attachment"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "captureEnabled": {
+        "type": "boolean"
+      },
+      "ownerOnly": {
+        "type": "boolean"
+      },
+      "timeoutMs": {
+        "type": "integer",
+        "minimum": 1000,
+        "maximum": 300000
+      },
+      "maxCaptureChars": {
+        "type": "integer",
+        "minimum": 1000,
+        "maximum": 100000
+      },
+      "maxInspectBytes": {
+        "type": "integer",
+        "minimum": 1024,
+        "maximum": 100000000
+      },
+      "allowedUploadOrigins": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "maxItems": 8
+      },
+      "retainCuratorTranscripts": {
+        "type": "boolean"
+      },
+      "logging": {
+        "type": "boolean"
+      }
+    }
+  },
+  "uiHints": {
+    "captureEnabled": {
+      "label": "Automatic Capture",
+      "help": "Run the Context-use curator after successful conversational turns."
+    },
+    "ownerOnly": {
+      "label": "Owner Only",
+      "help": "Skip inbound messages that OpenClaw identifies as coming from a non-owner."
+    },
+    "timeoutMs": {
+      "label": "Curator Timeout (ms)",
+      "help": "Maximum time to wait for the same-provider curator subagent."
+    },
+    "allowedUploadOrigins": {
+      "label": "Context-use Upload Origins",
+      "help": "Exact HTTPS origins accepted by the attachment upload bridge."
+    }
+  }
+}
