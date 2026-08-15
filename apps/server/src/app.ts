@@ -619,6 +619,14 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
       const parsed = await readRestorableKnowledgeArchive(request.body, async (asset, body) => {
         stagedAssetIds.push(asset.id);
         await storage.stageImport(intentId, storedImportAsset(asset), body);
+      }, {
+        // A stalled import is otherwise indistinguishable from a working one:
+        // this is the only record of how far it got.
+        onProgress: (staged, total) => {
+          if (staged === total || staged % 25 === 0) {
+            console.info("knowledge_import_staging", { intentId, staged, total });
+          }
+        },
       });
       const importPrincipal = { ownerUserId: principal.userId, sessionId: principal.sessionId };
       const intent = await knowledgeArchives.createImportIntent({

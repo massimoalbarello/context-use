@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import type { RestorableKnowledgeRecords } from "@context-use/database";
 import {
@@ -160,5 +163,37 @@ describe("restorable knowledge archives", () => {
       new Blob(["not a zip"]).stream(),
       async () => undefined,
     )).rejects.toBeInstanceOf(InvalidKnowledgeArchiveError);
+  });
+
+  test("reports staging progress and leaves no spooled archive behind", async () => {
+    const spoolDirectory = await mkdtemp(join(tmpdir(), "import-spool-"));
+    try {
+      const archive = await new Response(streamRestorableKnowledgeArchive(records(), storage)).blob();
+      const progress: Array<[number, number]> = [];
+      await readRestorableKnowledgeArchive(
+        archive.stream(),
+        async (_asset, body) => { await new Response(body).arrayBuffer(); },
+        { spoolDirectory, onProgress: (staged, total) => progress.push([staged, total]) },
+      );
+      expect(progress).toEqual([[1, 1]]);
+      expect(await readdir(spoolDirectory)).toEqual([]);
+    } finally {
+      await rm(spoolDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("discards the spooled archive when staging fails", async () => {
+    const spoolDirectory = await mkdtemp(join(tmpdir(), "import-spool-"));
+    try {
+      const archive = await new Response(streamRestorableKnowledgeArchive(records(), storage)).blob();
+      await expect(readRestorableKnowledgeArchive(
+        archive.stream(),
+        async () => { throw new Error("staging backend is unavailable"); },
+        { spoolDirectory },
+      )).rejects.toThrow("staging backend is unavailable");
+      expect(await readdir(spoolDirectory)).toEqual([]);
+    } finally {
+      await rm(spoolDirectory, { recursive: true, force: true });
+    }
   });
 });
