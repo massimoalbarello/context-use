@@ -1,5 +1,19 @@
 # Development
 
+## Run locally
+
+You only need Docker:
+
+```sh
+git clone https://github.com/massimoalbarello/context-use.git
+cd context-use
+docker compose up --build
+```
+
+Then open the [local setup page](http://localhost:5173/app#setup=development-owner-setup-token-0000000000000).
+The default owner email is `you@example.com`; set `OWNER_EMAIL` to use another one on a fresh
+installation.
+
 ## Local stack
 
 When working from this repository, the Bun shortcuts manage the stack lifecycle:

@@ -2,38 +2,47 @@
 
 **A self-hosted brain for you. A public billboard for everyone else.**
 
-Context Use gives your AI agents a private place to remember what they learn about you: who
-you are, what you care about, what you are working on, and how you like things done. Connect
-an agent over MCP and it can build and use that knowledge across conversations without handing
-control of it to someone else.
+You already produce the raw material of a life story every day. Meetings happen, pull requests
+get merged, trips get booked, decisions get made in conversations with your agents. Almost none
+of it gets written down, and the little that does ends up scattered across a dozen tools that
+each know one small thing about you and nothing about the rest.
 
-The same knowledge base can power a public version of you. Publish an introduction, ideas,
-projects, or anything else you want people to see, while everything else stays private. Agents
-can help write the content, but only you decide what becomes public.
+Context Use is where all of it lands.
 
-## What you get
+## An autobiography that writes itself
 
-- Private Markdown pages, organized in directories, with version history.
-- Read and write access for your agents through OAuth-protected MCP.
-- Publishing that covers only the exact pages and assets you approve.
-- A public profile at `about/intro`, plus `llms.txt`, sitemap, and clean `.md` views of
-  published pages.
-- Passkey-owned accounts, portable Markdown exports, and full restorable archives.
-- Runs locally or on your own AWS account.
+Your agents write to Context Use directly: what you're working on, how you like things done,
+what you decided and why. Data connections fill in everything else — meetings, pull requests,
+and more as they're added — without you typing a word.
 
-## Run locally
+Nothing about this is a chore. You go about your life, and the record accumulates.
 
-You only need Docker:
+## A web, not a pile of notes
 
-```sh
-git clone https://github.com/massimoalbarello/context-use.git
-cd context-use
-docker compose up --build
-```
+A transcript dump would be useless. Context Use pulls the people, companies, events, meetings,
+trips, and tasks out of your activity and links them to each other, so the same person appears
+in the meeting where you met them, the company they moved to, and the project you started
+together.
 
-Then open the [local setup page](http://localhost:5173/app#setup=development-owner-setup-token-0000000000000).
-The default owner email is `you@example.com`; set `OWNER_EMAIL` to use another one on a fresh
-installation.
+The nuance lives in the connections. Following them is how you — or an agent — find the thing
+you half-remember.
+
+## Structure that holds up
+
+Left alone, an agent will happily turn a knowledge base into a landfill. Context Use ships a
+versioned knowledge template that tells agents where things go, how pages are summarized, and
+when to write a new page instead of appending to an old one.
+
+The result stays navigable at ten pages and at ten thousand.
+
+## Private by default, public by choice
+
+Everything is private. It runs on your machine or in your AWS account, and your agents reach it
+over OAuth-protected MCP — no third party in between.
+
+From that same knowledge base you can publish a public version of yourself: an introduction,
+your ideas, your projects, whatever you want the world (and its crawlers) to see. Agents can
+draft public pages, but they cannot publish. Only you decide what leaves the private side.
 
 ## Self-host on AWS
 
@@ -52,6 +61,8 @@ Follow the prompts for your AWS profile, region, hostname, DNS, and owner email.
 deploys the application, configures TLS, and gives you a one-time owner setup link. Manage the
 installation later with `context-use status`, `context-use update`, and `context-use doctor`.
 
+To run it on your own machine instead, see [Development](docs/development.md).
+
 ## Connect an agent
 
 Point any OAuth-capable agent at:
@@ -60,9 +71,6 @@ Point any OAuth-capable agent at:
 https://YOUR_HOST/mcp
 ```
 
-Agents can read and write knowledge, but they cannot publish it — public access always remains
-an owner decision.
-
 ## Ingest your data
 
 AWS installations run Nango to sync data from providers such as GitHub and Granola into your
@@ -70,8 +78,7 @@ knowledge base. See [`docs/nango.md`](docs/nango.md).
 
 ## Documentation
 
-- [Development](docs/development.md) — local stack commands, tests, and knowledge template
-  updates.
+- [Development](docs/development.md) — running locally, tests, and knowledge template updates.
 - [Data ingestion](docs/nango.md) — Nango setup, integrations, and operations.
 - [Evals](eval/README.md) — knowledge quality evaluation.
 - [Security](SECURITY.md)
