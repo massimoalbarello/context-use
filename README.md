@@ -2,47 +2,36 @@
 
 **A self-hosted brain for you. A public billboard for everyone else.**
 
-You already produce the raw material of a life story every day. Meetings happen, pull requests
-get merged, trips get booked, decisions get made in conversations with your agents. Almost none
-of it gets written down, and the little that does ends up scattered across a dozen tools that
-each know one small thing about you and nothing about the rest.
+Context Use is a self-hosted knowledge base that your AI agents read and write over MCP. It
+accumulates what you're working on, who you work with, and how you like things done, and it can
+publish a public version of any part of it.
 
-Context Use is where all of it lands.
+## It writes itself
 
-## An autobiography that writes itself
+Two things feed it. Your agents write to it directly — decisions, preferences, context from
+whatever you're doing with them. Data connections write to it indirectly: meetings, pull
+requests, and more as integrations are added. You don't maintain it by hand.
 
-Your agents write to Context Use directly: what you're working on, how you like things done,
-what you decided and why. Data connections fill in everything else — meetings, pull requests,
-and more as they're added — without you typing a word.
+## Everything is linked
 
-Nothing about this is a chore. You go about your life, and the record accumulates.
+Context Use extracts the people, companies, events, meetings, trips, and tasks out of that
+activity and links them to each other. A person's page connects to the meeting where you met
+them, the company they work at, and the project you started together. You navigate by following
+those links, and so do your agents.
 
-## A web, not a pile of notes
+## Agents keep it organized
 
-A transcript dump would be useless. Context Use pulls the people, companies, events, meetings,
-trips, and tasks out of your activity and links them to each other, so the same person appears
-in the meeting where you met them, the company they moved to, and the project you started
-together.
+A versioned knowledge template tells agents where each kind of page belongs, how it's
+summarized, and when to create a new page instead of extending an old one. That's what keeps a
+knowledge base this size usable rather than a pile of notes.
 
-The nuance lives in the connections. Following them is how you — or an agent — find the thing
-you half-remember.
+## Private by default
 
-## Structure that holds up
+It runs on your machine or in your AWS account, and agents reach it over OAuth-protected MCP.
+Nothing goes through a third party.
 
-Left alone, an agent will happily turn a knowledge base into a landfill. Context Use ships a
-versioned knowledge template that tells agents where things go, how pages are summarized, and
-when to write a new page instead of appending to an old one.
-
-The result stays navigable at ten pages and at ten thousand.
-
-## Private by default, public by choice
-
-Everything is private. It runs on your machine or in your AWS account, and your agents reach it
-over OAuth-protected MCP — no third party in between.
-
-From that same knowledge base you can publish a public version of yourself: an introduction,
-your ideas, your projects, whatever you want the world (and its crawlers) to see. Agents can
-draft public pages, but they cannot publish. Only you decide what leaves the private side.
+You can publish selected pages — an introduction, your projects, your ideas — as a public
+profile. Agents can draft those pages but cannot publish them. That decision is always yours.
 
 ## Self-host on AWS
 
