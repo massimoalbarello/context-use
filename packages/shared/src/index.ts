@@ -251,10 +251,12 @@ export type DirectoryTreeNode = {
   guide: KnowledgePageMetadata | null;
   pages: KnowledgePageMetadata[];
   directories: DirectoryTreeNode[];
+  directories_omitted: number;
 };
 
 export type DirectoryTree = DirectoryTreeNode & {
   requested_depth: number;
+  max_directories: number;
   max_pages: number;
   truncated: boolean;
 };

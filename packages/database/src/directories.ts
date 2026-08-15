@@ -204,13 +204,19 @@ export class DirectoryRepository {
     return directory ? this.indexById(directory.id) : null;
   }
 
-  async treeByPath(path: string, depth: number, maxPages: number): Promise<DirectoryTree | null> {
+  async treeByPath(
+    path: string,
+    depth: number,
+    maxPages: number,
+    maxDirectories: number,
+  ): Promise<DirectoryTree | null> {
     const directories = await this.pool.query<{
       id: string;
       path: string;
       title: string;
       summary: string;
       depth: number;
+      directories_omitted: number;
     }>(
       `WITH RECURSIVE tree AS (
          SELECT id,current_path AS path,title,summary,0 AS depth
@@ -218,12 +224,30 @@ export class DirectoryRepository {
          WHERE current_path=$1
          UNION ALL
          SELECT child.id,child.current_path,child.title,child.summary,tree.depth+1
-         FROM knowledge_directories child
-         JOIN tree ON child.parent_path=tree.path
+         FROM tree
+         JOIN LATERAL (
+           SELECT id,current_path,title,summary
+           FROM knowledge_directories
+           WHERE parent_path=tree.path
+           ORDER BY current_path
+           LIMIT $3
+         ) child ON true
          WHERE tree.depth<$2
+       ), child_counts AS (
+         SELECT parent_path,count(*)::integer AS total
+         FROM knowledge_directories
+         WHERE parent_path=ANY(SELECT path FROM tree)
+         GROUP BY parent_path
        )
-       SELECT id,path,title,summary,depth FROM tree ORDER BY path`,
-      [path, depth],
+       SELECT tree.id,tree.path,tree.title,tree.summary,tree.depth,
+         (CASE WHEN tree.depth<$2
+           THEN greatest(coalesce(child_counts.total,0)-$3,0)
+           ELSE 0
+         END)::integer AS directories_omitted
+       FROM tree
+       LEFT JOIN child_counts ON child_counts.parent_path=tree.path
+       ORDER BY tree.path`,
+      [path, depth, maxDirectories],
     );
     if (!directories.rowCount) return null;
 
@@ -278,6 +302,7 @@ export class DirectoryRepository {
         guide,
         pages: entries.filter((page) => page !== guide),
         directories: [],
+        directories_omitted: directory.directories_omitted,
       });
     }
     for (const directory of directories.rows) {
@@ -294,8 +319,9 @@ export class DirectoryRepository {
     return {
       ...root,
       requested_depth: depth,
+      max_directories: maxDirectories,
       max_pages: maxPages,
-      truncated,
+      truncated: truncated || directories.rows.some((directory) => directory.directories_omitted > 0),
     };
   }
 }

@@ -15,6 +15,7 @@ import {
   updatePageSchema,
 } from "@context-use/shared";
 import { DirectoryPath, KnowledgePath } from "@context-use/shared";
+import type { DirectoryTree, DirectoryTreeNode } from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { config } from "./config.ts";
@@ -50,6 +51,41 @@ const textContent = (text: string, isError = false) => ({
   content: [{ type: "text" as const, text }],
   ...(isError ? { isError: true as const } : {}),
 });
+
+function markdownInline(value: string): string {
+  return value.replace(/\s+/g, " ").trim().replace(/([\\`*_[\]<>])/g, "\\$1");
+}
+
+function directoryTreeMarkdown(tree: DirectoryTree): string {
+  const lines = ["# Directory browse", ""];
+  const renderDirectory = (directory: DirectoryTreeNode, depth: number) => {
+    const indent = "  ".repeat(depth);
+    const path = directory.path || "/";
+    const summary = directory.summary ? ` — ${markdownInline(directory.summary)}` : "";
+    lines.push(`${indent}- **${markdownInline(directory.title)}** \`${path}\`${summary}`);
+    if (directory.guide) {
+      const guideSummary = directory.guide.summary
+        ? ` — ${markdownInline(directory.guide.summary)}`
+        : "";
+      lines.push(`${indent}  - Guide: **${markdownInline(directory.guide.title)}** \`${directory.guide.path}\` (v${directory.guide.version_number})${guideSummary}`);
+    }
+    for (const page of directory.pages) {
+      const pageSummary = page.summary ? ` — ${markdownInline(page.summary)}` : "";
+      lines.push(`${indent}  - Page: **${markdownInline(page.title)}** \`${page.path}\` (v${page.version_number})${pageSummary}`);
+    }
+    for (const child of directory.directories) renderDirectory(child, depth + 1);
+    if (directory.directories_omitted) {
+      const noun = directory.directories_omitted === 1 ? "directory" : "directories";
+      lines.push(`${indent}  - _… ${directory.directories_omitted} more ${noun} not shown_`);
+    }
+  };
+  renderDirectory(tree, 0);
+  lines.push(
+    "",
+    `Depth: ${tree.requested_depth} · Directory limit: ${tree.max_directories}/folder · Page limit: ${tree.max_pages} · Truncated: ${tree.truncated ? "yes" : "no"}`,
+  );
+  return lines.join("\n");
+}
 
 type ApplicableGuide = GuidanceGuideVersion & {
   body_markdown: string;
@@ -217,16 +253,21 @@ export async function createMcpServer(
   });
 
   server.registerTool("browse_directory", {
-    description: "Explore a directory subtree recursively without loading page bodies. Returns directory, page, and applicable AGENTS.md metadata; use read_page for selected bodies. Depth 0 includes only the starting directory's pages.",
+    description: "Explore a bounded directory subtree recursively without loading page bodies. Returns compact Markdown by default; request JSON only when programmatic structure is useful. Includes directory, page, and applicable AGENTS.md metadata; use read_page for selected bodies. Depth 0 includes only the starting directory's pages. Child directories are limited independently in every expanded directory, with the number of additional immediate children reported at each truncated folder.",
     inputSchema: z.object({
       path: DirectoryPath,
       depth: z.number().int().min(0).max(5).default(2),
       max_pages: z.number().int().min(1).max(500).default(200),
+      max_directories: z.number().int().min(1).max(100).default(10)
+        .describe("Maximum immediate child directories returned in each expanded directory."),
+      format: z.enum(["markdown", "json"]).default("markdown")
+        .describe("Response representation. Markdown is compact and agent-friendly; JSON preserves the full structured fields."),
     }).strict(),
     annotations: { readOnlyHint: true },
-  }, async ({ path, depth, max_pages }) => {
-    const tree = await directories.treeByPath(path, depth, max_pages);
-    return tree ? jsonObjectContent(tree) : jsonContent(null);
+  }, async ({ path, depth, max_pages, max_directories, format }) => {
+    const tree = await directories.treeByPath(path, depth, max_pages, max_directories);
+    if (format === "json") return jsonContent(tree);
+    return textContent(tree ? directoryTreeMarkdown(tree) : "Directory not found.");
   });
 
   server.registerTool("create_directory", {
