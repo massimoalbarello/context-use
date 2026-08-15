@@ -6,11 +6,19 @@ export type { PageDeletionPrincipal } from "./page-deletion.ts";
 export { PAGE_VERSION_RETENTION_LIMIT } from "./page-retention.ts";
 export {
   formatTemplateResult,
+  knowledgeTemplateBaseline,
   reconcileKnowledgeTemplate,
+  type KnowledgeTemplateBaseline,
   type TemplateAction,
   type TemplateRepositories,
   type TemplateResult,
 } from "./knowledge-templates.ts";
+export {
+  KnowledgeResetRepository,
+  type ClearableKnowledgeSummary,
+  type ClearedKnowledgeCounts,
+  type KnowledgeResetPrincipal,
+} from "./knowledge-reset.ts";
 export {
   DirectoryNotEmptyError,
   DirectoryRepository,

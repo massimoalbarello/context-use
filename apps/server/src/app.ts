@@ -5,6 +5,7 @@ import {
   DirectoryRepository,
   KnowledgeArchiveRepository,
   KnowledgeExportRepository,
+  KnowledgeResetRepository,
   type KnowledgeExportAsset,
   type KnowledgeExportKind,
   type KnowledgeExportSnapshot,
@@ -18,6 +19,7 @@ import {
   extractDirectoryLinks,
   extractPageLinks,
   extractWikiLinks,
+  knowledgeTemplateBaseline,
   reconcileKnowledgeTemplate,
   wikiLinkCandidatePaths,
 } from "@context-use/database";
@@ -37,7 +39,11 @@ import { authorizeDashboardRequest } from "./auth-client.ts";
 import { forwardDashboardAuthRoute } from "./auth-dashboard-gateway.ts";
 import { assetContentResponse } from "./asset-content.ts";
 import { config, production } from "./config.ts";
-import { claimConfirmedExport, issueConfirmationOptions } from "./confirmation-client.ts";
+import {
+  claimConfirmedExport,
+  completeConfirmedExportDownload,
+  issueConfirmationOptions,
+} from "./confirmation-client.ts";
 import { dashboardServices } from "./dashboard-services.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
@@ -70,6 +76,7 @@ const dashboardAssets = new AssetRepository(dashboardPool);
 const publications = new PublicationRepository(dashboardPool);
 const knowledgeExports = new KnowledgeExportRepository(dashboardPool);
 const knowledgeArchives = new KnowledgeArchiveRepository(dashboardPool);
+const knowledgeResets = new KnowledgeResetRepository(dashboardPool);
 
 class KnowledgeExportBuildError extends Error {
   constructor(
@@ -336,17 +343,33 @@ function processingExportResponse(intentId: string): Response {
   }, 202);
 }
 
-function readyExportResponse(
+function readyExportBody(
   intentId: string,
   exportKind: KnowledgeExportKind,
   staged: GeneratedObjectMetadata,
-): Response {
-  return json({
+) {
+  return {
     status: "ready",
     download_url: exportDownloadUrl(intentId),
     filename: exportFilename(exportKind),
     size_bytes: staged.sizeBytes,
-  });
+  };
+}
+
+// One intent, one status: a pending reset reports its gate alongside the
+// preparation state the dashboard already polls, instead of a second endpoint.
+function exportResetState(intent: {
+  reset_requested: boolean;
+  download_completed_at: Date | null;
+  reset_completed_at: Date | null;
+}) {
+  if (!intent.reset_requested) return {};
+  return {
+    reset: {
+      archive_downloaded: Boolean(intent.download_completed_at),
+      cleared: Boolean(intent.reset_completed_at),
+    },
+  };
 }
 
 function storedImportAsset(asset: RestorableKnowledgeAsset) {
@@ -360,8 +383,24 @@ function storedImportAsset(asset: RestorableKnowledgeAsset) {
   };
 }
 
+// The archive stream is wrapped rather than assumed delivered: a reset may only
+// proceed once the whole body has flushed to the owner's browser.
+function trackedExportDownload(response: Response, onDelivered: () => void): Response {
+  if (response.status !== 200 || !response.body) return response;
+  const delivered = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    flush() { onDelivered(); },
+  }));
+  return new Response(delivered, { status: response.status, headers: response.headers });
+}
+
 const emptyObjectSchema = z.object({}).strict();
-const exportIntentSchema = z.object({ kind: z.enum(["portable", "restorable"]).default("portable") }).strict();
+// Clearing knowledge is an export mode rather than a separate operation: it
+// always produces the full restorable archive, and its one passkey
+// confirmation authorizes the archive and the deletion that follows it.
+const exportIntentSchema = z.object({
+  kind: z.enum(["portable", "restorable"]).default("portable"),
+  reset: z.boolean().default(false),
+}).strict().transform((input) => input.reset ? { kind: "restorable" as const, reset: true } : input);
 const templateApplySchema = z.object({
   force_template: z.boolean(),
 }).strict();
@@ -438,9 +477,12 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
 
   .post("/api/dashboard/knowledge-export-intents", async ({ request }) => {
     const principal = await ownerRequest(request, true);
-    const { kind } = exportIntentSchema.parse(await bodyJson(request));
+    const { kind, reset } = exportIntentSchema.parse(await bodyJson(request));
+    // Read what a reset would destroy before the intent exists, so the warning
+    // the owner confirms describes the knowledge the archive is about to cover.
+    const knowledge = reset ? await knowledgeResets.summary() : null;
     const exportPrincipal = { ownerUserId: principal.userId, sessionId: principal.sessionId };
-    const intent = await knowledgeExports.createIntent(exportPrincipal, kind);
+    const intent = await knowledgeExports.createIntent(exportPrincipal, kind, reset);
     await Promise.allSettled(intent.discarded_export_ids.map((id) => {
       exportPreparations.delete(id);
       return storage.deleteGenerated(stagedExportKey(id));
@@ -481,12 +523,76 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
       intent: { id: intent.id, expires_at: intent.expires_at },
       summary: {
         kind: intent.export_kind,
+        reset: intent.reset_requested,
         page_count: intent.page_count,
         asset_count: intent.asset_count,
         total_bytes: intent.total_bytes,
       },
+      knowledge,
       authentication_options: authenticationOptions,
     }, 201);
+  })
+  .delete("/api/dashboard/knowledge-export-intents/:id", async ({ request, params }) => {
+    const principal = await ownerRequest(request, true);
+    emptyObjectSchema.parse(await bodyJson(request));
+    await knowledgeExports.discard(z.string().uuid().parse(params.id), {
+      ownerUserId: principal.userId,
+      sessionId: principal.sessionId,
+    });
+    return json({ cancelled: true });
+  })
+  .post("/api/dashboard/knowledge-resets/:id/clear", async ({ request, params }) => {
+    const principal = await ownerRequest(request, true);
+    emptyObjectSchema.parse(await bodyJson(request));
+    const intentId = z.string().uuid().parse(params.id);
+    const intent = await knowledgeExports.getIntent(intentId);
+    if (!intent || !intent.reset_requested
+        || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
+      return problem("Knowledge reset intent not found", 404, "not_found");
+    }
+    if (!intent.confirmed_at || new Date(intent.expires_at).getTime() <= Date.now()) {
+      return problem("A fresh passkey confirmation is required", 403, "passkey_required");
+    }
+    if (intent.reset_completed_at) {
+      return problem("This knowledge reset has already run", 409, "reset_consumed");
+    }
+    if (!intent.download_completed_at) {
+      return problem(
+        "Download the full restorable archive before the knowledge base can be cleared",
+        409,
+        "archive_not_downloaded",
+      );
+    }
+    const baseline = await knowledgeTemplateBaseline("default");
+    const objectKeys = await knowledgeResets.assetObjectKeys();
+    const cleared = await knowledgeResets.clear(intentId, {
+      ownerUserId: principal.userId,
+      sessionId: principal.sessionId,
+    }, baseline);
+    // Storage bytes outlive their rows deliberately: a failure here leaves
+    // unreferenced objects, never a page pointing at a missing file.
+    const removals = await Promise.allSettled(objectKeys.map((key) => storage.delete(key)));
+    if (removals.some((removal) => removal.status === "rejected")) {
+      console.warn("knowledge_reset_asset_cleanup_incomplete", { intentId });
+    }
+    // The deletion has already committed, so a template failure must not be
+    // reported as a failed clear. Surface it as the recoverable step it is.
+    try {
+      const template = await reconcileKnowledgeTemplate({
+        directories: dashboardDirectories,
+        pages: dashboardPages,
+      }, baseline.template, true, true);
+      return json({ cleared, template, template_error: null });
+    } catch (error) {
+      console.error("knowledge_reset_template_failed", error instanceof Error
+        ? { intentId, name: error.name, message: error.message }
+        : { intentId, type: typeof error });
+      return json({
+        cleared,
+        template: null,
+        template_error: "The knowledge base was cleared, but the default template could not be applied. Apply it again from the knowledge template settings.",
+      });
+    }
   })
   .get("/api/dashboard/knowledge-import-eligibility", async ({ request }) => {
     await ownerRequest(request);
@@ -611,22 +717,24 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
     if (!intent.confirmed_at || new Date(intent.expires_at).getTime() <= Date.now()) {
       return problem("A fresh passkey confirmation is required", 403, "passkey_required");
     }
+    const reset = exportResetState(intent);
     const preparation = await ensureKnowledgeExport(
       intentId,
       intent.export_kind,
       () => claimConfirmedExport(intentId, principal),
     );
     if (preparation.status === "ready") {
-      return readyExportResponse(intentId, intent.export_kind, preparation.staged);
+      return json({ ...readyExportBody(intentId, intent.export_kind, preparation.staged), ...reset });
     }
     if (preparation.status === "failed") {
       return json({
         status: "failed",
         message: preparation.message,
         code: preparation.code,
+        ...reset,
       });
     }
-    return processingExportResponse(intentId);
+    return json({ status: "processing", status_url: exportStatusUrl(intentId), ...reset }, 202);
   })
   .get("/api/dashboard/knowledge-exports/:id/download", async ({ request, params, server }) => {
     disableStreamingRequestIdleTimeout(server, request);
@@ -652,12 +760,20 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
     }
     if (preparation.status === "processing") return processingExportResponse(intentId);
     await claimConfirmedExport(intentId, principal);
-    return assetContentResponse(request, {
+    const response = await assetContentResponse(request, {
       filename: exportFilename(intent.export_kind),
       content_type: "application/zip",
       size_bytes: preparation.staged.sizeBytes,
       content_hash: preparation.staged.contentHash,
     }, storage, false, objectKey);
+    if (!intent.reset_requested || intent.download_completed_at) return response;
+    return trackedExportDownload(response, () => {
+      void completeConfirmedExportDownload(intentId, principal).catch((error: unknown) => {
+        console.error("knowledge_export_download_completion_failed", error instanceof Error
+          ? { intentId, name: error.name, message: error.message }
+          : { intentId, type: typeof error });
+      });
+    });
   })
   .get("/api/dashboard/pages", async ({ request, query }) => {
     await ownerRequest(request);

@@ -23,9 +23,13 @@ export async function issueConfirmationOptions(
   return response.json();
 }
 
-export async function claimConfirmedExport(intentId: string, principal: DashboardPrincipal): Promise<void> {
+async function exportDownloadMark(
+  intentId: string,
+  principal: DashboardPrincipal,
+  path: "claim" | "complete-download",
+): Promise<void> {
   const endpoint = config.CONFIRMATION_INTERNAL_URL;
-  const internalRequest = new Request(`${endpoint}/internal/knowledge-exports/${encodeURIComponent(intentId)}/claim`, {
+  const internalRequest = new Request(`${endpoint}/internal/knowledge-exports/${encodeURIComponent(intentId)}/${path}`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${config.CONFIRMATION_DASHBOARD_TOKEN}`,
@@ -37,5 +41,15 @@ export async function claimConfirmedExport(intentId: string, principal: Dashboar
     __contextUseConfirmationHandler?: (request: Request) => Promise<Response> | Response;
   }).__contextUseConfirmationHandler;
   const response = local ? await local(internalRequest) : await fetch(internalRequest);
-  if (!response.ok) throw new Error(`Confirmation service could not claim the export (${response.status})`);
+  if (!response.ok) throw new Error(`Confirmation service could not mark the export (${response.status})`);
+}
+
+export async function claimConfirmedExport(intentId: string, principal: DashboardPrincipal): Promise<void> {
+  await exportDownloadMark(intentId, principal, "claim");
+}
+
+// Recorded only once the archive bytes have actually left the server, because a
+// pending knowledge reset is gated on the owner holding a complete archive.
+export async function completeConfirmedExportDownload(intentId: string, principal: DashboardPrincipal): Promise<void> {
+  await exportDownloadMark(intentId, principal, "complete-download");
 }
