@@ -2,228 +2,75 @@
 
 **A self-hosted brain for you. A public billboard for everyone else.**
 
-Context Use gives your AI agents a private place to remember what they learn about you: who you are, what you care about, what you are working on, and how you like things done. Connect an agent over MCP and it can build and use this knowledge across conversations without handing control of it to someone else.
+Context Use is a self-hosted knowledge base that your AI agents read and write over MCP. It
+accumulates what you're working on, who you work with, and how you like things done, and it can
+publish a public version of any part of it.
 
-The same knowledge base can power a public version of you. Publish an introduction, ideas, projects, or anything else you want people to see while everything else stays private. Agents can help write and maintain the content, but only you can decide what becomes public.
+## It writes itself
 
-The longer-term vision is an autobiography that writes itself. As Context Use connects to more of your personal data, it will turn your activity across the digital and physical world into an evolving life record. You choose which parts remain private and which parts become part of your public story.
+Two things feed it. Your agents write to it directly — decisions, preferences, context from
+whatever you're doing with them. Data connections write to it indirectly: meetings, pull
+requests, and more as integrations are added. You don't maintain it by hand.
 
-## What it does
+## Everything is linked
 
-- Stores private Markdown pages with the five latest versions, plus any older snapshot that is still published.
-- Organizes pages beneath first-class, linkable directories whose private and public indexes are generated from required one-sentence summaries; public indexes show folder metadata only for branches containing published knowledge.
-- Gives personal agents read and write access through OAuth-protected MCP.
-- Publishes only the exact pages and assets you approve.
-- Manages named owner passkeys from Dashboard Settings, including hardware security keys and one-time enrollment links for another device.
-- Lets only the dashboard owner permanently delete an archived page after fresh passkey confirmation.
-- Exports a portable latest-snapshot Markdown vault with page metadata, directory metadata, generated `index.md` files where navigation requires them, and local links. One-page leaf folders link directly to their sole page.
-- Exports and passkey-restores a versioned full knowledge archive with stable IDs, retained page history, archived content, publication state, link records, change history, and integrity-checked active asset bytes. Restore is limited to a fresh instance and leaves its account credentials and integrations untouched.
-- Provides a public profile at `about/intro`, plus public pages for anything else you choose to share.
-- Generates `/llms.txt`, `/llms-full.txt`, and a clean `.md` alternate for every page deterministically from only the explicitly published page projection.
-- Publishes `/robots.txt`, a complete `/sitemap.xml`, canonical and social metadata, and structured profile identity derived from the published introduction and any optional contact links.
-- Runs locally or on your own AWS account.
+Context Use extracts the people, companies, events, meetings, trips, and tasks out of that
+activity and links them to each other. A person's page connects to the meeting where you met
+them, the company they work at, and the project you started together. You navigate by following
+those links, and so do your agents.
 
-## Run locally
+## Agents keep it organized
 
-You only need Docker:
+A versioned knowledge template tells agents where each kind of page belongs, how it's
+summarized, and when to create a new page instead of extending an old one. That's what keeps a
+knowledge base this size usable rather than a pile of notes.
 
-```sh
-git clone https://github.com/massimoalbarello/context-use.git
-cd context-use
-docker compose up --build
-```
+## Private by default
 
-Then open the [local setup page](http://localhost:5173/app#setup=development-owner-setup-token-0000000000000). The default owner email is `you@example.com`.
+It runs on your machine or in your AWS account, and agents reach it over OAuth-protected MCP.
+Nothing goes through a third party.
 
-To use another email on a fresh installation:
-
-```sh
-OWNER_EMAIL=me@example.com docker compose up --build
-```
-
-When developing from this repository, the Bun shortcuts make the stack lifecycle easier:
-
-```sh
-bun run local up       # build, start, and wait until the app is ready
-bun run local status   # show the development containers
-bun run local logs     # follow their logs
-bun run local down     # stop everything but preserve local data
-bun run local reset    # erase knowledge/assets, preserve login, and restart
-bun run local destroy  # erase knowledge/assets, preserve login, and leave it stopped
-bun run local purge    # erase every volume, including owner and passkeys
-```
-
-`bun run local up` prints the app and owner-setup URLs when it is ready.
-
-## Run the integration suites
-
-Database integration suites commit fixtures and clean them up with trigger and
-foreign-key enforcement suspended, so they run against a PostgreSQL server of their own
-and refuse any database that has not been marked disposable. Start one, run them, and
-throw it away:
-
-```sh
-bun run db:test up     # start, migrate, and mark a disposable PostgreSQL on 127.0.0.1:55432
-TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/context_use_test bun test apps packages
-bun run db:test down   # discard it
-```
-
-The mark is `ALTER DATABASE … SET "context_use.disposable_test_database" = 'true'`, applied
-by `bun run db:test mark`, which refuses any database with an owner passkey registered
-against it. The local stack above is therefore never eligible: these suites would delete
-the owner identity it and the evals sign in with.
-
-## Run knowledge evals locally
-
-Knowledge evals use the same local instance. Start it with `bun run local up` and create
-its owner once, then connect Codex and drive the activity distiller over a vendored
-corpus with your local ChatGPT subscription:
-
-```sh
-bun run eval connect codex
-bun run eval distill --window dense --days 2
-
-# Or run one end-to-end LongMemEval history and QA question
-bun run eval longmem:list --limit 5
-bun run eval longmem:run --case <question-id>
-bun run eval longmem:score
-```
-
-The corpus is copied verbatim from [`garrytan/gbrain-evals`](https://github.com/garrytan/gbrain-evals)
-and served through the production `read_source_records` tool, one automation run per
-corpus day, so this exercises the real ingestion path rather than an eval-only prompt.
-
-Each run resets local knowledge and assets before it starts, so do not keep development
-data in this disposable instance. The owner, passkeys, sessions, and MCP OAuth grants
-are preserved.
-
-Add `--provider claude` after `claude auth login` to use Claude Code instead. Reports,
-complete agent logs, and per-run snapshots are written beneath the gitignored
-`eval/results/` directory. `bun run eval corpus:verify` confirms a vendored corpus is
-unchanged; LongMemEval downloads its pinned 277 MB dataset once into the gitignored
-`.eval-data/` cache and verifies it on every use.
-See [`eval/README.md`](eval/README.md) for details.
+You can publish selected pages — an introduction, your projects, your ideas — as a public
+profile. Agents can draft those pages but cannot publish them. That decision is always yours.
 
 ## Self-host on AWS
 
-The CLI provisions and manages Context Use in your AWS account. You need an authenticated AWS CLI profile, Terraform 1.11+, GitHub CLI, and a hostname you control.
+You need an authenticated AWS CLI profile, Terraform 1.11+, GitHub CLI, and a hostname you
+control.
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fsSL \
-  https://github.com/massimoalbarello/context-use/releases/latest/download/install.sh | sh
+curl --proto '=https' --tlsv1.2 -fsSL https://github.com/massimoalbarello/context-use/releases/latest/download/install.sh | sh
+```
 
+```sh
 ~/.local/bin/context-use setup
 ```
 
-Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI deploys the application, configures TLS, and gives you a one-time owner setup link. Use `context-use status`, `context-use update`, or `context-use doctor` to manage the installation later.
+Follow the prompts for your AWS profile, region, hostname, DNS, and owner email. The CLI
+deploys the application, configures TLS, and gives you a one-time owner setup link. Manage the
+installation later with `context-use status`, `context-use update`, and `context-use doctor`.
 
-New installations receive the Git-versioned default knowledge template. Template changes are intentionally separate from software updates: use the dashboard's **Settings → Knowledge template** panel or `context-use template plan` to preview missing directories and pages, safe updates, and local conflicts, then apply the reviewed plan from the dashboard or with `context-use template apply`. Existing directories are never removed, local directory-presentation drift and locally edited guides and managed pages are preserved, and create-only state pages are structurally checked but never overwritten. A page explicitly listed in the template's `retired.json` is archived only while it remains unpublished and template-owned; published or locally modified pages are preserved for review. The dashboard can preview and confirm an eligible local-customization replacement; from the CLI, add `--force-template` to both `context-use template plan` and `context-use template apply` for the same behavior.
-
-## Nango data ingestion
-
-AWS installations also run Nango on the same `t3.large` EC2 instance. Nango is the ingestion and encrypted-record layer. Each sync must transform provider responses into a provider-agnostic JSON envelope containing only `id`, `created_at`, `updated_at`, `participants`, and a complete semantic Markdown `body`. These records are the input to the downstream pipeline, so connection-specific fields, raw provider payloads, and unused API fields must not be saved outside the Markdown document. Nango records are not copied directly into the Context Use knowledge-page schema. The deployment uses Nango's full upstream image with enterprise mode enabled and runs its server, jobs, orchestrator, persist, and Redis services on isolated Docker networks. Nango shares the PostgreSQL container but owns a separate `nango` database through dedicated application and read-only backup roles. The record contract and required tests are documented in [`nango-integrations/SYNC_GUIDELINES.md`](nango-integrations/SYNC_GUIDELINES.md).
-
-The Context Use dashboard registers Nango as a managed service and links to its dashboard at `https://nango.YOUR_HOST`. Open that link after signing in to Context Use. A fixed first-party OIDC client completes the same passkey session automatically, without a second account, passkey registration, or credential-retrieval command.
-
-Runtime values are KMS-encrypted SecureString parameters below `/context-use/<installation-id>/<environment>/`. Nango's internal dashboard credential, admin key, encryption key, database credentials, OIDC client secret, and scoped deployer and pipeline API keys use dedicated values there. The CLI never reveals the internal dashboard credential. Controller operations run through Systems Manager and a route-allowlisted container-loopback channel; the public Nango edge does not accept those credentials. The pipeline key is injected only into the private MCP service, which reaches Nango over a dedicated internal Docker network.
-
-The private Context Use MCP exposes `read_source_records` as the single downstream read
-surface. It discovers every connection for each managed pipeline model and returns a
-unified batch containing only a stable source reference, a source label, and the
-record's lifecycle action and canonical Markdown. Every read applies a rolling 30-day
-freshness window: records whose latest source update or deletion is older are omitted
-while their cursors still advance. The window applies to source modification, not to the
-activity date described by returned Markdown, so a recently updated record about older
-activity is returned normally. Its `next_checkpoint` is one opaque cursor across all
-connections and models, including connections discovered after earlier runs. Callers
-must treat it as an indivisible value. Nango webhooks are not involved in downstream
-processing, and Context Use does not create a second per-record observation store.
-
-The Nango hostname is internet reachable because providers must call a small set of OAuth callback, Connect-session, and webhook endpoints. Those method/path combinations pass through a credential-free, default-deny public gateway. Every dashboard request instead passes through OAuth2 Proxy and a live Context Use owner-session check before an internal gateway injects Nango's Basic credential. The browser never receives that credential or the OIDC access token, and the outer edge has no network path to Nango itself.
-
-### GitHub pull requests
-
-Create a GitHub OAuth app with `https://nango.YOUR_HOST/oauth/callback` as its authorization callback URL, then run:
-
-```sh
-context-use nango integrations add --integration github
-```
-
-`context-use nango integrations add` configures one integration per run. Omit
-`--integration` to pick it from a list instead. The command sends the prompted client ID
-and secret directly to Nango, creates or reconciles the `github` integration, and deploys
-the release-pinned `pull-requests` sync. It does not save those OAuth credentials locally or in SSM. Open the Nango dashboard afterward and create a GitHub connection. By default, the connection syncs pull requests from every accessible repository; set its metadata to `{"repositories":["owner/repository"]}` to limit the source set. GitHub's OAuth `repo` scope is required to include private repositories. Changing that source set stops future refreshes but intentionally does not delete existing records yet; retention and pruning will be introduced as a separate, explicit policy. Each saved PR has the universal pipeline envelope, while its Markdown body contains the PR description, status, branches, participants, change-size summary, commits, reviews, and discussion and code-review comments. Changed-file patches and unused GitHub API fields are discarded. A Markdown warning identifies the unusual case where GitHub caps the commit collection.
-
-### Granola meeting summaries
-
-Create the Granola integration in the Nango dashboard before running the managed
-integration command. Choose **Granola (MCP)**, set the integration ID to `granola`, and
-leave client credentials empty. The dashboard creation path performs Granola's dynamic
-MCP client registration; Nango's public integration-management endpoint does not, so
-Context Use intentionally refuses to create this integration automatically. Create a
-Granola connection through Nango's browser OAuth flow, then run:
-
-```sh
-context-use nango integrations add --integration granola
-```
-
-The hourly `meetings` sync uses only the free-tier-compatible `list_meetings` and
-`get_meetings` MCP tools. Granola Basic exposes personal notes from the last 30 days.
-Each `GranolaMeeting` record contains the meeting title, Granola's displayed date, a
-source link, named attendees with stable email identifiers when available, and the
-complete Granola-generated summary. Private notes and transcripts are not stored.
-
-Inspect the managed state or redeploy the exact function version bundled with the installed Context Use release using:
-
-```sh
-context-use nango integrations status
-```
-
-```sh
-context-use nango integrations deploy
-```
-
-Both commands cover every configured integration and accept `--integration <id>` to narrow
-that to one. `deploy` skips integrations you never added, but fails if you name one
-explicitly that is not configured.
-
-`context-use update` updates the Nango runtime and installs the matching function-deployer image, but it does not mutate live functions automatically. Run the explicit deploy command when a release changes integration code. Destructive model changes remain blocked unless you deliberately pass `--allow-destructive`.
-
-Nango gets an independent daily PostgreSQL backup stream in the retained backup bucket under `nango-postgres/`, encrypted with the installation KMS key and produced by the scoped `nango_backup` role. `context-use backup` captures both databases, while `context-use nango restore` restores only Nango. Compiled integration artifacts on the retained volume are reproducible rather than authoritative: keep integration source in version control and redeploy it after total-volume recovery. Application logs go to CloudWatch. Dozzle, Elasticsearch, and Nango's optional log backend are deliberately omitted until they provide enough value to justify their operational cost.
-
-### Updating Nango
-
-The `nango/` submodule points to the `context-use` branch of the personal [`massimoalbarello/nango`](https://github.com/massimoalbarello/nango) fork. The fork currently stays source-compatible with upstream; Context Use does not depend on Company Brain's Nango patches.
-
-The gitlink is pinned so every Context Use release builds a reproducible Nango commit. The daily and manually runnable `Sync Nango submodule` workflow checks the fork's `context-use` branch, rejects non-fast-forward changes, and opens a pull request that advances the pin. Merge that pull request and publish or redeploy Context Use to roll out the new image; deployments never follow a moving branch directly.
+To run it on your own machine instead, see [Development](docs/development.md).
 
 ## Connect an agent
 
-Point any OAuth-capable agent or external automation harness at:
+Point any OAuth-capable agent at:
 
 ```text
 https://YOUR_HOST/mcp
 ```
 
-Context Use stores automation instructions and supporting assets as ordinary
-private knowledge. An external harness such as OpenClaw can schedule a job that
-reads a known instruction page with `read_page`—for example,
-`automations/daily-fabric/instructions`—and then uses the ordinary knowledge and
-asset tools. Scheduling, retries, and run history stay in the harness. An incremental
-automation may keep exactly one non-secret opaque checkpoint on its stable `state` page.
+## Ingest your data
 
-### Knowledge automations
+AWS installations run Nango to sync data from providers such as GitHub and Granola into your
+knowledge base. See [`docs/nango.md`](docs/nango.md).
 
-The default template installs managed instruction pages for activity distillation, diary
-composition and guideline consistency review, with checkpoint state where required.
-Apply template updates with `context-use template apply`, then schedule an external harness
-to open and execute the relevant instruction page. Those pages are the canonical operating
-contracts; the README does not duplicate their logic.
+## Documentation
 
-The dashboard's **History** section shows the same durable page ledger, including
-creates, updates, archives, and deletion tombstones without page bodies or diffs.
-
-MCP clients cannot publish knowledge; public access always remains an owner decision.
+- [Development](docs/development.md) — running locally, tests, and knowledge template updates.
+- [Data ingestion](docs/nango.md) — Nango setup, integrations, and operations.
+- [Evals](eval/README.md) — knowledge quality evaluation.
+- [Security](SECURITY.md)
 
 ## License
 
