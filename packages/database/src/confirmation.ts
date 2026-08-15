@@ -144,4 +144,14 @@ export class ConfirmationRepository {
       [intentId, principal.ownerUserId, principal.sessionId],
     );
   }
+
+  async completeExportDownload(
+    intentId: string,
+    principal: { ownerUserId: string; sessionId: string },
+  ): Promise<void> {
+    await this.pool.query(
+      "SELECT complete_knowledge_export_download($1,$2,$3)",
+      [intentId, principal.ownerUserId, principal.sessionId],
+    );
+  }
 }

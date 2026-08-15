@@ -336,6 +336,40 @@ function missingCreateOnlyStructure(page: TemplatePage, input: CreatePageInput):
   return [...new Set(missing)];
 }
 
+export type KnowledgeTemplateBaseline = {
+  template: string;
+  root_directory: { title: string; summary: string };
+  root_guide: {
+    title: string;
+    summary: string;
+    body_markdown: string;
+    commit_message: string;
+    actor_subject: string;
+  };
+};
+
+// Clearing the knowledge base rebuilds the bare bootstrap state inside a single
+// database transaction, which cannot read the template files. Resolve the two
+// rows that must survive here and hand them to the reset.
+export async function knowledgeTemplateBaseline(templateName = "default"): Promise<KnowledgeTemplateBaseline> {
+  assertTemplateName(templateName);
+  const rootPath = new URL(`${templateName}/`, TEMPLATES_ROOT).pathname;
+  const presentations = await readDirectoryPresentations(rootPath, [""]);
+  const rootDirectory = presentations.get("")!;
+  const bodyMarkdown = await readFile(join(rootPath, "AGENTS.md"), "utf8");
+  return {
+    template: templateName,
+    root_directory: rootDirectory,
+    root_guide: {
+      title: "AGENTS.md",
+      summary: guideSummary(""),
+      body_markdown: bodyMarkdown.trimEnd() + "\n",
+      commit_message: `Apply ${templateName} knowledge template`,
+      actor_subject: templateActor(templateName).subject,
+    },
+  };
+}
+
 export async function reconcileKnowledgeTemplate(
   repositories: TemplateRepositories,
   templateName = "default",

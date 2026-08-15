@@ -14,9 +14,25 @@ export type PasskeySummary = {
   backed_up: boolean;
 };
 
+type ClearableKnowledge = {
+  page_count: number;
+  archived_page_count: number;
+  directory_count: number;
+  asset_count: number;
+  published_page_count: number;
+  published_asset_count: number;
+};
+
 type KnowledgeExportIntent = {
   intent: { id: string; expires_at: string };
-  summary: { kind: "portable" | "restorable"; page_count: number; asset_count: number; total_bytes: number };
+  summary: {
+    kind: "portable" | "restorable";
+    reset: boolean;
+    page_count: number;
+    asset_count: number;
+    total_bytes: number;
+  };
+  knowledge: ClearableKnowledge | null;
   authentication_options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
 };
 
@@ -24,10 +40,13 @@ type KnowledgeExportConfirmation = {
   download_url: string;
 };
 
-type KnowledgeExportStatus =
+type KnowledgeResetState = { archive_downloaded: boolean; cleared: boolean };
+
+type KnowledgeExportStatus = { reset?: KnowledgeResetState } & (
   | { status: "processing"; status_url: string }
   | { status: "ready"; download_url: string; filename: string; size_bytes: number }
-  | { status: "failed"; message: string; code: string };
+  | { status: "failed"; message: string; code: string }
+);
 
 export type KnowledgeExportJob = {
   intentId: string;
@@ -37,9 +56,13 @@ export type KnowledgeExportJob = {
   filename?: string | undefined;
   sizeBytes?: number | undefined;
   error?: string | undefined;
+  // A reset job is the same export, carrying the gate the clear waits on.
+  reset: boolean;
+  archiveDownloaded: boolean;
 };
 
 const exportJobStorageKey = "context-use.knowledge-export-job";
+export const CLEAR_KNOWLEDGE_PHRASE = "CLEAR EVERYTHING";
 
 export function storedExportJob(storage?: Pick<Storage, "getItem"> | null): KnowledgeExportJob | null {
   try {
@@ -55,6 +78,9 @@ export function storedExportJob(storage?: Pick<Storage, "getItem"> | null): Know
       kind: value.kind,
       status: "processing",
       downloadUrl: `/api/dashboard/knowledge-exports/${encodeURIComponent(value.intentId)}/download`,
+      // Both are re-read from the intent, so a stale entry can never unlock a clear.
+      reset: value.reset === true,
+      archiveDownloaded: false,
     };
   } catch {
     return null;
@@ -117,35 +143,64 @@ export function formatExportBytes(bytes: number): string {
   return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} ${unit}`;
 }
 
+function exportPreparationCopy(job: KnowledgeExportJob): { headline: string; detail: string } {
+  const archive = `${job.filename ?? ""}${job.sizeBytes ? ` · ${formatExportBytes(job.sizeBytes)}` : ""}`;
+  if (job.status === "failed") {
+    return { headline: "Archive preparation stopped", detail: "" };
+  }
+  if (job.status === "processing") {
+    return {
+      headline: job.reset
+        ? "Step 1 of 2 · Preparing the full archive…"
+        : `Preparing ${job.kind === "restorable" ? "full archive" : "latest snapshot"}…`,
+      detail: job.reset
+        ? "Nothing has been deleted yet. The knowledge base is cleared only after this archive reaches you."
+        : "The ZIP is being assembled and checked. You can leave Settings and return while this export remains available.",
+    };
+  }
+  if (!job.reset) return { headline: "Archive ready to download", detail: archive };
+  return job.archiveDownloaded
+    ? {
+        headline: "Step 2 of 2 · Archive downloaded",
+        detail: "Keep this file somewhere safe. Clearing the knowledge base is irreversible.",
+      }
+    : {
+        headline: "Step 2 of 2 · Download the archive",
+        detail: `${archive} · Clearing unlocks once the download finishes.`,
+      };
+}
+
 export function KnowledgeExportPreparationStatus({
   job,
   onDownload,
   onReset,
+  onClear,
 }: {
   job: KnowledgeExportJob;
   onDownload: () => void;
   onReset: () => void;
+  onClear?: (() => void) | undefined;
 }) {
+  const { headline, detail } = exportPreparationCopy(job);
   return <div className={`export-preparation ${job.status}`} role="status" aria-live="polite">
     <div className="export-preparation-copy">
       {job.status === "processing" && <span className="export-spinner" aria-hidden="true" />}
       <div>
-        <strong>{job.status === "processing"
-          ? `Preparing ${job.kind === "restorable" ? "full archive" : "latest snapshot"}…`
-          : job.status === "ready"
-            ? "Archive ready to download"
-            : "Archive preparation stopped"}</strong>
-        {job.status === "processing" && <small>The ZIP is being assembled and checked. You can leave Settings and return while this export remains available.</small>}
-        {job.status === "ready" && <small>{job.filename}{job.sizeBytes ? ` · ${formatExportBytes(job.sizeBytes)}` : ""}</small>}
-        {job.status === "failed" && <small className="error">{job.error || "The archive could not be prepared."}</small>}
+        <strong>{headline}</strong>
+        {job.status === "failed"
+          ? <small className="error">{job.error || "The archive could not be prepared."}</small>
+          : detail && <small>{detail}</small>}
       </div>
     </div>
     {job.status === "ready" && <div className="export-preparation-actions">
-      <a className="button primary" href={job.downloadUrl} onClick={onDownload}>Download archive</a>
-      <button onClick={onReset}>Prepare another</button>
+      <a className={`button${job.reset ? "" : " primary"}`} href={job.downloadUrl} onClick={onDownload}>
+        {job.reset && job.archiveDownloaded ? "Download again" : "Download archive"}
+      </a>
+      {onClear && <button className="danger" disabled={!job.archiveDownloaded} onClick={onClear}>Clear knowledge base</button>}
+      <button onClick={onReset}>{job.reset ? "Cancel" : "Prepare another"}</button>
     </div>}
     {job.status === "failed" && <div className="export-preparation-actions">
-      <button className="primary" onClick={onReset}>Start over</button>
+      <button className="primary" onClick={onReset}>{job.reset ? "Cancel" : "Start over"}</button>
     </div>}
   </div>;
 }
@@ -184,10 +239,16 @@ export function Settings({
   const [importError, setImportError] = useState("");
   const [importEligible, setImportEligible] = useState<boolean | null>(null);
   const [importEligibilityError, setImportEligibilityError] = useState("");
+  const [resetPhrase, setResetPhrase] = useState("");
+  const [clearPrompted, setClearPrompted] = useState(false);
+  const [clearWorking, setClearWorking] = useState(false);
+  const [clearError, setClearError] = useState("");
+
+  const refreshImportEligibility = () => api<{ eligible: boolean }>("/api/dashboard/knowledge-import-eligibility");
 
   useEffect(() => {
     let active = true;
-    api<{ eligible: boolean }>("/api/dashboard/knowledge-import-eligibility")
+    refreshImportEligibility()
       .then(({ eligible }) => { if (active) setImportEligible(eligible); })
       .catch(() => { if (active) setImportEligibilityError("Import availability could not be checked. Reload Settings to try again."); });
     return () => { active = false; };
@@ -199,6 +260,7 @@ export function Settings({
         window.localStorage.setItem(exportJobStorageKey, JSON.stringify({
           intentId: exportJob.intentId,
           kind: exportJob.kind,
+          reset: exportJob.reset,
         }));
       } else {
         window.localStorage.removeItem(exportJobStorageKey);
@@ -206,41 +268,52 @@ export function Settings({
     } catch {
       // The server-side intent remains resumable even when browser storage is unavailable.
     }
-  }, [exportJob?.intentId, exportJob?.kind]);
+  }, [exportJob?.intentId, exportJob?.kind, exportJob?.reset]);
 
   useEffect(() => {
-    if (!exportJob || exportJob.status !== "processing") return;
+    // A reset keeps polling past "ready": the clear waits on the server's own
+    // record that the archive was delivered, not on the download click.
+    const pending = exportJob && (
+      exportJob.status === "processing"
+      || (exportJob.reset && exportJob.status === "ready" && !exportJob.archiveDownloaded)
+    );
+    if (!exportJob || !pending) return;
+    const { intentId } = exportJob;
     let active = true;
     let timeout: number | undefined;
     const poll = async () => {
       try {
         const status = await api<KnowledgeExportStatus>(
-          `/api/dashboard/knowledge-exports/${encodeURIComponent(exportJob.intentId)}/status`,
+          `/api/dashboard/knowledge-exports/${encodeURIComponent(intentId)}/status`,
         );
         if (!active) return;
-        if (status.status === "ready") {
-          setExportJob((current) => current && current.intentId === exportJob.intentId ? {
-            ...current,
-            status: "ready",
-            downloadUrl: status.download_url,
-            filename: status.filename,
-            sizeBytes: status.size_bytes,
-            error: undefined,
-          } : current);
+        if (status.reset?.cleared) {
+          setExportJob((current) => current?.intentId === intentId ? null : current);
           return;
         }
-        if (status.status === "failed") {
-          setExportJob((current) => current && current.intentId === exportJob.intentId ? {
-            ...current,
-            status: "failed",
-            error: status.message,
-          } : current);
-          return;
-        }
+        setExportJob((current) => {
+          if (!current || current.intentId !== intentId) return current;
+          const archiveDownloaded = status.reset?.archive_downloaded ?? current.archiveDownloaded;
+          if (status.status === "ready") {
+            return {
+              ...current,
+              status: "ready",
+              downloadUrl: status.download_url,
+              filename: status.filename,
+              sizeBytes: status.size_bytes,
+              error: undefined,
+              archiveDownloaded,
+            };
+          }
+          if (status.status === "failed") {
+            return { ...current, status: "failed", error: status.message, archiveDownloaded };
+          }
+          return archiveDownloaded === current.archiveDownloaded ? current : { ...current, archiveDownloaded };
+        });
       } catch (error) {
         if (!active) return;
         if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
-          setExportJob((current) => current?.intentId === exportJob.intentId ? null : current);
+          setExportJob((current) => current?.intentId === intentId ? null : current);
           setMessage(error.message);
           return;
         }
@@ -252,7 +325,7 @@ export function Settings({
       active = false;
       if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [exportJob?.intentId, exportJob?.status]);
+  }, [exportJob?.intentId, exportJob?.status, exportJob?.reset, exportJob?.archiveDownloaded]);
 
   const prepareEnrollment = async () => {
     const name = passkeyName.trim();
@@ -360,19 +433,58 @@ export function Settings({
     }
   };
 
-  const prepareExport = async () => {
+  const prepareExport = async (reset = false) => {
     setExportPreparing(true);
     setExportError("");
+    setResetPhrase("");
     setMessage("");
     try {
       setExportIntent(await api<KnowledgeExportIntent>("/api/dashboard/knowledge-export-intents", {
         method: "POST",
-        body: JSON.stringify({ kind: exportKind }),
+        body: JSON.stringify(reset ? { reset: true } : { kind: exportKind }),
       }));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not prepare the knowledge export");
+      setMessage(error instanceof Error
+        ? error.message
+        : `Could not prepare the knowledge ${reset ? "reset" : "export"}`);
     } finally {
       setExportPreparing(false);
+    }
+  };
+
+  const cancelExportIntent = async () => {
+    if (!exportIntent || exportWorking) return;
+    const { id } = exportIntent.intent;
+    setExportIntent(null);
+    setExportError("");
+    setResetPhrase("");
+    await api(`/api/dashboard/knowledge-export-intents/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      body: "{}",
+    }).catch(() => undefined);
+  };
+
+  const clearKnowledge = async () => {
+    if (!exportJob) return;
+    setClearWorking(true);
+    setClearError("");
+    try {
+      const result = await api<{ template_error: string | null }>(
+        `/api/dashboard/knowledge-resets/${encodeURIComponent(exportJob.intentId)}/clear`,
+        { method: "POST", body: "{}" },
+      );
+      setClearPrompted(false);
+      setExportJob(null);
+      setMessage(result.template_error
+        ?? "The knowledge base was cleared and rebuilt from the default template. A full archive can now be imported.");
+      await onKnowledgeChanged();
+      await refreshImportEligibility()
+        .then(({ eligible }) => setImportEligible(eligible))
+        .catch(() => undefined);
+    } catch (error) {
+      setClearError(error instanceof Error ? error.message : "The knowledge base could not be cleared");
+    } finally {
+      setClearWorking(false);
     }
   };
 
@@ -442,14 +554,17 @@ export function Settings({
         body: JSON.stringify({ intent_id: exportIntent.intent.id, response }),
       });
       const intentId = exportIntent.intent.id;
-      const kind = exportIntent.summary.kind;
+      const { kind, reset } = exportIntent.summary;
       setExportIntent(null);
+      setResetPhrase("");
       setMessage("");
       setExportJob({
         intentId,
         kind,
         status: "processing",
         downloadUrl: confirmed.download_url,
+        reset,
+        archiveDownloaded: false,
       });
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "Knowledge export failed");
@@ -482,7 +597,8 @@ export function Settings({
         <label><input type="radio" name="export-kind" disabled={Boolean(exportJob)} checked={exportKind === "restorable"} onChange={() => setExportKind("restorable")} /><span><strong>Full restorable archive</strong><small>Stable IDs, all retained versions, archived pages, publication state, link records, history, and active asset bytes.</small></span></label>
       </div>
       {!exportJob && <button className="primary export-start-button" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport()}>{exportPreparing ? "Checking assets…" : "Export with passkey"}</button>}
-      {exportJob && <KnowledgeExportPreparationStatus
+      {exportJob?.reset && <p className="archive-import-checking">A knowledge reset is preparing its archive. Finish or cancel it before starting another export.</p>}
+      {exportJob && !exportJob.reset && <KnowledgeExportPreparationStatus
         job={exportJob}
         onDownload={() => {
           try { window.localStorage.removeItem(exportJobStorageKey); } catch { /* Browser storage may be unavailable. */ }
@@ -519,6 +635,19 @@ export function Settings({
               </>}
       </div>
     </section>
+    <section className="danger-zone"><h2>Clear knowledge base</h2>
+      <p>This permanently removes every page, version, asset, publication, and the whole change history, leaving only the default template. It cannot be undone from inside Context Use.</p>
+      <p><strong>The full restorable archive is exported first and is not optional.</strong> After one passkey verification the archive is prepared, and the knowledge base can only be cleared once that download has finished. Keep the file: importing it back is the only way to recover this knowledge base.</p>
+      {!exportJob && <button className="danger export-start-button" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport(true)}>{exportPreparing ? "Checking assets…" : "Export archive and clear…"}</button>}
+      {exportJob && !exportJob.reset && <p className="archive-import-checking">An export is in progress. Finish or reset it before clearing the knowledge base.</p>}
+      {exportJob?.reset && <KnowledgeExportPreparationStatus
+        job={exportJob}
+        onDownload={() => setMessage("Archive download started.")}
+        onReset={() => { setExportJob(null); setClearError(""); }}
+        onClear={() => { setClearError(""); setClearPrompted(true); }}
+      />}
+      {clearError && !clearPrompted && <p className="error" role="alert">{clearError}</p>}
+    </section>
     {enrollmentIntent && <ActionDialog
       eyebrow="Passkey enrollment"
       title={`Authorize ${enrollmentIntent.intent.name}?`}
@@ -543,7 +672,7 @@ export function Settings({
       onCancel={() => { setRemovalError(""); setRemovalIntent(null); }}
       onConfirm={() => void removePasskey()}
     />}
-    {exportIntent && <ActionDialog
+    {exportIntent && !exportIntent.knowledge && <ActionDialog
       eyebrow="Private knowledge export"
       title={exportIntent.summary.kind === "restorable" ? "Download a full restorable archive?" : "Download your knowledge snapshot?"}
       description={exportIntent.summary.kind === "restorable"
@@ -562,6 +691,54 @@ export function Settings({
         <div><dt>Size</dt><dd>about {formatExportBytes(exportIntent.summary.total_bytes)}</dd></div>
       </dl>
     </ActionDialog>}
+    {exportIntent?.knowledge && <ActionDialog
+      eyebrow="Clear knowledge base"
+      title="Delete everything in this knowledge base?"
+      description={<>
+        <p>Verifying your passkey starts the mandatory full archive. Nothing is deleted until you download it and confirm again.</p>
+        <p>Clearing removes every page and its history, every archived page, every asset file, and unpublishes everything currently public. Only the default template remains. Passkeys, integrations, and automations are untouched.</p>
+      </>}
+      confirmLabel="Verify passkey and export archive"
+      workingLabel="Waiting for passkey…"
+      confirmTone="danger"
+      confirmDisabled={resetPhrase.trim().toUpperCase() !== CLEAR_KNOWLEDGE_PHRASE}
+      working={exportWorking}
+      error={exportError}
+      onCancel={() => void cancelExportIntent()}
+      onConfirm={() => void downloadExport()}
+    >
+      <dl className="action-dialog-details">
+        <div><dt>Active pages</dt><dd>{exportIntent.knowledge.page_count}</dd></div>
+        <div><dt>Archived pages</dt><dd>{exportIntent.knowledge.archived_page_count}</dd></div>
+        <div><dt>Directories</dt><dd>{exportIntent.knowledge.directory_count}</dd></div>
+        <div><dt>Active assets</dt><dd>{exportIntent.knowledge.asset_count}</dd></div>
+        <div><dt>Published pages</dt><dd>{exportIntent.knowledge.published_page_count}</dd></div>
+        <div><dt>Published assets</dt><dd>{exportIntent.knowledge.published_asset_count}</dd></div>
+        <div><dt>Archive size</dt><dd>about {formatExportBytes(exportIntent.summary.total_bytes)}</dd></div>
+      </dl>
+      <label className="reset-phrase">Type <strong>{CLEAR_KNOWLEDGE_PHRASE}</strong> to continue
+        <input
+          autoComplete="off"
+          spellCheck={false}
+          aria-label={`Type ${CLEAR_KNOWLEDGE_PHRASE} to continue`}
+          value={resetPhrase}
+          disabled={exportWorking}
+          onChange={(event) => setResetPhrase(event.target.value)}
+        />
+      </label>
+    </ActionDialog>}
+    {clearPrompted && exportJob?.reset && <ActionDialog
+      eyebrow="Clear knowledge base"
+      title="Clear the knowledge base now?"
+      description="Your full archive has been downloaded. This deletes all pages, versions, assets, publications, and history, then rebuilds the default template. Importing the archive you just downloaded is the only way back."
+      confirmLabel="Clear knowledge base"
+      workingLabel="Clearing knowledge…"
+      confirmTone="danger"
+      working={clearWorking}
+      error={clearError}
+      onCancel={() => { setClearError(""); setClearPrompted(false); }}
+      onConfirm={() => void clearKnowledge()}
+    />}
     {importIntent && <ActionDialog
       eyebrow="Full knowledge restore"
       title="Replace this instance’s knowledge?"

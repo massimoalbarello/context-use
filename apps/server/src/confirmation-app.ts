@@ -102,6 +102,15 @@ export const confirmationApp = new Elysia()
     });
     return new Response(null, { status: 204 });
   })
+  .post("/internal/knowledge-exports/:id/complete-download", async ({ request, params }) => {
+    if (!hasInternalCapability(request, config.CONFIRMATION_DASHBOARD_TOKEN)) return problem("Not found", 404, "not_found");
+    const principal = claimSchema.parse(await bodyJson(request));
+    await confirmations.completeExportDownload(z.string().uuid().parse(params.id), {
+      ownerUserId: principal.owner_user_id,
+      sessionId: principal.session_id,
+    });
+    return new Response(null, { status: 204 });
+  })
   .post("/internal/browser-confirmation/publication", async ({ request }) => {
     if (!hasInternalCapability(request, config.CONFIRMATION_GATEWAY_TOKEN)) return problem("Not found", 404, "not_found");
     const input = browserConfirmationSchema.parse(await bodyJson(request));

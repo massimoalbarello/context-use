@@ -4,7 +4,11 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { TemplateRepositories } from "./knowledge-templates.ts";
-import { formatTemplateResult, reconcileKnowledgeTemplate } from "./knowledge-templates.ts";
+import {
+  formatTemplateResult,
+  knowledgeTemplateBaseline,
+  reconcileKnowledgeTemplate,
+} from "./knowledge-templates.ts";
 
 const DEFAULT_DIRECTORY_PRESENTATIONS = JSON.parse(
   await Bun.file(new URL("../templates/default/directories.json", import.meta.url)).text(),
@@ -1086,5 +1090,31 @@ describe("knowledge templates", () => {
     expect(DEFAULT_DIRECTORY_PRESENTATIONS.library!.summary).toContain("Identified external works");
     expect(DEFAULT_DIRECTORY_PRESENTATIONS.people!.summary).toContain("Identified people");
     expect(DEFAULT_DIRECTORY_PRESENTATIONS.places!.summary).toContain("Identified homes");
+  });
+
+  test("leaves no page-less directory, so a cleared instance stays importable", async () => {
+    const state = repositories();
+    await reconcileKnowledgeTemplate(state.value, "default", true);
+
+    // A full-archive import is refused while any directory other than the root
+    // and automations/ holds no page at all.
+    const pagePaths = state.createdPages;
+    for (const path of DEFAULT_DIRECTORY_PATHS) {
+      if (path === "" || path === "automations") continue;
+      expect(pagePaths.some((pagePath) => pagePath.startsWith(`${path}/`))).toBeTrue();
+    }
+  });
+
+  test("resolves the two rows a knowledge reset has to recreate itself", async () => {
+    const baseline = await knowledgeTemplateBaseline("default");
+
+    expect(baseline.template).toBe("default");
+    expect(baseline.root_directory).toEqual(DEFAULT_DIRECTORY_PRESENTATIONS[""]!);
+    expect(baseline.root_guide.title).toBe("AGENTS.md");
+    expect(baseline.root_guide.actor_subject).toBe("context-use-template/default");
+    expect(baseline.root_guide.body_markdown).toBe(
+      (await Bun.file(new URL("../templates/default/AGENTS.md", import.meta.url)).text()).trimEnd() + "\n",
+    );
+    await expect(knowledgeTemplateBaseline("../escape")).rejects.toThrow("Invalid template name");
   });
 });

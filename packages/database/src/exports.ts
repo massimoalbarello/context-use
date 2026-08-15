@@ -53,8 +53,14 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
 export class KnowledgeExportRepository {
   constructor(private readonly dashboardPool: Pool) {}
 
-  async createIntent(principal: KnowledgeExportPrincipal, exportKind: KnowledgeExportKind = "portable") {
+  async createIntent(
+    principal: KnowledgeExportPrincipal,
+    exportKind: KnowledgeExportKind = "portable",
+    resetRequested = false,
+  ) {
     return transaction(this.dashboardPool, async (client) => {
+      // An intent whose reset already ran stays readable so its archive remains
+      // downloadable, but it must never be reused to clear knowledge again.
       const discarded = await client.query<{ id: string }>(
         `DELETE FROM knowledge_export_intents
          WHERE expires_at <= now()
@@ -65,10 +71,10 @@ export class KnowledgeExportRepository {
       const id = randomUUID();
       const inserted = await client.query<{ id: string; expires_at: Date }>(
         `INSERT INTO knowledge_export_intents(
-           id,owner_user_id,session_id,export_kind,expires_at
-         ) VALUES ($1,$2,$3,$4,now()+interval '5 minutes')
+           id,owner_user_id,session_id,export_kind,reset_requested,expires_at
+         ) VALUES ($1,$2,$3,$4,$5,now()+interval '5 minutes')
          RETURNING id,expires_at`,
-        [id, principal.ownerUserId, principal.sessionId, exportKind],
+        [id, principal.ownerUserId, principal.sessionId, exportKind, resetRequested],
       );
       const summary = await client.query<{
         page_count: string;
@@ -114,6 +120,7 @@ export class KnowledgeExportRepository {
         asset_count: Number(summary.rows[0]!.asset_count),
         total_bytes: Number(summary.rows[0]!.total_bytes),
         export_kind: exportKind,
+        reset_requested: resetRequested,
         discarded_export_ids: discarded.rows.map(({ id: discardedId }) => discardedId),
       };
     });
@@ -127,9 +134,13 @@ export class KnowledgeExportRepository {
       expires_at: Date;
       confirmed_at: Date | null;
       download_started_at: Date | null;
+      download_completed_at: Date | null;
       export_kind: KnowledgeExportKind;
+      reset_requested: boolean;
+      reset_completed_at: Date | null;
     }>(
-      `SELECT id,owner_user_id,session_id,expires_at,confirmed_at,download_started_at,export_kind
+      `SELECT id,owner_user_id,session_id,expires_at,confirmed_at,download_started_at,
+         download_completed_at,export_kind,reset_requested,reset_completed_at
        FROM knowledge_export_intents
        WHERE id=$1`,
       [id],

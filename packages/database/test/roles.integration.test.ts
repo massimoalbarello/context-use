@@ -246,6 +246,7 @@ describeDatabase("PostgreSQL security roles", () => {
     const functions = [
       "confirm_knowledge_export_intent(uuid,text,text,text,integer,integer)",
       "claim_knowledge_export_download(uuid,text,text)",
+      "complete_knowledge_export_download(uuid,text,text)",
     ];
     for (const fn of functions) {
       for (const role of ["context_use_auth", "context_use_dashboard", "context_use_mcp", "context_use_public", "context_use_backup"]) {
@@ -259,7 +260,7 @@ describeDatabase("PostgreSQL security roles", () => {
         [fn],
       )).rows[0]?.allowed).toBe(true);
     }
-    for (const column of ["confirmed_at", "download_started_at"]) {
+    for (const column of ["confirmed_at", "download_started_at", "download_completed_at", "reset_completed_at"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_column_privilege('context_use_dashboard','knowledge_export_intents',$1,'INSERT') AS allowed",
         [column],
@@ -316,6 +317,23 @@ describeDatabase("PostgreSQL security roles", () => {
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_column_privilege('context_use_confirmation','knowledge_import_intents','archive','SELECT') AS allowed",
     )).rows[0]?.allowed).toBe(false);
+  });
+
+  test("clearing knowledge is a dashboard-only capability inside the restore boundary", async () => {
+    const clear = "clear_knowledge(uuid,text,text,text,text,text,text,text,text,text)";
+    for (const role of ["context_use_auth", "context_use_confirmation", "context_use_mcp", "context_use_public", "context_use_backup"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed", [role, clear],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_function_privilege('context_use_dashboard',$1,'EXECUTE') AS allowed", [clear],
+    )).rows[0]?.allowed).toBe(true);
+    for (const role of ["context_use_dashboard", "context_use_mcp"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege($1,'knowledge_page_versions','DELETE') AS allowed", [role],
+      )).rows[0]?.allowed).toBe(false);
+    }
   });
 
   test("service roles cannot create database objects or assume internal owner roles", async () => {
@@ -435,6 +453,8 @@ describeDatabase("PostgreSQL security roles", () => {
            'confirm_knowledge_import_intent',
            'confirm_page_deletion_intent',
            'claim_knowledge_export_download',
+           'complete_knowledge_export_download',
+           'clear_knowledge',
            'delete_empty_knowledge_directory',
            'prune_page_versions',
            'remove_owner_passkey',
@@ -445,6 +465,8 @@ describeDatabase("PostgreSQL security roles", () => {
     );
     expect(procedures.rows).toEqual([
       { proname: "claim_knowledge_export_download", owner: "context_use_boundary_owner", security_definer: true },
+      { proname: "clear_knowledge", owner: "context_use_restore_owner", security_definer: true },
+      { proname: "complete_knowledge_export_download", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_knowledge_export_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_knowledge_import_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_page_deletion_intent", owner: "context_use_boundary_owner", security_definer: true },
