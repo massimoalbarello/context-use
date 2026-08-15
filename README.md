@@ -146,10 +146,13 @@ The Nango hostname is internet reachable because providers must call a small set
 Create a GitHub OAuth app with `https://nango.YOUR_HOST/oauth/callback` as its authorization callback URL, then run:
 
 ```sh
-context-use nango integrations add
+context-use nango integrations add --integration github
 ```
 
-The command sends the prompted client ID and secret directly to Nango, creates or reconciles the `github` integration, and deploys the release-pinned `pull-requests` sync. It does not save those OAuth credentials locally or in SSM. Open the Nango dashboard afterward and create a GitHub connection. By default, the connection syncs pull requests from every accessible repository; set its metadata to `{"repositories":["owner/repository"]}` to limit the source set. GitHub's OAuth `repo` scope is required to include private repositories. Changing that source set stops future refreshes but intentionally does not delete existing records yet; retention and pruning will be introduced as a separate, explicit policy. Each saved PR has the universal pipeline envelope, while its Markdown body contains the PR description, status, branches, participants, change-size summary, commits, reviews, and discussion and code-review comments. Changed-file patches and unused GitHub API fields are discarded. A Markdown warning identifies the unusual case where GitHub caps the commit collection.
+`context-use nango integrations add` configures one integration per run. Omit
+`--integration` to pick it from a list instead. The command sends the prompted client ID
+and secret directly to Nango, creates or reconciles the `github` integration, and deploys
+the release-pinned `pull-requests` sync. It does not save those OAuth credentials locally or in SSM. Open the Nango dashboard afterward and create a GitHub connection. By default, the connection syncs pull requests from every accessible repository; set its metadata to `{"repositories":["owner/repository"]}` to limit the source set. GitHub's OAuth `repo` scope is required to include private repositories. Changing that source set stops future refreshes but intentionally does not delete existing records yet; retention and pruning will be introduced as a separate, explicit policy. Each saved PR has the universal pipeline envelope, while its Markdown body contains the PR description, status, branches, participants, change-size summary, commits, reviews, and discussion and code-review comments. Changed-file patches and unused GitHub API fields are discarded. A Markdown warning identifies the unusual case where GitHub caps the commit collection.
 
 ### Granola meeting summaries
 
@@ -161,7 +164,7 @@ Context Use intentionally refuses to create this integration automatically. Crea
 Granola connection through Nango's browser OAuth flow, then run:
 
 ```sh
-context-use nango integrations add
+context-use nango integrations add --integration granola
 ```
 
 The hourly `meetings` sync uses only the free-tier-compatible `list_meetings` and
@@ -174,8 +177,15 @@ Inspect the managed state or redeploy the exact function version bundled with th
 
 ```sh
 context-use nango integrations status
+```
+
+```sh
 context-use nango integrations deploy
 ```
+
+Both commands cover every configured integration and accept `--integration <id>` to narrow
+that to one. `deploy` skips integrations you never added, but fails if you name one
+explicitly that is not configured.
 
 `context-use update` updates the Nango runtime and installs the matching function-deployer image, but it does not mutate live functions automatically. Run the explicit deploy command when a release changes integration code. Destructive model changes remain blocked unless you deliberately pass `--allow-destructive`.
 

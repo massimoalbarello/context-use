@@ -32,6 +32,7 @@ describe("GitHub pull request integration contract", () => {
         displayName: "Granola",
         forwardWebhooks: false,
         setup: "manual",
+        dashboardProvider: "Granola (MCP)",
       },
       {
         id: "agent-conversations",

@@ -1,5 +1,6 @@
-import { MANAGED_FUNCTIONS, MANAGED_INTEGRATIONS } from "../../../nango-integrations/catalog.ts";
+import { MANAGED_FUNCTIONS } from "../../../nango-integrations/catalog.ts";
 import { sendSsmCommands } from "./aws.ts";
+import { resolveSelectableIntegration, selectableIntegrations } from "./nango-integration-selection.ts";
 import { nangoFunctionDeploymentCommands } from "./nango-integrations.ts";
 import { readReleaseImages } from "./release-images.ts";
 import type { DeploymentConfig } from "./types.ts";
@@ -18,23 +19,30 @@ export type NangoFunctionDeploymentResult = {
   output: string;
 };
 
+export type ManagedFunctionDeploymentOptions = {
+  /** Deploy only these integrations. Defaults to every user-selectable one. */
+  integrationIds?: readonly string[];
+  allowDestructive?: boolean;
+};
+
 export async function deployManagedNangoFunctions(
   config: DeploymentConfig,
   deploymentRoot: string,
   instanceId: string,
-  allowDestructive = false,
+  options: ManagedFunctionDeploymentOptions = {},
   dependencies: NangoIntegrationDeploymentDependencies = {},
 ): Promise<NangoFunctionDeploymentResult[]> {
   const sendCommands = dependencies.sendCommands ?? sendSsmCommands;
   const readImages = dependencies.readImages ?? readReleaseImages;
+  const selected = new Set(
+    (options.integrationIds ?? selectableIntegrations().map((integration) => integration.id))
+      .map((id) => resolveSelectableIntegration(id).id),
+  );
   const { nangoIntegrations } = await readImages(deploymentRoot);
   const deployerKeyParameter = `/context-use/${config.installationId}/${config.environment}/NANGO_DEPLOYER_API_KEY`;
   const results: NangoFunctionDeploymentResult[] = [];
 
-  for (const managedFunction of MANAGED_FUNCTIONS.filter((candidate) => {
-    const integration = MANAGED_INTEGRATIONS.find((item) => item.id === candidate.integrationId);
-    return integration && !("hidden" in integration && integration.hidden);
-  })) {
+  for (const managedFunction of MANAGED_FUNCTIONS.filter((candidate) => selected.has(candidate.integrationId))) {
     results.push(await deployFunction(
       config,
       instanceId,
@@ -42,7 +50,7 @@ export async function deployManagedNangoFunctions(
       managedFunction.name,
       nangoIntegrations,
       deployerKeyParameter,
-      allowDestructive,
+      options.allowDestructive ?? false,
       sendCommands,
     ));
   }

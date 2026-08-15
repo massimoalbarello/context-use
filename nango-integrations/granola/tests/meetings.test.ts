@@ -24,6 +24,7 @@ describe("Granola MCP meeting sync", () => {
       displayName: "Granola",
       forwardWebhooks: false,
       setup: "manual",
+      dashboardProvider: "Granola (MCP)",
     });
     expect(MANAGED_FUNCTIONS.find((fn) => fn.integrationId === "granola")).toEqual({
       integrationId: "granola",

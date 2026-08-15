@@ -2,6 +2,13 @@ import { expect, test } from "bun:test";
 import { MANAGED_INTEGRATIONS } from "../../../nango-integrations/catalog.ts";
 import { deployManagedNangoFunctions } from "./nango-integration-deployment.ts";
 import {
+  dashboardProviderLabel,
+  requiresDashboardSetup,
+  resolveSelectableIntegration,
+  selectableIntegrations,
+  usesStaticOAuth,
+} from "./nango-integration-selection.ts";
+import {
   getNangoConnection,
   getNangoIntegration,
   getNangoIntegrationWebhookUrl,
@@ -341,7 +348,7 @@ test("managed deployment uses the installed release image and never resolves lat
     awsRegion: "eu-west-2",
   } as DeploymentConfig;
   const calls: Array<{ profile: string; region: string; instance: string; commands: string[] }> = [];
-  const result = await deployManagedNangoFunctions(config, "/release/v1.2.3", "i-123", false, {
+  const result = await deployManagedNangoFunctions(config, "/release/v1.2.3", "i-123", {}, {
     readImages: async (root) => {
       expect(root).toBe("/release/v1.2.3");
       return { nango: "unused", nangoIntegrations: image };
@@ -357,6 +364,51 @@ test("managed deployment uses the installed release image and never resolves lat
   ]);
   expect(calls).toHaveLength(2);
   expect(calls[0]?.commands.join("\n")).toContain("--version 'v1.2.3'");
+});
+
+test("a selected integration deploys only its own functions", async () => {
+  const config = {
+    schemaVersion: 2,
+    releaseVersion: "v1.2.3",
+    environment: "production",
+    installationId: "abcdef123456",
+    awsProfile: "default",
+    awsRegion: "eu-west-2",
+  } as DeploymentConfig;
+  const dependencies = {
+    readImages: async () => ({ nango: "unused", nangoIntegrations: image }),
+    sendCommands: async () => "deployed",
+  };
+
+  expect(await deployManagedNangoFunctions(
+    config,
+    "/release/v1.2.3",
+    "i-123",
+    { integrationIds: [granola.id] },
+    dependencies,
+  )).toEqual([
+    { integrationId: "granola", functionName: "meetings", output: "deployed" },
+  ]);
+
+  expect(deployManagedNangoFunctions(
+    config,
+    "/release/v1.2.3",
+    "i-123",
+    { integrationIds: ["agent-conversations"] },
+    dependencies,
+  )).rejects.toThrow("Unknown Nango integration agent-conversations");
+});
+
+test("integration selection covers the visible catalog and rejects unknown ids", () => {
+  expect(selectableIntegrations().map((integration) => integration.id)).toEqual([github.id, granola.id]);
+  expect(resolveSelectableIntegration(github.id)).toBe(github);
+  expect(() => resolveSelectableIntegration("gitlab")).toThrow("Unknown Nango integration gitlab");
+  expect(usesStaticOAuth(github)).toBe(true);
+  expect(usesStaticOAuth(granola)).toBe(false);
+  expect(requiresDashboardSetup(granola)).toBe(true);
+  expect(requiresDashboardSetup(github)).toBe(false);
+  expect(dashboardProviderLabel(granola)).toBe("Granola (MCP)");
+  expect(dashboardProviderLabel(github)).toBe("github");
 });
 
 test("missing integrations return an empty status without querying connections or functions", async () => {

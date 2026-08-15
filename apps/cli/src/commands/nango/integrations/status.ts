@@ -1,19 +1,22 @@
 import * as p from "@clack/prompts";
 import { defineCommand } from "@parshjs/core";
-import { MANAGED_FUNCTIONS, MANAGED_INTEGRATIONS } from "../../../../../../nango-integrations/catalog.ts";
+import { z } from "zod";
+import { MANAGED_FUNCTIONS } from "../../../../../../nango-integrations/catalog.ts";
 import { readInfrastructure } from "../../../lifecycle.ts";
+import { resolveSelectableIntegration, selectableIntegrations } from "../../../nango-integration-selection.ts";
 import { createInternalNangoFetcher } from "../../../nango-internal.ts";
 import { readManagedIntegrationStatus, type ManagedIntegrationStatus } from "../../../nango-integrations.ts";
 
 export function formatManagedIntegrationStatus(
   releaseVersion: string,
+  syncName: string,
   status: ManagedIntegrationStatus,
 ): string {
   if (!status.configured) {
     return [
       "Integration: not configured",
       "Connections: 0",
-      "Pull-request sync: not deployed",
+      `${syncName} sync: not deployed`,
     ].join("\n");
   }
 
@@ -23,8 +26,8 @@ export function formatManagedIntegrationStatus(
     "Integration: configured",
     `Connections: ${connectionIds.length}${connectionIds.length > 0 ? ` (${connectionIds.join(", ")})` : ""}`,
     status.sync
-      ? `Pull-request sync: deployed${status.sync.runs ? ` · ${status.sync.runs}` : ""}`
-      : "Pull-request sync: not deployed",
+      ? `${syncName} sync: deployed${status.sync.runs ? ` · ${status.sync.runs}` : ""}`
+      : `${syncName} sync: not deployed`,
     `Deployed release: ${deployedVersion ?? "unknown"}`,
     `Expected release: ${releaseVersion}`,
     `Release match: ${deployedVersion === releaseVersion ? "yes" : "no"}`,
@@ -33,16 +36,24 @@ export function formatManagedIntegrationStatus(
 }
 
 export const command = defineCommand("nango integrations status", {
-  description: "Show GitHub integration, connection, and sync deployment status.",
-  options: {},
-  handler: async () => {
+  description: "Show managed integration, connection, and sync deployment status.",
+  options: {
+    integration: {
+      schema: z.string().optional(),
+      description: `Show only this integration (${selectableIntegrations().map((candidate) => candidate.id).join(", ")}).`,
+    },
+  },
+  handler: async ({ options }) => {
+    const integrations = options.integration
+      ? [resolveSelectableIntegration(options.integration)]
+      : selectableIntegrations();
     const { config, data, compute } = await readInfrastructure();
     if (!data || !compute) throw new Error("No active deployment");
     const managerKey = "";
     const baseUrl = `https://${config.nangoHostname}`;
     const nango = { fetcher: createInternalNangoFetcher(config, data, compute.instance_id, "integration-manager") };
 
-    for (const integration of MANAGED_INTEGRATIONS.filter((candidate) => !("hidden" in candidate && candidate.hidden))) {
+    for (const integration of integrations) {
       const managedFunction = MANAGED_FUNCTIONS.find((candidate) => candidate.integrationId === integration.id);
       if (!managedFunction) throw new Error(`No managed function is registered for ${integration.id}`);
       const status = await readManagedIntegrationStatus(
@@ -52,7 +63,10 @@ export const command = defineCommand("nango integrations status", {
         managedFunction.name,
         nango,
       );
-      p.note(formatManagedIntegrationStatus(config.releaseVersion, status), integration.displayName);
+      p.note(
+        formatManagedIntegrationStatus(config.releaseVersion, managedFunction.name, status),
+        integration.displayName,
+      );
     }
   },
 });

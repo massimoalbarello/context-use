@@ -16,6 +16,7 @@ export const MANAGED_INTEGRATIONS = [
     displayName: "Granola",
     forwardWebhooks: false,
     setup: "manual" as const,
+    dashboardProvider: "Granola (MCP)",
   },
   {
     id: "agent-conversations",
