@@ -792,6 +792,8 @@ describe("knowledge templates", () => {
       "do not group assets at the end under a generic",
       "interpret only from context the owner or source supplied",
       "say what remains unknown",
+      "a published page is owner-curated",
+      "put new detail on a private page instead of editing a published one",
       "never store credentials, access tokens, access codes or recovery secrets",
       "check the completed write against the retained evidence",
       "material relationships are recorded from both relevant sides",

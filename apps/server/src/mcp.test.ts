@@ -441,6 +441,289 @@ describe("MCP knowledge tools", () => {
     expect(archive.result?.content?.[0]?.text).toContain("PAGE_NOT_FOUND");
   });
 
+  test("reports which read pages are public and which have drifted from publication", async () => {
+    const publishedPage = {
+      id: "55555555-5555-4555-8555-555555555555",
+      current_path: "about/intro",
+      current_version_id: "66666666-6666-4666-8666-666666666666",
+      published_version_id: "77777777-7777-4777-8777-777777777777",
+      published_version_number: 3,
+      public_path: "about",
+      archived_at: null,
+      version_number: 7,
+      title: "Massimo Albarello",
+      summary: "Who the owner is.",
+      body_markdown: "## Now",
+    };
+    const pages = {
+      async getByPath() {
+        return publishedPage;
+      },
+      async searchMetadata() {
+        return [
+          publishedPage,
+          {
+            ...publishedPage,
+            id: "88888888-8888-4888-8888-888888888888",
+            current_path: "about/intro/notes",
+            published_version_id: null,
+            published_version_number: null,
+            public_path: null,
+          },
+        ];
+      },
+    } as unknown as PageRepository;
+
+    const read = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 30,
+      method: "tools/call",
+      params: { name: "read_page", arguments: { path: "about/intro" } },
+    });
+    const page = JSON.parse(read.result?.content?.[0]?.text ?? "null");
+    expect(page.publication).toEqual({
+      state: "published",
+      public_path: "about",
+      published_version_number: 3,
+      unpublished_changes: true,
+    });
+    expect(page).not.toHaveProperty("published_version_id");
+    expect(page).not.toHaveProperty("public_path");
+
+    const search = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 31,
+      method: "tools/call",
+      params: { name: "search_pages", arguments: { query: "owner" } },
+    });
+    expect(JSON.parse(search.result?.content?.[0]?.text ?? "null")).toMatchObject([
+      { current_path: "about/intro", publication: { state: "published", public_path: "about" } },
+      { current_path: "about/intro/notes", publication: { state: "private" } },
+    ]);
+  });
+
+  test("reports a published version as current when no later version exists", async () => {
+    const pages = {
+      async getByPath() {
+        return {
+          id: "55555555-5555-4555-8555-555555555555",
+          current_path: "about/intro",
+          current_version_id: "77777777-7777-4777-8777-777777777777",
+          published_version_id: "77777777-7777-4777-8777-777777777777",
+          published_version_number: 3,
+          public_path: "about",
+          version_number: 3,
+          title: "Massimo Albarello",
+          summary: "Who the owner is.",
+          body_markdown: "## Now",
+        };
+      },
+    } as unknown as PageRepository;
+    const read = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 32,
+      method: "tools/call",
+      params: { name: "read_page", arguments: { path: "about/intro" } },
+    });
+    expect(JSON.parse(read.result?.content?.[0]?.text ?? "null").publication).toEqual({
+      state: "published",
+      public_path: "about",
+      published_version_number: 3,
+      unpublished_changes: false,
+    });
+  });
+
+  test("marks published pages while browsing so a target is chosen knowing its visibility", async () => {
+    const directories = {
+      async treeByPath() {
+        return {
+          id: "11111111-1111-4111-8111-111111111111",
+          path: "about",
+          title: "About",
+          summary: "The owner.",
+          guide: null,
+          pages: [
+            {
+              id: "22222222-2222-4222-8222-222222222222",
+              path: "about/intro",
+              current_version_id: "33333333-3333-4333-8333-333333333333",
+              published_version_id: "44444444-4444-4444-8444-444444444444",
+              published_version_number: 3,
+              public_path: "about",
+              version_number: 7,
+              title: "Massimo Albarello",
+              summary: "Who the owner is.",
+            },
+            {
+              id: "55555555-5555-4555-8555-555555555555",
+              path: "about/health",
+              current_version_id: "66666666-6666-4666-8666-666666666666",
+              published_version_id: null,
+              published_version_number: null,
+              public_path: null,
+              version_number: 2,
+              title: "Health",
+              summary: "Ongoing health detail.",
+            },
+          ],
+          directories: [],
+          directories_omitted: 0,
+          requested_depth: 2,
+          max_directories: 10,
+          max_pages: 200,
+          truncated: false,
+        };
+      },
+    } as unknown as DirectoryRepository;
+
+    const markdown = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      directories,
+    ), {
+      jsonrpc: "2.0",
+      id: 33,
+      method: "tools/call",
+      params: { name: "browse_directory", arguments: { path: "about" } },
+    });
+    const text = markdown.result?.content?.[0]?.text ?? "";
+    expect(text).toContain("`about/intro` (v7) · public `/p/about` — unpublished changes since v3");
+    expect(text).toContain("`about/health` (v2) — Ongoing health detail.");
+    expect(text).not.toContain("about/health` (v2) · public");
+
+    const json = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      directories,
+    ), {
+      jsonrpc: "2.0",
+      id: 34,
+      method: "tools/call",
+      params: { name: "browse_directory", arguments: { path: "about", format: "json" } },
+    });
+    const tree = JSON.parse(json.result?.content?.[0]?.text ?? "null");
+    expect(tree.pages).toMatchObject([
+      { path: "about/intro", publication: { state: "published", unpublished_changes: true } },
+      { path: "about/health", publication: { state: "private" } },
+    ]);
+    expect(tree.max_pages).toBe(200);
+    expect(tree.pages[0]).not.toHaveProperty("published_version_id");
+  });
+
+  test("refuses to edit a published page and names the private alternative", async () => {
+    const updates: unknown[] = [];
+    const publishedPage = {
+      id: "55555555-5555-4555-8555-555555555555",
+      current_path: "about/intro",
+      current_version_id: "66666666-6666-4666-8666-666666666666",
+      published_version_id: "77777777-7777-4777-8777-777777777777",
+      published_version_number: 3,
+      public_path: "about",
+      version_number: 7,
+      title: "Massimo Albarello",
+      summary: "Who the owner is.",
+      body_markdown: "## Now",
+    };
+    const pages = pagesWithGuidance({
+      async get() {
+        return publishedPage;
+      },
+      async update(pageId: string, input: unknown) {
+        updates.push({ pageId, input });
+        return { ...publishedPage, version_number: 8 };
+      },
+    });
+    const edit = {
+      page_id: publishedPage.id,
+      path: "about/intro",
+      title: "Massimo Albarello",
+      summary: "Who the owner is.",
+      body_markdown: "## Now\n\nDeclined the NovaMind offer.",
+      commit_message: "Record the declined offer",
+      expected_version_number: 7,
+      guidance_receipt: rootGuidanceReceipt,
+    };
+
+    const refused = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 35,
+      method: "tools/call",
+      params: { name: "update_page", arguments: edit },
+    });
+
+    expect(refused.result?.isError).toBe(true);
+    const text = refused.result?.content?.[0]?.text ?? "";
+    expect(text).toContain("PUBLISHED_PAGE");
+    expect(text).toContain("about/intro is published at /p/about");
+    expect(text).toContain("published v3");
+    expect(text).toContain("Prefer a private page");
+    expect(text).toContain("acknowledge_published_page: true");
+    expect(updates).toEqual([]);
+
+    const acknowledged = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 36,
+      method: "tools/call",
+      params: {
+        name: "update_page",
+        arguments: { ...edit, acknowledge_published_page: true },
+      },
+    });
+
+    expect(acknowledged.result?.isError).toBeUndefined();
+    expect(updates).toHaveLength(1);
+    expect(updates[0]).toMatchObject({
+      pageId: publishedPage.id,
+      input: { commit_message: "Record the declined offer" },
+    });
+    expect((updates[0] as { input: Record<string, unknown> }).input)
+      .not.toHaveProperty("acknowledge_published_page");
+  });
+
+  test("leaves a private page edit unguarded by the published-page acknowledgement", async () => {
+    const updates: unknown[] = [];
+    const pages = pagesWithGuidance({
+      async get() {
+        return {
+          id: "55555555-5555-4555-8555-555555555555",
+          current_path: "about/health",
+          current_version_id: "66666666-6666-4666-8666-666666666666",
+          published_version_id: null,
+          published_version_number: null,
+          public_path: null,
+          version_number: 2,
+        };
+      },
+      async update(pageId: string, input: unknown) {
+        updates.push({ pageId, input });
+        return { id: pageId, current_path: "about/health", version_number: 3 };
+      },
+    });
+    const response = await mcpRequest(serverWith(pages), {
+      jsonrpc: "2.0",
+      id: 37,
+      method: "tools/call",
+      params: {
+        name: "update_page",
+        arguments: {
+          page_id: "55555555-5555-4555-8555-555555555555",
+          path: "about/health",
+          title: "Health",
+          summary: "Ongoing health detail.",
+          body_markdown: "## 2026",
+          commit_message: "Record the appointment",
+          expected_version_number: 2,
+          guidance_receipt: rootGuidanceReceipt,
+        },
+      },
+    });
+
+    expect(response.result?.isError).toBeUndefined();
+    expect(updates).toHaveLength(1);
+    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null").publication)
+      .toEqual({ state: "private" });
+  });
+
   test("reuses a receipt across stateless calls and targets with the same guide chain", async () => {
     const calls: unknown[] = [];
     const pages = pagesWithGuidance({
@@ -769,6 +1052,20 @@ describe("MCP knowledge tools", () => {
             path: "about/chapters/como",
             title: "Como",
             summary: "Growing up at the foot of the Alps.",
+            current_version_id: "33333333-3333-4333-8333-333333333333",
+            published_version_id: "44444444-4444-4444-8444-444444444444",
+            published_version_number: 2,
+            public_path: "chapters/como",
+          }, {
+            kind: "directory",
+            id: "55555555-5555-4555-8555-555555555555",
+            path: "about/chapters/zurich",
+            title: "Zurich",
+            summary: "The Zurich years.",
+            current_version_id: null,
+            published_version_id: null,
+            published_version_number: null,
+            public_path: null,
           }],
         };
       },
@@ -783,10 +1080,25 @@ describe("MCP knowledge tools", () => {
       method: "tools/call",
       params: { name: "read_directory", arguments: { path: "about/chapters" } },
     });
-    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
+    const index = JSON.parse(response.result?.content?.[0]?.text ?? "null");
+    expect(index).toMatchObject({
       reference: "context-use://directory/11111111-1111-4111-8111-111111111111",
-      children: [{ title: "Como", summary: "Growing up at the foot of the Alps." }],
     });
+    expect(index.children[0]).toMatchObject({
+      title: "Como",
+      summary: "Growing up at the foot of the Alps.",
+      publication: {
+        state: "published",
+        public_path: "chapters/como",
+        published_version_number: 2,
+        unpublished_changes: true,
+      },
+    });
+    expect(index.children[0]).not.toHaveProperty("published_version_id");
+    // A directory is reachable only through the indexes its published descendants generate,
+    // so it has no publication state of its own to report.
+    expect(index.children[1]).not.toHaveProperty("publication");
+    expect(index.children[1]).not.toHaveProperty("public_path");
   });
 
   test("browses nested page metadata with directory guides promoted separately", async () => {

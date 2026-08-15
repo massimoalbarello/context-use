@@ -11,11 +11,18 @@ import {
   createDirectorySchema,
   createPageSchema,
   deleteDirectorySchema,
+  pagePublication,
   updateDirectorySchema,
   updatePageSchema,
 } from "@context-use/shared";
 import { DirectoryPath, KnowledgePath } from "@context-use/shared";
-import type { DirectoryTree, DirectoryTreeNode } from "@context-use/shared";
+import type {
+  DirectoryTree,
+  DirectoryTreeNode,
+  KnowledgePageMetadata,
+  PagePublication,
+  PagePublicationSource,
+} from "@context-use/shared";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { config } from "./config.ts";
@@ -56,6 +63,63 @@ function markdownInline(value: string): string {
   return value.replace(/\s+/g, " ").trim().replace(/([\\`*_[\]<>])/g, "\\$1");
 }
 
+type PublishedPage = Extract<PagePublication, { state: "published" }>;
+
+/**
+ * Publication state belongs in every page read, because it is the one property of a target
+ * an agent cannot infer from the content it is about to change. The raw columns behind it
+ * are dropped: a public path and a pinned version number answer every question they did,
+ * and an id an agent cannot act on is only tokens.
+ */
+function withPublication<T extends PagePublicationSource>(page: T) {
+  const {
+    published_version_id: _publishedVersionId,
+    published_version_number: _publishedVersionNumber,
+    public_path: _publicPath,
+    ...rest
+  } = page;
+  return { ...rest, publication: pagePublication(page) };
+}
+
+/** Navigation entries carry publication state without the version identity a read returns. */
+function metadataWithPublication<T extends PagePublicationSource>(page: T) {
+  const { current_version_id: _currentVersionId, ...rest } = withPublication(page);
+  return rest;
+}
+
+function publicationMarkdown(page: PagePublicationSource): string {
+  const publication = pagePublication(page);
+  if (publication.state === "private") return "";
+  const published = `public \`/p/${publication.public_path}\``;
+  if (!publication.unpublished_changes) return ` · ${published}`;
+  const version = publication.published_version_number;
+  return ` · ${published} — unpublished changes since ${version ? `v${version}` : "publication"}`;
+}
+
+type PageWithPublication =
+  & Omit<KnowledgePageMetadata, keyof PagePublicationSource>
+  & { publication: PagePublication };
+
+type TreeNodeWithPublication =
+  & Omit<DirectoryTreeNode, "guide" | "pages" | "directories">
+  & {
+    guide: PageWithPublication | null;
+    pages: PageWithPublication[];
+    directories: TreeNodeWithPublication[];
+  };
+
+function treeWithPublication<T extends DirectoryTreeNode>(
+  node: T,
+): Omit<T, "guide" | "pages" | "directories"> & TreeNodeWithPublication {
+  const { guide, pages, directories, ...rest } = node;
+  return {
+    ...rest,
+    guide: guide ? metadataWithPublication(guide) : null,
+    pages: pages.map(metadataWithPublication),
+    directories: directories.map(treeWithPublication),
+  };
+}
+
 function directoryTreeMarkdown(tree: DirectoryTree): string {
   const lines = ["# Directory browse", ""];
   const renderDirectory = (directory: DirectoryTreeNode, depth: number) => {
@@ -67,11 +131,11 @@ function directoryTreeMarkdown(tree: DirectoryTree): string {
       const guideSummary = directory.guide.summary
         ? ` — ${markdownInline(directory.guide.summary)}`
         : "";
-      lines.push(`${indent}  - Guide: **${markdownInline(directory.guide.title)}** \`${directory.guide.path}\` (v${directory.guide.version_number})${guideSummary}`);
+      lines.push(`${indent}  - Guide: **${markdownInline(directory.guide.title)}** \`${directory.guide.path}\` (v${directory.guide.version_number})${publicationMarkdown(directory.guide)}${guideSummary}`);
     }
     for (const page of directory.pages) {
       const pageSummary = page.summary ? ` — ${markdownInline(page.summary)}` : "";
-      lines.push(`${indent}  - Page: **${markdownInline(page.title)}** \`${page.path}\` (v${page.version_number})${pageSummary}`);
+      lines.push(`${indent}  - Page: **${markdownInline(page.title)}** \`${page.path}\` (v${page.version_number})${publicationMarkdown(page)}${pageSummary}`);
     }
     for (const child of directory.directories) renderDirectory(child, depth + 1);
     if (directory.directories_omitted) {
@@ -163,6 +227,25 @@ function guidanceRequired(targetPath: string, retryTool: string) {
 }
 
 /**
+ * A write aimed at a page the owner has published.
+ *
+ * Publication pins one immutable version, so this edit would not reach the public page at
+ * all. It would wait in the page's private history and become public inside whatever the
+ * owner republishes next, which is exactly how content nobody chose to publish ends up
+ * public. Detail the owner did not ask to expose belongs on a private page instead.
+ */
+function publishedPageEdit(path: string, publication: PublishedPage) {
+  const publishedVersion = publication.published_version_number;
+  return textContent([
+    "PUBLISHED_PAGE",
+    `${path} is published at /p/${publication.public_path}, so nothing was changed. The tool is working and this is not a permission or guidance problem.`,
+    `The public page keeps serving ${publishedVersion ? `published v${publishedVersion}` : "its published version"} until the owner republishes it. This edit would not appear there; it would wait in private history and become public as part of that next republication.`,
+    "Prefer a private page. Put the new detail on its own page, and link it from the published page only once the owner has published it too: a link from a published page to a private one reaches no public reader.",
+    "Retry update_page with acknowledge_published_page: true only when the owner asked for this published page itself to change.",
+  ].join("\n\n"), true);
+}
+
+/**
  * A mutation aimed at a `page_id` nothing resolves.
  *
  * The bare `null` this used to return is indistinguishable from a broken tool, and an
@@ -248,6 +331,15 @@ export async function createMcpServer(
       : await directories.indexByPath(path!);
     return jsonContent(directory ? {
       ...directory,
+      guide: directory.guide ? metadataWithPublication(directory.guide) : null,
+      // A directory has no publication of its own; its index is generated from whichever
+      // descendants the owner published.
+      children: directory.children.map((child) => {
+        const entry = metadataWithPublication(child);
+        if (child.kind === "page") return entry;
+        const { publication: _publication, ...directoryEntry } = entry;
+        return directoryEntry;
+      }),
       reference: `context-use://directory/${directory.id}`,
     } : null);
   });
@@ -266,7 +358,7 @@ export async function createMcpServer(
     annotations: { readOnlyHint: true },
   }, async ({ path, depth, max_pages, max_directories, format }) => {
     const tree = await directories.treeByPath(path, depth, max_pages, max_directories);
-    if (format === "json") return jsonContent(tree);
+    if (format === "json") return jsonContent(tree ? treeWithPublication(tree) : null);
     return textContent(tree ? directoryTreeMarkdown(tree) : "Directory not found.");
   });
 
@@ -319,7 +411,7 @@ export async function createMcpServer(
   });
 
   server.registerTool("read_page", {
-    description: "Read one current active knowledge page by semantic path or stable UUID. Use search_pages when the target is not yet known.",
+    description: "Read one current active knowledge page by semantic path or stable UUID. Use search_pages when the target is not yet known. The publication block reports whether the owner published this page, at which public path and version, and whether later private versions are waiting behind that publication.",
     inputSchema: z.object({
       page_id: z.string().uuid().optional(),
       path: KnowledgePath.optional(),
@@ -330,7 +422,8 @@ export async function createMcpServer(
     }),
     annotations: { readOnlyHint: true },
   }, async ({ page_id, path }) => {
-    return jsonContent(page_id ? await pages.get(page_id) : await pages.getByPath(path!));
+    const page = page_id ? await pages.get(page_id) : await pages.getByPath(path!);
+    return jsonContent(page ? withPublication(page) : null);
   });
 
   server.registerTool("prepare_change", {
@@ -370,7 +463,8 @@ export async function createMcpServer(
     inputSchema: z.object({ query: z.string().min(1).max(500), limit: z.number().int().min(1).max(100).default(30) }).strict(),
     annotations: { readOnlyHint: true },
   }, async ({ query, limit }) => {
-    return jsonContent(await pages.searchMetadata(query, { limit }));
+    const results = await pages.searchMetadata(query, { limit });
+    return jsonContent(results.map(withPublication));
   });
 
   server.registerTool("list_page_changes", {
@@ -474,23 +568,32 @@ export async function createMcpServer(
     if (!await hasCurrentGuidance(input.path, guidance_receipt)) {
       return guidanceRequired(input.path, "create_page");
     }
-    return jsonContent(await pages.create(input, actor));
+    return jsonContent(withPublication(await pages.create(input, actor)));
   });
 
   server.registerTool("update_page", {
-    description: "Replace or move an existing private Markdown knowledge page by creating a new immutable version. Read it first with read_page and pass its current version for optimistic concurrency. Requires a current guidance_receipt from prepare_change.",
+    description: "Replace or move an existing Markdown knowledge page by creating a new immutable version. Read it first with read_page and pass its current version for optimistic concurrency. Requires a current guidance_receipt from prepare_change. A page whose publication state is published is owner-curated: editing it does not change the public page, which keeps serving its published version until the owner republishes, so write new detail to a private page instead.",
     inputSchema: updatePageSchema.extend({
       page_id: z.string().uuid(),
       guidance_receipt: guidanceReceiptSchema,
+      acknowledge_published_page: z.literal(true).optional().describe(
+        "Required only to edit a published page, and only when the owner asked for that page itself to change. Never set it to route new detail into a published page.",
+      ),
     }).strict(),
     annotations: { destructiveHint: false },
-  }, async ({ page_id, guidance_receipt, ...input }) => {
+  }, async ({ page_id, guidance_receipt, acknowledge_published_page, ...input }) => {
     if (!await hasCurrentGuidance(input.path, guidance_receipt)) {
       return guidanceRequired(input.path, "update_page");
     }
+    const existing = await pages.get(page_id);
+    if (!existing) return unknownPage(page_id, "update_page", input.path);
+    const publication = pagePublication(existing);
+    if (publication.state === "published" && !acknowledge_published_page) {
+      return publishedPageEdit(existing.current_path, publication);
+    }
     const updated = await pages.update(page_id, input, actor);
     if (!updated) return unknownPage(page_id, "update_page", input.path);
-    return jsonContent(updated);
+    return jsonContent(withPublication(updated));
   });
 
   server.registerTool("archive_page", {
@@ -508,7 +611,7 @@ export async function createMcpServer(
     }
     const archived = await pages.archive(page_id, input, actor);
     if (!archived) return unknownPage(page_id, "archive_page", page.current_path);
-    return jsonContent(archived);
+    return jsonContent(withPublication(archived));
   });
 
   server.registerTool("list_assets", {
