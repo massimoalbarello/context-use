@@ -25,7 +25,11 @@ durable access or travel information.
 
 Timeline events include a move, renovation, opening, closure, change in significance, or an
 occasion the owner recounts here. Routine visits without independent knowledge stay on their
-occurrence pages.
+occurrence pages. Lines here commonly link the occurrence that happened at this place and the
+people or organizations whose relationship to it changed:
+
+    - **9 August** — [[events/…/intro|dinner]] here with [[people/…/intro|Marco]] and
+      [[people/…/intro|Sofia]] — best carbonara I have had in Rome.
 
 A person's residence or favourite venue is also a relationship on that person's page. Do not
 turn the place page into an occupant or visitor list. Use the least sensitive location that

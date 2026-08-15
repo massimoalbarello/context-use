@@ -41,7 +41,11 @@ as positions move. Keep correspondent assertions distinct from the owner's concl
 `timeline` records one dated line per material exchange so the sequence shows what was asked,
 answered, conceded or changed. New exchanges append in root timeline order; corrections to
 existing lines follow the root reconciliation rule. Record what a reply established, not that
-a reply arrived.
+a reply arrived. Lines here commonly link the correspondents who moved the exchange and the
+subjects they moved it on:
+
+    - **12 March** — [[people/…/intro|Ana]] conceded the 60-day termination clause on
+      [[companies/…/intro|Northwind]]'s paper; price holds at 4k a month.
 
 ## Reconcile connected entities
 

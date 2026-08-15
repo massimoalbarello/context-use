@@ -30,4 +30,8 @@ context. Ground judgements in evidence and write with the care appropriate to a 
 
 Timeline events include meaningful changes in the person's work, role, company, projects or
 relationship with the owner. Do not leave a dated “currently” snapshot in `intro` when the
-knowledge is a development.
+knowledge is a development. Lines here commonly link the organizations, occurrences and work
+the development involved:
+
+    - **3 March** — moved from engineering lead to CTO at [[companies/…/intro|Northwind]],
+      taking [[about/projects/…/intro|the platform rebuild]] with her.

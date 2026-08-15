@@ -37,7 +37,11 @@ encyclopedia article, that remainder does not belong here.
 
 Most topics begin with `intro`. Add a timeline for material developments in the subject,
 changes in what the owner does about it, or individual occasions placed here while the topic
-acts as a holding area.
+acts as a holding area. Lines here commonly link the works, occurrences and people that moved
+the owner's thinking or practice:
+
+    - **21 April** — [[library/…/intro|Kahneman on noise]], pressed on me by
+      [[people/…/intro|Ana]] — now scoring interviews before anyone compares notes.
 
 A holding-area timeline may grow long. When a dish, place, practice or other part becomes
 independently identifiable and retrievable, create its entity and move the relevant timeline

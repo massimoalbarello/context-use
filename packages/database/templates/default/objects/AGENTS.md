@@ -22,7 +22,11 @@ as durable technical facts or a service record.
 
 Timeline events include acquisition, material repair, modification, transfer and occasions
 the owner recounts involving this instance. The relevant person's page also records ownership,
-use or preference and links the object.
+use or preference and links the object. Lines here commonly link the people, organizations
+and occurrences on the other side of the change:
+
+    - **2 February** — sold it to [[people/…/intro|Marco]] after the frame crack, at half
+      what [[companies/…/intro|Bianchi]] charge new.
 
 Serial, registration, tracking and insurance numbers are sensitive identifiers under the
 root privacy rule.

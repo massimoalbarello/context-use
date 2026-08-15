@@ -42,4 +42,8 @@ status do not qualify.
 Resolution always receives a dated timeline event saying whether the task completed, was
 decided, abandoned or superseded, with a link to the outcome when one exists. Keep the closed
 task as its reasoning record and reconcile the resulting truth onto the durable subject that
-owns it.
+owns it. Lines here commonly link the subjects the decision landed on and the conversation
+that settled it:
+
+    - **18 July** — decided to stay with [[companies/…/intro|Northwind]] after
+      [[meetings/…/intro|the review]]; they matched [[companies/…/intro|Contoso]]'s quote.
