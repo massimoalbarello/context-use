@@ -234,7 +234,10 @@ export async function ensureLongMemEvalDataset(options: {
   const temporary = `${path}.download-${randomUUID()}`;
   const fetcher = options.fetcher ?? fetch;
   const response = await fetcher(LONGMEMEVAL_DATASET_URL);
-  if (!response.ok || !response.body) {
+  // Only `ok`, never `body`: reading `response.body` starts the stream, and the
+  // `Bun.write(temporary, response)` below then waits forever on a body it can no longer
+  // consume. This guard used to check both and hung every download it was meant to protect.
+  if (!response.ok) {
     throw new Error(`LongMemEval download failed with HTTP ${response.status}`);
   }
   try {
