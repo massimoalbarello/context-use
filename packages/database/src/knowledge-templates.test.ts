@@ -757,6 +757,7 @@ describe("knowledge templates", () => {
       "## Place and identify",
       "## Shape follows the content",
       "## Three homes",
+      "### Chronology belongs only on `timeline`",
       "## The timeline",
       "## Reconcile the canonical account",
       "## Sources and links",
@@ -778,6 +779,11 @@ describe("knowledge templates", () => {
       "`intro` is the entity's stable front door",
       "do not edit `intro` merely because activity occurred",
       "do not leave a dated development only on `intro` or another detail page",
+      "the homes are not alternatives",
+      "no page but `timeline` carries a succession of dated developments",
+      "a second dated particular arriving on a semantic page means both belong on `timeline`",
+      "the entity's first qualifying development creates `timeline`",
+      "rather than as dated prose on a semantic page",
       "date activity to when it happened",
       "what the owner did, experienced or learned involving its entity",
       "an occasion is never recorded only as a timeline line",
@@ -897,6 +903,8 @@ describe("knowledge templates", () => {
     for (const guide of descendants) {
       expect(guide).not.toContain("## Reconcile the canonical account");
       expect(guide).not.toContain("## The timeline");
+      expect(guide).not.toContain("### Chronology belongs only on");
+      expect(guide).not.toContain("No page but `timeline`");
       expect(guide).not.toContain("A detail is never dropped for being small");
       expect(guide).not.toContain("A subject earns its canonical page");
     }
