@@ -98,10 +98,10 @@ gives the durable orientation needed to understand it and routes to every other 
 the sentence explaining what that view contains. Keep it concise enough to serve as the
 entity's published introduction after owner review; the privacy rule still applies.
 
-Do not edit `intro` merely because activity occurred or a new dated particular arrived.
-Reconcile `intro` only when the entity's durable identity or high-level current account
-changed, or when it needs to route to a new view. Sustained detail goes on a specifically
-named view, linked from the introductory context that makes it relevant.
+Do not edit `intro` merely because activity occurred or a dated particular arrived; reconcile
+it only when the entity's durable identity or high-level current account changed, or when it
+needs to route to a new view. Sustained detail goes on a specifically named view, linked from
+the introductory context that makes it relevant.
 
 ### Several small pages, not one long one
 
@@ -131,12 +131,11 @@ that can change, such as a role or headquarters, may stay current with an inline
 
 ### Chronology belongs only on `timeline`
 
-The homes are not alternatives. Every development admitted by the local timeline criteria
-gets its dated line, even when it also changes the current account or receives its own page,
-which that line then links. Do not leave a dated development only on `intro` or another
-detail page, and do not let any page but `timeline` accumulate a run of them. The entity's
-first such development creates `timeline`, unless a local guide requires it from the first
-write.
+The homes are not alternatives. Every development its directory guide admits gets a dated
+line, even when it also changes the current account or gets its own page — the line links
+that page. A development belongs nowhere else: not as a dated status on `intro`, not as a
+run of updates on a detail page. The first one creates `timeline`, unless a local guide
+requires the page from the first write.
 
 Relationships remain on the pages they connect even when the event that established them is
 historical. Moving chronology off a current account must not remove its useful links.
@@ -168,7 +167,7 @@ page.
 
 An occasion is never recorded only as a timeline line. Something the owner attended or did,
 bounded in time and place and able to carry participants and assets, resolves as its own
-occurrence entity under the guide that owns it, and the timelines of the subjects it involved
+occurrence entity under the guide that owns it. The timelines of the subjects it involved
 link that page and say what it was. A dated fact that simply became true of the subject — a
 figure, a role, a closure — stays a line carrying its own particulars.
 
