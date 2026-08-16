@@ -2,6 +2,7 @@ import { ALL_STORIES, configOrigin, describeSelection, type EvalConfig } from ".
 import { harnessLabel } from "../runner/agent.ts";
 import { runDistillation } from "../runner/distill.ts";
 import { style } from "../runner/terminal.ts";
+import { runLocomoCommand } from "./locomo.ts";
 import { runLongMemEvalCommand } from "./longmemeval.ts";
 import { askQuestionsCommand, scoreAnswersCommand, seedCommand } from "./qa.ts";
 import { runJourney, runStories } from "./story.ts";
@@ -58,6 +59,19 @@ export async function runConfiguredEval(config: EvalConfig): Promise<void> {
       ...(selection.limit ? { limit: selection.limit } : {}),
       ...(selection.stratify ? { stratify: selection.stratify } : {}),
       ...(selection.all ? { all: selection.all } : {}),
+      ...(selection.sessionsPerBatch ? { sessionsPerBatch: selection.sessionsPerBatch } : {}),
+    });
+    return;
+  }
+
+  if (selection.command === "locomo") {
+    await runLocomoCommand({
+      harness,
+      ...(selection.conversation ? { conversationId: selection.conversation } : {}),
+      ...(selection.limit ? { limit: selection.limit } : {}),
+      ...(selection.all ? { all: selection.all } : {}),
+      ...(selection.questions ? { questions: selection.questions } : {}),
+      ...(selection.stratify ? { stratify: selection.stratify } : {}),
       ...(selection.sessionsPerBatch ? { sessionsPerBatch: selection.sessionsPerBatch } : {}),
     });
     return;

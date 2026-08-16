@@ -14,9 +14,28 @@ export const ITEM_TYPES = [
   "note", "meeting", "email", "slack", "calendar-event",
   // longmemeval-v1 — timestamped user/assistant sessions
   "agent-conversation",
+  // locomo-v1 — timestamped sessions between two named speakers
+  "conversation-session",
   // world-v1 — already-distilled pages
   "person", "company", "concept",
 ] as const;
+
+/** The record types that are whole conversations rather than single items of activity. */
+export const CONVERSATION_ITEM_TYPES = new Set<CorpusItemType>([
+  "agent-conversation",
+  "conversation-session",
+]);
+
+/**
+ * The agent-facing transport ceiling for a corpus made of conversations.
+ *
+ * A conversation session is one to two orders of magnitude larger than an email or a
+ * calendar entry, and several returned together overflow a provider's MCP transcript. Both
+ * conversation corpora materialize their batches against this bound and the shared reader
+ * enforces it again, so a normal batch still completes in one source read. It changes
+ * transport batching only: a session is never split, and it is not the reset boundary.
+ */
+export const CONVERSATION_WORKING_SET_BYTE_BUDGET = 24_000;
 
 export type CorpusItemType = (typeof ITEM_TYPES)[number];
 

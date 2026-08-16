@@ -1,6 +1,6 @@
 # Local knowledge evals
 
-Four things live here.
+Five things live here.
 
 **Corpus distillation** (`bun run eval distill`) runs the activity distiller over a fixed,
 vendored corpus, one automation run per corpus batch, and reports the pages it wrote. This
@@ -18,6 +18,15 @@ read paths as one end-to-end accuracy: distill one complete conversation history
 fresh agent search the resulting knowledge iteratively, and score its answer with the
 benchmark's official QA rubric. Its large pinned dataset is cached outside git, and every
 top-level case gets an independent reset. See [the LongMemEval package](data/longmemeval-v1/README.md).
+
+**LoCoMo QA** (`bun run eval locomo:run`, `locomo:score`) measures those same paths against
+the benchmark the agentic-memory papers report. Its unit is a whole conversation rather than
+a single question: one dated conversation is distilled, then all ~105–260 of its questions
+are asked against that one knowledge base, and the stack resets for the next conversation.
+It is scored three ways — LoCoMo's own token F1, A-mem's differently-computed F1 and BLEU,
+and an optional LLM judge — because A-mem's published table is not the official metric and
+neither deterministic metric can tell a retrieval failure from a verbose answer. See
+[the LoCoMo package](data/locomo-v1/README.md).
 
 **Interactive story writing** (`bun run eval story:run`, `journey:run`) gives an agent
 short, dated user conversations and scores the connected knowledge it creates after every
@@ -86,6 +95,10 @@ because it is the only corpus that arrived with an answer key of its own.
 { "eval": { "command": "longmem", "stratify": 2 } }
 { "eval": { "command": "longmem", "all": true } }
 
+// LoCoMo: one conversation asked two questions per category, or all ten and all 1,986.
+{ "eval": { "command": "locomo", "conversation": "conv-30", "stratify": 2 } }
+{ "eval": { "command": "locomo", "all": true } }
+
 // world-v1 seeded and asked, which measures retrieval alone.
 { "eval": { "command": "qa", "corpus": "world-v1" } }
 ```
@@ -118,10 +131,11 @@ without those flags. That is a difference between the two harnesses rather than 
 this repository configures, and it is one more reason a Codex score and a Claude score are
 not each other's baseline.
 
-Corpus QA and story runs are scored without a model at all — a sealed key compared by
-string, and structural expectations. LongMemEval's harness judge is the one scorer that is
-an agent session, and it runs with no MCP server and voids its own judgement on any tool
-action, so the isolation above is the whole of what it reads.
+Corpus QA, story runs and LoCoMo's two deterministic metrics are scored without a model at
+all — sealed keys compared by string, structural expectations, and ported token metrics.
+The two harness judges, LongMemEval's and LoCoMo's optional one, are the only scorers that
+are agent sessions, and both run with no MCP server and void their own judgement on any
+tool action, so the isolation above is the whole of what they read.
 
 ## Layout
 
@@ -134,6 +148,7 @@ eval/
 ├── config.ts             how that configuration is read, layered and validated
 ├── data/
 │   ├── amara-life-v1/    corpus, lockfile, loader, QA, and structural gold
+│   ├── locomo-v1/        pinned external dataset manifest, case loader, and scorer fixture
 │   ├── longmemeval-v1/   pinned external dataset manifest and isolated case loader
 │   ├── world-v1/         corpus, lockfile, loader, QA derivation, and seeding
 │   └── steve-jobs-v1/    interactive stories, expectations, journey, and sources
@@ -168,6 +183,32 @@ Results and transcripts land under `eval/results/longmemeval/`.
 The default key-free harness judge uses the exact official prompt but a subscription model;
 the score records that distinction. Only `--judge-provider openai` uses LongMemEval's exact
 `gpt-4o-2024-08-06` judge model.
+
+## Running LoCoMo QA
+
+```sh
+bun run eval locomo:fetch
+bun run eval locomo:list
+bun run eval locomo:run --conversation conv-30 --stratify 2
+bun run eval locomo:run --limit 2
+bun run eval locomo:score
+bun run eval locomo:score --judge-provider codex
+```
+
+Two selectors, because the two costs are independent. One of `--conversation`, `--limit` or
+`--all` picks the conversations to distill; `--questions <n>` or `--stratify <n>` narrows
+which of each conversation's questions get asked. Narrowing the questions never narrows the
+history — the whole conversation is always distilled — so a short run samples the same
+measurement rather than a different one. All of it is expensive: `--all` is 10 distillation
+suites and 1,986 QA sessions.
+
+Scoring is deterministic and needs no key or session: it reports LoCoMo's official F1 and
+A-mem's own F1 and BLEU side by side, because those are different functions and A-mem's
+published numbers use the second. `--judge-provider` adds this repository's LLM judge as a
+separately labelled third number. Results land under `eval/results/locomo/` and contain no
+reference answers — scoring re-reads the pinned dataset.
+
+The dataset is CC BY-NC 4.0 and is cached outside git rather than vendored.
 
 ## Running interactive stories
 
@@ -259,7 +300,8 @@ template while preserving the owner passkey and OAuth authorization. Do not keep
 development data in it. Snapshots, per-batch agent logs, QA answers and scores,
 structural scores, and Markdown reports stay together in a timestamped run directory
 under `eval/results/corpus/`. Story suites use the parallel `eval/results/stories/`
-directory, and LongMemEval uses `eval/results/longmemeval/`. Their shared `eval/results/`
+directory, LongMemEval uses `eval/results/longmemeval/`, and LoCoMo
+`eval/results/locomo/`. Their shared `eval/results/`
 parent is gitignored so repeated local runs remain available without entering commits.
 
 ## What counts as one source record

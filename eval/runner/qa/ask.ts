@@ -39,6 +39,15 @@ export type AskOptions = {
   harness: EvalHarness;
   runDirectory: string;
   questions: PublicQuery[];
+  /**
+   * How the question is put, for a benchmark that specifies its own wording.
+   *
+   * LoCoMo asks for a short phrase and scores a token F1, so `askPrompt`'s one-or-two
+   * sentences would be measured as imprecision rather than as style. The seam exists so a
+   * benchmark can bring its own prompt without bringing its own session loop, which is
+   * what keeps the isolation and the transcript handling identical across all of them.
+   */
+  prompt?: (question: PublicQuery) => string;
   onAnswer?: (answer: RecordedAnswer, index: number) => void;
 };
 
@@ -50,7 +59,7 @@ export async function askQuestions(options: AskOptions): Promise<RecordedAnswer[
     await runAgentSession({
       harness: options.harness,
       id,
-      prompt: askPrompt(question),
+      prompt: (options.prompt ?? askPrompt)(question),
       runDirectory: options.runDirectory,
     });
     const answer: RecordedAnswer = {

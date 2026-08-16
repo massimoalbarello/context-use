@@ -10,12 +10,15 @@ import { SourceRecordCheckpointError } from "../../../apps/server/src/nango-reco
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { DENSE_WINDOW_START, loadAmaraCorpus } from "../../data/amara-life-v1/corpus.ts";
-import {
-  loadLongMemEvalCaseCorpus,
-  LONGMEMEVAL_WORKING_SET_BYTE_BUDGET,
-} from "../../data/longmemeval-v1/corpus.ts";
+import { loadLocomoCaseCorpus } from "../../data/locomo-v1/corpus.ts";
+import { loadLongMemEvalCaseCorpus } from "../../data/longmemeval-v1/corpus.ts";
 import { loadWorldCorpus } from "../../data/world-v1/corpus.ts";
-import type { Corpus, CorpusRecord } from "./types.ts";
+import {
+  CONVERSATION_ITEM_TYPES,
+  CONVERSATION_WORKING_SET_BYTE_BUDGET,
+  type Corpus,
+  type CorpusRecord,
+} from "./types.ts";
 
 /**
  * Serves a fixed on-disk corpus through the same `SourceRecordReader` contract the
@@ -55,9 +58,10 @@ const CHECKPOINT_CHECKSUM_LENGTH = 16;
 const DEFAULT_RECORD_LIMIT = 50;
 const MAX_RECORD_LIMIT = 100;
 const DEFAULT_RESPONSE_BYTE_BUDGET = 5_000_000;
-// LongMemEval sessions are much larger than email/calendar records. Its materializer
-// normally closes each batch at this same provider-safe boundary; the reader enforces it
-// as a second guard. A single exceptionally large session is still served atomically.
+// A conversation session — LongMemEval's or LoCoMo's — is much larger than an email or
+// calendar record. Both materializers normally close each batch at the same provider-safe
+// boundary; the reader enforces it as a second guard. A single exceptionally large session
+// is still served atomically.
 
 const checkpointSchema = z.object({
   version: z.literal(3),
@@ -77,6 +81,7 @@ type Checkpoint = z.infer<typeof checkpointSchema>;
 export function loadCorpus(directory: string): Corpus {
   if (existsSync(join(directory, "corpus-manifest.json"))) return loadAmaraCorpus(directory);
   if (existsSync(join(directory, "longmemeval-case.json"))) return loadLongMemEvalCaseCorpus(directory);
+  if (existsSync(join(directory, "locomo-case.json"))) return loadLocomoCaseCorpus(directory);
   if (existsSync(join(directory, "_ledger.json"))) return loadWorldCorpus(directory);
   throw new Error(`${directory} holds no recognized corpus descriptor.`);
 }
@@ -201,8 +206,8 @@ export class CorpusRecordReader implements SourceRecordReader {
     // The corpus decides the order of its batches; a window only removes some of them.
     this.#batches = corpus.batches.filter((batch) => this.#byBatch.has(batch));
     this.#responseByteBudget = options.responseByteBudget
-      ?? (records.every((record) => record.type === "agent-conversation")
-        ? LONGMEMEVAL_WORKING_SET_BYTE_BUDGET
+      ?? (records.every((record) => CONVERSATION_ITEM_TYPES.has(record.type))
+        ? CONVERSATION_WORKING_SET_BYTE_BUDGET
         : DEFAULT_RESPONSE_BYTE_BUDGET);
   }
 
