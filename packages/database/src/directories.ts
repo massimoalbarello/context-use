@@ -3,6 +3,7 @@ import type { Pool } from "pg";
 import type {
   CreateDirectoryInput,
   DeleteDirectoryInput,
+  DirectoryAssetEntry,
   DirectoryIndex,
   DirectoryIndexEntry,
   DirectoryTree,
@@ -215,7 +216,21 @@ export class DirectoryRepository {
        ORDER BY path,kind`,
       [directory.current_path, guidePath],
     );
-    return { ...directory, guide: guide.rows[0] ?? null, children: children.rows } as DirectoryIndex;
+    // Assets are listed beside the pages so a caller placing one can see that an asset path
+    // names the asset itself, at a leaf inside this directory rather than at the directory.
+    const assets = await this.pool.query<DirectoryAssetEntry>(
+      `SELECT id,current_path AS path,filename,content_type
+       FROM assets
+       WHERE deleted_at IS NULL AND regexp_replace(current_path,'/?[^/]+$','')=$1
+       ORDER BY current_path`,
+      [directory.current_path],
+    );
+    return {
+      ...directory,
+      guide: guide.rows[0] ?? null,
+      children: children.rows,
+      assets: assets.rows,
+    } as DirectoryIndex;
   }
 
   async indexByPath(path: string): Promise<DirectoryIndex | null> {

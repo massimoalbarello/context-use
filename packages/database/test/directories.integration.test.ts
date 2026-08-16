@@ -15,14 +15,19 @@ describeDatabase("first-class directory indexes", () => {
   const pool = new Pool({ connectionString: databaseUrl });
   const directories = new DirectoryRepository(pool);
   const pages = new PageRepository(pool);
+  const indexAssets = new AssetRepository(pool);
   const suffix = crypto.randomUUID().slice(0, 8);
   const parentPath = `tests/directory-${suffix}`;
   const childPath = `${parentPath}/2020-2024_chapters`;
   const grandchildPath = `${childPath}/details`;
   const siblingPath = `${parentPath}/2025-present_chapters`;
   const pageIds: string[] = [];
+  const assetIds: string[] = [];
 
   afterAll(async () => {
+    if (assetIds.length) {
+      await pool.query("DELETE FROM assets WHERE id=ANY($1::uuid[])", [assetIds]);
+    }
     if (pageIds.length) {
       await pool.query("ALTER TABLE knowledge_pages DISABLE TRIGGER ALL");
       await pool.query("DELETE FROM knowledge_pages WHERE id=ANY($1::uuid[])", [pageIds]);
@@ -173,6 +178,26 @@ describeDatabase("first-class directory indexes", () => {
       summary: "A stale update that must be rejected.",
       expected_version_number: 1,
     })).rejects.toBeInstanceOf(DirectoryVersionConflictError);
+  });
+
+  test("lists the assets whose own paths sit directly inside the directory", async () => {
+    const asset = await indexAssets.create({
+      currentPath: `${childPath}/paper`,
+      filename: "paper.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 1,
+      contentHash: "e".repeat(64),
+    });
+    assetIds.push(asset.id);
+
+    expect((await directories.indexByPath(childPath))?.assets).toContainEqual({
+      id: asset.id,
+      path: `${childPath}/paper`,
+      filename: "paper.pdf",
+      content_type: "application/pdf",
+    });
+    expect((await directories.indexByPath(parentPath))?.assets)
+      .not.toContainEqual(expect.objectContaining({ id: asset.id }));
   });
 
   test("requires page parents and directory paths to be unambiguous", async () => {

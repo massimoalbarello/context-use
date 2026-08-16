@@ -21,7 +21,10 @@ export const KnowledgePath = z
   .regex(/^[a-z0-9][a-z0-9/_-]*$/, "Use lowercase path segments only")
   .refine((value) => !value.includes("//") && !value.endsWith("/"), "Invalid path");
 export const PagePath = KnowledgePath;
-export const AssetPath = KnowledgePath;
+export const AssetPath = KnowledgePath.describe(
+  "Path of the asset itself, not of the folder holding it: the final segment names this asset"
+  + " inside its subject's folder, as in library/some-paper/paper.",
+);
 export const DirectoryPath = z.union([z.literal(""), KnowledgePath]);
 const WritablePagePath = PagePath.refine(
   (value) => value !== "about",
@@ -267,9 +270,17 @@ export type DirectoryIndexEntry = {
   default_page_id: string | null;
 } & PagePublicationSource;
 
+export type DirectoryAssetEntry = {
+  id: string;
+  path: string;
+  filename: string;
+  content_type: string;
+};
+
 export type DirectoryIndex = Directory & {
   guide: KnowledgePageMetadata | null;
   children: DirectoryIndexEntry[];
+  assets: DirectoryAssetEntry[];
 };
 
 export type KnowledgePageMetadata = {

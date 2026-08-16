@@ -264,6 +264,19 @@ function unknownPage(pageId: string, retryTool: string, path?: string) {
   ].join("\n\n"), true);
 }
 
+/**
+ * An upload aimed at the folder that holds the asset rather than at the asset. Nothing rejects
+ * this in the schema, and asset paths are unique only among assets, so the upload would
+ * otherwise succeed at the wrong path and collide with the next asset placed in that folder.
+ */
+function assetPathIsDirectory(path: string) {
+  return textContent([
+    "ASSET_PATH_IS_A_DIRECTORY",
+    `${path} is a directory, and an asset path names the asset itself rather than the folder holding it. Nothing was uploaded.`,
+    `Retry create_asset_upload with a final segment naming this asset inside that folder, such as ${path}/<asset-name>.`,
+  ].join("\n\n"), true);
+}
+
 export async function createMcpServer(
   context: McpContext,
   pages: PageRepository,
@@ -315,7 +328,7 @@ export async function createMcpServer(
   }
 
   server.registerTool("read_directory", {
-    description: "Read one directory's metadata and generated index of immediate child directories and active pages. Use browse_directory for a recursive subtree. The empty path reads the root.",
+    description: "Read one directory's metadata and generated index of immediate child directories and active pages, plus the assets whose own paths sit directly inside it. Use browse_directory for a recursive subtree. The empty path reads the root.",
     inputSchema: z.object({
       path: DirectoryPath.optional(),
       directory_id: z.string().uuid().optional(),
@@ -643,13 +656,14 @@ export async function createMcpServer(
   });
 
   server.registerTool("create_asset_upload", {
-    description: "Create a checksum-bound private asset upload. Requires a current guidance_receipt from prepare_change. PUT the exact raw bytes to the returned URL with every returned header before expires_at; image results include ready-to-paste page Markdown.",
+    description: "Create a checksum-bound private asset upload at a path naming the asset itself, not the folder holding it. Requires a current guidance_receipt from prepare_change. PUT the exact raw bytes to the returned URL with every returned header before expires_at; image results include ready-to-paste page Markdown.",
     inputSchema: assetUploadSchema.extend({ guidance_receipt: guidanceReceiptSchema }).strict(),
     annotations: { destructiveHint: false },
   }, async ({ guidance_receipt, ...input }) => {
     if (!await hasCurrentGuidance(input.path, guidance_receipt)) {
       return guidanceRequired(input.path, "create_asset_upload");
     }
+    if (await directories.getByPath(input.path)) return assetPathIsDirectory(input.path);
     const created = await assets.create({
       currentPath: input.path,
       filename: input.filename,
