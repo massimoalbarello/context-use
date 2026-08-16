@@ -780,10 +780,9 @@ describe("knowledge templates", () => {
       "do not edit `intro` merely because activity occurred",
       "do not leave a dated development only on `intro` or another detail page",
       "the homes are not alternatives",
-      "no page but `timeline` carries a succession of dated developments",
-      "a second dated particular arriving on a semantic page means both belong on `timeline`",
-      "the entity's first qualifying development creates `timeline`",
-      "rather than as dated prose on a semantic page",
+      "do not let any page but `timeline` accumulate a run of them",
+      "the entity's first such development creates `timeline`",
+      "appear as timeline lines rather than dated prose on a semantic page",
       "date activity to when it happened",
       "what the owner did, experienced or learned involving its entity",
       "an occasion is never recorded only as a timeline line",
@@ -904,7 +903,7 @@ describe("knowledge templates", () => {
       expect(guide).not.toContain("## Reconcile the canonical account");
       expect(guide).not.toContain("## The timeline");
       expect(guide).not.toContain("### Chronology belongs only on");
-      expect(guide).not.toContain("No page but `timeline`");
+      expect(guide).not.toContain("The homes are not alternatives");
       expect(guide).not.toContain("A detail is never dropped for being small");
       expect(guide).not.toContain("A subject earns its canonical page");
     }

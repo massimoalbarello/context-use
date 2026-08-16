@@ -131,18 +131,12 @@ that can change, such as a role or headquarters, may stay current with an inline
 
 ### Chronology belongs only on `timeline`
 
-The homes are not alternatives. A development admitted by the local timeline criteria gets
-its line even when it also changes the current account or receives its own page; write both
-and link that page from the line. Do not leave a dated development only on `intro` or another
-detail page. The entity's first qualifying development creates `timeline`, unless a local
-guide requires it from the first write.
-
-No page but `timeline` carries a succession of dated developments. A semantic page states
-what is true and what it means; it never accumulates an `Updates`, `Recent developments`,
-`Status` or `Progress` run, dated bullets, or a paragraph narrating what happened when. A
-second dated particular arriving on a semantic page means both belong on `timeline`, leaving
-the page to say what they establish. A past-state page gives a settled period one account; it
-is not a place to keep appending.
+The homes are not alternatives. Every development admitted by the local timeline criteria
+gets its dated line, even when it also changes the current account or receives its own page,
+which that line then links. Do not leave a dated development only on `intro` or another
+detail page, and do not let any page but `timeline` accumulate a run of them. The entity's
+first such development creates `timeline`, unless a local guide requires it from the first
+write.
 
 Relationships remain on the pages they connect even when the event that established them is
 historical. Moving chronology off a current account must not remove its useful links.
@@ -268,10 +262,9 @@ identity or scope makes a safe choice impossible.
 
 Before reporting, check the completed write against the retained evidence: every resolved
 subject has one canonical home; every link target exists; material relationships are recorded
-from both relevant sides; qualifying developments appear as lines on the applicable
-most-specific entity timelines rather than as dated prose on a semantic page; occurrence
-pages exist only when their local identity rule is met; and no diary entry was written while
-recording activity. Repair omissions before reporting.
+from both relevant sides; qualifying developments appear as timeline lines rather than dated
+prose on a semantic page; occurrence pages exist only when their local identity rule is met;
+and no diary entry was written while recording activity. Repair omissions before reporting.
 
 After writing, report every page created, materially updated, merged or archived and why.
 Highlight new entities so the owner can correct them. An unattended automation follows the
