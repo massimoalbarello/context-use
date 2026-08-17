@@ -57,6 +57,12 @@ function serverWith(
   );
 }
 
+const directoriesWith = (paths: string[] = []) => ({
+  async getByPath(path: string) {
+    return paths.includes(path) ? { id: "55555555-5555-4555-8555-555555555555" } : null;
+  },
+} as unknown as DirectoryRepository);
+
 const rootGuide = {
   id: "11111111-1111-4111-8111-111111111111",
   current_path: "agents",
@@ -1286,6 +1292,8 @@ describe("MCP knowledge tools", () => {
         default: "markdown",
         enum: ["markdown", "json"],
       });
+    expect(knowledge.result?.tools?.find(({ name }) => name === "create_asset_upload")
+      ?.inputSchema?.properties?.path?.description).toContain("not of the folder holding it");
     expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_change");
     expect(knowledge.result?.tools?.find(({ name }) => name === "prepare_change")?.inputSchema?.properties)
       .toHaveProperty("cached_guidance_receipt");
@@ -1560,7 +1568,7 @@ describe("MCP knowledge tools", () => {
         };
       },
     } as unknown as AssetRepository;
-    const response = await mcpRequest(serverWith(pagesWithGuidance(), assets), {
+    const response = await mcpRequest(serverWith(pagesWithGuidance(), assets, directoriesWith()), {
       jsonrpc: "2.0",
       id: 10,
       method: "tools/call",
@@ -1599,7 +1607,7 @@ describe("MCP knowledge tools", () => {
         };
       },
     } as unknown as AssetRepository;
-    const response = await mcpRequest(serverWith(pagesWithGuidance(), assets), {
+    const response = await mcpRequest(serverWith(pagesWithGuidance(), assets, directoriesWith()), {
       jsonrpc: "2.0",
       id: 6,
       method: "tools/call",
@@ -1631,6 +1639,40 @@ describe("MCP knowledge tools", () => {
     });
     expect(typeof result.upload.headers["x-context-use-upload-token"]).toBe("string");
     expect(JSON.stringify(result)).not.toContain("secret-key");
+  });
+
+  test("refuses an asset upload aimed at the folder instead of the asset", async () => {
+    const calls: unknown[] = [];
+    const assets = {
+      async create(input: unknown) {
+        calls.push(input);
+        return {};
+      },
+    } as unknown as AssetRepository;
+    const response = await mcpRequest(
+      serverWith(pagesWithGuidance(), assets, directoriesWith(["library/some-paper"])),
+      {
+        jsonrpc: "2.0",
+        id: 11,
+        method: "tools/call",
+        params: {
+          name: "create_asset_upload",
+          arguments: {
+            path: "library/some-paper",
+            filename: "paper.pdf",
+            content_type: "application/pdf",
+            size_bytes: 123,
+            sha256: "a".repeat(64),
+            guidance_receipt: rootGuidanceReceipt,
+          },
+        },
+      },
+    );
+
+    expect(calls).toEqual([]);
+    expect(response.result?.isError).toBe(true);
+    expect(response.result?.content?.[0]?.text).toContain("ASSET_PATH_IS_A_DIRECTORY");
+    expect(response.result?.content?.[0]?.text).toContain("library/some-paper/<asset-name>");
   });
 
   test("archives asset metadata without receiving a storage-delete capability", async () => {

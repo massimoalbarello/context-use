@@ -21,7 +21,10 @@ export const KnowledgePath = z
   .regex(/^[a-z0-9][a-z0-9/_-]*$/, "Use lowercase path segments only")
   .refine((value) => !value.includes("//") && !value.endsWith("/"), "Invalid path");
 export const PagePath = KnowledgePath;
-export const AssetPath = KnowledgePath;
+export const AssetPath = KnowledgePath.describe(
+  "Path of the asset itself, not of the folder holding it: the final segment names this asset"
+  + " inside its subject's folder, as in library/some-paper/paper.",
+);
 export const DirectoryPath = z.union([z.literal(""), KnowledgePath]);
 const WritablePagePath = PagePath.refine(
   (value) => value !== "about",
@@ -109,7 +112,10 @@ export const publicationIntentSchema = z
 
 export const assetUploadSchema = z.object({
   path: AssetPath,
-  filename: z.string().trim().min(1).max(1024),
+  filename: z.string().trim().min(1).max(1024).describe(
+    "Name of the file being uploaded. Only its extension is kept: the stored name follows the"
+    + " path leaf, so library/some-paper/paper with paper-draft.pdf is stored as paper.pdf.",
+  ),
   content_type: z.string().trim().min(1).max(255),
   size_bytes: z.number().int().min(0).max(5_000_000_000),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -117,6 +123,18 @@ export const assetUploadSchema = z.object({
   height: z.number().int().positive().optional(),
   duration_seconds: z.number().nonnegative().optional(),
 }).strict();
+
+/**
+ * One asset, one name. The stored filename follows the path leaf so the dashboard heading, the
+ * tree label, the download and the export all agree, instead of the path and a separately chosen
+ * filename drifting apart. Only the extension survives from the uploaded name, because it is what
+ * makes the bytes open correctly; a compound extension keeps its last segment only.
+ */
+export function assetFilenameForPath(path: string, uploadedFilename: string): string {
+  const leaf = path.split("/").at(-1) ?? uploadedFilename;
+  const extension = /\.[a-z0-9]+$/i.exec(uploadedFilename)?.[0].toLowerCase() ?? "";
+  return `${leaf}${extension}`;
+}
 
 export const archiveAssetSchema = z.object({
   asset_id: UUID,
@@ -267,9 +285,17 @@ export type DirectoryIndexEntry = {
   default_page_id: string | null;
 } & PagePublicationSource;
 
+export type DirectoryAssetEntry = {
+  id: string;
+  path: string;
+  filename: string;
+  content_type: string;
+};
+
 export type DirectoryIndex = Directory & {
   guide: KnowledgePageMetadata | null;
   children: DirectoryIndexEntry[];
+  assets: DirectoryAssetEntry[];
 };
 
 export type KnowledgePageMetadata = {
