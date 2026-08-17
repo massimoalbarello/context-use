@@ -60,6 +60,27 @@ export function askedLocomoQuestion(question: LocomoQuestion): AskedLocomoQuesti
 }
 
 /**
+ * What "short phrase" has to say to an agent CLI.
+ *
+ * LoCoMo scores a token F1 against a gold phrase such as `self-care is important`. An
+ * observed Claude Code run answered that question with
+ * `**That taking care of her own mental health matters — "looking after herself is what
+ * lets her look after her family."**` — substantively right, judged correct, and scored 8%,
+ * because the markdown, the quoting and the sentence around it are all tokens the gold does
+ * not have. Twenty questions scored 57.7% by token F1 and 85% by judge on exactly this gap.
+ *
+ * So this is not prompt-tuning for a better number. It is stating the benchmark's own
+ * instruction — "write an answer in the form of a short phrase, with exact words from the
+ * context" — in the terms an agent harness needs to hear it, since A-mem and LoCoMo issue
+ * theirs to a raw completion API that has no markdown habit to suppress. Without it the
+ * deterministic metrics measure formatting rather than memory, and cannot be compared to
+ * anyone's published numbers.
+ */
+const PLAIN_TEXT_RULE = `Answer in plain text. Do not use Markdown, asterisks, bold, bullet
+points or headings. Do not quote the knowledge base, do not cite pages or dates you were not
+asked for, and do not explain your reasoning. Give only the answer itself.`;
+
+/**
  * The read-only constraints are this repository's; the answer-shape instruction is
  * LoCoMo's. `as_of` is not upstream's: LoCoMo hands a model the whole dated transcript and
  * lets it infer "now" from the last session, which an agent reading a distilled knowledge
@@ -68,7 +89,7 @@ export function askedLocomoQuestion(question: LocomoQuestion): AskedLocomoQuesti
  */
 export function locomoAskPrompt(asked: AskedLocomoQuestion, asOfDate: string): string {
   const shape = asked.question.category === 5
-    ? "Reply with the option you choose and nothing else."
+    ? "Reply with the option you choose, exactly as it is written above, and nothing else."
     : "Write an answer in the form of a short phrase. Answer with exact words from the "
       + "knowledge base whenever possible, and do not write a sentence around it.";
   return `Answer the following question using only the ${MCP_NAME} MCP server's knowledge base.
@@ -80,6 +101,8 @@ commands, or browse the web. Do not call read_source_records: you are answering 
 knowledge base, not from its sources.
 
 ${shape}
+
+${PLAIN_TEXT_RULE}
 
 Question: ${asked.text} Short answer:`;
 }

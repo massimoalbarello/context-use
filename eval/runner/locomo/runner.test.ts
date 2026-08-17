@@ -65,6 +65,20 @@ describe("how a question is put", () => {
     expect(prompt).toContain("Reply with the option you choose");
     expect(prompt).not.toContain("short phrase");
   });
+
+  /**
+   * The token F1 counts every token the answer carries, so markdown and quoting are scored
+   * as if they were wrong content. Every category needs this, category 5 included, because
+   * its scorer looks for the phrase "not mentioned" in the reply.
+   */
+  test("every category is told to answer in plain text", () => {
+    for (const category of [1, 2, 3, 4, 5] as const) {
+      const prompt = locomoAskPrompt(askedLocomoQuestion(question({ category })), "now");
+      expect(prompt).toContain("Answer in plain text");
+      expect(prompt).toContain("Do not use Markdown");
+      expect(prompt).toContain("do not explain your reasoning");
+    }
+  });
 });
 
 describe("reading a category 5 answer back", () => {
