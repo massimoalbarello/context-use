@@ -203,8 +203,10 @@ support you cannot establish.
 
 ## Sources and links
 
-Use wikilinks in the sentence that explains a relationship. Do not collect unexplained links
-under `Related`, `Connections`, `Sources` or `See also`.
+Use wikilinks in the sentence that explains a relationship. Never gather links into a list or
+trailing section — `Related`, `Connections`, `Sources`, `See also`, or an index of the page's
+own views — even when each entry is described. A view is reached from the passage whose
+material it continues.
 
 Link the first mention of every canonical subject on a page, whatever form that mention takes;
 later mentions remain plain for readable prose. Link an entity's entry page, normally
