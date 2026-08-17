@@ -47,6 +47,7 @@ import {
 import { dashboardServices } from "./dashboard-services.ts";
 import { bodyJson, json, problem, routeError } from "./http.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
+import { pageDelta } from "./page-delta.ts";
 import { republicationReview } from "./republication-review.ts";
 import {
   SecurityError,
@@ -884,6 +885,35 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
       z.coerce.number().int().positive().parse(params.version),
     );
     return version ? json(version) : problem("Version not found", 404, "not_found");
+  })
+  .get("/api/dashboard/pages/:id/versions/:version/diff", async ({ request, params, query }) => {
+    await ownerRequest(request);
+    const pageId = z.string().uuid().parse(params.id);
+    const versionNumber = z.coerce.number().int().positive().parse(params.version);
+    const previousVersionNumber = query.from === undefined
+      ? null
+      : z.coerce.number().int().positive().parse(query.from);
+    if (previousVersionNumber !== null && previousVersionNumber >= versionNumber) {
+      return problem("The comparison version must be earlier than the selected version", 422, "invalid_comparison");
+    }
+    const [previous, current] = await Promise.all([
+      previousVersionNumber === null
+        ? Promise.resolve(null)
+        : dashboardPages.version(pageId, previousVersionNumber),
+      dashboardPages.version(pageId, versionNumber),
+    ]);
+    if (!current) return problem("Version not found", 404, "not_found");
+    if (previousVersionNumber !== null && !previous) {
+      return problem("Comparison version not found", 404, "not_found");
+    }
+    return json({
+      page_id: pageId,
+      comparison: {
+        from_version: previousVersionNumber,
+        to_version: versionNumber,
+      },
+      ...await pageDelta(previous, current),
+    });
   })
   .get("/api/dashboard/pages/:id/publication-preview", async ({ request, params, query }) => {
     await ownerRequest(request);

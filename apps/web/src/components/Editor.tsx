@@ -3,9 +3,86 @@ import { api } from "../api.ts";
 import { confirmPageDeletion } from "../page-deletion-auth.ts";
 import { confirmPublicationChange } from "../publication-auth.ts";
 import { isPublishedPageOutdated } from "../publication-status.ts";
-import type { Page, Version } from "../types.ts";
+import type { Page, PageVersionDiff, Version } from "../types.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
 import { PublicationDialog } from "./PublicationDialog.tsx";
+
+const diffFieldLabels: Record<PageVersionDiff["metadata_changes"][number]["field"], string> = {
+  path: "Path",
+  title: "Title",
+  summary: "Summary",
+};
+
+export function VersionDiffContents({ diff }: { diff: PageVersionDiff }) {
+  const hasChanges = diff.metadata_changes.length > 0 || diff.markdown_changes.length > 0;
+  if (!hasChanges) return <p className="version-diff-empty">No page-content changes in this version.</p>;
+
+  return <div className="version-diff-contents">
+    {diff.metadata_changes.length > 0 && <section className="version-diff-section">
+      <h4>Page details</h4>
+      {diff.metadata_changes.map((change) => <div className="version-diff-field" key={change.field}>
+        <strong>{diffFieldLabels[change.field]}</strong>
+        {change.before !== null && <pre className="diff-value removed"><span aria-hidden="true">−</span>{change.before}</pre>}
+        <pre className="diff-value added"><span aria-hidden="true">+</span>{change.after}</pre>
+      </div>)}
+    </section>}
+    {diff.markdown_changes.length > 0 && <section className="version-diff-section">
+      <h4>Page content</h4>
+      {diff.markdown_changes.map((change, index) => <div className="markdown-change" key={index}>
+        {change.before && <pre className="diff-value removed"><span aria-hidden="true">−</span>{change.before}</pre>}
+        {change.after && <pre className="diff-value added"><span aria-hidden="true">+</span>{change.after}</pre>}
+      </div>)}
+    </section>}
+  </div>;
+}
+
+function VersionComparison({
+  pageId,
+  versionNumber,
+  previousVersionNumber,
+}: {
+  pageId: string;
+  versionNumber: number;
+  previousVersionNumber: number | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [diff, setDiff] = useState<PageVersionDiff | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const panelId = `version-${versionNumber}-diff`;
+  const label = previousVersionNumber === null ? "View initial content" : `Changes from v${previousVersionNumber}`;
+
+  const toggle = async () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setOpen(true);
+    if (diff || loading) return;
+    setLoading(true);
+    setError("");
+    try {
+      const from = previousVersionNumber === null ? "" : `?from=${previousVersionNumber}`;
+      setDiff(await api<PageVersionDiff>(`/api/dashboard/pages/${pageId}/versions/${versionNumber}/diff${from}`));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Comparison failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return <div className="version-comparison">
+    <button className="version-diff-toggle" aria-expanded={open} aria-controls={panelId} onClick={() => void toggle()}>
+      <svg aria-hidden="true" viewBox="0 0 16 16"><path d="m5 6 3 3 3-3" /></svg>
+      {label}
+    </button>
+    {open && <div className="version-diff-panel" id={panelId}>
+      {loading && <p className="version-diff-status" role="status">Loading changes…</p>}
+      {error && <p className="version-diff-error" role="alert">{error}</p>}
+      {diff && <VersionDiffContents diff={diff} />}
+    </div>}
+  </div>;
+}
 
 export function Editor({
   pageId,
@@ -213,21 +290,26 @@ export function Editor({
     {!isEditing && tab === "preview" && <article className="rendered" dangerouslySetInnerHTML={{ __html: page.rendered_html ?? "" }} />}
     {!isEditing && tab === "history" && <section className="history-list">
       <header><h2>Version history</h2><p>The latest editable version and the published version are independent. Publishing points the public URL at one exact snapshot.</p></header>
-      {history.map((version) => {
+      {history.map((version, index) => {
         const isLatest = version.id === page.current_version_id;
         const isPublished = version.id === page.published_version_id;
+        const previousVersionNumber = history[index + 1]?.version_number ?? null;
+        const canCompare = previousVersionNumber !== null || version.version_number === 1;
         return <article className={isPublished ? "published-version" : ""} key={version.id}>
-          <div className="version-info">
-            <div className="version-heading"><strong>v{version.version_number}</strong>{isLatest && <span className="version-badge latest">Latest</span>}{isPublished && <span className="version-badge published">Published</span>}</div>
-            <span className="commit-message">{version.commit_message}</span>
-            <span>{version.actor_kind} · {new Date(version.created_at).toLocaleString()}</span>
+          <div className="version-row">
+            <div className="version-info">
+              <div className="version-heading"><strong>v{version.version_number}</strong>{isLatest && <span className="version-badge latest">Latest</span>}{isPublished && <span className="version-badge published">Published</span>}</div>
+              <span className="commit-message">{version.commit_message}</span>
+              <span>{version.actor_kind} · {new Date(version.created_at).toLocaleString()}</span>
+            </div>
+            {!page.archived_at && <div className="version-actions">
+              {isPublished && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public</a>}
+              {isPublished
+                ? <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>
+                : <button className={isLatest ? "primary" : ""} onClick={() => setPublishingVersion(version.version_number)}>Publish this version</button>}
+            </div>}
           </div>
-          {!page.archived_at && <div className="version-actions">
-            {isPublished && page.public_path && <a className="button" href={`/p/${page.public_path}`} target="_blank" rel="noreferrer">View public</a>}
-            {isPublished
-              ? <button className="danger" disabled={unpublishWorking} onClick={() => void unpublish()}>{unpublishWorking ? "Waiting for passkey…" : "Unpublish"}</button>
-              : <button className={isLatest ? "primary" : ""} onClick={() => setPublishingVersion(version.version_number)}>Publish this version</button>}
-          </div>}
+          {canCompare && <VersionComparison pageId={page.id} versionNumber={version.version_number} previousVersionNumber={previousVersionNumber} />}
         </article>;
       })}
     </section>}
