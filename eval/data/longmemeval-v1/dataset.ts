@@ -238,7 +238,17 @@ export async function ensureLongMemEvalDataset(options: {
     throw new Error(`LongMemEval download failed with HTTP ${response.status}`);
   }
   try {
-    await Bun.write(temporary, response);
+    // Streamed to disk chunk by chunk. `Bun.write(path, response)` buffers the whole body
+    // first and does not complete for a download this size — it burns CPU without writing a
+    // byte, so the fetch looks like a hang rather than a slow network.
+    const sink = Bun.file(temporary).writer();
+    try {
+      for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+        sink.write(chunk);
+      }
+    } finally {
+      await sink.end();
+    }
     if (!await verifyLongMemEvalDataset(temporary)) {
       throw new Error("Downloaded LongMemEval dataset does not match the pinned size and SHA-256");
     }
