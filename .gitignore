@@ -10,8 +10,6 @@ coverage/
 .eval-results/
 /eval/results/
 /.eval-data/
-# Knowledge bases exported from a run. Derived from datasets that are deliberately not
-# vendored — LoCoMo is CC BY-NC — so the derivatives stay out of history too.
 /eval/exports/
 # A local choice of harness, model or eval, which never belongs in a commit.
 /eval/config.local.json
