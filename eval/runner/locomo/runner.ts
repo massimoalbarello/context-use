@@ -216,6 +216,36 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
     prediction: string;
   }> = [];
 
+  /**
+   * Writes the run-level report as it stands.
+   *
+   * Called after every conversation rather than only at the end, because a LoCoMo run is
+   * hours long and `locomo:score` reads `report.json`. Writing it once at the end meant an
+   * interrupted run recorded every answer in its per-conversation `result.json` files and
+   * still could not be scored, which is the one failure mode a long run actually has.
+   */
+  async function writeReport(completedAt: string): Promise<void> {
+    const report: LocomoRunReport = {
+      runId,
+      benchmark: "locomo-v1",
+      dataset: LOCOMO_DATASET,
+      evaluator: LOCOMO_EVALUATOR,
+      amemEvaluator: LOCOMO_AMEM_EVALUATOR,
+      provider: options.harness.provider,
+      model: options.harness.model ?? null,
+      sessionsPerBatch,
+      adversarialOptionOrder: "deterministic-by-question-id",
+      startedAt,
+      completedAt,
+      conversations: results,
+    };
+    await Bun.write(join(runDirectory, "predictions.jsonl"),
+      predictions.map((entry) => JSON.stringify(entry)).join("\n") + (predictions.length ? "\n" : ""));
+    await Bun.write(join(runDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
+    await Bun.write(join(runDirectory, "report.md"), markdownReport(report));
+    await Bun.write(join(EVAL_LOCOMO_RESULTS_ROOT, "latest"), `${runId}\n`);
+  }
+
   for (const [index, conversation] of conversations.entries()) {
     console.log(style.heading(`\n\nConversation ${index + 1}/${conversations.length} · ${
       conversation.sampleId} · ${conversation.sessions.length} sessions · ${
@@ -277,6 +307,7 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
       };
       results.push(result);
       await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(result, null, 2)}\n`);
+      await writeReport(new Date().toISOString());
       console.log(style.yellow(`Skipping ${conversation.questions.length} question(s): ${voidReason}`));
       continue;
     }
@@ -325,28 +356,11 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
     });
     results.push(base);
     await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(base, null, 2)}\n`);
+    await writeReport(new Date().toISOString());
   }
 
-  const report: LocomoRunReport = {
-    runId,
-    benchmark: "locomo-v1",
-    dataset: LOCOMO_DATASET,
-    evaluator: LOCOMO_EVALUATOR,
-    amemEvaluator: LOCOMO_AMEM_EVALUATOR,
-    provider: options.harness.provider,
-    model: options.harness.model ?? null,
-    sessionsPerBatch,
-    adversarialOptionOrder: "deterministic-by-question-id",
-    startedAt,
-    completedAt: new Date().toISOString(),
-    conversations: results,
-  };
-  await Bun.write(join(runDirectory, "predictions.jsonl"),
-    predictions.map((entry) => JSON.stringify(entry)).join("\n") + (predictions.length ? "\n" : ""));
-  await Bun.write(join(runDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   const reportPath = join(runDirectory, "report.md");
-  await Bun.write(reportPath, markdownReport(report));
-  await Bun.write(join(EVAL_LOCOMO_RESULTS_ROOT, "latest"), `${runId}\n`);
+  await writeReport(new Date().toISOString());
   console.log(style.green(`\n✓ LoCoMo run complete · ${predictions.length}/${totalQuestions} questions answered`));
   console.log(`Report: ${style.blue(reportPath)}`);
   console.log(`Score:  ${style.blue(`bun run eval locomo:score ${runId}`)}`);

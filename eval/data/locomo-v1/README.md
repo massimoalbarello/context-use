@@ -190,6 +190,11 @@ distillation snapshots, agent transcripts, per-conversation results, a `predicti
 and the run report. **No run artifact contains a reference answer** — scoring re-reads the
 dataset — so a report can be read or shared without carrying the answer key with it.
 
+The report is rewritten after **every** conversation rather than once at the end. A full run
+is hours long and one distillation batch alone can take twenty minutes, so stopping early
+has to be a supported outcome: `locomo:score` reads `report.json`, and a run interrupted
+after two of ten conversations scores those two rather than nothing.
+
 ## Attribution
 
 LoCoMo is published in [the official LoCoMo repository](https://github.com/snap-research/locomo)
