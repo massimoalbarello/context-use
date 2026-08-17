@@ -35,10 +35,15 @@ describe("LongMemEval run reporting", () => {
       recordsServed: 40,
       pages: 2,
       hypothesis: "answer",
-      toolsUsed: ["search_pages", "get_page"],
+      toolsUsed: ["search_pages", "read_page"],
     });
     expect(publicResult).not.toHaveProperty("referenceAnswer");
-    expect(longMemEvalRunnerInternals.forbiddenQaTools(["search_pages", "get_page"])).toEqual([]);
+    // `get_page` used to be asserted here; no server has ever exposed it, and comparing
+    // bare names against Claude Code's qualified ones voided every case on that harness.
+    expect(longMemEvalRunnerInternals.forbiddenQaTools(["search_pages", "read_page"])).toEqual([]);
+    expect(longMemEvalRunnerInternals.forbiddenQaTools([
+      "ToolSearch", "mcp__context_use_eval__search_pages", "mcp__context_use_eval__read_page",
+    ])).toEqual([]);
     expect(longMemEvalRunnerInternals.forbiddenQaTools([
       "read_source_records", "create_page", "command_execution", "web_search",
     ])).toEqual(["read_source_records", "create_page", "command_execution", "web_search"]);

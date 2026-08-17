@@ -9,7 +9,7 @@ import {
 } from "./ask.ts";
 import { locomoJudgePrompt } from "./judge.ts";
 import { EMPTY_AMEM_METRICS } from "./metrics.ts";
-import { asOfDate, forbiddenQaTools, locomoRunnerInternals } from "./runner.ts";
+import { asOfDate, bareToolName, forbiddenQaTools, locomoRunnerInternals } from "./runner.ts";
 
 function question(overrides: Partial<LocomoQuestion> = {}): LocomoQuestion {
   return {
@@ -88,9 +88,41 @@ describe("reading a category 5 answer back", () => {
 
 describe("isolation", () => {
   test("only read-only knowledge tools are valid during QA", () => {
-    expect(forbiddenQaTools(["search_pages", "get_page"])).toEqual([]);
+    expect(forbiddenQaTools(["search_pages", "read_page", "browse_directory"])).toEqual([]);
     expect(forbiddenQaTools(["search_pages", "update_page", "read_source_records"]))
       .toEqual(["update_page", "read_source_records"]);
+  });
+
+  /**
+   * The exact tool list an observed Claude Code answer produced. Every one of these is
+   * read-only, and the first version of this allowlist voided all twenty questions of a
+   * ninety-minute run because it compared bare names against qualified ones and spelled
+   * the read tools `get_page`/`get_directory`, which no server exposes.
+   */
+  test("accepts what Claude Code actually reports", () => {
+    expect(forbiddenQaTools([
+      "ToolSearch",
+      "mcp__context_use_eval__browse_directory",
+      "mcp__context_use_eval__read_page",
+      "mcp__context_use_eval__search_pages",
+    ])).toEqual([]);
+  });
+
+  test("still rejects a mutating or source-reading tool when it is qualified", () => {
+    expect(forbiddenQaTools([
+      "mcp__context_use_eval__search_pages",
+      "mcp__context_use_eval__update_page",
+      "mcp__context_use_eval__read_source_records",
+    ])).toEqual([
+      "mcp__context_use_eval__update_page",
+      "mcp__context_use_eval__read_source_records",
+    ]);
+  });
+
+  test("bareToolName strips only this server's prefix", () => {
+    expect(bareToolName("mcp__context_use_eval__read_page")).toBe("read_page");
+    expect(bareToolName("read_page")).toBe("read_page");
+    expect(bareToolName("mcp__other_server__read_page")).toBe("mcp__other_server__read_page");
   });
 
   test("the served corpus path has to sit inside the repository", () => {

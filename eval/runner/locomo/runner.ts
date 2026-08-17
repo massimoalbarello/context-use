@@ -17,7 +17,7 @@ import {
   LOCOMO_DATASET,
   LOCOMO_EVALUATOR,
 } from "../../data/locomo-v1/manifest.ts";
-import { ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
+import { MCP_NAME, ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { loadCorpus } from "../corpus/records.ts";
 import { runCorpusDistillation } from "../distill.ts";
 import { askQuestions } from "../qa/ask.ts";
@@ -114,23 +114,50 @@ function containerPath(hostPath: string): string {
   return `/app/${withinRoot}`;
 }
 
+/**
+ * The knowledge tools an answer may use, under their real server names.
+ *
+ * Everything the MCP exposes that only reads: pages, directories, assets, skills and
+ * history. `read_source_records` is deliberately absent — it reads the corpus rather than
+ * the knowledge base, and the ask prompt forbids it — as is every mutating tool.
+ */
 const LOCOMO_QA_READ_TOOLS = new Set([
-  "get_directory",
   "browse_directory",
-  "list_directories",
-  "get_page",
-  "load_skill",
-  "search_pages",
-  "get_knowledge_changes",
-  "get_page_delta",
-  "get_page_history",
-  "get_page_version",
+  "read_directory",
+  "read_page",
+  "read_page_version",
+  "read_skill",
+  "read_asset",
   "list_assets",
-  "get_asset",
+  "list_page_changes",
+  "list_page_versions",
+  "compare_page_versions",
+  "search_pages",
 ]);
 
+/**
+ * Harness mechanisms that are not knowledge actions.
+ *
+ * Claude Code defers MCP tool schemas and loads them with `ToolSearch` before it can call
+ * anything at all. It reads no knowledge and changes nothing, so counting it as a forbidden
+ * action voids every question on that harness while the answers themselves are fine.
+ */
+const HARNESS_TOOLS = new Set(["ToolSearch"]);
+
+/**
+ * Claude Code reports MCP tools fully qualified (`mcp__<server>__read_page`) while Codex
+ * reports the bare name. Compare on the bare name so one allowlist covers both harnesses.
+ */
+export function bareToolName(tool: string): string {
+  const prefix = `mcp__${MCP_NAME}__`;
+  return tool.startsWith(prefix) ? tool.slice(prefix.length) : tool;
+}
+
 export function forbiddenQaTools(tools: string[]): string[] {
-  return tools.filter((tool) => !LOCOMO_QA_READ_TOOLS.has(tool));
+  return tools.filter((tool) => {
+    if (HARNESS_TOOLS.has(tool)) return false;
+    return !LOCOMO_QA_READ_TOOLS.has(bareToolName(tool));
+  });
 }
 
 /**

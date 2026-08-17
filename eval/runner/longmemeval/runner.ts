@@ -17,7 +17,7 @@ import {
   LONGMEMEVAL_DATASET,
   LONGMEMEVAL_EVALUATOR,
 } from "../../data/longmemeval-v1/manifest.ts";
-import { ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
+import { MCP_NAME, ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { loadCorpus } from "../corpus/records.ts";
 import { runCorpusDistillation } from "../distill.ts";
 import { askQuestions } from "../qa/ask.ts";
@@ -92,23 +92,37 @@ function publicQuestion(entry: LongMemEvalCase): PublicQuery {
   };
 }
 
+/**
+ * The read-only knowledge tools, under their real server names.
+ *
+ * These were previously spelled `get_page`/`get_directory`, which no server has ever
+ * exposed, and compared against Claude Code's fully-qualified `mcp__<server>__read_page`.
+ * Every question voided on that harness while its answer was perfectly good. LoCoMo shares
+ * this list; see `runner/locomo/runner.ts` for the harness-tool note.
+ */
 const LONGMEMEVAL_QA_READ_TOOLS = new Set([
-  "get_directory",
   "browse_directory",
-  "list_directories",
-  "get_page",
-  "load_skill",
-  "search_pages",
-  "get_knowledge_changes",
-  "get_page_delta",
-  "get_page_history",
-  "get_page_version",
+  "read_directory",
+  "read_page",
+  "read_page_version",
+  "read_skill",
+  "read_asset",
   "list_assets",
-  "get_asset",
+  "list_page_changes",
+  "list_page_versions",
+  "compare_page_versions",
+  "search_pages",
 ]);
 
+const HARNESS_TOOLS = new Set(["ToolSearch"]);
+
 function forbiddenQaTools(tools: string[]): string[] {
-  return tools.filter((tool) => !LONGMEMEVAL_QA_READ_TOOLS.has(tool));
+  const prefix = `mcp__${MCP_NAME}__`;
+  return tools.filter((tool) => {
+    if (HARNESS_TOOLS.has(tool)) return false;
+    const bare = tool.startsWith(prefix) ? tool.slice(prefix.length) : tool;
+    return !LONGMEMEVAL_QA_READ_TOOLS.has(bare);
+  });
 }
 
 /** Gold stays in memory until every tested agent has exited. */
