@@ -295,17 +295,54 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
     const corpus = loadCorpus(sourceDirectory);
 
     // The one reset for this conversation happens inside here, before its first batch.
-    const distillation = await runCorpusDistillation({
-      harness: options.harness,
-      corpus,
-      servedDirectory: containerPath(sourceDirectory),
-      window: "full",
-      runId: `${runId}-${conversation.sampleId}`,
-      runDirectory: join(caseDirectory, "distillation"),
-      updateLatest: false,
-      maxAttemptsPerBatch: 3,
-      persistExactBatchCheckpoint: true,
-    });
+    // A conversation that cannot be distilled is voided rather than allowed to end the run:
+    // with ten independent conversations, one exhausted retry budget should not throw away
+    // the nine that would otherwise have been measured.
+    let distillation: Awaited<ReturnType<typeof runCorpusDistillation>> | undefined;
+    let distillationError: string | undefined;
+    try {
+      distillation = await runCorpusDistillation({
+        harness: options.harness,
+        corpus,
+        servedDirectory: containerPath(sourceDirectory),
+        window: "full",
+        runId: `${runId}-${conversation.sampleId}`,
+        runDirectory: join(caseDirectory, "distillation"),
+        updateLatest: false,
+        maxAttemptsPerBatch: 3,
+        persistExactBatchCheckpoint: true,
+      });
+    } catch (error) {
+      distillationError = (error as Error).message.split("\n")[0] ?? "distillation failed";
+    }
+
+    if (!distillation) {
+      const voidReason = `distillation failed: ${distillationError}`;
+      const result: LocomoConversationResult = {
+        sampleId: conversation.sampleId,
+        sessions: conversation.sessions.length,
+        turns: conversation.sessions.reduce((sum, session) => sum + session.turns.length, 0),
+        batches: corpus.batches.length,
+        recordsServed: 0,
+        pages: 0,
+        asOfDate: asOfDate(conversation),
+        voidReason,
+        questions: conversation.questions.map((question) => ({
+          questionId: question.id,
+          index: question.index,
+          category: question.category,
+          categoryName: question.categoryName,
+          question: question.question,
+          askedAs: askedLocomoQuestion(question).text,
+          voidReason,
+        })),
+      };
+      results.push(result);
+      await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(result, null, 2)}\n`);
+      await writeReport(new Date().toISOString());
+      console.log(style.red(`Voiding ${conversation.sampleId}: ${voidReason}`));
+      continue;
+    }
 
     const base: LocomoConversationResult = {
       sampleId: conversation.sampleId,
