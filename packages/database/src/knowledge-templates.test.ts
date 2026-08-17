@@ -793,6 +793,8 @@ describe("knowledge templates", () => {
       "later is not automatically correct",
       "preserve every other byte as found",
       "never link a page that does not exist",
+      "never gather links into a list or trailing section",
+      "a view is reached from the passage whose material it continues",
       "an asset is never uploaded alone or treated as an appendix",
       "do not group assets at the end under a generic",
       "interpret only from context the owner or source supplied",
@@ -913,6 +915,12 @@ describe("knowledge templates", () => {
     expect(normalize(guides.about)).not.toContain("what they are working on now");
     expect(normalize(guides.diary)).toContain("An entity or timeline change is a candidate, not a quota");
     expect(normalize(guides.diary)).toContain("Repeated mention is not continuation");
+    expect(normalize(guides.diary)).toContain(
+      "hands off mid-prose where the reader would want the fuller view",
+    );
+    expect(normalize(guides.diary)).toContain(
+      "say what that connection is in the passage where it recurs",
+    );
     expect(normalize(guides.diary)).toContain("Preserve every owner-written passage exactly");
     expect(guides.projects).toContain("about/projects/<slug>/");
     expect(guides.tasks).toContain("about/tasks/<slug>/");
