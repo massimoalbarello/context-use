@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { assetFilenameForPath } from "@context-use/shared";
 
 export type AssetArchiveConflictReason = "published" | "referenced";
 
@@ -44,11 +45,14 @@ export class AssetRepository {
   async create(input: NewAsset) {
     const id = randomUUID();
     const key = `objects/${id}`;
+    // Every asset is written through here, so deriving the name once keeps the path and the
+    // stored filename from drifting apart no matter which upload surface created the asset.
+    const filename = assetFilenameForPath(input.currentPath, input.filename);
     const result = await this.pool.query(
       `INSERT INTO assets(id,current_path,filename,content_type,size_bytes,content_hash,s3_object_key,width,height,duration_seconds)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        RETURNING id,current_path,public_path,filename,content_type,size_bytes,content_hash,width,height,duration_seconds,created_at,deleted_at`,
-      [id, input.currentPath, input.filename, input.contentType, input.sizeBytes, input.contentHash, key,
+      [id, input.currentPath, filename, input.contentType, input.sizeBytes, input.contentHash, key,
         input.width ?? null, input.height ?? null, input.durationSeconds ?? null],
     );
     return { ...result.rows[0], objectKey: key };

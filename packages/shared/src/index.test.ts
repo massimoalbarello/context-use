@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   archiveAssetSchema,
+  assetFilenameForPath,
   assetUploadSchema,
   createDirectorySchema,
   deleteDirectorySchema,
@@ -49,6 +50,16 @@ describe("strict mutation schemas", () => {
       sha256: "A".repeat(64),
       public_path: "projects/acme/site-photo",
     }).success).toBe(false);
+  });
+
+  test("the stored asset filename follows the path leaf and keeps only the extension", () => {
+    expect(assetFilenameForPath(
+      "library/a-mem-agentic-memory/figures/traditional-vs-agentic-memory",
+      "a-mem-figure-1-traditional-vs-agentic-memory.png",
+    )).toBe("traditional-vs-agentic-memory.png");
+    expect(assetFilenameForPath("library/some-paper/paper", "2401.12345v3.PDF")).toBe("paper.pdf");
+    expect(assetFilenameForPath("photos/portrait", "portrait")).toBe("portrait");
+    expect(assetFilenameForPath("archives/backup", "backup.tar.gz")).toBe("backup.gz");
   });
 
   test("asset archival accepts only a stable asset identifier", () => {

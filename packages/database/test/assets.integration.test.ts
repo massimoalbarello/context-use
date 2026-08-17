@@ -50,7 +50,7 @@ describeDatabase("hierarchical asset metadata", () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     const created = await assets.create({
       currentPath: `tests/${suffix}/site-photo`,
-      filename: "site-photo.jpg",
+      filename: "IMG_4821.JPG",
       contentType: "image/jpeg",
       sizeBytes: 123,
       contentHash: "a".repeat(64),
@@ -58,6 +58,8 @@ describeDatabase("hierarchical asset metadata", () => {
     createdIds.push(created.id);
 
     expect(created.current_path).toBe(`tests/${suffix}/site-photo`);
+    expect(created.filename).toBe("site-photo.jpg");
+    expect((await assets.get(created.id))?.filename).toBe("site-photo.jpg");
     expect((await assets.get(created.id))?.current_path).toBe(created.current_path);
     expect((await assets.list()).some((asset) => asset.id === created.id && asset.current_path === created.current_path)).toBe(true);
   });
