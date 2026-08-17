@@ -215,7 +215,7 @@ function manifestFor(records: RestorableKnowledgeRecords, recordsJson: string): 
     format: RESTORABLE_KNOWLEDGE_FORMAT,
     schema_version: 1,
     created_at: new Date().toISOString(),
-    context_use_version: "0.1.71",
+    context_use_version: "0.1.72",
     records_sha256: createHash("sha256").update(recordsJson).digest("hex"),
     counts: {
       directories: records.directories.length,
