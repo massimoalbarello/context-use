@@ -757,6 +757,7 @@ describe("knowledge templates", () => {
       "## Place and identify",
       "## Shape follows the content",
       "## Three homes",
+      "### Chronology belongs only on `timeline`",
       "## The timeline",
       "## Reconcile the canonical account",
       "## Sources and links",
@@ -777,7 +778,11 @@ describe("knowledge templates", () => {
       "every entity is a folder entered through `intro`",
       "`intro` is the entity's stable front door",
       "do not edit `intro` merely because activity occurred",
-      "do not leave a dated development only on `intro` or another detail page",
+      "the homes are not alternatives",
+      "a development belongs nowhere else: not as a dated status on `intro`",
+      "not as a run of updates on a detail page",
+      "the first one creates `timeline`",
+      "appear as timeline lines rather than dated prose on a semantic page",
       "date activity to when it happened",
       "what the owner did, experienced or learned involving its entity",
       "an occasion is never recorded only as a timeline line",
@@ -788,6 +793,8 @@ describe("knowledge templates", () => {
       "later is not automatically correct",
       "preserve every other byte as found",
       "never link a page that does not exist",
+      "never gather links into a list or trailing section",
+      "a view is reached from the passage whose material it continues",
       "an asset is never uploaded alone or treated as an appendix",
       "do not group assets at the end under a generic",
       "interpret only from context the owner or source supplied",
@@ -897,6 +904,8 @@ describe("knowledge templates", () => {
     for (const guide of descendants) {
       expect(guide).not.toContain("## Reconcile the canonical account");
       expect(guide).not.toContain("## The timeline");
+      expect(guide).not.toContain("### Chronology belongs only on");
+      expect(guide).not.toContain("The homes are not alternatives");
       expect(guide).not.toContain("A detail is never dropped for being small");
       expect(guide).not.toContain("A subject earns its canonical page");
     }
@@ -906,6 +915,12 @@ describe("knowledge templates", () => {
     expect(normalize(guides.about)).not.toContain("what they are working on now");
     expect(normalize(guides.diary)).toContain("An entity or timeline change is a candidate, not a quota");
     expect(normalize(guides.diary)).toContain("Repeated mention is not continuation");
+    expect(normalize(guides.diary)).toContain(
+      "hands off mid-prose where the reader would want the fuller view",
+    );
+    expect(normalize(guides.diary)).toContain(
+      "say what that connection is in the passage where it recurs",
+    );
     expect(normalize(guides.diary)).toContain("Preserve every owner-written passage exactly");
     expect(guides.projects).toContain("about/projects/<slug>/");
     expect(guides.tasks).toContain("about/tasks/<slug>/");

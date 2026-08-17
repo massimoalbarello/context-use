@@ -70,6 +70,15 @@ selectors come in pairs: one picks the conversations to distill, the other narro
 questions asked of each. Scoring is deterministic and needs no key; --judge-provider adds
 this repository's LLM judge as a third, separately reported number.
 
+longmem:run selection, and what it costs. Every case is measured in isolation: it resets the
+stack and distills that case's whole session history before asking its one question, so a
+case is hours, not minutes — budget ~30 batches at roughly 10-20 minutes each.
+  --limit <n>      the first n cases in dataset order. The head of the dataset is all one
+                   question type, so this samples a type rather than the benchmark.
+  --stratify <n>   n cases PER question type, so --stratify 10 selects 60 cases, not 10.
+                   Use --stratify 1 for the cheapest run that still spans every type.
+  --case <id>      one case by id, from longmem:list.
+
 eval/config.json says which harness, which model and which eval a run uses, and every
 command above takes its defaults from it. eval/config.local.json overrides it without
 entering a commit; a flag overrides both for one command only.

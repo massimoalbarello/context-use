@@ -81,15 +81,13 @@ The target directory guide owns that subject's identity boundary, path, required
 local timeline criteria. Creating the subject and connecting it to the evidence that revealed
 it are one coherent change.
 
-Attention is not interaction and is not agreement. Record what the evidence says, who said
-it and how the subject relates to the owner; do not invent a relationship or adopt a claim on
-the owner's behalf.
+Attention is not interaction. Record what the evidence says, who said it and how the subject
+relates to the owner, rather than inventing a relationship.
 
 ## Shape follows the content
 
 A guide says what a page must establish, never what its headings or labels must look like.
-There is no skeleton to reproduce. Remove empty headings and boilerplate; a common page shape
-is a vocabulary, not a quota.
+Remove empty headings and boilerplate; a common page shape is a vocabulary, not a quota.
 
 Every page has a one-sentence summary for search and generated indexes. Write the summary
 from the finished page.
@@ -100,12 +98,10 @@ gives the durable orientation needed to understand it and routes to every other 
 the sentence explaining what that view contains. Keep it concise enough to serve as the
 entity's published introduction after owner review; the privacy rule still applies.
 
-Do not edit `intro` merely because activity occurred or a new dated particular arrived. Put
-the development on `timeline` and sustained detail on a specifically named view, then link
-those views from the introductory context that makes them relevant. Reconcile `intro` only
-when the entity's durable identity or high-level current account changed, or when it needs to
-route to a new view. Add `timeline` only when the entity has a timeline event, unless the local
-guide requires it from the first write.
+Do not edit `intro` merely because activity occurred or a dated particular arrived; reconcile
+it only when the entity's durable identity or high-level current account changed, or when it
+needs to route to a new view. Sustained detail goes on a specifically named view, linked from
+the introductory context that makes it relevant.
 
 ### Several small pages, not one long one
 
@@ -115,7 +111,6 @@ delete detail. `intro` remains an entry point, not a container for every aspect 
 
 Within a grown entity folder, link views directly when one bears on another; do not force
 every route back through `intro`. A view also links the external subjects it actually concerns.
-The folder is a small hypermedia, not a hub with disconnected spokes.
 
 When one page genuinely carries several aspects, use descriptive headings that mark its real
 divisions and make them linkable. Never add a heading merely to complete a pattern.
@@ -125,9 +120,7 @@ divisions and make them linkable. Never add a heading merely to complete a patte
 Put knowledge in the home that matches how it changes:
 
 1. **What the subject is now** lives on its current account and is reconciled in place.
-2. **What happened and when** lives as a dated line on its `timeline`. A development admitted
-   by the local timeline criteria appears there even when it also changes the current account
-   or receives a detailed page; when it has a page, link that page from the timeline line.
+2. **What happened and when** lives as a dated line on its `timeline`.
 3. **A past state independently worth reading** gets its own page, linked from `intro` and
    the timeline event marking the transition.
 
@@ -136,14 +129,21 @@ reported figures, changing positions and milestones belong on the timeline. A du
 that can change, such as a role or headquarters, may stay current with an inline
 `— as of <date>` while the change itself also receives a timeline event.
 
+### Chronology belongs only on `timeline`
+
+The homes are not alternatives. Every development its directory guide admits gets a dated
+line, even when it also changes the current account or gets its own page — the line links
+that page. A development belongs nowhere else: not as a dated status on `intro`, not as a
+run of updates on a detail page. The first one creates `timeline`, unless a local guide
+requires the page from the first write.
+
 Relationships remain on the pages they connect even when the event that established them is
 historical. Moving chronology off a current account must not remove its useful links.
 
 ## The timeline
 
-The root contract defines how timelines are written; each directory guide defines which
-developments belong on its subjects, which links are common there rather than a limit of one,
-and any local exception.
+Each directory guide defines which developments belong on its subjects, which links are
+common there rather than a limit of one, and any local exception.
 
 A timeline records what the owner did, experienced or learned involving its entity, not only
 what materially changed about the entity itself. The local guide may exclude routine activity
@@ -165,13 +165,9 @@ names activity; *ARR reached 640k, up a third on the quarter* records knowledge.
 account needs a paragraph, it is probably current state or an independently useful past-state
 page.
 
-Do not leave a dated development only on `intro` or another detail page. If the local guide
-admits it to the entity's history, record the line on `timeline` and link any page carrying
-the fuller account.
-
 An occasion is never recorded only as a timeline line. Something the owner attended or did,
 bounded in time and place and able to carry participants and assets, resolves as its own
-occurrence entity under the guide that owns it, and the timelines of the subjects it involved
+occurrence entity under the guide that owns it. The timelines of the subjects it involved
 link that page and say what it was. A dated fact that simply became true of the subject — a
 figure, a role, a closure — stays a line carrying its own particulars.
 
@@ -188,8 +184,8 @@ Correct an inaccurate event in place and preserve the surrounding contemporaneou
 
 ## Reconcile the canonical account
 
-New evidence updates the existing account; it does not create an `Updates` section, repeated
-snapshot or duplicate page. Read the canonical target and nearby overlapping views, then
+New evidence updates the existing account rather than accumulating a repeated snapshot or a
+duplicate page beside it. Read the canonical target and nearby overlapping views, then
 make the smallest coherent change: rewrite, move, split, combine, merge or archive as needed.
 A write may correctly make no semantic change.
 
@@ -207,8 +203,10 @@ support you cannot establish.
 
 ## Sources and links
 
-Use wikilinks in the sentence that explains a relationship. Do not collect unexplained links
-under `Related`, `Connections`, `Sources` or `See also`.
+Use wikilinks in the sentence that explains a relationship. Never gather links into a list or
+trailing section — `Related`, `Connections`, `Sources`, `See also`, or an index of the page's
+own views — even when each entry is described. A view is reached from the passage whose
+material it continues.
 
 Link the first mention of every canonical subject on a page, whatever form that mention takes;
 later mentions remain plain for readable prose. Link an entity's entry page, normally
@@ -219,8 +217,7 @@ in the same coherent change and then link it. If identity remains ambiguous, use
 
 Relationships are recorded from both relevant sides in prose that says what the connection
 is. An occurrence names its participants and their pages name the occurrence when it is
-material to them. An organization names the people the owner deals with there and those
-people name the organization. Peer links matter as much as links to hubs.
+material to them. Peer links matter as much as links to hubs.
 
 ## Referencing uploaded assets
 
@@ -266,9 +263,9 @@ identity or scope makes a safe choice impossible.
 
 Before reporting, check the completed write against the retained evidence: every resolved
 subject has one canonical home; every link target exists; material relationships are recorded
-from both relevant sides; qualifying developments appear on the applicable most-specific
-entity timelines; occurrence pages exist only when their local identity rule is met; and no
-diary entry was written while recording activity. Repair omissions before reporting.
+from both relevant sides; qualifying developments appear as timeline lines rather than dated
+prose on a semantic page; occurrence pages exist only when their local identity rule is met;
+and no diary entry was written while recording activity. Repair omissions before reporting.
 
 After writing, report every page created, materially updated, merged or archived and why.
 Highlight new entities so the owner can correct them. An unattended automation follows the

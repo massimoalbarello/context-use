@@ -155,8 +155,9 @@ describeDatabase("passkey-bound current knowledge exports", () => {
       title: "Export fixture",
       summary: "Knowledge used to test exports.",
     });
+    // The stored name follows the path leaf, so the export carries asset.pdf, not friendly.pdf.
     expect(snapshot.assets.find(({ id }) => id === asset.id)).toMatchObject({
-      filename: "friendly.pdf",
+      filename: "asset.pdf",
       current_path: `${fixtureRoot}/asset`,
     });
     expect(await exports.getIntent(intent.id)).toMatchObject({ download_started_at: expect.any(Date) });

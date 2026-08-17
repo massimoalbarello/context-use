@@ -154,6 +154,42 @@ bun run eval qa:score <amara-run-id>
 
 For a deliberately short distillation, add `--batches 1` or another requested count. Ask only questions due in the processed batches.
 
+### LongMemEval cases
+
+LongMemEval is the one family whose cost is measured in hours per question. Quote a duration before starting one, and never start a large selection to "see how it goes".
+
+The benchmark lives outside git. Fetch it once, then confirm the pin:
+
+```sh
+bun run eval longmem:fetch
+```
+
+```sh
+bun run eval longmem:verify
+```
+
+Each case is measured in isolation: the runner resets the stack and distills that case's entire session history — around 30 batches at roughly 10 to 20 minutes each — before asking its single question. Budget five to nine hours per case, and expect individual batches to vary widely, because batch cost follows what is in the sessions rather than their number.
+
+Selection decides the bill, and the two flags do not mean the same thing:
+
+- `--case <id>` runs one case, from `bun run eval longmem:list`. Prefer it for a smoke test.
+- `--limit <n>` takes the first `n` cases in dataset order. The head of the dataset is entirely `single-session-user`, so this samples one question type rather than the benchmark.
+- `--stratify <n>` takes `n` cases **per question type**. With six types, `--stratify 10` selects 60 cases, not 10. `--stratify 1` is the cheapest selection that still spans every type.
+
+```sh
+bun run eval longmem:run --case <case-id>
+```
+
+Score a finished run, naming a judge that is actually available:
+
+```sh
+bun run eval longmem:score <longmem-run-id> --judge-provider claude
+```
+
+`longmem:score` defaults to the `codex` judge, and the `openai` judge needs `OPENAI_API_KEY`. Report which judge produced a score, because only the OpenAI judge matches the pinned upstream evaluator.
+
+Read `result.json` for a case as soon as its question is answered rather than waiting for the run to end. A case that answers well can still be voided for the tools it used, and finding that out early saves the remaining cases.
+
 ## Run every eval family sequentially
 
 Use this order for a canonical local sweep. Complete every dependent step before starting the next state-preparing command.

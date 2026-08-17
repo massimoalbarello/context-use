@@ -17,7 +17,7 @@ import {
   LONGMEMEVAL_DATASET,
   LONGMEMEVAL_EVALUATOR,
 } from "../../data/longmemeval-v1/manifest.ts";
-import { MCP_NAME, ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
+import { ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { loadCorpus } from "../corpus/records.ts";
 import { runCorpusDistillation } from "../distill.ts";
 import { askQuestions } from "../qa/ask.ts";
@@ -93,35 +93,49 @@ function publicQuestion(entry: LongMemEvalCase): PublicQuery {
 }
 
 /**
- * The read-only knowledge tools, under their real server names.
- *
- * These were previously spelled `get_page`/`get_directory`, which no server has ever
- * exposed, and compared against Claude Code's fully-qualified `mcp__<server>__read_page`.
- * Every question voided on that harness while its answer was perfectly good. LoCoMo shares
- * this list; see `runner/locomo/runner.ts` for the harness-tool note.
+ * The knowledge server's read-only tools, by their current names. Answering may read the
+ * knowledge base and nothing else: mutations would rewrite what is being measured, and
+ * `read_source_records` would answer from the corpus instead of the pages built from it.
  */
 const LONGMEMEVAL_QA_READ_TOOLS = new Set([
   "browse_directory",
+  "compare_page_versions",
+  "list_assets",
+  "list_page_changes",
+  "list_page_versions",
+  "read_asset",
   "read_directory",
   "read_page",
   "read_page_version",
   "read_skill",
-  "read_asset",
-  "list_assets",
-  "list_page_changes",
-  "list_page_versions",
-  "compare_page_versions",
   "search_pages",
 ]);
 
-const HARNESS_TOOLS = new Set(["ToolSearch"]);
+/**
+ * Harness plumbing that reaches no knowledge and changes no state. Claude Code has to call
+ * `ToolSearch` to load a deferred MCP schema before it can call the tool at all, so counting
+ * it as a mutation voids every case on that harness.
+ */
+const LONGMEMEVAL_QA_HARNESS_TOOLS = new Set([
+  "ToolSearch",
+]);
+
+/**
+ * Providers report the same call under different names: Codex records the bare tool
+ * (`search_pages`), while Claude Code records it namespaced by server
+ * (`mcp__context_use_eval__search_pages`). Compare on the bare name so a run is judged by
+ * what it did, not by which harness ran it.
+ */
+function bareToolName(tool: string): string {
+  if (!tool.startsWith("mcp__")) return tool;
+  const segments = tool.split("__");
+  return segments[segments.length - 1] || tool;
+}
 
 function forbiddenQaTools(tools: string[]): string[] {
-  const prefix = `mcp__${MCP_NAME}__`;
   return tools.filter((tool) => {
-    if (HARNESS_TOOLS.has(tool)) return false;
-    const bare = tool.startsWith(prefix) ? tool.slice(prefix.length) : tool;
-    return !LONGMEMEVAL_QA_READ_TOOLS.has(bare);
+    const bare = bareToolName(tool);
+    return !LONGMEMEVAL_QA_READ_TOOLS.has(bare) && !LONGMEMEVAL_QA_HARNESS_TOOLS.has(bare);
   });
 }
 
@@ -182,6 +196,34 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
 
   const results: LongMemEvalCaseResult[] = [];
   const hypotheses: Array<{ question_id: string; hypothesis: string }> = [];
+
+  /**
+   * Written after every case, not just at the end. A case costs hours, and `longmem:score`
+   * reads `report.json`; leaving it to the final case means an interrupted run scores
+   * nothing at all, including the cases that did finish.
+   */
+  const persistRun = async (): Promise<string> => {
+    const report: LongMemEvalRunReport = {
+      runId,
+      benchmark: "longmemeval-v1",
+      dataset: LONGMEMEVAL_DATASET,
+      evaluator: LONGMEMEVAL_EVALUATOR,
+      provider: options.harness.provider,
+      model: options.harness.model ?? null,
+      sessionsPerBatch,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      cases: results,
+    };
+    await Bun.write(join(runDirectory, "hypotheses.jsonl"),
+      hypotheses.map((item) => JSON.stringify(item)).join("\n") + (hypotheses.length ? "\n" : ""));
+    await Bun.write(join(runDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
+    const path = join(runDirectory, "report.md");
+    await Bun.write(path, markdownReport(report));
+    await Bun.write(join(EVAL_LONGMEM_RESULTS_ROOT, "latest"), `${runId}\n`);
+    return path;
+  };
+
   for (const [index, entry] of cases.entries()) {
     console.log(style.heading(`\n\nCase ${index + 1}/${cases.length} · ${entry.questionId} · ${entry.questionType}`));
     const caseDirectory = join(runDirectory, `${String(index + 1).padStart(3, "0")}-${safeId(entry.questionId)}`);
@@ -228,6 +270,7 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
       };
       results.push(result);
       await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(publicCaseResult(result), null, 2)}\n`);
+      await persistRun();
       console.log(style.yellow(`Skipping QA: ${result.voidReason}`));
       continue;
     }
@@ -250,29 +293,13 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
       hypotheses.push({ question_id: entry.questionId, hypothesis: result.hypothesis });
     }
     await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(publicCaseResult(result), null, 2)}\n`);
+    await persistRun();
     console.log(result.voidReason
       ? style.yellow(`Void: ${result.voidReason}`)
       : style.green(`Answer: ${result.hypothesis?.split("\n")[0] ?? ""}`));
   }
 
-  const report: LongMemEvalRunReport = {
-    runId,
-    benchmark: "longmemeval-v1",
-    dataset: LONGMEMEVAL_DATASET,
-    evaluator: LONGMEMEVAL_EVALUATOR,
-    provider: options.harness.provider,
-    model: options.harness.model ?? null,
-    sessionsPerBatch,
-    startedAt,
-    completedAt: new Date().toISOString(),
-    cases: results,
-  };
-  await Bun.write(join(runDirectory, "hypotheses.jsonl"),
-    hypotheses.map((entry) => JSON.stringify(entry)).join("\n") + (hypotheses.length ? "\n" : ""));
-  await Bun.write(join(runDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-  const reportPath = join(runDirectory, "report.md");
-  await Bun.write(reportPath, markdownReport(report));
-  await Bun.write(join(EVAL_LONGMEM_RESULTS_ROOT, "latest"), `${runId}\n`);
+  const reportPath = await persistRun();
   console.log(style.green(`\n✓ LongMemEval run complete · ${hypotheses.length}/${results.length} cases answered`));
   console.log(`Report: ${style.blue(reportPath)}`);
   console.log(`Score:  ${style.blue(`bun run eval longmem:score ${runId}`)}`);

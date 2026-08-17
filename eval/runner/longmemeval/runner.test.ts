@@ -38,15 +38,44 @@ describe("LongMemEval run reporting", () => {
       toolsUsed: ["search_pages", "read_page"],
     });
     expect(publicResult).not.toHaveProperty("referenceAnswer");
-    // `get_page` used to be asserted here; no server has ever exposed it, and comparing
-    // bare names against Claude Code's qualified ones voided every case on that harness.
     expect(longMemEvalRunnerInternals.forbiddenQaTools(["search_pages", "read_page"])).toEqual([]);
-    expect(longMemEvalRunnerInternals.forbiddenQaTools([
-      "ToolSearch", "mcp__context_use_eval__search_pages", "mcp__context_use_eval__read_page",
-    ])).toEqual([]);
     expect(longMemEvalRunnerInternals.forbiddenQaTools([
       "read_source_records", "create_page", "command_execution", "web_search",
     ])).toEqual(["read_source_records", "create_page", "command_execution", "web_search"]);
+  });
+
+  test("judges a namespaced call by the tool, not by the harness that named it", () => {
+    // Codex records `search_pages`; Claude Code records the same call as
+    // `mcp__context_use_eval__search_pages`. Both are the same read.
+    expect(longMemEvalRunnerInternals.forbiddenQaTools([
+      "mcp__context_use_eval__search_pages",
+      "mcp__context_use_eval__read_page",
+      "mcp__context_use_eval__browse_directory",
+    ])).toEqual([]);
+    // A namespaced mutation is still a mutation.
+    expect(longMemEvalRunnerInternals.forbiddenQaTools([
+      "mcp__context_use_eval__update_page",
+      "mcp__context_use_eval__read_source_records",
+    ])).toEqual([
+      "mcp__context_use_eval__update_page",
+      "mcp__context_use_eval__read_source_records",
+    ]);
+  });
+
+  test("allows the schema-loading step Claude Code needs before any MCP call", () => {
+    expect(longMemEvalRunnerInternals.forbiddenQaTools([
+      "ToolSearch", "mcp__context_use_eval__search_pages",
+    ])).toEqual([]);
+    // Reaching outside the knowledge base still voids.
+    expect(longMemEvalRunnerInternals.forbiddenQaTools(["ToolSearch", "Bash"])).toEqual(["Bash"]);
+  });
+
+  test("accepts every read-only tool the knowledge server exposes", () => {
+    expect(longMemEvalRunnerInternals.forbiddenQaTools([
+      "browse_directory", "compare_page_versions", "list_assets", "list_page_changes",
+      "list_page_versions", "read_asset", "read_directory", "read_page",
+      "read_page_version", "read_skill", "search_pages",
+    ])).toEqual([]);
   });
 
   test("counts void cases against end-to-end accuracy without sending them to the judge", async () => {

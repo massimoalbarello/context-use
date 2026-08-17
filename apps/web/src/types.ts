@@ -41,6 +41,23 @@ export type Version = {
   created_at: string;
 };
 
+export type PageVersionDiff = {
+  page_id: string;
+  comparison: {
+    from_version: number | null;
+    to_version: number;
+  };
+  metadata_changes: Array<{
+    field: "path" | "title" | "summary";
+    before: string | null;
+    after: string;
+  }>;
+  markdown_changes: Array<{
+    before: string;
+    after: string;
+  }>;
+};
+
 export type KnowledgePageChange = {
   cursor: string;
   page_id: string;

@@ -15,9 +15,11 @@ One day lives at `about/diary/<YYYY>/<MM>/<DD>/`, zero-padded, and is entered th
 Give the intro a title that names the date and a summary derived from its finished account.
 
 Most days need only `intro`. Create a descriptively named companion page only when part of
-the day is independently worth reading or would interrupt the entry point. Introduce every
-companion view from `intro` in context, and link views directly when their material bears on
-one another. The day folder contains only its pages and assets.
+the day is independently worth reading or would interrupt the entry point. A companion holds
+the depth, never the fact that the activity happened: `intro` keeps the day's whole connected
+account and hands off mid-prose where the reader would want the fuller view. Link companions
+to each other where their material connects. The day folder contains only its pages and
+assets.
 
 There are no required sections, heading order, opening line, location, mood block or thread
 list. Let the day determine its prose and divisions.
@@ -40,8 +42,10 @@ figure, term, biography or piece of reasoning only when the day's transition or 
 cannot be understood without it.
 
 Several timeline events may be views of one activity; represent them once with all useful
-links. Activities sharing only a date remain separate. Use separate passages, headings or
-companion views rather than inventing cause, mood or a unifying theme.
+links. Activities sharing only a date remain separate, but where the evidence does connect
+them — a subject, question, person or piece of work recurring across the day — say what that
+connection is in the passage where it recurs. Use separate passages, headings or companion
+views rather than inventing cause, mood or a unifying theme.
 
 Include a thought, feeling or first-person position only when the owner actually expressed it.
 
