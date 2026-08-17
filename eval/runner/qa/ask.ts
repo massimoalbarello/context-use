@@ -1,5 +1,6 @@
 import {
   agentFinalAnswer,
+  agentToolCalls,
   agentToolsUsed,
   MCP_NAME,
   runAgentSession,
@@ -56,6 +57,7 @@ export async function askQuestions(options: AskOptions): Promise<RecordedAnswer[
   const { provider } = options.harness;
   for (const [index, question] of options.questions.entries()) {
     const id = `qa-${question.id}`;
+    const startedAt = Date.now();
     await runAgentSession({
       harness: options.harness,
       id,
@@ -66,6 +68,8 @@ export async function askQuestions(options: AskOptions): Promise<RecordedAnswer[
       id: question.id,
       text: agentFinalAnswer(options.runDirectory, id, provider),
       toolsUsed: agentToolsUsed(options.runDirectory, id, provider),
+      durationMs: Date.now() - startedAt,
+      toolCalls: agentToolCalls(options.runDirectory, id, provider),
     };
     recorded.push(answer);
     options.onAnswer?.(answer, index);

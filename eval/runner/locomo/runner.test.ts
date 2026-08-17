@@ -1,4 +1,8 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { agentToolCalls, agentToolsUsed } from "../agent.ts";
 import type { LocomoConversation, LocomoQuestion } from "../../data/locomo-v1/dataset.ts";
 import {
   askedLocomoQuestion,
@@ -164,6 +168,28 @@ describe("the current date handed to the agent", () => {
       questions: [],
     } as unknown as LocomoConversation;
     expect(asOfDate(conversation)).toBe("9:00 pm on 22 October, 2023");
+  });
+});
+
+describe("what a question cost", () => {
+  test("agentToolCalls counts repeats where agentToolsUsed only sees the set", () => {
+    const directory = mkdtempSync(join(tmpdir(), "locomo-calls-"));
+    const id = "qa-x";
+    writeFileSync(join(directory, `${id}-claude.jsonl`), [
+      JSON.stringify({ message: { content: [{ type: "tool_use", name: "mcp__context_use_eval__search_pages" }] } }),
+      JSON.stringify({ message: { content: [{ type: "tool_use", name: "mcp__context_use_eval__search_pages" }] } }),
+      JSON.stringify({ message: { content: [{ type: "tool_use", name: "mcp__context_use_eval__read_page" }] } }),
+    ].join("\n"));
+    expect(agentToolCalls(directory, id, "claude")).toEqual({
+      "mcp__context_use_eval__search_pages": 2,
+      "mcp__context_use_eval__read_page": 1,
+    });
+    // The set form cannot express that difference, which is why both exist.
+    expect(agentToolsUsed(directory, id, "claude")).toHaveLength(2);
+  });
+
+  test("returns nothing rather than throwing when a transcript is missing", () => {
+    expect(agentToolCalls(mkdtempSync(join(tmpdir(), "locomo-empty-")), "absent", "claude")).toEqual({});
   });
 });
 

@@ -402,6 +402,48 @@ export async function runAgentSession(session: AgentSession): Promise<void> {
 }
 
 /** Every provider action a session called, read back from its own transcript. */
+/**
+ * How many times the session called each tool, rather than merely which ones it called.
+ *
+ * `agentToolsUsed` answers the isolation question — did anything forbidden happen — and a
+ * set is the right shape for that. This answers the cost question: two `search_pages` and
+ * six `read_page` is a different retrieval behaviour from six and two, and a set cannot
+ * tell them apart.
+ */
+export function agentToolCalls(
+  runDirectory: string,
+  id: string,
+  provider: EvalProvider,
+): Record<string, number> {
+  const path = join(runDirectory, `${id}-${provider}.jsonl`);
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return {};
+  }
+  const counts: Record<string, number> = {};
+  const add = (tool: string): void => {
+    counts[tool] = (counts[tool] ?? 0) + 1;
+  };
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const event = JSON.parse(line) as {
+        item?: { type?: string; tool?: string };
+        message?: { content?: Array<{ type?: string; name?: string }> };
+      };
+      if (event.item?.type === "mcp_tool_call" && event.item.tool) add(event.item.tool);
+      for (const block of event.message?.content ?? []) {
+        if (block.type === "tool_use") add(block.name ?? "tool_use");
+      }
+    } catch {
+      continue;
+    }
+  }
+  return counts;
+}
+
 export function agentToolsUsed(runDirectory: string, id: string, provider: EvalProvider): string[] {
   const path = join(runDirectory, `${id}-${provider}.jsonl`);
   let raw: string;

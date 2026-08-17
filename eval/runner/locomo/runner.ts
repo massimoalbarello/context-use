@@ -71,6 +71,10 @@ export type LocomoQuestionResult = {
   askedAs: string;
   hypothesis?: string | undefined;
   toolsUsed?: string[] | undefined;
+  /** Wall time this one question took, for the cost half of the picture. */
+  durationMs?: number | undefined;
+  /** Calls per tool, e.g. `{ search_pages: 2, read_page: 1 }`. */
+  toolCalls?: Record<string, number> | undefined;
   voidReason?: string | undefined;
 };
 
@@ -353,7 +357,12 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
       },
       onAnswer: (answer, position) => {
         const line = answer.text.split("\n")[0] ?? "";
-        console.log(style.dim(`  ${position + 1}/${asked.length} ${answer.id}`) + `  ${line.slice(0, 80)}`);
+        const calls = Object.values(answer.toolCalls ?? {}).reduce((total, n) => total + n, 0);
+        const seconds = answer.durationMs === undefined ? "" : `${(answer.durationMs / 1000).toFixed(1)}s`;
+        console.log(
+          style.dim(`  ${position + 1}/${asked.length} ${answer.id} ${seconds} ${calls} calls`)
+          + `  ${line.slice(0, 70)}`,
+        );
       },
     });
 
@@ -369,8 +378,19 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
         askedAs: entry.text,
       };
       if (forbidden.length) {
-        return { ...shared, voidReason: `QA used non-knowledge or mutating tool action(s): ${forbidden.join(", ")}` };
+        return {
+          ...shared,
+          ...{
+            ...(answer.durationMs !== undefined ? { durationMs: answer.durationMs } : {}),
+            ...(answer.toolCalls !== undefined ? { toolCalls: answer.toolCalls } : {}),
+          },
+          voidReason: `QA used non-knowledge or mutating tool action(s): ${forbidden.join(", ")}`,
+        };
       }
+      const cost = {
+        ...(answer.durationMs !== undefined ? { durationMs: answer.durationMs } : {}),
+        ...(answer.toolCalls !== undefined ? { toolCalls: answer.toolCalls } : {}),
+      };
       const hypothesis = resolveLocomoAnswer(entry, answer.text);
       predictions.push({
         sample_id: conversation.sampleId,
@@ -379,7 +399,7 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
         question: entry.question.question,
         prediction: hypothesis,
       });
-      return { ...shared, hypothesis, toolsUsed: answer.toolsUsed };
+      return { ...shared, ...cost, hypothesis, toolsUsed: answer.toolsUsed };
     });
     results.push(base);
     await Bun.write(join(caseDirectory, "result.json"), `${JSON.stringify(base, null, 2)}\n`);
