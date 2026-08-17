@@ -1,6 +1,8 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ALL_STORIES, configOrigin, describeSelection, type EvalConfig } from "../config.ts";
+import { verifyLocomoDataset } from "../data/locomo-v1/dataset.ts";
+import { LOCOMO_DATASET, LOCOMO_DATASET_PATH } from "../data/locomo-v1/manifest.ts";
 import { verifyLongMemEvalDataset } from "../data/longmemeval-v1/dataset.ts";
 import { LONGMEMEVAL_DATASET, LONGMEMEVAL_DATASET_PATH } from "../data/longmemeval-v1/manifest.ts";
 import { steveJobsV1 } from "../data/steve-jobs-v1/suite.ts";
@@ -144,6 +146,23 @@ async function checkSelection(config: EvalConfig): Promise<Check> {
         label: "Story",
         detail: `${steveJobsV1.id} has no story called ${selection.story}.`,
         remedy: "bun run eval story:list",
+      };
+  }
+
+  if (selection.command === "locomo") {
+    // Same as LongMemEval: the dataset is fetched rather than vendored, so its presence is
+    // the one thing a run cannot start without.
+    return await verifyLocomoDataset()
+      ? {
+        outcome: "ok",
+        label: "Dataset",
+        detail: `locomo10.json matches the pinned size and SHA-256 · ${LOCOMO_DATASET.license}`,
+      }
+      : {
+        outcome: "fail",
+        label: "Dataset",
+        detail: `${LOCOMO_DATASET_PATH} is missing or does not match the pinned dataset.`,
+        remedy: "bun run eval locomo:fetch",
       };
   }
 

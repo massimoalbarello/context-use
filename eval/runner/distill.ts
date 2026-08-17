@@ -127,6 +127,9 @@ export type BatchResult = {
   attempts: number;
 };
 
+/** Provider capacity errors clear on their own; give them room before the next attempt. */
+const SESSION_RETRY_PAUSE_MS = 30_000;
+
 const STATE_PATH = "automations/activity-distiller/state";
 
 /** The opaque checkpoint the automation persisted, which is the only honest signal here. */
@@ -303,12 +306,27 @@ export async function runCorpusDistillation(
           `\n  Retrying ${batch} (${attempt}/${maxAttemptsPerBatch}) from its last persisted checkpoint…`,
         ));
       }
-      await runAgentSession({
-        harness: options.harness,
-        id: `batch-${batch}${attempt > 1 ? `-attempt-${attempt}` : ""}`,
-        prompt: triggerPrompt(),
-        runDirectory,
-      });
+      try {
+        await runAgentSession({
+          harness: options.harness,
+          id: `batch-${batch}${attempt > 1 ? `-attempt-${attempt}` : ""}`,
+          prompt: triggerPrompt(),
+          runDirectory,
+        });
+      } catch (error) {
+        // A crashed session is a failed attempt, not a failed run. This loop already
+        // retries a session that finished without draining its batch; a provider `529
+        // Overloaded` is the same situation arriving louder, and letting it escape cost a
+        // four-hour run its first three completed batches.
+        if (attempt >= maxAttemptsPerBatch) throw error;
+        const message = (error as Error).message.split("\n")[0] ?? "the session failed";
+        console.log(style.yellow(`\n  ${batch} attempt ${attempt} failed: ${message}`));
+        // Back off before retrying, since the usual cause is provider capacity.
+        const pause = SESSION_RETRY_PAUSE_MS * attempt;
+        console.log(style.dim(`  waiting ${(pause / 1000).toFixed(0)}s before the next attempt…`));
+        await new Promise((resolve) => setTimeout(resolve, pause));
+        continue;
+      }
 
       let pages = snapshotKnowledge();
       if (options.persistExactBatchCheckpoint && stateCheckpointWasPersisted(previous, pages)) {

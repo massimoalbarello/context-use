@@ -10,6 +10,7 @@ coverage/
 .eval-results/
 /eval/results/
 /.eval-data/
+/eval/exports/
 # A local choice of harness, model or eval, which never belongs in a commit.
 /eval/config.local.json
 .terraform/

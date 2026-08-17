@@ -23,6 +23,14 @@ import {
   verifyLongMemEval,
 } from "../eval/cli/longmemeval.ts";
 import type { LongMemEvalJudgeProvider } from "../eval/runner/longmemeval/judge.ts";
+import {
+  fetchLocomo,
+  listLocomo,
+  runLocomoCommand,
+  scoreLocomoCommand,
+  verifyLocomo,
+} from "../eval/cli/locomo.ts";
+import type { LocomoJudgeProvider } from "../eval/runner/locomo/judge.ts";
 
 function usage(): never {
   console.error(`Usage:
@@ -48,6 +56,19 @@ function usage(): never {
                             [--provider <codex|claude>] [--model <id>] [--dataset-path <path>]
                             [--sessions-per-batch <n>]
   bun run eval longmem:score [run-id] [--judge-provider <codex|claude|openai>]
+  bun run eval locomo:fetch [--dataset-path <path>]
+  bun run eval locomo:verify [--dataset-path <path>]
+  bun run eval locomo:list [--dataset-path <path>]
+  bun run eval locomo:run (--conversation <id> | --limit <n> | --all)
+                          [--questions <n> | --stratify <n>]
+                          [--provider <codex|claude>] [--model <id>] [--dataset-path <path>]
+                          [--sessions-per-batch <n>]
+  bun run eval locomo:score [run-id] [--judge-provider <codex|claude|openai>]
+
+LoCoMo asks every question of one conversation against one knowledge base, so its
+selectors come in pairs: one picks the conversations to distill, the other narrows the
+questions asked of each. Scoring is deterministic and needs no key; --judge-provider adds
+this repository's LLM judge as a third, separately reported number.
 
 longmem:run selection, and what it costs. Every case is measured in isolation: it resets the
 stack and distills that case's whole session history before asking its one question, so a
@@ -117,6 +138,14 @@ function harnessFrom(args: string[]): EvalHarness {
 
 function longMemJudgeProviderFrom(args: string[]): LongMemEvalJudgeProvider {
   const value = optionFrom(args, "judge-provider") ?? "codex";
+  if (value !== "codex" && value !== "claude" && value !== "openai") usage();
+  return value;
+}
+
+/** Undefined unless asked for: LoCoMo's default scoring is deterministic and key-free. */
+function locomoJudgeProviderFrom(args: string[]): LocomoJudgeProvider | undefined {
+  const value = optionFrom(args, "judge-provider");
+  if (value === undefined) return undefined;
   if (value !== "codex" && value !== "claude" && value !== "openai") usage();
   return value;
 }
@@ -240,6 +269,25 @@ if (command === "check") {
   });
 } else if (command === "longmem:score") {
   await scoreLongMemEvalCommand(positional(args), longMemJudgeProviderFrom(args));
+} else if (command === "locomo:fetch") {
+  await fetchLocomo(optionFrom(args, "dataset-path"));
+} else if (command === "locomo:verify") {
+  await verifyLocomo(optionFrom(args, "dataset-path"));
+} else if (command === "locomo:list") {
+  await listLocomo(optionFrom(args, "dataset-path"));
+} else if (command === "locomo:run") {
+  await runLocomoCommand({
+    harness: harnessFrom(args),
+    datasetPath: optionFrom(args, "dataset-path"),
+    conversationId: optionFrom(args, "conversation"),
+    limit: countFrom(args, "limit"),
+    all: args.includes("--all"),
+    questions: countFrom(args, "questions"),
+    stratify: countFrom(args, "stratify"),
+    sessionsPerBatch: countFrom(args, "sessions-per-batch"),
+  });
+} else if (command === "locomo:score") {
+  await scoreLocomoCommand(positional(args), locomoJudgeProviderFrom(args));
 } else {
   usage();
 }

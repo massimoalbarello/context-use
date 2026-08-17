@@ -20,6 +20,10 @@ export type RecordedAnswer = {
   text: string;
   /** Tools the session called, so a run that bypassed the knowledge base can be voided. */
   toolsUsed: string[];
+  /** Wall time the session took. Optional: only the benchmarks that report cost record it. */
+  durationMs?: number;
+  /** How many times each tool was called, for the same reason. */
+  toolCalls?: Record<string, number>;
 };
 
 export type Verdict = "correct" | "partial" | "wrong" | "void";

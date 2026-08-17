@@ -1,14 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { assembleCorpus, type Corpus } from "../../runner/corpus/types.ts";
+import {
+  assembleCorpus,
+  CONVERSATION_WORKING_SET_BYTE_BUDGET,
+  type Corpus,
+} from "../../runner/corpus/types.ts";
 import type { LongMemEvalCase } from "./dataset.ts";
 
 export const LONGMEMEVAL_CASE_FILE = "longmemeval-case.json";
-// Large model-generated conversations can overflow an agent's MCP transcript when several
-// are returned together. This is both the materialized batch ceiling and the reader's
-// working-set ceiling, so a normal batch completes in one source read.
-export const LONGMEMEVAL_WORKING_SET_BYTE_BUDGET = 24_000;
 
 const publicCaseSchema = z.object({
   schema_version: z.literal(1),
@@ -66,7 +66,7 @@ export function publicLongMemEvalCase(
     }), "utf8") + 1;
     if (batchSessions > 0 && (
       batchSessions >= sessionsPerBatch
-      || batchBytes + sourceBytes > LONGMEMEVAL_WORKING_SET_BYTE_BUDGET
+      || batchBytes + sourceBytes > CONVERSATION_WORKING_SET_BYTE_BUDGET
     )) {
       batchIndex += 1;
       batchSessions = 0;
