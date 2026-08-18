@@ -29,6 +29,7 @@ import {
   runLocomoCommand,
   scoreLocomoCommand,
   verifyLocomo,
+  viewLocomoCommand,
 } from "../eval/cli/locomo.ts";
 import type { LocomoJudgeProvider } from "../eval/runner/locomo/judge.ts";
 
@@ -64,6 +65,7 @@ function usage(): never {
                           [--provider <codex|claude>] [--model <id>] [--dataset-path <path>]
                           [--sessions-per-batch <n>]
   bun run eval locomo:score [run-id] [--judge-provider <codex|claude|openai>]
+  bun run eval locomo:view [run-id] [--out <path.html>]   every question, answer and cost
 
 LoCoMo asks every question of one conversation against one knowledge base, so its
 selectors come in pairs: one picks the conversations to distill, the other narrows the
@@ -288,6 +290,8 @@ if (command === "check") {
   });
 } else if (command === "locomo:score") {
   await scoreLocomoCommand(positional(args), locomoJudgeProviderFrom(args));
+} else if (command === "locomo:view") {
+  viewLocomoCommand(positional(args), optionFrom(args, "out"));
 } else {
   usage();
 }

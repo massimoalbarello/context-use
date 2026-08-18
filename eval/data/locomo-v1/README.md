@@ -166,6 +166,22 @@ That needs `nltk` and `rouge-score`. A stemmer that differs from NLTK's by one w
 every F1 that word appears in, silently, so this is the difference between a port and a
 guess.
 
+## Reading a run back
+
+```sh
+bun run eval locomo:view [run-id] [--out path.html]
+```
+
+Writes every question beside its answer, the reference it was scored against, both
+deterministic scores, the judge verdict where one exists, and what the answer cost in
+seconds and tool calls. Reference answers come from the pinned dataset rather than from the
+run, since no run artifact carries them — which is also why the page is written locally and
+not published: LoCoMo is CC BY-NC and the page contains its gold.
+
+Adversarial rows show the expected behaviour as *decline*, with the unsupported claim below
+it. That distinction is easy to lose: category 5's reference field holds the tempting wrong
+answer, so printing it under "expected" makes every correct refusal look like a miss.
+
 ## Deliberate departures, all of them recorded
 
 | | upstream | here | why |

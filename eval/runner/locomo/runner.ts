@@ -149,6 +149,20 @@ const LOCOMO_QA_READ_TOOLS = new Set([
 const HARNESS_TOOLS = new Set(["ToolSearch"]);
 
 /**
+ * A namespaced tool name that arrived without its tool: `mcp__context_use_eval` with no
+ * suffix.
+ *
+ * Claude Code truncated one mid-emission during a run and immediately retried the same call
+ * correctly. Every tool this server exposes needs a suffix to name it at all, so a bare
+ * prefix cannot have executed and cannot have mutated anything — but it matched no
+ * allow-list entry either, so it voided an otherwise perfect answer. One question in 196
+ * here; a LongMemEval case is one question, so there it would void the whole case.
+ */
+function isTruncatedToolName(tool: string): boolean {
+  return tool === `mcp__${MCP_NAME}` || tool === `mcp__${MCP_NAME}__`;
+}
+
+/**
  * Claude Code reports MCP tools fully qualified (`mcp__<server>__read_page`) while Codex
  * reports the bare name. Compare on the bare name so one allowlist covers both harnesses.
  */
@@ -159,7 +173,7 @@ export function bareToolName(tool: string): string {
 
 export function forbiddenQaTools(tools: string[]): string[] {
   return tools.filter((tool) => {
-    if (HARNESS_TOOLS.has(tool)) return false;
+    if (HARNESS_TOOLS.has(tool) || isTruncatedToolName(tool)) return false;
     return !LOCOMO_QA_READ_TOOLS.has(bareToolName(tool));
   });
 }
@@ -449,6 +463,10 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
   console.log(`Report: ${style.blue(reportPath)}`);
   console.log(`Score:  ${style.blue(`bun run eval locomo:score ${runId}`)}`);
   return reportPath;
+}
+
+export function resolveLocomoRun(runId?: string): string {
+  return resolveRun(runId);
 }
 
 function resolveRun(runId?: string): string {

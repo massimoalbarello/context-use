@@ -17,7 +17,7 @@ import {
   LONGMEMEVAL_DATASET,
   LONGMEMEVAL_EVALUATOR,
 } from "../../data/longmemeval-v1/manifest.ts";
-import { ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
+import { MCP_NAME, ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { loadCorpus } from "../corpus/records.ts";
 import { runCorpusDistillation } from "../distill.ts";
 import { askQuestions } from "../qa/ask.ts";
@@ -121,6 +121,20 @@ const LONGMEMEVAL_QA_HARNESS_TOOLS = new Set([
 ]);
 
 /**
+ * A namespaced tool name that arrived without its tool: `mcp__context_use_eval` with no
+ * suffix.
+ *
+ * Claude Code truncated one mid-emission during a run and immediately retried the same call
+ * correctly. Every tool this server exposes needs a suffix to name it at all, so a bare
+ * prefix cannot have executed and cannot have mutated anything — but it matched no
+ * allow-list entry either, so it voided an otherwise perfect answer. One question in 196
+ * here; a LongMemEval case is one question, so there it would void the whole case.
+ */
+function isTruncatedToolName(tool: string): boolean {
+  return tool === `mcp__${MCP_NAME}` || tool === `mcp__${MCP_NAME}__`;
+}
+
+/**
  * Providers report the same call under different names: Codex records the bare tool
  * (`search_pages`), while Claude Code records it namespaced by server
  * (`mcp__context_use_eval__search_pages`). Compare on the bare name so a run is judged by
@@ -134,6 +148,7 @@ function bareToolName(tool: string): string {
 
 function forbiddenQaTools(tools: string[]): string[] {
   return tools.filter((tool) => {
+    if (isTruncatedToolName(tool)) return false;
     const bare = bareToolName(tool);
     return !LONGMEMEVAL_QA_READ_TOOLS.has(bare) && !LONGMEMEVAL_QA_HARNESS_TOOLS.has(bare);
   });
