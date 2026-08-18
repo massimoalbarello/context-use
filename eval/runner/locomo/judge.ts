@@ -30,11 +30,28 @@ export const LOCOMO_OPENAI_JUDGE_MODEL = "gpt-4o-2024-08-06";
 export type LocomoJudgeProvider = EvalProvider | "openai";
 
 export type LocomoJudgement = {
+  /**
+   * 0 to 1. Binary for every category but multi-hop, where it is the fraction of the
+   * required facts the response contains.
+   *
+   * Multi-hop answers are lists, and LoCoMo's own scorer splits them and credits each part
+   * separately. An all-or-nothing judge scored zero for five facts out of six while the
+   * official metric gave 0.83 — a stricter bar than the benchmark sets, invented here
+   * rather than inherited, and it made a category look twice as bad as it is.
+   */
+  score: number;
+  /** Whether the response was fully correct, which is `score === 1`. */
   correct: boolean;
   response: string;
   model: string;
   provider: LocomoJudgeProvider;
 };
+
+/** The comma-separated facts a multi-hop answer has to contain, as its scorer splits them. */
+export function multiHopParts(reference: string): string[] {
+  const parts = reference.split(",").map((part) => part.trim()).filter(Boolean);
+  return parts.length ? parts : [reference.trim()];
+}
 
 export type JudgedLocomoAnswer = {
   category: LocomoCategory;
@@ -48,7 +65,9 @@ export function locomoJudgePrompt(entry: JudgedLocomoAnswer, hypothesis: string)
   }
   const reference = officialReference(entry.referenceAnswer, entry.category);
   if (entry.category === 1) {
-    return `I will give you a question, a correct answer that has several parts, and a response from a model. Please answer yes if the response contains every part of the correct answer. If it contains only some of the parts, answer no. Extra correct detail does not make the response wrong.\n\nQuestion: ${entry.question}\n\nCorrect Answer: ${reference}\n\nModel Response: ${hypothesis}\n\nIs the model response correct? Answer yes or no only.`;
+    const parts = multiHopParts(reference);
+    const numbered = parts.map((part, index) => `${index + 1}. ${part}`).join("\n");
+    return `I will give you a question, a list of ${parts.length} fact(s) a correct answer must contain, and a response from a model. Count how many of the listed facts the response contains. A fact counts if the response states it in any wording. Extra detail beyond the list is neither required nor penalised.\n\nQuestion: ${entry.question}\n\nRequired facts:\n${numbered}\n\nModel Response: ${hypothesis}\n\nHow many of the ${parts.length} required facts does the response contain? Answer with a single number and nothing else.`;
   }
   if (entry.category === 2) {
     return `I will give you a question about when something happened, a correct answer, and a response from a model. Please answer yes if the response gives the same date as the correct answer. The benchmark asks for an approximate date, so do not penalize a different wording of the same day, and do not penalize an off-by-one error in a number of days, weeks or months.\n\nQuestion: ${entry.question}\n\nCorrect Answer: ${reference}\n\nModel Response: ${hypothesis}\n\nIs the model response correct? Answer yes or no only.`;
@@ -66,10 +85,29 @@ function judgement(
   response: string,
   provider: LocomoJudgeProvider,
   model: string,
+  entry: JudgedLocomoAnswer,
 ): LocomoJudgement {
-  // The same label rule LongMemEval's evaluator uses, so the two benchmarks' judge
-  // outputs are read the same way.
-  return { correct: response.toLowerCase().includes("yes"), response, model, provider };
+  const score = entry.category === 1
+    ? multiHopScore(response, multiHopParts(officialReference(entry.referenceAnswer, 1)).length)
+    // The same label rule LongMemEval's evaluator uses, so the two benchmarks' judge
+    // outputs are read the same way.
+    : (response.toLowerCase().includes("yes") ? 1 : 0);
+  return { score, correct: score === 1, response, model, provider };
+}
+
+/**
+ * Reads the count a multi-hop judgement returns.
+ *
+ * A reply that carries no number at all scores zero rather than throwing: the judge failing
+ * to answer is a failed judgement, and silently reading it as full marks would be worse than
+ * reading it as none.
+ */
+export function multiHopScore(response: string, required: number): number {
+  if (required <= 0) return 0;
+  const found = /-?\d+/.exec(response);
+  if (!found) return 0;
+  const count = Math.min(Math.max(Number(found[0]), 0), required);
+  return count / required;
 }
 
 export async function judgeLocomoAnswer(
@@ -112,6 +150,7 @@ export async function judgeLocomoAnswer(
         completion.choices[0]!.message.content.trim(),
         "openai",
         LOCOMO_OPENAI_JUDGE_MODEL,
+        entry,
       );
     } catch (error) {
       lastError = error;
@@ -159,5 +198,5 @@ export async function judgeLocomoAnswerWithHarness(
     options.provider,
   ).trim();
   if (!response) throw new Error("LoCoMo harness judge returned no answer");
-  return judgement(response, options.provider, `${options.provider}-subscription`);
+  return judgement(response, options.provider, `${options.provider}-subscription`, entry);
 }

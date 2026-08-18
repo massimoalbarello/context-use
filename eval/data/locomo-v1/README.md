@@ -139,7 +139,12 @@ answer the two differ by a wide margin, so reporting one as the other would be w
 way nobody could see from the number alone.
 
 **The LLM judge** is optional, off by default, and is this repository's rubric — LoCoMo
-defines no official judge. It is here because both deterministic metrics measure answer
+defines no official judge. It returns a score from 0 to 1: binary for four categories, and
+for multi-hop the fraction of the required facts the answer contains, because LoCoMo's own
+scorer splits those answers on commas and credits each part. An earlier all-or-nothing
+version scored zero for five facts out of six where the official metric gave 0.83, which
+made the category read as twice as weak as it is — a stricter bar than the benchmark sets,
+invented here rather than inherited. It is here because both deterministic metrics measure answer
 *shape* as much as answer *content*: `"The charity race raised awareness for mental
 health."` against a gold `"mental health"` scores 0.44 official F1 and would be judged
 correct. Without it, a retrieval failure and a verbosity penalty look identical. Scoring

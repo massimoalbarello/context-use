@@ -11,7 +11,7 @@ import {
   NOT_MENTIONED,
   resolveLocomoAnswer,
 } from "./ask.ts";
-import { locomoJudgePrompt } from "./judge.ts";
+import { locomoJudgePrompt, multiHopParts, multiHopScore } from "./judge.ts";
 import { EMPTY_AMEM_METRICS } from "./metrics.ts";
 import { asOfDate, bareToolName, forbiddenQaTools, locomoRunnerInternals } from "./runner.ts";
 
@@ -239,11 +239,35 @@ describe("the judge prompt", () => {
     expect(prompt).not.toContain("social work");
   });
 
-  test("requires every part of a multi-hop answer", () => {
+  /**
+   * LoCoMo splits a multi-hop answer on commas and credits each part, so the judge asks how
+   * many are present rather than demanding all of them. Requiring all of them scored zero
+   * for five facts out of six where the official metric gave 0.83.
+   */
+  test("asks how many multi-hop facts are present, not whether all are", () => {
     const prompt = locomoJudgePrompt(
       { category: 1, question: "What did she research?", referenceAnswer: "adoption agencies, foster care" },
       "adoption agencies",
     );
-    expect(prompt).toContain("every part");
+    expect(prompt).toContain("1. adoption agencies");
+    expect(prompt).toContain("2. foster care");
+    expect(prompt).toContain("single number");
+    expect(prompt).not.toContain("every part");
+  });
+
+  test("splits a multi-hop reference the way the official scorer does", () => {
+    expect(multiHopParts("adoption agencies, foster care")).toEqual(["adoption agencies", "foster care"]);
+    // A single-fact answer is still one part rather than none.
+    expect(multiHopParts("mental health")).toEqual(["mental health"]);
+  });
+
+  test("reads the count back as a fraction of the required facts", () => {
+    expect(multiHopScore("5", 6)).toBeCloseTo(5 / 6, 10);
+    expect(multiHopScore("6", 6)).toBe(1);
+    expect(multiHopScore("0", 6)).toBe(0);
+    // Out-of-range and unparseable replies cannot inflate a score.
+    expect(multiHopScore("9", 6)).toBe(1);
+    expect(multiHopScore("-2", 6)).toBe(0);
+    expect(multiHopScore("I could not tell", 6)).toBe(0);
   });
 });
