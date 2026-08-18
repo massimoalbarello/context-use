@@ -489,7 +489,7 @@ export type LocomoCategoryScore = {
   /** Official LoCoMo F1, averaged over every selected question of this category. */
   officialF1: number;
   amem: AmemMetrics;
-  judged?: { correct: number; scored: number; accuracy: number };
+  judged?: { correct: number; scored: number; accuracy: number; score: number };
 };
 
 export type LocomoScore = {
@@ -511,8 +511,13 @@ export type LocomoScore = {
     model: string;
     correct: number;
     scored: number;
-    /** Void questions in the denominator, matching `officialF1`. */
+    /** Fraction judged fully correct, void questions in the denominator. */
     accuracy: number;
+    /**
+     * Mean judged score, which is the number comparable to `officialF1`: multi-hop earns
+     * partial credit per required fact, exactly as the official scorer does.
+     */
+    score: number;
   };
   byCategory: LocomoCategoryScore[];
   questions: Array<{
@@ -522,6 +527,8 @@ export type LocomoScore = {
     officialF1?: number;
     amem?: AmemMetrics;
     judgeCorrect?: boolean;
+    /** 0 to 1: partial for multi-hop, binary elsewhere. */
+    judgeScore?: number;
     judgeResponse?: string;
     voidReason?: string;
   }>;
@@ -606,6 +613,7 @@ export async function scoreLocomo(
             );
         judgements.push(judged);
         scored.judgeCorrect = judged.correct;
+        scored.judgeScore = judged.score;
         scored.judgeResponse = judged.response;
       }
       questions.push(scored);
@@ -632,7 +640,16 @@ export async function scoreLocomo(
       void: all.length - scoredHere.length,
       officialF1: sum(scoredHere.map((entry) => entry.officialF1!)) / all.length,
       amem: scaleAmem(meanAmemMetrics(scoredHere.map((entry) => entry.amem!)), scoredHere.length, all.length),
-      ...(judgedHere.length ? { judged: { correct: correctHere, scored: judgedHere.length, accuracy: correctHere / all.length } } : {}),
+      ...(judgedHere.length
+        ? {
+          judged: {
+            correct: correctHere,
+            scored: judgedHere.length,
+            accuracy: correctHere / all.length,
+            score: sum(judgedHere.map((entry) => entry.judgeScore ?? 0)) / all.length,
+          },
+        }
+        : {}),
     }];
   });
 
@@ -659,6 +676,9 @@ export async function scoreLocomo(
           correct: judgeCorrect,
           scored: judged.length,
           accuracy: questions.length ? judgeCorrect / questions.length : 0,
+          score: questions.length
+            ? sum(judged.map((entry) => entry.judgeScore ?? 0)) / questions.length
+            : 0,
         },
       }
       : {}),
@@ -700,12 +720,12 @@ function printLocomoScore(score: LocomoScore): void {
   console.log(`A-mem F1 / BLEU-1:   ${percent(score.amem.f1)} / ${percent(score.amem.bleu1)}   ${
     style.dim("A-mem's own metric, not the official one")}`);
   if (score.judge) {
-    console.log(`Judge accuracy:      ${percent(score.judge.accuracy)}   ${
-      style.dim(`${score.judge.model} · this repository's rubric, not an official LoCoMo metric`)}`);
+    console.log(`Judge score:         ${percent(score.judge.score)}   ${
+      style.dim(`${percent(score.judge.accuracy)} fully correct · ${score.judge.model} · this repository's rubric`)}`);
   }
   console.log("");
   for (const entry of score.byCategory) {
-    const judgeColumn = entry.judged ? `  judge ${percent(entry.judged.accuracy)}` : "";
+    const judgeColumn = entry.judged ? `  judge ${percent(entry.judged.score)}` : "";
     console.log(`  ${String(entry.category)} ${entry.name.padEnd(12)} n=${
       String(entry.total).padStart(4)}  official F1 ${percent(entry.officialF1).padStart(6)}  A-mem F1 ${
       percent(entry.amem.f1).padStart(6)}  BLEU-1 ${percent(entry.amem.bleu1).padStart(6)}${judgeColumn}`);
