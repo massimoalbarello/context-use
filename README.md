@@ -50,6 +50,17 @@ Follow the prompts for your AWS profile, region, hostname, DNS, and owner email.
 deploys the application, configures TLS, and gives you a one-time owner setup link. Manage the
 installation later with `context-use status`, `context-use update`, and `context-use doctor`.
 
+Choose a different supported x86-64 instance type during setup, or resize an existing deployment:
+
+```sh
+~/.local/bin/context-use setup --instance-type t3a.medium
+~/.local/bin/context-use resize --instance-type t3a.medium
+```
+
+Resizing can recreate the disposable EC2 instance and root disk, causing several minutes of downtime,
+but it retains and reattaches the encrypted data volume before redeploying the runtime. Context Use
+requires at least 2 vCPU and 4 GiB RAM.
+
 To run it on your own machine instead, see [Development](docs/development.md).
 
 ## Connect an agent

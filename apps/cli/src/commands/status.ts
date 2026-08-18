@@ -46,6 +46,7 @@ export const command = defineCommand("status", {
       url: `https://${config.hostname}/app`,
       nangoUrl: `https://${config.nangoHostname}`,
       nangoHealthy,
+      instanceType: config.instanceType,
       instance: compute?.instance_id,
       publicIp: compute?.public_ip,
       dataVolume: data?.data_volume_id,

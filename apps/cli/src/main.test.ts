@@ -48,6 +48,7 @@ test("root help lists the operational commands", async () => {
   expect(result.stderr).toBe("");
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toContain("setup");
+  expect(result.stdout).toContain("resize");
   expect(result.stdout).toContain("recover");
   expect(result.stdout).toContain("nango");
   expect(result.stdout).toContain("template");
@@ -56,7 +57,9 @@ test("root help lists the operational commands", async () => {
 });
 
 test("command help exposes only intentional sensitive or destructive options", async () => {
-  const [update, destroy, nango, nangoRestore, templatePlan, templateApply, agentSyncInstall] = await Promise.all([
+  const [setup, resize, update, destroy, nango, nangoRestore, templatePlan, templateApply, agentSyncInstall] = await Promise.all([
+    runCli("setup", "--help"),
+    runCli("resize", "--help"),
     runCli("update", "--help"),
     runCli("destroy", "--help"),
     runCli("nango", "--help"),
@@ -66,6 +69,10 @@ test("command help exposes only intentional sensitive or destructive options", a
     runCli("agent-sync", "install", "--help"),
   ]);
 
+  expect(setup.exitCode).toBe(0);
+  expect(setup.stdout).toContain("--instance-type");
+  expect(resize.exitCode).toBe(0);
+  expect(resize.stdout).toContain("--instance-type");
   expect(update.exitCode).toBe(0);
   expect(update.stdout).not.toContain("--version");
   expect(destroy.exitCode).toBe(0);

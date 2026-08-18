@@ -17,6 +17,7 @@ import type { command as nangoIntegrationsStatusCmd } from './commands/nango/int
 import type { command as nangoRestoreCmd } from './commands/nango/restore.ts';
 import type { command as openCmd } from './commands/open.ts';
 import type { command as recoverCmd } from './commands/recover.ts';
+import type { command as resizeCmd } from './commands/resize.ts';
 import type { command as restoreCmd } from './commands/restore.ts';
 import type { command as resumeCmd } from './commands/resume.ts';
 import type { command as rootCmd } from './commands/_root.ts';
@@ -112,6 +113,10 @@ declare module '@parshjs/core' {
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
     'recover': {
+      parents: {};
+      rootOptions: InferForwardedOptions<typeof rootCmd.options>;
+    };
+    'resize': {
       parents: {};
       rootOptions: InferForwardedOptions<typeof rootCmd.options>;
     };
@@ -258,6 +263,12 @@ export const commandTree: RuntimeNode = {
     'recover': {
       segment: { kind: 'literal', value: 'recover' },
       command: { path: 'recover', load: () => import('./commands/recover.ts').then((m) => m.command) },
+      literalChildren: {},
+      paramChild: null,
+    },
+    'resize': {
+      segment: { kind: 'literal', value: 'resize' },
+      command: { path: 'resize', load: () => import('./commands/resize.ts').then((m) => m.command) },
       literalChildren: {},
       paramChild: null,
     },
