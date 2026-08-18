@@ -7,7 +7,10 @@ import {
 } from "../data/locomo-v1/dataset.ts";
 import { LOCOMO_DATASET, LOCOMO_DATASET_PATH } from "../data/locomo-v1/manifest.ts";
 import type { LocomoJudgeProvider } from "../runner/locomo/judge.ts";
-import { runLocomo, scoreLocomo, type LocomoRunOptions } from "../runner/locomo/runner.ts";
+import { resolveLocomoRun, runLocomo, scoreLocomo, type LocomoRunOptions } from "../runner/locomo/runner.ts";
+import { renderLocomoView } from "../runner/locomo/view.ts";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { style } from "../runner/terminal.ts";
 
 export async function fetchLocomo(datasetPath?: string): Promise<void> {
@@ -58,4 +61,19 @@ export async function scoreLocomoCommand(
   judgeProvider?: LocomoJudgeProvider,
 ): Promise<void> {
   await scoreLocomo(runId, judgeProvider ? { judgeProvider } : {});
+}
+
+/**
+ * Writes a run as a reviewable page: every question beside its answer, the gold, both
+ * deterministic scores, the judge verdict where one exists, and what the answer cost.
+ *
+ * The page necessarily contains reference answers, which no run artifact does, so it is
+ * written wherever it is asked for rather than into the run directory — and LoCoMo is
+ * CC BY-NC, so it is a local file rather than anything published.
+ */
+export function viewLocomoCommand(runId?: string, output?: string): void {
+  const directory = resolveLocomoRun(runId);
+  const path = output ?? join(directory, "view.html");
+  writeFileSync(path, renderLocomoView(directory));
+  console.log(style.green(`✓ ${path}`));
 }

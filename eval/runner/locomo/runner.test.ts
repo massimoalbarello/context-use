@@ -137,6 +137,23 @@ describe("isolation", () => {
     ]);
   });
 
+  /**
+   * Observed in a real run: Claude Code emitted `mcp__context_use_eval` with the tool name
+   * missing, then immediately retried the same read correctly. The call never executed, so
+   * voiding a correct answer over it is wrong.
+   */
+  test("a namespaced name with no tool is a failed emission, not a violation", () => {
+    expect(forbiddenQaTools([
+      "mcp__context_use_eval__search_pages",
+      "mcp__context_use_eval",
+      "mcp__context_use_eval__read_page",
+    ])).toEqual([]);
+  });
+
+  test("a foreign server's bare prefix is still forbidden", () => {
+    expect(forbiddenQaTools(["mcp__other_server"])).toEqual(["mcp__other_server"]);
+  });
+
   test("bareToolName strips only this server's prefix", () => {
     expect(bareToolName("mcp__context_use_eval__read_page")).toBe("read_page");
     expect(bareToolName("read_page")).toBe("read_page");

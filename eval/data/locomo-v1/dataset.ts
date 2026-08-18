@@ -360,7 +360,17 @@ export async function downloadLocomoDataset(
     throw new Error(`LoCoMo download failed with HTTP ${response.status}`);
   }
   try {
-    await Bun.write(temporary, response);
+    // Streamed to disk chunk by chunk, matching LongMemEval's downloader. `Bun.write(path,
+    // response)` buffers the whole body first, which is survivable for 2.8 MB and is not for
+    // a larger pin; keeping both on one path means the next dataset does not rediscover it.
+    const sink = Bun.file(temporary).writer();
+    try {
+      for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+        sink.write(chunk);
+      }
+    } finally {
+      await sink.end();
+    }
     if (!await verifyLocomoDataset(temporary)) {
       throw new Error("Downloaded LoCoMo dataset does not match the pinned size and SHA-256");
     }
