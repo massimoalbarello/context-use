@@ -531,7 +531,7 @@ test("the pinned Docker address pools hold every compose network and exclude the
 });
 
 test("instance bootstrap, proxy limits, and TLS configuration contain the live-deployment fixes", async () => {
-  const [userData, deployScript, caddy, nangoPublicCaddy, nangoAuthCaddy, compute, update, setup, resume, data, deployCompose, backupScript, backupDockerfile, cliUpdate] = await Promise.all([
+  const [userData, deployScript, caddy, nangoPublicCaddy, nangoAuthCaddy, compute, update, setup, resize, resume, data, deployCompose, backupScript, backupDockerfile, cliUpdate] = await Promise.all([
     Bun.file(new URL("../../../infra/compute/user-data.sh.tftpl", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/deploy.sh", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/Caddyfile", import.meta.url)).text(),
@@ -540,6 +540,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
     Bun.file(new URL("../../../infra/compute/main.tf", import.meta.url)).text(),
     Bun.file(new URL("./commands/update.ts", import.meta.url)).text(),
     Bun.file(new URL("./setup.ts", import.meta.url)).text(),
+    Bun.file(new URL("./commands/resize.ts", import.meta.url)).text(),
     Bun.file(new URL("./commands/resume.ts", import.meta.url)).text(),
     Bun.file(new URL("../../../infra/data/main.tf", import.meta.url)).text(),
     Bun.file(new URL("../../../deploy/docker-compose.yml", import.meta.url)).text(),
@@ -956,7 +957,8 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(cliUpdate).not.toContain('"--version"');
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(setup.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(setup.indexOf("await pauseForManualDns(config, compute)"));
-  expect(setup).toContain('instanceType: "t3.large"');
+  expect(setup).toContain("options.instanceType ?? DEFAULT_INSTANCE_TYPE");
+  expect(setup).toContain("instanceType,");
   expect(setup.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(setup.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)"));
   expect(setup.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)")).toBeLessThan(setup.indexOf("await refreshNangoPipelineRuntime(config, compute)"));
   expect(setup).toContain("NANGO_OAUTH_CLIENT_ID");
@@ -964,6 +966,10 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(setup).toContain("NANGO_AUTH_COOKIE_SECRET");
   expect(setup).toContain("AUTH_NANGO_TOKEN");
   expect(setup).not.toContain("Nango dashboard credentials:");
+  expect(resize.indexOf("retainedDataVolumeExists(config")).toBeLessThan(resize.indexOf("await saveConfig(resizedConfig)"));
+  expect(resize.indexOf("await saveConfig(resizedConfig)")).toBeLessThan(resize.indexOf("await applyCompute(root, resizedConfig, data)"));
+  expect(resize.indexOf("await applyCompute(root, resizedConfig, data)")).toBeLessThan(resize.indexOf("await prepareCompute(resizedConfig, data, resizedCompute)"));
+  expect(resize.indexOf("await prepareCompute(resizedConfig, data, resizedCompute)")).toBeLessThan(resize.indexOf("await deploy(resizedConfig, resizedCompute, manifest)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await ensureRuntimeParameters(config, data, compute)"));
   expect(resume.indexOf("await prepareCompute(config, data, compute)")).toBeLessThan(resume.indexOf("await pauseForManualDns(config, compute)"));
   expect(resume.indexOf("await deploy(config, compute, manifest, { installTemplate: \"default\" })")).toBeLessThan(resume.indexOf("await ensureNangoApiKeys(config, data, compute.instance_id)"));

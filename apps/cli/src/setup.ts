@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { accountId, bootstrapStateBucket, generateSecret, getSecureParameter, getSecureParameterIfPresent, putSecureParameter } from "./aws.ts";
 import { deploy, manualDnsMismatches, prepareCompute, refreshNangoPipelineRuntime } from "./deploy.ts";
 import { ensureNangoApiKeys } from "./nango.ts";
+import { assertInstanceTypeSupported, DEFAULT_INSTANCE_TYPE } from "./instance-type.ts";
 import { configPath, isValidOwnerEmail, saveConfig } from "./paths.ts";
 import { commandExists } from "./process.ts";
 import { deploymentRoot, releaseManifest } from "./release.ts";
@@ -148,7 +149,7 @@ export async function pauseForManualDns(config: DeploymentConfig, compute: Compu
   return true;
 }
 
-export async function setup(): Promise<void> {
+export async function setup(options: { instanceType?: string } = {}): Promise<void> {
   p.intro("context-use · private knowledge infrastructure");
   if (await Bun.file(configPath).exists()) {
     throw new Error(`A deployment config already exists at ${configPath}. Use resume/status/destroy instead of overwriting it.`);
@@ -160,6 +161,8 @@ export async function setup(): Promise<void> {
   const awsRegion = required(await p.text({ message: "AWS region", defaultValue: "eu-west-2" }), "AWS region");
   const identity = await accountId(awsProfile, awsRegion);
   p.log.success(`Authenticated to AWS account ${identity}`);
+  const instanceType = options.instanceType ?? DEFAULT_INSTANCE_TYPE;
+  await assertInstanceTypeSupported({ awsProfile, awsRegion, availabilityZone: `${awsRegion}a` }, instanceType);
   const hostname = required(await p.text({ message: "Dashboard hostname", placeholder: "context.example.com", validate: (input) => validHostname(input) ? undefined : "Enter a valid lowercase hostname" }), "Hostname");
   const dnsMode = value(await p.select({ message: "DNS management", options: [{ value: "route53", label: "Route 53 (automatic)" }, { value: "manual", label: "Manual DNS" }] })) as "route53" | "manual";
   const route53ZoneId = dnsMode === "route53" ? required(await p.text({ message: "Route 53 hosted zone ID" }), "Route 53 zone ID") : "";
@@ -175,7 +178,7 @@ export async function setup(): Promise<void> {
     dnsMode,
     route53ZoneId,
     ownerEmail,
-    stateBucket: `context-use-${identity}-${awsRegion}-${createHash("sha256").update(hostname).digest("hex").slice(0, 10)}-tfstate`, instanceType: "t3.large",
+    stateBucket: `context-use-${identity}-${awsRegion}-${createHash("sha256").update(hostname).digest("hex").slice(0, 10)}-tfstate`, instanceType,
     dataVolumeSizeGb: 50, backupRetentionDays: 30,
   };
   await assertTerraformVersion(manifest);
