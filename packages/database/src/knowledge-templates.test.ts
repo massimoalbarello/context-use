@@ -914,12 +914,20 @@ describe("knowledge templates", () => {
     expect(normalize(guides.about)).toContain("durable high-level context needed to orient a reader");
     expect(normalize(guides.about)).not.toContain("what they are working on now");
     expect(normalize(guides.diary)).toContain("An entity or timeline change is a candidate, not a quota");
+    expect(normalize(guides.diary)).toContain(
+      "a selective account of the most important things the owner did, experienced, decided or learned that day",
+    );
+    expect(normalize(guides.diary)).toContain(
+      "Select across the day as a whole",
+    );
+    expect(normalize(guides.diary)).toContain("Explain known relationships among selected activities");
+    expect(normalize(guides.diary)).toContain("rather than inventing a connection");
+    expect(normalize(guides.diary)).toContain("condense or remove the composer's lower-significance passages");
+    expect(normalize(guides.diary)).not.toContain("media or library action");
+    expect(normalize(guides.diary)).not.toContain("missing captions");
     expect(normalize(guides.diary)).toContain("Repeated mention is not continuation");
     expect(normalize(guides.diary)).toContain(
       "hands off mid-prose where the reader would want the fuller view",
-    );
-    expect(normalize(guides.diary)).toContain(
-      "say what that connection is in the passage where it recurs",
     );
     expect(normalize(guides.diary)).toContain("Preserve every owner-written passage exactly");
     expect(guides.projects).toContain("about/projects/<slug>/");
@@ -1106,9 +1114,14 @@ describe("knowledge templates", () => {
       "`comparison.complete` is false",
       "`page_delta_unavailable`",
       "do not calculate another diff",
-      "`changed_at`, creation time, commit time and this run's date never choose a diary day",
+      "copy that activity date from its supporting changed fragment",
+      "assign it only to the matching `yyyy/mm/dd` day",
+      "the target path and date title must both match",
+      "without that date, mark no day as affected",
+      "`changed_at`, creation time, commit time and this run's date never supply or replace an activity date",
       "a one-word correction contributes only its corrected meaning",
       "there is no recency cutoff",
+      "historical activity newly received today still affects only its historical day",
       "`list_page_versions`",
       "`browse_directory`",
       "`search_pages`",
@@ -1123,6 +1136,8 @@ describe("knowledge templates", () => {
     }
     expect(diaryComposer).not.toContain("Write connective prose");
     expect(diaryComposer).not.toContain("Repeated mention is not continuation");
+    expect(normalizedComposer).not.toContain("missing captions");
+    expect(normalizedComposer).not.toContain("routine media or library action");
     expect(diaryComposer).not.toContain("automations/activity-distiller/");
     for (const runtimeInstructions of [activityDistiller, diaryComposer]) {
       expect(normalize(runtimeInstructions)).not.toContain("[[automations/agents|automation guide]]");

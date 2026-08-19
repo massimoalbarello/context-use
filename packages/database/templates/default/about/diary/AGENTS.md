@@ -26,26 +26,24 @@ list. Let the day determine its prose and divisions.
 
 ## What belongs in a day
 
-Include an activity when omitting it would hide something meaningful the owner did,
-experienced, decided or learned; movement in an ongoing line of work; a consequence or open
-loop; or a connection needed to understand the day.
+The diary is a selective account of the most important things the owner did, experienced,
+decided or learned that day and how they tie together where the evidence establishes a
+relationship. Select across the day as a whole: prefer the activities that best explain where
+their attention went, what moved, and which consequences or open loops remained.
 
-An entity or timeline change is a candidate, not a quota. Maintenance, supporting reference
-facts, routine detail without day-level meaning and duplicated entity-side views of the same
-evidence stay on durable pages. Judge narrative role, not edit size, and never invent
-importance to mention every changed page.
+An entity or timeline change is a candidate, not a quota. Judge its day-level significance
+and narrative role relative to the other candidates, not its edit size, source detail or
+mere availability. Maintenance, supporting reference facts, routine or low-consequence
+activity and duplicated entity-side views stay on durable pages. Never invent importance to
+mention every changed page; a day may legitimately need no entry.
 
-Write connective prose rather than a digest of timeline bullets. Explain what led to what,
-where attention shifted, which work resumed and what remained open. Link the most specific
-occurrences and durable subjects so the reader can continue into the full account. Repeat a
-figure, term, biography or piece of reasoning only when the day's transition or consequence
-cannot be understood without it.
-
-Several timeline events may be views of one activity; represent them once with all useful
-links. Activities sharing only a date remain separate, but where the evidence does connect
-them — a subject, question, person or piece of work recurring across the day — say what that
-connection is in the passage where it recurs. Use separate passages, headings or companion
-views rather than inventing cause, mood or a unifying theme.
+Write connective prose rather than a digest of timeline bullets. Several timeline events may
+be views of one activity; represent it once with all useful links. Explain known relationships
+among selected activities, including what led to what, where attention shifted and which work
+resumed. Activities sharing only a date remain separate; use separate passages, headings or
+companion views rather than inventing a connection, cause, mood or unifying theme. Link the
+most specific occurrences and durable subjects, and repeat their detail only when the day's
+transition or consequence cannot be understood without it.
 
 Include a thought, feeling or first-person position only when the owner actually expressed it.
 
@@ -65,7 +63,9 @@ instead of absorbing its account.
 Reconcile a day when new dated evidence for it arrives. Preserve every owner-written passage
 exactly: do not reorder it, restructure it, archive its page or silently paraphrase it. The
 composer may write around an owner-created intro and may change only passages it can identify
-as its own. Treat uncertain authorship as the owner's.
+as its own. When new evidence changes the day's relative significance, condense or remove the
+composer's lower-significance passages rather than accumulating every activity. Treat uncertain
+authorship as the owner's.
 
 Do not rewrite a past day merely to polish prose or optimize its link graph. Correct claims
 whose supporting evidence changed. Otherwise preserve the account and its historical links,
