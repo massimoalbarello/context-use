@@ -65,11 +65,16 @@ Apply the diary guide's selection rules to the changed fragments.
 - Timeline event deltas are the primary chronology. A non-timeline delta qualifies only when
   the changed material itself establishes something the owner did, experienced, decided or
   learned and supplies a reliable activity date.
-- `changed_at`, creation time, commit time and this run's date never choose a diary day.
+- For every qualifying activity, copy that activity date from its supporting changed fragment
+  and assign it only to the matching `YYYY/MM/DD` day; the target path and date title must
+  both match. Without that date, mark no day as affected and report the unresolved activity.
+- `changed_at`, creation time, commit time and this run's date never supply or replace an
+  activity date.
 - Maintenance edits, link repairs and durable facts do not become activity merely because a
   page changed.
 - A one-word correction contributes only its corrected meaning, not the surrounding page.
-- There is no recency cutoff: newly received historical evidence affects its historical day.
+- There is no recency cutoff: historical activity newly received today still affects only its
+  historical day.
 
 Group entity-side deltas that describe the same meeting, exchange, decision or movement into
 one activity with all useful links. Shared date alone does not join unrelated activities.
