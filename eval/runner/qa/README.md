@@ -7,10 +7,8 @@ The reusable prompt, sealed-file types, answer capture, scoring, and substance m
 live here. Each corpus owns its question fixtures and any corpus-specific preparation or
 validation under `eval/data/<corpus-id>/qa/`.
 
-```sh
-bun run eval qa:ask     # ask, one session per question
-bun run eval qa:score   # compare to the sealed answers
-```
+For exact run commands, use the [`world-v1`](../../data/world-v1/README.md) or
+[`amara-life-v1`](../../data/amara-life-v1/README.md) guide.
 
 Both corpora use those two commands and differ only in how the knowledge base under test
 comes to exist:
@@ -20,11 +18,6 @@ comes to exist:
 | Knowledge base | `qa:seed` puts its 240 pages in as they are | `distill` builds it from raw activity |
 | Questions | 145, derived from `_facts` | 99, authored and quote-checked |
 | A score measures | retrieval | distillation **and** retrieval |
-
-```sh
-bun run eval qa:seed --batches 2                           # world-v1
-bun run eval distill --corpus amara-life-v1 --batches 2    # amara-life-v1
-```
 
 A run records its corpus and mode in `report.json`, so both commands pick the right question
 set and say what the number covers. `qa:score` is offline, so a run can be rescored whenever
@@ -75,10 +68,6 @@ records they name, `due_batch` is the last evidence day, each reference answer s
 own key, and no required element already appears in the question. What is left to judgement
 — that the quotes entail the answer — is why every answer carries its quotes, so any one of
 the 99 can be checked in seconds.
-
-```sh
-bun run eval qa:verify    # re-check the authored key against the corpus
-```
 
 ## Sealing
 

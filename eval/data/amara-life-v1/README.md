@@ -1,22 +1,39 @@
 # amara-life-v1
 
-Raw personal activity used to evaluate extraction, distillation, and retrieval together.
+This eval distills raw email, Slack, calendar, meeting, and note activity, then measures the
+knowledge structure and question-answering retrieval built from it.
 
-- `corpus/` is the byte-for-byte upstream fixture: 418 email, Slack, calendar, meeting,
-  and note items.
-- `corpus.lock.json` pins every upstream file.
-- `corpus.ts` adapts the upstream formats to the shared corpus contract.
-- `qa/` owns the 99 authored questions, sealed answers, and evidence validation.
-- `gold/` owns the structural entity/meeting expectations and offline scorer.
+Follow the [shared eval runbook](../../README.md) first.
 
-The reusable reader, distillation harness, and QA scorer are under
-[`../../runner/`](../../runner/). Upstream provenance and refresh rules are in
-[`../UPSTREAM.md`](../UPSTREAM.md).
+## Run the dense-window eval
 
 ```sh
 bun run eval corpus:verify --corpus amara-life-v1
 bun run eval qa:verify
-bun run eval distill --corpus amara-life-v1 --window dense
-bun run eval qa:ask
-bun run eval qa:score
+bun run eval gold:profile
+bun run eval distill --corpus amara-life-v1 --window dense --batches 8
 ```
+
+Copy the run ID printed by `distill`. Inspect the structural score, then ask and score the
+questions without resetting the stack:
+
+```sh
+bun run eval gold:check <run-id>
+bun run eval qa:ask <run-id>
+bun run eval qa:score <run-id>
+```
+
+## Change the scope
+
+Use the full 47-day corpus:
+
+```sh
+bun run eval distill --corpus amara-life-v1 --window full --batches 47
+```
+
+Use `--batches <n>` for a shorter run. A batch is one corpus day. The QA runner normally
+asks only questions whose evidence was included in the completed batches; use `--only
+<question-id>` or `--limit <n>` to narrow that set further.
+
+Results are written to `eval/results/corpus/<run-id>/`. Start with `report.md`,
+`gold-score.json`, and `qa-score.json`.

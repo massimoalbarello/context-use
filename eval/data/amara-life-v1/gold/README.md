@@ -5,13 +5,11 @@ Nothing here decides what a knowledge base *should* contain — it only measures
 corpus says, and separates what upstream planted from what its generator produced by
 accident.
 
-```sh
-bun run eval gold:profile           # print the summary, fail if the committed copy is stale
-bun run eval gold:profile --write   # regenerate it
-```
-
 It is committed so that a change in the corpus or in this derivation is a reviewable diff
 rather than a silent shift under a measurement.
+
+Use the [`amara-life-v1` run guide](../README.md) for eval commands. Fixture-writing rules
+are in the [shared eval runbook](../../../README.md).
 
 ## Planted on purpose — this is answer key
 
@@ -83,13 +81,9 @@ regenerated note each, contradicting one another by accident rather than by desi
 
 ## Checking a run
 
-```sh
-bun run eval gold:check              # the most recent run
-bun run eval gold:check <run-id>     # or a path to a run directory
-```
-
 Scoring is offline, against the per-day snapshots a run already wrote, so a run can be
 scored after the fact and rescored whenever the expectations change. No model is involved.
+The exact command is in the [`amara-life-v1` run guide](../README.md).
 
 **A run of any length scores correctly.** Each entity carries the day the corpus first makes
 it knowable, and each day is scored only against what is due by then, so `--days 3` is
