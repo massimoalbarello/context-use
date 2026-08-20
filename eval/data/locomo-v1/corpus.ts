@@ -31,9 +31,9 @@ export type PublicLocomoCase = z.infer<typeof publicCaseSchema>;
  *
  * A session, not a turn: a turn is A-mem's memory unit because its memory is a note store,
  * whereas the unit here is what one source produces, and LoCoMo's own unit is the dated
- * session. Splitting a session into 20–35 records would also serve the same date 20–35
- * times and turn one conversation into a stream of one-line sources, which is not what the
- * benchmark describes.
+ * session. The production working-set planner may divide an exceptionally large rendered
+ * session at turn boundaries, but the logical source remains this one dated session rather
+ * than 20–35 independent one-line records.
  *
  * Image turns carry their BLIP caption inline, because some questions are answerable only
  * from a shared image. Upstream's own prompt path appends the caption whenever the turn has

@@ -36,6 +36,10 @@ bun run eval longmem:run --all
 Prefer `--case` for a smoke test. `--limit` samples the dataset head, which contains one
 question type. `--stratify 1` is the smallest selection spanning all six types.
 
+Conversation records use the production planner: ordinary sessions remain intact, while an
+oversized session is divided at dialogue-turn boundaries into overlapping fresh-session working
+sets. A transient or incomplete session gets at most three attempts on the same working set.
+
 One case commonly takes five to nine hours because its entire history is distilled before
 the question is asked. Confirm the intended selection and time budget before starting.
 

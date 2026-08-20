@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export * from "./conversation-working-sets.ts";
+
 export const PAGE_MARKDOWN_BODY_DESCRIPTION = [
   "Markdown page body.",
   "Use ## or ### headings to create linkable sections; link one with [[page/path#heading-slug|label]].",

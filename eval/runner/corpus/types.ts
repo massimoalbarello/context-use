@@ -9,6 +9,8 @@
  * page order. Nothing above this layer needs to know which.
  */
 
+import { CONVERSATION_SEGMENT_TARGET_BYTES } from "../../../packages/shared/src/conversation-working-sets.ts";
+
 export const ITEM_TYPES = [
   // amara-life-v1 — raw activity
   "note", "meeting", "email", "slack", "calendar-event",
@@ -31,11 +33,11 @@ export const CONVERSATION_ITEM_TYPES = new Set<CorpusItemType>([
  *
  * A conversation session is one to two orders of magnitude larger than an email or a
  * calendar entry, and several returned together overflow a provider's MCP transcript. Both
- * conversation corpora materialize their batches against this bound and the shared reader
- * enforces it again, so a normal batch still completes in one source read. It changes
- * transport batching only: a session is never split, and it is not the reset boundary.
+ * conversation corpora materialize candidate batches against this bound. The production
+ * planner later leaves ordinary records intact and turns any oversized conversation into
+ * ordered fresh-session working sets.
  */
-export const CONVERSATION_WORKING_SET_BYTE_BUDGET = 24_000;
+export const CONVERSATION_WORKING_SET_BYTE_BUDGET = CONVERSATION_SEGMENT_TARGET_BYTES;
 
 export type CorpusItemType = (typeof ITEM_TYPES)[number];
 

@@ -4,6 +4,7 @@ import {
   MANAGED_FUNCTIONS,
   MANAGED_INTEGRATIONS,
 } from "../../../nango-integrations/catalog.ts";
+import { segmentConversationMarkdown } from "@context-use/shared";
 
 const connectionSchema = z.object({
   id: z.number().int().positive(),
@@ -58,6 +59,14 @@ const streamCheckpointSchema = z.object({
   initial_modified_after: z.iso.datetime({ offset: true }),
 }).strict();
 
+const pendingConversationSchema = z.object({
+  stream: z.string().regex(/^[a-f0-9]{64}$/),
+  record: z.string().regex(/^[a-f0-9]{64}$/),
+  version: z.string().regex(/^[a-f0-9]{64}$/),
+  next_segment: z.number().int().min(1),
+  continuation_required: z.boolean(),
+}).strict();
+
 const checkpointSchema = z.object({
   version: z.literal(1),
   streams: z.record(
@@ -65,6 +74,7 @@ const checkpointSchema = z.object({
     streamCheckpointSchema,
   ),
   resume_from: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  pending_conversation: pendingConversationSchema.optional(),
 }).strict();
 
 const CHECKPOINT_PREFIX = "cu-nango-v1.";
@@ -189,6 +199,47 @@ function decodeCheckpoint(value?: string): Checkpoint {
   } catch {
     throw new SourceRecordCheckpointError();
   }
+}
+
+type NangoPipelineRecord = z.infer<typeof nangoPipelineRecordSchema>;
+
+function recordIdentity(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function lifecycleRecord(sourceRecord: NangoPipelineRecord): SourceRecord {
+  const action = sourceRecord._nango_metadata.last_action.toLowerCase() as SourceRecord["action"];
+  const markdown = "body" in sourceRecord ? sourceRecord.body : null;
+  if (action !== "deleted" && markdown === null) {
+    throw new Error("Nango returned a pruned non-deleted record");
+  }
+  return { action, markdown };
+}
+
+function recordVersion(sourceRecord: NangoPipelineRecord, record: SourceRecord): string {
+  return createHash("sha256").update(JSON.stringify([
+    sourceRecord.id,
+    sourceRecord._nango_metadata.cursor,
+    sourceRecord._nango_metadata.last_modified_at,
+    record.action,
+    record.markdown,
+  ])).digest("hex");
+}
+
+function recordRelevantTimestamp(sourceRecord: NangoPipelineRecord, record: SourceRecord): string {
+  return record.action === "deleted"
+    ? sourceRecord._nango_metadata.last_modified_at
+    : "updated_at" in sourceRecord
+      ? sourceRecord.updated_at
+      : sourceRecord._nango_metadata.last_modified_at;
+}
+
+function conversationSegments(model: string, record: SourceRecord): SourceRecord[] {
+  if (model !== "AgentConversation" || record.markdown === null) return [record];
+  return segmentConversationMarkdown(record.markdown).map(({ markdown }) => ({
+    action: record.action,
+    markdown,
+  }));
 }
 
 function rotateFrom<T extends { key: string }>(items: T[], resumeFrom: string | null): T[] {
@@ -332,6 +383,56 @@ export class NangoRecordReader implements SourceRecordReader {
         initial_modified_after: freshnessCutoff,
       };
     }
+
+    // A segmented conversation deliberately leaves the upstream cursor before its logical
+    // record. Each fresh automation run re-reads that record, verifies the version, and
+    // advances only one ordered excerpt. If the source changed meanwhile, restart from the
+    // first excerpt of the newer version so no part of the current record is skipped.
+    if (prior.pending_conversation) {
+      const pending = prior.pending_conversation;
+      const stream = discoveredStreams.find(({ key }) => key === pending.stream);
+      if (!stream) throw new SourceRecordCheckpointError();
+      const streamCheckpoint = streamCheckpoints[stream.key]!;
+      const page = await this.#records(stream, streamCheckpoint, MAX_RECORD_LIMIT);
+      const sourceRecord = page.records.find(({ id }) => recordIdentity(id) === pending.record);
+      if (!sourceRecord) {
+        throw new Error("The pending conversation source version is no longer available; retry after it is synced again.");
+      }
+      const record = lifecycleRecord(sourceRecord);
+      const version = recordVersion(sourceRecord, record);
+      const segments = conversationSegments(stream.model, record);
+      const segmentIndex = version === pending.version ? pending.next_segment : 0;
+      const sourceIndex = page.records.indexOf(sourceRecord);
+      const continuationRequired = pending.continuation_required
+        || sourceIndex < page.records.length - 1
+        || page.next_cursor !== null;
+      const segment = segments[segmentIndex] ?? segments[0]!;
+      const finished = segmentIndex >= segments.length - 1;
+      if (finished) {
+        streamCheckpoints[stream.key] = {
+          ...streamCheckpoint,
+          cursor: sourceRecord._nango_metadata.cursor,
+        };
+      }
+      return {
+        records: [segment],
+        next_checkpoint: encodeCheckpoint({
+          version: 1,
+          streams: streamCheckpoints,
+          resume_from: finished && !continuationRequired ? null : stream.key,
+          ...(finished ? {} : {
+            pending_conversation: {
+              stream: stream.key,
+              record: recordIdentity(sourceRecord.id),
+              version,
+              next_segment: segmentIndex + 1,
+              continuation_required: continuationRequired,
+            },
+          }),
+        }),
+        has_more: !finished || continuationRequired,
+      };
+    }
     const streams = rotateFrom(discoveredStreams, prior.resume_from);
     const records: SourceRecord[] = [];
     let responseBytes = 0;
@@ -352,16 +453,8 @@ export class NangoRecordReader implements SourceRecordReader {
       const streamCheckpoint = streamCheckpoints[stream.key]!;
       const page = await this.#records(stream, streamCheckpoint, streamLimit);
       for (const sourceRecord of page.records) {
-        const action = sourceRecord._nango_metadata.last_action.toLowerCase() as SourceRecord["action"];
-        const markdown = "body" in sourceRecord ? sourceRecord.body : null;
-        if (action !== "deleted" && markdown === null) {
-          throw new Error(`Nango returned a pruned non-deleted record for ${stream.model}`);
-        }
-        const relevantTimestamp = action === "deleted"
-          ? sourceRecord._nango_metadata.last_modified_at
-          : "updated_at" in sourceRecord
-            ? sourceRecord.updated_at
-            : sourceRecord._nango_metadata.last_modified_at;
+        const record = lifecycleRecord(sourceRecord);
+        const relevantTimestamp = recordRelevantTimestamp(sourceRecord, record);
         if (Date.parse(relevantTimestamp) < freshnessCutoffMs) {
           streamCheckpoints[stream.key] = {
             ...streamCheckpoint,
@@ -369,10 +462,34 @@ export class NangoRecordReader implements SourceRecordReader {
           };
           continue;
         }
-        const record: SourceRecord = {
-          action,
-          markdown,
-        };
+        const segments = conversationSegments(stream.model, record);
+        if (segments.length > 1) {
+          // A conversation excerpt is always its own working set. If this response already
+          // holds smaller records, stop immediately before it and resume from their cursor.
+          if (records.length > 0) {
+            hasMore = true;
+            resumeFrom = stream.key;
+            break outer;
+          }
+          return {
+            records: [segments[0]!],
+            next_checkpoint: encodeCheckpoint({
+              version: 1,
+              streams: streamCheckpoints,
+              resume_from: stream.key,
+              pending_conversation: {
+                stream: stream.key,
+                record: recordIdentity(sourceRecord.id),
+                version: recordVersion(sourceRecord, record),
+                next_segment: 1,
+                continuation_required: page.records.indexOf(sourceRecord) < page.records.length - 1
+                  || page.next_cursor !== null
+                  || index < streams.length - 1,
+              },
+            }),
+            has_more: true,
+          };
+        }
         const bytes = responseRecordBytes(record);
         if (records.length > 0 && responseBytes + bytes > this.#responseByteBudget) {
           hasMore = true;

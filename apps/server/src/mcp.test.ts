@@ -161,13 +161,14 @@ describe("MCP knowledge tools", () => {
       params: {},
     });
     const tool = listed.result?.tools?.find(({ name }) => name === "read_source_records");
-    expect(tool?.description).toContain("bounded, checkpointed batch");
+    expect(tool?.description).toContain("bounded, checkpointed working set");
     expect(tool?.description).toContain("more than 30 days old");
     expect(tool?.description).toContain("added, updated, or deleted action");
-    expect(tool?.description).toContain("Reconcile this batch and persist next_checkpoint before calling again");
-    expect(tool?.description).toContain("persist it only after their writes succeed");
-    expect(tool?.description).toContain("never hold a second unread batch while the first is unwritten");
-    expect(tool?.description).toContain("only later lifecycle changes");
+    expect(tool?.description).toContain("Context from immediately before this excerpt");
+    expect(tool?.description).toContain("not as new activity");
+    expect(tool?.description).toContain("persist next_checkpoint only after its writes succeed");
+    expect(tool?.description).toContain("end the run without reading another working set");
+    expect(tool?.description).toContain("next fresh run has more source work");
     expect(tool?.inputSchema?.properties?.max_bytes).toBeUndefined();
 
     const read = await mcpRequest(serverWith(

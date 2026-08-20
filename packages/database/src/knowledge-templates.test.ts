@@ -1080,6 +1080,8 @@ describe("knowledge templates", () => {
       "pruned deletion",
       "one at a time",
       "bounded working set",
+      "exactly one bounded working set",
+      "never read a second working set",
       "do not extract subjects from a discarded record",
       "an audit gap is unfinished work, not failure",
       "only an actual error returned by a mutation",
@@ -1093,6 +1095,7 @@ describe("knowledge templates", () => {
     expect(auditLoop).toBeGreaterThan(-1);
     expect(checkpointWrite).toBeGreaterThan(auditLoop);
     expect(normalizedDistiller).not.toContain("50 records");
+    expect(normalizedDistiller).not.toContain("return to step 2 with the saved checkpoint");
     expect(normalizedDistiller).not.toContain("record_ref");
     expect(activityDistiller).not.toContain("Discarding a record does not discard its cast");
     expect(activityDistiller).not.toContain("automations/diary-composer/");

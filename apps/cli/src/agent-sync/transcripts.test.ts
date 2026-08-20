@@ -71,7 +71,7 @@ test("Claude Code and workspace sessions have distinct identities and transcript
   expect(code.body).not.toContain("private chain of thought");
 });
 
-test("incomplete tails are retried safely and large bodies preserve their beginning and end", () => {
+test("incomplete tails are retried safely and large bodies remain lossless", () => {
   const incomplete = `${lines([
     { type: "session_meta", timestamp: "2026-08-01T10:00:00Z", payload: { id: "partial" } },
     { type: "response_item", timestamp: "2026-08-01T10:00:01Z", payload: { type: "message", role: "user", content: "Hello" } },
@@ -87,10 +87,10 @@ test("incomplete tails are retried safely and large bodies preserve their beginn
     messages: [{ role: "user", text: `BEGIN-${"x".repeat(900_000)}-END` }],
     incomplete: false,
   });
-  expect(Buffer.byteLength(large.body, "utf8")).toBeLessThanOrEqual(768 * 1024);
+  expect(Buffer.byteLength(large.body, "utf8")).toBeGreaterThan(768 * 1024);
   expect(large.body).toContain("BEGIN-");
   expect(large.body).toContain("-END");
-  expect(large.body).toContain("truncated the middle");
+  expect(large.body).not.toContain("truncated the middle");
 });
 
 test("discovery and capture use source roots without putting paths in record identity", async () => {
