@@ -7,19 +7,12 @@ import {
   runAgentSession,
   type EvalProvider,
 } from "../agent.ts";
-import { officialReference } from "./metrics.ts";
-
 /**
- * An optional yes/no judge, reported beside the two deterministic scorers and never
- * folded into them.
+ * The LoCoMo answer judge.
  *
- * LoCoMo defines no official judge — its published metric is the token F1 in `metrics.ts`
- * — so this prompt is this repository's, and it is labelled that way everywhere it
- * appears. It exists because the deterministic metrics measure answer *shape* as much as
- * answer *content*: a correct reply that names one extra true fact loses precision, and a
- * knowledge base that answers in prose is penalised for prose. The memory-system papers
- * that report an LLM judge on LoCoMo are measuring the second thing, and a comparison that
- * only had F1 could not tell a retrieval failure from a verbosity penalty.
+ * LoCoMo defines no official judge, so this prompt is this repository's and is labelled
+ * that way everywhere it appears. It evaluates answer content without treating harmless
+ * prose or additional true detail as a retrieval failure.
  *
  * The isolation is LongMemEval's, for the same reasons: no Context Use MCP, and any tool
  * action voids the judgement rather than being tolerated.
@@ -34,10 +27,7 @@ export type LocomoJudgement = {
    * 0 to 1. Binary for every category but multi-hop, where it is the fraction of the
    * required facts the response contains.
    *
-   * Multi-hop answers are lists, and LoCoMo's own scorer splits them and credits each part
-   * separately. An all-or-nothing judge scored zero for five facts out of six while the
-   * official metric gave 0.83 — a stricter bar than the benchmark sets, invented here
-   * rather than inherited, and it made a category look twice as bad as it is.
+   * Multi-hop answers are lists, so the rubric credits each required fact separately.
    */
   score: number;
   /** Whether the response was fully correct, which is `score === 1`. */
@@ -47,7 +37,7 @@ export type LocomoJudgement = {
   provider: LocomoJudgeProvider;
 };
 
-/** The comma-separated facts a multi-hop answer has to contain, as its scorer splits them. */
+/** The comma-separated facts a multi-hop answer has to contain. */
 export function multiHopParts(reference: string): string[] {
   const parts = reference.split(",").map((part) => part.trim()).filter(Boolean);
   return parts.length ? parts : [reference.trim()];
@@ -59,11 +49,16 @@ export type JudgedLocomoAnswer = {
   referenceAnswer: string;
 };
 
+/** Category 3 gold strings contain acceptable alternatives after the first semicolon. */
+function referenceForJudge(reference: string, category: LocomoCategory): string {
+  return category === 3 ? reference.split(";")[0]!.trim() : reference;
+}
+
 export function locomoJudgePrompt(entry: JudgedLocomoAnswer, hypothesis: string): string {
   if (entry.category === 5) {
     return `I will give you a question that the conversation does not actually answer, the claim someone might wrongly infer, and a response from a model. Please answer yes if the model declines to answer — saying the information is not mentioned, not available, or not in what it knows. Answer no if the model asserts the claim or any other substantive answer.\n\nQuestion: ${entry.question}\n\nUnsupported claim: ${entry.referenceAnswer}\n\nModel Response: ${hypothesis}\n\nDoes the model correctly decline to answer? Answer yes or no only.`;
   }
-  const reference = officialReference(entry.referenceAnswer, entry.category);
+  const reference = referenceForJudge(entry.referenceAnswer, entry.category);
   if (entry.category === 1) {
     const parts = multiHopParts(reference);
     const numbered = parts.map((part, index) => `${index + 1}. ${part}`).join("\n");
@@ -88,7 +83,7 @@ function judgement(
   entry: JudgedLocomoAnswer,
 ): LocomoJudgement {
   const score = entry.category === 1
-    ? multiHopScore(response, multiHopParts(officialReference(entry.referenceAnswer, 1)).length)
+    ? multiHopScore(response, multiHopParts(referenceForJudge(entry.referenceAnswer, 1)).length)
     // The same label rule LongMemEval's evaluator uses, so the two benchmarks' judge
     // outputs are read the same way.
     : (response.toLowerCase().includes("yes") ? 1 : 0);

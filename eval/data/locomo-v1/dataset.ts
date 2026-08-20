@@ -111,9 +111,6 @@ export type LocomoSelection = {
   conversationId?: string | undefined;
   limit?: number | undefined;
   all?: boolean | undefined;
-  /** At most one of these two narrows the questions inside each chosen conversation. */
-  questions?: number | undefined;
-  stratify?: number | undefined;
 };
 
 const MONTHS = [
@@ -247,26 +244,6 @@ export function listLocomoConversations(path = LOCOMO_DATASET_PATH): LocomoConve
   return rawDataset(path).map(readSummary);
 }
 
-/**
- * Narrows one conversation's questions without touching its history.
- *
- * The whole conversation is always distilled: dropping sessions would change what the
- * knowledge base contains, and a question's difficulty in LoCoMo comes from how far apart
- * its evidence sits. Only the asking is narrowed, which is what makes a short run a cheap
- * sample of the same measurement rather than a different one.
- */
-export function selectLocomoQuestions(
-  questions: LocomoQuestion[],
-  selection: Pick<LocomoSelection, "questions" | "stratify">,
-): LocomoQuestion[] {
-  if (selection.stratify !== undefined) {
-    return LOCOMO_CATEGORY_NUMBERS.flatMap((category) =>
-      questions.filter((entry) => entry.category === category).slice(0, selection.stratify));
-  }
-  if (selection.questions !== undefined) return questions.slice(0, selection.questions);
-  return questions;
-}
-
 export function selectLocomoConversations(
   summaries: LocomoConversationSummary[],
   selection: LocomoSelection,
@@ -293,10 +270,7 @@ export function selectAndReadLocomoConversations(
     return wanted.has(summary.sample_id) ? [parseConversation(value)] : [];
   });
   const byId = new Map(parsed.map((entry) => [entry.sampleId, entry]));
-  return selected.map((entry) => {
-    const conversation = byId.get(entry.sampleId)!;
-    return { ...conversation, questions: selectLocomoQuestions(conversation.questions, selection) };
-  });
+  return selected.map((entry) => byId.get(entry.sampleId)!);
 }
 
 export function validateLocomoSelection(selection: LocomoSelection): void {
@@ -311,17 +285,9 @@ export function validateLocomoSelection(selection: LocomoSelection): void {
   if (selection.conversationId !== undefined && selection.conversationId.length === 0) {
     throw new Error("--conversation requires a non-empty LoCoMo sample id");
   }
-  if (selection.questions !== undefined && selection.stratify !== undefined) {
-    throw new Error("--questions and --stratify both narrow the same question set; choose one.");
-  }
-  for (const [name, value] of [
-    ["--limit", selection.limit],
-    ["--questions", selection.questions],
-    ["--stratify", selection.stratify],
-  ] as const) {
-    if (value !== undefined && (!Number.isSafeInteger(value) || value < 1)) {
-      throw new Error(`${name} must be a positive integer`);
-    }
+  if (selection.limit !== undefined
+    && (!Number.isSafeInteger(selection.limit) || selection.limit < 1)) {
+    throw new Error("--limit must be a positive integer");
   }
 }
 

@@ -56,15 +56,12 @@ const selectionSchema = z.discriminatedUnion("command", [
     all: z.boolean().optional(),
     sessionsPerBatch: count.optional(),
   }),
-  // LoCoMo selects on two axes: which conversations to distill, and which of each one's
-  // questions to ask. The runner owns which combinations are legal.
+  // Each selected LoCoMo conversation is distilled once and then asked in full.
   z.strictObject({
     command: z.literal("locomo"),
     conversation: z.string().min(1).optional(),
     limit: count.optional(),
     all: z.boolean().optional(),
-    questions: count.optional(),
-    stratify: count.optional(),
     sessionsPerBatch: count.optional(),
   }),
 ]);
@@ -175,12 +172,7 @@ export function describeSelection(selection: EvalSelection): string {
     case "locomo": {
       const scope = selection.conversation ?? (selection.all ? "every conversation" : undefined)
         ?? (selection.limit ? `the first ${selection.limit} conversations` : "no conversation selected");
-      const asked = selection.stratify
-        ? `${selection.stratify} question(s) per category`
-        : selection.questions
-          ? `the first ${selection.questions} questions`
-          : "every question";
-      return `locomo · ${scope} · ${asked}`;
+      return `locomo · ${scope} · every question`;
     }
   }
 }

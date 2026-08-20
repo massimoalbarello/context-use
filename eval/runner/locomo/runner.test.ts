@@ -12,7 +12,6 @@ import {
   resolveLocomoAnswer,
 } from "./ask.ts";
 import { locomoJudgePrompt, multiHopParts, multiHopScore } from "./judge.ts";
-import { EMPTY_AMEM_METRICS } from "./metrics.ts";
 import { asOfDate, bareToolName, forbiddenQaTools, locomoRunnerInternals } from "./runner.ts";
 
 function question(overrides: Partial<LocomoQuestion> = {}): LocomoQuestion {
@@ -70,11 +69,6 @@ describe("how a question is put", () => {
     expect(prompt).not.toContain("short phrase");
   });
 
-  /**
-   * The token F1 counts every token the answer carries, so markdown and quoting are scored
-   * as if they were wrong content. Every category needs this, category 5 included, because
-   * its scorer looks for the phrase "not mentioned" in the reply.
-   */
   test("every category is told to answer in plain text", () => {
     for (const category of [1, 2, 3, 4, 5] as const) {
       const prompt = locomoAskPrompt(askedLocomoQuestion(question({ category })), "now");
@@ -210,13 +204,22 @@ describe("what a question cost", () => {
   });
 });
 
-describe("void questions stay in the denominator", () => {
-  test("an A-mem average is scaled by how many questions were actually answered", () => {
-    const perfect = { ...EMPTY_AMEM_METRICS, f1: 1, bleu1: 1 };
-    // Two of four questions answered perfectly is 0.5, not 1.0.
-    expect(locomoRunnerInternals.scaleAmem(perfect, 2, 4).f1).toBeCloseTo(0.5, 10);
-    expect(locomoRunnerInternals.scaleAmem(perfect, 4, 4).bleu1).toBeCloseTo(1, 10);
-    expect(locomoRunnerInternals.scaleAmem(perfect, 0, 0).f1).toBe(0);
+describe("judge score aggregation", () => {
+  test("void questions stay in both headline denominators", () => {
+    const score = locomoRunnerInternals.aggregateLocomoScore("run", "default", [
+      { sampleId: "conv-26", questionId: "q-1", category: 1, judgeCorrect: true, judgeScore: 1 },
+      { sampleId: "conv-26", questionId: "q-2", category: 1, judgeCorrect: false, judgeScore: 0.5 },
+      { sampleId: "conv-26", questionId: "q-3", category: 1, voidReason: "no answer" },
+    ], [
+      { provider: "codex", model: "judge", response: "2", correct: true, score: 1 },
+      { provider: "codex", model: "judge", response: "1", correct: false, score: 0.5 },
+    ], "codex");
+    expect(score.scored).toBe(2);
+    expect(score.void).toBe(1);
+    expect(score.knowledgeTemplate).toBe("default");
+    expect(score.judge.accuracy).toBeCloseTo(1 / 3, 10);
+    expect(score.judge.score).toBeCloseTo(0.5, 10);
+    expect(score.byCategory[0]).toMatchObject({ scored: 2, void: 1, accuracy: 1 / 3, score: 0.5 });
   });
 });
 
@@ -240,9 +243,8 @@ describe("the judge prompt", () => {
   });
 
   /**
-   * LoCoMo splits a multi-hop answer on commas and credits each part, so the judge asks how
-   * many are present rather than demanding all of them. Requiring all of them scored zero
-   * for five facts out of six where the official metric gave 0.83.
+   * Multi-hop answers can be partially correct, so the judge asks how many required facts
+   * are present rather than demanding all of them.
    */
   test("asks how many multi-hop facts are present, not whether all are", () => {
     const prompt = locomoJudgePrompt(
@@ -255,7 +257,7 @@ describe("the judge prompt", () => {
     expect(prompt).not.toContain("every part");
   });
 
-  test("splits a multi-hop reference the way the official scorer does", () => {
+  test("splits a multi-hop reference into required facts", () => {
     expect(multiHopParts("adoption agencies, foster care")).toEqual(["adoption agencies", "foster care"]);
     // A single-fact answer is still one part rather than none.
     expect(multiHopParts("mental health")).toEqual(["mental health"]);

@@ -8,9 +8,7 @@ import {
   listLocomoConversations,
   parseLocomoDateTime,
   selectAndReadLocomoConversations,
-  selectLocomoQuestions,
   validateLocomoSelection,
-  type LocomoQuestion,
 } from "./dataset.ts";
 
 function sample(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -181,27 +179,10 @@ describe("selection", () => {
     expect(() => validateLocomoSelection({ all: true })).not.toThrow();
   });
 
-  test("refuses two question selectors at once", () => {
-    expect(() => validateLocomoSelection({ all: true, questions: 2, stratify: 1 }))
-      .toThrow(/choose one/);
-  });
-
-  test("narrows questions without narrowing the history", () => {
-    const [conversation] = selectAndReadLocomoConversations(path, {
-      conversationId: "conv-26",
-      questions: 1,
-    });
-    expect(conversation!.questions).toHaveLength(1);
-    // The whole conversation is still distilled — that is the point.
+  test("a selected conversation always includes every question and session", () => {
+    const [conversation] = selectAndReadLocomoConversations(path, { conversationId: "conv-26" });
+    expect(conversation!.questions).toHaveLength(3);
     expect(conversation!.sessions).toHaveLength(2);
-  });
-
-  test("stratify takes N of every category that has any", () => {
-    const questions = [
-      { category: 4 }, { category: 4 }, { category: 2 }, { category: 5 },
-    ] as LocomoQuestion[];
-    expect(selectLocomoQuestions(questions, { stratify: 1 }).map((entry) => entry.category))
-      .toEqual([2, 4, 5]);
   });
 
   test("limit takes conversations in dataset order", () => {

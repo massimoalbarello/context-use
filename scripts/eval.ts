@@ -66,16 +66,13 @@ function usage(): never {
   bun run eval locomo:verify [--dataset-path <path>]
   bun run eval locomo:list [--dataset-path <path>]
   bun run eval locomo:run (--conversation <id> | --limit <n> | --all)
-                          [--questions <n> | --stratify <n>]
                           [--provider <codex|claude>] [--model <id>] [--dataset-path <path>]
                           [--sessions-per-batch <n>]
   bun run eval locomo:score [run-id] [--judge-provider <codex|claude|openai>]
   bun run eval locomo:view [run-id] [--out <path.html>]   every question, answer and cost
 
-LoCoMo asks every question of one conversation against one knowledge base, so its
-selectors come in pairs: one picks the conversations to distill, the other narrows the
-questions asked of each. Scoring is deterministic and needs no key; --judge-provider adds
-this repository's LLM judge as a third, separately reported number.
+LoCoMo asks every question of each selected conversation against one knowledge base.
+Scoring uses this repository's LLM judge and defaults to the Codex subscription harness.
 
 longmem:run selection, and what it costs. Every case is measured in isolation: it resets the
 stack and distills that case's whole session history before asking its one question, so a
@@ -158,10 +155,8 @@ function longMemJudgeProviderFrom(args: string[]): LongMemEvalJudgeProvider {
   return value;
 }
 
-/** Undefined unless asked for: LoCoMo's default scoring is deterministic and key-free. */
-function locomoJudgeProviderFrom(args: string[]): LocomoJudgeProvider | undefined {
-  const value = optionFrom(args, "judge-provider");
-  if (value === undefined) return undefined;
+function locomoJudgeProviderFrom(args: string[]): LocomoJudgeProvider {
+  const value = optionFrom(args, "judge-provider") ?? "codex";
   if (value !== "codex" && value !== "claude" && value !== "openai") usage();
   return value;
 }
@@ -303,6 +298,7 @@ if (command === "check") {
 } else if (command === "locomo:list") {
   await listLocomo(optionFrom(args, "dataset-path"));
 } else if (command === "locomo:run") {
+  if (args.includes("--questions") || args.includes("--stratify")) usage();
   await runLocomoCommand({
     harness: harnessFrom(args),
     knowledgeTemplate: knowledgeTemplateFrom(args),
@@ -310,8 +306,6 @@ if (command === "check") {
     conversationId: optionFrom(args, "conversation"),
     limit: countFrom(args, "limit"),
     all: args.includes("--all"),
-    questions: countFrom(args, "questions"),
-    stratify: countFrom(args, "stratify"),
     sessionsPerBatch: countFrom(args, "sessions-per-batch"),
   });
 } else if (command === "locomo:score") {

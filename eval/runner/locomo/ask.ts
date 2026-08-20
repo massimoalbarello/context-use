@@ -6,10 +6,8 @@ import { MCP_NAME } from "../agent.ts";
  * How LoCoMo poses a question, reproduced so the answers are scorable by its own rubric.
  *
  * The repository's ordinary QA prompt asks for one or two sentences. LoCoMo's asks for a
- * short phrase in the conversation's own words, and its scorer is a token F1 — a fluent
- * sentence around a correct answer loses most of its precision. Asking the benchmark's way
- * is therefore part of running the benchmark, not a stylistic preference, and it is also
- * what A-mem's harness does.
+ * short phrase in the conversation's own words. Asking the benchmark's way is part of
+ * running the benchmark, not a stylistic preference.
  *
  * Three of the five categories are asked plainly. Category 2 carries upstream's date
  * instruction, and category 5 is a forced choice between the real answer and "Not mentioned
@@ -62,19 +60,9 @@ export function askedLocomoQuestion(question: LocomoQuestion): AskedLocomoQuesti
 /**
  * What "short phrase" has to say to an agent CLI.
  *
- * LoCoMo scores a token F1 against a gold phrase such as `self-care is important`. An
- * observed Claude Code run answered that question with
- * `**That taking care of her own mental health matters — "looking after herself is what
- * lets her look after her family."**` — substantively right, judged correct, and scored 8%,
- * because the markdown, the quoting and the sentence around it are all tokens the gold does
- * not have. Twenty questions scored 57.7% by token F1 and 85% by judge on exactly this gap.
- *
- * So this is not prompt-tuning for a better number. It is stating the benchmark's own
- * instruction — "write an answer in the form of a short phrase, with exact words from the
- * context" — in the terms an agent harness needs to hear it, since A-mem and LoCoMo issue
- * theirs to a raw completion API that has no markdown habit to suppress. Without it the
- * deterministic metrics measure formatting rather than memory, and cannot be compared to
- * anyone's published numbers.
+ * This states the benchmark's own instruction — "write an answer in the form of a short
+ * phrase, with exact words from the context" — in the terms an agent harness needs to hear
+ * it. Plain answers also keep run artifacts and judge inputs easy to inspect.
  */
 const PLAIN_TEXT_RULE = `Answer in plain text. Do not use Markdown, asterisks, bold, bullet
 points or headings. Do not quote the knowledge base, do not cite pages or dates you were not
