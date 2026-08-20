@@ -36,7 +36,7 @@ import { deriveWorldQuestions, worldPeopleNames } from "../data/world-v1/qa/deri
  * block to read a key off, and they are already a finished knowledge base, so the harness
  * puts them straight in rather than distilling them. `amara-life-v1` is the other half —
  * its questions are authored because there is no key to read, and its knowledge base is
- * distilled because raw activity is the thing being tested. See `runner/qa/README.md`.
+ * distilled because raw activity is the thing being tested.
  */
 const WORLD_CORPUS = "world-v1";
 
@@ -214,8 +214,7 @@ function finalSnapshot(directory: string): PageSnapshot[] {
  * `qa:score` work against it exactly as they do against a distillation run.
  *
  * Seeded rather than distilled because the corpus has no owner — see
- * `data/world-v1/qa/seed.ts` for why, and `runner/qa/README.md` for what that means for
- * the number.
+ * `data/world-v1/qa/seed.ts` for why.
  */
 export async function seedCommand(options: {
   batches?: number | undefined;

@@ -1,37 +1,7 @@
 # Local evals
 
-This is the shared runbook for every local eval. Read it first, then follow the guide for
-the eval you want to run:
-
-| Eval | Measures | Run guide |
-| --- | --- | --- |
-| `world-v1` | retrieval from an already-built knowledge base | [`data/world-v1/README.md`](data/world-v1/README.md) |
-| `amara-life-v1` | distillation, structure, and retrieval | [`data/amara-life-v1/README.md`](data/amara-life-v1/README.md) |
-| `steve-jobs-v1` | knowledge writes across interactive stories | [`data/steve-jobs-v1/README.md`](data/steve-jobs-v1/README.md) |
-| LongMemEval | end-to-end conversational-memory QA | [`data/longmemeval-v1/README.md`](data/longmemeval-v1/README.md) |
-| LoCoMo | end-to-end conversational-memory QA | [`data/locomo-v1/README.md`](data/locomo-v1/README.md) |
-
-## Always use the main worktree
-
-Run the complete workflow from the main Git worktree so downloaded datasets and generated
-results have one durable home. The first record printed below is the main worktree:
-
-```sh
-git worktree list --porcelain
-```
-
-Change to that path and verify it before continuing:
-
-```sh
-eval_main_worktree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
-cd "$eval_main_worktree"
-test "$(git rev-parse --show-toplevel)" = "$eval_main_worktree"
-```
-
-Stop if the path is empty or the assertion fails. Never run an eval in a linked worktree,
-redirect its output there, or copy datasets or results back into one. If the code to test
-exists only in a linked worktree, make it available in the main worktree before running;
-do not copy, commit, or merge it there without authorization.
+This is the shared runbook for every local eval. Read it before the relevant eval-family
+guide.
 
 ## Preflight
 
@@ -95,8 +65,8 @@ To run exactly the eval selected by the configuration:
 bun run eval run
 ```
 
-For a specific eval or selection, use its linked run guide above. Let `--repeat` perform
-its repetitions serially; never start separate repetitions concurrently.
+For a specific eval or selection, use its family guide. Let `--repeat` perform its
+repetitions serially; never start separate repetitions concurrently.
 
 ## Preserve state between dependent commands
 
@@ -114,19 +84,10 @@ update committed fixtures.
 
 ## Results
 
-All generated files are gitignored and remain in the main worktree:
+Generated results are gitignored. The family guide names the exact result directory.
 
-| Eval | Results directory |
-| --- | --- |
-| `world-v1`, `amara-life-v1` | `eval/results/corpus/` |
-| `steve-jobs-v1` | `eval/results/stories/` |
-| LongMemEval | `eval/results/longmemeval/` |
-| LoCoMo | `eval/results/locomo/` |
-
-Downloaded LongMemEval and LoCoMo datasets live under `.eval-data/` in the main worktree.
-
-Report the main-worktree path, commit SHA and dirty state, knowledge template, provider and
-model, exact command, run ID, selection flags, absolute result path, scores, incomplete or
-void cases, and notable failure patterns. Compare runs only when the corpus, knowledge
-template, provider, model, selection, batching, repeat count, and source revision match.
-Treat one stochastic run as a baseline, not proof of a regression or improvement.
+Report the commit SHA and dirty state, knowledge template, provider and model, exact command,
+run ID, selection flags, scores, incomplete or void cases, and notable failure patterns.
+Compare runs only when the corpus, knowledge template, provider, model, selection, batching,
+repeat count, and source revision match. Treat one stochastic run as a baseline, not proof
+of a regression or improvement.
