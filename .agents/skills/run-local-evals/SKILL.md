@@ -1,246 +1,88 @@
 ---
 name: run-local-evals
-description: Run and interpret Context Use's local corpus distillation, QA, Steve Jobs story, and journey evals while preserving Docker passkeys and MCP OAuth. Use when asked to run one eval, one story or QA question, a repeated suite, or every local eval family, especially when agents, terminals, or worktrees share the context-use-dev Docker stack.
+description: Run and interpret Context Use's local corpus distillation, QA, Steve Jobs story, LongMemEval, and LoCoMo evals. Use when asked to run, score, inspect, or compare any local eval, including one question, story, case, repeated suite, or full eval family.
 ---
 
 # Run Local Evals
 
-Run evals from the repository root. Treat the local Docker stack as a singleton, stateful test fixture: every eval process targets the same `context-use-dev` Compose project, PostgreSQL data, asset data, and MCP endpoint at `http://localhost:5173/mcp`.
+## Work only from the main worktree
+
+Resolve the main Git worktree before reading runbooks or running any eval command. The first
+`worktree` record is the main worktree:
+
+```sh
+git worktree list --porcelain
+```
+
+Change to that exact path and verify it:
+
+```sh
+eval_main_worktree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
+cd "$eval_main_worktree"
+test "$(git rev-parse --show-toplevel)" = "$eval_main_worktree"
+```
+
+Stop if the path is empty or the assertion fails. Use the resolved main-worktree path as the
+working directory for every later shell command; do not rely on the agent's initial working
+directory. Keep downloaded datasets under its `.eval-data/` tree and generated results under
+its `eval/results/` tree. Never run an eval in a linked worktree, redirect output there, or
+copy datasets or results into one.
+
+If the code to test exists only in a linked worktree, report that it must first be made
+available in the main worktree. Do not copy, commit, or merge it there without authorization.
 
 ## Protect the shared stack
 
-Follow these invariants:
+Run exactly one eval process at a time across all agents, terminals, providers, and
+worktrees. Never background or parallelize eval commands. Let `--repeat` perform repetitions
+serially.
 
-- Run exactly one eval process at a time across all agents, terminals, providers, and worktrees. Never background or parallelize eval commands.
-- Let a command with `--repeat` perform its own repetitions; the runner executes them serially.
-- Never reset while another eval process is running. If a run was interrupted, first establish that its process has exited.
-- Keep the stack and its volumes. Never run `bun run local down`, `bun run local destroy`, `bun run local purge`, `docker compose down --volumes`, `docker volume rm`, a Docker prune command, or broad Docker cleanup.
-- Use only `bun run local reset` to clean knowledge and assets for a new eval. This reset preserves passkeys and MCP OAuth authorization.
-- Prefer the eval runner's automatic reset over a manual reset. `distill`, `qa:seed`, `story:run`, and `journey:run` already reset at the correct boundary.
-- Never reset between preparation and live QA. `qa:ask` queries the knowledge base left by its matching `qa:seed` or `distill` run.
-- Do not keep unrelated development data in this stack. Eval resets intentionally erase ordinary knowledge and assets, although they retain auth.
-
-## Preflight every run
-
-Record the source revision and confirm that no eval is already active:
+From the main worktree, record the source state and confirm the singleton is available:
 
 ```sh
 git status --short --branch
 git rev-parse HEAD
-```
-
-```sh
 ps aux | rg '[b]un run eval|[s]cripts/eval\.ts'
-```
-
-No matching process means the singleton is available. If another eval is present, wait for it or report the conflict; do not start another one and do not reset underneath it.
-
-Check the shared stack without changing it:
-
-```sh
 bun run local status
 ```
 
-If the stack is stopped, start the existing stack and volumes:
+If another eval is active, wait for it. If the stack is stopped, start its existing volumes:
 
 ```sh
 bun run local up
 ```
 
-Confirm the harness before spending a run on it. `check` prints the configured harness, model and eval, then proves each part of the path, ending with one live session that must reach the knowledge base:
-
-```sh
-bun run eval check
-```
-
-Add `--no-probe` to skip the live session, and `--provider`/`--model` to check a harness other than the configured one.
-
-Do not reconnect a provider when authorization already works. If `check` or the runner reports missing provider authorization, connect only that provider and complete its interactive flow, which needs a browser and this stack's owner passkey:
-
-```sh
-bun run eval connect codex
-```
-
-Use `claude` instead of `codex` only when that is the requested provider.
-
-## Know what the configuration decides
-
-`eval/config.json` names the harness, model, knowledge template and eval, and every command takes its defaults from it. `knowledgeTemplate` is either the production `default` or the eval-only `greedy` ablation. `bun run eval run` runs exactly what the configuration names; individual commands still accept `--provider`, `--model`, `--template`, `--corpus`, `--window`, `--batches` and `--repeat` for a one-off. Never edit `eval/config.json` to serve a single request — pass flags, or write the gitignored `eval/config.local.json` when the user wants a lasting local default. Report the template, harness and model with every result, because a score is comparable only to another score from the same combination.
-
-## Know which commands own state
-
-State-preparing commands reset automatically before writing their fixture:
-
-- `qa:seed` prepares `world-v1` for retrieval-only QA.
-- `distill --corpus amara-life-v1` builds the Amara knowledge base for gold and QA scoring.
-- `story:run` prepares and runs selected Steve Jobs stories.
-- `journey:run` prepares and runs the chronological Steve Jobs journey.
-
-Dependent commands do not prepare a new live base:
-
-- `qa:ask` must run while its seed or distillation base is still loaded.
-- `qa:score` scores recorded QA answers offline.
-- `gold:check` scores recorded Amara snapshots offline.
-
-Read-only fixture checks such as `corpus:verify`, `qa:verify`, `qa:derive` without `--write`, and `gold:profile` without `--write` do not reset the stack. Never use `corpus:refresh`, `qa:derive --write`, or `gold:profile --write` unless the user explicitly asked to update committed eval fixtures.
-
-## Run a single eval
-
-### One Steve Jobs story
-
-List valid story IDs, then run the selected story:
-
-```sh
-bun run eval story:list
-```
-
-```sh
-bun run eval story:run --story imac-design-and-launch
-```
-
-The harness comes from `eval/config.json`; pass `--provider` or `--model` only when the user asks for a different one. Add `--repeat <n>` for serial repetitions of the same selection.
-
-### The full Steve Jobs story suite
-
-```sh
-bun run eval story:run --all
-```
-
-This includes the implicit-write trigger and all historical stories. Use the journey command instead when the user wants only the historical stories in chronological journey form:
-
-```sh
-bun run eval journey:run
-```
-
-The full story suite and journey overlap; do not run both unless the user explicitly wants both harness modes.
-
-### One world-v1 QA question
-
-Prepare the retrieval-only base, copy the printed run ID, ask the one question while that base is still live, then score it:
-
-```sh
-bun run eval qa:seed
-```
-
-```sh
-bun run eval qa:ask <world-run-id> --only <question-id>
-```
-
-```sh
-bun run eval qa:score <world-run-id>
-```
-
-Use `--batches <n>` on `qa:seed` only when the selected question is due within those batches. Do not use `qa:ask --all` merely to force a question whose evidence was never served.
-
-### One Amara QA question or a short distillation
-
-Prepare the Amara base, copy the printed run ID, inspect its gold score, ask while that base is still live, then score:
-
-```sh
-bun run eval distill --corpus amara-life-v1
-```
-
-```sh
-bun run eval gold:check <amara-run-id>
-```
-
-```sh
-bun run eval qa:ask <amara-run-id> --only <question-id>
-```
-
-```sh
-bun run eval qa:score <amara-run-id>
-```
-
-For a deliberately short distillation, add `--batches 1` or another requested count. Ask only questions due in the processed batches.
-
-### LongMemEval cases
-
-LongMemEval is the one family whose cost is measured in hours per question. Quote a duration before starting one, and never start a large selection to "see how it goes".
-
-The benchmark lives outside git. Fetch it once, then confirm the pin:
-
-```sh
-bun run eval longmem:fetch
-```
-
-```sh
-bun run eval longmem:verify
-```
-
-Each case is measured in isolation: the runner resets the stack and distills that case's entire session history — around 30 batches at roughly 10 to 20 minutes each — before asking its single question. Budget five to nine hours per case, and expect individual batches to vary widely, because batch cost follows what is in the sessions rather than their number.
-
-Selection decides the bill, and the two flags do not mean the same thing:
-
-- `--case <id>` runs one case, from `bun run eval longmem:list`. Prefer it for a smoke test.
-- `--limit <n>` takes the first `n` cases in dataset order. The head of the dataset is entirely `single-session-user`, so this samples one question type rather than the benchmark.
-- `--stratify <n>` takes `n` cases **per question type**. With six types, `--stratify 10` selects 60 cases, not 10. `--stratify 1` is the cheapest selection that still spans every type.
-
-```sh
-bun run eval longmem:run --case <case-id>
-```
-
-Score a finished run, naming a judge that is actually available:
-
-```sh
-bun run eval longmem:score <longmem-run-id> --judge-provider claude
-```
-
-`longmem:score` defaults to the `codex` judge, and the `openai` judge needs `OPENAI_API_KEY`. Report which judge produced a score, because only the OpenAI judge matches the pinned upstream evaluator.
-
-Read `result.json` for a case as soon as its question is answered rather than waiting for the run to end. A case that answers well can still be voided for the tools it used, and finding that out early saves the remaining cases.
-
-## Run every eval family sequentially
-
-Use this order for a canonical local sweep. Complete every dependent step before starting the next state-preparing command.
-
-First, validate committed fixtures without changing them:
-
-```sh
-bun run eval corpus:verify --corpus world-v1
-bun run eval corpus:verify --corpus amara-life-v1
-bun run eval qa:derive
-bun run eval qa:verify
-bun run eval gold:profile
-```
-
-Next, run the complete `world-v1` retrieval pipeline:
-
-```sh
-bun run eval qa:seed
-bun run eval qa:ask <world-run-id>
-bun run eval qa:score <world-run-id>
-```
-
-Then run the complete Amara distillation and retrieval pipeline:
-
-```sh
-bun run eval distill --corpus amara-life-v1
-bun run eval gold:check <amara-run-id>
-bun run eval qa:ask <amara-run-id>
-bun run eval qa:score <amara-run-id>
-```
-
-Finally, run every Steve Jobs story:
-
-```sh
-bun run eval story:run --all
-```
-
-Run each displayed command only after the previous command exits. Replace each placeholder with the run ID printed by its preparation command. If the user also wants journey semantics, run `bun run eval journey:run` only after the story suite finishes.
-
-## Read and retain results
-
-Corpus and QA artifacts live under `eval/results/corpus/<run-id>/`. Inspect `report.md`, `report.json`, `gold-score.json` when present, and `qa-score.json` when present. Story artifacts live under `eval/results/stories/<run-id>/`; start with `report.md`.
-
-Report at least:
-
-- exact commit SHA and whether the worktree was dirty;
-- knowledge template, harness provider and model, command, run ID, batch/window/repeat configuration, and result path;
-- overall and per-case scores;
-- unread or unreached records, voided questions, and other harness caveats;
-- concentrated failure modes rather than only the headline score.
-
-A single stochastic run is a baseline, not proof of a regression or improvement. Compare repeated runs only when their corpus, harness provider and model, batch/window, repeat count, and harness revision match.
-
-Do not write an eval result into the local knowledge base under test: it contaminates subsequent inspection and disappears at the next reset. Keep the generated gitignored report as the local record of the run.
+Never reset while another eval is running. Never use `local down`, `local destroy`,
+`local purge`, Docker volume removal, or Docker cleanup commands. Do not keep unrelated
+development data in the stack because eval resets erase knowledge and assets while retaining
+the owner passkey and provider authorization.
+
+## Read the runbooks
+
+From the main worktree:
+
+1. Read `eval/README.md` for the shared configuration and command interface.
+2. Read the guide for the requested eval:
+   - `world-v1`: `eval/data/world-v1/README.md`
+   - `amara-life-v1`: `eval/data/amara-life-v1/README.md`
+   - Steve Jobs stories or journey: `eval/data/steve-jobs-v1/README.md`
+   - LongMemEval: `eval/data/longmemeval-v1/README.md`
+   - LoCoMo: `eval/data/locomo-v1/README.md`
+3. Read more than one family guide only when the request spans those families.
+4. Follow the commands in those READMEs without recreating another workflow here.
+
+## Preserve eval integrity
+
+- Let state-preparing commands perform their own resets. Never reset manually before them.
+- Never reset between `qa:seed` or `distill` and its matching `qa:ask`.
+- Do not run `corpus:refresh`, `qa:derive --write`, or `gold:profile --write` unless the user
+  explicitly asks to update committed fixtures.
+- If a README conflicts with the CLI or repository state, stop before changing eval state
+  and report the mismatch. Update the authoritative README when the workflow changes.
+- Do not write an eval result into the knowledge base under test.
+
+Report the absolute main-worktree and result paths, commit SHA and dirty state, knowledge
+template, provider and model, exact command, run ID, selection flags, scores, incomplete or
+void cases, and notable failure patterns. Compare runs only when the corpus, knowledge
+template, provider, model, selection, batching, repeat count, and source revision match.
+Treat one stochastic run as a baseline, not proof of a regression or improvement.
