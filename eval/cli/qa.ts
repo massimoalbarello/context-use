@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { LOCAL_STACK, runStackCommand } from "../../scripts/local-stack.ts";
+import { LOCAL_STACK } from "../../scripts/local-stack.ts";
+import { resetForEval, type EvalKnowledgeTemplate } from "../knowledge-template.ts";
 import { ROOT, harnessLabel, type EvalHarness } from "../runner/agent.ts";
 import {
   corpusDirectory,
@@ -129,10 +130,14 @@ function runDirectory(runId?: string): string {
   return resolveEvalRunDirectory(runId);
 }
 
-function runReport(directory: string): { corpusId?: string; mode?: string } {
+function runReport(directory: string): {
+  corpusId?: string;
+  mode?: string;
+  knowledgeTemplate?: EvalKnowledgeTemplate;
+} {
   try {
     return JSON.parse(readFileSync(join(directory, "report.json"), "utf8")) as {
-      corpusId?: string; mode?: string;
+      corpusId?: string; mode?: string; knowledgeTemplate?: EvalKnowledgeTemplate;
     };
   } catch {
     return {};
@@ -212,7 +217,10 @@ function finalSnapshot(directory: string): PageSnapshot[] {
  * `data/world-v1/qa/seed.ts` for why, and `runner/qa/README.md` for what that means for
  * the number.
  */
-export async function seedCommand(options: { batches?: number | undefined }): Promise<void> {
+export async function seedCommand(options: {
+  batches?: number | undefined;
+  knowledgeTemplate: EvalKnowledgeTemplate;
+}): Promise<void> {
   const difference = diffCorpus(WORLD_CORPUS);
   if (!corpusIsUnchanged(difference)) {
     throw new Error(`The vendored ${WORLD_CORPUS} corpus has been modified, so results would not be comparable:\n${
@@ -225,7 +233,7 @@ export async function seedCommand(options: { batches?: number | undefined }): Pr
   const records = corpus.records.filter((record) => record.batch <= through);
 
   const startedAt = new Date().toISOString();
-  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-seed-${WORLD_CORPUS}`;
+  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-seed-${WORLD_CORPUS}-${options.knowledgeTemplate}`;
   const directory = join(EVAL_CORPUS_RESULTS_ROOT, runId);
   await mkdir(directory, { recursive: true });
 
@@ -234,10 +242,10 @@ export async function seedCommand(options: { batches?: number | undefined }): Pr
   console.log(style.dim("Seeded, not distilled: world-v1 has no owner, so the activity distiller"));
   console.log(style.dim("correctly declines it. This measures retrieval only.\n"));
 
-  // The server reads the corpus at startup and the reset restores the default template,
+  // The server reads the corpus at startup and the reset restores the selected template,
   // so the seed always lands on a known base — the same contract a distillation run has.
   process.env.EVAL_CORPUS_PATH = `/app/eval/data/${WORLD_CORPUS}/corpus`;
-  runStackCommand("reset");
+  resetForEval(options.knowledgeTemplate);
 
   // Applied inside the container: Postgres is not published on a host port, and the
   // workspace packages only resolve where /app/node_modules is mounted.
@@ -256,6 +264,7 @@ export async function seedCommand(options: { batches?: number | undefined }): Pr
   await Bun.write(join(directory, `batch-${through}-snapshot.json`), `${JSON.stringify(pages, null, 2)}\n`);
   await Bun.write(join(directory, "report.json"), `${JSON.stringify({
     runId, corpusId: WORLD_CORPUS, mode: "seed", window: "full",
+    knowledgeTemplate: options.knowledgeTemplate,
     startedAt, completedAt: new Date().toISOString(),
     batches: batches.map((batch, index) => ({ batch, index })),
   }, null, 2)}\n`);
@@ -356,9 +365,11 @@ export function scoreAnswersCommand(runId?: string): void {
     people: peopleNames(corpusId),
   });
   const mode = runMode(directory);
+  const knowledgeTemplate = runReport(directory).knowledgeTemplate ?? "default";
   writeFileSync(join(directory, "qa-score.json"), serialise({
     corpusId,
     mode,
+    knowledgeTemplate,
     scoredAt: new Date().toISOString(),
     ...result,
   }), "utf8");

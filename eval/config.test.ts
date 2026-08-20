@@ -27,6 +27,7 @@ describe("the committed configuration", () => {
     const config = loadEvalConfig([CONFIG_PATH]);
     expect(config.sources).toEqual([CONFIG_PATH]);
     expect(config.harness.provider).toBe("codex");
+    expect(config.knowledgeTemplate).toBe("default");
     // One day of the corpus that matches what Context Use actually does.
     expect(config.eval).toEqual({
       command: "distill", corpus: "amara-life-v1", window: "dense", batches: 1,
@@ -51,6 +52,15 @@ describe("layering", () => {
       { harness: { model: "claude-sonnet-5" } },
     );
     expect(config.harness).toEqual({ provider: "claude", model: "claude-sonnet-5" });
+  });
+
+  test("overrides the knowledge template independently", () => {
+    const config = layered(
+      { knowledgeTemplate: "default", eval: { command: "journey" } },
+      { knowledgeTemplate: "greedy" },
+    );
+    expect(config.knowledgeTemplate).toBe("greedy");
+    expect(config.eval).toEqual({ command: "journey" });
   });
 
   test("drops an inherited model when a later layer changes provider", () => {
@@ -104,6 +114,11 @@ describe("validation", () => {
     expect(() => layered({ eval: { command: "distill", corpus: "world-v1", window: "wide" } }))
       .toThrow(/config\.eval\.window/);
     expect(() => layered({ eval: { command: "score" } })).toThrow(/Invalid discriminator value/);
+  });
+
+  test("rejects an unknown knowledge template", () => {
+    expect(() => layered({ knowledgeTemplate: "dummy" }))
+      .toThrow(/config\.knowledgeTemplate/);
   });
 
   test("rejects a batch count that is not a whole number of at least one", () => {

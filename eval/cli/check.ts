@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ALL_STORIES, configOrigin, describeSelection, type EvalConfig } from "../config.ts";
 import { verifyLocomoDataset } from "../data/locomo-v1/dataset.ts";
@@ -19,6 +19,7 @@ import { corpusDirectory, corpusIsUnchanged, diffCorpus } from "../runner/corpus
 import { loadCorpus, windowRecords } from "../runner/corpus/records.ts";
 import { EVAL_RESULTS_ROOT } from "../runner/results.ts";
 import { style } from "../runner/terminal.ts";
+import { knowledgeTemplateSourceDirectory } from "../knowledge-template.ts";
 
 /**
  * Proves that the configured harness can actually run the configured evaluation.
@@ -69,6 +70,24 @@ function checkBinary(harness: EvalHarness): Check {
     label: "CLI",
     detail: `${version(binary, ["--version"]) || harness.provider} · ${style.dim(binary)}`,
   };
+}
+
+function checkKnowledgeTemplate(config: EvalConfig): Check {
+  const directory = knowledgeTemplateSourceDirectory(config.knowledgeTemplate);
+  const required = ["AGENTS.md", "directories.json", "pages.json"];
+  const missing = required.filter((file) => !existsSync(join(directory, file)));
+  return missing.length === 0
+    ? {
+      outcome: "ok",
+      label: "Knowledge template",
+      detail: `${config.knowledgeTemplate} · ${directory}`,
+    }
+    : {
+      outcome: "fail",
+      label: "Knowledge template",
+      detail: `${config.knowledgeTemplate} is missing ${missing.join(", ")}`,
+      remedy: `Restore ${directory}`,
+    };
 }
 
 function checkSignIn(harness: EvalHarness): Check {
@@ -358,11 +377,12 @@ async function probe(harness: EvalHarness): Promise<Check[]> {
 export async function checkSetup(config: EvalConfig, options: { probe: boolean }): Promise<void> {
   console.log(style.heading("\nConfigured run"));
   console.log(`  ${style.dim("Harness:")} ${harnessLabel(config.harness)}`);
+  console.log(`  ${style.dim("Template:")} ${config.knowledgeTemplate}`);
   console.log(`  ${style.dim("Eval:   ")} ${describeSelection(config.eval)}`);
   console.log(`  ${style.dim("From:   ")} ${configOrigin(config)}`);
 
   console.log(style.heading("\nChecks"));
-  const checks: Check[] = [await checkSelection(config)];
+  const checks: Check[] = [checkKnowledgeTemplate(config), await checkSelection(config)];
   const binary = checkBinary(config.harness);
   checks.push(binary);
   if (binary.outcome === "ok") checks.push(checkSignIn(config.harness));

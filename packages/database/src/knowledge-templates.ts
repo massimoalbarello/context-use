@@ -351,9 +351,12 @@ export type KnowledgeTemplateBaseline = {
 // Clearing the knowledge base rebuilds the bare bootstrap state inside a single
 // database transaction, which cannot read the template files. Resolve the two
 // rows that must survive here and hand them to the reset.
-export async function knowledgeTemplateBaseline(templateName = "default"): Promise<KnowledgeTemplateBaseline> {
+export async function knowledgeTemplateBaseline(
+  templateName = "default",
+  templatesRoot = TEMPLATES_ROOT,
+): Promise<KnowledgeTemplateBaseline> {
   assertTemplateName(templateName);
-  const rootPath = new URL(`${templateName}/`, TEMPLATES_ROOT).pathname;
+  const rootPath = new URL(`${templateName}/`, templatesRoot).pathname;
   const presentations = await readDirectoryPresentations(rootPath, [""]);
   const rootDirectory = presentations.get("")!;
   const bodyMarkdown = await readFile(join(rootPath, "AGENTS.md"), "utf8");
@@ -375,9 +378,10 @@ export async function reconcileKnowledgeTemplate(
   templateName = "default",
   apply = false,
   forceTemplate = false,
+  templatesRoot = TEMPLATES_ROOT,
 ): Promise<TemplateResult> {
   assertTemplateName(templateName);
-  const rootUrl = new URL(`${templateName}/`, TEMPLATES_ROOT);
+  const rootUrl = new URL(`${templateName}/`, templatesRoot);
   const rootPath = rootUrl.pathname;
   const guideDirectoryPaths = await discoverGuideDirectories(rootPath);
   const directoryPresentations = await readDirectoryPresentations(rootPath, guideDirectoryPaths);

@@ -15,15 +15,17 @@ import { runJourney, runStories } from "./story.ts";
  * which is what makes two runs comparable and a setup check meaningful.
  */
 export async function runConfiguredEval(config: EvalConfig): Promise<void> {
-  const { harness } = config;
+  const { harness, knowledgeTemplate } = config;
   const selection = config.eval;
   console.log(style.heading(`\nRunning ${describeSelection(selection)}`));
   console.log(`${style.dim("Harness:")} ${harnessLabel(harness)}`);
+  console.log(`${style.dim("Knowledge template:")} ${knowledgeTemplate}`);
   console.log(style.dim(`Configured by ${configOrigin(config)}\n`));
 
   if (selection.command === "distill") {
     await runDistillation({
       harness,
+      knowledgeTemplate,
       corpus: selection.corpus,
       window: selection.window,
       batches: selection.batches,
@@ -36,10 +38,11 @@ export async function runConfiguredEval(config: EvalConfig): Promise<void> {
     // world-v1 is seeded as it stands, amara-life-v1 has to be distilled first. Asking is
     // the same question set through the same sessions either way.
     if (selection.corpus === "world-v1") {
-      await seedCommand({ batches: selection.batches });
+      await seedCommand({ batches: selection.batches, knowledgeTemplate });
     } else {
       await runDistillation({
         harness,
+        knowledgeTemplate,
         corpus: selection.corpus,
         window: selection.window,
         batches: selection.batches,
@@ -55,6 +58,7 @@ export async function runConfiguredEval(config: EvalConfig): Promise<void> {
   if (selection.command === "longmem") {
     await runLongMemEvalCommand({
       harness,
+      knowledgeTemplate,
       ...(selection.case ? { caseId: selection.case } : {}),
       ...(selection.limit ? { limit: selection.limit } : {}),
       ...(selection.stratify ? { stratify: selection.stratify } : {}),
@@ -67,6 +71,7 @@ export async function runConfiguredEval(config: EvalConfig): Promise<void> {
   if (selection.command === "locomo") {
     await runLocomoCommand({
       harness,
+      knowledgeTemplate,
       ...(selection.conversation ? { conversationId: selection.conversation } : {}),
       ...(selection.limit ? { limit: selection.limit } : {}),
       ...(selection.all ? { all: selection.all } : {}),
@@ -79,10 +84,10 @@ export async function runConfiguredEval(config: EvalConfig): Promise<void> {
 
   if (selection.command === "story") {
     await runStories(selection.story === ALL_STORIES
-      ? { harness, all: true, ...(selection.repeat ? { repeat: selection.repeat } : {}) }
-      : { harness, story: selection.story, ...(selection.repeat ? { repeat: selection.repeat } : {}) });
+      ? { harness, knowledgeTemplate, all: true, ...(selection.repeat ? { repeat: selection.repeat } : {}) }
+      : { harness, knowledgeTemplate, story: selection.story, ...(selection.repeat ? { repeat: selection.repeat } : {}) });
     return;
   }
 
-  await runJourney({ harness, ...(selection.repeat ? { repeat: selection.repeat } : {}) });
+  await runJourney({ harness, knowledgeTemplate, ...(selection.repeat ? { repeat: selection.repeat } : {}) });
 }

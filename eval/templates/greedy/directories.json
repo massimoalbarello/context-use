@@ -1,0 +1,14 @@
+{
+  "": {
+    "title": "Knowledge",
+    "summary": "The root of the owner's private, progressively discoverable knowledge base."
+  },
+  "automations": {
+    "title": "Automations",
+    "summary": "Instructions and supporting assets used by automations running in external harnesses."
+  },
+  "automations/activity-distiller": {
+    "title": "Activity distiller",
+    "summary": "Instructions and checkpoint state for remembering connected activity."
+  }
+}

@@ -20,6 +20,7 @@ import {
 import { MCP_NAME, ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { loadCorpus } from "../corpus/records.ts";
 import { runCorpusDistillation } from "../distill.ts";
+import type { EvalKnowledgeTemplate } from "../../knowledge-template.ts";
 import { askQuestions } from "../qa/ask.ts";
 import type { PublicQuery } from "../qa/questions.ts";
 import { EVAL_LOCOMO_RESULTS_ROOT } from "../results.ts";
@@ -57,6 +58,7 @@ import {
 
 export type LocomoRunOptions = LocomoSelection & {
   harness: EvalHarness;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   datasetPath?: string | undefined;
   sessionsPerBatch?: number | undefined;
 };
@@ -97,6 +99,7 @@ export type LocomoRunReport = {
   evaluator: typeof LOCOMO_EVALUATOR;
   amemEvaluator: typeof LOCOMO_AMEM_EVALUATOR;
   provider: EvalProvider;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   model: string | null;
   sessionsPerBatch: number;
   /** Recorded because it is a deliberate departure from both upstreams' `random.random()`. */
@@ -208,6 +211,7 @@ function markdownReport(report: LocomoRunReport): string {
     `- **Harness:** ${harnessLabel(
       report.model ? { provider: report.provider, model: report.model } : { provider: report.provider },
     )}`,
+    `- **Knowledge template:** ${report.knowledgeTemplate}`,
     `- **Conversations:** ${report.conversations.length}`,
     `- **Questions asked:** ${answered.length} of ${questions.length}`,
     `- **Maximum sessions per distillation batch:** ${report.sessionsPerBatch}`,
@@ -242,7 +246,8 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
   }
 
   const startedAt = new Date().toISOString();
-  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-locomo-${options.harness.provider}`;
+  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-locomo-${
+    options.harness.provider}-${options.knowledgeTemplate}`;
   const runDirectory = join(EVAL_LOCOMO_RESULTS_ROOT, runId);
   await mkdir(runDirectory, { recursive: true });
   const totalQuestions = conversations.reduce((sum, entry) => sum + entry.questions.length, 0);
@@ -277,6 +282,7 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
       evaluator: LOCOMO_EVALUATOR,
       amemEvaluator: LOCOMO_AMEM_EVALUATOR,
       provider: options.harness.provider,
+      knowledgeTemplate: options.knowledgeTemplate,
       model: options.harness.model ?? null,
       sessionsPerBatch,
       adversarialOptionOrder: "deterministic-by-question-id",
@@ -317,6 +323,7 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
     try {
       distillation = await runCorpusDistillation({
         harness: options.harness,
+        knowledgeTemplate: options.knowledgeTemplate,
         corpus,
         servedDirectory: containerPath(sourceDirectory),
         window: "full",
@@ -495,6 +502,7 @@ export type LocomoCategoryScore = {
 export type LocomoScore = {
   scoredAt: string;
   runId: string;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   total: number;
   scored: number;
   void: number;
@@ -656,6 +664,7 @@ export async function scoreLocomo(
   const score: LocomoScore = {
     scoredAt: new Date().toISOString(),
     runId: report.runId,
+    knowledgeTemplate: report.knowledgeTemplate ?? "default",
     total: questions.length,
     scored: answered.length,
     void: questions.length - answered.length,

@@ -32,10 +32,15 @@ import {
   viewLocomoCommand,
 } from "../eval/cli/locomo.ts";
 import type { LocomoJudgeProvider } from "../eval/runner/locomo/judge.ts";
+import {
+  isEvalKnowledgeTemplate,
+  type EvalKnowledgeTemplate,
+} from "../eval/knowledge-template.ts";
 
 function usage(): never {
   console.error(`Usage:
-  bun run eval check [--no-probe]                   prove the configured setup can run
+  bun run eval check [--no-probe] [--template <default|greedy>]
+                                                   prove the configured setup can run
   bun run eval run                                  run the configured eval on the configured harness
   bun run eval connect <codex|claude>
   bun run eval distill [--corpus <amara-life-v1|world-v1>] [--provider <codex|claude>]
@@ -81,9 +86,12 @@ case is hours, not minutes — budget ~30 batches at roughly 10-20 minutes each.
                    Use --stratify 1 for the cheapest run that still spans every type.
   --case <id>      one case by id, from longmem:list.
 
-eval/config.json says which harness, which model and which eval a run uses, and every
-command above takes its defaults from it. eval/config.local.json overrides it without
-entering a commit; a flag overrides both for one command only.
+eval/config.json says which harness, model, knowledge template and eval a run uses, and
+every command above takes its defaults from it. eval/config.local.json overrides it without
+entering a commit; a flag overrides the configuration layers for one command only.
+
+State-preparing commands also take --template <default|greedy>. The configured
+knowledgeTemplate is used when the flag is omitted.
 
 Per corpus, before asking:
   bun run eval qa:seed [--batches <n>]             world-v1: put its pages in as they are
@@ -136,6 +144,12 @@ function harnessFrom(args: string[]): EvalHarness {
   const inherited = provider === config.harness.provider ? config.harness.model : undefined;
   const model = optionFrom(args, "model") ?? inherited;
   return model === undefined ? { provider } : { provider, model };
+}
+
+function knowledgeTemplateFrom(args: string[]): EvalKnowledgeTemplate {
+  const value = optionFrom(args, "template") ?? config.knowledgeTemplate;
+  if (!isEvalKnowledgeTemplate(value)) usage();
+  return value;
 }
 
 function longMemJudgeProviderFrom(args: string[]): LongMemEvalJudgeProvider {
@@ -201,7 +215,11 @@ const [command, ...args] = process.argv.slice(2);
 if (command === "check") {
   // `--provider` and `--model` are honoured here for the same reason as everywhere else:
   // checking a harness before adopting it is exactly when a one-off override earns itself.
-  await checkSetup({ ...config, harness: harnessFrom(args) }, { probe: !args.includes("--no-probe") });
+  await checkSetup({
+    ...config,
+    harness: harnessFrom(args),
+    knowledgeTemplate: knowledgeTemplateFrom(args),
+  }, { probe: !args.includes("--no-probe") });
 } else if (command === "run") {
   await runConfiguredEval(config);
 } else if (command === "connect") {
@@ -211,6 +229,7 @@ if (command === "check") {
 } else if (command === "distill") {
   await runDistillation({
     harness: harnessFrom(args),
+    knowledgeTemplate: knowledgeTemplateFrom(args),
     corpus: corpusFrom(args),
     window: windowFrom(args),
     batches: batchesFrom(args),
@@ -228,7 +247,7 @@ if (command === "check") {
 } else if (command === "qa:verify") {
   verifyQuestionsCommand();
 } else if (command === "qa:seed") {
-  await seedCommand({ batches: batchesFrom(args) });
+  await seedCommand({ batches: batchesFrom(args), knowledgeTemplate: knowledgeTemplateFrom(args) });
 } else if (command === "qa:ask") {
   await askQuestionsCommand({
     runId: positional(args),
@@ -242,16 +261,21 @@ if (command === "check") {
 } else if (command === "story:list") {
   listStories();
 } else if (command === "story:run") {
+  const story = optionFrom(args, "story");
+  const repeat = countFrom(args, "repeat");
   await runStories({
     harness: harnessFrom(args),
-    story: optionFrom(args, "story"),
+    knowledgeTemplate: knowledgeTemplateFrom(args),
+    ...(story === undefined ? {} : { story }),
     all: args.includes("--all"),
-    repeat: countFrom(args, "repeat"),
+    ...(repeat === undefined ? {} : { repeat }),
   });
 } else if (command === "journey:run") {
+  const repeat = countFrom(args, "repeat");
   await runJourney({
     harness: harnessFrom(args),
-    repeat: countFrom(args, "repeat"),
+    knowledgeTemplate: knowledgeTemplateFrom(args),
+    ...(repeat === undefined ? {} : { repeat }),
   });
 } else if (command === "longmem:fetch") {
   await fetchLongMemEval(optionFrom(args, "dataset-path"));
@@ -262,6 +286,7 @@ if (command === "check") {
 } else if (command === "longmem:run") {
   await runLongMemEvalCommand({
     harness: harnessFrom(args),
+    knowledgeTemplate: knowledgeTemplateFrom(args),
     datasetPath: optionFrom(args, "dataset-path"),
     caseId: optionFrom(args, "case"),
     limit: countFrom(args, "limit"),
@@ -280,6 +305,7 @@ if (command === "check") {
 } else if (command === "locomo:run") {
   await runLocomoCommand({
     harness: harnessFrom(args),
+    knowledgeTemplate: knowledgeTemplateFrom(args),
     datasetPath: optionFrom(args, "dataset-path"),
     conversationId: optionFrom(args, "conversation"),
     limit: countFrom(args, "limit"),

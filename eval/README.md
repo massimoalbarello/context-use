@@ -38,7 +38,8 @@ meetings under `meetings/`, and events under `events/`.
 
 ## One configuration per run
 
-[`config.json`](config.json) names the harness, the model, and the evaluation a run uses.
+[`config.json`](config.json) names the harness, model, knowledge template, and evaluation a
+run uses.
 Every command below takes its defaults from it, so what gets measured is a property of the
 repository rather than of the command line someone happened to type.
 
@@ -61,6 +62,11 @@ never lands in a commit; and flags, which are a one-off and never a new default.
 provider by flag drops the configured model with it, because a model id belongs to the CLI
 that understands it.
 
+`knowledgeTemplate` is an independent axis with two values: `default`, the product template,
+and `greedy`, the eval-only ablation that asks the agent to remember as much as possible while
+choosing its own organization. Use `--template` for a one-off override. The greedy template
+lives under `eval/templates/` and is absent from production images.
+
 An unknown or misspelled field is an error rather than a shrug, since a `batchs` that
 silently kept the default would report one run and measure another.
 
@@ -78,8 +84,12 @@ because it is the only corpus that arrived with an answer key of its own.
 // The whole amara corpus, on a pinned Claude Code model.
 {
   "harness": { "provider": "claude", "model": "claude-opus-5" },
+  "knowledgeTemplate": "default",
   "eval": { "command": "distill", "corpus": "amara-life-v1" }
 }
+
+// The same selection with the greedy knowledge-maintenance ablation.
+{ "knowledgeTemplate": "greedy" }
 
 // Its eight busy days rather than all forty-seven, distilled and then asked and scored.
 { "eval": { "command": "qa", "corpus": "amara-life-v1", "window": "dense" } }
@@ -104,7 +114,7 @@ because it is the only corpus that arrived with an answer key of its own.
 ```
 
 `config.json` is JSON, not JSONC — the comments above are for this page only. A layer may
-carry `harness` alone, `eval` alone, or both.
+carry `harness`, `knowledgeTemplate`, or `eval` independently.
 
 ## What reaches the agent, and what does not
 
@@ -144,7 +154,7 @@ local evaluation self-contained:
 
 ```text
 eval/
-├── config.json           the harness, model and evaluation a run uses
+├── config.json           the harness, model, knowledge template and evaluation a run uses
 ├── config.ts             how that configuration is read, layered and validated
 ├── data/
 │   ├── amara-life-v1/    corpus, lockfile, loader, QA, and structural gold
@@ -152,6 +162,7 @@ eval/
 │   ├── longmemeval-v1/   pinned external dataset manifest and isolated case loader
 │   ├── world-v1/         corpus, lockfile, loader, QA derivation, and seeding
 │   └── steve-jobs-v1/    interactive stories, expectations, journey, and sources
+├── templates/            eval-only knowledge-template ablations
 ├── runner/               reusable corpus, distillation, QA, story, agent, and snapshot code
 └── cli/                  command composition over the data packages and runner
 ```
@@ -295,8 +306,8 @@ container before the first agent run. A client and server that disagree would la
 the server never served — or score a `world-v1` run against amara's key — so the run fails
 instead.
 
-Every run resets semantic knowledge and assets in this local instance to the default
-template while preserving the owner passkey and OAuth authorization. Do not keep
+Every run resets semantic knowledge and assets in this local instance to its configured
+knowledge template while preserving the owner passkey and OAuth authorization. Do not keep
 development data in it. Snapshots, per-batch agent logs, QA answers and scores,
 structural scores, and Markdown reports stay together in a timestamped run directory
 under `eval/results/corpus/`. Story suites use the parallel `eval/results/stories/`
