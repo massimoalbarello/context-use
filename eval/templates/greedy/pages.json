@@ -1,0 +1,14 @@
+{
+  "automations/activity-distiller/instructions": {
+    "title": "Activity distiller",
+    "summary": "Instructions for remembering as much as possible from connected activity.",
+    "body_file": "_pages/activity-distiller/instructions.md",
+    "management": "managed"
+  },
+  "automations/activity-distiller/state": {
+    "title": "Activity distiller state",
+    "summary": "The current opaque source checkpoint for the activity distiller.",
+    "body_file": "_pages/activity-distiller/state.md",
+    "management": "create-only"
+  }
+}

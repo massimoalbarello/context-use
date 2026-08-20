@@ -1,12 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { z } from "zod";
+import { EVAL_KNOWLEDGE_TEMPLATES, type EvalKnowledgeTemplate } from "./knowledge-template.ts";
 import { PROVIDERS, type EvalHarness } from "./runner/agent.ts";
 import { CORPUS_IDS, type CorpusId } from "./runner/corpus/integrity.ts";
 import { CORPUS_WINDOWS } from "./runner/corpus/records.ts";
 
 /**
- * Which harness, which model, and which evaluation a local run uses.
+ * Which harness, model, knowledge template, and evaluation a local run uses.
  *
  * Every `bun run eval` command reads this, so the shape of a run is stated in one place
  * rather than reconstructed from whichever flags someone happened to type. `bun run eval
@@ -20,8 +21,9 @@ import { CORPUS_WINDOWS } from "./runner/corpus/records.ts";
  *      dirty the tree or land in a commit by accident.
  *   3. Flags — a one-off, and never a new default.
  *
- * `harness` merges field by field across those layers; `eval` is replaced whole, because
- * half of one selection merged into another describes a run nobody asked for.
+ * `harness` merges field by field and `knowledgeTemplate` overrides independently across
+ * those layers; `eval` is replaced whole, because half of one selection merged into another
+ * describes a run nobody asked for.
  */
 
 /** Runs every story in the suite, rather than one named story. */
@@ -72,6 +74,7 @@ const layerSchema = z.strictObject({
     provider: z.enum(PROVIDERS).optional(),
     model: z.string().min(1).optional(),
   }).optional(),
+  knowledgeTemplate: z.enum(EVAL_KNOWLEDGE_TEMPLATES).optional(),
   eval: selectionSchema.optional(),
 });
 
@@ -79,6 +82,7 @@ export type EvalSelection = z.infer<typeof selectionSchema>;
 
 export type EvalConfig = {
   harness: EvalHarness;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   eval: EvalSelection;
   /** The files this configuration was read from, nearest last. */
   sources: string[];
@@ -98,6 +102,7 @@ export const LOCAL_CONFIG_PATH = join(import.meta.dir, "config.local.json");
  */
 const BUILT_IN: EvalConfig = {
   harness: { provider: "codex" },
+  knowledgeTemplate: "default",
   eval: { command: "distill", corpus: "amara-life-v1", window: "dense", batches: 1 },
   sources: [],
 };
@@ -121,6 +126,7 @@ function readLayer(path: string, base: EvalConfig): EvalConfig {
     ?? (provider === base.harness.provider ? base.harness.model : undefined);
   return {
     harness: model === undefined ? { provider } : { provider, model },
+    knowledgeTemplate: parsed.knowledgeTemplate ?? base.knowledgeTemplate,
     eval: parsed.eval ?? base.eval,
     sources: [...base.sources, path],
   };

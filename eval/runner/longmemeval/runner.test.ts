@@ -85,6 +85,7 @@ describe("LongMemEval run reporting", () => {
       benchmark: "longmemeval-v1",
       dataset: LONGMEMEVAL_DATASET,
       provider: "codex",
+      knowledgeTemplate: "greedy",
       sessionsPerBatch: 10,
       startedAt: "2026-01-01T00:00:00.000Z",
       completedAt: "2026-01-01T00:01:00.000Z",
@@ -138,6 +139,7 @@ describe("LongMemEval run reporting", () => {
       model: "test",
       judgeProvider: "codex",
       officialModel: false,
+      knowledgeTemplate: "greedy",
     });
     expect(score.byType["multi-session"]).toEqual({
       correct: 1, scored: 1, void: 1, total: 2, accuracy: 0.5,

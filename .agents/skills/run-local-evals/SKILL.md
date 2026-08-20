@@ -65,7 +65,7 @@ Use `claude` instead of `codex` only when that is the requested provider.
 
 ## Know what the configuration decides
 
-`eval/config.json` names the harness, the model and the eval, and every command takes its defaults from it. `bun run eval run` runs exactly what it names; the individual commands below still accept `--provider`, `--model`, `--corpus`, `--window`, `--batches` and `--repeat` for a one-off. Never edit `eval/config.json` to serve a single request — pass flags, or write the gitignored `eval/config.local.json` when the user wants a lasting local default. Report the harness and model with every result, because a score is comparable only to another score from the same pair.
+`eval/config.json` names the harness, model, knowledge template and eval, and every command takes its defaults from it. `knowledgeTemplate` is either the production `default` or the eval-only `greedy` ablation. `bun run eval run` runs exactly what the configuration names; individual commands still accept `--provider`, `--model`, `--template`, `--corpus`, `--window`, `--batches` and `--repeat` for a one-off. Never edit `eval/config.json` to serve a single request — pass flags, or write the gitignored `eval/config.local.json` when the user wants a lasting local default. Report the template, harness and model with every result, because a score is comparable only to another score from the same combination.
 
 ## Know which commands own state
 
@@ -236,7 +236,7 @@ Corpus and QA artifacts live under `eval/results/corpus/<run-id>/`. Inspect `rep
 Report at least:
 
 - exact commit SHA and whether the worktree was dirty;
-- harness provider and model, command, run ID, batch/window/repeat configuration, and result path;
+- knowledge template, harness provider and model, command, run ID, batch/window/repeat configuration, and result path;
 - overall and per-case scores;
 - unread or unreached records, voided questions, and other harness caveats;
 - concentrated failure modes rather than only the headline score.

@@ -8,7 +8,8 @@ import {
   type CorpusWindow,
 } from "./corpus/records.ts";
 import type { Corpus } from "./corpus/types.ts";
-import { LOCAL_STACK, runStackCommand } from "../../scripts/local-stack.ts";
+import { LOCAL_STACK } from "../../scripts/local-stack.ts";
+import { resetForEval, type EvalKnowledgeTemplate } from "../knowledge-template.ts";
 import { EVAL_URL, MCP_NAME, ROOT, harnessLabel, runAgentSession, type EvalHarness } from "./agent.ts";
 import { corpusDirectory, corpusIsUnchanged, diffCorpus, type CorpusId } from "./corpus/integrity.ts";
 import {
@@ -33,6 +34,7 @@ import { EVAL_CORPUS_RESULTS_ROOT } from "./results.ts";
 
 export type DistillOptions = {
   harness: EvalHarness;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   corpus: CorpusId;
   window: CorpusWindow;
   /** Stop after this many corpus batches; omit to process the whole window. */
@@ -46,6 +48,7 @@ export type DistillOptions = {
  */
 export type CorpusDistillOptions = {
   harness: EvalHarness;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   corpus: Corpus;
   /** The same directory as mounted inside the development container. */
   servedDirectory: string;
@@ -225,10 +228,12 @@ export async function runDistillation(options: DistillOptions): Promise<string> 
   const directory = corpusDirectory(options.corpus);
   const corpus = loadCorpus(directory);
   const startedAt = new Date().toISOString();
-  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-distill-${options.corpus}-${options.harness.provider}`;
+  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-distill-${options.corpus}-${
+    options.harness.provider}-${options.knowledgeTemplate}`;
   const runDirectory = join(EVAL_CORPUS_RESULTS_ROOT, runId);
   const result = await runCorpusDistillation({
     harness: options.harness,
+    knowledgeTemplate: options.knowledgeTemplate,
     corpus,
     servedDirectory: `/app/eval/data/${options.corpus}/corpus`,
     window: options.window,
@@ -271,7 +276,7 @@ export async function runCorpusDistillation(
   process.env.EVAL_CORPUS_PATH = options.servedDirectory;
   process.env.EVAL_CORPUS_WINDOW = options.window;
   console.log(style.dim(`\nResetting and serving ${corpus.corpusId} (${options.window} window) while preserving passkeys and OAuth…`));
-  runStackCommand("reset");
+  resetForEval(options.knowledgeTemplate);
   assertServed(options.servedDirectory, options.window);
 
   let previous: PageSnapshot[] = snapshotKnowledge();
@@ -379,6 +384,7 @@ export async function runCorpusDistillation(
     // Recorded so `qa:score` can say what its number covers: a distilled base carries
     // every extraction decision the agent made, where a seeded one carries none.
     mode: "distill",
+    knowledgeTemplate: options.knowledgeTemplate,
     window: options.window,
     provider: options.harness.provider,
     // Null rather than absent, so a run on the CLI's own default is told apart from an
@@ -402,6 +408,7 @@ export async function runCorpusDistillation(
     `- **Corpus:** ${corpus.corpusId}`,
     `- **Window:** ${options.window} (${batches.length} batches)`,
     `- **Harness:** ${harnessLabel(options.harness)}`,
+    `- **Knowledge template:** ${options.knowledgeTemplate}`,
     `- **Records served:** ${served} of ${requested} requested`,
     ...(served < requested ? [`- **Unread:** ${requested - served} records the run never saw`] : []),
     `- **Pages after the final run:** ${previous.length}`,

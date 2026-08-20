@@ -2,6 +2,7 @@
   "harness": {
     "provider": "codex"
   },
+  "knowledgeTemplate": "default",
   "eval": {
     "command": "distill",
     "corpus": "amara-life-v1",

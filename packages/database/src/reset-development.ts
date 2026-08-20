@@ -58,7 +58,12 @@ async function resetDevelopmentData(): Promise<void> {
     await client.end();
   }
 
-  await runTemplateCommand("apply", process.env.CONTEXT_USE_TEMPLATE_INSTALL ?? "default");
+  await runTemplateCommand(
+    "apply",
+    process.env.CONTEXT_USE_TEMPLATE_INSTALL ?? "default",
+    false,
+    process.env.CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT,
+  );
 }
 
 if (import.meta.main) await resetDevelopmentData();
