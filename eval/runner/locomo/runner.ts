@@ -12,11 +12,7 @@ import {
   type LocomoConversation,
   type LocomoSelection,
 } from "../../data/locomo-v1/dataset.ts";
-import {
-  LOCOMO_AMEM_EVALUATOR,
-  LOCOMO_DATASET,
-  LOCOMO_EVALUATOR,
-} from "../../data/locomo-v1/manifest.ts";
+import { LOCOMO_DATASET } from "../../data/locomo-v1/manifest.ts";
 import { MCP_NAME, ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { loadCorpus } from "../corpus/records.ts";
 import { runCorpusDistillation } from "../distill.ts";
@@ -33,14 +29,6 @@ import {
   type LocomoJudgement,
   type LocomoJudgeProvider,
 } from "./judge.ts";
-import {
-  amemMetrics,
-  AMEM_METRIC_NAMES,
-  EMPTY_AMEM_METRICS,
-  meanAmemMetrics,
-  officialScore,
-  type AmemMetrics,
-} from "./metrics.ts";
 
 /**
  * LoCoMo, run the way the benchmark defines it.
@@ -50,7 +38,7 @@ import {
  * distilled into one knowledge base and every one of its questions is then asked against
  * that same base. The stack resets when the runner moves to the next conversation, whose
  * history and questions are independent by benchmark definition. This is also what A-mem
- * does — a fresh memory system per sample — which is what makes the two comparable at all.
+ * does — a fresh memory system per sample — which is what makes the systems comparable.
  *
  * Questions never mutate the knowledge base: only read-only tools are valid, and any
  * write, shell or web action voids that question.
@@ -96,8 +84,6 @@ export type LocomoRunReport = {
   runId: string;
   benchmark: "locomo-v1";
   dataset: typeof LOCOMO_DATASET;
-  evaluator: typeof LOCOMO_EVALUATOR;
-  amemEvaluator: typeof LOCOMO_AMEM_EVALUATOR;
   provider: EvalProvider;
   knowledgeTemplate: EvalKnowledgeTemplate;
   model: string | null;
@@ -216,7 +202,6 @@ function markdownReport(report: LocomoRunReport): string {
     `- **Questions asked:** ${answered.length} of ${questions.length}`,
     `- **Maximum sessions per distillation batch:** ${report.sessionsPerBatch}`,
     `- **Dataset revision:** ${report.dataset.revision}`,
-    `- **Evaluator revision:** ${report.evaluator.revision}`,
     "",
   ];
   for (const entry of report.conversations) {
@@ -279,8 +264,6 @@ export async function runLocomo(options: LocomoRunOptions): Promise<string> {
       runId,
       benchmark: "locomo-v1",
       dataset: LOCOMO_DATASET,
-      evaluator: LOCOMO_EVALUATOR,
-      amemEvaluator: LOCOMO_AMEM_EVALUATOR,
       provider: options.harness.provider,
       knowledgeTemplate: options.knowledgeTemplate,
       model: options.harness.model ?? null,
@@ -493,10 +476,11 @@ export type LocomoCategoryScore = {
   total: number;
   scored: number;
   void: number;
-  /** Official LoCoMo F1, averaged over every selected question of this category. */
-  officialF1: number;
-  amem: AmemMetrics;
-  judged?: { correct: number; scored: number; accuracy: number; score: number };
+  correct: number;
+  /** Fraction fully correct, with void questions counted as failures. */
+  accuracy: number;
+  /** Mean rubric score, with void questions counted as zero. */
+  score: number;
 };
 
 export type LocomoScore = {
@@ -506,25 +490,14 @@ export type LocomoScore = {
   total: number;
   scored: number;
   void: number;
-  /**
-   * The headline. Void questions are in the denominator, so an infrastructure failure
-   * cannot flatter the number; `officialF1Scored` reports the same average over answered
-   * questions only.
-   */
-  officialF1: number;
-  officialF1Scored: number;
-  amem: AmemMetrics;
-  judge?: {
+  judge: {
     provider: LocomoJudgeProvider;
     model: string;
     correct: number;
     scored: number;
     /** Fraction judged fully correct, void questions in the denominator. */
     accuracy: number;
-    /**
-     * Mean judged score, which is the number comparable to `officialF1`: multi-hop earns
-     * partial credit per required fact, exactly as the official scorer does.
-     */
+    /** Mean rubric score; multi-hop earns partial credit per required fact. */
     score: number;
   };
   byCategory: LocomoCategoryScore[];
@@ -532,8 +505,6 @@ export type LocomoScore = {
     sampleId: string;
     questionId: string;
     category: LocomoCategory;
-    officialF1?: number;
-    amem?: AmemMetrics;
     judgeCorrect?: boolean;
     /** 0 to 1: partial for multi-hop, binary elsewhere. */
     judgeScore?: number;
@@ -543,14 +514,64 @@ export type LocomoScore = {
 };
 
 export type LocomoScoreOptions = {
-  /** Omit to score deterministically only, which needs no session and no API key. */
+  /** Defaults to the key-free Codex subscription judge. */
   judgeProvider?: LocomoJudgeProvider | undefined;
-  /** Test seam for deterministic unit scoring. */
+  /** Test seam for unit scoring without starting judge sessions. */
   judge?: ((
     entry: { category: LocomoCategory; question: string; referenceAnswer: string },
     hypothesis: string,
   ) => Promise<LocomoJudgement>) | undefined;
 };
+
+function aggregateLocomoScore(
+  runId: string,
+  knowledgeTemplate: EvalKnowledgeTemplate,
+  questions: LocomoScore["questions"],
+  judgements: LocomoJudgement[],
+  judgeProvider: LocomoJudgeProvider,
+): LocomoScore {
+  const answered = questions.filter((entry) => entry.judgeScore !== undefined);
+  const sum = (values: number[]): number => values.reduce((total, value) => total + value, 0);
+  const judgeCorrect = answered.filter((entry) => entry.judgeCorrect).length;
+  const byCategory: LocomoCategoryScore[] = LOCOMO_CATEGORY_NUMBERS.flatMap((category) => {
+    const all = questions.filter((entry) => entry.category === category);
+    if (all.length === 0) return [];
+    const scoredHere = all.filter((entry) => entry.judgeScore !== undefined);
+    const correctHere = scoredHere.filter((entry) => entry.judgeCorrect).length;
+    return [{
+      category,
+      name: LOCOMO_CATEGORIES[category],
+      total: all.length,
+      scored: scoredHere.length,
+      void: all.length - scoredHere.length,
+      correct: correctHere,
+      accuracy: correctHere / all.length,
+      score: sum(scoredHere.map((entry) => entry.judgeScore!)) / all.length,
+    }];
+  });
+  return {
+    scoredAt: new Date().toISOString(),
+    runId,
+    knowledgeTemplate,
+    total: questions.length,
+    scored: answered.length,
+    void: questions.length - answered.length,
+    judge: {
+      provider: judgements[0]?.provider ?? judgeProvider,
+      model: judgements[0]?.model ?? (judgeProvider === "openai"
+        ? LOCOMO_OPENAI_JUDGE_MODEL
+        : `${judgeProvider}-subscription`),
+      correct: judgeCorrect,
+      scored: answered.length,
+      accuracy: questions.length ? judgeCorrect / questions.length : 0,
+      score: questions.length
+        ? sum(answered.map((entry) => entry.judgeScore!)) / questions.length
+        : 0,
+    },
+    byCategory,
+    questions,
+  };
+}
 
 /**
  * Scoring re-reads the dataset because the reference answers were never written into the
@@ -572,9 +593,9 @@ export async function scoreLocomo(
   );
 
   const questions: LocomoScore["questions"] = [];
-  const judgeProvider = options.judgeProvider;
-  const judgeDirectory = join(directory, "judge", judgeProvider ?? "none");
-  let judgements: LocomoJudgement[] = [];
+  const judgeProvider = options.judgeProvider ?? "codex";
+  const judgeDirectory = join(directory, "judge", judgeProvider);
+  const judgements: LocomoJudgement[] = [];
 
   for (const conversation of report.conversations) {
     const source = conversations.get(conversation.sampleId);
@@ -596,126 +617,48 @@ export async function scoreLocomo(
         sampleId: conversation.sampleId,
         questionId: entry.questionId,
         category: entry.category,
-        officialF1: officialScore(entry.hypothesis, gold.referenceAnswer, entry.category),
-        amem: amemMetrics(entry.hypothesis, gold.referenceAnswer),
       };
-      if (judgeProvider || options.judge) {
-        const judged = options.judge
-          ? await options.judge(
+      const judged = options.judge
+        ? await options.judge(
+          { category: entry.category, question: entry.question, referenceAnswer: gold.referenceAnswer },
+          entry.hypothesis,
+        )
+        : judgeProvider === "openai"
+          ? await judgeLocomoAnswer(
             { category: entry.category, question: entry.question, referenceAnswer: gold.referenceAnswer },
             entry.hypothesis,
           )
-          : judgeProvider === "openai"
-            ? await judgeLocomoAnswer(
-              { category: entry.category, question: entry.question, referenceAnswer: gold.referenceAnswer },
-              entry.hypothesis,
-            )
-            : await judgeLocomoAnswerWithHarness(
-              { category: entry.category, question: entry.question, referenceAnswer: gold.referenceAnswer },
-              entry.hypothesis,
-              {
-                provider: judgeProvider as EvalProvider,
-                runDirectory: judgeDirectory,
-                id: `judge-${safeId(entry.questionId)}`,
-              },
-            );
-        judgements.push(judged);
-        scored.judgeCorrect = judged.correct;
-        scored.judgeScore = judged.score;
-        scored.judgeResponse = judged.response;
-      }
+          : await judgeLocomoAnswerWithHarness(
+            { category: entry.category, question: entry.question, referenceAnswer: gold.referenceAnswer },
+            entry.hypothesis,
+            {
+              provider: judgeProvider,
+              runDirectory: judgeDirectory,
+              id: `judge-${safeId(entry.questionId)}`,
+            },
+          );
+      judgements.push(judged);
+      scored.judgeCorrect = judged.correct;
+      scored.judgeScore = judged.score;
+      scored.judgeResponse = judged.response;
       questions.push(scored);
     }
   }
 
-  const answered = questions.filter((entry) => entry.officialF1 !== undefined);
-  const sum = (values: number[]): number => values.reduce((total, value) => total + value, 0);
-  const officialTotal = sum(answered.map((entry) => entry.officialF1!));
-  const judged = questions.filter((entry) => entry.judgeCorrect !== undefined);
-  const judgeCorrect = judged.filter((entry) => entry.judgeCorrect).length;
-
-  const byCategory: LocomoCategoryScore[] = LOCOMO_CATEGORY_NUMBERS.flatMap((category) => {
-    const all = questions.filter((entry) => entry.category === category);
-    if (all.length === 0) return [];
-    const scoredHere = all.filter((entry) => entry.officialF1 !== undefined);
-    const judgedHere = all.filter((entry) => entry.judgeCorrect !== undefined);
-    const correctHere = judgedHere.filter((entry) => entry.judgeCorrect).length;
-    return [{
-      category,
-      name: LOCOMO_CATEGORIES[category],
-      total: all.length,
-      scored: scoredHere.length,
-      void: all.length - scoredHere.length,
-      officialF1: sum(scoredHere.map((entry) => entry.officialF1!)) / all.length,
-      amem: scaleAmem(meanAmemMetrics(scoredHere.map((entry) => entry.amem!)), scoredHere.length, all.length),
-      ...(judgedHere.length
-        ? {
-          judged: {
-            correct: correctHere,
-            scored: judgedHere.length,
-            accuracy: correctHere / all.length,
-            score: sum(judgedHere.map((entry) => entry.judgeScore ?? 0)) / all.length,
-          },
-        }
-        : {}),
-    }];
-  });
-
-  const score: LocomoScore = {
-    scoredAt: new Date().toISOString(),
-    runId: report.runId,
-    knowledgeTemplate: report.knowledgeTemplate ?? "default",
-    total: questions.length,
-    scored: answered.length,
-    void: questions.length - answered.length,
-    officialF1: questions.length ? officialTotal / questions.length : 0,
-    officialF1Scored: answered.length ? officialTotal / answered.length : 0,
-    amem: scaleAmem(
-      meanAmemMetrics(answered.map((entry) => entry.amem!)),
-      answered.length,
-      questions.length,
-    ),
-    ...(judged.length
-      ? {
-        judge: {
-          provider: judgements[0]?.provider ?? judgeProvider ?? "codex",
-          model: judgements[0]?.model ?? (judgeProvider === "openai"
-            ? LOCOMO_OPENAI_JUDGE_MODEL
-            : `${judgeProvider}-subscription`),
-          correct: judgeCorrect,
-          scored: judged.length,
-          accuracy: questions.length ? judgeCorrect / questions.length : 0,
-          score: questions.length
-            ? sum(judged.map((entry) => entry.judgeScore ?? 0)) / questions.length
-            : 0,
-        },
-      }
-      : {}),
-    byCategory,
+  const score = aggregateLocomoScore(
+    report.runId,
+    report.knowledgeTemplate ?? "default",
     questions,
-  };
+    judgements,
+    judgeProvider,
+  );
 
-  const suffix = score.judge ? `-judge-${score.judge.provider}` : "-deterministic";
+  const suffix = `-judge-${score.judge.provider}`;
   const serialized = `${JSON.stringify(score, null, 2)}\n`;
   await Bun.write(join(directory, `qa-score${suffix}.json`), serialized);
   await Bun.write(join(directory, "qa-score.json"), serialized);
   printLocomoScore(score);
   return score;
-}
-
-/**
- * Puts a void question into an A-mem average as a zero.
- *
- * `meanAmemMetrics` averages what it is given, so scoring only answered questions would
- * quietly drop failures out of the denominator. The official F1 keeps every selected
- * question in its denominator, and this keeps the second family honest the same way.
- */
-function scaleAmem(mean: AmemMetrics, scored: number, total: number): AmemMetrics {
-  if (total === 0) return { ...EMPTY_AMEM_METRICS };
-  const factor = scored / total;
-  const scaled = { ...EMPTY_AMEM_METRICS };
-  for (const name of AMEM_METRIC_NAMES) scaled[name] = mean[name] * factor;
-  return scaled;
 }
 
 function percent(value: number): string {
@@ -724,20 +667,13 @@ function percent(value: number): string {
 
 function printLocomoScore(score: LocomoScore): void {
   console.log(style.heading(`\nLoCoMo · ${score.scored}/${score.total} questions answered`));
-  console.log(`Official LoCoMo F1:  ${percent(score.officialF1)}   ${
-    style.dim(`(${percent(score.officialF1Scored)} over answered questions only)`)}`);
-  console.log(`A-mem F1 / BLEU-1:   ${percent(score.amem.f1)} / ${percent(score.amem.bleu1)}   ${
-    style.dim("A-mem's own metric, not the official one")}`);
-  if (score.judge) {
-    console.log(`Judge score:         ${percent(score.judge.score)}   ${
-      style.dim(`${percent(score.judge.accuracy)} fully correct · ${score.judge.model} · this repository's rubric`)}`);
-  }
+  console.log(`Judge score:         ${percent(score.judge.score)}   ${
+    style.dim(`${percent(score.judge.accuracy)} fully correct · ${score.judge.model} · this repository's rubric`)}`);
   console.log("");
   for (const entry of score.byCategory) {
-    const judgeColumn = entry.judged ? `  judge ${percent(entry.judged.score)}` : "";
     console.log(`  ${String(entry.category)} ${entry.name.padEnd(12)} n=${
-      String(entry.total).padStart(4)}  official F1 ${percent(entry.officialF1).padStart(6)}  A-mem F1 ${
-      percent(entry.amem.f1).padStart(6)}  BLEU-1 ${percent(entry.amem.bleu1).padStart(6)}${judgeColumn}`);
+      String(entry.total).padStart(4)}  judge ${percent(entry.score).padStart(6)}  fully correct ${
+      percent(entry.accuracy).padStart(6)}`);
   }
   if (score.void) {
     console.log(style.yellow(
@@ -746,4 +682,4 @@ function printLocomoScore(score: LocomoScore): void {
   }
 }
 
-export const locomoRunnerInternals = { containerPath, publicQuestion, scaleAmem };
+export const locomoRunnerInternals = { aggregateLocomoScore, containerPath, publicQuestion };

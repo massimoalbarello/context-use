@@ -101,6 +101,13 @@ describe("validation", () => {
       .toThrow(/config\.eval: Unrecognized key: "corpus"/);
   });
 
+  test("rejects the removed LoCoMo question selectors", () => {
+    expect(() => layered({ eval: { command: "locomo", all: true, questions: 10 } }))
+      .toThrow(/Unrecognized key: "questions"/);
+    expect(() => layered({ eval: { command: "locomo", all: true, stratify: 2 } }))
+      .toThrow(/Unrecognized key: "stratify"/);
+  });
+
   // A misspelling that silently kept the default would report one run and measure another.
   test("rejects a misspelled count rather than keeping the default", () => {
     expect(() => layered({ eval: { command: "distill", corpus: "world-v1", batchs: 1 } }))
@@ -144,6 +151,8 @@ describe("description", () => {
       .toBe("story suite · every story · 3 repetitions");
     expect(describeSelection({ command: "journey" }))
       .toBe("journey · the historical stories in order");
+    expect(describeSelection({ command: "locomo", conversation: "conv-30" }))
+      .toBe("locomo · conv-30 · every question");
   });
 
   test("reports the corpus only where a selection has one", () => {

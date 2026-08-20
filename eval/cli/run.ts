@@ -75,8 +75,6 @@ export async function runConfiguredEval(config: EvalConfig): Promise<void> {
       ...(selection.conversation ? { conversationId: selection.conversation } : {}),
       ...(selection.limit ? { limit: selection.limit } : {}),
       ...(selection.all ? { all: selection.all } : {}),
-      ...(selection.questions ? { questions: selection.questions } : {}),
-      ...(selection.stratify ? { stratify: selection.stratify } : {}),
       ...(selection.sessionsPerBatch ? { sessionsPerBatch: selection.sessionsPerBatch } : {}),
     });
     return;

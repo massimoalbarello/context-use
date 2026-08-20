@@ -58,14 +58,14 @@ export async function runLocomoCommand(options: LocomoRunOptions): Promise<void>
 
 export async function scoreLocomoCommand(
   runId?: string,
-  judgeProvider?: LocomoJudgeProvider,
+  judgeProvider: LocomoJudgeProvider = "codex",
 ): Promise<void> {
-  await scoreLocomo(runId, judgeProvider ? { judgeProvider } : {});
+  await scoreLocomo(runId, { judgeProvider });
 }
 
 /**
- * Writes a run as a reviewable page: every question beside its answer, the gold, both
- * deterministic scores, the judge verdict where one exists, and what the answer cost.
+ * Writes a run as a reviewable page: every question beside its answer, the gold, the judge
+ * result, and what the answer cost.
  *
  * The page necessarily contains reference answers, which no run artifact does, so it is
  * written wherever it is asked for rather than into the run directory — and LoCoMo is

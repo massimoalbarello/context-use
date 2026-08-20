@@ -1,6 +1,6 @@
 /**
  * Renders a LoCoMo run as a reviewable page: every question with its answer, the gold it
- * was scored against, what it cost, and how each scorer judged it.
+ * was judged against, what it cost, and the judge's result.
  *
  * Gold is read from the pinned dataset rather than from the run, because run artifacts
  * deliberately carry no reference answers. The output is a local file for that reason too.
@@ -50,8 +50,7 @@ export function renderLocomoView(runDir: string): string {
 
   const catRows = (score?.byCategory ?? []).map((c: any) => `<tr>
     <td>${c.category} ${esc(c.name)}</td><td class=n>${c.total}</td>
-    <td class=n>${pct(c.officialF1)}</td><td class=n>${pct(c.amem.f1)}</td>
-    <td class=n>${pct(c.amem.bleu1)}</td><td class=n>${c.judged ? pct(c.judged.accuracy) : "—"}</td></tr>`).join("");
+    <td class=n>${pct(c.score)}</td><td class=n>${pct(c.accuracy)}</td></tr>`).join("");
 
   const body = rows.map(({ conv, q, calls, s }) => {
     const total = Object.values(calls).reduce((a: number, b: any) => a + b, 0);
@@ -65,7 +64,7 @@ export function renderLocomoView(runDir: string): string {
         ? `<span class=decline>decline — &ldquo;not mentioned&rdquo;</span>`
           + `<br><span class=distractor>unsupported claim: ${esc(gold.get(q.questionId))}</span>`
         : esc(gold.get(q.questionId))}</td>
-      <td class=n>${s ? pct(s.officialF1) : "—"}</td>
+      <td class=n>${s?.judgeScore === undefined ? "—" : pct(s.judgeScore)}</td>
       <td class=n>${s?.judgeCorrect === undefined ? "—" : s.judgeCorrect ? "✓" : "✗"}</td>
       <td class=n>${q.durationMs === undefined ? "—" : (q.durationMs / 1000).toFixed(1) + "s"}</td>
       ${toolCols.map((t) => `<td class="n tool">${(calls as any)[`mcp__context_use_eval__${t}`] ?? (calls as any)[t] ?? ""}</td>`).join("")}
@@ -109,19 +108,17 @@ export function renderLocomoView(runDir: string): string {
     ${report.conversations.length} conversation(s) · ${rows.length} questions ·
     dataset ${esc(report.dataset.revision.slice(0, 10))}</div>
   <div class=cards>
-    <div class=card><div class=v>${score ? pct(score.officialF1) : "—"}</div><div class=k>official LoCoMo F1</div></div>
-    <div class=card><div class=v>${score ? pct(score.amem.f1) : "—"}</div><div class=k>A-mem F1</div></div>
-    <div class=card><div class=v>${score ? pct(score.amem.bleu1) : "—"}</div><div class=k>A-mem BLEU-1</div></div>
-    <div class=card><div class=v>${score?.judge ? pct(score.judge.accuracy) : "—"}</div><div class=k>judge</div></div>
+    <div class=card><div class=v>${score?.judge ? pct(score.judge.score) : "—"}</div><div class=k>judge score</div></div>
+    <div class=card><div class=v>${score?.judge ? pct(score.judge.accuracy) : "—"}</div><div class=k>fully correct</div></div>
     <div class=card><div class=v>${durations.length ? (mean(durations) / 1000).toFixed(1) + "s" : "—"}</div><div class=k>mean latency</div></div>
     <div class=card><div class=v>${mean(rows.map((r) => Object.values(r.calls).reduce((a: number, b: any) => a + b, 0))).toFixed(1)}</div><div class=k>mean tool calls</div></div>
   </div>
   ${catRows ? `<div class=summary>By category</div><div class=scroll><table>
-  <tr><th>category</th><th>n</th><th>official F1</th><th>A-mem F1</th><th>BLEU-1</th><th>judge</th></tr>
+  <tr><th>category</th><th>n</th><th>judge score</th><th>fully correct</th></tr>
   ${catRows}</table></div>` : ""}
   <div class=summary>Every question</div>
   <div class=scroll><table>
-  <tr><th></th><th>question</th><th>answer</th><th>expected<br><span style="font-weight:400;color:var(--dim);font-size:10px">cat 5: decline</span></th><th>F1</th><th>judge</th><th>time</th>
+  <tr><th></th><th>question</th><th>answer</th><th>expected<br><span style="font-weight:400;color:var(--dim);font-size:10px">cat 5: decline</span></th><th>judge score</th><th>fully correct</th><th>time</th>
   ${toolCols.map((t) => `<th>${esc(t)}</th>`).join("")}<th>calls</th></tr>
   ${body}</table></div>`;
 
