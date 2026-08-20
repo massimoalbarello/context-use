@@ -20,6 +20,7 @@ import {
 import { MCP_NAME, ROOT, harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { loadCorpus } from "../corpus/records.ts";
 import { runCorpusDistillation } from "../distill.ts";
+import type { EvalKnowledgeTemplate } from "../../knowledge-template.ts";
 import { askQuestions } from "../qa/ask.ts";
 import type { PublicQuery } from "../qa/questions.ts";
 import { EVAL_LONGMEM_RESULTS_ROOT } from "../results.ts";
@@ -34,6 +35,7 @@ import {
 
 export type LongMemEvalRunOptions = LongMemEvalSelection & {
   harness: EvalHarness;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   datasetPath?: string | undefined;
   sessionsPerBatch?: number | undefined;
 };
@@ -60,6 +62,7 @@ export type LongMemEvalRunReport = {
   dataset: typeof LONGMEMEVAL_DATASET;
   evaluator: typeof LONGMEMEVAL_EVALUATOR;
   provider: EvalProvider;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   /** Null where the run used the CLI's own default model. */
   model: string | null;
   sessionsPerBatch: number;
@@ -168,6 +171,7 @@ function markdownReport(report: LongMemEvalRunReport): string {
     `- **Harness:** ${harnessLabel(
       report.model ? { provider: report.provider, model: report.model } : { provider: report.provider },
     )}`,
+    `- **Knowledge template:** ${report.knowledgeTemplate}`,
     `- **Cases selected:** ${report.cases.length}`,
     `- **Cases answered:** ${answered.length}`,
     `- **Maximum sessions per distillation batch:** ${report.sessionsPerBatch}`,
@@ -201,7 +205,8 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
   }
 
   const startedAt = new Date().toISOString();
-  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-longmemeval-${options.harness.provider}`;
+  const runId = `${startedAt.replaceAll(":", "-").replace(".", "-")}-longmemeval-${
+    options.harness.provider}-${options.knowledgeTemplate}`;
   const runDirectory = join(EVAL_LONGMEM_RESULTS_ROOT, runId);
   await mkdir(runDirectory, { recursive: true });
   console.log(style.heading(`\nLongMemEval QA run: ${runId}`));
@@ -224,6 +229,7 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
       dataset: LONGMEMEVAL_DATASET,
       evaluator: LONGMEMEVAL_EVALUATOR,
       provider: options.harness.provider,
+      knowledgeTemplate: options.knowledgeTemplate,
       model: options.harness.model ?? null,
       sessionsPerBatch,
       startedAt,
@@ -256,6 +262,7 @@ export async function runLongMemEval(options: LongMemEvalRunOptions): Promise<st
     const corpus = loadCorpus(sourceDirectory);
     const distillation = await runCorpusDistillation({
       harness: options.harness,
+      knowledgeTemplate: options.knowledgeTemplate,
       corpus,
       servedDirectory: containerPath(sourceDirectory),
       window: "full",
@@ -334,6 +341,7 @@ function resolveRun(runId?: string): string {
 
 export type LongMemEvalScore = {
   scoredAt: string;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   model: string;
   judgeProvider: LongMemEvalJudgeProvider;
   /** Whether this used the benchmark's pinned GPT-4o model as well as its exact prompt. */
@@ -429,6 +437,7 @@ export async function scoreLongMemEval(
   }
   const score: LongMemEvalScore = {
     scoredAt: new Date().toISOString(),
+    knowledgeTemplate: report.knowledgeTemplate ?? "default",
     model: judgements[0]?.model ?? (judgeProvider === "openai"
       ? LONGMEMEVAL_JUDGE_MODEL
       : `${judgeProvider}-subscription`),

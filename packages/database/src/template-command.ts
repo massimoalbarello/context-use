@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import { DirectoryRepository } from "./directories.ts";
 import { reconcileKnowledgeTemplate, formatTemplateResult } from "./knowledge-templates.ts";
 import { PageRepository } from "./pages.ts";
@@ -7,6 +8,7 @@ export async function runTemplateCommand(
   action: "plan" | "apply",
   templateName = "default",
   forceTemplate = false,
+  templatesRoot?: string,
 ): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required to manage knowledge templates");
@@ -15,7 +17,9 @@ export async function runTemplateCommand(
     const result = await reconcileKnowledgeTemplate({
       directories: new DirectoryRepository(pool),
       pages: new PageRepository(pool),
-    }, templateName, action === "apply", forceTemplate);
+    }, templateName, action === "apply", forceTemplate, templatesRoot
+      ? pathToFileURL(templatesRoot.endsWith("/") ? templatesRoot : `${templatesRoot}/`)
+      : undefined);
     console.log(formatTemplateResult(result, !("NO_COLOR" in process.env)));
   } finally {
     await pool.end();

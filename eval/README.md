@@ -57,11 +57,20 @@ cleanup commands for an eval. State-preparing commands reset eval knowledge and 
 while preserving the owner passkey and provider authorization. Do not keep unrelated
 development data in this stack because an eval reset will erase it.
 
-## Choose the harness
+## Choose the configuration
 
-[`config.json`](config.json) contains the committed provider, model, and default eval.
-Gitignored `config.local.json` overrides it locally, and command flags override both for one
-run. Do not edit `config.json` for a one-off run.
+[`config.json`](config.json) contains the committed provider, model, knowledge template, and
+default eval. Gitignored `config.local.json` overrides it locally, and command flags override
+the configuration for one run. Do not edit `config.json` for a one-off run.
+
+`knowledgeTemplate` is independent of the harness and eval selection:
+
+- `default` uses the production knowledge template.
+- `greedy` uses the eval-only ablation that asks the agent to remember as much as possible
+  while choosing its own organization.
+
+Use `--template <default|greedy>` to override it for `check` or a state-preparing command.
+The greedy template lives under `eval/templates/` and is not included in production images.
 
 Check the configured setup before spending a run on it:
 
@@ -69,8 +78,9 @@ Check the configured setup before spending a run on it:
 bun run eval check
 ```
 
-Use `--no-probe` to skip the live session. Use `--provider` and `--model` to check a
-one-off harness. If the selected provider is not authorized, connect only that provider:
+Use `--no-probe` to skip the live session. Use `--provider`, `--model`, and `--template` to
+check one-off settings. If the selected provider is not authorized, connect only that
+provider:
 
 ```sh
 bun run eval connect codex
@@ -91,7 +101,8 @@ its repetitions serially; never start separate repetitions concurrently.
 ## Preserve state between dependent commands
 
 `qa:seed`, `distill`, `story:run`, `journey:run`, `longmem:run`, and `locomo:run` prepare
-their own state and reset at the correct boundary. Do not reset manually before them.
+their own state and reset to the selected knowledge template at the correct boundary. Do
+not reset manually before them.
 
 `qa:ask`, `qa:score`, `gold:check`, `longmem:score`, `locomo:score`, and `locomo:view`
 depend on an existing run. Pass the run ID printed by the preparing command. Never reset
@@ -114,8 +125,8 @@ All generated files are gitignored and remain in the main worktree:
 
 Downloaded LongMemEval and LoCoMo datasets live under `.eval-data/` in the main worktree.
 
-Report the main-worktree path, commit SHA and dirty state, provider and model, exact command,
-run ID, selection flags, absolute result path, scores, incomplete or void cases, and notable
-failure patterns. Compare runs only when the corpus, provider, model, selection, batching,
-repeat count, and source revision match. Treat one stochastic run as a baseline, not proof
-of a regression or improvement.
+Report the main-worktree path, commit SHA and dirty state, knowledge template, provider and
+model, exact command, run ID, selection flags, absolute result path, scores, incomplete or
+void cases, and notable failure patterns. Compare runs only when the corpus, knowledge
+template, provider, model, selection, batching, repeat count, and source revision match.
+Treat one stochastic run as a baseline, not proof of a regression or improvement.

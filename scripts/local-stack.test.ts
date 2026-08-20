@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   LOCAL_STACK,
   composeArguments,
@@ -29,5 +31,13 @@ describe("local stack commands", () => {
     ]);
     expect(composeArguments("down")).not.toContain("--volumes");
     expect(stackVolumeName("asset-data")).toBe("context-use-dev_asset-data");
+  });
+
+  test("development compose can receive an eval-selected template", () => {
+    const compose = readFileSync(join(import.meta.dir, "..", "compose.dev.yml"), "utf8");
+    expect(compose).toContain("CONTEXT_USE_TEMPLATE_INSTALL: ${CONTEXT_USE_TEMPLATE_INSTALL:-default}");
+    expect(compose).toContain(
+      "CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT: ${CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT:-}",
+    );
   });
 });

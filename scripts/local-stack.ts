@@ -1,6 +1,12 @@
 type StackCommand = "up" | "down" | "destroy" | "purge" | "reset" | "logs" | "status" | "url";
 type ComposeCommand = "up" | "down" | "purge" | "logs" | "status";
 
+export type LocalKnowledgeTemplate = {
+  name: string;
+  /** Container-visible directory whose children are named templates. */
+  root?: string;
+};
+
 export const LOCAL_STACK = {
   project: "context-use-dev",
   database: "context_use",
@@ -42,10 +48,10 @@ export function stackVolumeName(volume: "asset-data"): string {
   return `${LOCAL_STACK.project}_${volume}`;
 }
 
-function runCompose(arguments_: string[]): void {
+function runCompose(arguments_: string[], env: Record<string, string | undefined> = process.env): void {
   const child = Bun.spawnSync(["docker", "compose", "--project-name", LOCAL_STACK.project, ...arguments_], {
     cwd: import.meta.dir + "/..",
-    env: process.env,
+    env,
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
@@ -53,8 +59,8 @@ function runCompose(arguments_: string[]): void {
   if (child.exitCode !== 0) process.exit(child.exitCode);
 }
 
-function runDocker(command: ComposeCommand): void {
-  runCompose(composeArguments(command).slice(3));
+function runDocker(command: ComposeCommand, env: Record<string, string | undefined> = process.env): void {
+  runCompose(composeArguments(command).slice(3), env);
 }
 
 function removeDataVolume(): void {
@@ -73,9 +79,14 @@ function removeDataVolume(): void {
   }
 }
 
-function resetData(restart: boolean): void {
-  runDocker("down");
-  runCompose(["up", "--detach", "--wait", "postgres"]);
+function resetData(restart: boolean, template: LocalKnowledgeTemplate = { name: "default" }): void {
+  const env = {
+    ...process.env,
+    CONTEXT_USE_TEMPLATE_INSTALL: template.name,
+    CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT: template.root ?? "",
+  };
+  runDocker("down", env);
+  runCompose(["up", "--detach", "--wait", "postgres"], env);
   runCompose([
     "run",
     "--build",
@@ -88,13 +99,13 @@ function resetData(restart: boolean): void {
     "--cwd",
     "packages/database",
     "reset:development",
-  ]);
+  ], env);
   removeDataVolume();
   if (restart) {
-    runDocker("up");
+    runDocker("up", env);
     printReady();
   } else {
-    runDocker("down");
+    runDocker("down", env);
     console.log("\nKnowledge and assets were removed; owner, passkeys, and OAuth state were preserved.");
   }
 }
@@ -106,17 +117,20 @@ function printReady(): void {
   console.log(`MCP:   ${stackUrl()}/mcp`);
 }
 
-export function runStackCommand(command: StackCommand): void {
+export function runStackCommand(
+  command: StackCommand,
+  options: { knowledgeTemplate?: LocalKnowledgeTemplate } = {},
+): void {
   if (command === "url") {
     console.log(stackUrl());
     return;
   }
   if (command === "reset") {
-    resetData(true);
+    resetData(true, options.knowledgeTemplate);
     return;
   }
   if (command === "destroy") {
-    resetData(false);
+    resetData(false, options.knowledgeTemplate);
     return;
   }
   runDocker(command);

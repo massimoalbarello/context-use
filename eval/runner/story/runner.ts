@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { runStackCommand } from "../../../scripts/local-stack.ts";
+import { resetForEval, type EvalKnowledgeTemplate } from "../../knowledge-template.ts";
 import { harnessLabel, type EvalHarness, type EvalProvider } from "../agent.ts";
 import { EVAL_STORY_RESULTS_ROOT } from "../results.ts";
 import { snapshotKnowledgeState, type KnowledgeSnapshot } from "../snapshot.ts";
@@ -14,6 +14,7 @@ const RESULTS_ROOT = EVAL_STORY_RESULTS_ROOT;
 
 export type StoryRunOptions = {
   harness: EvalHarness;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   story?: string;
   all?: boolean;
   journey?: boolean;
@@ -30,6 +31,7 @@ export type StoryRunReport = {
   runId: string;
   suiteId: string;
   provider: EvalProvider;
+  knowledgeTemplate: EvalKnowledgeTemplate;
   /** Null where the run used the CLI's own default model. */
   model: string | null;
   mode: "suite" | "journey";
@@ -168,6 +170,7 @@ function markdownReport(report: StoryRunReport): string {
     `# ${report.suiteId} — ${report.mode}`,
     "",
     `- Harness: ${harnessLabel(reportHarness(report))}`,
+    `- Knowledge template: ${report.knowledgeTemplate}`,
     `- Overall: ${(overall * 100).toFixed(1)}%`,
     `- Started: ${report.startedAt}`,
     `- Completed: ${report.completedAt}`,
@@ -227,7 +230,8 @@ function planStoryConversations(stories: EvalStory[]): Array<{
 export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOptions): Promise<string> {
   const startedAt = new Date().toISOString();
   const mode = options.journey ? "journey" : "suite";
-  const runId = `${suite.id}-${mode}-${startedAt.replaceAll(":", "-").replace(".", "-")}-${options.harness.provider}`;
+  const runId = `${suite.id}-${mode}-${startedAt.replaceAll(":", "-").replace(".", "-")}-${
+    options.harness.provider}-${options.knowledgeTemplate}`;
   const runDirectory = join(RESULTS_ROOT, runId);
   await mkdir(runDirectory, { recursive: true });
   const stories = selectedStories(suite, options);
@@ -237,7 +241,7 @@ export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOpti
 
   for (let repetition = 1; repetition <= repeat; repetition += 1) {
     console.log(`Resetting knowledge for ${mode} repetition ${repetition}…`);
-    runStackCommand("reset");
+    resetForEval(options.knowledgeTemplate);
     let suiteState = snapshotKnowledgeState();
     for (const planned of conversations) {
       const { story } = planned;
@@ -260,6 +264,7 @@ export async function runStorySuite(suite: EvalStorySuite, options: StoryRunOpti
     runId,
     suiteId: suite.id,
     provider: options.harness.provider,
+    knowledgeTemplate: options.knowledgeTemplate,
     model: options.harness.model ?? null,
     mode,
     startedAt,
