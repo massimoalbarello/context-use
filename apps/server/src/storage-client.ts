@@ -12,12 +12,17 @@ async function socketFetch(
   path: string,
   init: { method?: string; headers?: Record<string, string>; body?: ReadableStream<Uint8Array> | null } = {},
 ): Promise<Response> {
-  return fetch(`http://localhost${path}`, {
-    unix: socketPath,
+  const requestInit = {
     method: init.method ?? "GET",
     ...(init.headers ? { headers: init.headers } : {}),
     ...(init.body !== undefined ? { body: init.body as BodyInit | null } : {}),
-  });
+  };
+  const local = (globalThis as typeof globalThis & {
+    __contextUseStorageHandler?: (request: Request) => Promise<Response> | Response;
+  }).__contextUseStorageHandler;
+  return local
+    ? local(new Request(`http://context-use-storage${path}`, requestInit))
+    : fetch(`http://localhost${path}`, { unix: socketPath, ...requestInit });
 }
 
 export class BrokeredStorage implements ObjectStorage {

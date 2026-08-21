@@ -1,9 +1,19 @@
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { makeSignature } from "better-auth/crypto";
-import { Client } from "pg";
+import { Client, Pool } from "pg";
+import {
+  AssetRepository,
+  DocumentMaintenanceRepository,
+  StoragePublicationRepository,
+} from "@context-use/database";
 import { disposableDatabaseUrl } from "@context-use/database/disposable-database";
 import { config } from "./config.ts";
 import { csrfToken } from "./security.ts";
+import { createStorageBrokerApp, reconcileDocumentObjects } from "./storage-app.ts";
+import { FilesystemStorage } from "./storage.ts";
 
 const databaseUrl = await disposableDatabaseUrl();
 const requireDatabase = (): string => {
@@ -11,6 +21,27 @@ const requireDatabase = (): string => {
   return databaseUrl;
 };
 const enabled = process.env.TEST_APP_DATABASE_URL === "1";
+const testStorageRoot = enabled ? await mkdtemp(join(tmpdir(), "context-use-app-storage-")) : null;
+const testStoragePool = enabled ? new Pool({ connectionString: requireDatabase() }) : null;
+const testStorage = testStorageRoot ? new FilesystemStorage(testStorageRoot) : null;
+const testDocumentMaintenance = testStoragePool
+  ? new DocumentMaintenanceRepository(testStoragePool)
+  : null;
+if (enabled) {
+  const storageBroker = createStorageBrokerApp({
+    storage: testStorage!,
+    privateAssets: new AssetRepository(testStoragePool!),
+    publicAssets: new StoragePublicationRepository(testStoragePool!),
+    tokens: {
+      dashboard: config.STORAGE_DASHBOARD_TOKEN,
+      mcp: config.STORAGE_MCP_TOKEN,
+      public: config.STORAGE_PUBLIC_TOKEN,
+    },
+  });
+  (globalThis as typeof globalThis & {
+    __contextUseStorageHandler?: (request: Request) => Promise<Response> | Response;
+  }).__contextUseStorageHandler = (request) => storageBroker.handle(request);
+}
 const application = enabled ? (await import("./combined-app.ts")).combinedApp : null;
 const authentication = enabled ? (await import("./auth-app.ts")).authApp : null;
 const confirmation = enabled ? (await import("./confirmation-app.ts")).confirmationApp : null;
@@ -24,6 +55,11 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     await client.connect();
     for (const clientId of createdClients) await client.query(`DELETE FROM "oauthClient" WHERE "clientId"=$1`, [clientId]);
     await client.end();
+    delete (globalThis as typeof globalThis & {
+      __contextUseStorageHandler?: (request: Request) => Promise<Response> | Response;
+    }).__contextUseStorageHandler;
+    await testStoragePool?.end();
+    if (testStorageRoot) await rm(testStorageRoot, { recursive: true, force: true });
   });
 
   test("bearer credentials are rejected by publication APIs", async () => {
@@ -321,6 +357,27 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         [publicVersionId, publicPageId, publicPath, privateVersionId, privatePageId, privatePath],
       );
       await client.query("COMMIT");
+      const scopedMaintenance = {
+        async legacyKnowledgeRevisions() {
+          return (await testDocumentMaintenance!.legacyKnowledgeRevisions())
+            .filter((revision) => [publicPageId, privatePageId].includes(revision.page_id));
+        },
+        completeLegacyRevision: testDocumentMaintenance!.completeLegacyRevision
+          .bind(testDocumentMaintenance),
+        async projectionSnapshot() {
+          const snapshot = await testDocumentMaintenance!.projectionSnapshot();
+          return {
+            ...snapshot,
+            pages: snapshot.pages.filter(({ page_id }) => page_id === publicPageId),
+          };
+        },
+        recordPublishedArtifact: testDocumentMaintenance!.recordPublishedArtifact
+          .bind(testDocumentMaintenance),
+      };
+      await reconcileDocumentObjects({
+        storage: testStorage!,
+        maintenance: scopedMaintenance,
+      });
 
       const published = await application!.handle(new Request(`http://localhost:3000/p/${publicPath}`));
       const publishedMarkdown = await application!.handle(new Request(`http://localhost:3000/p/${publicPath}.md`));
@@ -419,6 +476,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       await client.query("DELETE FROM knowledge_pages WHERE id=ANY($1::uuid[])", [[publicPageId, privatePageId]]);
       await client.query("ALTER TABLE knowledge_pages ENABLE TRIGGER ALL");
       await client.query("DELETE FROM knowledge_page_versions WHERE page_id=ANY($1::uuid[])", [[publicPageId, privatePageId]]);
+      await client.query("DELETE FROM hypermedia_documents WHERE id=ANY($1::uuid[])", [[publicPageId, privatePageId]]);
       await client.query(
         "DELETE FROM knowledge_directories WHERE current_path IN ($1,$2)",
         [nestedPath, parentPath],
