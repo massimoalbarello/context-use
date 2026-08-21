@@ -46,6 +46,10 @@ ps aux | rg '[b]un run eval|[s]cripts/eval\.ts'
 bun run local status
 ```
 
+Run these checks normally. If the environment blocks access to processes, Docker, or the
+local stack, retry with host access or ask the user to run the checks. A permission error
+does not prove that no eval is running.
+
 If another eval is active, wait for it. If the stack is stopped, start its existing volumes:
 
 ```sh
@@ -71,6 +75,37 @@ From the main worktree:
 3. Read more than one family guide only when the request spans those families.
 4. Follow the commands in those READMEs without recreating another workflow here.
 
+## Prove the provider path before starting
+
+Before any state-preparing command, run the full live check with the same provider, model,
+and knowledge template intended for the measurement:
+
+```sh
+bun run eval check --provider <codex|claude> --model <id> --template <default|greedy>
+```
+
+Omit `--model` only when the measurement intentionally uses the CLI default. Do not use
+`--no-probe` as the final readiness gate: it checks configuration, binaries, sign-in, and
+the stack, but it does not open an agent session or prove that the MCP can read the
+knowledge base. A run may otherwise spend every built-in retry on an unauthorized MCP and
+still exit after producing only an incomplete report.
+
+Do not start the eval until the live check exits successfully and reports `Ready` and a
+successful knowledge-base read. Record the provider and model reported by the successful
+check or run, and compare only runs that used the same model.
+
+If the check reports missing provider authorization:
+
+1. Run `bun run eval connect <provider>` in a terminal, using `codex` or `claude` for the
+   provider.
+2. Complete the sign-in flow. If you cannot run an interactive terminal, ask the user to run
+   the command.
+3. Rerun the same live check. A successful connection command alone is not enough.
+
+State resets are designed to preserve the owner passkey and provider OAuth, but that does
+not prove the provider has a valid stored token before the first run. Always perform this
+preflight for the requested provider and measurement settings.
+
 ## Preserve eval integrity
 
 - Let state-preparing commands perform their own resets. Never reset manually before them.
@@ -80,6 +115,14 @@ From the main worktree:
 - If a README conflicts with the CLI or repository state, stop before changing eval state
   and report the mismatch. Update the authoritative README when the workflow changes.
 - Do not write an eval result into the knowledge base under test.
+- A zero exit code from a state-preparing runner is not by itself a valid measurement.
+  Read its final coverage summary and require every selected source record or conversation
+  session to have been consumed and every intended question to have been answered.
+- If MCP authorization or another failure leaves zero or partial evidence coverage, let the
+  runner write its incomplete report, mark that run incomplete or void, and do not score or
+  compare it. Fix the provider path, pass the full live check, and start a fresh
+  state-preparing run; do not reuse the invalid knowledge state unless the family runbook
+  explicitly documents a resume workflow.
 
 Report the absolute main-worktree and result paths, commit SHA and dirty state, knowledge
 template, provider and model, exact command, run ID, selection flags, scores, incomplete or
