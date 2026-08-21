@@ -62,6 +62,12 @@ describeDatabase("immutable page history", () => {
       [created.id, `tests/${suffix}/divergent-cache`],
     )).rejects.toThrow();
     expect((await pages.get(created.id))?.current_path).toBe(`tests/${suffix}/renamed`);
+    expect(await pages.metadata(created.id)).toMatchObject({
+      id: created.id,
+      current_path: `tests/${suffix}/renamed`,
+      title: "Updated",
+    });
+    expect(await pages.metadataByPath(`tests/${suffix}/renamed`)).toMatchObject({ id: created.id });
     await expect(pages.update(created.id, {
       path: `tests/${suffix}/stale`, title: "Stale", summary: "A stale test update.", body_markdown: "Stale",
       commit_message: "Stale update", expected_version_number: 1,

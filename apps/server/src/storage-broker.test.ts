@@ -176,6 +176,33 @@ describe("storage broker capabilities", () => {
     ))).status).toBe(404);
   });
 
+  test("brokered document reads preserve a leading UTF-8 BOM", async () => {
+    const storage = new MemoryStorage();
+    const revisionId = "88888888-8888-4888-8888-888888888888";
+    const objectKey = `documents/private/${revisionId}.md`;
+    const markdown = "\uFEFF# BOM-prefixed knowledge\n";
+    storage.objects.set(objectKey, Buffer.from(markdown, "utf8"));
+    const app = createStorageBrokerApp({
+      storage,
+      privateAssets: privateAssets({}),
+      publicAssets: { assetByPublicPath: async () => null },
+      tokens,
+    });
+    const directory = await mkdtemp(join(tmpdir(), "context-use-document-bom-"));
+    const socketPath = join(directory, "storage.sock");
+    const server = Bun.serve({ unix: socketPath, fetch: app.handle });
+
+    try {
+      const client = new BrokeredStorage({ socketPath, token: tokens.dashboard });
+      const decoded = await client.readDocument(objectKey);
+      expect(decoded).toBe(markdown);
+      expect(Buffer.from(decoded, "utf8")).toEqual(Buffer.from(markdown, "utf8"));
+    } finally {
+      server.stop(true);
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   test("private MCP can read and upload but cannot delete or invoke integrity management", async () => {
     const storage = new MemoryStorage();
     const app = createStorageBrokerApp({

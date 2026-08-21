@@ -359,6 +359,11 @@ export class PageRepository {
     return this.withBody(result.rows[0]);
   }
 
+  async metadata(pageId: string) {
+    const result = await this.pool.query(`${CURRENT_PAGE_METADATA_SELECT} WHERE p.id = $1`, [pageId]);
+    return result.rows[0] ?? null;
+  }
+
   async getByPath(path: string, includeArchived = false) {
     const result = await this.pool.query(
       `${CURRENT_PAGE_SELECT}
@@ -368,6 +373,17 @@ export class PageRepository {
       [path],
     );
     return this.withBody(result.rows[0]);
+  }
+
+  async metadataByPath(path: string, includeArchived = false) {
+    const result = await this.pool.query(
+      `${CURRENT_PAGE_METADATA_SELECT}
+       WHERE p.current_path=$1 ${includeArchived ? "" : "AND p.archived_at IS NULL"}
+       ORDER BY p.archived_at NULLS FIRST
+       LIMIT 1`,
+      [path],
+    );
+    return result.rows[0] ?? null;
   }
 
   async guidesForPath(targetPath: string) {
