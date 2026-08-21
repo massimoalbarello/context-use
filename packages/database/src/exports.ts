@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import {
+  mapConcurrently,
+  type MarkdownObjectMetadata,
+  type MarkdownObjectStore,
+} from "./documents.ts";
 
 export type KnowledgeExportPrincipal = { ownerUserId: string; sessionId: string };
 export type KnowledgeExportKind = "portable" | "restorable";
@@ -51,7 +56,25 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
 }
 
 export class KnowledgeExportRepository {
-  constructor(private readonly dashboardPool: Pool) {}
+  constructor(
+    private readonly dashboardPool: Pool,
+    private readonly bodies?: MarkdownObjectStore,
+  ) {}
+
+  private async hydratePages<T extends Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata & {
+    legacy_body_markdown: string | null;
+  }>(pages: T[]): Promise<KnowledgeExportPage[]> {
+    return mapConcurrently(pages, 8, async (page) => {
+      const { legacy_body_markdown, body_object_key, body_size_bytes, body_content_hash, ...metadata } = page;
+      const body_markdown = legacy_body_markdown ?? await this.bodies?.read({
+        body_object_key,
+        body_size_bytes: Number(body_size_bytes),
+        body_content_hash,
+      });
+      if (body_markdown === undefined) throw new Error("Knowledge document object store is required");
+      return { ...metadata, body_markdown };
+    });
+  }
 
   async createIntent(
     principal: KnowledgeExportPrincipal,
@@ -97,9 +120,10 @@ export class KnowledgeExportRepository {
                SELECT sum(
                  octet_length(version.title)
                  + octet_length(version.summary)
-                 + octet_length(version.body_markdown)
+                 + object.body_size_bytes
                )
                FROM knowledge_page_versions version
+               JOIN hypermedia_document_revisions object ON object.id=version.id
                JOIN knowledge_pages page ON page.id=version.page_id
                WHERE ($1='restorable' OR (
                  page.archived_at IS NULL AND version.id=page.current_version_id
@@ -167,18 +191,21 @@ export class KnowledgeExportRepository {
   }
 
   async currentSnapshot(): Promise<KnowledgeExportSnapshot> {
-    return transaction(this.dashboardPool, async (client) => {
+    const snapshot = await transaction(this.dashboardPool, async (client) => {
       await client.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY");
       const directories = await client.query<KnowledgeExportDirectory>(
         `SELECT id,current_path,title,summary
          FROM knowledge_directories
          ORDER BY current_path,id`,
       );
-      const pages = await client.query<KnowledgeExportPage>(
-        `SELECT page.id,version.path AS current_path,version.title,version.summary,version.body_markdown
+      const pages = await client.query<Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata & { legacy_body_markdown: string | null }>(
+        `SELECT page.id,version.path AS current_path,version.title,version.summary,
+           version.body_markdown AS legacy_body_markdown,object.body_object_key,
+           object.body_size_bytes,object.body_content_hash
          FROM knowledge_pages page
          JOIN knowledge_page_versions version
            ON version.id=page.current_version_id AND version.page_id=page.id
+         JOIN hypermedia_document_revisions object ON object.id=version.id
          WHERE page.archived_at IS NULL
          ORDER BY version.path,page.id`,
       );
@@ -188,7 +215,12 @@ export class KnowledgeExportRepository {
          WHERE deleted_at IS NULL
          ORDER BY current_path,id`,
       );
-      return { directories: directories.rows, pages: pages.rows, assets: assets.rows };
+      return {
+        directories: directories.rows,
+        pages: pages.rows,
+        assets: assets.rows,
+      };
     });
+    return { ...snapshot, pages: await this.hydratePages(snapshot.pages) };
   }
 }

@@ -6,6 +6,7 @@ const PRIVATE_UUID = "[private identifier]";
 type PublicLlmsOptions = {
   siteOrigin: string;
   assetOrigin: string;
+  entrypointPublicPath?: string | null;
 };
 
 function normalizedOrigin(value: string): string {
@@ -35,18 +36,18 @@ function publicMarkdownPageUrl(origin: string, path: string): string {
   return `${publicPageUrl(origin, path)}.md`;
 }
 
-function introFirst(left: PublicPage, right: PublicPage): number {
-  if (left.public_path === INTRO_PATH && right.public_path !== INTRO_PATH) return -1;
-  if (right.public_path === INTRO_PATH && left.public_path !== INTRO_PATH) return 1;
+function entrypointFirst(left: PublicPage, right: PublicPage, entrypoint: string | null | undefined): number {
+  if (left.public_path === entrypoint && right.public_path !== entrypoint) return -1;
+  if (right.public_path === entrypoint && left.public_path !== entrypoint) return 1;
   return left.public_path < right.public_path ? -1 : left.public_path > right.public_path ? 1 : 0;
 }
 
-function orderedPages(pages: PublicPage[]): PublicPage[] {
-  return [...pages].sort(introFirst);
+function orderedPages(pages: PublicPage[], entrypoint?: string | null): PublicPage[] {
+  return [...pages].sort((left, right) => entrypointFirst(left, right, entrypoint));
 }
 
-function descriptionFor(pages: PublicPage[]): string {
-  const introduction = pages.find(({ public_path }) => public_path === INTRO_PATH);
+function descriptionFor(pages: PublicPage[], entrypoint?: string | null): string {
+  const introduction = pages.find(({ public_path }) => public_path === entrypoint);
   return normalizedInlineText(introduction?.summary ?? "")
     || "Only explicitly published knowledge is included.";
 }
@@ -101,12 +102,13 @@ function absolutePublicMarkdown(
 
 export function renderLlmsTxt(pages: PublicPage[], options: PublicLlmsOptions): string {
   const siteOrigin = normalizedOrigin(options.siteOrigin);
-  const ordered = orderedPages(pages);
-  const introduction = ordered.find(({ public_path }) => public_path === INTRO_PATH);
+  const entrypoint = options.entrypointPublicPath === undefined ? INTRO_PATH : options.entrypointPublicPath;
+  const ordered = orderedPages(pages, entrypoint);
+  const introduction = ordered.find(({ public_path }) => public_path === entrypoint);
   const lines = [
     `# ${publicSiteName(siteOrigin, introduction)}`,
     "",
-    `> ${descriptionFor(ordered)}`,
+    `> ${descriptionFor(ordered, entrypoint)}`,
     "",
     "Only explicitly published knowledge is included.",
     "",
@@ -153,12 +155,13 @@ export function renderPublicPageMarkdown(page: PublicPage, options: PublicLlmsOp
 export function renderLlmsFullTxt(pages: PublicPage[], options: PublicLlmsOptions): string {
   const siteOrigin = normalizedOrigin(options.siteOrigin);
   const assetOrigin = normalizedOrigin(options.assetOrigin);
-  const ordered = orderedPages(pages);
-  const introduction = ordered.find(({ public_path }) => public_path === INTRO_PATH);
+  const entrypoint = options.entrypointPublicPath === undefined ? INTRO_PATH : options.entrypointPublicPath;
+  const ordered = orderedPages(pages, entrypoint);
+  const introduction = ordered.find(({ public_path }) => public_path === entrypoint);
   const lines = [
     `# ${publicSiteName(siteOrigin, introduction)} — full public context`,
     "",
-    `> ${descriptionFor(ordered)}`,
+    `> ${descriptionFor(ordered, entrypoint)}`,
     "",
     "This document contains every explicitly published page.",
     "",

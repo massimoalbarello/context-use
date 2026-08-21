@@ -33,6 +33,7 @@ type PublicDocumentMetadata = {
   indexable?: boolean | undefined;
   canonicalPath?: string | undefined;
   profileLinks?: string[] | undefined;
+  entrypointPublicPath?: string | null | undefined;
 };
 
 function normalizedOrigin(value: string): string {
@@ -70,7 +71,10 @@ function renderDocumentMetadata(input: {
   const siteOrigin = normalizedOrigin(input.metadata.siteOrigin ?? "http://localhost:3000");
   const canonicalUrl = absoluteUrl(siteOrigin, input.canonicalPath);
   const profileName = introductionName(input.metadata.introduction);
-  const isProfile = input.publicPath === INTRO_PATH;
+  const entrypointPublicPath = input.metadata.entrypointPublicPath === undefined
+    ? INTRO_PATH
+    : input.metadata.entrypointPublicPath;
+  const isProfile = entrypointPublicPath !== null && input.publicPath === entrypointPublicPath;
   const pageTitle = isProfile && profileName ? `${profileName} — Biography` : input.title;
   const siteName = publicSiteName(siteOrigin, input.metadata.introduction);
   const documentTitle = input.kind === "landing"
@@ -80,7 +84,8 @@ function renderDocumentMetadata(input: {
       : `${pageTitle} | ${siteName}`;
   const websiteId = `${siteOrigin}/#website`;
   const pageId = `${canonicalUrl}#page`;
-  const personId = `${absoluteUrl(siteOrigin, `/p/${INTRO_PATH}`)}#person`;
+  const profilePath = entrypointPublicPath ?? INTRO_PATH;
+  const personId = `${absoluteUrl(siteOrigin, `/p/${profilePath}`)}#person`;
   const dateModified = isoDate(input.lastEditedAt);
   const graph: Record<string, unknown>[] = [{
     "@type": "WebSite",
@@ -110,7 +115,7 @@ function renderDocumentMetadata(input: {
       "@type": "Person",
       "@id": personId,
       name: profileName,
-      url: absoluteUrl(siteOrigin, `/p/${INTRO_PATH}`),
+      url: absoluteUrl(siteOrigin, `/p/${profilePath}`),
       description: input.metadata.introduction?.summary,
       ...(input.metadata.profileLinks?.length ? { sameAs: input.metadata.profileLinks } : {}),
     });
@@ -226,6 +231,7 @@ export function renderPublicIndexDocument(index: {
   entries: PublicIndexEntry[];
   siteOrigin?: string | undefined;
   introduction?: Introduction | undefined;
+  entrypointPublicPath?: string | null | undefined;
 }): string {
   const title = index.title;
   const navigation = renderKnowledgeNavigation(index.path, title);
@@ -243,7 +249,11 @@ export function renderPublicIndexDocument(index: {
     description,
     canonicalPath: index.path ? `/p/${index.path}/` : "/p/",
     kind: "index",
-    metadata: { siteOrigin: index.siteOrigin, introduction: index.introduction },
+    metadata: {
+      siteOrigin: index.siteOrigin,
+      introduction: index.introduction,
+      entrypointPublicPath: index.entrypointPublicPath,
+    },
   });
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">${documentMetadata}<link rel="stylesheet" href="/public.css"></head><body><main class="public-page public-index">${navigation}<header class="public-index-header"><h1>${escapeHtml(title)}</h1>${index.summary?.trim() ? `<p>${escapeHtml(index.summary.trim())}</p>` : ""}</header><ol class="public-index-list">${entries}</ol>${renderFootnote()}</main></body></html>`;
 }
@@ -251,6 +261,7 @@ export function renderPublicIndexDocument(index: {
 export function renderPublicLandingDocument(options: {
   siteOrigin?: string | undefined;
   introduction?: Introduction | undefined;
+  entrypointPublicPath?: string | null | undefined;
   profileLinks?: string[] | undefined;
 } = {}): string {
   const profileName = introductionName(options.introduction);
@@ -259,10 +270,9 @@ export function renderPublicLandingDocument(options: {
   const heading = profileName
     ? `${escapeHtml(profileName)}’s public context.`
     : "A public billboard<br>for what I choose to share.";
-  // The introduction is a convention, not a guarantee, but it is the only
-  // destination that always resolves: `/p/${INTRO_PATH}` renders an empty state
-  // when nothing is published, while `/p/` has no index to serve and 404s.
-  const primaryHref = `/p/${INTRO_PATH}`;
+  const primaryHref = options.entrypointPublicPath
+    ? `/p/${options.entrypointPublicPath}`
+    : "/p/";
   const primaryLabel = options.introduction ? "Read my biography" : "Explore my knowledge base";
   const documentMetadata = renderDocumentMetadata({
     title: profileName ? `${profileName} — Public knowledge` : "My public context",
@@ -273,6 +283,7 @@ export function renderPublicLandingDocument(options: {
       siteOrigin: options.siteOrigin,
       introduction: options.introduction,
       profileLinks: options.profileLinks,
+      entrypointPublicPath: options.entrypointPublicPath,
     },
   });
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">${documentMetadata}<link rel="stylesheet" href="/public.css"></head><body><main class="public-landing"><section class="billboard"><p class="landing-kicker">Public knowledge</p><h1>${heading}</h1><p class="landing-lede">${escapeHtml(description)}</p><div class="landing-actions"><a class="landing-cta" href="${primaryHref}">${primaryLabel} <span aria-hidden="true">→</span></a></div></section><footer class="landing-footer"><p class="landing-credit">self-hosted with ❤️ using <a class="external-link" href="${CONTEXT_USE_URL}" target="_blank" rel="noopener noreferrer" title="External link (opens in a new tab)">context-use</a>.</p><p class="landing-utilities">A self-hostable knowledge base that stays private until I choose otherwise. <a href="/llms.txt" type="text/plain">AI-readable site index</a>.</p></footer></main></body></html>`;

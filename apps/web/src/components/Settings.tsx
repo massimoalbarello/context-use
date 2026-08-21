@@ -48,6 +48,22 @@ type KnowledgeExportStatus = { reset?: KnowledgeResetState } & (
   | { status: "failed"; message: string; code: string }
 );
 
+type PublicEntrypoint = {
+  settings: {
+    entrypoint_page_id: string | null;
+    current_path: string | null;
+    public_path: string | null;
+    title: string | null;
+    summary: string | null;
+  } | null;
+  candidates: Array<{
+    id: string;
+    public_path: string;
+    title: string;
+    summary: string;
+  }>;
+};
+
 export type KnowledgeExportJob = {
   intentId: string;
   kind: "portable" | "restorable";
@@ -312,6 +328,10 @@ export function Settings({
   const [clearPrompted, setClearPrompted] = useState(false);
   const [clearWorking, setClearWorking] = useState(false);
   const [clearError, setClearError] = useState("");
+  const [publicEntrypoint, setPublicEntrypoint] = useState<PublicEntrypoint | null>(null);
+  const [publicEntrypointId, setPublicEntrypointId] = useState("");
+  const [publicEntrypointWorking, setPublicEntrypointWorking] = useState(false);
+  const [publicEntrypointError, setPublicEntrypointError] = useState("");
 
   const refreshImportEligibility = () => api<{ eligible: boolean }>("/api/dashboard/knowledge-import-eligibility");
 
@@ -322,6 +342,37 @@ export function Settings({
       .catch(() => { if (active) setImportEligibilityError("Import availability could not be checked. Reload Settings to try again."); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    api<PublicEntrypoint>("/api/dashboard/public-entrypoint")
+      .then((result) => {
+        if (!active) return;
+        setPublicEntrypoint(result);
+        setPublicEntrypointId(result.settings?.entrypoint_page_id ?? "");
+      })
+      .catch((error: unknown) => {
+        if (active) setPublicEntrypointError(error instanceof Error ? error.message : "Public entry point could not be loaded");
+      });
+    return () => { active = false; };
+  }, []);
+
+  const savePublicEntrypoint = async () => {
+    setPublicEntrypointWorking(true);
+    setPublicEntrypointError("");
+    try {
+      const result = await api<{ settings: PublicEntrypoint["settings"] }>("/api/dashboard/public-entrypoint", {
+        method: "PUT",
+        body: JSON.stringify({ page_id: publicEntrypointId || null }),
+      });
+      setPublicEntrypoint((current) => current ? { ...current, settings: result.settings } : current);
+      setMessage(publicEntrypointId ? "Public entry point updated." : "Public entry point removed.");
+    } catch (error) {
+      setPublicEntrypointError(error instanceof Error ? error.message : "Public entry point could not be updated");
+    } finally {
+      setPublicEntrypointWorking(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -649,6 +700,17 @@ export function Settings({
   return <main className="content-page settings-page"><header><div><span className="eyebrow">Owner-only controls</span><h1>Settings</h1></div><RunningRelease /></header>
     {message && <p>{message}</p>}
     <IntrinsicServices />
+    <section><h2>Public entry point</h2>
+      <p>Choose which already-published page introduces the public knowledge base. Publishing and editing remain separate decisions; this pointer never publishes private content.</p>
+      {publicEntrypointError && <p className="error" role="alert">{publicEntrypointError}</p>}
+      {publicEntrypoint && <div className="public-entrypoint-setting">
+        <label>Entry page<select value={publicEntrypointId} onChange={(event) => setPublicEntrypointId(event.target.value)}>
+          <option value="">No public entry point</option>
+          {publicEntrypoint.candidates.map((page) => <option value={page.id} key={page.id}>{page.title} · /p/{page.public_path}</option>)}
+        </select></label>
+        <button className="primary" disabled={publicEntrypointWorking || publicEntrypointId === (publicEntrypoint.settings?.entrypoint_page_id ?? "")} onClick={() => void savePublicEntrypoint()}>{publicEntrypointWorking ? "Saving…" : "Save entry point"}</button>
+      </div>}
+    </section>
     <KnowledgeTemplateSettings onKnowledgeChanged={onKnowledgeChanged} />
     <section><h2>Passkeys</h2><p>Passkeys sign in as the installation owner and can confirm sensitive actions. Adding or removing one requires fresh verification with an existing passkey, and at least one must always remain.</p>
       <div className="security-list">{passkeys.map((key) => <article key={key.id}><div><strong>{key.name || "Unnamed passkey"}</strong><span>Added {new Date(key.created_at).toLocaleString()} · {key.device_type === "singleDevice" ? "Device-bound passkey" : "Multi-device passkey"}{key.backed_up ? " · Backed up" : ""}</span></div><button className="danger" disabled={passkeys.length <= 1 || Boolean(removalPreparingId)} onClick={() => void prepareRemoval(key)}>{removalPreparingId === key.id ? "Preparing…" : "Remove"}</button></article>)}</div>

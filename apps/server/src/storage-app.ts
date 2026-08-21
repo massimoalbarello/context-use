@@ -1,15 +1,24 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import { chmod } from "node:fs/promises";
-import { AssetRepository, createPool, StoragePublicationRepository } from "@context-use/database";
+import {
+  AssetRepository,
+  DocumentMaintenanceRepository,
+  createPool,
+  markdownObjectMetadata,
+  StoragePublicationRepository,
+} from "@context-use/database";
 import { AssetPath } from "@context-use/shared";
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { config } from "./config.ts";
 import { FilesystemStorage, S3Storage, type ByteRange, type ObjectStorageBackend } from "./storage.ts";
 import { disableStreamingRequestIdleTimeout } from "./streaming-timeout.ts";
+import { projectPublicMarkdown } from "./public-markdown-projection.ts";
 
 const objectKeySchema = z.string().regex(/^objects\/[a-f0-9-]{36}$/);
+const privateDocumentKeySchema = z.string().regex(/^documents\/private\/[a-f0-9-]{36}\.md$/);
+const publicDocumentKeySchema = z.string().regex(/^documents\/public\/[a-f0-9-]{36}\.md$/);
 const generatedObjectKeySchema = z.string().regex(/^exports\/[a-f0-9-]{36}\.zip$/);
 const importIdSchema = z.string().uuid();
 const verificationSchema = z.object({
@@ -33,6 +42,11 @@ type StorageBrokerTokens = { dashboard: string; mcp: string; public: string };
 
 type PublishedAssetLookup = {
   assetByPublicPath(publicPath: string): Promise<{ s3_object_key: string } | null>;
+  pageByPublicPath?(publicPath: string): Promise<{
+    body_object_key: string;
+    body_size_bytes: number | string;
+    body_content_hash: string;
+  } | null>;
 };
 
 type PrivateAssetLookup = {
@@ -106,6 +120,7 @@ const defaultStorage: ObjectStorageBackend = config.STORAGE_DRIVER === "s3"
 const storagePool = createPool(config.STORAGE_DATABASE_URL, { application_name: "context-use-storage-boundary" });
 const defaultPrivateAssets = new AssetRepository(storagePool);
 const defaultPublicAssets = new StoragePublicationRepository(storagePool);
+const documentMaintenance = new DocumentMaintenanceRepository(storagePool);
 const defaultTokens: StorageBrokerTokens = {
   dashboard: config.STORAGE_DASHBOARD_TOKEN,
   mcp: config.STORAGE_MCP_TOKEN,
@@ -196,9 +211,48 @@ export function createStorageBrokerApp(input: {
       activeWrites.delete(asset.objectKey);
     }
   }, { parse: "none" })
+  .put("/private/document", async ({ request }) => {
+    if (!privateCapability(request, tokens)) return denied();
+    const revisionId = z.string().uuid().parse(request.headers.get("x-document-revision-id"));
+    const objectKey = privateDocumentKeySchema.parse(request.headers.get("x-object-key"));
+    const sizeBytes = z.number().int().nonnegative().max(4_000_000)
+      .parse(Number(request.headers.get("content-length")));
+    const contentHash = z.string().regex(/^[a-f0-9]{64}$/)
+      .parse(request.headers.get("x-content-sha256"));
+    if (objectKey !== `documents/private/${revisionId}.md`) return denied();
+    if (activeWrites.has(objectKey)) return denied();
+    const document = {
+      id: revisionId,
+      objectKey,
+      filename: `${revisionId}.md`,
+      contentType: "text/markdown; charset=utf-8",
+      sizeBytes,
+      contentHash,
+    };
+    if (await storage.exists(objectKey)) {
+      return await storage.verify(objectKey, sizeBytes, contentHash)
+        ? new Response(null, { status: 204 })
+        : denied();
+    }
+    activeWrites.add(objectKey);
+    try {
+      await storage.write(document, request.body);
+      return new Response(null, { status: 204 });
+    } finally {
+      activeWrites.delete(objectKey);
+    }
+  }, { parse: "none" })
   .get("/private/object", async ({ request, query }) => {
     if (!privateCapability(request, tokens)) return denied();
     return readObject(storage, objectKeySchema.parse(query.key), parseRange(request.headers.get("range")));
+  })
+  .get("/private/document", async ({ request, query }) => {
+    if (!privateCapability(request, tokens)) return denied();
+    return readObject(
+      storage,
+      privateDocumentKeySchema.parse(query.key),
+      parseRange(request.headers.get("range")),
+    );
   })
   .put("/private/export", async ({ request, query }) => {
     if (privateCapability(request, tokens) !== "dashboard") return denied();
@@ -315,6 +369,22 @@ export function createStorageBrokerApp(input: {
     const asset = await publicAssets.assetByPublicPath(publicPath);
     if (!asset) return denied();
     return readObject(storage, objectKeySchema.parse(asset.s3_object_key), parseRange(request.headers.get("range")));
+  })
+  .get("/public/document", async ({ request, query }) => {
+    if (!publicAuthorized(request, tokens)) return denied();
+    const publicPath = AssetPath.parse(query.path);
+    const page = await publicAssets.pageByPublicPath?.(publicPath);
+    if (!page) return denied();
+    if (!await storage.verify(
+      page.body_object_key,
+      Number(page.body_size_bytes),
+      page.body_content_hash,
+    )) return denied();
+    return readObject(
+      storage,
+      publicDocumentKeySchema.parse(page.body_object_key),
+      parseRange(request.headers.get("range")),
+    );
   });
 }
 
@@ -325,7 +395,83 @@ export const storageApp = createStorageBrokerApp({
   tokens: defaultTokens,
 });
 
+let maintenanceRunning = false;
+
+export async function reconcileDocumentObjects(input: {
+  storage: ObjectStorageBackend;
+  maintenance: Pick<DocumentMaintenanceRepository,
+    "legacyKnowledgeRevisions" | "completeLegacyRevision" |
+    "projectionSnapshot" | "recordPublishedArtifact">;
+}): Promise<void> {
+  const { storage, maintenance } = input;
+  for (const revision of await maintenance.legacyKnowledgeRevisions()) {
+    const metadata = markdownObjectMetadata(revision.id, revision.body_markdown);
+    if (!await storage.exists(metadata.body_object_key)) {
+      await storage.write({
+        id: revision.id,
+        objectKey: metadata.body_object_key,
+        filename: `${revision.id}.md`,
+        contentType: "text/markdown; charset=utf-8",
+        sizeBytes: metadata.body_size_bytes,
+        contentHash: metadata.body_content_hash,
+      }, new Blob([revision.body_markdown]).stream());
+    }
+    if (!await storage.verify(
+      metadata.body_object_key,
+      metadata.body_size_bytes,
+      metadata.body_content_hash,
+    )) throw new Error(`Knowledge revision ${revision.id} failed migration verification`);
+    await maintenance.completeLegacyRevision(revision, metadata);
+  }
+
+  const snapshot = await maintenance.projectionSnapshot();
+  for (const page of snapshot.pages) {
+    if (!await storage.verify(
+      page.body_object_key,
+      Number(page.body_size_bytes),
+      page.body_content_hash,
+    )) throw new Error(`Published revision ${page.version_id} is unavailable`);
+    const privateMarkdown = await new Response(await storage.read(page.body_object_key)).text();
+    const publicMarkdown = projectPublicMarkdown(privateMarkdown, page.source_path, snapshot);
+    const bytes = Buffer.from(publicMarkdown, "utf8");
+    const artifactId = randomUUID();
+    const objectKey = `documents/public/${artifactId}.md`;
+    const contentHash = createHash("sha256").update(bytes).digest("hex");
+    await storage.write({
+      id: artifactId,
+      objectKey,
+      filename: `${artifactId}.md`,
+      contentType: "text/markdown; charset=utf-8",
+      sizeBytes: bytes.byteLength,
+      contentHash,
+    }, new Blob([bytes]).stream());
+    await maintenance.recordPublishedArtifact({
+      pageId: page.page_id,
+      versionId: page.version_id,
+      generation: snapshot.generation,
+      artifactId,
+      objectKey,
+      sizeBytes: bytes.byteLength,
+      contentHash,
+    });
+  }
+}
+
+export async function maintainDocumentObjects(): Promise<void> {
+  if (maintenanceRunning) return;
+  maintenanceRunning = true;
+  try {
+    await reconcileDocumentObjects({
+      storage: defaultStorage,
+      maintenance: documentMaintenance,
+    });
+  } finally {
+    maintenanceRunning = false;
+  }
+}
+
 export async function listenStorageSocket(): Promise<void> {
+  await maintainDocumentObjects();
   const socketPath = config.STORAGE_SOCKET_PATH;
   await unlink(socketPath).catch(() => undefined);
   Bun.serve({
@@ -333,7 +479,7 @@ export async function listenStorageSocket(): Promise<void> {
     maxRequestBodySize: 5_500_000_000,
     fetch(request, server) {
       if (["GET", "PUT"].includes(request.method)
-          && ["/private/object", "/private/export", "/private/import-stage"].includes(new URL(request.url).pathname)) {
+          && ["/private/object", "/private/document", "/private/export", "/private/import-stage"].includes(new URL(request.url).pathname)) {
         disableStreamingRequestIdleTimeout(server, request);
       }
       return storageApp.handle(request);
@@ -341,4 +487,11 @@ export async function listenStorageSocket(): Promise<void> {
   });
   await chmod(socketPath, 0o660);
   console.info("context-use storage broker listening on unix socket");
+  setInterval(() => {
+    void maintainDocumentObjects().catch((error: unknown) => {
+      console.error("document_object_maintenance_failed", error instanceof Error
+        ? { name: error.name, message: error.message }
+        : { type: typeof error });
+    });
+  }, 1_000).unref();
 }

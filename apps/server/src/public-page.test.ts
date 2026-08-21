@@ -163,6 +163,7 @@ describe("public page presentation", () => {
         title: "Intro",
         summary: "Massimo Albarello's introduction: a builder from Como.",
       },
+      entrypointPublicPath: "about/intro",
       profileLinks: ["https://github.com/massimoalbarello"],
     });
 
@@ -181,12 +182,10 @@ describe("public page presentation", () => {
     expect(html).not.toContain("MCP");
   });
 
-  test("sends visitors to the introduction empty state when nothing is published", () => {
+  test("sends visitors to the public index when no entry point is configured", () => {
     const html = renderPublicLandingDocument({ siteOrigin: "https://someone.example" });
 
-    // `/p/` has no index to serve until something is published, so the billboard
-    // would otherwise be a dead link on every freshly deployed instance.
-    expect(html).toContain('<a class="landing-cta" href="/p/about/intro">Explore my knowledge base');
+    expect(html).toContain('<a class="landing-cta" href="/p/">Explore my knowledge base');
     expect(html).toContain("A public billboard<br>for what I choose to share.");
     expect(html).toContain("<title>someone.example public knowledge</title>");
     expect(html).not.toContain('"@type":"Person"');
@@ -204,6 +203,21 @@ describe("public page presentation", () => {
     expect(html).toContain('"@type":"Person"');
     expect(html).toContain('"name":"Massimo Albarello"');
     expect(html).not.toContain('"sameAs"');
+  });
+
+  test("binds structured profile identity to the configured entry point", () => {
+    const html = renderPublicLandingDocument({
+      siteOrigin: "https://massimo.example",
+      introduction: {
+        title: "Massimo Albarello",
+        summary: "Massimo Albarello's public profile.",
+      },
+      entrypointPublicPath: "start-here",
+    });
+
+    expect(html).toContain('"@id":"https://massimo.example/p/start-here#person"');
+    expect(html).toContain('"url":"https://massimo.example/p/start-here"');
+    expect(html).not.toContain("/p/about/intro#person");
   });
 
   test("styles the footnote, billboard, and published media", () => {

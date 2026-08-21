@@ -1537,6 +1537,8 @@ button:disabled {
   line-height: 1.55;
 }
 
+.public-entrypoint-setting{display:flex;align-items:end;gap:12px;margin-top:18px}.public-entrypoint-setting label{display:grid;flex:1;gap:7px;color:#555;font-size:13px;font-weight:650}.public-entrypoint-setting select{min-height:42px;padding:0 12px;border:1px solid #d8d6cf;border-radius:8px;background:#fff;color:#252522;font:inherit}
+
 .service-list {
   margin-top: 18px;
 }

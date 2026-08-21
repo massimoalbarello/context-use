@@ -122,6 +122,60 @@ describe("storage broker capabilities", () => {
     expect((await app.handle(authorized(tokens.public, `/private/object?key=${privateKey}`))).status).toBe(404);
   });
 
+  test("knowledge revisions are immutable and public readers resolve only materialized public paths", async () => {
+    const storage = new MemoryStorage();
+    const revisionId = "66666666-6666-4666-8666-666666666666";
+    const privateDocumentKey = `documents/private/${revisionId}.md`;
+    const artifactId = "77777777-7777-4777-8777-777777777777";
+    const publicDocumentKey = `documents/public/${artifactId}.md`;
+    const publicProjection = Buffer.from("public projection");
+    storage.objects.set(publicDocumentKey, publicProjection);
+    const app = createStorageBrokerApp({
+      storage,
+      privateAssets: privateAssets({}),
+      publicAssets: {
+        assetByPublicPath: async () => null,
+        pageByPublicPath: async (path) => path === "public/page"
+          ? {
+              body_object_key: publicDocumentKey,
+              body_size_bytes: publicProjection.byteLength,
+              body_content_hash: createHash("sha256").update(publicProjection).digest("hex"),
+            }
+          : null,
+      },
+      tokens,
+    });
+    const markdown = Buffer.from("# Private knowledge\n");
+    const headers = {
+      "content-length": String(markdown.byteLength),
+      "x-document-revision-id": revisionId,
+      "x-object-key": privateDocumentKey,
+      "x-content-sha256": createHash("sha256").update(markdown).digest("hex"),
+    };
+
+    expect((await app.handle(authorized(tokens.mcp, "/private/document", {
+      method: "PUT", headers, body: markdown,
+    }))).status).toBe(204);
+    expect(await (await app.handle(authorized(
+      tokens.mcp,
+      `/private/document?key=${encodeURIComponent(privateDocumentKey)}`,
+    ))).text()).toBe(markdown.toString());
+    expect((await app.handle(authorized(
+      tokens.public,
+      `/private/document?key=${encodeURIComponent(privateDocumentKey)}`,
+    ))).status).toBe(404);
+
+    const published = await app.handle(authorized(tokens.public, "/public/document?path=public%2Fpage"));
+    expect(await published.text()).toBe("public projection");
+    storage.objects.set(publicDocumentKey, Buffer.from("corrupt projection"));
+    expect((await app.handle(authorized(tokens.public, "/public/document?path=public%2Fpage"))).status).toBe(404);
+    expect((await app.handle(authorized(tokens.public, "/public/document?path=private%2Fpage"))).status).toBe(404);
+    expect((await app.handle(authorized(
+      tokens.public,
+      `/public/document?key=${encodeURIComponent(publicDocumentKey)}`,
+    ))).status).toBe(404);
+  });
+
   test("private MCP can read and upload but cannot delete or invoke integrity management", async () => {
     const storage = new MemoryStorage();
     const app = createStorageBrokerApp({

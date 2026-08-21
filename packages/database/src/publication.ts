@@ -10,6 +10,10 @@ export type PublicPage = {
   last_edited_at: string | Date;
 };
 
+export type PublicKnowledgeSettings = {
+  entrypoint_public_path: string | null;
+};
+
 export class PublicationRepository {
   constructor(private readonly dashboardPool: Pool) {}
 
@@ -51,6 +55,13 @@ export class PublicRepository {
        ORDER BY public_path COLLATE "C"`,
     );
     return result.rows;
+  }
+
+  async settings(): Promise<PublicKnowledgeSettings> {
+    const result = await this.pool.query<PublicKnowledgeSettings>(
+      "SELECT entrypoint_public_path FROM published_site_settings",
+    );
+    return result.rows[0] ?? { entrypoint_public_path: null };
   }
 
   async directoryIndex(path: string) {
@@ -158,6 +169,61 @@ export class StoragePublicationRepository {
     const result = await this.pool.query(
       "SELECT public_path,s3_object_key FROM storage_published_assets WHERE public_path=$1",
       [path],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async pageByPublicPath(path: string) {
+    const result = await this.pool.query(
+      `SELECT public_path,body_object_key,body_size_bytes,body_content_hash
+       FROM storage_published_pages WHERE public_path=$1`,
+      [path],
+    );
+    return result.rows[0] ?? null;
+  }
+}
+
+export class PublicEntrypointRepository {
+  constructor(private readonly pool: Pool) {}
+
+  async get() {
+    const result = await this.pool.query(
+      `SELECT settings.entrypoint_page_id,page.current_path,page.public_path,
+         version.title,version.summary
+       FROM public_knowledge_settings settings
+       LEFT JOIN knowledge_pages page ON page.id=settings.entrypoint_page_id
+       LEFT JOIN knowledge_page_versions version
+         ON version.id=page.published_version_id AND version.page_id=page.id
+       WHERE settings.singleton`,
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async candidates() {
+    const result = await this.pool.query(
+      `SELECT page.id,page.public_path,version.title,version.summary
+       FROM knowledge_pages page
+       JOIN knowledge_page_versions version
+         ON version.id=page.published_version_id AND version.page_id=page.id
+       WHERE page.published_version_id IS NOT NULL
+         AND page.public_path IS NOT NULL
+         AND page.archived_at IS NULL
+       ORDER BY page.public_path`,
+    );
+    return result.rows;
+  }
+
+  async update(pageId: string | null) {
+    const result = await this.pool.query(
+      `UPDATE public_knowledge_settings
+       SET entrypoint_page_id=$1,updated_at=now()
+       WHERE singleton AND ($1::uuid IS NULL OR EXISTS (
+         SELECT 1 FROM knowledge_pages page
+         WHERE page.id=$1 AND page.published_version_id IS NOT NULL
+           AND page.public_path IS NOT NULL AND page.archived_at IS NULL
+       ))
+       RETURNING entrypoint_page_id,updated_at`,
+      [pageId],
     );
     return result.rows[0] ?? null;
   }

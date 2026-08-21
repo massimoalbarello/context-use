@@ -23,6 +23,7 @@ const assetHash = createHash("sha256").update(assetBytes).digest("hex");
 
 function records(): RestorableKnowledgeRecords {
   return {
+    public_settings: { entrypoint_page_id: pageId },
     directories: [{
       id: rootId,
       current_path: "",

@@ -12,12 +12,17 @@ async function socketFetch(
   path: string,
   init: { method?: string; headers?: Record<string, string>; body?: ReadableStream<Uint8Array> | null } = {},
 ): Promise<Response> {
-  return fetch(`http://localhost${path}`, {
-    unix: socketPath,
+  const requestInit = {
     method: init.method ?? "GET",
     ...(init.headers ? { headers: init.headers } : {}),
     ...(init.body !== undefined ? { body: init.body as BodyInit | null } : {}),
-  });
+  };
+  const local = (globalThis as typeof globalThis & {
+    __contextUseStorageHandler?: (request: Request) => Promise<Response> | Response;
+  }).__contextUseStorageHandler;
+  return local
+    ? local(new Request(`http://context-use-storage${path}`, requestInit))
+    : fetch(`http://localhost${path}`, { unix: socketPath, ...requestInit });
 }
 
 export class BrokeredStorage implements ObjectStorage {
@@ -49,6 +54,44 @@ export class BrokeredStorage implements ObjectStorage {
       body,
     });
     if (!response.ok) throw new Error(`Storage write failed (${response.status})`);
+  }
+
+  async writeDocument(input: {
+    revisionId: string;
+    objectKey: string;
+    sizeBytes: number;
+    contentHash: string;
+    body: string;
+  }): Promise<void> {
+    if (this.options.publicOnly) throw new Error("Published storage is read-only");
+    const response = await this.request("/private/document", {
+      method: "PUT",
+      headers: {
+        "content-type": "text/markdown; charset=utf-8",
+        "content-length": String(input.sizeBytes),
+        "x-document-revision-id": input.revisionId,
+        "x-object-key": input.objectKey,
+        "x-content-sha256": input.contentHash,
+      },
+      body: new Blob([input.body]).stream(),
+    });
+    if (!response.ok) throw new Error(`Knowledge document write failed (${response.status})`);
+  }
+
+  async readDocument(objectKey: string): Promise<string> {
+    if (this.options.publicOnly) throw new Error("Private knowledge is unavailable");
+    const response = await this.request(`/private/document?key=${encodeURIComponent(objectKey)}`);
+    if (response.status === 404) throw new AssetNotFoundError();
+    if (!response.ok) throw new Error(`Knowledge document read failed (${response.status})`);
+    return response.text();
+  }
+
+  async readPublishedDocument(publicPath: string): Promise<string> {
+    if (!this.options.publicOnly) throw new Error("Published document reads require a public-only client");
+    const response = await this.request(`/public/document?path=${encodeURIComponent(publicPath)}`);
+    if (response.status === 404) throw new AssetNotFoundError();
+    if (!response.ok) throw new Error(`Published document read failed (${response.status})`);
+    return response.text();
   }
 
   async delete(objectKey: string): Promise<void> {
