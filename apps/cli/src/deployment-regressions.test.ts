@@ -924,8 +924,6 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployCompose).toContain("storage-socket-init: { condition: service_completed_successfully }");
   expect(deployCompose).toContain("storage: { condition: service_healthy }");
   expect(caddy).toContain("max_size 5GB");
-  expect(caddy).toContain("handle /api/dashboard/knowledge-import-intents");
-  expect(caddy).toContain("max_size 6GB");
   expect(caddy).toContain("max_size 3MB");
   expect(compute).toContain("s3:AbortMultipartUpload");
   expect(compute).toContain("s3:GetEncryptionConfiguration");

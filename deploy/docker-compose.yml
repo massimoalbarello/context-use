@@ -530,14 +530,10 @@ services:
       NANGO_PUBLIC_URL: https://${NANGO_HOSTNAME}
       NANGO_IMAGE_REFERENCE: ${NANGO_IMAGE}
       WEB_DIST: /app/apps/web/dist
-      KNOWLEDGE_IMPORT_SPOOL_PATH: /var/lib/context-use/import-spool
     command: ["bun", "apps/server/src/dashboard-index.ts"]
-    # A whole archive is spooled to disk during import. The retained volume
-    # holds it; the service's own /tmp is a small RAM-backed tmpfs.
     mem_limit: 2g
     volumes:
       - storage-socket:/run/context-use-storage:ro
-      - /data/context-use/import-spool:/var/lib/context-use/import-spool
     networks: [dashboard_data, dashboard_edge_internal, auth_dashboard_internal, confirmation_internal]
     healthcheck:
       test: ["CMD", "bun", "-e", "const response = await fetch('http://localhost:3000/api/health'); if (!response.ok) process.exit(1)"]

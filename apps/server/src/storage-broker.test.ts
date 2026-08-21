@@ -338,61 +338,6 @@ describe("storage broker capabilities", () => {
     expect(await storage.inspectGenerated(exportKey)).toBeNull();
   });
 
-  test("stages import bytes before metadata and keeps promoted bytes only after commit", async () => {
-    const storage = new MemoryStorage();
-    const importId = "55555555-5555-4555-8555-555555555555";
-    const assetId = "66666666-6666-4666-8666-666666666666";
-    const bytes = Buffer.from("restorable asset bytes");
-    const hash = createHash("sha256").update(bytes).digest("hex");
-    const rows: Record<string, { filename: string; contentType: string; bytes: Uint8Array }> = {};
-    const app = createStorageBrokerApp({
-      storage,
-      privateAssets: privateAssets(rows),
-      publicAssets: { assetByPublicPath: async () => null },
-      tokens,
-    });
-    const headers = {
-      "content-length": String(bytes.byteLength),
-      "x-asset-id": assetId,
-      "x-filename": encodeURIComponent("restored.txt"),
-      "x-content-type": "text/plain",
-      "x-content-sha256": hash,
-    };
-
-    expect((await app.handle(authorized(tokens.mcp, `/private/import-stage?intent=${importId}`, {
-      method: "PUT", headers, body: bytes,
-    }))).status).toBe(404);
-    expect((await app.handle(authorized(tokens.dashboard, `/private/import-stage?intent=${importId}`, {
-      method: "PUT", headers, body: bytes,
-    }))).status).toBe(204);
-    expect(storage.objects.has(`imports/${importId}/${assetId}`)).toBeTrue();
-
-    const promoteHeaders = { ...headers, "x-content-length": headers["content-length"] };
-    delete (promoteHeaders as { "content-length"?: string })["content-length"];
-    expect((await app.handle(authorized(tokens.dashboard, `/private/import-promote?intent=${importId}`, {
-      method: "POST", headers: promoteHeaders, body: "{}",
-    }))).status).toBe(204);
-    expect(storage.objects.has(`objects/${assetId}`)).toBeTrue();
-
-    expect((await app.handle(authorized(tokens.dashboard, `/private/import?intent=${importId}&asset=${assetId}`, {
-      method: "DELETE",
-    }))).status).toBe(204);
-    expect(storage.objects.has(`objects/${assetId}`)).toBeFalse();
-
-    await app.handle(authorized(tokens.dashboard, `/private/import-stage?intent=${importId}`, {
-      method: "PUT", headers, body: bytes,
-    }));
-    await app.handle(authorized(tokens.dashboard, `/private/import-promote?intent=${importId}`, {
-      method: "POST", headers: promoteHeaders, body: "{}",
-    }));
-    rows[assetId] = { filename: "restored.txt", contentType: "text/plain", bytes };
-    await app.handle(authorized(tokens.dashboard, `/private/import?intent=${importId}&asset=${assetId}`, {
-      method: "DELETE",
-    }));
-    expect(storage.objects.has(`objects/${assetId}`)).toBeTrue();
-    expect(storage.objects.has(`imports/${importId}/${assetId}`)).toBeFalse();
-  });
-
   test("dashboard storage client round-trips generated metadata and resumable bytes", async () => {
     const storage = new MemoryStorage();
     const app = createStorageBrokerApp({

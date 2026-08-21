@@ -67,6 +67,11 @@ export class KnowledgeResetRepository {
   ): Promise<ClearedKnowledgeCounts> {
     const revisionId = randomUUID();
     const object = await this.bodies.write(revisionId, baseline.root_guide.body_markdown);
+    const search = await this.dashboardPool.query<{ value: string }>(
+      `SELECT page_search_vector($1,$2,$3,$4)::text AS value`,
+      ["agents", baseline.root_guide.title, baseline.root_guide.summary,
+        baseline.root_guide.body_markdown],
+    );
     const result = await this.dashboardPool.query<{ result: ClearedKnowledgeCounts }>(
       "SELECT clear_knowledge($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) AS result",
       [
@@ -81,7 +86,7 @@ export class KnowledgeResetRepository {
         baseline.root_directory.summary,
         baseline.root_guide.title,
         baseline.root_guide.summary,
-        baseline.root_guide.body_markdown,
+        search.rows[0]!.value,
         baseline.root_guide.commit_message,
         baseline.root_guide.actor_subject,
       ],

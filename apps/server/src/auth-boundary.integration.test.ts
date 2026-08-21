@@ -103,35 +103,6 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(confirm.status).toBe(401);
   });
 
-  test("bearer credentials cannot stage, confirm, or restore a knowledge import", async () => {
-    const eligibility = await application!.handle(new Request(
-      "http://localhost:3000/api/dashboard/knowledge-import-eligibility",
-      { headers: { authorization: "Bearer forged" } },
-    ));
-    expect(eligibility.status).toBe(401);
-    const intent = await application!.handle(new Request("http://localhost:3000/api/dashboard/knowledge-import-intents", {
-      method: "POST",
-      headers: { authorization: "Bearer forged", "content-type": "application/zip" },
-      body: "not-a-zip",
-    }));
-    expect(intent.status).toBe(401);
-    const confirm = await application!.handle(new Request("http://localhost:3000/api/dashboard/knowledge-imports/confirm", {
-      method: "POST",
-      headers: { authorization: "Bearer forged", "content-type": "application/json" },
-      body: "{}",
-    }));
-    expect(confirm.status).toBe(401);
-    const restore = await application!.handle(new Request(
-      "http://localhost:3000/api/dashboard/knowledge-imports/11111111-1111-4111-8111-111111111111/restore",
-      {
-        method: "POST",
-        headers: { authorization: "Bearer forged", "content-type": "application/json" },
-        body: "{}",
-      },
-    ));
-    expect(restore.status).toBe(401);
-  });
-
   test("bearer credentials cannot create or confirm permanent page deletions", async () => {
     const intent = await application!.handle(new Request(
       "http://localhost:3000/api/dashboard/pages/11111111-1111-4111-8111-111111111111/deletion-intents",

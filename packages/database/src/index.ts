@@ -61,23 +61,10 @@ export {
   KnowledgeExportRepository,
   type KnowledgeExportAsset,
   type KnowledgeExportDirectory,
-  type KnowledgeExportKind,
   type KnowledgeExportPage,
   type KnowledgeExportPrincipal,
   type KnowledgeExportSnapshot,
 } from "./exports.ts";
-export {
-  KnowledgeArchiveRepository,
-  RESTORABLE_KNOWLEDGE_FORMAT,
-  type KnowledgeImportPrincipal,
-  type RestorableKnowledgeAsset,
-  type RestorableKnowledgeAssetLink,
-  type RestorableKnowledgeDirectory,
-  type RestorableKnowledgePage,
-  type RestorableKnowledgePageChange,
-  type RestorableKnowledgePageVersion,
-  type RestorableKnowledgeRecords,
-} from "./knowledge-archive.ts";
 export {
   PublicationRepository,
   PublicEntrypointRepository,

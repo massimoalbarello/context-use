@@ -196,9 +196,9 @@ describeDatabase("immutable page history", () => {
       );
       await first.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,
+           id,page_id,version_number,path,title,summary,
            commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,$3,'First','The first concurrent page.','Body',
+         ) VALUES ($1,$2,1,$3,'First','The first concurrent page.',
            'Create first concurrent page','dashboard','integration-test-owner')`,
         [firstVersionId, firstPageId, `tests/${suffix}/first`],
       );
@@ -212,9 +212,9 @@ describeDatabase("immutable page history", () => {
       );
       const secondVersion = second.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,
+           id,page_id,version_number,path,title,summary,
            commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,$3,'Second','The second concurrent page.','Body',
+         ) VALUES ($1,$2,1,$3,'Second','The second concurrent page.',
            'Create second concurrent page','dashboard','integration-test-owner')`,
         [secondVersionId, secondPageId, `tests/${suffix}/second`],
       );

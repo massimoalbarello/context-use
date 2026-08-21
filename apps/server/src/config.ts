@@ -50,9 +50,6 @@ const schema = z.object({
   STORAGE_DRIVER: z.enum(["filesystem", "s3"]).default("filesystem"),
   STORAGE_PATH: z.string().default("./data/assets"),
   STORAGE_SOCKET_PATH: z.string().min(1).default("/tmp/context-use-storage.sock"),
-  // Imports spool the uploaded archive here before reading it. This must be a
-  // real disk with room for a whole archive, never a RAM-backed tmpfs.
-  KNOWLEDGE_IMPORT_SPOOL_PATH: z.string().min(1).default("/tmp"),
   STORAGE_DASHBOARD_TOKEN: z.string().min(32).default(developmentStorageTokens.dashboard),
   STORAGE_MCP_TOKEN: z.string().min(32).default(developmentStorageTokens.mcp),
   STORAGE_PUBLIC_TOKEN: z.string().min(32).default(developmentStorageTokens.public),

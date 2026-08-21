@@ -19,7 +19,6 @@ const objectKeySchema = z.string().regex(/^objects\/[a-f0-9-]{36}$/);
 const privateDocumentKeySchema = z.string().regex(/^documents\/private\/[a-f0-9-]{36}\.md$/);
 const publicDocumentKeySchema = z.string().regex(/^documents\/public\/[a-f0-9-]{36}\.md$/);
 const generatedObjectKeySchema = z.string().regex(/^exports\/[a-f0-9-]{36}\.zip$/);
-const importIdSchema = z.string().uuid();
 const verificationSchema = z.object({
   object_key: objectKeySchema,
   size_bytes: z.number().int().nonnegative().max(5_000_000_000),
@@ -87,25 +86,9 @@ function parseRange(value: string | null): ByteRange | undefined {
   return { start, end };
 }
 
-function importStageKey(intentId: string, assetId: string): string {
-  return `imports/${intentId}/${assetId}`;
-}
-
 function filenameHeader(request: Request): string {
   const encoded = z.string().min(1).max(16_000).parse(request.headers.get("x-filename"));
   return z.string().min(1).max(1_024).parse(decodeURIComponent(encoded));
-}
-
-function importAssetFromHeaders(request: Request, sizeHeader: string) {
-  const id = importIdSchema.parse(request.headers.get("x-asset-id"));
-  return {
-    id,
-    objectKey: `objects/${id}`,
-    filename: filenameHeader(request),
-    contentType: z.string().min(1).max(255).parse(request.headers.get("x-content-type")),
-    sizeBytes: z.number().int().nonnegative().max(5_000_000_000).parse(Number(request.headers.get(sizeHeader))),
-    contentHash: z.string().regex(/^[a-f0-9]{64}$/).parse(request.headers.get("x-content-sha256")),
-  };
 }
 
 const defaultStorage: ObjectStorageBackend = config.STORAGE_DRIVER === "s3"
@@ -290,59 +273,6 @@ export function createStorageBrokerApp(input: {
     await storage.deleteGenerated(generatedObjectKeySchema.parse(query.key));
     return new Response(null, { status: 204 });
   })
-  .put("/private/import-stage", async ({ request, query }) => {
-    if (privateCapability(request, tokens) !== "dashboard") return denied();
-    const intentId = importIdSchema.parse(query.intent);
-    const asset = importAssetFromHeaders(request, "content-length");
-    const objectKey = importStageKey(intentId, asset.id);
-    if (activeWrites.has(objectKey)) return denied();
-    const stagedAsset = { ...asset, objectKey };
-    if (await storage.exists(objectKey)) {
-      return await storage.verify(objectKey, asset.sizeBytes, asset.contentHash)
-        ? new Response(null, { status: 204 })
-        : denied();
-    }
-    activeWrites.add(objectKey);
-    try {
-      await storage.write(stagedAsset, request.body);
-      return new Response(null, { status: 204 });
-    } finally {
-      activeWrites.delete(objectKey);
-    }
-  }, { parse: "none" })
-  .post("/private/import-promote", async ({ request, query }) => {
-    if (privateCapability(request, tokens) !== "dashboard") return denied();
-    const intentId = importIdSchema.parse(query.intent);
-    const asset = importAssetFromHeaders(request, "x-content-length");
-    const stageKey = importStageKey(intentId, asset.id);
-    if (activeWrites.has(asset.objectKey)) return denied();
-    if (await storage.exists(asset.objectKey)) {
-      return await storage.verify(asset.objectKey, asset.sizeBytes, asset.contentHash)
-        ? new Response(null, { status: 204 })
-        : denied();
-    }
-    if (!await storage.verify(stageKey, asset.sizeBytes, asset.contentHash)) return denied();
-    activeWrites.add(asset.objectKey);
-    try {
-      const body = new Response(await storage.read(stageKey)).body;
-      await storage.write(asset, body);
-      return new Response(null, { status: 204 });
-    } finally {
-      activeWrites.delete(asset.objectKey);
-    }
-  }, { parse: "none" })
-  .delete("/private/import", async ({ request, query }) => {
-    if (privateCapability(request, tokens) !== "dashboard") return denied();
-    const intentId = importIdSchema.parse(query.intent);
-    const assetId = importIdSchema.parse(query.asset);
-    await storage.delete(importStageKey(intentId, assetId));
-    // A promoted object is removable only while no live metadata row claims it.
-    // After the database transaction commits, cleanup therefore keeps the final bytes.
-    if (!await privateAssets.getForStorage(assetId)) {
-      await storage.delete(`objects/${assetId}`);
-    }
-    return new Response(null, { status: 204 });
-  })
   .delete("/private/object", async ({ request, query }) => {
     if (privateCapability(request, tokens) !== "dashboard") return denied();
     const objectKey = objectKeySchema.parse(query.key);
@@ -457,7 +387,7 @@ export async function listenStorageSocket(): Promise<void> {
     maxRequestBodySize: 5_500_000_000,
     fetch(request, server) {
       if (["GET", "PUT"].includes(request.method)
-          && ["/private/object", "/private/document", "/private/export", "/private/import-stage"].includes(new URL(request.url).pathname)) {
+          && ["/private/object", "/private/document", "/private/export"].includes(new URL(request.url).pathname)) {
         disableStreamingRequestIdleTimeout(server, request);
       }
       return storageApp.handle(request);

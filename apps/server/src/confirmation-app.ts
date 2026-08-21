@@ -88,7 +88,7 @@ export const confirmationApp = new Elysia()
   .get("/health", () => json({ status: "ok", service: "confirmation" }))
   .post("/internal/confirmation/:kind/:id/options", async ({ request, params }) => {
     if (!hasInternalCapability(request, config.CONFIRMATION_DASHBOARD_TOKEN)) return problem("Not found", 404, "not_found");
-    const kind = z.enum(["publication", "knowledge_export", "knowledge_import", "page_deletion"]).parse(params.kind);
+    const kind = z.enum(["publication", "knowledge_export", "page_deletion"]).parse(params.kind);
     const intentId = z.string().uuid().parse(params.id);
     const options = await optionsFor(kind, intentId);
     return options ? json(options) : problem("Register a passkey before confirming", 409, "passkey_required");
@@ -169,35 +169,6 @@ export const confirmationApp = new Elysia()
     });
     return json({
       download_url: `/api/dashboard/knowledge-exports/${encodeURIComponent(intent.id)}/download`,
-    });
-  })
-  .post("/internal/browser-confirmation/knowledge_import", async ({ request }) => {
-    if (!hasInternalCapability(request, config.CONFIRMATION_GATEWAY_TOKEN)) return problem("Not found", 404, "not_found");
-    const input = browserConfirmationSchema.parse(await bodyJson(request));
-    const principal = {
-      userId: input.principal.owner_user_id,
-      sessionId: input.principal.session_id,
-    };
-    const intent = await confirmations.importIntent(input.confirmation.intent_id);
-    if (!intent || intent.owner_user_id !== principal.userId || intent.session_id !== principal.sessionId) {
-      return problem("Knowledge import intent not found", 404, "not_found");
-    }
-    if (!intent.challenge || intent.confirmed_at || intent.consumed_at
-        || new Date(intent.expires_at).getTime()<=Date.now()) {
-      return problem("Knowledge import intent is inactive", 409, "intent_inactive");
-    }
-    const verified = await verifiedPasskey(input.confirmation.response, intent.challenge);
-    if (!verified) return problem("Passkey verification failed", 403, "passkey_invalid");
-    await confirmations.confirmImport(intent.id, {
-      ownerUserId: principal.userId,
-      sessionId: principal.sessionId,
-    }, {
-      credentialId: verified.key.credentialID,
-      expectedCounter: verified.key.counter,
-      newCounter: verified.newCounter,
-    });
-    return json({
-      restore_url: `/api/dashboard/knowledge-imports/${encodeURIComponent(intent.id)}/restore`,
     });
   })
   .post("/internal/browser-confirmation/page_deletion", async ({ request }) => {

@@ -1,8 +1,5 @@
--- v0.1.74 wrote and verified every historical knowledge revision before the
--- storage broker became healthy. Refuse to strand a real upgrade that skipped
--- that release. A brand-new database contains only the baseline bootstrap
--- guide; remove it so the post-storage template installer can recreate it
--- through the object boundary.
+-- Finish the v0.1.74 object migration and remove every application-level path
+-- that can persist or restore knowledge Markdown through PostgreSQL.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM knowledge_page_versions WHERE body_markdown IS NOT NULL) THEN
@@ -20,84 +17,102 @@ BEGIN
         USING ERRCODE='55000';
     END IF;
 
-    SET CONSTRAINTS ALL DEFERRED;
-    ALTER TABLE knowledge_pages DISABLE TRIGGER knowledge_pages_keep_root_guide;
-    ALTER TABLE knowledge_pages DISABLE TRIGGER knowledge_pages_prevent_root_guide_deletion;
+    -- A brand-new database has no storage service available between migrations
+    -- 021 and 022. Remove its synthetic bootstrap page without firing deferred
+    -- lifecycle triggers; post-migration template installation writes the real
+    -- object-backed guide.
+    PERFORM set_config('session_replication_role','replica',true);
     DELETE FROM knowledge_page_versions;
     DELETE FROM knowledge_pages WHERE current_path='agents';
-    ALTER TABLE knowledge_pages ENABLE TRIGGER knowledge_pages_keep_root_guide;
-    ALTER TABLE knowledge_pages ENABLE TRIGGER knowledge_pages_prevent_root_guide_deletion;
+    DELETE FROM hypermedia_document_revisions;
+    DELETE FROM hypermedia_documents WHERE authority='knowledge';
+    DELETE FROM knowledge_page_changes;
+    PERFORM setval(pg_get_serial_sequence('knowledge_page_changes','change_sequence'),1,false);
+    PERFORM set_config('session_replication_role','origin',true);
   END IF;
 END;
 $$;
+
+-- Exact application-level archive restore is deliberately unsupported. Keep
+-- portable exports and infrastructure backup recovery, but remove the import
+-- intents, confirmation path and history-rewriting function.
+DELETE FROM confirmation_challenges WHERE intent_kind='knowledge_import';
+DROP FUNCTION confirm_knowledge_import_intent(uuid,text,text,text,integer,integer);
+DROP FUNCTION restore_knowledge_import(uuid,text,text);
+
+CREATE OR REPLACE FUNCTION issue_confirmation_challenge(
+  p_intent_kind confirmation_intent_kind,
+  p_intent_id uuid,
+  p_challenge text
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $$
+DECLARE
+  intent_expires_at timestamptz;
+  intent_inactive boolean;
+BEGIN
+  IF p_intent_kind IS NULL OR p_intent_id IS NULL OR p_challenge IS NULL
+     OR p_challenge !~ '^[A-Za-z0-9_-]{43,128}$' THEN
+    RAISE EXCEPTION 'valid confirmation challenge required' USING ERRCODE='22023';
+  END IF;
+
+  DELETE FROM publication_intents WHERE expires_at<=now();
+  DELETE FROM knowledge_export_intents WHERE expires_at<=now();
+  DELETE FROM page_deletion_intents WHERE expires_at<=now();
+  DELETE FROM confirmation_challenges challenge
+  WHERE (
+    challenge.intent_kind='publication'
+    AND NOT EXISTS (SELECT 1 FROM publication_intents intent WHERE intent.id=challenge.intent_id)
+  ) OR (
+    challenge.intent_kind='knowledge_export'
+    AND NOT EXISTS (SELECT 1 FROM knowledge_export_intents intent WHERE intent.id=challenge.intent_id)
+  ) OR (
+    challenge.intent_kind='page_deletion'
+    AND NOT EXISTS (SELECT 1 FROM page_deletion_intents intent WHERE intent.id=challenge.intent_id)
+  ) OR challenge.intent_kind='knowledge_import';
+
+  IF p_intent_kind='publication' THEN
+    SELECT expires_at,false INTO intent_expires_at,intent_inactive
+    FROM publication_intents WHERE id=p_intent_id;
+  ELSIF p_intent_kind='knowledge_export' THEN
+    SELECT expires_at,confirmed_at IS NOT NULL OR download_started_at IS NOT NULL
+    INTO intent_expires_at,intent_inactive
+    FROM knowledge_export_intents WHERE id=p_intent_id;
+  ELSIF p_intent_kind='page_deletion' THEN
+    SELECT expires_at,false INTO intent_expires_at,intent_inactive
+    FROM page_deletion_intents WHERE id=p_intent_id;
+  ELSE
+    RAISE EXCEPTION 'confirmation intent kind is unsupported' USING ERRCODE='22023';
+  END IF;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'confirmation intent not found' USING ERRCODE='P0002'; END IF;
+  IF intent_inactive OR intent_expires_at<=now() THEN
+    RAISE EXCEPTION 'confirmation intent is inactive' USING ERRCODE='22023';
+  END IF;
+  INSERT INTO confirmation_challenges(intent_kind,intent_id,challenge)
+  VALUES (p_intent_kind,p_intent_id,p_challenge);
+END;
+$$;
+
+DROP TABLE knowledge_import_intents;
+ALTER ROLE context_use_restore_owner RENAME TO context_use_reset_owner;
+ALTER ROLE context_use_reset_owner NOLOGIN NOINHERIT;
+
+-- The export format is now always the portable current snapshot. A reset may
+-- still require that snapshot to be delivered before irreversible deletion.
+ALTER TABLE knowledge_export_intents
+  DROP CONSTRAINT knowledge_export_intents_reset_kind,
+  DROP COLUMN export_kind;
 
 DROP TRIGGER knowledge_page_versions_register_document_revision
   ON knowledge_page_versions;
 DROP FUNCTION register_legacy_knowledge_revision_metadata();
 DROP INDEX knowledge_page_versions_legacy_body_queue_idx;
 
--- Restore and reset are privileged database replacement operations. Their
--- application repositories now prewrite every immutable object before calling
--- the checked SQL boundary. Accept the body only as transaction-local input
--- for the existing restore functions, register its immutable metadata, and
--- erase it in the same statement. No Markdown queue is committed or polled.
-CREATE FUNCTION register_object_backed_knowledge_revision()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path=pg_catalog,public
-AS $$
-BEGIN
-  INSERT INTO hypermedia_documents(id,authority,created_at,updated_at)
-  SELECT page.id,'knowledge',page.created_at,page.updated_at
-  FROM knowledge_pages page WHERE page.id=NEW.page_id
-  ON CONFLICT (id) DO NOTHING;
-
-  IF NEW.body_markdown IS NOT NULL THEN
-    INSERT INTO hypermedia_document_revisions(
-      id,document_id,revision_number,body_object_key,body_size_bytes,
-      body_content_hash,created_at
-    ) VALUES (
-      NEW.id,NEW.page_id,NEW.version_number,
-      'documents/private/'||NEW.id::text||'.md',octet_length(NEW.body_markdown),
-      encode(digest(convert_to(NEW.body_markdown,'UTF8'),'sha256'),'hex'),NEW.created_at
-    ) ON CONFLICT (id) DO NOTHING;
-
-    IF NOT EXISTS (
-      SELECT 1 FROM hypermedia_document_revisions revision
-      WHERE revision.id=NEW.id
-        AND revision.document_id=NEW.page_id
-        AND revision.revision_number=NEW.version_number
-        AND revision.body_object_key='documents/private/'||NEW.id::text||'.md'
-        AND revision.body_size_bytes=octet_length(NEW.body_markdown)
-        AND revision.body_content_hash=encode(
-          digest(convert_to(NEW.body_markdown,'UTF8'),'sha256'),'hex'
-        )
-    ) THEN
-      RAISE EXCEPTION 'knowledge revision metadata does not match its object'
-        USING ERRCODE='23514';
-    END IF;
-
-    UPDATE knowledge_page_versions
-    SET body_markdown=NULL
-    WHERE id=NEW.id;
-  END IF;
-  RETURN NULL;
-END;
-$$;
-
-CREATE TRIGGER knowledge_page_versions_register_object_revision
-AFTER INSERT ON knowledge_page_versions
-FOR EACH ROW EXECUTE FUNCTION register_object_backed_knowledge_revision();
-
-REVOKE ALL ON FUNCTION register_object_backed_knowledge_revision() FROM PUBLIC;
-REVOKE SELECT (body_markdown),UPDATE (body_markdown)
-  ON knowledge_page_versions FROM context_use_storage;
-REVOKE INSERT (body_markdown)
-  ON knowledge_page_versions FROM context_use_dashboard,context_use_mcp;
-
--- Reset receives an already-written immutable revision from the dashboard and
--- commits only its object metadata with the replacement knowledge transaction.
+-- Reset receives an already-written immutable guide revision and a derived
+-- search vector. It never receives or stores Markdown.
 DROP FUNCTION clear_knowledge(uuid,text,text,text,text,text,text,text,text,text);
 
 CREATE FUNCTION clear_knowledge(
@@ -112,7 +127,7 @@ CREATE FUNCTION clear_knowledge(
   p_root_summary text,
   p_guide_title text,
   p_guide_summary text,
-  p_guide_body text,
+  p_guide_search_vector tsvector,
   p_guide_commit_message text,
   p_guide_actor_subject text
 ) RETURNS jsonb
@@ -132,10 +147,9 @@ BEGIN
   IF p_guide_version_id IS NULL
      OR p_guide_object_key IS DISTINCT FROM
        'documents/private/'||p_guide_version_id::text||'.md'
-     OR p_guide_size_bytes IS DISTINCT FROM octet_length(p_guide_body)
-     OR p_guide_content_hash IS DISTINCT FROM encode(
-       digest(convert_to(p_guide_body,'UTF8'),'sha256'),'hex'
-     ) THEN
+     OR p_guide_size_bytes NOT BETWEEN 0 AND 4000000
+     OR p_guide_content_hash !~ '^[a-f0-9]{64}$'
+     OR p_guide_search_vector IS NULL THEN
     RAISE EXCEPTION 'knowledge reset guide object metadata is invalid'
       USING ERRCODE='22023';
   END IF;
@@ -160,8 +174,7 @@ BEGIN
     RAISE EXCEPTION 'knowledge reset intent not found' USING ERRCODE='P0002';
   END IF;
   IF NOT intent.reset_requested THEN
-    RAISE EXCEPTION 'knowledge export was not authorized to clear knowledge'
-      USING ERRCODE='42501';
+    RAISE EXCEPTION 'knowledge export was not authorized to clear knowledge' USING ERRCODE='42501';
   END IF;
   IF intent.owner_user_id IS DISTINCT FROM p_owner_user_id
      OR intent.session_id IS DISTINCT FROM p_session_id THEN
@@ -171,7 +184,7 @@ BEGIN
     RAISE EXCEPTION 'knowledge reset passkey confirmation required' USING ERRCODE='42501';
   END IF;
   IF intent.download_completed_at IS NULL THEN
-    RAISE EXCEPTION 'knowledge reset requires the restorable archive download to finish'
+    RAISE EXCEPTION 'knowledge reset requires the portable snapshot download to finish'
       USING ERRCODE='55000';
   END IF;
   IF intent.reset_completed_at IS NOT NULL THEN
@@ -246,9 +259,7 @@ BEGIN
       archived_at=NULL,
       created_at=now(),
       updated_at=now(),
-      search_vector=page_search_vector(
-        'agents',p_guide_title,p_guide_summary,p_guide_body
-      )
+      search_vector=p_guide_search_vector
   WHERE id=guide_page_id;
 
   UPDATE knowledge_export_intents SET reset_completed_at=now() WHERE id=intent.id;
@@ -257,15 +268,18 @@ END;
 $$;
 
 GRANT SELECT,INSERT ON hypermedia_documents,hypermedia_document_revisions
-  TO context_use_restore_owner;
-GRANT USAGE,CREATE ON SCHEMA public TO context_use_restore_owner;
+  TO context_use_reset_owner;
+GRANT USAGE,CREATE ON SCHEMA public TO context_use_reset_owner;
 ALTER FUNCTION clear_knowledge(
-  uuid,text,text,uuid,text,integer,text,text,text,text,text,text,text,text
-) OWNER TO context_use_restore_owner;
-REVOKE CREATE ON SCHEMA public FROM context_use_restore_owner;
+  uuid,text,text,uuid,text,integer,text,text,text,text,text,tsvector,text,text
+) OWNER TO context_use_reset_owner;
+REVOKE CREATE ON SCHEMA public FROM context_use_reset_owner;
 REVOKE ALL ON FUNCTION clear_knowledge(
-  uuid,text,text,uuid,text,integer,text,text,text,text,text,text,text,text
+  uuid,text,text,uuid,text,integer,text,text,text,text,text,tsvector,text,text
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION clear_knowledge(
-  uuid,text,text,uuid,text,integer,text,text,text,text,text,text,text,text
+  uuid,text,text,uuid,text,integer,text,text,text,text,text,tsvector,text,text
 ) TO context_use_dashboard;
+
+-- No committed or transaction-local Markdown remains in PostgreSQL.
+ALTER TABLE knowledge_page_versions DROP COLUMN body_markdown;

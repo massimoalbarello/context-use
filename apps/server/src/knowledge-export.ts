@@ -378,8 +378,8 @@ async function writeKnowledgeExport(
   signal: AbortSignal,
 ): Promise<void> {
   await addKnowledgeZipDirectory(zip, `${EXPORT_ROOT}/`, signal);
-  // Keep portable Markdown on the same store-only ZIP path as the restorable
-  // records. The source-size limit already bounds these bytes, and avoiding
+  // Keep portable Markdown on a store-only ZIP path. The source-size limit
+  // already bounds these bytes, and avoiding
   // runtime deflate makes long background snapshot builds deterministic.
   for (const directory of planned.directories) {
     await addKnowledgeZipText(zip, `${EXPORT_ROOT}/${directory.vaultPath}`, directory.body, signal);

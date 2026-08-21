@@ -2,7 +2,6 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { randomBytes, randomUUID } from "node:crypto";
 import { Client, type Pool } from "pg";
 import {
-  KnowledgeArchiveRepository,
   KnowledgeResetRepository,
   type KnowledgeTemplateBaseline,
 } from "../src/index.ts";
@@ -45,17 +44,16 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
     await client.end().catch(() => undefined);
   });
 
-  test("clears every knowledge row behind the archive gate and leaves an importable template", async () => {
+  test("clears every knowledge row behind the portable snapshot gate and leaves the default template", async () => {
     await client.connect();
     await client.query("BEGIN");
     try {
       const resets = new KnowledgeResetRepository(client as unknown as Pool, bodies);
-      const archives = new KnowledgeArchiveRepository(client as unknown as Pool, bodies);
       await client.query("SET CONSTRAINTS ALL DEFERRED");
       await client.query("SET LOCAL session_replication_role=replica");
       await client.query(
         `TRUNCATE TABLE confirmation_challenges,publication_intents,knowledge_export_intents,
-           knowledge_import_intents,page_deletion_intents,published_page_artifacts,
+           page_deletion_intents,published_page_artifacts,
            public_projection_state,public_knowledge_settings,source_records,
            hypermedia_document_revisions,hypermedia_documents,knowledge_asset_links,
            knowledge_page_changes,knowledge_page_versions,knowledge_pages,assets,
@@ -80,8 +78,8 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'agents','AGENTS.md','Local root guide.','Local','Rewrite the root guide','dashboard','context-use-owner')`,
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'agents','AGENTS.md','Local root guide.','Rewrite the root guide','dashboard','context-use-owner')`,
         [guideVersionId, guidePageId],
       );
 
@@ -99,8 +97,8 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'people/ada','Ada','A published person.','Body','Create Ada','mcp','local-agent')`,
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'people/ada','Ada','A published person.','Create Ada','mcp','local-agent')`,
         [publishedVersionId, publishedPageId],
       );
       const archivedPageId = randomUUID();
@@ -112,8 +110,8 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'people/retired','Retired','An archived person.','Body','Archive Retired','dashboard','context-use-owner')`,
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'people/retired','Retired','An archived person.','Archive Retired','dashboard','context-use-owner')`,
         [archivedVersionId, archivedPageId],
       );
       const assetId = randomUUID();
@@ -137,8 +135,6 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
         published_asset_count: 1,
       });
       expect(await resets.assetObjectKeys()).toEqual([`objects/${assetId}`]);
-      expect(await archives.importAvailable()).toBe(false);
-
       await client.query(
         `INSERT INTO "user"(id,name,email,"emailVerified")
          VALUES ('context-use-owner','Owner','owner@example.invalid',true)
@@ -152,19 +148,11 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
         [`reset-${randomUUID()}`, credentialId],
       );
 
-      // A reset can never ride on the portable snapshot, which cannot restore.
-      expect(await failure(client, () => client.query(
-        `INSERT INTO knowledge_export_intents(
-           id,owner_user_id,session_id,export_kind,reset_requested,expires_at
-         ) VALUES ($1,'context-use-owner','reset-session','portable',true,now()+interval '5 minutes')`,
-        [randomUUID()],
-      ))).toBe("23514");
-
       const intentId = randomUUID();
       await client.query(
         `INSERT INTO knowledge_export_intents(
-           id,owner_user_id,session_id,export_kind,reset_requested,expires_at
-         ) VALUES ($1,'context-use-owner','reset-session','restorable',true,now()+interval '5 minutes')`,
+           id,owner_user_id,session_id,reset_requested,expires_at
+         ) VALUES ($1,'context-use-owner','reset-session',true,now()+interval '5 minutes')`,
         [intentId],
       );
 
@@ -246,12 +234,11 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
         public_path: null,
         archived_at: null,
       }]);
-      const versions = await client.query<{ version_number: number; body_markdown: null; actor_subject: string }>(
-        "SELECT version_number,body_markdown,actor_subject FROM knowledge_page_versions",
+      const versions = await client.query<{ version_number: number; actor_subject: string }>(
+        "SELECT version_number,actor_subject FROM knowledge_page_versions",
       );
       expect(versions.rows).toEqual([{
         version_number: 1,
-        body_markdown: null,
         actor_subject: baseline.root_guide.actor_subject,
       }]);
       expect((await client.query("SELECT count(*)::int AS total FROM assets")).rows[0]?.total).toBe(0);
@@ -270,9 +257,6 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
         [intentId],
       )).rows[0]?.done).toBeTrue();
 
-      // A cleared instance is exactly what the full-archive import requires.
-      expect(await archives.importAvailable()).toBe(true);
-
       await client.query("SET LOCAL ROLE context_use_dashboard");
       expect(await failure(client, clear)).toBe("23505");
       await client.query("RESET ROLE");
@@ -290,8 +274,8 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
       const intentId = randomUUID();
       await plain.query(
         `INSERT INTO knowledge_export_intents(
-           id,owner_user_id,session_id,export_kind,expires_at
-         ) VALUES ($1,'context-use-owner','plain-session','restorable',now()+interval '5 minutes')`,
+           id,owner_user_id,session_id,expires_at
+         ) VALUES ($1,'context-use-owner','plain-session',now()+interval '5 minutes')`,
         [intentId],
       );
       await plain.query("SET LOCAL ROLE context_use_dashboard");

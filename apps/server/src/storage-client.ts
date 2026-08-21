@@ -155,49 +155,6 @@ export class BrokeredStorage implements ObjectStorage {
     if (!response.ok) throw new Error(`Generated storage deletion failed (${response.status})`);
   }
 
-  async stageImport(intentId: string, asset: StoredAsset, body: ReadableStream<Uint8Array>): Promise<void> {
-    if (this.options.publicOnly) throw new Error("Published storage is read-only");
-    const response = await this.request(`/private/import-stage?intent=${encodeURIComponent(intentId)}`, {
-      method: "PUT",
-      headers: {
-        "content-type": "application/octet-stream",
-        "content-length": String(asset.sizeBytes),
-        "x-asset-id": asset.id,
-        "x-filename": encodeURIComponent(asset.filename),
-        "x-content-type": asset.contentType,
-        "x-content-sha256": asset.contentHash,
-      },
-      body,
-    });
-    if (!response.ok) throw new Error(`Import staging failed (${response.status})`);
-  }
-
-  async promoteImport(intentId: string, asset: StoredAsset): Promise<void> {
-    if (this.options.publicOnly) throw new Error("Published storage is read-only");
-    const response = await this.request(`/private/import-promote?intent=${encodeURIComponent(intentId)}`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-asset-id": asset.id,
-        "x-filename": encodeURIComponent(asset.filename),
-        "x-content-type": asset.contentType,
-        "x-content-length": String(asset.sizeBytes),
-        "x-content-sha256": asset.contentHash,
-      },
-      body: new Blob(["{}"]).stream(),
-    });
-    if (!response.ok) throw new Error(`Import asset promotion failed (${response.status})`);
-  }
-
-  async cleanupImport(intentId: string, assetId: string): Promise<void> {
-    if (this.options.publicOnly) throw new Error("Published storage is read-only");
-    const response = await this.request(
-      `/private/import?intent=${encodeURIComponent(intentId)}&asset=${encodeURIComponent(assetId)}`,
-      { method: "DELETE" },
-    );
-    if (!response.ok) throw new Error(`Import cleanup failed (${response.status})`);
-  }
-
   async verify(objectKey: string, sizeBytes: number, contentHash: string): Promise<boolean> {
     if (this.options.publicOnly) return false;
     const response = await this.request("/private/verify", {

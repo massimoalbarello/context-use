@@ -32,15 +32,9 @@ root=/opt/context-use
 secrets=/data/context-use/secrets
 mountpoint -q /data || { echo "Retained data volume is not mounted" >&2; exit 1; }
 [ -s /data/context-use/.volume-id ] || { echo "Retained data volume marker is missing" >&2; exit 1; }
-mkdir -p "${root}" "${secrets}" /data/context-use/{postgres,backup-tmp,nango-backup-tmp,nango-integrations,import-spool,caddy/data,caddy/config}
+mkdir -p "${root}" "${secrets}" /data/context-use/{postgres,backup-tmp,nango-backup-tmp,nango-integrations,caddy/data,caddy/config}
 chmod 0700 "${secrets}"
 chmod 0700 /data/context-use/backup-tmp /data/context-use/nango-backup-tmp /data/context-use/nango-integrations
-# A crashed import leaves its spooled archive behind; it is never resumed.
-rm -rf /data/context-use/import-spool
-mkdir -p /data/context-use/import-spool
-# The dashboard image runs as bun (1000:1000) and spools archives here.
-chown 1000:1000 /data/context-use/import-spool
-chmod 0700 /data/context-use/import-spool
 chown 70:70 /data/context-use/postgres
 chmod 0700 /data/context-use/postgres
 

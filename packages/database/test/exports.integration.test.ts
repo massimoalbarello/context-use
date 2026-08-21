@@ -4,7 +4,6 @@ import { Pool } from "pg";
 import {
   AssetRepository,
   ConfirmationRepository,
-  KnowledgeArchiveRepository,
   KnowledgeExportRepository,
   PageRepository,
 } from "../src/index.ts";
@@ -20,7 +19,6 @@ describeDatabase("passkey-bound current knowledge exports", () => {
   const pages = new PageRepository(pool, bodies);
   const assets = new AssetRepository(pool);
   const exports = new KnowledgeExportRepository(pool, bodies);
-  const archives = new KnowledgeArchiveRepository(pool, bodies);
   const confirmations = new ConfirmationRepository(pool);
   const actor = { kind: "dashboard" as const, subject: "knowledge-export-test" };
   let fixtureRoot = "";
@@ -167,18 +165,5 @@ describeDatabase("passkey-bound current knowledge exports", () => {
     expect(new Date(confirmedIntent!.expires_at).getTime()).toBeGreaterThan(Date.now() + 23 * 60 * 60 * 1_000);
     await confirmations.claimExport(intent.id, principal);
 
-    const fullArchive = await exports.createIntent(principal, "restorable");
-    fixtureIntentIds.push(fullArchive.id);
-    expect(fullArchive.export_kind).toBe("restorable");
-    expect(fullArchive.page_count).toBeGreaterThanOrEqual(intent.page_count + 1);
-    expect(await exports.getIntent(fullArchive.id)).toMatchObject({ export_kind: "restorable" });
-    const fullSnapshot = await archives.snapshot();
-    expect(fullSnapshot.pages.find(({ id }) => id === archived.id)?.archived_at).not.toBeNull();
-    expect(fullSnapshot.page_versions.some(({ page_id }) => page_id === archived.id)).toBeTrue();
-    expect(fullSnapshot.assets.find(({ id }) => id === asset.id)).toMatchObject({
-      s3_object_key: `objects/${asset.id}`,
-      size_bytes: "123",
-    });
-    expect(fullSnapshot.page_changes.some(({ page_id }) => page_id === archived.id)).toBeTrue();
   });
 });

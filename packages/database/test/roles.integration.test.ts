@@ -84,7 +84,7 @@ describeDatabase("PostgreSQL security roles", () => {
   }
 
   async function issueChallenge(
-    kind: "publication" | "knowledge_export" | "knowledge_import" | "page_deletion",
+    kind: "publication" | "knowledge_export" | "page_deletion",
     intentId: string,
     value = challenge(),
   ): Promise<string> {
@@ -135,7 +135,6 @@ describeDatabase("PostgreSQL security roles", () => {
     const functions = [
       "issue_confirmation_challenge(confirmation_intent_kind,uuid,text)",
       "confirm_publication_intent(uuid,text,text,text,integer,integer)",
-      "confirm_knowledge_import_intent(uuid,text,text,text,integer,integer)",
       "confirm_page_deletion_intent(uuid,text,text,text,integer,integer)",
     ];
     for (const role of ["context_use_mcp", "context_use_dashboard", "context_use_public", "context_use_auth", "context_use_storage", "context_use_backup"]) {
@@ -256,8 +255,8 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'test/dashboard-deletion-intent','Delete','A page deletion fixture.','Body','Create fixture','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'test/dashboard-deletion-intent','Delete','A page deletion fixture.','Create fixture','dashboard','owner')`,
         [versionId, pageId],
       );
       const insert = `INSERT INTO page_deletion_intents(
@@ -319,40 +318,8 @@ describeDatabase("PostgreSQL security roles", () => {
     )).rows[0]?.allowed).toBe(false);
   });
 
-  test("knowledge restore requires confirmation and exposes one guarded dashboard procedure", async () => {
-    const confirm = "confirm_knowledge_import_intent(uuid,text,text,text,integer,integer)";
-    const restore = "restore_knowledge_import(uuid,text,text)";
-    for (const role of ["context_use_auth", "context_use_dashboard", "context_use_mcp", "context_use_public", "context_use_backup"]) {
-      expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed", [role, confirm],
-      )).rows[0]?.allowed).toBe(false);
-    }
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_function_privilege('context_use_confirmation',$1,'EXECUTE') AS allowed", [confirm],
-    )).rows[0]?.allowed).toBe(true);
-    for (const role of ["context_use_auth", "context_use_confirmation", "context_use_mcp", "context_use_public", "context_use_backup"]) {
-      expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed", [role, restore],
-      )).rows[0]?.allowed).toBe(false);
-    }
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_function_privilege('context_use_dashboard',$1,'EXECUTE') AS allowed", [restore],
-    )).rows[0]?.allowed).toBe(true);
-    for (const column of ["confirmed_at", "consumed_at"]) {
-      expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_column_privilege('context_use_dashboard','knowledge_import_intents',$1,'INSERT') AS allowed", [column],
-      )).rows[0]?.allowed).toBe(false);
-      expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_column_privilege('context_use_dashboard','knowledge_import_intents',$1,'UPDATE') AS allowed", [column],
-      )).rows[0]?.allowed).toBe(false);
-    }
-    expect((await admin.query<{ allowed: boolean }>(
-      "SELECT has_column_privilege('context_use_confirmation','knowledge_import_intents','archive','SELECT') AS allowed",
-    )).rows[0]?.allowed).toBe(false);
-  });
-
-  test("clearing knowledge is a dashboard-only capability inside the restore boundary", async () => {
-    const clear = "clear_knowledge(uuid,text,text,uuid,text,integer,text,text,text,text,text,text,text,text)";
+  test("clearing knowledge is a dashboard-only capability", async () => {
+    const clear = "clear_knowledge(uuid,text,text,uuid,text,integer,text,text,text,text,text,tsvector,text,text)";
     for (const role of ["context_use_auth", "context_use_confirmation", "context_use_mcp", "context_use_public", "context_use_backup"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed", [role, clear],
@@ -391,7 +358,7 @@ describeDatabase("PostgreSQL security roles", () => {
         "SELECT has_schema_privilege($1,'public','CREATE') AS allowed",
         [role],
       )).rows[0]?.allowed).toBe(false);
-      for (const ownerRole of ["context_use_projection_owner", "context_use_boundary_owner", "context_use_restore_owner"]) {
+      for (const ownerRole of ["context_use_projection_owner", "context_use_boundary_owner", "context_use_reset_owner"]) {
         expect((await admin.query<{ allowed: boolean }>(
           "SELECT pg_has_role($1,$2,'MEMBER') AS allowed",
           [role, ownerRole],
@@ -410,7 +377,7 @@ describeDatabase("PostgreSQL security roles", () => {
     }>(
       `SELECT rolname,rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls
        FROM pg_roles
-       WHERE rolname IN ('context_use_projection_owner','context_use_boundary_owner','context_use_restore_owner')
+       WHERE rolname IN ('context_use_projection_owner','context_use_boundary_owner','context_use_reset_owner')
        ORDER BY rolname`,
     );
     expect(internalOwners.rows).toEqual([
@@ -433,7 +400,7 @@ describeDatabase("PostgreSQL security roles", () => {
         rolbypassrls: false,
       },
       {
-        rolname: "context_use_restore_owner",
+        rolname: "context_use_reset_owner",
         rolcanlogin: false,
         rolsuper: false,
         rolcreatedb: false,
@@ -482,7 +449,6 @@ describeDatabase("PostgreSQL security roles", () => {
            'consume_confirmation_challenge',
            'confirm_publication_intent',
            'confirm_knowledge_export_intent',
-           'confirm_knowledge_import_intent',
            'confirm_page_deletion_intent',
            'claim_knowledge_export_download',
            'complete_knowledge_export_download',
@@ -490,17 +456,15 @@ describeDatabase("PostgreSQL security roles", () => {
            'delete_empty_knowledge_directory',
            'prune_page_versions',
            'remove_owner_passkey',
-           'restore_knowledge_import',
            'project_public_markdown'
          )
        ORDER BY proname`,
     );
     expect(procedures.rows).toEqual([
       { proname: "claim_knowledge_export_download", owner: "context_use_boundary_owner", security_definer: true },
-      { proname: "clear_knowledge", owner: "context_use_restore_owner", security_definer: true },
+      { proname: "clear_knowledge", owner: "context_use_reset_owner", security_definer: true },
       { proname: "complete_knowledge_export_download", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_knowledge_export_intent", owner: "context_use_boundary_owner", security_definer: true },
-      { proname: "confirm_knowledge_import_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_page_deletion_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "confirm_publication_intent", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "consume_confirmation_challenge", owner: "context_use_boundary_owner", security_definer: true },
@@ -509,12 +473,10 @@ describeDatabase("PostgreSQL security roles", () => {
       { proname: "project_public_markdown", owner: "context_use_projection_owner", security_definer: true },
       { proname: "prune_page_versions", owner: "context_use_boundary_owner", security_definer: true },
       { proname: "remove_owner_passkey", owner: "context_use_boundary_owner", security_definer: true },
-      { proname: "restore_knowledge_import", owner: "context_use_restore_owner", security_definer: true },
     ]);
 
     for (const [relation, column] of [
       ["knowledge_directories", "title"],
-      ["knowledge_page_versions", "body_markdown"],
       ["knowledge_page_versions", "title"],
       ["assets", "s3_object_key"],
     ]) {
@@ -643,8 +605,8 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'test/deletion-intent-constraints','Delete','A deletion constraint fixture.','Body','Create fixture','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'test/deletion-intent-constraints','Delete','A deletion constraint fixture.','Create fixture','dashboard','owner')`,
         [versionId, pageId],
       );
       await expectDenied(
@@ -685,10 +647,10 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
          ) VALUES
-           ($1,$3,1,'test/permanent-page-deletion','Delete me','A permanently deleted page fixture.','First','Create fixture','dashboard','owner'),
-           ($2,$3,2,'test/permanent-page-deletion','Delete me','A permanently deleted page fixture.','Archived','Archive fixture','dashboard','owner')`,
+           ($1,$3,1,'test/permanent-page-deletion','Delete me','A permanently deleted page fixture.','Create fixture','dashboard','owner'),
+           ($2,$3,2,'test/permanent-page-deletion','Delete me','A permanently deleted page fixture.','Archive fixture','dashboard','owner')`,
         [firstVersionId, currentVersionId, pageId],
       );
       await admin.query(
@@ -741,7 +703,6 @@ describeDatabase("PostgreSQL security roles", () => {
        JOIN knowledge_page_versions version ON version.id=page.current_version_id
        WHERE page.current_path='agents' AND page.archived_at IS NULL
          AND version.title='AGENTS.md'
-         AND version.body_markdown IS NULL
          AND EXISTS (
            SELECT 1 FROM hypermedia_document_revisions object
            WHERE object.id=version.id AND object.document_id=page.id
@@ -880,12 +841,11 @@ describeDatabase("PostgreSQL security roles", () => {
   });
 
   test("ordinary knowledge writers cannot put Markdown back into PostgreSQL", async () => {
-    for (const role of ["context_use_dashboard", "context_use_mcp"]) {
-      expect((await admin.query<{ allowed: boolean }>(
-        "SELECT has_column_privilege($1,'knowledge_page_versions','body_markdown','INSERT') AS allowed",
-        [role],
-      )).rows[0]?.allowed).toBe(false);
-    }
+    expect((await admin.query(
+      `SELECT 1 FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='knowledge_page_versions'
+         AND column_name='body_markdown'`,
+    )).rowCount).toBe(0);
   });
 
   test("published assets resolve by knowledge path while private assets stay absent", async () => {
@@ -955,8 +915,8 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,$3,'Published lifecycle','A published lifecycle fixture.','Public','Create','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,$3,'Published lifecycle','A published lifecycle fixture.','Create','dashboard','owner')`,
         [versionId, pageId, `tests/${suffix}/published-page`],
       );
       await admin.query(
@@ -1104,6 +1064,32 @@ describeDatabase("PostgreSQL security roles", () => {
     )).rows[0]?.allowed).toBe(true);
   });
 
+  test("application-level knowledge restore is absent", async () => {
+    const objects = await admin.query<{
+      import_intents: string | null;
+      confirm_import: string | null;
+      restore_import: string | null;
+      restore_owner: string | null;
+      export_kind: string | null;
+    }>(
+      `SELECT
+         to_regclass('knowledge_import_intents')::text AS import_intents,
+         to_regprocedure('confirm_knowledge_import_intent(uuid,text,text,text,integer,integer)')::text AS confirm_import,
+         to_regprocedure('restore_knowledge_import(uuid,text,text)')::text AS restore_import,
+         (SELECT rolname FROM pg_roles WHERE rolname='context_use_restore_owner') AS restore_owner,
+         (SELECT column_name FROM information_schema.columns
+           WHERE table_schema='public' AND table_name='knowledge_export_intents'
+             AND column_name='export_kind') AS export_kind`,
+    );
+    expect(objects.rows[0]).toEqual({
+      import_intents: null,
+      confirm_import: null,
+      restore_import: null,
+      restore_owner: null,
+      export_kind: null,
+    });
+  });
+
   test("auth role cannot read knowledge tables", async () => {
     const result = await admin.query<{ allowed: boolean }>(
       "SELECT has_table_privilege('context_use_auth', 'knowledge_pages', 'SELECT') AS allowed",
@@ -1177,9 +1163,9 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
          ) VALUES (
-           $1,$2,1,'test/challenge-isolation','Challenge isolation','A confirmation challenge isolation fixture.','Private',
+           $1,$2,1,'test/challenge-isolation','Challenge isolation','A confirmation challenge isolation fixture.',
            'Create fixture','dashboard','owner'
          )`,
         [versionId, pageId],
@@ -1300,8 +1286,8 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'profile/private-work','PRIVATE-CANARY title','A private work fixture.','PRIVATE-CANARY body','Create private page','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'profile/private-work','PRIVATE-CANARY title','A private work fixture.','Create private page','dashboard','owner')`,
         [privateVersionId, privatePageId],
       );
       await admin.query(
@@ -1311,8 +1297,8 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
-         ) VALUES ($1,$2,1,'profile-home','Profile','A public profile fixture.','Public parent','Create public parent','dashboard','owner')`,
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'profile-home','Profile','A public profile fixture.','Create public parent','dashboard','owner')`,
         [parentVersionId, parentPageId],
       );
       await admin.query(
@@ -1322,41 +1308,12 @@ describeDatabase("PostgreSQL security roles", () => {
       );
       await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
          ) VALUES (
            $1,$2,1,'profile/work/project','Project','A public project fixture.',
-           $3,'Create public child','dashboard','owner'
+           'Create public child','dashboard','owner'
          )`,
-        [
-          childVersionId,
-          childPageId,
-          [
-            "PUBLIC-CANARY content",
-            `[Private label](context-use://page/${privatePageId}#secret-section)`,
-            `[Public parent](context-use://page/${parentPageId}#overview)`,
-            `[Legacy private label](/app/pages/${privatePageId}#legacy-secret-section)`,
-            `[Legacy public parent](/app/pages/${parentPageId}#legacy-overview)`,
-            `[Work index](context-use://directory/${workDirectory.rows[0]!.id})`,
-            "[[profile/work|Work wiki index]]",
-            `![Private image](context-use://asset/${privateAssetId}){size=medium align=center shape=square}`,
-            `![Public image](context-use://asset/${publishedAssetId}){size=medium align=center shape=square}`,
-            "[[private/strategy]]",
-            "[[private/strategy|Authored label]]",
-            "[[profile/private-work#private-details|Private section label]]",
-            "[[profile-home#background|Public section label]]",
-            `context-use://page/${privatePageId}`,
-            `/api/mcp/assets/${privateAssetId}/content`,
-            `https://context.example/api/mcp/assets/${privateAssetId}/content`,
-            `/api/dashboard/assets/${privateAssetId}/status`,
-            `unrecognized-private-id:${privateVersionId}`,
-            "<!-- COMMENT-CANARY -->",
-            "<script>SCRIPT-CANARY</script>",
-            "<style>STYLE-CANARY</style>",
-            "<meta name=private content=ATTRIBUTE-CANARY>",
-            "<span data-private=ATTRIBUTE-CANARY>Visible span text</span>",
-            "<script>UNCLOSED-SCRIPT-CANARY",
-          ].join("\n\n"),
-        ],
+        [childVersionId, childPageId],
       );
       await admin.query(
         `INSERT INTO assets(
@@ -1471,8 +1428,8 @@ describeDatabase("PostgreSQL security roles", () => {
         [pageId, versionId],
       );
       await admin.query(
-        `INSERT INTO knowledge_page_versions(id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject)
-         VALUES ($1,$2,1,'test/security-boundary','Boundary','A publication boundary fixture.','Private body','Create fixture','dashboard','test-owner')`,
+        `INSERT INTO knowledge_page_versions(id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject)
+         VALUES ($1,$2,1,'test/security-boundary','Boundary','A publication boundary fixture.','Create fixture','dashboard','test-owner')`,
         [versionId, pageId],
       );
       await admin.query(
