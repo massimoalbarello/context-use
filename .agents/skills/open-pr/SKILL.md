@@ -92,7 +92,11 @@ Write the body for a reviewer who was not part of the implementation:
 - Include decisions, tradeoffs, risks, migration notes, or follow-up context only when useful.
 - Link the relevant issue with `Closes #...` only when closure is intended.
 - Avoid generic checklists, padded three-bullet summaries, implementation trivia, and raw command output.
-- Omit routine local validation lists. Mention validation only for a skipped check, failure, unusual caveat, or reviewer-relevant result.
+- Treat the body as reviewer context, not an execution log. Omit routine validation, local
+  tool or runtime problems, unavailable optional validators, and fallback checks when CI or
+  equivalent coverage succeeds.
+- Mention a validation gap only when it leaves material risk or requires reviewer action;
+  explain the consequence, not the tooling trivia.
 
 Prefer `--body-file` over an inline shell string so Markdown and shell metacharacters remain intact:
 
