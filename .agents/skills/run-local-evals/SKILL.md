@@ -46,10 +46,9 @@ ps aux | rg '[b]un run eval|[s]cripts/eval\.ts'
 bun run local status
 ```
 
-Run these checks from an execution context that can inspect host processes, the Docker
-socket, and `localhost`. If a sandbox reports `operation not permitted`, hides the Docker
-socket, or cannot reach the local stack, do not infer that the singleton is free or the
-stack is stopped. Obtain the required host access and repeat the checks.
+Run these checks normally. If the environment blocks access to processes, Docker, or the
+local stack, retry with host access or ask the user to run the checks. A permission error
+does not prove that no eval is running.
 
 If another eval is active, wait for it. If the stack is stopped, start its existing volumes:
 
@@ -91,22 +90,17 @@ the stack, but it does not open an agent session or prove that the MCP can read 
 knowledge base. A run may otherwise spend every built-in retry on an unauthorized MCP and
 still exit after producing only an incomplete report.
 
-Do not start the eval until the live check exits successfully and reports `Ready`, a
-successful knowledge-base read, and, for Claude, `context_use_eval connected`. Record the
-resolved Claude model reported by `Model in use`; a CLI default or alias is not a comparable
-model identifier by itself.
+Do not start the eval until the live check exits successfully and reports `Ready` and a
+successful knowledge-base read. Record the provider and model reported by the successful
+check or run, and compare only runs that used the same model.
 
-Provider CLI sign-in and MCP authorization are separate requirements. If the live check
-reports that `context_use_eval` needs authorization:
+If the check reports missing provider authorization:
 
-- For Claude, keep the local stack running and run `bun run eval connect claude` in an
-  interactive PTY. The OAuth flow may open a browser, asks for this stack owner's passkey
-  when no authorized browser session exists, and may print a URL to open manually. If it
-  says that stdin is not a terminal, rerun the same command with a PTY; do not start the
-  eval.
-- For Codex, run `bun run eval connect codex` and complete its OAuth flow.
-- After either connection succeeds, rerun the full live `eval check` above. Connection
-  command success alone is not the readiness gate.
+1. Run `bun run eval connect <provider>` in a terminal, using `codex` or `claude` for the
+   provider.
+2. Complete the sign-in flow. If you cannot run an interactive terminal, ask the user to run
+   the command.
+3. Rerun the same live check. A successful connection command alone is not enough.
 
 State resets are designed to preserve the owner passkey and provider OAuth, but that does
 not prove the provider has a valid stored token before the first run. Always perform this
