@@ -2,7 +2,7 @@ import type { PublicPage } from "@context-use/database";
 
 /**
  * Optional well-known introduction path. A published page here supplies public
- * profile identity; otherwise the public app serves its existing empty state.
+ * profile identity; the public entrypoint itself is configured independently.
  */
 export const INTRO_PATH = "about/intro";
 

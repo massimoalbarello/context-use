@@ -1,7 +1,6 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { Pool } from "pg";
 import {
-  PAGE_VERSION_RETENTION_LIMIT,
   PageRepository,
   VersionConflictError,
 } from "../src/index.ts";
@@ -113,7 +112,7 @@ describeDatabase("immutable page history", () => {
     ]);
   });
 
-  test("retains five recent versions plus an older published snapshot and searches only current content", async () => {
+  test("retains every application revision and searches only current content", async () => {
     const suffix = crypto.randomUUID().slice(0, 8);
     await createDirectory(`tests/${suffix}`);
     const oldSearchTerm = `retentionold${suffix}`;
@@ -135,12 +134,12 @@ describeDatabase("immutable page history", () => {
     );
 
     let versionNumber = created.version_number;
-    for (let index = 0; index < PAGE_VERSION_RETENTION_LIMIT + 2; index += 1) {
+    for (let index = 0; index < 7; index += 1) {
       const updated = await pages.update(created.id, {
         path: created.current_path,
         title: "Retention test",
         summary: "A page used to test version retention.",
-        body_markdown: index === PAGE_VERSION_RETENTION_LIMIT + 1 ? currentSearchTerm : `Intermediate ${index}`,
+        body_markdown: index === 6 ? currentSearchTerm : `Intermediate ${index}`,
         commit_message: `Update retention ${index}`,
         expected_version_number: versionNumber,
       }, actor);
@@ -148,7 +147,7 @@ describeDatabase("immutable page history", () => {
     }
 
     expect((await pages.history(created.id)).map(({ version_number }) => version_number)).toEqual([
-      8, 7, 6, 5, 4, 1,
+      8, 7, 6, 5, 4, 3, 2, 1,
     ]);
     expect((await pages.searchMetadata(oldSearchTerm)).some(({ id }) => id === created.id)).toBe(false);
     const searchResults = await pages.searchMetadata(currentSearchTerm);
@@ -164,11 +163,11 @@ describeDatabase("immutable page history", () => {
       title: "Retention test",
       summary: "A page used to test version retention.",
       body_markdown: currentSearchTerm,
-      commit_message: "Prune former publication",
+      commit_message: "Retain former publication",
       expected_version_number: versionNumber,
     }, actor);
     expect((await pages.history(created.id)).map(({ version_number }) => version_number)).toEqual([
-      9, 8, 7, 6, 5,
+      9, 8, 7, 6, 5, 4, 3, 2, 1,
     ]);
     expect((await pool.query(
       "SELECT 1 FROM knowledge_page_changes WHERE page_id=$1",

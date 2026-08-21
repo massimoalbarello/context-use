@@ -98,8 +98,8 @@ describe("retained page versions", () => {
       3,
       10,
     )).toMatchObject({ version_number: 6, body_markdown: "Oldest retained body" });
-    expect(calls[0]?.sql).toContain("version_number>$2 AND version_number<=$3");
-    expect(calls[0]?.sql).toContain("ORDER BY version_number ASC");
+    expect(calls[0]?.sql).toContain("version.version_number>$2 AND version.version_number<=$3");
+    expect(calls[0]?.sql).toContain("ORDER BY version.version_number ASC");
     expect(calls[0]?.values).toEqual([
       "11111111-1111-4111-8111-111111111111",
       3,

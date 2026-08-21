@@ -7,8 +7,13 @@ import type {
   PageMetadata,
   UpdatePageInput,
 } from "@context-use/shared";
+import {
+  assertMarkdownObject,
+  markdownObjectMetadata,
+  type MarkdownObjectMetadata,
+  type MarkdownObjectStore,
+} from "./documents.ts";
 import { extractAssetLinks, normalizeInternalPageLinks } from "./links.ts";
-import { prunePageVersions } from "./page-retention.ts";
 
 const CHANGE_CURSOR_PREFIX = "cu-page-changes-v1.";
 const CHANGE_PAGE_TOKEN_PREFIX = "cu-page-scan-v1.";
@@ -170,10 +175,13 @@ const PUBLISHED_VERSION_JOIN = `
 const CURRENT_PAGE_SELECT = `
   SELECT p.id, p.current_path, p.current_version_id, p.published_version_id,
     p.public_path, p.archived_at, p.created_at, p.updated_at,
-    v.version_number, v.title, v.summary, v.body_markdown,
+    v.version_number, v.title, v.summary,
+    v.body_markdown AS legacy_body_markdown,
+    object.body_object_key,object.body_size_bytes,object.body_content_hash,
     pv.version_number AS published_version_number
   FROM knowledge_pages p
   JOIN knowledge_page_versions v ON v.id = p.current_version_id AND v.page_id = p.id
+  JOIN hypermedia_document_revisions object ON object.id=v.id AND object.document_id=p.id
   ${PUBLISHED_VERSION_JOIN}
 `;
 
@@ -187,13 +195,67 @@ const CURRENT_PAGE_METADATA_SELECT = `
 `;
 
 export class PageRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(
+    private readonly pool: Pool,
+    private readonly bodies?: MarkdownObjectStore,
+  ) {}
+
+  private async storedBody(revisionId: string, bodyMarkdown: string): Promise<{
+    metadata: MarkdownObjectMetadata;
+    legacyBody: string | null;
+  }> {
+    if (!this.bodies) {
+      return { metadata: markdownObjectMetadata(revisionId, bodyMarkdown), legacyBody: bodyMarkdown };
+    }
+    return { metadata: await this.bodies.write(revisionId, bodyMarkdown), legacyBody: null };
+  }
+
+  private async withBody(row: any): Promise<any> {
+    if (!row) return null;
+    const {
+      legacy_body_markdown,
+      body_object_key,
+      body_size_bytes,
+      body_content_hash,
+      ...metadata
+    } = row;
+    const inlineBody = legacy_body_markdown ?? row.body_markdown;
+    if (!body_object_key) return { ...metadata, ...(inlineBody === undefined ? {} : { body_markdown: inlineBody }) };
+    const bodyMarkdown = inlineBody ?? await this.bodies?.read({
+      body_object_key,
+      body_size_bytes: Number(body_size_bytes),
+      body_content_hash,
+    });
+    if (bodyMarkdown === undefined) {
+      throw new Error("Knowledge document object store is required");
+    }
+    return {
+      ...metadata,
+      body_markdown: assertMarkdownObject(bodyMarkdown, {
+        body_object_key,
+        body_size_bytes: Number(body_size_bytes),
+        body_content_hash,
+      }),
+    };
+  }
 
   async create(input: CreatePageInput, actor: Actor) {
+    const pageId = randomUUID();
+    const versionId = randomUUID();
+    const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
+    const stored = await this.storedBody(versionId, bodyMarkdown);
     return transaction(this.pool, async (client) => {
-      const pageId = randomUUID();
-      const versionId = randomUUID();
-      const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
+      await client.query(
+        `INSERT INTO hypermedia_documents(id,authority) VALUES ($1,'knowledge')`,
+        [pageId],
+      );
+      await client.query(
+        `INSERT INTO hypermedia_document_revisions(
+           id,document_id,revision_number,body_object_key,body_size_bytes,body_content_hash
+         ) VALUES ($1,$2,1,$3,$4,$5)`,
+        [versionId, pageId, stored.metadata.body_object_key,
+          stored.metadata.body_size_bytes, stored.metadata.body_content_hash],
+      );
       await client.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,search_vector)
          VALUES ($1,$2,$3,page_search_vector($2,$4,$5,$6))`,
@@ -204,7 +266,7 @@ export class PageRepository {
           id, page_id, version_number, path, title, summary, body_markdown,
           commit_message, actor_kind, actor_subject
         ) VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8, $9)`,
-        [versionId, pageId, input.path, input.title, input.summary, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, pageId, input.path, input.title, input.summary, stored.legacyBody, input.commit_message, actor.kind, actor.subject],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, pageId);
@@ -212,6 +274,9 @@ export class PageRepository {
   }
 
   async update(pageId: string, input: UpdatePageInput, actor: Actor) {
+    const versionId = randomUUID();
+    const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
+    const stored = await this.storedBody(versionId, bodyMarkdown);
     return transaction(this.pool, async (client) => {
       const current = await client.query<{ version_number: number }>(
         `${CURRENT_PAGE_SELECT} WHERE p.id = $1 FOR UPDATE OF p`,
@@ -221,14 +286,19 @@ export class PageRepository {
       const currentVersion = current.rows[0]!.version_number;
       if (currentVersion !== input.expected_version_number) throw new VersionConflictError(currentVersion);
       const nextVersion = currentVersion + 1;
-      const versionId = randomUUID();
-      const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
+      await client.query(
+        `INSERT INTO hypermedia_document_revisions(
+           id,document_id,revision_number,body_object_key,body_size_bytes,body_content_hash
+         ) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [versionId, pageId, nextVersion, stored.metadata.body_object_key,
+          stored.metadata.body_size_bytes, stored.metadata.body_content_hash],
+      );
       await client.query(
         `INSERT INTO knowledge_page_versions(
           id, page_id, version_number, path, title, summary, body_markdown,
           commit_message, actor_kind, actor_subject
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [versionId, pageId, nextVersion, input.path, input.title, input.summary, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, pageId, nextVersion, input.path, input.title, input.summary, stored.legacyBody, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages
@@ -238,46 +308,55 @@ export class PageRepository {
         [pageId, input.path, versionId, input.title, input.summary, bodyMarkdown],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
-      await prunePageVersions(client, pageId);
+      await client.query("UPDATE hypermedia_documents SET updated_at=now() WHERE id=$1", [pageId]);
       return this.getWith(client, pageId);
     });
   }
 
   async archive(pageId: string, input: ArchivePageInput, actor: Actor) {
+    const source = await this.get(pageId);
+    if (!source) return null;
+    const versionId = randomUUID();
+    const bodyMarkdown = normalizeInternalPageLinks(source.body_markdown);
+    const stored = await this.storedBody(versionId, bodyMarkdown);
     return transaction(this.pool, async (client) => {
       const current = await client.query<{
         version_number: number;
         current_path: string;
         title: string;
         summary: string;
-        body_markdown: string;
         published_version_id: string | null;
       }>(`${CURRENT_PAGE_SELECT} WHERE p.id = $1 FOR UPDATE OF p`, [pageId]);
       if (!current.rowCount) return null;
       const row = current.rows[0]!;
       if (row.version_number !== input.expected_version_number) throw new VersionConflictError(row.version_number);
       if (row.published_version_id) throw new PublicationStateError();
-      const versionId = randomUUID();
-      const bodyMarkdown = normalizeInternalPageLinks(row.body_markdown);
+      await client.query(
+        `INSERT INTO hypermedia_document_revisions(
+           id,document_id,revision_number,body_object_key,body_size_bytes,body_content_hash
+         ) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [versionId, pageId, row.version_number + 1, stored.metadata.body_object_key,
+          stored.metadata.body_size_bytes, stored.metadata.body_content_hash],
+      );
       await client.query(
         `INSERT INTO knowledge_page_versions(
           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [versionId, pageId, row.version_number + 1, row.current_path, row.title, row.summary, bodyMarkdown, input.commit_message, actor.kind, actor.subject],
+        [versionId, pageId, row.version_number + 1, row.current_path, row.title, row.summary, stored.legacyBody, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages SET current_version_id=$2, archived_at=now(),updated_at=now() WHERE id=$1`,
         [pageId, versionId],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
-      await prunePageVersions(client, pageId);
+      await client.query("UPDATE hypermedia_documents SET updated_at=now() WHERE id=$1", [pageId]);
       return this.getWith(client, pageId);
     });
   }
 
   async get(pageId: string) {
     const result = await this.pool.query(`${CURRENT_PAGE_SELECT} WHERE p.id = $1`, [pageId]);
-    return result.rows[0] ?? null;
+    return this.withBody(result.rows[0]);
   }
 
   async getByPath(path: string, includeArchived = false) {
@@ -288,7 +367,7 @@ export class PageRepository {
        LIMIT 1`,
       [path],
     );
-    return result.rows[0] ?? null;
+    return this.withBody(result.rows[0]);
   }
 
   async guidesForPath(targetPath: string) {
@@ -303,7 +382,7 @@ export class PageRepository {
        ORDER BY array_position($1::text[],p.current_path)`,
       [guidePaths],
     );
-    return result.rows;
+    return Promise.all(result.rows.map((row) => this.withBody(row)));
   }
 
   async metadataInDirectory(directoryPath: string) {
@@ -320,7 +399,7 @@ export class PageRepository {
 
   private async getWith(client: PoolClient, pageId: string) {
     const result = await client.query(`${CURRENT_PAGE_SELECT} WHERE p.id = $1`, [pageId]);
-    return result.rows[0] ?? null;
+    return this.withBody(result.rows[0]);
   }
 
   async listMetadata(includeArchived = false, excludeGuides = false) {
@@ -364,12 +443,17 @@ export class PageRepository {
 
   async version(pageId: string, versionNumber: number) {
     const result = await this.pool.query(
-      `SELECT id,page_id,version_number,path,title,summary,body_markdown,commit_message,
-        actor_kind,actor_subject,created_at
-       FROM knowledge_page_versions WHERE page_id=$1 AND version_number=$2`,
+      `SELECT version.id,version.page_id,version.version_number,version.path,
+        version.title,version.summary,version.body_markdown AS legacy_body_markdown,
+        object.body_object_key,object.body_size_bytes,object.body_content_hash,
+        version.commit_message,version.actor_kind,version.actor_subject,version.created_at
+       FROM knowledge_page_versions version
+       JOIN hypermedia_document_revisions object
+         ON object.id=version.id AND object.document_id=version.page_id
+       WHERE version.page_id=$1 AND version.version_number=$2`,
       [pageId, versionNumber],
     );
-    return result.rows[0] ?? null;
+    return this.withBody(result.rows[0]);
   }
 
   async oldestRetainedVersionAfter(
@@ -378,15 +462,19 @@ export class PageRepository {
     throughVersionNumber: number,
   ) {
     const result = await this.pool.query(
-      `SELECT id,page_id,version_number,path,title,summary,body_markdown,commit_message,
-        actor_kind,actor_subject,created_at
-       FROM knowledge_page_versions
-       WHERE page_id=$1 AND version_number>$2 AND version_number<=$3
-       ORDER BY version_number ASC
+      `SELECT version.id,version.page_id,version.version_number,version.path,
+        version.title,version.summary,version.body_markdown AS legacy_body_markdown,
+        object.body_object_key,object.body_size_bytes,object.body_content_hash,
+        version.commit_message,version.actor_kind,version.actor_subject,version.created_at
+       FROM knowledge_page_versions version
+       JOIN hypermedia_document_revisions object
+         ON object.id=version.id AND object.document_id=version.page_id
+       WHERE version.page_id=$1 AND version.version_number>$2 AND version.version_number<=$3
+       ORDER BY version.version_number ASC
        LIMIT 1`,
       [pageId, afterVersionNumber, throughVersionNumber],
     );
-    return result.rows[0] ?? null;
+    return this.withBody(result.rows[0]);
   }
 
   async changesSince(options: {

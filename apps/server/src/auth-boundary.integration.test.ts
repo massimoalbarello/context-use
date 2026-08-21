@@ -273,10 +273,9 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     expect(await malformedPage.text()).toBe(await missingPage.text());
   });
 
-  test("the optional introduction has a public empty state until it is published", async () => {
+  test("an unconfigured legacy introduction path has no special public state", async () => {
     const response = await application!.handle(new Request("http://localhost:3000/p/about/intro"));
-    expect(response.status).toBe(200);
-    expect(await response.text()).toContain("The owner has not published an introduction yet.");
+    expect(response.status).toBe(404);
   });
 
   test("nested /p paths resolve every published page and no private page", async () => {

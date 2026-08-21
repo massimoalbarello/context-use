@@ -1,9 +1,26 @@
 export { createPool } from "./pool.ts";
+export {
+  assertMarkdownObject,
+  mapConcurrently,
+  markdownObjectMetadata,
+  type MarkdownObjectMetadata,
+  type MarkdownObjectStore,
+} from "./documents.ts";
+export {
+  DocumentMaintenanceRepository,
+  type LegacyKnowledgeRevision,
+  type PublishedProjectionPage,
+  type PublicProjectionSnapshot,
+} from "./document-maintenance.ts";
+export {
+  SourceRecordRepository,
+  type SourceRecordWrite,
+  type SourceRecordWriter,
+} from "./source-records.ts";
 export { ConfirmationRepository } from "./confirmation.ts";
 export type { ConfirmationIntentKind, ConfirmationPasskey, VerifiedPasskey } from "./confirmation.ts";
 export { PageDeletionRepository } from "./page-deletion.ts";
 export type { PageDeletionPrincipal } from "./page-deletion.ts";
-export { PAGE_VERSION_RETENTION_LIMIT } from "./page-retention.ts";
 export {
   formatTemplateResult,
   knowledgeTemplateBaseline,
@@ -63,9 +80,11 @@ export {
 } from "./knowledge-archive.ts";
 export {
   PublicationRepository,
+  PublicEntrypointRepository,
   PublicRepository,
   StoragePublicationRepository,
   type PublicPage,
+  type PublicKnowledgeSettings,
 } from "./publication.ts";
 export {
   extractAssetLinks,

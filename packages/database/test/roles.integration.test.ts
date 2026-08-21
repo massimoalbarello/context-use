@@ -132,14 +132,22 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("page writers can invoke fixed retention without receiving history deletion access", async () => {
+  test("page writers retain history without receiving deletion or pruning access", async () => {
     for (const role of ["context_use_dashboard", "context_use_mcp"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_function_privilege($1,'prune_page_versions(uuid)','EXECUTE') AS allowed",
         [role],
-      )).rows[0]?.allowed).toBe(true);
+      )).rows[0]?.allowed).toBe(false);
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege($1,'knowledge_page_versions','DELETE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege($1,'hypermedia_document_revisions','UPDATE') AS allowed",
+        [role],
+      )).rows[0]?.allowed).toBe(false);
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege($1,'hypermedia_document_revisions','DELETE') AS allowed",
         [role],
       )).rows[0]?.allowed).toBe(false);
     }
@@ -433,7 +441,7 @@ describeDatabase("PostgreSQL security roles", () => {
 
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_function_privilege('context_use_public','project_public_markdown(text)','EXECUTE') AS allowed",
-    )).rows[0]?.allowed).toBe(true);
+    )).rows[0]?.allowed).toBe(false);
     for (const role of ["context_use_auth", "context_use_dashboard", "context_use_mcp", "context_use_confirmation", "context_use_storage", "context_use_backup"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_function_privilege($1,'project_public_markdown(text)','EXECUTE') AS allowed",
@@ -793,7 +801,7 @@ describeDatabase("PostgreSQL security roles", () => {
     ]);
   });
 
-  test("storage role can validate asset bytes but cannot read knowledge or mutate metadata", async () => {
+  test("storage role can reconcile private objects without granting that access to public services", async () => {
     for (const column of [
       "id", "s3_object_key", "filename", "content_type", "size_bytes", "content_hash", "deleted_at",
     ]) {
@@ -808,6 +816,18 @@ describeDatabase("PostgreSQL security roles", () => {
         [relation],
       )).rows[0]?.allowed).toBe(false);
     }
+    for (const [relation, columns] of [
+      ["knowledge_directories", ["id", "current_path"]],
+      ["knowledge_pages", ["id", "published_version_id", "public_path", "archived_at", "created_at", "updated_at"]],
+      ["knowledge_page_versions", ["id", "page_id", "version_number", "path", "title", "summary", "body_markdown", "created_at"]],
+    ] as const) {
+      for (const column of columns) {
+        expect((await admin.query<{ allowed: boolean }>(
+          "SELECT has_column_privilege('context_use_storage',$1,$2,'SELECT') AS allowed",
+          [relation, column],
+        )).rows[0]?.allowed).toBe(true);
+      }
+    }
     expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_table_privilege('context_use_storage','assets','SELECT') AS allowed",
     )).rows[0]?.allowed).toBe(false);
@@ -815,12 +835,24 @@ describeDatabase("PostgreSQL security roles", () => {
       "SELECT has_table_privilege('context_use_storage','storage_published_assets','SELECT') AS allowed",
     )).rows[0]?.allowed).toBe(true);
     expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_table_privilege('context_use_storage','storage_published_pages','SELECT') AS allowed",
+    )).rows[0]?.allowed).toBe(true);
+    expect((await admin.query<{ allowed: boolean }>(
+      "SELECT has_table_privilege('context_use_storage','hypermedia_document_revisions','UPDATE') AS allowed",
+    )).rows[0]?.allowed).toBe(false);
+    expect((await admin.query<{ allowed: boolean }>(
       "SELECT has_table_privilege('context_use_storage','published_assets','SELECT') AS allowed",
     )).rows[0]?.allowed).toBe(false);
     for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_storage','assets',$1) AS allowed",
         [privilege],
+      )).rows[0]?.allowed).toBe(false);
+    }
+    for (const relation of ["knowledge_pages", "knowledge_directories"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_table_privilege('context_use_public',$1,'SELECT') AS allowed",
+        [relation],
       )).rows[0]?.allowed).toBe(false);
     }
   });
@@ -1207,7 +1239,7 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("public webpage projection redacts private references", async () => {
+  test("public webpage role sees only reconciled artifact metadata", async () => {
     const privatePageId = randomUUID();
     const privateVersionId = randomUUID();
     const parentPageId = randomUUID();
@@ -1296,6 +1328,27 @@ describeDatabase("PostgreSQL security roles", () => {
          )`,
         [publishedAssetId, "a".repeat(64), `objects/${publishedAssetId}`],
       );
+      const generation = (await admin.query<{ generation: string }>(
+        "SELECT generation::text FROM public_projection_state WHERE singleton",
+      )).rows[0]!.generation;
+      for (const [pageId, versionId] of [
+        [parentPageId, parentVersionId],
+        [childPageId, childVersionId],
+      ]) {
+        const artifactId = randomUUID();
+        await admin.query(
+          `INSERT INTO published_page_artifacts(
+             page_id,version_id,projection_generation,artifact_id,body_object_key,
+             body_size_bytes,body_content_hash
+           ) VALUES ($1,$2,$3,$4,$5,1,$6)`,
+          [pageId, versionId, generation, artifactId,
+            `documents/public/${artifactId}.md`, "a".repeat(64)],
+        );
+      }
+      await admin.query(
+        "UPDATE public_knowledge_settings SET entrypoint_page_id=$1 WHERE singleton",
+        [parentPageId],
+      );
 
       await admin.query("SET LOCAL ROLE context_use_public");
       const webpage = await admin.query<{
@@ -1307,13 +1360,11 @@ describeDatabase("PostgreSQL security roles", () => {
       }>(
         "SELECT public_path,title,summary,body_markdown,last_edited_at FROM published_pages WHERE public_path='profile/work/project'",
       );
-      const directProjection = await admin.query<{ body_markdown: string }>(
-        "SELECT project_public_markdown('profile/work/project') AS body_markdown",
-      );
-      const unavailableProjection = await admin.query<{ body_markdown: string }>(
-        "SELECT project_public_markdown('profile/work') AS body_markdown",
+      const canProjectPrivateBodies = await admin.query<{ allowed: boolean }>(
+        "SELECT has_function_privilege('context_use_public','project_public_markdown(text)','EXECUTE') AS allowed",
       );
       const publicKnowledge = new PublicRepository(admin as unknown as Pool);
+      const siteSettings = await publicKnowledge.settings();
       const rootIndex = await publicKnowledge.directoryIndex("");
       const profileIndex = await publicKnowledge.directoryIndex("profile");
       const workIndex = await publicKnowledge.directoryIndex("profile/work");
@@ -1322,26 +1373,9 @@ describeDatabase("PostgreSQL security roles", () => {
       expect(Object.keys(webpage.rows[0]!).sort()).toEqual(["body_markdown", "last_edited_at", "public_path", "summary", "title"]);
       expect(webpage.rows[0]?.last_edited_at).toBeInstanceOf(Date);
       expect(webpage.rows[0]?.summary).toBe("A public project fixture.");
-      expect(webpage.rows[0]?.body_markdown).toContain("[Public parent](/p/profile#overview)");
-      expect(webpage.rows[0]?.body_markdown).toContain("Private label");
-      expect(webpage.rows[0]?.body_markdown).toContain("Legacy private label");
-      expect(webpage.rows[0]?.body_markdown).toContain("Private section label");
-      expect(webpage.rows[0]?.body_markdown).toContain("[Public section label](/p/profile#background)");
-      expect(webpage.rows[0]?.body_markdown).toContain("[Legacy public parent](/p/profile#legacy-overview)");
-      expect(webpage.rows[0]?.body_markdown).not.toContain("secret-section");
-      expect(webpage.rows[0]?.body_markdown).not.toContain("legacy-secret-section");
-      expect(webpage.rows[0]?.body_markdown).not.toContain("private-details");
-      expect(webpage.rows[0]?.body_markdown).toContain("[Work index](/p/profile/work/)");
-      expect(webpage.rows[0]?.body_markdown).toContain("[Work wiki index](/p/profile/work/)");
-      expect(webpage.rows[0]?.body_markdown).toContain("context-use://public-asset/media/public-image");
-      expect(webpage.rows[0]?.body_markdown).not.toContain(privatePageId);
-      expect(webpage.rows[0]?.body_markdown).not.toContain(privateAssetId);
-      expect(webpage.rows[0]?.body_markdown).not.toContain(publishedAssetId);
-      expect(webpage.rows[0]?.body_markdown).not.toContain(privateVersionId);
-      expect(webpage.rows[0]?.body_markdown).not.toContain("/api/mcp/assets/");
-      expect(webpage.rows[0]?.body_markdown).not.toContain("/api/dashboard/assets/");
-      expect(directProjection.rows[0]?.body_markdown).toBe(webpage.rows[0]?.body_markdown);
-      expect(unavailableProjection.rows[0]?.body_markdown).toBe("");
+      expect(webpage.rows[0]?.body_markdown).toBeNull();
+      expect(canProjectPrivateBodies.rows[0]?.allowed).toBe(false);
+      expect(siteSettings).toEqual({ entrypoint_public_path: "profile" });
       expect(rootIndex?.entries).toContainEqual({
         kind: "directory",
         path: "profile",

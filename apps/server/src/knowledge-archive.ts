@@ -32,6 +32,9 @@ const nonnegativeIntegerText = z.string().regex(/^\d+$/).refine((value) => Numbe
 const positiveIntegerText = z.string().regex(/^[1-9]\d*$/);
 
 const recordsSchema = z.object({
+  public_settings: z.object({
+    entrypoint_page_id: uuid.nullable(),
+  }).strict().optional(),
   directories: z.array(z.object({
     id: uuid,
     current_path: path,
@@ -185,6 +188,12 @@ export function validateRestorableKnowledgeRecords(input: unknown): RestorableKn
     }
     if (!directoryPaths.has(parentPath(page.current_path))) {
       throw new Error(`Archive page has no parent directory: ${page.current_path}`);
+    }
+  }
+  if (records.public_settings?.entrypoint_page_id) {
+    const entrypoint = records.pages.find(({ id }) => id === records.public_settings!.entrypoint_page_id);
+    if (!entrypoint?.published_version_id || !entrypoint.public_path || entrypoint.archived_at) {
+      throw new Error("Archive public entry point is not an active published page");
     }
   }
   if (records.pages.filter((page) => page.current_path === "agents").length !== 1

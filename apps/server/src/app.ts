@@ -14,6 +14,7 @@ import {
   PageRepository,
   PageDeletionRepository,
   PublicationRepository,
+  PublicEntrypointRepository,
   createPool,
   extractAssetLinks,
   extractDirectoryLinks,
@@ -56,6 +57,7 @@ import {
 } from "./security.ts";
 import { AssetIntegrityError, type GeneratedObjectMetadata } from "./storage.ts";
 import { BrokeredStorage } from "./storage-client.ts";
+import { BrokeredMarkdownObjectStore } from "./markdown-object-store.ts";
 import {
   InvalidKnowledgeArchiveError,
   readRestorableKnowledgeArchive,
@@ -70,14 +72,16 @@ const storage = new BrokeredStorage({
   socketPath: config.STORAGE_SOCKET_PATH,
   token: config.STORAGE_DASHBOARD_TOKEN,
 });
+const markdownObjects = new BrokeredMarkdownObjectStore(storage);
 
-const dashboardPages = new PageRepository(dashboardPool);
+const dashboardPages = new PageRepository(dashboardPool, markdownObjects);
 const dashboardDirectories = new DirectoryRepository(dashboardPool);
 const pageDeletions = new PageDeletionRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
 const publications = new PublicationRepository(dashboardPool);
-const knowledgeExports = new KnowledgeExportRepository(dashboardPool);
-const knowledgeArchives = new KnowledgeArchiveRepository(dashboardPool);
+const publicEntrypoint = new PublicEntrypointRepository(dashboardPool);
+const knowledgeExports = new KnowledgeExportRepository(dashboardPool, markdownObjects);
+const knowledgeArchives = new KnowledgeArchiveRepository(dashboardPool, markdownObjects);
 const knowledgeResets = new KnowledgeResetRepository(dashboardPool);
 
 class KnowledgeExportBuildError extends Error {
@@ -805,6 +809,23 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
       ...(before ? { before } : {}),
       limit,
     }));
+  })
+  .get("/api/dashboard/public-entrypoint", async ({ request }) => {
+    await ownerRequest(request);
+    const [settings, candidates] = await Promise.all([
+      publicEntrypoint.get(),
+      publicEntrypoint.candidates(),
+    ]);
+    return json({ settings, candidates });
+  })
+  .put("/api/dashboard/public-entrypoint", async ({ request }) => {
+    await ownerRequest(request, true);
+    const input = z.object({ page_id: z.string().uuid().nullable() }).strict()
+      .parse(await bodyJson(request));
+    const updated = await publicEntrypoint.update(input.page_id);
+    return updated
+      ? json({ settings: await publicEntrypoint.get() })
+      : problem("The public entry point must be an explicitly published page", 422, "invalid_entrypoint");
   })
   .get("/api/dashboard/directories", async ({ request, query }) => {
     await ownerRequest(request);

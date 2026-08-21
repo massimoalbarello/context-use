@@ -23,10 +23,14 @@ describeDatabase("passkey-confirmed full knowledge restore", () => {
       await client.query("SET LOCAL session_replication_role=replica");
       await client.query(
         `TRUNCATE TABLE confirmation_challenges,publication_intents,knowledge_export_intents,
-           knowledge_import_intents,page_deletion_intents,knowledge_asset_links,
+           knowledge_import_intents,page_deletion_intents,published_page_artifacts,
+           public_projection_state,public_knowledge_settings,source_records,
+           hypermedia_document_revisions,hypermedia_documents,knowledge_asset_links,
            knowledge_page_changes,knowledge_page_versions,knowledge_pages,assets,
            knowledge_directories RESTART IDENTITY`,
       );
+      await client.query("INSERT INTO public_projection_state(singleton) VALUES (true)");
+      await client.query("INSERT INTO public_knowledge_settings(singleton) VALUES (true)");
       await client.query("SET LOCAL session_replication_role=origin");
 
       const destinationRootId = randomUUID();
@@ -89,6 +93,7 @@ describeDatabase("passkey-confirmed full knowledge restore", () => {
       const deletedTombstoneVersionId = randomUUID();
       const at = "2026-08-13 10:11:12.123456+00";
       const records: RestorableKnowledgeRecords = {
+        public_settings: { entrypoint_page_id: sourceAgentsId },
         directories: [{
           id: sourceRootId,
           current_path: "",
@@ -259,13 +264,13 @@ describeDatabase("passkey-confirmed full knowledge restore", () => {
       expect(await archives.importAvailable()).toBe(true);
 
       await client.query("SET LOCAL ROLE context_use_dashboard");
-      const restored = await client.query<{ result: Record<string, number> }>(
-        "SELECT restore_knowledge_import($1,'context-use-owner','archive-session') AS result",
-        [intentId],
-      );
+      const restored = await archives.restoreImportIntent(intentId, {
+        ownerUserId: "context-use-owner",
+        sessionId: "archive-session",
+      });
       await client.query("RESET ROLE");
 
-      expect(restored.rows[0]!.result).toEqual({
+      expect(restored).toEqual({
         directories: 1,
         pages: 2,
         page_versions: 3,
@@ -284,6 +289,9 @@ describeDatabase("passkey-confirmed full knowledge restore", () => {
         published_version_id: sourceAgentsV1,
         public_path: "agents",
       });
+      expect((await client.query(
+        "SELECT entrypoint_page_id FROM public_knowledge_settings WHERE singleton",
+      )).rows[0]?.entrypoint_page_id).toBe(sourceAgentsId);
       expect((await client.query("SELECT archived_at IS NOT NULL AS archived FROM knowledge_pages WHERE id=$1", [archivedPageId])).rows[0]?.archived).toBeTrue();
       expect((await client.query("SELECT id FROM knowledge_page_versions ORDER BY id")).rows.map(({ id }) => id).sort()).toEqual(
         [sourceAgentsV1, sourceAgentsV2, archivedVersionId].sort(),

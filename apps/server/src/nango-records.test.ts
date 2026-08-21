@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { SourceRecordWrite, SourceRecordWriter } from "@context-use/database";
 import {
   NangoRecordReader,
   PIPELINE_RECORD_SOURCES,
@@ -51,6 +52,7 @@ function reader(
     sources?: PipelineRecordSource[];
     responseByteBudget?: number;
     now?: () => Date;
+    recordWriter?: SourceRecordWriter;
   } = {},
 ) {
   return new NangoRecordReader({
@@ -60,6 +62,7 @@ function reader(
     now: options.now ?? (() => NOW),
     ...(options.sources ? { sources: options.sources } : {}),
     ...(options.responseByteBudget ? { responseByteBudget: options.responseByteBudget } : {}),
+    ...(options.recordWriter ? { recordWriter: options.recordWriter } : {}),
   });
 }
 
@@ -113,6 +116,38 @@ describe("Nango source-record reader", () => {
     expect(result.records.every(({ action }) => action === "added")).toBe(true);
     expect(seen.filter((request) => new URL(request.url).pathname === "/connections")).toHaveLength(2);
     expect(seen.some((request) => new URL(request.url).pathname === "/scripts/config")).toBe(false);
+  });
+
+  test("persists each accepted canonical record with its source-native identity", async () => {
+    const writes: SourceRecordWrite[] = [];
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({
+          connections: [{ id: 17, connection_id: "owner-github", provider_config_key: "github" }],
+        });
+      }
+      return Response.json({
+        records: [pipelineRecord("pull-42", "# Pull request 42", "cursor-42", "UPDATED")],
+        next_cursor: null,
+      });
+    }, {
+      sources: [GITHUB],
+      recordWriter: { write: async (record) => { writes.push(record); } },
+    });
+
+    await sourceReader.read({ limit: 10 });
+
+    expect(writes).toEqual([{
+      integration: "github",
+      connectionId: "owner-github",
+      model: "GitHubPullRequest",
+      sourceRecordId: "pull-42",
+      action: "updated",
+      sourceCreatedAt: "2026-07-31T10:00:00.000Z",
+      sourceUpdatedAt: "2026-07-31T11:00:00.000Z",
+      markdown: "# Pull request 42",
+    }]);
   });
 
   test("uses the last returned cursor so a completed checkpoint yields only later records", async () => {
@@ -369,6 +404,7 @@ describe("Nango source-record reader", () => {
 
   test("serves a large agent conversation as ordered fresh-session working sets", async () => {
     const cursorsSeen: Array<string | null> = [];
+    const writes: SourceRecordWrite[] = [];
     const body = [
       "# Agent conversation",
       ...Array.from({ length: 24 }, (_, index) => [
@@ -390,7 +426,10 @@ describe("Nango source-record reader", () => {
       return cursor === null
         ? Response.json({ records: [pipelineRecord("large", body, "cursor-one")], next_cursor: null })
         : Response.json({ records: [], next_cursor: null });
-    }, { sources: [AGENT_CONVERSATIONS] });
+    }, {
+      sources: [AGENT_CONVERSATIONS],
+      recordWriter: { write: async (record) => { writes.push(record); } },
+    });
 
     const first = await sourceReader.read({ limit: 50 });
     expect(first.records).toHaveLength(1);
@@ -404,6 +443,8 @@ describe("Nango source-record reader", () => {
     expect(second.records[0]?.markdown).toContain("already processed");
     expect(second.has_more).toBe(false);
     expect(cursorsSeen).toEqual([null, null]);
+    expect(writes).toHaveLength(2);
+    expect(writes.every((write) => write.markdown === body)).toBe(true);
   });
 
   test("restarts segmentation when a pending conversation receives a newer source version", async () => {

@@ -1,4 +1,4 @@
-import { PublicRepository, createPool } from "@context-use/database";
+import { mapConcurrently, PublicRepository, createPool } from "@context-use/database";
 import { AssetPath, DirectoryPath, PagePath } from "@context-use/shared";
 import { Elysia } from "elysia";
 import { config } from "./config.ts";
@@ -7,7 +7,6 @@ import { renderMarkdown } from "./markdown.ts";
 import { createPublicAssetContentHandler } from "./public-asset-content.ts";
 import { renderLlmsFullTxt, renderLlmsTxt, renderPublicPageMarkdown } from "./public-llms.ts";
 import {
-  INTRO_PATH,
   OPTIONAL_CONTACTS_PATH,
   externalProfileLinks,
   renderRobotsTxt,
@@ -60,15 +59,46 @@ const unavailableResolvers = {
   },
 };
 
+async function publishedPage(path: string) {
+  const page = await publicData.pageByPublicPath(path);
+  if (!page) return null;
+  return { ...page, body_markdown: await storage.readPublishedDocument(page.public_path) };
+}
+
+async function publishedPages() {
+  const pages = await publicData.publishedPages();
+  return mapConcurrently(pages, 8, async (page) => ({
+    ...page,
+    body_markdown: await storage.readPublishedDocument(page.public_path),
+  }));
+}
+
+async function publicEntrypoint() {
+  const settings = await publicData.settings();
+  const introduction = settings.entrypoint_public_path
+    ? await publishedPage(settings.entrypoint_public_path)
+    : null;
+  return { settings, introduction };
+}
+
 async function publicDirectoryResponse(rawPath: string): Promise<Response> {
   const parsedPath = DirectoryPath.safeParse(rawPath);
   if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
-  const [index, introduction] = await Promise.all([
+  const [index, entrypoint] = await Promise.all([
     publicData.directoryIndex(parsedPath.data),
-    publicData.pageByPublicPath(INTRO_PATH),
+    publicEntrypoint(),
   ]);
-  if (!index) return new Response("Not found", { status: 404, headers: securityHeaders });
-  const defaultPageHref = publicPageHref(index.default_page_path);
+  if (!index && parsedPath.data !== "") {
+    return new Response("Not found", { status: 404, headers: securityHeaders });
+  }
+  const renderedIndex = index ?? {
+    path: "",
+    title: "Knowledge",
+    summary: "No knowledge has been published yet.",
+    default_page_path: null,
+    entries: [],
+  };
+  const defaultPageHref = publicPageHref(renderedIndex.default_page_path);
   if (defaultPageHref) {
     return new Response(null, {
       status: 302,
@@ -76,15 +106,23 @@ async function publicDirectoryResponse(rawPath: string): Promise<Response> {
     });
   }
   return new Response(renderPublicIndexDocument({
-    ...index,
+    ...renderedIndex,
     siteOrigin: config.APP_ORIGIN,
-    introduction,
+    introduction: entrypoint.introduction,
+    entrypointPublicPath: entrypoint.settings.entrypoint_public_path,
   }), { headers: htmlHeaders });
 }
 
 async function publicLlmsResponse(full: boolean): Promise<Response> {
-  const pages = await publicData.publishedPages();
-  const options = { siteOrigin: config.APP_ORIGIN, assetOrigin: config.ASSET_ORIGIN };
+  const [pages, settings] = await Promise.all([
+    full ? publishedPages() : publicData.publishedPages(),
+    publicData.settings(),
+  ]);
+  const options = {
+    siteOrigin: config.APP_ORIGIN,
+    assetOrigin: config.ASSET_ORIGIN,
+    entrypointPublicPath: settings.entrypoint_public_path,
+  };
   const content = full ? renderLlmsFullTxt(pages, options) : renderLlmsTxt(pages, options);
   return new Response(content, { headers: full ? agentTextHeaders : textHeaders });
 }
@@ -95,7 +133,7 @@ async function publicSitemapResponse(): Promise<Response> {
 }
 
 async function optionalProfileLinks(): Promise<string[]> {
-  const contacts = await publicData.pageByPublicPath(OPTIONAL_CONTACTS_PATH);
+  const contacts = await publishedPage(OPTIONAL_CONTACTS_PATH);
   return contacts
     ? externalProfileLinks(contacts.body_markdown, config.APP_ORIGIN)
     : [];
@@ -123,24 +161,7 @@ export const publicApp = new Elysia({ strictPath: true })
     const parsedPath = PagePath.safeParse(markdown ? rawPath.slice(0, -3) : rawPath);
     if (!parsedPath.success) return new Response("Not found", { status: 404, headers: securityHeaders });
     const publicPath = parsedPath.data;
-    const page = await publicData.pageByPublicPath(publicPath);
-    if (!page && publicPath === INTRO_PATH && !markdown) {
-      return new Response(renderPublicPageDocument(
-        "Nothing published yet",
-        "<p>The owner has not published an introduction yet. Please check back later.</p>",
-        undefined,
-        undefined,
-        {
-          siteOrigin: config.APP_ORIGIN,
-          summary: "The owner has not published an introduction yet.",
-          introduction: null,
-          indexable: false,
-          canonicalPath: `/p/${INTRO_PATH}`,
-        },
-      ), {
-        headers: { ...securityHeaders, "content-type": "text/html; charset=utf-8" },
-      });
-    }
+    const page = await publishedPage(publicPath);
     if (!page) {
       if (markdown) return new Response("Not found", { status: 404, headers: securityHeaders });
       const index = await publicData.directoryIndex(publicPath);
@@ -165,10 +186,13 @@ export const publicApp = new Elysia({ strictPath: true })
         },
       });
     }
-    const introduction = publicPath === INTRO_PATH
+    const settings = await publicData.settings();
+    const introduction = publicPath === settings.entrypoint_public_path
       ? page
-      : await publicData.pageByPublicPath(INTRO_PATH);
-    const profileLinks = publicPath === INTRO_PATH
+      : settings.entrypoint_public_path
+        ? await publishedPage(settings.entrypoint_public_path)
+        : null;
+    const profileLinks = publicPath === settings.entrypoint_public_path
       ? await optionalProfileLinks()
       : undefined;
     // The database projection has already removed every private identifier and
@@ -185,17 +209,19 @@ export const publicApp = new Elysia({ strictPath: true })
         summary: page.summary,
         introduction,
         profileLinks,
+        entrypointPublicPath: settings.entrypoint_public_path,
       },
     ), { headers: htmlHeaders });
   })
   .get("/", async () => {
-    const [introduction, profileLinks] = await Promise.all([
-      publicData.pageByPublicPath(INTRO_PATH),
+    const [entrypoint, profileLinks] = await Promise.all([
+      publicEntrypoint(),
       optionalProfileLinks(),
     ]);
     return new Response(renderPublicLandingDocument({
       siteOrigin: config.APP_ORIGIN,
-      introduction,
+      introduction: entrypoint.introduction,
+      entrypointPublicPath: entrypoint.settings.entrypoint_public_path,
       profileLinks,
     }), { headers: htmlHeaders });
   })

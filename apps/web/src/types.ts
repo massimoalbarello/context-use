@@ -127,8 +127,8 @@ export type AssetStatus = {
 
 /**
  * What republishing releases: everything written since the pinned public version, which the
- * owner has not necessarily seen. `queued_versions` is short by design — version retention
- * prunes old entries — so `queued_versions_complete` says whether it is the whole story.
+ * owner has not necessarily seen. Imported or historically incomplete data can
+ * still make a long sequence incomplete, which is reported separately.
  */
 export type RepublicationReview = {
   published_version_number: number;

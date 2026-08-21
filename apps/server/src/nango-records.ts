@@ -4,6 +4,7 @@ import {
   MANAGED_FUNCTIONS,
   MANAGED_INTEGRATIONS,
 } from "../../../nango-integrations/catalog.ts";
+import type { SourceRecordWriter } from "@context-use/database";
 import { segmentConversationMarkdown } from "./conversation-working-sets.ts";
 
 const connectionSchema = z.object({
@@ -131,6 +132,7 @@ type NangoRecordReaderOptions = {
   sources?: PipelineRecordSource[];
   responseByteBudget?: number;
   now?: () => Date;
+  recordWriter?: SourceRecordWriter;
 };
 
 type Checkpoint = z.infer<typeof checkpointSchema>;
@@ -263,6 +265,7 @@ export class NangoRecordReader implements SourceRecordReader {
   readonly #sources: PipelineRecordSource[];
   readonly #responseByteBudget: number;
   readonly #now: () => Date;
+  readonly #recordWriter: SourceRecordWriter | undefined;
 
   constructor(options: NangoRecordReaderOptions) {
     const baseUrl = new URL(options.baseUrl);
@@ -276,6 +279,7 @@ export class NangoRecordReader implements SourceRecordReader {
     this.#sources = options.sources ?? PIPELINE_RECORD_SOURCES;
     this.#responseByteBudget = options.responseByteBudget ?? DEFAULT_RESPONSE_BYTE_BUDGET;
     this.#now = options.now ?? (() => new Date());
+    this.#recordWriter = options.recordWriter;
     if (!Number.isSafeInteger(this.#responseByteBudget) || this.#responseByteBudget < 1) {
       throw new Error("Response byte budget must be a positive integer");
     }
@@ -365,6 +369,23 @@ export class NangoRecordReader implements SourceRecordReader {
     }));
   }
 
+  async #persist(
+    stream: Stream,
+    sourceRecord: NangoPipelineRecord,
+    record: SourceRecord,
+  ): Promise<void> {
+    await this.#recordWriter?.write({
+      integration: stream.integrationId,
+      connectionId: stream.connectionId,
+      model: stream.model,
+      sourceRecordId: sourceRecord.id,
+      action: record.action,
+      sourceCreatedAt: "created_at" in sourceRecord ? sourceRecord.created_at : null,
+      sourceUpdatedAt: recordRelevantTimestamp(sourceRecord, record),
+      markdown: record.markdown,
+    });
+  }
+
   async read(input: ReadSourceRecordsInput): Promise<ReadSourceRecordsResult> {
     const limit = input.limit ?? DEFAULT_RECORD_LIMIT;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_RECORD_LIMIT) {
@@ -408,6 +429,7 @@ export class NangoRecordReader implements SourceRecordReader {
         || page.next_cursor !== null;
       const segment = segments[segmentIndex] ?? segments[0]!;
       const finished = segmentIndex >= segments.length - 1;
+      await this.#persist(stream, sourceRecord, record);
       if (finished) {
         streamCheckpoints[stream.key] = {
           ...streamCheckpoint,
@@ -471,6 +493,7 @@ export class NangoRecordReader implements SourceRecordReader {
             resumeFrom = stream.key;
             break outer;
           }
+          await this.#persist(stream, sourceRecord, record);
           return {
             records: [segments[0]!],
             next_checkpoint: encodeCheckpoint({
@@ -496,6 +519,7 @@ export class NangoRecordReader implements SourceRecordReader {
           resumeFrom = stream.key;
           break outer;
         }
+        await this.#persist(stream, sourceRecord, record);
         records.push(record);
         responseBytes += bytes;
         streamCheckpoints[stream.key] = {
