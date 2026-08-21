@@ -7,8 +7,10 @@ are discarded. The full contract is in
 [`nango-integrations/SYNC_GUIDELINES.md`](../nango-integrations/SYNC_GUIDELINES.md).
 
 The private Context Use MCP exposes `read_source_records` as the single downstream read surface.
-It returns a unified batch across every connection with one opaque `next_checkpoint` cursor, and
-applies a rolling 30-day freshness window based on when a record was last updated at the source.
+It returns one bounded working set across every connection with one opaque `next_checkpoint`
+cursor, and applies a rolling 30-day freshness window based on when a record was last updated at
+the source. Large agent conversations are delivered losslessly over ordered fresh-session working
+sets; each continuation repeats a small, labelled tail solely to interpret the new excerpt.
 
 The Context Use dashboard links to Nango at `https://nango.YOUR_HOST`. Open it after signing in
 to Context Use — your passkey session carries over, so there is no second account to create.

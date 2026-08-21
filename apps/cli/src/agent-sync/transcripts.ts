@@ -13,7 +13,7 @@ import type {
   TranscriptFile,
 } from "./types.ts";
 
-const MAX_BODY_BYTES = 768 * 1024;
+const CONVERSATION_TURN_MARKER = "<!-- context-use:conversation-turn -->";
 
 export type { SourceRoot } from "./types.ts";
 export type DiscoveryErrorHandler = (source: AgentSource, path: string, error: unknown) => void;
@@ -221,13 +221,12 @@ function assignString(state: ParserState, key: "sessionId" | "cwd" | "model", va
 }
 
 export function conversationRecord(conversation: ParsedConversation): AgentConversationRecord {
-  const body = truncateConversationBody(renderConversation(conversation));
   return AgentConversationRecordSchema.parse({
     id: `ac1_${sha256(`${conversation.source}\0${conversation.sessionId}`, "base64url")}`,
     created_at: conversation.createdAt,
     updated_at: conversation.updatedAt,
     participants: [],
-    body,
+    body: renderConversation(conversation),
   });
 }
 
@@ -239,7 +238,7 @@ function renderConversation(conversation: ParsedConversation): string {
   ];
   for (const message of conversation.messages) {
     const label = message.role === "user" ? "User" : "Assistant";
-    lines.push("", `### ${label}${message.createdAt ? ` — ${message.createdAt}` : ""}`, "");
+    lines.push("", CONVERSATION_TURN_MARKER, `### ${label}${message.createdAt ? ` — ${message.createdAt}` : ""}`, "");
     lines.push(message.text.trim());
   }
   return `${lines.join("\n").trim()}\n`;
@@ -328,22 +327,6 @@ function objectValue(value: unknown): Record<string, unknown> | undefined {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
-}
-
-function truncateConversationBody(body: string): string {
-  if (Buffer.byteLength(body, "utf8") <= MAX_BODY_BYTES) return body;
-  const marker = "\n\n> Context Use truncated the middle of this large conversation during ingestion.\n\n";
-  // Leave a few bytes for replacement characters if either byte slice lands
-  // in the middle of a multi-byte code point.
-  const budget = MAX_BODY_BYTES - Buffer.byteLength(marker, "utf8") - 8;
-  const bytes = Buffer.from(body, "utf8");
-  const head = utf8Slice(bytes, 0, Math.floor(budget / 2));
-  const tail = utf8Slice(bytes, bytes.length - Math.ceil(budget / 2), bytes.length);
-  return `${head}${marker}${tail}`;
-}
-
-function utf8Slice(bytes: Buffer, start: number, end: number): string {
-  return new TextDecoder().decode(bytes.subarray(Math.max(0, start), Math.min(bytes.length, end)));
 }
 
 function sha256(value: string, encoding: "hex" | "base64url" = "hex"): string {

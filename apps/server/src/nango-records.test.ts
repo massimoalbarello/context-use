@@ -367,6 +367,83 @@ describe("Nango source-record reader", () => {
     expect(cursorsSeen).toEqual([null, "cursor-one"]);
   });
 
+  test("serves a large agent conversation as ordered fresh-session working sets", async () => {
+    const cursorsSeen: Array<string | null> = [];
+    const body = [
+      "# Agent conversation",
+      ...Array.from({ length: 24 }, (_, index) => [
+        "",
+        `### ${index % 2 === 0 ? "User" : "Assistant"}`,
+        "",
+        `turn-${index + 1}-${"x".repeat(1_500)}`,
+      ]).flat(),
+    ].join("\n");
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({
+          connections: [{ id: 1, connection_id: "owner", provider_config_key: "agent-conversations" }],
+        });
+      }
+      const cursor = url.searchParams.get("cursor");
+      cursorsSeen.push(cursor);
+      return cursor === null
+        ? Response.json({ records: [pipelineRecord("large", body, "cursor-one")], next_cursor: null })
+        : Response.json({ records: [], next_cursor: null });
+    }, { sources: [AGENT_CONVERSATIONS] });
+
+    const first = await sourceReader.read({ limit: 50 });
+    expect(first.records).toHaveLength(1);
+    expect(first.records[0]?.markdown).toContain("## Conversation to process");
+    expect(first.records[0]?.markdown).not.toContain("Context from immediately before this excerpt");
+    expect(first.has_more).toBe(true);
+
+    const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 50 });
+    expect(second.records).toHaveLength(1);
+    expect(second.records[0]?.markdown).toContain("## Context from immediately before this excerpt");
+    expect(second.records[0]?.markdown).toContain("already processed");
+    expect(second.has_more).toBe(false);
+    expect(cursorsSeen).toEqual([null, null]);
+  });
+
+  test("restarts segmentation when a pending conversation receives a newer source version", async () => {
+    const body = (version: string) => [
+      "# Agent conversation",
+      ...Array.from({ length: 24 }, (_, index) => [
+        "",
+        `### ${index % 2 === 0 ? "User" : "Assistant"}`,
+        "",
+        `${version}-turn-${index + 1}-${"x".repeat(1_500)}`,
+      ]).flat(),
+    ].join("\n");
+    let currentVersion = "old";
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({
+          connections: [{ id: 1, connection_id: "owner", provider_config_key: "agent-conversations" }],
+        });
+      }
+      return Response.json({
+        records: [pipelineRecord(
+          "growing",
+          body(currentVersion),
+          currentVersion === "old" ? "cursor-old" : "cursor-new",
+          currentVersion === "old" ? "ADDED" : "UPDATED",
+        )],
+        next_cursor: null,
+      });
+    }, { sources: [AGENT_CONVERSATIONS] });
+
+    const first = await sourceReader.read({ limit: 50 });
+    expect(first.records[0]?.markdown).toContain("old-turn-1-");
+    currentVersion = "new";
+    const restarted = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 50 });
+    expect(restarted.records[0]?.action).toBe("updated");
+    expect(restarted.records[0]?.markdown).toContain("new-turn-1-");
+    expect(restarted.records[0]?.markdown).not.toContain("Context from immediately before this excerpt");
+  });
+
   test("preserves deletion lifecycle and advances past a pruned tombstone", async () => {
     let read = 0;
     const sourceReader = reader(async (request) => {

@@ -7,6 +7,7 @@ import {
   type Corpus,
 } from "../../runner/corpus/types.ts";
 import type { LongMemEvalCase } from "./dataset.ts";
+import { CONVERSATION_TURN_MARKER } from "../../../apps/server/src/conversation-working-sets.ts";
 
 export const LONGMEMEVAL_CASE_FILE = "longmemeval-case.json";
 
@@ -37,7 +38,7 @@ function renderSession(session: PublicLongMemEvalCase["sessions"][number]): stri
   ];
   for (const turn of session.turns) {
     const label = turn.role === "user" ? "User" : "Assistant";
-    lines.push("", `### ${label} — ${session.date}`, "", turn.content.trim());
+    lines.push("", CONVERSATION_TURN_MARKER, `### ${label} — ${session.date}`, "", turn.content.trim());
   }
   return `${lines.join("\n").trim()}\n`;
 }

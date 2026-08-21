@@ -31,6 +31,8 @@ bun run eval locomo:run --all
 ```
 
 The runner always distills the complete selected conversation before asking every question.
+Ordinary dated sessions remain intact; if one exceeds the production threshold, the shared
+planner divides it at turn boundaries into overlapping fresh-session working sets.
 A full run is about 2,030 agent sessions, so confirm the intended selection before starting.
 
 ## Score and inspect a run

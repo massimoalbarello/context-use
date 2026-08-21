@@ -26,13 +26,17 @@ describe("evaluation harness stays out of production", () => {
     }
   });
 
-  test("the harness borrows only the reader contract, and nothing borrows back", () => {
+  test("the harness imports only explicit production surfaces, and nothing borrows back", () => {
+    const allowedProductionImports = [
+      "apps/server/src/nango-records.ts",
+      "apps/server/src/conversation-working-sets.ts",
+    ];
     const glob = new Bun.Glob("eval/**/*.ts");
     for (const file of glob.scanSync({ cwd: ROOT })) {
       for (const match of read(file).matchAll(/from ["'](\.\.[^"']*apps\/[^"']+)["']/g)) {
-        // The contract belongs to production; the evaluation implements it, not the
-        // other way round. Anything else would couple the two.
-        expect(match[1]).toContain("apps/server/src/nango-records.ts");
+        // The reader contract and pure conversation planner belong to production. Evals
+        // deliberately exercise those exact surfaces; no other app internals are coupled in.
+        expect(allowedProductionImports.some((path) => match[1]!.endsWith(path))).toBe(true);
       }
     }
   });

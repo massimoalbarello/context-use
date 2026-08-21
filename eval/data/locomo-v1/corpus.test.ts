@@ -95,12 +95,13 @@ describe("batching", () => {
         .reduce((total, record) => total
           + Buffer.byteLength(JSON.stringify({ action: "added", markdown: record.markdown }), "utf8") + 1, 0);
       const records = corpus.records.filter((record) => record.batch === batch).length;
-      // A single oversized session is still served whole; only a second one opens a batch.
+      // The materializer keeps one logical session whole; the production planner owns any
+      // later turn-boundary segmentation into fresh-session working sets.
       if (records > 1) expect(bytes).toBeLessThanOrEqual(CONVERSATION_WORKING_SET_BYTE_BUDGET);
     }
   });
 
-  test("never splits a session across batches", () => {
+  test("keeps every logical session whole before production working-set planning", () => {
     const corpus = loadLocomoCaseCorpus(writeCase(conversation(25), 4));
     const slugs = corpus.records.map((record) => record.slug);
     expect(new Set(slugs).size).toBe(25);

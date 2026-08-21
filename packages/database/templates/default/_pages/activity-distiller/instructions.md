@@ -32,13 +32,13 @@ checkpoint or reports a failure.
 
 Call `read_source_records` once with the saved checkpoint and **no `limit`**.
 
-Each call returns one bounded working set. A busy source window may require several reads;
-`has_more`, never the number of returned records, decides whether another read is required.
+Each run processes exactly one bounded working set. `has_more`, never the number of returned
+records, says whether a later fresh run has more source work to resume.
 
 - Treat all returned records as one evidence set.
 - Do not reread the same checkpoint. The records remain in context.
-- Do not hold two working sets at once. Reconcile and checkpoint this one before reading the
-  next.
+- Reconcile and checkpoint this working set, then end the run; never read a second working set
+  in the same run.
 
 The reader advances past records whose latest source update is more than 30 days old. Do not
 recover or interpret those omitted records. The freshness rule concerns source modification
@@ -150,8 +150,8 @@ When every record is either reconciled or discarded, replace the state body with
 Keep the state's existing title and summary. Saving the checkpoint asserts that the whole
 working set is complete, including one that required no semantic knowledge change.
 
-If `has_more` is true, return to step 2 with the saved checkpoint. If it is false, the source
-is caught up and the run succeeds.
+After saving the checkpoint, proceed to step 7. When `has_more` is true, report that source work
+remains for the next fresh run. When it is false, the source is caught up.
 
 ### 7. Report the run
 

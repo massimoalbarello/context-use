@@ -52,3 +52,10 @@ their own state and reset to the selected knowledge template at the correct boun
 an existing run. They accept the run ID printed by the preparing command.
 
 Generated results are gitignored. The eval-family README names the result directory.
+
+## Conversation working sets
+
+Conversation corpora use the same planner as production. Ordinary source records remain intact;
+an oversized conversation is divided at dialogue-turn boundaries, and every later excerpt starts
+with a small, labelled overlap from the preceding excerpt. The eval runner maps each planned
+working set to a fresh agent session, so the agent sees only one transport unit per run.

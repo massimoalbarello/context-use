@@ -91,4 +91,33 @@ describe("LongMemEval agent-conversation corpus", () => {
     expect(second.records).toHaveLength(1);
     expect(second.has_more).toBe(false);
   });
+
+  test("uses production conversation segmentation as fresh-session working sets", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "longmemeval-segmented-case-"));
+    const oversized = {
+      ...CASE,
+      sessions: [{
+        ...CASE.sessions[0]!,
+        turns: Array.from({ length: 24 }, (_, index) => ({
+          role: index % 2 === 0 ? "user" as const : "assistant" as const,
+          content: `turn-${index + 1}-${"x".repeat(1_500)}`,
+        })),
+      }],
+      answerSessionIds: [CASE.sessions[0]!.id],
+    };
+    writeFileSync(join(directory, LONGMEMEVAL_CASE_FILE), JSON.stringify(
+      publicLongMemEvalCase(oversized, "a".repeat(40), 10),
+    ));
+
+    const planned = loadCorpus(directory);
+    expect(planned.batches.length).toBeGreaterThan(1);
+    expect(planned.records.flatMap(({ itemSlugs }) => itemSlugs)).toEqual([CASE.sessions[0]!.id]);
+    const reader = new CorpusRecordReader({ directory });
+    const first = await reader.read({ limit: 50 });
+    expect(first.records).toHaveLength(1);
+    expect(first.records[0]?.markdown).toContain("## Conversation to process");
+    const second = await reader.read({ checkpoint: first.next_checkpoint, limit: 50 });
+    expect(second.records[0]?.markdown).toContain("## Context from immediately before this excerpt");
+    expect(second.records[0]?.markdown).toContain("already processed");
+  });
 });

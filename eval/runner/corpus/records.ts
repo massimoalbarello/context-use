@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { segmentConversationMarkdown } from "../../../apps/server/src/conversation-working-sets.ts";
 import type {
   ReadSourceRecordsInput,
   ReadSourceRecordsResult,
@@ -14,6 +15,7 @@ import { loadLocomoCaseCorpus } from "../../data/locomo-v1/corpus.ts";
 import { loadLongMemEvalCaseCorpus } from "../../data/longmemeval-v1/corpus.ts";
 import { loadWorldCorpus } from "../../data/world-v1/corpus.ts";
 import {
+  assembleCorpus,
   CONVERSATION_ITEM_TYPES,
   CONVERSATION_WORKING_SET_BYTE_BUDGET,
   type Corpus,
@@ -47,6 +49,57 @@ export type { Corpus, CorpusRecord } from "./types.ts";
 export const CORPUS_WINDOWS = ["dense", "full"] as const;
 export type CorpusWindow = (typeof CORPUS_WINDOWS)[number];
 
+/**
+ * Applies the production conversation planner to an eval corpus, then maps each planned
+ * working set onto the eval runner's fresh-session batch boundary. The segmentation policy
+ * and agent-facing Markdown live in production; this adapter only names reset boundaries.
+ */
+function planConversationWorkingSets(corpus: Corpus): Corpus {
+  const planned: CorpusRecord[] = [];
+  for (const batch of corpus.batches) {
+    const workSets: CorpusRecord[][] = [];
+    let current: CorpusRecord[] = [];
+    const flush = () => {
+      if (current.length > 0) workSets.push(current);
+      current = [];
+    };
+    for (const record of corpus.records.filter((candidate) => candidate.batch === batch)) {
+      if (!CONVERSATION_ITEM_TYPES.has(record.type)) {
+        current.push(record);
+        continue;
+      }
+      const segments = segmentConversationMarkdown(record.markdown, {
+        turnStyle: record.type === "conversation-session" ? "dated-speaker" : "agent",
+      });
+      if (segments.length === 1) {
+        current.push(record);
+        continue;
+      }
+      flush();
+      for (const segment of segments) {
+        workSets.push([{
+          ...record,
+          slug: `${record.slug}-excerpt-${String(segment.index + 1).padStart(3, "0")}`,
+          markdown: segment.markdown,
+          // The logical upstream item is counted once even though transport takes several
+          // fresh sessions to reconcile it.
+          itemSlugs: segment.index === 0 ? record.itemSlugs : [],
+        }]);
+      }
+    }
+    flush();
+    if (workSets.length === 1) {
+      planned.push(...workSets[0]!);
+      continue;
+    }
+    for (const [index, workSet] of workSets.entries()) {
+      const plannedBatch = `${batch}-working-set-${String(index + 1).padStart(3, "0")}`;
+      planned.push(...workSet.map((record) => ({ ...record, batch: plannedBatch })));
+    }
+  }
+  return assembleCorpus(corpus.corpusId, corpus.license, planned);
+}
+
 // Evaluation checkpoints cross an agent boundary twice: the agent saves one and the next
 // agent supplies it. Keep that opaque token compact enough to copy reliably. V2 embedded
 // the complete corpus id in base64 plus a full checksum; LongMemEval exposed that models
@@ -59,9 +112,8 @@ const DEFAULT_RECORD_LIMIT = 50;
 const MAX_RECORD_LIMIT = 100;
 const DEFAULT_RESPONSE_BYTE_BUDGET = 5_000_000;
 // A conversation session — LongMemEval's or LoCoMo's — is much larger than an email or
-// calendar record. Both materializers normally close each batch at the same provider-safe
-// boundary; the reader enforces it as a second guard. A single exceptionally large session
-// is still served atomically.
+// calendar record. The production planner divides any oversized session before the reader
+// sees it; this response budget remains a second guard around each planned working set.
 
 const checkpointSchema = z.object({
   version: z.literal(3),
@@ -79,10 +131,18 @@ type Checkpoint = z.infer<typeof checkpointSchema>;
  * a corpus is defined by what upstream put in it. Names are the harness's business.
  */
 export function loadCorpus(directory: string): Corpus {
-  if (existsSync(join(directory, "corpus-manifest.json"))) return loadAmaraCorpus(directory);
-  if (existsSync(join(directory, "longmemeval-case.json"))) return loadLongMemEvalCaseCorpus(directory);
-  if (existsSync(join(directory, "locomo-case.json"))) return loadLocomoCaseCorpus(directory);
-  if (existsSync(join(directory, "_ledger.json"))) return loadWorldCorpus(directory);
+  if (existsSync(join(directory, "corpus-manifest.json"))) {
+    return planConversationWorkingSets(loadAmaraCorpus(directory));
+  }
+  if (existsSync(join(directory, "longmemeval-case.json"))) {
+    return planConversationWorkingSets(loadLongMemEvalCaseCorpus(directory));
+  }
+  if (existsSync(join(directory, "locomo-case.json"))) {
+    return planConversationWorkingSets(loadLocomoCaseCorpus(directory));
+  }
+  if (existsSync(join(directory, "_ledger.json"))) {
+    return planConversationWorkingSets(loadWorldCorpus(directory));
+  }
   throw new Error(`${directory} holds no recognized corpus descriptor.`);
 }
 
