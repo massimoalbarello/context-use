@@ -3,12 +3,14 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { Client, type Pool } from "pg";
 import { KnowledgeArchiveRepository, type RestorableKnowledgeRecords } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
+import { MemoryMarkdownStore } from "./memory-markdown-store.ts";
 
 const databaseUrl = await disposableDatabaseUrl();
 const describeDatabase = databaseUrl ? describe : describe.skip;
 
 describeDatabase("passkey-confirmed full knowledge restore", () => {
   const client = new Client({ connectionString: databaseUrl });
+  const bodies = new MemoryMarkdownStore();
 
   afterAll(async () => {
     await client.end().catch(() => undefined);
@@ -18,7 +20,7 @@ describeDatabase("passkey-confirmed full knowledge restore", () => {
     await client.connect();
     await client.query("BEGIN");
     try {
-      const archives = new KnowledgeArchiveRepository(client as unknown as Pool);
+      const archives = new KnowledgeArchiveRepository(client as unknown as Pool, bodies);
       await client.query("SET CONSTRAINTS ALL DEFERRED");
       await client.query("SET LOCAL session_replication_role=replica");
       await client.query(

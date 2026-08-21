@@ -9,7 +9,6 @@ import type {
 } from "@context-use/shared";
 import {
   assertMarkdownObject,
-  markdownObjectMetadata,
   type MarkdownObjectMetadata,
   type MarkdownObjectStore,
 } from "./documents.ts";
@@ -176,7 +175,6 @@ const CURRENT_PAGE_SELECT = `
   SELECT p.id, p.current_path, p.current_version_id, p.published_version_id,
     p.public_path, p.archived_at, p.created_at, p.updated_at,
     v.version_number, v.title, v.summary,
-    v.body_markdown AS legacy_body_markdown,
     object.body_object_key,object.body_size_bytes,object.body_content_hash,
     pv.version_number AS published_version_number
   FROM knowledge_pages p
@@ -200,28 +198,21 @@ export class PageRepository {
     private readonly bodies?: MarkdownObjectStore,
   ) {}
 
-  private async storedBody(revisionId: string, bodyMarkdown: string): Promise<{
-    metadata: MarkdownObjectMetadata;
-    legacyBody: string | null;
-  }> {
-    if (!this.bodies) {
-      return { metadata: markdownObjectMetadata(revisionId, bodyMarkdown), legacyBody: bodyMarkdown };
-    }
-    return { metadata: await this.bodies.write(revisionId, bodyMarkdown), legacyBody: null };
+  private async storedBody(revisionId: string, bodyMarkdown: string): Promise<MarkdownObjectMetadata> {
+    if (!this.bodies) throw new Error("Knowledge document object store is required");
+    return this.bodies.write(revisionId, bodyMarkdown);
   }
 
   private async withBody(row: any): Promise<any> {
     if (!row) return null;
     const {
-      legacy_body_markdown,
       body_object_key,
       body_size_bytes,
       body_content_hash,
       ...metadata
     } = row;
-    const inlineBody = legacy_body_markdown ?? row.body_markdown;
-    if (!body_object_key) return { ...metadata, ...(inlineBody === undefined ? {} : { body_markdown: inlineBody }) };
-    const bodyMarkdown = inlineBody ?? await this.bodies?.read({
+    if (!body_object_key) return metadata;
+    const bodyMarkdown = await this.bodies?.read({
       body_object_key,
       body_size_bytes: Number(body_size_bytes),
       body_content_hash,
@@ -253,8 +244,8 @@ export class PageRepository {
         `INSERT INTO hypermedia_document_revisions(
            id,document_id,revision_number,body_object_key,body_size_bytes,body_content_hash
          ) VALUES ($1,$2,1,$3,$4,$5)`,
-        [versionId, pageId, stored.metadata.body_object_key,
-          stored.metadata.body_size_bytes, stored.metadata.body_content_hash],
+        [versionId, pageId, stored.body_object_key,
+          stored.body_size_bytes, stored.body_content_hash],
       );
       await client.query(
         `INSERT INTO knowledge_pages(id,current_path,current_version_id,search_vector)
@@ -263,10 +254,10 @@ export class PageRepository {
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-          id, page_id, version_number, path, title, summary, body_markdown,
+          id, page_id, version_number, path, title, summary,
           commit_message, actor_kind, actor_subject
-        ) VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8, $9)`,
-        [versionId, pageId, input.path, input.title, input.summary, stored.legacyBody, input.commit_message, actor.kind, actor.subject],
+        ) VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8)`,
+        [versionId, pageId, input.path, input.title, input.summary, input.commit_message, actor.kind, actor.subject],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, pageId);
@@ -290,15 +281,15 @@ export class PageRepository {
         `INSERT INTO hypermedia_document_revisions(
            id,document_id,revision_number,body_object_key,body_size_bytes,body_content_hash
          ) VALUES ($1,$2,$3,$4,$5,$6)`,
-        [versionId, pageId, nextVersion, stored.metadata.body_object_key,
-          stored.metadata.body_size_bytes, stored.metadata.body_content_hash],
+        [versionId, pageId, nextVersion, stored.body_object_key,
+          stored.body_size_bytes, stored.body_content_hash],
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-          id, page_id, version_number, path, title, summary, body_markdown,
+          id, page_id, version_number, path, title, summary,
           commit_message, actor_kind, actor_subject
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [versionId, pageId, nextVersion, input.path, input.title, input.summary, stored.legacyBody, input.commit_message, actor.kind, actor.subject],
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [versionId, pageId, nextVersion, input.path, input.title, input.summary, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages
@@ -335,14 +326,14 @@ export class PageRepository {
         `INSERT INTO hypermedia_document_revisions(
            id,document_id,revision_number,body_object_key,body_size_bytes,body_content_hash
          ) VALUES ($1,$2,$3,$4,$5,$6)`,
-        [versionId, pageId, row.version_number + 1, stored.metadata.body_object_key,
-          stored.metadata.body_size_bytes, stored.metadata.body_content_hash],
+        [versionId, pageId, row.version_number + 1, stored.body_object_key,
+          stored.body_size_bytes, stored.body_content_hash],
       );
       await client.query(
         `INSERT INTO knowledge_page_versions(
-          id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [versionId, pageId, row.version_number + 1, row.current_path, row.title, row.summary, stored.legacyBody, input.commit_message, actor.kind, actor.subject],
+          id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [versionId, pageId, row.version_number + 1, row.current_path, row.title, row.summary, input.commit_message, actor.kind, actor.subject],
       );
       await client.query(
         `UPDATE knowledge_pages SET current_version_id=$2, archived_at=now(),updated_at=now() WHERE id=$1`,
@@ -444,7 +435,7 @@ export class PageRepository {
   async version(pageId: string, versionNumber: number) {
     const result = await this.pool.query(
       `SELECT version.id,version.page_id,version.version_number,version.path,
-        version.title,version.summary,version.body_markdown AS legacy_body_markdown,
+        version.title,version.summary,
         object.body_object_key,object.body_size_bytes,object.body_content_hash,
         version.commit_message,version.actor_kind,version.actor_subject,version.created_at
        FROM knowledge_page_versions version
@@ -463,7 +454,7 @@ export class PageRepository {
   ) {
     const result = await this.pool.query(
       `SELECT version.id,version.page_id,version.version_number,version.path,
-        version.title,version.summary,version.body_markdown AS legacy_body_markdown,
+        version.title,version.summary,
         object.body_object_key,object.body_size_bytes,object.body_content_hash,
         version.commit_message,version.actor_kind,version.actor_subject,version.created_at
        FROM knowledge_page_versions version

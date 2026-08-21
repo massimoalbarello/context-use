@@ -5,7 +5,7 @@ test("template commands use the installed application image without updating the
   expect(knowledgeTemplateCommands("plan")).toEqual([
     "set -euo pipefail",
     "cd /opt/context-use/deploy",
-    "docker compose --env-file /data/context-use/secrets/runtime.env --profile migration run --rm migrate bun packages/database/src/template-command.ts plan default",
+    "docker compose --env-file /data/context-use/secrets/runtime.env exec -T app bun apps/server/src/template-command.ts plan default",
   ]);
   expect(knowledgeTemplateCommands("apply").at(-1)).toEndWith("template-command.ts apply default");
   expect(knowledgeTemplateCommands("apply", "default", true).at(-1))

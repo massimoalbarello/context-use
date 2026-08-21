@@ -1,5 +1,4 @@
 import { Client } from "pg";
-import { runTemplateCommand } from "./template-command.ts";
 
 export const DEVELOPMENT_RESET_TABLES = [
   "confirmation_challenges",
@@ -57,13 +56,6 @@ async function resetDevelopmentData(): Promise<void> {
   } finally {
     await client.end();
   }
-
-  await runTemplateCommand(
-    "apply",
-    process.env.CONTEXT_USE_TEMPLATE_INSTALL ?? "default",
-    false,
-    process.env.CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT,
-  );
 }
 
 if (import.meta.main) await resetDevelopmentData();

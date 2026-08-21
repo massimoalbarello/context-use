@@ -82,7 +82,7 @@ const publications = new PublicationRepository(dashboardPool);
 const publicEntrypoint = new PublicEntrypointRepository(dashboardPool);
 const knowledgeExports = new KnowledgeExportRepository(dashboardPool, markdownObjects);
 const knowledgeArchives = new KnowledgeArchiveRepository(dashboardPool, markdownObjects);
-const knowledgeResets = new KnowledgeResetRepository(dashboardPool);
+const knowledgeResets = new KnowledgeResetRepository(dashboardPool, markdownObjects);
 
 class KnowledgeExportBuildError extends Error {
   constructor(

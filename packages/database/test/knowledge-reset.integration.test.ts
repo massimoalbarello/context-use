@@ -7,6 +7,7 @@ import {
   type KnowledgeTemplateBaseline,
 } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
+import { MemoryMarkdownStore } from "./memory-markdown-store.ts";
 
 const databaseUrl = await disposableDatabaseUrl();
 const describeDatabase = databaseUrl ? describe : describe.skip;
@@ -38,6 +39,7 @@ async function failure(client: Client, run: () => Promise<unknown>): Promise<str
 
 describeDatabase("passkey-confirmed knowledge base reset", () => {
   const client = new Client({ connectionString: databaseUrl });
+  const bodies = new MemoryMarkdownStore();
 
   afterAll(async () => {
     await client.end().catch(() => undefined);
@@ -47,8 +49,8 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
     await client.connect();
     await client.query("BEGIN");
     try {
-      const resets = new KnowledgeResetRepository(client as unknown as Pool);
-      const archives = new KnowledgeArchiveRepository(client as unknown as Pool);
+      const resets = new KnowledgeResetRepository(client as unknown as Pool, bodies);
+      const archives = new KnowledgeArchiveRepository(client as unknown as Pool, bodies);
       await client.query("SET CONSTRAINTS ALL DEFERRED");
       await client.query("SET LOCAL session_replication_role=replica");
       await client.query(
@@ -244,12 +246,12 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
         public_path: null,
         archived_at: null,
       }]);
-      const versions = await client.query<{ version_number: number; body_markdown: string; actor_subject: string }>(
+      const versions = await client.query<{ version_number: number; body_markdown: null; actor_subject: string }>(
         "SELECT version_number,body_markdown,actor_subject FROM knowledge_page_versions",
       );
       expect(versions.rows).toEqual([{
         version_number: 1,
-        body_markdown: baseline.root_guide.body_markdown,
+        body_markdown: null,
         actor_subject: baseline.root_guide.actor_subject,
       }]);
       expect((await client.query("SELECT count(*)::int AS total FROM assets")).rows[0]?.total).toBe(0);
@@ -284,7 +286,7 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
     await plain.connect();
     await plain.query("BEGIN");
     try {
-      const resets = new KnowledgeResetRepository(plain as unknown as Pool);
+      const resets = new KnowledgeResetRepository(plain as unknown as Pool, bodies);
       const intentId = randomUUID();
       await plain.query(
         `INSERT INTO knowledge_export_intents(

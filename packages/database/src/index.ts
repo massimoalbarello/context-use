@@ -1,4 +1,5 @@
 export { createPool } from "./pool.ts";
+export { runTemplateCommand } from "./template-command.ts";
 export {
   assertMarkdownObject,
   mapConcurrently,
@@ -8,7 +9,6 @@ export {
 } from "./documents.ts";
 export {
   DocumentMaintenanceRepository,
-  type LegacyKnowledgeRevision,
   type PublishedProjectionPage,
   type PublicProjectionSnapshot,
 } from "./document-maintenance.ts";

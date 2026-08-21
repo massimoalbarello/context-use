@@ -21,6 +21,30 @@ describeDatabase("PostgreSQL security roles", () => {
         [randomUUID(), path, title, `Fixtures under ${path}.`],
       );
     }
+    if (!(await admin.query("SELECT 1 FROM knowledge_pages WHERE current_path='agents'")).rowCount) {
+      const pageId = randomUUID();
+      const versionId = randomUUID();
+      await admin.query("BEGIN");
+      await admin.query("SET CONSTRAINTS ALL DEFERRED");
+      await admin.query(
+        `INSERT INTO knowledge_pages(id,current_path,current_version_id,search_vector)
+         VALUES ($1,'agents',$2,page_search_vector('agents','AGENTS.md','Test root guide.','Test'))`,
+        [pageId, versionId],
+      );
+      await admin.query(
+        `INSERT INTO hypermedia_document_revisions(
+           id,document_id,revision_number,body_object_key,body_size_bytes,body_content_hash
+         ) VALUES ($1::uuid,$2::uuid,1,'documents/private/'||$1::text||'.md',4,$3)`,
+        [versionId, pageId, "532eaabd9574880dbf76b9b8cc00832c20a6ec113d6822995505d7a6e0f345e2"],
+      );
+      await admin.query(
+        `INSERT INTO knowledge_page_versions(
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
+         ) VALUES ($1,$2,1,'agents','AGENTS.md','Test root guide.','Create test guide','dashboard','context-use-template/default')`,
+        [versionId, pageId],
+      );
+      await admin.query("COMMIT");
+    }
   });
 
   afterAll(async () => {
@@ -328,7 +352,7 @@ describeDatabase("PostgreSQL security roles", () => {
   });
 
   test("clearing knowledge is a dashboard-only capability inside the restore boundary", async () => {
-    const clear = "clear_knowledge(uuid,text,text,text,text,text,text,text,text,text)";
+    const clear = "clear_knowledge(uuid,text,text,uuid,text,integer,text,text,text,text,text,text,text,text)";
     for (const role of ["context_use_auth", "context_use_confirmation", "context_use_mcp", "context_use_public", "context_use_backup"]) {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed", [role, clear],
@@ -707,7 +731,7 @@ describeDatabase("PostgreSQL security roles", () => {
     }
   });
 
-  test("the private guide defines optional owner context and page-backed skill discovery", async () => {
+  test("the private guide body is represented only by immutable object metadata", async () => {
     expect((await admin.query(
       "SELECT 1 FROM knowledge_pages WHERE current_path='about/intro'",
     )).rowCount).toBe(0);
@@ -717,13 +741,11 @@ describeDatabase("PostgreSQL security roles", () => {
        JOIN knowledge_page_versions version ON version.id=page.current_version_id
        WHERE page.current_path='agents' AND page.archived_at IS NULL
          AND version.title='AGENTS.md'
-         AND version.body_markdown LIKE '%Create %about/intro%if it is missing%'
-         AND version.body_markdown LIKE '%ask them to review and publish %about/intro%'
-         AND version.body_markdown LIKE '%Every directory is a first-class, linkable resource%'
-         AND version.body_markdown LIKE '%Do not create or manually maintain %index%pages%'
-         AND version.body_markdown LIKE '%Local guides are optional%'
-         AND version.body_markdown LIKE '%skills/<skill-name>%'
-         AND version.body_markdown LIKE '%complete standard %SKILL.md%'`,
+         AND version.body_markdown IS NULL
+         AND EXISTS (
+           SELECT 1 FROM hypermedia_document_revisions object
+           WHERE object.id=version.id AND object.document_id=page.id
+         )`,
     )).rowCount).toBe(1);
   });
 
@@ -819,7 +841,7 @@ describeDatabase("PostgreSQL security roles", () => {
     for (const [relation, columns] of [
       ["knowledge_directories", ["id", "current_path"]],
       ["knowledge_pages", ["id", "published_version_id", "public_path", "archived_at", "created_at", "updated_at"]],
-      ["knowledge_page_versions", ["id", "page_id", "version_number", "path", "title", "summary", "body_markdown", "created_at"]],
+      ["knowledge_page_versions", ["id", "page_id", "version_number", "path", "title", "summary", "created_at"]],
     ] as const) {
       for (const column of columns) {
         expect((await admin.query<{ allowed: boolean }>(
@@ -853,6 +875,15 @@ describeDatabase("PostgreSQL security roles", () => {
       expect((await admin.query<{ allowed: boolean }>(
         "SELECT has_table_privilege('context_use_public',$1,'SELECT') AS allowed",
         [relation],
+      )).rows[0]?.allowed).toBe(false);
+    }
+  });
+
+  test("ordinary knowledge writers cannot put Markdown back into PostgreSQL", async () => {
+    for (const role of ["context_use_dashboard", "context_use_mcp"]) {
+      expect((await admin.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege($1,'knowledge_page_versions','body_markdown','INSERT') AS allowed",
+        [role],
       )).rows[0]?.allowed).toBe(false);
     }
   });
@@ -1040,13 +1071,22 @@ describeDatabase("PostgreSQL security roles", () => {
         [pageId, versionId],
       );
       await admin.query(
+        `INSERT INTO hypermedia_document_revisions(
+           id,document_id,revision_number,body_object_key,body_size_bytes,body_content_hash
+         ) VALUES (
+           $1::uuid,$2::uuid,1,'documents/private/'||$1::text||'.md',
+           octet_length($3),encode(digest(convert_to($3,'UTF8'),'sha256'),'hex')
+         )`,
+        [versionId, pageId, "Run externally."],
+      );
+      await admin.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,
+           id,page_id,version_number,path,title,summary,
            commit_message,actor_kind,actor_subject
          ) VALUES (
            $1,$2,1,'automations/external-instructions','External automation instructions',
            'Instructions followed by an external automation harness.',
-           'Run externally.','Create external automation instructions','mcp','role-test'
+           'Create external automation instructions','mcp','role-test'
          )`,
         [versionId, pageId],
       );

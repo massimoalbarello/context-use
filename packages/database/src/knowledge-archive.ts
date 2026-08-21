@@ -116,7 +116,7 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
 export class KnowledgeArchiveRepository {
   constructor(
     private readonly dashboardPool: Pool,
-    private readonly bodies?: MarkdownObjectStore,
+    private readonly bodies: MarkdownObjectStore,
   ) {}
 
   async importAvailable(): Promise<boolean> {
@@ -160,9 +160,9 @@ export class KnowledgeArchiveRepository {
          FROM knowledge_pages
          ORDER BY current_path,id`,
       );
-      const pageVersions = await client.query<Omit<RestorableKnowledgePageVersion, "body_markdown"> & MarkdownObjectMetadata & { legacy_body_markdown: string | null }>(
+      const pageVersions = await client.query<Omit<RestorableKnowledgePageVersion, "body_markdown"> & MarkdownObjectMetadata>(
         `SELECT version.id,version.page_id,version.version_number,version.path,
-           version.title,version.summary,version.body_markdown AS legacy_body_markdown,
+           version.title,version.summary,
            object.body_object_key,object.body_size_bytes,object.body_content_hash,
            version.commit_message,version.actor_kind,version.actor_subject,
            version.created_at::text
@@ -202,15 +202,12 @@ export class KnowledgeArchiveRepository {
       };
     });
     const pageVersions = await mapConcurrently(snapshot.page_versions, 8, async (version) => {
-      const {
-        legacy_body_markdown,body_object_key,body_size_bytes,body_content_hash,...metadata
-      } = version;
-      const body_markdown = legacy_body_markdown ?? await this.bodies?.read({
+      const { body_object_key,body_size_bytes,body_content_hash,...metadata } = version;
+      const body_markdown = await this.bodies.read({
         body_object_key,
         body_size_bytes: Number(body_size_bytes),
         body_content_hash,
       });
-      if (body_markdown === undefined) throw new Error("Knowledge document object store is required");
       return { ...metadata, body_markdown };
     });
     return { ...snapshot, page_versions: pageVersions };
@@ -284,6 +281,11 @@ export class KnowledgeArchiveRepository {
   }
 
   async restoreImportIntent(id: string, principal: KnowledgeImportPrincipal): Promise<Record<string, number>> {
+    const pending = await this.getImportIntent(id);
+    if (!pending) throw new Error("Knowledge import intent not found");
+    await mapConcurrently(pending.archive.page_versions, 8, async (version) => {
+      await this.bodies.write(version.id, version.body_markdown);
+    });
     return transaction(this.dashboardPool, async (client) => {
       const intent = await client.query<{ archive: RestorableKnowledgeRecords }>(
         "SELECT archive FROM knowledge_import_intents WHERE id=$1",

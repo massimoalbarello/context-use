@@ -56,8 +56,6 @@ services:
       <<: *role-passwords
       MIGRATOR_DATABASE_URL: postgres://postgres:postgres@postgres:5432/context_use
       DATABASE_URL: postgres://context_use_dashboard:development-only@postgres:5432/context_use
-      CONTEXT_USE_TEMPLATE_INSTALL: ${CONTEXT_USE_TEMPLATE_INSTALL:-default}
-      CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT: ${CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT:-}
     command: ["bun", "run", "db:initialize"]
     restart: "no"
 
@@ -91,6 +89,29 @@ services:
       - asset-data:/app/data/assets
       - storage-socket:/run/context-use-storage
     restart: unless-stopped
+
+  template-install:
+    <<: *code-service
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      storage: { condition: service_started }
+    environment:
+      DATABASE_URL: postgres://context_use_dashboard:development-only@postgres:5432/context_use
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_DASHBOARD_TOKEN: development-storage-dashboard-token
+      CONTEXT_USE_TEMPLATE_INSTALL: ${CONTEXT_USE_TEMPLATE_INSTALL:-default}
+      CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT: ${CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT:-}
+    command:
+      - sh
+      - -ec
+      - >-
+        until [ -S /run/context-use-storage/storage.sock ]; do sleep 0.1; done;
+        bun apps/server/src/template-command.ts apply "$${CONTEXT_USE_TEMPLATE_INSTALL}"
+    volumes:
+      - .:/app
+      - dependencies:/app/node_modules
+      - storage-socket:/run/context-use-storage:ro
+    restart: "no"
 
   auth:
     <<: *code-service
@@ -132,6 +153,7 @@ services:
       auth: { condition: service_started }
       confirmation: { condition: service_started }
       storage: { condition: service_started }
+      template-install: { condition: service_completed_successfully }
     environment:
       <<: *common
       SERVICE_MODE: dashboard

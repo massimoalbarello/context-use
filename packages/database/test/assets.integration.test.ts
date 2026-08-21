@@ -6,6 +6,7 @@ import {
   PageRepository,
 } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
+import { MemoryMarkdownStore } from "./memory-markdown-store.ts";
 
 const databaseUrl = await disposableDatabaseUrl();
 const mcpDatabaseUrl = process.env.MCP_DATABASE_URL;
@@ -16,7 +17,7 @@ describeDatabase("hierarchical asset metadata", () => {
   const pool = new Pool({ connectionString: databaseUrl });
   const assets = new AssetRepository(pool);
   const directories = new DirectoryRepository(pool);
-  const pages = new PageRepository(pool);
+  const pages = new PageRepository(pool, new MemoryMarkdownStore());
   const createdIds: string[] = [];
   const createdPageIds: string[] = [];
   const createdDirectoryIds: string[] = [];

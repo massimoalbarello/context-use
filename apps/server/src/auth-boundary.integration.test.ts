@@ -7,6 +7,7 @@ import { Client, Pool } from "pg";
 import {
   AssetRepository,
   DocumentMaintenanceRepository,
+  markdownObjectMetadata,
   StoragePublicationRepository,
 } from "@context-use/database";
 import { disposableDatabaseUrl } from "@context-use/database/disposable-database";
@@ -321,7 +322,6 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     const publicVersionId = crypto.randomUUID();
     const privatePageId = crypto.randomUUID();
     const privateVersionId = crypto.randomUUID();
-    const fixturePageIds = new Set<string>([publicPageId, privatePageId]);
     const parentDirectoryId = crypto.randomUUID();
     const nestedDirectoryId = crypto.randomUUID();
     const parentPath = `tests/${suffix}`;
@@ -350,21 +350,44 @@ describeApplication("HTTP credential and OAuth boundary", () => {
         [publicPageId, publicPath, publicVersionId, privatePageId, privatePath, privateVersionId],
       );
       await client.query(
+        `INSERT INTO hypermedia_document_revisions(
+           id,document_id,revision_number,body_object_key,body_size_bytes,body_content_hash
+         ) VALUES ($1,$2,1,$3,$4,$5),($6,$7,1,$8,$9,$10)`,
+        [
+          publicVersionId, publicPageId,
+          markdownObjectMetadata(publicVersionId, "PUBLIC-NESTED-CANARY").body_object_key,
+          markdownObjectMetadata(publicVersionId, "PUBLIC-NESTED-CANARY").body_size_bytes,
+          markdownObjectMetadata(publicVersionId, "PUBLIC-NESTED-CANARY").body_content_hash,
+          privateVersionId, privatePageId,
+          markdownObjectMetadata(privateVersionId, "PRIVATE-NESTED-CANARY").body_object_key,
+          markdownObjectMetadata(privateVersionId, "PRIVATE-NESTED-CANARY").body_size_bytes,
+          markdownObjectMetadata(privateVersionId, "PRIVATE-NESTED-CANARY").body_content_hash,
+        ],
+      );
+      await client.query(
         `INSERT INTO knowledge_page_versions(
-           id,page_id,version_number,path,title,summary,body_markdown,commit_message,actor_kind,actor_subject
+           id,page_id,version_number,path,title,summary,commit_message,actor_kind,actor_subject
          ) VALUES
-           ($1,$2,1,$3,'Nested public page','PUBLIC-SUMMARY-CANARY','PUBLIC-NESTED-CANARY','Create public fixture','dashboard','test'),
-           ($4,$5,1,$6,'PRIVATE-TITLE-CANARY','PRIVATE-SUMMARY-CANARY','PRIVATE-NESTED-CANARY','Create private fixture','dashboard','test')`,
+           ($1,$2,1,$3,'Nested public page','PUBLIC-SUMMARY-CANARY','Create public fixture','dashboard','test'),
+           ($4,$5,1,$6,'PRIVATE-TITLE-CANARY','PRIVATE-SUMMARY-CANARY','Create private fixture','dashboard','test')`,
         [publicVersionId, publicPageId, publicPath, privateVersionId, privatePageId, privatePath],
       );
       await client.query("COMMIT");
+      for (const [versionId, body] of [
+        [publicVersionId, "PUBLIC-NESTED-CANARY"],
+        [privateVersionId, "PRIVATE-NESTED-CANARY"],
+      ] as const) {
+        const metadata = markdownObjectMetadata(versionId, body);
+        await testStorage!.write({
+          id: versionId,
+          objectKey: metadata.body_object_key,
+          filename: `${versionId}.md`,
+          contentType: "text/markdown; charset=utf-8",
+          sizeBytes: metadata.body_size_bytes,
+          contentHash: metadata.body_content_hash,
+        }, new Blob([body]).stream());
+      }
       const scopedMaintenance = {
-        async legacyKnowledgeRevisions() {
-          return (await testDocumentMaintenance!.legacyKnowledgeRevisions())
-            .filter((revision) => fixturePageIds.has(revision.page_id));
-        },
-        completeLegacyRevision: testDocumentMaintenance!.completeLegacyRevision
-          .bind(testDocumentMaintenance),
         async projectionSnapshot() {
           const snapshot = await testDocumentMaintenance!.projectionSnapshot();
           return {

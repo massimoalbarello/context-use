@@ -113,9 +113,29 @@ services:
       DB_CONFIRMATION_PASSWORD: ${DB_CONFIRMATION_PASSWORD}
       DB_STORAGE_PASSWORD: ${DB_STORAGE_PASSWORD}
       DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD}
-      CONTEXT_USE_TEMPLATE_INSTALL: ${CONTEXT_USE_TEMPLATE_INSTALL:-}
     command: ["bun", "packages/database/src/initialize.ts"]
     networks: [migration_data]
+
+  template-install:
+    <<: *locked-service
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+      storage: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://context_use_dashboard:${DB_DASHBOARD_PASSWORD}@postgres:5432/context_use
+      STORAGE_SOCKET_PATH: /run/context-use-storage/storage.sock
+      STORAGE_DASHBOARD_TOKEN: ${STORAGE_DASHBOARD_TOKEN}
+      CONTEXT_USE_TEMPLATE_INSTALL: ${CONTEXT_USE_TEMPLATE_INSTALL:-}
+    command:
+      - sh
+      - -ec
+      - >-
+        if [ -n "$${CONTEXT_USE_TEMPLATE_INSTALL}" ]; then
+          exec bun apps/server/src/template-command.ts apply "$${CONTEXT_USE_TEMPLATE_INSTALL}";
+        fi
+    volumes: [storage-socket:/run/context-use-storage:ro]
+    networks: [dashboard_data]
 
   nango-db-init:
     image: ${BACKUP_IMAGE}
@@ -492,6 +512,7 @@ services:
       auth: { condition: service_healthy }
       confirmation: { condition: service_healthy }
       storage: { condition: service_healthy }
+      template-install: { condition: service_completed_successfully }
     environment:
       NODE_ENV: production
       SERVICE_MODE: dashboard

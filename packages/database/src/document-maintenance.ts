@@ -1,14 +1,6 @@
 import type { Pool } from "pg";
 import type { MarkdownObjectMetadata } from "./documents.ts";
 
-export type LegacyKnowledgeRevision = {
-  id: string;
-  page_id: string;
-  version_number: number;
-  body_markdown: string;
-  created_at: Date | string;
-};
-
 export type PublishedProjectionPage = MarkdownObjectMetadata & {
   page_id: string;
   version_id: string;
@@ -29,69 +21,6 @@ export type PublicProjectionSnapshot = {
 
 export class DocumentMaintenanceRepository {
   constructor(private readonly pool: Pool) {}
-
-  async legacyKnowledgeRevisions(): Promise<LegacyKnowledgeRevision[]> {
-    const result = await this.pool.query<LegacyKnowledgeRevision>(
-      `SELECT id,page_id,version_number,body_markdown,created_at
-       FROM knowledge_page_versions
-       WHERE body_markdown IS NOT NULL
-       ORDER BY page_id,version_number`,
-    );
-    return result.rows;
-  }
-
-  async completeLegacyRevision(
-    revision: LegacyKnowledgeRevision,
-    metadata: MarkdownObjectMetadata,
-  ): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query(
-        `INSERT INTO hypermedia_documents(id,authority,created_at,updated_at)
-         SELECT page.id,'knowledge',page.created_at,page.updated_at
-         FROM knowledge_pages page WHERE page.id=$1
-         ON CONFLICT (id) DO NOTHING`,
-        [revision.page_id],
-      );
-      await client.query(
-        `INSERT INTO hypermedia_document_revisions(
-           id,document_id,revision_number,body_object_key,body_size_bytes,
-           body_content_hash,created_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (id) DO NOTHING`,
-        [revision.id, revision.page_id, revision.version_number,
-          metadata.body_object_key, metadata.body_size_bytes,
-          metadata.body_content_hash, revision.created_at],
-      );
-      const registered = await client.query<MarkdownObjectMetadata>(
-        `SELECT body_object_key,body_size_bytes,body_content_hash
-         FROM hypermedia_document_revisions
-         WHERE id=$1 AND document_id=$2 AND revision_number=$3`,
-        [revision.id, revision.page_id, revision.version_number],
-      );
-      const actual = registered.rows[0];
-      if (!actual
-          || actual.body_object_key !== metadata.body_object_key
-          || Number(actual.body_size_bytes) !== metadata.body_size_bytes
-          || actual.body_content_hash !== metadata.body_content_hash) {
-        throw new Error("Knowledge revision metadata failed migration verification");
-      }
-      const cleared = await client.query(
-        `UPDATE knowledge_page_versions
-         SET body_markdown=NULL
-         WHERE id=$1 AND body_markdown=$2`,
-        [revision.id, revision.body_markdown],
-      );
-      if (cleared.rowCount !== 1) throw new Error("Knowledge revision changed during object migration");
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
 
   async projectionSnapshot(): Promise<PublicProjectionSnapshot> {
     const client = await this.pool.connect();

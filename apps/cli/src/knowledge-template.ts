@@ -13,7 +13,7 @@ export function knowledgeTemplateCommands(
   return [
     "set -euo pipefail",
     "cd /opt/context-use/deploy",
-    `${compose} --profile migration run --rm migrate bun packages/database/src/template-command.ts ${action} ${templateName}${forceTemplate ? " --force-template" : ""}`,
+    `${compose} exec -T app bun apps/server/src/template-command.ts ${action} ${templateName}${forceTemplate ? " --force-template" : ""}`,
   ];
 }
 

@@ -5,13 +5,14 @@ import {
   VersionConflictError,
 } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
+import { MemoryMarkdownStore } from "./memory-markdown-store.ts";
 
 const databaseUrl = await disposableDatabaseUrl();
 const describeDatabase = databaseUrl ? describe : describe.skip;
 
 describeDatabase("immutable page history", () => {
   const pool = new Pool({ connectionString: databaseUrl });
-  const pages = new PageRepository(pool);
+  const pages = new PageRepository(pool, new MemoryMarkdownStore());
   const createdIds: string[] = [];
   const actor = { kind: "dashboard" as const, subject: "integration-test-owner" };
 

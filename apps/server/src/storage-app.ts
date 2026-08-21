@@ -5,7 +5,6 @@ import {
   AssetRepository,
   DocumentMaintenanceRepository,
   createPool,
-  markdownObjectMetadata,
   StoragePublicationRepository,
 } from "@context-use/database";
 import { AssetPath } from "@context-use/shared";
@@ -400,30 +399,9 @@ let maintenanceRunning = false;
 export async function reconcileDocumentObjects(input: {
   storage: ObjectStorageBackend;
   maintenance: Pick<DocumentMaintenanceRepository,
-    "legacyKnowledgeRevisions" | "completeLegacyRevision" |
     "projectionSnapshot" | "recordPublishedArtifact">;
 }): Promise<void> {
   const { storage, maintenance } = input;
-  for (const revision of await maintenance.legacyKnowledgeRevisions()) {
-    const metadata = markdownObjectMetadata(revision.id, revision.body_markdown);
-    if (!await storage.exists(metadata.body_object_key)) {
-      await storage.write({
-        id: revision.id,
-        objectKey: metadata.body_object_key,
-        filename: `${revision.id}.md`,
-        contentType: "text/markdown; charset=utf-8",
-        sizeBytes: metadata.body_size_bytes,
-        contentHash: metadata.body_content_hash,
-      }, new Blob([revision.body_markdown]).stream());
-    }
-    if (!await storage.verify(
-      metadata.body_object_key,
-      metadata.body_size_bytes,
-      metadata.body_content_hash,
-    )) throw new Error(`Knowledge revision ${revision.id} failed migration verification`);
-    await maintenance.completeLegacyRevision(revision, metadata);
-  }
-
   const snapshot = await maintenance.projectionSnapshot();
   for (const page of snapshot.pages) {
     if (!await storage.verify(

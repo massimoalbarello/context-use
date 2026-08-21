@@ -9,16 +9,18 @@ import {
   PageRepository,
 } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
+import { MemoryMarkdownStore } from "./memory-markdown-store.ts";
 
 const databaseUrl = await disposableDatabaseUrl();
 const describeDatabase = databaseUrl ? describe : describe.skip;
 
 describeDatabase("passkey-bound current knowledge exports", () => {
   const pool = new Pool({ connectionString: databaseUrl, max: 1 });
-  const pages = new PageRepository(pool);
+  const bodies = new MemoryMarkdownStore();
+  const pages = new PageRepository(pool, bodies);
   const assets = new AssetRepository(pool);
-  const exports = new KnowledgeExportRepository(pool);
-  const archives = new KnowledgeArchiveRepository(pool);
+  const exports = new KnowledgeExportRepository(pool, bodies);
+  const archives = new KnowledgeArchiveRepository(pool, bodies);
   const confirmations = new ConfirmationRepository(pool);
   const actor = { kind: "dashboard" as const, subject: "knowledge-export-test" };
   let fixtureRoot = "";

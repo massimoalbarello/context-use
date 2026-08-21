@@ -58,20 +58,19 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
 export class KnowledgeExportRepository {
   constructor(
     private readonly dashboardPool: Pool,
-    private readonly bodies?: MarkdownObjectStore,
+    private readonly bodies: MarkdownObjectStore,
   ) {}
 
-  private async hydratePages<T extends Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata & {
-    legacy_body_markdown: string | null;
-  }>(pages: T[]): Promise<KnowledgeExportPage[]> {
+  private async hydratePages<T extends Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata>(
+    pages: T[],
+  ): Promise<KnowledgeExportPage[]> {
     return mapConcurrently(pages, 8, async (page) => {
-      const { legacy_body_markdown, body_object_key, body_size_bytes, body_content_hash, ...metadata } = page;
-      const body_markdown = legacy_body_markdown ?? await this.bodies?.read({
+      const { body_object_key, body_size_bytes, body_content_hash, ...metadata } = page;
+      const body_markdown = await this.bodies.read({
         body_object_key,
         body_size_bytes: Number(body_size_bytes),
         body_content_hash,
       });
-      if (body_markdown === undefined) throw new Error("Knowledge document object store is required");
       return { ...metadata, body_markdown };
     });
   }
@@ -198,9 +197,9 @@ export class KnowledgeExportRepository {
          FROM knowledge_directories
          ORDER BY current_path,id`,
       );
-      const pages = await client.query<Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata & { legacy_body_markdown: string | null }>(
+      const pages = await client.query<Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata>(
         `SELECT page.id,version.path AS current_path,version.title,version.summary,
-           version.body_markdown AS legacy_body_markdown,object.body_object_key,
+           object.body_object_key,
            object.body_size_bytes,object.body_content_hash
          FROM knowledge_pages page
          JOIN knowledge_page_versions version

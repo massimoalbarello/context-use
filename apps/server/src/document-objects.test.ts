@@ -20,7 +20,7 @@ afterEach(async () => {
 });
 
 describe("knowledge document object reconciliation", () => {
-  test("migrates a queued body before materializing its public-safe artifact", async () => {
+  test("materializes a public-safe artifact from an object-backed revision", async () => {
     const root = await mkdtemp(join(tmpdir(), "context-use-documents-"));
     temporaryRoots.push(root);
     const storage = new FilesystemStorage(root);
@@ -28,8 +28,6 @@ describe("knowledge document object reconciliation", () => {
     const versionId = "22222222-2222-4222-8222-222222222222";
     const privateTargetId = "33333333-3333-4333-8333-333333333333";
     const body = `Version one with [private context](context-use://page/${privateTargetId}).`;
-    let queued = true;
-    let migrated = false;
     let artifact: {
       objectKey: string;
       sizeBytes: number;
@@ -38,7 +36,7 @@ describe("knowledge document object reconciliation", () => {
     const privateMetadata = markdownObjectMetadata(versionId, body);
     const snapshot = (): PublicProjectionSnapshot => ({
       generation: 7,
-      pages: migrated && !artifact ? [{
+      pages: !artifact ? [{
         page_id: pageId,
         version_id: versionId,
         source_path: "about/public",
@@ -52,29 +50,16 @@ describe("knowledge document object reconciliation", () => {
       assetTargets: [],
       directoryTargets: [],
     });
+    await storage.write({
+      id: versionId,
+      objectKey: privateMetadata.body_object_key,
+      filename: `${versionId}.md`,
+      contentType: "text/markdown; charset=utf-8",
+      sizeBytes: privateMetadata.body_size_bytes,
+      contentHash: privateMetadata.body_content_hash,
+    }, new Blob([body]).stream());
     const maintenance: Pick<DocumentMaintenanceRepository,
-      "legacyKnowledgeRevisions" | "completeLegacyRevision" |
       "projectionSnapshot" | "recordPublishedArtifact"> = {
-      async legacyKnowledgeRevisions() {
-        return queued ? [{
-          id: versionId,
-          page_id: pageId,
-          version_number: 1,
-          body_markdown: body,
-          created_at: "2026-08-21T10:00:00.000Z",
-        }] : [];
-      },
-      async completeLegacyRevision(revision, metadata) {
-        expect(revision.id).toBe(versionId);
-        expect(metadata).toEqual(privateMetadata);
-        expect(await storage.verify(
-          metadata.body_object_key,
-          metadata.body_size_bytes,
-          metadata.body_content_hash,
-        )).toBe(true);
-        queued = false;
-        migrated = true;
-      },
       async projectionSnapshot() {
         return snapshot();
       },
@@ -92,7 +77,6 @@ describe("knowledge document object reconciliation", () => {
 
     await reconcileDocumentObjects({ storage, maintenance });
 
-    expect(queued).toBe(false);
     expect(artifact).not.toBeNull();
     expect(await new Response(await storage.read(artifact!.objectKey)).text())
       .toBe("Version one with private context.");

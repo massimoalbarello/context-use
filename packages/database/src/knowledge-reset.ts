@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
+import type { MarkdownObjectStore } from "./documents.ts";
 import type { KnowledgeTemplateBaseline } from "./knowledge-templates.ts";
 
 export type KnowledgeResetPrincipal = { ownerUserId: string; sessionId: string };
@@ -22,7 +24,10 @@ export type ClearableKnowledgeSummary = {
 };
 
 export class KnowledgeResetRepository {
-  constructor(private readonly dashboardPool: Pool) {}
+  constructor(
+    private readonly dashboardPool: Pool,
+    private readonly bodies: MarkdownObjectStore,
+  ) {}
 
   // Everything the warning has to be honest about before the owner commits.
   async summary(): Promise<ClearableKnowledgeSummary> {
@@ -60,12 +65,18 @@ export class KnowledgeResetRepository {
     principal: KnowledgeResetPrincipal,
     baseline: KnowledgeTemplateBaseline,
   ): Promise<ClearedKnowledgeCounts> {
+    const revisionId = randomUUID();
+    const object = await this.bodies.write(revisionId, baseline.root_guide.body_markdown);
     const result = await this.dashboardPool.query<{ result: ClearedKnowledgeCounts }>(
-      "SELECT clear_knowledge($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) AS result",
+      "SELECT clear_knowledge($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) AS result",
       [
         intentId,
         principal.ownerUserId,
         principal.sessionId,
+        revisionId,
+        object.body_object_key,
+        object.body_size_bytes,
+        object.body_content_hash,
         baseline.root_directory.title,
         baseline.root_directory.summary,
         baseline.root_guide.title,
