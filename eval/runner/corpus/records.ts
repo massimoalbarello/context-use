@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { segmentConversationMarkdown } from "../../../packages/shared/src/conversation-working-sets.ts";
+import { segmentConversationMarkdown } from "../../../apps/server/src/conversation-working-sets.ts";
 import type {
   ReadSourceRecordsInput,
   ReadSourceRecordsResult,

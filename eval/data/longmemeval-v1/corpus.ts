@@ -7,7 +7,7 @@ import {
   type Corpus,
 } from "../../runner/corpus/types.ts";
 import type { LongMemEvalCase } from "./dataset.ts";
-import { CONVERSATION_TURN_MARKER } from "../../../packages/shared/src/conversation-working-sets.ts";
+import { CONVERSATION_TURN_MARKER } from "../../../apps/server/src/conversation-working-sets.ts";
 
 export const LONGMEMEVAL_CASE_FILE = "longmemeval-case.json";
 

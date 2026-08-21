@@ -9,7 +9,7 @@
  * page order. Nothing above this layer needs to know which.
  */
 
-import { CONVERSATION_SEGMENT_TARGET_BYTES } from "../../../packages/shared/src/conversation-working-sets.ts";
+import { CONVERSATION_SEGMENT_TARGET_BYTES } from "../../../apps/server/src/conversation-working-sets.ts";
 
 export const ITEM_TYPES = [
   // amara-life-v1 — raw activity

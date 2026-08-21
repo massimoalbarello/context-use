@@ -4,7 +4,7 @@ import {
   MANAGED_FUNCTIONS,
   MANAGED_INTEGRATIONS,
 } from "../../../nango-integrations/catalog.ts";
-import { segmentConversationMarkdown } from "@context-use/shared";
+import { segmentConversationMarkdown } from "./conversation-working-sets.ts";
 
 const connectionSchema = z.object({
   id: z.number().int().positive(),
