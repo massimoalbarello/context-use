@@ -321,6 +321,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
     const publicVersionId = crypto.randomUUID();
     const privatePageId = crypto.randomUUID();
     const privateVersionId = crypto.randomUUID();
+    const fixturePageIds = new Set<string>([publicPageId, privatePageId]);
     const parentDirectoryId = crypto.randomUUID();
     const nestedDirectoryId = crypto.randomUUID();
     const parentPath = `tests/${suffix}`;
@@ -360,7 +361,7 @@ describeApplication("HTTP credential and OAuth boundary", () => {
       const scopedMaintenance = {
         async legacyKnowledgeRevisions() {
           return (await testDocumentMaintenance!.legacyKnowledgeRevisions())
-            .filter((revision) => [publicPageId, privatePageId].includes(revision.page_id));
+            .filter((revision) => fixturePageIds.has(revision.page_id));
         },
         completeLegacyRevision: testDocumentMaintenance!.completeLegacyRevision
           .bind(testDocumentMaintenance),
