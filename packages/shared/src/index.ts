@@ -2,12 +2,12 @@ import { z } from "zod";
 
 export const PAGE_MARKDOWN_BODY_DESCRIPTION = [
   "Markdown page body.",
-  "Use ## or ### headings to create linkable sections; link one with [[page/path#heading-slug|label]].",
+  "Link to any document with [Label](context-use://document/<uuid>); append #heading-slug to link to a section.",
   "Heading slugs are lowercase words joined by hyphens (## Next Steps becomes #next-steps); repeated headings add -2, -3, and so on.",
-  "Embed an asset with ![Alt](context-use://asset/<uuid>).",
+  "Embed an image or video document with ![Alt](context-use://document/<uuid>).",
   "Optional safe image or video attributes immediately follow it: {size=small|medium|large|full align=left|center|right shape=auto|square|portrait|landscape layout=block|half|third}.",
   "Use layout=half or layout=third on consecutive images or videos for responsive columns.",
-  "Example: ![Portrait](context-use://asset/<uuid>){size=medium align=center shape=square}.",
+  "Example: ![Portrait](context-use://document/<uuid>){size=medium align=center shape=square}.",
   "Images and videos with enforced shapes crop with object-fit: cover; assets must be published independently before public pages can render them.",
 ].join(" ");
 

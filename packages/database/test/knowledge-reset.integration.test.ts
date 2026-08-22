@@ -54,13 +54,16 @@ describeDatabase("passkey-confirmed knowledge base reset", () => {
       await client.query(
         `TRUNCATE TABLE confirmation_challenges,publication_intents,knowledge_export_intents,
            page_deletion_intents,published_page_artifacts,
-           public_projection_state,public_knowledge_settings,source_records,
+           public_projection_state,public_knowledge_settings,public_route_aliases,
+           public_resources,knowledge_settings,document_links,
+           source_record_search_chunks,source_records,
            hypermedia_document_revisions,hypermedia_documents,knowledge_asset_links,
            knowledge_page_changes,knowledge_page_versions,knowledge_pages,assets,
            knowledge_directories RESTART IDENTITY`,
       );
       await client.query("INSERT INTO public_projection_state(singleton) VALUES (true)");
       await client.query("INSERT INTO public_knowledge_settings(singleton) VALUES (true)");
+      await client.query("INSERT INTO knowledge_settings(singleton) VALUES (true)");
       await client.query("SET LOCAL session_replication_role=origin");
 
       const rootId = randomUUID();

@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import type { AssetRepository, DirectoryRepository, PageRepository } from "@context-use/database";
+import type {
+  AssetRepository,
+  DirectoryRepository,
+  KnowledgeSettingsRepository,
+  PageRepository,
+} from "@context-use/database";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { config } from "./config.ts";
 import { createMcpRequestHandler } from "./mcp.ts";
@@ -60,7 +65,12 @@ describe("MCP audience binding", () => {
       {} as DirectoryRepository,
       {} as AssetRepository,
     ] as const;
-    const knowledge = createMcpRequestHandler(...repositories);
+    const knowledge = createMcpRequestHandler(
+      ...repositories,
+      undefined,
+      undefined,
+      {} as KnowledgeSettingsRepository,
+    );
     const knowledgeToken = await accessToken(config.MCP_RESOURCE, privateKey);
     const wrongAudienceToken = await accessToken(`${config.MCP_RESOURCE}/retired`, privateKey);
 
@@ -95,6 +105,9 @@ describe("MCP audience binding", () => {
       {} as PageRepository,
       {} as DirectoryRepository,
       {} as AssetRepository,
+      undefined,
+      undefined,
+      {} as KnowledgeSettingsRepository,
     );
     const token = await accessToken(config.MCP_RESOURCE, privateKey);
     expect((await knowledge(toolListRequest(config.MCP_RESOURCE, token))).status).toBe(401);

@@ -1,9 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import type { AssetRepository, DirectoryRepository, PageRepository } from "@context-use/database";
+import type {
+  AssetRepository,
+  DirectoryRepository,
+  DocumentLinkRepository,
+  KnowledgeSettingsRepository,
+  PageRepository,
+  SourceRecordRepository,
+} from "@context-use/database";
 import { DirectoryNotEmptyError } from "@context-use/database";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { verifyAssetCapability } from "./mcp-asset-capability.ts";
-import { createGuidanceReceipt, verifyGuidanceReceipt } from "./mcp-guidance-receipt.ts";
+import {
+  createGuidanceReceipt,
+  verifyGuidanceReceipt,
+  verifyKnowledgeGuideReceipt,
+} from "./mcp-guidance-receipt.ts";
 import { createMcpServer } from "./mcp-server.ts";
 import { createStatelessMcpTransport } from "./mcp-transport.ts";
 import type { SourceRecordReader } from "./nango-records.ts";
@@ -27,6 +38,7 @@ async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body:
         tools?: Array<{
           name: string;
           description?: string;
+          annotations?: { readOnlyHint?: boolean };
           inputSchema?: { properties?: Record<string, { description?: string }> };
           outputSchema?: { properties?: Record<string, { description?: string }> };
         }>;
@@ -42,18 +54,40 @@ async function mcpRequest(serverOrPromise: McpServer | Promise<McpServer>, body:
   }
 }
 
+const DEFAULT_MCP_CONTEXT = { clientId: "mcp-client", sessionId: "mcp-session" };
+
 function serverWith(
   pages = {} as PageRepository,
   assets = {} as AssetRepository,
   directories = {} as DirectoryRepository,
   sourceRecords?: SourceRecordReader,
+  options: {
+    context?: { clientId: string; sessionId: string };
+    recordDocuments?: SourceRecordRepository;
+    knowledgeSettings?: KnowledgeSettingsRepository;
+    documentLinks?: DocumentLinkRepository;
+  } = {},
 ) {
+  const knowledgeSettings = options.knowledgeSettings ?? {
+    async globalGuide() {
+      return {
+        document_id: rootGuide.id,
+        current_revision_id: rootGuide.current_version_id,
+        revision_number: rootGuide.version_number,
+        title: rootGuide.title,
+        summary: "Test global guide.",
+      };
+    },
+  } as KnowledgeSettingsRepository;
   return createMcpServer(
-    { clientId: "mcp-client", sessionId: "mcp-session" },
+    options.context ?? DEFAULT_MCP_CONTEXT,
     pages,
     directories,
     assets,
     sourceRecords,
+    options.recordDocuments,
+    knowledgeSettings,
+    options.documentLinks,
   );
 }
 
@@ -81,7 +115,7 @@ function pagesWithGuidance(overrides: Record<string, unknown> = {}): PageReposit
   } as unknown as PageRepository;
 }
 
-const rootGuidanceReceipt = createGuidanceReceipt([rootGuide]);
+const rootGuidanceReceipt = createGuidanceReceipt([rootGuide], DEFAULT_MCP_CONTEXT);
 
 type PreparedChangeResult = {
   target_path: string;
@@ -115,7 +149,10 @@ describe("MCP knowledge tools", () => {
     expect(response.result?.instructions).toBe(
       "Use Context Use proactively when the user states a concrete durable fact, decision, "
         + "correction, relationship, plan, or completed activity about their life or work, "
-        + "even if they do not explicitly say “remember.”",
+        + "even if they do not explicitly say “remember.” Before the first knowledge mutation "
+        + "in an authenticated session, call begin_knowledge_session, read its guide, and reuse "
+        + "its receipt for targets without additional scoped guides. During the guidance "
+        + "transition, call prepare_change for a target where scoped guides still apply.",
     );
 
     const listed = await mcpRequest(serverWith(), {
@@ -125,13 +162,448 @@ describe("MCP knowledge tools", () => {
       params: {},
     });
     const prepare = listed.result?.tools?.find(({ name }) => name === "prepare_change");
-    expect(prepare?.description).toStartWith(
-      "Always call this before responding when the user states a concrete durable fact, decision, correction, "
-        + "relationship, plan, or completed activity, even if they did not ask you to remember or save it.",
-    );
-    expect(prepare?.description).toContain("Use an empty target path to read the root guide");
+    expect(prepare?.description).toStartWith("Transitional path-scoped guidance entry point");
+    expect(prepare?.description).toContain("scoped AGENTS.md guides still apply");
     expect(prepare?.description).toContain("omit it to reload every guide after context loss or compaction");
     expect(prepare?.description).toContain("Never store receipts in knowledge");
+  });
+
+  test("loads the exact global guide once and binds its receipt to the guide revision and MCP session", async () => {
+    const guideDocumentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const guideRevisionId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const guideMetadata = {
+      document_id: guideDocumentId,
+      current_revision_id: guideRevisionId,
+      revision_number: 7,
+      title: "Maintain the knowledge hypermedia",
+      summary: "How agents maintain this workspace.",
+    };
+    const pages = {
+      async metadataInDirectory() {
+        return [];
+      },
+      async version(documentId: string, version: number) {
+        expect([documentId, version]).toEqual([guideDocumentId, 7]);
+        return { id: guideRevisionId, body_markdown: "# Exact global guide\n\nRead all of me." };
+      },
+    } as unknown as PageRepository;
+    const knowledgeSettings = {
+      async globalGuide() {
+        return guideMetadata;
+      },
+    } as unknown as KnowledgeSettingsRepository;
+    const response = await mcpRequest(serverWith(
+      pages,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      { knowledgeSettings },
+    ), {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: { name: "begin_knowledge_session", arguments: {} },
+    });
+    const session = response.result?.structuredContent as {
+      document_id: string;
+      revision_id: string;
+      revision_number: number;
+      title: string;
+      summary: string;
+      body_markdown: string;
+      knowledge_session_receipt: string;
+    };
+    expect(session).toMatchObject({
+      document_id: guideDocumentId,
+      revision_id: guideRevisionId,
+      revision_number: 7,
+      title: "Maintain the knowledge hypermedia",
+      summary: "How agents maintain this workspace.",
+      body_markdown: "# Exact global guide\n\nRead all of me.",
+    });
+    expect(verifyKnowledgeGuideReceipt(session.knowledge_session_receipt, {
+      documentId: guideDocumentId,
+      revisionId: guideRevisionId,
+    }, { clientId: "mcp-client", sessionId: "mcp-session" })).toBe(true);
+  });
+
+  test("reuses a session receipt across unscoped targets and rejects it before writes in another session or after a guide change", async () => {
+    const guideDocumentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const originalRevisionId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    let currentRevisionId = originalRevisionId;
+    const knowledgeSettings = {
+      async globalGuide() {
+        return {
+          document_id: guideDocumentId,
+          current_revision_id: currentRevisionId,
+          revision_number: currentRevisionId === originalRevisionId ? 1 : 2,
+          title: "Guide",
+          summary: "Global guidance.",
+        };
+      },
+    } as unknown as KnowledgeSettingsRepository;
+    const writes: string[] = [];
+    const pages = {
+      async metadataInDirectory() {
+        return [];
+      },
+      async version() {
+        return { id: originalRevisionId, body_markdown: "# Guide" };
+      },
+      async guidesForPath() {
+        return [{
+          ...rootGuide,
+          id: guideDocumentId,
+          current_version_id: currentRevisionId,
+        }];
+      },
+      async create(input: { path: string }) {
+        writes.push(input.path);
+        return {
+          id: crypto.randomUUID(),
+          current_path: input.path,
+          current_version_id: crypto.randomUUID(),
+          version_number: 1,
+          title: "Created",
+          summary: "Created page.",
+          body_markdown: "Created.",
+          published_version_id: null,
+          published_version_number: null,
+          public_path: null,
+        };
+      },
+    } as unknown as PageRepository;
+    const begin = await mcpRequest(serverWith(
+      pages,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      { knowledgeSettings },
+    ), {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "begin_knowledge_session", arguments: {} },
+    });
+    const receipt = (begin.result?.structuredContent as { knowledge_session_receipt: string })
+      .knowledge_session_receipt;
+    const create = (path: string, context?: { clientId: string; sessionId: string }) => mcpRequest(
+      serverWith(
+        pages,
+        {} as AssetRepository,
+        {} as DirectoryRepository,
+        undefined,
+        { knowledgeSettings, ...(context ? { context } : {}) },
+      ),
+      {
+        jsonrpc: "2.0",
+        id: 4,
+        method: "tools/call",
+        params: {
+          name: "create_page",
+          arguments: {
+            path,
+            title: "Created",
+            summary: "Created page.",
+            body_markdown: "Created.",
+            commit_message: "Create page",
+            knowledge_session_receipt: receipt,
+          },
+        },
+      },
+    );
+
+    expect((await create("first/page")).result?.isError).not.toBe(true);
+    expect((await create("second/page")).result?.isError).not.toBe(true);
+    expect(writes).toEqual(["first/page", "second/page"]);
+
+    const wrongSession = await create("blocked/session", {
+      clientId: "mcp-client",
+      sessionId: "another-session",
+    });
+    expect(wrongSession.result?.isError).toBe(true);
+    expect(writes).toHaveLength(2);
+
+    currentRevisionId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const stale = await create("blocked/stale");
+    expect(stale.result?.isError).toBe(true);
+    expect(writes).toHaveLength(2);
+  });
+
+  test("requires the exact configured global guide in scoped chains and preserves scoped guidance during transition", async () => {
+    const globalGuide = {
+      ...rootGuide,
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      current_version_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      body_markdown: "# Global guide",
+    };
+    const scopedGuide = {
+      ...rootGuide,
+      id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      current_path: "scoped/agents",
+      current_version_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      body_markdown: "# Scoped guide",
+    };
+    type ConfiguredGuide = {
+      document_id: string;
+      current_revision_id: string;
+      revision_number: number;
+      title: string;
+      summary: string;
+    };
+    const exactConfiguredGuide: ConfiguredGuide = {
+      document_id: globalGuide.id,
+      current_revision_id: globalGuide.current_version_id,
+      revision_number: 1,
+      title: "Global guide",
+      summary: "Global maintenance guidance.",
+    };
+    let configuredGuide: ConfiguredGuide | null = exactConfiguredGuide;
+    const knowledgeSettings = {
+      async globalGuide() {
+        return configuredGuide;
+      },
+    } as unknown as KnowledgeSettingsRepository;
+    const writes: string[] = [];
+    const pages = {
+      async metadataInDirectory() {
+        return [];
+      },
+      async version() {
+        return {
+          id: globalGuide.current_version_id,
+          body_markdown: globalGuide.body_markdown,
+        };
+      },
+      async guidesForPath(path: string) {
+        return path.startsWith("scoped/")
+          ? [globalGuide, scopedGuide]
+          : [globalGuide];
+      },
+      async create(input: { path: string }) {
+        writes.push(input.path);
+        return {
+          id: crypto.randomUUID(),
+          current_path: input.path,
+          current_version_id: crypto.randomUUID(),
+          version_number: 1,
+          title: "Created",
+          summary: "Created page.",
+          body_markdown: "Created.",
+          published_version_id: null,
+          published_version_number: null,
+          public_path: null,
+        };
+      },
+    } as unknown as PageRepository;
+    const callWithContext = (
+      context: { clientId: string; sessionId: string },
+      name: string,
+      args: Record<string, unknown>,
+      id: number,
+    ) => mcpRequest(serverWith(
+      pages,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      { knowledgeSettings, context },
+    ), {
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: { name, arguments: args },
+    });
+    const call = (name: string, args: Record<string, unknown>, id: number) => callWithContext(
+      DEFAULT_MCP_CONTEXT,
+      name,
+      args,
+      id,
+    );
+    const pageInput = (path: string) => ({
+      path,
+      title: "Created",
+      summary: "Created page.",
+      body_markdown: "Created.",
+      commit_message: "Create page",
+    });
+
+    const begin = await call("begin_knowledge_session", {}, 30);
+    const sessionReceipt = (begin.result?.structuredContent as {
+      knowledge_session_receipt: string;
+    }).knowledge_session_receipt;
+    const scopedWithGlobalReceipt = await call("create_page", {
+      ...pageInput("scoped/session-receipt"),
+      knowledge_session_receipt: sessionReceipt,
+    }, 31);
+    expect(scopedWithGlobalReceipt.result?.isError).toBe(true);
+    expect(scopedWithGlobalReceipt.result?.content?.[0]?.text).toContain("prepare_change");
+    expect(writes).toEqual([]);
+
+    const prepared = await call("prepare_change", { target_path: "scoped/legacy" }, 32);
+    expect(prepared.result?.isError).not.toBe(true);
+    const guidanceReceipt = preparedChangeResult(prepared).guidance_receipt;
+    expect(verifyGuidanceReceipt(
+      guidanceReceipt,
+      [globalGuide, scopedGuide],
+      DEFAULT_MCP_CONTEXT,
+    )).toBe(true);
+    const scopedWithChainReceipt = await call("create_page", {
+      ...pageInput("scoped/legacy"),
+      guidance_receipt: guidanceReceipt,
+    }, 33);
+    expect(scopedWithChainReceipt.result?.isError).not.toBe(true);
+    expect(writes).toEqual(["scoped/legacy"]);
+
+    const crossSession = await callWithContext({
+      ...DEFAULT_MCP_CONTEXT,
+      sessionId: "another-session",
+    }, "create_page", {
+      ...pageInput("scoped/cross-session"),
+      guidance_receipt: guidanceReceipt,
+    }, 331);
+    expect(crossSession.result?.isError).toBe(true);
+    const crossClient = await callWithContext({
+      ...DEFAULT_MCP_CONTEXT,
+      clientId: "another-client",
+    }, "create_page", {
+      ...pageInput("scoped/cross-client"),
+      guidance_receipt: guidanceReceipt,
+    }, 332);
+    expect(crossClient.result?.isError).toBe(true);
+    expect(writes).toEqual(["scoped/legacy"]);
+
+    configuredGuide = {
+      ...exactConfiguredGuide,
+      document_id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    };
+    const wrongDocument = await call("prepare_change", { target_path: "scoped/blocked" }, 34);
+    expect(wrongDocument.result?.isError).toBe(true);
+    expect(wrongDocument.result?.content?.[0]?.text).toStartWith("KNOWLEDGE_GUIDE_UNAVAILABLE");
+    const blockedChainReceipt = await call("create_page", {
+      ...pageInput("scoped/blocked"),
+      guidance_receipt: guidanceReceipt,
+    }, 35);
+    expect(blockedChainReceipt.result?.isError).toBe(true);
+    expect(writes).toEqual(["scoped/legacy"]);
+
+    configuredGuide = {
+      ...exactConfiguredGuide,
+      current_revision_id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    };
+    const wrongRevision = await call("prepare_change", { target_path: "scoped/blocked" }, 36);
+    expect(wrongRevision.result?.isError).toBe(true);
+    configuredGuide = null;
+    const unavailable = await call("prepare_change", { target_path: "scoped/blocked" }, 37);
+    expect(unavailable.result?.isError).toBe(true);
+  });
+
+  test("requires one receipt to authorize both sides of a page move during scoped-guide transition", async () => {
+    const globalGuide = {
+      ...rootGuide,
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      current_version_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    };
+    const scopeAGuide = {
+      ...rootGuide,
+      id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      current_path: "scope-a/agents",
+      current_version_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    };
+    const scopeBGuide = {
+      ...rootGuide,
+      id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      current_path: "scope-b/agents",
+      current_version_id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    };
+    const pageId = "12121212-1212-4212-8212-121212121212";
+    const updates: unknown[] = [];
+    const pages = {
+      async version() {
+        return { id: globalGuide.current_version_id, body_markdown: "# Global guide" };
+      },
+      async guidesForPath(path: string) {
+        if (path.startsWith("scope-a/")) return [globalGuide, scopeAGuide];
+        if (path.startsWith("scope-b/")) return [globalGuide, scopeBGuide];
+        return [globalGuide];
+      },
+      async get(id: string) {
+        expect(id).toBe(pageId);
+        return {
+          id: pageId,
+          current_path: "scope-a/original",
+          current_version_id: "34343434-3434-4434-8434-343434343434",
+          version_number: 1,
+          title: "Original",
+          summary: "Original page.",
+          body_markdown: "Original.",
+          published_version_id: null,
+          published_version_number: null,
+          public_path: null,
+        };
+      },
+      async update(...args: unknown[]) {
+        updates.push(args);
+        return null;
+      },
+    } as unknown as PageRepository;
+    const knowledgeSettings = {
+      async globalGuide() {
+        return {
+          document_id: globalGuide.id,
+          current_revision_id: globalGuide.current_version_id,
+          revision_number: 1,
+          title: "Global guide",
+          summary: "Global guidance.",
+        };
+      },
+    } as unknown as KnowledgeSettingsRepository;
+    const call = (name: string, args: Record<string, unknown>, id: number) => mcpRequest(serverWith(
+      pages,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      { knowledgeSettings },
+    ), {
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: { name, arguments: args },
+    });
+    const updateInput = (path: string) => ({
+      page_id: pageId,
+      path,
+      title: "Moved",
+      summary: "Moved page.",
+      body_markdown: "Moved.",
+      commit_message: "Move page",
+      expected_version_number: 1,
+    });
+
+    const begin = await call("begin_knowledge_session", {}, 38);
+    const sessionReceipt = (begin.result?.structuredContent as {
+      knowledge_session_receipt: string;
+    }).knowledge_session_receipt;
+    const scopedToUnscoped = await call("update_page", {
+      ...updateInput("unscoped/moved"),
+      knowledge_session_receipt: sessionReceipt,
+    }, 39);
+    expect(scopedToUnscoped.result?.isError).toBe(true);
+    expect(scopedToUnscoped.result?.content?.[0]?.text).toContain("scope-a/original");
+
+    const targetPreparation = await call("prepare_change", { target_path: "scope-b/moved" }, 40);
+    const targetReceipt = preparedChangeResult(targetPreparation).guidance_receipt;
+    expect(verifyGuidanceReceipt(
+      targetReceipt,
+      [globalGuide, scopeBGuide],
+      DEFAULT_MCP_CONTEXT,
+    )).toBe(true);
+    const scopedToOtherScope = await call("update_page", {
+      ...updateInput("scope-b/moved"),
+      guidance_receipt: targetReceipt,
+    }, 41);
+    expect(scopedToOtherScope.result?.isError).toBe(true);
+    expect(scopedToOtherScope.result?.content?.[0]?.text).toContain("scope-a/original");
+    expect(updates).toEqual([]);
   });
 
   test("exposes one unified checkpointed source reader when Nango access is configured", async () => {
@@ -169,6 +641,7 @@ describe("MCP knowledge tools", () => {
     expect(tool?.description).toContain("persist next_checkpoint only after its writes succeed");
     expect(tool?.description).toContain("end the run without reading another working set");
     expect(tool?.description).toContain("next fresh run has more source work");
+    expect(tool?.annotations?.readOnlyHint).toBe(false);
     expect(tool?.inputSchema?.properties?.max_bytes).toBeUndefined();
 
     const read = await mcpRequest(serverWith(
@@ -193,6 +666,180 @@ describe("MCP knowledge tools", () => {
     });
     expect(read.result?.structuredContent?.batch_bytes).toBeUndefined();
     expect(calls).toEqual([{ checkpoint: "cu-nango-v1.previous", limit: 25 }]);
+  });
+
+  test("searches and reads private records as first-class hypermedia without exposing object keys", async () => {
+    const documentId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    const revisionId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+    const tombstoneId = "abababab-abab-4bab-8bab-abababababab";
+    const metadata = {
+      document_id: documentId,
+      current_revision_id: revisionId,
+      reference: `context-use://document/${documentId}`,
+      revision_number: 3,
+      integration: "github",
+      connection_id: "owner",
+      model: "pull-request",
+      source_record_id: "pr-42",
+      source_created_at: new Date("2026-01-01T00:00:00.000Z"),
+      source_updated_at: new Date("2026-01-02T00:00:00.000Z"),
+      deleted_at: null,
+      created_at: new Date("2026-01-01T00:00:00.000Z"),
+      updated_at: new Date("2026-01-02T00:00:00.000Z"),
+    };
+    const calls: unknown[] = [];
+    const recordDocuments = {
+      async searchMetadata(query: string, options: unknown) {
+        calls.push(["search", query, options]);
+        return [metadata];
+      },
+      async get(id: string) {
+        calls.push(["get", id]);
+        if (id === tombstoneId) {
+          return {
+            ...metadata,
+            document_id: tombstoneId,
+            current_revision_id: null,
+            revision_number: null,
+            reference: `context-use://document/${tombstoneId}`,
+            deleted_at: new Date("2026-01-04T00:00:00.000Z"),
+            body_markdown: null,
+          };
+        }
+        return { ...metadata, body_markdown: "# Pull request 42\n\nMerged." };
+      },
+    } as unknown as SourceRecordRepository;
+    const documentLinks = {
+      async revisionIndex(id: string) {
+        calls.push(["index", id]);
+        return {
+          source_revision_id: id,
+          links_indexed_at: new Date("2026-01-02T00:00:00.000Z"),
+          target_document_ids: ["ffffffff-ffff-4fff-8fff-ffffffffffff"],
+        };
+      },
+      async backlinks(id: string, limit: number) {
+        calls.push(["backlinks", id, limit]);
+        return {
+          backlinks: [{
+            source_document_id: "99999999-9999-4999-8999-999999999999",
+            source_revision_id: "88888888-8888-4888-8888-888888888888",
+            source_revision_number: 4,
+            source_authority: "knowledge" as const,
+            source_representation: "markdown" as const,
+            links_indexed_at: new Date("2026-01-03T00:00:00.000Z"),
+          }],
+          has_more: false,
+        };
+      },
+      async backlinksComplete() {
+        calls.push(["complete"]);
+        return true;
+      },
+    } as unknown as DocumentLinkRepository;
+    const options = { recordDocuments, documentLinks };
+
+    const listed = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      options,
+    ), {
+      jsonrpc: "2.0",
+      id: 23,
+      method: "tools/list",
+      params: {},
+    });
+    const readTool = listed.result?.tools?.find(({ name }) => name === "read_record");
+    expect(readTool?.inputSchema?.properties).toHaveProperty("document_id");
+    expect(readTool?.inputSchema?.properties).not.toHaveProperty("record_id");
+    expect(readTool?.inputSchema?.properties).not.toHaveProperty("path");
+    expect(readTool?.description).toContain("backlinks_has_more only reports pagination");
+    expect(readTool?.description).toContain("backlinks_complete");
+    expect(listed.result?.tools?.find(({ name }) => name === "search_records")?.description)
+      .toContain("cannot be published");
+
+    const searched = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      options,
+    ), {
+      jsonrpc: "2.0",
+      id: 24,
+      method: "tools/call",
+      params: { name: "search_records", arguments: { query: "merged", limit: 5 } },
+    });
+    const searchText = searched.result?.content?.[0]?.text ?? "";
+    expect(searchText).toContain(`context-use://document/${documentId}`);
+    expect(searchText).not.toContain("body_markdown");
+    expect(searchText).not.toContain("object_key");
+
+    const read = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      options,
+    ), {
+      jsonrpc: "2.0",
+      id: 25,
+      method: "tools/call",
+      params: { name: "read_record", arguments: { document_id: documentId } },
+    });
+    const record = JSON.parse(read.result?.content?.[0]?.text ?? "null");
+    expect(record).toMatchObject({
+      document_id: documentId,
+      current_revision_id: revisionId,
+      reference: `context-use://document/${documentId}`,
+      body_markdown: expect.stringContaining("Merged"),
+      hypermedia: {
+        links_indexed: true,
+        outbound_document_ids: ["ffffffff-ffff-4fff-8fff-ffffffffffff"],
+        backlinks: [{
+          source_document_id: "99999999-9999-4999-8999-999999999999",
+          source_authority: "knowledge",
+          source_representation: "markdown",
+        }],
+        backlinks_has_more: false,
+        backlinks_complete: true,
+      },
+    });
+    expect(JSON.stringify(record)).not.toContain("object_key");
+
+    const tombstoneRead = await mcpRequest(serverWith(
+      {} as PageRepository,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      options,
+    ), {
+      jsonrpc: "2.0",
+      id: 27,
+      method: "tools/call",
+      params: { name: "read_record", arguments: { document_id: tombstoneId } },
+    });
+    const tombstone = JSON.parse(tombstoneRead.result?.content?.[0]?.text ?? "null");
+    expect(tombstone).toMatchObject({
+      document_id: tombstoneId,
+      current_revision_id: null,
+      body_markdown: null,
+      hypermedia: {
+        links_indexed: true,
+        outbound_document_ids: [],
+      },
+    });
+    expect(calls).toEqual(expect.arrayContaining([
+      ["search", "merged", { limit: 5 }],
+      ["get", documentId],
+      ["index", revisionId],
+      ["backlinks", documentId, 100],
+      ["complete"],
+      ["get", tombstoneId],
+      ["backlinks", tombstoneId, 100],
+    ]));
   });
 
   test("reads pages by semantic path and prepares applicable change guides", async () => {
@@ -227,6 +874,13 @@ describe("MCP knowledge tools", () => {
     expect(JSON.parse(pageResponse.result?.content?.[0]?.text ?? "null")).toMatchObject({
       current_path: "agents",
       title: "AGENTS.md",
+      hypermedia: {
+        links_indexed: false,
+        outbound_document_ids: [],
+        backlinks: [],
+        backlinks_has_more: false,
+        backlinks_complete: false,
+      },
     });
 
     const contextResponse = await mcpRequest(serverWith(pages), {
@@ -246,8 +900,90 @@ describe("MCP knowledge tools", () => {
         { path: "about/tasks/job-search/agents", body_markdown: "Local guide" },
       ],
     });
-    expect(verifyGuidanceReceipt(prepared.guidance_receipt, guides)).toBe(true);
+    expect(verifyGuidanceReceipt(
+      prepared.guidance_receipt,
+      guides,
+      DEFAULT_MCP_CONTEXT,
+    )).toBe(true);
     expect(JSON.parse(contextResponse.result?.content?.[0]?.text ?? "null")).toEqual(prepared);
+  });
+
+  test("reads a page with its current outbound links and live backlinks", async () => {
+    const documentId = "12121212-1212-4212-8212-121212121212";
+    const revisionId = "34343434-3434-4434-8434-343434343434";
+    const pages = {
+      async get(id: string) {
+        expect(id).toBe(documentId);
+        return {
+          id: documentId,
+          current_path: "notes/linked",
+          current_version_id: revisionId,
+          version_number: 2,
+          title: "Linked note",
+          summary: "A note in the graph.",
+          body_markdown: "See another document.",
+          published_version_id: null,
+          published_version_number: null,
+          public_path: null,
+        };
+      },
+    } as unknown as PageRepository;
+    const documentLinks = {
+      async revisionIndex(id: string) {
+        expect(id).toBe(revisionId);
+        return {
+          source_revision_id: revisionId,
+          links_indexed_at: new Date("2026-01-02T00:00:00.000Z"),
+          target_document_ids: ["56565656-5656-4656-8656-565656565656"],
+        };
+      },
+      async backlinks(id: string, limit: number) {
+        expect(id).toBe(documentId);
+        expect(limit).toBe(100);
+        return {
+          backlinks: [{
+            source_document_id: "78787878-7878-4878-8878-787878787878",
+            source_revision_id: "90909090-9090-4090-8090-909090909090",
+            source_revision_number: 5,
+            source_authority: "source" as const,
+            source_representation: "markdown" as const,
+            links_indexed_at: new Date("2026-01-03T00:00:00.000Z"),
+          }],
+          has_more: true,
+        };
+      },
+      async backlinksComplete() {
+        return false;
+      },
+    } as unknown as DocumentLinkRepository;
+    const response = await mcpRequest(serverWith(
+      pages,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      { documentLinks },
+    ), {
+      jsonrpc: "2.0",
+      id: 26,
+      method: "tools/call",
+      params: { name: "read_page", arguments: { page_id: documentId } },
+    });
+    expect(JSON.parse(response.result?.content?.[0]?.text ?? "null")).toMatchObject({
+      id: documentId,
+      hypermedia: {
+        links_indexed: true,
+        outbound_document_ids: ["56565656-5656-4656-8656-565656565656"],
+        backlinks: [{
+          source_document_id: "78787878-7878-4878-8878-787878787878",
+          source_revision_id: "90909090-9090-4090-8090-909090909090",
+          source_revision_number: 5,
+          source_authority: "source",
+          source_representation: "markdown",
+        }],
+        backlinks_has_more: true,
+        backlinks_complete: false,
+      },
+    });
   });
 
   test("prepares only guidance deltas when moving between instruction scopes", async () => {
@@ -317,7 +1053,35 @@ describe("MCP knowledge tools", () => {
       { path: "about/agents", reuse_from_previous_prepare_change: true },
       { path: "about/tasks/agents", body_markdown: "Unique task instructions body" },
     ]);
-    expect(verifyGuidanceReceipt(tasksReceipt, [rootWithUniqueBody, aboutGuide, tasksGuide])).toBe(true);
+    expect(verifyGuidanceReceipt(
+      tasksReceipt,
+      [rootWithUniqueBody, aboutGuide, tasksGuide],
+      DEFAULT_MCP_CONTEXT,
+    )).toBe(true);
+
+    const crossSessionPreparation = await mcpRequest(serverWith(
+      pages,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      { context: { ...DEFAULT_MCP_CONTEXT, sessionId: "another-session" } },
+    ), {
+      jsonrpc: "2.0",
+      id: 411,
+      method: "tools/call",
+      params: {
+        name: "prepare_change",
+        arguments: {
+          target_path: "about/tasks/daily-review",
+          cached_guidance_receipt: tasksReceipt,
+        },
+      },
+    });
+    expect(preparedChangeResult(crossSessionPreparation).guides).toEqual([
+      { path: "agents", body_markdown: "Unique root instructions body" },
+      { path: "about/agents", body_markdown: "Unique about instructions body" },
+      { path: "about/tasks/agents", body_markdown: "Unique task instructions body" },
+    ]);
 
     const placesPreparation = await mcpRequest(serverWith(pages), {
       jsonrpc: "2.0",
@@ -383,10 +1147,9 @@ describe("MCP knowledge tools", () => {
 
     expect(response.result?.isError).toBe(true);
     expect(response.result?.content?.[0]?.text).toBe([
-      "GUIDANCE_REQUIRED",
-      'Call prepare_change with {"target_path":"about/tasks/daily-review"}.',
-      "If the prior guide bodies remain in context, pass their receipt as cached_guidance_receipt so unchanged guides are not repeated. Otherwise omit it to reload every guide.",
-      "Then retry create_page with the returned guidance_receipt.",
+      "KNOWLEDGE_GUIDE_REQUIRED",
+      "Call begin_knowledge_session with {}, read the returned global guide, and retry with its knowledge_session_receipt when this target has no additional scoped guides.",
+      'During the guidance transition, if scoped guides apply, call prepare_change with {"target_path":"about/tasks/daily-review"}, read the complete returned chain, and retry create_page with its guidance_receipt.',
     ].join("\n\n"));
     expect(response.result?.structuredContent).toBeUndefined();
     expect(calls).toEqual([]);
@@ -914,7 +1677,7 @@ describe("MCP knowledge tools", () => {
 
   test("rejects a receipt when an applicable guide has changed", async () => {
     const calls: unknown[] = [];
-    const staleReceipt = createGuidanceReceipt([rootGuide]);
+    const staleReceipt = createGuidanceReceipt([rootGuide], DEFAULT_MCP_CONTEXT);
     const changedRoot = {
       ...rootGuide,
       current_version_id: "55555555-5555-4555-8555-555555555555",
@@ -930,7 +1693,24 @@ describe("MCP knowledge tools", () => {
         return input;
       },
     } as unknown as PageRepository;
-    const response = await mcpRequest(serverWith(pages), {
+    const knowledgeSettings = {
+      async globalGuide() {
+        return {
+          document_id: changedRoot.id,
+          current_revision_id: changedRoot.current_version_id,
+          revision_number: changedRoot.version_number,
+          title: changedRoot.title,
+          summary: "Changed test global guide.",
+        };
+      },
+    } as unknown as KnowledgeSettingsRepository;
+    const response = await mcpRequest(serverWith(
+      pages,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      { knowledgeSettings },
+    ), {
       jsonrpc: "2.0",
       id: 12,
       method: "tools/call",
@@ -953,7 +1733,13 @@ describe("MCP knowledge tools", () => {
     );
     expect(calls).toEqual([]);
 
-    const refreshed = await mcpRequest(serverWith(pages), {
+    const refreshed = await mcpRequest(serverWith(
+      pages,
+      {} as AssetRepository,
+      {} as DirectoryRepository,
+      undefined,
+      { knowledgeSettings },
+    ), {
       jsonrpc: "2.0",
       id: 43,
       method: "tools/call",
@@ -969,7 +1755,11 @@ describe("MCP knowledge tools", () => {
     expect(refreshedGuidance.guides).toEqual([
       { path: "agents", body_markdown: "Changed root guide" },
     ]);
-    expect(verifyGuidanceReceipt(refreshedGuidance.guidance_receipt, [changedRoot])).toBe(true);
+    expect(verifyGuidanceReceipt(
+      refreshedGuidance.guidance_receipt,
+      [changedRoot],
+      DEFAULT_MCP_CONTEXT,
+    )).toBe(true);
   });
 
   test("resolves an ID-only mutation target before directing guidance recovery", async () => {
@@ -999,10 +1789,9 @@ describe("MCP knowledge tools", () => {
 
     expect(response.result?.isError).toBe(true);
     expect(response.result?.content?.[0]?.text).toBe([
-      "GUIDANCE_REQUIRED",
-      'Call prepare_change with {"target_path":"library/private/recording"}.',
-      "If the prior guide bodies remain in context, pass their receipt as cached_guidance_receipt so unchanged guides are not repeated. Otherwise omit it to reload every guide.",
-      "Then retry archive_asset with the returned guidance_receipt.",
+      "KNOWLEDGE_GUIDE_REQUIRED",
+      "Call begin_knowledge_session with {}, read the returned global guide, and retry with its knowledge_session_receipt when this target has no additional scoped guides.",
+      'During the guidance transition, if scoped guides apply, call prepare_change with {"target_path":"library/private/recording"}, read the complete returned chain, and retry archive_asset with its guidance_receipt.',
     ].join("\n\n"));
     expect(archiveCalls).toEqual([]);
   });
@@ -1271,6 +2060,7 @@ describe("MCP knowledge tools", () => {
       "read_page",
       "list_page_changes",
       "compare_page_versions",
+      "begin_knowledge_session",
       "prepare_change",
       "read_skill",
       "create_page",
@@ -1295,7 +2085,15 @@ describe("MCP knowledge tools", () => {
       });
     expect(knowledge.result?.tools?.find(({ name }) => name === "create_asset_upload")
       ?.inputSchema?.properties?.path?.description).toContain("not of the folder holding it");
-    expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description).toContain("prepare_change");
+    expect(knowledge.result?.tools?.find(({ name }) => name === "update_page")?.description)
+      .toContain("begin_knowledge_session");
+    const beginSession = knowledge.result?.tools?.find(({ name }) => (
+      name === "begin_knowledge_session"
+    ));
+    expect(beginSession?.inputSchema?.properties ?? {}).toEqual({});
+    expect(beginSession?.description).toContain("Call once");
+    expect(beginSession?.description).toContain("targets without additional scoped guides");
+    expect(beginSession?.description).toContain("requires prepare_change");
     expect(knowledge.result?.tools?.find(({ name }) => name === "prepare_change")?.inputSchema?.properties)
       .toHaveProperty("cached_guidance_receipt");
     expect(knowledge.result?.tools?.find(({ name }) => name === "prepare_change")?.outputSchema?.properties)
@@ -1312,6 +2110,8 @@ describe("MCP knowledge tools", () => {
     ]) {
       expect(knowledge.result?.tools?.find((tool) => tool.name === name)?.inputSchema?.properties)
         .toHaveProperty("guidance_receipt");
+      expect(knowledge.result?.tools?.find((tool) => tool.name === name)?.inputSchema?.properties)
+        .toHaveProperty("knowledge_session_receipt");
     }
     expect(knowledgeTools.some((name) => name.includes("publish"))).toBe(false);
     expect(knowledgeTools.some((name) => name.includes("automation"))).toBe(false);
@@ -1587,7 +2387,7 @@ describe("MCP knowledge tools", () => {
     });
 
     const result = JSON.parse(response.result?.content?.[0]?.text ?? "null");
-    expect(result.page_markdown.default).toBe("![Portrait.jpg](context-use://asset/11111111-1111-4111-8111-111111111111)");
+    expect(result.page_markdown.default).toBe("![Portrait.jpg](context-use://document/11111111-1111-4111-8111-111111111111)");
     expect(result.page_markdown.formatted_example).toContain("{size=medium align=center shape=auto}");
     expect(result.page_markdown.help_tool).toBeUndefined();
   });
@@ -1633,7 +2433,7 @@ describe("MCP knowledge tools", () => {
       sizeBytes: 123,
       contentHash: "a".repeat(64),
     }]);
-    expect(result.reference).toBe("context-use://asset/11111111-1111-4111-8111-111111111111");
+    expect(result.reference).toBe("context-use://document/11111111-1111-4111-8111-111111111111");
     expect(result.upload).toMatchObject({
       method: "PUT",
       headers: { "content-type": "application/pdf", "content-length": "123" },
@@ -1748,6 +2548,15 @@ describe("MCP knowledge tools", () => {
     expect(result.download).toMatchObject({
       method: "GET",
       url: "http://localhost:3000/api/mcp/assets/11111111-1111-4111-8111-111111111111/content",
+    });
+    expect(result).toMatchObject({
+      reference: "context-use://document/11111111-1111-4111-8111-111111111111",
+      hypermedia: {
+        links_indexed: true,
+        outbound_document_ids: [],
+        backlinks: [],
+        backlinks_has_more: false,
+      },
     });
     expect(verifyAssetCapability(result.download.headers["x-context-use-download-token"], "download")).toMatchObject({
       assetId: "11111111-1111-4111-8111-111111111111",

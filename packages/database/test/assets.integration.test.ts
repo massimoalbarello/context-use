@@ -92,10 +92,20 @@ describeDatabase("hierarchical asset metadata", () => {
       path: `${directory.current_path}/page`,
       title: "Asset reference",
       summary: "A temporary active page that references the test asset.",
-      body_markdown: `![Document](context-use://asset/${created.id})`,
+      body_markdown: `[Download](context-use://document/${created.id})`,
       commit_message: "Create asset archive test page",
     }, { kind: "dashboard", subject: "asset-archive-test" });
     createdPageIds.push(page.id);
+    await expect(assets.archive(created.id)).rejects.toMatchObject({
+      reason: "referenced",
+    });
+
+    // Canonical document edges retain an asset even without the legacy
+    // embed-only index, including an ordinary download link.
+    await pool.query(
+      "DELETE FROM knowledge_asset_links WHERE source_version_id=$1",
+      [page.current_version_id],
+    );
     await expect(assets.archive(created.id)).rejects.toMatchObject({
       reason: "referenced",
     });

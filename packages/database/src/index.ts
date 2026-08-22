@@ -2,6 +2,8 @@ export { createPool } from "./pool.ts";
 export { runTemplateCommand } from "./template-command.ts";
 export {
   assertMarkdownObject,
+  MAX_KNOWLEDGE_PAGE_BYTES,
+  MAX_MARKDOWN_DOCUMENT_BYTES,
   mapConcurrently,
   markdownObjectMetadata,
   type MarkdownObjectMetadata,
@@ -11,9 +13,30 @@ export {
   DocumentMaintenanceRepository,
   type PublishedProjectionPage,
   type PublicProjectionSnapshot,
+  type UnindexedDocumentRevision,
 } from "./document-maintenance.ts";
 export {
+  DocumentLinkRepository,
+  type DocumentBacklink,
+  type DocumentBacklinkPage,
+  type DocumentLinkIndex,
+} from "./document-links.ts";
+export {
+  KnowledgeSettingsRepository,
+  type GlobalKnowledgeGuideMetadata,
+  type KnowledgeSettings,
+} from "./knowledge-settings.ts";
+export {
+  PublicResourceRepository,
+  type PublicResource,
+  type PublishedPublicResource,
+  type PublishedRouteAlias,
+} from "./public-resources.ts";
+export {
   SourceRecordRepository,
+  type SourceRecordDocument,
+  type SourceRecordIdentity,
+  type SourceRecordMetadata,
   type SourceRecordWrite,
   type SourceRecordWriter,
 } from "./source-records.ts";
@@ -75,9 +98,12 @@ export {
 } from "./publication.ts";
 export {
   extractAssetLinks,
+  extractDocumentLinks,
   extractDirectoryLinks,
   extractPageLinks,
   extractWikiLinks,
+  MAX_DOCUMENT_LINKS_PER_REVISION,
+  normalizeInternalDocumentLinks,
   normalizeInternalPageLinks,
   wikiLinkCandidatePaths,
   type WikiLink,

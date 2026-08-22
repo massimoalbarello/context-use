@@ -5,7 +5,7 @@ import type {
   KnowledgeExportPage,
   KnowledgeExportSnapshot,
 } from "@context-use/database";
-import { normalizeInternalPageLinks } from "@context-use/database";
+import { normalizeInternalDocumentLinks } from "@context-use/database";
 import type { ObjectStorage } from "./storage.ts";
 import {
   addKnowledgeZipDirectory,
@@ -19,9 +19,9 @@ const EXPORT_ROOT = "context-use-export";
 const MAX_COMPONENT_BYTES = 180;
 const UUID = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
 const FRAGMENT = "(#[a-z0-9][a-z0-9_-]*)?";
-const PAGE_REFERENCE = new RegExp(`(!?)\\[([^\\]]*)\\]\\(context-use:\\/\\/page\\/${UUID}${FRAGMENT}\\)`, "gi");
+const DOCUMENT_REFERENCE = new RegExp(`(?<!!)\\[([^\\]]*)\\]\\(context-use:\\/\\/document\\/${UUID}${FRAGMENT}\\)`, "gi");
 const DIRECTORY_REFERENCE = new RegExp(`\\[([^\\]]*)\\]\\(context-use:\\/\\/directory\\/${UUID}\\)`, "gi");
-const ASSET_REFERENCE = new RegExp(`!\\[([^\\]]*)\\]\\(context-use:\\/\\/asset\\/${UUID}\\)`, "gi");
+const EMBEDDED_DOCUMENT_REFERENCE = new RegExp(`!\\[([^\\]]*)\\]\\(context-use:\\/\\/document\\/${UUID}${FRAGMENT}\\)`, "gi");
 const WIKI_REFERENCE = /(?<!!)\[\[([a-z0-9][a-z0-9/_-]*)(?:#([a-z0-9][a-z0-9_-]*))?(?:\|([^\]\n]+))?\]\]/gi;
 
 export type PlannedKnowledgeExportPage = KnowledgeExportPage & {
@@ -160,13 +160,24 @@ function rewriteReferences(
   directoryPathsByKnowledgePath: Map<string, string>,
   assetPaths: Map<string, string>,
 ): string {
-  let body = normalizeInternalPageLinks(markdown).replace(
-    PAGE_REFERENCE,
-    (_match, prefix: string, label: string, id: string, fragment: string | undefined) => {
-      const target = pagePaths.get(id.toLowerCase());
+  let body = normalizeInternalDocumentLinks(markdown).replace(
+    EMBEDDED_DOCUMENT_REFERENCE,
+    (_match, label: string, id: string) => {
+      const target = assetPaths.get(id.toLowerCase());
       return target
-        ? `${prefix}[${label}](${markdownTarget(sourceVaultPath, target)}${fragment?.toLowerCase() ?? ""})`
-        : label || "Missing page";
+        ? `![${label}](${markdownTarget(sourceVaultPath, target)})`
+        : label || "Missing asset";
+    },
+  );
+  body = body.replace(
+    DOCUMENT_REFERENCE,
+    (_match, label: string, id: string, fragment: string | undefined) => {
+      const target = pagePaths.get(id.toLowerCase());
+      if (target) return `[${label}](${markdownTarget(sourceVaultPath, target)}${fragment?.toLowerCase() ?? ""})`;
+      const assetTarget = assetPaths.get(id.toLowerCase());
+      return assetTarget
+        ? `[${label}](${markdownTarget(sourceVaultPath, assetTarget)})`
+        : label || "Missing document";
     },
   );
   body = body.replace(
@@ -176,15 +187,6 @@ function rewriteReferences(
       return target
         ? `[${label}](${markdownTarget(sourceVaultPath, target)})`
         : label || "Missing directory";
-    },
-  );
-  body = body.replace(
-    ASSET_REFERENCE,
-    (_match, label: string, id: string) => {
-      const target = assetPaths.get(id.toLowerCase());
-      return target
-        ? `![${label}](${markdownTarget(sourceVaultPath, target)})`
-        : label || "Missing asset";
     },
   );
   body = body.replace(

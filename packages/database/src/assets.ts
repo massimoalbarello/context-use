@@ -109,9 +109,22 @@ export class AssetRepository {
       }
       const referenced = await client.query(
         `SELECT 1
-         FROM knowledge_asset_links link
-         JOIN knowledge_pages page ON page.current_version_id=link.source_version_id
-         WHERE link.target_asset_id=$1 AND page.archived_at IS NULL
+         FROM knowledge_pages page
+         JOIN hypermedia_document_revisions revision
+           ON revision.id=page.current_version_id
+         WHERE page.archived_at IS NULL
+           AND (
+             EXISTS (
+               SELECT 1 FROM document_links link
+               WHERE link.source_revision_id=revision.id
+                 AND link.target_document_id=$1
+             )
+             OR EXISTS (
+               SELECT 1 FROM knowledge_asset_links legacy_link
+               WHERE legacy_link.source_version_id=revision.id
+                 AND legacy_link.target_asset_id=$1
+             )
+           )
          LIMIT 1`,
         [id],
       );
@@ -131,11 +144,25 @@ export class AssetRepository {
   async markDeleted(id: string): Promise<string | null> {
     const result = await this.pool.query<{ s3_object_key: string }>(
       `UPDATE assets SET deleted_at=now()
-       WHERE id=$1 AND public_path IS NULL AND deleted_at IS NULL
+         WHERE id=$1 AND public_path IS NULL AND deleted_at IS NULL
          AND NOT EXISTS (
-           SELECT 1 FROM knowledge_asset_links link
-           JOIN knowledge_pages page ON page.published_version_id=link.source_version_id
-           WHERE link.target_asset_id=assets.id
+           SELECT 1
+           FROM knowledge_pages page
+           JOIN hypermedia_document_revisions revision
+             ON revision.id=page.published_version_id
+           WHERE page.archived_at IS NULL
+             AND (
+               EXISTS (
+                 SELECT 1 FROM document_links link
+                 WHERE link.source_revision_id=revision.id
+                   AND link.target_document_id=assets.id
+               )
+               OR EXISTS (
+                 SELECT 1 FROM knowledge_asset_links legacy_link
+                 WHERE legacy_link.source_version_id=revision.id
+                   AND legacy_link.target_asset_id=assets.id
+               )
+             )
          )
          AND NOT EXISTS (
            SELECT 1 FROM knowledge_export_intents export
