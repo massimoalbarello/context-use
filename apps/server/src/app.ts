@@ -104,7 +104,7 @@ async function ownerRequest(request: Request, mutation: boolean | "upload" = fal
 function privatePageResolvers(sourcePath: string) {
   return {
     page: async (id: string) => {
-      const page = await dashboardPages.get(id);
+      const page = await dashboardPages.metadata(id);
       return page ? { available: true as const, href: `/app/pages/${id}` } : { available: false as const };
     },
     directory: async (id: string) => {
@@ -113,7 +113,7 @@ function privatePageResolvers(sourcePath: string) {
     },
     pagePath: async (path: string) => {
       for (const candidate of wikiLinkCandidatePaths(path, sourcePath)) {
-        const page = await dashboardPages.getByPath(candidate);
+        const page = await dashboardPages.metadataByPath(candidate);
         if (page) return { available: true as const, href: `/app/pages/${page.id}` };
         const directory = await dashboardDirectories.getByPath(candidate);
         if (directory) return { available: true as const, href: `/app/directories/${directory.id}` };
@@ -377,7 +377,7 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
   .onError(({ error, code }) => code === "NOT_FOUND"
     ? new Response("Not found", { status: 404, headers: securityHeaders })
     : routeError(error))
-  .get("/api/health", () => json({ status: "ok", version: "0.1.74", service: "dashboard" }))
+  .get("/api/health", () => json({ status: "ok", version: "0.1.75", service: "dashboard" }))
   .get("/api/dashboard/session", ({ request }) => forwardDashboardAuthRoute(request))
   .get("/api/dashboard/csrf", ({ request }) => forwardDashboardAuthRoute(request))
   .post("/api/dashboard/passkey-enrollment-intents", ({ request }) => forwardDashboardAuthRoute(request), { parse: "none" })

@@ -25,6 +25,12 @@ async function socketFetch(
     : fetch(`http://localhost${path}`, { unix: socketPath, ...requestInit });
 }
 
+async function markdownResponseText(response: Response): Promise<string> {
+  // Response.text() strips a leading UTF-8 BOM. Knowledge body hashes cover
+  // the exact PostgreSQL text bytes, so preserve U+FEFF when it is present.
+  return new TextDecoder("utf-8", { ignoreBOM: true }).decode(await response.arrayBuffer());
+}
+
 export class BrokeredStorage implements ObjectStorage {
   constructor(private readonly options: StorageClientOptions) {}
 
@@ -83,7 +89,7 @@ export class BrokeredStorage implements ObjectStorage {
     const response = await this.request(`/private/document?key=${encodeURIComponent(objectKey)}`);
     if (response.status === 404) throw new AssetNotFoundError();
     if (!response.ok) throw new Error(`Knowledge document read failed (${response.status})`);
-    return response.text();
+    return markdownResponseText(response);
   }
 
   async readPublishedDocument(publicPath: string): Promise<string> {
@@ -91,7 +97,7 @@ export class BrokeredStorage implements ObjectStorage {
     const response = await this.request(`/public/document?path=${encodeURIComponent(publicPath)}`);
     if (response.status === 404) throw new AssetNotFoundError();
     if (!response.ok) throw new Error(`Published document read failed (${response.status})`);
-    return response.text();
+    return markdownResponseText(response);
   }
 
   async delete(objectKey: string): Promise<void> {
