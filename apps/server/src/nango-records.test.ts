@@ -21,6 +21,11 @@ const AGENT_CONVERSATIONS: PipelineRecordSource = {
 };
 const NOW = new Date("2026-08-01T12:00:00.000Z");
 const INITIAL_FRESHNESS_CUTOFF = "2026-07-02T12:00:00.000Z";
+const PERSISTED_RECORD = {
+  document_id: "11111111-1111-4111-8111-111111111111",
+  current_revision_id: "22222222-2222-4222-8222-222222222222",
+  reference: "context-use://document/11111111-1111-4111-8111-111111111111",
+} as const;
 
 function pipelineRecord(
   id: string,
@@ -51,6 +56,7 @@ function reader(
   options: {
     sources?: PipelineRecordSource[];
     responseByteBudget?: number;
+    upstreamResponseByteLimit?: number;
     now?: () => Date;
     recordWriter?: SourceRecordWriter;
   } = {},
@@ -62,6 +68,9 @@ function reader(
     now: options.now ?? (() => NOW),
     ...(options.sources ? { sources: options.sources } : {}),
     ...(options.responseByteBudget ? { responseByteBudget: options.responseByteBudget } : {}),
+    ...(options.upstreamResponseByteLimit
+      ? { upstreamResponseByteLimit: options.upstreamResponseByteLimit }
+      : {}),
     ...(options.recordWriter ? { recordWriter: options.recordWriter } : {}),
   });
 }
@@ -115,7 +124,63 @@ describe("Nango source-record reader", () => {
     expect(result.records.every((record) => Object.keys(record).sort().join(",") === "action,markdown")).toBe(true);
     expect(result.records.every(({ action }) => action === "added")).toBe(true);
     expect(seen.filter((request) => new URL(request.url).pathname === "/connections")).toHaveLength(2);
+    expect(seen.filter((request) => new URL(request.url).pathname === "/records")
+      .every((request) => new URL(request.url).searchParams.get("limit") === "1")).toBe(true);
     expect(seen.some((request) => new URL(request.url).pathname === "/scripts/config")).toBe(false);
+  });
+
+  test("rejects an oversized declared Nango response before parsing without retrying", async () => {
+    let recordsRequests = 0;
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({
+          connections: [{ id: 1, connection_id: "owner", provider_config_key: "github" }],
+        });
+      }
+      recordsRequests += 1;
+      return new Response("this body must never be parsed", {
+        headers: {
+          "content-type": "application/json",
+          "content-length": String(65 * 1024 * 1024 * 1024),
+        },
+      });
+    }, { sources: [GITHUB] });
+
+    await expect(sourceReader.read({ limit: 10 }))
+      .rejects.toThrow("Nango /records response exceeds");
+    expect(recordsRequests).toBe(1);
+  });
+
+  test("rejects an oversized chunked Nango response while streaming without retrying", async () => {
+    let recordsRequests = 0;
+    let cancelled = false;
+    const chunk = new TextEncoder().encode("x".repeat(300));
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({
+          connections: [{ id: 1, connection_id: "owner", provider_config_key: "github" }],
+        });
+      }
+      recordsRequests += 1;
+      return new Response(new ReadableStream<Uint8Array>({
+        pull(controller) {
+          controller.enqueue(chunk);
+        },
+        cancel() {
+          cancelled = true;
+        },
+      }), { headers: { "content-type": "application/json" } });
+    }, {
+      sources: [GITHUB],
+      upstreamResponseByteLimit: 512,
+    });
+
+    await expect(sourceReader.read({ limit: 10 }))
+      .rejects.toThrow("Nango /records response exceeds the 512-byte limit");
+    expect(recordsRequests).toBe(1);
+    expect(cancelled).toBe(true);
   });
 
   test("persists each accepted canonical record with its source-native identity", async () => {
@@ -133,13 +198,19 @@ describe("Nango source-record reader", () => {
       });
     }, {
       sources: [GITHUB],
-      recordWriter: { write: async (record) => { writes.push(record); } },
+      recordWriter: {
+        write: async (record) => {
+          writes.push(record);
+          return PERSISTED_RECORD;
+        },
+      },
     });
 
-    await sourceReader.read({ limit: 10 });
+    const result = await sourceReader.read({ limit: 10 });
 
     expect(writes).toEqual([{
       integration: "github",
+      connectionInstanceId: 17,
       connectionId: "owner-github",
       model: "GitHubPullRequest",
       sourceRecordId: "pull-42",
@@ -147,6 +218,11 @@ describe("Nango source-record reader", () => {
       sourceCreatedAt: "2026-07-31T10:00:00.000Z",
       sourceUpdatedAt: "2026-07-31T11:00:00.000Z",
       markdown: "# Pull request 42",
+    }]);
+    expect(result.records).toEqual([{
+      action: "updated",
+      markdown: "# Pull request 42",
+      ...PERSISTED_RECORD,
     }]);
   });
 
@@ -198,6 +274,50 @@ describe("Nango source-record reader", () => {
     expect(nextTrigger.has_more).toBe(false);
     expect(cursorsSeen).toEqual([null, "cursor-one", "cursor-two"]);
     expect(modifiedAfterSeen).toEqual([INITIAL_FRESHNESS_CUTOFF, null, null]);
+  });
+
+  test("fills one stream's allocation through sequential one-record upstream pages", async () => {
+    const requests: Array<{ cursor: string | null; limit: string | null }> = [];
+    const sourceReader = reader(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/connections") {
+        return Response.json({
+          connections: [{ id: 1, connection_id: "owner", provider_config_key: "github" }],
+        });
+      }
+      const cursor = url.searchParams.get("cursor");
+      requests.push({ cursor, limit: url.searchParams.get("limit") });
+      if (cursor === null) {
+        return Response.json({
+          records: [pipelineRecord("1", "# First", "cursor-one")],
+          next_cursor: "more",
+        });
+      }
+      if (cursor === "cursor-one") {
+        return Response.json({
+          records: [pipelineRecord("2", "# Second", "cursor-two")],
+          next_cursor: "more",
+        });
+      }
+      return Response.json({
+        records: [pipelineRecord("3", "# Third", "cursor-three")],
+        next_cursor: null,
+      });
+    }, { sources: [GITHUB] });
+
+    const result = await sourceReader.read({ limit: 3 });
+
+    expect(result.records.map(({ markdown }) => markdown)).toEqual([
+      "# First",
+      "# Second",
+      "# Third",
+    ]);
+    expect(result.has_more).toBe(false);
+    expect(requests).toEqual([
+      { cursor: null, limit: "1" },
+      { cursor: "cursor-one", limit: "1" },
+      { cursor: "cursor-two", limit: "1" },
+    ]);
   });
 
   test("starts newly discovered connections from the current one-month window while retaining prior cursors", async () => {
@@ -254,6 +374,7 @@ describe("Nango source-record reader", () => {
 
   test("skips source history older than the current freshness window while advancing its cursor", async () => {
     const cursorsSeen: Array<string | null> = [];
+    const writes: SourceRecordWrite[] = [];
     const sourceReader = reader(async (request) => {
       const url = new URL(request.url);
       if (url.pathname === "/connections") {
@@ -270,7 +391,15 @@ describe("Nango source-record reader", () => {
             records: [pipelineRecord("recent", "# Recent activity", "recent-cursor")],
             next_cursor: null,
           });
-    }, { sources: [GITHUB] });
+    }, {
+      sources: [GITHUB],
+      recordWriter: {
+        async write(record) {
+          writes.push(record);
+          return PERSISTED_RECORD;
+        },
+      },
+    });
 
     const first = await sourceReader.read({ limit: 1 });
     expect(first.records).toEqual([]);
@@ -280,6 +409,7 @@ describe("Nango source-record reader", () => {
     expect(second.records.map(({ markdown }) => markdown)).toEqual(["# Recent activity"]);
     expect(second.has_more).toBe(false);
     expect(cursorsSeen).toEqual([null, "old-cursor"]);
+    expect(writes.map(({ sourceRecordId }) => sourceRecordId)).toEqual(["old", "recent"]);
   });
 
   test("applies the rolling freshness window to an existing checkpoint backlog", async () => {
@@ -326,6 +456,48 @@ describe("Nango source-record reader", () => {
     expect(cursorsSeen).toEqual([null, "cursor-one"]);
   });
 
+  test("mirrors an expired deletion even when it is omitted from the distiller working set", async () => {
+    const writes: SourceRecordWrite[] = [];
+    const deletion = pipelineRecord(
+      "deleted-old-record",
+      "# Deleted long ago",
+      "deleted-cursor",
+      "DELETED",
+      "2026-05-01T10:00:00.000Z",
+    );
+    deletion._nango_metadata.last_modified_at = "2026-05-01T10:00:00.000Z";
+    deletion._nango_metadata.deleted_at = "2026-05-01T10:00:00.000Z";
+    const sourceReader = reader(async (request) => {
+      if (new URL(request.url).pathname === "/connections") {
+        return Response.json({
+          connections: [{ id: 1, connection_id: "owner", provider_config_key: "github" }],
+        });
+      }
+      return Response.json({
+        records: [deletion],
+        next_cursor: null,
+      });
+    }, {
+      sources: [GITHUB],
+      recordWriter: {
+        async write(record) {
+          writes.push(record);
+          return PERSISTED_RECORD;
+        },
+      },
+    });
+
+    const result = await sourceReader.read({ limit: 10 });
+
+    expect(result.records).toEqual([]);
+    expect(result.has_more).toBe(false);
+    expect(writes).toEqual([expect.objectContaining({
+      sourceRecordId: "deleted-old-record",
+      action: "deleted",
+      markdown: "# Deleted long ago",
+    })]);
+  });
+
   test("returns recently updated records even when their underlying activity is old", async () => {
     const sourceReader = reader(async (request) => {
       const url = new URL(request.url);
@@ -353,6 +525,7 @@ describe("Nango source-record reader", () => {
   test("treats a re-created Nango connection as a new stream even when its public ID is reused", async () => {
     let connectionInstanceId = 1;
     const cursorsSeen: Array<string | null> = [];
+    const writes: SourceRecordWrite[] = [];
     const sourceReader = reader(async (request) => {
       const url = new URL(request.url);
       if (url.pathname === "/connections") {
@@ -367,20 +540,37 @@ describe("Nango source-record reader", () => {
       const cursor = url.searchParams.get("cursor");
       cursorsSeen.push(cursor);
       return Response.json({
-        records: [pipelineRecord(String(connectionInstanceId), "# Activity", `cursor-${connectionInstanceId}`)],
+        records: [pipelineRecord("same-record", "# Activity", `cursor-${connectionInstanceId}`)],
         next_cursor: null,
       });
-    }, { sources: [GITHUB] });
+    }, {
+      sources: [GITHUB],
+      recordWriter: {
+        async write(record) {
+          writes.push(record);
+          return PERSISTED_RECORD;
+        },
+      },
+    });
 
     const first = await sourceReader.read({ limit: 10 });
     connectionInstanceId = 2;
     await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 10 });
 
     expect(cursorsSeen).toEqual([null, null]);
+    expect(writes.map(({ connectionInstanceId, connectionId, sourceRecordId }) => ({
+      connectionInstanceId,
+      connectionId,
+      sourceRecordId,
+    }))).toEqual([
+      { connectionInstanceId: 1, connectionId: "reused-owner-id", sourceRecordId: "same-record" },
+      { connectionInstanceId: 2, connectionId: "reused-owner-id", sourceRecordId: "same-record" },
+    ]);
   });
 
   test("does not advance past a record omitted by the response byte budget", async () => {
     const cursorsSeen: Array<string | null> = [];
+    const writes: SourceRecordWrite[] = [];
     const sourceReader = reader(async (request) => {
       const url = new URL(request.url);
       if (url.pathname === "/connections") {
@@ -388,22 +578,39 @@ describe("Nango source-record reader", () => {
       }
       const cursor = url.searchParams.get("cursor");
       cursorsSeen.push(cursor);
-      const records = cursor === null
-        ? [pipelineRecord("1", "A".repeat(100), "cursor-one"), pipelineRecord("2", "B".repeat(100), "cursor-two")]
-        : [pipelineRecord("2", "B".repeat(100), "cursor-two")];
-      return Response.json({ records, next_cursor: null });
-    }, { sources: [GITHUB], responseByteBudget: 200 });
+      return cursor === null
+        ? Response.json({
+            records: [pipelineRecord("1", "A".repeat(100), "cursor-one")],
+            next_cursor: "more",
+          })
+        : Response.json({
+            records: [pipelineRecord("2", "B".repeat(100), "cursor-two")],
+            next_cursor: null,
+          });
+    }, {
+      sources: [GITHUB],
+      responseByteBudget: 200,
+      recordWriter: {
+        write: async (record) => {
+          writes.push(record);
+          return PERSISTED_RECORD;
+        },
+      },
+    });
 
     const first = await sourceReader.read({ limit: 10 });
     expect(first.records).toHaveLength(1);
     expect(first.has_more).toBe(true);
+    expect(writes.map(({ sourceRecordId }) => sourceRecordId)).toEqual(["1"]);
     const second = await sourceReader.read({ checkpoint: first.next_checkpoint, limit: 10 });
     expect(second.records.map(({ markdown }) => markdown)).toEqual(["B".repeat(100)]);
-    expect(cursorsSeen).toEqual([null, "cursor-one"]);
+    expect(cursorsSeen).toEqual([null, "cursor-one", "cursor-one"]);
+    expect(writes.map(({ sourceRecordId }) => sourceRecordId)).toEqual(["1", "2"]);
   });
 
   test("serves a large agent conversation as ordered fresh-session working sets", async () => {
     const cursorsSeen: Array<string | null> = [];
+    const limitsSeen: Array<string | null> = [];
     const writes: SourceRecordWrite[] = [];
     const body = [
       "# Agent conversation",
@@ -423,17 +630,24 @@ describe("Nango source-record reader", () => {
       }
       const cursor = url.searchParams.get("cursor");
       cursorsSeen.push(cursor);
+      limitsSeen.push(url.searchParams.get("limit"));
       return cursor === null
         ? Response.json({ records: [pipelineRecord("large", body, "cursor-one")], next_cursor: null })
         : Response.json({ records: [], next_cursor: null });
     }, {
       sources: [AGENT_CONVERSATIONS],
-      recordWriter: { write: async (record) => { writes.push(record); } },
+      recordWriter: {
+        write: async (record) => {
+          writes.push(record);
+          return PERSISTED_RECORD;
+        },
+      },
     });
 
     const first = await sourceReader.read({ limit: 50 });
     expect(first.records).toHaveLength(1);
     expect(first.records[0]?.markdown).toContain("## Conversation to process");
+    expect(first.records[0]).toMatchObject(PERSISTED_RECORD);
     expect(first.records[0]?.markdown).not.toContain("Context from immediately before this excerpt");
     expect(first.has_more).toBe(true);
 
@@ -441,10 +655,56 @@ describe("Nango source-record reader", () => {
     expect(second.records).toHaveLength(1);
     expect(second.records[0]?.markdown).toContain("## Context from immediately before this excerpt");
     expect(second.records[0]?.markdown).toContain("already processed");
+    expect(second.records[0]).toMatchObject(PERSISTED_RECORD);
     expect(second.has_more).toBe(false);
     expect(cursorsSeen).toEqual([null, null]);
+    expect(limitsSeen).toEqual(["1", "1"]);
     expect(writes).toHaveLength(2);
     expect(writes.every((write) => write.markdown === body)).toBe(true);
+  });
+
+  test("persists one raw conversation larger than the former four-megabyte page ceiling", async () => {
+    const writes: SourceRecordWrite[] = [];
+    const body = [
+      "# Agent conversation",
+      ...Array.from({ length: 5 }, (_, index) => [
+        "",
+        `### ${index % 2 === 0 ? "User" : "Assistant"}`,
+        "",
+        `turn-${index + 1}-${"x".repeat(820_000)}`,
+      ]).flat(),
+    ].join("\n");
+    expect(Buffer.byteLength(body, "utf8")).toBeGreaterThan(4_000_000);
+    const sourceReader = reader(async (request) => {
+      if (new URL(request.url).pathname === "/connections") {
+        return Response.json({
+          connections: [{
+            id: 1,
+            connection_id: "owner",
+            provider_config_key: "agent-conversations",
+          }],
+        });
+      }
+      return Response.json({
+        records: [pipelineRecord("very-large", body, "very-large-cursor")],
+        next_cursor: null,
+      });
+    }, {
+      sources: [AGENT_CONVERSATIONS],
+      recordWriter: {
+        async write(record) {
+          writes.push(record);
+          return PERSISTED_RECORD;
+        },
+      },
+    });
+
+    const first = await sourceReader.read({ limit: 10 });
+
+    expect(first.records).toHaveLength(1);
+    expect(Buffer.byteLength(first.records[0]!.markdown!, "utf8")).toBeLessThan(1_000_000);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.markdown).toBe(body);
   });
 
   test("restarts segmentation when a pending conversation receives a newer source version", async () => {

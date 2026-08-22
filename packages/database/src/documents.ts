@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
 
+// Connector-controlled Markdown can be much larger than an authored knowledge
+// page (notably a long agent conversation) while still remaining one exact raw
+// record. Page schemas keep their tighter authoring limit.
+export const MAX_KNOWLEDGE_PAGE_BYTES = 4_000_000;
+export const MAX_MARKDOWN_DOCUMENT_BYTES = 64 * 1024 * 1024;
+
 export type MarkdownObjectMetadata = {
   body_object_key: string;
   body_size_bytes: number;

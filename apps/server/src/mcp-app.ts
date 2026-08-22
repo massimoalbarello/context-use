@@ -1,6 +1,8 @@
 import {
   AssetRepository,
   DirectoryRepository,
+  DocumentLinkRepository,
+  KnowledgeSettingsRepository,
   PageRepository,
   SourceRecordRepository,
   createPool,
@@ -44,6 +46,9 @@ const storage = new BrokeredStorage({
 });
 const markdownObjects = new BrokeredMarkdownObjectStore(storage);
 const pages = new PageRepository(pool, markdownObjects);
+const recordDocuments = new SourceRecordRepository(pool, markdownObjects);
+const knowledgeSettings = new KnowledgeSettingsRepository(pool);
+const documentLinks = new DocumentLinkRepository(pool);
 // A local evaluation corpus replaces the Nango pipeline behind the same reader contract,
 // so `read_source_records` stays the one downstream surface in both cases.
 const sourceRecords = config.EVAL_CORPUS_PATH
@@ -52,10 +57,18 @@ const sourceRecords = config.EVAL_CORPUS_PATH
       ? new NangoRecordReader({
         baseUrl: config.NANGO_INTERNAL_URL,
         apiKey: config.NANGO_PIPELINE_API_KEY,
-        recordWriter: new SourceRecordRepository(pool, markdownObjects),
+        recordWriter: recordDocuments,
       })
     : undefined;
-const knowledgeMcp = createMcpRequestHandler(pages, directories, assets, sourceRecords);
+const knowledgeMcp = createMcpRequestHandler(
+  pages,
+  directories,
+  assets,
+  sourceRecords,
+  recordDocuments,
+  knowledgeSettings,
+  documentLinks,
+);
 const upload = createMcpAssetUploadHandler(assets, storage);
 const download = createMcpAssetDownloadHandler(assets, storage);
 const protectedResourceMetadata = () => json({

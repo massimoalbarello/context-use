@@ -21,7 +21,10 @@ describe("strict mutation schemas", () => {
     expect(createPageSchema.shape.body_markdown.description).toBe(PAGE_MARKDOWN_BODY_DESCRIPTION);
     expect(updatePageSchema.shape.body_markdown.description).toContain("layout=half");
     expect(updatePageSchema.shape.body_markdown.description).toContain("consecutive images or videos");
-    expect(createPageSchema.shape.body_markdown.description).toContain("[[page/path#heading-slug|label]]");
+    expect(createPageSchema.shape.body_markdown.description).toContain("[Label](context-use://document/<uuid>)");
+    expect(createPageSchema.shape.body_markdown.description).toContain("![Alt](context-use://document/<uuid>)");
+    expect(createPageSchema.shape.body_markdown.description).not.toContain("context-use://page/");
+    expect(createPageSchema.shape.body_markdown.description).not.toContain("context-use://asset/");
     expect(createPageSchema.shape.body_markdown.description).toContain("shape=auto|square|portrait|landscape");
     expect(createPageSchema.shape.body_markdown.description).toContain("Example: ![Portrait]");
   });

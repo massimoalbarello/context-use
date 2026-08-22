@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { Pool } from "pg";
 import {
+  MAX_KNOWLEDGE_PAGE_BYTES,
   PageRepository,
   VersionConflictError,
 } from "../src/index.ts";
@@ -50,7 +51,7 @@ describeDatabase("immutable page history", () => {
     }, actor);
     createdIds.push(created.id);
     expect(created.version_number).toBe(1);
-    expect(created.body_markdown).toBe(`[Related](context-use://page/${linkedPageId})`);
+    expect(created.body_markdown).toBe(`[Related](context-use://document/${linkedPageId})`);
     const afterCreate = (await pages.changesSince({ limit: 500 })).next_cursor;
 
     const updated = await pages.update(created.id, {
@@ -180,6 +181,56 @@ describeDatabase("immutable page history", () => {
       "SELECT 1 FROM knowledge_page_changes WHERE page_id=$1",
       [created.id],
     )).rowCount).toBe(9);
+  });
+
+  test("rejects multibyte page bodies above four megabytes before storage or mutation", async () => {
+    const suffix = crypto.randomUUID().slice(0, 8);
+    await createDirectory(`tests/${suffix}`);
+    const store = new MemoryMarkdownStore();
+    const boundedPages = new PageRepository(pool, store);
+    const oversizedBody = "界".repeat(Math.floor(MAX_KNOWLEDGE_PAGE_BYTES / 3) + 1);
+    expect(Buffer.byteLength(oversizedBody, "utf8")).toBeGreaterThan(
+      MAX_KNOWLEDGE_PAGE_BYTES,
+    );
+
+    const rejectedPath = `tests/${suffix}/oversized-create`;
+    await expect(boundedPages.create({
+      path: rejectedPath,
+      title: "Oversized create",
+      summary: "An oversized multibyte page create.",
+      body_markdown: oversizedBody,
+      commit_message: "Reject oversized create",
+    }, actor)).rejects.toThrow("Knowledge page Markdown exceeds the page size limit");
+    expect(store.bodies.size).toBe(0);
+    expect(await boundedPages.getByPath(rejectedPath)).toBeNull();
+
+    const created = await boundedPages.create({
+      path: `tests/${suffix}/bounded-page`,
+      title: "Bounded page",
+      summary: "A valid page that must survive a rejected update.",
+      body_markdown: "Original body",
+      commit_message: "Create bounded page",
+    }, actor);
+    createdIds.push(created.id);
+    expect(store.bodies.size).toBe(1);
+
+    await expect(boundedPages.update(created.id, {
+      path: created.current_path,
+      title: "Rejected oversized update",
+      summary: "An oversized update that must leave the page unchanged.",
+      body_markdown: oversizedBody,
+      commit_message: "Reject oversized update",
+      expected_version_number: created.version_number,
+    }, actor)).rejects.toThrow("Knowledge page Markdown exceeds the page size limit");
+
+    expect(store.bodies.size).toBe(1);
+    expect(await boundedPages.get(created.id)).toMatchObject({
+      current_version_id: created.current_version_id,
+      version_number: 1,
+      title: "Bounded page",
+      body_markdown: "Original body",
+    });
+    expect(await boundedPages.history(created.id)).toHaveLength(1);
   });
 
   test("a scan cutoff cannot skip a lower sequence that commits late", async () => {

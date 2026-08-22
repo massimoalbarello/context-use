@@ -1,4 +1,11 @@
-import { AssetRepository, DirectoryRepository, PageRepository } from "@context-use/database";
+import {
+  AssetRepository,
+  DirectoryRepository,
+  DocumentLinkRepository,
+  KnowledgeSettingsRepository,
+  PageRepository,
+  SourceRecordRepository,
+} from "@context-use/database";
 import { MCP_SCOPE } from "@context-use/shared";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { config } from "./config.ts";
@@ -40,7 +47,10 @@ export function createMcpRequestHandler(
   pages: PageRepository,
   directories: DirectoryRepository,
   assets: AssetRepository,
-  sourceRecords?: SourceRecordReader,
+  sourceRecords: SourceRecordReader | undefined,
+  recordDocuments: SourceRecordRepository | undefined,
+  knowledgeSettings: KnowledgeSettingsRepository,
+  documentLinks?: DocumentLinkRepository,
 ) {
   const resource = config.MCP_RESOURCE;
   // Fetch keys over the private service network. The token issuer and audience
@@ -81,7 +91,16 @@ export function createMcpRequestHandler(
     const unsupportedMethod = unsupportedMcpMethodResponse(request);
     if (unsupportedMethod) return unsupportedMethod;
     const transport = createStatelessMcpTransport();
-    const server = await createMcpServer(context, pages, directories, assets, sourceRecords);
+    const server = await createMcpServer(
+      context,
+      pages,
+      directories,
+      assets,
+      sourceRecords,
+      recordDocuments,
+      knowledgeSettings,
+      documentLinks,
+    );
     await server.connect(transport);
     try {
       return await transport.handleRequest(request);

@@ -4,7 +4,9 @@ import { chmod } from "node:fs/promises";
 import {
   AssetRepository,
   DocumentMaintenanceRepository,
+  MAX_MARKDOWN_DOCUMENT_BYTES,
   createPool,
+  extractDocumentLinks,
   StoragePublicationRepository,
 } from "@context-use/database";
 import { AssetPath } from "@context-use/shared";
@@ -197,7 +199,7 @@ export function createStorageBrokerApp(input: {
     if (!privateCapability(request, tokens)) return denied();
     const revisionId = z.string().uuid().parse(request.headers.get("x-document-revision-id"));
     const objectKey = privateDocumentKeySchema.parse(request.headers.get("x-object-key"));
-    const sizeBytes = z.number().int().nonnegative().max(4_000_000)
+    const sizeBytes = z.number().int().nonnegative().max(MAX_MARKDOWN_DOCUMENT_BYTES)
       .parse(Number(request.headers.get("content-length")));
     const contentHash = z.string().regex(/^[a-f0-9]{64}$/)
       .parse(request.headers.get("x-content-sha256"));
@@ -365,10 +367,79 @@ export async function reconcileDocumentObjects(input: {
   }
 }
 
+export async function reconcileDocumentLinks(input: {
+  storage: ObjectStorageBackend;
+  maintenance: Pick<DocumentMaintenanceRepository,
+    "unindexedLinkRevisions" | "replaceRevisionLinks" | "deferRevisionLinks">;
+}): Promise<{
+  indexed: number;
+  failures: Array<{ revisionId: string; error: unknown }>;
+}> {
+  const { storage, maintenance } = input;
+  // One bounded batch keeps storage startup and the recurring maintenance tick
+  // responsive even when a large historical corpus still needs indexing. The
+  // filesystem cutover has its own completion gate; this additive release does
+  // not pretend an unfinished backfill is complete.
+  const revisions = await maintenance.unindexedLinkRevisions();
+  let indexed = 0;
+  const failures: Array<{ revisionId: string; error: unknown }> = [];
+  const maxConcurrency = 8;
+  const maxInFlightBytes = 16 * 1024 * 1024;
+  for (let offset = 0; offset < revisions.length;) {
+    const batch: typeof revisions = [];
+    let batchBytes = 0;
+    while (offset < revisions.length && batch.length < maxConcurrency) {
+      const revision = revisions[offset]!;
+      const declaredBytes = Number.isSafeInteger(revision.body_size_bytes)
+          && revision.body_size_bytes >= 0
+        ? revision.body_size_bytes
+        : maxInFlightBytes + 1;
+      if (batch.length > 0 && batchBytes + declaredBytes > maxInFlightBytes) break;
+      batch.push(revision);
+      batchBytes += declaredBytes;
+      offset += 1;
+      // One large raw record is allowed to exceed the byte budget only when it
+      // owns the batch. Never overlap it with another body in memory.
+      if (declaredBytes > maxInFlightBytes) break;
+    }
+    await Promise.all(batch.map(async (revision) => {
+      try {
+        if (!await storage.verify(
+          revision.body_object_key,
+          Number(revision.body_size_bytes),
+          revision.body_content_hash,
+        )) throw new Error("Stored revision bytes are unavailable or corrupt");
+        const markdown = await new Response(await storage.read(revision.body_object_key)).text();
+        await maintenance.replaceRevisionLinks(
+          revision.revision_id,
+          extractDocumentLinks(markdown),
+        );
+        indexed += 1;
+      } catch (error) {
+        await maintenance.deferRevisionLinks(revision.revision_id);
+        failures.push({ revisionId: revision.revision_id, error });
+      }
+    }));
+  }
+  return { indexed, failures };
+}
+
 export async function maintainDocumentObjects(): Promise<void> {
   if (maintenanceRunning) return;
   maintenanceRunning = true;
   try {
+    const linkResult = await reconcileDocumentLinks({
+      storage: defaultStorage,
+      maintenance: documentMaintenance,
+    });
+    for (const failure of linkResult.failures) {
+      console.error("document_link_index_failed", {
+        revisionId: failure.revisionId,
+        ...(failure.error instanceof Error
+          ? { name: failure.error.name, message: failure.error.message }
+          : { type: typeof failure.error }),
+      });
+    }
     await reconcileDocumentObjects({
       storage: defaultStorage,
       maintenance: documentMaintenance,
@@ -379,7 +450,6 @@ export async function maintainDocumentObjects(): Promise<void> {
 }
 
 export async function listenStorageSocket(): Promise<void> {
-  await maintainDocumentObjects();
   const socketPath = config.STORAGE_SOCKET_PATH;
   await unlink(socketPath).catch(() => undefined);
   Bun.serve({
@@ -395,6 +465,11 @@ export async function listenStorageSocket(): Promise<void> {
   });
   await chmod(socketPath, 0o660);
   console.info("context-use storage broker listening on unix socket");
+  void maintainDocumentObjects().catch((error: unknown) => {
+    console.error("document_object_maintenance_failed", error instanceof Error
+      ? { name: error.name, message: error.message }
+      : { type: typeof error });
+  });
   setInterval(() => {
     void maintainDocumentObjects().catch((error: unknown) => {
       console.error("document_object_maintenance_failed", error instanceof Error

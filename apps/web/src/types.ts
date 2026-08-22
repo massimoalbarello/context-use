@@ -154,7 +154,13 @@ export type PublicationPreview = {
   rendered_html: string;
   current_public_path: string | null;
   warnings: string[];
-  references: Array<{ kind: "page" | "directory" | "asset"; id: string; label: string; path: string | null; public: boolean }>;
+  references: Array<{
+    kind: "page" | "directory" | "asset" | "record" | "document";
+    id: string;
+    label: string;
+    path: string | null;
+    public: boolean;
+  }>;
   republication: RepublicationReview | null;
 };
 

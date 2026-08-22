@@ -223,6 +223,63 @@ describe("safe Markdown rendering", () => {
     expect(html).not.toContain("22222222-2222-4222-8222-222222222222");
   });
 
+  test("renders generic document links according to their resolved representation", async () => {
+    const pageId = "11111111-1111-4111-8111-111111111111";
+    const recordId = "22222222-2222-4222-8222-222222222222";
+    const assetId = "33333333-3333-4333-8333-333333333333";
+    const html = await renderMarkdown([
+      `[Page](context-use://document/${pageId}#details)`,
+      `[Record](context-use://document/${recordId})`,
+      `![Photo](context-use://document/${assetId})`,
+      `[Download](context-use://document/${assetId})`,
+    ].join("\n\n"), {
+      ...privateResolvers,
+      document: async (id) => {
+        if (id === pageId) {
+          return { available: true as const, representation: "page" as const, href: `/app/pages/${pageId}` };
+        }
+        if (id === recordId) {
+          return { available: true as const, representation: "record" as const, href: `/app/records/${recordId}` };
+        }
+        if (id === assetId) {
+          return {
+            available: true as const,
+            representation: "asset" as const,
+            href: `/api/dashboard/assets/${assetId}/content`,
+            contentType: "image/png",
+          };
+        }
+        return { available: false as const };
+      },
+    });
+
+    expect(html).toContain(`<a href="/app/pages/${pageId}#details">Page</a>`);
+    expect(html).toContain(`<a href="/app/records/${recordId}">Record</a>`);
+    expect(html).toContain(`<img src="/api/dashboard/assets/${assetId}/content" alt="Photo" loading="lazy"`);
+    expect(html).toContain(`<a href="/api/dashboard/assets/${assetId}/content" target="_blank" rel="noopener noreferrer">Download</a>`);
+    expect(html).not.toContain("context-use://");
+  });
+
+  test("keeps unavailable and non-asset embedded documents inert", async () => {
+    const pageId = "11111111-1111-4111-8111-111111111111";
+    const recordId = "22222222-2222-4222-8222-222222222222";
+    const html = await renderMarkdown([
+      `![Not media](context-use://document/${pageId})`,
+      `[Private record](context-use://document/${recordId}#secret)`,
+    ].join("\n\n"), {
+      ...privateResolvers,
+      document: async (id) => id === pageId
+        ? { available: true as const, representation: "page" as const, href: `/app/pages/${pageId}` }
+        : { available: false as const },
+    });
+
+    expect(html).toContain("Private asset unavailable");
+    expect(html).toContain('<span class="private-reference">Private record</span>');
+    expect(html).not.toContain("#secret");
+    expect(html).not.toContain(pageId);
+    expect(html).not.toContain(recordId);
+  });
+
   test("renders stable directory references as links to generated indexes", async () => {
     const directoryId = "11111111-1111-4111-8111-111111111111";
     const html = await renderMarkdown(

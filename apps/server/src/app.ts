@@ -10,10 +10,9 @@ import {
   PageDeletionRepository,
   PublicationRepository,
   PublicEntrypointRepository,
+  SourceRecordRepository,
   createPool,
-  extractAssetLinks,
   extractDirectoryLinks,
-  extractPageLinks,
   extractWikiLinks,
   knowledgeTemplateBaseline,
   reconcileKnowledgeTemplate,
@@ -45,6 +44,7 @@ import { bodyJson, json, problem, routeError } from "./http.ts";
 import { publicationWarnings, renderMarkdown } from "./markdown.ts";
 import { pageDelta } from "./page-delta.ts";
 import { republicationReview } from "./republication-review.ts";
+import { publicationDocumentReferences } from "./publication-document-references.ts";
 import {
   SecurityError,
   requestMatchesOrigin,
@@ -68,6 +68,7 @@ const dashboardPages = new PageRepository(dashboardPool, markdownObjects);
 const dashboardDirectories = new DirectoryRepository(dashboardPool);
 const pageDeletions = new PageDeletionRepository(dashboardPool);
 const dashboardAssets = new AssetRepository(dashboardPool);
+const dashboardRecords = new SourceRecordRepository(dashboardPool, markdownObjects);
 const publications = new PublicationRepository(dashboardPool);
 const publicEntrypoint = new PublicEntrypointRepository(dashboardPool);
 const knowledgeExports = new KnowledgeExportRepository(dashboardPool, markdownObjects);
@@ -776,66 +777,63 @@ export const app = new Elysia({ serve: { maxRequestBodySize: 5_500_000_000 } })
     if (!version) return problem("Version not found", 404, "not_found");
     const republication = await republicationReview(dashboardPages, pageId, page, version);
     const html = await renderMarkdown(version.body_markdown, publishedPreviewResolvers(pageId, version.path));
-    const references = await Promise.all([
-      ...extractPageLinks(version.body_markdown).map(async (id) => {
-        const target = await dashboardPages.get(id);
-        return {
-          kind: "page" as const,
-          id,
-          label: id === pageId ? version.title : target?.title ?? "Missing page",
-          path: id === pageId ? version.path : target?.current_path ?? null,
-          public: id === pageId || Boolean(target?.published_version_id),
-        };
+    const references = [
+      ...await publicationDocumentReferences({
+        markdown: version.body_markdown,
+        publishingPage: { id: pageId, title: version.title, path: version.path },
+        lookups: {
+          pages: dashboardPages,
+          assets: dashboardAssets,
+          records: dashboardRecords,
+        },
       }),
-      ...extractDirectoryLinks(version.body_markdown).map(async (id) => {
-        const target = await dashboardDirectories.get(id);
-        return {
-          kind: "directory" as const,
-          id,
-          label: target?.title ?? "Missing directory",
-          path: target?.current_path ?? null,
-          public: target ? await directoryWillBePublic(target.current_path, version.path) : false,
-        };
-      }),
-      ...extractWikiLinks(version.body_markdown).map(async ({ path, label }) => {
-        let target = null;
-        let publishingTarget = false;
-        for (const candidate of wikiLinkCandidatePaths(path, version.path)) {
-          if (candidate === version.path) {
-            target = page;
-            publishingTarget = true;
-            break;
-          }
-          target = await dashboardPages.getByPath(candidate);
-          if (target) break;
-        }
-        if (!target) {
-          let directory = null;
-          for (const candidate of wikiLinkCandidatePaths(path, version.path)) {
-            directory = await dashboardDirectories.getByPath(candidate);
-            if (directory) break;
-          }
-          if (directory) return {
+      ...await Promise.all([
+        ...extractDirectoryLinks(version.body_markdown).map(async (id) => {
+          const target = await dashboardDirectories.get(id);
+          return {
             kind: "directory" as const,
-            id: directory.id,
-            label: directory.title,
-            path: directory.current_path,
-            public: await directoryWillBePublic(directory.current_path, version.path),
+            id,
+            label: target?.title ?? "Missing directory",
+            path: target?.current_path ?? null,
+            public: target ? await directoryWillBePublic(target.current_path, version.path) : false,
           };
-        }
-        return {
-          kind: "page" as const,
-          id: target?.id ?? `path:${path}`,
-          label: publishingTarget ? version.title : target?.title ?? label,
-          path: publishingTarget ? version.path : target?.current_path ?? path,
-          public: publishingTarget || Boolean(target?.published_version_id),
-        };
-      }),
-      ...extractAssetLinks(version.body_markdown).map(async (id) => {
-        const target = await dashboardAssets.get(id);
-        return { kind: "asset" as const, id, label: target?.filename ?? "Missing asset", path: target?.current_path ?? null, public: Boolean(target?.public_path) };
-      }),
-    ]);
+        }),
+        ...extractWikiLinks(version.body_markdown).map(async ({ path, label }) => {
+          let target = null;
+          let publishingTarget = false;
+          for (const candidate of wikiLinkCandidatePaths(path, version.path)) {
+            if (candidate === version.path) {
+              target = page;
+              publishingTarget = true;
+              break;
+            }
+            target = await dashboardPages.getByPath(candidate);
+            if (target) break;
+          }
+          if (!target) {
+            let directory = null;
+            for (const candidate of wikiLinkCandidatePaths(path, version.path)) {
+              directory = await dashboardDirectories.getByPath(candidate);
+              if (directory) break;
+            }
+            if (directory) return {
+              kind: "directory" as const,
+              id: directory.id,
+              label: directory.title,
+              path: directory.current_path,
+              public: await directoryWillBePublic(directory.current_path, version.path),
+            };
+          }
+          return {
+            kind: "page" as const,
+            id: target?.id ?? `path:${path}`,
+            label: publishingTarget ? version.title : target?.title ?? label,
+            path: publishingTarget ? version.path : target?.current_path ?? path,
+            public: publishingTarget || Boolean(target?.published_version_id),
+          };
+        }),
+      ]),
+    ];
     return json({
       page_id: pageId,
       version_id: version.id,

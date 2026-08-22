@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MAX_MARKDOWN_DOCUMENT_BYTES } from "@context-use/database";
 import { createStorageBrokerApp } from "./storage-app.ts";
 import { BrokeredStorage } from "./storage-client.ts";
 import type { ByteRange, GeneratedObjectMetadata, ObjectStorageBackend, StoredAsset } from "./storage.ts";
@@ -174,6 +175,34 @@ describe("storage broker capabilities", () => {
       tokens.public,
       `/public/document?key=${encodeURIComponent(publicDocumentKey)}`,
     ))).status).toBe(404);
+  });
+
+  test("stores raw Markdown records above the authored-page ceiling with a bounded document limit", async () => {
+    const storage = new MemoryStorage();
+    const revisionId = "67676767-6767-4676-8676-676767676767";
+    const objectKey = `documents/private/${revisionId}.md`;
+    const markdown = Buffer.alloc(4_000_001, "r");
+    expect(markdown.byteLength).toBeLessThan(MAX_MARKDOWN_DOCUMENT_BYTES);
+    const app = createStorageBrokerApp({
+      storage,
+      privateAssets: privateAssets({}),
+      publicAssets: { assetByPublicPath: async () => null },
+      tokens,
+    });
+
+    const response = await app.handle(authorized(tokens.mcp, "/private/document", {
+      method: "PUT",
+      headers: {
+        "content-length": String(markdown.byteLength),
+        "x-document-revision-id": revisionId,
+        "x-object-key": objectKey,
+        "x-content-sha256": createHash("sha256").update(markdown).digest("hex"),
+      },
+      body: markdown,
+    }));
+
+    expect(response.status).toBe(204);
+    expect(storage.objects.get(objectKey)?.byteLength).toBe(markdown.byteLength);
   });
 
   test("brokered document reads preserve a leading UTF-8 BOM", async () => {

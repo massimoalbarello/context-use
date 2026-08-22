@@ -1,4 +1,8 @@
-import { wikiLinkCandidatePaths, type PublicProjectionSnapshot } from "@context-use/database";
+import {
+  normalizeInternalDocumentLinks,
+  wikiLinkCandidatePaths,
+  type PublicProjectionSnapshot,
+} from "@context-use/database";
 
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
@@ -17,7 +21,7 @@ export function projectPublicMarkdown(
   const directoriesById = new Map(snapshot.directoryTargets.map((directory) => [directory.id.toLowerCase(), directory]));
   const directoriesByPath = new Map(snapshot.directoryTargets.map((directory) => [directory.path.toLowerCase(), directory]));
 
-  let projected = markdown
+  let projected = normalizeInternalDocumentLinks(markdown)
     .replace(/<!--.*?-->/gis, "")
     .replace(/<!--.*$/gis, "")
     .replace(/<script(?:\s[^>]*)?>.*?<\/script\s*>/gis, "")
@@ -27,26 +31,25 @@ export function projectPublicMarkdown(
     .replace(/<[a-z!?/][^>]*(?:>|$)/gis, "");
 
   projected = projected.replace(
-    new RegExp(`!\\[([^\\]]*)\\]\\(context-use://asset/(${UUID})\\)(\\{[^}\\r\\n]*\\})?`, "gi"),
+    new RegExp(`!\\[([^\\]]*)\\]\\(context-use://document/(${UUID})(?:#[a-z0-9][a-z0-9_-]*)?\\)(\\{[^}\\r\\n]*\\})?`, "gi"),
     (_whole, label: string, id: string, attributes: string | undefined) => {
       const asset = assetsById.get(id.toLowerCase());
-      return asset
+      const page = pagesById.get(id.toLowerCase());
+      return asset && !page
         ? `![${label}](context-use://public-asset/${asset.public_path})${attributes ?? ""}`
         : label;
     },
   );
 
-  const pageLink = (_whole: string, label: string, id: string, fragment = "") => {
+  const documentLink = (_whole: string, label: string, id: string, fragment = "") => {
     const page = pagesById.get(id.toLowerCase());
-    return page ? `[${label}](/p/${page.public_path}${fragment})` : label;
+    const asset = assetsById.get(id.toLowerCase());
+    if (page && !asset) return `[${label}](/p/${page.public_path}${fragment})`;
+    return asset && !page ? `[${label}](context-use://public-asset/${asset.public_path})` : label;
   };
   projected = projected.replace(
-    new RegExp(`\\[([^\\]]*)\\]\\(context-use://page/(${UUID})(#[a-z0-9][a-z0-9_-]*)?\\)`, "gi"),
-    pageLink,
-  );
-  projected = projected.replace(
-    new RegExp(`\\[([^\\]]*)\\]\\(/app/pages/(${UUID})(#[a-z0-9][a-z0-9_-]*)?\\)`, "gi"),
-    pageLink,
+    new RegExp(`(?<!!)\\[([^\\]]*)\\]\\(context-use://document/(${UUID})(#[a-z0-9][a-z0-9_-]*)?\\)`, "gi"),
+    documentLink,
   );
 
   const directoryLink = (_whole: string, label: string, id: string) => {
@@ -85,7 +88,7 @@ export function projectPublicMarkdown(
   );
 
   return projected
-    .replace(new RegExp(`context-use://(?:page|directory|asset)/${UUID}`, "gi"), "[private reference]")
+    .replace(new RegExp(`context-use://(?:document|page|directory|asset)/${UUID}`, "gi"), "[private reference]")
     .replace(new RegExp(`/app/(?:pages|directories)/${UUID}`, "gi"), "[private reference]")
     .replace(new RegExp(`/api/(?:dashboard|mcp|public)/assets/${UUID}(?:/(?:content|status))?`, "gi"), "[private asset reference]")
     .replace(new RegExp(UUID, "gi"), "[private identifier]");

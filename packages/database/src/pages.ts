@@ -9,10 +9,14 @@ import type {
 } from "@context-use/shared";
 import {
   assertMarkdownObject,
+  MAX_KNOWLEDGE_PAGE_BYTES,
   type MarkdownObjectMetadata,
   type MarkdownObjectStore,
 } from "./documents.ts";
-import { extractAssetLinks, normalizeInternalPageLinks } from "./links.ts";
+import {
+  extractDocumentLinks,
+  normalizeInternalDocumentLinks,
+} from "./links.ts";
 
 const CHANGE_CURSOR_PREFIX = "cu-page-changes-v1.";
 const CHANGE_PAGE_TOKEN_PREFIX = "cu-page-scan-v1.";
@@ -154,7 +158,10 @@ async function insertAssetLinks(
   versionId: string,
   markdown: string,
 ): Promise<void> {
-  for (const targetId of extractAssetLinks(markdown)) {
+  // A normal download link and an embedded media link both retain an asset.
+  // The generic URI deliberately carries no representation type, so resolve
+  // every document target against the asset projection here.
+  for (const targetId of extractDocumentLinks(markdown)) {
     await client.query(
       `INSERT INTO knowledge_asset_links(source_version_id, target_asset_id)
        SELECT $1, id FROM assets WHERE id = $2 AND deleted_at IS NULL
@@ -162,6 +169,17 @@ async function insertAssetLinks(
       [versionId, targetId],
     );
   }
+}
+
+async function replaceDocumentLinks(
+  client: PoolClient,
+  revisionId: string,
+  markdown: string,
+): Promise<void> {
+  await client.query(
+    "SELECT replace_document_links($1,$2::uuid[])",
+    [revisionId, extractDocumentLinks(markdown)],
+  );
 }
 
 // The published version number is joined into every page read so a caller can tell a
@@ -200,6 +218,9 @@ export class PageRepository {
 
   private async storedBody(revisionId: string, bodyMarkdown: string): Promise<MarkdownObjectMetadata> {
     if (!this.bodies) throw new Error("Knowledge document object store is required");
+    if (Buffer.byteLength(bodyMarkdown, "utf8") > MAX_KNOWLEDGE_PAGE_BYTES) {
+      throw new Error("Knowledge page Markdown exceeds the page size limit");
+    }
     return this.bodies.write(revisionId, bodyMarkdown);
   }
 
@@ -233,7 +254,7 @@ export class PageRepository {
   async create(input: CreatePageInput, actor: Actor) {
     const pageId = randomUUID();
     const versionId = randomUUID();
-    const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
+    const bodyMarkdown = normalizeInternalDocumentLinks(input.body_markdown);
     const stored = await this.storedBody(versionId, bodyMarkdown);
     return transaction(this.pool, async (client) => {
       await client.query(
@@ -260,13 +281,14 @@ export class PageRepository {
         [versionId, pageId, input.path, input.title, input.summary, input.commit_message, actor.kind, actor.subject],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
+      await replaceDocumentLinks(client, versionId, bodyMarkdown);
       return this.getWith(client, pageId);
     });
   }
 
   async update(pageId: string, input: UpdatePageInput, actor: Actor) {
     const versionId = randomUUID();
-    const bodyMarkdown = normalizeInternalPageLinks(input.body_markdown);
+    const bodyMarkdown = normalizeInternalDocumentLinks(input.body_markdown);
     const stored = await this.storedBody(versionId, bodyMarkdown);
     return transaction(this.pool, async (client) => {
       const current = await client.query<{ version_number: number }>(
@@ -299,6 +321,7 @@ export class PageRepository {
         [pageId, input.path, versionId, input.title, input.summary, bodyMarkdown],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
+      await replaceDocumentLinks(client, versionId, bodyMarkdown);
       await client.query("UPDATE hypermedia_documents SET updated_at=now() WHERE id=$1", [pageId]);
       return this.getWith(client, pageId);
     });
@@ -308,7 +331,7 @@ export class PageRepository {
     const source = await this.get(pageId);
     if (!source) return null;
     const versionId = randomUUID();
-    const bodyMarkdown = normalizeInternalPageLinks(source.body_markdown);
+    const bodyMarkdown = normalizeInternalDocumentLinks(source.body_markdown);
     const stored = await this.storedBody(versionId, bodyMarkdown);
     return transaction(this.pool, async (client) => {
       const current = await client.query<{
@@ -340,6 +363,7 @@ export class PageRepository {
         [pageId, versionId],
       );
       await insertAssetLinks(client, versionId, bodyMarkdown);
+      await replaceDocumentLinks(client, versionId, bodyMarkdown);
       await client.query("UPDATE hypermedia_documents SET updated_at=now() WHERE id=$1", [pageId]);
       return this.getWith(client, pageId);
     });
