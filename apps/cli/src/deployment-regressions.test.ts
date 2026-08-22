@@ -745,6 +745,17 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployCompose).not.toContain("PUBLIC_MCP");
   expect(deployCompose).not.toContain("public_mcp_data");
   expect(deployCompose).not.toContain("context_use_public_mcp:");
+  const templateInstallService = deployCompose.slice(
+    deployCompose.indexOf("\n  template-install:\n"),
+    deployCompose.indexOf("\n  nango-db-init:\n"),
+  );
+  expect(templateInstallService).toContain("DATABASE_URL: postgres://context_use_dashboard");
+  expect(templateInstallService).toContain("STORAGE_DASHBOARD_TOKEN");
+  expect(templateInstallService).toContain("storage-socket:/run/context-use-storage:ro");
+  expect(templateInstallService).toContain("storage: { condition: service_healthy }");
+  expect(templateInstallService).not.toContain("AWS_REGION:");
+  expect(templateInstallService).not.toContain("STORAGE_MCP_TOKEN");
+  expect(templateInstallService).not.toContain("STORAGE_PUBLIC_TOKEN");
   const appService = deployCompose.slice(
     deployCompose.indexOf("\n  app:\n"),
     deployCompose.indexOf("\n  auth:\n"),
@@ -759,6 +770,7 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(appService).toContain("STORAGE_DASHBOARD_TOKEN");
   expect(appService).toContain("AUTH_DASHBOARD_TOKEN");
   expect(appService).toContain("CONFIRMATION_DASHBOARD_TOKEN");
+  expect(appService).toContain("template-install: { condition: service_completed_successfully }");
   expect(appService).not.toContain("AUTH_MCP_TOKEN");
   expect(appService).not.toContain("CONFIRMATION_GATEWAY_TOKEN");
   expect(appService).toContain("storage-socket:/run/context-use-storage:ro");
@@ -912,8 +924,6 @@ test("instance bootstrap, proxy limits, and TLS configuration contain the live-d
   expect(deployCompose).toContain("storage-socket-init: { condition: service_completed_successfully }");
   expect(deployCompose).toContain("storage: { condition: service_healthy }");
   expect(caddy).toContain("max_size 5GB");
-  expect(caddy).toContain("handle /api/dashboard/knowledge-import-intents");
-  expect(caddy).toContain("max_size 6GB");
   expect(caddy).toContain("max_size 3MB");
   expect(compute).toContain("s3:AbortMultipartUpload");
   expect(compute).toContain("s3:GetEncryptionConfiguration");

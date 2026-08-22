@@ -47,7 +47,7 @@ export function routeError(error: unknown): Response {
     if (code === "P0002") return problem("Requested action not found", 404, "not_found");
     if (code === "22023") return problem("Requested action is expired or invalid", 409, "intent_inactive");
     if (code === "40001") return problem("Security state changed; begin confirmation again", 409, "security_state_changed");
-    if (code === "55000") return problem("Knowledge imports require a fresh Context Use instance", 409, "import_requires_fresh_instance");
+    if (code === "55000") return problem(error.message || "The requested operation is not currently allowed", 409, "operation_not_allowed");
   }
   console.error("request_failed", error instanceof Error ? { name: error.name, message: error.message } : { type: typeof error });
   return problem("Internal server error", 500, "internal_error");

@@ -7,6 +7,7 @@ import {
   PageRepository,
 } from "../src/index.ts";
 import { disposableDatabaseUrl } from "../src/disposable-database.ts";
+import { MemoryMarkdownStore } from "./memory-markdown-store.ts";
 
 const databaseUrl = await disposableDatabaseUrl();
 const describeDatabase = databaseUrl ? describe : describe.skip;
@@ -14,7 +15,7 @@ const describeDatabase = databaseUrl ? describe : describe.skip;
 describeDatabase("first-class directory indexes", () => {
   const pool = new Pool({ connectionString: databaseUrl });
   const directories = new DirectoryRepository(pool);
-  const pages = new PageRepository(pool);
+  const pages = new PageRepository(pool, new MemoryMarkdownStore());
   const indexAssets = new AssetRepository(pool);
   const suffix = crypto.randomUUID().slice(0, 8);
   const parentPath = `tests/directory-${suffix}`;
@@ -221,7 +222,7 @@ describeDatabase("first-class directory indexes", () => {
 describeDatabase("guarded directory deletion", () => {
   const pool = new Pool({ connectionString: databaseUrl });
   const directories = new DirectoryRepository(pool);
-  const pages = new PageRepository(pool);
+  const pages = new PageRepository(pool, new MemoryMarkdownStore());
   const assets = new AssetRepository(pool);
 
   beforeAll(async () => {

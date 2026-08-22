@@ -1,11 +1,9 @@
 import { Client } from "pg";
-import { runTemplateCommand } from "./template-command.ts";
 
 export const DEVELOPMENT_RESET_TABLES = [
   "confirmation_challenges",
   "publication_intents",
   "knowledge_export_intents",
-  "knowledge_import_intents",
   "page_deletion_intents",
   "knowledge_asset_links",
   "knowledge_page_changes",
@@ -57,13 +55,6 @@ async function resetDevelopmentData(): Promise<void> {
   } finally {
     await client.end();
   }
-
-  await runTemplateCommand(
-    "apply",
-    process.env.CONTEXT_USE_TEMPLATE_INSTALL ?? "default",
-    false,
-    process.env.CONTEXT_USE_DEVELOPMENT_TEMPLATE_ROOT,
-  );
 }
 
 if (import.meta.main) await resetDevelopmentData();

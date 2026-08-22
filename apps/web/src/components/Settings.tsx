@@ -1,6 +1,6 @@
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useEffect, useState } from "react";
-import { api, ApiError, uploadKnowledgeArchive } from "../api.ts";
+import { api, ApiError } from "../api.ts";
 import { ActionDialog } from "./ActionDialog.tsx";
 import { KnowledgeTemplateSettings } from "./KnowledgeTemplate.tsx";
 import { RunningRelease } from "./RunningRelease.tsx";
@@ -26,7 +26,6 @@ type ClearableKnowledge = {
 type KnowledgeExportIntent = {
   intent: { id: string; expires_at: string };
   summary: {
-    kind: "portable" | "restorable";
     reset: boolean;
     page_count: number;
     asset_count: number;
@@ -66,7 +65,6 @@ type PublicEntrypoint = {
 
 export type KnowledgeExportJob = {
   intentId: string;
-  kind: "portable" | "restorable";
   status: "processing" | "ready" | "failed";
   downloadUrl: string;
   filename?: string | undefined;
@@ -87,11 +85,9 @@ export function storedExportJob(storage?: Pick<Storage, "getItem"> | null): Know
       : storage;
     if (!source) return null;
     const value = JSON.parse(source.getItem(exportJobStorageKey) ?? "null") as Partial<KnowledgeExportJob> | null;
-    if (!value || typeof value.intentId !== "string" || !/^[a-f0-9-]{36}$/.test(value.intentId)
-        || (value.kind !== "portable" && value.kind !== "restorable")) return null;
+    if (!value || typeof value.intentId !== "string" || !/^[a-f0-9-]{36}$/.test(value.intentId)) return null;
     return {
       intentId: value.intentId,
-      kind: value.kind,
       status: "processing",
       downloadUrl: `/api/dashboard/knowledge-exports/${encodeURIComponent(value.intentId)}/download`,
       // Both are re-read from the intent, so a stale entry can never unlock a clear.
@@ -102,22 +98,6 @@ export function storedExportJob(storage?: Pick<Storage, "getItem"> | null): Know
     return null;
   }
 }
-
-type KnowledgeImportIntent = {
-  intent: { id: string; expires_at: string };
-  summary: {
-    directories: number;
-    pages: number;
-    page_versions: number;
-    assets: number;
-    active_assets: number;
-    asset_links: number;
-    page_changes: number;
-    active_asset_bytes: number;
-    created_at: string;
-  };
-  authentication_options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
-};
 
 type EnrollmentIntent = {
   intent: {
@@ -159,74 +139,6 @@ export function formatExportBytes(bytes: number): string {
   return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} ${unit}`;
 }
 
-export type ArchiveImportProgress = {
-  loaded: number;
-  total: number;
-  startedAt: number;
-  updatedAt: number;
-};
-
-function formatTransferEstimate(seconds: number): string {
-  if (seconds < 60) return `about ${Math.max(1, Math.round(seconds))}s left`;
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `about ${minutes} min left`;
-  const hours = Math.floor(minutes / 60);
-  return `about ${hours}h ${minutes % 60}m left`;
-}
-
-export function archiveImportProgressCopy(progress: ArchiveImportProgress): {
-  percent: number;
-  determinate: boolean;
-  headline: string;
-  detail: string;
-} {
-  const total = Math.max(progress.total, 1);
-  const loaded = Math.min(progress.loaded, total);
-  const percent = Math.min(99, Math.floor((loaded / total) * 100));
-  if (loaded >= total) {
-    return {
-      percent: 100,
-      determinate: false,
-      headline: "Finishing validation and staging…",
-      detail: "The whole archive reached the server. It is checking the manifest and writing the last staged assets — for a large archive this can take a few more minutes. Keep this tab open.",
-    };
-  }
-  const elapsedSeconds = Math.max(0, progress.updatedAt - progress.startedAt) / 1000;
-  const rate = elapsedSeconds >= 1 ? loaded / elapsedSeconds : 0;
-  const parts = [`${formatExportBytes(loaded)} of ${formatExportBytes(total)}`];
-  if (rate > 0) {
-    parts.push(`${formatExportBytes(rate)}/s`);
-    parts.push(formatTransferEstimate((total - loaded) / rate));
-  }
-  return {
-    percent,
-    determinate: true,
-    headline: `Uploading and validating… ${percent}%`,
-    detail: parts.join(" · "),
-  };
-}
-
-export function ArchiveImportProgressStatus({ progress }: { progress: ArchiveImportProgress }) {
-  const { percent, determinate, headline, detail } = archiveImportProgressCopy(progress);
-  return <div className="archive-upload" role="status" aria-live="polite">
-    <div className="archive-upload-copy">
-      <strong>{headline}</strong>
-      <small>{detail}</small>
-    </div>
-    <div
-      className={`archive-upload-track${determinate ? "" : " is-indeterminate"}`}
-      role="progressbar"
-      aria-label="Archive validation progress"
-      aria-valuemin={determinate ? 0 : undefined}
-      aria-valuemax={determinate ? 100 : undefined}
-      aria-valuenow={determinate ? percent : undefined}
-    >
-      <span className="archive-upload-fill" style={determinate ? { width: `${percent}%` } : undefined} />
-    </div>
-    <small className="archive-upload-note">Leaving this page stops the import. Nothing is written to the knowledge base until you confirm with a passkey.</small>
-  </div>;
-}
-
 function exportPreparationCopy(job: KnowledgeExportJob): { headline: string; detail: string } {
   const archive = `${job.filename ?? ""}${job.sizeBytes ? ` · ${formatExportBytes(job.sizeBytes)}` : ""}`;
   if (job.status === "failed") {
@@ -235,8 +147,8 @@ function exportPreparationCopy(job: KnowledgeExportJob): { headline: string; det
   if (job.status === "processing") {
     return {
       headline: job.reset
-        ? "Step 1 of 2 · Preparing the full archive…"
-        : `Preparing ${job.kind === "restorable" ? "full archive" : "latest snapshot"}…`,
+        ? "Step 1 of 2 · Preparing the portable snapshot…"
+        : "Preparing latest snapshot…",
       detail: job.reset
         ? "Nothing has been deleted yet. The knowledge base is cleared only after this archive reaches you."
         : "The ZIP is being assembled and checked. You can leave Settings and return while this export remains available.",
@@ -312,18 +224,9 @@ export function Settings({
   const [removalError, setRemovalError] = useState("");
   const [exportIntent, setExportIntent] = useState<KnowledgeExportIntent | null>(null);
   const [exportJob, setExportJob] = useState<KnowledgeExportJob | null>(storedExportJob);
-  const [exportKind, setExportKind] = useState<"portable" | "restorable">(() => exportJob?.kind ?? "portable");
   const [exportPreparing, setExportPreparing] = useState(false);
   const [exportWorking, setExportWorking] = useState(false);
   const [exportError, setExportError] = useState("");
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importIntent, setImportIntent] = useState<KnowledgeImportIntent | null>(null);
-  const [importPreparing, setImportPreparing] = useState(false);
-  const [importProgress, setImportProgress] = useState<ArchiveImportProgress | null>(null);
-  const [importWorking, setImportWorking] = useState(false);
-  const [importError, setImportError] = useState("");
-  const [importEligible, setImportEligible] = useState<boolean | null>(null);
-  const [importEligibilityError, setImportEligibilityError] = useState("");
   const [resetPhrase, setResetPhrase] = useState("");
   const [clearPrompted, setClearPrompted] = useState(false);
   const [clearWorking, setClearWorking] = useState(false);
@@ -332,16 +235,6 @@ export function Settings({
   const [publicEntrypointId, setPublicEntrypointId] = useState("");
   const [publicEntrypointWorking, setPublicEntrypointWorking] = useState(false);
   const [publicEntrypointError, setPublicEntrypointError] = useState("");
-
-  const refreshImportEligibility = () => api<{ eligible: boolean }>("/api/dashboard/knowledge-import-eligibility");
-
-  useEffect(() => {
-    let active = true;
-    refreshImportEligibility()
-      .then(({ eligible }) => { if (active) setImportEligible(eligible); })
-      .catch(() => { if (active) setImportEligibilityError("Import availability could not be checked. Reload Settings to try again."); });
-    return () => { active = false; };
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -379,7 +272,6 @@ export function Settings({
       if (exportJob) {
         window.localStorage.setItem(exportJobStorageKey, JSON.stringify({
           intentId: exportJob.intentId,
-          kind: exportJob.kind,
           reset: exportJob.reset,
         }));
       } else {
@@ -388,7 +280,7 @@ export function Settings({
     } catch {
       // The server-side intent remains resumable even when browser storage is unavailable.
     }
-  }, [exportJob?.intentId, exportJob?.kind, exportJob?.reset]);
+  }, [exportJob?.intentId, exportJob?.reset]);
 
   useEffect(() => {
     // A reset keeps polling past "ready": the clear waits on the server's own
@@ -561,7 +453,7 @@ export function Settings({
     try {
       setExportIntent(await api<KnowledgeExportIntent>("/api/dashboard/knowledge-export-intents", {
         method: "POST",
-        body: JSON.stringify(reset ? { reset: true } : { kind: exportKind }),
+        body: JSON.stringify({ reset }),
       }));
     } catch (error) {
       setMessage(error instanceof Error
@@ -596,76 +488,13 @@ export function Settings({
       setClearPrompted(false);
       setExportJob(null);
       setMessage(result.template_error
-        ?? "The knowledge base was cleared and rebuilt from the default template. A full archive can now be imported.");
+        ?? "The knowledge base was cleared and rebuilt from the default template.");
       await onKnowledgeChanged();
-      await refreshImportEligibility()
-        .then(({ eligible }) => setImportEligible(eligible))
-        .catch(() => undefined);
     } catch (error) {
       setClearError(error instanceof Error ? error.message : "The knowledge base could not be cleared");
     } finally {
       setClearWorking(false);
     }
-  };
-
-  const prepareImport = async () => {
-    if (!importFile) {
-      setImportError("Choose a full Context Use archive first.");
-      return;
-    }
-    const startedAt = Date.now();
-    setImportPreparing(true);
-    setImportProgress({ loaded: 0, total: importFile.size, startedAt, updatedAt: startedAt });
-    setImportError("");
-    setMessage("");
-    try {
-      setImportIntent(await uploadKnowledgeArchive<KnowledgeImportIntent>(importFile, (loaded, total) => {
-        setImportProgress({ loaded, total, startedAt, updatedAt: Date.now() });
-      }));
-    } catch (error) {
-      if (error instanceof ApiError && error.code === "import_requires_fresh_instance") {
-        setImportFile(null);
-        setImportEligible(false);
-        return;
-      }
-      setImportError(error instanceof Error ? error.message : "Could not validate the knowledge archive");
-    } finally {
-      setImportPreparing(false);
-      setImportProgress(null);
-    }
-  };
-
-  const restoreImport = async () => {
-    if (!importIntent) return;
-    setImportWorking(true);
-    setImportError("");
-    try {
-      const response = await startAuthentication({ optionsJSON: importIntent.authentication_options });
-      const confirmed = await api<{ restore_url: string }>("/api/dashboard/knowledge-imports/confirm", {
-        method: "POST",
-        body: JSON.stringify({ intent_id: importIntent.intent.id, response }),
-      });
-      await api(confirmed.restore_url, { method: "POST", body: "{}" });
-      setImportIntent(null);
-      setImportFile(null);
-      setMessage("The full knowledge archive was restored with its original IDs, history, links, assets, and publication state.");
-      window.location.assign("/app");
-    } catch (error) {
-      setImportError(error instanceof Error ? error.message : "Knowledge import failed");
-    } finally {
-      setImportWorking(false);
-    }
-  };
-
-  const cancelImport = async () => {
-    if (!importIntent || importWorking) return;
-    const intent = importIntent;
-    setImportIntent(null);
-    setImportError("");
-    await api(`/api/dashboard/knowledge-import-intents/${encodeURIComponent(intent.intent.id)}`, {
-      method: "DELETE",
-      body: "{}",
-    }).catch(() => undefined);
   };
 
   const downloadExport = async () => {
@@ -679,13 +508,12 @@ export function Settings({
         body: JSON.stringify({ intent_id: exportIntent.intent.id, response }),
       });
       const intentId = exportIntent.intent.id;
-      const { kind, reset } = exportIntent.summary;
+      const { reset } = exportIntent.summary;
       setExportIntent(null);
       setResetPhrase("");
       setMessage("");
       setExportJob({
         intentId,
-        kind,
         status: "processing",
         downloadUrl: confirmed.download_url,
         reset,
@@ -727,11 +555,7 @@ export function Settings({
       </div>
     </section>
     <section><h2>Export knowledge</h2>
-      <p>The default export is a readable Markdown vault. Choose the full archive only for moving or restoring a Context Use instance.</p>
-      <div className="passkey-kind" role="group" aria-label="Knowledge export type">
-        <label><input type="radio" name="export-kind" disabled={Boolean(exportJob)} checked={exportKind === "portable"} onChange={() => setExportKind("portable")} /><span><strong>Latest snapshot</strong><small>Current active pages and assets, rewritten as a navigable Markdown vault.</small></span></label>
-        <label><input type="radio" name="export-kind" disabled={Boolean(exportJob)} checked={exportKind === "restorable"} onChange={() => setExportKind("restorable")} /><span><strong>Full restorable archive</strong><small>Stable IDs, all retained versions, archived pages, publication state, link records, history, and active asset bytes.</small></span></label>
-      </div>
+      <p>Download the current active pages and assets as a readable, navigable Markdown vault. This portable snapshot is not an infrastructure backup and cannot be imported into Context Use.</p>
       {!exportJob && <button className="primary export-start-button" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport()}>{exportPreparing ? "Checking assets…" : "Export with passkey"}</button>}
       {exportJob?.reset && <p className="archive-import-checking">A knowledge reset is preparing its archive. Finish or cancel it before starting another export.</p>}
       {exportJob && !exportJob.reset && <KnowledgeExportPreparationStatus
@@ -743,39 +567,10 @@ export function Settings({
         onReset={() => setExportJob(null)}
       />}
     </section>
-    <section><h2>Import full archive</h2>
-      <p>Restore a full archive onto a fresh Context Use instance. This replaces only the destination knowledge base; account credentials and integrations stay local to the new instance.</p>
-      <p><strong>Important:</strong> the untouched default template is okay, but import becomes unavailable after you add or change knowledge or assets.</p>
-      <div className="archive-import">
-        {importEligibilityError
-          ? <p className="error" role="alert">{importEligibilityError}</p>
-          : importEligible === null
-            ? <p className="archive-import-checking" role="status">Checking import availability…</p>
-            : !importEligible
-              ? <div className="archive-import-locked"><strong>Import unavailable</strong><span>This knowledge base already contains personal knowledge or assets. Full archives can only be restored onto an untouched instance.</span></div>
-              : <>
-                <div className="archive-import-field">
-                  <span className="archive-import-label">Context Use archive</span>
-                  <label className={`archive-picker${importFile ? " has-file" : ""}${importPreparing || importWorking ? " is-disabled" : ""}`}>
-                    <input className="archive-picker-input" type="file" accept=".zip,application/zip" aria-label="Context Use archive" disabled={importPreparing || importWorking} onChange={(event) => { setImportFile(event.currentTarget.files?.[0] ?? null); setImportError(""); }} />
-                    <span className="archive-picker-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3.75h7l3 3v13.5H7z" /><path d="M14 3.75v3h3M10 9.25h2m-2 2.5h2m-2 2.5h2M11 17v.01" /></svg></span>
-                    <span className="archive-picker-copy">
-                      <strong>{importFile ? importFile.name : "Choose a full archive"}</strong>
-                      <small>{importFile ? `${formatExportBytes(importFile.size)} · Ready to validate` : "Select a .zip export from Context Use"}</small>
-                    </span>
-                    <span className="archive-picker-action">{importFile ? "Replace" : "Browse files"}</span>
-                  </label>
-                </div>
-                {importError && !importIntent && <p className="error">{importError}</p>}
-                <button className="primary" disabled={!importFile || importPreparing || importWorking} onClick={() => void prepareImport()}>{importPreparing ? "Validating archive…" : "Validate archive"}</button>
-                {importProgress && <ArchiveImportProgressStatus progress={importProgress} />}
-              </>}
-      </div>
-    </section>
     <section className="danger-zone"><h2>Clear knowledge base</h2>
       <p>This permanently removes every page, version, asset, publication, and the whole change history, leaving only the default template. It cannot be undone from inside Context Use.</p>
-      <p><strong>The full restorable archive is exported first and is not optional.</strong> After one passkey verification the archive is prepared, and the knowledge base can only be cleared once that download has finished. Keep the file: importing it back is the only way to recover this knowledge base.</p>
-      {!exportJob && <button className="danger export-start-button" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport(true)}>{exportPreparing ? "Checking assets…" : "Export archive and clear…"}</button>}
+      <p><strong>A portable snapshot is exported first and is not optional.</strong> After one passkey verification the snapshot is prepared, and the knowledge base can only be cleared once that download has finished. It is a readable safety copy, not something Context Use can restore. Operational recovery uses infrastructure backups.</p>
+      {!exportJob && <button className="danger export-start-button" disabled={exportPreparing || exportWorking} onClick={() => void prepareExport(true)}>{exportPreparing ? "Checking assets…" : "Export snapshot and clear…"}</button>}
       {exportJob && !exportJob.reset && <p className="archive-import-checking">An export is in progress. Finish or reset it before clearing the knowledge base.</p>}
       {exportJob?.reset && <KnowledgeExportPreparationStatus
         job={exportJob}
@@ -811,10 +606,8 @@ export function Settings({
     />}
     {exportIntent && !exportIntent.knowledge && <ActionDialog
       eyebrow="Private knowledge export"
-      title={exportIntent.summary.kind === "restorable" ? "Download a full restorable archive?" : "Download your knowledge snapshot?"}
-      description={exportIntent.summary.kind === "restorable"
-        ? "The ZIP can recreate the complete knowledge state on a fresh instance, including private history and publication state. It is unencrypted and requires a fresh owner-passkey verification."
-        : "The ZIP contains the current private and public knowledge as a readable Markdown vault. It is unencrypted and requires a fresh owner-passkey verification."}
+      title="Download your knowledge snapshot?"
+      description="The ZIP contains the current private and public knowledge as a readable Markdown vault. It is unencrypted and requires a fresh owner-passkey verification."
       confirmLabel="Verify passkey and download"
       workingLabel="Waiting for passkey…"
       working={exportWorking}
@@ -823,7 +616,7 @@ export function Settings({
       onConfirm={() => void downloadExport()}
     >
       <dl className="action-dialog-details">
-        <div><dt>{exportIntent.summary.kind === "restorable" ? "Pages" : "Current pages"}</dt><dd>about {exportIntent.summary.page_count}</dd></div>
+        <div><dt>Current pages</dt><dd>about {exportIntent.summary.page_count}</dd></div>
         <div><dt>Active assets</dt><dd>about {exportIntent.summary.asset_count}</dd></div>
         <div><dt>Size</dt><dd>about {formatExportBytes(exportIntent.summary.total_bytes)}</dd></div>
       </dl>
@@ -832,10 +625,10 @@ export function Settings({
       eyebrow="Clear knowledge base"
       title="Delete everything in this knowledge base?"
       description={<>
-        <p>Verifying your passkey starts the mandatory full archive. Nothing is deleted until you download it and confirm again.</p>
+        <p>Verifying your passkey starts the mandatory portable snapshot. Nothing is deleted until you download it and confirm again.</p>
         <p>Clearing removes every page and its history, every archived page, every asset file, and unpublishes everything currently public. Only the default template remains. Passkeys, integrations, and automations are untouched.</p>
       </>}
-      confirmLabel="Verify passkey and export archive"
+      confirmLabel="Verify passkey and export snapshot"
       workingLabel="Waiting for passkey…"
       confirmTone="danger"
       confirmDisabled={resetPhrase.trim().toUpperCase() !== CLEAR_KNOWLEDGE_PHRASE}
@@ -851,7 +644,7 @@ export function Settings({
         <div><dt>Active assets</dt><dd>{exportIntent.knowledge.asset_count}</dd></div>
         <div><dt>Published pages</dt><dd>{exportIntent.knowledge.published_page_count}</dd></div>
         <div><dt>Published assets</dt><dd>{exportIntent.knowledge.published_asset_count}</dd></div>
-        <div><dt>Archive size</dt><dd>about {formatExportBytes(exportIntent.summary.total_bytes)}</dd></div>
+        <div><dt>Snapshot size</dt><dd>about {formatExportBytes(exportIntent.summary.total_bytes)}</dd></div>
       </dl>
       <label className="reset-phrase">Type <strong>{CLEAR_KNOWLEDGE_PHRASE}</strong> to continue
         <input
@@ -867,7 +660,7 @@ export function Settings({
     {clearPrompted && exportJob?.reset && <ActionDialog
       eyebrow="Clear knowledge base"
       title="Clear the knowledge base now?"
-      description="Your full archive has been downloaded. This deletes all pages, versions, assets, publications, and history, then rebuilds the default template. Importing the archive you just downloaded is the only way back."
+      description="Your portable snapshot has been downloaded. This deletes all pages, versions, assets, publications, and history, then rebuilds the default template. Context Use cannot import the snapshot; recovery of the live system relies on infrastructure backups."
       confirmLabel="Clear knowledge base"
       workingLabel="Clearing knowledge…"
       confirmTone="danger"
@@ -876,23 +669,5 @@ export function Settings({
       onCancel={() => { setClearError(""); setClearPrompted(false); }}
       onConfirm={() => void clearKnowledge()}
     />}
-    {importIntent && <ActionDialog
-      eyebrow="Full knowledge restore"
-      title="Replace this instance’s knowledge?"
-      description="The archive passed structural and integrity checks. A fresh owner-passkey verification is required. The restore is allowed only on an untouched instance and preserves the source IDs, retained history, archived content, internal links, asset metadata, and publication state."
-      confirmLabel="Verify passkey and restore"
-      workingLabel="Restoring knowledge…"
-      working={importWorking}
-      error={importError}
-      onCancel={() => void cancelImport()}
-      onConfirm={() => void restoreImport()}
-    >
-      <dl className="action-dialog-details">
-        <div><dt>Pages</dt><dd>{importIntent.summary.pages}</dd></div>
-        <div><dt>Retained versions</dt><dd>{importIntent.summary.page_versions}</dd></div>
-        <div><dt>Active assets</dt><dd>{importIntent.summary.active_assets}</dd></div>
-        <div><dt>Asset bytes</dt><dd>{formatExportBytes(importIntent.summary.active_asset_bytes)}</dd></div>
-      </dl>
-    </ActionDialog>}
   </main>;
 }

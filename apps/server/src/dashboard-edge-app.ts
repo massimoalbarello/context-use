@@ -34,9 +34,8 @@ export const dashboardEdgeApp = new Elysia({ serve: { maxRequestBodySize: 5_500_
   .get("/health", () => json({ status: "ok", service: "dashboard-edge" }))
   .all("/api/dashboard/*", ({ request, server }) => {
     const pathname = new URL(request.url).pathname;
-    if ((request.method === "GET"
-        && /^\/api\/dashboard\/knowledge-exports\/[^/]+\/download$/.test(pathname))
-        || (request.method === "POST" && pathname === "/api/dashboard/knowledge-import-intents")) {
+    if (request.method === "GET"
+        && /^\/api\/dashboard\/knowledge-exports\/[^/]+\/download$/.test(pathname)) {
       disableStreamingRequestIdleTimeout(server, request);
     }
     return forward(request);

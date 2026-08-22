@@ -3,11 +3,13 @@ import { DirectoryRepository } from "./directories.ts";
 import { reconcileKnowledgeTemplate, formatTemplateResult } from "./knowledge-templates.ts";
 import { PageRepository } from "./pages.ts";
 import { createPool } from "./pool.ts";
+import type { MarkdownObjectStore } from "./documents.ts";
 
 export async function runTemplateCommand(
   action: "plan" | "apply",
   templateName = "default",
   forceTemplate = false,
+  bodies: MarkdownObjectStore,
   templatesRoot?: string,
 ): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
@@ -16,7 +18,7 @@ export async function runTemplateCommand(
   try {
     const result = await reconcileKnowledgeTemplate({
       directories: new DirectoryRepository(pool),
-      pages: new PageRepository(pool),
+      pages: new PageRepository(pool, bodies),
     }, templateName, action === "apply", forceTemplate, templatesRoot
       ? pathToFileURL(templatesRoot.endsWith("/") ? templatesRoot : `${templatesRoot}/`)
       : undefined);
@@ -24,20 +26,4 @@ export async function runTemplateCommand(
   } finally {
     await pool.end();
   }
-}
-
-if (import.meta.main) {
-  const action = process.argv[2];
-  if (action !== "plan" && action !== "apply") throw new Error("Expected template action: plan or apply");
-  const templateName = process.argv[3] ?? "default";
-  const extraArguments = process.argv.slice(4);
-  const knownArguments = new Set(["--force-template"]);
-  if (extraArguments.some((argument) => !knownArguments.has(argument))) {
-    throw new Error("Unknown template command option");
-  }
-  await runTemplateCommand(
-    action,
-    templateName,
-    extraArguments.includes("--force-template"),
-  );
 }

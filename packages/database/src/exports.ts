@@ -7,7 +7,6 @@ import {
 } from "./documents.ts";
 
 export type KnowledgeExportPrincipal = { ownerUserId: string; sessionId: string };
-export type KnowledgeExportKind = "portable" | "restorable";
 
 export type KnowledgeExportPage = {
   id: string;
@@ -58,27 +57,25 @@ async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<
 export class KnowledgeExportRepository {
   constructor(
     private readonly dashboardPool: Pool,
-    private readonly bodies?: MarkdownObjectStore,
+    private readonly bodies: MarkdownObjectStore,
   ) {}
 
-  private async hydratePages<T extends Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata & {
-    legacy_body_markdown: string | null;
-  }>(pages: T[]): Promise<KnowledgeExportPage[]> {
+  private async hydratePages<T extends Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata>(
+    pages: T[],
+  ): Promise<KnowledgeExportPage[]> {
     return mapConcurrently(pages, 8, async (page) => {
-      const { legacy_body_markdown, body_object_key, body_size_bytes, body_content_hash, ...metadata } = page;
-      const body_markdown = legacy_body_markdown ?? await this.bodies?.read({
+      const { body_object_key, body_size_bytes, body_content_hash, ...metadata } = page;
+      const body_markdown = await this.bodies.read({
         body_object_key,
         body_size_bytes: Number(body_size_bytes),
         body_content_hash,
       });
-      if (body_markdown === undefined) throw new Error("Knowledge document object store is required");
       return { ...metadata, body_markdown };
     });
   }
 
   async createIntent(
     principal: KnowledgeExportPrincipal,
-    exportKind: KnowledgeExportKind = "portable",
     resetRequested = false,
   ) {
     return transaction(this.dashboardPool, async (client) => {
@@ -94,10 +91,10 @@ export class KnowledgeExportRepository {
       const id = randomUUID();
       const inserted = await client.query<{ id: string; expires_at: Date }>(
         `INSERT INTO knowledge_export_intents(
-           id,owner_user_id,session_id,export_kind,reset_requested,expires_at
-         ) VALUES ($1,$2,$3,$4,$5,now()+interval '5 minutes')
+           id,owner_user_id,session_id,reset_requested,expires_at
+         ) VALUES ($1,$2,$3,$4,now()+interval '5 minutes')
          RETURNING id,expires_at`,
-        [id, principal.ownerUserId, principal.sessionId, exportKind, resetRequested],
+        [id, principal.ownerUserId, principal.sessionId, resetRequested],
       );
       const summary = await client.query<{
         page_count: string;
@@ -106,7 +103,7 @@ export class KnowledgeExportRepository {
       }>(
         `SELECT
            (SELECT count(*)::text FROM knowledge_pages
-             WHERE $1='restorable' OR archived_at IS NULL) AS page_count,
+             WHERE archived_at IS NULL) AS page_count,
            (SELECT count(*)::text FROM assets WHERE deleted_at IS NULL) AS asset_count,
            (
              coalesce((
@@ -125,9 +122,7 @@ export class KnowledgeExportRepository {
                FROM knowledge_page_versions version
                JOIN hypermedia_document_revisions object ON object.id=version.id
                JOIN knowledge_pages page ON page.id=version.page_id
-               WHERE ($1='restorable' OR (
-                 page.archived_at IS NULL AND version.id=page.current_version_id
-               ))
+               WHERE page.archived_at IS NULL AND version.id=page.current_version_id
              ),0)
              + coalesce((
                SELECT sum(size_bytes)
@@ -135,7 +130,6 @@ export class KnowledgeExportRepository {
                WHERE deleted_at IS NULL
              ),0)
            )::text AS total_bytes`,
-        [exportKind],
       );
       return {
         id,
@@ -143,7 +137,6 @@ export class KnowledgeExportRepository {
         page_count: Number(summary.rows[0]!.page_count),
         asset_count: Number(summary.rows[0]!.asset_count),
         total_bytes: Number(summary.rows[0]!.total_bytes),
-        export_kind: exportKind,
         reset_requested: resetRequested,
         discarded_export_ids: discarded.rows.map(({ id: discardedId }) => discardedId),
       };
@@ -159,12 +152,11 @@ export class KnowledgeExportRepository {
       confirmed_at: Date | null;
       download_started_at: Date | null;
       download_completed_at: Date | null;
-      export_kind: KnowledgeExportKind;
       reset_requested: boolean;
       reset_completed_at: Date | null;
     }>(
       `SELECT id,owner_user_id,session_id,expires_at,confirmed_at,download_started_at,
-         download_completed_at,export_kind,reset_requested,reset_completed_at
+         download_completed_at,reset_requested,reset_completed_at
        FROM knowledge_export_intents
        WHERE id=$1`,
       [id],
@@ -198,9 +190,9 @@ export class KnowledgeExportRepository {
          FROM knowledge_directories
          ORDER BY current_path,id`,
       );
-      const pages = await client.query<Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata & { legacy_body_markdown: string | null }>(
+      const pages = await client.query<Omit<KnowledgeExportPage, "body_markdown"> & MarkdownObjectMetadata>(
         `SELECT page.id,version.path AS current_path,version.title,version.summary,
-           version.body_markdown AS legacy_body_markdown,object.body_object_key,
+           object.body_object_key,
            object.body_size_bytes,object.body_content_hash
          FROM knowledge_pages page
          JOIN knowledge_page_versions version
