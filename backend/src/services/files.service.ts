@@ -21,7 +21,7 @@ export class FilesService extends Service {
   }
 
   async upload({ userId, file }: { userId: string; file: File }): Promise<FileRecord> {
-    const id = crypto.randomUUID();
+    const id = Bun.randomUUIDv7();
     const record: FileRecord = {
       id,
       userId,
