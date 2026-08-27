@@ -1,0 +1,4 @@
+interface:
+  display_name: "Open Pull Request"
+  short_description: "Draft concise, reviewer-focused pull requests"
+  default_prompt: "Use $open-pull-request to open a focused pull request with a Conventional Commit title and reviewer-oriented body."
