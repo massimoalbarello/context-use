@@ -1,45 +1,53 @@
 # bun-monorepo-starter
 
-A monorepo template powered by [Bun](https://bun.sh) and [Turborepo](https://turborepo.dev/).
+A Bun and Turborepo monorepo with a full-stack starter application adapted from
+[bun-full-stack-starter](https://github.com/ilbertt/bun-full-stack-starter).
 
 ## Structure
 
-```
+```text
 apps/
-  my-app/          # Bun application (template)
+  backend/            # Elysia API and production binary
+  frontend/           # React SPA and typed API client
 packages/
-  my-package/      # Publishable npm package (template)
-  pack-utils/      # Internal build utilities for packages
+  my-package/         # Publishable npm package template
+  pack-utils/         # Internal package build utilities
   typescript-config/  # Shared TypeScript configuration
 ```
 
-## Using this template
-
-After creating a repo from this template, go through the following checklist:
-
-- [ ] **`LICENSE`** — replace `[year]` and `[fullname]` with the current year and your name / org.
-- [ ] **`package.json`** (root) — rename `"name": "bun-monorepo"` to your project name.
-- [ ] **`.github/CONTRIBUTING.md`** — replace `<repository-name>` and `<repository-url>` with your actual repo details.
-- [ ] **`apps/my-app/`** — rename the folder and update `"name"` in its `package.json`.
-- [ ] **`packages/my-package/`** — rename the folder and update `"name"` in its internal `package.json` accordingly.
-- [ ] **`packages/my-package/pkg/package.json`** — this is the public-facing package manifest. Update `"name"`, `"description"`, `"author"`, `"version"`, and the `"repository"` URL.
-- [ ] Delete or adapt the example source files in `apps/my-app/src/` and `packages/my-package/src/`.
-
-## Requirements
-
-- [Bun](https://bun.sh)
+The frontend consumes the backend's exported application type through the workspace, while the
+shared package configuration remains available to every current and future app or package.
 
 ## Getting started
 
-```sh
+```bash
 bun install
+cp apps/backend/.env.example apps/backend/.env
+openssl rand -base64 32 # paste into BETTER_AUTH_SECRET in apps/backend/.env
+bun run dev
+```
+
+The backend listens on `:3000` and Vite on `:5173`, proxying API requests to the backend. The
+starter includes authentication, SQLite migrations, file storage, OpenAPI, and a production build
+that embeds the frontend and migrations in one binary.
+
+## Build
+
+```bash
 bun run build
 ```
 
+Turborepo builds the workspace in the required order. The deployable binary is written to
+`apps/backend/dist/app`; `bun run build:local` targets the current machine instead of Linux x64.
+
 ## Tooling
 
-- [Bun](https://bun.sh) — runtime, package manager, bundler
-- [Turborepo](https://turborepo.dev/) — task orchestration with caching
-- [Biome](https://biomejs.dev/) — linter and formatter
-- [commitlint](https://commitlint.js.org/) — conventional commit enforcement
-- [TypeScript](https://www.typescriptlang.org/) — shared config via `@repo/typescript-config`
+- [Bun](https://bun.sh) — runtime, package manager, and bundler
+- [Turborepo](https://turborepo.dev/) — workspace task orchestration and caching
+- [Biome](https://biomejs.dev/) — linting and formatting
+- [TypeScript](https://www.typescriptlang.org/) — shared through `@repo/typescript-config`
+- [commitlint](https://commitlint.js.org/) — Conventional Commit enforcement
+
+## Contributing
+
+Read the [contribution guide](./.github/CONTRIBUTING.md) before opening a pull request.
