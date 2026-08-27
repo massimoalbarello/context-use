@@ -5,8 +5,24 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "@repo/frontend#build": {
+      "dependsOn": [],
+      "outputs": ["dist/**"]
+    },
+    "@repo/backend#build": {
+      "dependsOn": ["@repo/frontend#build"],
+      "env": ["BUILD_TARGET"],
+      "outputs": ["dist/**", "public/**"]
+    },
     "check:types": {
       "dependsOn": ["^check:types"]
+    },
+    "test": {
+      "dependsOn": ["^test"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
     }
   }
 }

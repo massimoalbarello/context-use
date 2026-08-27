@@ -37,3 +37,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # bun
 *.bun-build
+
+# Where the app saves data
+**/data/*
+!**/data/.gitkeep

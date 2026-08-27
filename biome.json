@@ -12,7 +12,9 @@
       "!**/node_modules",
       "!**/dist",
       "!**/bun.lock",
-      "!**/*.lock"
+      "!**/*.lock",
+      "!**/*.svg",
+      "!apps/frontend/src/routeTree.gen.ts"
     ]
   },
   "formatter": {
