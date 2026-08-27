@@ -1,14 +1,14 @@
 # Database migration guide
 
-`apps/backend/src/db` owns the SQLite client, schema migration runner, and ordered schema history.
-Application data access belongs in repositories; business workflows belong in services.
+The root and backend guides apply here. This file adds SQLite-specific rules for the client, schema
+migration runner, and ordered schema history. Application data access belongs in repositories;
+business workflows belong in services.
 
 ## Principles
 
 Database state is a durable shared asset and must be changed with exceptional care. A database
 change is not an implementation convenience; it is a compatibility and operational commitment.
 
-- Establish the root problem and prove that a database change is necessary before designing one.
 - Define the invariant being introduced or preserved, the expected prior state, failure behavior,
   rollout order, verification method, and recovery path before applying the change.
 - Prefer the simplest safe change. Favor additive and reversible evolution; require explicit proof
@@ -54,8 +54,6 @@ verification or dry-run behavior when practical. Run it only through an explicit
 
 ## Red flags
 
-- The root problem and required invariant are still unclear when schema design begins.
-- An application workaround is being made permanent in the schema without questioning its cause.
 - A migration changes more than one unrelated schema concern.
 - A migration's correctness depends on the current contents of application tables.
 - A migration creates schema and rewrites existing rows in the same rollout step.

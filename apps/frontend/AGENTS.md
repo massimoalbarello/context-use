@@ -1,7 +1,8 @@
 # Frontend architecture
 
-`apps/frontend` is organized around the paths and user journeys it renders. Route ownership is the
-default; global folders are reserved for code that is genuinely shared across routes.
+The root guide applies here. This file adds React, routing, server-state, and UI-specific rules.
+Organize the frontend around the paths and user journeys it renders; reserve global folders for code
+that is genuinely shared across routes.
 
 ## Route-oriented structure
 
@@ -41,8 +42,6 @@ default; global folders are reserved for code that is genuinely shared across ro
   mechanics out of route and presentation components.
 - Mutation success updates or invalidates the canonical query data. Do not add refresh counters or
   maintain a parallel cache in component state.
-- Derive request and response types from the backend's validated contract or typed client. Do not
-  copy DTOs into a global `types.ts`.
 - Treat query keys as owned data. Define each key family once and reuse it for reads, mutations, and
   invalidation.
 - Eden returns `{ data, error }`; convert its structured error with the shared API error mechanism

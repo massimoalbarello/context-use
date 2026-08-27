@@ -70,8 +70,8 @@ and special cases while preserving correctness.
   local synonyms for an established concept.
 - Keep one source of truth for schemas, keys, enum-like values, and contracts. Infer or generate
   downstream types from the owner instead of copying them into broad type files.
-- Backend imports use `#*` subpath mappings (for example, `#services/foo.ts`). Index files only
-  re-export a deliberate public surface; Biome rejects barrel files used as implementation modules.
+- Index files only re-export a deliberate public surface; Biome rejects barrel files used as
+  implementation modules.
 - New TypeScript files use kebab-case. Comments explain a non-obvious constraint or tradeoff, never
   narrate code that names and types already explain.
 
@@ -90,20 +90,13 @@ and special cases while preserving correctness.
 
 Stop and reconsider the design when any of these appear:
 
-- A solution is already chosen but the problem and success condition cannot be stated precisely.
-- A patch treats a visible symptom while the same cause can fail elsewhere.
 - A module, function, component, or test suite owns several unrelated workflows.
 - An input object keeps growing because unrelated callers need different subsets of its fields.
 - Similar domain logic exists in more than one place without a clearly identified owner.
 - A shared abstraction needs mode flags or caller-specific branches to remain reusable.
 - A feature reaches through another feature's internals instead of using a narrow public contract.
-- A route or UI component performs validation, business policy, persistence, and presentation
-  together.
 - A test exists only to increase coverage, repeats an invariant already proven elsewhere, or asserts
   implementation text instead of behavior.
-- A schema migration modifies application rows or performs an operational data job.
-- A database change is proposed as a shortcut without a compatibility and recovery analysis.
-- A feature has no concrete current need, expected value, or success criterion.
 - A proposed PR cannot be summarized as one outcome without listing unrelated changes.
 
 ## Tests
@@ -130,24 +123,19 @@ important state transitions, idempotency and retry behavior, concurrency, and pu
 
 ## Database changes
 
-All database work follows `apps/backend/src/db/AGENTS.md`. Schema migrations and data changes are
-separate operations. Never put a backfill, seed, repair, or other application-row mutation in a
-schema migration or application startup.
+Database state is durable shared state, not an implementation convenience. Read and follow
+`apps/backend/src/db/AGENTS.md` before making any database change.
 
 ## Atomic changes and pull requests
 
 Every PR has one goal that a reviewer can state in one sentence.
 
-- A feature must address a concrete current problem with an explicit success criterion. If its
-  value, timing, or consequences are unclear, do not build it yet.
 - Include only the implementation, focused tests, and documentation required for that goal. Leave
   unrelated cleanup for a follow-up.
 - Separate behavior changes from broad refactors when either can stand alone. A mechanical move or
   rename should not quietly alter behavior.
 - Keep dependency upgrades, formatting churn, generated-file refreshes, and unrelated renames out of
   feature PRs.
-- Treat expand-schema, data migration, application cutover, and contract-schema cleanup as separate,
-  ordered changes. Do not collapse them into one large rollout.
 - Preserve unrelated work in a dirty worktree and review the final diff for accidental scope growth.
 - Keep PR descriptions minimal: state the intent and any non-obvious rollout or risk in a few lines;
   the diff should explain the implementation.
@@ -181,16 +169,6 @@ Packages fall into two buckets:
 
 Update both READMEs in lockstep only when a change genuinely affects both audiences. Keep the root
 README short; deep usage belongs in package documentation.
-
-## Deploying the app
-
-`bun run build` produces `apps/backend/dist/app`, a single binary targeting Linux x64 with the
-frontend and migrations embedded. It listens on `PORT` and expects the variables in
-[apps/backend/.env.example](./apps/backend/.env.example).
-
-Follow the repository-local
-[deploy-to-nibrun skill](./.agents/skills/deploy-to-nibrun/SKILL.md) for deployment commands and
-platform constraints.
 
 ## Keeping guidance current
 
