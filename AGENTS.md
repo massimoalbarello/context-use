@@ -1,99 +1,170 @@
-## Project
+# Context Use engineering guide
 
-Bun + TypeScript monorepo (`apps/*`, `packages/*`). The full-stack starter application lives in
-`apps/backend` and `apps/frontend`; reusable code and configuration belong in `packages/*`.
+Context Use is a Bun and TypeScript monorepo (`apps/*`, `packages/*`). Applications live in
+`apps/*`; reusable code and configuration belong in `packages/*`.
+
+Read the nearest nested `AGENTS.md` before changing a workspace. More specific guidance overrides
+this file.
 
 ## Stack
 
 - **Runtime:** Bun
-- **Monorepo:** Bun workspaces + Turbo
-- **Backend:** Elysia + SQLite
-- **Frontend:** React + Vite
-- **Linter/Formatter:** Biome (auto-formats on save)
+- **Monorepo:** Bun workspaces and Turbo
+- **Backend:** Elysia and SQLite
+- **Frontend:** React and Vite
+- **Linter/formatter:** Biome (auto-formats on save)
 - **Commits:** Conventional Commits (commitlint)
 
-## Code style
+## Architecture
 
-- No comments that restate what types and naming already say — only comment the non-obvious
-- Backend imports use `#*` subpath mapping (e.g. `import { foo } from '#services/foo.ts'`)
-- Single source of truth — never duplicate keys, enum values, or type info that belongs to a
-  class/module; derive from the source instead
-- Biome enforces `useMaxParams: 1` — wrap multiple params in an object
-- Only re-export from index files — Biome enforces that
+- Before implementing a feature, identify its owning workspace and feature, public contract,
+  dependency direction, and critical invariants. Resolve unclear boundaries before adding code.
+- Every module has one clear responsibility and one primary reason to change. If its description
+  needs unrelated clauses joined by “and,” split it along that boundary.
+- Organize application code by product area or feature, then by mechanism within that area. Do not
+  accumulate unrelated code in a workspace root.
+- Dependencies point inward: delivery and infrastructure code may depend on application/domain
+  code; domain code must not depend on frameworks, database clients, or process globals.
+- Construct stateful dependencies in an explicit composition root. Importing a module must not
+  start a server, open a connection, read unrelated environment variables, or mutate global state.
+- Expose the narrowest useful public surface. Keep implementation details private and avoid
+  cross-feature imports that bypass a feature's public contract.
+- Do not create generic `utils`, `helpers`, `common`, `shared`, or `types` dumping grounds. Put a
+  reusable mechanism under the domain or capability that owns it and give it a precise name.
+- Split a growing file before independent concepts, state machines, or side effects become
+  interleaved. File length is a warning signal; cohesion decides the split, not a target line count.
+- Prefer one primary component, use case, repository, or service per file. Small supporting types
+  that exist only for that unit may remain beside it.
 
-## Backend
+## APIs, types, and naming
 
-- **Controller → service → repository, and never skip a layer.** A controller holds no logic and
-  no SQL; a service holds no SQL; a repository holds no business rules.
-- `routes/` mirrors the served path — `GET /api/health` is `routes/api/health/controller.ts`.
-  The `/api` prefix is applied once in `routes/api/controller.ts`, so children write bare paths.
-  Schemas live beside the controller in `model.ts`.
-- Every route declares its `body`/`response` schemas. They validate requests and generate
-  `/openapi`, so an undeclared response is an undocumented one.
-- A route needing a session opts in with `.guard({ auth: true })` and reads `user`/`session` from
-  its context. Every query is scoped by the owner's id in the `WHERE` clause.
-- Services are instantiated once in `services/plugins.ts` and handed to controllers through an
-  Elysia `.decorate` plugin. Don't construct one inside a handler.
-- A migration is the next-numbered file in `db/migrations/`. They run at startup, in order, once.
-  Never edit one that has shipped.
-- A timestamp is a `text` column holding an ISO-8601 string, `string` on the row and `t.Date()` in
-  the schema — `file.createdAt` end to end. Never `t.String()` for a date, and never
-  `datetime('now')`.
+- Biome enforces `useMaxParams: 1`. Model an operation with one named input object; do not use a
+  large options object to conceal an incoherent operation. Split the operation when fields belong to
+  different concerns.
+- Keep dependency objects separate from request/input objects. Business input must not carry
+  clients, loggers, clocks, or other infrastructure dependencies.
+- Use one domain term consistently across the database, backend, frontend, and tests. Do not invent
+  local synonyms for an established concept.
+- Keep one source of truth for schemas, keys, enum-like values, and contracts. Infer or generate
+  downstream types from the owner instead of copying them into broad type files.
+- Backend imports use `#*` subpath mappings (for example, `#services/foo.ts`). Index files only
+  re-export a deliberate public surface; Biome rejects barrel files used as implementation modules.
+- New TypeScript files use kebab-case. Comments explain a non-obvious constraint or tradeoff, never
+  narrate code that names and types already explain.
 
-## Frontend
+## Reuse
 
-- The API client is `treaty<App>` in `lib/api.ts`, typed from the backend workspace export. There
-  is no schema to regenerate.
-- A resource gets a `queryOptions` object in `queries/`, and hooks in `lib/hooks/` consume it.
-  Components call hooks, not `api` directly.
-- Response types are derived from the client, never hand-written.
-- Eden answers `{ data, error }`, where `error` is a `{ status, value }` object rather than an
-  `Error`. Every caller throws `new Error(apiErrorMessage(error))`.
-- Adding a route means adding a file under `routes/`; the plugin regenerates `routeTree.gen.ts`.
+- Reuse stable domain rules, protocol handling, transaction mechanics, parsers, and test harnesses.
+  A rule must have one owner rather than several nearly identical implementations.
+- Do not abstract merely because two short blocks look alike. Share code when the callers rely on
+  the same semantic contract and should change together.
+- Before adding a helper, search for the existing owner. Before extending an abstraction with
+  unrelated flags or optional branches, split it into cohesive operations.
+- Cross-workspace packages exist for genuinely shared contracts or capabilities, not as a place to
+  move code that lacks a clear owner.
 
-## Validation
+## Red flags
 
-After finishing an implementation, always run:
+Stop and reconsider the design when any of these appear:
 
-1. `bun fix:codestyle` — auto-fix formatting/lint issues
-2. `bun check:all` — verify types and codestyle pass
-3. `bun test` — verify behavior
-4. `bun run build` — verify the build succeeds
+- A module, function, component, or test suite owns several unrelated workflows.
+- An input object keeps growing because unrelated callers need different subsets of its fields.
+- Similar domain logic exists in more than one place without a clearly identified owner.
+- A shared abstraction needs mode flags or caller-specific branches to remain reusable.
+- A feature reaches through another feature's internals instead of using a narrow public contract.
+- A route or UI component performs validation, business policy, persistence, and presentation
+  together.
+- A test exists only to increase coverage, repeats an invariant already proven elsewhere, or asserts
+  implementation text instead of behavior.
+- A schema migration modifies application rows or performs an operational data job.
+- A proposed PR cannot be summarized as one outcome without listing unrelated changes.
 
-Exercise changed routes against a running server as well. Check `package.json` scripts at the root
-and in the affected workspace before running commands.
+## Tests
 
-## READMEs
+There is no coverage target and no expectation that every function has a test. Each test must name a
+critical invariant, boundary, or failure mode whose regression would matter.
 
-Packages fall in two buckets:
+Prioritize tests for authorization and trust boundaries, data integrity and loss prevention,
+important state transitions, idempotency and retry behavior, concurrency, and public contracts.
 
-- **Published packages** (have a `pkg/` directory) carry **two** READMEs:
-  - **`packages/<package>/pkg/README.md`** — public, user-facing, and shipped to npm.
-  - **`packages/<package>/README.md`** — internal contributor documentation. It must link to the
-    public README and must not duplicate installation or usage guidance.
-- **Internal-only packages** (no `pkg/`) need a README only when contributor-relevant context is
-  not obvious from the source.
+- Test each invariant at the lowest layer that can prove it. Do not repeat the same behavior through
+  unit, controller, integration, and end-to-end tests without a distinct risk at each layer.
+- Prefer a small decision table that covers meaningful branches over many near-duplicate examples.
+- Assert observable behavior and durable contracts. Avoid snapshots of incidental markup, private
+  call sequences, or source-string inspection when the behavior can be executed. Static policy
+  tests are appropriate only for properties that cannot be exercised directly.
+- Put reusable builders, fakes, database setup, and assertions in the owning workspace's
+  `test/support`. Keep a fixture beside a feature only when no other feature should use it.
+- Test support must use production types and public contracts; do not maintain a second model of the
+  application for tests.
+- Keep suites scoped to one boundary or invariant family. Split catch-all regression files, and
+  remove redundant tests when a stronger test supersedes them.
+- Never weaken encapsulation or export implementation details solely to make them testable.
 
-When editing a published package, update the documentation for the correct audience. If a change
-belongs to both audiences, update both READMEs in lockstep.
+## Database changes
 
-The root `README.md` is the project homepage. Keep it short; deep usage belongs in package docs.
+All database work follows `apps/backend/src/db/AGENTS.md`. Schema migrations and data changes are
+separate operations. Never put a backfill, seed, repair, or other application-row mutation in a
+schema migration or application startup.
 
-## Keeping this file up to date
+## Atomic changes and pull requests
 
-When a change affects code style, tooling, conventions, or project taste, propose updating this
-file to reflect it.
+Every PR has one goal that a reviewer can state in one sentence.
 
-## Pull requests
+- Include only the implementation, focused tests, and documentation required for that goal. Leave
+  unrelated cleanup for a follow-up.
+- Separate behavior changes from broad refactors when either can stand alone. A mechanical move or
+  rename should not quietly alter behavior.
+- Keep dependency upgrades, formatting churn, generated-file refreshes, and unrelated renames out of
+  feature PRs.
+- Treat expand-schema, data migration, application cutover, and contract-schema cleanup as separate,
+  ordered changes. Do not collapse them into one large rollout.
+- Preserve unrelated work in a dirty worktree and review the final diff for accidental scope growth.
+- Keep PR descriptions minimal: state the intent and any non-obvious rollout or risk in a few lines;
+  the diff should explain the implementation.
 
 Follow the repository-local [open-pull-request skill](./.agents/skills/open-pull-request/SKILL.md)
 whenever drafting or opening a pull request.
 
-## Deploy the app
+## Validation
+
+Check root and workspace `package.json` scripts before running commands. Run narrow checks while
+iterating. Before handing off a completed implementation, always run:
+
+1. `bun fix:codestyle`
+2. `bun check:all`
+3. `bun test`
+4. `bun run build`
+
+Run focused integration tests for the boundary changed by the PR. Exercise changed routes against a
+running server when applicable.
+
+## READMEs
+
+Packages fall into two buckets:
+
+- **Published packages** (have a `pkg/` directory) carry two READMEs:
+  - `packages/<package>/pkg/README.md` is public, user-facing, and shipped to npm.
+  - `packages/<package>/README.md` is for contributors. It links to the public README and covers
+    source layout, development scripts, and constraints without duplicating install or usage docs.
+- **Internal-only packages** (no `pkg/`) need a README only when they have contributor-relevant
+  context that is not obvious from the source.
+
+Update both READMEs in lockstep only when a change genuinely affects both audiences. Keep the root
+README short; deep usage belongs in package documentation.
+
+## Deploying the app
 
 `bun run build` produces `apps/backend/dist/app`, a single binary targeting Linux x64 with the
 frontend and migrations embedded. It listens on `PORT` and expects the variables in
 [apps/backend/.env.example](./apps/backend/.env.example).
 
-The repository-local [deploy-to-nibrun skill](./.agents/skills/deploy-to-nibrun/SKILL.md) contains
-the deployment commands and platform constraints.
+Follow the repository-local
+[deploy-to-nibrun skill](./.agents/skills/deploy-to-nibrun/SKILL.md) for deployment commands and
+platform constraints.
+
+## Keeping guidance current
+
+When a change establishes or changes an architectural, testing, migration, naming, tooling, or
+dependency convention, update the owning `AGENTS.md` in the same PR. Guidance must describe the code
+contributors are expected to write next, not an aspiration that accepted code ignores.
