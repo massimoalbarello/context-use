@@ -3,6 +3,23 @@
 `apps/backend/src/db` owns the SQLite client, schema migration runner, and ordered schema history.
 Application data access belongs in repositories; business workflows belong in services.
 
+## Principles
+
+Database state is a durable shared asset and must be changed with exceptional care. A database
+change is not an implementation convenience; it is a compatibility and operational commitment.
+
+- Establish the root problem and prove that a database change is necessary before designing one.
+- Define the invariant being introduced or preserved, the expected prior state, failure behavior,
+  rollout order, verification method, and recovery path before applying the change.
+- Prefer the simplest safe change. Favor additive and reversible evolution; require explicit proof
+  before removing or irreversibly transforming state.
+- Fail closed when the current state is unexpected or ambiguous. Never coerce unknown state into the
+  expected shape merely to let a deployment continue.
+- Do not add speculative tables, columns, indexes, or migration machinery without a concrete current
+  requirement.
+- A destructive data operation requires an explicit recovery plan and proof that its target and
+  scope are correct.
+
 ## Schema migrations
 
 A schema migration changes schema. It never migrates application data.
@@ -31,18 +48,21 @@ Use expand, migrate, cut over, and contract as distinct stages:
 5. Switch canonical reads and writes in a separate application change.
 6. Remove obsolete schema in a later migration only after the retired path is unused.
 
-A dedicated data job must be idempotent, resumable, bounded in memory, safe to retry, and observable.
-Process large datasets in stable batches, expose progress and failures, and provide verification or
-dry-run behavior when practical. Run it only through an explicit operator command.
+A dedicated data job must be idempotent, resumable, bounded in memory, safe to retry, and
+observable. Process large datasets in stable batches, expose progress and failures, and provide
+verification or dry-run behavior when practical. Run it only through an explicit operator command.
 
 ## Red flags
 
+- The root problem and required invariant are still unclear when schema design begins.
+- An application workaround is being made permanent in the schema without questioning its cause.
 - A migration changes more than one unrelated schema concern.
 - A migration's correctness depends on the current contents of application tables.
 - A migration creates schema and rewrites existing rows in the same rollout step.
 - A data job runs automatically from the migration runner or application startup.
 - A shipped migration is edited to make a fresh installation pass.
 - Repository or business logic is added to the migration runner.
+- A destructive or irreversible change has no verification and recovery plan.
 
 ## Tests
 

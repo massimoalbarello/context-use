@@ -15,10 +15,33 @@ this file.
 - **Linter/formatter:** Biome (auto-formats on save)
 - **Commits:** Conventional Commits (commitlint)
 
+## Simplicity
+
+Simplicity is the primary design constraint. It does not mean the shortest patch or the fewest
+files; it means solving the actual problem with the fewest necessary concepts, states, dependencies,
+and special cases while preserving correctness.
+
+- Do not start implementing until the problem, desired outcome, constraints, and success condition
+  can be stated precisely. If they are unclear, investigate or ask rather than guessing.
+- Question the problem before proposing a solution. Separate root causes from symptoms and solve the
+  root cause once instead of patching each manifestation independently.
+- For a non-trivial change, consider plausible alternatives—including doing nothing—and compare
+  their correctness, complexity, operational risk, reversibility, and maintenance cost.
+- Choose the smallest coherent solution that satisfies the current need. Do not add speculative
+  features, extension points, configuration, or abstractions for imagined future requirements.
+- Prefer removing, consolidating, or using an established mechanism over introducing another path.
+- Say no to quick fixes whose consequences are not understood, and to features whose immediate value
+  and timing cannot be explained. Stop and clarify rather than creating accidental commitments.
+- Treat contorted control flow, long explanations, excessive indirection, and confused ownership as
+  evidence that the problem or boundary is not understood well enough. Step back and simplify the
+  model before continuing.
+- Prefer obvious, maintainable, and reversible designs over clever ones. Complexity requires a
+  concrete justification tied to an invariant or unavoidable constraint.
+
 ## Architecture
 
-- Before implementing a feature, identify its owning workspace and feature, public contract,
-  dependency direction, and critical invariants. Resolve unclear boundaries before adding code.
+- Identify each feature's owning workspace and module, public contract, dependency direction, and
+  critical invariants before changing it.
 - Every module has one clear responsibility and one primary reason to change. If its description
   needs unrelated clauses joined by “and,” split it along that boundary.
 - Organize application code by product area or feature, then by mechanism within that area. Do not
@@ -67,6 +90,8 @@ this file.
 
 Stop and reconsider the design when any of these appear:
 
+- A solution is already chosen but the problem and success condition cannot be stated precisely.
+- A patch treats a visible symptom while the same cause can fail elsewhere.
 - A module, function, component, or test suite owns several unrelated workflows.
 - An input object keeps growing because unrelated callers need different subsets of its fields.
 - Similar domain logic exists in more than one place without a clearly identified owner.
@@ -77,6 +102,8 @@ Stop and reconsider the design when any of these appear:
 - A test exists only to increase coverage, repeats an invariant already proven elsewhere, or asserts
   implementation text instead of behavior.
 - A schema migration modifies application rows or performs an operational data job.
+- A database change is proposed as a shortcut without a compatibility and recovery analysis.
+- A feature has no concrete current need, expected value, or success criterion.
 - A proposed PR cannot be summarized as one outcome without listing unrelated changes.
 
 ## Tests
@@ -111,6 +138,8 @@ schema migration or application startup.
 
 Every PR has one goal that a reviewer can state in one sentence.
 
+- A feature must address a concrete current problem with an explicit success criterion. If its
+  value, timing, or consequences are unclear, do not build it yet.
 - Include only the implementation, focused tests, and documentation required for that goal. Leave
   unrelated cleanup for a follow-up.
 - Separate behavior changes from broad refactors when either can stand alone. A mechanical move or
