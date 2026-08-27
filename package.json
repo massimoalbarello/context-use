@@ -1,23 +1,32 @@
 {
-  "name": "bun-monorepo",
+  "name": "context-use",
   "type": "module",
   "private": true,
-  "scripts": {
-    "build": "bun run --bun turbo build",
-    "check:types": "bun run --bun turbo check:types",
-    "check:codestyle": "bun run --bun biome check",
-    "check:all": "bun check:types && bun check:codestyle",
-    "check:commit-message": "bun run --bun commitlint",
-    "fix:codestyle": "bun run --bun biome check --write"
-  },
   "workspaces": {
     "packages": [
-      "apps/*",
-      "packages/*"
+      "frontend",
+      "backend"
     ],
     "catalog": {
       "typescript": "^7.0.2"
     }
+  },
+  "scripts": {
+    "backend": "bun --filter backend",
+    "backend:dev": "bun backend dev",
+    "backend:build": "bun backend build",
+    "frontend": "bun --filter frontend",
+    "frontend:dev": "bun frontend dev",
+    "frontend:build": "bun frontend build",
+    "dev": "bun run --parallel --no-orphans backend:dev frontend:dev",
+    "build": "bun frontend:build && bun backend:build",
+    "build:local": "BUILD_TARGET=host bun run build",
+    "check:types": "bun --filter \"*\" check:types",
+    "check:codestyle": "bun run --bun biome check",
+    "check:all": "bun run --parallel check:types check:codestyle",
+    "check:commit-message": "bun run --bun commitlint",
+    "test": "bun test",
+    "fix:codestyle": "bun run --bun biome check --write"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.6",
@@ -26,8 +35,14 @@
     "@commitlint/format": "^21.2.0",
     "@commitlint/types": "^21.2.0",
     "@types/bun": "^1.3.14",
-    "typescript": "catalog:",
-    "turbo": "^2.10.7"
+    "typescript": "catalog:"
   },
-  "packageManager": "bun@1.3.14"
+  "overrides": {
+    "bun-types": "^1.4.0"
+  },
+  "engines": {
+    "bun": "1.4.0",
+    "node": "please use bun"
+  },
+  "packageManager": "bun@1.4.0"
 }

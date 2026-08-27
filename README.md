@@ -1,45 +1,73 @@
-# bun-monorepo-starter
+# Context Use
 
-A monorepo template powered by [Bun](https://bun.sh) and [Turborepo](https://turborepo.dev/).
+[![Deploy on nibrun](https://nibrun.com/button.svg)](https://app.nibrun.com/deploy?name=context-use&port=3000)
 
-## Structure
-
-```
-apps/
-  my-app/          # Bun application (template)
-packages/
-  my-package/      # Publishable npm package (template)
-  pack-utils/      # Internal build utilities for packages
-  typescript-config/  # Shared TypeScript configuration
-```
-
-## Using this template
-
-After creating a repo from this template, go through the following checklist:
-
-- [ ] **`LICENSE`** — replace `[year]` and `[fullname]` with the current year and your name / org.
-- [ ] **`package.json`** (root) — rename `"name": "bun-monorepo"` to your project name.
-- [ ] **`.github/CONTRIBUTING.md`** — replace `<repository-name>` and `<repository-url>` with your actual repo details.
-- [ ] **`apps/my-app/`** — rename the folder and update `"name"` in its `package.json`.
-- [ ] **`packages/my-package/`** — rename the folder and update `"name"` in its internal `package.json` accordingly.
-- [ ] **`packages/my-package/pkg/package.json`** — this is the public-facing package manifest. Update `"name"`, `"description"`, `"author"`, `"version"`, and the `"repository"` URL.
-- [ ] Delete or adapt the example source files in `apps/my-app/src/` and `packages/my-package/src/`.
-
-## Requirements
-
-- [Bun](https://bun.sh)
+Context Use runs on Bun end to end: an Elysia API and a React SPA in one repository,
+sharing types across the wire. `bun run build` compiles it all into a **single binary** with the
+built frontend and the SQL migrations embedded — nothing to install on the target machine.
 
 ## Getting started
 
-```sh
-bun install
-bun run build
+### For agents
+
+Read [AGENTS.md](./AGENTS.md) — the layering, the conventions each side holds to, and what to run
+to check your work.
+
+### Repository layout
+
+```text
+backend/   Elysia API, business logic, persistence, migrations, and production entrypoint
+frontend/  React SPA, typed API client, routes, queries, and UI
 ```
 
-## Tooling
+### For humans
 
-- [Bun](https://bun.sh) — runtime, package manager, bundler
-- [Turborepo](https://turborepo.dev/) — task orchestration with caching
-- [Biome](https://biomejs.dev/) — linter and formatter
-- [commitlint](https://commitlint.js.org/) — conventional commit enforcement
-- [TypeScript](https://www.typescriptlang.org/) — shared config via `@repo/typescript-config`
+```bash
+bun install
+cp backend/.env.example backend/.env
+openssl rand -base64 32   # paste into BETTER_AUTH_SECRET in backend/.env
+bun run dev
+```
+
+The backend comes up on `:3000` and Vite on `:5173`, proxying `/api` to it — so the browser only
+ever talks to one origin, the same arrangement as production, where the backend serves the
+frontend itself.
+
+## Features
+
+- **One binary.** The frontend and the migrations are embedded, and the entrypoint is compiled to
+  bytecode, so it boots in about half the time at the cost of ~20% more size. Targets linux x64 by
+  default; `bun run build:local` compiles for the current machine.
+- **Types across the wire.** The client is Eden Treaty's `treaty<App>`, typed from the server
+  instance rather than a schema — a route that changes shape breaks the caller at compile time,
+  and there is nothing to regenerate.
+- **Auth.** better-auth, email and password, storing its tables in the same SQLite database as
+  everything else. A route opts in with `.guard({ auth: true })` and gets a resolved `user` and
+  `session` on its context, or a `401` before the handler runs.
+- **An API reference that can't drift.** `/openapi` serves a [Scalar](https://scalar.com) page and
+  `/openapi/json` the spec behind it, both generated from the same TypeBox schemas the routes
+  already validate with.
+- **SQLite through `Bun.SQL`**, with migrations applied at startup, in order, once.
+- **File storage.** Authenticated upload, list, download and delete. Metadata in SQLite, bytes
+  streamed off disk by Bun with Range requests included. `Storage` is deliberately a structural
+  subset of `Bun.S3Client` — and a compile-time assertion keeps it that way — so moving to real
+  object storage is one line in `backend/src/lib/storage/client.ts`.
+- **The server serves the SPA.** Every built file is registered as its own native static route, so
+  Bun answers `If-None-Match` with a `304` on its own and the hashed assets are `immutable` for a
+  year. Anything that matches no file and doesn't look like an API call falls back to `index.html`.
+
+## Deploy the app
+
+`bun run build` produces `backend/dist/app`. It listens on `PORT` and expects the variables in
+[backend/.env.example](./backend/.env.example).
+
+Run it on [nibrun](https://nibrun.com): drop the binary, get an HTTPS URL and a disk that survives
+every redeploy. No Dockerfile, no YAML, nothing to install next to it. `BASE_URL` can stay unset
+there — nibrun injects `NIBRUN_HOSTNAME`, and the app takes `https://<that hostname>` as its
+public origin — the origin better-auth trusts and builds its URLs from.
+Deployment instructions and platform constraints are versioned in the repository's
+[Nibrun skill](./.agents/skills/deploy-to-nibrun/SKILL.md).
+
+## Contributing
+
+Read the [contribution guide](./.github/CONTRIBUTING.md) before opening a pull request.
