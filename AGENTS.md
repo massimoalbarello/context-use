@@ -72,21 +72,6 @@ runtime, so exercise the route you changed against a running server before calli
 
 ## Pull requests
 
-- Use a concise title that describes the outcome and follows Conventional Commit style; CI checks
-  it.
-- Open the body with a short paragraph explaining what changed and why for a reviewer who was not
-  part of the implementation.
-- Include decisions, tradeoffs, risks, migration notes, or follow-up context only when useful. Add
-  `Closes #<issue>` only when closure is intended.
-- Treat the body as reviewer context, not an execution log. Omit routine successful validation,
-  local tooling problems, unavailable optional validators, fallback checks, and raw command output.
-- Mention a validation gap only when it leaves material risk or requires reviewer action; explain
-  the consequence rather than the tooling trivia.
-- Avoid generic checklists, padded three-bullet summaries, and implementation trivia.
-- Keep generated files, documentation, examples, and environment templates in sync with the code
-  that owns them.
-- Do not merge with failing required checks or unresolved review comments.
-
 Follow the repository-local [open-pull-request skill](./.agents/skills/open-pull-request/SKILL.md)
 whenever drafting or opening a pull request.
 

@@ -31,13 +31,5 @@ commits to `main`. CI rejects a pull request title that does not follow the conv
 
 ## Pull requests
 
-Keep each pull request focused. Use a concise Conventional Commit title that describes the
-outcome. Start the body with a short paragraph explaining what changed and why, then add decisions,
-tradeoffs, risks, migration notes, follow-up context, or `Closes #<issue>` only when useful.
-
-Treat the body as reviewer context rather than an execution log. Omit routine successful
-validation, local tooling problems, unavailable optional validators, fallback checks, generic
-checklists, implementation trivia, and raw command output. Mention a validation gap only when it
-leaves material risk or requires reviewer action, and explain its consequence.
-
-Resolve review comments and required checks before merge.
+Follow the repository-local [open-pull-request skill](../.agents/skills/open-pull-request/SKILL.md)
+when drafting or opening a pull request.
