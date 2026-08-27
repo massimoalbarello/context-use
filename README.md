@@ -1,72 +1,52 @@
-# Context Use
+# bun-monorepo-starter
 
-[![Deploy on nibrun](https://nibrun.com/button.svg)](https://app.nibrun.com/deploy?name=context-use&port=3000)
+A Bun and Turborepo monorepo with a full-stack starter application adapted from
+[bun-full-stack-starter](https://github.com/ilbertt/bun-full-stack-starter).
 
-Context Use runs on Bun end to end: an Elysia API and a React SPA in one repository,
-sharing types across the wire. `bun run build` compiles it all into a **single binary** with the
-built frontend and the SQL migrations embedded — nothing to install on the target machine.
+## Structure
+
+```text
+apps/
+  backend/            # Elysia API and production binary
+  frontend/           # React SPA and typed API client
+packages/
+  my-package/         # Publishable npm package template
+  pack-utils/         # Internal package build utilities
+  typescript-config/  # Shared TypeScript configuration
+```
+
+The frontend consumes the backend's exported application type through the workspace, while the
+shared package configuration remains available to every current and future app or package.
 
 ## Getting started
 
-### For agents
-
-Read [AGENTS.md](./AGENTS.md) — the layering, the conventions each side holds to, and what to run
-to check your work.
-
-### Repository layout
-
-```text
-backend/   Elysia API, business logic, persistence, migrations, and production entrypoint
-frontend/  React SPA, typed API client, routes, queries, and UI
-```
-
-### For humans
-
 ```bash
 bun install
-cp backend/.env.example backend/.env
-openssl rand -base64 32   # paste into BETTER_AUTH_SECRET in backend/.env
+cp apps/backend/.env.example apps/backend/.env
+openssl rand -base64 32 # paste into BETTER_AUTH_SECRET in apps/backend/.env
 bun run dev
 ```
 
-The backend comes up on `:3000` and Vite on `:5173`, proxying `/api` to it — so the browser only
-ever talks to one origin, the same arrangement as production, where the backend serves the
-frontend itself.
+The backend listens on `:3000` and Vite on `:5173`, proxying API requests to the backend. The
+starter includes authentication, SQLite migrations, file storage, OpenAPI, and a production build
+that embeds the frontend and migrations in one binary.
 
-## Features
+## Build
 
-- **One binary.** The frontend and the migrations are embedded, and the entrypoint is compiled to
-  bytecode, so it boots in about half the time at the cost of ~20% more size. Targets linux x64 by
-  default; `bun run build:local` compiles for the current machine.
-- **Types across the wire.** The client is Eden Treaty's `treaty<App>`, typed from the server
-  instance rather than a schema — a route that changes shape breaks the caller at compile time,
-  and there is nothing to regenerate.
-- **Auth.** better-auth, email and password, storing its tables in the same SQLite database as
-  everything else. A route opts in with `.guard({ auth: true })` and gets a resolved `user` and
-  `session` on its context, or a `401` before the handler runs.
-- **An API reference that can't drift.** `/openapi` serves a [Scalar](https://scalar.com) page and
-  `/openapi/json` the spec behind it, both generated from the same TypeBox schemas the routes
-  already validate with.
-- **SQLite through `Bun.SQL`**, with migrations applied at startup, in order, once.
-- **File storage.** Authenticated upload, list, download and delete. Metadata in SQLite, bytes
-  streamed off disk by Bun with Range requests included. `Storage` is deliberately a structural
-  subset of `Bun.S3Client` — and a compile-time assertion keeps it that way — so moving to real
-  object storage is one line in `backend/src/lib/storage/client.ts`.
-- **The server serves the SPA.** Every built file is registered as its own native static route, so
-  Bun answers `If-None-Match` with a `304` on its own and the hashed assets are `immutable` for a
-  year. Anything that matches no file and doesn't look like an API call falls back to `index.html`.
+```bash
+bun run build
+```
 
-## Deploy the app
+Turborepo builds the workspace in the required order. The deployable binary is written to
+`apps/backend/dist/app`; `bun run build:local` targets the current machine instead of Linux x64.
 
-`bun run build` produces `backend/dist/app`. It listens on `PORT` and expects the variables in
-[backend/.env.example](./backend/.env.example).
+## Tooling
 
-Run it on [nibrun](https://nibrun.com): drop the binary, get an HTTPS URL and a disk that survives
-every redeploy. No Dockerfile, no YAML, nothing to install next to it. `BASE_URL` can stay unset
-there — nibrun injects `NIBRUN_HOSTNAME`, and the app takes `https://<that hostname>` as its
-public origin — the origin better-auth trusts and builds its URLs from.
-Deployment instructions and platform constraints are versioned in the repository's
-[Nibrun skill](./.agents/skills/deploy-to-nibrun/SKILL.md).
+- [Bun](https://bun.sh) — runtime, package manager, and bundler
+- [Turborepo](https://turborepo.dev/) — workspace task orchestration and caching
+- [Biome](https://biomejs.dev/) — linting and formatting
+- [TypeScript](https://www.typescriptlang.org/) — shared through `@repo/typescript-config`
+- [commitlint](https://commitlint.js.org/) — Conventional Commit enforcement
 
 ## Contributing
 

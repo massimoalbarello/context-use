@@ -114,7 +114,7 @@ the most common reason a first deploy never boots.
 than a compiler invocation — assets embedded, constants substituted at build time, a frontend
 compiled first — and a hand-rolled command silently skips all of it, producing something that links
 and then dies on boot. [bun-full-stack-starter](https://github.com/ilbertt/bun-full-stack-starter)
-is one such: `bun run build` gives `backend/dist/app` with the frontend and the migrations inside
+is one such: `bun run build` gives `apps/backend/dist/app` with the frontend and the migrations inside
 it, defaulting to `PORT` 3000 and `./data`.
 
 A Bun repo with nothing to inherit compiles one itself with `bun build --compile`, targeting

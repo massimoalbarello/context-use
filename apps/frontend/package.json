@@ -1,11 +1,12 @@
 {
-  "name": "frontend",
+  "name": "@repo/frontend",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "bun --bun vite dev",
     "build": "bun --bun vite build",
-    "check:types": "bun run --bun tsc -b"
+    "check:types": "bun run --bun tsc -b",
+    "test": "bun test"
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.9",
@@ -24,7 +25,8 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
-    "backend": "workspace:*",
+    "@repo/backend": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "typescript": "catalog:",
     "vite": "^8.1.5"
   }

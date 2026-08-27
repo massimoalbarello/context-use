@@ -1,16 +1,16 @@
-# Contributing to Context Use
+# Contributing to <repository-name>
 
 ## Development setup
 
 ```bash
-git clone https://github.com/massimoalbarello/context-use.git
-cd context-use
+git clone <repository-url>
+cd <repository-name>
 bun install
-cp backend/.env.example backend/.env
+cp apps/backend/.env.example apps/backend/.env
 ```
 
 Generate a development secret with `openssl rand -base64 32`, add it as
-`BETTER_AUTH_SECRET` in `backend/.env`, then start both applications with `bun run dev`.
+`BETTER_AUTH_SECRET` in `apps/backend/.env`, then start both applications with `bun run dev`.
 
 ## Before opening a pull request
 

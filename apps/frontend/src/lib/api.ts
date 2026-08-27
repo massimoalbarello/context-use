@@ -1,5 +1,5 @@
 import { type Treaty, treaty } from '@elysiajs/eden';
-import type { App } from 'backend/types';
+import type { App } from '@repo/backend/types';
 
 // Same origin in both environments: in production the backend serves the frontend,
 // in development Vite proxies the API prefix to the backend.

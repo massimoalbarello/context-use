@@ -22,7 +22,7 @@ export function createApp() {
         path: OPENAPI_PATH,
         documentation: {
           info: {
-            title: 'Context Use API',
+            title: 'Bun Full-Stack API',
             description: 'Everything this server answers, next to the frontend it also serves.',
             version: '1.0.0',
           },

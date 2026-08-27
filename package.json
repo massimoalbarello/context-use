@@ -1,31 +1,29 @@
 {
-  "name": "context-use",
+  "name": "bun-monorepo",
   "type": "module",
   "private": true,
   "workspaces": {
     "packages": [
-      "frontend",
-      "backend"
+      "apps/*",
+      "packages/*"
     ],
     "catalog": {
       "typescript": "^7.0.2"
     }
   },
   "scripts": {
-    "backend": "bun --filter backend",
-    "backend:dev": "bun backend dev",
-    "backend:build": "bun backend build",
-    "frontend": "bun --filter frontend",
-    "frontend:dev": "bun frontend dev",
-    "frontend:build": "bun frontend build",
-    "dev": "bun run --parallel --no-orphans backend:dev frontend:dev",
-    "build": "bun frontend:build && bun backend:build",
-    "build:local": "BUILD_TARGET=host bun run build",
-    "check:types": "bun --filter \"*\" check:types",
+    "backend:dev": "bun --filter @repo/backend dev",
+    "backend:build": "bun run --bun turbo build --filter=@repo/backend",
+    "frontend:dev": "bun --filter @repo/frontend dev",
+    "frontend:build": "bun run --bun turbo build --filter=@repo/frontend",
+    "dev": "bun run --bun turbo dev --filter=@repo/backend --filter=@repo/frontend",
+    "build": "bun run --bun turbo build",
+    "build:local": "BUILD_TARGET=host bun run --bun turbo build --filter=@repo/backend",
+    "check:types": "bun run --bun turbo check:types",
     "check:codestyle": "bun run --bun biome check",
     "check:all": "bun run --parallel check:types check:codestyle",
     "check:commit-message": "bun run --bun commitlint",
-    "test": "bun test",
+    "test": "bun run --bun turbo test",
     "fix:codestyle": "bun run --bun biome check --write"
   },
   "devDependencies": {
@@ -35,7 +33,8 @@
     "@commitlint/format": "^21.2.0",
     "@commitlint/types": "^21.2.0",
     "@types/bun": "^1.4.0",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "turbo": "^2.10.7"
   },
   "engines": {
     "bun": "1.4.0",

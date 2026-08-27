@@ -1,4 +1,5 @@
 {
-  "files": [],
-  "references": [{ "path": "./backend" }, { "path": "./frontend" }]
+  "extends": "./packages/typescript-config/base.json",
+  "include": ["./commitlint.config.ts"],
+  "exclude": ["node_modules"]
 }
