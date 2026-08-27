@@ -49,4 +49,18 @@ The root `README.md` is the project homepage: typically lists the public package
 When a change affects code style, tooling, conventions, or project taste (new lint rules, formatter config, naming patterns, dependency choices, etc.), propose updating this file to reflect it.
 
 ## Pull requests
-Keep PR descriptions minimal — the diff is self-explanatory, so don't enumerate every change. State the intent in a line or two.
+
+- Use a concise title that describes the outcome and follows Conventional Commit style; CI checks
+  it.
+- Open the body with a short paragraph explaining what changed and why for a reviewer who was not
+  part of the implementation.
+- Include decisions, tradeoffs, risks, migration notes, or follow-up context only when useful. Add
+  `Closes #<issue>` only when closure is intended.
+- Treat the body as reviewer context, not an execution log. Omit routine successful validation,
+  local tooling problems, unavailable optional validators, fallback checks, and raw command output.
+- Mention a validation gap only when it leaves material risk or requires reviewer action; explain
+  the consequence rather than the tooling trivia.
+- Avoid generic checklists, padded three-bullet summaries, and implementation trivia.
+
+Follow the repository-local [open-pull-request skill](./.agents/skills/open-pull-request/SKILL.md)
+whenever drafting or opening a pull request.
