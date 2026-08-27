@@ -19,6 +19,11 @@ export const auth = betterAuth({
   basePath: BETTER_AUTH_API_BASE_PATH,
   secret: env.BETTER_AUTH_SECRET,
   emailAndPassword: { enabled: true },
+  advanced: {
+    database: {
+      generateId: () => Bun.randomUUIDv7(),
+    },
+  },
 });
 
 export const SESSION_SECURITY_SCHEME = 'betterAuthSession';
