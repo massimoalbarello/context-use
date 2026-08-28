@@ -11,7 +11,8 @@
   "scripts": {
     "dev": "bun run scripts/dev.ts",
     "build": "bun run scripts/build.ts",
-    "check:types": "bun run --bun tsc -b"
+    "check:types": "bun run --bun tsc -b",
+    "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
     "@elysiajs/openapi": "^1.4.15",

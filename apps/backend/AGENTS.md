@@ -34,12 +34,9 @@ database migration rules live in `src/db/AGENTS.md`.
 
 ## Tests
 
-- Route tests cover only material HTTP concerns: authentication, validation, status mapping, and the
-  public response contract.
-- Adapter integration tests use the real system for SQL constraints, permissions, transaction
-  behavior, locking, streaming, and SDK assumptions that a fake cannot prove.
-- Shared app factories, principals, clocks, and adapter harnesses belong in `test/support`; do not
-  rebuild them in each test file.
+Backend tests live in `test` and mirror `src`. Read and follow `test/AGENTS.md` before adding or
+changing them. Prioritize authorization and tenant isolation, data integrity, destructive
+operations, transactions, idempotency, and public API contracts.
 
 ## Red flags
 

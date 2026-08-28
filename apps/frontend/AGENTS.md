@@ -108,14 +108,12 @@ global client-state library until a concrete cross-route state model requires on
 - Treat nearly identical components, arbitrary visual values, growing variant matrices, and pages
   that require bespoke styling instructions as signs that the visual system needs simplification.
 
-## Accessibility and tests
+## Accessibility
 
 - Prefer semantic HTML. UI primitives assist accessibility but do not replace correct labels, focus
   behavior, keyboard interaction, contrast, reduced-motion handling, or manual verification.
-- Test critical accessible behavior and user-visible state transitions by role, label, and visible
-  content rather than class names or incidental DOM structure.
-- Test route integration only when routing, loading, or URL behavior is the risk. Test isolated
-  components when the route adds no relevant behavior, and keep end-to-end tests for critical
-  journeys.
-- Share render harnesses, router and query setup, request handlers, and builders in `test/support`.
-  Avoid whole-screen snapshots and repeated tests of the same invariant through several routes.
+
+## Tests
+
+Frontend tests live in `test` and mirror `src`. Read and follow `test/AGENTS.md` before adding or
+changing them.

@@ -83,12 +83,15 @@ Stop and revisit the design when:
 There is no coverage target and no expectation that every function has a test. Each test must
 protect a critical invariant, boundary, or failure mode whose regression would matter.
 
+- Use `bun:test` as the common unit and integration runner. Add another runner only when a concrete
+  boundary cannot be tested coherently with the existing stack.
+- Each workspace keeps tests in `test`, mirroring the ownership and paths under `src`. Reusable
+  builders, fakes, setup, and assertions belong in that workspace's `test/support`.
 - Test an invariant at the lowest layer that can prove it. Do not repeat the same behavior at every
   layer without a distinct risk.
 - Prefer compact decision tables over near-duplicate cases.
 - Assert observable behavior and durable contracts, not private call sequences or source text when
   behavior can be executed.
-- Put reusable builders, fakes, setup, and assertions in the owning workspace's `test/support`.
 - Keep suites scoped and remove redundant tests when a stronger test supersedes them.
 - Never weaken encapsulation solely to make implementation details testable.
 
