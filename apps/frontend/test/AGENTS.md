@@ -1,16 +1,12 @@
 # Frontend tests
 
-The root and frontend guides apply here. Use `bun:test`. Use React Testing Library and `user-event`
-when rendering React behavior; do not introduce another component-test runner.
+The root and frontend guides apply here. Use React Testing Library and `user-event` when rendering
+React behavior.
 
-Browser end-to-end testing is not part of the current baseline. Add a browser runner only after a
-specific critical risk cannot be proven reliably through frontend or backend tests and the design
-tradeoff has been discussed.
+Browser end-to-end testing is not part of the current baseline.
 
 ## Layout and support
 
-- Organize tests by the route, feature, or capability whose behavior they prove. Directory names
-  must communicate that owner; do not recreate generic `lib`, `helpers`, or `misc` buckets.
 - `test/support` owns the shared render function, fresh Router and Query clients, request handlers,
   authenticated principals, and reusable builders. Keep feature-only data beside its tests.
 - Every render receives fresh state. Tests must not share caches, routers, form instances, DOM
