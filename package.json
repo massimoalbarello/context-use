@@ -8,6 +8,7 @@
       "packages/*"
     ],
     "catalog": {
+      "better-auth": "^1.7.2",
       "typescript": "^7.0.2"
     }
   },
