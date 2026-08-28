@@ -17,7 +17,7 @@ Generate a development secret with `openssl rand -base64 32`, add it as
 ```bash
 bun fix:codestyle
 bun check:all
-bun test
+bun run test
 bun run build
 ```
 
