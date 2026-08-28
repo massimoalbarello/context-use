@@ -39,7 +39,7 @@ Discuss that gap and the tradeoffs before adding a competing mechanism.
 
 - `src/components/ui` contains shadcn/ui source components and no application or domain logic. Add
   only components required by a current feature and review the generated source and dependencies.
-- Use the configured Base UI foundation consistently. Do not mix Base UI, Radix, React Aria, or
+- Use Base UI consistently as the shadcn/ui foundation. Do not mix Base UI, Radix, React Aria, or
   hand-built versions of the same interactive primitive without an explicit design decision.
 - Keep route-specific compositions beside their route or feature. Global component folders contain
   only genuinely reusable primitives, application-wide layout, or cross-route components.
@@ -90,12 +90,26 @@ global client-state library until a concrete cross-route state model requires on
 - Backend validation remains authoritative. Add a client schema only when it improves a concrete
   form or URL boundary; do not duplicate backend contracts merely to adopt a schema library.
 
-## Styling, accessibility, and tests
+## Visual system
 
-- Define colors, typography, spacing, radii, and other shared visual decisions as theme tokens.
-  Keep global CSS limited to tokens, resets, fonts, and truly global behavior.
-- Keep feature and component styling with its owner. Do not introduce one-off visual values when an
-  established token or component variant expresses the same decision.
+- Establish a compact visual baseline before building feature screens: semantic color tokens,
+  typography, spacing rhythm, radii, elevation, interaction states, content widths, and responsive
+  behavior. Keep global CSS limited to this baseline, resets, fonts, and truly global behavior.
+- Use one shared application shell and a small set of recurring page patterns for headers, content
+  regions, sections, forms, lists, and empty or error states. These executable components are the
+  frontend template; do not create a separate visual model that can drift from them.
+- Build every screen from the established tokens, shadcn/ui primitives, and shared page patterns.
+  Consistency takes precedence over route-specific novelty.
+- Keep feature styling with its owner, but do not introduce one-off colors, spacing, typography,
+  control treatments, or long repeated class combinations when an established token, primitive,
+  or pattern expresses the same decision.
+- Add a token, component variant, or page pattern only for a recurring semantic distinction. Before
+  adding one, simplify, extend, consolidate, or delete what already exists where possible.
+- Treat nearly identical components, arbitrary visual values, growing variant matrices, and pages
+  that require bespoke styling instructions as signs that the visual system needs simplification.
+
+## Accessibility and tests
+
 - Prefer semantic HTML. UI primitives assist accessibility but do not replace correct labels, focus
   behavior, keyboard interaction, contrast, reduced-motion handling, or manual verification.
 - Test critical accessible behavior and user-visible state transitions by role, label, and visible
