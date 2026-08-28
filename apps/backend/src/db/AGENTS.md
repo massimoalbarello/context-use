@@ -1,8 +1,9 @@
-# Database migration guide
+# Database guide
 
-The root and backend guides apply here. This file adds SQLite-specific rules for the client, schema
-migration runner, and ordered schema history. Application data access belongs in repositories;
-business workflows belong in services.
+The root and backend guides apply here. This file defines database-wide rules for clients, schema
+migrations, data changes, and schema history. Application data access belongs in repositories;
+business workflows belong in services. Engine- and dialect-specific rules belong with the concrete
+database adapter that requires them.
 
 ## Principles
 
@@ -34,8 +35,8 @@ A schema migration changes schema. It never migrates application data.
   intentional changes whose filenames describe their purpose.
 - Do not put `INSERT`, `UPDATE`, `DELETE`, data-copying statements, seeds, backfills, repairs, or
   normalization work in a schema migration.
-- Migrations are deterministic and transactional where SQLite permits. They do not call external
-  services or silently tolerate an unknown prior schema.
+- Migrations are deterministic and transactional where the target engine and operation permit. They
+  do not call external services or silently tolerate an unknown prior schema.
 - The migration runner may apply pending schema migrations during application startup. It must never
   run application data jobs there.
 - Keep migrations owned by their database adapter. Do not force SQLite and PostgreSQL into a lowest-
@@ -50,6 +51,8 @@ A schema migration changes schema. It never migrates application data.
   SQL client, construct queries, inspect driver errors, or branch on the configured database.
 - When a second database is implemented, give it its own migrations and repository adapters behind
   the existing contracts. Share only behavior whose semantics are genuinely identical.
+- Keep engine-specific constraints and operational guidance beside the adapter they govern; do not
+  promote one engine's limitations into application-wide database rules.
 - Do not add a generic database framework or unused PostgreSQL path in anticipation. Preserve clean
   boundaries now and let the second concrete adapter reveal what can be shared safely.
 
@@ -84,8 +87,8 @@ verification or dry-run behavior when practical. Run it only through an explicit
   Revisit automatic policy enforcement when migration volume or contributor concurrency makes it
   valuable, or when a reliable library fits the stack without a fragile home-grown SQL parser.
 - Test both a fresh database and upgrades from each supported prior schema version.
-- Use the real SQLite engine for constraints, transactions, locking, and query behavior that a fake
-  cannot prove.
+- Use the real engine for the adapter under test when proving constraints, transactions, locking,
+  and query behavior that a fake cannot prove.
 - Give each schema invariant one authoritative integration test; do not repeat every repository
   happy path at the migration layer.
 - Share database lifecycle, fixtures, cleanup, and invariant assertions through one test harness.
