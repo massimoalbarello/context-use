@@ -34,9 +34,10 @@ database migration rules live in `src/db/AGENTS.md`.
 
 ## Tests
 
-Backend tests live in `test` and mirror `src`. Read and follow `test/AGENTS.md` before adding or
-changing them. Prioritize authorization and tenant isolation, data integrity, destructive
-operations, transactions, idempotency, and public API contracts.
+Backend tests live in `test` and follow the same route, service, repository, and adapter ownership
+as `src`. Read and follow `test/AGENTS.md` before adding or changing them. Prioritize authorization
+and tenant isolation, data integrity, destructive operations, transactions, idempotency, and public
+API contracts.
 
 ## Red flags
 

@@ -9,8 +9,8 @@ tradeoff has been discussed.
 
 ## Layout and support
 
-- Mirror the paths under `src`: route, component, hook, and query tests live under the corresponding
-  path in `test`.
+- Organize tests by the route, feature, or capability whose behavior they prove. Directory names
+  must communicate that owner; do not recreate generic `lib`, `helpers`, or `misc` buckets.
 - `test/support` owns the shared render function, fresh Router and Query clients, request handlers,
   authenticated principals, and reusable builders. Keep feature-only data beside its tests.
 - Every render receives fresh state. Tests must not share caches, routers, form instances, DOM

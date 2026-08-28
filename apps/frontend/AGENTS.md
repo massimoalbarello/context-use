@@ -115,5 +115,5 @@ global client-state library until a concrete cross-route state model requires on
 
 ## Tests
 
-Frontend tests live in `test` and mirror `src`. Read and follow `test/AGENTS.md` before adding or
-changing them.
+Frontend tests live in `test` and follow the same route, feature, and capability ownership as
+`src`. Read and follow `test/AGENTS.md` before adding or changing them.
