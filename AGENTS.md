@@ -12,114 +12,85 @@ this file.
 - **Monorepo:** Bun workspaces and Turbo
 - **Backend:** Elysia and SQLite
 - **Frontend:** React and Vite
-- **Linter/formatter:** Biome (auto-formats on save)
-- **Commits:** Conventional Commits (commitlint)
+- **Linter/formatter:** Biome
+- **Commits:** Conventional Commits
 
-## Simplicity
+## Before implementation
 
-Simplicity is the primary design constraint. It does not mean the shortest patch or the fewest
-files; it means solving the actual problem with the fewest necessary concepts, states, dependencies,
-and special cases while preserving correctness.
+Do not start implementing until the problem, desired outcome, constraints, and success condition can
+be stated precisely. Question the request and distinguish the root cause from its symptoms.
 
-- Do not start implementing until the problem, desired outcome, constraints, and success condition
-  can be stated precisely. If they are unclear, investigate or ask rather than guessing.
-- Question the problem before proposing a solution. Separate root causes from symptoms and solve the
-  root cause once instead of patching each manifestation independently.
+- Before writing code, discuss the core design with the requester: ownership, boundaries,
+  abstractions, important invariants, meaningful alternatives, and tradeoffs. Do not silently commit
+  to an implementation.
 - For a non-trivial change, consider plausible alternatives—including doing nothing—and compare
-  their correctness, complexity, operational risk, reversibility, and maintenance cost.
-- Choose the smallest coherent solution that satisfies the current need. Do not add speculative
-  features, extension points, configuration, or abstractions for imagined future requirements.
-- Prefer removing, consolidating, or using an established mechanism over introducing another path.
-- Say no to quick fixes whose consequences are not understood, and to features whose immediate value
-  and timing cannot be explained. Stop and clarify rather than creating accidental commitments.
-- Treat contorted control flow, long explanations, excessive indirection, and confused ownership as
-  evidence that the problem or boundary is not understood well enough. Step back and simplify the
-  model before continuing.
-- Prefer obvious, maintainable, and reversible designs over clever ones. Complexity requires a
-  concrete justification tied to an invariant or unavoidable constraint.
+  correctness, complexity, operational risk, reversibility, and maintenance cost.
+- Do not build a feature without a concrete current need. Say no or ask for clarification when its
+  value, timing, or consequences are unclear.
 
-## Architecture
+## Simplicity and deletion before addition
 
-- Identify each feature's owning workspace and module, public contract, dependency direction, and
-  critical invariants before changing it.
-- Every module has one clear responsibility and one primary reason to change. If its description
-  needs unrelated clauses joined by “and,” split it along that boundary.
-- Organize application code by product area or feature, then by mechanism within that area. Do not
-  accumulate unrelated code in a workspace root.
-- Dependencies point inward: delivery and infrastructure code may depend on application/domain
-  code; domain code must not depend on frameworks, database clients, or process globals.
-- Construct stateful dependencies in an explicit composition root. Importing a module must not
-  start a server, open a connection, read unrelated environment variables, or mutate global state.
-- Expose the narrowest useful public surface. Keep implementation details private and avoid
-  cross-feature imports that bypass a feature's public contract.
-- Do not create generic `utils`, `helpers`, `common`, `shared`, or `types` dumping grounds. Put a
-  reusable mechanism under the domain or capability that owns it and give it a precise name.
-- Split a growing file before independent concepts, state machines, or side effects become
-  interleaved. File length is a warning signal; cohesion decides the split, not a target line count.
-- Prefer one primary component, use case, repository, or service per file. Small supporting types
-  that exist only for that unit may remain beside it.
+Simplicity is the primary design constraint. Choose the smallest coherent solution with the fewest
+necessary concepts, states, dependencies, and special cases. This is not the same as the shortest
+patch.
 
-## APIs, types, and naming
+- Before adding code, dependencies, configuration, or abstractions, ask whether the existing design
+  can be simplified, consolidated, reshaped, or deleted to accommodate the change.
+- Prefer one clear path over parallel mechanisms. Do not preserve obsolete structure merely because
+  adding beside it is easier.
+- Reject quick fixes that address a symptom without resolving the cause.
+- Treat contorted control flow, excessive indirection, long explanations, and confused ownership as
+  evidence that the model or boundary needs to be reconsidered.
+- Prefer obvious, maintainable, and reversible designs over clever ones. Every added layer of
+  complexity needs a concrete justification.
 
-- Biome enforces `useMaxParams: 1`. Model an operation with one named input object; do not use a
-  large options object to conceal an incoherent operation. Split the operation when fields belong to
-  different concerns.
-- Keep dependency objects separate from request/input objects. Business input must not carry
-  clients, loggers, clocks, or other infrastructure dependencies.
-- Use one domain term consistently across the database, backend, frontend, and tests. Do not invent
-  local synonyms for an established concept.
-- Keep one source of truth for schemas, keys, enum-like values, and contracts. Infer or generate
-  downstream types from the owner instead of copying them into broad type files.
-- Index files only re-export a deliberate public surface; Biome rejects barrel files used as
-  implementation modules.
-- New TypeScript files use kebab-case. Comments explain a non-obvious constraint or tradeoff, never
-  narrate code that names and types already explain.
+## Design, abstractions, and modularity
 
-## Reuse
+Code that merely works is not sufficient. Its design must make ownership and future change clear.
 
-- Reuse stable domain rules, protocol handling, transaction mechanics, parsers, and test harnesses.
-  A rule must have one owner rather than several nearly identical implementations.
-- Do not abstract merely because two short blocks look alike. Share code when the callers rely on
-  the same semantic contract and should change together.
-- Before adding a helper, search for the existing owner. Before extending an abstraction with
-  unrelated flags or optional branches, split it into cohesive operations.
-- Cross-workspace packages exist for genuinely shared contracts or capabilities, not as a place to
-  move code that lacks a clear owner.
+- Define the right components and abstractions—modules, classes, interfaces, or equivalent—before
+  distributing logic. Each must represent a cohesive role or boundary, not ceremony.
+- Assign a rule to the component that owns and enforces its invariant. Share it only when consumers
+  rely on the same semantic contract and should change together.
+- Every module has one responsibility and one primary reason to change. Split unrelated workflows
+  instead of joining them with flags, optional branches, or large input objects.
+- Dependencies point inward. Construct stateful dependencies in an explicit composition root;
+  importing a module must not open connections, start processes, or mutate global state.
+- Expose narrow public contracts and keep one source of truth for schemas, keys, enum-like values,
+  and types. Derive downstream representations instead of copying them.
+- Do not create generic `utils`, `helpers`, `common`, `shared`, or `types` dumping grounds. Name the
+  domain or capability that owns the code.
+- Biome allows at most three function parameters. Use separate parameters when they are few and
+  obvious; use a named input object when it improves meaning. Never use an object to hide an
+  incoherent operation.
+- Use one domain term consistently. New TypeScript files use kebab-case. Index files only re-export
+  deliberate public surfaces. Comments explain non-obvious constraints or tradeoffs, not the code.
 
 ## Red flags
 
-Stop and reconsider the design when any of these appear:
+Stop and revisit the design when:
 
-- A module, function, component, or test suite owns several unrelated workflows.
-- An input object keeps growing because unrelated callers need different subsets of its fields.
-- Similar domain logic exists in more than one place without a clearly identified owner.
-- A shared abstraction needs mode flags or caller-specific branches to remain reusable.
-- A feature reaches through another feature's internals instead of using a narrow public contract.
-- A test exists only to increase coverage, repeats an invariant already proven elsewhere, or asserts
-  implementation text instead of behavior.
-- A proposed PR cannot be summarized as one outcome without listing unrelated changes.
+- The problem or success condition cannot be explained without referring to the proposed solution.
+- A module, function, component, or test owns unrelated workflows.
+- An abstraction needs caller-specific modes, or an input object keeps accumulating unrelated
+  fields.
+- Similar domain logic exists in several places without one clear owner.
+- New code is being added even though deleting or reshaping existing code could solve the problem.
+- The change cannot be summarized as one outcome without listing unrelated work.
 
 ## Tests
 
-There is no coverage target and no expectation that every function has a test. Each test must name a
-critical invariant, boundary, or failure mode whose regression would matter.
+There is no coverage target and no expectation that every function has a test. Each test must
+protect a critical invariant, boundary, or failure mode whose regression would matter.
 
-Prioritize tests for authorization and trust boundaries, data integrity and loss prevention,
-important state transitions, idempotency and retry behavior, concurrency, and public contracts.
-
-- Test each invariant at the lowest layer that can prove it. Do not repeat the same behavior through
-  unit, controller, integration, and end-to-end tests without a distinct risk at each layer.
-- Prefer a small decision table that covers meaningful branches over many near-duplicate examples.
-- Assert observable behavior and durable contracts. Avoid snapshots of incidental markup, private
-  call sequences, or source-string inspection when the behavior can be executed. Static policy
-  tests are appropriate only for properties that cannot be exercised directly.
-- Put reusable builders, fakes, database setup, and assertions in the owning workspace's
-  `test/support`. Keep a fixture beside a feature only when no other feature should use it.
-- Test support must use production types and public contracts; do not maintain a second model of the
-  application for tests.
-- Keep suites scoped to one boundary or invariant family. Split catch-all regression files, and
-  remove redundant tests when a stronger test supersedes them.
-- Never weaken encapsulation or export implementation details solely to make them testable.
+- Test an invariant at the lowest layer that can prove it. Do not repeat the same behavior at every
+  layer without a distinct risk.
+- Prefer compact decision tables over near-duplicate cases.
+- Assert observable behavior and durable contracts, not private call sequences or source text when
+  behavior can be executed.
+- Put reusable builders, fakes, setup, and assertions in the owning workspace's `test/support`.
+- Keep suites scoped and remove redundant tests when a stronger test supersedes them.
+- Never weaken encapsulation solely to make implementation details testable.
 
 ## Database changes
 
@@ -130,48 +101,31 @@ Database state is durable shared state, not an implementation convenience. Read 
 
 Every PR has one goal that a reviewer can state in one sentence.
 
-- Include only the implementation, focused tests, and documentation required for that goal. Leave
-  unrelated cleanup for a follow-up.
-- Separate behavior changes from broad refactors when either can stand alone. A mechanical move or
-  rename should not quietly alter behavior.
-- Keep dependency upgrades, formatting churn, generated-file refreshes, and unrelated renames out of
-  feature PRs.
-- Preserve unrelated work in a dirty worktree and review the final diff for accidental scope growth.
-- Keep PR descriptions minimal: state the intent and any non-obvious rollout or risk in a few lines;
-  the diff should explain the implementation.
+- Include only the implementation, focused tests, and documentation required for that goal.
+- Separate behavior changes from broad refactors when either can stand alone.
+- Keep unrelated upgrades, generated-file refreshes, formatting churn, and renames out of the PR.
+- Preserve unrelated work and review the final diff for accidental scope growth.
+- Keep the description brief: state the intent and any non-obvious risk or rollout detail.
 
 Follow the repository-local [open-pull-request skill](./.agents/skills/open-pull-request/SKILL.md)
-whenever drafting or opening a pull request.
+when drafting or opening a pull request.
 
 ## Validation
 
-Check root and workspace `package.json` scripts before running commands. Run narrow checks while
-iterating. Before handing off a completed implementation, always run:
+Check root and workspace scripts before running commands. Before handing off an implementation, run:
 
 1. `bun fix:codestyle`
 2. `bun check:all`
 3. `bun test`
 4. `bun run build`
 
-Run focused integration tests for the boundary changed by the PR. Exercise changed routes against a
-running server when applicable.
+Also run focused integration checks and exercise changed routes when applicable.
 
-## READMEs
+## Documentation
 
-Packages fall into two buckets:
+Published packages keep public usage docs in `pkg/README.md` and contributor guidance in
+`README.md`; the contributor README links to the public one without duplicating it. Internal-only
+packages need a README only for non-obvious contributor context. Keep the root README short.
 
-- **Published packages** (have a `pkg/` directory) carry two READMEs:
-  - `packages/<package>/pkg/README.md` is public, user-facing, and shipped to npm.
-  - `packages/<package>/README.md` is for contributors. It links to the public README and covers
-    source layout, development scripts, and constraints without duplicating install or usage docs.
-- **Internal-only packages** (no `pkg/`) need a README only when they have contributor-relevant
-  context that is not obvious from the source.
-
-Update both READMEs in lockstep only when a change genuinely affects both audiences. Keep the root
-README short; deep usage belongs in package documentation.
-
-## Keeping guidance current
-
-When a change establishes or changes an architectural, testing, migration, naming, tooling, or
-dependency convention, update the owning `AGENTS.md` in the same PR. Guidance must describe the code
-contributors are expected to write next, not an aspiration that accepted code ignores.
+When a change establishes a convention, update the owning `AGENTS.md` in the same PR. Guidance must
+describe the code contributors are expected to write next.

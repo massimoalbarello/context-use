@@ -11,7 +11,6 @@ export class LocalStorage implements Storage {
     ensureDir(this.root);
   }
 
-  // biome-ignore lint/complexity/useMaxParams: mirrors `Bun.S3Client.write`
   write(key: string, data: Blob): Promise<number> {
     const path = this.pathOf(key);
     ensureDir(dirname(path));
