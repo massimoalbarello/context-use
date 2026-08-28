@@ -11,14 +11,15 @@ interface CustomProcessEnv {
 }
 
 const DEFAULT_PORT = '3000';
-const LOCAL_BASE_URL = `http://localhost:${DEFAULT_PORT}`;
+// In development, Vite is the public origin and proxies the API to the backend on :3000.
+const LOCAL_PUBLIC_ORIGIN = 'http://localhost:5173';
 
 // nibrun injects `NIBRUN_HOSTNAME` as the bare `<slug>.nibrun.app` the app is served on, always
 // over HTTPS, so a deployed binary knows its own public origin without anyone setting `BASE_URL`.
 // An explicit `BASE_URL` still wins — it is what a custom domain is configured with.
 function defaultBaseUrl(): string {
   const nibrunHostname = process.env.NIBRUN_HOSTNAME;
-  return nibrunHostname ? `https://${nibrunHostname}` : LOCAL_BASE_URL;
+  return nibrunHostname ? `https://${nibrunHostname}` : LOCAL_PUBLIC_ORIGIN;
 }
 
 function required(name: keyof CustomProcessEnv): string {

@@ -5,8 +5,6 @@ import { authClient } from '../auth';
 
 type SignUpVariables = {
   name: string;
-  email: string;
-  password: string;
 };
 
 export function useSignUp(): UseMutationResult<void, Error, SignUpVariables> {
@@ -14,10 +12,14 @@ export function useSignUp(): UseMutationResult<void, Error, SignUpVariables> {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: async ({ name, email, password }: SignUpVariables) => {
-      const { error } = await authClient.signUp.email({ name, email, password });
+    mutationFn: async ({ name }: SignUpVariables) => {
+      const { error } = await authClient.passkey.addPasskey({
+        context: name,
+        createSession: true,
+        name: 'Primary passkey',
+      });
       if (error) {
-        throw new Error(error.message);
+        throw new Error(error.message ?? 'Could not create your passkey.');
       }
     },
     onSuccess: async () => {

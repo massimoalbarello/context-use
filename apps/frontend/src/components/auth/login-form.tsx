@@ -1,9 +1,4 @@
-import {
-  useLoginForm,
-  validateEmail,
-  validateName,
-  validatePassword,
-} from '../../lib/hooks/use-login-form';
+import { useLoginForm, validateName } from '../../lib/hooks/use-login-form';
 
 const FIELD_CLASS_NAME = 'flex flex-col gap-1';
 const LABEL_CLASS_NAME = 'font-medium text-gray-600 text-sm dark:text-gray-400';
@@ -17,6 +12,8 @@ const INACTIVE_TAB_CLASS_NAME = 'text-gray-500 dark:text-gray-400';
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const { api, isSigningUp, setIsSigningUp, pending, error } = useLoginForm({ redirectTo });
+  const passkeysSupported =
+    window.isSecureContext && typeof window.PublicKeyCredential !== 'undefined';
 
   return (
     <div className="flex justify-center p-8">
@@ -45,6 +42,12 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
             void api.handleSubmit();
           }}
         >
+          <p className="text-gray-600 text-sm dark:text-gray-400">
+            {isSigningUp
+              ? 'The first passkey created here becomes the owner of this Context Use instance.'
+              : 'Use a passkey saved on this device, another device, or a security key.'}
+          </p>
+
           {isSigningUp && (
             <api.Field name="name" validators={{ onChange: validateName }}>
               {(field) => (
@@ -70,51 +73,11 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
             </api.Field>
           )}
 
-          <api.Field name="email" validators={{ onChange: validateEmail }}>
-            {(field) => (
-              <div className={FIELD_CLASS_NAME}>
-                <label htmlFor={field.name} className={LABEL_CLASS_NAME}>
-                  Email
-                </label>
-                <input
-                  id={field.name}
-                  type="email"
-                  autoComplete="email"
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                  className={INPUT_CLASS_NAME}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className={ERROR_CLASS_NAME}>{field.state.meta.errors[0]}</p>
-                )}
-              </div>
-            )}
-          </api.Field>
-
-          <api.Field name="password" validators={{ onChange: validatePassword }}>
-            {(field) => (
-              <div className={FIELD_CLASS_NAME}>
-                <label htmlFor={field.name} className={LABEL_CLASS_NAME}>
-                  Password
-                </label>
-                <input
-                  id={field.name}
-                  type="password"
-                  autoComplete={isSigningUp ? 'new-password' : 'current-password'}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                  className={INPUT_CLASS_NAME}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className={ERROR_CLASS_NAME}>{field.state.meta.errors[0]}</p>
-                )}
-              </div>
-            )}
-          </api.Field>
+          {!passkeysSupported && (
+            <p role="alert" className={ERROR_CLASS_NAME}>
+              Passkeys require a supported browser in a secure context.
+            </p>
+          )}
 
           {error && (
             <p role="alert" className={ERROR_CLASS_NAME}>
@@ -126,10 +89,10 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
             {(canSubmit) => (
               <button
                 type="submit"
-                disabled={!canSubmit || pending}
+                disabled={!canSubmit || pending || !passkeysSupported}
                 className="rounded-md bg-gray-900 px-3 py-2 font-medium text-sm text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
               >
-                {isSigningUp ? 'Create account' : 'Sign in'}
+                {isSigningUp ? 'Create account with a passkey' : 'Sign in with a passkey'}
               </button>
             )}
           </api.Subscribe>

@@ -28,8 +28,9 @@ bun run dev
 ```
 
 The backend listens on `:3000` and Vite on `:5173`, proxying API requests to the backend. The
-starter includes authentication, SQLite migrations, file storage, OpenAPI, and a production build
-that embeds the frontend and migrations in one binary.
+starter includes passkey-only authentication, SQLite migrations, file storage, OpenAPI, and a
+production build that embeds the frontend and migrations in one binary. The first verified passkey
+claims the instance owner; later sign-ins use that passkey without an email address or password.
 
 ## Build
 
