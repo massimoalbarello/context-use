@@ -90,3 +90,5 @@ export class FilesService extends Service {
     return `${userId}/${fileId}${storageExtension(fileName)}`;
   }
 }
+
+export type FilesServiceContract = Pick<FilesService, 'upload' | 'list' | 'download' | 'remove'>;

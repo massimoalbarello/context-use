@@ -15,9 +15,10 @@ database migration rules live in `src/db/AGENTS.md`.
   these boundaries, or use them as permission for unrelated responsibilities.
 - The production entry point is the composition root. It creates infrastructure resources,
   repositories, services, and the application so dependency ownership and lifetimes remain visible.
-- Services may be instantiated once per application, but pass them into application or Elysia
-  plugin factories. `src/services/plugins.ts` may define those factories; it must not construct the
-  production dependency graph during module import. Do not construct services inside handlers.
+- Instantiate services once per application and pass application-owned dependencies explicitly to
+  application, controller, or Elysia plugin factories. Use a factory only when it binds those
+  dependencies or configuration, or owns per-application state; export a dependency-free,
+  stateless plugin as an Elysia instance directly. Do not construct services inside handlers.
 - Imports are side-effect free. Opening or closing database, storage, and network resources belongs
   to the composition root that owns their lifecycle.
 - Backend imports use `#*` subpath mappings (for example, `#services/foo.ts`).
