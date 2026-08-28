@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { apiErrorMessage } from './api-error';
+import { apiErrorMessage } from '../../src/lib/api-error';
 
 const BAD_REQUEST_STATUS = 400;
 const INTERNAL_SERVER_ERROR_STATUS = 500;

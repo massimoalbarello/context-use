@@ -6,5 +6,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "react", "react-dom"]
   },
-  "include": ["src"]
+  "include": ["src", "test"]
 }

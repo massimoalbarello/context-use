@@ -1,8 +1,6 @@
 import { type ReactFormExtendedApi, useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Route as IndexRoute } from '../../routes/index';
-import { Route as LoginRoute } from '../../routes/login';
 import { useSignIn } from './use-sign-in';
 import { useSignUp } from './use-sign-up';
 
@@ -57,9 +55,8 @@ export function validatePassword({ value }: { value: string }): string | undefin
     : `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
 }
 
-export function useLoginForm(): LoginFormState {
+export function useLoginForm({ redirectTo }: { redirectTo: string }): LoginFormState {
   const navigate = useNavigate();
-  const search = LoginRoute.useSearch();
   const [isSigningUp, setIsSigningUp] = useState(false);
   const signIn = useSignIn();
   const signUp = useSignUp();
@@ -71,7 +68,7 @@ export function useLoginForm(): LoginFormState {
     // `handleSubmit` rejecting into nothing, and the mutation already carries the error.
     onSubmit: ({ value }) => {
       const onSuccess = async () => {
-        await navigate({ href: search.redirect ?? IndexRoute.to });
+        await navigate({ href: redirectTo });
       };
 
       if (isSigningUp) {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { formatBytes } from './format-bytes';
+import { formatBytes } from '../../src/lib/format-bytes';
 
 const BYTES_PER_KILOBYTE = 1024;
 const BYTES_PER_MEGABYTE = BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE;

@@ -1,8 +1,8 @@
 import { Elysia, StatusMap } from 'elysia';
+import type { FileRecord } from '#files/file.ts';
 import { authPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import { MAX_UPLOAD_SIZE_MEGABYTES } from '#lib/uploads.ts';
-import type { FileRecord } from '#repositories/files.repository.ts';
 import {
   FileSchema,
   ListFilesResponseSchema,
