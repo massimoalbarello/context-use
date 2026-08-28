@@ -28,6 +28,8 @@ A schema migration changes schema. It never migrates application data.
   environment, never edit, squash, reorder, rename, or reuse its number.
 - Give each migration one reviewable reason to exist. Creating a table may include that table's
   directly owned constraints and indexes; unrelated tables and schema changes use separate files.
+- Present every migration and its invariant, rollout assumptions, and recovery path to the requester
+  for explicit review before applying it outside a disposable local database.
 - Do not generate or commit a full schema dump as a migration. Build schema history through small,
   intentional changes whose filenames describe their purpose.
 - Do not put `INSERT`, `UPDATE`, `DELETE`, data-copying statements, seeds, backfills, repairs, or
@@ -36,6 +38,20 @@ A schema migration changes schema. It never migrates application data.
   services or silently tolerate an unknown prior schema.
 - The migration runner may apply pending schema migrations during application startup. It must never
   run application data jobs there.
+- Keep migrations owned by their database adapter. Do not force SQLite and PostgreSQL into a lowest-
+  common-denominator schema or fill shared migrations with dialect conditionals.
+
+## Database portability
+
+- SQLite is the current adapter, not an application-layer contract. Database clients, dialect SQL,
+  migration discovery, transaction semantics, and database error mapping remain inside the database
+  and repository boundaries.
+- Services depend on narrow repository contracts expressed in domain terms. They do not receive a
+  SQL client, construct queries, inspect driver errors, or branch on the configured database.
+- When a second database is implemented, give it its own migrations and repository adapters behind
+  the existing contracts. Share only behavior whose semantics are genuinely identical.
+- Do not add a generic database framework or unused PostgreSQL path in anticipation. Preserve clean
+  boundaries now and let the second concrete adapter reveal what can be shared safely.
 
 ## Data changes and rollout
 
@@ -64,7 +80,9 @@ verification or dry-run behavior when practical. Run it only through an explicit
 
 ## Tests
 
-- Enforce the schema-only policy automatically for every migration.
+- Reject data-changing statements during the explicit review of every small, focused migration.
+  Revisit automatic policy enforcement when migration volume or contributor concurrency makes it
+  valuable, or when a reliable library fits the stack without a fragile home-grown SQL parser.
 - Test both a fresh database and upgrades from each supported prior schema version.
 - Use the real SQLite engine for constraints, transactions, locking, and query behavior that a fake
   cannot prove.

@@ -15,8 +15,8 @@ const ACTIVE_TAB_CLASS_NAME =
   'bg-white text-gray-950 shadow-sm dark:bg-gray-800 dark:text-gray-100';
 const INACTIVE_TAB_CLASS_NAME = 'text-gray-500 dark:text-gray-400';
 
-export function LoginForm() {
-  const { api, isSigningUp, setIsSigningUp, pending, error } = useLoginForm();
+export function LoginForm({ redirectTo }: { redirectTo: string }) {
+  const { api, isSigningUp, setIsSigningUp, pending, error } = useLoginForm({ redirectTo });
 
   return (
     <div className="flex justify-center p-8">

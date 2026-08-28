@@ -11,10 +11,30 @@ database migration rules live in `src/db/AGENTS.md`.
   local path.
 - Every endpoint follows controller → service → repository. Controllers own HTTP mapping,
   authentication, and validation; services own business orchestration; repositories own SQL and row
-  mapping. Do not skip or mix these boundaries.
-- Instantiate services once in `src/services/plugins.ts` and expose them through the shared Elysia
-  plugin. Do not construct services inside handlers.
+  mapping. Keep each abstraction cohesive and give it an explicit contract; do not skip or mix
+  these boundaries, or use them as permission for unrelated responsibilities.
+- The production entry point is the composition root. It creates infrastructure resources,
+  repositories, services, and the application so dependency ownership and lifetimes remain visible.
+- Services may be instantiated once per application, but pass them into application or Elysia
+  plugin factories. `src/services/plugins.ts` may define those factories; it must not construct the
+  production dependency graph during module import. Do not construct services inside handlers.
+- Imports are side-effect free. Opening or closing database, storage, and network resources belongs
+  to the composition root that owns their lifecycle.
 - Backend imports use `#*` subpath mappings (for example, `#services/foo.ts`).
+
+## Identity and persistence boundaries
+
+- Treat the authenticated actor and resource owner as explicit inputs throughout controllers,
+  services, and repository contracts. A process-global user or an unscoped “current user” is not an
+  acceptable dependency, even while one user runs in an instance.
+- Services depend on repository contracts that describe domain persistence, never on a database
+  client or SQLite-specific implementation. Repositories implement those contracts and contain SQL,
+  row mapping, transaction behavior, and database-specific failure translation.
+- Scope every user-owned read, mutation, uniqueness rule, cache key, storage key, and emitted event
+  by its owner where applicable. Preserve indistinguishable not-found behavior across ownership
+  boundaries so identifiers cannot reveal another user's data.
+- Add another database as a separate repository and migration adapter behind the established
+  contracts. Do not spread dialect switches through controllers, services, or domain logic.
 
 ## API contracts
 
@@ -47,6 +67,8 @@ API contracts.
 - A route lacks request or response schemas.
 - A protected query fetches rows outside the authenticated scope.
 - A handler constructs its own service or infrastructure client.
+- A module import opens a resource or silently selects a production dependency.
+- A service depends on a concrete database client or assumes a single process-wide user.
 
 ## Deployment
 

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreDependencies": ["@biomejs/biome", "@commitlint/cli", "turbo"],
+  "workspaces": {
+    "apps/backend": {
+      "ignoreDependencies": ["@better-auth/cli"]
+    }
+  }
+}

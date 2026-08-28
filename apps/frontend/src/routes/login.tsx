@@ -15,5 +15,6 @@ export const Route = createFileRoute('/login')({
 });
 
 function RouteComponent() {
-  return <LoginForm />;
+  const search = Route.useSearch();
+  return <LoginForm redirectTo={search.redirect ?? IndexRoute.to} />;
 }

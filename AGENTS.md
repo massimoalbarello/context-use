@@ -36,6 +36,8 @@ patch.
 
 - Before adding code, dependencies, configuration, or abstractions, ask whether the existing design
   can be simplified, consolidated, reshaped, or deleted to accommodate the change.
+- Use `bun audit:unused` to inform deletion work. Review every finding in context; never auto-delete
+  code merely because static analysis cannot see a generated or dynamic entry point.
 - Prefer one clear path over parallel mechanisms. Do not preserve obsolete structure merely because
   adding beside it is easier.
 - Reject quick fixes that address a symptom without resolving the cause.
@@ -65,6 +67,19 @@ Code that merely works is not sufficient. Its design must make ownership and fut
   values, especially values of the same type. Split the operation if the object is not cohesive.
 - Use one domain term consistently. New TypeScript files use kebab-case. Index files only re-export
   deliberate public surfaces. Comments explain non-obvious constraints or tradeoffs, not the code.
+
+## Planned evolution
+
+Context Use initially runs as a single-user instance backed by SQLite. Multi-user instances with
+strong privacy boundaries and additional databases, beginning with PostgreSQL, are planned. Treat
+the current user count and database as deployment choices, not permanent domain assumptions.
+
+- Make the acting identity and resource ownership explicit at trust, service, and persistence
+  boundaries. Never rely on an implicit “only user” or process-global principal.
+- Keep domain and application contracts independent of a database client or SQL dialect. Isolate
+  current implementation details behind owned repository and adapter boundaries.
+- Preserve these seams now, but do not build unused database adapters, tenancy machinery, extension
+  points, or configuration. Generalize an abstraction when a concrete implementation needs it.
 
 ## Red flags
 
@@ -120,7 +135,7 @@ Check root and workspace scripts before running commands. Before handing off an 
 
 1. `bun fix:codestyle`
 2. `bun check:all`
-3. `bun test`
+3. `bun run test`
 4. `bun run build`
 
 Also run focused integration checks and exercise changed routes when applicable.
