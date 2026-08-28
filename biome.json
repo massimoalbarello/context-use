@@ -29,7 +29,7 @@
         "useMaxParams": {
           "level": "error",
           "options": {
-            "max": 3
+            "max": 1
           }
         }
       },

@@ -60,9 +60,9 @@ Code that merely works is not sufficient. Its design must make ownership and fut
   and types. Derive downstream representations instead of copying them.
 - Do not create generic `utils`, `helpers`, `common`, `shared`, or `types` dumping grounds. Name the
   domain or capability that owns the code.
-- Biome allows at most three function parameters. Use separate parameters when they are few and
-  obvious; use a named input object when it improves meaning. Never use an object to hide an
-  incoherent operation.
+- Biome enforces one function parameter. When an operation needs several values, destructure a
+  named object in its signature so call sites name every argument and cannot confuse positional
+  values, especially values of the same type. Split the operation if the object is not cohesive.
 - Use one domain term consistently. New TypeScript files use kebab-case. Index files only re-export
   deliberate public surfaces. Comments explain non-obvious constraints or tradeoffs, not the code.
 
