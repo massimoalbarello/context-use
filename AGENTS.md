@@ -36,8 +36,6 @@ patch.
 
 - Before adding code, dependencies, configuration, or abstractions, ask whether the existing design
   can be simplified, consolidated, reshaped, or deleted to accommodate the change.
-- Use `bun audit:unused` to inform deletion work. Review every finding in context; never auto-delete
-  code merely because static analysis cannot see a generated or dynamic entry point.
 - Prefer one clear path over parallel mechanisms. Do not preserve obsolete structure merely because
   adding beside it is easier.
 - Reject quick fixes that address a symptom without resolving the cause.

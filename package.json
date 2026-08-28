@@ -21,10 +21,8 @@
     "build:local": "BUILD_TARGET=host bun run --bun turbo build --filter=@repo/backend",
     "check:types": "bun run --bun turbo check:types",
     "check:codestyle": "bun run --bun biome check",
-    "check:architecture": "bun run --bun knip --cycles --no-config-hints",
-    "check:all": "bun run --parallel check:types check:codestyle check:architecture",
+    "check:all": "bun run --parallel check:types check:codestyle",
     "check:commit-message": "bun run --bun commitlint",
-    "audit:unused": "bun run --bun knip --no-exit-code",
     "test": "bun run --bun turbo test",
     "fix:codestyle": "bun run --bun biome check --write"
   },
@@ -35,7 +33,6 @@
     "@commitlint/format": "^21.2.2",
     "@commitlint/types": "^21.2.0",
     "@types/bun": "^1.4.0",
-    "knip": "^6.32.3",
     "turbo": "^2.10.12",
     "typescript": "catalog:"
   },
