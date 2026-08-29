@@ -52,6 +52,10 @@ export function useLoginForm({ redirectTo }: { redirectTo: string }): LoginFormS
     // `handleSubmit` rejecting into nothing, and the mutation already carries the error.
     onSubmit: ({ value }) => {
       const onSuccess = async () => {
+        if (isSigningUp) {
+          await navigate({ to: '/setup', search: { redirect: redirectTo } });
+          return;
+        }
         await navigate({ href: redirectTo });
       };
 

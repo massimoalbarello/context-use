@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { useState } from 'react';
 import { EntityForm } from '../components/entities/entity-form';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
 import { useEntity } from '../lib/hooks/use-entity';
@@ -20,6 +21,7 @@ function EntityRoute() {
   const { id } = Route.useParams();
   const { data: entity, error } = useEntity(id);
   const updateEntity = useUpdateEntity();
+  const [editing, setEditing] = useState(false);
 
   if (error) {
     return <p className="page-shell error-message">{error.message}</p>;
@@ -29,30 +31,27 @@ function EntityRoute() {
   }
 
   return (
-    <main className="page-shell">
-      <header className="page-header">
+    <div className="detail-shell entity-detail">
+      <header className="detail-header">
         <div>
-          <p className="eyebrow">Entity · {entity.readableId}</p>
+          <p className="eyebrow">
+            Entity {entity.isSelf && <span className="self-badge">You</span>}
+          </p>
           <h1>{entity.name}</h1>
-          <p>{entity.description}</p>
+          <p className="detail-description">{entity.description}</p>
+          <code className="entity-address">context-use://entity/{entity.readableId}</code>
         </div>
-        <Link className="secondary-action" to="/entities">
-          All entities
-        </Link>
+        <button
+          className={editing ? 'secondary-action' : 'primary-action'}
+          type="button"
+          onClick={() => setEditing(!editing)}
+        >
+          {editing ? 'Cancel' : 'Edit entity'}
+        </button>
       </header>
 
-      <section className="split-layout">
-        <div>
-          <div className="section-heading">
-            <h2>Mentioned by</h2>
-            <span>{entity.pages.length}</span>
-          </div>
-          <KnowledgePageList pages={entity.pages} />
-        </div>
-        <div>
-          <div className="section-heading">
-            <h2>Identity</h2>
-          </div>
+      {editing ? (
+        <div className="editor-shell-narrow">
           <EntityForm
             key={entity.updatedAt.toISOString()}
             initialValues={{
@@ -65,14 +64,25 @@ function EntityRoute() {
             error={updateEntity.error}
             submitLabel="Save identity"
             onSubmit={({ name, description }) =>
-              updateEntity.mutate({
-                readableId: entity.readableId,
-                body: { name, description },
-              })
+              updateEntity.mutate(
+                {
+                  readableId: entity.readableId,
+                  body: { name, description },
+                },
+                { onSuccess: () => setEditing(false) },
+              )
             }
           />
         </div>
-      </section>
-    </main>
+      ) : (
+        <section className="entity-pages">
+          <div className="section-heading">
+            <h2>Mentioned by</h2>
+            <span className="count-badge">{entity.pages.length}</span>
+          </div>
+          <KnowledgePageList pages={entity.pages} />
+        </section>
+      )}
+    </div>
   );
 }

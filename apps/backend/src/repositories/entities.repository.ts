@@ -6,12 +6,13 @@ type EntityRow = {
   readableId: string;
   name: string;
   description: string;
+  isSelf: number;
   createdAt: string;
   updatedAt: string;
 };
 
 function entityFrom(row: EntityRow): Entity {
-  return row;
+  return { ...row, isSelf: Boolean(row.isSelf) };
 }
 
 export class EntitiesRepository extends Repository implements EntityRepositoryContract {
@@ -31,7 +32,7 @@ export class EntitiesRepository extends Repository implements EntityRepositoryCo
          ${input.createdAt}, ${input.createdAt})
       on conflict ("owner_id", "readable_id") do nothing
       returning "id", "readable_id" as "readableId", "name", "description",
-        "created_at" as "createdAt", "updated_at" as "updatedAt"
+        0 as "isSelf", "created_at" as "createdAt", "updated_at" as "updatedAt"
     `;
     return rows[0]
       ? { state: 'created', entity: entityFrom(rows[0]) }
@@ -40,11 +41,14 @@ export class EntitiesRepository extends Repository implements EntityRepositoryCo
 
   async list({ ownerId }: { ownerId: string }): Promise<Entity[]> {
     const rows = await this.sql<EntityRow[]>`
-      select "id", "readable_id" as "readableId", "name", "description",
-        "created_at" as "createdAt", "updated_at" as "updatedAt"
-      from "entity"
-      where "owner_id" = ${ownerId}
-      order by "name" collate nocase, "readable_id"
+      select entity."id", entity."readable_id" as "readableId", entity."name",
+        entity."description", profile."self_entity_id" is not null as "isSelf",
+        entity."created_at" as "createdAt", entity."updated_at" as "updatedAt"
+      from "entity" entity
+      left join "knowledge_profile" profile
+        on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
+      where entity."owner_id" = ${ownerId}
+      order by entity."name" collate nocase, entity."readable_id"
     `;
     return rows.map(entityFrom);
   }
@@ -57,10 +61,13 @@ export class EntitiesRepository extends Repository implements EntityRepositoryCo
     readableId: string;
   }): Promise<Entity | null> {
     const rows = await this.sql<EntityRow[]>`
-      select "id", "readable_id" as "readableId", "name", "description",
-        "created_at" as "createdAt", "updated_at" as "updatedAt"
-      from "entity"
-      where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
+      select entity."id", entity."readable_id" as "readableId", entity."name",
+        entity."description", profile."self_entity_id" is not null as "isSelf",
+        entity."created_at" as "createdAt", entity."updated_at" as "updatedAt"
+      from "entity" entity
+      left join "knowledge_profile" profile
+        on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
+      where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
     `;
     return rows[0] ? entityFrom(rows[0]) : null;
   }
@@ -83,7 +90,10 @@ export class EntitiesRepository extends Repository implements EntityRepositoryCo
       set "name" = ${name}, "description" = ${description}, "updated_at" = ${updatedAt}
       where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
       returning "id", "readable_id" as "readableId", "name", "description",
-        "created_at" as "createdAt", "updated_at" as "updatedAt"
+        exists(
+          select 1 from "knowledge_profile"
+          where "owner_id" = ${ownerId} and "self_entity_id" = "entity"."id"
+        ) as "isSelf", "created_at" as "createdAt", "updated_at" as "updatedAt"
     `;
     return rows[0] ? entityFrom(rows[0]) : null;
   }

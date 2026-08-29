@@ -9,6 +9,7 @@ export interface Entity {
   readableId: string;
   name: string;
   description: string;
+  isSelf: boolean;
   createdAt: string;
   updatedAt: string;
 }

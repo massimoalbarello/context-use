@@ -1,5 +1,5 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
-import { entitiesQueryKey } from '../../queries/entities';
+import { profileQueryKey } from '../../queries/profile';
 import { api } from '../api';
 import {
   ApiStatus,
@@ -8,23 +8,24 @@ import {
   ReadableIdRequiredError,
 } from '../api-error';
 
-type CreateEntityVariables = Parameters<typeof api.api.entities.post>[0];
+type CreateProfileVariables = Parameters<typeof api.api.profile.post>[0];
+type CreatedProfile = NonNullable<Awaited<ReturnType<typeof api.api.profile.post>>['data']>;
 
-export function useCreateEntity(): UseMutationResult<
-  { readableId: string },
+export function useCreateProfile(): UseMutationResult<
+  CreatedProfile,
   Error,
-  CreateEntityVariables
+  CreateProfileVariables
 > {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (body) => {
-      const { data, error } = await api.api.entities.post(body);
+      const { data, error } = await api.api.profile.post(body);
       if (error) {
         if (error.status === ApiStatus.BadRequest && 'readableIdRequired' in error.value) {
           throw new ReadableIdRequiredError(apiErrorMessage(error));
         }
-        if (error.status === ApiStatus.Conflict) {
+        if (error.status === ApiStatus.Conflict && 'readableId' in error.value) {
           throw new ReadableIdConflictError({
             message: apiErrorMessage(error),
             readableId: error.value.readableId,
@@ -32,10 +33,10 @@ export function useCreateEntity(): UseMutationResult<
         }
         throw new Error(apiErrorMessage(error));
       }
-      return { readableId: data.readableId };
+      return data;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: entitiesQueryKey });
+    onSuccess: (profile) => {
+      queryClient.setQueryData(profileQueryKey, profile);
     },
   });
 }

@@ -1,4 +1,4 @@
-import { Elysia, StatusMap } from 'elysia';
+import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
@@ -8,6 +8,7 @@ import {
   EntitySchema,
   entityResponse,
 } from '#routes/api/entities/model.ts';
+import { ReadableIdConflictSchema, ReadableIdRequiredSchema } from '#routes/api/model.ts';
 import type { EntitiesServiceContract } from '#services/entities.service.ts';
 
 export function createEntitiesController({
@@ -28,7 +29,16 @@ export function createEntitiesController({
       async ({ body, user, status }) => {
         const result = await entitiesService.create({ ownerId: user.id, ...body });
         if (result.state === 'readable_id_conflict') {
-          return status(StatusMap.Conflict, { error: 'Entity readable ID already exists' });
+          return status(StatusMap.Conflict, {
+            error: 'An entity already uses this readable ID',
+            readableId: result.readableId,
+          });
+        }
+        if (result.state === 'readable_id_required') {
+          return status(StatusMap['Bad Request'], {
+            error: 'A readable ID could not be derived from this name',
+            readableIdRequired: true as const,
+          });
         }
         return status(StatusMap.Created, entityResponse(result.entity));
       },
@@ -37,7 +47,8 @@ export function createEntitiesController({
         body: EntityBodySchema,
         response: {
           [StatusMap.Created]: EntitySchema,
-          [StatusMap.Conflict]: ErrorResponseSchema,
+          [StatusMap['Bad Request']]: t.Union([ReadableIdRequiredSchema, ErrorResponseSchema]),
+          [StatusMap.Conflict]: ReadableIdConflictSchema,
         },
       },
     )

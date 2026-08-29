@@ -1,5 +1,4 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from '@tanstack/react-router';
 import { sessionQueryOptions } from '../../queries/session';
 import { authClient } from '../auth';
 
@@ -9,7 +8,6 @@ type SignUpVariables = {
 
 export function useSignUp(): UseMutationResult<void, Error, SignUpVariables> {
   const queryClient = useQueryClient();
-  const router = useRouter();
 
   return useMutation({
     mutationFn: async ({ name }: SignUpVariables) => {
@@ -24,7 +22,7 @@ export function useSignUp(): UseMutationResult<void, Error, SignUpVariables> {
     },
     onSuccess: async () => {
       queryClient.removeQueries({ queryKey: sessionQueryOptions.queryKey });
-      await router.invalidate();
+      await queryClient.fetchQuery(sessionQueryOptions);
     },
   });
 }

@@ -6,3 +6,13 @@ export const ReadableIdSchema = t.String({
   maxLength: MAX_READABLE_ID_LENGTH,
   pattern: READABLE_ID_PATTERN.source,
 });
+
+export const ReadableIdConflictSchema = t.Object({
+  error: t.String(),
+  readableId: ReadableIdSchema,
+});
+
+export const ReadableIdRequiredSchema = t.Object({
+  error: t.String(),
+  readableIdRequired: t.Literal(true),
+});

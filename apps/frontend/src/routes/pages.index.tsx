@@ -1,85 +1,26 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import {
-  KnowledgePageForm,
-  type KnowledgePageFormValues,
-} from '../components/pages/knowledge-page-form';
-import { KnowledgePageList } from '../components/pages/knowledge-page-list';
-import { useCreatePage } from '../lib/hooks/use-create-page';
-import { useEntities } from '../lib/hooks/use-entities';
-import { usePages } from '../lib/hooks/use-pages';
-import { entitiesQueryOptions } from '../queries/entities';
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { WorkspaceEmpty } from '../components/knowledge/workspace-empty';
 import { pagesQueryOptions } from '../queries/pages';
-
-const EMPTY_PAGE: KnowledgePageFormValues = {
-  readableId: '',
-  markdown: '# A focused idea\n\n',
-};
 
 export const Route = createFileRoute('/pages/')({
   loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.ensureQueryData(pagesQueryOptions),
-      context.queryClient.ensureQueryData(entitiesQueryOptions),
-    ]);
+    const pages = await context.queryClient.ensureQueryData(pagesQueryOptions);
+    const firstPage = pages[0];
+    if (firstPage) {
+      throw redirect({ to: '/pages/$id', params: { id: firstPage.readableId } });
+    }
   },
-  component: PagesRoute,
+  component: PagesIndexRoute,
 });
 
-function PagesRoute() {
-  const navigate = useNavigate();
-  const { data: pages = [], error: pagesError } = usePages();
-  const { data: entities = [], error: entitiesError } = useEntities();
-  const createPage = useCreatePage();
-  const error = pagesError ?? entitiesError;
-
-  const create = (values: KnowledgePageFormValues) => {
-    createPage.mutate(values, {
-      onSuccess: async () => {
-        await navigate({
-          to: '/pages/$id',
-          params: { id: values.readableId },
-        });
-      },
-    });
-  };
-
+function PagesIndexRoute() {
   return (
-    <main className="page-shell">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Hypermedia</p>
-          <h1>Knowledge pages</h1>
-          <p>Small, coherent accounts connected through explicit, readable links.</p>
-        </div>
-      </header>
-
-      <section className="split-layout split-layout-wide">
-        <div>
-          <div className="section-heading">
-            <h2>Current knowledge</h2>
-            <span>{pages.length}</span>
-          </div>
-          {error ? (
-            <p className="error-message">{error.message}</p>
-          ) : (
-            <KnowledgePageList pages={pages} />
-          )}
-        </div>
-        <div>
-          <div className="section-heading">
-            <h2>Create a page</h2>
-          </div>
-          <KnowledgePageForm
-            initialValues={EMPTY_PAGE}
-            entities={entities}
-            pages={pages}
-            pending={createPage.isPending}
-            error={createPage.error}
-            submitLabel="Create page"
-            onSubmit={create}
-          />
-        </div>
-      </section>
-    </main>
+    <WorkspaceEmpty
+      eyebrow="Hypermedia"
+      title="Start with one focused page"
+      description="Write one coherent account. You can connect it to your entity and expand the hypermedia from there."
+      createTo="/pages/new"
+      createLabel="Create the first page"
+    />
   );
 }

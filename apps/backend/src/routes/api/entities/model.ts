@@ -12,12 +12,13 @@ export const EntitySchema = t.Object({
   readableId: ReadableIdSchema,
   name: t.String(),
   description: t.String(),
+  isSelf: t.Boolean(),
   createdAt: t.Date(),
   updatedAt: t.Date(),
 });
 
 export const EntityBodySchema = t.Object({
-  readableId: ReadableIdSchema,
+  readableId: t.Optional(ReadableIdSchema),
   name: t.String({ minLength: 1, maxLength: MAX_ENTITY_NAME_LENGTH, pattern: '.*\\S.*' }),
   description: t.String({
     minLength: MIN_ENTITY_DESCRIPTION_LENGTH,

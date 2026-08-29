@@ -12,10 +12,12 @@ import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { EntitiesRepository } from '#repositories/entities.repository.ts';
 import { HealthRepository } from '#repositories/health.repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages.repository.ts';
+import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles.repository.ts';
 import type { AssetsServiceContract } from '#services/assets.service.ts';
 import { EntitiesService } from '#services/entities.service.ts';
 import { HealthService } from '#services/health.service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages.service.ts';
+import { KnowledgeProfilesService } from '#services/knowledge-profiles.service.ts';
 
 const AUTH_MIGRATION = new URL(
   '../../../src/db/migrations/0000_better_auth_schema.sql',
@@ -23,6 +25,10 @@ const AUTH_MIGRATION = new URL(
 );
 const KNOWLEDGE_MIGRATION = new URL(
   '../../../src/db/migrations/0001_knowledge.sql',
+  import.meta.url,
+);
+const PROFILE_MIGRATION = new URL(
+  '../../../src/db/migrations/0002_knowledge_profile.sql',
   import.meta.url,
 );
 
@@ -82,6 +88,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       migrations: new Map([
         ['0000_better_auth_schema.sql', Bun.file(AUTH_MIGRATION)],
         ['0001_knowledge.sql', Bun.file(KNOWLEDGE_MIGRATION)],
+        ['0002_knowledge_profile.sql', Bun.file(PROFILE_MIGRATION)],
       ]),
     });
     const timestamp = '2026-01-01T00:00:00.000Z';
@@ -106,6 +113,57 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       }),
       healthService: new HealthService(new HealthRepository(database)),
       pagesService,
+      profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),
+    });
+
+    const profileResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/profile',
+        body: {
+          name: 'Test Owner',
+          description: 'The person whose private knowledge base this is.',
+        },
+      }),
+    );
+    expect(profileResponse.status).toBe(StatusMap.Created);
+    expect(await profileResponse.json()).toEqual({
+      selfEntity: expect.objectContaining({
+        readableId: 'test-owner',
+        name: 'Test Owner',
+        isSelf: true,
+      }),
+    });
+
+    const updatedProfileEntityResponse = await app.handle(
+      jsonRequest({
+        method: 'PATCH',
+        path: '/entities/test-owner',
+        body: {
+          name: 'Test Owner',
+          description: 'The person represented as self inside this private knowledge base.',
+        },
+      }),
+    );
+    expect(updatedProfileEntityResponse.status).toBe(StatusMap.OK);
+    expect(await updatedProfileEntityResponse.json()).toEqual(
+      expect.objectContaining({ readableId: 'test-owner', isSelf: true }),
+    );
+
+    const unreadableNameResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/entities',
+        body: {
+          name: '東京',
+          description: 'A place whose name needs an explicitly chosen readable address.',
+        },
+      }),
+    );
+    expect(unreadableNameResponse.status).toBe(StatusMap['Bad Request']);
+    expect(await unreadableNameResponse.json()).toEqual({
+      error: 'A readable ID could not be derived from this name',
+      readableIdRequired: true,
     });
 
     const entityResponse = await app.handle(
@@ -113,7 +171,6 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         method: 'POST',
         path: '/entities',
         body: {
-          readableId: 'luca-bianchi',
           name: 'Luca Bianchi',
           description: 'The product lead responsible for the growth system.',
         },
@@ -123,12 +180,40 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     const entity = (await entityResponse.json()) as { id: string };
     expect(entity.id[14]).toBe('7');
 
+    const entityConflictResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/entities',
+        body: {
+          name: 'Luca Bianchi',
+          description: 'A different person with the same name and a distinct role.',
+        },
+      }),
+    );
+    expect(entityConflictResponse.status).toBe(StatusMap.Conflict);
+    expect(await entityConflictResponse.json()).toEqual({
+      error: 'An entity already uses this readable ID',
+      readableId: 'luca-bianchi',
+    });
+
+    const distinguishedEntityResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/entities',
+        body: {
+          readableId: 'research-luca-bianchi',
+          name: 'Luca Bianchi',
+          description: 'A different person with the same name and a distinct role.',
+        },
+      }),
+    );
+    expect(distinguishedEntityResponse.status).toBe(StatusMap.Created);
+
     const growthResponse = await app.handle(
       jsonRequest({
         method: 'POST',
         path: '/pages',
         body: {
-          readableId: 'growth-playbook',
           markdown: `# Growth playbook
 
 [Luca](context-use://entity/luca-bianchi) owns this feedback system.
@@ -149,12 +234,24 @@ Every observation changes the next action.`,
     expect(growth.revisionNumber).toBe(1);
     expect(growth.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
 
+    const pageConflictResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/pages',
+        body: { markdown: '# Growth playbook\n\nA different page with the same title.' },
+      }),
+    );
+    expect(pageConflictResponse.status).toBe(StatusMap.Conflict);
+    expect(await pageConflictResponse.json()).toEqual({
+      error: 'A page already uses this readable ID',
+      readableId: 'growth-playbook',
+    });
+
     const rhythmResponse = await app.handle(
       jsonRequest({
         method: 'POST',
         path: '/pages',
         body: {
-          readableId: 'operating-rhythm',
           markdown: `# Operating rhythm
 
 Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every Friday.`,
@@ -238,6 +335,13 @@ Revise the current knowledge instead of appending snapshots.`,
     expect(
       await pagesRepository.find({ ownerId: 'someone-else', readableId: 'growth-playbook' }),
     ).toBeNull();
+
+    const profileReadResponse = await app.handle(jsonRequest({ method: 'GET', path: '/profile' }));
+    expect(profileReadResponse.status).toBe(StatusMap.OK);
+    expect(
+      ((await profileReadResponse.json()) as { selfEntity: { readableId: string } }).selfEntity
+        .readableId,
+    ).toBe('test-owner');
   } finally {
     await database.close();
     await rm(dataFolder, { recursive: true, force: true });

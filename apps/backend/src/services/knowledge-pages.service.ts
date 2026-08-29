@@ -1,3 +1,4 @@
+import { readableIdFrom } from '#knowledge/knowledge-address.ts';
 import type { StorageClient } from '#lib/storage/storage.ts';
 import type {
   KnowledgePage,
@@ -14,8 +15,9 @@ import { Service } from '#services/service.ts';
 export type KnowledgePageMutationResult =
   | { state: 'saved'; page: KnowledgePage }
   | { state: 'invalid_markdown'; message: string }
+  | { state: 'readable_id_required' }
   | { state: 'not_found' }
-  | { state: 'readable_id_conflict' }
+  | { state: 'readable_id_conflict'; readableId: string }
   | { state: 'revision_conflict'; currentRevisionNumber: number }
   | { state: 'link_target_not_found'; target: string };
 
@@ -41,12 +43,16 @@ export class KnowledgePagesService extends Service {
 
   async create(input: {
     ownerId: string;
-    readableId: string;
+    readableId?: string;
     markdown: string;
   }): Promise<KnowledgePageMutationResult> {
     const parsed = this.parse(input.markdown);
     if ('message' in parsed) {
       return parsed;
+    }
+    const readableId = input.readableId ?? readableIdFrom(parsed.title);
+    if (!readableId) {
+      return { state: 'readable_id_required' };
     }
     const pageId = Bun.randomUUIDv7();
     const revisionId = Bun.randomUUIDv7();
@@ -67,7 +73,7 @@ export class KnowledgePagesService extends Service {
         pageId,
         revisionId,
         ownerId: input.ownerId,
-        readableId: input.readableId,
+        readableId,
         title: parsed.title,
         storageKey,
         contentHash: contentHash(input.markdown),
@@ -81,9 +87,9 @@ export class KnowledgePagesService extends Service {
     }
     if (result.state !== 'created') {
       await this.storage.delete(storageKey);
-      return result;
+      return result.state === 'readable_id_conflict' ? { state: result.state, readableId } : result;
     }
-    const page = await this.detail({ ownerId: input.ownerId, readableId: input.readableId });
+    const page = await this.detail({ ownerId: input.ownerId, readableId });
     if (!page) {
       throw new Error('Created knowledge page could not be read');
     }

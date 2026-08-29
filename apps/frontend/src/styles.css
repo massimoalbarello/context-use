@@ -48,15 +48,15 @@
 
 @layer components {
   .app-header {
-    @apply sticky top-0 z-20 flex min-h-16 items-center gap-5 border-line border-b bg-paper/95 px-5 backdrop-blur md:px-8;
+    @apply sticky top-0 z-20 flex flex-wrap items-center gap-2 border-line border-b bg-paper/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-nowrap md:gap-5 md:px-8 md:py-0;
   }
 
   .brand {
-    @apply font-semibold text-lg tracking-tight;
+    @apply whitespace-nowrap font-semibold text-lg tracking-tight;
   }
 
   .app-header nav {
-    @apply flex items-center gap-1;
+    @apply order-3 flex w-full items-center gap-1 md:order-none md:w-auto;
   }
 
   .app-header nav a {
@@ -72,11 +72,116 @@
   }
 
   .account-actions {
-    @apply ml-auto flex items-center gap-3 text-muted text-sm;
+    @apply ml-auto flex shrink-0 items-center gap-3 whitespace-nowrap text-muted text-sm;
   }
 
   .account-name {
     @apply hidden max-w-48 truncate lg:inline;
+  }
+
+  .knowledge-workspace {
+    @apply grid min-h-[calc(100dvh-6.5rem)] md:h-[calc(100dvh-4rem)] md:min-h-0 md:grid-cols-[20rem_minmax(0,1fr)];
+  }
+
+  .knowledge-sidebar {
+    @apply flex max-h-80 min-h-0 flex-col border-line border-b bg-panel md:max-h-none md:border-r md:border-b-0;
+  }
+
+  .sidebar-header {
+    @apply flex items-center justify-between gap-3 border-line border-b px-4 py-4;
+  }
+
+  .sidebar-header > div {
+    @apply flex min-w-0 items-center gap-2;
+  }
+
+  .sidebar-header h1 {
+    @apply truncate font-semibold text-lg tracking-tight;
+  }
+
+  .count-badge {
+    @apply rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent text-xs;
+  }
+
+  .sidebar-create {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-2 font-semibold text-white text-sm transition hover:bg-[#194a37];
+  }
+
+  .create-icon {
+    @apply text-base leading-none;
+  }
+
+  .sidebar-scroll {
+    @apply min-h-0 flex-1 overflow-y-auto p-3;
+  }
+
+  .sidebar-error {
+    @apply p-2;
+  }
+
+  .workspace-detail {
+    @apply min-h-0 min-w-0 bg-paper md:overflow-y-auto;
+  }
+
+  .detail-shell {
+    @apply mx-auto grid w-full max-w-6xl gap-8 px-5 py-8 md:px-10 md:py-10 lg:px-14;
+  }
+
+  .page-detail {
+    @apply max-w-5xl;
+  }
+
+  .detail-header,
+  .detail-toolbar {
+    @apply flex flex-col items-start justify-between gap-5 md:flex-row;
+  }
+
+  .detail-toolbar {
+    @apply items-start md:items-center;
+  }
+
+  .detail-header h1 {
+    @apply mt-2 max-w-3xl font-semibold text-4xl tracking-tight md:text-5xl;
+  }
+
+  .detail-description {
+    @apply mt-3 max-w-2xl text-muted text-lg leading-relaxed;
+  }
+
+  .detail-meta,
+  .entity-address {
+    @apply mt-2 block text-muted text-sm;
+  }
+
+  .detail-meta code,
+  .entity-address {
+    @apply font-mono text-accent;
+  }
+
+  .editor-shell {
+    @apply max-w-5xl;
+  }
+
+  .editor-shell-narrow {
+    @apply w-full max-w-2xl;
+  }
+
+  .workspace-empty {
+    @apply mx-auto flex min-h-[32rem] max-w-xl flex-col items-start justify-center px-6 py-16;
+  }
+
+  .workspace-empty h2,
+  .setup-copy h1 {
+    @apply mt-2 font-semibold text-4xl tracking-tight;
+  }
+
+  .workspace-description,
+  .setup-description {
+    @apply mt-3 text-muted text-lg leading-relaxed;
+  }
+
+  .setup-shell {
+    @apply mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-5xl items-center gap-10 px-5 py-12 md:grid-cols-[minmax(0,0.85fr)_minmax(24rem,1fr)] md:px-8;
   }
 
   .page-shell {
@@ -126,10 +231,6 @@
     @apply font-semibold text-lg;
   }
 
-  .section-heading span {
-    @apply rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent text-xs;
-  }
-
   .surface {
     @apply rounded-xl border border-line bg-panel p-5 shadow-[0_1px_2px_rgb(23_33_28/0.04)];
   }
@@ -165,6 +266,10 @@
     @apply bg-accent text-white hover:bg-[#194a37];
   }
 
+  .workspace-empty .primary-action {
+    @apply mt-7;
+  }
+
   .secondary-action {
     @apply border border-line bg-panel text-ink hover:border-accent hover:text-accent;
   }
@@ -197,8 +302,32 @@
     @apply font-mono text-accent text-xs;
   }
 
+  .card-markers {
+    @apply flex items-center gap-2;
+  }
+
   .card-link p {
     @apply line-clamp-3 text-muted text-sm leading-relaxed;
+  }
+
+  .knowledge-sidebar .card-list {
+    @apply gap-1;
+  }
+
+  .knowledge-sidebar .card-link {
+    @apply gap-1 rounded-lg border-transparent bg-transparent p-3 shadow-none hover:translate-y-0 hover:border-line hover:bg-paper hover:shadow-none;
+  }
+
+  .knowledge-sidebar .card-link[data-status="active"] {
+    @apply border-accent/20 bg-accent-soft;
+  }
+
+  .knowledge-sidebar .card-link p {
+    @apply line-clamp-2 text-xs;
+  }
+
+  .self-badge {
+    @apply inline-flex rounded-full bg-accent-soft px-2 py-0.5 font-semibold text-accent text-[0.68rem] uppercase tracking-wider;
   }
 
   .empty-state {
@@ -230,7 +359,7 @@
   }
 
   .knowledge-markdown {
-    @apply rounded-xl border border-line bg-panel px-6 py-8 shadow-[0_8px_30px_rgb(23_33_28/0.05)] md:px-12 md:py-11;
+    @apply rounded-xl border border-line bg-panel px-6 py-8 shadow-[0_8px_30px_rgb(23_33_28/0.05)] md:px-10 md:py-10 lg:px-12;
   }
 
   .knowledge-markdown h1 {
@@ -291,6 +420,14 @@
 
   .page-connections {
     @apply grid gap-6 border-line border-t pt-7 md:grid-cols-3;
+  }
+
+  .entity-pages {
+    @apply max-w-3xl border-line border-t pt-7;
+  }
+
+  .conflict-field {
+    @apply rounded-lg border border-accent/25 bg-accent-soft/40 p-4;
   }
 
   .link-section ul {

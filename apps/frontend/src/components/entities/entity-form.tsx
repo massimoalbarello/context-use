@@ -1,16 +1,18 @@
 import { useForm } from '@tanstack/react-form';
+import { useEffect } from 'react';
+import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
 
 const READABLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MIN_DESCRIPTION_LENGTH = 20;
 
 export type EntityFormValues = {
-  readableId: string;
+  readableId?: string;
   name: string;
   description: string;
 };
 
-function validateReadableId({ value }: { value: string }): string | undefined {
-  return READABLE_ID_PATTERN.test(value)
+function validateReadableId({ value }: { value?: string }): string | undefined {
+  return value && READABLE_ID_PATTERN.test(value)
     ? undefined
     : 'Use lowercase words separated by single hyphens.';
 }
@@ -44,12 +46,21 @@ export function EntityForm({
     defaultValues: initialValues,
     onSubmit: ({ value }) => {
       onSubmit({
-        readableId: value.readableId.trim(),
+        readableId: value.readableId?.trim() || undefined,
         name: value.name.trim(),
         description: value.description.trim(),
       });
     },
   });
+  const conflictingReadableId = error instanceof ReadableIdConflictError ? error.readableId : null;
+  const readableIdIssue =
+    error instanceof ReadableIdConflictError || error instanceof ReadableIdRequiredError;
+
+  useEffect(() => {
+    if (conflictingReadableId && !form.getFieldValue('readableId')) {
+      form.setFieldValue('readableId', conflictingReadableId);
+    }
+  }, [form, conflictingReadableId]);
 
   return (
     <form
@@ -59,32 +70,6 @@ export function EntityForm({
         void form.handleSubmit();
       }}
     >
-      <form.Field
-        name="readableId"
-        validators={{ onMount: validateReadableId, onChange: validateReadableId }}
-      >
-        {(field) => (
-          <label className="field">
-            <span>Readable ID</span>
-            <input
-              name={field.name}
-              value={field.state.value}
-              disabled={readableIdLocked}
-              onBlur={field.handleBlur}
-              onChange={(event) => field.handleChange(event.target.value)}
-              aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
-            />
-            <small>
-              Stable address:{' '}
-              <code>context-use://entity/{field.state.value || 'luca-bianchi'}</code>
-            </small>
-            {field.state.meta.isTouched && field.state.meta.errors[0] && (
-              <em role="alert">{field.state.meta.errors[0]}</em>
-            )}
-          </label>
-        )}
-      </form.Field>
-
       <form.Field name="name" validators={{ onMount: validateName, onChange: validateName }}>
         {(field) => (
           <label className="field">
@@ -102,6 +87,40 @@ export function EntityForm({
           </label>
         )}
       </form.Field>
+
+      {readableIdIssue && !readableIdLocked && (
+        <form.Field
+          name="readableId"
+          validators={{ onMount: validateReadableId, onChange: validateReadableId }}
+        >
+          {(field) => (
+            <label className="field conflict-field">
+              <span>
+                {conflictingReadableId ? 'Choose a distinct readable ID' : 'Choose a readable ID'}
+              </span>
+              <input
+                name={field.name}
+                value={field.state.value ?? ''}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+              />
+              <small>
+                <code>
+                  context-use://entity/{field.state.value || conflictingReadableId || 'readable-id'}
+                </code>{' '}
+                is the permanent address.{' '}
+                {conflictingReadableId
+                  ? 'Add a distinguishing word rather than a number when possible.'
+                  : 'Use short lowercase words separated by hyphens.'}
+              </small>
+              {field.state.meta.isTouched && field.state.meta.errors[0] && (
+                <em role="alert">{field.state.meta.errors[0]}</em>
+              )}
+            </label>
+          )}
+        </form.Field>
+      )}
 
       <form.Field
         name="description"
@@ -127,7 +146,7 @@ export function EntityForm({
         )}
       </form.Field>
 
-      {error && <p className="error-message">{error.message}</p>}
+      {error && !readableIdIssue && <p className="error-message">{error.message}</p>}
 
       <form.Subscribe selector={(state) => state.canSubmit}>
         {(canSubmit) => (

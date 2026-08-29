@@ -13,10 +13,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PagesRouteImport } from './routes/pages'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as EntitiesIndexRouteImport } from './routes/entities.index'
 import { Route as EntitiesIdRouteImport } from './routes/entities.$id'
+import { Route as EntitiesNewRouteImport } from './routes/entities.new'
 import { Route as PagesIndexRouteImport } from './routes/pages.index'
 import { Route as PagesIdRouteImport } from './routes/pages.$id'
+import { Route as PagesNewRouteImport } from './routes/pages.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -38,6 +41,11 @@ const PagesRoute = PagesRouteImport.update({
   path: '/pages',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EntitiesIndexRoute = EntitiesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -46,6 +54,11 @@ const EntitiesIndexRoute = EntitiesIndexRouteImport.update({
 const EntitiesIdRoute = EntitiesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
+  getParentRoute: () => EntitiesRoute,
+} as any)
+const EntitiesNewRoute = EntitiesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
   getParentRoute: () => EntitiesRoute,
 } as any)
 const PagesIndexRoute = PagesIndexRouteImport.update({
@@ -58,22 +71,33 @@ const PagesIdRoute = PagesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PagesRoute,
 } as any)
+const PagesNewRoute = PagesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => PagesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
+  '/setup': typeof SetupRoute
   '/entities/$id': typeof EntitiesIdRoute
+  '/entities/new': typeof EntitiesNewRoute
   '/pages/$id': typeof PagesIdRoute
+  '/pages/new': typeof PagesNewRoute
   '/entities/': typeof EntitiesIndexRoute
   '/pages/': typeof PagesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
   '/entities/$id': typeof EntitiesIdRoute
+  '/entities/new': typeof EntitiesNewRoute
   '/pages/$id': typeof PagesIdRoute
+  '/pages/new': typeof PagesNewRoute
   '/entities': typeof EntitiesIndexRoute
   '/pages': typeof PagesIndexRoute
 }
@@ -83,8 +107,11 @@ export interface FileRoutesById {
   '/entities': typeof EntitiesRouteWithChildren
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
+  '/setup': typeof SetupRoute
   '/entities/$id': typeof EntitiesIdRoute
+  '/entities/new': typeof EntitiesNewRoute
   '/pages/$id': typeof PagesIdRoute
+  '/pages/new': typeof PagesNewRoute
   '/entities/': typeof EntitiesIndexRoute
   '/pages/': typeof PagesIndexRoute
 }
@@ -95,20 +122,35 @@ export interface FileRouteTypes {
     | '/entities'
     | '/login'
     | '/pages'
+    | '/setup'
     | '/entities/$id'
+    | '/entities/new'
     | '/pages/$id'
+    | '/pages/new'
     | '/entities/'
     | '/pages/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/entities/$id' | '/pages/$id' | '/entities' | '/pages'
+  to:
+    | '/'
+    | '/login'
+    | '/setup'
+    | '/entities/$id'
+    | '/entities/new'
+    | '/pages/$id'
+    | '/pages/new'
+    | '/entities'
+    | '/pages'
   id:
     | '__root__'
     | '/'
     | '/entities'
     | '/login'
     | '/pages'
+    | '/setup'
     | '/entities/$id'
+    | '/entities/new'
     | '/pages/$id'
+    | '/pages/new'
     | '/entities/'
     | '/pages/'
   fileRoutesById: FileRoutesById
@@ -118,6 +160,7 @@ export interface RootRouteChildren {
   EntitiesRoute: typeof EntitiesRouteWithChildren
   LoginRoute: typeof LoginRoute
   PagesRoute: typeof PagesRouteWithChildren
+  SetupRoute: typeof SetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -150,6 +193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PagesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/entities/': {
       id: '/entities/'
       path: '/'
@@ -162,6 +212,13 @@ declare module '@tanstack/react-router' {
       path: '/$id'
       fullPath: '/entities/$id'
       preLoaderRoute: typeof EntitiesIdRouteImport
+      parentRoute: typeof EntitiesRoute
+    }
+    '/entities/new': {
+      id: '/entities/new'
+      path: '/new'
+      fullPath: '/entities/new'
+      preLoaderRoute: typeof EntitiesNewRouteImport
       parentRoute: typeof EntitiesRoute
     }
     '/pages/': {
@@ -178,16 +235,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PagesIdRouteImport
       parentRoute: typeof PagesRoute
     }
+    '/pages/new': {
+      id: '/pages/new'
+      path: '/new'
+      fullPath: '/pages/new'
+      preLoaderRoute: typeof PagesNewRouteImport
+      parentRoute: typeof PagesRoute
+    }
   }
 }
 
 interface EntitiesRouteChildren {
   EntitiesIdRoute: typeof EntitiesIdRoute
+  EntitiesNewRoute: typeof EntitiesNewRoute
   EntitiesIndexRoute: typeof EntitiesIndexRoute
 }
 
 const EntitiesRouteChildren: EntitiesRouteChildren = {
   EntitiesIdRoute: EntitiesIdRoute,
+  EntitiesNewRoute: EntitiesNewRoute,
   EntitiesIndexRoute: EntitiesIndexRoute,
 }
 
@@ -197,11 +263,13 @@ const EntitiesRouteWithChildren = EntitiesRoute._addFileChildren(
 
 interface PagesRouteChildren {
   PagesIdRoute: typeof PagesIdRoute
+  PagesNewRoute: typeof PagesNewRoute
   PagesIndexRoute: typeof PagesIndexRoute
 }
 
 const PagesRouteChildren: PagesRouteChildren = {
   PagesIdRoute: PagesIdRoute,
+  PagesNewRoute: PagesNewRoute,
   PagesIndexRoute: PagesIndexRoute,
 }
 
@@ -212,6 +280,7 @@ const rootRouteChildren: RootRouteChildren = {
   EntitiesRoute: EntitiesRouteWithChildren,
   LoginRoute: LoginRoute,
   PagesRoute: PagesRouteWithChildren,
+  SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

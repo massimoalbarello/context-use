@@ -1,21 +1,30 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router';
+import { createRootRouteWithContext, Link, Outlet, redirect } from '@tanstack/react-router';
 import { SignOutButton } from '../components/auth/sign-out-button';
+import { profileQueryOptions } from '../queries/profile';
 import { sessionQueryOptions } from '../queries/session';
 
 // Where the backend serves the API reference, outside the router's route tree.
 const OPENAPI_PATH = '/openapi';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions);
-    return { session };
+    const profile = session ? await context.queryClient.ensureQueryData(profileQueryOptions) : null;
+    const setupPath = location.pathname === '/setup';
+    if (session && !profile && !setupPath) {
+      throw redirect({ to: '/setup', search: { redirect: location.href } });
+    }
+    if (session && profile && setupPath) {
+      throw redirect({ to: '/pages' });
+    }
+    return { session, profile };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { session } = Route.useRouteContext();
+  const { profile, session } = Route.useRouteContext();
 
   return (
     <>
@@ -23,7 +32,7 @@ function RouteComponent() {
         <Link to="/" className="brand" activeOptions={{ exact: true }}>
           Context Use
         </Link>
-        {session && (
+        {profile && (
           <nav aria-label="Knowledge">
             <Link to="/pages" activeProps={{ 'data-active': true }}>
               Pages
@@ -33,10 +42,12 @@ function RouteComponent() {
             </Link>
           </nav>
         )}
-        {/* A plain anchor, not a `Link`: the docs page is rendered by the server, not the router. */}
-        <a href={OPENAPI_PATH} className="api-link">
-          API docs
-        </a>
+        {profile && (
+          // A plain anchor, not a `Link`: the docs page is rendered by the server, not the router.
+          <a href={OPENAPI_PATH} className="api-link">
+            API docs
+          </a>
+        )}
         <div className="account-actions">
           {session ? (
             <>

@@ -6,6 +6,7 @@ import type { AssetsServiceContract } from '#services/assets.service.ts';
 import type { EntitiesServiceContract } from '#services/entities.service.ts';
 import type { HealthServiceContract } from '#services/health.service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
+import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles.service.ts';
 
 function unexpectedCall(): never {
   throw new Error('Unexpected dependency call');
@@ -34,6 +35,10 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     update: unexpectedCall,
     rebuildIndex: unexpectedCall,
   };
+  const profilesService: KnowledgeProfilesServiceContract = {
+    create: unexpectedCall,
+    find: unexpectedCall,
+  };
   const healthService: HealthServiceContract = {
     check() {
       healthChecks += 1;
@@ -47,6 +52,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     entitiesService,
     healthService,
     pagesService,
+    profilesService,
   }).handle(new Request('http://localhost/api/health'));
 
   expect(response.status).toBe(StatusMap.OK);

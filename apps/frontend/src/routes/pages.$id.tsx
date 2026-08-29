@@ -71,20 +71,22 @@ function KnowledgePageRoute() {
   }
 
   return (
-    <main className="page-shell page-shell-reading">
-      <header className="page-toolbar">
-        <p className="eyebrow">
-          Page · {page.readableId} · revision {page.revisionNumber} · updated{' '}
-          {page.updatedAt.toLocaleString()}
-        </p>
-        <div className="action-row">
-          <Link className="secondary-action" to="/pages">
-            All pages
-          </Link>
-          <button className="primary-action" type="button" onClick={() => setEditing(!editing)}>
-            {editing ? 'Cancel edit' : 'Edit page'}
-          </button>
+    <div className="detail-shell page-detail">
+      <header className="detail-toolbar">
+        <div>
+          <p className="eyebrow">Knowledge page</p>
+          <p className="detail-meta">
+            <code>{page.readableId}</code> · revision {page.revisionNumber} · updated{' '}
+            {page.updatedAt.toLocaleString()}
+          </p>
         </div>
+        <button
+          className={editing ? 'secondary-action' : 'primary-action'}
+          type="button"
+          onClick={() => setEditing(!editing)}
+        >
+          {editing ? 'Cancel' : 'Edit page'}
+        </button>
       </header>
 
       {editing ? (
@@ -131,6 +133,6 @@ function KnowledgePageRoute() {
           <PageLinkList label="Referenced by" links={page.backlinks} />
         </aside>
       )}
-    </main>
+    </div>
   );
 }

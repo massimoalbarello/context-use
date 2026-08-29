@@ -31,7 +31,7 @@ export const KnowledgePageSchema = t.Object({
 });
 
 export const CreateKnowledgePageBodySchema = t.Object({
-  readableId: ReadableIdSchema,
+  readableId: t.Optional(ReadableIdSchema),
   markdown: t.String({ minLength: 1, maxLength: MAX_KNOWLEDGE_PAGE_BYTES }),
 });
 

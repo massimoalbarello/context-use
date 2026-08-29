@@ -12,6 +12,7 @@ import type { AssetsServiceContract } from '#services/assets.service.ts';
 import type { EntitiesServiceContract } from '#services/entities.service.ts';
 import type { HealthServiceContract } from '#services/health.service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
+import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles.service.ts';
 
 // Pinned rather than left to the plugin's default: the frontend links to it and the dev
 // server proxies it.
@@ -23,12 +24,14 @@ export function createApp({
   entitiesService,
   healthService,
   pagesService,
+  profilesService,
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
   pagesService: KnowledgePagesServiceContract;
+  profilesService: KnowledgeProfilesServiceContract;
 }) {
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
@@ -55,6 +58,10 @@ export function createApp({
               description: 'Versioned Markdown knowledge pages and their links.',
             },
             {
+              name: 'Profile',
+              description: 'The entity representing the owner of this knowledge base.',
+            },
+            {
               name: 'Health',
               description: 'Liveness of the server and its database.',
             },
@@ -65,6 +72,8 @@ export function createApp({
         },
       }),
     )
-    .use(createApiController({ auth, entitiesService, healthService, pagesService }))
+    .use(
+      createApiController({ auth, entitiesService, healthService, pagesService, profilesService }),
+    )
     .use(createFrontendFallbackController({ assetsService }));
 }

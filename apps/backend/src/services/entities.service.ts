@@ -1,4 +1,5 @@
 import type { Entity, EntityDetail, EntityRepositoryContract } from '#entities/entity.ts';
+import { readableIdFrom } from '#knowledge/knowledge-address.ts';
 import type { KnowledgePagesRepositoryContract } from '#pages/knowledge-page.ts';
 import { Service } from '#services/service.ts';
 
@@ -20,18 +21,30 @@ export class EntitiesService extends Service {
 
   create(input: {
     ownerId: string;
-    readableId: string;
+    readableId?: string;
     name: string;
     description: string;
-  }): Promise<{ state: 'created'; entity: Entity } | { state: 'readable_id_conflict' }> {
-    return this.entities.create({
-      id: Bun.randomUUIDv7(),
-      ownerId: input.ownerId,
-      readableId: input.readableId,
-      name: input.name.trim(),
-      description: input.description.trim(),
-      createdAt: new Date().toISOString(),
-    });
+  }): Promise<
+    | { state: 'created'; entity: Entity }
+    | { state: 'readable_id_conflict'; readableId: string }
+    | { state: 'readable_id_required' }
+  > {
+    const readableId = input.readableId ?? readableIdFrom(input.name);
+    if (!readableId) {
+      return Promise.resolve({ state: 'readable_id_required' });
+    }
+    return this.entities
+      .create({
+        id: Bun.randomUUIDv7(),
+        ownerId: input.ownerId,
+        readableId,
+        name: input.name.trim(),
+        description: input.description.trim(),
+        createdAt: new Date().toISOString(),
+      })
+      .then((result) =>
+        result.state === 'readable_id_conflict' ? { state: result.state, readableId } : result,
+      );
   }
 
   list({ ownerId }: { ownerId: string }): Promise<Entity[]> {

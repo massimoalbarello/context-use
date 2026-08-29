@@ -18,7 +18,10 @@ export function EntityList({ entities }: { entities: EntitySummary[] }) {
           <Link to="/entities/$id" params={{ id: entity.readableId }} className="card-link">
             <span>
               <strong>{entity.name}</strong>
-              <code>{entity.readableId}</code>
+              <span className="card-markers">
+                {entity.isSelf && <span className="self-badge">You</span>}
+                <code>{entity.readableId}</code>
+              </span>
             </span>
             <p>{entity.description}</p>
           </Link>

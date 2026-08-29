@@ -1,16 +1,18 @@
 import { useForm } from '@tanstack/react-form';
+import { useEffect } from 'react';
+import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
 
 const READABLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export type KnowledgePageFormValues = {
-  readableId: string;
+  readableId?: string;
   markdown: string;
 };
 
-function validateReadableId({ value }: { value: string }): string | undefined {
-  return READABLE_ID_PATTERN.test(value)
+function validateReadableId({ value }: { value?: string }): string | undefined {
+  return value && READABLE_ID_PATTERN.test(value)
     ? undefined
     : 'Use lowercase words separated by single hyphens.';
 }
@@ -47,9 +49,21 @@ export function KnowledgePageForm({
   const form = useForm({
     defaultValues: initialValues,
     onSubmit: ({ value }) => {
-      onSubmit({ readableId: value.readableId.trim(), markdown: value.markdown.trim() });
+      onSubmit({
+        readableId: value.readableId?.trim() || undefined,
+        markdown: value.markdown.trim(),
+      });
     },
   });
+  const conflictingReadableId = error instanceof ReadableIdConflictError ? error.readableId : null;
+  const readableIdIssue =
+    error instanceof ReadableIdConflictError || error instanceof ReadableIdRequiredError;
+
+  useEffect(() => {
+    if (conflictingReadableId && !form.getFieldValue('readableId')) {
+      form.setFieldValue('readableId', conflictingReadableId);
+    }
+  }, [form, conflictingReadableId]);
 
   return (
     <form
@@ -60,32 +74,6 @@ export function KnowledgePageForm({
       }}
     >
       <div className="surface grid gap-5">
-        <form.Field
-          name="readableId"
-          validators={{ onMount: validateReadableId, onChange: validateReadableId }}
-        >
-          {(field) => (
-            <label className="field">
-              <span>Readable ID</span>
-              <input
-                name={field.name}
-                value={field.state.value}
-                disabled={readableIdLocked}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
-              />
-              <small>
-                Stable address:{' '}
-                <code>context-use://page/{field.state.value || 'growth-playbook'}</code>
-              </small>
-              {field.state.meta.isTouched && field.state.meta.errors[0] && (
-                <em role="alert">{field.state.meta.errors[0]}</em>
-              )}
-            </label>
-          )}
-        </form.Field>
-
         <form.Field
           name="markdown"
           validators={{ onMount: validateMarkdown, onChange: validateMarkdown }}
@@ -112,6 +100,40 @@ export function KnowledgePageForm({
             </label>
           )}
         </form.Field>
+
+        {readableIdIssue && !readableIdLocked && (
+          <form.Field
+            name="readableId"
+            validators={{ onMount: validateReadableId, onChange: validateReadableId }}
+          >
+            {(field) => (
+              <label className="field conflict-field">
+                <span>
+                  {conflictingReadableId ? 'Choose a distinct readable ID' : 'Choose a readable ID'}
+                </span>
+                <input
+                  name={field.name}
+                  value={field.state.value ?? ''}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                />
+                <small>
+                  <code>
+                    context-use://page/{field.state.value || conflictingReadableId || 'readable-id'}
+                  </code>{' '}
+                  is the permanent address.{' '}
+                  {conflictingReadableId
+                    ? 'Add a distinguishing word rather than a number when possible.'
+                    : 'Use short lowercase words separated by hyphens.'}
+                </small>
+                {field.state.meta.isTouched && field.state.meta.errors[0] && (
+                  <em role="alert">{field.state.meta.errors[0]}</em>
+                )}
+              </label>
+            )}
+          </form.Field>
+        )}
       </div>
 
       {(entities.length > 0 || pages.length > 0) && (
@@ -161,7 +183,7 @@ export function KnowledgePageForm({
         </aside>
       )}
 
-      {error && <p className="error-message">{error.message}</p>}
+      {error && !readableIdIssue && <p className="error-message">{error.message}</p>}
 
       <form.Subscribe selector={(state) => state.canSubmit}>
         {(canSubmit) => (

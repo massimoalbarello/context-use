@@ -356,13 +356,16 @@ export class KnowledgePagesRepository
       return null;
     }
     const [mentions, references, backlinks] = await Promise.all([
-      this.sql<Entity[]>`
+      this.sql<Array<Omit<Entity, 'isSelf'> & { isSelf: number }>>`
         select entity."id", entity."readable_id" as "readableId", entity."name",
-          entity."description", entity."created_at" as "createdAt",
+          entity."description", profile."self_entity_id" is not null as "isSelf",
+          entity."created_at" as "createdAt",
           entity."updated_at" as "updatedAt"
         from "knowledge_page_entity_mention" mention
         join "entity" entity
           on entity."id" = mention."target_entity_id" and entity."owner_id" = mention."owner_id"
+        left join "knowledge_profile" profile
+          on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
         where mention."owner_id" = ${ownerId}
           and mention."source_revision_id" = ${page.currentRevisionId}
         order by entity."name" collate nocase, entity."readable_id"
@@ -370,7 +373,12 @@ export class KnowledgePagesRepository
       this.referenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
       this.backlinkRows({ ownerId, targetPageId: page.id }),
     ]);
-    return { page, mentions, references, backlinks };
+    return {
+      page,
+      mentions: mentions.map((entity) => ({ ...entity, isSelf: Boolean(entity.isSelf) })),
+      references,
+      backlinks,
+    };
   }
 
   async listCurrent({ ownerId }: { ownerId: string }): Promise<StoredKnowledgePage[]> {

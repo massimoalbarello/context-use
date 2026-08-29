@@ -1,7 +1,8 @@
-import { Elysia, StatusMap } from 'elysia';
+import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
+import { ReadableIdConflictSchema, ReadableIdRequiredSchema } from '#routes/api/model.ts';
 import {
   CreateKnowledgePageBodySchema,
   KnowledgePageListSchema,
@@ -32,7 +33,16 @@ export function createPagesController({
           return status(StatusMap.Created, knowledgePageResponse(result.page));
         }
         if (result.state === 'readable_id_conflict') {
-          return status(StatusMap.Conflict, { error: 'Page readable ID already exists' });
+          return status(StatusMap.Conflict, {
+            error: 'A page already uses this readable ID',
+            readableId: result.readableId,
+          });
+        }
+        if (result.state === 'readable_id_required') {
+          return status(StatusMap['Bad Request'], {
+            error: 'A readable ID could not be derived from this page title',
+            readableIdRequired: true as const,
+          });
         }
         if (result.state === 'link_target_not_found') {
           return status(StatusMap['Bad Request'], {
@@ -49,8 +59,8 @@ export function createPagesController({
         body: CreateKnowledgePageBodySchema,
         response: {
           [StatusMap.Created]: KnowledgePageSchema,
-          [StatusMap['Bad Request']]: ErrorResponseSchema,
-          [StatusMap.Conflict]: ErrorResponseSchema,
+          [StatusMap['Bad Request']]: t.Union([ReadableIdRequiredSchema, ErrorResponseSchema]),
+          [StatusMap.Conflict]: ReadableIdConflictSchema,
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
       },
