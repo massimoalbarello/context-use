@@ -171,16 +171,16 @@
   }
 
   .workspace-empty h2,
-  .setup-copy h1 {
+  .form-shell-copy h1 {
     @apply mt-2 font-semibold text-4xl tracking-tight;
   }
 
   .workspace-description,
-  .setup-description {
+  .form-shell-copy > p:last-child {
     @apply mt-3 text-muted text-lg leading-relaxed;
   }
 
-  .setup-shell {
+  .form-shell {
     @apply mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-5xl items-center gap-10 px-5 py-12 md:grid-cols-[minmax(0,0.85fr)_minmax(24rem,1fr)] md:px-8;
   }
 

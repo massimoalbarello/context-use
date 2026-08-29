@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { EntityForm, type EntityFormValues } from '../components/entities/entity-form';
+import { FormShell } from '../components/layout/form-shell';
 import { useCreateProfile } from '../lib/hooks/use-create-profile';
 
 export const Route = createFileRoute('/setup')({
@@ -26,15 +27,11 @@ function SetupRoute() {
   };
 
   return (
-    <main className="setup-shell">
-      <div className="setup-copy">
-        <p className="eyebrow">One last step</p>
-        <h1>Create your entity</h1>
-        <p className="setup-description">
-          This is how the knowledge base knows who “you” are. Pages can mention this entity just
-          like any other, while the dashboard and future agents recognize it as yours.
-        </p>
-      </div>
+    <FormShell
+      eyebrow="One last step"
+      title="Create your entity"
+      description="This is how the knowledge base knows who “you” are. Pages can mention this entity just like any other, while the dashboard and future agents recognize it as yours."
+    >
       <EntityForm
         initialValues={initialValues}
         pending={createProfile.isPending}
@@ -48,6 +45,6 @@ function SetupRoute() {
           })
         }
       />
-    </main>
+    </FormShell>
   );
 }

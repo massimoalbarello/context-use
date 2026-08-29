@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginForm } from '../components/auth/login-form';
+import { FormShell } from '../components/layout/form-shell';
 import { Route as IndexRoute } from './index';
 
 export const Route = createFileRoute('/login')({
@@ -16,5 +17,13 @@ export const Route = createFileRoute('/login')({
 
 function RouteComponent() {
   const search = Route.useSearch();
-  return <LoginForm redirectTo={search.redirect ?? IndexRoute.to} />;
+  return (
+    <FormShell
+      eyebrow="Passkey access"
+      title="Your private knowledge base"
+      description="Sign in with an existing passkey, or create the owner account when setting up this instance for the first time."
+    >
+      <LoginForm redirectTo={search.redirect ?? IndexRoute.to} />
+    </FormShell>
+  );
 }
