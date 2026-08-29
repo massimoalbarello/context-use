@@ -7,6 +7,7 @@ const BACKEND_ORIGIN = 'http://localhost:3000';
 
 export default defineConfig({
   server: {
+    strictPort: true,
     // Vite is the public origin in development. Better Auth's BASE_URL points here, so preserve
     // the browser's Origin header while proxying instead of pretending the request came from :3000.
     proxy: {
