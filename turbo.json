@@ -22,6 +22,7 @@
     },
     "dev": {
       "cache": false,
+      "env": ["DATA_FOLDER"],
       "persistent": true
     }
   }

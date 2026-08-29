@@ -19,6 +19,7 @@
     "frontend:dev": "bun --filter @repo/frontend dev",
     "frontend:build": "bun run --bun turbo build --filter=@repo/frontend",
     "dev": "bun run --bun turbo dev --filter=@repo/backend --filter=@repo/frontend",
+    "dev:isolated": "bun run scripts/dev-isolated.ts",
     "build": "bun run --bun turbo build",
     "build:local": "BUILD_TARGET=host bun run --bun turbo build --filter=@repo/backend",
     "check:types": "bun run --bun turbo check:types",

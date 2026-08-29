@@ -109,6 +109,28 @@ protect a critical invariant, boundary, or failure mode whose regression would m
 - Keep suites scoped and remove redundant tests when a stronger test supersedes them.
 - Never weaken encapsulation solely to make implementation details testable.
 
+## Browser testing passkey authentication
+
+Exercise protected frontend journeys through the real Better Auth passkey flow. Do not add an auth
+bypass, seed a session, relax passkey verification, or enable another sign-in method for browser
+automation.
+
+- Start `bun run dev:isolated`. It runs the normal development app against a fresh temporary
+  `DATA_FOLDER`, opens `http://localhost:5173` in the browser controlled by the browser harness,
+  and enables a virtual authenticator matching the server's resident credential and
+  user-verification policy.
+- Keep that command and browser connection alive through registration, sign-out, and sign-in.
+  Stopping the command disables the virtual authenticator and removes the disposable data without
+  touching a developer's local owner.
+- The command requires `browser-harness`. If it is not installed, follow the installation command
+  it prints; do not substitute the unrelated npm package named `browser-use`.
+- Never call `WebAuthn.getCredentials`, use DevTools' Export action, commit, or otherwise persist a
+  virtual credential. Those export paths expose the credential's private key.
+
+Better Auth [recommends emulated authenticators](https://better-auth.com/docs/plugins/passkey#debugging)
+for passkey testing; Chrome exposes the required lifecycle through its
+[WebAuthn CDP domain](https://chromedevtools.github.io/devtools-protocol/tot/WebAuthn/).
+
 ## Database changes
 
 Database state is durable shared state, not an implementation convenience. Read and follow
