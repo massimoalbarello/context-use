@@ -27,10 +27,12 @@ openssl rand -base64 32 # paste into BETTER_AUTH_SECRET in apps/backend/.env
 bun run dev
 ```
 
-The backend listens on `:3000` and Vite on `:5173`, proxying API requests to the backend. The
-starter includes passkey-only authentication, SQLite migrations, file storage, OpenAPI, and a
-production build that embeds the frontend and migrations in one binary. The first verified passkey
-claims the instance owner; later sign-ins use that passkey without an email address or password.
+Vite serves the app on `http://localhost:5173` and proxies API requests to the backend on `:3000`.
+The backend is API-only during development so it cannot expose a stale frontend under a different
+authentication origin. The starter includes passkey-only authentication, SQLite migrations, file
+storage, OpenAPI, and a production build that embeds the frontend and migrations in one binary. The
+first verified passkey claims the instance owner; later sign-ins use that passkey without an email
+address or password.
 
 ## Build
 
