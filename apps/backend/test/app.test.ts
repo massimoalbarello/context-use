@@ -3,8 +3,9 @@ import { StatusMap } from 'elysia';
 import { createApp } from '#app.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import type { AssetsServiceContract } from '#services/assets.service.ts';
-import type { FilesServiceContract } from '#services/files.service.ts';
+import type { EntitiesServiceContract } from '#services/entities.service.ts';
 import type { HealthServiceContract } from '#services/health.service.ts';
+import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
 
 function unexpectedCall(): never {
   throw new Error('Unexpected dependency call');
@@ -20,11 +21,18 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     routes: () => new Map<string, Response>(),
     fallback: () => null,
   };
-  const filesService: FilesServiceContract = {
-    upload: unexpectedCall,
+  const entitiesService: EntitiesServiceContract = {
+    create: unexpectedCall,
     list: unexpectedCall,
-    download: unexpectedCall,
-    remove: unexpectedCall,
+    detail: unexpectedCall,
+    update: unexpectedCall,
+  };
+  const pagesService: KnowledgePagesServiceContract = {
+    create: unexpectedCall,
+    list: unexpectedCall,
+    detail: unexpectedCall,
+    update: unexpectedCall,
+    rebuildIndex: unexpectedCall,
   };
   const healthService: HealthServiceContract = {
     check() {
@@ -33,9 +41,13 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     },
   };
 
-  const response = await createApp({ auth, assetsService, filesService, healthService }).handle(
-    new Request('http://localhost/api/health'),
-  );
+  const response = await createApp({
+    auth,
+    assetsService,
+    entitiesService,
+    healthService,
+    pagesService,
+  }).handle(new Request('http://localhost/api/health'));
 
   expect(response.status).toBe(StatusMap.OK);
   expect(await response.json()).toEqual({ status: 'ok', uptime: 0 });

@@ -8,7 +8,7 @@ export function SignOutButton() {
       type="button"
       onClick={() => mutate()}
       disabled={isPending}
-      className="rounded border border-gray-300 px-2 py-1 text-gray-700 text-sm hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+      className="secondary-action min-h-8 px-3 py-1"
     >
       {isPending ? 'Signing out…' : 'Sign out'}
     </button>

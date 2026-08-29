@@ -9,8 +9,9 @@ import {
   createFrontendFallbackController,
 } from '#routes/controller.ts';
 import type { AssetsServiceContract } from '#services/assets.service.ts';
-import type { FilesServiceContract } from '#services/files.service.ts';
+import type { EntitiesServiceContract } from '#services/entities.service.ts';
 import type { HealthServiceContract } from '#services/health.service.ts';
+import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
 
 // Pinned rather than left to the plugin's default: the frontend links to it and the dev
 // server proxies it.
@@ -19,13 +20,15 @@ const OPENAPI_PATH = '/openapi';
 export function createApp({
   auth,
   assetsService,
-  filesService,
+  entitiesService,
   healthService,
+  pagesService,
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
-  filesService: FilesServiceContract;
+  entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
+  pagesService: KnowledgePagesServiceContract;
 }) {
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
@@ -38,14 +41,18 @@ export function createApp({
         path: OPENAPI_PATH,
         documentation: {
           info: {
-            title: 'Bun Full-Stack API',
-            description: 'Everything this server answers, next to the frontend it also serves.',
+            title: 'Context Use API',
+            description: 'Entities and linked knowledge pages served alongside the dashboard.',
             version: '1.0.0',
           },
           tags: [
             {
-              name: 'Files',
-              description: 'Upload, list, download and delete the signed-in user’s files.',
+              name: 'Entities',
+              description: 'Stable coordinates mentioned by knowledge pages.',
+            },
+            {
+              name: 'Pages',
+              description: 'Versioned Markdown knowledge pages and their links.',
             },
             {
               name: 'Health',
@@ -58,6 +65,6 @@ export function createApp({
         },
       }),
     )
-    .use(createApiController({ auth, filesService, healthService }))
+    .use(createApiController({ auth, entitiesService, healthService, pagesService }))
     .use(createFrontendFallbackController({ assetsService }));
 }

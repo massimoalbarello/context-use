@@ -163,6 +163,16 @@
       }
     },
     {
+      "includes": ["apps/frontend/src/routes/**/*.$*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["apps/backend/src/routes/**/*.ts"],
       "linter": {
         "rules": {

@@ -1,6 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router';
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { SignOutButton } from '../components/auth/sign-out-button';
 import { sessionQueryOptions } from '../queries/session';
 
@@ -20,42 +19,28 @@ function RouteComponent() {
 
   return (
     <>
-      <div className="flex items-center gap-2 p-2 text-lg">
-        <Link
-          to="/"
-          activeProps={{
-            className: 'font-bold',
-          }}
-          activeOptions={{ exact: true }}
-        >
-          Home
-        </Link>{' '}
-        <Link
-          to="/about"
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          About
+      <header className="app-header">
+        <Link to="/" className="brand" activeOptions={{ exact: true }}>
+          Context Use
         </Link>
         {session && (
-          <Link
-            to="/files"
-            activeProps={{
-              className: 'font-bold',
-            }}
-          >
-            Files
-          </Link>
+          <nav aria-label="Knowledge">
+            <Link to="/pages" activeProps={{ 'data-active': true }}>
+              Pages
+            </Link>
+            <Link to="/entities" activeProps={{ 'data-active': true }}>
+              Entities
+            </Link>
+          </nav>
         )}
         {/* A plain anchor, not a `Link`: the docs page is rendered by the server, not the router. */}
-        <a href={OPENAPI_PATH} className="text-gray-500 text-sm hover:underline dark:text-gray-400">
+        <a href={OPENAPI_PATH} className="api-link">
           API docs
         </a>
-        <div className="ml-auto flex items-center gap-3 text-base">
+        <div className="account-actions">
           {session ? (
             <>
-              <span className="text-gray-500 text-sm dark:text-gray-400">{session.user.name}</span>
+              <span className="account-name">{session.user.name}</span>
               <SignOutButton />
             </>
           ) : (
@@ -69,10 +54,8 @@ function RouteComponent() {
             </Link>
           )}
         </div>
-      </div>
-      <hr />
+      </header>
       <Outlet />
-      <TanStackRouterDevtools position="bottom-right" />
     </>
   );
 }

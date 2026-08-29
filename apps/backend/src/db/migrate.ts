@@ -44,11 +44,17 @@ async function applyMigration({
 
 // Migrations run once at startup, on the same client the app uses: SQLite is a
 // single file, so a second connection would only add write-lock contention.
-export async function runMigrations({ db }: { db: SQL }): Promise<void> {
+export async function runMigrations({
+  db,
+  migrations = getMigrations(),
+}: {
+  db: SQL;
+  migrations?: Map<string, Blob>;
+}): Promise<void> {
   await ensureMigrationsTable(db);
   const applied = await appliedMigrations(db);
 
-  for (const [name, file] of getMigrations()) {
+  for (const [name, file] of migrations) {
     if (!name.endsWith(MIGRATION_FILE_EXTENSION) || applied.has(name)) {
       continue;
     }
