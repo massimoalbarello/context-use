@@ -3,20 +3,15 @@ import { useRouter } from '@tanstack/react-router';
 import { sessionQueryOptions } from '../../queries/session';
 import { authClient } from '../auth';
 
-type SignInVariables = {
-  email: string;
-  password: string;
-};
-
-export function useSignIn(): UseMutationResult<void, Error, SignInVariables> {
+export function useSignIn(): UseMutationResult<void, Error, void> {
   const queryClient = useQueryClient();
   const router = useRouter();
 
   return useMutation({
-    mutationFn: async ({ email, password }: SignInVariables) => {
-      const { error } = await authClient.signIn.email({ email, password });
+    mutationFn: async () => {
+      const { error } = await authClient.signIn.passkey();
       if (error) {
-        throw new Error(error.message);
+        throw new Error(error.message ?? 'Could not sign in with your passkey.');
       }
     },
     onSuccess: async () => {

@@ -9,6 +9,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@better-auth/passkey": "catalog:",
     "@elysiajs/eden": "^1.4.9",
     "@tanstack/react-form": "^1.33.5",
     "@tanstack/react-query": "^5.102.8",

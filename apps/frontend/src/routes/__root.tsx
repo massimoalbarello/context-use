@@ -55,7 +55,7 @@ function RouteComponent() {
         <div className="ml-auto flex items-center gap-3 text-base">
           {session ? (
             <>
-              <span className="text-gray-500 text-sm dark:text-gray-400">{session.user.email}</span>
+              <span className="text-gray-500 text-sm dark:text-gray-400">{session.user.name}</span>
               <SignOutButton />
             </>
           ) : (
