@@ -27,10 +27,6 @@ const KNOWLEDGE_MIGRATION = new URL(
   '../../../src/db/migrations/0001_knowledge.sql',
   import.meta.url,
 );
-const PROFILE_MIGRATION = new URL(
-  '../../../src/db/migrations/0002_knowledge_profile.sql',
-  import.meta.url,
-);
 
 const assetsService: AssetsServiceContract = {
   routes: () => new Map(),
@@ -88,7 +84,6 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       migrations: new Map([
         ['0000_better_auth_schema.sql', Bun.file(AUTH_MIGRATION)],
         ['0001_knowledge.sql', Bun.file(KNOWLEDGE_MIGRATION)],
-        ['0002_knowledge_profile.sql', Bun.file(PROFILE_MIGRATION)],
       ]),
     });
     const timestamp = '2026-01-01T00:00:00.000Z';
