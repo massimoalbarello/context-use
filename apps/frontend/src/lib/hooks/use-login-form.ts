@@ -4,12 +4,8 @@ import { useState } from 'react';
 import { useSignIn } from './use-sign-in';
 import { useSignUp } from './use-sign-up';
 
-const MIN_PASSWORD_LENGTH = 8;
-
 export type LoginFormValues = {
   name: string;
-  email: string;
-  password: string;
 };
 
 export type LoginFormApi = ReactFormExtendedApi<
@@ -37,22 +33,10 @@ export type LoginFormState = {
 
 const UNTOUCHED: LoginFormValues = {
   name: '',
-  email: '',
-  password: '',
 };
 
 export function validateName({ value }: { value: string }): string | undefined {
   return value.trim().length > 0 ? undefined : 'Tell us what to call you.';
-}
-
-export function validateEmail({ value }: { value: string }): string | undefined {
-  return value.includes('@') ? undefined : 'That does not look like an email address.';
-}
-
-export function validatePassword({ value }: { value: string }): string | undefined {
-  return value.length >= MIN_PASSWORD_LENGTH
-    ? undefined
-    : `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
 }
 
 export function useLoginForm({ redirectTo }: { redirectTo: string }): LoginFormState {
@@ -72,13 +56,10 @@ export function useLoginForm({ redirectTo }: { redirectTo: string }): LoginFormS
       };
 
       if (isSigningUp) {
-        signUp.mutate(
-          { name: value.name.trim(), email: value.email, password: value.password },
-          { onSuccess },
-        );
+        signUp.mutate({ name: value.name.trim() }, { onSuccess });
         return;
       }
-      signIn.mutate({ email: value.email, password: value.password }, { onSuccess });
+      signIn.mutate(undefined, { onSuccess });
     },
   });
 

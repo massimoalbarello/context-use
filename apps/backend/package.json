@@ -15,8 +15,9 @@
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
+    "@better-auth/passkey": "catalog:",
     "@elysiajs/openapi": "^1.4.15",
-    "@ilbertt/better-auth-bun-sql": "^0.3.0",
+    "@ilbertt/better-auth-bun-sql": "^0.4.0",
     "better-auth": "catalog:",
     "elysia": "^1.4.30"
   },
