@@ -1,4 +1,5 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
+import { entitiesQueryKey } from '../../queries/entities';
 import { type CreatePageVariables, createPage, pagesQueryKey } from '../../queries/pages';
 
 export function useCreatePage(): UseMutationResult<
@@ -11,7 +12,10 @@ export function useCreatePage(): UseMutationResult<
   return useMutation({
     mutationFn: createPage,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: pagesQueryKey });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
+      ]);
     },
   });
 }

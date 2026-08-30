@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/class-names';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { EntityCardContent } from '../entities/entity-link';

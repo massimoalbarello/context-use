@@ -1,6 +1,6 @@
 import { cva } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/class-names';
 
 export const resourceCardVariants = cva(
   'flex h-20 min-w-0 items-center gap-3 rounded-xl border border-transparent bg-transparent p-3 text-left transition-[background-color,border-color,box-shadow] hover:bg-card hover:shadow-sm focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 aria-selected:border-foreground/35 aria-selected:bg-card aria-selected:shadow-sm data-[route-selected=true]:border-foreground/35 data-[route-selected=true]:bg-card data-[route-selected=true]:shadow-sm',

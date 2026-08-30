@@ -1,6 +1,6 @@
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/class-names';
 import { EntityLink } from '../entities/entity-link';
 import { KnowledgePageLink } from './knowledge-page-link';
 

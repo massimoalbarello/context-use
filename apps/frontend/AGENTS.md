@@ -91,6 +91,8 @@ global client-state library until a concrete cross-route state model requires on
   times from the meaning of the data, and reuse the keys for reads, mutations, and invalidation.
 - Mutation success updates or invalidates canonical query data. Do not add refresh counters or a
   parallel cache in component state.
+- Treat authenticated Query data as session-scoped. Clear it across authentication transitions or
+  include the actor in its query key; private data must never be reused by another principal.
 - TanStack Form owns form state. Render it through accessible shadcn field primitives and map
   structured server errors through the shared API error mechanism.
 - Backend validation remains authoritative. Add a client schema only when it improves a concrete

@@ -1,11 +1,11 @@
+import { createLogger } from '#lib/logger.ts';
 import type { HealthRepositoryContract } from '#repositories/health/repository.ts';
-import { Service } from '#services/service.ts';
 
-export class HealthService extends Service {
+export class HealthService {
   private readonly healthRepo: HealthRepositoryContract;
+  private readonly logger = createLogger('HealthService');
 
   constructor(healthRepo: HealthRepositoryContract) {
-    super();
     this.healthRepo = healthRepo;
   }
 

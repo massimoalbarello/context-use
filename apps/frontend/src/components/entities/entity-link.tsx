@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/class-names';
 import type { EntitySummary } from '../../queries/entities';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { Avatar, AvatarFallback } from '../ui/avatar';

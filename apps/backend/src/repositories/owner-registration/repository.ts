@@ -1,8 +1,8 @@
+import type { SQL } from 'bun';
 import {
   OWNER_USER_ID,
   type OwnerRegistrationPersistenceState,
 } from '#lib/auth/owner-registration.ts';
-import { Repository } from '#repositories/repository.ts';
 
 export interface OwnerRegistrationRepositoryContract {
   state(): Promise<OwnerRegistrationPersistenceState>;
@@ -13,10 +13,13 @@ type OwnerRegistrationRow = {
   passkeyExists: number;
 };
 
-export class OwnerRegistrationRepository
-  extends Repository
-  implements OwnerRegistrationRepositoryContract
-{
+export class OwnerRegistrationRepository implements OwnerRegistrationRepositoryContract {
+  private readonly sql: SQL;
+
+  constructor(sql: SQL) {
+    this.sql = sql;
+  }
+
   async state(): Promise<OwnerRegistrationPersistenceState> {
     const rows = await this.sql<OwnerRegistrationRow[]>`
       select

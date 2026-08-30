@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/class-names';
 
 type KnowledgeWorkspaceContextValue = {
   collapsed: boolean;

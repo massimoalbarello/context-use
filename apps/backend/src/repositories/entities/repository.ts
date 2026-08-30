@@ -1,6 +1,6 @@
+import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#lib/pagination.ts';
 import type { Entity } from '#models/entity.ts';
-import { Repository } from '#repositories/repository.ts';
 
 export interface EntityRepositoryContract {
   create(input: {
@@ -41,7 +41,13 @@ function entityFrom(row: EntityRow): Entity {
   return { ...row, isSelf: Boolean(row.isSelf) };
 }
 
-export class EntitiesRepository extends Repository implements EntityRepositoryContract {
+export class EntitiesRepository implements EntityRepositoryContract {
+  private readonly sql: SQL;
+
+  constructor(sql: SQL) {
+    this.sql = sql;
+  }
+
   async create(input: {
     id: string;
     ownerId: string;

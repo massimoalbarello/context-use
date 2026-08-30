@@ -1,6 +1,6 @@
 import { extname } from 'node:path';
+import { createLogger } from '#lib/logger.ts';
 import type { FrontendAssetsRepositoryContract } from '#repositories/frontend-assets/repository.ts';
-import { Service } from '#services/service.ts';
 
 const ROOT_ASSET_PATH = '/';
 const INDEX_HTML_PATH = '/index.html';
@@ -9,11 +9,11 @@ const IMMUTABLE_PATH_PREFIX = '/assets/';
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const REVALIDATE_CACHE_CONTROL = 'no-cache';
 
-export class FrontendAssetsService extends Service {
+export class FrontendAssetsService {
   private readonly assets: FrontendAssetsRepositoryContract;
+  private readonly logger = createLogger('FrontendAssetsService');
 
   constructor(assets: FrontendAssetsRepositoryContract) {
-    super();
     this.assets = assets;
   }
 

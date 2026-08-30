@@ -10,7 +10,6 @@ import {
 } from '#models/knowledge-page-markdown.ts';
 import { readableIdFrom } from '#models/readable-id.ts';
 import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
-import { Service } from '#services/service.ts';
 
 export type KnowledgePageMutationResult =
   | { state: 'saved'; page: KnowledgePage }
@@ -25,7 +24,7 @@ function contentHash(markdown: string): string {
   return new Bun.CryptoHasher('sha256').update(markdown).digest('hex');
 }
 
-export class KnowledgePagesService extends Service {
+export class KnowledgePagesService {
   private readonly pages: KnowledgePagesRepositoryContract;
   private readonly storage: StorageClient;
 
@@ -36,7 +35,6 @@ export class KnowledgePagesService extends Service {
     pages: KnowledgePagesRepositoryContract;
     storage: StorageClient;
   }) {
-    super();
     this.pages = pages;
     this.storage = storage;
   }

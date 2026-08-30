@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { Menu, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { cn } from '../../lib/class-names';
 import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
-import { cn } from '../../lib/utils';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { SignOutButton } from '../auth/sign-out-button';
 import { Avatar, AvatarFallback } from '../ui/avatar';

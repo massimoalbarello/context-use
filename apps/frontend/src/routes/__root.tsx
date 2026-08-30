@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, Link, Outlet, redirect } from '@tanstack/react-router';
 import { SignOutButton } from '../components/auth/sign-out-button';
 import { buttonVariants } from '../components/ui/button';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/class-names';
 import { profileQueryOptions } from '../queries/profile';
 import { sessionQueryOptions } from '../queries/session';
 

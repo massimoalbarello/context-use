@@ -2,9 +2,8 @@ import type { Entity, EntityDetail } from '#models/entity.ts';
 import { readableIdFrom } from '#models/readable-id.ts';
 import type { EntityRepositoryContract } from '#repositories/entities/repository.ts';
 import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
-import { Service } from '#services/service.ts';
 
-export class EntitiesService extends Service {
+export class EntitiesService {
   private readonly entities: EntityRepositoryContract;
   private readonly pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
 
@@ -15,7 +14,6 @@ export class EntitiesService extends Service {
     entities: EntityRepositoryContract;
     pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
   }) {
-    super();
     this.entities = entities;
     this.pages = pages;
   }

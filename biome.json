@@ -117,10 +117,7 @@
                     "message": "Repositories receive the database connection and must not depend on database bootstrap, controllers, or services."
                   },
                   {
-                    "group": [
-                      "#repositories/**",
-                      "!#repositories/repository.ts"
-                    ],
+                    "group": ["#repositories/**"],
                     "message": "A repository capability must not coordinate another repository capability. Services own that coordination."
                   }
                 ],
@@ -211,7 +208,7 @@
                     "message": "Services depend on repository contracts, never database or controller modules."
                   },
                   {
-                    "group": ["#services/**", "!#services/service.ts"],
+                    "group": ["#services/**"],
                     "message": "A service capability must not coordinate another service capability. Depend on the required repository contracts directly."
                   }
                 ],

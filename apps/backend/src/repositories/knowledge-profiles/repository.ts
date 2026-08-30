@@ -1,6 +1,6 @@
+import type { SQL } from 'bun';
 import type { Entity } from '#models/entity.ts';
 import type { KnowledgeProfile } from '#models/knowledge-profile.ts';
-import { Repository } from '#repositories/repository.ts';
 
 export interface KnowledgeProfilesRepositoryContract {
   create(input: {
@@ -24,10 +24,13 @@ function profileFrom(row: ProfileRow): KnowledgeProfile {
   return { selfEntity: { ...row, isSelf: true } };
 }
 
-export class KnowledgeProfilesRepository
-  extends Repository
-  implements KnowledgeProfilesRepositoryContract
-{
+export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryContract {
+  private readonly sql: SQL;
+
+  constructor(sql: SQL) {
+    this.sql = sql;
+  }
+
   create(input: {
     ownerId: string;
     entityId: string;

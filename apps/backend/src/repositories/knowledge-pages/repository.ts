@@ -8,7 +8,6 @@ import type {
   KnowledgePageSummary,
   StoredKnowledgePage,
 } from '#models/knowledge-page.ts';
-import { Repository } from '#repositories/repository.ts';
 
 export interface KnowledgePagesRepositoryContract {
   create(input: {
@@ -204,10 +203,13 @@ async function insertLinks({
   }
 }
 
-export class KnowledgePagesRepository
-  extends Repository
-  implements KnowledgePagesRepositoryContract
-{
+export class KnowledgePagesRepository implements KnowledgePagesRepositoryContract {
+  private readonly sql: SQL;
+
+  constructor(sql: SQL) {
+    this.sql = sql;
+  }
+
   create(input: {
     pageId: string;
     revisionId: string;

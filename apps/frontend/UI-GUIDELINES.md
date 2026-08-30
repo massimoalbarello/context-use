@@ -103,6 +103,8 @@ same ownership.
 
 - Tabs switch views and use one shared underline treatment. Buttons perform actions; content cards
   and links must not look like buttons or tabs.
+- The tab list sits below the shared heading row and above the active panel. Never place tabs beside
+  the content they control.
 - Pages may expose Preview, Links, and Revisions. A page renders its H1 once from Markdown in
   Preview; do not duplicate the title, revision number, or update timestamp in shell chrome.
 - Entities keep their type, name, and distinguishing description visible because those fields are
@@ -122,8 +124,8 @@ same ownership.
 Authentication, onboarding, empty states, and recoverable failures use the same primitives and
 visual language as the workspace.
 
-- If no owner passkey exists, lead with sign-up. Setup registers the passkey and creates the owner's
-  entity before entering the workspace.
+- If no owner passkey exists, lead with sign-up. First-time onboarding registers the passkey and
+  creates the owner's entity before entering the workspace.
 - Do not insert a marketing screen between the user and the available authentication task.
 - Missing, empty, loading, and recoverable error states must look intentional and offer a useful
   next action. Reserve crash-style boundaries for unexpected failures.

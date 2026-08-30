@@ -113,9 +113,9 @@ protect a critical invariant, boundary, or failure mode whose regression would m
 
 ## Browser testing passkey authentication
 
-Exercise protected frontend journeys through the real Better Auth passkey flow. Do not add an auth
-bypass, seed a session, relax passkey verification, or enable another sign-in method for browser
-automation.
+When browser-testing a protected frontend journey, use the real Better Auth passkey flow. Browser
+end-to-end coverage is not part of the default validation baseline, but a browser pass must not add
+an auth bypass, seed a session, relax passkey verification, or enable another sign-in method.
 
 - Start `bun run dev:isolated`. It runs the normal development app against a fresh temporary
   `DATA_FOLDER`, opens `http://localhost:5173` in the browser controlled by the browser harness,

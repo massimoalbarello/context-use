@@ -1,7 +1,6 @@
 import type { KnowledgeProfile } from '#models/knowledge-profile.ts';
 import { readableIdFrom } from '#models/readable-id.ts';
 import type { KnowledgeProfilesRepositoryContract } from '#repositories/knowledge-profiles/repository.ts';
-import { Service } from '#services/service.ts';
 
 export type KnowledgeProfileMutationResult =
   | { state: 'created'; profile: KnowledgeProfile }
@@ -9,11 +8,10 @@ export type KnowledgeProfileMutationResult =
   | { state: 'readable_id_conflict'; readableId: string }
   | { state: 'readable_id_required' };
 
-export class KnowledgeProfilesService extends Service {
+export class KnowledgeProfilesService {
   private readonly profiles: KnowledgeProfilesRepositoryContract;
 
   constructor(profiles: KnowledgeProfilesRepositoryContract) {
-    super();
     this.profiles = profiles;
   }
 

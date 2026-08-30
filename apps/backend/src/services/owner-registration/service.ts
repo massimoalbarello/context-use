@@ -1,12 +1,10 @@
 import { ownerRegistrationStatus } from '#lib/auth/owner-registration.ts';
 import type { OwnerRegistrationRepositoryContract } from '#repositories/owner-registration/repository.ts';
-import { Service } from '#services/service.ts';
 
-export class OwnerRegistrationService extends Service {
+export class OwnerRegistrationService {
   private readonly registration: OwnerRegistrationRepositoryContract;
 
   constructor(registration: OwnerRegistrationRepositoryContract) {
-    super();
     this.registration = registration;
   }
 

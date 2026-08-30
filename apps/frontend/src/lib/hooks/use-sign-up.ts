@@ -21,7 +21,7 @@ export function useSignUp(): UseMutationResult<void, Error, SignUpVariables> {
       }
     },
     onSuccess: async () => {
-      queryClient.removeQueries({ queryKey: sessionQueryOptions.queryKey });
+      queryClient.clear();
       await queryClient.fetchQuery(sessionQueryOptions);
     },
   });
