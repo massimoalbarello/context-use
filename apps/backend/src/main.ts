@@ -5,7 +5,7 @@ import { createAuth } from '#lib/auth/better-auth.ts';
 import { loadEnv } from '#lib/env.ts';
 import { createLogger } from '#lib/logger.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
-import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-page.ts';
+import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-pages/model.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { FrontendAssetsRepository } from '#repositories/frontend-assets/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';

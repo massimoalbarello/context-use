@@ -1,5 +1,5 @@
-import type { KnowledgeProfile } from '#models/knowledge-profile.ts';
-import { readableIdFrom } from '#models/readable-id.ts';
+import type { KnowledgeProfile } from '#models/knowledge-profiles/model.ts';
+import { readableIdFrom } from '#models/readable-ids/model.ts';
 import type { KnowledgeProfilesRepositoryContract } from '#repositories/knowledge-profiles/repository.ts';
 
 export type KnowledgeProfileMutationResult =

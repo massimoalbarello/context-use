@@ -9,9 +9,10 @@ database migration rules live in `src/db/AGENTS.md`.
   rules, `repositories/` owns persistence contracts and adapters, `services/` owns application
   workflows, `routes/` owns HTTP, `db/` owns database infrastructure, and `lib/` contains narrowly
   named cross-cutting technical support. Do not add top-level folders for individual resources.
-- Organize repositories and services by capability beneath their layer, mirroring the route tree:
-  `repositories/entities/repository.ts`, `services/entities/service.ts`, and
-  `routes/api/entities/controller.ts`. Keep only genuinely layer-wide bases at the layer root.
+- Organize models, repositories, and services by capability beneath their layer, mirroring the
+  route tree: `models/entities/model.ts`, `repositories/entities/repository.ts`,
+  `services/entities/service.ts`, and `routes/api/entities/controller.ts`. Keep only genuinely
+  layer-wide bases at the layer root.
 - Repository contracts live with the repository capability that owns them. Models must not contain
   persistence interfaces, SQL shapes, or service contracts. Services depend on those repository
   contracts, never on concrete repository classes.
@@ -68,10 +69,10 @@ database migration rules live in `src/db/AGENTS.md`.
 
 ## Tests
 
-Backend tests live in `test` and follow the same route, service, repository, and adapter ownership
-as `src`. Read and follow `test/AGENTS.md` before adding or changing them. Prioritize authorization
-and tenant isolation, data integrity, destructive operations, transactions, idempotency, and public
-API contracts.
+Backend tests live in `test` and mirror the production path of the capability or boundary they
+exercise wherever one source owner exists. Read and follow `test/AGENTS.md` before adding or
+changing them. Prioritize authorization and tenant isolation, data integrity, destructive
+operations, transactions, idempotency, and public API contracts.
 
 ## Red flags
 

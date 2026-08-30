@@ -7,7 +7,7 @@ import {
   MAX_KNOWLEDGE_PAGE_BYTES,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
-} from '#models/knowledge-page.ts';
+} from '#models/knowledge-pages/model.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
 import {
   PaginationMetadataSchema,

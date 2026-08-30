@@ -1,5 +1,5 @@
 import { t } from 'elysia';
-import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '#models/readable-id.ts';
+import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '#models/readable-ids/model.ts';
 
 export const DEFAULT_LIST_LIMIT = 30;
 export const MAX_LIST_LIMIT = 50;

@@ -4,7 +4,7 @@ import {
   MAX_ENTITY_DESCRIPTION_LENGTH,
   MAX_ENTITY_NAME_LENGTH,
   MIN_ENTITY_DESCRIPTION_LENGTH,
-} from '#models/entity.ts';
+} from '#models/entities/model.ts';
 import {
   PaginationMetadataSchema,
   PaginationQuerySchema,

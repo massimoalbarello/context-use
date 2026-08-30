@@ -2,7 +2,7 @@ import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
-import type { EntityDetail } from '#models/entity.ts';
+import type { EntityDetail } from '#models/entities/model.ts';
 import {
   EntityParamsSchema,
   EntitySchema,

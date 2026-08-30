@@ -17,7 +17,7 @@ import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profi
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 
 const AUTH_MIGRATION = new URL(
-  '../../../src/db/migrations/0000_better_auth_schema.sql',
+  '../../../../src/db/migrations/0000_better_auth_schema.sql',
   import.meta.url,
 );
 

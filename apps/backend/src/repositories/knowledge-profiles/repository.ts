@@ -1,6 +1,6 @@
 import type { SQL } from 'bun';
-import type { Entity } from '#models/entity.ts';
-import type { KnowledgeProfile } from '#models/knowledge-profile.ts';
+import type { Entity } from '#models/entities/model.ts';
+import type { KnowledgeProfile } from '#models/knowledge-profiles/model.ts';
 
 export interface KnowledgeProfilesRepositoryContract {
   create(input: {

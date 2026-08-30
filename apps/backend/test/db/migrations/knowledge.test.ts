@@ -1,7 +1,10 @@
 import { Database } from 'bun:sqlite';
 import { expect, test } from 'bun:test';
 
-const KNOWLEDGE_MIGRATION = new URL('../../src/db/migrations/0001_knowledge.sql', import.meta.url);
+const KNOWLEDGE_MIGRATION = new URL(
+  '../../../src/db/migrations/0001_knowledge.sql',
+  import.meta.url,
+);
 const CONTENT_HASH_LENGTH = 64;
 
 test('knowledge revisions require a lowercase hexadecimal SHA-256 hash', async () => {

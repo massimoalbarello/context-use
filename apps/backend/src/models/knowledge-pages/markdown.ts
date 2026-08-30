@@ -3,8 +3,8 @@ import {
   MAX_KNOWLEDGE_PAGE_BYTES,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
-} from '#models/knowledge-page.ts';
-import { isReadableId } from '#models/readable-id.ts';
+} from '#models/knowledge-pages/model.ts';
+import { isReadableId } from '#models/readable-ids/model.ts';
 
 const INTERNAL_REFERENCE =
   /\[([^\]\n]+)\]\(context-use:\/\/(entity|page)\/([^\s/)#]+)(?:#([^\s)]+))?\)/g;

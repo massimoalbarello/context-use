@@ -1,5 +1,5 @@
-import type { Entity, EntityDetail } from '#models/entity.ts';
-import { readableIdFrom } from '#models/readable-id.ts';
+import type { Entity, EntityDetail } from '#models/entities/model.ts';
+import { readableIdFrom } from '#models/readable-ids/model.ts';
 import type { EntityRepositoryContract } from '#repositories/entities/repository.ts';
 import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
 

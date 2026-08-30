@@ -1,4 +1,4 @@
-import type { Entity } from '#models/entity.ts';
+import type { Entity } from '#models/entities/model.ts';
 
 export const MAX_KNOWLEDGE_PAGE_BYTES = 1_000_000;
 export const MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH = 280;
