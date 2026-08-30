@@ -36,9 +36,6 @@ export function KnowledgeSidebar({
     <aside className="knowledge-sidebar" data-collapsed={collapsed}>
       <div className="sidebar-brand">
         <Link className="sidebar-brand-link" to="/pages" aria-label="Context Use">
-          <span className="brand-mark" aria-hidden="true">
-            CU
-          </span>
           <span className="sidebar-brand-copy">
             <strong>Context Use</strong>
             <small>Private workspace</small>
@@ -51,7 +48,9 @@ export function KnowledgeSidebar({
           aria-expanded={!collapsed}
           onClick={() => setCollapsed(!collapsed)}
         >
-          <span aria-hidden="true">{collapsed ? '☰' : '‹'}</span>
+          <svg aria-hidden="true" viewBox="0 0 20 20">
+            <path d="M3 5h14M3 10h14M3 15h14" />
+          </svg>
         </button>
       </div>
 

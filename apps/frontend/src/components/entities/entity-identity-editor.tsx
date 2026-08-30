@@ -35,10 +35,7 @@ export function EntityIdentityEditor({
       }}
     >
       <div className="entity-inline-fields">
-        <p className="eyebrow">
-          Entity {isSelf && <span className="self-badge">You</span>}
-          <span className="editing-badge">Editing</span>
-        </p>
+        <p className="eyebrow">Entity {isSelf && <span className="self-badge">You</span>}</p>
         <form.Field
           name="name"
           validators={{ onMount: validateEntityName, onChange: validateEntityName }}

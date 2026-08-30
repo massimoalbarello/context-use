@@ -22,12 +22,18 @@
     border-color: var(--color-line, currentcolor);
   }
 
+  html,
+  body,
+  #app {
+    @apply h-full min-h-0 bg-paper;
+  }
+
   html {
-    @apply scroll-smooth bg-paper text-ink;
+    @apply scroll-smooth text-ink;
   }
 
   body {
-    @apply m-0 min-w-80 bg-paper font-sans text-ink antialiased;
+    @apply m-0 min-w-80 overflow-hidden font-sans text-ink antialiased;
   }
 
   button,
@@ -59,6 +65,10 @@
     @apply min-h-0 overflow-y-auto;
   }
 
+  .app-shell-authenticated .app-content {
+    @apply overflow-hidden;
+  }
+
   .app-header {
     @apply sticky top-0 z-20 flex flex-wrap items-center gap-2 bg-paper/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-nowrap md:gap-5 md:px-8 md:py-0;
   }
@@ -76,11 +86,11 @@
   }
 
   .knowledge-workspace {
-    @apply grid h-full min-h-0 grid-rows-[minmax(14rem,22rem)_minmax(0,1fr)] overflow-hidden bg-paper md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-none;
+    @apply relative grid h-full min-h-0 grid-rows-[minmax(14rem,22rem)_minmax(0,1fr)] overflow-hidden bg-paper md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-none;
   }
 
   .knowledge-workspace:has(.knowledge-sidebar[data-collapsed="true"]) {
-    @apply grid-rows-[4.5rem_minmax(0,1fr)] md:grid-cols-[4.5rem_minmax(0,1fr)] md:grid-rows-none;
+    @apply grid-rows-[0_minmax(0,1fr)] md:grid-cols-[0_minmax(0,1fr)] md:grid-rows-none;
   }
 
   .knowledge-sidebar {
@@ -88,15 +98,11 @@
   }
 
   .sidebar-brand {
-    @apply flex shrink-0 items-center justify-between gap-3 px-4 py-4;
+    @apply flex shrink-0 items-center justify-between gap-3 p-3;
   }
 
   .sidebar-brand-link {
-    @apply flex min-w-0 items-center gap-3;
-  }
-
-  .brand-mark {
-    @apply flex size-9 shrink-0 items-center justify-center rounded-lg bg-ink font-semibold text-white text-xs tracking-tight;
+    @apply flex min-w-0 items-center;
   }
 
   .sidebar-brand-copy {
@@ -112,23 +118,35 @@
   }
 
   .sidebar-toggle {
-    @apply flex size-9 shrink-0 items-center justify-center rounded-lg bg-transparent text-muted text-xl hover:bg-panel hover:text-ink;
+    @apply flex size-10 shrink-0 items-center justify-center rounded-xl border border-line bg-panel text-muted shadow-[0_4px_16px_rgb(23_23_23/0.05)] hover:text-ink;
+  }
+
+  .sidebar-toggle svg {
+    @apply size-5 fill-none stroke-current stroke-2;
+    stroke-linecap: round;
   }
 
   .sidebar-body {
     @apply flex min-h-0 flex-1 flex-col;
   }
 
+  .sidebar-sections,
+  .detail-tabs {
+    @apply flex gap-6;
+  }
+
   .sidebar-sections {
-    @apply mx-3 grid grid-cols-2 gap-1 rounded-lg bg-accent-soft p-1;
+    @apply mx-4;
   }
 
-  .sidebar-sections a {
-    @apply rounded-md px-3 py-2 text-center font-medium text-muted text-sm hover:text-ink;
+  .sidebar-sections a,
+  .detail-tabs button {
+    @apply -mb-px border-transparent border-b-2 px-1 py-3 font-medium text-muted text-sm hover:text-ink;
   }
 
-  .sidebar-sections a[data-active="true"] {
-    @apply bg-panel text-ink shadow-[0_1px_4px_rgb(23_23_23/0.08)];
+  .sidebar-sections a[data-active="true"],
+  .detail-tabs button[aria-selected="true"] {
+    @apply border-ink text-ink;
   }
 
   .sidebar-actions {
@@ -143,17 +161,17 @@
     @apply truncate font-semibold text-sm;
   }
 
-  .knowledge-sidebar[data-collapsed="true"] .sidebar-brand-copy,
+  .knowledge-sidebar[data-collapsed="true"] {
+    @apply z-10 overflow-visible;
+  }
+
+  .knowledge-sidebar[data-collapsed="true"] .sidebar-brand-link,
   .knowledge-sidebar[data-collapsed="true"] .sidebar-body {
     @apply hidden;
   }
 
   .knowledge-sidebar[data-collapsed="true"] .sidebar-brand {
-    @apply h-full px-2 py-2 md:h-auto md:flex-col;
-  }
-
-  .knowledge-sidebar[data-collapsed="true"] .sidebar-brand-link {
-    @apply justify-center;
+    @apply absolute top-5 left-5 p-0;
   }
 
   .count-badge {
@@ -225,6 +243,11 @@
     @apply mx-auto grid w-full max-w-6xl gap-7 px-5 py-7 md:px-9 md:py-9 lg:px-12;
   }
 
+  .knowledge-workspace:has(.knowledge-sidebar[data-collapsed="true"])
+    .detail-shell {
+    @apply pt-20 md:pt-9;
+  }
+
   .page-detail {
     @apply max-w-5xl;
   }
@@ -280,10 +303,6 @@
 
   .entity-inline-actions {
     @apply shrink-0 md:pt-5;
-  }
-
-  .editing-badge {
-    @apply ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-[0.65rem] text-ink tracking-wider;
   }
 
   .detail-meta,
@@ -596,18 +615,6 @@
 
   .detail-view {
     @apply min-w-0;
-  }
-
-  .detail-tabs {
-    @apply flex gap-6;
-  }
-
-  .detail-tabs button {
-    @apply -mb-px border-transparent border-b-2 px-1 py-3 font-medium text-muted text-sm hover:text-ink;
-  }
-
-  .detail-tabs button[aria-selected="true"] {
-    @apply border-ink text-ink;
   }
 
   .page-connections {
