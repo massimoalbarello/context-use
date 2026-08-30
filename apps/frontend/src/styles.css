@@ -262,7 +262,6 @@
   }
 
   .entity-identity,
-  .page-identity,
   .entity-inline-fields {
     @apply min-w-0 w-full max-w-3xl;
   }
@@ -292,10 +291,6 @@
 
   .entity-inline-actions {
     @apply shrink-0 md:pt-5;
-  }
-
-  .detail-meta {
-    @apply mt-2 block text-muted text-sm;
   }
 
   .editor-shell {

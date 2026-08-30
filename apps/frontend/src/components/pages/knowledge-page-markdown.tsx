@@ -42,13 +42,7 @@ export function knowledgeHeadingId(children: ReactNode): string {
     .replace(/[\s-]+/g, '-');
 }
 
-export function KnowledgePageMarkdown({
-  markdown,
-  hideTitle = false,
-}: {
-  markdown: string;
-  hideTitle?: boolean;
-}) {
+export function KnowledgePageMarkdown({ markdown }: { markdown: string }) {
   return (
     <article className="knowledge-markdown">
       <ReactMarkdown
@@ -84,7 +78,6 @@ export function KnowledgePageMarkdown({
             }
             return <a href={href}>{children}</a>;
           },
-          h1: ({ children }) => (hideTitle ? null : <h1>{children}</h1>),
           h2: ({ children }) => <h2 id={knowledgeHeadingId(children)}>{children}</h2>,
           h3: ({ children }) => <h3 id={knowledgeHeadingId(children)}>{children}</h3>,
           h4: ({ children }) => <h4 id={knowledgeHeadingId(children)}>{children}</h4>,

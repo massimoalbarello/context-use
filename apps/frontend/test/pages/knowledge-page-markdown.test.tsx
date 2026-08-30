@@ -14,12 +14,12 @@ describe('knowledge page Markdown', () => {
     );
   });
 
-  test('can leave the title to the surrounding resource header', () => {
+  test('renders the title as part of the Markdown document', () => {
     const html = renderToStaticMarkup(
-      <KnowledgePageMarkdown markdown={'# Header page\n\nThe body remains visible.'} hideTitle />,
+      <KnowledgePageMarkdown markdown={'# Header page\n\nThe body remains visible.'} />,
     );
 
-    expect(html).not.toContain('<h1');
+    expect(html).toContain('<h1>Header page</h1>');
     expect(html).toContain('<p>The body remains visible.</p>');
   });
 });
