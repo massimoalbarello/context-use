@@ -418,6 +418,14 @@
     @apply mt-7;
   }
 
+  .workspace-resource-actions {
+    @apply mt-7;
+  }
+
+  .workspace-resource-actions .primary-action {
+    @apply mt-0;
+  }
+
   .secondary-action {
     @apply border border-line bg-panel text-ink hover:border-accent hover:text-accent;
   }

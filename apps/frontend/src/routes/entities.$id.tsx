@@ -1,6 +1,7 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, type ErrorComponentProps, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
+import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';
@@ -14,17 +15,30 @@ export const Route = createFileRoute('/entities/$id')({
   },
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(entityQueryOptions(params.id)),
+  errorComponent: EntityRouteError,
   component: EntityRoute,
 });
 
+function EntityRouteError({ error, reset }: ErrorComponentProps) {
+  return <WorkspaceResourceError resource="entity" error={error} retry={reset} />;
+}
+
 function EntityRoute() {
   const { id } = Route.useParams();
-  const { data: entity, error } = useEntity(id);
+  const { data: entity, error, refetch } = useEntity(id);
   const updateEntity = useUpdateEntity();
   const [editing, setEditing] = useState(false);
 
   if (error) {
-    return <p className="page-shell error-message">{error.message}</p>;
+    return (
+      <WorkspaceResourceError
+        resource="entity"
+        error={error}
+        retry={() => {
+          void refetch();
+        }}
+      />
+    );
   }
   if (!entity) {
     return null;

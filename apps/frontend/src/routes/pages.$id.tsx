@@ -1,5 +1,6 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, type ErrorComponentProps, Link, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
+import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
 import { KnowledgePageMarkdown } from '../components/pages/knowledge-page-markdown';
 import { usePage } from '../lib/hooks/use-page';
@@ -13,8 +14,13 @@ export const Route = createFileRoute('/pages/$id')({
     }
   },
   loader: ({ context, params }) => context.queryClient.ensureQueryData(pageQueryOptions(params.id)),
+  errorComponent: KnowledgePageRouteError,
   component: KnowledgePageRoute,
 });
+
+function KnowledgePageRouteError({ error, reset }: ErrorComponentProps) {
+  return <WorkspaceResourceError resource="page" error={error} retry={reset} />;
+}
 
 function PageLinkList({ label, links }: { label: string; links: KnowledgePage['references'] }) {
   return (
@@ -158,11 +164,19 @@ function KnowledgePageRoute() {
   const { id } = Route.useParams();
   const [editing, setEditing] = useState(false);
   const [activeView, setActiveView] = useState<PageView>('preview');
-  const { data: page, error } = usePage(id);
+  const { data: page, error, refetch } = usePage(id);
   const updatePage = useUpdatePage();
 
   if (error) {
-    return <p className="page-shell error-message">{error.message}</p>;
+    return (
+      <WorkspaceResourceError
+        resource="page"
+        error={error}
+        retry={() => {
+          void refetch();
+        }}
+      />
+    );
   }
   if (!page) {
     return null;
