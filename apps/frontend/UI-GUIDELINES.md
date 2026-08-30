@@ -151,6 +151,9 @@ Controls with different jobs must not share an ambiguous treatment.
   description in the header because those fields are the entity. A page keeps only its type and
   actions above the views; the Markdown artifact owns and renders its H1 exactly once in Preview.
   Do not duplicate a page title, revision number, or update timestamp as shell metadata.
+- Treat the top-right action area as a persistent anchor. Entering edit mode may replace an Edit
+  action with Cancel and Save, but the action group must keep the same top and right edges; the
+  primary Save action occupies the former Edit action's anchor instead of shifting the controls.
 - Canonical addresses, slugs, and storage identifiers are not reading content. Do not show them by
   default; expose them only where the user needs to copy or inspect the raw Markdown or API-level
   identity. Never present a stable address as an ordinary editable field.
@@ -169,6 +172,8 @@ Reading is the default state. Editing should preserve the reader's spatial conte
 - Make editability perceptible through a quiet, consistent field treatment and clear save/cancel
   actions.
 - Keep typography, spacing, and surrounding layout stable when entering edit mode.
+- Preserve deliberate breathing room between a resource header and the first view or editable
+  field. Tightening one mode must not make another mode's controls and content touch.
 - Do not duplicate the visible name and description in a second form card below them.
 - Do not add an “editing” badge when the fields and actions already communicate the state.
 - Keep creation forms compact and task-focused. Derive readable addresses from the entered name or
@@ -217,6 +222,7 @@ Stop and reconsider the design when:
   scrolling;
 - the whole page scrolls because a sidebar list is not constrained to the viewport;
 - entering edit mode causes a large layout shift, duplicated content, or unexplained lines;
+- entering edit mode moves the persistent action anchor, or makes the header and first field touch;
 - tabs look like buttons, cards look like primary actions, or links look like tabs;
 - entities and pages are distinguishable only by reading a type label;
 - a resource result outside rendered Markdown is reduced to plain text or rebuilt with local markup

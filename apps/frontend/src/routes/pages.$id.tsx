@@ -185,11 +185,11 @@ function KnowledgePageRoute() {
   }
 
   return (
-    <div className="detail-shell page-detail">
+    <div className="detail-shell page-detail" data-editing={editing}>
       <header className="detail-header">
         <p className="eyebrow">Knowledge page</p>
         {editing ? (
-          <div className="action-row">
+          <div className="action-row detail-actions">
             <button
               className="secondary-action"
               type="button"
@@ -211,7 +211,7 @@ function KnowledgePageRoute() {
           </div>
         ) : (
           <button
-            className="primary-action"
+            className="primary-action detail-actions"
             type="button"
             onClick={() => {
               updatePage.reset();

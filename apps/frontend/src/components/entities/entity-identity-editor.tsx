@@ -85,7 +85,7 @@ export function EntityIdentityEditor({
         </form.Field>
         {error && <p className="error-message">{error.message}</p>}
       </div>
-      <div className="action-row entity-inline-actions">
+      <div className="action-row detail-actions">
         <button className="secondary-action" type="button" onClick={onCancel}>
           Cancel
         </button>

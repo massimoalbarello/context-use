@@ -70,7 +70,7 @@ function EntityRoute() {
             <p className="detail-description">{entity.description}</p>
           </div>
           <button
-            className="primary-action"
+            className="primary-action detail-actions"
             type="button"
             onClick={() => {
               updateEntity.reset();
