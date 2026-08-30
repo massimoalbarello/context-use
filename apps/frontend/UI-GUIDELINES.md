@@ -1,258 +1,140 @@
 # Context Use interface guide
 
-This guide records the durable interface decisions for Context Use. It describes the product
-language and experience that components must express, not the current component names, DOM shape,
-or CSS implementation. Change these conventions deliberately and update this guide when the product
-model changes.
+This guide defines the durable UI/UX rules for Context Use. It records product language and shared
+interaction contracts, not current DOM structure or one-off implementation details.
 
-## Design objective
+## One visual system
 
-Context Use is a working environment for navigating and refining a connected body of knowledge. The
-interface should keep that knowledge—not navigation, forms, or application chrome—as the dominant
-thing on screen.
+The dashboard is one product. Consistency across routes and states is more important than local
+novelty.
 
-- Prefer the smallest interface that makes the current task obvious.
-- Preserve context while the user moves between related resources or changes view.
-- Reveal creation and editing controls when requested instead of permanently allocating the
-  workspace to them.
-- Make every state feel like part of the application. Empty, missing, loading, and recoverable error
-  states must not resemble a crash.
+- Build generic controls and surfaces from the established shadcn/ui components in
+  `src/components/ui`.
+- The tweakcn **Minimal Neutral** theme is the canonical baseline: its semantic tokens, DM Sans,
+  Geist Mono, radii, borders, elevation, and interaction states are the source of truth.
+- Do not hand-style a native control when a shadcn primitive owns the interaction. Do not create a
+  local near-match for an existing color, spacing, radius, shadow, font, focus state, or component
+  variant.
+- Extend a shared token, primitive, or layout pattern when a recurring need is real. Keep a
+  difference local only when it communicates a genuine product distinction.
+- Use the same component for the same job everywhere. Hover, focus, selected, disabled, loading,
+  and editing states are part of that component contract, not route-specific styling.
+- Keep the interface monochrome until color has a stable semantic purpose in the shared token
+  system.
 
-## Domain language is interface language
+Before introducing new CSS or markup, check whether an existing shadcn primitive, shared component,
+or variant already owns the decision. Repeated fine-tuning across screens means the shared owner is
+missing or wrong.
 
-Use relationship verbs consistently in labels, headings, empty states, APIs surfaced to users, and
-accessibility text:
+## Product and resource language
+
+Use the relationship verb that expresses the domain:
 
 - Entities are **mentioned**.
 - Knowledge pages are **referenced**.
-- Records will be **sources** or **evidence**.
-- Assets will be **attached** or **embedded**.
+- Records are **sources** or **evidence**.
+- Assets are **attached** or **embedded**.
 
-Do not replace these with a generic verb such as “linked” when the relationship type is known. A
-page can mention entities, reference other pages, and be referenced by pages. An entity is mentioned
-by pages. The interface must make those directions easy to traverse.
+Do not replace a known relationship with generic “link” language. The interface must make it easy
+to move from pages to mentioned entities, referenced pages, and pages that reference or mention the
+current resource.
 
-## Resource identity
+Each resource type owns one reusable identity component:
 
-Entities, pages, records, and assets may share interaction behavior, but they are not visually or
-semantically interchangeable. Users should be able to recognize a resource type before reading
-supporting metadata.
+- Entities are identity-led: portrait or stable fallback mark, name, and—when space permits—a
+  distinguishing description or type.
+- Pages are document-led: document cue, H1 title, and—when space permits—a short excerpt computed
+  from the first meaningful body text after the H1.
+- Records and assets receive their own identity language when their product meaning is implemented;
+  they must not masquerade as pages or entities.
 
-- Each resource type owns one coherent visual language used everywhere it appears.
-- An entity is identity-led: show a portrait, avatar, or stable fallback mark with its name and,
-  where space allows, its distinguishing description or type.
-- A page is document-led: show its title with a restrained document cue. Inline page references are
-  text-led; page cards remain recognizable as documents rather than identity cards. Page cards show
-  a short excerpt derived from the first meaningful body text after the H1, never a separately
-  authored description.
-- Do not make different resource types identical and rely on a small type label to repair the
-  ambiguity.
-- Do not make the same resource type look unrelated across the sidebar, pickers, relationship views,
-  and content.
+Outside rendered Markdown, resources appear through these type-owned card components in sidebars,
+pickers, search, and relationship views. The shared card surface owns dimensions, padding, hover,
+focus, and selection; the resource component owns its internal identity. Keep cards in a collection
+the same size and truncate variable text with an ellipsis.
 
-The outer container communicates context and interaction—inline link, compact result, sidebar row,
-selected result, or card. The internal composition communicates resource type. Share small primitives
-for focus, hover, selection, spacing, or containers when they have one semantic contract; keep each
-resource's identity composition owned by that resource.
+At rest, resource cards are visually quiet. Hover reveals a temporary surface; selection is
+persistent and clearly stronger than hover. Use the same states everywhere, and never rely on a
+grey fill alone to communicate selection. Resource cards must remain distinguishable from form,
+dialog, and layout containers.
 
-Outside rendered page prose, a resource result is always a card. Reuse the resource type's one card
-composition in sidebars, relationship views, pickers, and search results; vary only density or
-contextual metadata that those recurring contexts genuinely require. Rendered Markdown is the
-exception: page references remain typographic links and entity mentions retain their compact
-identity treatment so the two relationships stay legible inside prose.
+Rendered Markdown is the exception: page references are typographic links and entity mentions use
+their compact identity treatment, keeping the two relationships legible inside prose.
 
-All resource cards share one interactive surface contract for padding, border, radius, focus,
-selection, and hover. Their internal identity remains type-owned. Give this resource-card surface a
-recognizable treatment distinct from generic form panels, dialogs, and layout surfaces so users can
-tell navigable knowledge from UI containment.
+## Linking and stable identity
 
-Resource-card chrome is interaction state, not permanent decoration. At rest, keep the shared card
-surface transparent. On hover, reveal a quiet temporary surface. For the selected resource, retain a
-white surface with a clear dark outline and restrained elevation; do not use a grey fill as the
-selection signal. Keyboard focus must be at least as legible as hover. These states must be identical
-in sidebars, pickers, search results, and relationship views.
+The editor has one discovery gesture: `@` searches all linkable resources. Mixed results use the
+established resource components so type is visually obvious; do not add a trigger for every type.
+Keyboard navigation keeps the active result visible.
 
-Cards in the same resource-result system use one fixed height. Truncate titles, descriptions, and
-page excerpts with an ellipsis instead of allowing content length to resize a result. A page excerpt
-remains derived from its first meaningful body text; the card is only a compact preview of it.
+Selecting a result stores a readable, typed link. Every resource also has an internal UUIDv7. The
+readable address is derived at creation, resolved explicitly on conflict, and then remains stable:
+changing a title or name must not rewrite existing Markdown links. Stable addresses are technical
+identity, not ordinary editable or reading content.
 
-Avoid a universal resource component with an expanding matrix of type and mode flags. A type-specific
-component may offer a small number of presentations when those presentations are real, recurring
-contexts with shared semantics. Future records and assets should receive their own language when
-their product meaning is understood rather than being forced into page or entity conventions.
+## Workspace and navigation
 
-## Linking and selection
+Knowledge is the dominant content. Navigation, forms, and application chrome support it without
+competing for the screen.
 
-The editor has one discovery gesture: `@` searches all resources that can participate in the
-hypermedia. The result presentation distinguishes entities, pages, and future resource types. The
-selected result determines the typed relationship; the trigger character does not.
+- Use one viewport-sized neutral canvas with a bounded, collapsible sidebar and a large foreground
+  content surface. Rounded corners belong to the foreground surface; the background fills the
+  viewport.
+- Resource lists scroll inside their available region and load incrementally. They never grow the
+  shell or render the entire knowledge base at once.
+- Keep selection and the contextual New action in the sidebar. Do not repeat the active collection
+  tab as another heading. Keep the owner profile and sign-out action at the bottom.
+- Remember the last selected page and entity for the browser session. Switching collections returns
+  to that resource. Opening any page card or page link selects its sidebar card and opens Preview.
+- Creation starts from an action and gets a focused route, dialog, or surface; creation forms never
+  permanently occupy the main workspace.
+- When collapsed, expose one menu control in the foreground surface corner. Do not stack placeholder
+  branding or carve conflicting shapes into the canvas.
+- Do not add a top header or primary-navigation item unless it owns a real product task.
 
-- Treat `@` as an authoring shortcut, not stored content or a domain identifier.
-- Store a stable, readable, typed link after selection.
-- Search by human-facing names or titles. Do not require users or agents to discover opaque IDs.
-- Give every resource an internal UUIDv7 identity and a separate readable typed address derived at
-  creation. The readable part may be meaningful, but it is a durable locator rather than a live
-  label: changing a name or title must not rewrite it or existing Markdown links.
-- Keep readable addresses immutable. Resolve a creation-time collision by asking for a distinct
-  readable ID; do not introduce a rename workflow that silently rewrites the hypermedia.
-- Do not add a new trigger character for every resource type.
-- Do not render exhaustive entity or page lists beside an editor. A searchable picker should reveal
-  a bounded, relevant set of options.
-- Preserve the established resource visuals inside mixed search results so type remains obvious.
+On narrow screens the sidebar may become a drawer, but navigation and selected content keep the
+same ownership.
 
-## Workspace shell and navigation
+## Detail views and actions
 
-The desktop workspace is a viewport-sized neutral canvas with a primary content surface and a
-collapsible navigation sidebar on the same background plane. The content surface should feel like a
-large, calm sheet floating over the canvas, not a collection of dashboard widgets.
-
-- The workspace frame is fixed to the available viewport. Long resource lists scroll inside their
-  bounded region and load incrementally; they must not grow the whole shell.
-- The selected page or entity receives most of the available screen. Creation forms never occupy a
-  permanent half of the dashboard.
-- Creation begins with a clear action and opens a focused route, surface, or dialog appropriate to
-  the task.
-- Place the contextual creation action beside the collection tabs. The active tab already names the
-  collection; do not repeat that name as a second heading below it.
-- Keep resource selection in the sidebar. Keep profile and sign-out controls at its bottom.
-- Remember the last selected resource in each collection for the current browser session. Switching
-  between collection tabs returns to those resources instead of resetting to the first result. A
-  return to a page always opens its canonical Preview; secondary page views do not become the
-  collection's remembered destination.
-- When the sidebar is collapsed, preserve the foreground surface and its rounded corner. Place one
-  compact menu control inside that corner; do not carve an inverse notch out of the surface or stack
-  unrelated logo and menu controls there.
-- The canvas fills the screen. Rounded corners belong to the foreground surface, not to an
-  arbitrarily ending background.
-- Do not add a top application header unless it owns information or actions that cannot live in the
-  sidebar or resource surface.
-- Product navigation contains product tasks. Developer conveniences such as API documentation do
-  not belong in the primary workspace navigation.
-
-On narrower screens, preserve the same ownership even if the sidebar becomes an overlay or drawer:
-navigation remains navigation and the selected resource remains the primary content.
-
-## Views, actions, cards, and links
-
-Controls with different jobs must not share an ambiguous treatment.
-
-- Tabs switch views within the selected resource. Use one consistent tab treatment with a restrained
-  underline for the active view.
-- Filled black controls are actions, especially primary actions. Do not use button styling for tabs
-  or passive content.
-- White surfaces and cards represent content. Do not make ordinary content look like a primary
-  action.
-- Inline links remain typographic and visibly interactive without looking like tabs.
-- Use resource views such as Preview, Links, and Revisions when those views exist. A revisions view
-  may begin as a simple list; do not hide existing domain history merely because a rich comparison
-  view is not ready.
-- Resource detail shells share spacing and top-right action alignment, while their persistent
-  identity follows the resource type. An entity keeps its type, name, and distinguishing
-  description in the header because those fields are the entity. A page keeps only its type and
-  actions above the views; the Markdown artifact owns and renders its H1 exactly once in Preview.
-  Do not duplicate a page title, revision number, or update timestamp as shell metadata.
-- Every resource detail begins with one dedicated heading row: its type label and action group are
-  vertically aligned at opposite ends of that row. Resource-specific content starts on the next
-  row—entity identity or editable fields for entities, view tabs for pages—and never shares the
-  heading row's horizontal layout context.
-- Treat the top-right action area as a persistent anchor. Entering edit mode may replace an Edit
-  action with Cancel and Save, but the action group must keep the same top and right edges; the
-  primary Save action occupies the former Edit action's anchor instead of shifting the controls.
-- Canonical addresses, slugs, and storage identifiers are not reading content. Do not show them by
-  default; expose them only where the user needs to copy or inspect the raw Markdown or API-level
-  identity. Never present a stable address as an ordinary editable field.
-- A resource card opens the resource's canonical reading view. A page card always opens Preview;
-  Links and Revisions are explicit secondary views, not sticky navigation state carried to another
-  page.
-- Remove dividers that do not clarify grouping, state, or interaction. Sharp rules around a rounded
-  floating surface are usually evidence of competing layout models.
-
-## Viewing, creating, and editing
-
-Reading is the default state. Editing should preserve the reader's spatial context.
-
-- Edit the displayed value in place when the editable value and the presented value are the same
-  concept.
-- Make editability perceptible through a quiet, consistent field treatment and clear save/cancel
-  actions.
-- Keep typography, spacing, and surrounding layout stable when entering edit mode.
-- Preserve deliberate breathing room between a resource header and the first view or editable
-  field. Tightening one mode must not make another mode's controls and content touch.
-- Do not duplicate the visible name and description in a second form card below them.
-- Do not add an “editing” badge when the fields and actions already communicate the state.
-- Keep creation forms compact and task-focused. Derive readable addresses from the entered name or
-  page title whenever possible and ask for disambiguation only on conflict.
-
-Most knowledge pages may ultimately be agent-authored, so manual creation must be usable without
-dominating the product's information architecture.
-
-## Visual baseline
-
-The current baseline is deliberately monochrome: black, white, and neutral greys. Introduce color
-only when it has a stable semantic job and belongs in the shared token system.
-
-The canonical implementation baseline is the tweakcn **Minimal Neutral** shadcn theme: DM Sans for
-interface text, Geist Mono for addresses and code, its semantic color/radius/elevation variables,
-and shadcn components built on Base UI for generic interactive primitives. This baseline is one
-system, not a visual reference to approximate independently on each screen. Product layout and
-resource identity may compose these primitives, but must not fork their control states locally.
-
-- Use one canvas color across the sidebar and every exposed part of the workspace background. A
-  floating control should use the surface color of the layer it sits on.
-- Use a restrained set of radii, spacing, border, and elevation tokens.
-- Prefer whitespace and hierarchy over nested cards and repeated divider lines.
-- Keep titles proportional to the task; utility and creation screens do not need marketing-scale
-  headings.
-- Do not show placeholder branding, brand initials, or icons that have no product meaning. Stable
-  initials remain appropriate as fallbacks for entity portraits.
-- A new one-off color, radius, shadow, or control treatment is a design decision, not a local fix.
+- Tabs switch views and use one shared underline treatment. Buttons perform actions; content cards
+  and links must not look like buttons or tabs.
+- Pages may expose Preview, Links, and Revisions. A page renders its H1 once from Markdown in
+  Preview; do not duplicate the title, revision number, or update timestamp in shell chrome.
+- Entities keep their type, name, and distinguishing description visible because those fields are
+  their identity.
+- Page and entity detail shells share the same content alignment, heading row, spacing rhythm, and
+  top-right action anchor. Resource-specific content begins strictly below the heading row.
+- Entering edit mode replaces Edit with Cancel and Save at the same top-right anchor. It must not
+  shift the header, spacing, or content.
+- Edit displayed identity in place when the presented and editable values are the same concept.
+  Reuse the established field treatment and keep editability obvious without duplicating content
+  in a form card or adding an “editing” badge.
+- Preserve deliberate space between the heading row and the first tab or field. Remove dividers,
+  borders, nested cards, and metadata that do not clarify grouping or interaction.
 
 ## Authentication and system states
 
-Authentication and onboarding are part of the workspace, not a separate visual product.
+Authentication, onboarding, empty states, and recoverable failures use the same primitives and
+visual language as the workspace.
 
-- Reuse the application's visual primitives and shell language for sign-up and sign-in.
-- If no owner passkey exists, lead with sign-up. A sign-in attempt must explain that the instance has
-  not been registered yet.
-- Treat first-time setup as one flow: register the owner passkey, create the owner's entity, and only
-  then enter the workspace.
-- Do not insert a marketing landing page between the user and the only available authentication
-  task.
-- Render missing resources and other expected failures as calm, recoverable in-application states
-  with a useful next action. Reserve crash-style error boundaries for genuine unexpected failures.
+- If no owner passkey exists, lead with sign-up. Setup registers the passkey and creates the owner's
+  entity before entering the workspace.
+- Do not insert a marketing screen between the user and the available authentication task.
+- Missing, empty, loading, and recoverable error states must look intentional and offer a useful
+  next action. Reserve crash-style boundaries for unexpected failures.
 
-## UI/UX red flags
+## Review checklist
 
-Stop and reconsider the design when:
+Stop and fix the shared system when:
 
-- a form, toolbar, heading, or navigation region competes with the selected knowledge for most of
-  the screen;
-- an active navigation label is immediately repeated as a heading without adding context;
-- a list renders every possible resource instead of using bounded search, pagination, or infinite
-  scrolling;
-- the whole page scrolls because a sidebar list is not constrained to the viewport;
-- entering edit mode causes a large layout shift, duplicated content, or unexplained lines;
-- entering edit mode moves the persistent action anchor, or makes the header and first field touch;
-- a resource's identity, editable fields, or view tabs participate in the same horizontal layout
-  row as its heading actions;
-- tabs look like buttons, cards look like primary actions, or links look like tabs;
-- a feature hand-builds a generic button, field, tab, badge, avatar, or UI card instead of using the
-  established shadcn primitive;
-- a feature bypasses semantic theme tokens with a local near-match for a shared color, radius,
-  shadow, or font;
-- entities and pages are distinguishable only by reading a type label;
-- a resource result outside rendered Markdown is reduced to plain text or rebuilt with local markup
-  instead of its type-owned card;
-- the same entity or page uses a different identity treatment in each feature;
-- hover and selection swap between unrelated card treatments in different features;
-- a long title, description, or excerpt makes one resource result taller than its siblings;
-- navigable resource cards and generic form or layout panels have no consistent visual distinction;
-- relationship language drifts between “mention,” “reference,” “source,” “attachment,” and generic
-  “link” terminology;
-- every new resource type adds another editor trigger or parallel selection workflow;
-- nested cards, borders, and dividers are being added to compensate for unclear hierarchy;
-- adjacent parts of the workspace use almost-but-not-quite matching neutral colors, spacing,
-  corners, or alignment;
-- a recoverable empty or not-found state looks like the application crashed;
-- a logo, badge, icon, metadata field, or navigation item is present without helping recognition,
-  orientation, or action.
+- the same job uses different components, spacing, alignment, or interaction states across routes;
+- a generic control or surface is hand-built instead of using the established shadcn primitive;
+- a feature introduces a one-off token or near-match for an existing style;
+- entering edit mode moves actions or causes a visible layout shift;
+- cards resize with content, or hover, focus, and selection are inconsistent;
+- the same resource type has unrelated identity treatments in different contexts;
+- entities and pages can be distinguished only by reading a type badge;
+- tabs look like buttons, content looks like an action, or a recoverable state looks like a crash;
+- a sidebar or picker renders an unbounded list or makes the whole workspace scroll;
+- nested cards, borders, dividers, metadata, or repeated headings compensate for unclear hierarchy.
