@@ -92,7 +92,7 @@ export function EntityIdentityEditor({
         <form.Subscribe selector={(state) => state.canSubmit}>
           {(canSubmit) => (
             <button className="primary-action" type="submit" disabled={!canSubmit || pending}>
-              {pending ? 'Saving…' : 'Save identity'}
+              {pending ? 'Saving…' : 'Save entity'}
             </button>
           )}
         </form.Subscribe>

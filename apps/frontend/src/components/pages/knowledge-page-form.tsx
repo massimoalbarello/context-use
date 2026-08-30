@@ -11,6 +11,14 @@ export type KnowledgePageFormValues = {
   markdown: string;
 };
 
+type KnowledgePageFormProps = {
+  initialValues: KnowledgePageFormValues;
+  readableIdLocked?: boolean;
+  pending: boolean;
+  error: Error | null;
+  onSubmit: (values: KnowledgePageFormValues) => void;
+} & ({ submitLabel: string; formId?: never } | { formId: string; submitLabel?: never });
+
 function validateMarkdown({ value }: { value: string }): string | undefined {
   return /^\s*# .+\n[\s\S]*\S/.test(value)
     ? undefined
@@ -20,18 +28,12 @@ function validateMarkdown({ value }: { value: string }): string | undefined {
 export function KnowledgePageForm({
   initialValues,
   readableIdLocked = false,
+  formId,
   pending,
   error,
   submitLabel,
   onSubmit,
-}: {
-  initialValues: KnowledgePageFormValues;
-  readableIdLocked?: boolean;
-  pending: boolean;
-  error: Error | null;
-  submitLabel: string;
-  onSubmit: (values: KnowledgePageFormValues) => void;
-}) {
+}: KnowledgePageFormProps) {
   const [knowledgeQuery, setKnowledgeQuery] = useState<string | null>(null);
   const { data: entitySuggestions = [] } = useEntitySuggestions(knowledgeQuery);
   const { data: pageSuggestions = [] } = usePageSuggestions(knowledgeQuery);
@@ -50,6 +52,7 @@ export function KnowledgePageForm({
 
   return (
     <form
+      id={formId}
       className="grid gap-5"
       onSubmit={(event) => {
         event.preventDefault();
@@ -63,7 +66,7 @@ export function KnowledgePageForm({
         >
           {(field) => (
             <label className="field" htmlFor={field.name}>
-              <span>Markdown</span>
+              <span className="sr-only">Knowledge page content</span>
               <KnowledgeLinkTextarea
                 id={field.name}
                 name={field.name}
@@ -110,17 +113,19 @@ export function KnowledgePageForm({
 
       {error && !readableIdIssue && <p className="error-message">{error.message}</p>}
 
-      <form.Subscribe selector={(state) => state.canSubmit}>
-        {(canSubmit) => (
-          <button
-            className="primary-action justify-self-start"
-            type="submit"
-            disabled={!canSubmit || pending}
-          >
-            {pending ? 'Saving…' : submitLabel}
-          </button>
-        )}
-      </form.Subscribe>
+      {submitLabel && (
+        <form.Subscribe selector={(state) => state.canSubmit}>
+          {(canSubmit) => (
+            <button
+              className="primary-action justify-self-start"
+              type="submit"
+              disabled={!canSubmit || pending}
+            >
+              {pending ? 'Saving…' : submitLabel}
+            </button>
+          )}
+        </form.Subscribe>
+      )}
     </form>
   );
 }

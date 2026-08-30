@@ -11,6 +11,8 @@ import { type KnowledgePage, pageQueryOptions } from '../queries/pages';
 
 type PageView = 'preview' | 'links' | 'revisions';
 
+const PAGE_EDIT_FORM_ID = 'knowledge-page-edit-form';
+
 function isPageView(value: unknown): value is PageView {
   return value === 'preview' || value === 'links' || value === 'revisions';
 }
@@ -186,13 +188,39 @@ function KnowledgePageRoute() {
     <div className="detail-shell page-detail">
       <header className="detail-header">
         <p className="eyebrow">Knowledge page</p>
-        <button
-          className={editing ? 'secondary-action' : 'primary-action'}
-          type="button"
-          onClick={() => setEditing(!editing)}
-        >
-          {editing ? 'Cancel' : 'Edit page'}
-        </button>
+        {editing ? (
+          <div className="action-row">
+            <button
+              className="secondary-action"
+              type="button"
+              onClick={() => {
+                updatePage.reset();
+                setEditing(false);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="primary-action"
+              type="submit"
+              form={PAGE_EDIT_FORM_ID}
+              disabled={updatePage.isPending}
+            >
+              {updatePage.isPending ? 'Saving…' : 'Save page'}
+            </button>
+          </div>
+        ) : (
+          <button
+            className="primary-action"
+            type="button"
+            onClick={() => {
+              updatePage.reset();
+              setEditing(true);
+            }}
+          >
+            Edit page
+          </button>
+        )}
       </header>
 
       {editing ? (
@@ -200,9 +228,9 @@ function KnowledgePageRoute() {
           key={page.revisionNumber}
           initialValues={{ readableId: page.readableId, markdown: page.markdown }}
           readableIdLocked
+          formId={PAGE_EDIT_FORM_ID}
           pending={updatePage.isPending}
           error={updatePage.error}
-          submitLabel="Save new revision"
           onSubmit={({ markdown }) =>
             updatePage.mutate(
               {

@@ -240,6 +240,10 @@
     @apply mx-auto grid w-full max-w-6xl gap-7 px-5 py-7 md:px-9 md:py-9 lg:px-12;
   }
 
+  .page-detail {
+    @apply gap-0;
+  }
+
   .knowledge-workspace:has(.knowledge-sidebar[data-collapsed="true"])
     .detail-shell {
     @apply pt-20 md:pt-9;
@@ -282,7 +286,6 @@
   .entity-description-input {
     @apply mt-3 min-h-[1lh] max-h-40 resize-y py-0 text-muted text-lg leading-relaxed;
     field-sizing: content;
-    max-width: calc(42rem + 1rem);
   }
 
   .entity-inline-field em {
@@ -332,7 +335,7 @@
   }
 
   .eyebrow {
-    @apply inline-flex min-h-5 items-center gap-2 font-semibold text-accent text-xs uppercase tracking-[0.16em];
+    @apply flex min-h-5 w-fit items-center gap-2 font-semibold text-accent text-xs uppercase tracking-[0.16em];
   }
 
   .section-heading {
