@@ -2,7 +2,7 @@ import { createFileRoute, type ErrorComponentProps, redirect } from '@tanstack/r
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
-import { KnowledgePageList } from '../components/pages/knowledge-page-list';
+import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';
 import { entityQueryOptions } from '../queries/entities';
@@ -94,7 +94,17 @@ function EntityRoute() {
           <h2>Mentioned by</h2>
           <span className="count-badge">{entity.pages.length}</span>
         </div>
-        <KnowledgePageList pages={entity.pages} />
+        {entity.pages.length > 0 ? (
+          <ul className="object-inline-list">
+            {entity.pages.map((page) => (
+              <li key={page.id}>
+                <KnowledgePageLink page={page} presentation="inline" />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="connection-empty">None yet.</p>
+        )}
       </section>
     </div>
   );

@@ -118,7 +118,7 @@
   }
 
   .sidebar-toggle {
-    @apply flex size-10 shrink-0 items-center justify-center rounded-xl border border-line bg-panel text-muted shadow-[0_4px_16px_rgb(23_23_23/0.05)] hover:text-ink;
+    @apply flex size-10 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent text-muted hover:bg-accent-soft hover:text-ink;
   }
 
   .sidebar-toggle svg {
@@ -171,7 +171,7 @@
   }
 
   .knowledge-sidebar[data-collapsed="true"] .sidebar-brand {
-    @apply absolute top-5 left-5 p-0;
+    @apply absolute top-2 left-2 flex size-16 items-center justify-center rounded-br-2xl bg-paper p-0 md:top-3 md:left-3;
   }
 
   .count-badge {
@@ -457,52 +457,94 @@
     @apply flex flex-wrap gap-2;
   }
 
-  .card-list {
+  .object-card-list {
     @apply grid list-none gap-3 p-0;
   }
 
-  .card-list li {
+  .object-card-list li {
     @apply min-w-0;
   }
 
-  .card-link {
-    @apply grid gap-2 rounded-xl border border-line bg-panel p-4 transition hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_5px_18px_rgb(23_23_23/0.08)];
+  .object-link {
+    @apply transition;
   }
 
-  .card-link > span {
-    @apply flex flex-wrap items-baseline justify-between gap-2;
+  .object-link-card {
+    @apply rounded-xl bg-panel p-3 hover:shadow-[0_4px_16px_rgb(23_23_23/0.08)];
   }
 
-  .card-link strong {
-    @apply font-semibold;
+  .object-link-card[data-status="active"] {
+    @apply shadow-[0_2px_10px_rgb(23_23_23/0.1)];
   }
 
-  .card-link code {
-    @apply font-mono text-accent text-xs;
+  .workspace-card .object-link-card {
+    @apply shadow-[0_1px_5px_rgb(23_23_23/0.08)];
   }
 
-  .card-markers {
-    @apply flex items-center gap-2;
+  .entity-link-card {
+    @apply flex min-w-0 items-center gap-3;
   }
 
-  .card-link p {
-    @apply line-clamp-3 text-muted text-sm leading-relaxed;
+  .entity-link-avatar {
+    @apply flex shrink-0 items-center justify-center rounded-full bg-accent-soft font-semibold text-ink uppercase;
   }
 
-  .knowledge-sidebar .card-list {
-    @apply gap-1;
+  .entity-link-card .entity-link-avatar {
+    @apply size-9 text-xs;
   }
 
-  .knowledge-sidebar .card-link {
-    @apply gap-1 rounded-lg border-0 bg-transparent p-3 shadow-none hover:translate-y-0 hover:bg-panel hover:shadow-none;
+  .entity-link-copy {
+    @apply grid min-w-0 flex-1 gap-0.5;
   }
 
-  .knowledge-sidebar .card-link[data-status="active"] {
-    @apply bg-panel shadow-[0_1px_5px_rgb(23_23_23/0.08)];
+  .entity-link-name {
+    @apply flex min-w-0 items-center gap-2;
   }
 
-  .knowledge-sidebar .card-link p {
-    @apply line-clamp-2 text-xs;
+  .entity-link-name strong {
+    @apply min-w-0 truncate font-semibold text-sm;
+  }
+
+  .entity-link-copy small {
+    @apply line-clamp-2 text-muted text-xs leading-relaxed;
+  }
+
+  .entity-link-inline {
+    @apply mx-0.5 inline-flex items-center gap-1 rounded-full bg-paper py-0.5 pr-2 pl-1 font-medium text-ink no-underline align-baseline hover:bg-accent-soft;
+  }
+
+  .entity-link-inline .entity-link-avatar {
+    @apply size-5 text-[0.6rem];
+  }
+
+  .knowledge-page-link-card {
+    @apply flex min-w-0 items-center gap-3;
+  }
+
+  .knowledge-page-link-card strong {
+    @apply min-w-0 line-clamp-2 font-semibold text-sm leading-snug;
+  }
+
+  .knowledge-page-link-mark {
+    @apply flex size-9 shrink-0 items-center justify-center rounded-md bg-paper text-muted;
+  }
+
+  .knowledge-page-link-mark svg {
+    @apply size-5 fill-none stroke-current stroke-[1.4];
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .knowledge-page-link-inline {
+    @apply font-medium text-ink underline decoration-ink/35 underline-offset-4 hover:decoration-ink;
+  }
+
+  .knowledge-sidebar .object-card-list {
+    @apply gap-2;
+  }
+
+  .object-inline-list {
+    @apply grid list-none gap-2 p-0 text-sm;
   }
 
   .self-badge {
@@ -592,8 +634,7 @@
     @apply list-decimal;
   }
 
-  .knowledge-markdown a,
-  .link-section a {
+  .knowledge-markdown a:not(.entity-link-inline) {
     @apply font-medium text-accent underline decoration-accent/35 underline-offset-4 hover:decoration-accent;
   }
 

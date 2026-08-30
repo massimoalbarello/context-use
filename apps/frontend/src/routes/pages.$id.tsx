@@ -1,7 +1,9 @@
-import { createFileRoute, type ErrorComponentProps, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, type ErrorComponentProps, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
+import { EntityLink } from '../components/entities/entity-link';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
+import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../components/pages/knowledge-page-markdown';
 import { usePage } from '../lib/hooks/use-page';
 import { useUpdatePage } from '../lib/hooks/use-update-page';
@@ -33,10 +35,10 @@ function PageLinkList({ label, links }: { label: string; links: KnowledgePage['r
         <ul>
           {links.map(({ page, fragment }) => (
             <li key={`${page.id}#${fragment ?? ''}`}>
-              <Link to="/pages/$id" params={{ id: page.readableId }} hash={fragment ?? undefined}>
+              <KnowledgePageLink page={page} presentation="inline" fragment={fragment ?? undefined}>
                 {page.title}
                 {fragment ? ` · #${fragment}` : ''}
-              </Link>
+              </KnowledgePageLink>
             </li>
           ))}
         </ul>
@@ -57,16 +59,14 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
     >
       <section className="link-section">
         <div className="section-heading">
-          <h2>Entities</h2>
+          <h2>Mentions</h2>
           <span className="count-badge">{page.mentions.length}</span>
         </div>
         {page.mentions.length > 0 ? (
           <ul>
             {page.mentions.map((entity) => (
               <li key={entity.id}>
-                <Link to="/entities/$id" params={{ id: entity.readableId }}>
-                  {entity.name}
-                </Link>
+                <EntityLink entity={entity} presentation="card" />
               </li>
             ))}
           </ul>

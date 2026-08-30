@@ -1,5 +1,5 @@
-import { Link } from '@tanstack/react-router';
 import type { KnowledgePageSummary } from '../../queries/pages';
+import { KnowledgePageLink } from './knowledge-page-link';
 
 export function KnowledgePageList({ pages }: { pages: KnowledgePageSummary[] }) {
   if (pages.length === 0) {
@@ -12,18 +12,10 @@ export function KnowledgePageList({ pages }: { pages: KnowledgePageSummary[] }) 
   }
 
   return (
-    <ul className="card-list">
+    <ul className="knowledge-page-card-list object-card-list">
       {pages.map((page) => (
         <li key={page.id}>
-          <Link to="/pages/$id" params={{ id: page.readableId }} className="card-link">
-            <span>
-              <strong>{page.title}</strong>
-              <code>{page.readableId}</code>
-            </span>
-            <p>
-              Revision {page.revisionNumber} · updated {page.updatedAt.toLocaleDateString()}
-            </p>
-          </Link>
+          <KnowledgePageLink page={page} presentation="card" />
         </li>
       ))}
     </ul>

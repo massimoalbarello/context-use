@@ -1,6 +1,7 @@
-import { Link } from '@tanstack/react-router';
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
+import { EntityLink } from '../entities/entity-link';
+import { KnowledgePageLink } from './knowledge-page-link';
 
 type InternalLink =
   | { kind: 'entity'; readableId: string }
@@ -50,17 +51,29 @@ export function KnowledgePageMarkdown({ markdown }: { markdown: string }) {
           a: ({ href, children }) => {
             const target = href ? internalLink(href) : null;
             if (target?.kind === 'entity') {
+              const name = textContent(children);
               return (
-                <Link to="/entities/$id" params={{ id: target.readableId }}>
+                <EntityLink
+                  entity={{
+                    readableId: target.readableId,
+                    name,
+                  }}
+                  presentation="inline"
+                >
                   {children}
-                </Link>
+                </EntityLink>
               );
             }
             if (target?.kind === 'page') {
+              const title = textContent(children);
               return (
-                <Link to="/pages/$id" params={{ id: target.readableId }} hash={target.fragment}>
+                <KnowledgePageLink
+                  page={{ readableId: target.readableId, title }}
+                  presentation="inline"
+                  fragment={target.fragment}
+                >
                   {children}
-                </Link>
+                </KnowledgePageLink>
               );
             }
             return <a href={href}>{children}</a>;

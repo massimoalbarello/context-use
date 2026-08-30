@@ -1,5 +1,5 @@
-import { Link } from '@tanstack/react-router';
 import type { EntitySummary } from '../../queries/entities';
+import { EntityLink } from './entity-link';
 
 export function EntityList({ entities }: { entities: EntitySummary[] }) {
   if (entities.length === 0) {
@@ -12,19 +12,10 @@ export function EntityList({ entities }: { entities: EntitySummary[] }) {
   }
 
   return (
-    <ul className="card-list">
+    <ul className="entity-card-list object-card-list">
       {entities.map((entity) => (
         <li key={entity.id}>
-          <Link to="/entities/$id" params={{ id: entity.readableId }} className="card-link">
-            <span>
-              <strong>{entity.name}</strong>
-              <span className="card-markers">
-                {entity.isSelf && <span className="self-badge">You</span>}
-                <code>{entity.readableId}</code>
-              </span>
-            </span>
-            <p>{entity.description}</p>
-          </Link>
+          <EntityLink entity={entity} presentation="card" />
         </li>
       ))}
     </ul>
