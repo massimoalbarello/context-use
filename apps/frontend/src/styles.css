@@ -200,13 +200,11 @@
     @apply flex flex-col items-start justify-between gap-4 md:flex-row md:items-center;
   }
 
-  .page-header h1,
-  .welcome-shell h1 {
+  .page-header h1 {
     @apply mt-1 max-w-3xl font-semibold text-4xl tracking-tight md:text-5xl;
   }
 
-  .page-header > div > p:last-child,
-  .welcome-shell > p:not(.eyebrow) {
+  .page-header > div > p:last-child {
     @apply mt-3 max-w-2xl text-lg text-muted leading-relaxed;
   }
 
@@ -432,13 +430,5 @@
 
   .link-section ul {
     @apply mt-2 grid list-none gap-1.5 p-0 text-sm;
-  }
-
-  .welcome-shell {
-    @apply mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl flex-col items-start justify-center px-5 py-16 md:px-8;
-  }
-
-  .welcome-shell .primary-action {
-    @apply mt-8;
   }
 }
