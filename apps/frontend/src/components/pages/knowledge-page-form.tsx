@@ -1,22 +1,15 @@
 import { useForm } from '@tanstack/react-form';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
 import { useEntitySuggestions } from '../../lib/hooks/use-entities';
 import { usePageSuggestions } from '../../lib/hooks/use-pages';
+import { ReadableIdField, validateReadableId } from '../knowledge/readable-id-field';
 import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
-
-const READABLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export type KnowledgePageFormValues = {
   readableId?: string;
   markdown: string;
 };
-
-function validateReadableId({ value }: { value?: string }): string | undefined {
-  return value && READABLE_ID_PATTERN.test(value)
-    ? undefined
-    : 'Use lowercase words separated by single hyphens.';
-}
 
 function validateMarkdown({ value }: { value: string }): string | undefined {
   return /^\s*# .+\n[\s\S]*\S/.test(value)
@@ -54,12 +47,6 @@ export function KnowledgePageForm({
   const conflictingReadableId = error instanceof ReadableIdConflictError ? error.readableId : null;
   const readableIdIssue =
     error instanceof ReadableIdConflictError || error instanceof ReadableIdRequiredError;
-
-  useEffect(() => {
-    if (conflictingReadableId && !form.getFieldValue('readableId')) {
-      form.setFieldValue('readableId', conflictingReadableId);
-    }
-  }, [form, conflictingReadableId]);
 
   return (
     <form
@@ -105,30 +92,17 @@ export function KnowledgePageForm({
             validators={{ onMount: validateReadableId, onChange: validateReadableId }}
           >
             {(field) => (
-              <label className="field conflict-field">
-                <span>
-                  {conflictingReadableId ? 'Choose a distinct readable ID' : 'Choose a readable ID'}
-                </span>
-                <input
-                  name={field.name}
-                  value={field.state.value ?? ''}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                  aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
-                />
-                <small>
-                  <code>
-                    context-use://page/{field.state.value || conflictingReadableId || 'readable-id'}
-                  </code>{' '}
-                  is the permanent address.{' '}
-                  {conflictingReadableId
-                    ? 'Add a distinguishing word rather than a number when possible.'
-                    : 'Use short lowercase words separated by hyphens.'}
-                </small>
-                {field.state.meta.isTouched && field.state.meta.errors[0] && (
-                  <em role="alert">{field.state.meta.errors[0]}</em>
-                )}
-              </label>
+              <ReadableIdField
+                kind="page"
+                value={field.state.value ?? ''}
+                conflictingReadableId={conflictingReadableId}
+                invalid={field.state.meta.errors.length > 0}
+                error={
+                  field.state.meta.isTouched ? field.state.meta.errors[0]?.toString() : undefined
+                }
+                onBlur={field.handleBlur}
+                onChange={field.handleChange}
+              />
             )}
           </form.Field>
         )}

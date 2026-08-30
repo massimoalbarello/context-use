@@ -47,7 +47,7 @@ Use this syntax:
     expect(parsed.links).toEqual({ entityReadableIds: [], pageReferences: [] });
   });
 
-  test('derives a bounded plain-text excerpt from the first body passage', () => {
+  test('derives a bounded plain-text excerpt from the first meaningful body text', () => {
     const parsed = parseKnowledgePageMarkdown(`# Context portability
 
 ## Why it matters

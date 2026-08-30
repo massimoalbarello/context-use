@@ -1,21 +1,18 @@
 import { useForm } from '@tanstack/react-form';
-import { useEffect } from 'react';
 import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
-import { validateEntityDescription, validateEntityName } from './entity-validation';
-
-const READABLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+import { ReadableIdField, validateReadableId } from '../knowledge/readable-id-field';
+import {
+  MAX_ENTITY_DESCRIPTION_LENGTH,
+  MAX_ENTITY_NAME_LENGTH,
+  validateEntityDescription,
+  validateEntityName,
+} from './entity-validation';
 
 export type EntityFormValues = {
   readableId?: string;
   name: string;
   description: string;
 };
-
-function validateReadableId({ value }: { value?: string }): string | undefined {
-  return value && READABLE_ID_PATTERN.test(value)
-    ? undefined
-    : 'Use lowercase words separated by single hyphens.';
-}
 
 export function EntityForm({
   initialValues,
@@ -46,12 +43,6 @@ export function EntityForm({
   const readableIdIssue =
     error instanceof ReadableIdConflictError || error instanceof ReadableIdRequiredError;
 
-  useEffect(() => {
-    if (conflictingReadableId && !form.getFieldValue('readableId')) {
-      form.setFieldValue('readableId', conflictingReadableId);
-    }
-  }, [form, conflictingReadableId]);
-
   return (
     <form
       className="editor-fields"
@@ -70,6 +61,7 @@ export function EntityForm({
             <input
               name={field.name}
               value={field.state.value}
+              maxLength={MAX_ENTITY_NAME_LENGTH}
               onBlur={field.handleBlur}
               onChange={(event) => field.handleChange(event.target.value)}
               aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
@@ -87,30 +79,17 @@ export function EntityForm({
           validators={{ onMount: validateReadableId, onChange: validateReadableId }}
         >
           {(field) => (
-            <label className="field conflict-field">
-              <span>
-                {conflictingReadableId ? 'Choose a distinct readable ID' : 'Choose a readable ID'}
-              </span>
-              <input
-                name={field.name}
-                value={field.state.value ?? ''}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
-              />
-              <small>
-                <code>
-                  context-use://entity/{field.state.value || conflictingReadableId || 'readable-id'}
-                </code>{' '}
-                is the permanent address.{' '}
-                {conflictingReadableId
-                  ? 'Add a distinguishing word rather than a number when possible.'
-                  : 'Use short lowercase words separated by hyphens.'}
-              </small>
-              {field.state.meta.isTouched && field.state.meta.errors[0] && (
-                <em role="alert">{field.state.meta.errors[0]}</em>
-              )}
-            </label>
+            <ReadableIdField
+              kind="entity"
+              value={field.state.value ?? ''}
+              conflictingReadableId={conflictingReadableId}
+              invalid={field.state.meta.errors.length > 0}
+              error={
+                field.state.meta.isTouched ? field.state.meta.errors[0]?.toString() : undefined
+              }
+              onBlur={field.handleBlur}
+              onChange={field.handleChange}
+            />
           )}
         </form.Field>
       )}
@@ -128,7 +107,7 @@ export function EntityForm({
             <textarea
               name={field.name}
               rows={4}
-              maxLength={600}
+              maxLength={MAX_ENTITY_DESCRIPTION_LENGTH}
               value={field.state.value}
               onBlur={field.handleBlur}
               onChange={(event) => field.handleChange(event.target.value)}

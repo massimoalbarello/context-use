@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test';
 import { StatusMap } from 'elysia';
 import { createApp } from '#app.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
-import type { AssetsServiceContract } from '#services/assets.service.ts';
 import type { EntitiesServiceContract } from '#services/entities.service.ts';
+import type { FrontendAssetsServiceContract } from '#services/frontend-assets.service.ts';
 import type { HealthServiceContract } from '#services/health.service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles.service.ts';
@@ -19,7 +19,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     handler: async () => new Response(null, { status: 404 }),
     getSession: async () => null,
   };
-  const assetsService: AssetsServiceContract = {
+  const frontendAssetsService: FrontendAssetsServiceContract = {
     routes: () => new Map<string, Response>(),
     fallback: () => null,
   };
@@ -52,7 +52,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
 
   const response = await createApp({
     auth,
-    assetsService,
+    frontendAssetsService,
     entitiesService,
     healthService,
     ownerRegistrationService,

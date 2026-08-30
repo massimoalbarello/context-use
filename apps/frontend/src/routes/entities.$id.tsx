@@ -1,4 +1,4 @@
-import { createFileRoute, type ErrorComponentProps, redirect } from '@tanstack/react-router';
+import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
@@ -8,11 +8,6 @@ import { useUpdateEntity } from '../lib/hooks/use-update-entity';
 import { entityQueryOptions } from '../queries/entities';
 
 export const Route = createFileRoute('/entities/$id')({
-  beforeLoad: ({ context, location }) => {
-    if (!context.session) {
-      throw redirect({ to: '/login', search: { redirect: location.href } });
-    }
-  },
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(entityQueryOptions(params.id)),
   errorComponent: EntityRouteError,

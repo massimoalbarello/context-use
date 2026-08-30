@@ -1,6 +1,6 @@
 import { extname } from 'node:path';
 import { RoutePrefix } from '#lib/routes/prefixes.ts';
-import type { AssetsRepository } from '#repositories/assets.repository.ts';
+import type { FrontendAssetsRepository } from '#repositories/frontend-assets.repository.ts';
 import { Service } from '#services/service.ts';
 
 const INDEX_HTML_PATH = '/index.html';
@@ -9,16 +9,16 @@ const IMMUTABLE_PATH_PREFIX = '/assets/';
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const REVALIDATE_CACHE_CONTROL = 'no-cache';
 
-export class AssetsService extends Service {
-  private readonly assetsRepo: AssetsRepository;
+export class FrontendAssetsService extends Service {
+  private readonly assets: FrontendAssetsRepository;
 
-  constructor(assetsRepo: AssetsRepository) {
+  constructor(assets: FrontendAssetsRepository) {
     super();
-    this.assetsRepo = assetsRepo;
+    this.assets = assets;
   }
 
   routes(): Map<string, Response> {
-    const assets = this.assetsRepo.list();
+    const assets = this.assets.list();
     const routes = new Map<string, Response>();
 
     for (const [path, asset] of assets) {
@@ -40,7 +40,7 @@ export class AssetsService extends Service {
       return null;
     }
 
-    const indexHtml = this.assetsRepo.list().get(INDEX_HTML_PATH);
+    const indexHtml = this.assets.list().get(INDEX_HTML_PATH);
     return indexHtml ? this.respond({ asset: indexHtml, path: INDEX_HTML_PATH }) : null;
   }
 
@@ -55,4 +55,4 @@ export class AssetsService extends Service {
   }
 }
 
-export type AssetsServiceContract = Pick<AssetsService, 'routes' | 'fallback'>;
+export type FrontendAssetsServiceContract = Pick<FrontendAssetsService, 'routes' | 'fallback'>;

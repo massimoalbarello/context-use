@@ -1,19 +1,19 @@
 import { getPublicAssets } from '#lib/assets.ts';
 
-type StaticAssetsMap = Map<string, Blob>;
+type FrontendAssetsMap = Map<string, Blob>;
 
-export class AssetsRepository {
-  private assets: StaticAssetsMap | null = null;
+export class FrontendAssetsRepository {
+  private assets: FrontendAssetsMap | null = null;
 
-  list(): StaticAssetsMap {
+  list(): FrontendAssetsMap {
     if (this.assets) {
       return this.assets;
     }
     return this.loadAssets();
   }
 
-  private loadAssets(): StaticAssetsMap {
-    const assets: StaticAssetsMap = new Map();
+  private loadAssets(): FrontendAssetsMap {
+    const assets: FrontendAssetsMap = new Map();
     for (const [path, file] of getPublicAssets()) {
       assets.set(`/${path}`, file);
     }

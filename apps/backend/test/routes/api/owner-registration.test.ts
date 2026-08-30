@@ -9,8 +9,8 @@ import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration.repository.ts';
-import type { AssetsServiceContract } from '#services/assets.service.ts';
 import type { EntitiesServiceContract } from '#services/entities.service.ts';
+import type { FrontendAssetsServiceContract } from '#services/frontend-assets.service.ts';
 import type { HealthServiceContract } from '#services/health.service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles.service.ts';
@@ -29,7 +29,7 @@ const auth: Auth = {
   handler: async () => new Response(null, { status: StatusMap['Not Found'] }),
   getSession: async () => null,
 };
-const assetsService: AssetsServiceContract = {
+const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
   fallback: () => null,
 };
@@ -63,7 +63,7 @@ test('owner registration API exposes only complete registration states', async (
     });
     const app = createApp({
       auth,
-      assetsService,
+      frontendAssetsService,
       entitiesService,
       healthService,
       ownerRegistrationService: new OwnerRegistrationService(

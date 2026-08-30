@@ -90,6 +90,11 @@ selected result determines the typed relationship; the trigger character does no
 - Treat `@` as an authoring shortcut, not stored content or a domain identifier.
 - Store a stable, readable, typed link after selection.
 - Search by human-facing names or titles. Do not require users or agents to discover opaque IDs.
+- Give every resource an internal UUIDv7 identity and a separate readable typed address derived at
+  creation. The readable part may be meaningful, but it is a durable locator rather than a live
+  label: changing a name or title must not rewrite it or existing Markdown links.
+- Keep readable addresses immutable. Resolve a creation-time collision by asking for a distinct
+  readable ID; do not introduce a rename workflow that silently rewrites the hypermedia.
 - Do not add a new trigger character for every resource type.
 - Do not render exhaustive entity or page lists beside an editor. A searchable picker should reveal
   a bounded, relevant set of options.
@@ -141,11 +146,14 @@ Controls with different jobs must not share an ambiguous treatment.
 - Use resource views such as Preview, Links, and Revisions when those views exist. A revisions view
   may begin as a simple list; do not hide existing domain history merely because a rich comparison
   view is not ready.
-- Resource detail headers share one geometry: type, prominent human-readable name or title,
-  secondary description or metadata, and actions aligned to the same top-right position. Resource
-  differences belong in their content, not in drifting header placement.
+- Resource detail shells share spacing and top-right action alignment, while their persistent
+  identity follows the resource type. An entity keeps its type, name, and distinguishing
+  description in the header because those fields are the entity. A page keeps only its type and
+  actions above the views; the Markdown artifact owns and renders its H1 exactly once in Preview.
+  Do not duplicate a page title, revision number, or update timestamp as shell metadata.
 - Canonical addresses, slugs, and storage identifiers are not reading content. Do not show them by
-  default; expose them only in a workflow where the user needs to copy, inspect, or change them.
+  default; expose them only where the user needs to copy or inspect the raw Markdown or API-level
+  identity. Never present a stable address as an ordinary editable field.
 - A resource card opens the resource's canonical reading view. A page card always opens Preview;
   Links and Revisions are explicit secondary views, not sticky navigation state carried to another
   page.

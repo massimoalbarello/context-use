@@ -11,7 +11,7 @@ async function ensureMigrationsTable(db: SQL): Promise<void> {
   await db.unsafe(`
     CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
       name       text PRIMARY KEY,
-      applied_at text NOT NULL DEFAULT (datetime('now'))
+      applied_at text NOT NULL
     )
   `);
 }
@@ -36,7 +36,10 @@ async function applyMigration({
 
   await db.begin(async (tx) => {
     await tx.unsafe(ddl);
-    await tx.unsafe(`INSERT INTO ${MIGRATIONS_TABLE} (name) VALUES ($1)`, [name]);
+    await tx.unsafe(`INSERT INTO ${MIGRATIONS_TABLE} (name, applied_at) VALUES ($1, $2)`, [
+      name,
+      new Date().toISOString(),
+    ]);
   });
 
   logger.info(`applied: ${name}`);

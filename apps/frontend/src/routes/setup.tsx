@@ -2,10 +2,11 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { EntityForm, type EntityFormValues } from '../components/entities/entity-form';
 import { FormShell } from '../components/layout/form-shell';
 import { useCreateProfile } from '../lib/hooks/use-create-profile';
+import { internalAppPath } from '../lib/internal-app-path';
 
 export const Route = createFileRoute('/setup')({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
-    redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+    redirect: internalAppPath(search.redirect),
   }),
   beforeLoad: ({ context, location }) => {
     if (!context.session) {

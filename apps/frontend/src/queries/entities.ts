@@ -1,6 +1,11 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { apiErrorMessage } from '../lib/api-error';
+import {
+  ApiStatus,
+  apiErrorMessage,
+  ReadableIdConflictError,
+  ReadableIdRequiredError,
+} from '../lib/api-error';
 
 export type EntityPage = NonNullable<Awaited<ReturnType<typeof api.api.entities.get>>['data']>;
 
@@ -9,6 +14,12 @@ export type EntitySummary = EntityPage['items'][number];
 export type EntityDetail = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.entities>['get']>>['data']
 >;
+
+export type CreateEntityVariables = Parameters<typeof api.api.entities.post>[0];
+export type UpdateEntityVariables = {
+  readableId: string;
+  body: Parameters<ReturnType<typeof api.api.entities>['patch']>[0];
+};
 
 export const entitiesQueryKey = ['entities'] as const;
 export const entitiesListQueryKey = [...entitiesQueryKey, 'list'] as const;
@@ -52,4 +63,28 @@ export function entityQueryOptions(readableId: string) {
       return data;
     },
   });
+}
+
+export async function createEntity(body: CreateEntityVariables): Promise<{ readableId: string }> {
+  const { data, error } = await api.api.entities.post(body);
+  if (error) {
+    if (error.status === ApiStatus.BadRequest && 'readableIdRequired' in error.value) {
+      throw new ReadableIdRequiredError(apiErrorMessage(error));
+    }
+    if (error.status === ApiStatus.Conflict) {
+      throw new ReadableIdConflictError({
+        message: apiErrorMessage(error),
+        readableId: error.value.readableId,
+      });
+    }
+    throw new Error(apiErrorMessage(error));
+  }
+  return { readableId: data.readableId };
+}
+
+export async function updateEntity({ readableId, body }: UpdateEntityVariables): Promise<void> {
+  const { error } = await api.api.entities({ entityReadableId: readableId }).patch(body);
+  if (error) {
+    throw new Error(apiErrorMessage(error));
+  }
 }

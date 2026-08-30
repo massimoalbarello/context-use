@@ -1,4 +1,4 @@
-import { createFileRoute, type ErrorComponentProps, redirect } from '@tanstack/react-router';
+import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityLink } from '../components/entities/entity-link';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
@@ -19,11 +19,6 @@ export const Route = createFileRoute('/pages/$id')({
   validateSearch: (search: Record<string, unknown>): { view?: PageView } => ({
     view: isPageView(search.view) ? search.view : undefined,
   }),
-  beforeLoad: ({ context, location }) => {
-    if (!context.session) {
-      throw redirect({ to: '/login', search: { redirect: location.href } });
-    }
-  },
   loader: ({ context, params }) => context.queryClient.ensureQueryData(pageQueryOptions(params.id)),
   errorComponent: KnowledgePageRouteError,
   component: KnowledgePageRoute,

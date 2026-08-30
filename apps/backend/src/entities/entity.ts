@@ -2,7 +2,7 @@ import type { KnowledgePageSummary } from '#pages/knowledge-page.ts';
 import type { Page } from '#pagination/page.ts';
 
 export const MAX_ENTITY_NAME_LENGTH = 160;
-export const MIN_ENTITY_DESCRIPTION_LENGTH = 20;
+export const MIN_ENTITY_DESCRIPTION_LENGTH = 1;
 export const MAX_ENTITY_DESCRIPTION_LENGTH = 600;
 
 export interface Entity {

@@ -8,8 +8,8 @@ import {
   createFrontendAssetsController,
   createFrontendFallbackController,
 } from '#routes/controller.ts';
-import type { AssetsServiceContract } from '#services/assets.service.ts';
 import type { EntitiesServiceContract } from '#services/entities.service.ts';
+import type { FrontendAssetsServiceContract } from '#services/frontend-assets.service.ts';
 import type { HealthServiceContract } from '#services/health.service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles.service.ts';
@@ -21,7 +21,7 @@ const OPENAPI_PATH = '/openapi';
 
 export function createApp({
   auth,
-  assetsService,
+  frontendAssetsService,
   entitiesService,
   healthService,
   ownerRegistrationService,
@@ -29,7 +29,7 @@ export function createApp({
   profilesService,
 }: {
   auth: Auth;
-  assetsService: AssetsServiceContract;
+  frontendAssetsService: FrontendAssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
   ownerRegistrationService: OwnerRegistrationServiceContract;
@@ -39,7 +39,7 @@ export function createApp({
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
   return new Elysia()
-    .use(createFrontendAssetsController({ assetsService }))
+    .use(createFrontendAssetsController({ frontendAssetsService }))
     .onError(elysiaErrorHandler)
     .use(createRequestResponsePlugin())
     .use(
@@ -89,5 +89,5 @@ export function createApp({
         profilesService,
       }),
     )
-    .use(createFrontendFallbackController({ assetsService }));
+    .use(createFrontendFallbackController({ frontendAssetsService }));
 }

@@ -1,13 +1,14 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginForm } from '../components/auth/login-form';
 import { FormShell } from '../components/layout/form-shell';
+import { internalAppPath } from '../lib/internal-app-path';
 import { ownerRegistrationQueryOptions } from '../queries/owner-registration';
 
 const DEFAULT_REDIRECT = '/pages';
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
-    redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+    redirect: internalAppPath(search.redirect),
   }),
   beforeLoad: async ({ context, search }) => {
     if (context.session) {

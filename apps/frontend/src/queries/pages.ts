@@ -1,6 +1,11 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { apiErrorMessage } from '../lib/api-error';
+import {
+  ApiStatus,
+  apiErrorMessage,
+  ReadableIdConflictError,
+  ReadableIdRequiredError,
+} from '../lib/api-error';
 
 export type KnowledgePagePage = NonNullable<Awaited<ReturnType<typeof api.api.pages.get>>['data']>;
 
@@ -9,6 +14,12 @@ export type KnowledgePageSummary = KnowledgePagePage['items'][number];
 export type KnowledgePage = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.pages>['get']>>['data']
 >;
+
+export type CreatePageVariables = Parameters<typeof api.api.pages.post>[0];
+export type UpdatePageVariables = {
+  readableId: string;
+  body: Parameters<ReturnType<typeof api.api.pages>['put']>[0];
+};
 
 export const pagesQueryKey = ['pages'] as const;
 export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
@@ -52,4 +63,28 @@ export function pageQueryOptions(readableId: string) {
       return data;
     },
   });
+}
+
+export async function createPage(body: CreatePageVariables): Promise<{ readableId: string }> {
+  const { data, error } = await api.api.pages.post(body);
+  if (error) {
+    if (error.status === ApiStatus.BadRequest && 'readableIdRequired' in error.value) {
+      throw new ReadableIdRequiredError(apiErrorMessage(error));
+    }
+    if (error.status === ApiStatus.Conflict) {
+      throw new ReadableIdConflictError({
+        message: apiErrorMessage(error),
+        readableId: error.value.readableId,
+      });
+    }
+    throw new Error(apiErrorMessage(error));
+  }
+  return { readableId: data.readableId };
+}
+
+export async function updatePage({ readableId, body }: UpdatePageVariables): Promise<void> {
+  const { error } = await api.api.pages({ pageReadableId: readableId }).put(body);
+  if (error) {
+    throw new Error(apiErrorMessage(error));
+  }
 }

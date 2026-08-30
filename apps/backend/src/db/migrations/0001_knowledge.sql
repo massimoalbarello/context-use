@@ -15,7 +15,7 @@ create table "entity" (
   check ("readable_id" not glob '*[^a-z0-9-]*'),
   check ("readable_id" not like '-%' and "readable_id" not like '%-' and "readable_id" not like '%--%'),
   check (length(trim("name")) between 1 and 160),
-  check (length(trim("description")) between 20 and 600)
+  check (length(trim("description")) between 1 and 600)
 );
 
 create table "knowledge_profile" (
@@ -70,7 +70,7 @@ create table "knowledge_page_revision" (
   check (length(trim("title")) between 1 and 240),
   check (length("excerpt") <= 280),
   check ("size_bytes" between 1 and 1000000),
-  check ("content_hash" glob '[a-f0-9]*' and length("content_hash") = 64)
+  check ("content_hash" not glob '*[^a-f0-9]*' and length("content_hash") = 64)
 );
 
 create table "knowledge_page_entity_mention" (

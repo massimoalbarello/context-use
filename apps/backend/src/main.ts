@@ -6,14 +6,14 @@ import { loadEnv } from '#lib/env.ts';
 import { createLogger } from '#lib/logger.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#pages/knowledge-page.ts';
-import { AssetsRepository } from '#repositories/assets.repository.ts';
 import { EntitiesRepository } from '#repositories/entities.repository.ts';
+import { FrontendAssetsRepository } from '#repositories/frontend-assets.repository.ts';
 import { HealthRepository } from '#repositories/health.repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages.repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles.repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration.repository.ts';
-import { AssetsService } from '#services/assets.service.ts';
 import { EntitiesService } from '#services/entities.service.ts';
+import { FrontendAssetsService } from '#services/frontend-assets.service.ts';
 import { HealthService } from '#services/health.service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages.service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles.service.ts';
@@ -30,7 +30,7 @@ try {
   await runMigrations({ db: database });
 
   const storage = createLocalStorage({ dataFolder: env.DATA_FOLDER });
-  const assetsService = new AssetsService(new AssetsRepository());
+  const frontendAssetsService = new FrontendAssetsService(new FrontendAssetsRepository());
   const pagesRepository = new KnowledgePagesRepository(database);
   const entitiesService = new EntitiesService({
     entities: new EntitiesRepository(database),
@@ -50,7 +50,7 @@ try {
 
   const app = createApp({
     auth,
-    assetsService,
+    frontendAssetsService,
     entitiesService,
     healthService,
     ownerRegistrationService,

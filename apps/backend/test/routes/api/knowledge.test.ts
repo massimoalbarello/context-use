@@ -14,8 +14,8 @@ import { HealthRepository } from '#repositories/health.repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages.repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles.repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration.repository.ts';
-import type { AssetsServiceContract } from '#services/assets.service.ts';
 import { EntitiesService } from '#services/entities.service.ts';
+import type { FrontendAssetsServiceContract } from '#services/frontend-assets.service.ts';
 import { HealthService } from '#services/health.service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages.service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles.service.ts';
@@ -31,7 +31,7 @@ const KNOWLEDGE_MIGRATION = new URL(
 );
 const EXPECTED_ENTITY_COUNT = 3;
 
-const assetsService: AssetsServiceContract = {
+const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
   fallback: () => null,
 };
@@ -104,7 +104,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     });
     const app = createApp({
       auth: ownerAuth(),
-      assetsService,
+      frontendAssetsService,
       entitiesService: new EntitiesService({
         entities: new EntitiesRepository(database),
         pages: pagesRepository,
@@ -173,7 +173,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         path: '/entities',
         body: {
           name: 'Luca Bianchi',
-          description: 'The product lead responsible for the growth system.',
+          description: 'Product lead.',
         },
       }),
     );
@@ -272,7 +272,6 @@ Every observation changes the next action.`,
     expect(growth.excerpt).toBe('Luca owns this feedback system.');
     expect(growth.revisionNumber).toBe(1);
     expect(growth.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
-
     const pageConflictResponse = await app.handle(
       jsonRequest({
         method: 'POST',
