@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, Link, Outlet, redirect } from '@tanstack/react-router';
 import { SignOutButton } from '../components/auth/sign-out-button';
+import { buttonVariants } from '../components/ui/button';
 import { profileQueryOptions } from '../queries/profile';
 import { sessionQueryOptions } from '../queries/session';
 
@@ -37,12 +38,7 @@ function RouteComponent() {
                 <SignOutButton />
               </>
             ) : (
-              <Link
-                to="/login"
-                activeProps={{
-                  className: 'font-bold',
-                }}
-              >
+              <Link to="/login" className={buttonVariants({ variant: 'ghost' })}>
                 Login
               </Link>
             )}

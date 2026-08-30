@@ -12,7 +12,7 @@
   }
 
   .knowledge-picker-menu {
-    @apply absolute bottom-3 left-3 z-10 grid max-h-72 w-[calc(100%-1.5rem)] max-w-xl gap-1 overflow-y-auto rounded-lg border border-line bg-paper p-1 shadow-[0_12px_35px_rgb(23_23_23/0.16)];
+    @apply absolute bottom-3 left-3 z-10 grid max-h-72 w-[calc(100%-1.5rem)] max-w-xl gap-1 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg;
   }
 
   .knowledge-picker-option {
@@ -20,7 +20,7 @@
   }
 
   .knowledge-picker-kind {
-    @apply shrink-0 rounded-full bg-panel px-2 py-1 font-semibold text-muted text-[0.65rem] uppercase tracking-wider;
+    @apply h-6 shrink-0 px-2 text-[0.65rem] uppercase tracking-wider;
   }
 
   .knowledge-markdown {
@@ -32,7 +32,7 @@
   }
 
   .knowledge-markdown h2 {
-    @apply mt-10 scroll-mt-24 border-line border-b pb-2 font-semibold text-2xl tracking-tight;
+    @apply mt-10 scroll-mt-24 border-border border-b pb-2 font-semibold text-2xl tracking-tight;
   }
 
   .knowledge-markdown h3,
@@ -63,15 +63,15 @@
   }
 
   .knowledge-markdown a:not(.entity-link-inline) {
-    @apply font-medium text-accent underline decoration-accent/35 underline-offset-4 hover:decoration-accent;
+    @apply font-medium text-foreground underline decoration-foreground/35 underline-offset-4 hover:decoration-foreground;
   }
 
   .knowledge-markdown code {
-    @apply rounded bg-accent-soft px-1.5 py-0.5 font-mono text-sm;
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-sm;
   }
 
   .knowledge-markdown pre {
-    @apply overflow-x-auto rounded-lg bg-ink p-4 text-paper;
+    @apply overflow-x-auto rounded-lg bg-foreground p-4 text-background;
   }
 
   .knowledge-markdown pre code {
@@ -79,7 +79,7 @@
   }
 
   .knowledge-markdown blockquote {
-    @apply border-accent border-l-4 pl-5 text-muted;
+    @apply border-border border-l-4 pl-5 text-muted-foreground;
   }
 
   .detail-view {
@@ -99,7 +99,7 @@
   }
 
   .revision-list li {
-    @apply rounded-xl bg-paper px-4 py-3;
+    @apply rounded-xl bg-muted px-4 py-3;
   }
 
   .revision-list li > div {
@@ -115,11 +115,7 @@
   }
 
   .revision-list time {
-    @apply mt-1 block text-muted text-xs;
-  }
-
-  .current-revision {
-    @apply rounded-full bg-panel px-2 py-0.5 font-semibold text-[0.65rem] uppercase tracking-wider;
+    @apply mt-1 block text-muted-foreground text-xs;
   }
 
   .entity-pages {
@@ -127,7 +123,7 @@
   }
 
   .conflict-field {
-    @apply rounded-lg border border-accent/25 bg-accent-soft/40 p-4;
+    @apply rounded-lg border border-border bg-muted/50 p-4;
   }
 
   .link-section ul {
@@ -135,6 +131,6 @@
   }
 
   .connection-empty {
-    @apply mt-2 text-muted text-sm;
+    @apply mt-2 text-muted-foreground text-sm;
   }
 }

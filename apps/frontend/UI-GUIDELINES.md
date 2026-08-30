@@ -191,6 +191,12 @@ dominating the product's information architecture.
 The current baseline is deliberately monochrome: black, white, and neutral greys. Introduce color
 only when it has a stable semantic job and belongs in the shared token system.
 
+The canonical implementation baseline is the tweakcn **Minimal Neutral** shadcn theme: DM Sans for
+interface text, Geist Mono for addresses and code, its semantic color/radius/elevation variables,
+and shadcn components built on Base UI for generic interactive primitives. This baseline is one
+system, not a visual reference to approximate independently on each screen. Product layout and
+resource identity may compose these primitives, but must not fork their control states locally.
+
 - Use one canvas color across the sidebar and every exposed part of the workspace background. A
   floating control should use the surface color of the layer it sits on.
 - Use a restrained set of radii, spacing, border, and elevation tokens.
@@ -230,6 +236,10 @@ Stop and reconsider the design when:
 - a resource's identity, editable fields, or view tabs participate in the same horizontal layout
   row as its heading actions;
 - tabs look like buttons, cards look like primary actions, or links look like tabs;
+- a feature hand-builds a generic button, field, tab, badge, avatar, or UI card instead of using the
+  established shadcn primitive;
+- a feature bypasses semantic theme tokens with a local near-match for a shared color, radius,
+  shadow, or font;
 - entities and pages are distinguishable only by reading a type label;
 - a resource result outside rendered Markdown is reduced to plain text or rebuilt with local markup
   instead of its type-owned card;

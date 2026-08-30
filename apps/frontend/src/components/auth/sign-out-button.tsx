@@ -1,16 +1,12 @@
 import { useSignOut } from '../../lib/hooks/use-sign-out';
+import { Button } from '../ui/button';
 
 export function SignOutButton() {
   const { mutate, isPending } = useSignOut();
 
   return (
-    <button
-      type="button"
-      onClick={() => mutate()}
-      disabled={isPending}
-      className="secondary-action min-h-8 px-3 py-1"
-    >
+    <Button type="button" onClick={() => mutate()} disabled={isPending} variant="ghost" size="sm">
       {isPending ? 'Signing out…' : 'Sign out'}
-    </button>
+    </Button>
   );
 }

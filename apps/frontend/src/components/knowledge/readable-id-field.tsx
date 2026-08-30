@@ -1,4 +1,5 @@
 import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '@repo/backend/knowledge-address';
+import { Input } from '../ui/input';
 
 export function validateReadableId({ value }: { value?: string }): string | undefined {
   return value && READABLE_ID_PATTERN.test(value)
@@ -26,11 +27,12 @@ export function ReadableIdField({
   const preview = value || conflictingReadableId || 'readable-id';
 
   return (
-    <label className="field conflict-field">
+    <label className="field conflict-field" htmlFor={`${kind}-readable-id`}>
       <span>
         {conflictingReadableId ? 'Choose a distinct readable ID' : 'Choose a readable ID'}
       </span>
-      <input
+      <Input
+        id={`${kind}-readable-id`}
         name="readableId"
         value={value}
         placeholder={conflictingReadableId ?? undefined}

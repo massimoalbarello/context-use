@@ -12,11 +12,11 @@
   }
 
   .resource-card {
-    @apply h-20 rounded-xl border border-transparent bg-transparent p-3 text-left transition-[background-color,border-color,box-shadow] hover:bg-paper hover:shadow-[0_4px_16px_rgb(23_23_23/0.08)] focus-visible:border-ink/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/15;
+    @apply h-20 rounded-xl border border-transparent bg-transparent p-3 text-left transition-[background-color,border-color,box-shadow] hover:bg-card hover:shadow-sm focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50;
   }
 
   :where(.knowledge-sidebar, .knowledge-picker-menu) .resource-card:hover {
-    @apply bg-panel;
+    @apply bg-card;
   }
 
   .resource-card:is(
@@ -24,7 +24,7 @@
     [data-route-selected="true"],
     [aria-selected="true"]
   ) {
-    @apply border-ink/35 bg-panel shadow-[0_2px_10px_rgb(23_23_23/0.1)];
+    @apply border-foreground/35 bg-card shadow-sm;
   }
 
   .entity-link-card {
@@ -32,7 +32,7 @@
   }
 
   .entity-link-avatar {
-    @apply flex shrink-0 items-center justify-center rounded-full bg-accent-soft font-semibold text-ink uppercase;
+    @apply font-semibold uppercase;
   }
 
   .entity-link-card .entity-link-avatar {
@@ -52,11 +52,11 @@
   }
 
   .entity-link-copy small {
-    @apply truncate text-muted text-xs leading-relaxed;
+    @apply truncate text-muted-foreground text-xs leading-relaxed;
   }
 
   .entity-link-inline {
-    @apply mx-0.5 inline-flex items-center gap-1 rounded-full bg-paper py-0.5 pr-2 pl-[0.3125rem] font-medium text-ink no-underline align-baseline hover:bg-accent-soft;
+    @apply mx-0.5 inline-flex items-center gap-1 rounded-full bg-muted py-0.5 pr-2 pl-[0.3125rem] font-medium text-foreground no-underline align-baseline hover:bg-accent;
   }
 
   .entity-link-inline .entity-link-avatar {
@@ -76,15 +76,15 @@
   }
 
   .knowledge-page-link-copy small {
-    @apply truncate text-muted text-xs leading-relaxed;
+    @apply truncate text-muted-foreground text-xs leading-relaxed;
   }
 
   .knowledge-page-link-fragment {
-    @apply truncate font-mono text-muted text-[0.68rem];
+    @apply truncate font-mono text-muted-foreground text-[0.68rem];
   }
 
   .knowledge-page-link-mark {
-    @apply flex size-9 shrink-0 items-center justify-center rounded-md bg-paper text-muted;
+    @apply flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground;
   }
 
   .knowledge-page-link-mark svg {
@@ -94,19 +94,15 @@
   }
 
   .knowledge-page-link-inline {
-    @apply font-medium text-ink underline decoration-ink/35 underline-offset-4 hover:decoration-ink;
+    @apply font-medium text-foreground underline decoration-foreground/35 underline-offset-4 hover:decoration-foreground;
   }
 
   .knowledge-sidebar .object-card-list {
     @apply gap-2;
   }
 
-  .self-badge {
-    @apply inline-flex rounded-full bg-accent-soft px-2 py-0.5 font-semibold text-accent text-[0.68rem] uppercase tracking-wider;
-  }
-
   .empty-state {
-    @apply rounded-xl bg-accent-soft/60 p-7 text-center;
+    @apply rounded-xl bg-muted p-7 text-center;
   }
 
   .empty-state p {
@@ -114,6 +110,6 @@
   }
 
   .empty-state span {
-    @apply mt-1 block text-muted text-sm;
+    @apply mt-1 block text-muted-foreground text-sm;
   }
 }

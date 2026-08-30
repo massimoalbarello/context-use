@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
+import '@fontsource-variable/dm-sans';
+import '@fontsource-variable/geist-mono';
 import ReactDOM from 'react-dom/client';
 import { routeTree } from './routeTree.gen';
 import './styles.css';

@@ -4,6 +4,8 @@ import { EntityIdentityEditor } from '../components/entities/entity-identity-edi
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';
 import { entityQueryOptions } from '../queries/entities';
@@ -65,8 +67,8 @@ function EntityRoute() {
         <header className="detail-header">
           <ResourceDetailHeading
             actions={
-              <button
-                className="primary-action"
+              <Button
+                size="lg"
                 type="button"
                 onClick={() => {
                   updateEntity.reset();
@@ -74,10 +76,10 @@ function EntityRoute() {
                 }}
               >
                 Edit entity
-              </button>
+              </Button>
             }
           >
-            Entity {entity.isSelf && <span className="self-badge">You</span>}
+            Entity {entity.isSelf && <Badge variant="secondary">You</Badge>}
           </ResourceDetailHeading>
           <div className="entity-identity">
             <h1>{entity.name}</h1>
@@ -89,7 +91,7 @@ function EntityRoute() {
       <section className="entity-pages">
         <div className="section-heading">
           <h2>Mentioned by</h2>
-          <span className="count-badge">{entity.pages.length}</span>
+          <Badge variant="secondary">{entity.pages.length}</Badge>
         </div>
         {entity.pages.length > 0 ? (
           <ul className="object-card-list">

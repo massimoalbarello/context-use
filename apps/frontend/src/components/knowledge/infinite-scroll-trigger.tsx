@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Button } from '../ui/button';
 
 export function InfiniteScrollTrigger({
   hasNextPage,
@@ -44,16 +45,16 @@ export function InfiniteScrollTrigger({
       {error ? (
         <>
           <span>Couldn’t load more.</span>
-          <button type="button" onClick={() => void loadMore()}>
+          <Button variant="ghost" size="sm" type="button" onClick={() => void loadMore()}>
             Retry
-          </button>
+          </Button>
         </>
       ) : isFetchingNextPage ? (
         <span>Loading…</span>
       ) : (
-        <button type="button" onClick={() => void loadMore()}>
+        <Button variant="ghost" size="sm" type="button" onClick={() => void loadMore()}>
           Load more
-        </button>
+        </Button>
       )}
     </div>
   );

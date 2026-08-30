@@ -2,6 +2,9 @@ import { MAX_ENTITY_DESCRIPTION_LENGTH, MAX_ENTITY_NAME_LENGTH } from '@repo/bac
 import { useForm } from '@tanstack/react-form';
 import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
 import { ReadableIdField, validateReadableId } from '../knowledge/readable-id-field';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { validateEntityDescription, validateEntityName } from './entity-validation';
 
 export type EntityFormValues = {
@@ -52,9 +55,10 @@ export function EntityForm({
         validators={{ onMount: validateEntityName, onChange: validateEntityName }}
       >
         {(field) => (
-          <label className="field">
+          <label className="field" htmlFor="entity-name">
             <span>Name</span>
-            <input
+            <Input
+              id="entity-name"
               name={field.name}
               value={field.state.value}
               maxLength={MAX_ENTITY_NAME_LENGTH}
@@ -98,9 +102,10 @@ export function EntityForm({
         }}
       >
         {(field) => (
-          <label className="field">
+          <label className="field" htmlFor="entity-description">
             <span>Distinguishing description</span>
-            <textarea
+            <Textarea
+              id="entity-description"
               name={field.name}
               rows={4}
               maxLength={MAX_ENTITY_DESCRIPTION_LENGTH}
@@ -121,13 +126,14 @@ export function EntityForm({
 
       <form.Subscribe selector={(state) => state.canSubmit}>
         {(canSubmit) => (
-          <button
-            className="primary-action justify-self-start"
+          <Button
+            className="justify-self-start"
+            size="lg"
             type="submit"
             disabled={!canSubmit || pending}
           >
             {pending ? 'Saving…' : submitLabel}
-          </button>
+          </Button>
         )}
       </form.Subscribe>
     </form>

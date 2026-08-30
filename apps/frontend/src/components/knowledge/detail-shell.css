@@ -11,6 +11,14 @@
     @apply gap-4;
   }
 
+  .page-detail > .detail-view {
+    @apply mt-5;
+  }
+
+  .detail-tabs {
+    @apply gap-5;
+  }
+
   .knowledge-workspace:has(.knowledge-sidebar[data-collapsed="true"])
     .detail-shell {
     @apply pt-20 md:pt-9;
@@ -29,7 +37,7 @@
   }
 
   .detail-description {
-    @apply mt-3 max-w-2xl text-muted text-lg leading-relaxed;
+    @apply mt-3 max-w-2xl text-muted-foreground text-lg leading-relaxed;
   }
 
   .entity-inline-editor {
@@ -47,7 +55,7 @@
 
   .entity-name-input,
   .entity-description-input {
-    @apply -mx-2 w-[calc(100%+1rem)] px-2 text-ink;
+    @apply -mx-2 h-auto w-[calc(100%+1rem)] px-2 text-foreground;
   }
 
   .entity-name-input {
@@ -55,12 +63,12 @@
   }
 
   .entity-description-input {
-    @apply mt-3 min-h-[1lh] max-h-40 resize-y py-0 text-muted text-lg leading-relaxed;
+    @apply mt-3 min-h-[1lh] max-h-40 resize-y py-0 text-muted-foreground text-lg leading-relaxed;
     field-sizing: content;
   }
 
   .entity-inline-field em {
-    @apply text-danger text-sm not-italic;
+    @apply text-destructive text-sm not-italic;
   }
 
   .detail-actions {
@@ -84,6 +92,6 @@
   }
 
   .editor-header p {
-    @apply text-muted text-sm;
+    @apply text-muted-foreground text-sm;
   }
 }

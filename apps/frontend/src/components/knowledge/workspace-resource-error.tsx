@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { Button, buttonVariants } from '../ui/button';
 
 type KnowledgeResource = 'page' | 'entity';
 
@@ -37,13 +38,13 @@ export function WorkspaceResourceError({
           : `Something prevented this ${resource} from loading. You can try again or return to your ${copy.collection}.`}
       </p>
       <div className="action-row workspace-resource-actions">
-        <Link className="primary-action" to={copy.collectionPath} replace>
+        <Link className={buttonVariants({ size: 'lg' })} to={copy.collectionPath} replace>
           Back to {copy.collection}
         </Link>
         {!notFound && (
-          <button className="secondary-action" type="button" onClick={retry}>
+          <Button variant="outline" size="lg" type="button" onClick={retry}>
             Try again
-          </button>
+          </Button>
         )}
       </div>
     </div>

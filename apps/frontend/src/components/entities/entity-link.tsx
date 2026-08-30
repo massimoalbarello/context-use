@@ -1,6 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import type { EntitySummary } from '../../queries/entities';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import { Badge } from '../ui/badge';
 
 type EntityName = Pick<EntitySummary, 'readableId' | 'name'>;
 type EntityIdentity = Pick<EntitySummary, 'readableId' | 'name' | 'description' | 'isSelf'>;
@@ -16,13 +18,13 @@ export function entityInitial(name: string): string {
 export function EntityCardContent({ entity }: { entity: EntityIdentity }) {
   return (
     <>
-      <span className="entity-link-avatar" aria-hidden="true">
-        {entityInitial(entity.name)}
-      </span>
+      <Avatar className="entity-link-avatar" aria-hidden="true">
+        <AvatarFallback>{entityInitial(entity.name)}</AvatarFallback>
+      </Avatar>
       <span className="entity-link-copy">
         <span className="entity-link-name">
           <strong>{entity.name}</strong>
-          {entity.isSelf && <span className="self-badge">You</span>}
+          {entity.isSelf && <Badge variant="secondary">You</Badge>}
         </span>
         <small>{entity.description}</small>
       </span>
@@ -38,9 +40,9 @@ export function EntityLink({ entity, presentation, active, children }: EntityLin
         to="/entities/$id"
         params={{ id: entity.readableId }}
       >
-        <span className="entity-link-avatar" aria-hidden="true">
-          {entityInitial(entity.name)}
-        </span>
+        <Avatar size="sm" className="entity-link-avatar" aria-hidden="true">
+          <AvatarFallback>{entityInitial(entity.name)}</AvatarFallback>
+        </Avatar>
         <span>{children ?? entity.name}</span>
       </Link>
     );

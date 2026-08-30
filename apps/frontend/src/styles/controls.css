@@ -10,7 +10,7 @@
 
   .workspace-description,
   .form-shell-copy > p:last-child {
-    @apply mt-3 text-muted text-lg leading-relaxed;
+    @apply mt-3 text-muted-foreground text-lg leading-relaxed;
   }
 
   .form-shell {
@@ -18,7 +18,7 @@
   }
 
   .eyebrow {
-    @apply flex min-h-5 w-fit items-center gap-2 font-semibold text-accent text-xs uppercase tracking-[0.16em];
+    @apply flex min-h-5 w-fit items-center gap-2 font-semibold text-foreground text-xs uppercase tracking-[0.16em];
   }
 
   .section-heading {
@@ -30,24 +30,8 @@
     @apply font-semibold text-lg;
   }
 
-  .surface {
-    @apply rounded-xl border border-line bg-panel p-5 shadow-[0_1px_2px_rgb(23_23_23/0.04)];
-  }
-
   .field {
     @apply grid gap-1.5 font-medium text-sm;
-  }
-
-  .field input,
-  .field textarea,
-  .entity-name-input,
-  .entity-description-input {
-    @apply rounded-lg border border-line bg-white outline-none transition focus:border-accent;
-  }
-
-  .field input,
-  .field textarea {
-    @apply w-full px-3 py-2.5 text-base text-ink disabled:bg-paper disabled:text-muted;
   }
 
   .field textarea {
@@ -55,41 +39,20 @@
   }
 
   .field small {
-    @apply font-normal text-muted text-xs leading-relaxed;
+    @apply font-normal text-muted-foreground text-xs leading-relaxed;
   }
 
   .field em,
   .error-message {
-    @apply font-normal text-danger text-sm not-italic;
+    @apply font-normal text-destructive text-sm not-italic;
   }
 
-  .primary-action,
-  .secondary-action {
-    @apply inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2 font-semibold text-sm transition disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .primary-action {
-    @apply bg-accent text-white hover:bg-black;
-  }
-
-  .workspace-empty .primary-action {
+  .workspace-empty-action {
     @apply mt-7;
   }
 
   .workspace-resource-actions {
     @apply mt-7;
-  }
-
-  .workspace-resource-actions .primary-action {
-    @apply mt-0;
-  }
-
-  .secondary-action {
-    @apply border border-line bg-panel text-ink hover:border-accent hover:text-accent;
-  }
-
-  .sidebar-footer .secondary-action {
-    @apply min-h-8 border-transparent bg-transparent px-2 py-1 text-muted text-xs hover:bg-panel hover:text-ink;
   }
 
   .action-row {

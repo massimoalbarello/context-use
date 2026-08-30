@@ -1,8 +1,12 @@
 import { Link } from '@tanstack/react-router';
+import { Menu, Plus } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
+import { cn } from '../../lib/utils';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { SignOutButton } from '../auth/sign-out-button';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import { Button, buttonVariants } from '../ui/button';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 import { KnowledgeCollectionNavigation } from './knowledge-collection-navigation';
 
@@ -42,17 +46,17 @@ export function KnowledgeSidebar({
             <small>Private workspace</small>
           </span>
         </Link>
-        <button
+        <Button
           className="sidebar-toggle"
           type="button"
+          variant="ghost"
+          size="icon-lg"
           aria-label={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
           onClick={() => setCollapsed(!collapsed)}
         >
-          <svg aria-hidden="true" viewBox="0 0 20 20">
-            <path d="M3 5h14M3 10h14M3 15h14" />
-          </svg>
-        </button>
+          <Menu aria-hidden="true" />
+        </Button>
       </div>
 
       <div className="sidebar-body">
@@ -61,10 +65,8 @@ export function KnowledgeSidebar({
             collection={collection}
             ownerEntityId={profile.selfEntity.id}
           />
-          <Link className="sidebar-create" to={createTo}>
-            <span className="create-icon" aria-hidden="true">
-              +
-            </span>
+          <Link className={cn(buttonVariants({ size: 'lg' }), 'sidebar-create')} to={createTo}>
+            <Plus data-icon="inline-start" aria-hidden="true" />
             {createLabel}
           </Link>
         </div>
@@ -91,9 +93,9 @@ export function KnowledgeSidebar({
             to="/entities/$id"
             params={{ id: profile.selfEntity.readableId }}
           >
-            <span className="profile-mark" aria-hidden="true">
-              {profileInitial}
-            </span>
+            <Avatar className="profile-mark" aria-hidden="true">
+              <AvatarFallback>{profileInitial}</AvatarFallback>
+            </Avatar>
             <span>
               <strong>{profile.selfEntity.name}</strong>
               <small>Your entity</small>

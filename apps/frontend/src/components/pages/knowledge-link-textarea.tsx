@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { EntityCardContent } from '../entities/entity-link';
+import { Badge } from '../ui/badge';
+import { Textarea } from '../ui/textarea';
 import {
   type ActiveKnowledgeLink,
   findActiveKnowledgeLink,
@@ -109,7 +111,7 @@ export function KnowledgeLinkTextarea({
 
   return (
     <div className="knowledge-link-editor">
-      <textarea
+      <Textarea
         ref={textareaRef}
         id={id}
         name={name}
@@ -190,9 +192,9 @@ export function KnowledgeLinkTextarea({
                 ) : (
                   <KnowledgePageCardContent page={suggestion.page} />
                 )}
-                <span className="knowledge-picker-kind">
+                <Badge variant="outline" className="knowledge-picker-kind">
                   {suggestion.kind === 'entity' ? 'Entity' : 'Page'}
-                </span>
+                </Badge>
               </button>
             );
           })}

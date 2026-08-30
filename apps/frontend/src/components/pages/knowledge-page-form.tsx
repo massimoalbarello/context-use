@@ -4,6 +4,7 @@ import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-
 import { useEntitySuggestions } from '../../lib/hooks/use-entities';
 import { usePageSuggestions } from '../../lib/hooks/use-pages';
 import { ReadableIdField, validateReadableId } from '../knowledge/readable-id-field';
+import { Button } from '../ui/button';
 import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
 
 export type KnowledgePageFormValues = {
@@ -116,13 +117,14 @@ export function KnowledgePageForm({
       {submitLabel && (
         <form.Subscribe selector={(state) => state.canSubmit}>
           {(canSubmit) => (
-            <button
-              className="primary-action justify-self-start"
+            <Button
+              className="justify-self-start"
+              size="lg"
               type="submit"
               disabled={!canSubmit || pending}
             >
               {pending ? 'Saving…' : submitLabel}
-            </button>
+            </Button>
           )}
         </form.Subscribe>
       )}

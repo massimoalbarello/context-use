@@ -1,4 +1,6 @@
 import { Link } from '@tanstack/react-router';
+import { cn } from '../../lib/utils';
+import { buttonVariants } from '../ui/button';
 
 export function WorkspaceEmpty({
   eyebrow,
@@ -18,7 +20,7 @@ export function WorkspaceEmpty({
       <p className="eyebrow">{eyebrow}</p>
       <h2>{title}</h2>
       <p className="workspace-description">{description}</p>
-      <Link className="primary-action" to={createTo}>
+      <Link className={cn(buttonVariants({ size: 'lg' }), 'workspace-empty-action')} to={createTo}>
         {createLabel}
       </Link>
     </div>

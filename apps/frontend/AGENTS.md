@@ -42,6 +42,9 @@ Discuss that gap and the tradeoffs before adding a competing mechanism.
 
 - `src/components/ui` contains shadcn/ui source components and no application or domain logic. Add
   only components required by a current feature and review the generated source and dependencies.
+- The frontend intentionally uses relative imports rather than a TypeScript path alias. When adding
+  shadcn source, keep the upstream Base UI implementation intact and normalize its imports to the
+  local relative-import convention instead of adding an alias only to satisfy the CLI.
 - Use Base UI consistently as the shadcn/ui foundation. Do not mix Base UI, Radix, React Aria, or
   hand-built versions of the same interactive primitive without an explicit design decision.
 - Keep route-specific compositions beside their route or feature. Global component folders contain
@@ -95,6 +98,13 @@ global client-state library until a concrete cross-route state model requires on
 
 ## Visual system
 
+- The canonical token baseline is the tweakcn **Minimal Neutral** shadcn theme. Its semantic theme
+  variables, DM Sans body type, and Geist Mono code type belong in the shared foundation; feature
+  CSS consumes those tokens and never recreates the palette locally.
+- Generic controls and surfaces—buttons, inputs, textareas, tabs, badges, avatars, and ordinary UI
+  cards—come from `src/components/ui`. Do not hand-style a native replacement in a feature when a
+  shadcn primitive owns that interaction. Domain resource cards remain application components
+  because their entity/page identity and selection semantics are product behavior.
 - Establish a compact visual baseline before building feature screens: semantic color tokens,
   typography, spacing rhythm, radii, elevation, interaction states, content widths, and responsive
   behavior. Keep global CSS limited to this baseline, resets, fonts, and truly global behavior.

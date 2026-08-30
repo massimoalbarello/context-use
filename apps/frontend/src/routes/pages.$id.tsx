@@ -6,6 +6,9 @@ import { WorkspaceResourceError } from '../components/knowledge/workspace-resour
 import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../components/pages/knowledge-page-markdown';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { usePage } from '../lib/hooks/use-page';
 import { useUpdatePage } from '../lib/hooks/use-update-page';
 import { type KnowledgePage, pageQueryOptions } from '../queries/pages';
@@ -36,7 +39,7 @@ function PageLinkList({ label, links }: { label: string; links: KnowledgePage['r
     <section className="link-section">
       <div className="section-heading">
         <h2>{label}</h2>
-        <span className="count-badge">{links.length}</span>
+        <Badge variant="secondary">{links.length}</Badge>
       </div>
       {links.length > 0 ? (
         <ul className="object-card-list">
@@ -55,16 +58,11 @@ function PageLinkList({ label, links }: { label: string; links: KnowledgePage['r
 
 function PageLinksView({ page }: { page: KnowledgePage }) {
   return (
-    <div
-      className="page-connections"
-      id="page-links-panel"
-      role="tabpanel"
-      aria-labelledby="page-links-tab"
-    >
+    <div className="page-connections">
       <section className="link-section">
         <div className="section-heading">
           <h2>Mentions</h2>
-          <span className="count-badge">{page.mentions.length}</span>
+          <Badge variant="secondary">{page.mentions.length}</Badge>
         </div>
         {page.mentions.length > 0 ? (
           <ul className="object-card-list">
@@ -86,15 +84,10 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
 
 function PageRevisionsView({ page }: { page: KnowledgePage }) {
   return (
-    <section
-      className="page-revisions"
-      id="page-revisions-panel"
-      role="tabpanel"
-      aria-labelledby="page-revisions-tab"
-    >
+    <section className="page-revisions">
       <div className="section-heading">
         <h2>Revisions</h2>
-        <span className="count-badge">{page.revisions.length}</span>
+        <Badge variant="secondary">{page.revisions.length}</Badge>
       </div>
       <ol className="revision-list">
         {page.revisions.map((revision) => (
@@ -102,7 +95,7 @@ function PageRevisionsView({ page }: { page: KnowledgePage }) {
             <div>
               <strong>Revision {revision.revisionNumber}</strong>
               {revision.revisionNumber === page.revisionNumber && (
-                <span className="current-revision">Current</span>
+                <Badge variant="secondary">Current</Badge>
               )}
             </div>
             <p>{revision.title}</p>
@@ -113,52 +106,6 @@ function PageRevisionsView({ page }: { page: KnowledgePage }) {
         ))}
       </ol>
     </section>
-  );
-}
-
-function PageTabs({
-  activeView,
-  onChange,
-}: {
-  activeView: PageView;
-  onChange: (view: PageView) => void;
-}) {
-  const tabs: Array<{ id: PageView; label: string }> = [
-    { id: 'preview', label: 'Preview' },
-    { id: 'links', label: 'Links' },
-    { id: 'revisions', label: 'Revisions' },
-  ];
-
-  return (
-    <div className="detail-tabs" role="tablist" aria-label="Page views">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          id={`page-${tab.id}-tab`}
-          type="button"
-          role="tab"
-          aria-selected={activeView === tab.id}
-          aria-controls={`page-${tab.id}-panel`}
-          tabIndex={activeView === tab.id ? 0 : -1}
-          onClick={() => onChange(tab.id)}
-          onKeyDown={(event) => {
-            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
-              return;
-            }
-            event.preventDefault();
-            const direction = event.key === 'ArrowRight' ? 1 : -1;
-            const currentIndex = tabs.findIndex(({ id }) => id === tab.id);
-            const nextTab = tabs[(currentIndex + direction + tabs.length) % tabs.length];
-            if (nextTab) {
-              onChange(nextTab.id);
-              document.getElementById(`page-${nextTab.id}-tab`)?.focus();
-            }
-          }}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -192,8 +139,9 @@ function KnowledgePageRoute() {
           actions={
             editing ? (
               <>
-                <button
-                  className="secondary-action"
+                <Button
+                  variant="outline"
+                  size="lg"
                   type="button"
                   onClick={() => {
                     updatePage.reset();
@@ -201,19 +149,19 @@ function KnowledgePageRoute() {
                   }}
                 >
                   Cancel
-                </button>
-                <button
-                  className="primary-action"
+                </Button>
+                <Button
+                  size="lg"
                   type="submit"
                   form={PAGE_EDIT_FORM_ID}
                   disabled={updatePage.isPending}
                 >
                   {updatePage.isPending ? 'Saving…' : 'Save page'}
-                </button>
+                </Button>
               </>
             ) : (
-              <button
-                className="primary-action"
+              <Button
+                size="lg"
                 type="button"
                 onClick={() => {
                   updatePage.reset();
@@ -221,7 +169,7 @@ function KnowledgePageRoute() {
                 }}
               >
                 Edit page
-              </button>
+              </Button>
             )
           }
         >
@@ -248,23 +196,32 @@ function KnowledgePageRoute() {
           }
         />
       ) : (
-        <div className="detail-view">
-          <PageTabs
-            activeView={view}
-            onChange={(view) => {
-              void navigate({ search: { view } });
-            }}
-          />
-          {view === 'preview' ? (
-            <div id="page-preview-panel" role="tabpanel" aria-labelledby="page-preview-tab">
+        <Tabs
+          className="detail-view"
+          value={view}
+          onValueChange={(value) => {
+            if (isPageView(value)) {
+              void navigate({ search: { view: value } });
+            }
+          }}
+        >
+          <TabsList className="detail-tabs" variant="line" aria-label="Page views">
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="links">Links</TabsTrigger>
+            <TabsTrigger value="revisions">Revisions</TabsTrigger>
+          </TabsList>
+          <TabsContent value="preview">
+            <div>
               <KnowledgePageMarkdown markdown={page.markdown} />
             </div>
-          ) : view === 'links' ? (
+          </TabsContent>
+          <TabsContent value="links">
             <PageLinksView page={page} />
-          ) : (
+          </TabsContent>
+          <TabsContent value="revisions">
             <PageRevisionsView page={page} />
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

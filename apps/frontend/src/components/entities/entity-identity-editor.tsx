@@ -1,6 +1,10 @@
 import { MAX_ENTITY_DESCRIPTION_LENGTH, MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
 import { useForm } from '@tanstack/react-form';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { validateEntityDescription, validateEntityName } from './entity-validation';
 
 export function EntityIdentityEditor({
@@ -37,20 +41,20 @@ export function EntityIdentityEditor({
       <ResourceDetailHeading
         actions={
           <>
-            <button className="secondary-action" type="button" onClick={onCancel}>
+            <Button variant="outline" size="lg" type="button" onClick={onCancel}>
               Cancel
-            </button>
+            </Button>
             <form.Subscribe selector={(state) => state.canSubmit}>
               {(canSubmit) => (
-                <button className="primary-action" type="submit" disabled={!canSubmit || pending}>
+                <Button size="lg" type="submit" disabled={!canSubmit || pending}>
                   {pending ? 'Saving…' : 'Save entity'}
-                </button>
+                </Button>
               )}
             </form.Subscribe>
           </>
         }
       >
-        Entity {isSelf && <span className="self-badge">You</span>}
+        Entity {isSelf && <Badge variant="secondary">You</Badge>}
       </ResourceDetailHeading>
       <div className="entity-inline-fields">
         <form.Field
@@ -58,9 +62,10 @@ export function EntityIdentityEditor({
           validators={{ onMount: validateEntityName, onChange: validateEntityName }}
         >
           {(field) => (
-            <label className="entity-inline-field">
+            <label className="entity-inline-field" htmlFor="entity-name">
               <span className="sr-only">Name</span>
-              <input
+              <Input
+                id="entity-name"
                 className="entity-name-input"
                 name={field.name}
                 value={field.state.value}
@@ -83,9 +88,10 @@ export function EntityIdentityEditor({
           }}
         >
           {(field) => (
-            <label className="entity-inline-field">
+            <label className="entity-inline-field" htmlFor="entity-description">
               <span className="sr-only">Distinguishing description</span>
-              <textarea
+              <Textarea
+                id="entity-description"
                 className="entity-description-input"
                 name={field.name}
                 rows={1}
