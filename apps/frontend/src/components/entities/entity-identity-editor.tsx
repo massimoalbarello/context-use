@@ -1,5 +1,6 @@
 import { MAX_ENTITY_DESCRIPTION_LENGTH, MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
 import { useForm } from '@tanstack/react-form';
+import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { validateEntityDescription, validateEntityName } from './entity-validation';
 
 export function EntityIdentityEditor({
@@ -33,8 +34,25 @@ export function EntityIdentityEditor({
         void form.handleSubmit();
       }}
     >
+      <ResourceDetailHeading
+        actions={
+          <>
+            <button className="secondary-action" type="button" onClick={onCancel}>
+              Cancel
+            </button>
+            <form.Subscribe selector={(state) => state.canSubmit}>
+              {(canSubmit) => (
+                <button className="primary-action" type="submit" disabled={!canSubmit || pending}>
+                  {pending ? 'Saving…' : 'Save entity'}
+                </button>
+              )}
+            </form.Subscribe>
+          </>
+        }
+      >
+        Entity {isSelf && <span className="self-badge">You</span>}
+      </ResourceDetailHeading>
       <div className="entity-inline-fields">
-        <p className="eyebrow">Entity {isSelf && <span className="self-badge">You</span>}</p>
         <form.Field
           name="name"
           validators={{ onMount: validateEntityName, onChange: validateEntityName }}
@@ -84,18 +102,6 @@ export function EntityIdentityEditor({
           )}
         </form.Field>
         {error && <p className="error-message">{error.message}</p>}
-      </div>
-      <div className="action-row detail-actions">
-        <button className="secondary-action" type="button" onClick={onCancel}>
-          Cancel
-        </button>
-        <form.Subscribe selector={(state) => state.canSubmit}>
-          {(canSubmit) => (
-            <button className="primary-action" type="submit" disabled={!canSubmit || pending}>
-              {pending ? 'Saving…' : 'Save entity'}
-            </button>
-          )}
-        </form.Subscribe>
       </div>
     </form>
   );

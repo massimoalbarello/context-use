@@ -151,6 +151,10 @@ Controls with different jobs must not share an ambiguous treatment.
   description in the header because those fields are the entity. A page keeps only its type and
   actions above the views; the Markdown artifact owns and renders its H1 exactly once in Preview.
   Do not duplicate a page title, revision number, or update timestamp as shell metadata.
+- Every resource detail begins with one dedicated heading row: its type label and action group are
+  vertically aligned at opposite ends of that row. Resource-specific content starts on the next
+  row—entity identity or editable fields for entities, view tabs for pages—and never shares the
+  heading row's horizontal layout context.
 - Treat the top-right action area as a persistent anchor. Entering edit mode may replace an Edit
   action with Cancel and Save, but the action group must keep the same top and right edges; the
   primary Save action occupies the former Edit action's anchor instead of shifting the controls.
@@ -223,6 +227,8 @@ Stop and reconsider the design when:
 - the whole page scrolls because a sidebar list is not constrained to the viewport;
 - entering edit mode causes a large layout shift, duplicated content, or unexplained lines;
 - entering edit mode moves the persistent action anchor, or makes the header and first field touch;
+- a resource's identity, editable fields, or view tabs participate in the same horizontal layout
+  row as its heading actions;
 - tabs look like buttons, cards look like primary actions, or links look like tabs;
 - entities and pages are distinguishable only by reading a type label;
 - a resource result outside rendered Markdown is reduced to plain text or rebuilt with local markup

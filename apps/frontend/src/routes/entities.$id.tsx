@@ -1,6 +1,7 @@
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
+import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { useEntity } from '../lib/hooks/use-entity';
@@ -62,23 +63,26 @@ function EntityRoute() {
         />
       ) : (
         <header className="detail-header">
+          <ResourceDetailHeading
+            actions={
+              <button
+                className="primary-action"
+                type="button"
+                onClick={() => {
+                  updateEntity.reset();
+                  setEditing(true);
+                }}
+              >
+                Edit entity
+              </button>
+            }
+          >
+            Entity {entity.isSelf && <span className="self-badge">You</span>}
+          </ResourceDetailHeading>
           <div className="entity-identity">
-            <p className="eyebrow">
-              Entity {entity.isSelf && <span className="self-badge">You</span>}
-            </p>
             <h1>{entity.name}</h1>
             <p className="detail-description">{entity.description}</p>
           </div>
-          <button
-            className="primary-action detail-actions"
-            type="button"
-            onClick={() => {
-              updateEntity.reset();
-              setEditing(true);
-            }}
-          >
-            Edit entity
-          </button>
         </header>
       )}
 

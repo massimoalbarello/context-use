@@ -1,6 +1,7 @@
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityLink } from '../components/entities/entity-link';
+import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
@@ -187,40 +188,45 @@ function KnowledgePageRoute() {
   return (
     <div className="detail-shell page-detail" data-editing={editing}>
       <header className="detail-header">
-        <p className="eyebrow">Knowledge page</p>
-        {editing ? (
-          <div className="action-row detail-actions">
-            <button
-              className="secondary-action"
-              type="button"
-              onClick={() => {
-                updatePage.reset();
-                setEditing(false);
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              className="primary-action"
-              type="submit"
-              form={PAGE_EDIT_FORM_ID}
-              disabled={updatePage.isPending}
-            >
-              {updatePage.isPending ? 'Saving…' : 'Save page'}
-            </button>
-          </div>
-        ) : (
-          <button
-            className="primary-action detail-actions"
-            type="button"
-            onClick={() => {
-              updatePage.reset();
-              setEditing(true);
-            }}
-          >
-            Edit page
-          </button>
-        )}
+        <ResourceDetailHeading
+          actions={
+            editing ? (
+              <>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() => {
+                    updatePage.reset();
+                    setEditing(false);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="primary-action"
+                  type="submit"
+                  form={PAGE_EDIT_FORM_ID}
+                  disabled={updatePage.isPending}
+                >
+                  {updatePage.isPending ? 'Saving…' : 'Save page'}
+                </button>
+              </>
+            ) : (
+              <button
+                className="primary-action"
+                type="button"
+                onClick={() => {
+                  updatePage.reset();
+                  setEditing(true);
+                }}
+              >
+                Edit page
+              </button>
+            )
+          }
+        >
+          Knowledge page
+        </ResourceDetailHeading>
       </header>
 
       {editing ? (
