@@ -19,6 +19,8 @@ function CollectionLink({
   const sharedProps = {
     'data-active': active ? 'true' : undefined,
     'aria-current': active ? ('page' as const) : undefined,
+    className:
+      '-mb-px border-transparent border-b-2 px-1 py-3 font-medium text-muted-foreground text-sm hover:text-foreground data-[active=true]:border-foreground data-[active=true]:text-foreground',
   };
   const label = collection === 'pages' ? 'Pages' : 'Entities';
 
@@ -104,7 +106,7 @@ export function KnowledgeCollectionNavigation({
     currentCollection === 'entities' ? currentReadableId : rememberedResources.entities;
 
   return (
-    <nav className="sidebar-sections" aria-label="Knowledge collections">
+    <nav className="flex min-w-0 gap-5" aria-label="Knowledge collections">
       <CollectionLink collection="pages" readableId={lastPageId} active={collection === 'pages'} />
       <CollectionLink
         collection="entities"

@@ -58,6 +58,8 @@ Code that merely works is not sufficient. Its design must make ownership and fut
   importing a module must not open connections, start processes, or mutate global state.
 - Expose narrow public contracts and keep one source of truth for schemas, keys, enum-like values,
   and types. Derive downstream representations instead of copying them.
+- Enforce deterministic constraints with types, lint rules, or tests. Use prose for principles that
+  require judgment, not as a substitute for a check the toolchain can perform.
 - Do not create generic `utils`, `helpers`, `common`, `shared`, or `types` dumping grounds. Name the
   domain or capability that owns the code.
 - Biome enforces one function parameter. When an operation needs several values, destructure a

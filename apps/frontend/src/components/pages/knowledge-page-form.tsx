@@ -5,6 +5,7 @@ import { useEntitySuggestions } from '../../lib/hooks/use-entities';
 import { usePageSuggestions } from '../../lib/hooks/use-pages';
 import { ReadableIdField, validateReadableId } from '../knowledge/readable-id-field';
 import { Button } from '../ui/button';
+import { Field, FieldDescription, FieldError, FieldGroup } from '../ui/field';
 import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
 
 export type KnowledgePageFormValues = {
@@ -60,13 +61,13 @@ export function KnowledgePageForm({
         void form.handleSubmit();
       }}
     >
-      <div className="editor-fields">
+      <FieldGroup>
         <form.Field
           name="markdown"
           validators={{ onMount: validateMarkdown, onChange: validateMarkdown }}
         >
           {(field) => (
-            <label className="field" htmlFor={field.name}>
+            <Field data-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}>
               <span className="sr-only">Knowledge page content</span>
               <KnowledgeLinkTextarea
                 id={field.name}
@@ -79,14 +80,12 @@ export function KnowledgePageForm({
                 onChange={field.handleChange}
                 onQueryChange={setKnowledgeQuery}
               />
-              <small>
+              <FieldDescription>
                 Keep one coherent idea here. Type @ to mention an entity or reference a page; use H2
                 or lower headings for linkable sections.
-              </small>
-              {field.state.meta.isTouched && field.state.meta.errors[0] && (
-                <em role="alert">{field.state.meta.errors[0]}</em>
-              )}
-            </label>
+              </FieldDescription>
+              {field.state.meta.isTouched && <FieldError>{field.state.meta.errors[0]}</FieldError>}
+            </Field>
           )}
         </form.Field>
 
@@ -110,9 +109,9 @@ export function KnowledgePageForm({
             )}
           </form.Field>
         )}
-      </div>
+      </FieldGroup>
 
-      {error && !readableIdIssue && <p className="error-message">{error.message}</p>}
+      {error && !readableIdIssue && <FieldError>{error.message}</FieldError>}
 
       {submitLabel && (
         <form.Subscribe selector={(state) => state.canSubmit}>

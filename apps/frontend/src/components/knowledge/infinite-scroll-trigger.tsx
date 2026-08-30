@@ -27,7 +27,7 @@ export function InfiniteScrollTrigger({
         }
       },
       {
-        root: marker.closest('.sidebar-scroll'),
+        root: marker.closest('[data-sidebar-scroll]'),
         rootMargin: '160px 0px',
       },
     );
@@ -41,7 +41,11 @@ export function InfiniteScrollTrigger({
   }
 
   return (
-    <div className="infinite-scroll-trigger" ref={markerRef} aria-live="polite">
+    <div
+      className="flex min-h-12 items-center justify-center gap-2 py-3 text-muted-foreground text-xs"
+      ref={markerRef}
+      aria-live="polite"
+    >
       {error ? (
         <>
           <span>Couldn’t load more.</span>

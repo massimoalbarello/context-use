@@ -1,5 +1,6 @@
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
+import { cn } from '../../lib/utils';
 import { EntityLink } from '../entities/entity-link';
 import { KnowledgePageLink } from './knowledge-page-link';
 
@@ -44,7 +45,7 @@ export function knowledgeHeadingId(children: ReactNode): string {
 
 export function KnowledgePageMarkdown({ markdown }: { markdown: string }) {
   return (
-    <article className="knowledge-markdown">
+    <article className="py-3 md:py-5">
       <ReactMarkdown
         urlTransform={(url) => (url.startsWith('context-use://') ? url : defaultUrlTransform(url))}
         components={{
@@ -76,13 +77,80 @@ export function KnowledgePageMarkdown({ markdown }: { markdown: string }) {
                 </KnowledgePageLink>
               );
             }
-            return <a href={href}>{children}</a>;
+            return (
+              <a
+                className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 hover:decoration-foreground"
+                href={href}
+              >
+                {children}
+              </a>
+            );
           },
-          h2: ({ children }) => <h2 id={knowledgeHeadingId(children)}>{children}</h2>,
-          h3: ({ children }) => <h3 id={knowledgeHeadingId(children)}>{children}</h3>,
-          h4: ({ children }) => <h4 id={knowledgeHeadingId(children)}>{children}</h4>,
-          h5: ({ children }) => <h5 id={knowledgeHeadingId(children)}>{children}</h5>,
-          h6: ({ children }) => <h6 id={knowledgeHeadingId(children)}>{children}</h6>,
+          h1: ({ children }) => (
+            <h1 className="mb-7 font-semibold text-4xl tracking-tight">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2
+              className="mt-10 scroll-mt-24 border-border border-b pb-2 font-semibold text-2xl tracking-tight"
+              id={knowledgeHeadingId(children)}
+            >
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3
+              className="mt-8 scroll-mt-24 font-semibold text-xl"
+              id={knowledgeHeadingId(children)}
+            >
+              {children}
+            </h3>
+          ),
+          h4: ({ children }) => (
+            <h4
+              className="mt-8 scroll-mt-24 font-semibold text-xl"
+              id={knowledgeHeadingId(children)}
+            >
+              {children}
+            </h4>
+          ),
+          h5: ({ children }) => (
+            <h5
+              className="mt-8 scroll-mt-24 font-semibold text-xl"
+              id={knowledgeHeadingId(children)}
+            >
+              {children}
+            </h5>
+          ),
+          h6: ({ children }) => (
+            <h6
+              className="mt-8 scroll-mt-24 font-semibold text-xl"
+              id={knowledgeHeadingId(children)}
+            >
+              {children}
+            </h6>
+          ),
+          p: ({ children }) => <p className="my-5 text-[1.05rem] leading-8">{children}</p>,
+          ul: ({ children }) => (
+            <ul className="my-5 list-disc pl-6 text-[1.05rem] leading-8">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="my-5 list-decimal pl-6 text-[1.05rem] leading-8">{children}</ol>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="my-5 border-border border-l-4 pl-5 text-[1.05rem] text-muted-foreground leading-8">
+              {children}
+            </blockquote>
+          ),
+          code: ({ className, children }) => (
+            <code className={cn('rounded bg-muted px-1.5 py-0.5 font-mono text-sm', className)}>
+              {children}
+            </code>
+          ),
+          pre: ({ children }) => (
+            <pre className="overflow-x-auto rounded-lg bg-foreground p-4 text-background [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit">
+              {children}
+            </pre>
+          ),
         }}
       >
         {markdown}

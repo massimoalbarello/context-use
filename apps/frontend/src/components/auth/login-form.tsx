@@ -1,6 +1,7 @@
 import { useLoginForm, validateName } from '../../lib/hooks/use-login-form';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
+import { Field, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 
 export function LoginForm({
@@ -30,38 +31,34 @@ export function LoginForm({
               : 'Use a passkey saved on this device, another device, or a security key.'}
           </p>
 
-          {isSigningUp && (
-            <api.Field name="name" validators={{ onChange: validateName }}>
-              {(field) => (
-                <label className="field" htmlFor="owner-name">
-                  <span>Name</span>
-                  <Input
-                    id="owner-name"
-                    name={field.name}
-                    type="text"
-                    autoComplete="name"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    aria-invalid={field.state.meta.errors.length > 0}
-                  />
-                  {field.state.meta.errors[0] && <em role="alert">{field.state.meta.errors[0]}</em>}
-                </label>
-              )}
-            </api.Field>
-          )}
+          <FieldGroup>
+            {isSigningUp && (
+              <api.Field name="name" validators={{ onChange: validateName }}>
+                {(field) => (
+                  <Field data-invalid={field.state.meta.errors.length > 0}>
+                    <FieldLabel htmlFor="owner-name">Name</FieldLabel>
+                    <Input
+                      id="owner-name"
+                      name={field.name}
+                      type="text"
+                      autoComplete="name"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                      aria-invalid={field.state.meta.errors.length > 0}
+                    />
+                    <FieldError>{field.state.meta.errors[0]}</FieldError>
+                  </Field>
+                )}
+              </api.Field>
+            )}
 
-          {!passkeysSupported && (
-            <p role="alert" className="error-message">
-              Passkeys require a supported browser in a secure context.
-            </p>
-          )}
+            {!passkeysSupported && (
+              <FieldError>Passkeys require a supported browser in a secure context.</FieldError>
+            )}
 
-          {error && (
-            <p role="alert" className="error-message">
-              {error.message}
-            </p>
-          )}
+            {error && <FieldError>{error.message}</FieldError>}
+          </FieldGroup>
 
           <api.Subscribe selector={(state) => state.canSubmit}>
             {(canSubmit) => (

@@ -1,7 +1,9 @@
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityLink } from '../components/entities/entity-link';
+import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
+import { ResourceList } from '../components/knowledge/resource-list';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
@@ -36,21 +38,21 @@ function KnowledgePageRouteError({ error, reset }: ErrorComponentProps) {
 
 function PageLinkList({ label, links }: { label: string; links: KnowledgePage['references'] }) {
   return (
-    <section className="link-section">
-      <div className="section-heading">
-        <h2>{label}</h2>
+    <section>
+      <div className="mb-4 flex items-center gap-3">
+        <h2 className="font-semibold text-lg">{label}</h2>
         <Badge variant="secondary">{links.length}</Badge>
       </div>
       {links.length > 0 ? (
-        <ul className="object-card-list">
+        <ResourceList>
           {links.map(({ page, fragment }) => (
             <li key={`${page.id}#${fragment ?? ''}`}>
               <KnowledgePageLink page={page} presentation="card" fragment={fragment ?? undefined} />
             </li>
           ))}
-        </ul>
+        </ResourceList>
       ) : (
-        <p className="connection-empty">None yet.</p>
+        <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
       )}
     </section>
   );
@@ -58,22 +60,22 @@ function PageLinkList({ label, links }: { label: string; links: KnowledgePage['r
 
 function PageLinksView({ page }: { page: KnowledgePage }) {
   return (
-    <div className="page-connections">
-      <section className="link-section">
-        <div className="section-heading">
-          <h2>Mentions</h2>
+    <div className="grid gap-8 py-7 md:grid-cols-3">
+      <section>
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="font-semibold text-lg">Mentions</h2>
           <Badge variant="secondary">{page.mentions.length}</Badge>
         </div>
         {page.mentions.length > 0 ? (
-          <ul className="object-card-list">
+          <ResourceList>
             {page.mentions.map((entity) => (
               <li key={entity.id}>
                 <EntityLink entity={entity} presentation="card" />
               </li>
             ))}
-          </ul>
+          </ResourceList>
         ) : (
-          <p className="connection-empty">None yet.</p>
+          <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
         )}
       </section>
       <PageLinkList label="References" links={page.references} />
@@ -84,22 +86,25 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
 
 function PageRevisionsView({ page }: { page: KnowledgePage }) {
   return (
-    <section className="page-revisions">
-      <div className="section-heading">
-        <h2>Revisions</h2>
+    <section className="py-7">
+      <div className="mb-4 flex items-center gap-3">
+        <h2 className="font-semibold text-lg">Revisions</h2>
         <Badge variant="secondary">{page.revisions.length}</Badge>
       </div>
-      <ol className="revision-list">
+      <ol className="grid max-w-3xl list-none gap-2 p-0">
         {page.revisions.map((revision) => (
-          <li key={revision.revisionNumber}>
-            <div>
-              <strong>Revision {revision.revisionNumber}</strong>
+          <li className="rounded-xl bg-muted px-4 py-3" key={revision.revisionNumber}>
+            <div className="flex items-center gap-2">
+              <strong className="font-semibold text-sm">Revision {revision.revisionNumber}</strong>
               {revision.revisionNumber === page.revisionNumber && (
                 <Badge variant="secondary">Current</Badge>
               )}
             </div>
-            <p>{revision.title}</p>
-            <time dateTime={revision.createdAt.toISOString()}>
+            <p className="mt-1 text-sm">{revision.title}</p>
+            <time
+              className="mt-1 block text-muted-foreground text-xs"
+              dateTime={revision.createdAt.toISOString()}
+            >
               {revision.createdAt.toLocaleString()}
             </time>
           </li>
@@ -133,8 +138,8 @@ function KnowledgePageRoute() {
   }
 
   return (
-    <div className="detail-shell page-detail" data-editing={editing}>
-      <header className="detail-header">
+    <DetailShell className={editing ? 'gap-4' : 'gap-0'} data-editing={editing}>
+      <DetailHeader>
         <ResourceDetailHeading
           actions={
             editing ? (
@@ -175,7 +180,7 @@ function KnowledgePageRoute() {
         >
           Knowledge page
         </ResourceDetailHeading>
-      </header>
+      </DetailHeader>
 
       {editing ? (
         <KnowledgePageForm
@@ -197,7 +202,7 @@ function KnowledgePageRoute() {
         />
       ) : (
         <Tabs
-          className="detail-view"
+          className="mt-5 min-w-0"
           value={view}
           onValueChange={(value) => {
             if (isPageView(value)) {
@@ -205,7 +210,7 @@ function KnowledgePageRoute() {
             }
           }}
         >
-          <TabsList className="detail-tabs" variant="line" aria-label="Page views">
+          <TabsList className="gap-5" variant="line" aria-label="Page views">
             <TabsTrigger value="preview">Preview</TabsTrigger>
             <TabsTrigger value="links">Links</TabsTrigger>
             <TabsTrigger value="revisions">Revisions</TabsTrigger>
@@ -223,6 +228,6 @@ function KnowledgePageRoute() {
           </TabsContent>
         </Tabs>
       )}
-    </div>
+    </DetailShell>
   );
 }

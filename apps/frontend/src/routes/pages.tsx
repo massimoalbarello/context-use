@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
+import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
 import { usePages } from '../lib/hooks/use-pages';
@@ -23,7 +24,7 @@ function PagesLayout() {
   }
 
   return (
-    <main className="knowledge-workspace">
+    <KnowledgeWorkspace>
       <KnowledgeSidebar
         collection="pages"
         count={total}
@@ -40,6 +41,6 @@ function PagesLayout() {
       <KnowledgeWorkspaceDetail>
         <Outlet />
       </KnowledgeWorkspaceDetail>
-    </main>
+    </KnowledgeWorkspace>
   );
 }

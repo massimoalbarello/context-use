@@ -1,8 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { cn } from '../../lib/utils';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { EntityCardContent } from '../entities/entity-link';
+import { resourceCardVariants } from '../knowledge/resource-list';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import {
   type ActiveKnowledgeLink,
@@ -110,7 +113,7 @@ export function KnowledgeLinkTextarea({
   }
 
   return (
-    <div className="knowledge-link-editor">
+    <div className="relative">
       <Textarea
         ref={textareaRef}
         id={id}
@@ -162,12 +165,12 @@ export function KnowledgeLinkTextarea({
         aria-invalid={invalid}
         role="combobox"
         spellCheck
-        className="knowledge-editor font-mono"
+        className="block min-h-64 resize-y font-mono leading-relaxed md:min-h-72"
       />
       {suggestionsOpen && (
         <div
           ref={menuRef}
-          className="knowledge-picker-menu"
+          className="absolute bottom-3 left-3 z-10 grid max-h-72 w-[calc(100%-1.5rem)] max-w-xl gap-1 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg"
           id={listId}
           role="listbox"
           aria-label="Knowledge"
@@ -175,10 +178,9 @@ export function KnowledgeLinkTextarea({
           {suggestions.map((suggestion) => {
             const optionId = suggestionId(suggestion);
             return (
-              <button
-                className={`knowledge-picker-option resource-card ${
-                  suggestion.kind === 'entity' ? 'entity-link-card' : 'knowledge-page-link-card'
-                }`}
+              <Button
+                variant="ghost"
+                className={cn(resourceCardVariants(), 'w-full justify-between text-sm')}
                 id={`${listId}-${optionId}`}
                 key={optionId}
                 type="button"
@@ -192,10 +194,13 @@ export function KnowledgeLinkTextarea({
                 ) : (
                   <KnowledgePageCardContent page={suggestion.page} />
                 )}
-                <Badge variant="outline" className="knowledge-picker-kind">
+                <Badge
+                  variant="outline"
+                  className="h-6 shrink-0 px-2 text-[0.65rem] uppercase tracking-wider"
+                >
                   {suggestion.kind === 'entity' ? 'Entity' : 'Page'}
                 </Badge>
-              </button>
+              </Button>
             );
           })}
         </div>

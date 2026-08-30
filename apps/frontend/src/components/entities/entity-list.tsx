@@ -1,6 +1,7 @@
 import { useRouterState } from '@tanstack/react-router';
 import { knowledgeResourceFromPath } from '../../lib/knowledge-navigation';
 import type { EntitySummary } from '../../queries/entities';
+import { ResourceList, ResourceListEmpty } from '../knowledge/resource-list';
 import { EntityLink } from './entity-link';
 
 export function EntityList({ entities }: { entities: EntitySummary[] }) {
@@ -13,15 +14,14 @@ export function EntityList({ entities }: { entities: EntitySummary[] }) {
 
   if (entities.length === 0) {
     return (
-      <div className="empty-state">
-        <p>No entities yet.</p>
-        <span>Create a stable coordinate before mentioning it from a page.</span>
-      </div>
+      <ResourceListEmpty title="No entities yet.">
+        Create a stable coordinate before mentioning it from a page.
+      </ResourceListEmpty>
     );
   }
 
   return (
-    <ul className="entity-card-list object-card-list">
+    <ResourceList className="gap-2">
       {entities.map((entity) => (
         <li key={entity.id}>
           <EntityLink
@@ -31,6 +31,6 @@ export function EntityList({ entities }: { entities: EntitySummary[] }) {
           />
         </li>
       ))}
-    </ul>
+    </ResourceList>
   );
 }

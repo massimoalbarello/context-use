@@ -1,6 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { cn } from '../../lib/utils';
 import type { EntitySummary } from '../../queries/entities';
+import { resourceCardVariants } from '../knowledge/resource-list';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 
@@ -18,15 +20,17 @@ export function entityInitial(name: string): string {
 export function EntityCardContent({ entity }: { entity: EntityIdentity }) {
   return (
     <>
-      <Avatar className="entity-link-avatar" aria-hidden="true">
+      <Avatar className="size-9 font-semibold text-xs uppercase" aria-hidden="true">
         <AvatarFallback>{entityInitial(entity.name)}</AvatarFallback>
       </Avatar>
-      <span className="entity-link-copy">
-        <span className="entity-link-name">
-          <strong>{entity.name}</strong>
+      <span className="grid min-w-0 flex-1 gap-0.5">
+        <span className="flex min-w-0 items-center gap-2">
+          <strong className="min-w-0 truncate font-semibold text-sm">{entity.name}</strong>
           {entity.isSelf && <Badge variant="secondary">You</Badge>}
         </span>
-        <small>{entity.description}</small>
+        <small className="truncate text-muted-foreground text-xs leading-relaxed">
+          {entity.description}
+        </small>
       </span>
     </>
   );
@@ -36,11 +40,11 @@ export function EntityLink({ entity, presentation, active, children }: EntityLin
   if (presentation === 'inline') {
     return (
       <Link
-        className="entity-link entity-link-inline object-link"
+        className="mx-0.5 inline-flex items-center gap-1 rounded-full bg-muted py-0.5 pr-2 pl-[0.3125rem] align-baseline font-medium text-foreground no-underline transition hover:bg-accent"
         to="/entities/$id"
         params={{ id: entity.readableId }}
       >
-        <Avatar size="sm" className="entity-link-avatar" aria-hidden="true">
+        <Avatar size="sm" className="font-semibold text-[0.6rem] uppercase" aria-hidden="true">
           <AvatarFallback>{entityInitial(entity.name)}</AvatarFallback>
         </Avatar>
         <span>{children ?? entity.name}</span>
@@ -50,7 +54,7 @@ export function EntityLink({ entity, presentation, active, children }: EntityLin
 
   return (
     <Link
-      className="entity-link entity-link-card resource-card object-link"
+      className={cn(resourceCardVariants(), 'transition')}
       to="/entities/$id"
       params={{ id: entity.readableId }}
       data-route-selected={active ? 'true' : undefined}

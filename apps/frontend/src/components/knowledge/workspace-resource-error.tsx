@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { Eyebrow } from '../layout/eyebrow';
 import { Button, buttonVariants } from '../ui/button';
 
 type KnowledgeResource = 'page' | 'entity';
@@ -29,15 +30,17 @@ export function WorkspaceResourceError({
   const notFound = error.message.toLocaleLowerCase().includes('not found');
 
   return (
-    <div className="workspace-empty workspace-resource-error">
-      <p className="eyebrow">{copy.eyebrow}</p>
-      <h2>{notFound ? `${copy.eyebrow} not found` : `Couldn’t load this ${resource}`}</h2>
-      <p className="workspace-description">
+    <div className="mx-auto flex min-h-[32rem] max-w-xl flex-col items-start justify-center px-6 py-16">
+      <Eyebrow>{copy.eyebrow}</Eyebrow>
+      <h2 className="mt-2 font-semibold text-4xl tracking-tight">
+        {notFound ? `${copy.eyebrow} not found` : `Couldn’t load this ${resource}`}
+      </h2>
+      <p className="mt-3 text-lg text-muted-foreground leading-relaxed">
         {notFound
           ? `This ${resource} may have been removed, or its address may be out of date.`
           : `Something prevented this ${resource} from loading. You can try again or return to your ${copy.collection}.`}
       </p>
-      <div className="action-row workspace-resource-actions">
+      <div className="mt-7 flex flex-wrap gap-2">
         <Link className={buttonVariants({ size: 'lg' })} to={copy.collectionPath} replace>
           Back to {copy.collection}
         </Link>

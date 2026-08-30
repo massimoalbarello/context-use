@@ -15,6 +15,9 @@ novelty.
 - Do not hand-style a native control when a shadcn primitive owns the interaction. Do not create a
   local near-match for an existing color, spacing, radius, shadow, font, focus state, or component
   variant.
+- Compose product-specific layout with semantic tokens and Tailwind utilities on the shared React
+  component that owns it. Custom component or feature CSS files are forbidden by an architecture
+  test; only the shared theme foundation remains CSS.
 - Extend a shared token, primitive, or layout pattern when a recurring need is real. Keep a
   difference local only when it communicates a genuine product distinction.
 - Use the same component for the same job everywhere. Hover, focus, selected, disabled, loading,
@@ -22,9 +25,10 @@ novelty.
 - Keep the interface monochrome until color has a stable semantic purpose in the shared token
   system.
 
-Before introducing new CSS or markup, check whether an existing shadcn primitive, shared component,
-or variant already owns the decision. Repeated fine-tuning across screens means the shared owner is
-missing or wrong.
+Before introducing markup or styling, check whether an existing shadcn primitive, shared component,
+or variant already owns the decision. A genuinely indispensable global CSS responsibility requires
+an explicit architecture change, not a local stylesheet. Repeated fine-tuning across screens means
+the shared owner is missing or wrong.
 
 ## Product and resource language
 
@@ -130,6 +134,8 @@ Stop and fix the shared system when:
 
 - the same job uses different components, spacing, alignment, or interaction states across routes;
 - a generic control or surface is hand-built instead of using the established shadcn primitive;
+- a component or feature adds a custom stylesheet instead of composing the established primitives,
+  tokens, and variants;
 - a feature introduces a one-off token or near-match for an existing style;
 - entering edit mode moves actions or causes a visible layout shift;
 - cards resize with content, or hover, focus, and selection are inconsistent;

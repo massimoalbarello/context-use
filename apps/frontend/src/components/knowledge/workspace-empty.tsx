@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { cn } from '../../lib/utils';
+import { Eyebrow } from '../layout/eyebrow';
 import { buttonVariants } from '../ui/button';
 
 export function WorkspaceEmpty({
@@ -16,11 +16,11 @@ export function WorkspaceEmpty({
   createLabel: string;
 }) {
   return (
-    <div className="workspace-empty">
-      <p className="eyebrow">{eyebrow}</p>
-      <h2>{title}</h2>
-      <p className="workspace-description">{description}</p>
-      <Link className={cn(buttonVariants({ size: 'lg' }), 'workspace-empty-action')} to={createTo}>
+    <div className="mx-auto flex min-h-[32rem] max-w-xl flex-col items-start justify-center px-6 py-16">
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2 className="mt-2 font-semibold text-4xl tracking-tight">{title}</h2>
+      <p className="mt-3 text-lg text-muted-foreground leading-relaxed">{description}</p>
+      <Link className={buttonVariants({ size: 'lg', className: 'mt-7' })} to={createTo}>
         {createLabel}
       </Link>
     </div>

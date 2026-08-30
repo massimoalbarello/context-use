@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { DetailShell } from '../components/knowledge/detail-shell';
 import {
   KnowledgePageForm,
   type KnowledgePageFormValues,
@@ -19,10 +20,12 @@ function NewPageRoute() {
   const createPage = useCreatePage();
 
   return (
-    <div className="detail-shell editor-shell">
-      <header className="editor-header">
-        <h1>New page</h1>
-        <p>The permanent address will be derived from the H1 title.</p>
+    <DetailShell className="max-w-5xl gap-5">
+      <header className="grid gap-1">
+        <h1 className="font-semibold text-2xl tracking-tight">New page</h1>
+        <p className="text-muted-foreground text-sm">
+          The permanent address will be derived from the H1 title.
+        </p>
       </header>
       <KnowledgePageForm
         initialValues={EMPTY_PAGE}
@@ -37,6 +40,6 @@ function NewPageRoute() {
           })
         }
       />
-    </div>
+    </DetailShell>
   );
 }

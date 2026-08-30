@@ -99,26 +99,27 @@ global client-state library until a concrete cross-route state model requires on
 ## Visual system
 
 - The canonical token baseline is the tweakcn **Minimal Neutral** shadcn theme. Its semantic theme
-  variables, DM Sans body type, and Geist Mono code type belong in the shared foundation; feature
-  CSS consumes those tokens and never recreates the palette locally.
+  variables, DM Sans body type, and Geist Mono code type belong in the shared foundation;
+  components consume those tokens and never recreate the palette locally.
 - Generic controls and surfaces—buttons, inputs, textareas, tabs, badges, avatars, and ordinary UI
   cards—come from `src/components/ui`. Do not hand-style a native replacement in a feature when a
   shadcn primitive owns that interaction. Domain resource cards remain application components
   because their entity/page identity and selection semantics are product behavior.
 - Establish a compact visual baseline before building feature screens: semantic color tokens,
   typography, spacing rhythm, radii, elevation, interaction states, content widths, and responsive
-  behavior. Keep global CSS limited to this baseline, resets, fonts, and truly global behavior.
+  behavior.
 - Use one shared application shell and a small set of recurring page patterns for headers, content
   regions, sections, forms, lists, and empty or error states. These executable components are the
   frontend template; do not create a separate visual model that can drift from them.
 - Build every screen from the established tokens, shadcn/ui primitives, and shared page patterns.
   Consistency takes precedence over route-specific novelty.
-- Keep feature styling with its owner, but do not introduce one-off colors, spacing, typography,
-  control treatments, or long repeated class combinations when an established token, primitive,
-  or pattern expresses the same decision.
-- Keep the root stylesheet as a small, deliberately ordered entry point. Global foundations belong
-  in `src/styles`; feature and component styles live beside the code that owns them. Do not rebuild
-  a monolithic component catalog in the root stylesheet or scatter ownership across ad hoc imports.
+- Compose application layout with semantic theme tokens, Tailwind utilities, and `cva` variants
+  colocated with the React component that owns the behavior. Do not add component or feature
+  stylesheets.
+- `src/styles.css` is only the Tailwind/theme entry point and `src/styles/foundation.css` is only the
+  tweakcn theme, reset, fonts, and global defaults. The architecture test enforces that boundary. An
+  exceptional new global CSS responsibility requires an explicit architecture decision and an
+  update to that test; convenience is not an exception.
 - Add a token, component variant, or page pattern only for a recurring semantic distinction. Before
   adding one, simplify, extend, consolidate, or delete what already exists where possible.
 - Treat nearly identical components, arbitrary visual values, growing variant matrices, and pages

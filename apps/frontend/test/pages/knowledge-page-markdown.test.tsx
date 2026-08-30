@@ -19,7 +19,7 @@ describe('knowledge page Markdown', () => {
       <KnowledgePageMarkdown markdown={'# Header page\n\nThe body remains visible.'} />,
     );
 
-    expect(html).toContain('<h1>Header page</h1>');
-    expect(html).toContain('<p>The body remains visible.</p>');
+    expect(html).toContain('>Header page</h1>');
+    expect(html).toContain('>The body remains visible.</p>');
   });
 });

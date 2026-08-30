@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { EntityForm, type EntityFormValues } from '../components/entities/entity-form';
+import { DetailShell } from '../components/knowledge/detail-shell';
 import { useCreateEntity } from '../lib/hooks/use-create-entity';
 
 const EMPTY_ENTITY: EntityFormValues = { readableId: '', name: '', description: '' };
@@ -13,10 +14,12 @@ function NewEntityRoute() {
   const createEntity = useCreateEntity();
 
   return (
-    <div className="detail-shell editor-shell editor-shell-narrow">
-      <header className="editor-header">
-        <h1>New entity</h1>
-        <p>The permanent address will be derived from the entity’s name.</p>
+    <DetailShell className="w-full max-w-2xl gap-5">
+      <header className="grid gap-1">
+        <h1 className="font-semibold text-2xl tracking-tight">New entity</h1>
+        <p className="text-muted-foreground text-sm">
+          The permanent address will be derived from the entity’s name.
+        </p>
       </header>
       <EntityForm
         initialValues={EMPTY_ENTITY}
@@ -31,6 +34,6 @@ function NewEntityRoute() {
           })
         }
       />
-    </div>
+    </DetailShell>
   );
 }

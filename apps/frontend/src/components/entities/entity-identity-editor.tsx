@@ -3,6 +3,7 @@ import { useForm } from '@tanstack/react-form';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Field, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { validateEntityDescription, validateEntityName } from './entity-validation';
@@ -32,7 +33,7 @@ export function EntityIdentityEditor({
 
   return (
     <form
-      className="detail-header entity-inline-editor"
+      className="grid w-full gap-4"
       onSubmit={(event) => {
         event.preventDefault();
         void form.handleSubmit();
@@ -56,17 +57,19 @@ export function EntityIdentityEditor({
       >
         Entity {isSelf && <Badge variant="secondary">You</Badge>}
       </ResourceDetailHeading>
-      <div className="entity-inline-fields">
+      <FieldGroup className="w-full min-w-0 max-w-3xl gap-0">
         <form.Field
           name="name"
           validators={{ onMount: validateEntityName, onChange: validateEntityName }}
         >
           {(field) => (
-            <label className="entity-inline-field" htmlFor="entity-name">
-              <span className="sr-only">Name</span>
+            <Field data-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}>
+              <FieldLabel className="sr-only" htmlFor="entity-name">
+                Name
+              </FieldLabel>
               <Input
                 id="entity-name"
-                className="entity-name-input"
+                className="-mx-2 mt-2 h-auto w-[calc(100%+1rem)] px-2 py-0 font-semibold text-4xl text-foreground tracking-tight md:text-5xl"
                 name={field.name}
                 value={field.state.value}
                 maxLength={MAX_ENTITY_NAME_LENGTH}
@@ -74,10 +77,8 @@ export function EntityIdentityEditor({
                 onChange={(event) => field.handleChange(event.target.value)}
                 aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
               />
-              {field.state.meta.isTouched && field.state.meta.errors[0] && (
-                <em role="alert">{field.state.meta.errors[0]}</em>
-              )}
-            </label>
+              {field.state.meta.isTouched && <FieldError>{field.state.meta.errors[0]}</FieldError>}
+            </Field>
           )}
         </form.Field>
         <form.Field
@@ -88,11 +89,13 @@ export function EntityIdentityEditor({
           }}
         >
           {(field) => (
-            <label className="entity-inline-field" htmlFor="entity-description">
-              <span className="sr-only">Distinguishing description</span>
+            <Field data-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}>
+              <FieldLabel className="sr-only" htmlFor="entity-description">
+                Distinguishing description
+              </FieldLabel>
               <Textarea
                 id="entity-description"
-                className="entity-description-input"
+                className="-mx-2 mt-3 max-h-40 min-h-[1lh] w-[calc(100%+1rem)] resize-y px-2 py-0 text-lg text-muted-foreground leading-relaxed"
                 name={field.name}
                 rows={1}
                 maxLength={MAX_ENTITY_DESCRIPTION_LENGTH}
@@ -101,14 +104,12 @@ export function EntityIdentityEditor({
                 onChange={(event) => field.handleChange(event.target.value)}
                 aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
               />
-              {field.state.meta.isTouched && field.state.meta.errors[0] && (
-                <em role="alert">{field.state.meta.errors[0]}</em>
-              )}
-            </label>
+              {field.state.meta.isTouched && <FieldError>{field.state.meta.errors[0]}</FieldError>}
+            </Field>
           )}
         </form.Field>
-        {error && <p className="error-message">{error.message}</p>}
-      </div>
+        {error && <FieldError>{error.message}</FieldError>}
+      </FieldGroup>
     </form>
   );
 }

@@ -1,6 +1,7 @@
 import { useRouterState } from '@tanstack/react-router';
 import { knowledgeResourceFromPath } from '../../lib/knowledge-navigation';
 import type { KnowledgePageSummary } from '../../queries/pages';
+import { ResourceList, ResourceListEmpty } from '../knowledge/resource-list';
 import { KnowledgePageLink } from './knowledge-page-link';
 
 export function KnowledgePageList({ pages }: { pages: KnowledgePageSummary[] }) {
@@ -13,15 +14,14 @@ export function KnowledgePageList({ pages }: { pages: KnowledgePageSummary[] }) 
 
   if (pages.length === 0) {
     return (
-      <div className="empty-state">
-        <p>No knowledge pages yet.</p>
-        <span>Start with one coherent idea and connect it to the entities it discusses.</span>
-      </div>
+      <ResourceListEmpty title="No knowledge pages yet.">
+        Start with one coherent idea and connect it to the entities it discusses.
+      </ResourceListEmpty>
     );
   }
 
   return (
-    <ul className="knowledge-page-card-list object-card-list">
+    <ResourceList className="gap-2">
       {pages.map((page) => (
         <li key={page.id}>
           <KnowledgePageLink
@@ -31,6 +31,6 @@ export function KnowledgePageList({ pages }: { pages: KnowledgePageSummary[] }) 
           />
         </li>
       ))}
-    </ul>
+    </ResourceList>
   );
 }

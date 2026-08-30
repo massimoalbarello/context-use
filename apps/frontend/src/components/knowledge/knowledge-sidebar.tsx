@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { Menu, Plus } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
 import { cn } from '../../lib/utils';
 import type { KnowledgeProfile } from '../../queries/profile';
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button, buttonVariants } from '../ui/button';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 import { KnowledgeCollectionNavigation } from './knowledge-collection-navigation';
+import { useKnowledgeWorkspace } from './knowledge-workspace';
 
 export function KnowledgeSidebar({
   collection,
@@ -33,47 +34,62 @@ export function KnowledgeSidebar({
   loadMore: () => Promise<unknown>;
   children: ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggleSidebar } = useKnowledgeWorkspace();
   const initialLoadFailed = Boolean(error && count === 0);
   const profileInitial = profile.selfEntity.name.trim().charAt(0).toLocaleUpperCase();
 
   return (
-    <aside className="knowledge-sidebar" data-collapsed={collapsed}>
-      <div className="sidebar-brand">
-        <Link className="sidebar-brand-link" to="/pages" aria-label="Context Use">
-          <span className="sidebar-brand-copy">
-            <strong>Context Use</strong>
-            <small>Private workspace</small>
+    <aside
+      className={cn('flex min-h-0 flex-col overflow-hidden', collapsed && 'z-10 overflow-visible')}
+      data-collapsed={collapsed}
+    >
+      <div
+        className={cn(
+          'flex shrink-0 items-center justify-between gap-3 p-3',
+          collapsed && 'absolute top-6 left-6 items-center justify-center p-0 md:top-7 md:left-7',
+        )}
+      >
+        <Link
+          className={cn('flex min-w-0 items-center', collapsed && 'hidden')}
+          to="/pages"
+          aria-label="Context Use"
+        >
+          <span className="grid min-w-0 leading-tight">
+            <strong className="truncate font-semibold text-sm">Context Use</strong>
+            <small className="truncate text-muted-foreground text-xs">Private workspace</small>
           </span>
         </Link>
         <Button
-          className="sidebar-toggle"
+          className={cn(
+            'size-10 shrink-0 rounded-xl bg-transparent text-muted-foreground [&_svg]:size-5',
+            collapsed && 'size-11 bg-muted shadow-lg hover:bg-accent hover:text-accent-foreground',
+          )}
           type="button"
           variant="ghost"
           size="icon-lg"
           aria-label={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={toggleSidebar}
         >
           <Menu aria-hidden="true" />
         </Button>
       </div>
 
-      <div className="sidebar-body">
-        <div className="sidebar-navigation">
+      <div className={cn('flex min-h-0 flex-1 flex-col', collapsed && 'hidden')}>
+        <div className="flex shrink-0 items-center justify-between gap-3 px-4">
           <KnowledgeCollectionNavigation
             collection={collection}
             ownerEntityId={profile.selfEntity.id}
           />
-          <Link className={cn(buttonVariants({ size: 'lg' }), 'sidebar-create')} to={createTo}>
+          <Link className={cn(buttonVariants({ size: 'lg' }), 'shrink-0')} to={createTo}>
             <Plus data-icon="inline-start" aria-hidden="true" />
             {createLabel}
           </Link>
         </div>
 
-        <div className="sidebar-scroll">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2" data-sidebar-scroll>
           {initialLoadFailed ? (
-            <p className="error-message sidebar-error">{error?.message}</p>
+            <p className="p-2 text-destructive text-sm">{error?.message}</p>
           ) : (
             <>
               {children}
@@ -87,18 +103,18 @@ export function KnowledgeSidebar({
           )}
         </div>
 
-        <footer className="sidebar-footer">
+        <footer className="flex shrink-0 items-center gap-2 px-3 py-3">
           <Link
-            className="sidebar-profile"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 hover:bg-card"
             to="/entities/$id"
             params={{ id: profile.selfEntity.readableId }}
           >
-            <Avatar className="profile-mark" aria-hidden="true">
+            <Avatar className="size-8 font-semibold" aria-hidden="true">
               <AvatarFallback>{profileInitial}</AvatarFallback>
             </Avatar>
-            <span>
-              <strong>{profile.selfEntity.name}</strong>
-              <small>Your entity</small>
+            <span className="grid min-w-0 leading-tight">
+              <strong className="truncate font-medium text-xs">{profile.selfEntity.name}</strong>
+              <small className="truncate text-[0.68rem] text-muted-foreground">Your entity</small>
             </span>
           </Link>
           <SignOutButton />

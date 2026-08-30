@@ -1,7 +1,2 @@
 @import "tailwindcss";
 @import "./styles/foundation.css";
-@import "./components/layout/workspace.css";
-@import "./components/knowledge/detail-shell.css";
-@import "./styles/controls.css";
-@import "./components/knowledge/resource-links.css";
-@import "./components/pages/knowledge-page.css";

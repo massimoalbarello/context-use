@@ -104,25 +104,6 @@
       }
     },
     {
-      "includes": ["apps/backend/src/**/*.ts", "!apps/backend/src/main.ts"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedImports": {
-              "level": "error",
-              "options": {
-                "paths": {
-                  "#db/client.ts": "Only the production composition root may select and create the database client.",
-                  "#lib/env.ts": "Only the production composition root may read production configuration.",
-                  "#lib/storage/client.ts": "Only the production composition root may select and create the storage client."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    {
       "includes": ["apps/backend/src/repositories/**/*.ts"],
       "linter": {
         "rules": {
@@ -132,10 +113,22 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["#routes/**", "#services/**"],
-                    "message": "Repositories must not depend on controllers or services."
+                    "group": ["#db/**", "#routes/**", "#services/**"],
+                    "message": "Repositories receive the database connection and must not depend on database bootstrap, controllers, or services."
+                  },
+                  {
+                    "group": [
+                      "#repositories/**",
+                      "!#repositories/repository.ts"
+                    ],
+                    "message": "A repository capability must not coordinate another repository capability. Services own that coordination."
                   }
-                ]
+                ],
+                "paths": {
+                  "#db/client.ts": "Only main.ts may select and create the database client.",
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may select and create the storage client."
+                }
               }
             }
           }
@@ -143,10 +136,7 @@
       }
     },
     {
-      "includes": [
-        "apps/backend/src/lib/**/*.ts",
-        "apps/backend/src/models/**/*.ts"
-      ],
+      "includes": ["apps/backend/src/lib/**/*.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -163,7 +153,44 @@
                     ],
                     "message": "Models and shared technical support must not depend on outer application layers."
                   }
-                ]
+                ],
+                "paths": {
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may select and create the storage client."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/backend/src/models/**/*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "#db/**",
+                      "#repositories/**",
+                      "#routes/**",
+                      "#services/**"
+                    ],
+                    "message": "Models must not depend on infrastructure or application layers."
+                  }
+                ],
+                "paths": {
+                  "bun": {
+                    "importNames": ["SQL"],
+                    "message": "Models must not expose SQL infrastructure."
+                  },
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may select and create the storage client."
+                }
               }
             }
           }
@@ -180,10 +207,22 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["#routes/**"],
-                    "message": "Services must not depend on controllers."
+                    "group": ["#db/**", "#routes/**"],
+                    "message": "Services depend on repository contracts, never database or controller modules."
+                  },
+                  {
+                    "group": ["#services/**", "!#services/service.ts"],
+                    "message": "A service capability must not coordinate another service capability. Depend on the required repository contracts directly."
                   }
-                ]
+                ],
+                "paths": {
+                  "bun": {
+                    "importNames": ["SQL"],
+                    "message": "Services must not hold SQL. Depend on a repository contract instead."
+                  },
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may select and create the storage client."
+                }
               }
             }
           }
@@ -210,10 +249,132 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["#repositories/**"],
-                    "message": "Controllers must depend on services, not repositories."
+                    "group": ["#db/**", "#repositories/**"],
+                    "message": "Controllers depend on services, never database or repository modules."
                   }
-                ]
+                ],
+                "paths": {
+                  "bun": {
+                    "importNames": ["SQL"],
+                    "message": "Controllers must not hold SQL. Depend on a service instead."
+                  },
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may select and create the storage client."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/backend/src/routes/**/model.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["#db/**", "#repositories/**", "#services/**"],
+                    "message": "Route schemas describe transport contracts and must not depend on database, repository, or service implementations."
+                  }
+                ],
+                "paths": {
+                  "bun": {
+                    "importNames": ["SQL"],
+                    "message": "Route schemas must not expose SQL infrastructure."
+                  },
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may select and create the storage client."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/backend/src/db/**/*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["#repositories/**", "#routes/**", "#services/**"],
+                    "message": "Database infrastructure must not depend on application or transport layers."
+                  }
+                ],
+                "paths": {
+                  "#db/client.ts": "Only main.ts may select and create the database client.",
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may select and create the storage client."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/backend/src/app.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["#db/**", "#repositories/**"],
+                    "message": "The application factory receives service contracts. Only main.ts assembles concrete infrastructure."
+                  }
+                ],
+                "paths": {
+                  "bun": {
+                    "importNames": ["SQL"],
+                    "message": "The application factory receives service contracts, never SQL infrastructure."
+                  },
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may create the production storage client."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/backend/src/types.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "#db/**",
+                      "#repositories/**",
+                      "#routes/**",
+                      "#services/**"
+                    ],
+                    "message": "The public application type is derived from app.ts and must not reach into implementation layers."
+                  }
+                ],
+                "paths": {
+                  "bun": {
+                    "importNames": ["SQL"],
+                    "message": "The public application type must not expose SQL infrastructure."
+                  },
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may select and create the storage client."
+                }
               }
             }
           }

@@ -1,4 +1,6 @@
 import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '@repo/backend/knowledge-address';
+import { Card, CardContent } from '../ui/card';
+import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 
 export function validateReadableId({ value }: { value?: string }): string | undefined {
@@ -27,30 +29,34 @@ export function ReadableIdField({
   const preview = value || conflictingReadableId || 'readable-id';
 
   return (
-    <label className="field conflict-field" htmlFor={`${kind}-readable-id`}>
-      <span>
-        {conflictingReadableId ? 'Choose a distinct readable ID' : 'Choose a readable ID'}
-      </span>
-      <Input
-        id={`${kind}-readable-id`}
-        name="readableId"
-        value={value}
-        placeholder={conflictingReadableId ?? undefined}
-        maxLength={MAX_READABLE_ID_LENGTH}
-        onBlur={onBlur}
-        onChange={(event) => onChange(event.target.value)}
-        aria-invalid={invalid}
-      />
-      <small>
-        <code>
-          context-use://{kind}/{preview}
-        </code>{' '}
-        is the permanent address.{' '}
-        {conflictingReadableId
-          ? 'Add a distinguishing word rather than a number when possible.'
-          : 'Use short lowercase words separated by hyphens.'}
-      </small>
-      {error && <em role="alert">{error}</em>}
-    </label>
+    <Card size="sm" className="bg-muted/50">
+      <CardContent>
+        <Field data-invalid={invalid}>
+          <FieldLabel htmlFor={`${kind}-readable-id`}>
+            {conflictingReadableId ? 'Choose a distinct readable ID' : 'Choose a readable ID'}
+          </FieldLabel>
+          <Input
+            id={`${kind}-readable-id`}
+            name="readableId"
+            value={value}
+            placeholder={conflictingReadableId ?? undefined}
+            maxLength={MAX_READABLE_ID_LENGTH}
+            onBlur={onBlur}
+            onChange={(event) => onChange(event.target.value)}
+            aria-invalid={invalid}
+          />
+          <FieldDescription>
+            <code>
+              context-use://{kind}/{preview}
+            </code>{' '}
+            is the permanent address.{' '}
+            {conflictingReadableId
+              ? 'Add a distinguishing word rather than a number when possible.'
+              : 'Use short lowercase words separated by hyphens.'}
+          </FieldDescription>
+          <FieldError>{error}</FieldError>
+        </Field>
+      </CardContent>
+    </Card>
   );
 }
