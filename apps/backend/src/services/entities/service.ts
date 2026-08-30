@@ -1,6 +1,7 @@
-import type { Entity, EntityDetail, EntityRepositoryContract } from '#entities/entity.ts';
-import { readableIdFrom } from '#knowledge/knowledge-address.ts';
-import type { KnowledgePagesRepositoryContract } from '#pages/knowledge-page.ts';
+import type { Entity, EntityDetail } from '#models/entity.ts';
+import { readableIdFrom } from '#models/readable-id.ts';
+import type { EntityRepositoryContract } from '#repositories/entities/repository.ts';
+import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
 import { Service } from '#services/service.ts';
 
 export class EntitiesService extends Service {

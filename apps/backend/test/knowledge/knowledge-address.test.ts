@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { MAX_READABLE_ID_LENGTH, readableIdFrom } from '#knowledge/knowledge-address.ts';
+import { MAX_READABLE_ID_LENGTH, readableIdFrom } from '#models/readable-id.ts';
 
 describe('readableIdFrom', () => {
   test('derives stable ASCII words from a display name or page title', () => {

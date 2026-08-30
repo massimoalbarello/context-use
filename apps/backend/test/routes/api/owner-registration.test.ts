@@ -8,13 +8,13 @@ import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
-import { OwnerRegistrationRepository } from '#repositories/owner-registration.repository.ts';
-import type { EntitiesServiceContract } from '#services/entities.service.ts';
-import type { FrontendAssetsServiceContract } from '#services/frontend-assets.service.ts';
-import type { HealthServiceContract } from '#services/health.service.ts';
-import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
-import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles.service.ts';
-import { OwnerRegistrationService } from '#services/owner-registration.service.ts';
+import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
+import type { EntitiesServiceContract } from '#services/entities/service.ts';
+import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
+import type { HealthServiceContract } from '#services/health/service.ts';
+import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
+import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
+import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 
 const AUTH_MIGRATION = new URL(
   '../../../src/db/migrations/0000_better_auth_schema.sql',

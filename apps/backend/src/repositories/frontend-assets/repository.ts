@@ -2,7 +2,11 @@ import { getPublicAssets } from '#lib/assets.ts';
 
 type FrontendAssetsMap = Map<string, Blob>;
 
-export class FrontendAssetsRepository {
+export interface FrontendAssetsRepositoryContract {
+  list(): FrontendAssetsMap;
+}
+
+export class FrontendAssetsRepository implements FrontendAssetsRepositoryContract {
   private assets: FrontendAssetsMap | null = null;
 
   list(): FrontendAssetsMap {

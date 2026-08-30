@@ -8,7 +8,7 @@ import {
   knowledgePageResponse,
   UpdateKnowledgePageBodySchema,
 } from '#routes/api/pages/model.ts';
-import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
+import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 
 export function createPageReadableIdController({
   auth,

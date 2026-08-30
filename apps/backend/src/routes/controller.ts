@@ -1,7 +1,7 @@
 import { Elysia } from 'elysia';
+import { API_PATH } from '#lib/api-path.ts';
 import { NotFoundError } from '#lib/errors.ts';
-import { RoutePrefix } from '#lib/routes/prefixes.ts';
-import type { FrontendAssetsServiceContract } from '#services/frontend-assets.service.ts';
+import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 
 // Every file the frontend build produced, one route each. Mounted ahead of the global
 // lifecycle hooks on purpose: a route whose handler *is* a ready-made Response stays on
@@ -49,5 +49,5 @@ export function createFrontendFallbackController({
 }
 
 function isClientRoutePath(pathname: string): boolean {
-  return !pathname.startsWith(RoutePrefix.Api);
+  return !pathname.startsWith(API_PATH);
 }

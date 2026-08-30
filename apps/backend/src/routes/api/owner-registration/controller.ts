@@ -1,7 +1,7 @@
 import { Elysia, StatusMap } from 'elysia';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import { OwnerRegistrationStatusSchema } from '#routes/api/owner-registration/model.ts';
-import type { OwnerRegistrationServiceContract } from '#services/owner-registration.service.ts';
+import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
 
 export function createOwnerRegistrationController({
   ownerRegistrationService,

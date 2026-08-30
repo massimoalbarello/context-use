@@ -9,17 +9,17 @@ import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
-import { EntitiesRepository } from '#repositories/entities.repository.ts';
-import { HealthRepository } from '#repositories/health.repository.ts';
-import { KnowledgePagesRepository } from '#repositories/knowledge-pages.repository.ts';
-import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles.repository.ts';
-import { OwnerRegistrationRepository } from '#repositories/owner-registration.repository.ts';
-import { EntitiesService } from '#services/entities.service.ts';
-import type { FrontendAssetsServiceContract } from '#services/frontend-assets.service.ts';
-import { HealthService } from '#services/health.service.ts';
-import { KnowledgePagesService } from '#services/knowledge-pages.service.ts';
-import { KnowledgeProfilesService } from '#services/knowledge-profiles.service.ts';
-import { OwnerRegistrationService } from '#services/owner-registration.service.ts';
+import { EntitiesRepository } from '#repositories/entities/repository.ts';
+import { HealthRepository } from '#repositories/health/repository.ts';
+import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
+import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
+import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
+import { EntitiesService } from '#services/entities/service.ts';
+import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
+import { HealthService } from '#services/health/service.ts';
+import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
+import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
+import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 
 const AUTH_MIGRATION = new URL(
   '../../../src/db/migrations/0000_better_auth_schema.sql',

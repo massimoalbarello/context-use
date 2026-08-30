@@ -1,8 +1,8 @@
 import { Elysia, StatusMap, t } from 'elysia';
-import type { EntityDetail } from '#entities/entity.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
+import type { EntityDetail } from '#models/entity.ts';
 import {
   EntityParamsSchema,
   EntitySchema,
@@ -10,7 +10,7 @@ import {
   UpdateEntityBodySchema,
 } from '#routes/api/entities/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
-import type { EntitiesServiceContract } from '#services/entities.service.ts';
+import type { EntitiesServiceContract } from '#services/entities/service.ts';
 
 const EntityDetailSchema = t.Object({
   ...EntitySchema.properties,

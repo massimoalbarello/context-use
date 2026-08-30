@@ -1,8 +1,6 @@
-import { readableIdFrom } from '#knowledge/knowledge-address.ts';
-import type {
-  KnowledgeProfile,
-  KnowledgeProfilesRepositoryContract,
-} from '#profiles/knowledge-profile.ts';
+import type { KnowledgeProfile } from '#models/knowledge-profile.ts';
+import { readableIdFrom } from '#models/readable-id.ts';
+import type { KnowledgeProfilesRepositoryContract } from '#repositories/knowledge-profiles/repository.ts';
 import { Service } from '#services/service.ts';
 
 export type KnowledgeProfileMutationResult =

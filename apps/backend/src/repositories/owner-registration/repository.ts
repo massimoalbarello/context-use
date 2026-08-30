@@ -1,9 +1,12 @@
 import {
   OWNER_USER_ID,
   type OwnerRegistrationPersistenceState,
-  type OwnerRegistrationRepositoryContract,
 } from '#lib/auth/owner-registration.ts';
 import { Repository } from '#repositories/repository.ts';
+
+export interface OwnerRegistrationRepositoryContract {
+  state(): Promise<OwnerRegistrationPersistenceState>;
+}
 
 type OwnerRegistrationRow = {
   ownerExists: number;

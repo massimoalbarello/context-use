@@ -14,7 +14,7 @@ import {
   ReadableIdConflictSchema,
   ReadableIdRequiredSchema,
 } from '#routes/api/model.ts';
-import type { EntitiesServiceContract } from '#services/entities.service.ts';
+import type { EntitiesServiceContract } from '#services/entities/service.ts';
 
 export function createEntitiesController({
   auth,

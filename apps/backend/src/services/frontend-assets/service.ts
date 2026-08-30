@@ -1,8 +1,8 @@
 import { extname } from 'node:path';
-import { RoutePrefix } from '#lib/routes/prefixes.ts';
-import type { FrontendAssetsRepository } from '#repositories/frontend-assets.repository.ts';
+import type { FrontendAssetsRepositoryContract } from '#repositories/frontend-assets/repository.ts';
 import { Service } from '#services/service.ts';
 
+const ROOT_ASSET_PATH = '/';
 const INDEX_HTML_PATH = '/index.html';
 // Vite content-hashes the filenames in this folder, so they never change.
 const IMMUTABLE_PATH_PREFIX = '/assets/';
@@ -10,9 +10,9 @@ const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const REVALIDATE_CACHE_CONTROL = 'no-cache';
 
 export class FrontendAssetsService extends Service {
-  private readonly assets: FrontendAssetsRepository;
+  private readonly assets: FrontendAssetsRepositoryContract;
 
-  constructor(assets: FrontendAssetsRepository) {
+  constructor(assets: FrontendAssetsRepositoryContract) {
     super();
     this.assets = assets;
   }
@@ -27,7 +27,7 @@ export class FrontendAssetsService extends Service {
 
     const indexHtml = assets.get(INDEX_HTML_PATH);
     if (indexHtml) {
-      routes.set(RoutePrefix.Root, this.respond({ asset: indexHtml, path: INDEX_HTML_PATH }));
+      routes.set(ROOT_ASSET_PATH, this.respond({ asset: indexHtml, path: INDEX_HTML_PATH }));
     }
 
     this.logger.info(`Serving ${routes.size} frontend routes`);

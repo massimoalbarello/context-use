@@ -8,10 +8,6 @@ export type OwnerRegistrationPersistenceState = {
   passkeyExists: boolean;
 };
 
-export interface OwnerRegistrationRepositoryContract {
-  state(): Promise<OwnerRegistrationPersistenceState>;
-}
-
 export type OwnerRegistrationErrorCode =
   | 'invalid_owner_name'
   | 'owner_already_registered'

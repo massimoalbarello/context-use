@@ -143,6 +143,34 @@
       }
     },
     {
+      "includes": [
+        "apps/backend/src/lib/**/*.ts",
+        "apps/backend/src/models/**/*.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "#db/**",
+                      "#repositories/**",
+                      "#routes/**",
+                      "#services/**"
+                    ],
+                    "message": "Models and shared technical support must not depend on outer application layers."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["apps/backend/src/services/**/*.ts"],
       "linter": {
         "rules": {

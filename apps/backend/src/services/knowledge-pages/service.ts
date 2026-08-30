@@ -1,15 +1,15 @@
-import { readableIdFrom } from '#knowledge/knowledge-address.ts';
 import type { StorageClient } from '#lib/storage/storage.ts';
 import type {
   KnowledgePage,
   KnowledgePageSummary,
-  KnowledgePagesRepositoryContract,
   StoredKnowledgePage,
-} from '#pages/knowledge-page.ts';
+} from '#models/knowledge-page.ts';
 import {
   InvalidKnowledgePageMarkdownError,
   parseKnowledgePageMarkdown,
-} from '#pages/knowledge-page-markdown.ts';
+} from '#models/knowledge-page-markdown.ts';
+import { readableIdFrom } from '#models/readable-id.ts';
+import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
 import { Service } from '#services/service.ts';
 
 export type KnowledgePageMutationResult =

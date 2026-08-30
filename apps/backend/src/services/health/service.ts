@@ -1,10 +1,10 @@
-import type { HealthRepository } from '#repositories/health.repository.ts';
+import type { HealthRepositoryContract } from '#repositories/health/repository.ts';
 import { Service } from '#services/service.ts';
 
 export class HealthService extends Service {
-  private readonly healthRepo: HealthRepository;
+  private readonly healthRepo: HealthRepositoryContract;
 
-  constructor(healthRepo: HealthRepository) {
+  constructor(healthRepo: HealthRepositoryContract) {
     super();
     this.healthRepo = healthRepo;
   }

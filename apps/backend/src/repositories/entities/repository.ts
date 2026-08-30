@@ -1,6 +1,31 @@
-import type { Entity, EntityRepositoryContract } from '#entities/entity.ts';
-import { pageFrom } from '#pagination/page.ts';
+import { type Page, pageFrom } from '#lib/pagination.ts';
+import type { Entity } from '#models/entity.ts';
 import { Repository } from '#repositories/repository.ts';
+
+export interface EntityRepositoryContract {
+  create(input: {
+    id: string;
+    ownerId: string;
+    readableId: string;
+    name: string;
+    description: string;
+    createdAt: string;
+  }): Promise<{ state: 'created'; entity: Entity } | { state: 'readable_id_conflict' }>;
+  list(input: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+    query?: string;
+  }): Promise<Page<Entity>>;
+  find(input: { ownerId: string; readableId: string }): Promise<Entity | null>;
+  update(input: {
+    ownerId: string;
+    readableId: string;
+    name: string;
+    description: string;
+    updatedAt: string;
+  }): Promise<Entity | null>;
+}
 
 type EntityRow = {
   id: string;

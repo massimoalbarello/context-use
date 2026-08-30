@@ -8,12 +8,12 @@ import {
   createFrontendAssetsController,
   createFrontendFallbackController,
 } from '#routes/controller.ts';
-import type { EntitiesServiceContract } from '#services/entities.service.ts';
-import type { FrontendAssetsServiceContract } from '#services/frontend-assets.service.ts';
-import type { HealthServiceContract } from '#services/health.service.ts';
-import type { KnowledgePagesServiceContract } from '#services/knowledge-pages.service.ts';
-import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles.service.ts';
-import type { OwnerRegistrationServiceContract } from '#services/owner-registration.service.ts';
+import type { EntitiesServiceContract } from '#services/entities/service.ts';
+import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
+import type { HealthServiceContract } from '#services/health/service.ts';
+import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
+import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
+import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
 
 // Pinned rather than left to the plugin's default: the frontend links to it and the dev
 // server proxies it.

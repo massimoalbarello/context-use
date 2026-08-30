@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH } from '#pages/knowledge-page.ts';
+import { MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH } from '#models/knowledge-page.ts';
 import {
   InvalidKnowledgePageMarkdownError,
   parseKnowledgePageMarkdown,
-} from '#pages/knowledge-page-markdown.ts';
+} from '#models/knowledge-page-markdown.ts';
 
 const LONG_EXCERPT_REPEAT_COUNT = 12;
 

@@ -8,7 +8,7 @@ import {
   KnowledgeProfileSchema,
   knowledgeProfileResponse,
 } from '#routes/api/profile/model.ts';
-import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles.service.ts';
+import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 
 export function createKnowledgeProfileController({
   auth,

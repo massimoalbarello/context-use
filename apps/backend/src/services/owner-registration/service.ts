@@ -1,7 +1,5 @@
-import {
-  type OwnerRegistrationRepositoryContract,
-  ownerRegistrationStatus,
-} from '#lib/auth/owner-registration.ts';
+import { ownerRegistrationStatus } from '#lib/auth/owner-registration.ts';
+import type { OwnerRegistrationRepositoryContract } from '#repositories/owner-registration/repository.ts';
 import { Service } from '#services/service.ts';
 
 export class OwnerRegistrationService extends Service {

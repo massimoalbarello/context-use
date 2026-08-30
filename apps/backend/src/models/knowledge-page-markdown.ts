@@ -1,10 +1,10 @@
-import { isReadableId } from '#knowledge/knowledge-address.ts';
 import {
   type KnowledgePageLinkSet,
   MAX_KNOWLEDGE_PAGE_BYTES,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
-} from '#pages/knowledge-page.ts';
+} from '#models/knowledge-page.ts';
+import { isReadableId } from '#models/readable-id.ts';
 
 const INTERNAL_REFERENCE =
   /\[([^\]\n]+)\]\(context-use:\/\/(entity|page)\/([^\s/)#]+)(?:#([^\s)]+))?\)/g;

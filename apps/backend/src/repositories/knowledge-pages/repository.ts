@@ -1,15 +1,78 @@
 import type { SQL } from 'bun';
-import type { Entity } from '#entities/entity.ts';
+import { type Page, pageFrom } from '#lib/pagination.ts';
+import type { Entity } from '#models/entity.ts';
 import type {
   KnowledgePageLinkSet,
   KnowledgePageReference,
   KnowledgePageRevisionSummary,
   KnowledgePageSummary,
-  KnowledgePagesRepositoryContract,
   StoredKnowledgePage,
-} from '#pages/knowledge-page.ts';
-import { pageFrom } from '#pagination/page.ts';
+} from '#models/knowledge-page.ts';
 import { Repository } from '#repositories/repository.ts';
+
+export interface KnowledgePagesRepositoryContract {
+  create(input: {
+    pageId: string;
+    revisionId: string;
+    ownerId: string;
+    readableId: string;
+    title: string;
+    excerpt: string;
+    storageKey: string;
+    contentHash: string;
+    sizeBytes: number;
+    links: KnowledgePageLinkSet;
+    createdAt: string;
+  }): Promise<
+    | { state: 'created'; page: StoredKnowledgePage }
+    | { state: 'readable_id_conflict' }
+    | { state: 'link_target_not_found'; target: string }
+  >;
+  update(input: {
+    revisionId: string;
+    ownerId: string;
+    readableId: string;
+    expectedRevisionNumber: number;
+    title: string;
+    excerpt: string;
+    storageKey: string;
+    contentHash: string;
+    sizeBytes: number;
+    links: KnowledgePageLinkSet;
+    updatedAt: string;
+  }): Promise<
+    | { state: 'updated'; page: StoredKnowledgePage }
+    | { state: 'not_found' }
+    | { state: 'revision_conflict'; currentRevisionNumber: number }
+    | { state: 'link_target_not_found'; target: string }
+  >;
+  list(input: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+    query?: string;
+  }): Promise<Page<KnowledgePageSummary>>;
+  listByEntity(input: {
+    ownerId: string;
+    entityReadableId: string;
+  }): Promise<KnowledgePageSummary[]>;
+  find(input: { ownerId: string; readableId: string }): Promise<StoredKnowledgePage | null>;
+  detail(input: { ownerId: string; readableId: string }): Promise<{
+    page: StoredKnowledgePage;
+    mentions: Entity[];
+    references: KnowledgePageReference[];
+    backlinks: KnowledgePageReference[];
+    revisions: KnowledgePageRevisionSummary[];
+  } | null>;
+  listCurrent(input: { ownerId: string }): Promise<StoredKnowledgePage[]>;
+  replaceCurrentIndex(input: {
+    ownerId: string;
+    readableId: string;
+    title: string;
+    excerpt: string;
+    links: KnowledgePageLinkSet;
+  }): Promise<{ state: 'replaced' } | { state: 'link_target_not_found'; target: string }>;
+}
 
 type StoredPageRow = {
   id: string;

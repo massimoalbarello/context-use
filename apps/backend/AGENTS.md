@@ -5,6 +5,19 @@ database migration rules live in `src/db/AGENTS.md`.
 
 ## Structure and boundaries
 
+- Keep the top level structural rather than feature-based: `models/` owns domain data and pure
+  rules, `repositories/` owns persistence contracts and adapters, `services/` owns application
+  workflows, `routes/` owns HTTP, `db/` owns database infrastructure, and `lib/` contains narrowly
+  named cross-cutting technical support. Do not add top-level folders for individual resources.
+- Organize repositories and services by capability beneath their layer, mirroring the route tree:
+  `repositories/entities/repository.ts`, `services/entities/service.ts`, and
+  `routes/api/entities/controller.ts`. Keep only genuinely layer-wide bases at the layer root.
+- Repository contracts live with the repository capability that owns them. Models must not contain
+  persistence interfaces, SQL shapes, or service contracts. Services depend on those repository
+  contracts, never on concrete repository classes.
+- `lib/` is not a fallback for code that lacks an obvious home. Business parsing, validation, and
+  value rules belong in `models/`; route-specific support belongs in `routes/`. Add `views/` only
+  when reusable read projections or serializers exist independently of route-local schemas.
 - Organize routes by API path. A route folder owns its request/response schemas, controller, and
   route-specific tests. Dynamic segments use the domain identifier (`[resourceId]`, not `[id]`).
 - Apply shared path prefixes once in the parent controller; child controllers declare only their

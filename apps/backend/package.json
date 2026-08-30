@@ -6,8 +6,8 @@
     "#*": "./src/*"
   },
   "exports": {
-    "./entity": "./src/entities/entity.ts",
-    "./knowledge-address": "./src/knowledge/knowledge-address.ts",
+    "./entity": "./src/models/entity.ts",
+    "./knowledge-address": "./src/models/readable-id.ts",
     "./types": "./src/types.ts"
   },
   "scripts": {
