@@ -567,7 +567,7 @@
   }
 
   .knowledge-picker-menu {
-    @apply absolute right-3 bottom-3 left-3 z-10 grid max-h-72 gap-1 overflow-y-auto rounded-lg border border-line bg-paper p-1 shadow-[0_12px_35px_rgb(23_23_23/0.16)];
+    @apply absolute bottom-3 left-3 z-10 grid max-h-72 w-[calc(100%-1.5rem)] max-w-xl gap-1 overflow-y-auto rounded-lg border border-line bg-paper p-1 shadow-[0_12px_35px_rgb(23_23_23/0.16)];
   }
 
   .knowledge-picker-option {
