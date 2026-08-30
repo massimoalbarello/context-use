@@ -511,7 +511,7 @@
   }
 
   .knowledge-page-link-card {
-    @apply flex min-w-0 items-start gap-3;
+    @apply flex min-w-0 items-center gap-3;
   }
 
   .knowledge-page-link-copy {
