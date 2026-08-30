@@ -9,7 +9,16 @@ import { usePage } from '../lib/hooks/use-page';
 import { useUpdatePage } from '../lib/hooks/use-update-page';
 import { type KnowledgePage, pageQueryOptions } from '../queries/pages';
 
+type PageView = 'preview' | 'links' | 'revisions';
+
+function isPageView(value: unknown): value is PageView {
+  return value === 'preview' || value === 'links' || value === 'revisions';
+}
+
 export const Route = createFileRoute('/pages/$id')({
+  validateSearch: (search: Record<string, unknown>): { view?: PageView } => ({
+    view: isPageView(search.view) ? search.view : undefined,
+  }),
   beforeLoad: ({ context, location }) => {
     if (!context.session) {
       throw redirect({ to: '/login', search: { redirect: location.href } });
@@ -109,8 +118,6 @@ function PageRevisionsView({ page }: { page: KnowledgePage }) {
   );
 }
 
-type PageView = 'preview' | 'links' | 'revisions';
-
 function PageTabs({
   activeView,
   onChange,
@@ -159,8 +166,9 @@ function PageTabs({
 
 function KnowledgePageRoute() {
   const { id } = Route.useParams();
+  const { view = 'preview' } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [editing, setEditing] = useState(false);
-  const [activeView, setActiveView] = useState<PageView>('preview');
   const { data: page, error, refetch } = usePage(id);
   const updatePage = useUpdatePage();
 
@@ -218,12 +226,17 @@ function KnowledgePageRoute() {
         />
       ) : (
         <div className="detail-view">
-          <PageTabs activeView={activeView} onChange={setActiveView} />
-          {activeView === 'preview' ? (
+          <PageTabs
+            activeView={view}
+            onChange={(view) => {
+              void navigate({ search: { view } });
+            }}
+          />
+          {view === 'preview' ? (
             <div id="page-preview-panel" role="tabpanel" aria-labelledby="page-preview-tab">
               <KnowledgePageMarkdown markdown={page.markdown} />
             </div>
-          ) : activeView === 'links' ? (
+          ) : view === 'links' ? (
             <PageLinksView page={page} />
           ) : (
             <PageRevisionsView page={page} />

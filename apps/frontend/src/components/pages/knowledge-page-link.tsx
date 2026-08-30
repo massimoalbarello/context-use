@@ -68,6 +68,7 @@ export function KnowledgePageLink({
       className="knowledge-page-link knowledge-page-link-card resource-card object-link"
       to="/pages/$id"
       params={{ id: page.readableId }}
+      search={{ view: 'preview' }}
       hash={fragment}
     >
       <KnowledgePageCardContent page={page} fragment={fragment} />

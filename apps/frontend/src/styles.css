@@ -168,7 +168,7 @@
   }
 
   .knowledge-sidebar[data-collapsed="true"] .sidebar-toggle {
-    @apply size-11 rounded-xl border border-line bg-panel text-muted shadow-[0_10px_30px_rgb(23_23_23/0.08)] hover:bg-panel hover:text-ink;
+    @apply size-11 rounded-xl border border-line bg-paper text-muted shadow-[0_10px_30px_rgb(23_23_23/0.08)] hover:bg-accent-soft hover:text-ink;
   }
 
   .count-badge {
@@ -243,10 +243,6 @@
   .knowledge-workspace:has(.knowledge-sidebar[data-collapsed="true"])
     .detail-shell {
     @apply pt-20 md:pt-9;
-  }
-
-  .page-detail {
-    @apply max-w-5xl;
   }
 
   .detail-header,
@@ -593,7 +589,7 @@
   }
 
   .knowledge-markdown {
-    @apply px-1 py-3 md:px-4 md:py-5 lg:px-8;
+    @apply py-3 md:py-5;
   }
 
   .knowledge-markdown h1 {

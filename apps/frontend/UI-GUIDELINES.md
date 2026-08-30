@@ -137,6 +137,9 @@ Controls with different jobs must not share an ambiguous treatment.
 - Use resource views such as Preview, Links, and Revisions when those views exist. A revisions view
   may begin as a simple list; do not hide existing domain history merely because a rich comparison
   view is not ready.
+- A resource card opens the resource's canonical reading view. A page card always opens Preview;
+  Links and Revisions are explicit secondary views, not sticky navigation state carried to another
+  page.
 - Remove dividers that do not clarify grouping, state, or interaction. Sharp rules around a rounded
   floating surface are usually evidence of competing layout models.
 
