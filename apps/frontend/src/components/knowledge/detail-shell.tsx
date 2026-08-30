@@ -7,7 +7,7 @@ export function DetailShell({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        'mx-auto grid w-full max-w-6xl gap-7 px-5 py-7 md:px-9 md:py-9 lg:px-12',
+        'mx-auto grid w-full max-w-6xl gap-7 px-5 py-7 md:px-9 md:pt-13 md:pb-9 lg:px-12',
         collapsed && 'pt-20 md:pt-9',
         className,
       )}
