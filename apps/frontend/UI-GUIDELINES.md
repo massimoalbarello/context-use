@@ -137,6 +137,11 @@ Controls with different jobs must not share an ambiguous treatment.
 - Use resource views such as Preview, Links, and Revisions when those views exist. A revisions view
   may begin as a simple list; do not hide existing domain history merely because a rich comparison
   view is not ready.
+- Resource detail headers share one geometry: type, prominent human-readable name or title,
+  secondary description or metadata, and actions aligned to the same top-right position. Resource
+  differences belong in their content, not in drifting header placement.
+- Canonical addresses, slugs, and storage identifiers are not reading content. Do not show them by
+  default; expose them only in a workflow where the user needs to copy, inspect, or change them.
 - A resource card opens the resource's canonical reading view. A page card always opens Preview;
   Links and Revisions are explicit secondary views, not sticky navigation state carried to another
   page.

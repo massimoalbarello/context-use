@@ -51,7 +51,6 @@ function EntityRoute() {
           key={entity.updatedAt.toISOString()}
           name={entity.name}
           description={entity.description}
-          readableId={entity.readableId}
           isSelf={entity.isSelf}
           pending={updateEntity.isPending}
           error={updateEntity.error}
@@ -74,7 +73,6 @@ function EntityRoute() {
             </p>
             <h1>{entity.name}</h1>
             <p className="detail-description">{entity.description}</p>
-            <code className="entity-address">context-use://entity/{entity.readableId}</code>
           </div>
           <button
             className="primary-action"

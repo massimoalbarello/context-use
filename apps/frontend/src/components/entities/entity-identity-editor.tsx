@@ -4,7 +4,6 @@ import { validateEntityDescription, validateEntityName } from './entity-validati
 export function EntityIdentityEditor({
   name,
   description,
-  readableId,
   isSelf,
   pending,
   error,
@@ -13,7 +12,6 @@ export function EntityIdentityEditor({
 }: {
   name: string;
   description: string;
-  readableId: string;
   isSelf: boolean;
   pending: boolean;
   error: Error | null;
@@ -84,7 +82,6 @@ export function EntityIdentityEditor({
             </label>
           )}
         </form.Field>
-        <code className="entity-address">context-use://entity/{readableId}</code>
         {error && <p className="error-message">{error.message}</p>}
       </div>
       <div className="action-row entity-inline-actions">

@@ -189,12 +189,12 @@ function KnowledgePageRoute() {
 
   return (
     <div className="detail-shell page-detail">
-      <header className="detail-toolbar">
-        <div>
+      <header className="detail-header">
+        <div className="page-identity">
           <p className="eyebrow">Knowledge page</p>
+          <h1>{page.title}</h1>
           <p className="detail-meta">
-            <code>{page.readableId}</code> · revision {page.revisionNumber} · updated{' '}
-            {page.updatedAt.toLocaleString()}
+            Revision {page.revisionNumber} · updated {page.updatedAt.toLocaleString()}
           </p>
         </div>
         <button
@@ -234,7 +234,7 @@ function KnowledgePageRoute() {
           />
           {view === 'preview' ? (
             <div id="page-preview-panel" role="tabpanel" aria-labelledby="page-preview-tab">
-              <KnowledgePageMarkdown markdown={page.markdown} />
+              <KnowledgePageMarkdown markdown={page.markdown} hideTitle />
             </div>
           ) : view === 'links' ? (
             <PageLinksView page={page} />
