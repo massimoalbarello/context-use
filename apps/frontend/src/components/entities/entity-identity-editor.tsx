@@ -1,10 +1,6 @@
+import { MAX_ENTITY_DESCRIPTION_LENGTH, MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
 import { useForm } from '@tanstack/react-form';
-import {
-  MAX_ENTITY_DESCRIPTION_LENGTH,
-  MAX_ENTITY_NAME_LENGTH,
-  validateEntityDescription,
-  validateEntityName,
-} from './entity-validation';
+import { validateEntityDescription, validateEntityName } from './entity-validation';
 
 export function EntityIdentityEditor({
   name,
