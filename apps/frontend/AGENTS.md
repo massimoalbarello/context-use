@@ -106,6 +106,9 @@ global client-state library until a concrete cross-route state model requires on
 - Keep feature styling with its owner, but do not introduce one-off colors, spacing, typography,
   control treatments, or long repeated class combinations when an established token, primitive,
   or pattern expresses the same decision.
+- Keep the root stylesheet as a small, deliberately ordered entry point. Global foundations belong
+  in `src/styles`; feature and component styles live beside the code that owns them. Do not rebuild
+  a monolithic component catalog in the root stylesheet or scatter ownership across ad hoc imports.
 - Add a token, component variant, or page pattern only for a recurring semantic distinction. Before
   adding one, simplify, extend, consolidate, or delete what already exists where possible.
 - Treat nearly identical components, arbitrary visual values, growing variant matrices, and pages

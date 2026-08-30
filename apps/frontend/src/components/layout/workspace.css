@@ -1,0 +1,184 @@
+@layer components {
+  .app-shell {
+    @apply grid h-dvh min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden;
+  }
+
+  .app-shell-authenticated {
+    @apply grid-rows-[minmax(0,1fr)];
+  }
+
+  .app-content {
+    @apply min-h-0 overflow-y-auto;
+  }
+
+  .app-shell-authenticated .app-content {
+    @apply overflow-hidden;
+  }
+
+  .app-header {
+    @apply sticky top-0 z-20 flex flex-wrap items-center gap-2 bg-paper/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-nowrap md:gap-5 md:px-8 md:py-0;
+  }
+
+  .brand {
+    @apply whitespace-nowrap font-semibold text-lg tracking-tight;
+  }
+
+  .account-actions {
+    @apply ml-auto flex shrink-0 items-center gap-3 whitespace-nowrap text-muted text-sm;
+  }
+
+  .account-name {
+    @apply hidden max-w-48 truncate lg:inline;
+  }
+
+  .knowledge-workspace {
+    @apply relative grid h-full min-h-0 grid-rows-[minmax(14rem,22rem)_minmax(0,1fr)] overflow-hidden bg-paper md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-none;
+  }
+
+  .knowledge-workspace:has(.knowledge-sidebar[data-collapsed="true"]) {
+    @apply grid-rows-[0_minmax(0,1fr)] md:grid-cols-[0_minmax(0,1fr)] md:grid-rows-none;
+  }
+
+  .knowledge-sidebar {
+    @apply flex min-h-0 flex-col overflow-hidden;
+  }
+
+  .sidebar-brand {
+    @apply flex shrink-0 items-center justify-between gap-3 p-3;
+  }
+
+  .sidebar-brand-link {
+    @apply flex min-w-0 items-center;
+  }
+
+  .sidebar-brand-copy {
+    @apply grid min-w-0 leading-tight;
+  }
+
+  .sidebar-brand-copy strong {
+    @apply truncate font-semibold text-sm;
+  }
+
+  .sidebar-brand-copy small {
+    @apply truncate text-muted text-xs;
+  }
+
+  .sidebar-toggle {
+    @apply flex size-10 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent text-muted hover:bg-accent-soft hover:text-ink;
+  }
+
+  .sidebar-toggle svg {
+    @apply size-5 fill-none stroke-current stroke-2;
+    stroke-linecap: round;
+  }
+
+  .sidebar-body {
+    @apply flex min-h-0 flex-1 flex-col;
+  }
+
+  .sidebar-navigation,
+  .sidebar-sections,
+  .detail-tabs {
+    @apply flex gap-6;
+  }
+
+  .sidebar-navigation {
+    @apply shrink-0 items-center justify-between gap-3 px-4;
+  }
+
+  .sidebar-sections {
+    @apply min-w-0 gap-5;
+  }
+
+  .sidebar-sections a,
+  .detail-tabs button {
+    @apply -mb-px border-transparent border-b-2 px-1 py-3 font-medium text-muted text-sm hover:text-ink;
+  }
+
+  .sidebar-sections a[data-active="true"],
+  .detail-tabs button[aria-selected="true"] {
+    @apply border-ink text-ink;
+  }
+
+  .knowledge-sidebar[data-collapsed="true"] {
+    @apply z-10 overflow-visible;
+  }
+
+  .knowledge-sidebar[data-collapsed="true"] .sidebar-brand-link,
+  .knowledge-sidebar[data-collapsed="true"] .sidebar-body {
+    @apply hidden;
+  }
+
+  .knowledge-sidebar[data-collapsed="true"] .sidebar-brand {
+    @apply absolute top-6 left-6 flex items-center justify-center p-0 md:top-7 md:left-7;
+  }
+
+  .knowledge-sidebar[data-collapsed="true"] .sidebar-toggle {
+    @apply size-11 rounded-xl bg-paper text-muted shadow-[0_10px_30px_rgb(23_23_23/0.08)] hover:bg-accent-soft hover:text-ink;
+  }
+
+  .count-badge {
+    @apply rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent text-xs;
+  }
+
+  .sidebar-create {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-2 font-semibold text-white text-sm transition hover:bg-black;
+  }
+
+  .create-icon {
+    @apply text-base leading-none;
+  }
+
+  .sidebar-scroll {
+    @apply min-h-0 flex-1 overflow-y-auto px-3 py-2;
+  }
+
+  .sidebar-error {
+    @apply p-2;
+  }
+
+  .infinite-scroll-trigger {
+    @apply flex min-h-12 items-center justify-center gap-2 py-3 text-muted text-xs;
+  }
+
+  .infinite-scroll-trigger button {
+    @apply rounded-md px-2 py-1 font-medium text-ink hover:bg-accent-soft;
+  }
+
+  .sidebar-footer {
+    @apply flex shrink-0 items-center gap-2 px-3 py-3;
+  }
+
+  .sidebar-profile {
+    @apply flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 hover:bg-panel;
+  }
+
+  .profile-mark {
+    @apply flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft font-semibold text-xs;
+  }
+
+  .sidebar-profile > span:last-child {
+    @apply grid min-w-0 leading-tight;
+  }
+
+  .sidebar-profile strong,
+  .sidebar-profile small {
+    @apply truncate;
+  }
+
+  .sidebar-profile strong {
+    @apply font-medium text-xs;
+  }
+
+  .sidebar-profile small {
+    @apply text-muted text-[0.68rem];
+  }
+
+  .workspace-detail {
+    @apply min-h-0 min-w-0 overflow-hidden p-2 md:p-3;
+  }
+
+  .workspace-card {
+    @apply h-full min-h-0 overflow-y-auto rounded-2xl bg-panel;
+  }
+}

@@ -1,0 +1,98 @@
+@layer components {
+  .workspace-empty {
+    @apply mx-auto flex min-h-[32rem] max-w-xl flex-col items-start justify-center px-6 py-16;
+  }
+
+  .workspace-empty h2,
+  .form-shell-copy h1 {
+    @apply mt-2 font-semibold text-4xl tracking-tight;
+  }
+
+  .workspace-description,
+  .form-shell-copy > p:last-child {
+    @apply mt-3 text-muted text-lg leading-relaxed;
+  }
+
+  .form-shell {
+    @apply mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-5xl items-center gap-10 px-5 py-12 md:grid-cols-[minmax(0,0.85fr)_minmax(24rem,1fr)] md:px-8;
+  }
+
+  .eyebrow {
+    @apply flex min-h-5 w-fit items-center gap-2 font-semibold text-accent text-xs uppercase tracking-[0.16em];
+  }
+
+  .section-heading {
+    @apply mb-4 flex items-center gap-3;
+  }
+
+  .section-heading h2,
+  .link-section h2 {
+    @apply font-semibold text-lg;
+  }
+
+  .surface {
+    @apply rounded-xl border border-line bg-panel p-5 shadow-[0_1px_2px_rgb(23_23_23/0.04)];
+  }
+
+  .field {
+    @apply grid gap-1.5 font-medium text-sm;
+  }
+
+  .field input,
+  .field textarea,
+  .entity-name-input,
+  .entity-description-input {
+    @apply rounded-lg border border-line bg-white outline-none transition focus:border-accent;
+  }
+
+  .field input,
+  .field textarea {
+    @apply w-full px-3 py-2.5 text-base text-ink disabled:bg-paper disabled:text-muted;
+  }
+
+  .field textarea {
+    @apply resize-y leading-relaxed;
+  }
+
+  .field small {
+    @apply font-normal text-muted text-xs leading-relaxed;
+  }
+
+  .field em,
+  .error-message {
+    @apply font-normal text-danger text-sm not-italic;
+  }
+
+  .primary-action,
+  .secondary-action {
+    @apply inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2 font-semibold text-sm transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .primary-action {
+    @apply bg-accent text-white hover:bg-black;
+  }
+
+  .workspace-empty .primary-action {
+    @apply mt-7;
+  }
+
+  .workspace-resource-actions {
+    @apply mt-7;
+  }
+
+  .workspace-resource-actions .primary-action {
+    @apply mt-0;
+  }
+
+  .secondary-action {
+    @apply border border-line bg-panel text-ink hover:border-accent hover:text-accent;
+  }
+
+  .sidebar-footer .secondary-action {
+    @apply min-h-8 border-transparent bg-transparent px-2 py-1 text-muted text-xs hover:bg-panel hover:text-ink;
+  }
+
+  .action-row {
+    @apply flex flex-wrap gap-2;
+  }
+}

@@ -1,0 +1,119 @@
+@layer components {
+  .object-card-list {
+    @apply grid list-none gap-3 p-0;
+  }
+
+  .object-card-list li {
+    @apply min-w-0;
+  }
+
+  .object-link {
+    @apply transition;
+  }
+
+  .resource-card {
+    @apply h-20 rounded-xl border border-transparent bg-transparent p-3 text-left transition-[background-color,border-color,box-shadow] hover:bg-paper hover:shadow-[0_4px_16px_rgb(23_23_23/0.08)] focus-visible:border-ink/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/15;
+  }
+
+  :where(.knowledge-sidebar, .knowledge-picker-menu) .resource-card:hover {
+    @apply bg-panel;
+  }
+
+  .resource-card:is(
+    [data-status="active"],
+    [data-route-selected="true"],
+    [aria-selected="true"]
+  ) {
+    @apply border-ink/35 bg-panel shadow-[0_2px_10px_rgb(23_23_23/0.1)];
+  }
+
+  .entity-link-card {
+    @apply flex min-w-0 items-center gap-3;
+  }
+
+  .entity-link-avatar {
+    @apply flex shrink-0 items-center justify-center rounded-full bg-accent-soft font-semibold text-ink uppercase;
+  }
+
+  .entity-link-card .entity-link-avatar {
+    @apply size-9 text-xs;
+  }
+
+  .entity-link-copy {
+    @apply grid min-w-0 flex-1 gap-0.5;
+  }
+
+  .entity-link-name {
+    @apply flex min-w-0 items-center gap-2;
+  }
+
+  .entity-link-name strong {
+    @apply min-w-0 truncate font-semibold text-sm;
+  }
+
+  .entity-link-copy small {
+    @apply truncate text-muted text-xs leading-relaxed;
+  }
+
+  .entity-link-inline {
+    @apply mx-0.5 inline-flex items-center gap-1 rounded-full bg-paper py-0.5 pr-2 pl-[0.3125rem] font-medium text-ink no-underline align-baseline hover:bg-accent-soft;
+  }
+
+  .entity-link-inline .entity-link-avatar {
+    @apply size-5 text-[0.6rem];
+  }
+
+  .knowledge-page-link-card {
+    @apply flex min-w-0 items-center gap-3;
+  }
+
+  .knowledge-page-link-copy {
+    @apply grid min-w-0 flex-1 gap-0.5;
+  }
+
+  .knowledge-page-link-copy strong {
+    @apply min-w-0 truncate font-semibold text-sm leading-snug;
+  }
+
+  .knowledge-page-link-copy small {
+    @apply truncate text-muted text-xs leading-relaxed;
+  }
+
+  .knowledge-page-link-fragment {
+    @apply truncate font-mono text-muted text-[0.68rem];
+  }
+
+  .knowledge-page-link-mark {
+    @apply flex size-9 shrink-0 items-center justify-center rounded-md bg-paper text-muted;
+  }
+
+  .knowledge-page-link-mark svg {
+    @apply size-5 fill-none stroke-current stroke-[1.4];
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .knowledge-page-link-inline {
+    @apply font-medium text-ink underline decoration-ink/35 underline-offset-4 hover:decoration-ink;
+  }
+
+  .knowledge-sidebar .object-card-list {
+    @apply gap-2;
+  }
+
+  .self-badge {
+    @apply inline-flex rounded-full bg-accent-soft px-2 py-0.5 font-semibold text-accent text-[0.68rem] uppercase tracking-wider;
+  }
+
+  .empty-state {
+    @apply rounded-xl bg-accent-soft/60 p-7 text-center;
+  }
+
+  .empty-state p {
+    @apply font-medium;
+  }
+
+  .empty-state span {
+    @apply mt-1 block text-muted text-sm;
+  }
+}

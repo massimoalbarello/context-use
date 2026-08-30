@@ -1,0 +1,51 @@
+@theme {
+  --font-sans: "Inter", "Avenir Next", "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --color-ink: #171717;
+  --color-muted: #6b6b6b;
+  --color-paper: #efefed;
+  --color-panel: #ffffff;
+  --color-line: #d7d7d4;
+  --color-accent: #171717;
+  --color-accent-soft: #e5e5e3;
+  --color-danger: #404040;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-line, currentcolor);
+  }
+
+  html,
+  body,
+  #app {
+    @apply h-full min-h-0 bg-paper;
+  }
+
+  html {
+    @apply scroll-smooth text-ink;
+  }
+
+  body {
+    @apply m-0 min-w-80 overflow-hidden font-sans text-ink antialiased;
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
