@@ -247,9 +247,10 @@
   }
 
   .entity-inline-editor {
-    @apply flex flex-col items-start justify-between gap-5 md:flex-row;
+    @apply w-full;
   }
 
+  .entity-identity,
   .entity-inline-fields {
     @apply min-w-0 w-full max-w-3xl;
   }
@@ -260,15 +261,17 @@
 
   .entity-name-input,
   .entity-description-input {
-    @apply w-full border-0 border-line border-b bg-transparent px-0 text-ink outline-none transition focus:border-ink;
+    @apply -mx-2 w-[calc(100%+1rem)] rounded-lg border-0 bg-paper px-2 text-ink outline-none transition hover:bg-accent-soft focus:bg-accent-soft focus:ring-1 focus:ring-ink/20;
   }
 
   .entity-name-input {
-    @apply mt-2 pb-1 font-semibold text-4xl tracking-tight md:text-5xl;
+    @apply mt-2 py-0 font-semibold text-4xl tracking-tight md:text-5xl;
   }
 
   .entity-description-input {
-    @apply mt-3 resize-none pb-2 text-lg leading-relaxed;
+    @apply mt-3 min-h-[1lh] max-h-40 resize-y py-0 text-muted text-lg leading-relaxed;
+    field-sizing: content;
+    max-width: calc(42rem + 1rem);
   }
 
   .entity-inline-field em {
@@ -277,6 +280,10 @@
 
   .entity-inline-actions {
     @apply shrink-0 md:pt-5;
+  }
+
+  .editing-badge {
+    @apply ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-[0.65rem] text-ink tracking-wider;
   }
 
   .detail-meta,

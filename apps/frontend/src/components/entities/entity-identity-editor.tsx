@@ -28,14 +28,17 @@ export function EntityIdentityEditor({
 
   return (
     <form
-      className="entity-inline-editor"
+      className="detail-header entity-inline-editor"
       onSubmit={(event) => {
         event.preventDefault();
         void form.handleSubmit();
       }}
     >
       <div className="entity-inline-fields">
-        <p className="eyebrow">Entity {isSelf && <span className="self-badge">You</span>}</p>
+        <p className="eyebrow">
+          Entity {isSelf && <span className="self-badge">You</span>}
+          <span className="editing-badge">Editing</span>
+        </p>
         <form.Field
           name="name"
           validators={{ onMount: validateEntityName, onChange: validateEntityName }}
@@ -71,7 +74,7 @@ export function EntityIdentityEditor({
               <textarea
                 className="entity-description-input"
                 name={field.name}
-                rows={2}
+                rows={1}
                 maxLength={600}
                 value={field.state.value}
                 onBlur={field.handleBlur}

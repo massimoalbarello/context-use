@@ -54,7 +54,7 @@ function EntityRoute() {
         />
       ) : (
         <header className="detail-header">
-          <div>
+          <div className="entity-identity">
             <p className="eyebrow">
               Entity {entity.isSelf && <span className="self-badge">You</span>}
             </p>
