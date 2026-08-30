@@ -8,15 +8,18 @@ import type {
   KnowledgePageSummary,
   StoredKnowledgePage,
 } from '#models/knowledge-pages/model.ts';
-import { readableIdFrom } from '#models/readable-ids/model.ts';
+import {
+  READABLE_ID_SUFFIX_LENGTH,
+  readableIdFrom,
+  readableIdWithSuffix,
+} from '#models/readable-ids/model.ts';
 import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
 
 export type KnowledgePageMutationResult =
   | { state: 'saved'; page: KnowledgePage }
   | { state: 'invalid_markdown'; message: string }
-  | { state: 'readable_id_required' }
   | { state: 'not_found' }
-  | { state: 'readable_id_conflict'; readableId: string }
+  | { state: 'title_conflict' }
   | { state: 'revision_conflict'; currentRevisionNumber: number }
   | { state: 'link_target_not_found'; target: string };
 
@@ -41,17 +44,20 @@ export class KnowledgePagesService {
 
   async create(input: {
     ownerId: string;
-    readableId?: string;
     markdown: string;
+    allowDuplicate?: boolean;
   }): Promise<KnowledgePageMutationResult> {
     const parsed = this.parse(input.markdown);
     if ('message' in parsed) {
       return parsed;
     }
-    const readableId = input.readableId ?? readableIdFrom(parsed.title);
-    if (!readableId) {
-      return { state: 'readable_id_required' };
-    }
+    const derivedReadableId = readableIdFrom(parsed.title);
+    const readableId = input.allowDuplicate
+      ? readableIdWithSuffix({
+          readableId: derivedReadableId,
+          suffix: Bun.randomUUIDv7().slice(-READABLE_ID_SUFFIX_LENGTH),
+        })
+      : derivedReadableId;
     const pageId = Bun.randomUUIDv7();
     const revisionId = Bun.randomUUIDv7();
     const storageKey = this.storageKey({
@@ -86,7 +92,7 @@ export class KnowledgePagesService {
     }
     if (result.state !== 'created') {
       await this.storage.delete(storageKey);
-      return result.state === 'readable_id_conflict' ? { state: result.state, readableId } : result;
+      return result.state === 'readable_id_conflict' ? { state: 'title_conflict' } : result;
     }
     const page = await this.detail({ ownerId: input.ownerId, readableId });
     if (!page) {

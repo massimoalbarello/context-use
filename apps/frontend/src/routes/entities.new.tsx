@@ -3,7 +3,7 @@ import { EntityForm, type EntityFormValues } from '../components/entities/entity
 import { DetailShell } from '../components/knowledge/detail-shell';
 import { useCreateEntity } from '../lib/hooks/use-create-entity';
 
-const EMPTY_ENTITY: EntityFormValues = { readableId: '', name: '', description: '' };
+const EMPTY_ENTITY: EntityFormValues = { name: '', description: '' };
 
 export const Route = createFileRoute('/entities/new')({
   component: NewEntityRoute,

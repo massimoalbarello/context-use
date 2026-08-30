@@ -1,11 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import {
-  ApiStatus,
-  apiErrorMessage,
-  ReadableIdConflictError,
-  ReadableIdRequiredError,
-} from '../lib/api-error';
+import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 
 export type KnowledgePagePage = NonNullable<Awaited<ReturnType<typeof api.api.pages.get>>['data']>;
 
@@ -68,14 +63,8 @@ export function pageQueryOptions(readableId: string) {
 export async function createPage(body: CreatePageVariables): Promise<{ readableId: string }> {
   const { data, error } = await api.api.pages.post(body);
   if (error) {
-    if (error.status === ApiStatus.BadRequest && 'readableIdRequired' in error.value) {
-      throw new ReadableIdRequiredError(apiErrorMessage(error));
-    }
-    if (error.status === ApiStatus.Conflict) {
-      throw new ReadableIdConflictError({
-        message: apiErrorMessage(error),
-        readableId: error.value.readableId,
-      });
+    if (error.status === ApiStatus.Conflict && 'nameConflict' in error.value) {
+      throw new DuplicateResourceNameError(apiErrorMessage(error));
     }
     throw new Error(apiErrorMessage(error));
   }

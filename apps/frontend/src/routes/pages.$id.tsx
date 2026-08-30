@@ -185,8 +185,7 @@ function KnowledgePageRoute() {
       {editing ? (
         <KnowledgePageForm
           key={page.revisionNumber}
-          initialValues={{ readableId: page.readableId, markdown: page.markdown }}
-          readableIdLocked
+          initialValues={{ markdown: page.markdown }}
           formId={PAGE_EDIT_FORM_ID}
           pending={updatePage.isPending}
           error={updatePage.error}

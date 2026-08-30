@@ -7,7 +7,6 @@
   },
   "exports": {
     "./entity": "./src/models/entities/model.ts",
-    "./knowledge-address": "./src/models/readable-ids/model.ts",
     "./types": "./src/types.ts"
   },
   "scripts": {

@@ -22,12 +22,7 @@ export const ReadableIdSchema = t.String({
   pattern: READABLE_ID_PATTERN.source,
 });
 
-export const ReadableIdConflictSchema = t.Object({
+export const ResourceNameConflictSchema = t.Object({
   error: t.String(),
-  readableId: ReadableIdSchema,
-});
-
-export const ReadableIdRequiredSchema = t.Object({
-  error: t.String(),
-  readableIdRequired: t.Literal(true),
+  nameConflict: t.Literal(true),
 });

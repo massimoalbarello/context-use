@@ -1,5 +1,6 @@
 import { MAX_ENTITY_DESCRIPTION_LENGTH, MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
 import { useForm } from '@tanstack/react-form';
+import { submitThenChangeValidation } from '../../lib/form-validation';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -27,6 +28,7 @@ export function EntityIdentityEditor({
 }) {
   const form = useForm({
     defaultValues: { name, description },
+    validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) =>
       onSubmit({ name: value.name.trim(), description: value.description.trim() }),
   });
@@ -45,25 +47,18 @@ export function EntityIdentityEditor({
             <Button variant="outline" size="lg" type="button" onClick={onCancel}>
               Cancel
             </Button>
-            <form.Subscribe selector={(state) => state.canSubmit}>
-              {(canSubmit) => (
-                <Button size="lg" type="submit" disabled={!canSubmit || pending}>
-                  {pending ? 'Saving…' : 'Save entity'}
-                </Button>
-              )}
-            </form.Subscribe>
+            <Button size="lg" type="submit" disabled={pending}>
+              {pending ? 'Saving…' : 'Save entity'}
+            </Button>
           </>
         }
       >
         Entity {isSelf && <Badge variant="secondary">You</Badge>}
       </ResourceDetailHeading>
       <FieldGroup className="w-full min-w-0 max-w-3xl gap-0">
-        <form.Field
-          name="name"
-          validators={{ onMount: validateEntityName, onChange: validateEntityName }}
-        >
+        <form.Field name="name" validators={{ onDynamic: validateEntityName }}>
           {(field) => (
-            <Field data-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}>
+            <Field data-invalid={field.state.meta.errors.length > 0}>
               <FieldLabel className="sr-only" htmlFor="entity-name">
                 Name
               </FieldLabel>
@@ -75,21 +70,20 @@ export function EntityIdentityEditor({
                 maxLength={MAX_ENTITY_NAME_LENGTH}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
-                aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                aria-invalid={field.state.meta.errors.length > 0}
               />
-              {field.state.meta.isTouched && <FieldError>{field.state.meta.errors[0]}</FieldError>}
+              <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
           )}
         </form.Field>
         <form.Field
           name="description"
           validators={{
-            onMount: validateEntityDescription,
-            onChange: validateEntityDescription,
+            onDynamic: validateEntityDescription,
           }}
         >
           {(field) => (
-            <Field data-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}>
+            <Field data-invalid={field.state.meta.errors.length > 0}>
               <FieldLabel className="sr-only" htmlFor="entity-description">
                 Distinguishing description
               </FieldLabel>
@@ -102,9 +96,9 @@ export function EntityIdentityEditor({
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
-                aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                aria-invalid={field.state.meta.errors.length > 0}
               />
-              {field.state.meta.isTouched && <FieldError>{field.state.meta.errors[0]}</FieldError>}
+              <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
           )}
         </form.Field>

@@ -1,7 +1,7 @@
 import { MAX_ENTITY_DESCRIPTION_LENGTH, MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
 import { useForm } from '@tanstack/react-form';
-import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
-import { ReadableIdField, validateReadableId } from '../knowledge/readable-id-field';
+import { DuplicateResourceNameError } from '../../lib/api-error';
+import { submitThenChangeValidation } from '../../lib/form-validation';
 import { Button } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
@@ -9,55 +9,51 @@ import { Textarea } from '../ui/textarea';
 import { validateEntityDescription, validateEntityName } from './entity-validation';
 
 export type EntityFormValues = {
-  readableId?: string;
   name: string;
   description: string;
 };
 
+type EntityFormSubmission = EntityFormValues & { allowDuplicate?: boolean };
+
 export function EntityForm({
   initialValues,
-  readableIdLocked = false,
   pending,
   error,
   submitLabel,
   onSubmit,
 }: {
   initialValues: EntityFormValues;
-  readableIdLocked?: boolean;
   pending: boolean;
   error: Error | null;
   submitLabel: string;
-  onSubmit: (values: EntityFormValues) => void;
+  onSubmit: (values: EntityFormSubmission) => void;
 }) {
   const form = useForm({
-    defaultValues: initialValues,
+    defaultValues: { ...initialValues, allowDuplicate: false },
+    validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) => {
       onSubmit({
-        readableId: value.readableId?.trim() || undefined,
         name: value.name.trim(),
         description: value.description.trim(),
+        allowDuplicate: value.allowDuplicate || undefined,
       });
     },
   });
-  const conflictingReadableId = error instanceof ReadableIdConflictError ? error.readableId : null;
-  const readableIdIssue =
-    error instanceof ReadableIdConflictError || error instanceof ReadableIdRequiredError;
+  const duplicateName = error instanceof DuplicateResourceNameError;
 
   return (
     <form
       className="grid gap-5"
       onSubmit={(event) => {
         event.preventDefault();
+        form.setFieldValue('allowDuplicate', false);
         void form.handleSubmit();
       }}
     >
       <FieldGroup>
-        <form.Field
-          name="name"
-          validators={{ onMount: validateEntityName, onChange: validateEntityName }}
-        >
+        <form.Field name="name" validators={{ onDynamic: validateEntityName }}>
           {(field) => (
-            <Field data-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}>
+            <Field data-invalid={field.state.meta.errors.length > 0}>
               <FieldLabel htmlFor="entity-name">Name</FieldLabel>
               <Input
                 id="entity-name"
@@ -66,43 +62,21 @@ export function EntityForm({
                 maxLength={MAX_ENTITY_NAME_LENGTH}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
-                aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                aria-invalid={field.state.meta.errors.length > 0}
               />
-              {field.state.meta.isTouched && <FieldError>{field.state.meta.errors[0]}</FieldError>}
+              <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
           )}
         </form.Field>
 
-        {readableIdIssue && !readableIdLocked && (
-          <form.Field
-            name="readableId"
-            validators={{ onMount: validateReadableId, onChange: validateReadableId }}
-          >
-            {(field) => (
-              <ReadableIdField
-                kind="entity"
-                value={field.state.value ?? ''}
-                conflictingReadableId={conflictingReadableId}
-                invalid={field.state.meta.errors.length > 0}
-                error={
-                  field.state.meta.isTouched ? field.state.meta.errors[0]?.toString() : undefined
-                }
-                onBlur={field.handleBlur}
-                onChange={field.handleChange}
-              />
-            )}
-          </form.Field>
-        )}
-
         <form.Field
           name="description"
           validators={{
-            onMount: validateEntityDescription,
-            onChange: validateEntityDescription,
+            onDynamic: validateEntityDescription,
           }}
         >
           {(field) => (
-            <Field data-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}>
+            <Field data-invalid={field.state.meta.errors.length > 0}>
               <FieldLabel htmlFor="entity-description">Distinguishing description</FieldLabel>
               <Textarea
                 id="entity-description"
@@ -113,31 +87,37 @@ export function EntityForm({
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
-                aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                aria-invalid={field.state.meta.errors.length > 0}
               />
               <FieldDescription>
                 A few sentences at most: enough to tell this entity from namesakes.
               </FieldDescription>
-              {field.state.meta.isTouched && <FieldError>{field.state.meta.errors[0]}</FieldError>}
+              <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
           )}
         </form.Field>
       </FieldGroup>
 
-      {error && !readableIdIssue && <FieldError>{error.message}</FieldError>}
+      {error && <FieldError>{error.message}</FieldError>}
 
-      <form.Subscribe selector={(state) => state.canSubmit}>
-        {(canSubmit) => (
+      <div className="flex flex-wrap items-center gap-3">
+        <Button className="justify-self-start" size="lg" type="submit" disabled={pending}>
+          {pending ? 'Saving…' : submitLabel}
+        </Button>
+        {duplicateName && (
           <Button
-            className="justify-self-start"
-            size="lg"
-            type="submit"
-            disabled={!canSubmit || pending}
+            variant="outline"
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              form.setFieldValue('allowDuplicate', true);
+              void form.handleSubmit();
+            }}
           >
-            {pending ? 'Saving…' : submitLabel}
+            Use this name anyway
           </Button>
         )}
-      </form.Subscribe>
+      </div>
     </form>
   );
 }

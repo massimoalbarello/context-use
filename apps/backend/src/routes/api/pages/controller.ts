@@ -1,12 +1,8 @@
-import { Elysia, StatusMap, t } from 'elysia';
+import { Elysia, StatusMap } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
-import {
-  DEFAULT_LIST_LIMIT,
-  ReadableIdConflictSchema,
-  ReadableIdRequiredSchema,
-} from '#routes/api/model.ts';
+import { DEFAULT_LIST_LIMIT, ResourceNameConflictSchema } from '#routes/api/model.ts';
 import {
   CreateKnowledgePageBodySchema,
   KnowledgePageListQuerySchema,
@@ -37,16 +33,11 @@ export function createPagesController({
         if (result.state === 'saved') {
           return status(StatusMap.Created, knowledgePageResponse(result.page));
         }
-        if (result.state === 'readable_id_conflict') {
+        if (result.state === 'title_conflict') {
           return status(StatusMap.Conflict, {
-            error: 'A page already uses this readable ID',
-            readableId: result.readableId,
-          });
-        }
-        if (result.state === 'readable_id_required') {
-          return status(StatusMap['Bad Request'], {
-            error: 'A readable ID could not be derived from this page title',
-            readableIdRequired: true as const,
+            error:
+              'A page with this title already exists. Use a more specific title or keep this title anyway.',
+            nameConflict: true as const,
           });
         }
         if (result.state === 'link_target_not_found') {
@@ -64,8 +55,8 @@ export function createPagesController({
         body: CreateKnowledgePageBodySchema,
         response: {
           [StatusMap.Created]: KnowledgePageSchema,
-          [StatusMap['Bad Request']]: t.Union([ReadableIdRequiredSchema, ErrorResponseSchema]),
-          [StatusMap.Conflict]: ReadableIdConflictSchema,
+          [StatusMap['Bad Request']]: ErrorResponseSchema,
+          [StatusMap.Conflict]: ResourceNameConflictSchema,
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
       },

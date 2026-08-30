@@ -2,7 +2,7 @@ import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
-import { ReadableIdConflictSchema, ReadableIdRequiredSchema } from '#routes/api/model.ts';
+import { ResourceNameConflictSchema } from '#routes/api/model.ts';
 import {
   CreateKnowledgeProfileBodySchema,
   KnowledgeProfileSchema,
@@ -30,16 +30,11 @@ export function createKnowledgeProfileController({
         if (result.state === 'created') {
           return status(StatusMap.Created, knowledgeProfileResponse(result.profile));
         }
-        if (result.state === 'readable_id_conflict') {
+        if (result.state === 'name_conflict') {
           return status(StatusMap.Conflict, {
-            error: 'An entity already uses this readable ID',
-            readableId: result.readableId,
-          });
-        }
-        if (result.state === 'readable_id_required') {
-          return status(StatusMap['Bad Request'], {
-            error: 'A readable ID could not be derived from this name',
-            readableIdRequired: true as const,
+            error:
+              'An entity with this name already exists. Use a more specific name or keep this name anyway.',
+            nameConflict: true as const,
           });
         }
         return status(StatusMap.Conflict, { error: 'The owner entity already exists' });
@@ -49,8 +44,7 @@ export function createKnowledgeProfileController({
         body: CreateKnowledgeProfileBodySchema,
         response: {
           [StatusMap.Created]: KnowledgeProfileSchema,
-          [StatusMap['Bad Request']]: t.Union([ReadableIdRequiredSchema, ErrorResponseSchema]),
-          [StatusMap.Conflict]: t.Union([ReadableIdConflictSchema, ErrorResponseSchema]),
+          [StatusMap.Conflict]: t.Union([ResourceNameConflictSchema, ErrorResponseSchema]),
         },
       },
     )

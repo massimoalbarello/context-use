@@ -21,19 +21,9 @@ export function apiErrorMessage({
   return value.message ?? `Request failed with status ${status}`;
 }
 
-export class ReadableIdConflictError extends Error {
-  readonly readableId: string;
-
-  constructor({ message, readableId }: { message: string; readableId: string }) {
-    super(message);
-    this.name = 'ReadableIdConflictError';
-    this.readableId = readableId;
-  }
-}
-
-export class ReadableIdRequiredError extends Error {
+export class DuplicateResourceNameError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'ReadableIdRequiredError';
+    this.name = 'DuplicateResourceNameError';
   }
 }

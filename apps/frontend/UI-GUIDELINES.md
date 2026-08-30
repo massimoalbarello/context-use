@@ -74,7 +74,9 @@ established resource components so type is visually obvious; do not add a trigge
 Keyboard navigation keeps the active result visible.
 
 Selecting a result stores a readable, typed link. Every resource also has an internal UUIDv7. The
-readable address is derived at creation, resolved explicitly on conflict, and then remains stable:
+server derives the readable address from the initial title or name; creation forms never ask the
+user to author one. A collision asks for a more specific title or name while offering an explicit
+option to keep it and append a short generated suffix. The resulting address then remains stable:
 changing a title or name must not rewrite existing Markdown links. Stable addresses are technical
 identity, not ordinary editable or reading content.
 
@@ -132,6 +134,15 @@ visual language as the workspace.
 - Missing, empty, loading, and recoverable error states must look intentional and offer a useful
   next action. Reserve crash-style boundaries for unexpected failures.
 
+## Forms and validation
+
+- Do not present untouched forms as erroneous. Show required-field errors only after the user
+  attempts the action, then update those errors as the user edits.
+- Keep the primary action available before validation so the first submit attempt can reveal what
+  needs attention. Disable it only while the action is pending or genuinely unavailable.
+- Keep technical identifiers and derived metadata out of ordinary forms. Ask for user intent, not
+  implementation details the system can derive safely.
+
 ## Review checklist
 
 Stop and fix the shared system when:
@@ -142,6 +153,7 @@ Stop and fix the shared system when:
   tokens, and variants;
 - a feature introduces a one-off token or near-match for an existing style;
 - entering edit mode moves actions or causes a visible layout shift;
+- untouched fields are red, or a disabled primary action prevents submit-first validation;
 - cards resize with content, or hover, focus, and selection are inconsistent;
 - the same resource type has unrelated identity treatments in different contexts;
 - entities and pages can be distinguished only by reading a type badge;

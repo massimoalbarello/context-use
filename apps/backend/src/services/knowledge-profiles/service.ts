@@ -1,12 +1,15 @@
 import type { KnowledgeProfile } from '#models/knowledge-profiles/model.ts';
-import { readableIdFrom } from '#models/readable-ids/model.ts';
+import {
+  READABLE_ID_SUFFIX_LENGTH,
+  readableIdFrom,
+  readableIdWithSuffix,
+} from '#models/readable-ids/model.ts';
 import type { KnowledgeProfilesRepositoryContract } from '#repositories/knowledge-profiles/repository.ts';
 
 export type KnowledgeProfileMutationResult =
   | { state: 'created'; profile: KnowledgeProfile }
   | { state: 'profile_exists' }
-  | { state: 'readable_id_conflict'; readableId: string }
-  | { state: 'readable_id_required' };
+  | { state: 'name_conflict' };
 
 export class KnowledgeProfilesService {
   private readonly profiles: KnowledgeProfilesRepositoryContract;
@@ -17,14 +20,17 @@ export class KnowledgeProfilesService {
 
   async create(input: {
     ownerId: string;
-    readableId?: string;
     name: string;
     description: string;
+    allowDuplicate?: boolean;
   }): Promise<KnowledgeProfileMutationResult> {
-    const readableId = input.readableId ?? readableIdFrom(input.name);
-    if (!readableId) {
-      return { state: 'readable_id_required' };
-    }
+    const derivedReadableId = readableIdFrom(input.name);
+    const readableId = input.allowDuplicate
+      ? readableIdWithSuffix({
+          readableId: derivedReadableId,
+          suffix: Bun.randomUUIDv7().slice(-READABLE_ID_SUFFIX_LENGTH),
+        })
+      : derivedReadableId;
     const result = await this.profiles.create({
       ownerId: input.ownerId,
       entityId: Bun.randomUUIDv7(),
@@ -33,7 +39,7 @@ export class KnowledgeProfilesService {
       description: input.description.trim(),
       createdAt: new Date().toISOString(),
     });
-    return result.state === 'readable_id_conflict' ? { state: result.state, readableId } : result;
+    return result.state === 'readable_id_conflict' ? { state: 'name_conflict' } : result;
   }
 
   find({ ownerId }: { ownerId: string }): Promise<KnowledgeProfile | null> {

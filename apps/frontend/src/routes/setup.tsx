@@ -22,7 +22,6 @@ function SetupRoute() {
   const { redirect: redirectTo } = Route.useSearch();
   const createProfile = useCreateProfile();
   const initialValues: EntityFormValues = {
-    readableId: '',
     name: session?.user.name ?? '',
     description: '',
   };

@@ -1,24 +1,24 @@
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
-import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
+import { DuplicateResourceNameError } from '../../lib/api-error';
+import { submitThenChangeValidation } from '../../lib/form-validation';
 import { useEntitySuggestions } from '../../lib/hooks/use-entities';
 import { usePageSuggestions } from '../../lib/hooks/use-pages';
-import { ReadableIdField, validateReadableId } from '../knowledge/readable-id-field';
 import { Button } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup } from '../ui/field';
 import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
 
 export type KnowledgePageFormValues = {
-  readableId?: string;
   markdown: string;
 };
 
+type KnowledgePageFormSubmission = KnowledgePageFormValues & { allowDuplicate?: boolean };
+
 type KnowledgePageFormProps = {
   initialValues: KnowledgePageFormValues;
-  readableIdLocked?: boolean;
   pending: boolean;
   error: Error | null;
-  onSubmit: (values: KnowledgePageFormValues) => void;
+  onSubmit: (values: KnowledgePageFormSubmission) => void;
 } & ({ submitLabel: string; formId?: never } | { formId: string; submitLabel?: never });
 
 function validateMarkdown({ value }: { value: string }): string | undefined {
@@ -29,7 +29,6 @@ function validateMarkdown({ value }: { value: string }): string | undefined {
 
 export function KnowledgePageForm({
   initialValues,
-  readableIdLocked = false,
   formId,
   pending,
   error,
@@ -40,17 +39,16 @@ export function KnowledgePageForm({
   const { data: entitySuggestions = [] } = useEntitySuggestions(knowledgeQuery);
   const { data: pageSuggestions = [] } = usePageSuggestions(knowledgeQuery);
   const form = useForm({
-    defaultValues: initialValues,
+    defaultValues: { ...initialValues, allowDuplicate: false },
+    validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) => {
       onSubmit({
-        readableId: value.readableId?.trim() || undefined,
         markdown: value.markdown.trim(),
+        allowDuplicate: value.allowDuplicate || undefined,
       });
     },
   });
-  const conflictingReadableId = error instanceof ReadableIdConflictError ? error.readableId : null;
-  const readableIdIssue =
-    error instanceof ReadableIdConflictError || error instanceof ReadableIdRequiredError;
+  const duplicateTitle = error instanceof DuplicateResourceNameError;
 
   return (
     <form
@@ -58,16 +56,14 @@ export function KnowledgePageForm({
       className="grid gap-5"
       onSubmit={(event) => {
         event.preventDefault();
+        form.setFieldValue('allowDuplicate', false);
         void form.handleSubmit();
       }}
     >
       <FieldGroup>
-        <form.Field
-          name="markdown"
-          validators={{ onMount: validateMarkdown, onChange: validateMarkdown }}
-        >
+        <form.Field name="markdown" validators={{ onDynamic: validateMarkdown }}>
           {(field) => (
-            <Field data-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}>
+            <Field data-invalid={field.state.meta.errors.length > 0}>
               <span className="sr-only">Knowledge page content</span>
               <KnowledgeLinkTextarea
                 id={field.name}
@@ -75,7 +71,7 @@ export function KnowledgePageForm({
                 value={field.state.value}
                 entities={entitySuggestions}
                 pages={pageSuggestions}
-                invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+                invalid={field.state.meta.errors.length > 0}
                 onBlur={field.handleBlur}
                 onChange={field.handleChange}
                 onQueryChange={setKnowledgeQuery}
@@ -84,48 +80,33 @@ export function KnowledgePageForm({
                 Keep one coherent idea here. Type @ to mention an entity or reference a page; use H2
                 or lower headings for linkable sections.
               </FieldDescription>
-              {field.state.meta.isTouched && <FieldError>{field.state.meta.errors[0]}</FieldError>}
+              <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
           )}
         </form.Field>
-
-        {readableIdIssue && !readableIdLocked && (
-          <form.Field
-            name="readableId"
-            validators={{ onMount: validateReadableId, onChange: validateReadableId }}
-          >
-            {(field) => (
-              <ReadableIdField
-                kind="page"
-                value={field.state.value ?? ''}
-                conflictingReadableId={conflictingReadableId}
-                invalid={field.state.meta.errors.length > 0}
-                error={
-                  field.state.meta.isTouched ? field.state.meta.errors[0]?.toString() : undefined
-                }
-                onBlur={field.handleBlur}
-                onChange={field.handleChange}
-              />
-            )}
-          </form.Field>
-        )}
       </FieldGroup>
 
-      {error && !readableIdIssue && <FieldError>{error.message}</FieldError>}
+      {error && <FieldError>{error.message}</FieldError>}
 
       {submitLabel && (
-        <form.Subscribe selector={(state) => state.canSubmit}>
-          {(canSubmit) => (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button className="justify-self-start" size="lg" type="submit" disabled={pending}>
+            {pending ? 'Saving…' : submitLabel}
+          </Button>
+          {duplicateTitle && (
             <Button
-              className="justify-self-start"
-              size="lg"
-              type="submit"
-              disabled={!canSubmit || pending}
+              variant="outline"
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                form.setFieldValue('allowDuplicate', true);
+                void form.handleSubmit();
+              }}
             >
-              {pending ? 'Saving…' : submitLabel}
+              Use this title anyway
             </Button>
           )}
-        </form.Subscribe>
+        </div>
       )}
     </form>
   );

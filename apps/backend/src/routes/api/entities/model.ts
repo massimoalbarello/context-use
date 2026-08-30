@@ -21,8 +21,7 @@ export const EntitySchema = t.Object({
   updatedAt: t.Date(),
 });
 
-export const EntityBodySchema = t.Object({
-  readableId: t.Optional(ReadableIdSchema),
+export const EntityIdentityBodySchema = t.Object({
   name: t.String({ minLength: 1, maxLength: MAX_ENTITY_NAME_LENGTH, pattern: '.*\\S.*' }),
   description: t.String({
     minLength: MIN_ENTITY_DESCRIPTION_LENGTH,
@@ -31,7 +30,11 @@ export const EntityBodySchema = t.Object({
   }),
 });
 
-export const UpdateEntityBodySchema = t.Omit(EntityBodySchema, ['readableId']);
+export const CreateEntityBodySchema = t.Object({
+  ...EntityIdentityBodySchema.properties,
+  allowDuplicate: t.Optional(t.Boolean()),
+});
+export const UpdateEntityBodySchema = EntityIdentityBodySchema;
 export const EntityParamsSchema = t.Object({ entityReadableId: ReadableIdSchema });
 export const EntityListQuerySchema = t.Object({
   ...PaginationQuerySchema.properties,

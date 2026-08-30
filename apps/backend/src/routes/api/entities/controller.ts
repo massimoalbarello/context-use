@@ -1,19 +1,15 @@
-import { Elysia, StatusMap, t } from 'elysia';
+import { Elysia, StatusMap } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import {
-  EntityBodySchema,
+  CreateEntityBodySchema,
   EntityListQuerySchema,
   EntityListSchema,
   EntitySchema,
   entityResponse,
 } from '#routes/api/entities/model.ts';
-import {
-  DEFAULT_LIST_LIMIT,
-  ReadableIdConflictSchema,
-  ReadableIdRequiredSchema,
-} from '#routes/api/model.ts';
+import { DEFAULT_LIST_LIMIT, ResourceNameConflictSchema } from '#routes/api/model.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 
 export function createEntitiesController({
@@ -33,27 +29,21 @@ export function createEntitiesController({
       '/entities',
       async ({ body, user, status }) => {
         const result = await entitiesService.create({ ownerId: user.id, ...body });
-        if (result.state === 'readable_id_conflict') {
+        if (result.state === 'name_conflict') {
           return status(StatusMap.Conflict, {
-            error: 'An entity already uses this readable ID',
-            readableId: result.readableId,
-          });
-        }
-        if (result.state === 'readable_id_required') {
-          return status(StatusMap['Bad Request'], {
-            error: 'A readable ID could not be derived from this name',
-            readableIdRequired: true as const,
+            error:
+              'An entity with this name already exists. Use a more specific name or keep this name anyway.',
+            nameConflict: true as const,
           });
         }
         return status(StatusMap.Created, entityResponse(result.entity));
       },
       {
         detail: { tags: ['Entities'], summary: 'Create an entity identity' },
-        body: EntityBodySchema,
+        body: CreateEntityBodySchema,
         response: {
           [StatusMap.Created]: EntitySchema,
-          [StatusMap['Bad Request']]: t.Union([ReadableIdRequiredSchema, ErrorResponseSchema]),
-          [StatusMap.Conflict]: ReadableIdConflictSchema,
+          [StatusMap.Conflict]: ResourceNameConflictSchema,
         },
       },
     )

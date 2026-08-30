@@ -1,5 +1,9 @@
 import type { Entity, EntityDetail } from '#models/entities/model.ts';
-import { readableIdFrom } from '#models/readable-ids/model.ts';
+import {
+  READABLE_ID_SUFFIX_LENGTH,
+  readableIdFrom,
+  readableIdWithSuffix,
+} from '#models/readable-ids/model.ts';
 import type { EntityRepositoryContract } from '#repositories/entities/repository.ts';
 import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
 
@@ -20,18 +24,17 @@ export class EntitiesService {
 
   create(input: {
     ownerId: string;
-    readableId?: string;
     name: string;
     description: string;
-  }): Promise<
-    | { state: 'created'; entity: Entity }
-    | { state: 'readable_id_conflict'; readableId: string }
-    | { state: 'readable_id_required' }
-  > {
-    const readableId = input.readableId ?? readableIdFrom(input.name);
-    if (!readableId) {
-      return Promise.resolve({ state: 'readable_id_required' });
-    }
+    allowDuplicate?: boolean;
+  }): Promise<{ state: 'created'; entity: Entity } | { state: 'name_conflict' }> {
+    const derivedReadableId = readableIdFrom(input.name);
+    const readableId = input.allowDuplicate
+      ? readableIdWithSuffix({
+          readableId: derivedReadableId,
+          suffix: Bun.randomUUIDv7().slice(-READABLE_ID_SUFFIX_LENGTH),
+        })
+      : derivedReadableId;
     return this.entities
       .create({
         id: Bun.randomUUIDv7(),
@@ -42,7 +45,7 @@ export class EntitiesService {
         createdAt: new Date().toISOString(),
       })
       .then((result) =>
-        result.state === 'readable_id_conflict' ? { state: result.state, readableId } : result,
+        result.state === 'readable_id_conflict' ? { state: 'name_conflict' as const } : result,
       );
   }
 

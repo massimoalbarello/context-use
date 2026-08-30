@@ -95,6 +95,9 @@ global client-state library until a concrete cross-route state model requires on
   include the actor in its query key; private data must never be reused by another principal.
 - TanStack Form owns form state. Render it through accessible shadcn field primitives and map
   structured server errors through the shared API error mechanism.
+- Configure required-field validation to begin on submit and revalidate on change afterward. Do
+  not mount a creation form in an error state or disable its submit action merely because untouched
+  required fields are empty.
 - Backend validation remains authoritative. Add a client schema only when it improves a concrete
   form or URL boundary; do not duplicate backend contracts merely to adopt a schema library.
 

@@ -9,6 +9,7 @@ import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
+import { READABLE_ID_SUFFIX_LENGTH } from '#models/readable-ids/model.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
@@ -29,7 +30,8 @@ const KNOWLEDGE_MIGRATION = new URL(
   '../../../src/db/migrations/0001_knowledge.sql',
   import.meta.url,
 );
-const EXPECTED_ENTITY_COUNT = 3;
+const EXPECTED_ENTITY_COUNT = 4;
+const EXPECTED_PAGE_COUNT = 3;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -151,21 +153,20 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       expect.objectContaining({ readableId: 'test-owner', isSelf: true }),
     );
 
-    const unreadableNameResponse = await app.handle(
+    const nonAsciiNameResponse = await app.handle(
       jsonRequest({
         method: 'POST',
         path: '/entities',
         body: {
           name: '東京',
-          description: 'A place whose name needs an explicitly chosen readable address.',
+          description: 'A place whose name still receives a stable derived address.',
         },
       }),
     );
-    expect(unreadableNameResponse.status).toBe(StatusMap['Bad Request']);
-    expect(await unreadableNameResponse.json()).toEqual({
-      error: 'A readable ID could not be derived from this name',
-      readableIdRequired: true,
-    });
+    expect(nonAsciiNameResponse.status).toBe(StatusMap.Created);
+    expect(await nonAsciiNameResponse.json()).toEqual(
+      expect.objectContaining({ readableId: 'u-6771-4eac', name: '東京' }),
+    );
 
     const entityResponse = await app.handle(
       jsonRequest({
@@ -193,8 +194,9 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     );
     expect(entityConflictResponse.status).toBe(StatusMap.Conflict);
     expect(await entityConflictResponse.json()).toEqual({
-      error: 'An entity already uses this readable ID',
-      readableId: 'luca-bianchi',
+      error:
+        'An entity with this name already exists. Use a more specific name or keep this name anyway.',
+      nameConflict: true,
     });
 
     const distinguishedEntityResponse = await app.handle(
@@ -202,13 +204,17 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         method: 'POST',
         path: '/entities',
         body: {
-          readableId: 'research-luca-bianchi',
           name: 'Luca Bianchi',
           description: 'A different person with the same name and a distinct role.',
+          allowDuplicate: true,
         },
       }),
     );
     expect(distinguishedEntityResponse.status).toBe(StatusMap.Created);
+    const distinguishedEntity = (await distinguishedEntityResponse.json()) as {
+      readableId: string;
+    };
+    expect(distinguishedEntity.readableId).toMatch(/^luca-bianchi-[a-f0-9]{6}$/);
 
     const firstEntityPageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/entities?limit=2&offset=0' }),
@@ -231,17 +237,20 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       total: number;
       nextOffset: number | null;
     };
-    expect(secondEntityPage.items).toHaveLength(1);
+    expect(secondEntityPage.items).toHaveLength(2);
     expect(secondEntityPage.total).toBe(EXPECTED_ENTITY_COUNT);
     expect(secondEntityPage.nextOffset).toBeNull();
     expect(secondEntityPage.items[0]?.id).not.toBe(firstEntityPage.items[0]?.id);
     expect(secondEntityPage.items[0]?.id).not.toBe(firstEntityPage.items[1]?.id);
 
     const searchedEntityPageResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/entities?limit=7&offset=0&query=research' }),
+      jsonRequest({
+        method: 'GET',
+        path: `/entities?limit=7&offset=0&query=${distinguishedEntity.readableId.slice(-READABLE_ID_SUFFIX_LENGTH)}`,
+      }),
     );
     expect(await searchedEntityPageResponse.json()).toEqual({
-      items: [expect.objectContaining({ readableId: 'research-luca-bianchi' })],
+      items: [expect.objectContaining({ readableId: distinguishedEntity.readableId })],
       total: 1,
       nextOffset: null,
     });
@@ -281,9 +290,24 @@ Every observation changes the next action.`,
     );
     expect(pageConflictResponse.status).toBe(StatusMap.Conflict);
     expect(await pageConflictResponse.json()).toEqual({
-      error: 'A page already uses this readable ID',
-      readableId: 'growth-playbook',
+      error:
+        'A page with this title already exists. Use a more specific title or keep this title anyway.',
+      nameConflict: true,
     });
+
+    const duplicatePageResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/pages',
+        body: {
+          markdown: '# Growth playbook\n\nA different page with the same title.',
+          allowDuplicate: true,
+        },
+      }),
+    );
+    expect(duplicatePageResponse.status).toBe(StatusMap.Created);
+    const duplicatePage = (await duplicatePageResponse.json()) as { readableId: string };
+    expect(duplicatePage.readableId).toMatch(/^growth-playbook-[a-f0-9]{6}$/);
 
     const rhythmResponse = await app.handle(
       jsonRequest({
@@ -299,19 +323,19 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
     expect(rhythmResponse.status).toBe(StatusMap.Created);
 
     const firstKnowledgePageResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?limit=1&offset=0' }),
+      jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0' }),
     );
     const firstKnowledgePage = (await firstKnowledgePageResponse.json()) as {
       items: Array<{ id: string; readableId: string }>;
       total: number;
       nextOffset: number | null;
     };
-    expect(firstKnowledgePage.items).toHaveLength(1);
-    expect(firstKnowledgePage.total).toBe(2);
-    expect(firstKnowledgePage.nextOffset).toBe(1);
+    expect(firstKnowledgePage.items).toHaveLength(2);
+    expect(firstKnowledgePage.total).toBe(EXPECTED_PAGE_COUNT);
+    expect(firstKnowledgePage.nextOffset).toBe(2);
 
     const secondKnowledgePageResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?limit=1&offset=1' }),
+      jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=2' }),
     );
     const secondKnowledgePage = (await secondKnowledgePageResponse.json()) as {
       items: Array<{ id: string; readableId: string }>;
@@ -319,11 +343,14 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
       nextOffset: number | null;
     };
     expect(secondKnowledgePage.items).toHaveLength(1);
-    expect(secondKnowledgePage.total).toBe(2);
+    expect(secondKnowledgePage.total).toBe(EXPECTED_PAGE_COUNT);
     expect(secondKnowledgePage.nextOffset).toBeNull();
     expect(
-      [firstKnowledgePage.items[0]?.readableId, secondKnowledgePage.items[0]?.readableId].sort(),
-    ).toEqual(['growth-playbook', 'operating-rhythm']);
+      [
+        ...firstKnowledgePage.items.map(({ readableId }) => readableId),
+        ...secondKnowledgePage.items.map(({ readableId }) => readableId),
+      ].sort(),
+    ).toEqual(['growth-playbook', duplicatePage.readableId, 'operating-rhythm'].sort());
 
     const searchedKnowledgePageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=7&offset=0&query=growth' }),
@@ -334,8 +361,12 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
           readableId: 'growth-playbook',
           excerpt: 'Luca owns this feedback system.',
         }),
+        expect.objectContaining({
+          readableId: duplicatePage.readableId,
+          excerpt: 'A different page with the same title.',
+        }),
       ],
-      total: 1,
+      total: 2,
       nextOffset: null,
     });
 

@@ -7,7 +7,6 @@ import {
 import { useCreatePage } from '../lib/hooks/use-create-page';
 
 const EMPTY_PAGE: KnowledgePageFormValues = {
-  readableId: '',
   markdown: '# A focused idea\n\n',
 };
 
