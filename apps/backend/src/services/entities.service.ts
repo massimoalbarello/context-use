@@ -47,8 +47,8 @@ export class EntitiesService extends Service {
       );
   }
 
-  list({ ownerId }: { ownerId: string }): Promise<Entity[]> {
-    return this.entities.list({ ownerId });
+  list(input: { ownerId: string; limit: number; offset: number; query?: string }) {
+    return this.entities.list(input);
   }
 
   async detail({

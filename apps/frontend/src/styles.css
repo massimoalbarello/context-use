@@ -47,6 +47,14 @@
 }
 
 @layer components {
+  .app-shell {
+    @apply grid h-dvh min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden;
+  }
+
+  .app-content {
+    @apply min-h-0 overflow-y-auto;
+  }
+
   .app-header {
     @apply sticky top-0 z-20 flex flex-wrap items-center gap-2 border-line border-b bg-paper/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-nowrap md:gap-5 md:px-8 md:py-0;
   }
@@ -76,11 +84,11 @@
   }
 
   .knowledge-workspace {
-    @apply grid min-h-[calc(100dvh-6.5rem)] bg-paper md:h-[calc(100dvh-4rem)] md:min-h-0 md:grid-cols-[20rem_minmax(0,1fr)];
+    @apply grid h-full min-h-0 grid-rows-[minmax(10rem,18rem)_minmax(0,1fr)] overflow-hidden bg-paper md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-none;
   }
 
   .knowledge-sidebar {
-    @apply flex max-h-80 min-h-0 flex-col border-line border-b bg-transparent md:max-h-none md:border-r md:border-b-0;
+    @apply flex min-h-0 flex-col overflow-hidden border-line border-b bg-transparent md:border-r md:border-b-0;
   }
 
   .sidebar-header {
@@ -115,12 +123,20 @@
     @apply p-2;
   }
 
+  .infinite-scroll-trigger {
+    @apply flex min-h-12 items-center justify-center gap-2 py-3 text-muted text-xs;
+  }
+
+  .infinite-scroll-trigger button {
+    @apply rounded-md px-2 py-1 font-medium text-ink hover:bg-accent-soft;
+  }
+
   .workspace-detail {
-    @apply min-h-0 min-w-0 bg-paper p-2 md:overflow-hidden md:p-3 md:pl-0;
+    @apply min-h-0 min-w-0 overflow-hidden bg-paper p-2 md:p-3 md:pl-0;
   }
 
   .workspace-card {
-    @apply min-h-[30rem] overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_10px_35px_rgb(23_23_23/0.05)] md:h-full md:min-h-0 md:overflow-y-auto;
+    @apply h-full min-h-0 overflow-y-auto rounded-2xl border border-line bg-panel shadow-[0_10px_35px_rgb(23_23_23/0.05)];
   }
 
   .detail-shell {

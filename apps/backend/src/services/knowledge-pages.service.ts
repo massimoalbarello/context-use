@@ -96,8 +96,8 @@ export class KnowledgePagesService extends Service {
     return { state: 'saved', page };
   }
 
-  list({ ownerId }: { ownerId: string }): Promise<KnowledgePageSummary[]> {
-    return this.pages.list({ ownerId });
+  list(input: { ownerId: string; limit: number; offset: number }) {
+    return this.pages.list(input);
   }
 
   async detail({

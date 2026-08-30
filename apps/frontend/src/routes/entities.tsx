@@ -11,21 +11,24 @@ export const Route = createFileRoute('/entities')({
       throw redirect({ to: '/login', search: { redirect: location.href } });
     }
   },
-  loader: ({ context }) => context.queryClient.ensureQueryData(entitiesQueryOptions),
+  loader: ({ context }) => context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions),
   component: EntitiesLayout,
 });
 
 function EntitiesLayout() {
-  const { data: entities = [], error } = useEntities();
+  const { entities, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntities();
 
   return (
     <main className="knowledge-workspace">
       <KnowledgeSidebar
         title="Entities"
-        count={entities.length}
+        count={total}
         createTo="/entities/new"
         createLabel="New entity"
         error={error}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        loadMore={fetchNextPage}
       >
         <EntityList entities={entities} />
       </KnowledgeSidebar>

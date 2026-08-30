@@ -4,11 +4,16 @@ import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import {
   EntityBodySchema,
+  EntityListQuerySchema,
   EntityListSchema,
   EntitySchema,
   entityResponse,
 } from '#routes/api/entities/model.ts';
-import { ReadableIdConflictSchema, ReadableIdRequiredSchema } from '#routes/api/model.ts';
+import {
+  DEFAULT_LIST_LIMIT,
+  ReadableIdConflictSchema,
+  ReadableIdRequiredSchema,
+} from '#routes/api/model.ts';
 import type { EntitiesServiceContract } from '#services/entities.service.ts';
 
 export function createEntitiesController({
@@ -54,12 +59,18 @@ export function createEntitiesController({
     )
     .get(
       '/entities',
-      async ({ user, status }) => {
-        const entities = await entitiesService.list({ ownerId: user.id });
-        return status(StatusMap.OK, entities.map(entityResponse));
+      async ({ query, user, status }) => {
+        const page = await entitiesService.list({
+          ownerId: user.id,
+          limit: query.limit ?? DEFAULT_LIST_LIMIT,
+          offset: query.offset ?? 0,
+          query: query.query,
+        });
+        return status(StatusMap.OK, { ...page, items: page.items.map(entityResponse) });
       },
       {
         detail: { tags: ['Entities'], summary: 'List entity identities' },
+        query: EntityListQuerySchema,
         response: { [StatusMap.OK]: EntityListSchema },
       },
     );

@@ -7,6 +7,7 @@ import type {
   KnowledgePagesRepositoryContract,
   StoredKnowledgePage,
 } from '#pages/knowledge-page.ts';
+import { pageFrom } from '#pagination/page.ts';
 import { Repository } from '#repositories/repository.ts';
 
 type StoredPageRow = {
@@ -294,17 +295,27 @@ export class KnowledgePagesRepository
     });
   }
 
-  async list({ ownerId }: { ownerId: string }): Promise<KnowledgePageSummary[]> {
-    const rows = await this.sql<SummaryRow[]>`
-      select page."id", page."readable_id" as "readableId",
-        revision."revision_number" as "revisionNumber", revision."title",
-        page."created_at" as "createdAt", page."updated_at" as "updatedAt"
-      from "knowledge_page" page
-      join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
-      where page."owner_id" = ${ownerId}
-      order by page."updated_at" desc, page."id" desc
-    `;
-    return rows.map(summaryFrom);
+  async list({ ownerId, limit, offset }: { ownerId: string; limit: number; offset: number }) {
+    const [rows, counts] = await Promise.all([
+      this.sql<SummaryRow[]>`
+        select page."id", page."readable_id" as "readableId",
+          revision."revision_number" as "revisionNumber", revision."title",
+          page."created_at" as "createdAt", page."updated_at" as "updatedAt"
+        from "knowledge_page" page
+        join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+        where page."owner_id" = ${ownerId}
+        order by page."updated_at" desc, page."id" desc
+        limit ${limit} offset ${offset}
+      `,
+      this.sql<Array<{ total: number }>>`
+        select count(*) as "total" from "knowledge_page" where "owner_id" = ${ownerId}
+      `,
+    ]);
+    return pageFrom({
+      items: rows.map(summaryFrom),
+      total: Number(counts[0]?.total ?? 0),
+      offset,
+    });
   }
 
   async listByEntity({

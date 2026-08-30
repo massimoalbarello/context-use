@@ -4,8 +4,8 @@ import { pagesQueryOptions } from '../queries/pages';
 
 export const Route = createFileRoute('/pages/')({
   loader: async ({ context }) => {
-    const pages = await context.queryClient.ensureQueryData(pagesQueryOptions);
-    const firstPage = pages[0];
+    const pages = await context.queryClient.ensureInfiniteQueryData(pagesQueryOptions);
+    const firstPage = pages.pages[0]?.items[0];
     if (firstPage) {
       throw redirect({ to: '/pages/$id', params: { id: firstPage.readableId } });
     }

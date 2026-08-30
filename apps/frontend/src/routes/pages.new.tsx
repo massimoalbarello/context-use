@@ -4,8 +4,6 @@ import {
   type KnowledgePageFormValues,
 } from '../components/pages/knowledge-page-form';
 import { useCreatePage } from '../lib/hooks/use-create-page';
-import { useEntities } from '../lib/hooks/use-entities';
-import { entitiesQueryOptions } from '../queries/entities';
 
 const EMPTY_PAGE: KnowledgePageFormValues = {
   readableId: '',
@@ -13,13 +11,11 @@ const EMPTY_PAGE: KnowledgePageFormValues = {
 };
 
 export const Route = createFileRoute('/pages/new')({
-  loader: ({ context }) => context.queryClient.ensureQueryData(entitiesQueryOptions),
   component: NewPageRoute,
 });
 
 function NewPageRoute() {
   const navigate = useNavigate();
-  const { data: entities = [] } = useEntities();
   const createPage = useCreatePage();
 
   return (
@@ -30,7 +26,6 @@ function NewPageRoute() {
       </header>
       <KnowledgePageForm
         initialValues={EMPTY_PAGE}
-        entities={entities}
         pending={createPage.isPending}
         error={createPage.error}
         submitLabel="Create page"

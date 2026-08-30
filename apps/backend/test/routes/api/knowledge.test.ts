@@ -29,6 +29,7 @@ const KNOWLEDGE_MIGRATION = new URL(
   '../../../src/db/migrations/0001_knowledge.sql',
   import.meta.url,
 );
+const EXPECTED_ENTITY_COUNT = 3;
 
 const assetsService: AssetsServiceContract = {
   routes: () => new Map(),
@@ -209,6 +210,42 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     );
     expect(distinguishedEntityResponse.status).toBe(StatusMap.Created);
 
+    const firstEntityPageResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/entities?limit=2&offset=0' }),
+    );
+    expect(firstEntityPageResponse.status).toBe(StatusMap.OK);
+    const firstEntityPage = (await firstEntityPageResponse.json()) as {
+      items: Array<{ id: string }>;
+      total: number;
+      nextOffset: number | null;
+    };
+    expect(firstEntityPage.items).toHaveLength(2);
+    expect(firstEntityPage.total).toBe(EXPECTED_ENTITY_COUNT);
+    expect(firstEntityPage.nextOffset).toBe(2);
+
+    const secondEntityPageResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/entities?limit=2&offset=2' }),
+    );
+    const secondEntityPage = (await secondEntityPageResponse.json()) as {
+      items: Array<{ id: string }>;
+      total: number;
+      nextOffset: number | null;
+    };
+    expect(secondEntityPage.items).toHaveLength(1);
+    expect(secondEntityPage.total).toBe(EXPECTED_ENTITY_COUNT);
+    expect(secondEntityPage.nextOffset).toBeNull();
+    expect(secondEntityPage.items[0]?.id).not.toBe(firstEntityPage.items[0]?.id);
+    expect(secondEntityPage.items[0]?.id).not.toBe(firstEntityPage.items[1]?.id);
+
+    const searchedEntityPageResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/entities?limit=7&offset=0&query=research' }),
+    );
+    expect(await searchedEntityPageResponse.json()).toEqual({
+      items: [expect.objectContaining({ readableId: 'research-luca-bianchi' })],
+      total: 1,
+      nextOffset: null,
+    });
+
     const growthResponse = await app.handle(
       jsonRequest({
         method: 'POST',
@@ -259,6 +296,33 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
       }),
     );
     expect(rhythmResponse.status).toBe(StatusMap.Created);
+
+    const firstKnowledgePageResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?limit=1&offset=0' }),
+    );
+    const firstKnowledgePage = (await firstKnowledgePageResponse.json()) as {
+      items: Array<{ id: string; readableId: string }>;
+      total: number;
+      nextOffset: number | null;
+    };
+    expect(firstKnowledgePage.items).toHaveLength(1);
+    expect(firstKnowledgePage.total).toBe(2);
+    expect(firstKnowledgePage.nextOffset).toBe(1);
+
+    const secondKnowledgePageResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?limit=1&offset=1' }),
+    );
+    const secondKnowledgePage = (await secondKnowledgePageResponse.json()) as {
+      items: Array<{ id: string; readableId: string }>;
+      total: number;
+      nextOffset: number | null;
+    };
+    expect(secondKnowledgePage.items).toHaveLength(1);
+    expect(secondKnowledgePage.total).toBe(2);
+    expect(secondKnowledgePage.nextOffset).toBeNull();
+    expect(
+      [firstKnowledgePage.items[0]?.readableId, secondKnowledgePage.items[0]?.readableId].sort(),
+    ).toEqual(['growth-playbook', 'operating-rhythm']);
 
     const linkedGrowthResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages/growth-playbook' }),

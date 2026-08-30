@@ -6,8 +6,6 @@ import {
   insertEntityMention,
 } from './entity-mention';
 
-const MAX_SUGGESTIONS = 7;
-
 export function EntityMentionTextarea({
   id,
   name,
@@ -16,6 +14,7 @@ export function EntityMentionTextarea({
   invalid,
   onBlur,
   onChange,
+  onQueryChange,
 }: {
   id: string;
   name: string;
@@ -24,27 +23,20 @@ export function EntityMentionTextarea({
   invalid: boolean;
   onBlur: () => void;
   onChange: (value: string) => void;
+  onQueryChange: (query: string | null) => void;
 }) {
   const listId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [mention, setMention] = useState<ActiveEntityMention | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const normalizedQuery = mention?.query.trim().toLocaleLowerCase() ?? '';
-  const suggestions = mention
-    ? entities
-        .filter(
-          (entity) =>
-            !normalizedQuery ||
-            entity.name.toLocaleLowerCase().includes(normalizedQuery) ||
-            entity.readableId.toLocaleLowerCase().includes(normalizedQuery),
-        )
-        .slice(0, MAX_SUGGESTIONS)
-    : [];
+  const suggestions = mention ? entities : [];
   const suggestionsOpen = suggestions.length > 0;
   const activeEntity = suggestions[activeIndex];
 
   function updateMention({ markdown, cursor }: { markdown: string; cursor: number }) {
-    setMention(findActiveEntityMention({ markdown, cursor }));
+    const nextMention = findActiveEntityMention({ markdown, cursor });
+    setMention(nextMention);
+    onQueryChange(nextMention?.query ?? null);
     setActiveIndex(0);
   }
 
@@ -55,6 +47,7 @@ export function EntityMentionTextarea({
     const insertion = insertEntityMention({ markdown: value, mention, entity });
     onChange(insertion.markdown);
     setMention(null);
+    onQueryChange(null);
     setActiveIndex(0);
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
@@ -73,6 +66,7 @@ export function EntityMentionTextarea({
         onBlur={() => {
           onBlur();
           setMention(null);
+          onQueryChange(null);
         }}
         onChange={(event) => {
           const markdown = event.target.value;
@@ -98,6 +92,7 @@ export function EntityMentionTextarea({
           } else if (event.key === 'Escape') {
             event.preventDefault();
             setMention(null);
+            onQueryChange(null);
           } else if (event.key === 'Enter' || event.key === 'Tab') {
             event.preventDefault();
             const selectedEntity = suggestions[activeIndex] ?? suggestions[0];

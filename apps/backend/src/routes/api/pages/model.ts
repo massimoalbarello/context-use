@@ -6,7 +6,11 @@ import {
   MAX_KNOWLEDGE_PAGE_BYTES,
 } from '#pages/knowledge-page.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
-import { ReadableIdSchema } from '#routes/api/model.ts';
+import {
+  PaginationMetadataSchema,
+  PaginationQuerySchema,
+  ReadableIdSchema,
+} from '#routes/api/model.ts';
 
 export const KnowledgePageSummarySchema = t.Object({
   id: t.String({ format: 'uuid' }),
@@ -41,7 +45,11 @@ export const UpdateKnowledgePageBodySchema = t.Object({
 });
 
 export const KnowledgePageParamsSchema = t.Object({ pageReadableId: ReadableIdSchema });
-export const KnowledgePageListSchema = t.Array(KnowledgePageSummarySchema);
+export const KnowledgePageListSchema = t.Object({
+  items: t.Array(KnowledgePageSummarySchema),
+  ...PaginationMetadataSchema.properties,
+});
+export const KnowledgePageListQuerySchema = PaginationQuerySchema;
 
 export function pageSummaryResponse(page: KnowledgePageSummary) {
   return {

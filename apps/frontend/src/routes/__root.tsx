@@ -24,7 +24,7 @@ function RouteComponent() {
   const { profile, session } = Route.useRouteContext();
 
   return (
-    <>
+    <div className="app-shell">
       <header className="app-header">
         <Link to="/" className="brand" activeOptions={{ exact: true }}>
           Context Use
@@ -57,7 +57,9 @@ function RouteComponent() {
           )}
         </div>
       </header>
-      <Outlet />
-    </>
+      <div className="app-content">
+        <Outlet />
+      </div>
+    </div>
   );
 }

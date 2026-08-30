@@ -1,7 +1,7 @@
 import { useForm } from '@tanstack/react-form';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
-import type { EntitySummary } from '../../queries/entities';
+import { useEntitySuggestions } from '../../lib/hooks/use-entities';
 import { EntityMentionTextarea } from './entity-mention-textarea';
 
 const READABLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -26,7 +26,6 @@ function validateMarkdown({ value }: { value: string }): string | undefined {
 export function KnowledgePageForm({
   initialValues,
   readableIdLocked = false,
-  entities,
   pending,
   error,
   submitLabel,
@@ -34,12 +33,13 @@ export function KnowledgePageForm({
 }: {
   initialValues: KnowledgePageFormValues;
   readableIdLocked?: boolean;
-  entities: EntitySummary[];
   pending: boolean;
   error: Error | null;
   submitLabel: string;
   onSubmit: (values: KnowledgePageFormValues) => void;
 }) {
+  const [entityMentionQuery, setEntityMentionQuery] = useState<string | null>(null);
+  const { data: entitySuggestions = [] } = useEntitySuggestions(entityMentionQuery);
   const form = useForm({
     defaultValues: initialValues,
     onSubmit: ({ value }) => {
@@ -79,10 +79,11 @@ export function KnowledgePageForm({
                 id={field.name}
                 name={field.name}
                 value={field.state.value}
-                entities={entities}
+                entities={entitySuggestions}
                 invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
                 onBlur={field.handleBlur}
                 onChange={field.handleChange}
+                onQueryChange={setEntityMentionQuery}
               />
               <small>
                 Keep one coherent idea here. Type @ to mention an entity; use H2 or lower headings

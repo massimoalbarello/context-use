@@ -1,4 +1,5 @@
 import type { Entity } from '#entities/entity.ts';
+import type { Page } from '#pagination/page.ts';
 
 export const MAX_KNOWLEDGE_PAGE_BYTES = 1_000_000;
 export const MAX_KNOWLEDGE_PAGE_TITLE_LENGTH = 240;
@@ -71,7 +72,11 @@ export interface KnowledgePagesRepositoryContract {
     | { state: 'revision_conflict'; currentRevisionNumber: number }
     | { state: 'link_target_not_found'; target: string }
   >;
-  list(input: { ownerId: string }): Promise<KnowledgePageSummary[]>;
+  list(input: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+  }): Promise<Page<KnowledgePageSummary>>;
   listByEntity(input: {
     ownerId: string;
     entityReadableId: string;

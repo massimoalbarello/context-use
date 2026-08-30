@@ -1,4 +1,5 @@
 import type { KnowledgePageSummary } from '#pages/knowledge-page.ts';
+import type { Page } from '#pagination/page.ts';
 
 export const MAX_ENTITY_NAME_LENGTH = 160;
 export const MIN_ENTITY_DESCRIPTION_LENGTH = 20;
@@ -27,7 +28,12 @@ export interface EntityRepositoryContract {
     description: string;
     createdAt: string;
   }): Promise<{ state: 'created'; entity: Entity } | { state: 'readable_id_conflict' }>;
-  list(input: { ownerId: string }): Promise<Entity[]>;
+  list(input: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+    query?: string;
+  }): Promise<Page<Entity>>;
   find(input: { ownerId: string; readableId: string }): Promise<Entity | null>;
   update(input: {
     ownerId: string;

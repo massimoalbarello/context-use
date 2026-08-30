@@ -2,9 +2,14 @@ import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
-import { ReadableIdConflictSchema, ReadableIdRequiredSchema } from '#routes/api/model.ts';
+import {
+  DEFAULT_LIST_LIMIT,
+  ReadableIdConflictSchema,
+  ReadableIdRequiredSchema,
+} from '#routes/api/model.ts';
 import {
   CreateKnowledgePageBodySchema,
+  KnowledgePageListQuerySchema,
   KnowledgePageListSchema,
   KnowledgePageSchema,
   knowledgePageResponse,
@@ -67,12 +72,17 @@ export function createPagesController({
     )
     .get(
       '/pages',
-      async ({ user, status }) => {
-        const pages = await pagesService.list({ ownerId: user.id });
-        return status(StatusMap.OK, pages.map(pageSummaryResponse));
+      async ({ query, user, status }) => {
+        const page = await pagesService.list({
+          ownerId: user.id,
+          limit: query.limit ?? DEFAULT_LIST_LIMIT,
+          offset: query.offset ?? 0,
+        });
+        return status(StatusMap.OK, { ...page, items: page.items.map(pageSummaryResponse) });
       },
       {
         detail: { tags: ['Pages'], summary: 'List current knowledge pages' },
+        query: KnowledgePageListQuerySchema,
         response: { [StatusMap.OK]: KnowledgePageListSchema },
       },
     );

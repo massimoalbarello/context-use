@@ -5,7 +5,11 @@ import {
   MAX_ENTITY_NAME_LENGTH,
   MIN_ENTITY_DESCRIPTION_LENGTH,
 } from '#entities/entity.ts';
-import { ReadableIdSchema } from '#routes/api/model.ts';
+import {
+  PaginationMetadataSchema,
+  PaginationQuerySchema,
+  ReadableIdSchema,
+} from '#routes/api/model.ts';
 
 export const EntitySchema = t.Object({
   id: t.String({ format: 'uuid' }),
@@ -29,7 +33,14 @@ export const EntityBodySchema = t.Object({
 
 export const UpdateEntityBodySchema = t.Omit(EntityBodySchema, ['readableId']);
 export const EntityParamsSchema = t.Object({ entityReadableId: ReadableIdSchema });
-export const EntityListSchema = t.Array(EntitySchema);
+export const EntityListQuerySchema = t.Object({
+  ...PaginationQuerySchema.properties,
+  query: t.Optional(t.String({ maxLength: MAX_ENTITY_NAME_LENGTH })),
+});
+export const EntityListSchema = t.Object({
+  items: t.Array(EntitySchema),
+  ...PaginationMetadataSchema.properties,
+});
 
 export function entityResponse(entity: Entity) {
   return {

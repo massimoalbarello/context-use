@@ -11,21 +11,24 @@ export const Route = createFileRoute('/pages')({
       throw redirect({ to: '/login', search: { redirect: location.href } });
     }
   },
-  loader: ({ context }) => context.queryClient.ensureQueryData(pagesQueryOptions),
+  loader: ({ context }) => context.queryClient.ensureInfiniteQueryData(pagesQueryOptions),
   component: PagesLayout,
 });
 
 function PagesLayout() {
-  const { data: pages = [], error } = usePages();
+  const { pages, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = usePages();
 
   return (
     <main className="knowledge-workspace">
       <KnowledgeSidebar
         title="Pages"
-        count={pages.length}
+        count={total}
         createTo="/pages/new"
         createLabel="New page"
         error={error}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        loadMore={fetchNextPage}
       >
         <KnowledgePageList pages={pages} />
       </KnowledgeSidebar>

@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 
 export function KnowledgeSidebar({
   title,
@@ -7,6 +8,9 @@ export function KnowledgeSidebar({
   createTo,
   createLabel,
   error,
+  hasNextPage,
+  isFetchingNextPage,
+  loadMore,
   children,
 }: {
   title: string;
@@ -14,8 +18,13 @@ export function KnowledgeSidebar({
   createTo: '/pages/new' | '/entities/new';
   createLabel: string;
   error?: Error | null;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  loadMore: () => Promise<unknown>;
   children: ReactNode;
 }) {
+  const initialLoadFailed = Boolean(error && count === 0);
+
   return (
     <aside className="knowledge-sidebar">
       <header className="sidebar-header">
@@ -31,7 +40,19 @@ export function KnowledgeSidebar({
         </Link>
       </header>
       <div className="sidebar-scroll">
-        {error ? <p className="error-message sidebar-error">{error.message}</p> : children}
+        {initialLoadFailed ? (
+          <p className="error-message sidebar-error">{error?.message}</p>
+        ) : (
+          <>
+            {children}
+            <InfiniteScrollTrigger
+              hasNextPage={hasNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+              error={error}
+              loadMore={loadMore}
+            />
+          </>
+        )}
       </div>
     </aside>
   );
