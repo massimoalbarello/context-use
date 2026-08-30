@@ -101,7 +101,7 @@ global client-state library until a concrete cross-route state model requires on
 ## Visual system
 
 - The canonical token baseline is the tweakcn **Minimal Neutral** shadcn theme. Its semantic theme
-  variables, DM Sans body type, and Geist Mono code type belong in the shared foundation;
+  variables, DM Sans body type, and Geist Mono code type belong in `src/styles/minimal-neutral.css`;
   components consume those tokens and never recreate the palette locally.
 - Generic controls and surfaces—buttons, inputs, textareas, tabs, badges, avatars, and ordinary UI
   cards—come from `src/components/ui`. Do not hand-style a native replacement in a feature when a
@@ -118,12 +118,12 @@ global client-state library until a concrete cross-route state model requires on
 - Compose application layout with semantic theme tokens, Tailwind utilities, and `cva` variants
   colocated with the React component that owns the behavior. Do not add component or feature
   stylesheets.
-- `src/styles.css` is only the Tailwind/theme entry point and `src/styles/foundation.css` preserves
-  the canonical tweakcn theme as one baseline. Tailwind Preflight owns the reset. Put ordinary
-  application styling in component utilities; add a global rule only for indispensable document
-  behavior that neither the theme, Preflight, nor a component can own. The architecture test
-  enforces that boundary. An exception requires an explicit architecture decision and an update to
-  that test; convenience is not an exception.
+- `src/styles.css` is only the Tailwind/theme entry point and `src/styles/minimal-neutral.css`
+  preserves the selected tweakcn theme as one baseline. Tailwind Preflight owns the reset. Put
+  ordinary application styling in component utilities; add a global rule only for indispensable
+  document behavior that neither the theme, Preflight, nor a component can own. The architecture
+  test enforces that boundary. An exception requires an explicit architecture decision and an
+  update to that test; convenience is not an exception.
 - Add a token, component variant, or page pattern only for a recurring semantic distinction. Before
   adding one, simplify, extend, consolidate, or delete what already exists where possible.
 - Treat nearly identical components, arbitrary visual values, growing variant matrices, and pages

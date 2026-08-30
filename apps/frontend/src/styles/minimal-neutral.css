@@ -1,3 +1,9 @@
+/*
+ * Canonical tweakcn Minimal Neutral theme:
+ * https://tweakcn.com/themes/cmho4nr9l000h04l1gu419ckw
+ * Application-specific styling belongs in component Tailwind utilities, not this file.
+ */
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
