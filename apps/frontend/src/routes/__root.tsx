@@ -1,78 +1,63 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router';
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
+import { createRootRouteWithContext, Link, Outlet, redirect } from '@tanstack/react-router';
 import { SignOutButton } from '../components/auth/sign-out-button';
+import { buttonVariants } from '../components/ui/button';
+import { cn } from '../lib/class-names';
+import { profileQueryOptions } from '../queries/profile';
 import { sessionQueryOptions } from '../queries/session';
 
-// Where the backend serves the API reference, outside the router's route tree.
-const OPENAPI_PATH = '/openapi';
-
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions);
-    return { session };
+    const profile = session ? await context.queryClient.ensureQueryData(profileQueryOptions) : null;
+    const setupPath = location.pathname === '/setup';
+    if (session && !profile && !setupPath) {
+      throw redirect({ to: '/setup', search: { redirect: location.href } });
+    }
+    if (session && profile && setupPath) {
+      throw redirect({ to: '/pages' });
+    }
+    return { session, profile };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { session } = Route.useRouteContext();
+  const { profile, session } = Route.useRouteContext();
 
   return (
-    <>
-      <div className="flex items-center gap-2 p-2 text-lg">
-        <Link
-          to="/"
-          activeProps={{
-            className: 'font-bold',
-          }}
-          activeOptions={{ exact: true }}
-        >
-          Home
-        </Link>{' '}
-        <Link
-          to="/about"
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          About
-        </Link>
-        {session && (
+    <div
+      className={cn(
+        'grid h-dvh min-h-0 overflow-hidden',
+        profile ? 'grid-rows-[minmax(0,1fr)]' : 'grid-rows-[auto_minmax(0,1fr)]',
+      )}
+    >
+      {!profile && (
+        <header className="sticky top-0 z-20 flex flex-wrap items-center gap-2 bg-sidebar/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-nowrap md:gap-5 md:px-8 md:py-0">
           <Link
-            to="/files"
-            activeProps={{
-              className: 'font-bold',
-            }}
+            to="/"
+            className="whitespace-nowrap font-semibold text-lg tracking-tight"
+            activeOptions={{ exact: true }}
           >
-            Files
+            Context Use
           </Link>
-        )}
-        {/* A plain anchor, not a `Link`: the docs page is rendered by the server, not the router. */}
-        <a href={OPENAPI_PATH} className="text-gray-500 text-sm hover:underline dark:text-gray-400">
-          API docs
-        </a>
-        <div className="ml-auto flex items-center gap-3 text-base">
-          {session ? (
-            <>
-              <span className="text-gray-500 text-sm dark:text-gray-400">{session.user.name}</span>
-              <SignOutButton />
-            </>
-          ) : (
-            <Link
-              to="/login"
-              activeProps={{
-                className: 'font-bold',
-              }}
-            >
-              Login
-            </Link>
-          )}
-        </div>
+          <div className="ml-auto flex shrink-0 items-center gap-3 whitespace-nowrap text-muted-foreground text-sm">
+            {session ? (
+              <>
+                <span className="hidden max-w-48 truncate lg:inline">{session.user.name}</span>
+                <SignOutButton />
+              </>
+            ) : (
+              <Link to="/login" className={buttonVariants({ variant: 'ghost' })}>
+                Login
+              </Link>
+            )}
+          </div>
+        </header>
+      )}
+      <div className={cn('min-h-0', profile ? 'overflow-hidden' : 'overflow-y-auto')}>
+        <Outlet />
       </div>
-      <hr />
-      <Outlet />
-      <TanStackRouterDevtools position="bottom-right" />
-    </>
+    </div>
   );
 }

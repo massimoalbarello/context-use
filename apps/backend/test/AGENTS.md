@@ -6,7 +6,10 @@ type-safe TypeScript.
 
 ## Layout and support
 
-- Mirror `src/routes`, `src/services`, and `src/repositories` under `test`.
+- Mirror the owning `src` path under `test` for module- and layer-level tests, including models,
+  routes, services, repositories, database adapters, and technical support. A test spanning several
+  modules lives at their nearest shared boundary and is named after the behavior it proves; do not
+  split a coherent flow merely to manufacture one test file per source file.
 - Limit `test/support` to shared application factories, database and storage harnesses, principals,
   clocks, builders, and focused assertions. Keep a feature-specific helper with its feature.
 - Helpers expose domain actions and typed values, not private call sequences. Avoid a global world

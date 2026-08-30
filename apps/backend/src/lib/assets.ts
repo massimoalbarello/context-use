@@ -6,20 +6,25 @@ import type { BunFile } from 'bun';
 declare const PUBLIC_FRONTEND_DIR_NAME: string;
 declare const DB_MIGRATIONS_DIR_NAME: string;
 
+const publicFrontendFolderName =
+  typeof PUBLIC_FRONTEND_DIR_NAME === 'undefined' ? 'public' : PUBLIC_FRONTEND_DIR_NAME;
+const dbMigrationsFolderName =
+  typeof DB_MIGRATIONS_DIR_NAME === 'undefined' ? 'migrations' : DB_MIGRATIONS_DIR_NAME;
+
 // Where each tree sits when running from source. A compiled binary carries its own
 // copy and reads that instead.
-const PUBLIC_FRONTEND_DIR = resolve(process.cwd(), PUBLIC_FRONTEND_DIR_NAME);
-const DB_MIGRATIONS_DIR = resolve(import.meta.dir, '..', 'db', DB_MIGRATIONS_DIR_NAME);
+const PUBLIC_FRONTEND_DIR = resolve(process.cwd(), publicFrontendFolderName);
+const DB_MIGRATIONS_DIR = resolve(import.meta.dir, '..', 'db', dbMigrationsFolderName);
 
 /** Keyed by the path of the file relative to the folder it came from. */
 export type AssetFiles = Map<string, Blob>;
 
 export function getPublicAssets(): AssetFiles {
-  return readAssets({ folderName: PUBLIC_FRONTEND_DIR_NAME, folder: PUBLIC_FRONTEND_DIR });
+  return readAssets({ folderName: publicFrontendFolderName, folder: PUBLIC_FRONTEND_DIR });
 }
 
 export function getMigrations(): AssetFiles {
-  return readAssets({ folderName: DB_MIGRATIONS_DIR_NAME, folder: DB_MIGRATIONS_DIR });
+  return readAssets({ folderName: dbMigrationsFolderName, folder: DB_MIGRATIONS_DIR });
 }
 
 // Bun 1.4 ships `isStandaloneExecutable` as a released API, so where the assets live is

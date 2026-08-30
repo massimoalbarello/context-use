@@ -1,103 +1,79 @@
 import { useLoginForm, validateName } from '../../lib/hooks/use-login-form';
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
+import { Field, FieldError, FieldGroup, FieldLabel } from '../ui/field';
+import { Input } from '../ui/input';
 
-const FIELD_CLASS_NAME = 'flex flex-col gap-1';
-const LABEL_CLASS_NAME = 'font-medium text-gray-600 text-sm dark:text-gray-400';
-const INPUT_CLASS_NAME =
-  'rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-gray-500 aria-invalid:border-red-500 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-gray-500';
-const ERROR_CLASS_NAME = 'text-red-600 text-sm dark:text-red-400';
-const TAB_CLASS_NAME = 'flex-1 rounded px-3 py-1.5 font-medium text-sm';
-const ACTIVE_TAB_CLASS_NAME =
-  'bg-white text-gray-950 shadow-sm dark:bg-gray-800 dark:text-gray-100';
-const INACTIVE_TAB_CLASS_NAME = 'text-gray-500 dark:text-gray-400';
-
-export function LoginForm({ redirectTo }: { redirectTo: string }) {
-  const { api, isSigningUp, setIsSigningUp, pending, error } = useLoginForm({ redirectTo });
+export function LoginForm({
+  ownerRegistered,
+  redirectTo,
+}: {
+  ownerRegistered: boolean;
+  redirectTo: string;
+}) {
+  const { api, isSigningUp, pending, error } = useLoginForm({ ownerRegistered, redirectTo });
   const passkeysSupported =
     window.isSecureContext && typeof window.PublicKeyCredential !== 'undefined';
 
   return (
-    <div className="flex justify-center p-8">
-      <div className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-        <div className="mb-6 flex gap-1 rounded-md bg-gray-100 p-1 dark:bg-gray-950">
-          <button
-            type="button"
-            onClick={() => setIsSigningUp(false)}
-            className={`${TAB_CLASS_NAME} ${isSigningUp ? INACTIVE_TAB_CLASS_NAME : ACTIVE_TAB_CLASS_NAME}`}
-          >
-            Sign in
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsSigningUp(true)}
-            className={`${TAB_CLASS_NAME} ${isSigningUp ? ACTIVE_TAB_CLASS_NAME : INACTIVE_TAB_CLASS_NAME}`}
-          >
-            Sign up
-          </button>
-        </div>
-
+    <Card>
+      <CardContent>
         <form
-          className="flex flex-col gap-4"
+          className="grid gap-5"
           onSubmit={(event) => {
             event.preventDefault();
             void api.handleSubmit();
           }}
         >
-          <p className="text-gray-600 text-sm dark:text-gray-400">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             {isSigningUp
               ? 'The first passkey created here becomes the owner of this Context Use instance.'
               : 'Use a passkey saved on this device, another device, or a security key.'}
           </p>
 
-          {isSigningUp && (
-            <api.Field name="name" validators={{ onChange: validateName }}>
-              {(field) => (
-                <div className={FIELD_CLASS_NAME}>
-                  <label htmlFor={field.name} className={LABEL_CLASS_NAME}>
-                    Name
-                  </label>
-                  <input
-                    id={field.name}
-                    type="text"
-                    autoComplete="name"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    aria-invalid={field.state.meta.errors.length > 0}
-                    className={INPUT_CLASS_NAME}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className={ERROR_CLASS_NAME}>{field.state.meta.errors[0]}</p>
-                  )}
-                </div>
-              )}
-            </api.Field>
-          )}
+          <FieldGroup>
+            {isSigningUp && (
+              <api.Field name="name" validators={{ onChange: validateName }}>
+                {(field) => (
+                  <Field data-invalid={field.state.meta.errors.length > 0}>
+                    <FieldLabel htmlFor="owner-name">Name</FieldLabel>
+                    <Input
+                      id="owner-name"
+                      name={field.name}
+                      type="text"
+                      autoComplete="name"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                      aria-invalid={field.state.meta.errors.length > 0}
+                    />
+                    <FieldError>{field.state.meta.errors[0]}</FieldError>
+                  </Field>
+                )}
+              </api.Field>
+            )}
 
-          {!passkeysSupported && (
-            <p role="alert" className={ERROR_CLASS_NAME}>
-              Passkeys require a supported browser in a secure context.
-            </p>
-          )}
+            {!passkeysSupported && (
+              <FieldError>Passkeys require a supported browser in a secure context.</FieldError>
+            )}
 
-          {error && (
-            <p role="alert" className={ERROR_CLASS_NAME}>
-              {error.message}
-            </p>
-          )}
+            {error && <FieldError>{error.message}</FieldError>}
+          </FieldGroup>
 
           <api.Subscribe selector={(state) => state.canSubmit}>
             {(canSubmit) => (
-              <button
+              <Button
                 type="submit"
                 disabled={!canSubmit || pending || !passkeysSupported}
-                className="rounded-md bg-gray-900 px-3 py-2 font-medium text-sm text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+                size="lg"
+                className="justify-self-start"
               >
                 {isSigningUp ? 'Create account with a passkey' : 'Sign in with a passkey'}
-              </button>
+              </Button>
             )}
           </api.Subscribe>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,0 +1,232 @@
+import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
+import { useState } from 'react';
+import { EntityLink } from '../components/entities/entity-link';
+import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
+import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
+import { ResourceList } from '../components/knowledge/resource-list';
+import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
+import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
+import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
+import { KnowledgePageMarkdown } from '../components/pages/knowledge-page-markdown';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { usePage } from '../lib/hooks/use-page';
+import { useUpdatePage } from '../lib/hooks/use-update-page';
+import { type KnowledgePage, pageQueryOptions } from '../queries/pages';
+
+type PageView = 'preview' | 'links' | 'revisions';
+
+const PAGE_EDIT_FORM_ID = 'knowledge-page-edit-form';
+
+function isPageView(value: unknown): value is PageView {
+  return value === 'preview' || value === 'links' || value === 'revisions';
+}
+
+export const Route = createFileRoute('/pages/$id')({
+  validateSearch: (search: Record<string, unknown>): { view?: PageView } => ({
+    view: isPageView(search.view) ? search.view : undefined,
+  }),
+  loader: ({ context, params }) => context.queryClient.ensureQueryData(pageQueryOptions(params.id)),
+  errorComponent: KnowledgePageRouteError,
+  component: KnowledgePageRoute,
+});
+
+function KnowledgePageRouteError({ error, reset }: ErrorComponentProps) {
+  return <WorkspaceResourceError resource="page" error={error} retry={reset} />;
+}
+
+function PageLinkList({ label, links }: { label: string; links: KnowledgePage['references'] }) {
+  return (
+    <section>
+      <div className="mb-4 flex items-center gap-3">
+        <h2 className="font-semibold text-lg">{label}</h2>
+        <Badge variant="secondary">{links.length}</Badge>
+      </div>
+      {links.length > 0 ? (
+        <ResourceList>
+          {links.map(({ page, fragment }) => (
+            <li key={`${page.id}#${fragment ?? ''}`}>
+              <KnowledgePageLink page={page} presentation="card" fragment={fragment ?? undefined} />
+            </li>
+          ))}
+        </ResourceList>
+      ) : (
+        <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
+      )}
+    </section>
+  );
+}
+
+function PageLinksView({ page }: { page: KnowledgePage }) {
+  return (
+    <div className="grid gap-8 py-7 md:grid-cols-3">
+      <section>
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="font-semibold text-lg">Mentions</h2>
+          <Badge variant="secondary">{page.mentions.length}</Badge>
+        </div>
+        {page.mentions.length > 0 ? (
+          <ResourceList>
+            {page.mentions.map((entity) => (
+              <li key={entity.id}>
+                <EntityLink entity={entity} presentation="card" />
+              </li>
+            ))}
+          </ResourceList>
+        ) : (
+          <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
+        )}
+      </section>
+      <PageLinkList label="References" links={page.references} />
+      <PageLinkList label="Referenced by" links={page.backlinks} />
+    </div>
+  );
+}
+
+function PageRevisionsView({ page }: { page: KnowledgePage }) {
+  return (
+    <section className="py-7">
+      <div className="mb-4 flex items-center gap-3">
+        <h2 className="font-semibold text-lg">Revisions</h2>
+        <Badge variant="secondary">{page.revisions.length}</Badge>
+      </div>
+      <ol className="grid max-w-3xl list-none gap-2 p-0">
+        {page.revisions.map((revision) => (
+          <li className="rounded-xl bg-muted px-4 py-3" key={revision.revisionNumber}>
+            <div className="flex items-center gap-2">
+              <strong className="font-semibold text-sm">Revision {revision.revisionNumber}</strong>
+              {revision.revisionNumber === page.revisionNumber && (
+                <Badge variant="secondary">Current</Badge>
+              )}
+            </div>
+            <p className="mt-1 text-sm">{revision.title}</p>
+            <time
+              className="mt-1 block text-muted-foreground text-xs"
+              dateTime={revision.createdAt.toISOString()}
+            >
+              {revision.createdAt.toLocaleString()}
+            </time>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function KnowledgePageRoute() {
+  const { id } = Route.useParams();
+  const { view = 'preview' } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const [editing, setEditing] = useState(false);
+  const { data: page, error, refetch } = usePage(id);
+  const updatePage = useUpdatePage();
+
+  if (error) {
+    return (
+      <WorkspaceResourceError
+        resource="page"
+        error={error}
+        retry={() => {
+          void refetch();
+        }}
+      />
+    );
+  }
+  if (!page) {
+    return null;
+  }
+
+  return (
+    <DetailShell className={editing ? 'gap-4' : 'gap-0'} data-editing={editing}>
+      <DetailHeader>
+        <ResourceDetailHeading
+          actions={
+            editing ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  type="button"
+                  onClick={() => {
+                    updatePage.reset();
+                    setEditing(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="lg"
+                  type="submit"
+                  form={PAGE_EDIT_FORM_ID}
+                  disabled={updatePage.isPending}
+                >
+                  {updatePage.isPending ? 'Saving…' : 'Save page'}
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="lg"
+                type="button"
+                onClick={() => {
+                  updatePage.reset();
+                  setEditing(true);
+                }}
+              >
+                Edit page
+              </Button>
+            )
+          }
+        >
+          Knowledge page
+        </ResourceDetailHeading>
+      </DetailHeader>
+
+      {editing ? (
+        <KnowledgePageForm
+          key={page.revisionNumber}
+          initialValues={{ markdown: page.markdown }}
+          formId={PAGE_EDIT_FORM_ID}
+          pending={updatePage.isPending}
+          error={updatePage.error}
+          onSubmit={({ markdown }) =>
+            updatePage.mutate(
+              {
+                readableId: page.readableId,
+                body: { expectedRevisionNumber: page.revisionNumber, markdown },
+              },
+              { onSuccess: () => setEditing(false) },
+            )
+          }
+        />
+      ) : (
+        <Tabs
+          className="mt-5 min-w-0"
+          value={view}
+          onValueChange={(value) => {
+            if (isPageView(value)) {
+              void navigate({ search: { view: value } });
+            }
+          }}
+        >
+          <TabsList className="gap-5" variant="line" aria-label="Page views">
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="links">Links</TabsTrigger>
+            <TabsTrigger value="revisions">Revisions</TabsTrigger>
+          </TabsList>
+          <TabsContent value="preview">
+            <div>
+              <KnowledgePageMarkdown markdown={page.markdown} />
+            </div>
+          </TabsContent>
+          <TabsContent value="links">
+            <PageLinksView page={page} />
+          </TabsContent>
+          <TabsContent value="revisions">
+            <PageRevisionsView page={page} />
+          </TabsContent>
+        </Tabs>
+      )}
+    </DetailShell>
+  );
+}

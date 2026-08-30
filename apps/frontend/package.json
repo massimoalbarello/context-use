@@ -9,15 +9,22 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@base-ui/react": "^1.7.0",
     "@better-auth/passkey": "catalog:",
     "@elysiajs/eden": "^1.4.9",
+    "@fontsource-variable/dm-sans": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@tanstack/react-form": "^1.33.5",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-router": "^1.170.32",
-    "@tanstack/react-router-devtools": "^1.167.1",
     "better-auth": "catalog:",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.37.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {

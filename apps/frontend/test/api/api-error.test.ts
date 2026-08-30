@@ -7,11 +7,11 @@ const INTERNAL_SERVER_ERROR_STATUS = 500;
 describe('apiErrorMessage', () => {
   test('uses the application error message when present', () => {
     const message = apiErrorMessage({
-      value: { error: 'File not found' },
+      value: { error: 'Page not found' },
       status: BAD_REQUEST_STATUS,
     });
 
-    expect(message).toBe('File not found');
+    expect(message).toBe('Page not found');
   });
 
   test('uses the validation message when present', () => {

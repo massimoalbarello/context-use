@@ -4,6 +4,9 @@ The root guide applies here. This file defines the React-specific owners and bou
 the frontend around the paths and user journeys it renders; reserve global folders for code that is
 genuinely shared across routes.
 
+Read and follow [UI-GUIDELINES.md](./UI-GUIDELINES.md) for the product vocabulary, visual language,
+workspace shell, and interaction conventions that every feature must preserve.
+
 ## Canonical owners
 
 Use one mechanism for each responsibility:
@@ -39,6 +42,9 @@ Discuss that gap and the tradeoffs before adding a competing mechanism.
 
 - `src/components/ui` contains shadcn/ui source components and no application or domain logic. Add
   only components required by a current feature and review the generated source and dependencies.
+- The frontend intentionally uses relative imports rather than a TypeScript path alias. When adding
+  shadcn source, keep the upstream Base UI implementation intact and normalize its imports to the
+  local relative-import convention instead of adding an alias only to satisfy the CLI.
 - Use Base UI consistently as the shadcn/ui foundation. Do not mix Base UI, Radix, React Aria, or
   hand-built versions of the same interactive primitive without an explicit design decision.
 - Keep route-specific compositions beside their route or feature. Global component folders contain
@@ -85,24 +91,42 @@ global client-state library until a concrete cross-route state model requires on
   times from the meaning of the data, and reuse the keys for reads, mutations, and invalidation.
 - Mutation success updates or invalidates canonical query data. Do not add refresh counters or a
   parallel cache in component state.
+- Treat authenticated Query data as session-scoped. Clear it across authentication transitions or
+  include the actor in its query key; private data must never be reused by another principal.
 - TanStack Form owns form state. Render it through accessible shadcn field primitives and map
   structured server errors through the shared API error mechanism.
+- Configure required-field validation to begin on submit and revalidate on change afterward. Do
+  not mount a creation form in an error state or disable its submit action merely because untouched
+  required fields are empty.
 - Backend validation remains authoritative. Add a client schema only when it improves a concrete
   form or URL boundary; do not duplicate backend contracts merely to adopt a schema library.
 
 ## Visual system
 
+- The canonical token baseline is the tweakcn **Minimal Neutral** shadcn theme. Its semantic theme
+  variables, DM Sans body type, and Geist Mono code type belong in `src/styles/minimal-neutral.css`;
+  components consume those tokens and never recreate the palette locally.
+- Generic controls and surfaces—buttons, inputs, textareas, tabs, badges, avatars, and ordinary UI
+  cards—come from `src/components/ui`. Do not hand-style a native replacement in a feature when a
+  shadcn primitive owns that interaction. Domain resource cards remain application components
+  because their entity/page identity and selection semantics are product behavior.
 - Establish a compact visual baseline before building feature screens: semantic color tokens,
   typography, spacing rhythm, radii, elevation, interaction states, content widths, and responsive
-  behavior. Keep global CSS limited to this baseline, resets, fonts, and truly global behavior.
+  behavior.
 - Use one shared application shell and a small set of recurring page patterns for headers, content
   regions, sections, forms, lists, and empty or error states. These executable components are the
   frontend template; do not create a separate visual model that can drift from them.
 - Build every screen from the established tokens, shadcn/ui primitives, and shared page patterns.
   Consistency takes precedence over route-specific novelty.
-- Keep feature styling with its owner, but do not introduce one-off colors, spacing, typography,
-  control treatments, or long repeated class combinations when an established token, primitive,
-  or pattern expresses the same decision.
+- Compose application layout with semantic theme tokens, Tailwind utilities, and `cva` variants
+  colocated with the React component that owns the behavior. Do not add component or feature
+  stylesheets.
+- `src/styles.css` is only the Tailwind/theme entry point and `src/styles/minimal-neutral.css`
+  preserves the selected tweakcn theme as one baseline. Tailwind Preflight owns the reset. Put
+  ordinary application styling in component utilities; add a global rule only for indispensable
+  document behavior that neither the theme, Preflight, nor a component can own. The architecture
+  test enforces that boundary. An exception requires an explicit architecture decision and an
+  update to that test; convenience is not an exception.
 - Add a token, component variant, or page pattern only for a recurring semantic distinction. Before
   adding one, simplify, extend, consolidate, or delete what already exists where possible.
 - Treat nearly identical components, arbitrary visual values, growing variant matrices, and pages
