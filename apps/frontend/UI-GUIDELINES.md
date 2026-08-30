@@ -18,6 +18,9 @@ novelty.
 - Compose product-specific layout with semantic tokens and Tailwind utilities on the shared React
   component that owns it. Custom component or feature CSS files are forbidden by an architecture
   test; only the shared theme foundation remains CSS.
+- Keep that foundation minimal: retain only tokens consumed by current primitives and genuinely
+  global document defaults. Tailwind Preflight owns the reset, and unused template token families
+  are not architecture.
 - Extend a shared token, primitive, or layout pattern when a recurring need is real. Keep a
   difference local only when it communicates a genuine product distinction.
 - Use the same component for the same job everywhere. Hover, focus, selected, disabled, loading,

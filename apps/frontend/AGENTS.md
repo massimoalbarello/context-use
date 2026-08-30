@@ -118,10 +118,12 @@ global client-state library until a concrete cross-route state model requires on
 - Compose application layout with semantic theme tokens, Tailwind utilities, and `cva` variants
   colocated with the React component that owns the behavior. Do not add component or feature
   stylesheets.
-- `src/styles.css` is only the Tailwind/theme entry point and `src/styles/foundation.css` is only the
-  tweakcn theme, reset, fonts, and global defaults. The architecture test enforces that boundary. An
-  exceptional new global CSS responsibility requires an explicit architecture decision and an
-  update to that test; convenience is not an exception.
+- `src/styles.css` is only the Tailwind/theme entry point and `src/styles/foundation.css` contains
+  only theme tokens used by current primitives, fonts, and indispensable document-level defaults.
+  Tailwind Preflight owns the reset; do not duplicate it or retain unused template token families.
+  The architecture test enforces that boundary. An exceptional new global CSS responsibility
+  requires an explicit architecture decision and an update to that test; convenience is not an
+  exception.
 - Add a token, component variant, or page pattern only for a recurring semantic distinction. Before
   adding one, simplify, extend, consolidate, or delete what already exists where possible.
 - Treat nearly identical components, arbitrary visual values, growing variant matrices, and pages
