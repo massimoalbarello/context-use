@@ -273,7 +273,7 @@
 
   .entity-name-input,
   .entity-description-input {
-    @apply -mx-2 w-[calc(100%+1rem)] rounded-lg border-0 bg-paper px-2 text-ink outline-none transition hover:bg-accent-soft focus:bg-accent-soft focus:ring-1 focus:ring-ink/20;
+    @apply -mx-2 w-[calc(100%+1rem)] px-2 text-ink;
   }
 
   .entity-name-input {
@@ -390,8 +390,15 @@
   }
 
   .field input,
+  .field textarea,
+  .entity-name-input,
+  .entity-description-input {
+    @apply rounded-lg border border-line bg-white outline-none transition focus:border-accent;
+  }
+
+  .field input,
   .field textarea {
-    @apply w-full rounded-lg border border-line bg-white px-3 py-2.5 text-base text-ink outline-none transition focus:border-accent disabled:bg-paper disabled:text-muted;
+    @apply w-full px-3 py-2.5 text-base text-ink disabled:bg-paper disabled:text-muted;
   }
 
   .field textarea {
