@@ -171,7 +171,11 @@
   }
 
   .knowledge-sidebar[data-collapsed="true"] .sidebar-brand {
-    @apply absolute top-2 left-2 flex size-16 items-center justify-center rounded-br-2xl bg-paper p-0 md:top-3 md:left-3;
+    @apply absolute top-6 left-6 flex items-center justify-center p-0 md:top-7 md:left-7;
+  }
+
+  .knowledge-sidebar[data-collapsed="true"] .sidebar-toggle {
+    @apply size-11 rounded-xl border border-line bg-panel text-muted shadow-[0_10px_30px_rgb(23_23_23/0.08)] hover:bg-panel hover:text-ink;
   }
 
   .count-badge {
