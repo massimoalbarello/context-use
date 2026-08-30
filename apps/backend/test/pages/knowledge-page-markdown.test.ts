@@ -1,8 +1,11 @@
 import { describe, expect, test } from 'bun:test';
+import { MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH } from '#pages/knowledge-page.ts';
 import {
   InvalidKnowledgePageMarkdownError,
   parseKnowledgePageMarkdown,
 } from '#pages/knowledge-page-markdown.ts';
+
+const LONG_EXCERPT_REPEAT_COUNT = 12;
 
 describe('knowledge page Markdown', () => {
   test('extracts labelled entity mentions and page references', () => {
@@ -17,6 +20,7 @@ The observation changes the next action.`);
 
     expect(parsed).toEqual({
       title: 'A small connected idea',
+      excerpt: 'Luca applies the loop from the growth playbook.',
       links: {
         entityReadableIds: ['luca-bianchi'],
         pageReferences: [{ readableId: 'growth-playbook', fragment: 'feedback-loop' }],
@@ -41,6 +45,23 @@ Use this syntax:
 \`\`\``);
 
     expect(parsed.links).toEqual({ entityReadableIds: [], pageReferences: [] });
+  });
+
+  test('derives a bounded plain-text excerpt from the first body passage', () => {
+    const parsed = parseKnowledgePageMarkdown(`# Context portability
+
+## Why it matters
+
+**Portable knowledge** keeps [readable labels](context-use://page/growth-playbook) while moving
+ between systems. ${'Further evidence makes the account clearer. '.repeat(
+   LONG_EXCERPT_REPEAT_COUNT,
+ )}`);
+
+    expect(parsed.excerpt.startsWith('Portable knowledge keeps readable labels')).toBe(true);
+    expect(parsed.excerpt.endsWith('…')).toBe(true);
+    expect(parsed.excerpt.length).toBeLessThanOrEqual(MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH);
+    expect(parsed.excerpt).not.toContain('**');
+    expect(parsed.excerpt).not.toContain('context-use://');
   });
 
   test('rejects opaque or unlabelled internal addresses', () => {

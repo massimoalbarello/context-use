@@ -5,6 +5,7 @@ import {
   type KnowledgePageRevisionSummary,
   type KnowledgePageSummary,
   MAX_KNOWLEDGE_PAGE_BYTES,
+  MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#pages/knowledge-page.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
@@ -18,6 +19,7 @@ export const KnowledgePageSummarySchema = t.Object({
   id: t.String({ format: 'uuid' }),
   readableId: ReadableIdSchema,
   title: t.String(),
+  excerpt: t.String({ maxLength: MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH }),
   revisionNumber: t.Integer({ minimum: 1 }),
   createdAt: t.Date(),
   updatedAt: t.Date(),

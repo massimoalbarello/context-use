@@ -42,7 +42,9 @@ supporting metadata.
 - An entity is identity-led: show a portrait, avatar, or stable fallback mark with its name and,
   where space allows, its distinguishing description or type.
 - A page is document-led: show its title with a restrained document cue. Inline page references are
-  text-led; page cards remain recognizable as documents rather than identity cards.
+  text-led; page cards remain recognizable as documents rather than identity cards. Page cards show
+  a short excerpt derived from the first meaningful body text after the H1, never a separately
+  authored description.
 - Do not make different resource types identical and rely on a small type label to repair the
   ambiguity.
 - Do not make the same resource type look unrelated across the sidebar, pickers, relationship views,
@@ -52,6 +54,17 @@ The outer container communicates context and interaction—inline link, compact 
 selected result, or card. The internal composition communicates resource type. Share small primitives
 for focus, hover, selection, spacing, or containers when they have one semantic contract; keep each
 resource's identity composition owned by that resource.
+
+Outside rendered page prose, a resource result is always a card. Reuse the resource type's one card
+composition in sidebars, relationship views, pickers, and search results; vary only density or
+contextual metadata that those recurring contexts genuinely require. Rendered Markdown is the
+exception: page references remain typographic links and entity mentions retain their compact
+identity treatment so the two relationships stay legible inside prose.
+
+All resource cards share one interactive surface contract for padding, border, radius, focus,
+selection, and hover. Their internal identity remains type-owned. Give this resource-card surface a
+recognizable treatment distinct from generic form panels, dialogs, and layout surfaces so users can
+tell navigable knowledge from UI containment.
 
 Avoid a universal resource component with an expanding matrix of type and mode flags. A type-specific
 component may offer a small number of presentations when those presentations are real, recurring
@@ -176,7 +189,10 @@ Stop and reconsider the design when:
 - entering edit mode causes a large layout shift, duplicated content, or unexplained lines;
 - tabs look like buttons, cards look like primary actions, or links look like tabs;
 - entities and pages are distinguishable only by reading a type label;
+- a resource result outside rendered Markdown is reduced to plain text or rebuilt with local markup
+  instead of its type-owned card;
 - the same entity or page uses a different identity treatment in each feature;
+- navigable resource cards and generic form or layout panels have no consistent visual distinction;
 - relationship language drifts between “mention,” “reference,” “source,” “attachment,” and generic
   “link” terminology;
 - every new resource type adds another editor trigger or parallel selection workflow;

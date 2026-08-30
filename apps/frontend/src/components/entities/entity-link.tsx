@@ -48,7 +48,7 @@ export function EntityLink({ entity, presentation, children }: EntityLinkProps) 
 
   return (
     <Link
-      className="entity-link entity-link-card object-link object-link-card"
+      className="entity-link entity-link-card resource-card object-link"
       to="/entities/$id"
       params={{ id: entity.readableId }}
     >

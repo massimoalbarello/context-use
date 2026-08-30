@@ -95,10 +95,10 @@ function EntityRoute() {
           <span className="count-badge">{entity.pages.length}</span>
         </div>
         {entity.pages.length > 0 ? (
-          <ul className="object-inline-list">
+          <ul className="object-card-list">
             {entity.pages.map((page) => (
               <li key={page.id}>
-                <KnowledgePageLink page={page} presentation="inline" />
+                <KnowledgePageLink page={page} presentation="card" />
               </li>
             ))}
           </ul>

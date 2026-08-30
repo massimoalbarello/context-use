@@ -2,9 +2,30 @@ import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import type { KnowledgePageSummary } from '../../queries/pages';
 
-type KnowledgePageIdentity = Pick<KnowledgePageSummary, 'readableId' | 'title'>;
+type KnowledgePageName = Pick<KnowledgePageSummary, 'readableId' | 'title'>;
+type KnowledgePageIdentity = KnowledgePageName & Pick<KnowledgePageSummary, 'excerpt'>;
 
-export function KnowledgePageCardContent({ page }: { page: KnowledgePageIdentity }) {
+type KnowledgePageLinkProps =
+  | {
+      page: KnowledgePageName;
+      presentation: 'inline';
+      fragment?: string;
+      children?: ReactNode;
+    }
+  | {
+      page: KnowledgePageIdentity;
+      presentation: 'card';
+      fragment?: string;
+      children?: never;
+    };
+
+export function KnowledgePageCardContent({
+  page,
+  fragment,
+}: {
+  page: KnowledgePageIdentity;
+  fragment?: string;
+}) {
   return (
     <>
       <span className="knowledge-page-link-mark" aria-hidden="true">
@@ -14,7 +35,11 @@ export function KnowledgePageCardContent({ page }: { page: KnowledgePageIdentity
           <path d="M11.5 2.75v3.5H15M7.5 10h5M7.5 13h5" />
         </svg>
       </span>
-      <strong>{page.title}</strong>
+      <span className="knowledge-page-link-copy">
+        <strong>{page.title}</strong>
+        {fragment && <span className="knowledge-page-link-fragment">#{fragment}</span>}
+        {page.excerpt && <small>{page.excerpt}</small>}
+      </span>
     </>
   );
 }
@@ -24,12 +49,7 @@ export function KnowledgePageLink({
   presentation,
   fragment,
   children,
-}: {
-  page: KnowledgePageIdentity;
-  presentation: 'inline' | 'card';
-  fragment?: string;
-  children?: ReactNode;
-}) {
+}: KnowledgePageLinkProps) {
   if (presentation === 'inline') {
     return (
       <Link
@@ -45,11 +65,12 @@ export function KnowledgePageLink({
 
   return (
     <Link
-      className="knowledge-page-link knowledge-page-link-card object-link object-link-card"
+      className="knowledge-page-link knowledge-page-link-card resource-card object-link"
       to="/pages/$id"
       params={{ id: page.readableId }}
+      hash={fragment}
     >
-      <KnowledgePageCardContent page={page} />
+      <KnowledgePageCardContent page={page} fragment={fragment} />
     </Link>
   );
 }

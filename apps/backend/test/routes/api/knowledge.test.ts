@@ -264,10 +264,12 @@ Every observation changes the next action.`,
     expect(growthResponse.status).toBe(StatusMap.Created);
     const growth = (await growthResponse.json()) as {
       id: string;
+      excerpt: string;
       revisionNumber: number;
       mentions: Array<{ readableId: string }>;
     };
     expect(growth.id[14]).toBe('7');
+    expect(growth.excerpt).toBe('Luca owns this feedback system.');
     expect(growth.revisionNumber).toBe(1);
     expect(growth.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
 
@@ -328,7 +330,12 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
       jsonRequest({ method: 'GET', path: '/pages?limit=7&offset=0&query=growth' }),
     );
     expect(await searchedKnowledgePageResponse.json()).toEqual({
-      items: [expect.objectContaining({ readableId: 'growth-playbook' })],
+      items: [
+        expect.objectContaining({
+          readableId: 'growth-playbook',
+          excerpt: 'Luca owns this feedback system.',
+        }),
+      ],
       total: 1,
       nextOffset: null,
     });
@@ -364,10 +371,12 @@ Revise the current knowledge instead of appending snapshots.`,
     );
     expect(updateResponse.status).toBe(StatusMap.OK);
     const updatedPage = (await updateResponse.json()) as {
+      excerpt: string;
       revisionNumber: number;
       revisions: Array<{ revisionNumber: number; title: string }>;
     };
     expect(updatedPage.revisionNumber).toBe(2);
+    expect(updatedPage.excerpt).toBe('Luca owns the live account.');
     expect(updatedPage.revisions).toEqual([
       expect.objectContaining({ revisionNumber: 2, title: 'Growth playbook' }),
       expect.objectContaining({ revisionNumber: 1, title: 'Growth playbook' }),
@@ -391,15 +400,25 @@ Revise the current knowledge instead of appending snapshots.`,
 
     await database`delete from "knowledge_page_entity_mention"`;
     await database`delete from "knowledge_page_reference"`;
+    await database`
+      update "knowledge_page_revision"
+      set "excerpt" = 'stale derived excerpt'
+      where "id" = (
+        select "current_revision_id" from "knowledge_page"
+        where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'growth-playbook'
+      )
+    `;
     await pagesService.rebuildIndex({ ownerId: OWNER_USER_ID });
 
     const rebuiltResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages/growth-playbook' }),
     );
     const rebuilt = (await rebuiltResponse.json()) as {
+      excerpt: string;
       mentions: Array<{ readableId: string }>;
       backlinks: Array<{ page: { readableId: string } }>;
     };
+    expect(rebuilt.excerpt).toBe('Luca owns the live account.');
     expect(rebuilt.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
     expect(rebuilt.backlinks.map(({ page }) => page.readableId)).toEqual(['operating-rhythm']);
 

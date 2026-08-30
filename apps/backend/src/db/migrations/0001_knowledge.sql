@@ -54,6 +54,7 @@ create table "knowledge_page_revision" (
   "owner_id" text not null,
   "revision_number" integer not null,
   "title" text not null,
+  "excerpt" text not null,
   "storage_key" text not null,
   "size_bytes" integer not null,
   "content_hash" text not null,
@@ -67,6 +68,7 @@ create table "knowledge_page_revision" (
     on delete cascade deferrable initially deferred,
   check ("revision_number" > 0),
   check (length(trim("title")) between 1 and 240),
+  check (length("excerpt") <= 280),
   check ("size_bytes" between 1 and 1000000),
   check ("content_hash" glob '[a-f0-9]*' and length("content_hash") = 64)
 );

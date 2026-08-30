@@ -32,13 +32,10 @@ function PageLinkList({ label, links }: { label: string; links: KnowledgePage['r
         <span className="count-badge">{links.length}</span>
       </div>
       {links.length > 0 ? (
-        <ul>
+        <ul className="object-card-list">
           {links.map(({ page, fragment }) => (
             <li key={`${page.id}#${fragment ?? ''}`}>
-              <KnowledgePageLink page={page} presentation="inline" fragment={fragment ?? undefined}>
-                {page.title}
-                {fragment ? ` · #${fragment}` : ''}
-              </KnowledgePageLink>
+              <KnowledgePageLink page={page} presentation="card" fragment={fragment ?? undefined} />
             </li>
           ))}
         </ul>
@@ -63,7 +60,7 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
           <span className="count-badge">{page.mentions.length}</span>
         </div>
         {page.mentions.length > 0 ? (
-          <ul>
+          <ul className="object-card-list">
             {page.mentions.map((entity) => (
               <li key={entity.id}>
                 <EntityLink entity={entity} presentation="card" />

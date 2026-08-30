@@ -75,6 +75,7 @@ export class KnowledgePagesService extends Service {
         ownerId: input.ownerId,
         readableId,
         title: parsed.title,
+        excerpt: parsed.excerpt,
         storageKey,
         contentHash: contentHash(input.markdown),
         sizeBytes,
@@ -156,6 +157,7 @@ export class KnowledgePagesService extends Service {
         readableId: input.readableId,
         expectedRevisionNumber: input.expectedRevisionNumber,
         title: parsed.title,
+        excerpt: parsed.excerpt,
         storageKey,
         contentHash: contentHash(input.markdown),
         sizeBytes,
@@ -181,9 +183,11 @@ export class KnowledgePagesService extends Service {
     const pages = await this.pages.listCurrent({ ownerId });
     for (const page of pages) {
       const parsed = parseKnowledgePageMarkdown(await this.readMarkdown(page));
-      const result = await this.pages.replaceCurrentLinks({
+      const result = await this.pages.replaceCurrentIndex({
         ownerId,
         readableId: page.readableId,
+        title: parsed.title,
+        excerpt: parsed.excerpt,
         links: parsed.links,
       });
       if (result.state !== 'replaced') {
@@ -235,6 +239,7 @@ export class KnowledgePagesService extends Service {
       id: page.id,
       readableId: page.readableId,
       title: page.title,
+      excerpt: page.excerpt,
       revisionNumber: page.revisionNumber,
       createdAt: page.createdAt,
       updatedAt: page.updatedAt,

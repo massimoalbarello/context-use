@@ -2,6 +2,7 @@ import { isReadableId } from '#knowledge/knowledge-address.ts';
 import {
   type KnowledgePageLinkSet,
   MAX_KNOWLEDGE_PAGE_BYTES,
+  MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#pages/knowledge-page.ts';
 
@@ -9,7 +10,10 @@ const INTERNAL_REFERENCE =
   /\[([^\]\n]+)\]\(context-use:\/\/(entity|page)\/([^\s/)#]+)(?:#([^\s)]+))?\)/g;
 const INTERNAL_SCHEME = 'context-use://';
 const HEADING_ONE = /^# (.+)$/;
+const HEADING = /^ {0,3}#{1,6}\s+/;
 const FENCE_START = /^ {0,3}(`{3,}|~{3,})/;
+const HORIZONTAL_RULE = /^ {0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/;
+const WORD_BOUNDARY_SEARCH_RATIO = 0.6;
 
 export class InvalidKnowledgePageMarkdownError extends Error {
   constructor(message: string) {
@@ -75,6 +79,63 @@ function validatePageShape(markdown: string): { title: string; visibleMarkdown: 
   return { title, visibleMarkdown: lines.join('\n') };
 }
 
+function readableText(lines: string[]): string {
+  return lines
+    .filter((line) => !HORIZONTAL_RULE.test(line))
+    .map((line) =>
+      line
+        .replace(/^ {0,3}(?:#{1,6}\s+|>\s*)/, '')
+        .replace(/^\s*(?:[-+*]\s+|\d+[.)]\s+)/, '')
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/[*_~]+/g, '')
+        .replace(/\\([\\`*_[\]{}()#+\-.!>])/g, '$1')
+        .trim(),
+    )
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function truncateExcerpt(text: string): string {
+  if (text.length <= MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH) {
+    return text;
+  }
+  const clipped = text.slice(0, MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH - 1).trimEnd();
+  const lastSpace = clipped.lastIndexOf(' ');
+  const atWordBoundary =
+    lastSpace >= Math.floor(MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH * WORD_BOUNDARY_SEARCH_RATIO)
+      ? clipped.slice(0, lastSpace)
+      : clipped;
+  return `${atWordBoundary}…`;
+}
+
+function extractExcerpt(visibleMarkdown: string): string {
+  const lines = visibleMarkdown.split('\n');
+  const titleIndex = lines.findIndex((line) => HEADING_ONE.test(line));
+  const blocks = lines
+    .slice(titleIndex + 1)
+    .join('\n')
+    .split(/\n\s*\n/);
+  let headingFallback = '';
+
+  for (const block of blocks) {
+    const blockLines = block.split('\n').filter((line) => line.trim().length > 0);
+    if (blockLines.length === 0) {
+      continue;
+    }
+    headingFallback ||= readableText(blockLines);
+    const prose = readableText(blockLines.filter((line) => !HEADING.test(line)));
+    if (prose) {
+      return truncateExcerpt(prose);
+    }
+  }
+
+  return truncateExcerpt(headingFallback);
+}
+
 function validateInternalAddresses({
   visibleMarkdown,
   matchedRanges,
@@ -133,12 +194,14 @@ function extractLinks(visibleMarkdown: string): KnowledgePageLinkSet {
 
 export function parseKnowledgePageMarkdown(markdown: string): {
   title: string;
+  excerpt: string;
   links: KnowledgePageLinkSet;
 } {
   const { title, visibleMarkdown } = validatePageShape(markdown);
 
   return {
     title,
+    excerpt: extractExcerpt(visibleMarkdown),
     links: extractLinks(visibleMarkdown),
   };
 }

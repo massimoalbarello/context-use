@@ -466,15 +466,15 @@
     @apply transition;
   }
 
-  .object-link-card {
-    @apply rounded-xl bg-panel p-3 hover:shadow-[0_4px_16px_rgb(23_23_23/0.08)];
+  .resource-card {
+    @apply rounded-xl border border-ink/15 bg-panel p-3 text-left transition hover:border-ink/30 hover:shadow-[0_4px_16px_rgb(23_23_23/0.08)];
   }
 
-  .object-link-card[data-status="active"] {
-    @apply shadow-[0_2px_10px_rgb(23_23_23/0.1)];
+  .resource-card[data-status="active"] {
+    @apply border-ink/25 shadow-[0_2px_10px_rgb(23_23_23/0.1)];
   }
 
-  .workspace-card .object-link-card {
+  .workspace-card .resource-card {
     @apply shadow-[0_1px_5px_rgb(23_23_23/0.08)];
   }
 
@@ -515,11 +515,23 @@
   }
 
   .knowledge-page-link-card {
-    @apply flex min-w-0 items-center gap-3;
+    @apply flex min-w-0 items-start gap-3;
   }
 
-  .knowledge-page-link-card strong {
+  .knowledge-page-link-copy {
+    @apply grid min-w-0 flex-1 gap-0.5;
+  }
+
+  .knowledge-page-link-copy strong {
     @apply min-w-0 line-clamp-2 font-semibold text-sm leading-snug;
+  }
+
+  .knowledge-page-link-copy small {
+    @apply line-clamp-2 text-muted text-xs leading-relaxed;
+  }
+
+  .knowledge-page-link-fragment {
+    @apply truncate font-mono text-muted text-[0.68rem];
   }
 
   .knowledge-page-link-mark {
@@ -538,10 +550,6 @@
 
   .knowledge-sidebar .object-card-list {
     @apply gap-2;
-  }
-
-  .object-inline-list {
-    @apply grid list-none gap-2 p-0 text-sm;
   }
 
   .self-badge {
@@ -573,19 +581,15 @@
   }
 
   .knowledge-picker-menu {
-    @apply absolute right-3 bottom-3 left-3 z-10 grid max-h-60 overflow-y-auto rounded-lg border border-line bg-panel p-1 shadow-[0_12px_35px_rgb(23_23_23/0.16)];
+    @apply absolute right-3 bottom-3 left-3 z-10 grid max-h-72 gap-1 overflow-y-auto rounded-lg border border-line bg-paper p-1 shadow-[0_12px_35px_rgb(23_23_23/0.16)];
   }
 
   .knowledge-picker-option {
-    @apply flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent-soft;
+    @apply flex w-full items-center justify-between gap-3 text-sm;
   }
 
   .knowledge-picker-option[aria-selected="true"] {
-    @apply bg-accent-soft;
-  }
-
-  .knowledge-picker-card {
-    @apply min-w-0 flex-1;
+    @apply border-ink/35 bg-accent-soft;
   }
 
   .knowledge-picker-kind {

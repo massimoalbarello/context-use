@@ -18,6 +18,7 @@ type StoredPageRow = {
   currentRevisionId: string;
   revisionNumber: number;
   title: string;
+  excerpt: string;
   storageKey: string;
   contentHash: string;
   sizeBytes: number;
@@ -39,7 +40,7 @@ type RevisionSummaryRow = {
 const CURRENT_PAGE_SELECT = `
   select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
     page."current_revision_id" as "currentRevisionId",
-    revision."revision_number" as "revisionNumber", revision."title",
+    revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
     revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
     revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
     page."updated_at" as "updatedAt"
@@ -150,6 +151,7 @@ export class KnowledgePagesRepository
     ownerId: string;
     readableId: string;
     title: string;
+    excerpt: string;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -185,11 +187,12 @@ export class KnowledgePagesRepository
       }
       await db`
         insert into "knowledge_page_revision"
-          ("id", "page_id", "owner_id", "revision_number", "title", "storage_key",
-           "size_bytes", "content_hash", "created_at")
+          ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
+           "storage_key", "size_bytes", "content_hash", "created_at")
         values
           (${input.revisionId}, ${input.pageId}, ${input.ownerId}, 1, ${input.title},
-           ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash}, ${input.createdAt})
+           ${input.excerpt}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
+           ${input.createdAt})
       `;
       await insertLinks({
         db,
@@ -208,6 +211,7 @@ export class KnowledgePagesRepository
           currentRevisionId: input.revisionId,
           revisionNumber: 1,
           title: input.title,
+          excerpt: input.excerpt,
           storageKey: input.storageKey,
           contentHash: input.contentHash,
           sizeBytes: input.sizeBytes,
@@ -224,6 +228,7 @@ export class KnowledgePagesRepository
     readableId: string;
     expectedRevisionNumber: number;
     title: string;
+    excerpt: string;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -272,11 +277,12 @@ export class KnowledgePagesRepository
       `;
       await db`
         insert into "knowledge_page_revision"
-          ("id", "page_id", "owner_id", "revision_number", "title", "storage_key",
-           "size_bytes", "content_hash", "created_at")
+          ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
+           "storage_key", "size_bytes", "content_hash", "created_at")
         values
           (${input.revisionId}, ${current.id}, ${input.ownerId}, ${revisionNumber}, ${input.title},
-           ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash}, ${input.updatedAt})
+           ${input.excerpt}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
+           ${input.updatedAt})
       `;
       await insertLinks({
         db,
@@ -297,6 +303,7 @@ export class KnowledgePagesRepository
           currentRevisionId: input.revisionId,
           revisionNumber,
           title: input.title,
+          excerpt: input.excerpt,
           storageKey: input.storageKey,
           contentHash: input.contentHash,
           sizeBytes: input.sizeBytes,
@@ -321,7 +328,7 @@ export class KnowledgePagesRepository
     const rowsPromise = normalizedQuery
       ? this.sql<SummaryRow[]>`
           select page."id", page."readable_id" as "readableId",
-            revision."revision_number" as "revisionNumber", revision."title",
+            revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
             page."created_at" as "createdAt", page."updated_at" as "updatedAt"
           from "knowledge_page" page
           join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
@@ -335,7 +342,7 @@ export class KnowledgePagesRepository
         `
       : this.sql<SummaryRow[]>`
           select page."id", page."readable_id" as "readableId",
-            revision."revision_number" as "revisionNumber", revision."title",
+            revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
             page."created_at" as "createdAt", page."updated_at" as "updatedAt"
           from "knowledge_page" page
           join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
@@ -374,7 +381,7 @@ export class KnowledgePagesRepository
   }): Promise<KnowledgePageSummary[]> {
     const rows = await this.sql<SummaryRow[]>`
       select page."id", page."readable_id" as "readableId",
-        revision."revision_number" as "revisionNumber", revision."title",
+        revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt"
       from "entity" entity
       join "knowledge_page_entity_mention" mention
@@ -455,13 +462,17 @@ export class KnowledgePagesRepository
     return rows.map(storedPageFrom);
   }
 
-  replaceCurrentLinks({
+  replaceCurrentIndex({
     ownerId,
     readableId,
+    title,
+    excerpt,
     links,
   }: {
     ownerId: string;
     readableId: string;
+    title: string;
+    excerpt: string;
     links: KnowledgePageLinkSet;
   }): Promise<{ state: 'replaced' } | { state: 'link_target_not_found'; target: string }> {
     return this.sql.begin(async (db) => {
@@ -483,6 +494,11 @@ export class KnowledgePagesRepository
       if (resolved.state !== 'resolved') {
         return resolved;
       }
+      await db`
+        update "knowledge_page_revision"
+        set "title" = ${title}, "excerpt" = ${excerpt}
+        where "owner_id" = ${ownerId} and "id" = ${page.currentRevisionId}
+      `;
       await db`
         delete from "knowledge_page_entity_mention"
         where "owner_id" = ${ownerId} and "source_revision_id" = ${page.currentRevisionId}
@@ -511,7 +527,7 @@ export class KnowledgePagesRepository
   }): Promise<KnowledgePageReference[]> {
     const rows = await this.sql<Array<SummaryRow & { fragment: string }>>`
       select page."id", page."readable_id" as "readableId",
-        revision."revision_number" as "revisionNumber", revision."title",
+        revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt",
         reference."target_fragment" as "fragment"
       from "knowledge_page_reference" reference
@@ -537,7 +553,7 @@ export class KnowledgePagesRepository
   }): Promise<KnowledgePageReference[]> {
     const rows = await this.sql<Array<SummaryRow & { fragment: string }>>`
       select page."id", page."readable_id" as "readableId",
-        revision."revision_number" as "revisionNumber", revision."title",
+        revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt",
         reference."target_fragment" as "fragment"
       from "knowledge_page_reference" reference

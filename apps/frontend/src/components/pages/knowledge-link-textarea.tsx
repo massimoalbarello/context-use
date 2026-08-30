@@ -143,7 +143,9 @@ export function KnowledgeLinkTextarea({
             const optionId = suggestionId(suggestion);
             return (
               <button
-                className="knowledge-picker-option"
+                className={`knowledge-picker-option resource-card ${
+                  suggestion.kind === 'entity' ? 'entity-link-card' : 'knowledge-page-link-card'
+                }`}
                 id={`${listId}-${optionId}`}
                 key={optionId}
                 type="button"
@@ -152,19 +154,11 @@ export function KnowledgeLinkTextarea({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectSuggestion(suggestion)}
               >
-                <span
-                  className={
-                    suggestion.kind === 'entity'
-                      ? 'entity-link-card knowledge-picker-card'
-                      : 'knowledge-page-link-card knowledge-picker-card'
-                  }
-                >
-                  {suggestion.kind === 'entity' ? (
-                    <EntityCardContent entity={suggestion.entity} />
-                  ) : (
-                    <KnowledgePageCardContent page={suggestion.page} />
-                  )}
-                </span>
+                {suggestion.kind === 'entity' ? (
+                  <EntityCardContent entity={suggestion.entity} />
+                ) : (
+                  <KnowledgePageCardContent page={suggestion.page} />
+                )}
                 <span className="knowledge-picker-kind">
                   {suggestion.kind === 'entity' ? 'Entity' : 'Page'}
                 </span>

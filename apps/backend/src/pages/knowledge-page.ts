@@ -2,12 +2,14 @@ import type { Entity } from '#entities/entity.ts';
 import type { Page } from '#pagination/page.ts';
 
 export const MAX_KNOWLEDGE_PAGE_BYTES = 1_000_000;
+export const MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH = 280;
 export const MAX_KNOWLEDGE_PAGE_TITLE_LENGTH = 240;
 
 export interface KnowledgePageSummary {
   id: string;
   readableId: string;
   title: string;
+  excerpt: string;
   revisionNumber: number;
   createdAt: string;
   updatedAt: string;
@@ -52,6 +54,7 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     readableId: string;
     title: string;
+    excerpt: string;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -68,6 +71,7 @@ export interface KnowledgePagesRepositoryContract {
     readableId: string;
     expectedRevisionNumber: number;
     title: string;
+    excerpt: string;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -98,9 +102,11 @@ export interface KnowledgePagesRepositoryContract {
     revisions: KnowledgePageRevisionSummary[];
   } | null>;
   listCurrent(input: { ownerId: string }): Promise<StoredKnowledgePage[]>;
-  replaceCurrentLinks(input: {
+  replaceCurrentIndex(input: {
     ownerId: string;
     readableId: string;
+    title: string;
+    excerpt: string;
     links: KnowledgePageLinkSet;
   }): Promise<{ state: 'replaced' } | { state: 'link_target_not_found'; target: string }>;
 }
