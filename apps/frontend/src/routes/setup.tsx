@@ -18,11 +18,10 @@ export const Route = createFileRoute('/setup')({
 
 function SetupRoute() {
   const navigate = useNavigate();
-  const { session } = Route.useRouteContext();
   const { redirect: redirectTo } = Route.useSearch();
   const createProfile = useCreateProfile();
   const initialValues: EntityFormValues = {
-    name: session?.user.name ?? '',
+    name: '',
     description: '',
   };
 

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { createAuth } from '#lib/auth/better-auth.ts';
+import { OWNER_DISPLAY_NAME } from '#lib/auth/owner-registration.ts';
 import { withAuthTestDatabase } from './auth-test-database.ts';
 
 const AUTH_ORIGIN = 'http://localhost:3000';
@@ -17,7 +18,7 @@ describe('passkey-only authentication', () => {
         });
         const response = await auth.handler(
           new Request(
-            `${AUTH_ORIGIN}/api/auth/passkey/generate-register-options?context=Test%20Owner&name=Primary%20passkey`,
+            `${AUTH_ORIGIN}/api/auth/passkey/generate-register-options?name=Primary%20passkey`,
             { headers: { origin: AUTH_ORIGIN } },
           ),
         );
@@ -26,7 +27,7 @@ describe('passkey-only authentication', () => {
         expect(response.headers.get('set-cookie')).toContain('better-auth-passkey');
         expect(await response.json()).toMatchObject({
           rp: { name: 'Context Use', id: 'localhost' },
-          user: { name: 'Primary passkey', displayName: 'Test Owner' },
+          user: { name: 'Primary passkey', displayName: OWNER_DISPLAY_NAME },
           authenticatorSelection: {
             residentKey: 'required',
             userVerification: 'required',

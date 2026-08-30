@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   authorizeOwnerPasskeyRegistration,
-  MAX_OWNER_NAME_LENGTH,
+  OWNER_DISPLAY_NAME,
   OWNER_USER_ID,
   OwnerRegistrationError,
   ownerRegistrationStatus,
@@ -25,37 +25,19 @@ function expectOwnerRegistrationError({
 }
 
 describe('ownerRegistrationUser', () => {
-  test('resolves the unclaimed owner from the submitted display name', () => {
-    expect(ownerRegistrationUser({ context: '  Max  ', ownerExists: false })).toEqual({
+  test('resolves the unclaimed owner with a fixed authentication identity', () => {
+    expect(ownerRegistrationUser({ ownerExists: false })).toEqual({
       id: OWNER_USER_ID,
       name: OWNER_USER_ID,
-      displayName: 'Max',
+      displayName: OWNER_DISPLAY_NAME,
     });
   });
 
-  test('rejects invalid names and already-claimed registration', () => {
-    const cases = [
-      {
-        action: () => ownerRegistrationUser({ context: '   ', ownerExists: false }),
-        code: 'invalid_owner_name' as const,
-      },
-      {
-        action: () =>
-          ownerRegistrationUser({
-            context: '🙂'.repeat(MAX_OWNER_NAME_LENGTH + 1),
-            ownerExists: false,
-          }),
-        code: 'invalid_owner_name' as const,
-      },
-      {
-        action: () => ownerRegistrationUser({ context: 'Attacker', ownerExists: true }),
-        code: 'owner_already_registered' as const,
-      },
-    ];
-
-    for (const registrationCase of cases) {
-      expectOwnerRegistrationError(registrationCase);
-    }
+  test('rejects already-claimed registration', () => {
+    expectOwnerRegistrationError({
+      action: () => ownerRegistrationUser({ ownerExists: true }),
+      code: 'owner_already_registered',
+    });
   });
 });
 
