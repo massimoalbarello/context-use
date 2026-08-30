@@ -460,7 +460,11 @@
     @apply bg-panel;
   }
 
-  .resource-card:is([data-status="active"], [aria-selected="true"]) {
+  .resource-card:is(
+    [data-status="active"],
+    [data-route-selected="true"],
+    [aria-selected="true"]
+  ) {
     @apply border-ink/35 bg-panel shadow-[0_2px_10px_rgb(23_23_23/0.1)];
   }
 

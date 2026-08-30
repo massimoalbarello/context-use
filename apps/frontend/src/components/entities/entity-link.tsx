@@ -6,8 +6,8 @@ type EntityName = Pick<EntitySummary, 'readableId' | 'name'>;
 type EntityIdentity = Pick<EntitySummary, 'readableId' | 'name' | 'description' | 'isSelf'>;
 
 type EntityLinkProps =
-  | { entity: EntityName; presentation: 'inline'; children?: ReactNode }
-  | { entity: EntityIdentity; presentation: 'card'; children?: never };
+  | { entity: EntityName; presentation: 'inline'; active?: never; children?: ReactNode }
+  | { entity: EntityIdentity; presentation: 'card'; active?: boolean; children?: never };
 
 export function entityInitial(name: string): string {
   return name.trim().charAt(0).toLocaleUpperCase() || '?';
@@ -30,7 +30,7 @@ export function EntityCardContent({ entity }: { entity: EntityIdentity }) {
   );
 }
 
-export function EntityLink({ entity, presentation, children }: EntityLinkProps) {
+export function EntityLink({ entity, presentation, active, children }: EntityLinkProps) {
   if (presentation === 'inline') {
     return (
       <Link
@@ -51,6 +51,8 @@ export function EntityLink({ entity, presentation, children }: EntityLinkProps) 
       className="entity-link entity-link-card resource-card object-link"
       to="/entities/$id"
       params={{ id: entity.readableId }}
+      data-route-selected={active ? 'true' : undefined}
+      aria-current={active ? 'page' : undefined}
     >
       <EntityCardContent entity={entity} />
     </Link>

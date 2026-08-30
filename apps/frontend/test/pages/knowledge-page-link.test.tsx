@@ -10,6 +10,7 @@ describe('knowledge page cards', () => {
         excerpt: 'The page summary.',
       },
       presentation: 'card',
+      active: true,
     });
 
     expect(link).toMatchObject({
@@ -17,6 +18,8 @@ describe('knowledge page cards', () => {
         params: { id: 'target-page' },
         search: { view: 'preview' },
         activeOptions: { exact: true, includeSearch: false },
+        'data-route-selected': 'true',
+        'aria-current': 'page',
       },
     });
   });

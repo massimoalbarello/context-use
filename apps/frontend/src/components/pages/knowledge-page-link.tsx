@@ -10,12 +10,14 @@ type KnowledgePageLinkProps =
       page: KnowledgePageName;
       presentation: 'inline';
       fragment?: string;
+      active?: never;
       children?: ReactNode;
     }
   | {
       page: KnowledgePageIdentity;
       presentation: 'card';
       fragment?: string;
+      active?: boolean;
       children?: never;
     };
 
@@ -48,6 +50,7 @@ export function KnowledgePageLink({
   page,
   presentation,
   fragment,
+  active,
   children,
 }: KnowledgePageLinkProps) {
   if (presentation === 'inline') {
@@ -72,6 +75,8 @@ export function KnowledgePageLink({
       search={{ view: 'preview' }}
       hash={fragment}
       activeOptions={{ exact: true, includeSearch: false }}
+      data-route-selected={active ? 'true' : undefined}
+      aria-current={active ? 'page' : undefined}
     >
       <KnowledgePageCardContent page={page} fragment={fragment} />
     </Link>
