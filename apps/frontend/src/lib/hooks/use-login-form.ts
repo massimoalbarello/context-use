@@ -1,6 +1,5 @@
 import { type ReactFormExtendedApi, useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
 import { useSignIn } from './use-sign-in';
 import { useSignUp } from './use-sign-up';
 
@@ -26,7 +25,6 @@ export type LoginFormApi = ReactFormExtendedApi<
 export type LoginFormState = {
   api: LoginFormApi;
   isSigningUp: boolean;
-  setIsSigningUp: (isSigningUp: boolean) => void;
   pending: boolean;
   error: Error | null;
 };
@@ -39,9 +37,15 @@ export function validateName({ value }: { value: string }): string | undefined {
   return value.trim().length > 0 ? undefined : 'Tell us what to call you.';
 }
 
-export function useLoginForm({ redirectTo }: { redirectTo: string }): LoginFormState {
+export function useLoginForm({
+  ownerRegistered,
+  redirectTo,
+}: {
+  ownerRegistered: boolean;
+  redirectTo: string;
+}): LoginFormState {
   const navigate = useNavigate();
-  const [isSigningUp, setIsSigningUp] = useState(false);
+  const isSigningUp = !ownerRegistered;
   const signIn = useSignIn();
   const signUp = useSignUp();
   const mutation = isSigningUp ? signUp : signIn;
@@ -70,7 +74,6 @@ export function useLoginForm({ redirectTo }: { redirectTo: string }): LoginFormS
   return {
     api,
     isSigningUp,
-    setIsSigningUp,
     pending: mutation.isPending,
     error: mutation.error,
   };

@@ -4,6 +4,7 @@ import {
   MAX_OWNER_NAME_LENGTH,
   OWNER_USER_ID,
   OwnerRegistrationError,
+  ownerRegistrationStatus,
   ownerRegistrationUser,
 } from '#lib/auth/owner-registration.ts';
 
@@ -54,6 +55,27 @@ describe('ownerRegistrationUser', () => {
 
     for (const registrationCase of cases) {
       expectOwnerRegistrationError(registrationCase);
+    }
+  });
+});
+
+describe('ownerRegistrationStatus', () => {
+  test('distinguishes valid registration states and rejects partial registration', () => {
+    expect(ownerRegistrationStatus({ ownerExists: false, passkeyExists: false })).toEqual({
+      ownerRegistered: false,
+    });
+    expect(ownerRegistrationStatus({ ownerExists: true, passkeyExists: true })).toEqual({
+      ownerRegistered: true,
+    });
+
+    for (const state of [
+      { ownerExists: true, passkeyExists: false },
+      { ownerExists: false, passkeyExists: true },
+    ]) {
+      expectOwnerRegistrationError({
+        action: () => ownerRegistrationStatus(state),
+        code: 'owner_registration_state_invalid',
+      });
     }
   });
 });

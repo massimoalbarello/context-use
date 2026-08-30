@@ -1,7 +1,13 @@
 import { useLoginForm, validateName } from '../../lib/hooks/use-login-form';
 
-export function LoginForm({ redirectTo }: { redirectTo: string }) {
-  const { api, isSigningUp, setIsSigningUp, pending, error } = useLoginForm({ redirectTo });
+export function LoginForm({
+  ownerRegistered,
+  redirectTo,
+}: {
+  ownerRegistered: boolean;
+  redirectTo: string;
+}) {
+  const { api, isSigningUp, pending, error } = useLoginForm({ ownerRegistered, redirectTo });
   const passkeysSupported =
     window.isSecureContext && typeof window.PublicKeyCredential !== 'undefined';
 
@@ -51,27 +57,17 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
         </p>
       )}
 
-      <div className="action-row">
-        <api.Subscribe selector={(state) => state.canSubmit}>
-          {(canSubmit) => (
-            <button
-              type="submit"
-              disabled={!canSubmit || pending || !passkeysSupported}
-              className="primary-action"
-            >
-              {isSigningUp ? 'Create account with a passkey' : 'Sign in with a passkey'}
-            </button>
-          )}
-        </api.Subscribe>
-        <button
-          type="button"
-          className="secondary-action"
-          disabled={pending}
-          onClick={() => setIsSigningUp(!isSigningUp)}
-        >
-          {isSigningUp ? 'Use an existing account' : 'Create the owner account'}
-        </button>
-      </div>
+      <api.Subscribe selector={(state) => state.canSubmit}>
+        {(canSubmit) => (
+          <button
+            type="submit"
+            disabled={!canSubmit || pending || !passkeysSupported}
+            className="primary-action justify-self-start"
+          >
+            {isSigningUp ? 'Create account with a passkey' : 'Sign in with a passkey'}
+          </button>
+        )}
+      </api.Subscribe>
     </form>
   );
 }

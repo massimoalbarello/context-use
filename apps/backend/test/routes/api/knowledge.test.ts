@@ -13,11 +13,13 @@ import { EntitiesRepository } from '#repositories/entities.repository.ts';
 import { HealthRepository } from '#repositories/health.repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages.repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles.repository.ts';
+import { OwnerRegistrationRepository } from '#repositories/owner-registration.repository.ts';
 import type { AssetsServiceContract } from '#services/assets.service.ts';
 import { EntitiesService } from '#services/entities.service.ts';
 import { HealthService } from '#services/health.service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages.service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles.service.ts';
+import { OwnerRegistrationService } from '#services/owner-registration.service.ts';
 
 const AUTH_MIGRATION = new URL(
   '../../../src/db/migrations/0000_better_auth_schema.sql',
@@ -107,6 +109,9 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
+      ownerRegistrationService: new OwnerRegistrationService(
+        new OwnerRegistrationRepository(database),
+      ),
       pagesService,
       profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),
     });
