@@ -56,6 +56,7 @@ export function KnowledgePageLink({
         className="knowledge-page-link knowledge-page-link-inline object-link"
         to="/pages/$id"
         params={{ id: page.readableId }}
+        search={{ view: 'preview' }}
         hash={fragment}
       >
         {children ?? page.title}
@@ -70,6 +71,7 @@ export function KnowledgePageLink({
       params={{ id: page.readableId }}
       search={{ view: 'preview' }}
       hash={fragment}
+      activeOptions={{ exact: true, includeSearch: false }}
     >
       <KnowledgePageCardContent page={page} fragment={fragment} />
     </Link>

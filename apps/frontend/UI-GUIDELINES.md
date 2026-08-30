@@ -110,6 +110,10 @@ large, calm sheet floating over the canvas, not a collection of dashboard widget
 - Place the contextual creation action beside the collection tabs. The active tab already names the
   collection; do not repeat that name as a second heading below it.
 - Keep resource selection in the sidebar. Keep profile and sign-out controls at its bottom.
+- Remember the last selected resource in each collection for the current browser session. Switching
+  between collection tabs returns to those resources instead of resetting to the first result. A
+  return to a page always opens its canonical Preview; secondary page views do not become the
+  collection's remembered destination.
 - When the sidebar is collapsed, preserve the foreground surface and its rounded corner. Place one
   compact menu control inside that corner; do not carve an inverse notch out of the surface or stack
   unrelated logo and menu controls there.

@@ -7,7 +7,11 @@ export const Route = createFileRoute('/pages/')({
     const pages = await context.queryClient.ensureInfiniteQueryData(pagesQueryOptions);
     const firstPage = pages.pages[0]?.items[0];
     if (firstPage) {
-      throw redirect({ to: '/pages/$id', params: { id: firstPage.readableId } });
+      throw redirect({
+        to: '/pages/$id',
+        params: { id: firstPage.readableId },
+        search: { view: 'preview' },
+      });
     }
   },
   component: PagesIndexRoute,

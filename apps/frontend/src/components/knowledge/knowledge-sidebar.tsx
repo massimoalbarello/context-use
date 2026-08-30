@@ -1,10 +1,13 @@
 import { Link } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
+import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { SignOutButton } from '../auth/sign-out-button';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
+import { KnowledgeCollectionNavigation } from './knowledge-collection-navigation';
 
 export function KnowledgeSidebar({
+  collection,
   count,
   createTo,
   createLabel,
@@ -15,6 +18,7 @@ export function KnowledgeSidebar({
   loadMore,
   children,
 }: {
+  collection: KnowledgeCollection;
   count: number;
   createTo: '/pages/new' | '/entities/new';
   createLabel: string;
@@ -53,14 +57,10 @@ export function KnowledgeSidebar({
 
       <div className="sidebar-body">
         <div className="sidebar-navigation">
-          <nav className="sidebar-sections" aria-label="Knowledge collections">
-            <Link to="/pages" activeProps={{ 'data-active': true }}>
-              Pages
-            </Link>
-            <Link to="/entities" activeProps={{ 'data-active': true }}>
-              Entities
-            </Link>
-          </nav>
+          <KnowledgeCollectionNavigation
+            collection={collection}
+            ownerEntityId={profile.selfEntity.id}
+          />
           <Link className="sidebar-create" to={createTo}>
             <span className="create-icon" aria-hidden="true">
               +

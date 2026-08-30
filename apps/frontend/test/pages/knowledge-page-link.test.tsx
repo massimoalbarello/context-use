@@ -16,6 +16,7 @@ describe('knowledge page cards', () => {
       props: {
         params: { id: 'target-page' },
         search: { view: 'preview' },
+        activeOptions: { exact: true, includeSearch: false },
       },
     });
   });

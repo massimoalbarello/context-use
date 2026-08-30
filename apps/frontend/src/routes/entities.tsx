@@ -25,6 +25,7 @@ function EntitiesLayout() {
   return (
     <main className="knowledge-workspace">
       <KnowledgeSidebar
+        collection="entities"
         count={total}
         createTo="/entities/new"
         createLabel="New entity"
