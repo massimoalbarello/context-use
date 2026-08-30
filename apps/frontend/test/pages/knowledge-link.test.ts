@@ -3,6 +3,7 @@ import {
   findActiveKnowledgeLink,
   insertKnowledgeLink,
 } from '../../src/components/pages/knowledge-link';
+import { scrollPickerOptionIntoView } from '../../src/components/pages/knowledge-link-textarea';
 
 describe('knowledge links', () => {
   test('finds a knowledge search being typed at the cursor', () => {
@@ -61,5 +62,39 @@ describe('knowledge links', () => {
       markdown: 'This builds on [Omnia Team](context-use://page/omnia-team) today.',
       cursor: 58,
     });
+  });
+});
+
+describe('knowledge picker scrolling', () => {
+  test('reveals the selected option in either direction without moving visible options', () => {
+    const menuBounds = { top: 200, bottom: 500 };
+    const belowMenu = { top: 460, bottom: 560 };
+    const aboveMenu = { top: 150, bottom: 250 };
+    const insideMenu = { top: 250, bottom: 350 };
+    const initialScrollTop = 100;
+    const menu = {
+      scrollTop: initialScrollTop,
+      getBoundingClientRect: () => menuBounds,
+    };
+
+    scrollPickerOptionIntoView({
+      menu,
+      option: { getBoundingClientRect: () => belowMenu },
+    });
+    const afterScrollingDown = initialScrollTop + belowMenu.bottom - menuBounds.bottom;
+    expect(menu.scrollTop).toBe(afterScrollingDown);
+
+    scrollPickerOptionIntoView({
+      menu,
+      option: { getBoundingClientRect: () => aboveMenu },
+    });
+    const afterScrollingUp = afterScrollingDown - (menuBounds.top - aboveMenu.top);
+    expect(menu.scrollTop).toBe(afterScrollingUp);
+
+    scrollPickerOptionIntoView({
+      menu,
+      option: { getBoundingClientRect: () => insideMenu },
+    });
+    expect(menu.scrollTop).toBe(afterScrollingUp);
   });
 });

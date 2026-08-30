@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { EntityCardContent } from '../entities/entity-link';
@@ -18,6 +18,21 @@ function suggestionId(suggestion: KnowledgeSuggestion): string {
   return suggestion.kind === 'entity'
     ? `entity-${suggestion.entity.id}`
     : `page-${suggestion.page.id}`;
+}
+
+type PickerBounds = Pick<DOMRect, 'top' | 'bottom'>;
+
+export function scrollPickerOptionIntoView(options: {
+  menu: { scrollTop: number; getBoundingClientRect: () => PickerBounds };
+  option: { getBoundingClientRect: () => PickerBounds };
+}) {
+  const menuBounds = options.menu.getBoundingClientRect();
+  const optionBounds = options.option.getBoundingClientRect();
+  if (optionBounds.top < menuBounds.top) {
+    options.menu.scrollTop -= menuBounds.top - optionBounds.top;
+  } else if (optionBounds.bottom > menuBounds.bottom) {
+    options.menu.scrollTop += optionBounds.bottom - menuBounds.bottom;
+  }
 }
 
 export function KnowledgeLinkTextarea({
@@ -43,6 +58,7 @@ export function KnowledgeLinkTextarea({
 }) {
   const listId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [link, setLink] = useState<ActiveKnowledgeLink | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const suggestions: KnowledgeSuggestion[] = link
@@ -53,6 +69,17 @@ export function KnowledgeLinkTextarea({
     : [];
   const suggestionsOpen = suggestions.length > 0;
   const activeSuggestion = suggestions[activeIndex] ?? suggestions[0];
+  const activeOptionId = activeSuggestion
+    ? `${listId}-${suggestionId(activeSuggestion)}`
+    : undefined;
+
+  useEffect(() => {
+    const menu = menuRef.current;
+    const option = activeOptionId ? document.getElementById(activeOptionId) : null;
+    if (menu && option) {
+      scrollPickerOptionIntoView({ menu, option });
+    }
+  }, [activeOptionId]);
 
   function updateLink({ markdown, cursor }: { markdown: string; cursor: number }) {
     const nextLink = findActiveKnowledgeLink({ markdown, cursor });
@@ -128,9 +155,7 @@ export function KnowledgeLinkTextarea({
         aria-autocomplete="list"
         aria-controls={suggestionsOpen ? listId : undefined}
         aria-expanded={suggestionsOpen}
-        aria-activedescendant={
-          activeSuggestion ? `${listId}-${suggestionId(activeSuggestion)}` : undefined
-        }
+        aria-activedescendant={activeOptionId}
         aria-haspopup="listbox"
         aria-invalid={invalid}
         role="combobox"
@@ -138,7 +163,13 @@ export function KnowledgeLinkTextarea({
         className="knowledge-editor font-mono"
       />
       {suggestionsOpen && (
-        <div className="knowledge-picker-menu" id={listId} role="listbox" aria-label="Knowledge">
+        <div
+          ref={menuRef}
+          className="knowledge-picker-menu"
+          id={listId}
+          role="listbox"
+          aria-label="Knowledge"
+        >
           {suggestions.map((suggestion) => {
             const optionId = suggestionId(suggestion);
             return (
