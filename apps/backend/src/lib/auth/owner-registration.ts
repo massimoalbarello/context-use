@@ -1,7 +1,6 @@
 export const OWNER_USER_ID = 'context-use-owner';
 export const OWNER_SYNTHETIC_EMAIL = 'context-use-owner@context-use.invalid';
-
-export const MAX_OWNER_NAME_LENGTH = 80;
+export const OWNER_DISPLAY_NAME = 'Context Use Owner';
 
 export type OwnerRegistrationPersistenceState = {
   ownerExists: boolean;
@@ -9,13 +8,11 @@ export type OwnerRegistrationPersistenceState = {
 };
 
 export type OwnerRegistrationErrorCode =
-  | 'invalid_owner_name'
   | 'owner_already_registered'
   | 'owner_registration_state_invalid'
   | 'user_verification_required';
 
 const ERROR_MESSAGES: Record<OwnerRegistrationErrorCode, string> = {
-  invalid_owner_name: `Enter a name between 1 and ${MAX_OWNER_NAME_LENGTH} characters.`,
   owner_already_registered: 'This Context Use instance already has an owner.',
   owner_registration_state_invalid: 'The owner registration state is invalid.',
   user_verification_required: 'Your authenticator must verify that it is you.',
@@ -41,20 +38,13 @@ export function ownerRegistrationStatus({
   return { ownerRegistered: ownerExists };
 }
 
-export function ownerRegistrationUser({
-  context,
-  ownerExists,
-}: {
-  context?: string | null;
-  ownerExists: boolean;
-}): { id: string; name: string; displayName: string } {
+export function ownerRegistrationUser({ ownerExists }: { ownerExists: boolean }): {
+  id: string;
+  name: string;
+  displayName: string;
+} {
   if (ownerExists) {
     throw new OwnerRegistrationError('owner_already_registered');
-  }
-
-  const displayName = context?.trim() ?? '';
-  if (displayName.length === 0 || [...displayName].length > MAX_OWNER_NAME_LENGTH) {
-    throw new OwnerRegistrationError('invalid_owner_name');
   }
 
   return {
@@ -62,7 +52,7 @@ export function ownerRegistrationUser({
     // WebAuthn requires a stable username in addition to its opaque byte id. It is not a login
     // identifier in this passkey-only application, so keep it fixed and non-personal.
     name: OWNER_USER_ID,
-    displayName,
+    displayName: OWNER_DISPLAY_NAME,
   };
 }
 
