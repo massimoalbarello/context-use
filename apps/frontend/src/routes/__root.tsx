@@ -4,9 +4,6 @@ import { SignOutButton } from '../components/auth/sign-out-button';
 import { profileQueryOptions } from '../queries/profile';
 import { sessionQueryOptions } from '../queries/session';
 
-// Where the backend serves the API reference, outside the router's route tree.
-const OPENAPI_PATH = '/openapi';
-
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ context, location }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions);
@@ -41,12 +38,6 @@ function RouteComponent() {
               Entities
             </Link>
           </nav>
-        )}
-        {profile && (
-          // A plain anchor, not a `Link`: the docs page is rendered by the server, not the router.
-          <a href={OPENAPI_PATH} className="api-link">
-            API docs
-          </a>
         )}
         <div className="account-actions">
           {session ? (
