@@ -4,6 +4,9 @@ The root guide applies here. This file defines the React-specific owners and bou
 the frontend around the paths and user journeys it renders; reserve global folders for code that is
 genuinely shared across routes.
 
+Read and follow [UI-GUIDELINES.md](./UI-GUIDELINES.md) for the product vocabulary, visual language,
+workspace shell, and interaction conventions that every feature must preserve.
+
 ## Canonical owners
 
 Use one mechanism for each responsibility:
