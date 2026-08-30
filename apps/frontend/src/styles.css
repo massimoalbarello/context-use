@@ -467,15 +467,15 @@
   }
 
   .resource-card {
-    @apply rounded-xl border border-ink/15 bg-panel p-3 text-left transition hover:border-ink/30 hover:shadow-[0_4px_16px_rgb(23_23_23/0.08)];
+    @apply h-20 rounded-xl border border-transparent bg-transparent p-3 text-left transition-[background-color,border-color,box-shadow] hover:bg-paper hover:shadow-[0_4px_16px_rgb(23_23_23/0.08)] focus-visible:border-ink/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/15;
   }
 
-  .resource-card[data-status="active"] {
-    @apply border-ink/25 shadow-[0_2px_10px_rgb(23_23_23/0.1)];
+  :where(.knowledge-sidebar, .knowledge-picker-menu) .resource-card:hover {
+    @apply bg-panel;
   }
 
-  .workspace-card .resource-card {
-    @apply shadow-[0_1px_5px_rgb(23_23_23/0.08)];
+  .resource-card:is([data-status="active"], [aria-selected="true"]) {
+    @apply border-ink/35 bg-panel shadow-[0_2px_10px_rgb(23_23_23/0.1)];
   }
 
   .entity-link-card {
@@ -503,7 +503,7 @@
   }
 
   .entity-link-copy small {
-    @apply line-clamp-2 text-muted text-xs leading-relaxed;
+    @apply truncate text-muted text-xs leading-relaxed;
   }
 
   .entity-link-inline {
@@ -523,11 +523,11 @@
   }
 
   .knowledge-page-link-copy strong {
-    @apply min-w-0 line-clamp-2 font-semibold text-sm leading-snug;
+    @apply min-w-0 truncate font-semibold text-sm leading-snug;
   }
 
   .knowledge-page-link-copy small {
-    @apply line-clamp-2 text-muted text-xs leading-relaxed;
+    @apply truncate text-muted text-xs leading-relaxed;
   }
 
   .knowledge-page-link-fragment {
@@ -586,10 +586,6 @@
 
   .knowledge-picker-option {
     @apply flex w-full items-center justify-between gap-3 text-sm;
-  }
-
-  .knowledge-picker-option[aria-selected="true"] {
-    @apply border-ink/35 bg-accent-soft;
   }
 
   .knowledge-picker-kind {

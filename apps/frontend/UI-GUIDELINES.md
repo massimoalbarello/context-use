@@ -66,6 +66,16 @@ selection, and hover. Their internal identity remains type-owned. Give this reso
 recognizable treatment distinct from generic form panels, dialogs, and layout surfaces so users can
 tell navigable knowledge from UI containment.
 
+Resource-card chrome is interaction state, not permanent decoration. At rest, keep the shared card
+surface transparent. On hover, reveal a quiet temporary surface. For the selected resource, retain a
+white surface with a clear dark outline and restrained elevation; do not use a grey fill as the
+selection signal. Keyboard focus must be at least as legible as hover. These states must be identical
+in sidebars, pickers, search results, and relationship views.
+
+Cards in the same resource-result system use one fixed height. Truncate titles, descriptions, and
+page excerpts with an ellipsis instead of allowing content length to resize a result. A page excerpt
+remains derived from its first meaningful body text; the card is only a compact preview of it.
+
 Avoid a universal resource component with an expanding matrix of type and mode flags. A type-specific
 component may offer a small number of presentations when those presentations are real, recurring
 contexts with shared semantics. Future records and assets should receive their own language when
@@ -192,6 +202,8 @@ Stop and reconsider the design when:
 - a resource result outside rendered Markdown is reduced to plain text or rebuilt with local markup
   instead of its type-owned card;
 - the same entity or page uses a different identity treatment in each feature;
+- hover and selection swap between unrelated card treatments in different features;
+- a long title, description, or excerpt makes one resource result taller than its siblings;
 - navigable resource cards and generic form or layout panels have no consistent visual distinction;
 - relationship language drifts between “mention,” “reference,” “source,” “attachment,” and generic
   “link” terminology;
