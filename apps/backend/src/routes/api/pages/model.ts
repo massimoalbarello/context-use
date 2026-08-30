@@ -5,6 +5,7 @@ import {
   type KnowledgePageRevisionSummary,
   type KnowledgePageSummary,
   MAX_KNOWLEDGE_PAGE_BYTES,
+  MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#pages/knowledge-page.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
 import {
@@ -57,7 +58,10 @@ export const KnowledgePageListSchema = t.Object({
   items: t.Array(KnowledgePageSummarySchema),
   ...PaginationMetadataSchema.properties,
 });
-export const KnowledgePageListQuerySchema = PaginationQuerySchema;
+export const KnowledgePageListQuerySchema = t.Object({
+  ...PaginationQuerySchema.properties,
+  query: t.Optional(t.String({ maxLength: MAX_KNOWLEDGE_PAGE_TITLE_LENGTH })),
+});
 
 export function pageSummaryResponse(page: KnowledgePageSummary) {
   return {

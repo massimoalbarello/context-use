@@ -306,22 +306,58 @@ export class KnowledgePagesRepository
     });
   }
 
-  async list({ ownerId, limit, offset }: { ownerId: string; limit: number; offset: number }) {
-    const [rows, counts] = await Promise.all([
-      this.sql<SummaryRow[]>`
-        select page."id", page."readable_id" as "readableId",
-          revision."revision_number" as "revisionNumber", revision."title",
-          page."created_at" as "createdAt", page."updated_at" as "updatedAt"
-        from "knowledge_page" page
-        join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
-        where page."owner_id" = ${ownerId}
-        order by page."updated_at" desc, page."id" desc
-        limit ${limit} offset ${offset}
-      `,
-      this.sql<Array<{ total: number }>>`
-        select count(*) as "total" from "knowledge_page" where "owner_id" = ${ownerId}
-      `,
-    ]);
+  async list({
+    ownerId,
+    limit,
+    offset,
+    query,
+  }: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+    query?: string;
+  }) {
+    const normalizedQuery = query?.trim() || null;
+    const rowsPromise = normalizedQuery
+      ? this.sql<SummaryRow[]>`
+          select page."id", page."readable_id" as "readableId",
+            revision."revision_number" as "revisionNumber", revision."title",
+            page."created_at" as "createdAt", page."updated_at" as "updatedAt"
+          from "knowledge_page" page
+          join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+          where page."owner_id" = ${ownerId}
+            and (
+              instr(lower(revision."title"), lower(${normalizedQuery})) > 0
+              or instr(page."readable_id", lower(${normalizedQuery})) > 0
+            )
+          order by revision."title" collate nocase, page."readable_id"
+          limit ${limit} offset ${offset}
+        `
+      : this.sql<SummaryRow[]>`
+          select page."id", page."readable_id" as "readableId",
+            revision."revision_number" as "revisionNumber", revision."title",
+            page."created_at" as "createdAt", page."updated_at" as "updatedAt"
+          from "knowledge_page" page
+          join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+          where page."owner_id" = ${ownerId}
+          order by page."updated_at" desc, page."id" desc
+          limit ${limit} offset ${offset}
+        `;
+    const countsPromise = normalizedQuery
+      ? this.sql<Array<{ total: number }>>`
+          select count(*) as "total"
+          from "knowledge_page" page
+          join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+          where page."owner_id" = ${ownerId}
+            and (
+              instr(lower(revision."title"), lower(${normalizedQuery})) > 0
+              or instr(page."readable_id", lower(${normalizedQuery})) > 0
+            )
+        `
+      : this.sql<Array<{ total: number }>>`
+          select count(*) as "total" from "knowledge_page" where "owner_id" = ${ownerId}
+        `;
+    const [rows, counts] = await Promise.all([rowsPromise, countsPromise]);
     return pageFrom({
       items: rows.map(summaryFrom),
       total: Number(counts[0]?.total ?? 0),

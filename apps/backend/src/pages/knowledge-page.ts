@@ -83,6 +83,7 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     limit: number;
     offset: number;
+    query?: string;
   }): Promise<Page<KnowledgePageSummary>>;
   listByEntity(input: {
     ownerId: string;

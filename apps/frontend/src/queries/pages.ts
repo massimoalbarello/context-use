@@ -26,6 +26,21 @@ export const pagesQueryOptions = infiniteQueryOptions({
   getNextPageParam: (page) => page.nextOffset ?? undefined,
 });
 
+export function pageSuggestionsQueryOptions(query: string) {
+  return queryOptions({
+    queryKey: [...pagesQueryKey, 'suggestions', query],
+    queryFn: async () => {
+      const { data, error } = await api.api.pages.get({
+        query: { limit: 7, offset: 0, query },
+      });
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data.items;
+    },
+  });
+}
+
 export function pageQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...pagesQueryKey, 'detail', readableId],

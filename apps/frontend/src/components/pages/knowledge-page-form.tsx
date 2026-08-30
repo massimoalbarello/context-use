@@ -2,7 +2,8 @@ import { useForm } from '@tanstack/react-form';
 import { useEffect, useState } from 'react';
 import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
 import { useEntitySuggestions } from '../../lib/hooks/use-entities';
-import { EntityMentionTextarea } from './entity-mention-textarea';
+import { usePageSuggestions } from '../../lib/hooks/use-pages';
+import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
 
 const READABLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -38,8 +39,9 @@ export function KnowledgePageForm({
   submitLabel: string;
   onSubmit: (values: KnowledgePageFormValues) => void;
 }) {
-  const [entityMentionQuery, setEntityMentionQuery] = useState<string | null>(null);
-  const { data: entitySuggestions = [] } = useEntitySuggestions(entityMentionQuery);
+  const [knowledgeQuery, setKnowledgeQuery] = useState<string | null>(null);
+  const { data: entitySuggestions = [] } = useEntitySuggestions(knowledgeQuery);
+  const { data: pageSuggestions = [] } = usePageSuggestions(knowledgeQuery);
   const form = useForm({
     defaultValues: initialValues,
     onSubmit: ({ value }) => {
@@ -75,19 +77,20 @@ export function KnowledgePageForm({
           {(field) => (
             <label className="field" htmlFor={field.name}>
               <span>Markdown</span>
-              <EntityMentionTextarea
+              <KnowledgeLinkTextarea
                 id={field.name}
                 name={field.name}
                 value={field.state.value}
                 entities={entitySuggestions}
+                pages={pageSuggestions}
                 invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
                 onBlur={field.handleBlur}
                 onChange={field.handleChange}
-                onQueryChange={setEntityMentionQuery}
+                onQueryChange={setKnowledgeQuery}
               />
               <small>
-                Keep one coherent idea here. Type @ to mention an entity; use H2 or lower headings
-                for linkable sections.
+                Keep one coherent idea here. Type @ to mention an entity or reference a page; use H2
+                or lower headings for linkable sections.
               </small>
               {field.state.meta.isTouched && field.state.meta.errors[0] && (
                 <em role="alert">{field.state.meta.errors[0]}</em>

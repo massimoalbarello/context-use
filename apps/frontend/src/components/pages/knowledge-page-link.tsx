@@ -4,6 +4,21 @@ import type { KnowledgePageSummary } from '../../queries/pages';
 
 type KnowledgePageIdentity = Pick<KnowledgePageSummary, 'readableId' | 'title'>;
 
+export function KnowledgePageCardContent({ page }: { page: KnowledgePageIdentity }) {
+  return (
+    <>
+      <span className="knowledge-page-link-mark" aria-hidden="true">
+        <svg viewBox="0 0 20 20">
+          <title>Knowledge page</title>
+          <path d="M5 2.75h6.5L15 6.25v11H5z" />
+          <path d="M11.5 2.75v3.5H15M7.5 10h5M7.5 13h5" />
+        </svg>
+      </span>
+      <strong>{page.title}</strong>
+    </>
+  );
+}
+
 export function KnowledgePageLink({
   page,
   presentation,
@@ -34,14 +49,7 @@ export function KnowledgePageLink({
       to="/pages/$id"
       params={{ id: page.readableId }}
     >
-      <span className="knowledge-page-link-mark" aria-hidden="true">
-        <svg viewBox="0 0 20 20">
-          <title>Knowledge page</title>
-          <path d="M5 2.75h6.5L15 6.25v11H5z" />
-          <path d="M11.5 2.75v3.5H15M7.5 10h5M7.5 13h5" />
-        </svg>
-      </span>
-      <strong>{page.title}</strong>
+      <KnowledgePageCardContent page={page} />
     </Link>
   );
 }

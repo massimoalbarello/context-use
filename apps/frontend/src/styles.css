@@ -567,7 +567,7 @@
     @apply grid gap-5;
   }
 
-  .mention-editor {
+  .knowledge-link-editor {
     @apply relative;
   }
 
@@ -575,24 +575,24 @@
     @apply block min-h-64 md:min-h-72;
   }
 
-  .mention-menu {
+  .knowledge-picker-menu {
     @apply absolute right-3 bottom-3 left-3 z-10 grid max-h-60 overflow-y-auto rounded-lg border border-line bg-panel p-1 shadow-[0_12px_35px_rgb(23_23_23/0.16)];
   }
 
-  .mention-menu button {
+  .knowledge-picker-option {
     @apply flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent-soft;
   }
 
-  .mention-menu button[aria-selected="true"] {
+  .knowledge-picker-option[aria-selected="true"] {
     @apply bg-accent-soft;
   }
 
-  .mention-menu strong {
-    @apply min-w-0 truncate font-medium;
+  .knowledge-picker-card {
+    @apply min-w-0 flex-1;
   }
 
-  .mention-menu span {
-    @apply shrink-0 font-mono text-muted text-xs;
+  .knowledge-picker-kind {
+    @apply shrink-0 rounded-full bg-panel px-2 py-1 font-semibold text-muted text-[0.65rem] uppercase tracking-wider;
   }
 
   .knowledge-markdown {

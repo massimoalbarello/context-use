@@ -324,6 +324,15 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
       [firstKnowledgePage.items[0]?.readableId, secondKnowledgePage.items[0]?.readableId].sort(),
     ).toEqual(['growth-playbook', 'operating-rhythm']);
 
+    const searchedKnowledgePageResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?limit=7&offset=0&query=growth' }),
+    );
+    expect(await searchedKnowledgePageResponse.json()).toEqual({
+      items: [expect.objectContaining({ readableId: 'growth-playbook' })],
+      total: 1,
+      nextOffset: null,
+    });
+
     const linkedGrowthResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages/growth-playbook' }),
     );

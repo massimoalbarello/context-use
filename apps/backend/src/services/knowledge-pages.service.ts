@@ -96,7 +96,7 @@ export class KnowledgePagesService extends Service {
     return { state: 'saved', page };
   }
 
-  list(input: { ownerId: string; limit: number; offset: number }) {
+  list(input: { ownerId: string; limit: number; offset: number; query?: string }) {
     return this.pages.list(input);
   }
 
