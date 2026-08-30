@@ -74,7 +74,39 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
   );
 }
 
-type PageView = 'preview' | 'links';
+function PageRevisionsView({ page }: { page: KnowledgePage }) {
+  return (
+    <section
+      className="page-revisions"
+      id="page-revisions-panel"
+      role="tabpanel"
+      aria-labelledby="page-revisions-tab"
+    >
+      <div className="section-heading">
+        <h2>Revisions</h2>
+        <span className="count-badge">{page.revisions.length}</span>
+      </div>
+      <ol className="revision-list">
+        {page.revisions.map((revision) => (
+          <li key={revision.revisionNumber}>
+            <div>
+              <strong>Revision {revision.revisionNumber}</strong>
+              {revision.revisionNumber === page.revisionNumber && (
+                <span className="current-revision">Current</span>
+              )}
+            </div>
+            <p>{revision.title}</p>
+            <time dateTime={revision.createdAt.toISOString()}>
+              {revision.createdAt.toLocaleString()}
+            </time>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+type PageView = 'preview' | 'links' | 'revisions';
 
 function PageTabs({
   activeView,
@@ -86,6 +118,7 @@ function PageTabs({
   const tabs: Array<{ id: PageView; label: string }> = [
     { id: 'preview', label: 'Preview' },
     { id: 'links', label: 'Links' },
+    { id: 'revisions', label: 'Revisions' },
   ];
 
   return (
@@ -179,8 +212,10 @@ function KnowledgePageRoute() {
             <div id="page-preview-panel" role="tabpanel" aria-labelledby="page-preview-tab">
               <KnowledgePageMarkdown markdown={page.markdown} />
             </div>
-          ) : (
+          ) : activeView === 'links' ? (
             <PageLinksView page={page} />
+          ) : (
+            <PageRevisionsView page={page} />
           )}
         </div>
       )}

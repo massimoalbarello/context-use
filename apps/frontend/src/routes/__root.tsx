@@ -24,39 +24,31 @@ function RouteComponent() {
   const { profile, session } = Route.useRouteContext();
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <Link to="/" className="brand" activeOptions={{ exact: true }}>
-          Context Use
-        </Link>
-        {profile && (
-          <nav aria-label="Knowledge">
-            <Link to="/pages" activeProps={{ 'data-active': true }}>
-              Pages
-            </Link>
-            <Link to="/entities" activeProps={{ 'data-active': true }}>
-              Entities
-            </Link>
-          </nav>
-        )}
-        <div className="account-actions">
-          {session ? (
-            <>
-              <span className="account-name">{session.user.name}</span>
-              <SignOutButton />
-            </>
-          ) : (
-            <Link
-              to="/login"
-              activeProps={{
-                className: 'font-bold',
-              }}
-            >
-              Login
-            </Link>
-          )}
-        </div>
-      </header>
+    <div className={profile ? 'app-shell app-shell-authenticated' : 'app-shell'}>
+      {!profile && (
+        <header className="app-header">
+          <Link to="/" className="brand" activeOptions={{ exact: true }}>
+            Context Use
+          </Link>
+          <div className="account-actions">
+            {session ? (
+              <>
+                <span className="account-name">{session.user.name}</span>
+                <SignOutButton />
+              </>
+            ) : (
+              <Link
+                to="/login"
+                activeProps={{
+                  className: 'font-bold',
+                }}
+              >
+                Login
+              </Link>
+            )}
+          </div>
+        </header>
+      )}
       <div className="app-content">
         <Outlet />
       </div>

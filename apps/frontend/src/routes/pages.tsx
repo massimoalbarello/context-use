@@ -16,15 +16,20 @@ export const Route = createFileRoute('/pages')({
 });
 
 function PagesLayout() {
+  const { profile } = Route.useRouteContext();
   const { pages, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = usePages();
+  if (!profile) {
+    return null;
+  }
 
   return (
     <main className="knowledge-workspace">
       <KnowledgeSidebar
-        title="Pages"
+        section="pages"
         count={total}
         createTo="/pages/new"
         createLabel="New page"
+        profile={profile}
         error={error}
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}

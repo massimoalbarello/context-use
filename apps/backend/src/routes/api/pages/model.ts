@@ -2,6 +2,7 @@ import { t } from 'elysia';
 import {
   type KnowledgePage,
   type KnowledgePageReference,
+  type KnowledgePageRevisionSummary,
   type KnowledgePageSummary,
   MAX_KNOWLEDGE_PAGE_BYTES,
 } from '#pages/knowledge-page.ts';
@@ -26,12 +27,19 @@ export const KnowledgePageReferenceSchema = t.Object({
   fragment: t.Nullable(ReadableIdSchema),
 });
 
+export const KnowledgePageRevisionSummarySchema = t.Object({
+  revisionNumber: t.Integer({ minimum: 1 }),
+  title: t.String(),
+  createdAt: t.Date(),
+});
+
 export const KnowledgePageSchema = t.Object({
   ...KnowledgePageSummarySchema.properties,
   markdown: t.String(),
   mentions: t.Array(EntitySchema),
   references: t.Array(KnowledgePageReferenceSchema),
   backlinks: t.Array(KnowledgePageReferenceSchema),
+  revisions: t.Array(KnowledgePageRevisionSummarySchema),
 });
 
 export const CreateKnowledgePageBodySchema = t.Object({
@@ -63,6 +71,10 @@ function pageReferenceResponse(reference: KnowledgePageReference) {
   return { page: pageSummaryResponse(reference.page), fragment: reference.fragment };
 }
 
+function pageRevisionResponse(revision: KnowledgePageRevisionSummary) {
+  return { ...revision, createdAt: new Date(revision.createdAt) };
+}
+
 export function knowledgePageResponse(page: KnowledgePage) {
   return {
     ...pageSummaryResponse(page),
@@ -70,5 +82,6 @@ export function knowledgePageResponse(page: KnowledgePage) {
     mentions: page.mentions.map(entityResponse),
     references: page.references.map(pageReferenceResponse),
     backlinks: page.backlinks.map(pageReferenceResponse),
+    revisions: page.revisions.map(pageRevisionResponse),
   };
 }

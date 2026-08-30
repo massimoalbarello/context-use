@@ -16,15 +16,20 @@ export const Route = createFileRoute('/entities')({
 });
 
 function EntitiesLayout() {
+  const { profile } = Route.useRouteContext();
   const { entities, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntities();
+  if (!profile) {
+    return null;
+  }
 
   return (
     <main className="knowledge-workspace">
       <KnowledgeSidebar
-        title="Entities"
+        section="entities"
         count={total}
         createTo="/entities/new"
         createLabel="New entity"
+        profile={profile}
         error={error}
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}

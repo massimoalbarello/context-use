@@ -18,11 +18,18 @@ export interface KnowledgePageReference {
   fragment: string | null;
 }
 
+export interface KnowledgePageRevisionSummary {
+  revisionNumber: number;
+  title: string;
+  createdAt: string;
+}
+
 export interface KnowledgePage extends KnowledgePageSummary {
   markdown: string;
   mentions: Entity[];
   references: KnowledgePageReference[];
   backlinks: KnowledgePageReference[];
+  revisions: KnowledgePageRevisionSummary[];
 }
 
 export interface StoredKnowledgePage extends KnowledgePageSummary {
@@ -87,6 +94,7 @@ export interface KnowledgePagesRepositoryContract {
     mentions: Entity[];
     references: KnowledgePageReference[];
     backlinks: KnowledgePageReference[];
+    revisions: KnowledgePageRevisionSummary[];
   } | null>;
   listCurrent(input: { ownerId: string }): Promise<StoredKnowledgePage[]>;
   replaceCurrentLinks(input: {

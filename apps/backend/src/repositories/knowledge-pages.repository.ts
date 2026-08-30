@@ -3,6 +3,7 @@ import type { Entity } from '#entities/entity.ts';
 import type {
   KnowledgePageLinkSet,
   KnowledgePageReference,
+  KnowledgePageRevisionSummary,
   KnowledgePageSummary,
   KnowledgePagesRepositoryContract,
   StoredKnowledgePage,
@@ -29,6 +30,12 @@ type SummaryRow = Omit<
   'ownerId' | 'currentRevisionId' | 'storageKey' | 'contentHash' | 'sizeBytes'
 >;
 
+type RevisionSummaryRow = {
+  revisionNumber: number;
+  title: string;
+  createdAt: string;
+};
+
 const CURRENT_PAGE_SELECT = `
   select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
     page."current_revision_id" as "currentRevisionId",
@@ -48,6 +55,10 @@ function storedPageFrom(row: StoredPageRow): StoredKnowledgePage {
 }
 
 function summaryFrom(row: SummaryRow): KnowledgePageSummary {
+  return { ...row, revisionNumber: Number(row.revisionNumber) };
+}
+
+function revisionSummaryFrom(row: RevisionSummaryRow): KnowledgePageRevisionSummary {
   return { ...row, revisionNumber: Number(row.revisionNumber) };
 }
 
@@ -361,12 +372,13 @@ export class KnowledgePagesRepository
     mentions: Entity[];
     references: KnowledgePageReference[];
     backlinks: KnowledgePageReference[];
+    revisions: KnowledgePageRevisionSummary[];
   } | null> {
     const page = await this.find({ ownerId, readableId });
     if (!page) {
       return null;
     }
-    const [mentions, references, backlinks] = await Promise.all([
+    const [mentions, references, backlinks, revisions] = await Promise.all([
       this.sql<Array<Omit<Entity, 'isSelf'> & { isSelf: number }>>`
         select entity."id", entity."readable_id" as "readableId", entity."name",
           entity."description", profile."self_entity_id" is not null as "isSelf",
@@ -383,12 +395,19 @@ export class KnowledgePagesRepository
       `,
       this.referenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
       this.backlinkRows({ ownerId, targetPageId: page.id }),
+      this.sql<RevisionSummaryRow[]>`
+        select "revision_number" as "revisionNumber", "title", "created_at" as "createdAt"
+        from "knowledge_page_revision"
+        where "owner_id" = ${ownerId} and "page_id" = ${page.id}
+        order by "revision_number" desc
+      `,
     ]);
     return {
       page,
       mentions: mentions.map((entity) => ({ ...entity, isSelf: Boolean(entity.isSelf) })),
       references,
       backlinks,
+      revisions: revisions.map(revisionSummaryFrom),
     };
   }
 

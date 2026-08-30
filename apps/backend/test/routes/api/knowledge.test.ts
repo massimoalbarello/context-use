@@ -354,7 +354,15 @@ Revise the current knowledge instead of appending snapshots.`,
       }),
     );
     expect(updateResponse.status).toBe(StatusMap.OK);
-    expect(((await updateResponse.json()) as { revisionNumber: number }).revisionNumber).toBe(2);
+    const updatedPage = (await updateResponse.json()) as {
+      revisionNumber: number;
+      revisions: Array<{ revisionNumber: number; title: string }>;
+    };
+    expect(updatedPage.revisionNumber).toBe(2);
+    expect(updatedPage.revisions).toEqual([
+      expect.objectContaining({ revisionNumber: 2, title: 'Growth playbook' }),
+      expect.objectContaining({ revisionNumber: 1, title: 'Growth playbook' }),
+    ]);
     const currentMentionCount = await database<Array<{ count: number }>>`
       select count(*) as "count" from "knowledge_page_entity_mention"
     `;
