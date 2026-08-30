@@ -14,14 +14,9 @@ function NewEntityRoute() {
 
   return (
     <div className="detail-shell editor-shell editor-shell-narrow">
-      <header className="detail-header">
-        <div>
-          <p className="eyebrow">New coordinate</p>
-          <h1>Create an entity</h1>
-          <p className="detail-description">
-            The permanent address will be derived from the entity’s name.
-          </p>
-        </div>
+      <header className="editor-header">
+        <h1>New entity</h1>
+        <p>The permanent address will be derived from the entity’s name.</p>
       </header>
       <EntityForm
         initialValues={EMPTY_ENTITY}

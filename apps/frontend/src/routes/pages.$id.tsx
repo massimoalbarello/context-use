@@ -4,10 +4,9 @@ import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
 import { KnowledgePageMarkdown } from '../components/pages/knowledge-page-markdown';
 import { useEntities } from '../lib/hooks/use-entities';
 import { usePage } from '../lib/hooks/use-page';
-import { usePages } from '../lib/hooks/use-pages';
 import { useUpdatePage } from '../lib/hooks/use-update-page';
 import { entitiesQueryOptions } from '../queries/entities';
-import { pageQueryOptions, pagesQueryOptions } from '../queries/pages';
+import { pageQueryOptions } from '../queries/pages';
 
 export const Route = createFileRoute('/pages/$id')({
   beforeLoad: ({ context, location }) => {
@@ -18,7 +17,6 @@ export const Route = createFileRoute('/pages/$id')({
   loader: async ({ context, params }) => {
     await Promise.all([
       context.queryClient.ensureQueryData(pageQueryOptions(params.id)),
-      context.queryClient.ensureQueryData(pagesQueryOptions),
       context.queryClient.ensureQueryData(entitiesQueryOptions),
     ]);
   },
@@ -60,7 +58,6 @@ function KnowledgePageRoute() {
   const [editing, setEditing] = useState(false);
   const { data: page, error } = usePage(id);
   const { data: entities = [] } = useEntities();
-  const { data: pages = [] } = usePages();
   const updatePage = useUpdatePage();
 
   if (error) {
@@ -95,7 +92,6 @@ function KnowledgePageRoute() {
           initialValues={{ readableId: page.readableId, markdown: page.markdown }}
           readableIdLocked
           entities={entities}
-          pages={pages.filter(({ id }) => id !== page.id)}
           pending={updatePage.isPending}
           error={updatePage.error}
           submitLabel="Save new revision"

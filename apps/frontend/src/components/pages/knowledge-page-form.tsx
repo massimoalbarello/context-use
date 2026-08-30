@@ -2,7 +2,7 @@ import { useForm } from '@tanstack/react-form';
 import { useEffect } from 'react';
 import { ReadableIdConflictError, ReadableIdRequiredError } from '../../lib/api-error';
 import type { EntitySummary } from '../../queries/entities';
-import type { KnowledgePageSummary } from '../../queries/pages';
+import { EntityMentionTextarea } from './entity-mention-textarea';
 
 const READABLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -23,15 +23,10 @@ function validateMarkdown({ value }: { value: string }): string | undefined {
     : 'Start with one H1 title and add content below it.';
 }
 
-function appendLink({ markdown, link }: { markdown: string; link: string }): string {
-  return `${markdown.trimEnd()}${markdown.trim() ? '\n\n' : ''}${link}`;
-}
-
 export function KnowledgePageForm({
   initialValues,
   readableIdLocked = false,
   entities,
-  pages,
   pending,
   error,
   submitLabel,
@@ -40,7 +35,6 @@ export function KnowledgePageForm({
   initialValues: KnowledgePageFormValues;
   readableIdLocked?: boolean;
   entities: EntitySummary[];
-  pages: KnowledgePageSummary[];
   pending: boolean;
   error: Error | null;
   submitLabel: string;
@@ -73,26 +67,26 @@ export function KnowledgePageForm({
         void form.handleSubmit();
       }}
     >
-      <div className="surface grid gap-5">
+      <div className="editor-fields">
         <form.Field
           name="markdown"
           validators={{ onMount: validateMarkdown, onChange: validateMarkdown }}
         >
           {(field) => (
-            <label className="field">
+            <label className="field" htmlFor={field.name}>
               <span>Markdown</span>
-              <textarea
+              <EntityMentionTextarea
+                id={field.name}
                 name={field.name}
-                rows={18}
                 value={field.state.value}
+                entities={entities}
+                invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
                 onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
-                spellCheck
-                className="font-mono"
+                onChange={field.handleChange}
               />
               <small>
-                Keep one coherent idea here. Use H2 or lower headings for linkable sections.
+                Keep one coherent idea here. Type @ to mention an entity; use H2 or lower headings
+                for linkable sections.
               </small>
               {field.state.meta.isTouched && field.state.meta.errors[0] && (
                 <em role="alert">{field.state.meta.errors[0]}</em>
@@ -135,53 +129,6 @@ export function KnowledgePageForm({
           </form.Field>
         )}
       </div>
-
-      {(entities.length > 0 || pages.length > 0) && (
-        <aside className="link-palette" aria-label="Insert an internal link">
-          <div>
-            <h3>Mention an entity</h3>
-            <div className="chip-row">
-              {entities.map((entity) => (
-                <button
-                  key={entity.id}
-                  type="button"
-                  onClick={() =>
-                    form.setFieldValue('markdown', (markdown) =>
-                      appendLink({
-                        markdown,
-                        link: `[${entity.name}](context-use://entity/${entity.readableId})`,
-                      }),
-                    )
-                  }
-                >
-                  @{entity.name}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h3>Reference a page</h3>
-            <div className="chip-row">
-              {pages.map((page) => (
-                <button
-                  key={page.id}
-                  type="button"
-                  onClick={() =>
-                    form.setFieldValue('markdown', (markdown) =>
-                      appendLink({
-                        markdown,
-                        link: `[${page.title}](context-use://page/${page.readableId})`,
-                      }),
-                    )
-                  }
-                >
-                  {page.title}
-                </button>
-              ))}
-            </div>
-          </div>
-        </aside>
-      )}
 
       {error && !readableIdIssue && <p className="error-message">{error.message}</p>}
 

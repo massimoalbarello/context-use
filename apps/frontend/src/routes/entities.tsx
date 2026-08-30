@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { EntityList } from '../components/entities/entity-list';
 import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
+import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { useEntities } from '../lib/hooks/use-entities';
 import { entitiesQueryOptions } from '../queries/entities';
 
@@ -28,9 +29,9 @@ function EntitiesLayout() {
       >
         <EntityList entities={entities} />
       </KnowledgeSidebar>
-      <section className="workspace-detail">
+      <KnowledgeWorkspaceDetail>
         <Outlet />
-      </section>
+      </KnowledgeWorkspaceDetail>
     </main>
   );
 }

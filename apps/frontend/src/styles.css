@@ -3,14 +3,14 @@
 @theme {
   --font-sans: "Inter", "Avenir Next", "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --color-ink: #17211c;
-  --color-muted: #657068;
-  --color-paper: #f7f7f2;
-  --color-panel: #fffef8;
-  --color-line: #d9ddd6;
-  --color-accent: #235f48;
-  --color-accent-soft: #e0eee7;
-  --color-danger: #a23232;
+  --color-ink: #171717;
+  --color-muted: #6b6b6b;
+  --color-paper: #efefed;
+  --color-panel: #ffffff;
+  --color-line: #d7d7d4;
+  --color-accent: #171717;
+  --color-accent-soft: #e5e5e3;
+  --color-danger: #404040;
 }
 
 @layer base {
@@ -80,11 +80,11 @@
   }
 
   .knowledge-workspace {
-    @apply grid min-h-[calc(100dvh-6.5rem)] md:h-[calc(100dvh-4rem)] md:min-h-0 md:grid-cols-[20rem_minmax(0,1fr)];
+    @apply grid min-h-[calc(100dvh-6.5rem)] bg-paper md:h-[calc(100dvh-4rem)] md:min-h-0 md:grid-cols-[20rem_minmax(0,1fr)];
   }
 
   .knowledge-sidebar {
-    @apply flex max-h-80 min-h-0 flex-col border-line border-b bg-panel md:max-h-none md:border-r md:border-b-0;
+    @apply flex max-h-80 min-h-0 flex-col border-line border-b bg-transparent md:max-h-none md:border-r md:border-b-0;
   }
 
   .sidebar-header {
@@ -104,7 +104,7 @@
   }
 
   .sidebar-create {
-    @apply inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-2 font-semibold text-white text-sm transition hover:bg-[#194a37];
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-2 font-semibold text-white text-sm transition hover:bg-black;
   }
 
   .create-icon {
@@ -120,11 +120,15 @@
   }
 
   .workspace-detail {
-    @apply min-h-0 min-w-0 bg-paper md:overflow-y-auto;
+    @apply min-h-0 min-w-0 bg-paper p-2 md:overflow-hidden md:p-3 md:pl-0;
+  }
+
+  .workspace-card {
+    @apply min-h-[30rem] overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_10px_35px_rgb(23_23_23/0.05)] md:h-full md:min-h-0 md:overflow-y-auto;
   }
 
   .detail-shell {
-    @apply mx-auto grid w-full max-w-6xl gap-8 px-5 py-8 md:px-10 md:py-10 lg:px-14;
+    @apply mx-auto grid w-full max-w-6xl gap-7 px-5 py-7 md:px-9 md:py-9 lg:px-12;
   }
 
   .page-detail {
@@ -159,11 +163,23 @@
   }
 
   .editor-shell {
-    @apply max-w-5xl;
+    @apply max-w-5xl gap-5;
   }
 
   .editor-shell-narrow {
     @apply w-full max-w-2xl;
+  }
+
+  .editor-header {
+    @apply grid gap-1;
+  }
+
+  .editor-header h1 {
+    @apply font-semibold text-2xl tracking-tight;
+  }
+
+  .editor-header p {
+    @apply text-muted text-sm;
   }
 
   .workspace-empty {
@@ -230,7 +246,7 @@
   }
 
   .surface {
-    @apply rounded-xl border border-line bg-panel p-5 shadow-[0_1px_2px_rgb(23_33_28/0.04)];
+    @apply rounded-xl border border-line bg-panel p-5 shadow-[0_1px_2px_rgb(23_23_23/0.04)];
   }
 
   .field {
@@ -261,7 +277,7 @@
   }
 
   .primary-action {
-    @apply bg-accent text-white hover:bg-[#194a37];
+    @apply bg-accent text-white hover:bg-black;
   }
 
   .workspace-empty .primary-action {
@@ -285,7 +301,7 @@
   }
 
   .card-link {
-    @apply grid gap-2 rounded-xl border border-line bg-panel p-4 transition hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_5px_18px_rgb(23_33_28/0.08)];
+    @apply grid gap-2 rounded-xl border border-line bg-panel p-4 transition hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_5px_18px_rgb(23_23_23/0.08)];
   }
 
   .card-link > span {
@@ -313,7 +329,7 @@
   }
 
   .knowledge-sidebar .card-link {
-    @apply gap-1 rounded-lg border-transparent bg-transparent p-3 shadow-none hover:translate-y-0 hover:border-line hover:bg-paper hover:shadow-none;
+    @apply gap-1 rounded-lg border-transparent bg-transparent p-3 shadow-none hover:translate-y-0 hover:border-line hover:bg-panel hover:shadow-none;
   }
 
   .knowledge-sidebar .card-link[data-status="active"] {
@@ -340,24 +356,40 @@
     @apply mt-1 block text-muted text-sm;
   }
 
-  .link-palette {
-    @apply grid gap-4 rounded-xl border border-line bg-accent-soft/40 p-4 md:grid-cols-2;
+  .editor-fields {
+    @apply grid gap-5;
   }
 
-  .link-palette h3 {
-    @apply mb-2 font-semibold text-sm;
+  .mention-editor {
+    @apply relative;
   }
 
-  .chip-row {
-    @apply flex flex-wrap gap-2;
+  .knowledge-editor {
+    @apply block min-h-64 md:min-h-72;
   }
 
-  .chip-row button {
-    @apply rounded-full border border-accent/20 bg-panel px-3 py-1.5 text-accent text-xs transition hover:border-accent;
+  .mention-menu {
+    @apply absolute right-3 bottom-3 left-3 z-10 grid max-h-60 overflow-y-auto rounded-lg border border-line bg-panel p-1 shadow-[0_12px_35px_rgb(23_23_23/0.16)];
+  }
+
+  .mention-menu button {
+    @apply flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent-soft;
+  }
+
+  .mention-menu button[aria-selected="true"] {
+    @apply bg-accent-soft;
+  }
+
+  .mention-menu strong {
+    @apply min-w-0 truncate font-medium;
+  }
+
+  .mention-menu span {
+    @apply shrink-0 font-mono text-muted text-xs;
   }
 
   .knowledge-markdown {
-    @apply rounded-xl border border-line bg-panel px-6 py-8 shadow-[0_8px_30px_rgb(23_33_28/0.05)] md:px-10 md:py-10 lg:px-12;
+    @apply px-1 py-3 md:px-4 md:py-5 lg:px-8;
   }
 
   .knowledge-markdown h1 {

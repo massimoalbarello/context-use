@@ -64,7 +64,7 @@ export function EntityForm({
 
   return (
     <form
-      className="surface grid gap-5"
+      className="editor-fields"
       onSubmit={(event) => {
         event.preventDefault();
         void form.handleSubmit();
