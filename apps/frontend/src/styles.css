@@ -168,7 +168,7 @@
   }
 
   .knowledge-sidebar[data-collapsed="true"] .sidebar-toggle {
-    @apply size-11 rounded-xl border border-line bg-paper text-muted shadow-[0_10px_30px_rgb(23_23_23/0.08)] hover:bg-accent-soft hover:text-ink;
+    @apply size-11 rounded-xl bg-paper text-muted shadow-[0_10px_30px_rgb(23_23_23/0.08)] hover:bg-accent-soft hover:text-ink;
   }
 
   .count-badge {
