@@ -164,6 +164,39 @@
     @apply mt-3 max-w-2xl text-muted text-lg leading-relaxed;
   }
 
+  .entity-inline-editor {
+    @apply flex flex-col items-start justify-between gap-5 md:flex-row;
+  }
+
+  .entity-inline-fields {
+    @apply min-w-0 w-full max-w-3xl;
+  }
+
+  .entity-inline-field {
+    @apply grid gap-1.5;
+  }
+
+  .entity-name-input,
+  .entity-description-input {
+    @apply w-full border-0 border-line border-b bg-transparent px-0 text-ink outline-none transition focus:border-ink;
+  }
+
+  .entity-name-input {
+    @apply mt-2 pb-1 font-semibold text-4xl tracking-tight md:text-5xl;
+  }
+
+  .entity-description-input {
+    @apply mt-3 resize-none pb-2 text-lg leading-relaxed;
+  }
+
+  .entity-inline-field em {
+    @apply text-danger text-sm not-italic;
+  }
+
+  .entity-inline-actions {
+    @apply shrink-0 md:pt-5;
+  }
+
   .detail-meta,
   .entity-address {
     @apply mt-2 block text-muted text-sm;
@@ -460,8 +493,24 @@
     @apply border-accent border-l-4 pl-5 text-muted;
   }
 
+  .detail-view {
+    @apply border-line border-t;
+  }
+
+  .detail-tabs {
+    @apply flex gap-6 border-line border-b;
+  }
+
+  .detail-tabs button {
+    @apply -mb-px border-transparent border-b-2 px-1 py-3 font-medium text-muted text-sm hover:text-ink;
+  }
+
+  .detail-tabs button[aria-selected="true"] {
+    @apply border-ink text-ink;
+  }
+
   .page-connections {
-    @apply grid gap-6 border-line border-t pt-7 md:grid-cols-3;
+    @apply grid gap-8 py-7 md:grid-cols-3;
   }
 
   .entity-pages {
@@ -474,5 +523,9 @@
 
   .link-section ul {
     @apply mt-2 grid list-none gap-1.5 p-0 text-sm;
+  }
+
+  .connection-empty {
+    @apply mt-2 text-muted text-sm;
   }
 }

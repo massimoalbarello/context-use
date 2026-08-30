@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
-import { EntityForm } from '../components/entities/entity-form';
+import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';
@@ -32,57 +32,56 @@ function EntityRoute() {
 
   return (
     <div className="detail-shell entity-detail">
-      <header className="detail-header">
-        <div>
-          <p className="eyebrow">
-            Entity {entity.isSelf && <span className="self-badge">You</span>}
-          </p>
-          <h1>{entity.name}</h1>
-          <p className="detail-description">{entity.description}</p>
-          <code className="entity-address">context-use://entity/{entity.readableId}</code>
-        </div>
-        <button
-          className={editing ? 'secondary-action' : 'primary-action'}
-          type="button"
-          onClick={() => setEditing(!editing)}
-        >
-          {editing ? 'Cancel' : 'Edit entity'}
-        </button>
-      </header>
-
       {editing ? (
-        <div className="editor-shell-narrow">
-          <EntityForm
-            key={entity.updatedAt.toISOString()}
-            initialValues={{
-              readableId: entity.readableId,
-              name: entity.name,
-              description: entity.description,
-            }}
-            readableIdLocked
-            pending={updateEntity.isPending}
-            error={updateEntity.error}
-            submitLabel="Save identity"
-            onSubmit={({ name, description }) =>
-              updateEntity.mutate(
-                {
-                  readableId: entity.readableId,
-                  body: { name, description },
-                },
-                { onSuccess: () => setEditing(false) },
-              )
-            }
-          />
-        </div>
+        <EntityIdentityEditor
+          key={entity.updatedAt.toISOString()}
+          name={entity.name}
+          description={entity.description}
+          readableId={entity.readableId}
+          isSelf={entity.isSelf}
+          pending={updateEntity.isPending}
+          error={updateEntity.error}
+          onCancel={() => {
+            updateEntity.reset();
+            setEditing(false);
+          }}
+          onSubmit={(identity) =>
+            updateEntity.mutate(
+              { readableId: entity.readableId, body: identity },
+              { onSuccess: () => setEditing(false) },
+            )
+          }
+        />
       ) : (
-        <section className="entity-pages">
-          <div className="section-heading">
-            <h2>Mentioned by</h2>
-            <span className="count-badge">{entity.pages.length}</span>
+        <header className="detail-header">
+          <div>
+            <p className="eyebrow">
+              Entity {entity.isSelf && <span className="self-badge">You</span>}
+            </p>
+            <h1>{entity.name}</h1>
+            <p className="detail-description">{entity.description}</p>
+            <code className="entity-address">context-use://entity/{entity.readableId}</code>
           </div>
-          <KnowledgePageList pages={entity.pages} />
-        </section>
+          <button
+            className="primary-action"
+            type="button"
+            onClick={() => {
+              updateEntity.reset();
+              setEditing(true);
+            }}
+          >
+            Edit entity
+          </button>
+        </header>
       )}
+
+      <section className="entity-pages">
+        <div className="section-heading">
+          <h2>Mentioned by</h2>
+          <span className="count-badge">{entity.pages.length}</span>
+        </div>
+        <KnowledgePageList pages={entity.pages} />
+      </section>
     </div>
   );
 }
