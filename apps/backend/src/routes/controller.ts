@@ -1,7 +1,7 @@
 import { Elysia } from 'elysia';
+import { API_PATH } from '#lib/api-path.ts';
 import { NotFoundError } from '#lib/errors.ts';
-import { RoutePrefix } from '#lib/routes/prefixes.ts';
-import type { AssetsServiceContract } from '#services/assets.service.ts';
+import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 
 // Every file the frontend build produced, one route each. Mounted ahead of the global
 // lifecycle hooks on purpose: a route whose handler *is* a ready-made Response stays on
@@ -10,13 +10,13 @@ import type { AssetsServiceContract } from '#services/assets.service.ts';
 // pipeline instead, and the free revalidation goes with it — so these are registered before
 // `requestResponsePlugin` and are the one part of the server that isn't request-logged.
 export function createFrontendAssetsController({
-  assetsService,
+  frontendAssetsService,
 }: {
-  assetsService: AssetsServiceContract;
+  frontendAssetsService: FrontendAssetsServiceContract;
 }) {
   const controller = new Elysia();
 
-  for (const [path, response] of assetsService.routes()) {
+  for (const [path, response] of frontendAssetsService.routes()) {
     // Hidden from the spec: the frontend is served by this server, but it is not API surface.
     controller.get(path, response, { detail: { hide: true } });
   }
@@ -29,15 +29,15 @@ export function createFrontendAssetsController({
 // once nothing else has matched, which is what a fallback means — so unlike the assets above
 // this one has to come last.
 export function createFrontendFallbackController({
-  assetsService,
+  frontendAssetsService,
 }: {
-  assetsService: AssetsServiceContract;
+  frontendAssetsService: FrontendAssetsServiceContract;
 }) {
   const controller = new Elysia();
 
   controller.mount((request) => {
     const { pathname } = new URL(request.url);
-    const response = isClientRoutePath(pathname) ? assetsService.fallback(pathname) : null;
+    const response = isClientRoutePath(pathname) ? frontendAssetsService.fallback(pathname) : null;
     if (!response) {
       throw new NotFoundError();
     }
@@ -49,5 +49,5 @@ export function createFrontendFallbackController({
 }
 
 function isClientRoutePath(pathname: string): boolean {
-  return !pathname.startsWith(RoutePrefix.Api);
+  return !pathname.startsWith(API_PATH);
 }

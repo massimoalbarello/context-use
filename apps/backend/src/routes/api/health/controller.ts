@@ -1,7 +1,7 @@
 import { Elysia, StatusMap } from 'elysia';
 import { createLogger } from '#lib/logger.ts';
 import { GetHealthResponseSchema } from '#routes/api/health/model.ts';
-import type { HealthServiceContract } from '#services/health.service.ts';
+import type { HealthServiceContract } from '#services/health/service.ts';
 
 export function createHealthController({
   healthService,

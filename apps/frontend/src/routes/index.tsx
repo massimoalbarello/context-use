@@ -1,13 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/')({
-  component: HomeComponent,
+  beforeLoad: ({ context }) => {
+    if (context.session) {
+      throw redirect({ to: '/pages' });
+    }
+    throw redirect({ to: '/login', search: { redirect: '/pages' } });
+  },
 });
-
-function HomeComponent() {
-  return (
-    <div className="p-2">
-      <h3>Welcome Home!</h3>
-    </div>
-  );
-}

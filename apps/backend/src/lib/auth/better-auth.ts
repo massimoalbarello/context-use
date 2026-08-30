@@ -4,6 +4,7 @@ import { type BetterAuthOptions, betterAuth } from 'better-auth';
 import { APIError, getAuthoritativeSessionFromCtx } from 'better-auth/api';
 import type { SQL } from 'bun';
 import type { OpenAPIV3 } from 'openapi-types';
+import { API_PATH } from '#lib/api-path.ts';
 import {
   authorizeOwnerPasskeyRegistration,
   OWNER_SYNTHETIC_EMAIL,
@@ -11,11 +12,10 @@ import {
   OwnerRegistrationError,
   ownerRegistrationUser,
 } from '#lib/auth/owner-registration.ts';
-import { RoutePrefix } from '#lib/routes/prefixes.ts';
 
 export const AUTH_ROUTE_PATH = '/auth';
 
-const BETTER_AUTH_API_BASE_PATH = `${RoutePrefix.Api}${AUTH_ROUTE_PATH}`;
+const BETTER_AUTH_API_BASE_PATH = `${API_PATH}${AUTH_ROUTE_PATH}`;
 const BETTER_AUTH_TABLES_PREFIX = 'auth_';
 const PASSKEY_RELYING_PARTY_NAME = 'Context Use';
 

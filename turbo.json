@@ -22,7 +22,7 @@
     },
     "dev": {
       "cache": false,
-      "env": ["DATA_FOLDER"],
+      "env": ["BETTER_AUTH_SECRET", "DATA_FOLDER"],
       "persistent": true
     }
   }

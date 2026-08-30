@@ -1,0 +1,70 @@
+import { describe, expect, test } from 'bun:test';
+import {
+  knowledgeResourceFromPath,
+  readRememberedKnowledgeResource,
+  writeRememberedKnowledgeResource,
+} from '../src/lib/knowledge-navigation';
+
+function memoryStorage() {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (...args: [string, string]) => {
+      values.set(...args);
+    },
+  };
+}
+
+describe('knowledge navigation', () => {
+  test('recognizes detail routes without treating creation as a remembered resource', () => {
+    expect(knowledgeResourceFromPath('/pages/context-portability')).toEqual({
+      collection: 'pages',
+      readableId: 'context-portability',
+    });
+    expect(knowledgeResourceFromPath('/entities/luca')).toEqual({
+      collection: 'entities',
+      readableId: 'luca',
+    });
+    expect(knowledgeResourceFromPath('/pages/new')).toBeNull();
+    expect(knowledgeResourceFromPath('/pages')).toBeNull();
+  });
+
+  test('keeps the last page and entity together for one owner', () => {
+    const storage = memoryStorage();
+
+    writeRememberedKnowledgeResource({
+      storage,
+      ownerEntityId: 'owner-id',
+      collection: 'pages',
+      readableId: 'context-portability',
+    });
+    writeRememberedKnowledgeResource({
+      storage,
+      ownerEntityId: 'owner-id',
+      collection: 'entities',
+      readableId: 'luca',
+    });
+
+    expect(
+      readRememberedKnowledgeResource({
+        storage,
+        ownerEntityId: 'owner-id',
+        collection: 'pages',
+      }),
+    ).toBe('context-portability');
+    expect(
+      readRememberedKnowledgeResource({
+        storage,
+        ownerEntityId: 'owner-id',
+        collection: 'entities',
+      }),
+    ).toBe('luca');
+    expect(
+      readRememberedKnowledgeResource({
+        storage,
+        ownerEntityId: 'another-owner',
+        collection: 'pages',
+      }),
+    ).toBeUndefined();
+  });
+});

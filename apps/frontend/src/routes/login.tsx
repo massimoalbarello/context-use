@@ -1,20 +1,44 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginForm } from '../components/auth/login-form';
-import { Route as IndexRoute } from './index';
+import { FormShell } from '../components/layout/form-shell';
+import { internalAppPath } from '../lib/internal-app-path';
+import { ownerRegistrationQueryOptions } from '../queries/owner-registration';
+
+const DEFAULT_REDIRECT = '/pages';
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
-    redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+    redirect: internalAppPath(search.redirect),
   }),
-  beforeLoad: ({ context, search }) => {
+  beforeLoad: async ({ context, search }) => {
     if (context.session) {
-      throw redirect({ href: search.redirect ?? IndexRoute.to });
+      throw redirect({ href: search.redirect ?? DEFAULT_REDIRECT });
     }
+    return {
+      ownerRegistered: (await context.queryClient.fetchQuery(ownerRegistrationQueryOptions))
+        .ownerRegistered,
+    };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
+  const { ownerRegistered } = Route.useRouteContext();
   const search = Route.useSearch();
-  return <LoginForm redirectTo={search.redirect ?? IndexRoute.to} />;
+  return (
+    <FormShell
+      eyebrow={ownerRegistered ? 'Welcome back' : 'First-time setup'}
+      title={ownerRegistered ? 'Sign in' : 'Create the owner account'}
+      description={
+        ownerRegistered
+          ? 'Use a registered passkey to open your private knowledge base.'
+          : 'Register the first passkey to claim this Context Use instance.'
+      }
+    >
+      <LoginForm
+        ownerRegistered={ownerRegistered}
+        redirectTo={search.redirect ?? DEFAULT_REDIRECT}
+      />
+    </FormShell>
+  );
 }

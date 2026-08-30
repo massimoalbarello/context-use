@@ -3,6 +3,11 @@ export const OWNER_SYNTHETIC_EMAIL = 'context-use-owner@context-use.invalid';
 
 export const MAX_OWNER_NAME_LENGTH = 80;
 
+export type OwnerRegistrationPersistenceState = {
+  ownerExists: boolean;
+  passkeyExists: boolean;
+};
+
 export type OwnerRegistrationErrorCode =
   | 'invalid_owner_name'
   | 'owner_already_registered'
@@ -24,6 +29,16 @@ export class OwnerRegistrationError extends Error {
     this.name = 'OwnerRegistrationError';
     this.code = code;
   }
+}
+
+export function ownerRegistrationStatus({
+  ownerExists,
+  passkeyExists,
+}: OwnerRegistrationPersistenceState): { ownerRegistered: boolean } {
+  if (ownerExists !== passkeyExists) {
+    throw new OwnerRegistrationError('owner_registration_state_invalid');
+  }
+  return { ownerRegistered: ownerExists };
 }
 
 export function ownerRegistrationUser({
