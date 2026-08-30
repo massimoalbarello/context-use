@@ -130,13 +130,18 @@
     @apply flex min-h-0 flex-1 flex-col;
   }
 
+  .sidebar-navigation,
   .sidebar-sections,
   .detail-tabs {
     @apply flex gap-6;
   }
 
+  .sidebar-navigation {
+    @apply shrink-0 items-center justify-between gap-3 px-4;
+  }
+
   .sidebar-sections {
-    @apply mx-4;
+    @apply min-w-0 gap-5;
   }
 
   .sidebar-sections a,
@@ -147,18 +152,6 @@
   .sidebar-sections a[data-active="true"],
   .detail-tabs button[aria-selected="true"] {
     @apply border-ink text-ink;
-  }
-
-  .sidebar-actions {
-    @apply flex items-center justify-between gap-3 px-4 pt-4 pb-1;
-  }
-
-  .sidebar-actions > div {
-    @apply flex min-w-0 items-center gap-2;
-  }
-
-  .sidebar-actions h1 {
-    @apply truncate font-semibold text-sm;
   }
 
   .knowledge-sidebar[data-collapsed="true"] {

@@ -84,6 +84,8 @@ large, calm sheet floating over the canvas, not a collection of dashboard widget
   permanent half of the dashboard.
 - Creation begins with a clear action and opens a focused route, surface, or dialog appropriate to
   the task.
+- Place the contextual creation action beside the collection tabs. The active tab already names the
+  collection; do not repeat that name as a second heading below it.
 - Keep resource selection in the sidebar. Keep profile and sign-out controls at its bottom.
 - When the sidebar is collapsed, preserve the foreground surface and its rounded corner. Place one
   compact menu control inside that corner; do not carve an inverse notch out of the surface or stack
@@ -167,6 +169,7 @@ Stop and reconsider the design when:
 
 - a form, toolbar, heading, or navigation region competes with the selected knowledge for most of
   the screen;
+- an active navigation label is immediately repeated as a heading without adding context;
 - a list renders every possible resource instead of using bounded search, pagination, or infinite
   scrolling;
 - the whole page scrolls because a sidebar list is not constrained to the viewport;

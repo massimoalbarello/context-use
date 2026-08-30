@@ -25,7 +25,6 @@ function PagesLayout() {
   return (
     <main className="knowledge-workspace">
       <KnowledgeSidebar
-        section="pages"
         count={total}
         createTo="/pages/new"
         createLabel="New page"

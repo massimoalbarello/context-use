@@ -5,7 +5,6 @@ import { SignOutButton } from '../auth/sign-out-button';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 
 export function KnowledgeSidebar({
-  section,
   count,
   createTo,
   createLabel,
@@ -16,7 +15,6 @@ export function KnowledgeSidebar({
   loadMore,
   children,
 }: {
-  section: 'pages' | 'entities';
   count: number;
   createTo: '/pages/new' | '/entities/new';
   createLabel: string;
@@ -29,7 +27,6 @@ export function KnowledgeSidebar({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const initialLoadFailed = Boolean(error && count === 0);
-  const sectionLabel = section === 'pages' ? 'Pages' : 'Entities';
   const profileInitial = profile.selfEntity.name.trim().charAt(0).toLocaleUpperCase();
 
   return (
@@ -55,20 +52,15 @@ export function KnowledgeSidebar({
       </div>
 
       <div className="sidebar-body">
-        <nav className="sidebar-sections" aria-label="Knowledge collections">
-          <Link to="/pages" activeProps={{ 'data-active': true }}>
-            Pages
-          </Link>
-          <Link to="/entities" activeProps={{ 'data-active': true }}>
-            Entities
-          </Link>
-        </nav>
-
-        <div className="sidebar-actions">
-          <div>
-            <h1>{sectionLabel}</h1>
-            <span className="count-badge">{count}</span>
-          </div>
+        <div className="sidebar-navigation">
+          <nav className="sidebar-sections" aria-label="Knowledge collections">
+            <Link to="/pages" activeProps={{ 'data-active': true }}>
+              Pages
+            </Link>
+            <Link to="/entities" activeProps={{ 'data-active': true }}>
+              Entities
+            </Link>
+          </nav>
           <Link className="sidebar-create" to={createTo}>
             <span className="create-icon" aria-hidden="true">
               +
