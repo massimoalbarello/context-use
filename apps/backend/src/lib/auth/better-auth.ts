@@ -7,6 +7,7 @@ import type { OpenAPIV3 } from 'openapi-types';
 import { API_PATH } from '#lib/api-path.ts';
 import {
   authorizeOwnerPasskeyRegistration,
+  OWNER_DISPLAY_NAME,
   OWNER_SYNTHETIC_EMAIL,
   OWNER_USER_ID,
   OwnerRegistrationError,
@@ -25,13 +26,11 @@ function ownerRegistrationApiError(error: unknown): never {
   }
 
   const status =
-    error.code === 'invalid_owner_name'
-      ? 'BAD_REQUEST'
-      : error.code === 'owner_registration_state_invalid'
-        ? 'INTERNAL_SERVER_ERROR'
-        : error.code === 'user_verification_required'
-          ? 'UNAUTHORIZED'
-          : 'FORBIDDEN';
+    error.code === 'owner_registration_state_invalid'
+      ? 'INTERNAL_SERVER_ERROR'
+      : error.code === 'user_verification_required'
+        ? 'UNAUTHORIZED'
+        : 'FORBIDDEN';
   throw APIError.from(status, { code: error.code, message: error.message });
 }
 
@@ -63,15 +62,15 @@ export function createAuth({
         },
         registration: {
           requireSession: false,
-          resolveUser: async ({ ctx, context }) => {
+          resolveUser: async ({ ctx }) => {
             try {
               const owner = await ctx.context.internalAdapter.findUserById(OWNER_USER_ID);
-              return ownerRegistrationUser({ context, ownerExists: Boolean(owner) });
+              return ownerRegistrationUser({ ownerExists: Boolean(owner) });
             } catch (error) {
               return ownerRegistrationApiError(error);
             }
           },
-          afterVerification: async ({ ctx, verification, user, context }) => {
+          afterVerification: async ({ ctx, verification, user }) => {
             try {
               if (user.id !== OWNER_USER_ID) {
                 throw new OwnerRegistrationError('owner_registration_state_invalid');
@@ -86,11 +85,10 @@ export function createAuth({
               });
 
               if (action === 'create-owner') {
-                const { displayName } = ownerRegistrationUser({ context, ownerExists: false });
                 await ctx.context.internalAdapter.createUser(
                   {
                     id: OWNER_USER_ID,
-                    name: displayName,
+                    name: OWNER_DISPLAY_NAME,
                     email: OWNER_SYNTHETIC_EMAIL,
                     emailVerified: true,
                   },

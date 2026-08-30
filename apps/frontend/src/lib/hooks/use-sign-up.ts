@@ -2,17 +2,12 @@ import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/r
 import { sessionQueryOptions } from '../../queries/session';
 import { authClient } from '../auth';
 
-type SignUpVariables = {
-  name: string;
-};
-
-export function useSignUp(): UseMutationResult<void, Error, SignUpVariables> {
+export function useSignUp(): UseMutationResult<void, Error, void> {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ name }: SignUpVariables) => {
+    mutationFn: async () => {
       const { error } = await authClient.passkey.addPasskey({
-        context: name,
         createSession: true,
         name: 'Primary passkey',
       });
