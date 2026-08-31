@@ -21,6 +21,7 @@
     "dev": "bun run --bun turbo dev --filter=@repo/backend --filter=@repo/frontend",
     "dev:isolated": "bun run scripts/dev-isolated.ts",
     "dev:isolated:seeded": "bun run scripts/dev-isolated.ts --seed",
+    "deploy:nibrun": "bun run build && nib run apps/backend/dist/app",
     "build": "bun run --bun turbo build",
     "build:local": "BUILD_TARGET=host bun run --bun turbo build --filter=@repo/backend",
     "check:types": "bun run --bun turbo check:types",
