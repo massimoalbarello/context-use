@@ -1,5 +1,7 @@
 # Context Use
 
+[![Deploy on nibrun](https://nibrun.com/button.svg)](https://app.nibrun.com/deploy?name=context-use&binary=https%3A%2F%2Fgithub.com%2Fmassimoalbarello%2Fcontext-use%2Freleases%2Fdownload%2Fnibrun-latest%2Fcontext-use&port=3000&env=BETTER_AUTH_SECRET&minimal)
+
 Context Use is personal hypermedia for human-agent collaboration.
 
 ## Run it locally
@@ -15,7 +17,8 @@ the owner of the instance.
 ## Deploy it on nibrun
 
 [nibrun](https://github.com/ilbertt/nibrun) runs Context Use as one small server with an HTTPS URL
-and persistent storage. Install its CLI and sign in once:
+and persistent storage. Use the button above to deploy the latest build, or install its CLI and
+sign in once:
 ```sh
 curl -fsSL https://nibrun.com/install.sh | sh
 nib login
