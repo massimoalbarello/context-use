@@ -5,7 +5,6 @@ import {
   DEFAULT_BACKEND_PORT,
   DEFAULT_DATA_FOLDER,
   LOCAL_PUBLIC_ORIGIN,
-  missingRequiredEnvironmentVariableMessage,
 } from '#lib/runtime-config.ts';
 
 // nibrun injects `NIBRUN_HOSTNAME` as the bare `<slug>.nibrun.app` the app is served on, always
@@ -14,14 +13,6 @@ import {
 function defaultBaseUrl(): string {
   const nibrunHostname = process.env[BACKEND_ENVIRONMENT.nibrunHostname];
   return nibrunHostname ? `https://${nibrunHostname}` : LOCAL_PUBLIC_ORIGIN;
-}
-
-function required(name: BackendEnvironmentVariable): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(missingRequiredEnvironmentVariableMessage(name));
-  }
-  return value;
 }
 
 function optional({
@@ -38,7 +29,7 @@ type Env = {
   PORT: number;
   BASE_URL: URL;
   DATA_FOLDER: string;
-  BETTER_AUTH_SECRET: string;
+  BETTER_AUTH_SECRET: string | undefined;
 };
 
 export function loadEnv(): Env {
@@ -52,6 +43,6 @@ export function loadEnv(): Env {
     DATA_FOLDER: resolve(
       optional({ name: BACKEND_ENVIRONMENT.dataFolder, defaultValue: DEFAULT_DATA_FOLDER }),
     ),
-    BETTER_AUTH_SECRET: required(BACKEND_ENVIRONMENT.authSecret),
+    BETTER_AUTH_SECRET: process.env[BACKEND_ENVIRONMENT.authSecret] || undefined,
   };
 }

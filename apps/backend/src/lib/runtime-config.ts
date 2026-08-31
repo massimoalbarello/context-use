@@ -14,9 +14,3 @@ export type BackendEnvironmentVariable =
   (typeof BACKEND_ENVIRONMENT)[keyof typeof BACKEND_ENVIRONMENT];
 
 export const LOCAL_PUBLIC_ORIGIN = `http://localhost:${DEFAULT_FRONTEND_PORT}`;
-
-export function missingRequiredEnvironmentVariableMessage(
-  name: BackendEnvironmentVariable,
-): string {
-  return `Missing required environment variable: ${name}`;
-}

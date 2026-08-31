@@ -1,9 +1,11 @@
 import { createApp } from '#app.ts';
 import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
+import { loadAuthSecret } from '#lib/auth/auth-secret.ts';
 import { createAuth } from '#lib/auth/better-auth.ts';
 import { loadEnv } from '#lib/env.ts';
 import { createLogger } from '#lib/logger.ts';
+import { BACKEND_ENVIRONMENT } from '#lib/runtime-config.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-pages/model.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
@@ -24,6 +26,18 @@ const REQUEST_BODY_OVERHEAD_KIBIBYTES = 64;
 const REQUEST_BODY_OVERHEAD_BYTES = REQUEST_BODY_OVERHEAD_KIBIBYTES * BYTES_PER_KIBIBYTE;
 
 const env = loadEnv();
+const authSecret = await loadAuthSecret({
+  dataFolder: env.DATA_FOLDER,
+  environmentSecret: env.BETTER_AUTH_SECRET,
+});
+const logger = createLogger('main');
+if (authSecret.source.kind === 'environment') {
+  logger.info(`using auth secret from ${BACKEND_ENVIRONMENT.authSecret}`);
+} else if (authSecret.source.kind === 'generated-file') {
+  logger.info(`generated auth secret at ${authSecret.source.path}`);
+} else {
+  logger.info(`using auth secret from ${authSecret.source.path}`);
+}
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
 
 try {
@@ -45,7 +59,7 @@ try {
   const auth = createAuth({
     database,
     baseUrl: env.BASE_URL,
-    secret: env.BETTER_AUTH_SECRET,
+    secret: authSecret.value,
   });
 
   const app = createApp({
@@ -65,7 +79,7 @@ try {
     maxRequestBodySize: MAX_KNOWLEDGE_PAGE_BYTES + REQUEST_BODY_OVERHEAD_BYTES,
   });
 
-  createLogger('main').info(`listening on ${server!.url.origin}`);
+  logger.info(`listening on ${server!.url.origin}`);
 } catch (error) {
   await database.close();
   throw error;
