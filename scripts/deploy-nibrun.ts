@@ -4,22 +4,14 @@ import {
   BACKEND_ENVIRONMENT,
   DEFAULT_BACKEND_PORT,
   DEFAULT_DATA_FOLDER,
-  missingRequiredEnvironmentVariableMessage,
 } from '../apps/backend/src/lib/runtime-config';
 
 const FAILURE_EXIT_CODE = 1;
 const APP_NAME = 'context-use';
 const APP_SLUG_PREFIX = `${APP_NAME}-`;
 const AUTH_SECRET_BYTES = 32;
-const FAILED_STATUS = 'failed';
-const LOG_HISTORY = '8760h';
-const MISSING_AUTH_SECRET_ERROR = missingRequiredEnvironmentVariableMessage(
-  BACKEND_ENVIRONMENT.authSecret,
-);
 
 type AppListOutput = { apps: { slug: string }[] };
-type AppStatusOutput = { status: string };
-type LogRecordOutput = { message: string };
 
 const nibExecutable = Bun.which('nib');
 if (!nibExecutable) {
@@ -70,44 +62,24 @@ function unexpectedJson(command: string[]): never {
   process.exit(FAILURE_EXIT_CODE);
 }
 
-async function jsonValues<Value>(command: string[]): Promise<Value[]> {
+async function jsonValue<Value>(command: string[]): Promise<Value> {
   const serialized = await output([nibExecutable, '--json', ...command]);
-  if (!serialized.trim()) {
-    return [];
+  const lines = serialized.trim().split('\n');
+  const [line] = lines;
+  if (lines.length !== 1 || !line) {
+    return unexpectedJson(command);
   }
   try {
-    return serialized
-      .trimEnd()
-      .split('\n')
-      .map((line) => JSON.parse(line) as Value);
+    return JSON.parse(line) as Value;
   } catch {
     return unexpectedJson(command);
   }
-}
-
-async function jsonValue<Value>(command: string[]): Promise<Value> {
-  const values = await jsonValues<Value>(command);
-  const [value] = values;
-  return values.length === 1 && value ? value : unexpectedJson(command);
 }
 
 async function contextUseApps(): Promise<string[]> {
   const command = ['apps', 'list'];
   const { apps } = await jsonValue<AppListOutput>(command);
   return apps.map((app) => app.slug).filter((slug) => slug.startsWith(APP_SLUG_PREFIX));
-}
-
-async function failedForMissingAuthSecret(appSlug: string): Promise<boolean> {
-  const statusCommand = ['apps', 'status', '--app', appSlug];
-  const { status } = await jsonValue<AppStatusOutput>(statusCommand);
-  if (status !== FAILED_STATUS) {
-    return false;
-  }
-
-  const logsCommand = ['apps', 'logs', '--app', appSlug, '--timerange', LOG_HISTORY];
-  return (await jsonValues<LogRecordOutput>(logsCommand)).some((record) =>
-    record.message.includes(MISSING_AUTH_SECRET_ERROR),
-  );
 }
 
 const matchingApps = await contextUseApps();
@@ -124,21 +96,10 @@ if (matchingApps.length > 1) {
 }
 
 const [appSlug] = matchingApps;
-const configuredAuthSecret = process.env[BACKEND_ENVIRONMENT.authSecret] || undefined;
-const repairingAuthSecret =
-  appSlug !== undefined &&
-  configuredAuthSecret === undefined &&
-  (await failedForMissingAuthSecret(appSlug));
-if (repairingAuthSecret) {
-  console.log(`Repairing missing ${BACKEND_ENVIRONMENT.authSecret} configuration for ${appSlug}`);
-}
-// Existing apps retain unnamed environment variables. Generate only for creation or a confirmed
-// missing-secret failure; replacing a healthy app's secret would invalidate active sessions.
 const authSecret =
-  configuredAuthSecret ||
-  (appSlug === undefined || repairingAuthSecret
-    ? randomBytes(AUTH_SECRET_BYTES).toString('hex')
-    : undefined);
+  appSlug === undefined
+    ? process.env[BACKEND_ENVIRONMENT.authSecret] || randomBytes(AUTH_SECRET_BYTES).toString('hex')
+    : undefined;
 const environment = [
   '--env',
   `${BACKEND_ENVIRONMENT.dataFolder}=${DEFAULT_DATA_FOLDER}`,
