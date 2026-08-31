@@ -90,10 +90,6 @@ operations, transactions, idempotency, and public API contracts.
 `bun run build` produces `dist/app`, a Linux x64 binary with the frontend and migrations embedded.
 It listens on `PORT` and expects the variables in `.env.example`.
 
-`BETTER_AUTH_SECRET` is an optional operator override. Without it, the backend generates the secret
-once at `DATA_FOLDER/.better-auth-secret` and reuses that file; deployment paths must preserve the
-data folder rather than injecting a shared default secret.
-
 Follow the repository-local
 [deploy-to-nibrun skill](../../.agents/skills/deploy-to-nibrun/SKILL.md) for deployment commands and
 platform constraints.
