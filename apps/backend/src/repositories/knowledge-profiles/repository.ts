@@ -1,6 +1,7 @@
+import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
-import type { Entity } from '#models/entities/model.ts';
 import type { KnowledgeProfile } from '#models/knowledge-profiles/model.ts';
+import type { Queries } from '#queries.gen.ts';
 
 export interface KnowledgeProfilesRepositoryContract {
   create(input: {
@@ -18,17 +19,17 @@ export interface KnowledgeProfilesRepositoryContract {
   find(input: { ownerId: string }): Promise<KnowledgeProfile | null>;
 }
 
-type ProfileRow = Omit<Entity, 'isSelf'>;
+type ProfileRow = Queries['CreateKnowledgeProfileEntity'];
 
 function profileFrom(row: ProfileRow): KnowledgeProfile {
   return { selfEntity: { ...row, isSelf: true } };
 }
 
 export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryContract {
-  private readonly sql: SQL;
+  private readonly sql: TypedSQL<Queries>;
 
   constructor(sql: SQL) {
-    this.sql = sql;
+    this.sql = withTypes<Queries>(sql);
   }
 
   create(input: {
@@ -44,7 +45,8 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
     | { state: 'readable_id_conflict' }
   > {
     return this.sql.begin(async (db) => {
-      const profiles = await db<Array<{ ownerId: string }>>`
+      const profiles = await db.FindKnowledgeProfileOwner`
+        /* @notNull ownerId */
         select "owner_id" as "ownerId" from "knowledge_profile"
         where "owner_id" = ${input.ownerId}
       `;
@@ -52,7 +54,8 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
         return { state: 'profile_exists' } as const;
       }
 
-      const entities = await db<ProfileRow[]>`
+      const entities = await db.CreateKnowledgeProfileEntity`
+        /* @notNull id readableId name description createdAt updatedAt */
         insert into "entity"
           ("id", "owner_id", "readable_id", "name", "description", "created_at", "updated_at")
         values
@@ -76,7 +79,8 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
   }
 
   async find({ ownerId }: { ownerId: string }): Promise<KnowledgeProfile | null> {
-    const rows = await this.sql<ProfileRow[]>`
+    const rows = await this.sql.FindKnowledgeProfile`
+      /* @notNull id readableId name description createdAt updatedAt */
       select entity."id", entity."readable_id" as "readableId", entity."name",
         entity."description", entity."created_at" as "createdAt",
         entity."updated_at" as "updatedAt"

@@ -17,6 +17,9 @@
     "check:types": {
       "dependsOn": ["^check:types"]
     },
+    "check:queries": {
+      "dependsOn": ["^check:queries"]
+    },
     "test": {
       "dependsOn": ["^test"]
     },

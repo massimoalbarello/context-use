@@ -1,6 +1,6 @@
+import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#lib/pagination.ts';
-import type { AssetSummary } from '#models/assets/model.ts';
 import type { Entity } from '#models/entities/model.ts';
 import type {
   KnowledgePageAssetUsage,
@@ -11,6 +11,7 @@ import type {
   StoredKnowledgePage,
 } from '#models/knowledge-pages/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
+import type { Queries } from '#queries.gen.ts';
 
 export interface KnowledgePagesRepositoryContract {
   create(input: {
@@ -82,45 +83,11 @@ export interface KnowledgePagesRepositoryContract {
   }): Promise<{ state: 'replaced' } | { state: 'link_target_not_found'; target: string }>;
 }
 
-type StoredPageRow = {
-  id: string;
-  ownerId: string;
-  readableId: string;
-  currentRevisionId: string;
-  revisionNumber: number;
-  title: string;
-  excerpt: string;
-  storageKey: string;
-  contentHash: string;
-  sizeBytes: number;
-  createdAt: string;
-  updatedAt: string;
-};
+type StoredPageRow = Queries['FindKnowledgePage'];
 
-type SummaryRow = Omit<
-  StoredPageRow,
-  'ownerId' | 'currentRevisionId' | 'storageKey' | 'contentHash' | 'sizeBytes'
->;
+type SummaryRow = Queries['SearchKnowledgePages'];
 
-type RevisionSummaryRow = {
-  revisionNumber: number;
-  title: string;
-  createdAt: string;
-};
-
-const CURRENT_PAGE_SELECT = `
-  select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
-    page."current_revision_id" as "currentRevisionId",
-    revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
-    revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
-    revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
-    page."updated_at" as "updatedAt"
-  from "knowledge_page" page
-  join "knowledge_page_revision" revision
-    on revision."id" = page."current_revision_id"
-   and revision."page_id" = page."id"
-   and revision."owner_id" = page."owner_id"
-`;
+type RevisionSummaryRow = Queries['ListKnowledgePageRevisions'];
 
 function storedPageFrom(row: StoredPageRow): StoredKnowledgePage {
   return { ...row, revisionNumber: Number(row.revisionNumber), sizeBytes: Number(row.sizeBytes) };
@@ -134,13 +101,41 @@ function revisionSummaryFrom(row: RevisionSummaryRow): KnowledgePageRevisionSumm
   return { ...row, revisionNumber: Number(row.revisionNumber) };
 }
 
+async function findCurrentKnowledgePage({
+  db,
+  ownerId,
+  readableId,
+}: {
+  db: TypedSQL<Queries>;
+  ownerId: string;
+  readableId: string;
+}): Promise<StoredKnowledgePage | null> {
+  const rows = await db.FindCurrentKnowledgePage`
+    /* @notNull id ownerId readableId currentRevisionId revisionNumber title excerpt storageKey contentHash sizeBytes createdAt updatedAt */
+    select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
+      page."current_revision_id" as "currentRevisionId",
+      revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+      revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
+      revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
+      page."updated_at" as "updatedAt"
+    from "knowledge_page" page
+    join "knowledge_page_revision" revision
+      on revision."id" = page."current_revision_id"
+     and revision."page_id" = page."id"
+     and revision."owner_id" = page."owner_id"
+    where page."owner_id" = ${ownerId} and page."readable_id" = ${readableId}
+      and page."archived_at" is null
+  `;
+  return rows[0] ? storedPageFrom(rows[0]) : null;
+}
+
 async function resolveLinks({
   db,
   ownerId,
   links,
   self,
 }: {
-  db: SQL;
+  db: TypedSQL<Queries>;
   ownerId: string;
   links: KnowledgePageLinkSet;
   self?: { id: string; readableId: string };
@@ -155,7 +150,7 @@ async function resolveLinks({
 > {
   const entityIds: string[] = [];
   for (const readableId of links.entityReadableIds) {
-    const rows = await db<Array<{ id: string }>>`
+    const rows = await db.ResolveEntityLink`
       select "id" from "entity"
       where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
         and "archived_at" is null
@@ -172,7 +167,7 @@ async function resolveLinks({
       pageReferences.push({ pageId: self.id, fragment: reference.fragment });
       continue;
     }
-    const rows = await db<Array<{ id: string }>>`
+    const rows = await db.ResolvePageLink`
       select "id" from "knowledge_page"
       where "owner_id" = ${ownerId} and "readable_id" = ${reference.readableId}
         and "archived_at" is null
@@ -185,7 +180,7 @@ async function resolveLinks({
 
   const assetUsages: Array<{ assetId: string; presentation: 'embed' | 'attachment' }> = [];
   for (const usage of links.assetUsages) {
-    const rows = await db<Array<{ id: string }>>`
+    const rows = await db.ResolveAssetLink`
       select "id" from "asset"
       where "owner_id" = ${ownerId} and "readable_id" = ${usage.readableId}
         and "archived_at" is null
@@ -207,7 +202,7 @@ async function insertLinks({
   pageReferences,
   assetUsages,
 }: {
-  db: SQL;
+  db: TypedSQL<Queries>;
   ownerId: string;
   revisionId: string;
   entityIds: string[];
@@ -238,10 +233,10 @@ async function insertLinks({
 }
 
 export class KnowledgePagesRepository implements KnowledgePagesRepositoryContract {
-  private readonly sql: SQL;
+  private readonly sql: TypedSQL<Queries>;
 
   constructor(sql: SQL) {
-    this.sql = sql;
+    this.sql = withTypes<Queries>(sql);
   }
 
   create(input: {
@@ -272,7 +267,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         return resolved;
       }
 
-      const createdPages = await db<Array<{ id: string }>>`
+      const createdPages = await db.CreateKnowledgePage`
+        /* @notNull id */
         insert into "knowledge_page"
           ("id", "owner_id", "readable_id", "current_revision_id", "created_at", "updated_at")
         values
@@ -341,12 +337,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     | { state: 'link_target_not_found'; target: string }
   > {
     return this.sql.begin(async (db) => {
-      const rows = await db.unsafe<StoredPageRow[]>(
-        `${CURRENT_PAGE_SELECT} where page."owner_id" = $1 and page."readable_id" = $2
-          and page."archived_at" is null`,
-        [input.ownerId, input.readableId],
-      );
-      const current = rows[0] ? storedPageFrom(rows[0]) : null;
+      const current = await findCurrentKnowledgePage({
+        db,
+        ownerId: input.ownerId,
+        readableId: input.readableId,
+      });
       if (!current) {
         return { state: 'not_found' } as const;
       }
@@ -433,7 +428,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
   }) {
     const normalizedQuery = query?.trim() || null;
     const rowsPromise = normalizedQuery
-      ? this.sql<SummaryRow[]>`
+      ? this.sql.SearchKnowledgePages`
+          /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
           select page."id", page."readable_id" as "readableId",
             revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
             page."created_at" as "createdAt", page."updated_at" as "updatedAt"
@@ -448,7 +444,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           order by revision."title" collate nocase, page."readable_id"
           limit ${limit} offset ${offset}
         `
-      : this.sql<SummaryRow[]>`
+      : this.sql.ListKnowledgePages`
+          /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
           select page."id", page."readable_id" as "readableId",
             revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
             page."created_at" as "createdAt", page."updated_at" as "updatedAt"
@@ -460,7 +457,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           limit ${limit} offset ${offset}
         `;
     const countsPromise = normalizedQuery
-      ? this.sql<Array<{ total: number }>>`
+      ? this.sql.CountSearchedKnowledgePages`
+          /* @notNull total */
           select count(*) as "total"
           from "knowledge_page" page
           join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
@@ -471,7 +469,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
               or instr(page."readable_id", lower(${normalizedQuery})) > 0
             )
         `
-      : this.sql<Array<{ total: number }>>`
+      : this.sql.CountKnowledgePages`
+          /* @notNull total */
           select count(*) as "total" from "knowledge_page"
           where "owner_id" = ${ownerId} and "archived_at" is null
         `;
@@ -490,7 +489,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId: string;
     entityReadableId: string;
   }): Promise<KnowledgePageSummary[]> {
-    const rows = await this.sql<SummaryRow[]>`
+    const rows = await this.sql.ListKnowledgePagesByEntity`
+      /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt"
@@ -515,11 +515,22 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId: string;
     readableId: string;
   }): Promise<StoredKnowledgePage | null> {
-    const rows = await this.sql.unsafe<StoredPageRow[]>(
-      `${CURRENT_PAGE_SELECT} where page."owner_id" = $1 and page."readable_id" = $2
-        and page."archived_at" is null`,
-      [ownerId, readableId],
-    );
+    const rows = await this.sql.FindKnowledgePage`
+      /* @notNull id ownerId readableId currentRevisionId revisionNumber title excerpt storageKey contentHash sizeBytes createdAt updatedAt */
+      select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
+        page."current_revision_id" as "currentRevisionId",
+        revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+        revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
+        revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
+        page."updated_at" as "updatedAt"
+      from "knowledge_page" page
+      join "knowledge_page_revision" revision
+        on revision."id" = page."current_revision_id"
+       and revision."page_id" = page."id"
+       and revision."owner_id" = page."owner_id"
+      where page."owner_id" = ${ownerId} and page."readable_id" = ${readableId}
+        and page."archived_at" is null
+    `;
     return rows[0] ? storedPageFrom(rows[0]) : null;
   }
 
@@ -533,9 +544,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     archivedAt: string;
   }): Promise<ArchiveResult<KnowledgePageReference>> {
     return this.sql.begin(async (db) => {
-      const targets = await db<
-        Array<{ id: string; currentRevisionId: string; archivedAt: string | null }>
-      >`
+      const targets = await db.FindKnowledgePageArchiveTarget`
+        /* @notNull id currentRevisionId */
         select "id", "current_revision_id" as "currentRevisionId",
           "archived_at" as "archivedAt"
         from "knowledge_page"
@@ -593,7 +603,9 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       return null;
     }
     const [mentions, references, backlinks, assetUsages, revisions] = await Promise.all([
-      this.sql<Array<Omit<Entity, 'isSelf'> & { isSelf: number }>>`
+      this.sql.ListKnowledgePageMentions`
+        /* @notNull id readableId name description createdAt updatedAt */
+        /* @type isSelf number */
         select entity."id", entity."readable_id" as "readableId", entity."name",
           entity."description", profile."self_entity_id" is not null as "isSelf",
           entity."created_at" as "createdAt",
@@ -611,7 +623,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       this.referenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
       this.backlinkRows({ ownerId, targetPageId: page.id }),
       this.assetUsageRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
-      this.sql<RevisionSummaryRow[]>`
+      this.sql.ListKnowledgePageRevisions`
+        /* @notNull revisionNumber title createdAt */
         select "revision_number" as "revisionNumber", "title", "created_at" as "createdAt"
         from "knowledge_page_revision"
         where "owner_id" = ${ownerId} and "page_id" = ${page.id}
@@ -629,11 +642,22 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
   }
 
   async listCurrent({ ownerId }: { ownerId: string }): Promise<StoredKnowledgePage[]> {
-    const rows = await this.sql.unsafe<StoredPageRow[]>(
-      `${CURRENT_PAGE_SELECT} where page."owner_id" = $1
-        and page."archived_at" is null order by page."id"`,
-      [ownerId],
-    );
+    const rows = await this.sql.ListCurrentKnowledgePages`
+      /* @notNull id ownerId readableId currentRevisionId revisionNumber title excerpt storageKey contentHash sizeBytes createdAt updatedAt */
+      select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
+        page."current_revision_id" as "currentRevisionId",
+        revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+        revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
+        revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
+        page."updated_at" as "updatedAt"
+      from "knowledge_page" page
+      join "knowledge_page_revision" revision
+        on revision."id" = page."current_revision_id"
+       and revision."page_id" = page."id"
+       and revision."owner_id" = page."owner_id"
+      where page."owner_id" = ${ownerId} and page."archived_at" is null
+      order by page."id"
+    `;
     return rows.map(storedPageFrom);
   }
 
@@ -651,7 +675,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     links: KnowledgePageLinkSet;
   }): Promise<{ state: 'replaced' } | { state: 'link_target_not_found'; target: string }> {
     return this.sql.begin(async (db) => {
-      const pages = await db<Array<{ id: string; currentRevisionId: string }>>`
+      const pages = await db.FindKnowledgePageForIndexReplacement`
+        /* @notNull id currentRevisionId */
         select "id", "current_revision_id" as "currentRevisionId"
         from "knowledge_page"
         where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
@@ -704,11 +729,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId,
     pageId,
   }: {
-    db: SQL;
+    db: TypedSQL<Queries>;
     ownerId: string;
     pageId: string;
   }): Promise<KnowledgePageReference[]> {
-    const rows = await db<Array<SummaryRow & { fragment: string }>>`
+    const rows = await db.ListActiveKnowledgePageReferrers`
+      /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt fragment */
       select referring_page."id", referring_page."readable_id" as "readableId",
         current_referring_revision."revision_number" as "revisionNumber",
         current_referring_revision."title", current_referring_revision."excerpt",
@@ -741,7 +767,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId: string;
     sourceRevisionId: string;
   }): Promise<KnowledgePageReference[]> {
-    const rows = await this.sql<Array<SummaryRow & { fragment: string }>>`
+    const rows = await this.sql.ListKnowledgePageReferences`
+      /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt fragment */
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt",
@@ -768,7 +795,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId: string;
     targetPageId: string;
   }): Promise<KnowledgePageReference[]> {
-    const rows = await this.sql<Array<SummaryRow & { fragment: string }>>`
+    const rows = await this.sql.ListKnowledgePageBacklinks`
+      /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt fragment */
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt",
@@ -798,7 +826,9 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId: string;
     sourceRevisionId: string;
   }): Promise<KnowledgePageAssetUsage[]> {
-    const rows = await this.sql<Array<AssetSummary & { presentation: 'embed' | 'attachment' }>>`
+    const rows = await this.sql.ListKnowledgePageAssetUsages`
+      /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
+      /* @type presentation 'embed' | 'attachment' */
       select asset."id", asset."readable_id" as "readableId", asset."name",
         asset."media_type" as "mediaType", asset."extension",
         asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt",
