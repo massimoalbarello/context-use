@@ -51,8 +51,9 @@ Each resource type owns one reusable identity component:
   distinguishing description or type.
 - Pages are document-led: document cue, H1 title, and—when space permits—a short excerpt computed
   from the first meaningful body text after the H1.
-- Records and assets receive their own identity language when their product meaning is implemented;
-  they must not masquerade as pages or entities.
+- Assets are file-led: a safe thumbnail or file cue, meaningful name, and—when space permits—format
+  and size. They must not masquerade as pages or entities. Records receive their own identity
+  language when their product meaning is implemented.
 
 Outside rendered Markdown, resources appear through these type-owned card components in sidebars,
 pickers, search, and relationship views. The shared card surface owns dimensions, padding, hover,
@@ -92,8 +93,11 @@ competing for the screen.
   shell or render the entire knowledge base at once.
 - Keep selection and the contextual New action in the sidebar. Do not repeat the active collection
   tab as another heading. Keep the owner profile and sign-out action at the bottom.
-- Remember the last selected page and entity for the browser session. Switching collections returns
-  to that resource. Opening any page card or page link selects its sidebar card and opens Preview.
+- Choose the active resource collection from one compact selector beside its contextual New action;
+  do not add a horizontal tab for every new collection.
+- Remember the last selected entity, page, and asset for the browser session. Switching collections
+  returns to that resource. Opening any page card or page link selects its sidebar card and opens
+  Preview.
 - Creation starts from an action and gets a focused route, dialog, or surface; creation forms never
   permanently occupy the main workspace.
 - When collapsed, expose one menu control in the foreground surface corner. Do not stack placeholder
@@ -113,13 +117,20 @@ same ownership.
   Preview; do not duplicate the title, revision number, or update timestamp in shell chrome.
 - Entities keep their type, name, and distinguishing description visible because those fields are
   their identity.
-- Page and entity detail shells share the same content alignment, heading row, spacing rhythm, and
-  top-right action anchor. Resource-specific content begins strictly below the heading row.
-- Entering edit mode replaces Edit with Cancel and Save at the same top-right anchor. It must not
-  shift the header, spacing, or content.
+- Every current and future resource detail shell—including entities, pages, and assets—shares the
+  same content alignment, heading row, spacing rhythm, and top-right action anchor. Adding a
+  resource type means extending this shared contract, not creating another detail pattern.
+  Resource-specific content begins strictly below the heading row.
+- The shared resource-detail action component owns action wording, order, size, and pending state.
+  At rest, `Edit {resource}` precedes lifecycle actions. Entering edit mode replaces that group with
+  `Cancel` followed by `Save {resource}` at the same top-right anchor. Routes must not rebuild that
+  button group or shift the header, spacing, or content.
 - Edit displayed identity in place when the presented and editable values are the same concept.
-  Reuse the established field treatment and keep editability obvious without duplicating content
-  in a form card or adding an “editing” badge.
+  Entity and asset names use the shared resource-name display and input treatment, so editing swaps
+  the H1 for a matching field without duplicating content in a form card or adding an “editing”
+  badge.
+- On asset details, opening and downloading are different promises. Open uses the ordinary content
+  URL in a new tab with inline disposition; Download requests attachment disposition explicitly.
 - Preserve deliberate space between the heading row and the first tab or field. Remove dividers,
   borders, nested cards, and metadata that do not clarify grouping or interaction.
 
@@ -136,6 +147,12 @@ visual language as the workspace.
 
 ## Forms and validation
 
+- Creation routes share the same focused shell, compact heading, description, field rhythm, and
+  bottom primary-action placement. Differences must follow the resource input itself, not a new
+  page composition.
+- File selection keeps the native input accessible but does not expose the browser-specific
+  combined control. Present the established outline-button trigger and the selected filename as
+  separate elements, with size guidance beneath them.
 - Do not present untouched forms as erroneous. Show required-field errors only after the user
   attempts the action, then update those errors as the user edits.
 - Keep the primary action available before validation so the first submit attempt can reveal what

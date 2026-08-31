@@ -12,7 +12,7 @@ export function WorkspaceEmpty({
   eyebrow: string;
   title: string;
   description: string;
-  createTo: '/pages/new' | '/entities/new';
+  createTo: '/entities/new' | '/pages/new' | '/assets/new';
   createLabel: string;
 }) {
   return (

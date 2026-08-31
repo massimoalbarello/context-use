@@ -6,6 +6,7 @@
     "#*": "./src/*"
   },
   "exports": {
+    "./asset": "./src/models/assets/model.ts",
     "./entity": "./src/models/entities/model.ts",
     "./runtime-config": "./src/lib/runtime-config.ts",
     "./types": "./src/types.ts"

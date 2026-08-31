@@ -37,6 +37,13 @@ PAGES = [
         "markdown": read_seed_text("pages/weekly-review.md"),
     },
 ]
+ASSETS = [
+    {
+        "readableId": "sample-profile-portrait",
+        "name": "Sample profile portrait",
+        "path": "assets/profile.jpeg",
+    }
+]
 
 
 def wait_until(predicate, failure_message, timeout_seconds=UI_TIMEOUT_SECONDS):
@@ -48,8 +55,16 @@ def wait_until(predicate, failure_message, timeout_seconds=UI_TIMEOUT_SECONDS):
     raise RuntimeError(failure_message)
 
 
+def checked_api_response(method, path, result):
+    response = json.loads(result)
+    if not response["ok"]:
+        raise RuntimeError(
+            f"{method} {path} failed with {response['status']}: {response['body']}"
+        )
+    return json.loads(response["body"])
+
+
 def api_request(method, path, body):
-    request_body = json.dumps(body)
     result = js(
         f"""
         (async () => {{
@@ -57,7 +72,7 @@ def api_request(method, path, body):
             method: {json.dumps(method)},
             credentials: 'same-origin',
             headers: {{ 'content-type': 'application/json' }},
-            body: JSON.stringify({request_body}),
+            body: JSON.stringify({json.dumps(body)}),
           }});
           return JSON.stringify({{
             ok: response.ok,
@@ -67,12 +82,58 @@ def api_request(method, path, body):
         }})()
         """
     )
-    response = json.loads(result)
-    if not response["ok"]:
-        raise RuntimeError(
-            f"{method} {path} failed with {response['status']}: {response['body']}"
-        )
-    return json.loads(response["body"])
+    return checked_api_response(method, path, result)
+
+
+def create_asset(asset):
+    input_id = "isolated-seed-asset-file"
+    js(
+        f"""
+        (() => {{
+          document.getElementById({json.dumps(input_id)})?.remove();
+          const input = document.createElement('input');
+          input.id = {json.dumps(input_id)};
+          input.type = 'file';
+          input.hidden = true;
+          document.body.append(input);
+        }})()
+        """
+    )
+    upload_file(
+        f"#{input_id}",
+        str((FIXTURE_FOLDER / asset["path"]).resolve()),
+    )
+    result = js(
+        f"""
+        (async () => {{
+          const input = document.getElementById({json.dumps(input_id)});
+          try {{
+            const file = input?.files?.[0];
+            if (!file) throw new Error('Seed asset file was not transferred to the browser');
+            const form = new FormData();
+            form.set('name', {json.dumps(asset["name"])});
+            form.set('file', file);
+            const response = await fetch('/api/assets', {{
+              method: 'POST',
+              credentials: 'same-origin',
+              body: form,
+            }});
+            return JSON.stringify({{
+              ok: response.ok,
+              status: response.status,
+              body: await response.text(),
+            }});
+          }} finally {{
+            input?.remove();
+          }}
+        }})()
+        """
+    )
+    created = checked_api_response("POST", "/api/assets", result)
+    if created["readableId"] != asset["readableId"]:
+        raise RuntimeError("Created asset did not match the fixture")
+    if created["mediaType"] != "image/jpeg":
+        raise RuntimeError("Seed asset bytes were not detected as JPEG")
 
 
 def create_profile(profile):
@@ -154,20 +215,25 @@ def seed_isolated_data():
         create_entity(entity)
     for page in PAGES:
         create_page(page)
+    for asset in ASSETS:
+        create_asset(asset)
     update_page(
         "project-brief",
         1,
         read_seed_text("revisions/project-brief.md"),
     )
 
-    # Refresh the stale setup route so its normal profile guard can settle on the workspace.
-    cdp("Page.reload")
+    # Use a document navigation so the new app instance reads the seeded profile instead of
+    # retaining the setup route's pre-seed query cache.
+    goto_url(f"{APP_URL}/pages")
+    wait_for_load()
     wait_until(
         lambda: urlparse(page_info()["url"]).path.startswith("/pages"),
-        "Seeded profile did not leave the setup route after refresh",
+        "Seeded profile did not open the workspace",
     )
     print(
-        f"Seeded 1 profile, {len(ENTITIES)} entities, and {len(PAGES)} linked pages"
+        f"Seeded 1 profile, {len(ENTITIES)} entities, {len(PAGES)} linked pages, "
+        f"and {len(ASSETS)} asset"
     )
 
 

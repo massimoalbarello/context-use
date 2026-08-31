@@ -10,11 +10,13 @@ import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#models/readable-ids/model.ts';
+import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
+import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
@@ -42,6 +44,7 @@ const ARCHIVE_INVARIANT_MIGRATION = new URL(
   '../../../src/db/migrations/0004_prevent_self_entity_archiving.sql',
   import.meta.url,
 );
+const ASSET_MIGRATION = new URL('../../../src/db/migrations/0005_add_assets.sql', import.meta.url);
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 3;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
@@ -105,6 +108,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         ['0002_add_entity_archived_at.sql', Bun.file(ENTITY_ARCHIVE_MIGRATION)],
         ['0003_add_knowledge_page_archived_at.sql', Bun.file(PAGE_ARCHIVE_MIGRATION)],
         ['0004_prevent_self_entity_archiving.sql', Bun.file(ARCHIVE_INVARIANT_MIGRATION)],
+        ['0005_add_assets.sql', Bun.file(ASSET_MIGRATION)],
       ]),
     });
     const timestamp = '2026-01-01T00:00:00.000Z';
@@ -124,6 +128,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     });
     const app = createApp({
       auth: ownerAuth(),
+      assetsService: new AssetsService({ assets: new AssetsRepository(database), storage }),
       frontendAssetsService,
       entitiesService: new EntitiesService({
         entities: entitiesRepository,

@@ -22,4 +22,17 @@ describe('knowledge page Markdown', () => {
     expect(html).toContain('>Header page</h1>');
     expect(html).toContain('>The body remains visible.</p>');
   });
+
+  test('renders asset embeds and attachments through authenticated content routes', () => {
+    const html = renderToStaticMarkup(
+      <KnowledgePageMarkdown
+        markdown={
+          '# Evidence\n\n![Quarterly chart](context-use://asset/quarterly-chart)\n\n[Download model](context-use://asset/financial-model)'
+        }
+      />,
+    );
+
+    expect(html).toContain('src="/api/assets/quarterly-chart/content"');
+    expect(html).toContain('href="/api/assets/financial-model/content"');
+  });
 });

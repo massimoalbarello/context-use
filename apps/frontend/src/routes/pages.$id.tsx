@@ -1,8 +1,10 @@
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
+import { AssetLink } from '../components/assets/asset-link';
 import { EntityLink } from '../components/entities/entity-link';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
+import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
 import { ResourceList } from '../components/knowledge/resource-list';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
@@ -69,8 +71,10 @@ function PageLinkList({
 }
 
 function PageLinksView({ page }: { page: KnowledgePage }) {
+  const embeddedAssets = page.assetUsages.filter((usage) => usage.presentation === 'embed');
+  const attachedAssets = page.assetUsages.filter((usage) => usage.presentation === 'attachment');
   return (
-    <div className="grid gap-8 py-7 md:grid-cols-3">
+    <div className="grid gap-8 py-7 md:grid-cols-2 xl:grid-cols-3">
       <section>
         <div className="mb-4 flex items-center gap-3">
           <h2 className="font-semibold text-lg">Mentions</h2>
@@ -90,6 +94,28 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
       </section>
       <PageLinkList label="References" links={page.references} />
       <PageLinkList id="referenced-by" label="Referenced by" links={page.backlinks} />
+      {[
+        { label: 'Embedded assets', usages: embeddedAssets },
+        { label: 'Attached assets', usages: attachedAssets },
+      ].map(({ label, usages }) => (
+        <section key={label}>
+          <div className="mb-4 flex items-center gap-3">
+            <h2 className="font-semibold text-lg">{label}</h2>
+            <Badge variant="secondary">{usages.length}</Badge>
+          </div>
+          {usages.length > 0 ? (
+            <ResourceList>
+              {usages.map(({ asset }) => (
+                <li key={asset.id}>
+                  <AssetLink asset={asset} presentation="card" />
+                </li>
+              ))}
+            </ResourceList>
+          ) : (
+            <p className="text-muted-foreground text-sm">None yet.</p>
+          )}
+        </section>
+      ))}
     </div>
   );
 }
@@ -160,40 +186,26 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
         <ResourceDetailHeading
           actions={
             editing ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  type="button"
-                  onClick={() => {
-                    updatePage.reset();
-                    setEditing(false);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="lg"
-                  type="submit"
-                  form={PAGE_EDIT_FORM_ID}
-                  disabled={updatePage.isPending}
-                >
-                  {updatePage.isPending ? 'Saving…' : 'Save page'}
-                </Button>
-              </>
+              <ResourceDetailActions
+                mode="edit"
+                resource="page"
+                form={PAGE_EDIT_FORM_ID}
+                pending={updatePage.isPending}
+                onCancel={() => {
+                  updatePage.reset();
+                  setEditing(false);
+                }}
+              />
             ) : (
-              <>
-                <Button
-                  size="lg"
-                  type="button"
-                  onClick={() => {
-                    updatePage.reset();
-                    setArchiveConflictVisible(false);
-                    setEditing(true);
-                  }}
-                >
-                  Edit page
-                </Button>
+              <ResourceDetailActions
+                mode="view"
+                resource="page"
+                onEdit={() => {
+                  updatePage.reset();
+                  setArchiveConflictVisible(false);
+                  setEditing(true);
+                }}
+              >
                 <ResourceArchiveAction
                   blocked={hasInboundUsages}
                   pending={archivePage.isPending}
@@ -216,7 +228,7 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
                     );
                   }}
                 />
-              </>
+              </ResourceDetailActions>
             )
           }
         >

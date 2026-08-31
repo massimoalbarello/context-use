@@ -24,6 +24,7 @@ The observation changes the next action.`);
       links: {
         entityReadableIds: ['luca-bianchi'],
         pageReferences: [{ readableId: 'growth-playbook', fragment: 'feedback-loop' }],
+        assetUsages: [],
       },
     });
   });
@@ -44,7 +45,7 @@ Use this syntax:
 [Luca](context-use://entity/luca-bianchi)
 \`\`\``);
 
-    expect(parsed.links).toEqual({ entityReadableIds: [], pageReferences: [] });
+    expect(parsed.links).toEqual({ entityReadableIds: [], pageReferences: [], assetUsages: [] });
   });
 
   test('derives a bounded plain-text excerpt from the first meaningful body text', () => {
@@ -68,5 +69,29 @@ Use this syntax:
     expect(() =>
       parseKnowledgePageMarkdown('# Broken link\n\ncontext-use://page/growth-playbook'),
     ).toThrow('labelled Markdown links');
+  });
+
+  test('distinguishes embedded assets from attachments', () => {
+    const parsed = parseKnowledgePageMarkdown(`# Evidence
+
+![Chart](context-use://asset/quarterly-chart)
+
+[Download data](context-use://asset/quarterly-chart)`);
+
+    expect(parsed.links.assetUsages).toEqual([
+      { readableId: 'quarterly-chart', presentation: 'embed' },
+      { readableId: 'quarterly-chart', presentation: 'attachment' },
+    ]);
+  });
+
+  test('rejects fragments on assets and image syntax for non-assets', () => {
+    expect(() =>
+      parseKnowledgePageMarkdown(
+        '# Broken asset\n\n[Chart](context-use://asset/quarterly-chart#section)',
+      ),
+    ).toThrow('Page link fragments');
+    expect(() =>
+      parseKnowledgePageMarkdown('# Broken page\n\n![Page](context-use://page/quarterly-chart)'),
+    ).toThrow('Only assets');
   });
 });

@@ -63,6 +63,44 @@ describe('knowledge links', () => {
       cursor: 58,
     });
   });
+
+  test('embeds verified raster assets and attaches other files by default', () => {
+    const markdown = 'See @chart';
+    const link = findActiveKnowledgeLink({ markdown, cursor: markdown.length });
+    if (!link) {
+      throw new Error('Expected an active knowledge link');
+    }
+
+    expect(
+      insertKnowledgeLink({
+        markdown,
+        link,
+        target: {
+          kind: 'asset',
+          asset: {
+            name: 'Quarterly chart',
+            readableId: 'quarterly-chart',
+            mediaType: 'image/png',
+          },
+        },
+      }).markdown,
+    ).toBe('See ![Quarterly chart](context-use://asset/quarterly-chart) ');
+
+    expect(
+      insertKnowledgeLink({
+        markdown,
+        link,
+        target: {
+          kind: 'asset',
+          asset: {
+            name: 'Financial model',
+            readableId: 'financial-model',
+            mediaType: 'application/zip',
+          },
+        },
+      }).markdown,
+    ).toBe('See [Financial model](context-use://asset/financial-model) ');
+  });
 });
 
 describe('knowledge picker scrolling', () => {

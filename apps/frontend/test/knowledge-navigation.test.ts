@@ -25,11 +25,15 @@ describe('knowledge navigation', () => {
       collection: 'entities',
       readableId: 'luca',
     });
+    expect(knowledgeResourceFromPath('/assets/quarterly-chart')).toEqual({
+      collection: 'assets',
+      readableId: 'quarterly-chart',
+    });
     expect(knowledgeResourceFromPath('/pages/new')).toBeNull();
     expect(knowledgeResourceFromPath('/pages')).toBeNull();
   });
 
-  test('keeps the last page and entity together for one owner', () => {
+  test('keeps the last entity, page, and asset together for one owner', () => {
     const storage = memoryStorage();
 
     writeRememberedKnowledgeResource({
@@ -44,7 +48,20 @@ describe('knowledge navigation', () => {
       collection: 'entities',
       readableId: 'luca',
     });
+    writeRememberedKnowledgeResource({
+      storage,
+      ownerEntityId: 'owner-id',
+      collection: 'assets',
+      readableId: 'quarterly-chart',
+    });
 
+    expect(
+      readRememberedKnowledgeResource({
+        storage,
+        ownerEntityId: 'owner-id',
+        collection: 'assets',
+      }),
+    ).toBe('quarterly-chart');
     expect(
       readRememberedKnowledgeResource({
         storage,

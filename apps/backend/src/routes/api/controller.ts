@@ -1,6 +1,8 @@
 import { Elysia } from 'elysia';
 import { API_PATH } from '#lib/api-path.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
+import { createAssetReadableIdController } from '#routes/api/assets/[assetReadableId]/controller.ts';
+import { createAssetsController } from '#routes/api/assets/controller.ts';
 import { createAuthController } from '#routes/api/auth/controller.ts';
 import { createEntityReadableIdController } from '#routes/api/entities/[entityReadableId]/controller.ts';
 import { createEntitiesController } from '#routes/api/entities/controller.ts';
@@ -9,6 +11,7 @@ import { createOwnerRegistrationController } from '#routes/api/owner-registratio
 import { createPageReadableIdController } from '#routes/api/pages/[pageReadableId]/controller.ts';
 import { createPagesController } from '#routes/api/pages/controller.ts';
 import { createKnowledgeProfileController } from '#routes/api/profile/controller.ts';
+import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { HealthServiceContract } from '#services/health/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
@@ -18,6 +21,7 @@ import type { OwnerRegistrationServiceContract } from '#services/owner-registrat
 // The `/api` prefix is applied here, so child controllers keep bare path strings.
 export function createApiController({
   auth,
+  assetsService,
   entitiesService,
   healthService,
   ownerRegistrationService,
@@ -25,6 +29,7 @@ export function createApiController({
   profilesService,
 }: {
   auth: Auth;
+  assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
   ownerRegistrationService: OwnerRegistrationServiceContract;
@@ -34,6 +39,8 @@ export function createApiController({
   return new Elysia({ prefix: API_PATH })
     .use(createAuthController({ auth }))
     .use(createOwnerRegistrationController({ ownerRegistrationService }))
+    .use(createAssetsController({ auth, assetsService }))
+    .use(createAssetReadableIdController({ auth, assetsService }))
     .use(createEntitiesController({ auth, entitiesService }))
     .use(createEntityReadableIdController({ auth, entitiesService }))
     .use(createPagesController({ auth, pagesService }))
