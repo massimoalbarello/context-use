@@ -23,6 +23,8 @@ export type ArchivePageResult =
 
 export const pagesQueryKey = ['pages'] as const;
 export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
+export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
+export const pageSuggestionsQueryKey = [...pagesQueryKey, 'suggestions'] as const;
 
 export const pagesQueryOptions = infiniteQueryOptions({
   queryKey: pagesListQueryKey,
@@ -39,7 +41,7 @@ export const pagesQueryOptions = infiniteQueryOptions({
 
 export function pageSuggestionsQueryOptions(query: string) {
   return queryOptions({
-    queryKey: [...pagesQueryKey, 'suggestions', query],
+    queryKey: [...pageSuggestionsQueryKey, query],
     queryFn: async () => {
       const { data, error } = await api.api.pages.get({
         query: { limit: 7, offset: 0, query },
@@ -54,7 +56,7 @@ export function pageSuggestionsQueryOptions(query: string) {
 
 export function pageQueryOptions(readableId: string) {
   return queryOptions({
-    queryKey: [...pagesQueryKey, 'detail', readableId],
+    queryKey: [...pageDetailsQueryKey, readableId],
     queryFn: async () => {
       const { data, error } = await api.api.pages({ pageReadableId: readableId }).get();
       if (error) {

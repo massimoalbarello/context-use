@@ -1,6 +1,6 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
-import { type ArchiveEntityResult, archiveEntity, entitiesQueryKey } from '../../queries/entities';
-import { pagesQueryKey } from '../../queries/pages';
+import { type ArchiveEntityResult, archiveEntity } from '../../queries/entities';
+import { settleArchivedEntityQueries } from './archive-query-cache';
 
 export function useArchiveEntity(): UseMutationResult<
   ArchiveEntityResult,
@@ -11,11 +11,8 @@ export function useArchiveEntity(): UseMutationResult<
 
   return useMutation({
     mutationFn: archiveEntity,
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
-        queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
-      ]);
+    onSuccess: (...[result, { readableId }]) => {
+      settleArchivedEntityQueries({ queryClient, readableId, result });
     },
   });
 }

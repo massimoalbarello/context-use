@@ -23,6 +23,8 @@ export type ArchiveEntityResult =
 
 export const entitiesQueryKey = ['entities'] as const;
 export const entitiesListQueryKey = [...entitiesQueryKey, 'list'] as const;
+export const entityDetailsQueryKey = [...entitiesQueryKey, 'detail'] as const;
+export const entitySuggestionsQueryKey = [...entitiesQueryKey, 'suggestions'] as const;
 
 export const entitiesQueryOptions = infiniteQueryOptions({
   queryKey: entitiesListQueryKey,
@@ -39,7 +41,7 @@ export const entitiesQueryOptions = infiniteQueryOptions({
 
 export function entitySuggestionsQueryOptions(query: string) {
   return queryOptions({
-    queryKey: [...entitiesQueryKey, 'suggestions', query],
+    queryKey: [...entitySuggestionsQueryKey, query],
     queryFn: async () => {
       const { data, error } = await api.api.entities.get({
         query: { limit: 7, offset: 0, query },
@@ -54,7 +56,7 @@ export function entitySuggestionsQueryOptions(query: string) {
 
 export function entityQueryOptions(readableId: string) {
   return queryOptions({
-    queryKey: [...entitiesQueryKey, 'detail', readableId],
+    queryKey: [...entityDetailsQueryKey, readableId],
     queryFn: async () => {
       const { data, error } = await api.api.entities({ entityReadableId: readableId }).get();
       if (error) {
