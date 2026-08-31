@@ -82,9 +82,17 @@ export class EntitiesService {
       updatedAt: new Date().toISOString(),
     });
   }
+
+  archive(input: { ownerId: string; readableId: string }) {
+    return this.entities.archive({
+      ownerId: input.ownerId,
+      readableId: input.readableId,
+      archivedAt: new Date().toISOString(),
+    });
+  }
 }
 
 export type EntitiesServiceContract = Pick<
   EntitiesService,
-  'create' | 'list' | 'detail' | 'update'
+  'create' | 'list' | 'detail' | 'update' | 'archive'
 >;

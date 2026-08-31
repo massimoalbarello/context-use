@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
+import type { KnowledgePageReference } from './pages';
 
 export type EntityPage = NonNullable<Awaited<ReturnType<typeof api.api.entities.get>>['data']>;
 
@@ -15,9 +16,15 @@ export type UpdateEntityVariables = {
   readableId: string;
   body: Parameters<ReturnType<typeof api.api.entities>['patch']>[0];
 };
+export type ArchiveEntityVariables = { readableId: string };
+export type ArchiveEntityResult =
+  | { state: 'archived' }
+  | { state: 'resource_in_use'; blockers: KnowledgePageReference[] };
 
 export const entitiesQueryKey = ['entities'] as const;
 export const entitiesListQueryKey = [...entitiesQueryKey, 'list'] as const;
+export const entityDetailsQueryKey = [...entitiesQueryKey, 'detail'] as const;
+export const entitySuggestionsQueryKey = [...entitiesQueryKey, 'suggestions'] as const;
 
 export const entitiesQueryOptions = infiniteQueryOptions({
   queryKey: entitiesListQueryKey,
@@ -34,7 +41,7 @@ export const entitiesQueryOptions = infiniteQueryOptions({
 
 export function entitySuggestionsQueryOptions(query: string) {
   return queryOptions({
-    queryKey: [...entitiesQueryKey, 'suggestions', query],
+    queryKey: [...entitySuggestionsQueryKey, query],
     queryFn: async () => {
       const { data, error } = await api.api.entities.get({
         query: { limit: 7, offset: 0, query },
@@ -49,7 +56,7 @@ export function entitySuggestionsQueryOptions(query: string) {
 
 export function entityQueryOptions(readableId: string) {
   return queryOptions({
-    queryKey: [...entitiesQueryKey, 'detail', readableId],
+    queryKey: [...entityDetailsQueryKey, readableId],
     queryFn: async () => {
       const { data, error } = await api.api.entities({ entityReadableId: readableId }).get();
       if (error) {
@@ -76,4 +83,17 @@ export async function updateEntity({ readableId, body }: UpdateEntityVariables):
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
+}
+
+export async function archiveEntity({
+  readableId,
+}: ArchiveEntityVariables): Promise<ArchiveEntityResult> {
+  const { error } = await api.api.entities({ entityReadableId: readableId }).archive.put();
+  if (error) {
+    if (error.status === ApiStatus.Conflict && 'blockers' in error.value) {
+      return { state: 'resource_in_use', blockers: error.value.blockers };
+    }
+    throw new Error(apiErrorMessage(error));
+  }
+  return { state: 'archived' };
 }

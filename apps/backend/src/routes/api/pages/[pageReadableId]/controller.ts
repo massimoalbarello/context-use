@@ -1,4 +1,4 @@
-import { Elysia, StatusMap } from 'elysia';
+import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
@@ -8,6 +8,10 @@ import {
   knowledgePageResponse,
   UpdateKnowledgePageBodySchema,
 } from '#routes/api/pages/model.ts';
+import {
+  ResourceInUseResponseSchema,
+  resourceInUseResponse,
+} from '#routes/api/resource-archiving/model.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 
 export function createPageReadableIdController({
@@ -82,6 +86,30 @@ export function createPageReadableIdController({
           [StatusMap['Not Found']]: ErrorResponseSchema,
           [StatusMap.Conflict]: ErrorResponseSchema,
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .put(
+      '/pages/:pageReadableId/archive',
+      async ({ params, user, status }) => {
+        const result = await pagesService.archive({
+          ownerId: user.id,
+          readableId: params.pageReadableId,
+        });
+        if (result.state === 'resource_in_use') {
+          return status(StatusMap.Conflict, resourceInUseResponse(result.blockers));
+        }
+        return result.state === 'archived'
+          ? status(StatusMap['No Content'], undefined)
+          : status(StatusMap['Not Found'], { error: 'Knowledge page not found' });
+      },
+      {
+        detail: { tags: ['Pages'], summary: 'Archive a knowledge page' },
+        params: KnowledgePageParamsSchema,
+        response: {
+          [StatusMap['No Content']]: t.Void(),
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap.Conflict]: ResourceInUseResponseSchema,
         },
       },
     );

@@ -30,8 +30,21 @@ const KNOWLEDGE_MIGRATION = new URL(
   '../../../src/db/migrations/0001_knowledge.sql',
   import.meta.url,
 );
+const ENTITY_ARCHIVE_MIGRATION = new URL(
+  '../../../src/db/migrations/0002_add_entity_archived_at.sql',
+  import.meta.url,
+);
+const PAGE_ARCHIVE_MIGRATION = new URL(
+  '../../../src/db/migrations/0003_add_knowledge_page_archived_at.sql',
+  import.meta.url,
+);
+const ARCHIVE_INVARIANT_MIGRATION = new URL(
+  '../../../src/db/migrations/0004_prevent_self_entity_archiving.sql',
+  import.meta.url,
+);
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 3;
+const EXPECTED_GROWTH_REVISION_COUNT = 3;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -89,6 +102,9 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       migrations: new Map([
         ['0000_better_auth_schema.sql', Bun.file(AUTH_MIGRATION)],
         ['0001_knowledge.sql', Bun.file(KNOWLEDGE_MIGRATION)],
+        ['0002_add_entity_archived_at.sql', Bun.file(ENTITY_ARCHIVE_MIGRATION)],
+        ['0003_add_knowledge_page_archived_at.sql', Bun.file(PAGE_ARCHIVE_MIGRATION)],
+        ['0004_prevent_self_entity_archiving.sql', Bun.file(ARCHIVE_INVARIANT_MIGRATION)],
       ]),
     });
     const timestamp = '2026-01-01T00:00:00.000Z';
@@ -100,15 +116,17 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     `;
 
     const pagesRepository = new KnowledgePagesRepository(database);
+    const entitiesRepository = new EntitiesRepository(database);
+    const storage = new LocalStorage(join(dataFolder, 'objects'));
     const pagesService = new KnowledgePagesService({
       pages: pagesRepository,
-      storage: new LocalStorage(join(dataFolder, 'objects')),
+      storage,
     });
     const app = createApp({
       auth: ownerAuth(),
       frontendAssetsService,
       entitiesService: new EntitiesService({
-        entities: new EntitiesRepository(database),
+        entities: entitiesRepository,
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
@@ -461,6 +479,232 @@ Revise the current knowledge instead of appending snapshots.`,
         ({ readableId }) => readableId,
       ),
     ).toEqual(['growth-playbook']);
+
+    expect(
+      await entitiesRepository.archive({
+        ownerId: 'someone-else',
+        readableId: 'luca-bianchi',
+        archivedAt: timestamp,
+      }),
+    ).toEqual({ state: 'not_found' });
+    expect(
+      await pagesRepository.archive({
+        ownerId: 'someone-else',
+        readableId: 'growth-playbook',
+        archivedAt: timestamp,
+      }),
+    ).toEqual({ state: 'not_found' });
+
+    const selfArchiveResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/entities/test-owner/archive',
+      }),
+    );
+    expect(selfArchiveResponse.status).toBe(StatusMap.Conflict);
+
+    const blockedEntityArchiveResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/entities/luca-bianchi/archive',
+      }),
+    );
+    expect(blockedEntityArchiveResponse.status).toBe(StatusMap.Conflict);
+    expect(await blockedEntityArchiveResponse.json()).toEqual({
+      error: 'Remove or replace every active inbound relationship before archiving this resource.',
+      blockers: [
+        {
+          page: expect.objectContaining({ readableId: 'growth-playbook' }),
+          fragment: null,
+        },
+      ],
+    });
+
+    const blockedPageArchiveResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/pages/growth-playbook/archive',
+      }),
+    );
+    expect(blockedPageArchiveResponse.status).toBe(StatusMap.Conflict);
+    expect(await blockedPageArchiveResponse.json()).toEqual({
+      error: 'Remove or replace every active inbound relationship before archiving this resource.',
+      blockers: [
+        {
+          page: expect.objectContaining({ readableId: 'operating-rhythm' }),
+          fragment: 'feedback-loop',
+        },
+      ],
+    });
+
+    const removeEntityUsageResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/pages/growth-playbook',
+        body: {
+          expectedRevisionNumber: 2,
+          markdown: `# Growth playbook
+
+[Test Owner](context-use://entity/test-owner) owns the live account.
+
+## Feedback loop
+
+Revise the current knowledge instead of appending snapshots. Compare the [alternative](context-use://page/${duplicatePage.readableId}).`,
+        },
+      }),
+    );
+    expect(removeEntityUsageResponse.status).toBe(StatusMap.OK);
+
+    const archivedEntityResponse = await app.handle(
+      jsonRequest({ method: 'PUT', path: '/entities/luca-bianchi/archive' }),
+    );
+    expect(archivedEntityResponse.status).toBe(StatusMap['No Content']);
+    expect(await archivedEntityResponse.text()).toBe('');
+
+    const repeatedEntityArchiveResponse = await app.handle(
+      jsonRequest({ method: 'PUT', path: '/entities/luca-bianchi/archive' }),
+    );
+    expect(repeatedEntityArchiveResponse.status).toBe(StatusMap['No Content']);
+
+    const activeEntitiesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/entities?query=luca-bianchi' }),
+    );
+    const activeEntities = (await activeEntitiesResponse.json()) as {
+      items: Array<{ readableId: string }>;
+      total: number;
+    };
+    expect(activeEntities.total).toBe(1);
+    expect(activeEntities.items.map(({ readableId }) => readableId)).not.toContain('luca-bianchi');
+    const archivedEntityDetailResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/entities/luca-bianchi' }),
+    );
+    expect(archivedEntityDetailResponse.status).toBe(StatusMap['Not Found']);
+
+    const updateWithArchivedMentionResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/pages/growth-playbook',
+        body: {
+          expectedRevisionNumber: 3,
+          markdown: `# Growth playbook
+
+[Luca](context-use://entity/luca-bianchi) still owns the live account.`,
+        },
+      }),
+    );
+    expect(updateWithArchivedMentionResponse.status).toBe(StatusMap['Bad Request']);
+    expect(await updateWithArchivedMentionResponse.json()).toEqual({
+      error: 'Link target not found: entity/luca-bianchi',
+    });
+
+    const removePageUsageResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/pages/operating-rhythm',
+        body: {
+          expectedRevisionNumber: 1,
+          markdown: '# Operating rhythm\n\nReview the feedback system every Friday.',
+        },
+      }),
+    );
+    expect(removePageUsageResponse.status).toBe(StatusMap.OK);
+
+    const pageBeforeArchive = await database<
+      Array<{
+        currentRevisionId: string;
+        storageKey: string;
+        outgoingMentions: number;
+        outgoingReferences: number;
+        revisions: number;
+      }>
+    >`
+      select
+        page."current_revision_id" as "currentRevisionId",
+        revision."storage_key" as "storageKey",
+        (select count(*) from "knowledge_page_entity_mention" mention
+          where mention."source_revision_id" = page."current_revision_id") as "outgoingMentions",
+        (select count(*) from "knowledge_page_reference" reference
+          where reference."source_revision_id" = page."current_revision_id") as "outgoingReferences",
+        (select count(*) from "knowledge_page_revision" history
+          where history."page_id" = page."id") as "revisions"
+      from "knowledge_page" page
+      join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+      where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'growth-playbook'
+    `;
+    expect(Number(pageBeforeArchive[0]?.outgoingMentions)).toBe(1);
+    expect(Number(pageBeforeArchive[0]?.outgoingReferences)).toBe(1);
+    expect(Number(pageBeforeArchive[0]?.revisions)).toBe(EXPECTED_GROWTH_REVISION_COUNT);
+
+    const archivedPageResponse = await app.handle(
+      jsonRequest({ method: 'PUT', path: '/pages/growth-playbook/archive' }),
+    );
+    expect(archivedPageResponse.status).toBe(StatusMap['No Content']);
+    expect(await archivedPageResponse.text()).toBe('');
+
+    const activePagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?query=growth-playbook' }),
+    );
+    const activePages = (await activePagesResponse.json()) as {
+      items: Array<{ readableId: string }>;
+      total: number;
+    };
+    expect(activePages.total).toBe(1);
+    expect(activePages.items.map(({ readableId }) => readableId)).not.toContain('growth-playbook');
+
+    const directlyAddressedArchivedPageResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages/growth-playbook' }),
+    );
+    expect(directlyAddressedArchivedPageResponse.status).toBe(StatusMap['Not Found']);
+
+    const archivedPageState = await database<
+      Array<{
+        archivedAt: string | null;
+        outgoingMentions: number;
+        outgoingReferences: number;
+        incomingReferences: number;
+      }>
+    >`
+      select page."archived_at" as "archivedAt",
+        (select count(*) from "knowledge_page_entity_mention" mention
+          where mention."source_revision_id" = page."current_revision_id") as "outgoingMentions",
+        (select count(*) from "knowledge_page_reference" outgoing
+          where outgoing."source_revision_id" = page."current_revision_id") as "outgoingReferences",
+        (select count(*) from "knowledge_page_reference" reference
+          where reference."target_page_id" = page."id") as "incomingReferences"
+      from "knowledge_page" page
+      where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'growth-playbook'
+    `;
+    expect(archivedPageState[0]?.archivedAt).toBeString();
+    expect(Number(archivedPageState[0]?.outgoingMentions)).toBe(0);
+    expect(Number(archivedPageState[0]?.outgoingReferences)).toBe(0);
+    expect(Number(archivedPageState[0]?.incomingReferences)).toBe(0);
+    expect(await storage.exists(pageBeforeArchive[0]?.storageKey ?? '')).toBe(true);
+    expect(await storage.file(pageBeforeArchive[0]?.storageKey ?? '').text()).toContain(
+      '[Test Owner](context-use://entity/test-owner)',
+    );
+
+    const operatingPageResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages/operating-rhythm' }),
+    );
+    expect(((await operatingPageResponse.json()) as { references: unknown[] }).references).toEqual(
+      [],
+    );
+
+    const updateWithArchivedPageReferenceResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/pages/operating-rhythm',
+        body: {
+          expectedRevisionNumber: 2,
+          markdown:
+            '# Operating rhythm\n\nUse the [feedback loop](context-use://page/growth-playbook) every Friday.',
+        },
+      }),
+    );
+    expect(updateWithArchivedPageReferenceResponse.status).toBe(StatusMap['Bad Request']);
+    expect(await updateWithArchivedPageReferenceResponse.json()).toEqual({
+      error: 'Link target not found: page/growth-playbook',
+    });
 
     expect(
       await pagesRepository.find({ ownerId: 'someone-else', readableId: 'growth-playbook' }),

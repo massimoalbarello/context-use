@@ -91,6 +91,11 @@ global client-state library until a concrete cross-route state model requires on
   times from the meaning of the data, and reuse the keys for reads, mutations, and invalidation.
 - Mutation success updates or invalidates canonical query data. Do not add refresh counters or a
   parallel cache in component state.
+- When a successful mutation makes the current detail unavailable, remove that exact detail query,
+  let navigation proceed without awaiting background refreshes, and invalidate only surviving
+  collection, picker, and relationship consumers. Never broadly invalidate a family in a way that
+  refetches the newly unavailable detail. Verify the journey has no avoidable post-success 4xx
+  requests, retries, or prolonged pending state.
 - Treat authenticated Query data as session-scoped. Clear it across authentication transitions or
   include the actor in its query key; private data must never be reused by another principal.
 - TanStack Form owns form state. Render it through accessible shadcn field primitives and map
@@ -136,6 +141,8 @@ global client-state library until a concrete cross-route state model requires on
 
 - Prefer semantic HTML. UI primitives assist accessibility but do not replace correct labels, focus
   behavior, keyboard interaction, contrast, reduced-motion handling, or manual verification.
+- Destructive confirmations use the shared shadcn/Base UI alert-dialog primitive. Do not use native
+  browser confirmation APIs or introduce a second dialog mechanism.
 
 ## Tests
 

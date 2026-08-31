@@ -9,15 +9,22 @@ export type KnowledgePageSummary = KnowledgePagePage['items'][number];
 export type KnowledgePage = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.pages>['get']>>['data']
 >;
+export type KnowledgePageReference = KnowledgePage['references'][number];
 
 export type CreatePageVariables = Parameters<typeof api.api.pages.post>[0];
 export type UpdatePageVariables = {
   readableId: string;
   body: Parameters<ReturnType<typeof api.api.pages>['put']>[0];
 };
+export type ArchivePageVariables = { readableId: string };
+export type ArchivePageResult =
+  | { state: 'archived' }
+  | { state: 'resource_in_use'; blockers: KnowledgePageReference[] };
 
 export const pagesQueryKey = ['pages'] as const;
 export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
+export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
+export const pageSuggestionsQueryKey = [...pagesQueryKey, 'suggestions'] as const;
 
 export const pagesQueryOptions = infiniteQueryOptions({
   queryKey: pagesListQueryKey,
@@ -34,7 +41,7 @@ export const pagesQueryOptions = infiniteQueryOptions({
 
 export function pageSuggestionsQueryOptions(query: string) {
   return queryOptions({
-    queryKey: [...pagesQueryKey, 'suggestions', query],
+    queryKey: [...pageSuggestionsQueryKey, query],
     queryFn: async () => {
       const { data, error } = await api.api.pages.get({
         query: { limit: 7, offset: 0, query },
@@ -49,7 +56,7 @@ export function pageSuggestionsQueryOptions(query: string) {
 
 export function pageQueryOptions(readableId: string) {
   return queryOptions({
-    queryKey: [...pagesQueryKey, 'detail', readableId],
+    queryKey: [...pageDetailsQueryKey, readableId],
     queryFn: async () => {
       const { data, error } = await api.api.pages({ pageReadableId: readableId }).get();
       if (error) {
@@ -76,4 +83,17 @@ export async function updatePage({ readableId, body }: UpdatePageVariables): Pro
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
+}
+
+export async function archivePage({
+  readableId,
+}: ArchivePageVariables): Promise<ArchivePageResult> {
+  const { error } = await api.api.pages({ pageReadableId: readableId }).archive.put();
+  if (error) {
+    if (error.status === ApiStatus.Conflict && 'blockers' in error.value) {
+      return { state: 'resource_in_use', blockers: error.value.blockers };
+    }
+    throw new Error(apiErrorMessage(error));
+  }
+  return { state: 'archived' };
 }
