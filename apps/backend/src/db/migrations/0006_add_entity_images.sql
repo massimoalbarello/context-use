@@ -7,4 +7,4 @@ create table "entity_image" (
   foreign key ("asset_id", "owner_id") references "asset" ("id", "owner_id") on delete cascade
 );
 
-create index "entity_image_asset_idx" on "entity_image" ("owner_id", "asset_id");
+create unique index "entity_image_asset_idx" on "entity_image" ("owner_id", "asset_id");

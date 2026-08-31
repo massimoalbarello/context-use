@@ -7,6 +7,11 @@ import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import { entityFrom } from '#views/entities/entity-view.ts';
 
+export type SetEntityImageResult =
+  | { state: 'updated'; entity: Entity }
+  | { state: 'not_found' }
+  | { state: 'image_in_use' };
+
 export interface EntityRepositoryContract {
   create(input: {
     id: string;
@@ -35,7 +40,7 @@ export interface EntityRepositoryContract {
     readableId: string;
     assetId: string;
     updatedAt: string;
-  }): Promise<Entity | null>;
+  }): Promise<SetEntityImageResult>;
   removeImage(input: {
     ownerId: string;
     readableId: string;
@@ -247,7 +252,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
     readableId: string;
     assetId: string;
     updatedAt: string;
-  }): Promise<Entity | null> {
+  }): Promise<SetEntityImageResult> {
     return this.sql.begin(async (db) => {
       const rows = await db.SetEntityImage`
         /* @notNull entityId */
@@ -258,19 +263,33 @@ export class EntitiesRepository implements EntityRepositoryContract {
         where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
           and entity."archived_at" is null and asset."id" = ${assetId}
           and asset."archived_at" is null
+          and not exists (
+            select 1 from "entity_image" assignment
+            where assignment."owner_id" = entity."owner_id"
+              and assignment."asset_id" = asset."id"
+              and assignment."entity_id" <> entity."id"
+          )
         on conflict ("entity_id") do update set
           "owner_id" = excluded."owner_id",
           "asset_id" = excluded."asset_id"
         returning "entity_id" as "entityId"
       `;
       if (!rows[0]) {
-        return null;
+        const assignments = await db.FindEntityImageAssignment`
+          /* @notNull entityId */
+          select "entity_id" as "entityId" from "entity_image"
+          where "owner_id" = ${ownerId} and "asset_id" = ${assetId}
+        `;
+        return assignments[0]
+          ? ({ state: 'image_in_use' } as const)
+          : ({ state: 'not_found' } as const);
       }
       await db`
         update "entity" set "updated_at" = ${updatedAt}
         where "owner_id" = ${ownerId} and "id" = ${rows[0].entityId}
       `;
-      return this.findWith({ db, ownerId, readableId });
+      const entity = await this.findWith({ db, ownerId, readableId });
+      return entity ? { state: 'updated' as const, entity } : { state: 'not_found' as const };
     });
   }
 

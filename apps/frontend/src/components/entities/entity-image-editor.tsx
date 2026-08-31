@@ -31,29 +31,25 @@ export function EntityImageEditor({
   const actionError = setImage.error ?? removeImage.error;
 
   function assign(assetReadableId: string) {
-    setImage.mutate({ readableId: entity.readableId, assetReadableId }, { onSuccess: onDone });
+    setImage.mutate({ readableId: entity.readableId, assetReadableId });
   }
 
   return (
     <section
+      id="entity-image-editor"
       className="grid max-w-3xl gap-5 rounded-xl bg-muted p-5"
       aria-labelledby="entity-image-heading"
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <EntityAvatar entity={entity} className="size-16 text-xl" />
-          <div>
-            <h2 className="font-semibold text-lg" id="entity-image-heading">
-              Entity image
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Choose an existing image asset or upload a new one.
-            </p>
-          </div>
+      <div className="flex min-w-0 items-center gap-4">
+        <EntityAvatar entity={entity} className="size-16 text-xl" />
+        <div>
+          <h2 className="font-semibold text-lg" id="entity-image-heading">
+            Entity image
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Choose an available image asset or upload a new one.
+          </p>
         </div>
-        <Button variant="outline" type="button" disabled={pending} onClick={onDone}>
-          Done
-        </Button>
       </div>
 
       <Tabs defaultValue="existing">
@@ -89,12 +85,13 @@ export function EntityImageEditor({
               ))}
             </ResourceList>
           ) : (
-            <p className="text-muted-foreground text-sm">No image assets found.</p>
+            <p className="text-muted-foreground text-sm">No available image assets found.</p>
           )}
         </TabsContent>
         <TabsContent value="upload" className="pt-4">
           <AssetUploadForm
             accept={IMAGE_ACCEPT}
+            defaultName={`${entity.name} image`}
             pending={pending}
             error={createAsset.error}
             onSubmit={(value) => {
@@ -107,20 +104,25 @@ export function EntityImageEditor({
       </Tabs>
 
       {actionError && <FieldError>{actionError.message}</FieldError>}
-      {entity.image && (
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Button
-            variant="outline"
-            type="button"
-            disabled={pending}
-            onClick={() => {
-              removeImage.mutate({ readableId: entity.readableId }, { onSuccess: onDone });
-            }}
-          >
-            {removeImage.isPending ? 'Removing…' : 'Remove image'}
-          </Button>
+          {entity.image && (
+            <Button
+              variant="outline"
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                removeImage.mutate({ readableId: entity.readableId });
+              }}
+            >
+              {removeImage.isPending ? 'Removing…' : 'Remove image'}
+            </Button>
+          )}
         </div>
-      )}
+        <Button variant="outline" type="button" disabled={pending} onClick={onDone}>
+          Done
+        </Button>
+      </div>
     </section>
   );
 }

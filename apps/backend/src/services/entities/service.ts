@@ -94,7 +94,10 @@ export class EntitiesService {
     readableId: string;
     assetReadableId: string;
   }): Promise<
-    { state: 'updated'; entity: Entity } | { state: 'not_found' } | { state: 'invalid_asset_type' }
+    | { state: 'updated'; entity: Entity }
+    | { state: 'not_found' }
+    | { state: 'invalid_asset_type' }
+    | { state: 'image_in_use' }
   > {
     const asset = await this.assets.find({
       ownerId: input.ownerId,
@@ -106,13 +109,12 @@ export class EntitiesService {
     if (!isEmbeddableAssetMedia(asset.mediaType)) {
       return { state: 'invalid_asset_type' };
     }
-    const entity = await this.entities.setImage({
+    return this.entities.setImage({
       ownerId: input.ownerId,
       readableId: input.readableId,
       assetId: asset.id,
       updatedAt: new Date().toISOString(),
     });
-    return entity ? { state: 'updated', entity } : { state: 'not_found' };
   }
 
   removeImage(input: { ownerId: string; readableId: string }): Promise<Entity | null> {

@@ -179,7 +179,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(crossOwnerImageResponse.status).toBe(StatusMap['Not Found']);
 
     const imageAssetsResponse = await app.handle(
-      new Request('http://localhost/api/assets?kind=image&query='),
+      new Request('http://localhost/api/assets?kind=entity_image&query='),
     );
     expect(imageAssetsResponse.status).toBe(StatusMap.OK);
     expect((await imageAssetsResponse.json()) as { items: Array<{ readableId: string }> }).toEqual(
@@ -235,17 +235,47 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       }),
     );
 
+    const secondEntityResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/entities',
+        body: { name: 'Maya Chen', description: 'Product designer and researcher' },
+      }),
+    );
+    expect(secondEntityResponse.status).toBe(StatusMap.Created);
+    const duplicateImageResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/entities/maya-chen/image',
+        body: { assetReadableId: 'quarterly-chart' },
+      }),
+    );
+    expect(duplicateImageResponse.status).toBe(StatusMap.Conflict);
+
+    const availableImageAssetsResponse = await app.handle(
+      new Request('http://localhost/api/assets?kind=entity_image&query='),
+    );
+    expect(availableImageAssetsResponse.status).toBe(StatusMap.OK);
+    expect((await availableImageAssetsResponse.json()) as { items: unknown[] }).toEqual(
+      expect.objectContaining({ items: [] }),
+    );
+
     const pageResponse = await app.handle(
       jsonRequest({
         method: 'POST',
         path: '/pages',
         body: {
-          markdown: `# Evidence report\n\n![Quarterly chart](context-use://asset/quarterly-chart)\n\n[Download chart](context-use://asset/quarterly-chart)`,
+          markdown: `# Evidence report\n\n![Quarterly chart](context-use://asset/quarterly-chart)\n\n[Download chart](context-use://asset/quarterly-chart)\n\n[Luca Bianchi](context-use://entity/luca-bianchi) reviewed the evidence.`,
         },
       }),
     );
     expect(pageResponse.status).toBe(StatusMap.Created);
-    const page = (await pageResponse.json()) as { readableId: string; revisionNumber: number };
+    const page = (await pageResponse.json()) as {
+      readableId: string;
+      revisionNumber: number;
+      mentions: Array<{ image: { readableId: string } | null }>;
+    };
+    expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
     const detailResponse = await app.handle(
       new Request('http://localhost/api/assets/quarterly-chart'),

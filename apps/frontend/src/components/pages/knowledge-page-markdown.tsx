@@ -2,6 +2,7 @@ import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import { assetContentUrl } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
+import type { EntitySummary } from '../../queries/entities';
 import { EntityLink } from '../entities/entity-link';
 import { KnowledgePageLink } from './knowledge-page-link';
 
@@ -9,6 +10,8 @@ type InternalLink =
   | { kind: 'entity'; readableId: string }
   | { kind: 'page'; readableId: string; fragment: string | undefined }
   | { kind: 'asset'; readableId: string };
+
+type EntityMention = Pick<EntitySummary, 'readableId' | 'name' | 'image'>;
 
 function internalLink(href: string): InternalLink | null {
   const match =
@@ -48,7 +51,27 @@ export function knowledgeHeadingId(children: ReactNode): string {
     .replace(/[\s-]+/g, '-');
 }
 
-export function KnowledgePageMarkdown({ markdown }: { markdown: string }) {
+export function entityMentionFrom({
+  readableId,
+  name,
+  mentions,
+}: {
+  readableId: string;
+  name: string;
+  mentions: EntityMention[];
+}): EntityMention {
+  return (
+    mentions.find((entity) => entity.readableId === readableId) ?? { readableId, name, image: null }
+  );
+}
+
+export function KnowledgePageMarkdown({
+  markdown,
+  mentions = [],
+}: {
+  markdown: string;
+  mentions?: EntityMention[];
+}) {
   return (
     <article className="py-3 md:py-5">
       <ReactMarkdown
@@ -60,10 +83,7 @@ export function KnowledgePageMarkdown({ markdown }: { markdown: string }) {
               const name = textContent(children);
               return (
                 <EntityLink
-                  entity={{
-                    readableId: target.readableId,
-                    name,
-                  }}
+                  entity={entityMentionFrom({ readableId: target.readableId, name, mentions })}
                   presentation="inline"
                 >
                   {children}

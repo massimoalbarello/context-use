@@ -14,7 +14,7 @@ export interface AssetsRepositoryContract {
     limit: number;
     offset: number;
     query?: string;
-    kind?: 'image';
+    kind?: 'entity_image';
   }): Promise<Page<AssetSummary>>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredAsset | null>;
   detail(input: { ownerId: string; readableId: string }): Promise<Asset | null>;
@@ -82,7 +82,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
     limit: number;
     offset: number;
     query?: string;
-    kind?: 'image';
+    kind?: 'entity_image';
   }) {
     const normalizedQuery = query?.trim() || null;
     const normalizedKind = kind ?? null;
@@ -94,7 +94,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
             "updated_at" as "updatedAt"
           from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
-            and (${normalizedKind} is null or "media_type" like 'image/%')
+            and (${normalizedKind} is null or (
+              "media_type" like 'image/%'
+              and not exists (
+                select 1 from "entity_image"
+                where "entity_image"."owner_id" = "asset"."owner_id"
+                  and "entity_image"."asset_id" = "asset"."id"
+              )
+            ))
             and (instr(lower("name"), lower(${normalizedQuery})) > 0
               or instr("readable_id", lower(${normalizedQuery})) > 0)
           order by "name" collate nocase, "readable_id" limit ${limit} offset ${offset}
@@ -106,7 +113,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
             "updated_at" as "updatedAt"
           from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
-            and (${normalizedKind} is null or "media_type" like 'image/%')
+            and (${normalizedKind} is null or (
+              "media_type" like 'image/%'
+              and not exists (
+                select 1 from "entity_image"
+                where "entity_image"."owner_id" = "asset"."owner_id"
+                  and "entity_image"."asset_id" = "asset"."id"
+              )
+            ))
           order by "updated_at" desc, "id" desc limit ${limit} offset ${offset}
         `;
     const countsPromise = normalizedQuery
@@ -114,7 +128,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
           /* @notNull total */
           select count(*) as "total" from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
-            and (${normalizedKind} is null or "media_type" like 'image/%')
+            and (${normalizedKind} is null or (
+              "media_type" like 'image/%'
+              and not exists (
+                select 1 from "entity_image"
+                where "entity_image"."owner_id" = "asset"."owner_id"
+                  and "entity_image"."asset_id" = "asset"."id"
+              )
+            ))
             and (instr(lower("name"), lower(${normalizedQuery})) > 0
               or instr("readable_id", lower(${normalizedQuery})) > 0)
         `
@@ -122,7 +143,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
           /* @notNull total */
           select count(*) as "total" from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
-            and (${normalizedKind} is null or "media_type" like 'image/%')
+            and (${normalizedKind} is null or (
+              "media_type" like 'image/%'
+              and not exists (
+                select 1 from "entity_image"
+                where "entity_image"."owner_id" = "asset"."owner_id"
+                  and "entity_image"."asset_id" = "asset"."id"
+              )
+            ))
         `;
     const [rows, counts] = await Promise.all([rowsPromise, countsPromise]);
     return pageFrom({

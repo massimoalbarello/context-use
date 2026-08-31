@@ -195,6 +195,11 @@ export interface ISetEntityImageResult {
     entityId: string;
 }
 
+/** Result of query `FindEntityImageAssignment`. */
+export interface IFindEntityImageAssignmentResult {
+    entityId: string;
+}
+
 /** Result of query `FindEntityImageRemovalTarget`. */
 export interface IFindEntityImageRemovalTargetResult {
     id: string;
@@ -481,6 +486,7 @@ export interface Queries {
     FindEntity: IFindEntityResult;
     UpdateEntityIdentity: IUpdateEntityIdentityResult;
     SetEntityImage: ISetEntityImageResult;
+    FindEntityImageAssignment: IFindEntityImageAssignmentResult;
     FindEntityImageRemovalTarget: IFindEntityImageRemovalTargetResult;
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;

@@ -97,6 +97,11 @@ export function createEntityReadableIdController({
             error: 'Entity images must be PNG, JPEG, GIF, or WebP assets',
           });
         }
+        if (result.state === 'image_in_use') {
+          return status(StatusMap.Conflict, {
+            error: 'This image asset is already assigned to another entity',
+          });
+        }
         return status(StatusMap.OK, entityResponse(result.entity));
       },
       {
@@ -106,6 +111,7 @@ export function createEntityReadableIdController({
         response: {
           [StatusMap.OK]: EntitySchema,
           [StatusMap['Bad Request']]: ErrorResponseSchema,
+          [StatusMap.Conflict]: ErrorResponseSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
         },
       },

@@ -292,7 +292,7 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
           </TabsList>
           <TabsContent value="preview">
             <div>
-              <KnowledgePageMarkdown markdown={page.markdown} />
+              <KnowledgePageMarkdown markdown={page.markdown} mentions={page.mentions} />
             </div>
           </TabsContent>
           <TabsContent value="links">

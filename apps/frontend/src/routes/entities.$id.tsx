@@ -12,7 +12,6 @@ import { ResourceName } from '../components/knowledge/resource-name';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
 import { useArchiveEntity } from '../lib/hooks/use-archive-entity';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';
@@ -62,24 +61,37 @@ function EntityRouteContent({ id }: { id: string }) {
   return (
     <DetailShell>
       {editing ? (
-        <EntityIdentityEditor
-          key={entity.updatedAt.toISOString()}
-          name={entity.name}
-          description={entity.description}
-          isSelf={entity.isSelf}
-          pending={updateEntity.isPending}
-          error={updateEntity.error}
-          onCancel={() => {
-            updateEntity.reset();
-            setEditing(false);
-          }}
-          onSubmit={(identity) =>
-            updateEntity.mutate(
-              { readableId: entity.readableId, body: identity },
-              { onSuccess: () => setEditing(false) },
-            )
-          }
-        />
+        <div className="grid gap-5">
+          <EntityIdentityEditor
+            name={entity.name}
+            description={entity.description}
+            isSelf={entity.isSelf}
+            image={entity.image}
+            imageEditorOpen={imageEditing}
+            pending={updateEntity.isPending}
+            error={updateEntity.error}
+            onEditImage={() => setImageEditing((visible) => !visible)}
+            onCancel={() => {
+              updateEntity.reset();
+              setImageEditing(false);
+              setEditing(false);
+            }}
+            onSubmit={(identity) =>
+              updateEntity.mutate(
+                { readableId: entity.readableId, body: identity },
+                {
+                  onSuccess: () => {
+                    setImageEditing(false);
+                    setEditing(false);
+                  },
+                },
+              )
+            }
+          />
+          {imageEditing && (
+            <EntityImageEditor entity={entity} onDone={() => setImageEditing(false)} />
+          )}
+        </div>
       ) : (
         <DetailHeader>
           <ResourceDetailHeading
@@ -124,16 +136,7 @@ function EntityRouteContent({ id }: { id: string }) {
             Entity {entity.isSelf && <Badge variant="secondary">You</Badge>}
           </ResourceDetailHeading>
           <div className="flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
-            <div className="grid shrink-0 justify-items-start gap-2">
-              <EntityAvatar entity={entity} className="size-24 text-3xl" />
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => setImageEditing((visible) => !visible)}
-              >
-                {imageEditing ? 'Cancel image' : entity.image ? 'Change image' : 'Add image'}
-              </Button>
-            </div>
+            <EntityAvatar entity={entity} className="size-24 text-3xl" />
             <div className="min-w-0 flex-1">
               <ResourceName>{entity.name}</ResourceName>
               <p className="mt-3 max-w-2xl text-lg text-muted-foreground leading-relaxed">
@@ -142,10 +145,6 @@ function EntityRouteContent({ id }: { id: string }) {
             </div>
           </div>
         </DetailHeader>
-      )}
-
-      {!editing && imageEditing && (
-        <EntityImageEditor entity={entity} onDone={() => setImageEditing(false)} />
       )}
 
       {archiveEntity.error && (

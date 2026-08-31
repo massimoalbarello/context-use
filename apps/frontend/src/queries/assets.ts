@@ -55,7 +55,7 @@ export function imageAssetSuggestionsQueryOptions(query: string) {
     queryKey: [...assetSuggestionsQueryKey, 'image', query],
     queryFn: async () => {
       const { data, error } = await api.api.assets.get({
-        query: { limit: 7, offset: 0, query, kind: 'image' },
+        query: { limit: 7, offset: 0, query, kind: 'entity_image' },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));
