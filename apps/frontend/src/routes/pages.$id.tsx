@@ -132,6 +132,7 @@ function KnowledgePageRoute() {
   const { data: page, error, refetch } = usePage(id);
   const updatePage = useUpdatePage();
   const archivePage = useArchivePage();
+  const [archiveConflictVisible, setArchiveConflictVisible] = useState(false);
 
   if (error) {
     return (
@@ -147,7 +148,7 @@ function KnowledgePageRoute() {
   if (!page) {
     return null;
   }
-  const archiveBlocked = page.backlinks.length > 0 || archivePage.data?.state === 'resource_in_use';
+  const hasInboundUsages = page.backlinks.length > 0;
 
   return (
     <DetailShell className={editing ? 'gap-4' : 'gap-0'} data-editing={editing}>
@@ -183,26 +184,32 @@ function KnowledgePageRoute() {
                   type="button"
                   onClick={() => {
                     updatePage.reset();
+                    setArchiveConflictVisible(false);
                     setEditing(true);
                   }}
                 >
                   Edit page
                 </Button>
                 <ResourceArchiveButton
-                  blocked={archiveBlocked}
                   pending={archivePage.isPending}
-                  onClick={() =>
+                  onClick={() => {
+                    if (hasInboundUsages) {
+                      setArchiveConflictVisible(true);
+                      return;
+                    }
                     archivePage.mutate(
                       { readableId: page.readableId },
                       {
                         onSuccess: (result) => {
                           if (result.state === 'archived') {
                             void navigate({ to: '/pages' });
+                          } else {
+                            setArchiveConflictVisible(true);
                           }
                         },
                       },
-                    )
-                  }
+                    );
+                  }}
                 />
               </>
             )
@@ -218,11 +225,8 @@ function KnowledgePageRoute() {
         </p>
       )}
 
-      {archiveBlocked && (
-        <div
-          className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm"
-          role="status"
-        >
+      {archiveConflictVisible && (
+        <div className="flex flex-wrap items-center gap-2 text-destructive text-sm" role="alert">
           <span>This page can’t be archived until every incoming reference is removed.</span>
           <Button
             size="sm"
