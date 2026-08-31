@@ -9,12 +9,17 @@ export type KnowledgePageSummary = KnowledgePagePage['items'][number];
 export type KnowledgePage = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.pages>['get']>>['data']
 >;
+export type KnowledgePageReference = KnowledgePage['references'][number];
 
 export type CreatePageVariables = Parameters<typeof api.api.pages.post>[0];
 export type UpdatePageVariables = {
   readableId: string;
   body: Parameters<ReturnType<typeof api.api.pages>['put']>[0];
 };
+export type ArchivePageVariables = { readableId: string };
+export type ArchivePageResult =
+  | { state: 'archived' }
+  | { state: 'resource_in_use'; blockers: KnowledgePageReference[] };
 
 export const pagesQueryKey = ['pages'] as const;
 export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
@@ -76,4 +81,17 @@ export async function updatePage({ readableId, body }: UpdatePageVariables): Pro
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
+}
+
+export async function archivePage({
+  readableId,
+}: ArchivePageVariables): Promise<ArchivePageResult> {
+  const { error } = await api.api.pages({ pageReadableId: readableId }).archive.put();
+  if (error) {
+    if (error.status === ApiStatus.Conflict && 'blockers' in error.value) {
+      return { state: 'resource_in_use', blockers: error.value.blockers };
+    }
+    throw new Error(apiErrorMessage(error));
+  }
+  return { state: 'archived' };
 }

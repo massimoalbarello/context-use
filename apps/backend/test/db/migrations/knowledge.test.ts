@@ -5,6 +5,22 @@ const KNOWLEDGE_MIGRATION = new URL(
   '../../../src/db/migrations/0001_knowledge.sql',
   import.meta.url,
 );
+const AUTH_MIGRATION = new URL(
+  '../../../src/db/migrations/0000_better_auth_schema.sql',
+  import.meta.url,
+);
+const ENTITY_ARCHIVE_MIGRATION = new URL(
+  '../../../src/db/migrations/0002_add_entity_archived_at.sql',
+  import.meta.url,
+);
+const PAGE_ARCHIVE_MIGRATION = new URL(
+  '../../../src/db/migrations/0003_add_knowledge_page_archived_at.sql',
+  import.meta.url,
+);
+const ARCHIVE_INVARIANT_MIGRATION = new URL(
+  '../../../src/db/migrations/0004_enforce_knowledge_resource_archiving.sql',
+  import.meta.url,
+);
 const CONTENT_HASH_LENGTH = 64;
 
 test('knowledge revisions require a lowercase hexadecimal SHA-256 hash', async () => {
@@ -33,6 +49,47 @@ test('knowledge revisions require a lowercase hexadecimal SHA-256 hash', async (
         ],
       ),
     ).toThrow();
+  } finally {
+    database.close();
+  }
+});
+
+test('archive schema preserves existing resources and rejects archiving the self entity', async () => {
+  const database = new Database(':memory:');
+
+  try {
+    database.exec(await Bun.file(AUTH_MIGRATION).text());
+    database.exec(await Bun.file(KNOWLEDGE_MIGRATION).text());
+    database.run(
+      `insert into "auth_user"
+        ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
+       values (?, ?, ?, ?, ?, ?)`,
+      ['owner-id', 'Owner', 'owner@example.com', 1, 'created', 'updated'],
+    );
+    database.run(
+      `insert into "entity"
+        ("id", "owner_id", "readable_id", "name", "description", "created_at", "updated_at")
+       values (?, ?, ?, ?, ?, ?, ?)`,
+      ['self-id', 'owner-id', 'owner', 'Owner', 'Self entity', 'created', 'updated'],
+    );
+    database.run(`insert into "knowledge_profile" ("owner_id", "self_entity_id") values (?, ?)`, [
+      'owner-id',
+      'self-id',
+    ]);
+
+    database.exec(await Bun.file(ENTITY_ARCHIVE_MIGRATION).text());
+    database.exec(await Bun.file(PAGE_ARCHIVE_MIGRATION).text());
+    database.exec(await Bun.file(ARCHIVE_INVARIANT_MIGRATION).text());
+
+    expect(
+      database.query(`select "archived_at" from "entity" where "id" = 'self-id'`).get(),
+    ).toEqual({ archived_at: null });
+    expect(() =>
+      database.run(`update "entity" set "archived_at" = ? where "id" = ?`, [
+        '2026-01-01T00:00:00.000Z',
+        'self-id',
+      ]),
+    ).toThrow('self entity cannot be archived');
   } finally {
     database.close();
   }

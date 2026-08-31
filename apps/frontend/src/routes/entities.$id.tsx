@@ -2,12 +2,14 @@ import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-route
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
+import { ResourceArchiveButton } from '../components/knowledge/resource-archive-button';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
 import { ResourceList } from '../components/knowledge/resource-list';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { useArchiveEntity } from '../lib/hooks/use-archive-entity';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';
 import { entityQueryOptions } from '../queries/entities';
@@ -27,7 +29,9 @@ function EntityRoute() {
   const { id } = Route.useParams();
   const { data: entity, error, refetch } = useEntity(id);
   const updateEntity = useUpdateEntity();
+  const archiveEntity = useArchiveEntity();
   const [editing, setEditing] = useState(false);
+  const navigate = Route.useNavigate();
 
   if (error) {
     return (
@@ -43,6 +47,7 @@ function EntityRoute() {
   if (!entity) {
     return null;
   }
+  const archiveBlocked = entity.pages.length > 0 || archiveEntity.data?.state === 'resource_in_use';
 
   return (
     <DetailShell>
@@ -69,16 +74,36 @@ function EntityRoute() {
         <DetailHeader>
           <ResourceDetailHeading
             actions={
-              <Button
-                size="lg"
-                type="button"
-                onClick={() => {
-                  updateEntity.reset();
-                  setEditing(true);
-                }}
-              >
-                Edit entity
-              </Button>
+              <>
+                <Button
+                  size="lg"
+                  type="button"
+                  onClick={() => {
+                    updateEntity.reset();
+                    setEditing(true);
+                  }}
+                >
+                  Edit entity
+                </Button>
+                {!entity.isSelf && (
+                  <ResourceArchiveButton
+                    blocked={archiveBlocked}
+                    pending={archiveEntity.isPending}
+                    onClick={() =>
+                      archiveEntity.mutate(
+                        { readableId: entity.readableId },
+                        {
+                          onSuccess: (result) => {
+                            if (result.state === 'archived') {
+                              void navigate({ to: '/entities' });
+                            }
+                          },
+                        },
+                      )
+                    }
+                  />
+                )}
+              </>
             }
           >
             Entity {entity.isSelf && <Badge variant="secondary">You</Badge>}
@@ -94,7 +119,23 @@ function EntityRoute() {
         </DetailHeader>
       )}
 
-      <section className="max-w-3xl pt-2">
+      {archiveEntity.error && (
+        <p className="text-destructive text-sm" role="alert">
+          {archiveEntity.error.message}
+        </p>
+      )}
+
+      {!entity.isSelf && archiveBlocked && (
+        <p className="text-muted-foreground text-sm" role="status">
+          This entity can’t be archived until every mention is removed or replaced.{' '}
+          <a className="font-medium text-foreground underline" href="#mentioned-by">
+            Review mentions
+          </a>
+          .
+        </p>
+      )}
+
+      <section className="max-w-3xl scroll-mt-24 pt-2" id="mentioned-by" tabIndex={-1}>
         <div className="mb-4 flex items-center gap-3">
           <h2 className="font-semibold text-lg">Mentioned by</h2>
           <Badge variant="secondary">{entity.pages.length}</Badge>
