@@ -18,3 +18,47 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      - name: Prepare nibrun binary
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: cp apps/backend/dist/app context-use
+
+      - name: Upload nibrun binary
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: nibrun-binary
+          path: context-use
+          if-no-files-found: error
+
+  publish-nibrun:
+    name: publish:nibrun
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: nibrun-release
+      cancel-in-progress: true
+    steps:
+      - name: Download nibrun binary
+        uses: actions/download-artifact@v8
+        with:
+          name: nibrun-binary
+
+      - name: Publish rolling nibrun release
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view nibrun-latest >/dev/null 2>&1; then
+            gh release upload nibrun-latest context-use --clobber
+            gh release edit nibrun-latest \
+              --notes "Built from ${GITHUB_SHA}. This asset is replaced after every successful build on main."
+          else
+            gh release create nibrun-latest context-use \
+              --title "nibrun deployment" \
+              --prerelease \
+              --notes "Built from ${GITHUB_SHA}. This asset is replaced after every successful build on main."
+          fi

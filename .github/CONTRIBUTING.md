@@ -7,10 +7,11 @@ git clone <repository-url>
 cd <repository-name>
 bun install
 cp apps/backend/.env.example apps/backend/.env
+bun run dev
 ```
 
-Generate a development secret with `openssl rand -base64 32`, add it as
-`BETTER_AUTH_SECRET` in `apps/backend/.env`, then start both applications with `bun run dev`.
+Context Use generates a development auth secret inside `DATA_FOLDER`. Set `BETTER_AUTH_SECRET` in
+`apps/backend/.env` only to override it.
 
 ## Before opening a pull request
 

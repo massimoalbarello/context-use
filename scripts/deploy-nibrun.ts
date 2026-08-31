@@ -1,15 +1,9 @@
-import { randomBytes } from 'node:crypto';
 import { BACKEND_BINARY_FILE } from '../apps/backend/scripts/shared/constants';
-import {
-  BACKEND_ENVIRONMENT,
-  DEFAULT_BACKEND_PORT,
-  DEFAULT_DATA_FOLDER,
-} from '../apps/backend/src/lib/runtime-config';
+import { DEFAULT_BACKEND_PORT } from '../apps/backend/src/lib/runtime-config';
 
 const FAILURE_EXIT_CODE = 1;
 const APP_NAME = 'context-use';
 const APP_SLUG_PREFIX = `${APP_NAME}-`;
-const AUTH_SECRET_BYTES = 32;
 
 type AppListOutput = { apps: { slug: string }[] };
 
@@ -96,16 +90,7 @@ if (matchingApps.length > 1) {
 }
 
 const [appSlug] = matchingApps;
-const authSecret =
-  appSlug === undefined
-    ? process.env[BACKEND_ENVIRONMENT.authSecret] || randomBytes(AUTH_SECRET_BYTES).toString('hex')
-    : undefined;
-const environment = [
-  '--env',
-  `${BACKEND_ENVIRONMENT.dataFolder}=${DEFAULT_DATA_FOLDER}`,
-  ...(authSecret === undefined ? [] : ['--env', `${BACKEND_ENVIRONMENT.authSecret}=${authSecret}`]),
-];
-const target = appSlug ? ['--app', appSlug, ...environment] : ['--name', APP_NAME, ...environment];
+const target = appSlug ? ['--app', appSlug] : ['--name', APP_NAME];
 
 await run([process.execPath, 'run', 'build']);
 await run([
