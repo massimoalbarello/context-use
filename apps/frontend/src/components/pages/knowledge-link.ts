@@ -1,3 +1,5 @@
+import { isEmbeddableAsset } from '../../lib/asset-presentation';
+import type { AssetSummary } from '../../queries/assets';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
 
@@ -9,7 +11,8 @@ export type ActiveKnowledgeLink = {
 
 export type KnowledgeLinkTarget =
   | { kind: 'entity'; entity: Pick<EntitySummary, 'name' | 'readableId'> }
-  | { kind: 'page'; page: Pick<KnowledgePageSummary, 'title' | 'readableId'> };
+  | { kind: 'page'; page: Pick<KnowledgePageSummary, 'title' | 'readableId'> }
+  | { kind: 'asset'; asset: Pick<AssetSummary, 'name' | 'readableId' | 'mediaType'> };
 
 const LINK_QUERY_PATTERN = /^[\p{L}\p{N} _.'-]*$/u;
 const MAX_LINK_QUERY_LENGTH = 80;
@@ -53,10 +56,21 @@ export function insertKnowledgeLink({
   link: ActiveKnowledgeLink;
   target: KnowledgeLinkTarget;
 }): { markdown: string; cursor: number } {
-  const label = target.kind === 'entity' ? target.entity.name : target.page.title;
-  const readableId = target.kind === 'entity' ? target.entity.readableId : target.page.readableId;
+  const label =
+    target.kind === 'entity'
+      ? target.entity.name
+      : target.kind === 'page'
+        ? target.page.title
+        : target.asset.name;
+  const readableId =
+    target.kind === 'entity'
+      ? target.entity.readableId
+      : target.kind === 'page'
+        ? target.page.readableId
+        : target.asset.readableId;
   const address = `context-use://${target.kind}/${readableId}`;
-  const markdownLink = `[${escapeMarkdownLabel(label)}](${address})`;
+  const embedPrefix = target.kind === 'asset' && isEmbeddableAsset(target.asset) ? '!' : '';
+  const markdownLink = `${embedPrefix}[${escapeMarkdownLabel(label)}](${address})`;
   const separator = /\s/.test(markdown[link.end] ?? '') ? '' : ' ';
   const nextMarkdown = `${markdown.slice(0, link.start)}${markdownLink}${separator}${markdown.slice(link.end)}`;
 

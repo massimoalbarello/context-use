@@ -1,4 +1,4 @@
-import { Link, useRouterState } from '@tanstack/react-router';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import {
   type KnowledgeCollection,
@@ -6,51 +6,20 @@ import {
   readRememberedKnowledgeResource,
   writeRememberedKnowledgeResource,
 } from '../../lib/knowledge-navigation';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
-function CollectionLink({
-  collection,
-  readableId,
-  active,
-}: {
-  collection: KnowledgeCollection;
-  readableId?: string;
-  active: boolean;
-}) {
-  const sharedProps = {
-    'data-active': active ? 'true' : undefined,
-    'aria-current': active ? ('page' as const) : undefined,
-    className:
-      '-mb-px border-transparent border-b-2 px-1 py-3 font-medium text-muted-foreground text-sm hover:text-foreground data-[active=true]:border-foreground data-[active=true]:text-foreground',
-  };
-  const label = collection === 'pages' ? 'Pages' : 'Entities';
-
-  if (collection === 'pages') {
-    return readableId ? (
-      <Link
-        {...sharedProps}
-        to="/pages/$id"
-        params={{ id: readableId }}
-        search={{ view: 'preview' }}
-      >
-        {label}
-      </Link>
-    ) : (
-      <Link {...sharedProps} to="/pages">
-        {label}
-      </Link>
-    );
-  }
-
-  return readableId ? (
-    <Link {...sharedProps} to="/entities/$id" params={{ id: readableId }}>
-      {label}
-    </Link>
-  ) : (
-    <Link {...sharedProps} to="/entities">
-      {label}
-    </Link>
-  );
-}
+const COLLECTIONS: Array<{ value: KnowledgeCollection; label: string }> = [
+  { value: 'entities', label: 'Entities' },
+  { value: 'pages', label: 'Pages' },
+  { value: 'assets', label: 'Assets' },
+];
 
 export function KnowledgeCollectionNavigation({
   collection,
@@ -59,60 +28,86 @@ export function KnowledgeCollectionNavigation({
   collection: KnowledgeCollection;
   ownerEntityId: string;
 }) {
+  const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const currentResource = knowledgeResourceFromPath(pathname);
-  const [rememberedResources, setRememberedResources] = useState(() =>
+  const [rememberedResources, setRememberedResources] = useState<
+    Partial<Record<KnowledgeCollection, string>>
+  >(() =>
     typeof window === 'undefined'
       ? {}
-      : {
-          pages: readRememberedKnowledgeResource({
-            storage: window.sessionStorage,
-            ownerEntityId,
-            collection: 'pages',
-          }),
-          entities: readRememberedKnowledgeResource({
-            storage: window.sessionStorage,
-            ownerEntityId,
-            collection: 'entities',
-          }),
-        },
+      : Object.fromEntries(
+          COLLECTIONS.map(({ value }) => [
+            value,
+            readRememberedKnowledgeResource({
+              storage: window.sessionStorage,
+              ownerEntityId,
+              collection: value,
+            }),
+          ]),
+        ),
   );
-  const currentCollection = currentResource?.collection;
-  const currentReadableId = currentResource?.readableId;
 
   useEffect(() => {
-    if (!currentCollection || !currentReadableId) {
+    if (!currentResource) {
       return;
     }
-
     setRememberedResources((resources) => {
-      if (resources[currentCollection] === currentReadableId) {
+      if (resources[currentResource.collection] === currentResource.readableId) {
         return resources;
       }
-
-      const nextResources = { ...resources, [currentCollection]: currentReadableId };
       writeRememberedKnowledgeResource({
         storage: window.sessionStorage,
         ownerEntityId,
-        collection: currentCollection,
-        readableId: currentReadableId,
+        collection: currentResource.collection,
+        readableId: currentResource.readableId,
       });
-      return nextResources;
+      return { ...resources, [currentResource.collection]: currentResource.readableId };
     });
-  }, [currentCollection, currentReadableId, ownerEntityId]);
+  }, [currentResource, ownerEntityId]);
 
-  const lastPageId = currentCollection === 'pages' ? currentReadableId : rememberedResources.pages;
-  const lastEntityId =
-    currentCollection === 'entities' ? currentReadableId : rememberedResources.entities;
+  function openCollection(next: KnowledgeCollection) {
+    const readableId = rememberedResources[next];
+    if (next === 'entities') {
+      void (readableId
+        ? navigate({ to: '/entities/$id', params: { id: readableId } })
+        : navigate({ to: '/entities' }));
+    } else if (next === 'pages') {
+      void (readableId
+        ? navigate({ to: '/pages/$id', params: { id: readableId }, search: { view: 'preview' } })
+        : navigate({ to: '/pages' }));
+    } else {
+      void (readableId
+        ? navigate({ to: '/assets/$id', params: { id: readableId } })
+        : navigate({ to: '/assets' }));
+    }
+  }
 
   return (
-    <nav className="flex min-w-0 gap-5" aria-label="Knowledge collections">
-      <CollectionLink collection="pages" readableId={lastPageId} active={collection === 'pages'} />
-      <CollectionLink
-        collection="entities"
-        readableId={lastEntityId}
-        active={collection === 'entities'}
-      />
-    </nav>
+    <Select
+      items={COLLECTIONS}
+      value={collection}
+      onValueChange={(nextCollection) => {
+        if (nextCollection) {
+          openCollection(nextCollection);
+        }
+      }}
+    >
+      <SelectTrigger
+        className="h-10 min-w-0 flex-1 font-semibold"
+        aria-label="Knowledge collection"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {COLLECTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 }

@@ -1,11 +1,11 @@
 import { MAX_ENTITY_DESCRIPTION_LENGTH, MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
 import { useForm } from '@tanstack/react-form';
 import { submitThenChangeValidation } from '../../lib/form-validation';
+import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
+import { ResourceNameInput } from '../knowledge/resource-name';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '../ui/field';
-import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { validateEntityDescription, validateEntityName } from './entity-validation';
 
@@ -43,14 +43,12 @@ export function EntityIdentityEditor({
     >
       <ResourceDetailHeading
         actions={
-          <>
-            <Button variant="outline" size="lg" type="button" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button size="lg" type="submit" disabled={pending}>
-              {pending ? 'Saving…' : 'Save entity'}
-            </Button>
-          </>
+          <ResourceDetailActions
+            mode="edit"
+            resource="entity"
+            pending={pending}
+            onCancel={onCancel}
+          />
         }
       >
         Entity {isSelf && <Badge variant="secondary">You</Badge>}
@@ -62,9 +60,8 @@ export function EntityIdentityEditor({
               <FieldLabel className="sr-only" htmlFor="entity-name">
                 Name
               </FieldLabel>
-              <Input
+              <ResourceNameInput
                 id="entity-name"
-                className="-mx-2 mt-2 h-auto w-[calc(100%+1rem)] px-2 py-0 font-semibold text-4xl text-foreground tracking-tight md:text-5xl"
                 name={field.name}
                 value={field.state.value}
                 maxLength={MAX_ENTITY_NAME_LENGTH}

@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { cn } from '../../lib/class-names';
+import type { AssetSummary } from '../../queries/assets';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
+import { AssetCardContent } from '../assets/asset-link';
 import { EntityCardContent } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { Badge } from '../ui/badge';
@@ -17,12 +19,14 @@ import { KnowledgePageCardContent } from './knowledge-page-link';
 
 type KnowledgeSuggestion =
   | { kind: 'entity'; entity: EntitySummary }
-  | { kind: 'page'; page: KnowledgePageSummary };
+  | { kind: 'page'; page: KnowledgePageSummary }
+  | { kind: 'asset'; asset: AssetSummary };
 
 function suggestionId(suggestion: KnowledgeSuggestion): string {
-  return suggestion.kind === 'entity'
-    ? `entity-${suggestion.entity.id}`
-    : `page-${suggestion.page.id}`;
+  if (suggestion.kind === 'entity') {
+    return `entity-${suggestion.entity.id}`;
+  }
+  return suggestion.kind === 'page' ? `page-${suggestion.page.id}` : `asset-${suggestion.asset.id}`;
 }
 
 type PickerBounds = Pick<DOMRect, 'top' | 'bottom'>;
@@ -46,6 +50,7 @@ export function KnowledgeLinkTextarea({
   value,
   entities,
   pages,
+  assets,
   invalid,
   onBlur,
   onChange,
@@ -56,6 +61,7 @@ export function KnowledgeLinkTextarea({
   value: string;
   entities: EntitySummary[];
   pages: KnowledgePageSummary[];
+  assets: AssetSummary[];
   invalid: boolean;
   onBlur: () => void;
   onChange: (value: string) => void;
@@ -70,6 +76,7 @@ export function KnowledgeLinkTextarea({
     ? [
         ...entities.map((entity) => ({ kind: 'entity' as const, entity })),
         ...pages.map((page) => ({ kind: 'page' as const, page })),
+        ...assets.map((asset) => ({ kind: 'asset' as const, asset })),
       ]
     : [];
   const suggestionsOpen = suggestions.length > 0;
@@ -100,7 +107,9 @@ export function KnowledgeLinkTextarea({
     const target: KnowledgeLinkTarget =
       suggestion.kind === 'entity'
         ? { kind: 'entity', entity: suggestion.entity }
-        : { kind: 'page', page: suggestion.page };
+        : suggestion.kind === 'page'
+          ? { kind: 'page', page: suggestion.page }
+          : { kind: 'asset', asset: suggestion.asset };
     const insertion = insertKnowledgeLink({ markdown: value, link, target });
     onChange(insertion.markdown);
     setLink(null);
@@ -191,14 +200,20 @@ export function KnowledgeLinkTextarea({
               >
                 {suggestion.kind === 'entity' ? (
                   <EntityCardContent entity={suggestion.entity} />
-                ) : (
+                ) : suggestion.kind === 'page' ? (
                   <KnowledgePageCardContent page={suggestion.page} />
+                ) : (
+                  <AssetCardContent asset={suggestion.asset} />
                 )}
                 <Badge
                   variant="outline"
                   className="h-6 shrink-0 px-2 text-[0.65rem] uppercase tracking-wider"
                 >
-                  {suggestion.kind === 'entity' ? 'Entity' : 'Page'}
+                  {suggestion.kind === 'entity'
+                    ? 'Entity'
+                    : suggestion.kind === 'page'
+                      ? 'Page'
+                      : 'Asset'}
                 </Badge>
               </Button>
             );

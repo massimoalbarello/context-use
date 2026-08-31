@@ -5,9 +5,10 @@ Object.defineProperty(globalThis, 'window', {
   value: { location: { origin: 'http://localhost:5173' } },
 });
 
-const { settleArchivedEntityQueries, settleArchivedPageQueries } = await import(
-  '../../src/lib/hooks/archive-query-cache'
-);
+const { settleArchivedAssetQueries, settleArchivedEntityQueries, settleArchivedPageQueries } =
+  await import('../../src/lib/hooks/archive-query-cache');
+const { assetDetailsQueryKey, assetQueryOptions, assetsListQueryKey, assetSuggestionsQueryKey } =
+  await import('../../src/queries/assets');
 const {
   entitiesListQueryKey,
   entityDetailsQueryKey,
@@ -29,6 +30,9 @@ test('page archive removes its unavailable detail without refetching it', async 
   });
   queryClient.setQueryData([...entityDetailsQueryKey, 'alex-morgan'], {
     readableId: 'alex-morgan',
+  });
+  queryClient.setQueryData([...assetDetailsQueryKey, 'quarterly-chart'], {
+    readableId: 'quarterly-chart',
   });
 
   const archivedDetailObserver = new QueryObserver(queryClient, {
@@ -58,8 +62,33 @@ test('page archive removes its unavailable detail without refetching it', async 
   expect(queryClient.getQueryState([...entityDetailsQueryKey, 'alex-morgan'])?.isInvalidated).toBe(
     true,
   );
+  expect(
+    queryClient.getQueryState([...assetDetailsQueryKey, 'quarterly-chart'])?.isInvalidated,
+  ).toBe(true);
 
   unsubscribe();
+});
+
+test('asset archive removes its unavailable detail and refreshes asset discovery', () => {
+  const queryClient = new QueryClient();
+  const archivedDetailQueryKey = assetQueryOptions('quarterly-chart').queryKey;
+  queryClient.setQueryData<unknown>(archivedDetailQueryKey, {
+    readableId: 'quarterly-chart',
+  });
+  queryClient.setQueryData(assetsListQueryKey, { items: [] });
+  queryClient.setQueryData([...assetSuggestionsQueryKey, 'quarter'], []);
+
+  settleArchivedAssetQueries({
+    queryClient,
+    readableId: 'quarterly-chart',
+    result: { state: 'archived' },
+  });
+
+  expect(queryClient.getQueryData(archivedDetailQueryKey)).toBeUndefined();
+  expect(queryClient.getQueryState(assetsListQueryKey)?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState([...assetSuggestionsQueryKey, 'quarter'])?.isInvalidated).toBe(
+    true,
+  );
 });
 
 test('entity archive refreshes only its active collections and pickers', () => {

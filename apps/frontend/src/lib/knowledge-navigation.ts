@@ -1,4 +1,4 @@
-export type KnowledgeCollection = 'pages' | 'entities';
+export type KnowledgeCollection = 'entities' | 'pages' | 'assets';
 
 type NavigationStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -9,7 +9,7 @@ function storageKey(options: { ownerEntityId: string; collection: KnowledgeColle
 export function knowledgeResourceFromPath(
   pathname: string,
 ): { collection: KnowledgeCollection; readableId: string } | null {
-  const match = /^\/(pages|entities)\/([^/]+)\/?$/.exec(pathname);
+  const match = /^\/(entities|pages|assets)\/([^/]+)\/?$/.exec(pathname);
   const collection = match?.[1];
   const encodedReadableId = match?.[2];
   if (!collection || !encodedReadableId || encodedReadableId === 'new') {

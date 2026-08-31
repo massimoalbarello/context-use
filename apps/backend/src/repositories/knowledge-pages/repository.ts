@@ -1,7 +1,9 @@
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#lib/pagination.ts';
+import type { AssetSummary } from '#models/assets/model.ts';
 import type { Entity } from '#models/entities/model.ts';
 import type {
+  KnowledgePageAssetUsage,
   KnowledgePageLinkSet,
   KnowledgePageReference,
   KnowledgePageRevisionSummary,
@@ -67,6 +69,7 @@ export interface KnowledgePagesRepositoryContract {
     mentions: Entity[];
     references: KnowledgePageReference[];
     backlinks: KnowledgePageReference[];
+    assetUsages: KnowledgePageAssetUsage[];
     revisions: KnowledgePageRevisionSummary[];
   } | null>;
   listCurrent(input: { ownerId: string }): Promise<StoredKnowledgePage[]>;
@@ -146,6 +149,7 @@ async function resolveLinks({
       state: 'resolved';
       entityIds: string[];
       pageReferences: Array<{ pageId: string; fragment: string | null }>;
+      assetUsages: Array<{ assetId: string; presentation: 'embed' | 'attachment' }>;
     }
   | { state: 'link_target_not_found'; target: string }
 > {
@@ -179,7 +183,20 @@ async function resolveLinks({
     pageReferences.push({ pageId: rows[0].id, fragment: reference.fragment });
   }
 
-  return { state: 'resolved', entityIds, pageReferences };
+  const assetUsages: Array<{ assetId: string; presentation: 'embed' | 'attachment' }> = [];
+  for (const usage of links.assetUsages) {
+    const rows = await db<Array<{ id: string }>>`
+      select "id" from "asset"
+      where "owner_id" = ${ownerId} and "readable_id" = ${usage.readableId}
+        and "archived_at" is null
+    `;
+    if (!rows[0]) {
+      return { state: 'link_target_not_found', target: `asset/${usage.readableId}` };
+    }
+    assetUsages.push({ assetId: rows[0].id, presentation: usage.presentation });
+  }
+
+  return { state: 'resolved', entityIds, pageReferences, assetUsages };
 }
 
 async function insertLinks({
@@ -188,12 +205,14 @@ async function insertLinks({
   revisionId,
   entityIds,
   pageReferences,
+  assetUsages,
 }: {
   db: SQL;
   ownerId: string;
   revisionId: string;
   entityIds: string[];
   pageReferences: Array<{ pageId: string; fragment: string | null }>;
+  assetUsages: Array<{ assetId: string; presentation: 'embed' | 'attachment' }>;
 }): Promise<void> {
   for (const entityId of entityIds) {
     await db`
@@ -207,6 +226,13 @@ async function insertLinks({
       insert into "knowledge_page_reference"
         ("owner_id", "source_revision_id", "target_page_id", "target_fragment")
       values (${ownerId}, ${revisionId}, ${reference.pageId}, ${reference.fragment ?? ''})
+    `;
+  }
+  for (const usage of assetUsages) {
+    await db`
+      insert into "knowledge_page_asset_usage"
+        ("owner_id", "source_revision_id", "target_asset_id", "presentation")
+      values (${ownerId}, ${revisionId}, ${usage.assetId}, ${usage.presentation})
     `;
   }
 }
@@ -273,6 +299,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         revisionId: input.revisionId,
         entityIds: resolved.entityIds,
         pageReferences: resolved.pageReferences,
+        assetUsages: resolved.assetUsages,
       });
 
       return {
@@ -350,6 +377,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           and "source_revision_id" = ${current.currentRevisionId}
       `;
       await db`
+        delete from "knowledge_page_asset_usage"
+        where "owner_id" = ${input.ownerId}
+          and "source_revision_id" = ${current.currentRevisionId}
+      `;
+      await db`
         insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
            "storage_key", "size_bytes", "content_hash", "created_at")
@@ -364,6 +396,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         revisionId: input.revisionId,
         entityIds: resolved.entityIds,
         pageReferences: resolved.pageReferences,
+        assetUsages: resolved.assetUsages,
       });
       await db`
         update "knowledge_page"
@@ -534,6 +567,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           and "source_revision_id" = ${target.currentRevisionId}
       `;
       await db`
+        delete from "knowledge_page_asset_usage"
+        where "owner_id" = ${ownerId}
+          and "source_revision_id" = ${target.currentRevisionId}
+      `;
+      await db`
         update "knowledge_page"
         set "archived_at" = ${archivedAt}
         where "owner_id" = ${ownerId} and "id" = ${target.id}
@@ -547,13 +585,14 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     mentions: Entity[];
     references: KnowledgePageReference[];
     backlinks: KnowledgePageReference[];
+    assetUsages: KnowledgePageAssetUsage[];
     revisions: KnowledgePageRevisionSummary[];
   } | null> {
     const page = await this.find({ ownerId, readableId });
     if (!page) {
       return null;
     }
-    const [mentions, references, backlinks, revisions] = await Promise.all([
+    const [mentions, references, backlinks, assetUsages, revisions] = await Promise.all([
       this.sql<Array<Omit<Entity, 'isSelf'> & { isSelf: number }>>`
         select entity."id", entity."readable_id" as "readableId", entity."name",
           entity."description", profile."self_entity_id" is not null as "isSelf",
@@ -571,6 +610,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       `,
       this.referenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
       this.backlinkRows({ ownerId, targetPageId: page.id }),
+      this.assetUsageRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
       this.sql<RevisionSummaryRow[]>`
         select "revision_number" as "revisionNumber", "title", "created_at" as "createdAt"
         from "knowledge_page_revision"
@@ -583,6 +623,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       mentions: mentions.map((entity) => ({ ...entity, isSelf: Boolean(entity.isSelf) })),
       references,
       backlinks,
+      assetUsages,
       revisions: revisions.map(revisionSummaryFrom),
     };
   }
@@ -642,12 +683,17 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         delete from "knowledge_page_reference"
         where "owner_id" = ${ownerId} and "source_revision_id" = ${page.currentRevisionId}
       `;
+      await db`
+        delete from "knowledge_page_asset_usage"
+        where "owner_id" = ${ownerId} and "source_revision_id" = ${page.currentRevisionId}
+      `;
       await insertLinks({
         db,
         ownerId,
         revisionId: page.currentRevisionId,
         entityIds: resolved.entityIds,
         pageReferences: resolved.pageReferences,
+        assetUsages: resolved.assetUsages,
       });
       return { state: 'replaced' as const };
     });
@@ -742,6 +788,32 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     return rows.map(({ fragment, ...row }) => ({
       page: summaryFrom(row),
       fragment: fragment || null,
+    }));
+  }
+
+  private async assetUsageRows({
+    ownerId,
+    sourceRevisionId,
+  }: {
+    ownerId: string;
+    sourceRevisionId: string;
+  }): Promise<KnowledgePageAssetUsage[]> {
+    const rows = await this.sql<Array<AssetSummary & { presentation: 'embed' | 'attachment' }>>`
+      select asset."id", asset."readable_id" as "readableId", asset."name",
+        asset."media_type" as "mediaType", asset."extension",
+        asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt",
+        asset."updated_at" as "updatedAt", usage."presentation"
+      from "knowledge_page_asset_usage" usage
+      join "asset" asset
+        on asset."id" = usage."target_asset_id" and asset."owner_id" = usage."owner_id"
+      where usage."owner_id" = ${ownerId}
+        and usage."source_revision_id" = ${sourceRevisionId}
+        and asset."archived_at" is null
+      order by asset."name" collate nocase, asset."readable_id", usage."presentation"
+    `;
+    return rows.map(({ presentation, ...asset }) => ({
+      asset: { ...asset, sizeBytes: Number(asset.sizeBytes) },
+      presentation,
     }));
   }
 }

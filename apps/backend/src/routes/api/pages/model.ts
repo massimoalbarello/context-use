@@ -8,6 +8,7 @@ import {
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#models/knowledge-pages/model.ts';
+import { AssetSummarySchema, assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
 import {
   PaginationMetadataSchema,
@@ -36,12 +37,18 @@ export const KnowledgePageRevisionSummarySchema = t.Object({
   createdAt: t.Date(),
 });
 
+export const KnowledgePageAssetUsageSchema = t.Object({
+  asset: AssetSummarySchema,
+  presentation: t.Union([t.Literal('embed'), t.Literal('attachment')]),
+});
+
 export const KnowledgePageSchema = t.Object({
   ...KnowledgePageSummarySchema.properties,
   markdown: t.String(),
   mentions: t.Array(EntitySchema),
   references: t.Array(KnowledgePageReferenceSchema),
   backlinks: t.Array(KnowledgePageReferenceSchema),
+  assetUsages: t.Array(KnowledgePageAssetUsageSchema),
   revisions: t.Array(KnowledgePageRevisionSummarySchema),
 });
 
@@ -88,6 +95,10 @@ export function knowledgePageResponse(page: KnowledgePage) {
     mentions: page.mentions.map(entityResponse),
     references: page.references.map(pageReferenceResponse),
     backlinks: page.backlinks.map(pageReferenceResponse),
+    assetUsages: page.assetUsages.map(({ asset, presentation }) => ({
+      asset: assetSummaryResponse(asset),
+      presentation,
+    })),
     revisions: page.revisions.map(pageRevisionResponse),
   };
 }
