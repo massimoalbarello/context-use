@@ -126,6 +126,10 @@ function PageRevisionsView({ page }: { page: KnowledgePage }) {
 
 function KnowledgePageRoute() {
   const { id } = Route.useParams();
+  return <KnowledgePageRouteContent key={id} id={id} />;
+}
+
+function KnowledgePageRouteContent({ id }: { id: string }) {
   const { view = 'preview' } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [editing, setEditing] = useState(false);

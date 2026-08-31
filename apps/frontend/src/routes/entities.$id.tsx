@@ -27,6 +27,10 @@ function EntityRouteError({ error, reset }: ErrorComponentProps) {
 
 function EntityRoute() {
   const { id } = Route.useParams();
+  return <EntityRouteContent key={id} id={id} />;
+}
+
+function EntityRouteContent({ id }: { id: string }) {
   const { data: entity, error, refetch } = useEntity(id);
   const updateEntity = useUpdateEntity();
   const archiveEntity = useArchiveEntity();
