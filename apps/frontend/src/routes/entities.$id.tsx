@@ -1,6 +1,8 @@
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
+import { EntityImageEditor } from '../components/entities/entity-image-editor';
+import { EntityAvatar } from '../components/entities/entity-link';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
@@ -10,6 +12,7 @@ import { ResourceName } from '../components/knowledge/resource-name';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 import { useArchiveEntity } from '../lib/hooks/use-archive-entity';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';
@@ -36,6 +39,7 @@ function EntityRouteContent({ id }: { id: string }) {
   const updateEntity = useUpdateEntity();
   const archiveEntity = useArchiveEntity();
   const [editing, setEditing] = useState(false);
+  const [imageEditing, setImageEditing] = useState(false);
   const [archiveConflictVisible, setArchiveConflictVisible] = useState(false);
   const navigate = Route.useNavigate();
 
@@ -86,6 +90,7 @@ function EntityRouteContent({ id }: { id: string }) {
                 onEdit={() => {
                   updateEntity.reset();
                   setArchiveConflictVisible(false);
+                  setImageEditing(false);
                   setEditing(true);
                 }}
               >
@@ -118,13 +123,29 @@ function EntityRouteContent({ id }: { id: string }) {
           >
             Entity {entity.isSelf && <Badge variant="secondary">You</Badge>}
           </ResourceDetailHeading>
-          <div className="w-full min-w-0 max-w-3xl">
-            <ResourceName>{entity.name}</ResourceName>
-            <p className="mt-3 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-              {entity.description}
-            </p>
+          <div className="flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
+            <div className="grid shrink-0 justify-items-start gap-2">
+              <EntityAvatar entity={entity} className="size-24 text-3xl" />
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setImageEditing((visible) => !visible)}
+              >
+                {imageEditing ? 'Cancel image' : entity.image ? 'Change image' : 'Add image'}
+              </Button>
+            </div>
+            <div className="min-w-0 flex-1">
+              <ResourceName>{entity.name}</ResourceName>
+              <p className="mt-3 max-w-2xl text-lg text-muted-foreground leading-relaxed">
+                {entity.description}
+              </p>
+            </div>
           </div>
         </DetailHeader>
+      )}
+
+      {!editing && imageEditing && (
+        <EntityImageEditor entity={entity} onDone={() => setImageEditing(false)} />
       )}
 
       {archiveEntity.error && (

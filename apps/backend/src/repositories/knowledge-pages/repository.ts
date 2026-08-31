@@ -12,6 +12,7 @@ import type {
 } from '#models/knowledge-pages/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
+import { entityFrom } from '#views/entities/entity-view.ts';
 
 export interface KnowledgePagesRepositoryContract {
   create(input: {
@@ -609,12 +610,22 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         select entity."id", entity."readable_id" as "readableId", entity."name",
           entity."description", profile."self_entity_id" is not null as "isSelf",
           entity."created_at" as "createdAt",
-          entity."updated_at" as "updatedAt"
+          entity."updated_at" as "updatedAt", image."id" as "imageId",
+          image."readable_id" as "imageReadableId", image."name" as "imageName",
+          image."media_type" as "imageMediaType", image."extension" as "imageExtension",
+          image."size_bytes" as "imageSizeBytes", image."created_at" as "imageCreatedAt",
+          image."updated_at" as "imageUpdatedAt"
         from "knowledge_page_entity_mention" mention
         join "entity" entity
           on entity."id" = mention."target_entity_id" and entity."owner_id" = mention."owner_id"
         left join "knowledge_profile" profile
           on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
+        left join "entity_image" entity_image
+          on entity_image."owner_id" = entity."owner_id"
+         and entity_image."entity_id" = entity."id"
+        left join "asset" image
+          on image."owner_id" = entity_image."owner_id" and image."id" = entity_image."asset_id"
+         and image."archived_at" is null
         where mention."owner_id" = ${ownerId}
           and mention."source_revision_id" = ${page.currentRevisionId}
           and entity."archived_at" is null
@@ -633,7 +644,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ]);
     return {
       page,
-      mentions: mentions.map((entity) => ({ ...entity, isSelf: Boolean(entity.isSelf) })),
+      mentions: mentions.map(entityFrom),
       references,
       backlinks,
       assetUsages,

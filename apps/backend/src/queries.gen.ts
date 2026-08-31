@@ -86,8 +86,8 @@ export interface IFindAssetArchiveTargetResult {
     archivedAt: string | null;
 }
 
-/** Result of query `ListActiveAssetUsages`. */
-export interface IListActiveAssetUsagesResult {
+/** Result of query `ListActivePageAssetUsages`. */
+export interface IListActivePageAssetUsagesResult {
     id: string;
     readableId: string;
     title: string;
@@ -96,6 +96,15 @@ export interface IListActiveAssetUsagesResult {
     createdAt: string;
     updatedAt: string;
     presentation: "embed" | "attachment";
+}
+
+/** Result of query `ListActiveEntityImageAssetUsages`. */
+export interface IListActiveEntityImageAssetUsagesResult {
+    id: string;
+    readableId: string;
+    name: string;
+    description: string;
+    isSelf: number;
 }
 
 /** Result of query `CreateEntity`. */
@@ -118,6 +127,14 @@ export interface ISearchEntitiesResult {
     isSelf: number;
     createdAt: string;
     updatedAt: string;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
 }
 
 /** Result of query `ListEntities`. */
@@ -129,6 +146,14 @@ export interface IListEntitiesResult {
     isSelf: number;
     createdAt: string;
     updatedAt: string;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
 }
 
 /** Result of query `CountSearchedEntities`. */
@@ -150,17 +175,29 @@ export interface IFindEntityResult {
     isSelf: number;
     createdAt: string;
     updatedAt: string;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
 }
 
-/** Result of query `UpdateEntity`. */
-export interface IUpdateEntityResult {
+/** Result of query `UpdateEntityIdentity`. */
+export interface IUpdateEntityIdentityResult {
     id: string;
-    readableId: string;
-    name: string;
-    description: string;
-    isSelf: number;
-    createdAt: string;
-    updatedAt: string;
+}
+
+/** Result of query `SetEntityImage`. */
+export interface ISetEntityImageResult {
+    entityId: string;
+}
+
+/** Result of query `FindEntityImageRemovalTarget`. */
+export interface IFindEntityImageRemovalTargetResult {
+    id: string;
 }
 
 /** Result of query `FindEntityArchiveTarget`. */
@@ -297,6 +334,14 @@ export interface IListKnowledgePageMentionsResult {
     isSelf: number;
     createdAt: string;
     updatedAt: string;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
 }
 
 /** Result of query `ListKnowledgePageRevisions`. */
@@ -398,8 +443,17 @@ export interface IFindKnowledgeProfileResult {
     readableId: string;
     name: string;
     description: string;
+    isSelf: number;
     createdAt: string;
     updatedAt: string;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
 }
 
 /** Result of query `ReadOwnerRegistrationState`. */
@@ -417,14 +471,17 @@ export interface Queries {
     FindAsset: IFindAssetResult;
     UpdateAssetName: IUpdateAssetNameResult;
     FindAssetArchiveTarget: IFindAssetArchiveTargetResult;
-    ListActiveAssetUsages: IListActiveAssetUsagesResult;
+    ListActivePageAssetUsages: IListActivePageAssetUsagesResult;
+    ListActiveEntityImageAssetUsages: IListActiveEntityImageAssetUsagesResult;
     CreateEntity: ICreateEntityResult;
     SearchEntities: ISearchEntitiesResult;
     ListEntities: IListEntitiesResult;
     CountSearchedEntities: ICountSearchedEntitiesResult;
     CountEntities: ICountEntitiesResult;
     FindEntity: IFindEntityResult;
-    UpdateEntity: IUpdateEntityResult;
+    UpdateEntityIdentity: IUpdateEntityIdentityResult;
+    SetEntityImage: ISetEntityImageResult;
+    FindEntityImageRemovalTarget: IFindEntityImageRemovalTargetResult;
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
     PingDatabase: IPingDatabaseResult;

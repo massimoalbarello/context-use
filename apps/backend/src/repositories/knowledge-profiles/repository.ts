@@ -2,6 +2,7 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type { KnowledgeProfile } from '#models/knowledge-profiles/model.ts';
 import type { Queries } from '#queries.gen.ts';
+import { entityFrom } from '#views/entities/entity-view.ts';
 
 export interface KnowledgeProfilesRepositoryContract {
   create(input: {
@@ -19,10 +20,10 @@ export interface KnowledgeProfilesRepositoryContract {
   find(input: { ownerId: string }): Promise<KnowledgeProfile | null>;
 }
 
-type ProfileRow = Queries['CreateKnowledgeProfileEntity'];
+type CreatedProfileRow = Queries['CreateKnowledgeProfileEntity'];
 
-function profileFrom(row: ProfileRow): KnowledgeProfile {
-  return { selfEntity: { ...row, isSelf: true } };
+function createdProfileFrom(row: CreatedProfileRow): KnowledgeProfile {
+  return { selfEntity: { ...row, isSelf: true, image: null } };
 }
 
 export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryContract {
@@ -74,21 +75,31 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
         insert into "knowledge_profile" ("owner_id", "self_entity_id")
         values (${input.ownerId}, ${entity.id})
       `;
-      return { state: 'created' as const, profile: profileFrom(entity) };
+      return { state: 'created' as const, profile: createdProfileFrom(entity) };
     });
   }
 
   async find({ ownerId }: { ownerId: string }): Promise<KnowledgeProfile | null> {
     const rows = await this.sql.FindKnowledgeProfile`
       /* @notNull id readableId name description createdAt updatedAt */
+      /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
-        entity."description", entity."created_at" as "createdAt",
-        entity."updated_at" as "updatedAt"
+        entity."description", 1 as "isSelf", entity."created_at" as "createdAt",
+        entity."updated_at" as "updatedAt", image."id" as "imageId",
+        image."readable_id" as "imageReadableId", image."name" as "imageName",
+        image."media_type" as "imageMediaType", image."extension" as "imageExtension",
+        image."size_bytes" as "imageSizeBytes", image."created_at" as "imageCreatedAt",
+        image."updated_at" as "imageUpdatedAt"
       from "knowledge_profile" profile
       join "entity" entity
         on entity."id" = profile."self_entity_id" and entity."owner_id" = profile."owner_id"
+      left join "entity_image" entity_image
+        on entity_image."owner_id" = entity."owner_id" and entity_image."entity_id" = entity."id"
+      left join "asset" image
+        on image."owner_id" = entity_image."owner_id" and image."id" = entity_image."asset_id"
+       and image."archived_at" is null
       where profile."owner_id" = ${ownerId}
     `;
-    return rows[0] ? profileFrom(rows[0]) : null;
+    return rows[0] ? { selfEntity: entityFrom(rows[0]) } : null;
   }
 }

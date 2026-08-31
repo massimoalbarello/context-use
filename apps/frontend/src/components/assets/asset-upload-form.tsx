@@ -13,10 +13,12 @@ function suggestedName(file: File): string {
 export function AssetUploadForm({
   pending,
   error,
+  accept,
   onSubmit,
 }: {
   pending: boolean;
   error: Error | null;
+  accept?: string;
   onSubmit: (value: { name: string; file: File; allowDuplicate?: boolean }) => void;
 }) {
   const [name, setName] = useState('');
@@ -53,6 +55,7 @@ export function AssetUploadForm({
               className="peer sr-only"
               id="asset-file"
               type="file"
+              accept={accept}
               required
               onChange={(event) => {
                 const selected = event.target.files?.[0] ?? null;

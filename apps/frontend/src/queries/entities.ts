@@ -17,6 +17,8 @@ export type UpdateEntityVariables = {
   body: Parameters<ReturnType<typeof api.api.entities>['patch']>[0];
 };
 export type ArchiveEntityVariables = { readableId: string };
+export type SetEntityImageVariables = { readableId: string; assetReadableId: string };
+export type RemoveEntityImageVariables = { readableId: string };
 export type ArchiveEntityResult =
   | { state: 'archived' }
   | { state: 'resource_in_use'; blockers: KnowledgePageReference[] };
@@ -80,6 +82,25 @@ export async function createEntity(body: CreateEntityVariables): Promise<{ reada
 
 export async function updateEntity({ readableId, body }: UpdateEntityVariables): Promise<void> {
   const { error } = await api.api.entities({ entityReadableId: readableId }).patch(body);
+  if (error) {
+    throw new Error(apiErrorMessage(error));
+  }
+}
+
+export async function setEntityImage({
+  readableId,
+  assetReadableId,
+}: SetEntityImageVariables): Promise<void> {
+  const { error } = await api.api
+    .entities({ entityReadableId: readableId })
+    .image.put({ assetReadableId });
+  if (error) {
+    throw new Error(apiErrorMessage(error));
+  }
+}
+
+export async function removeEntityImage({ readableId }: RemoveEntityImageVariables): Promise<void> {
+  const { error } = await api.api.entities({ entityReadableId: readableId }).image.delete();
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
