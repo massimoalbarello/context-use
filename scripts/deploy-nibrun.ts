@@ -13,9 +13,15 @@ const APP_SLUG_PREFIX = `${APP_NAME}-`;
 const AUTH_SECRET_BYTES = 32;
 const FAILED_STATUS = 'failed';
 const LOG_HISTORY = '8760h';
+const MINIMUM_NIB_VERSION = '2026.8.31-2';
+const NIB_VERSION_PATTERN = /^(\d{4})\.(\d{1,2})\.(\d{1,2})-(\d+)$/;
 const MISSING_AUTH_SECRET_ERROR = missingRequiredEnvironmentVariableMessage(
   BACKEND_ENVIRONMENT.authSecret,
 );
+
+type AppListOutput = { apps: { slug: string }[] };
+type AppStatusOutput = { status: string };
+type LogRecordOutput = { message: string };
 
 const nibExecutable = Bun.which('nib');
 if (!nibExecutable) {
@@ -59,43 +65,81 @@ async function output(command: string[]): Promise<string> {
   return result;
 }
 
-// `nib apps list` has no structured-output option. Piping it produces a plain table whose first
-// column is the immutable app slug, so only Context Use's derived slug prefix is accepted here.
-function contextUseApps(listing: string): string[] {
-  return listing
-    .split('\n')
-    .map((line) => line.trim().split(/\s+/, 1)[0])
-    .filter((slug): slug is string => slug?.startsWith(APP_SLUG_PREFIX) === true);
+function supportsStructuredOutput(version: string): boolean {
+  return (
+    NIB_VERSION_PATTERN.test(version) &&
+    version.localeCompare(MINIMUM_NIB_VERSION, 'en', { numeric: true }) >= 0
+  );
+}
+
+async function requireCompatibleNib(): Promise<void> {
+  const installedVersion = (await output([nibExecutable, '--version'])).trim();
+  if (supportsStructuredOutput(installedVersion)) {
+    return;
+  }
+  console.error(
+    [
+      `nib ${installedVersion || 'unknown'} is too old; this deployment requires ${MINIMUM_NIB_VERSION} or newer.`,
+      '',
+      'Update it with:',
+      '  curl -fsSL https://nibrun.com/install.sh | sh',
+      '',
+      'Then run this deployment command again.',
+    ].join('\n'),
+  );
+  process.exit(FAILURE_EXIT_CODE);
+}
+
+function unexpectedJson(command: string[]): never {
+  console.error(
+    `nib --json ${command.join(' ')} returned an unexpected response; update nib and try again.`,
+  );
+  process.exit(FAILURE_EXIT_CODE);
+}
+
+async function jsonValues<Value>(command: string[]): Promise<Value[]> {
+  const serialized = await output([nibExecutable, '--json', ...command]);
+  if (!serialized.trim()) {
+    return [];
+  }
+  try {
+    return serialized
+      .trimEnd()
+      .split('\n')
+      .map((line) => JSON.parse(line) as Value);
+  } catch {
+    return unexpectedJson(command);
+  }
+}
+
+async function jsonValue<Value>(command: string[]): Promise<Value> {
+  const values = await jsonValues<Value>(command);
+  const [value] = values;
+  return values.length === 1 && value ? value : unexpectedJson(command);
+}
+
+async function contextUseApps(): Promise<string[]> {
+  const command = ['apps', 'list'];
+  const { apps } = await jsonValue<AppListOutput>(command);
+  return apps.map((app) => app.slug).filter((slug) => slug.startsWith(APP_SLUG_PREFIX));
 }
 
 async function failedForMissingAuthSecret(appSlug: string): Promise<boolean> {
-  const status = await output([nibExecutable, 'apps', 'status', '--app', appSlug]);
-  if (status.split('\n', 1)[0] !== `${appSlug}  ${FAILED_STATUS}`) {
+  const statusCommand = ['apps', 'status', '--app', appSlug];
+  const { status } = await jsonValue<AppStatusOutput>(statusCommand);
+  if (status !== FAILED_STATUS) {
     return false;
   }
 
-  const child = Bun.spawn(
-    [nibExecutable, 'apps', 'logs', '--app', appSlug, '--timerange', LOG_HISTORY],
-    {
-      stdin: 'ignore',
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
+  const logsCommand = ['apps', 'logs', '--app', appSlug, '--timerange', LOG_HISTORY];
+  return (await jsonValues<LogRecordOutput>(logsCommand)).some((record) =>
+    record.message.includes(MISSING_AUTH_SECRET_ERROR),
   );
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  if (exitCode !== 0) {
-    process.stdout.write(stdout);
-    process.stderr.write(stderr);
-    process.exit(exitCode);
-  }
-  return stdout.includes(MISSING_AUTH_SECRET_ERROR) || stderr.includes(MISSING_AUTH_SECRET_ERROR);
 }
 
-const matchingApps = contextUseApps(await output([nibExecutable, 'apps', 'list']));
+await requireCompatibleNib();
+
+const matchingApps = await contextUseApps();
 if (matchingApps.length > 1) {
   console.error(
     [
