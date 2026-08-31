@@ -117,15 +117,20 @@ When browser-testing a protected frontend journey, use the real Better Auth pass
 end-to-end coverage is not part of the default validation baseline, but a browser pass must not add
 an auth bypass, seed a session, relax passkey verification, or enable another sign-in method.
 
-- Start `bun run dev:isolated`. It runs the normal development app against a fresh temporary
-  `DATA_FOLDER`, opens `http://localhost:5173` in the browser controlled by the browser harness,
-  and enables a virtual authenticator matching the server's resident credential and
-  user-verification policy.
-- Keep that command and browser connection alive through registration, sign-out, and sign-in.
-  Stopping the command disables the virtual authenticator and removes the disposable data without
-  touching a developer's local owner.
-- The command requires `browser-harness`. If it is not installed, follow the installation command
-  it prints; do not substitute the unrelated npm package named `browser-use`.
+- Use `bun run dev:isolated` for authentication, onboarding, setup, and empty-state journeys. It
+  runs the normal development app against a fresh temporary `DATA_FOLDER`, opens
+  `http://localhost:5173` in the browser controlled by the browser harness, and enables a virtual
+  authenticator matching the server's resident credential and user-verification policy.
+- Use `bun run dev:isolated:seeded` for UI and UX journeys that benefit from a populated knowledge
+  graph. It uses the same disposable lifecycle and real passkey registration, then creates the
+  profile, entities, linked pages, and a page revision through authenticated application APIs.
+  Seed-specific orchestration and editable fixture content live in
+  `scripts/seeds/isolated-development`.
+- Keep either command and its browser connection alive while testing. Stopping it disables the
+  virtual authenticator and removes the disposable data without touching a developer's local
+  owner, so the next run starts from a new isolated instance.
+- Both commands require `browser-harness`. If it is not installed, follow the installation command
+  they print; do not substitute the unrelated npm package named `browser-use`.
 - Never call `WebAuthn.getCredentials`, use DevTools' Export action, commit, or otherwise persist a
   virtual credential. Those export paths expose the credential's private key.
 
