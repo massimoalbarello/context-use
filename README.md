@@ -20,15 +20,10 @@ and persistent storage. Install its CLI and sign in once:
 curl -fsSL https://nibrun.com/install.sh | sh
 nib login
 ```
-Create your instance:
+Create or update your instance:
 ```sh
-bun run deploy:nibrun -- --name context-use --port 3000 \
-  --env BETTER_AUTH_SECRET="$(openssl rand -hex 32)"
+bun run deploy:nibrun
 ```
-The command builds the Linux binary, deploys it, and prints its URL. Your database and uploaded
-files live in nibrun's persistent `data/` directory.
-
-Deploy a new version to the same instance with:
-```sh
-bun run deploy:nibrun -- --app context-use
-```
+The command builds the Linux binary and creates a configured Context Use app on its first run. Each
+later run deploys onto that same app. Your database and uploaded files live in nibrun's persistent
+`data/` directory.
