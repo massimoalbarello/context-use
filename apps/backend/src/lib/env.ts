@@ -1,31 +1,25 @@
 import { resolve } from 'node:path';
-
-interface CustomProcessEnv {
-  // Entries here must match the .env file
-  readonly PORT?: string;
-  readonly BASE_URL?: string;
-  readonly DATA_FOLDER?: string;
-  readonly BETTER_AUTH_SECRET: string;
-  // Injected by the host, never written to the .env file
-  readonly NIBRUN_HOSTNAME?: string;
-}
-
-const DEFAULT_PORT = '3000';
-// In development, Vite is the public origin and proxies the API to the backend on :3000.
-const LOCAL_PUBLIC_ORIGIN = 'http://localhost:5173';
+import {
+  BACKEND_ENVIRONMENT,
+  type BackendEnvironmentVariable,
+  DEFAULT_BACKEND_PORT,
+  DEFAULT_DATA_FOLDER,
+  LOCAL_PUBLIC_ORIGIN,
+  missingRequiredEnvironmentVariableMessage,
+} from '#lib/runtime-config.ts';
 
 // nibrun injects `NIBRUN_HOSTNAME` as the bare `<slug>.nibrun.app` the app is served on, always
 // over HTTPS, so a deployed binary knows its own public origin without anyone setting `BASE_URL`.
 // An explicit `BASE_URL` still wins — it is what a custom domain is configured with.
 function defaultBaseUrl(): string {
-  const nibrunHostname = process.env.NIBRUN_HOSTNAME;
+  const nibrunHostname = process.env[BACKEND_ENVIRONMENT.nibrunHostname];
   return nibrunHostname ? `https://${nibrunHostname}` : LOCAL_PUBLIC_ORIGIN;
 }
 
-function required(name: keyof CustomProcessEnv): string {
+function required(name: BackendEnvironmentVariable): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
+    throw new Error(missingRequiredEnvironmentVariableMessage(name));
   }
   return value;
 }
@@ -34,7 +28,7 @@ function optional({
   name,
   defaultValue,
 }: {
-  name: keyof CustomProcessEnv;
+  name: BackendEnvironmentVariable;
   defaultValue: string;
 }): string {
   return process.env[name] || defaultValue;
@@ -49,9 +43,15 @@ type Env = {
 
 export function loadEnv(): Env {
   return {
-    PORT: Number(optional({ name: 'PORT', defaultValue: DEFAULT_PORT })),
-    BASE_URL: new URL(optional({ name: 'BASE_URL', defaultValue: defaultBaseUrl() })),
-    DATA_FOLDER: resolve(optional({ name: 'DATA_FOLDER', defaultValue: './data' })),
-    BETTER_AUTH_SECRET: required('BETTER_AUTH_SECRET'),
+    PORT: Number(
+      optional({ name: BACKEND_ENVIRONMENT.port, defaultValue: String(DEFAULT_BACKEND_PORT) }),
+    ),
+    BASE_URL: new URL(
+      optional({ name: BACKEND_ENVIRONMENT.baseUrl, defaultValue: defaultBaseUrl() }),
+    ),
+    DATA_FOLDER: resolve(
+      optional({ name: BACKEND_ENVIRONMENT.dataFolder, defaultValue: DEFAULT_DATA_FOLDER }),
+    ),
+    BETTER_AUTH_SECRET: required(BACKEND_ENVIRONMENT.authSecret),
   };
 }

@@ -7,6 +7,7 @@
   },
   "exports": {
     "./entity": "./src/models/entities/model.ts",
+    "./runtime-config": "./src/lib/runtime-config.ts",
     "./types": "./src/types.ts"
   },
   "scripts": {

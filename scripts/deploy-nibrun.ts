@@ -1,14 +1,21 @@
 import { randomBytes } from 'node:crypto';
+import { BACKEND_BINARY_FILE } from '../apps/backend/scripts/shared/constants';
+import {
+  BACKEND_ENVIRONMENT,
+  DEFAULT_BACKEND_PORT,
+  DEFAULT_DATA_FOLDER,
+  missingRequiredEnvironmentVariableMessage,
+} from '../apps/backend/src/lib/runtime-config';
 
 const FAILURE_EXIT_CODE = 1;
-const BACKEND_BINARY = 'apps/backend/dist/app';
 const APP_NAME = 'context-use';
-const APP_PORT = '3000';
-const APP_SLUG_PATTERN = /^context-use-[a-z0-9]{6}$/;
+const APP_SLUG_PREFIX = `${APP_NAME}-`;
 const AUTH_SECRET_BYTES = 32;
 const FAILED_STATUS = 'failed';
 const LOG_HISTORY = '8760h';
-const MISSING_AUTH_SECRET_ERROR = 'Missing required environment variable: BETTER_AUTH_SECRET';
+const MISSING_AUTH_SECRET_ERROR = missingRequiredEnvironmentVariableMessage(
+  BACKEND_ENVIRONMENT.authSecret,
+);
 
 const nibExecutable = Bun.which('nib');
 if (!nibExecutable) {
@@ -53,12 +60,12 @@ async function output(command: string[]): Promise<string> {
 }
 
 // `nib apps list` has no structured-output option. Piping it produces a plain table whose first
-// column is the immutable app slug, so only exact Context Use slug shapes are accepted here.
+// column is the immutable app slug, so only Context Use's derived slug prefix is accepted here.
 function contextUseApps(listing: string): string[] {
   return listing
     .split('\n')
     .map((line) => line.trim().split(/\s+/, 1)[0])
-    .filter((slug): slug is string => slug !== undefined && APP_SLUG_PATTERN.test(slug));
+    .filter((slug): slug is string => slug?.startsWith(APP_SLUG_PREFIX) === true);
 }
 
 async function failedForMissingAuthSecret(appSlug: string): Promise<boolean> {
@@ -102,13 +109,13 @@ if (matchingApps.length > 1) {
 }
 
 const [appSlug] = matchingApps;
-const configuredAuthSecret = process.env.BETTER_AUTH_SECRET || undefined;
+const configuredAuthSecret = process.env[BACKEND_ENVIRONMENT.authSecret] || undefined;
 const repairingAuthSecret =
   appSlug !== undefined &&
   configuredAuthSecret === undefined &&
   (await failedForMissingAuthSecret(appSlug));
 if (repairingAuthSecret) {
-  console.log(`Repairing missing BETTER_AUTH_SECRET configuration for ${appSlug}`);
+  console.log(`Repairing missing ${BACKEND_ENVIRONMENT.authSecret} configuration for ${appSlug}`);
 }
 // Existing apps retain unnamed environment variables. Generate only for creation or a confirmed
 // missing-secret failure; replacing a healthy app's secret would invalidate active sessions.
@@ -117,8 +124,19 @@ const authSecret =
   (appSlug === undefined || repairingAuthSecret
     ? randomBytes(AUTH_SECRET_BYTES).toString('hex')
     : undefined);
-const environment = authSecret === undefined ? [] : ['--env', `BETTER_AUTH_SECRET=${authSecret}`];
+const environment = [
+  '--env',
+  `${BACKEND_ENVIRONMENT.dataFolder}=${DEFAULT_DATA_FOLDER}`,
+  ...(authSecret === undefined ? [] : ['--env', `${BACKEND_ENVIRONMENT.authSecret}=${authSecret}`]),
+];
 const target = appSlug ? ['--app', appSlug, ...environment] : ['--name', APP_NAME, ...environment];
 
 await run([process.execPath, 'run', 'build']);
-await run([nibExecutable, 'run', BACKEND_BINARY, ...target, '--port', APP_PORT]);
+await run([
+  nibExecutable,
+  'run',
+  BACKEND_BINARY_FILE,
+  ...target,
+  '--port',
+  String(DEFAULT_BACKEND_PORT),
+]);
