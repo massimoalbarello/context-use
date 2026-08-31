@@ -1,11 +1,12 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { BACKEND_ENVIRONMENT, LOCAL_PUBLIC_ORIGIN } from '../apps/backend/src/lib/runtime-config';
 
 const INTERRUPTED_EXIT_CODE = 130;
 const TERMINATED_EXIT_CODE = 143;
 const FAILURE_EXIT_CODE = 1;
-const APP_URL = 'http://localhost:5173';
+const APP_URL = LOCAL_PUBLIC_ORIGIN;
 const APP_START_TIMEOUT_MS = 30_000;
 const APP_PROBE_TIMEOUT_MS = 1_000;
 const APP_PROBE_INTERVAL_MS = 200;
@@ -74,7 +75,7 @@ const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-dev-'));
 console.log(`Starting development servers with disposable data in ${dataFolder}`);
 
 const developmentProcess = Bun.spawn(['bun', 'run', '--no-orphans', 'dev'], {
-  env: { ...process.env, DATA_FOLDER: dataFolder },
+  env: { ...process.env, [BACKEND_ENVIRONMENT.dataFolder]: dataFolder },
   stdio: ['inherit', 'inherit', 'inherit'],
 });
 
