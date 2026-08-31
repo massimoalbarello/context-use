@@ -10,6 +10,10 @@ import {
   UpdateEntityBodySchema,
 } from '#routes/api/entities/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
+import {
+  ResourceInUseResponseSchema,
+  resourceInUseResponse,
+} from '#routes/api/resource-archiving/model.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 
 const EntityDetailSchema = t.Object({
@@ -73,6 +77,34 @@ export function createEntityReadableIdController({
         response: {
           [StatusMap.OK]: EntitySchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .put(
+      '/entities/:entityReadableId/archive',
+      async ({ params, user, status }) => {
+        const result = await entitiesService.archive({
+          ownerId: user.id,
+          readableId: params.entityReadableId,
+        });
+        if (result.state === 'not_found') {
+          return status(StatusMap['Not Found'], { error: 'Entity not found' });
+        }
+        if (result.state === 'self_entity') {
+          return status(StatusMap.Conflict, { error: "Your own entity can't be archived" });
+        }
+        if (result.state === 'resource_in_use') {
+          return status(StatusMap.Conflict, resourceInUseResponse(result.blockers));
+        }
+        return status(StatusMap['No Content'], undefined);
+      },
+      {
+        detail: { tags: ['Entities'], summary: 'Archive an entity' },
+        params: EntityParamsSchema,
+        response: {
+          [StatusMap['No Content']]: t.Void(),
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap.Conflict]: t.Union([ErrorResponseSchema, ResourceInUseResponseSchema]),
         },
       },
     );

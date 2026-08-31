@@ -2,6 +2,7 @@ import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-route
 import { useState } from 'react';
 import { EntityLink } from '../components/entities/entity-link';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
+import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
 import { ResourceList } from '../components/knowledge/resource-list';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
@@ -11,6 +12,7 @@ import { KnowledgePageMarkdown } from '../components/pages/knowledge-page-markdo
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { useArchivePage } from '../lib/hooks/use-archive-page';
 import { usePage } from '../lib/hooks/use-page';
 import { useUpdatePage } from '../lib/hooks/use-update-page';
 import { type KnowledgePage, pageQueryOptions } from '../queries/pages';
@@ -36,9 +38,17 @@ function KnowledgePageRouteError({ error, reset }: ErrorComponentProps) {
   return <WorkspaceResourceError resource="page" error={error} retry={reset} />;
 }
 
-function PageLinkList({ label, links }: { label: string; links: KnowledgePage['references'] }) {
+function PageLinkList({
+  id,
+  label,
+  links,
+}: {
+  id?: string;
+  label: string;
+  links: KnowledgePage['references'];
+}) {
   return (
-    <section>
+    <section className="scroll-mt-24" id={id} tabIndex={id ? -1 : undefined}>
       <div className="mb-4 flex items-center gap-3">
         <h2 className="font-semibold text-lg">{label}</h2>
         <Badge variant="secondary">{links.length}</Badge>
@@ -79,7 +89,7 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
         )}
       </section>
       <PageLinkList label="References" links={page.references} />
-      <PageLinkList label="Referenced by" links={page.backlinks} />
+      <PageLinkList id="referenced-by" label="Referenced by" links={page.backlinks} />
     </div>
   );
 }
@@ -116,11 +126,17 @@ function PageRevisionsView({ page }: { page: KnowledgePage }) {
 
 function KnowledgePageRoute() {
   const { id } = Route.useParams();
+  return <KnowledgePageRouteContent key={id} id={id} />;
+}
+
+function KnowledgePageRouteContent({ id }: { id: string }) {
   const { view = 'preview' } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [editing, setEditing] = useState(false);
   const { data: page, error, refetch } = usePage(id);
   const updatePage = useUpdatePage();
+  const archivePage = useArchivePage();
+  const [archiveConflictVisible, setArchiveConflictVisible] = useState(false);
 
   if (error) {
     return (
@@ -136,6 +152,7 @@ function KnowledgePageRoute() {
   if (!page) {
     return null;
   }
+  const hasInboundUsages = page.backlinks.length > 0;
 
   return (
     <DetailShell className={editing ? 'gap-4' : 'gap-0'} data-editing={editing}>
@@ -165,22 +182,69 @@ function KnowledgePageRoute() {
                 </Button>
               </>
             ) : (
-              <Button
-                size="lg"
-                type="button"
-                onClick={() => {
-                  updatePage.reset();
-                  setEditing(true);
-                }}
-              >
-                Edit page
-              </Button>
+              <>
+                <Button
+                  size="lg"
+                  type="button"
+                  onClick={() => {
+                    updatePage.reset();
+                    setArchiveConflictVisible(false);
+                    setEditing(true);
+                  }}
+                >
+                  Edit page
+                </Button>
+                <ResourceArchiveAction
+                  blocked={hasInboundUsages}
+                  pending={archivePage.isPending}
+                  resource="page"
+                  onBlocked={() => {
+                    setArchiveConflictVisible(true);
+                  }}
+                  onConfirm={() => {
+                    archivePage.mutate(
+                      { readableId: page.readableId },
+                      {
+                        onSuccess: (result) => {
+                          if (result.state === 'archived') {
+                            void navigate({ to: '/pages' });
+                          } else {
+                            setArchiveConflictVisible(true);
+                          }
+                        },
+                      },
+                    );
+                  }}
+                />
+              </>
             )
           }
         >
           Knowledge page
         </ResourceDetailHeading>
       </DetailHeader>
+
+      {archivePage.error && (
+        <p className="text-destructive text-sm" role="alert">
+          {archivePage.error.message}
+        </p>
+      )}
+
+      {archiveConflictVisible && (
+        <div className="flex flex-wrap items-center gap-2 text-destructive text-sm" role="alert">
+          <span>This page can’t be archived until every incoming reference is removed.</span>
+          <Button
+            size="sm"
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void navigate({ search: { view: 'links' }, hash: 'referenced-by' });
+            }}
+          >
+            Review referring pages
+          </Button>
+        </div>
+      )}
 
       {editing ? (
         <KnowledgePageForm

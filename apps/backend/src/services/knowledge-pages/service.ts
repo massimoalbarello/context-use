@@ -183,6 +183,17 @@ export class KnowledgePagesService {
     return { state: 'saved', page };
   }
 
+  archive(input: {
+    ownerId: string;
+    readableId: string;
+  }): ReturnType<KnowledgePagesRepositoryContract['archive']> {
+    return this.pages.archive({
+      ownerId: input.ownerId,
+      readableId: input.readableId,
+      archivedAt: new Date().toISOString(),
+    });
+  }
+
   async rebuildIndex({ ownerId }: { ownerId: string }): Promise<void> {
     const pages = await this.pages.listCurrent({ ownerId });
     for (const page of pages) {
@@ -253,5 +264,5 @@ export class KnowledgePagesService {
 
 export type KnowledgePagesServiceContract = Pick<
   KnowledgePagesService,
-  'create' | 'list' | 'detail' | 'update' | 'rebuildIndex'
+  'create' | 'list' | 'detail' | 'update' | 'archive' | 'rebuildIndex'
 >;

@@ -80,6 +80,11 @@ the current user count and database as deployment choices, not permanent domain 
   current implementation details behind owned repository and adapter boundaries.
 - Preserve these seams now, but do not build unused database adapters, tenancy machinery, extension
   points, or configuration. Generalize an abstraction when a concrete implementation needs it.
+- Archive a knowledge resource only when it has no active inbound usages, and enforce that
+  precondition in the same transaction as the archive. Archived resources are unavailable to
+  ordinary reads, collections, pickers, and link resolution. Preserve canonical rows, revisions,
+  and stored content, but remove an archived page's current outgoing relationship projections so it
+  leaves the active graph. The owner's self entity is never archivable.
 
 ## Red flags
 

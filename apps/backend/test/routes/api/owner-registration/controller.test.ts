@@ -38,6 +38,7 @@ const entitiesService: EntitiesServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  archive: unexpectedCall,
 };
 const healthService: HealthServiceContract = { check: unexpectedCall };
 const pagesService: KnowledgePagesServiceContract = {
@@ -45,6 +46,7 @@ const pagesService: KnowledgePagesServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  archive: unexpectedCall,
   rebuildIndex: unexpectedCall,
 };
 const profilesService: KnowledgeProfilesServiceContract = {
