@@ -515,32 +515,13 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       if (target.archivedAt) {
         return { state: 'archived' } as const;
       }
-      const rows = await db<Array<SummaryRow & { fragment: string }>>`
-        select page."id", page."readable_id" as "readableId",
-          revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
-          page."created_at" as "createdAt", page."updated_at" as "updatedAt",
-          reference."target_fragment" as "fragment"
-        from "knowledge_page_reference" reference
-        join "knowledge_page_revision" source_revision
-          on source_revision."id" = reference."source_revision_id"
-        join "knowledge_page" page
-          on page."id" = source_revision."page_id"
-         and page."current_revision_id" = source_revision."id"
-         and page."owner_id" = reference."owner_id"
-        join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
-        where reference."owner_id" = ${ownerId}
-          and reference."target_page_id" = ${target.id}
-          and page."archived_at" is null
-        order by revision."title", page."readable_id", reference."target_fragment"
-      `;
-      if (rows.length > 0) {
-        return {
-          state: 'resource_in_use' as const,
-          blockers: rows.map(({ fragment, ...page }) => ({
-            page: summaryFrom(page),
-            fragment: fragment || null,
-          })),
-        };
+      const blockers = await this.listActiveReferringPages({
+        db,
+        ownerId,
+        pageId: target.id,
+      });
+      if (blockers.length > 0) {
+        return { state: 'resource_in_use' as const, blockers };
       }
       await db`
         delete from "knowledge_page_entity_mention"
@@ -670,6 +651,41 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       });
       return { state: 'replaced' as const };
     });
+  }
+
+  private async listActiveReferringPages({
+    db,
+    ownerId,
+    pageId,
+  }: {
+    db: SQL;
+    ownerId: string;
+    pageId: string;
+  }): Promise<KnowledgePageReference[]> {
+    const rows = await db<Array<SummaryRow & { fragment: string }>>`
+      select referring_page."id", referring_page."readable_id" as "readableId",
+        current_referring_revision."revision_number" as "revisionNumber",
+        current_referring_revision."title", current_referring_revision."excerpt",
+        referring_page."created_at" as "createdAt", referring_page."updated_at" as "updatedAt",
+        inbound_reference."target_fragment" as "fragment"
+      from "knowledge_page_reference" inbound_reference
+      join "knowledge_page_revision" current_referring_revision
+        on current_referring_revision."id" = inbound_reference."source_revision_id"
+       and current_referring_revision."owner_id" = inbound_reference."owner_id"
+      join "knowledge_page" referring_page
+        on referring_page."id" = current_referring_revision."page_id"
+       and referring_page."owner_id" = inbound_reference."owner_id"
+       and referring_page."current_revision_id" = current_referring_revision."id"
+       and referring_page."archived_at" is null
+      where inbound_reference."owner_id" = ${ownerId}
+        and inbound_reference."target_page_id" = ${pageId}
+      order by current_referring_revision."title", referring_page."readable_id",
+        inbound_reference."target_fragment"
+    `;
+    return rows.map(({ fragment, ...page }) => ({
+      page: summaryFrom(page),
+      fragment: fragment || null,
+    }));
   }
 
   private async referenceRows({

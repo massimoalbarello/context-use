@@ -1,7 +1,10 @@
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#lib/pagination.ts';
 import type { Entity } from '#models/entities/model.ts';
-import type { KnowledgePageReference } from '#models/knowledge-pages/model.ts';
+import type {
+  KnowledgePageReference,
+  KnowledgePageSummary,
+} from '#models/knowledge-pages/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 
 export interface EntityRepositoryContract {
@@ -42,6 +45,10 @@ type EntityRow = {
   isSelf: number;
   createdAt: string;
   updatedAt: string;
+};
+
+type MentioningPageRow = Omit<KnowledgePageSummary, 'revisionNumber'> & {
+  revisionNumber: number;
 };
 
 function entityFrom(row: EntityRow): Entity {
@@ -218,38 +225,13 @@ export class EntitiesRepository implements EntityRepositoryContract {
       if (target.archivedAt) {
         return { state: 'archived' } as const;
       }
-      const rows = await db<
-        Array<{
-          id: string;
-          readableId: string;
-          revisionNumber: number;
-          title: string;
-          excerpt: string;
-          createdAt: string;
-          updatedAt: string;
-        }>
-      >`
-        select page."id", page."readable_id" as "readableId",
-          revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
-          page."created_at" as "createdAt", page."updated_at" as "updatedAt"
-        from "knowledge_page_entity_mention" mention
-        join "knowledge_page" page
-          on page."current_revision_id" = mention."source_revision_id"
-         and page."owner_id" = mention."owner_id"
-        join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
-        where mention."owner_id" = ${ownerId}
-          and mention."target_entity_id" = ${target.id}
-          and page."archived_at" is null
-        order by revision."title", page."readable_id"
-      `;
-      if (rows.length > 0) {
-        return {
-          state: 'resource_in_use' as const,
-          blockers: rows.map((page) => ({
-            page: { ...page, revisionNumber: Number(page.revisionNumber) },
-            fragment: null,
-          })),
-        };
+      const blockers = await this.listActiveMentioningPages({
+        db,
+        ownerId,
+        entityId: target.id,
+      });
+      if (blockers.length > 0) {
+        return { state: 'resource_in_use' as const, blockers };
       }
       await db`
         update "entity"
@@ -258,5 +240,38 @@ export class EntitiesRepository implements EntityRepositoryContract {
       `;
       return { state: 'archived' } as const;
     });
+  }
+
+  private async listActiveMentioningPages({
+    db,
+    ownerId,
+    entityId,
+  }: {
+    db: SQL;
+    ownerId: string;
+    entityId: string;
+  }): Promise<KnowledgePageReference[]> {
+    const rows = await db<MentioningPageRow[]>`
+      select referring_page."id", referring_page."readable_id" as "readableId",
+        current_referring_revision."revision_number" as "revisionNumber",
+        current_referring_revision."title", current_referring_revision."excerpt",
+        referring_page."created_at" as "createdAt", referring_page."updated_at" as "updatedAt"
+      from "knowledge_page_entity_mention" inbound_mention
+      join "knowledge_page_revision" current_referring_revision
+        on current_referring_revision."id" = inbound_mention."source_revision_id"
+       and current_referring_revision."owner_id" = inbound_mention."owner_id"
+      join "knowledge_page" referring_page
+        on referring_page."id" = current_referring_revision."page_id"
+       and referring_page."owner_id" = inbound_mention."owner_id"
+       and referring_page."current_revision_id" = current_referring_revision."id"
+       and referring_page."archived_at" is null
+      where inbound_mention."owner_id" = ${ownerId}
+        and inbound_mention."target_entity_id" = ${entityId}
+      order by current_referring_revision."title", referring_page."readable_id"
+    `;
+    return rows.map((page) => ({
+      page: { ...page, revisionNumber: Number(page.revisionNumber) },
+      fragment: null,
+    }));
   }
 }
