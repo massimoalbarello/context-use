@@ -7,7 +7,7 @@ import {
 import { isReadableId } from '#models/readable-ids/model.ts';
 
 const INTERNAL_REFERENCE =
-  /\[([^\]\n]+)\]\(context-use:\/\/(entity|page)\/([^\s/)#]+)(?:#([^\s)]+))?\)/g;
+  /(!?)\[([^\]\n]+)\]\(context-use:\/\/(entity|page|asset)\/([^\s/)#]+)(?:#([^\s)]+))?\)/g;
 const INTERNAL_SCHEME = 'context-use://';
 const HEADING_ONE = /^# (.+)$/;
 const HEADING = /^ {0,3}#{1,6}\s+/;
@@ -157,28 +157,59 @@ function validateInternalAddresses({
   }
 }
 
+type ParsedInternalReference =
+  | { kind: 'entity'; readableId: string }
+  | { kind: 'page'; readableId: string; fragment: string | null }
+  | { kind: 'asset'; readableId: string; presentation: 'embed' | 'attachment' };
+
+function parsedInternalReference(match: RegExpExecArray): ParsedInternalReference {
+  const [, imagePrefix, label, kind, readableId, fragment] = match;
+  if (!label?.trim() || !readableId || !isReadableId(readableId)) {
+    throw new InvalidKnowledgePageMarkdownError('Internal links need a label and a readable ID.');
+  }
+  if (fragment && (!isReadableId(fragment) || kind !== 'page')) {
+    throw new InvalidKnowledgePageMarkdownError('Page link fragments use lowercase heading IDs.');
+  }
+  if (imagePrefix && kind !== 'asset') {
+    throw new InvalidKnowledgePageMarkdownError('Only assets can be embedded as images.');
+  }
+  if (kind === 'entity') {
+    return { kind, readableId };
+  }
+  if (kind === 'page') {
+    return { kind, readableId, fragment: fragment ?? null };
+  }
+  return {
+    kind: 'asset',
+    readableId,
+    presentation: imagePrefix ? 'embed' : 'attachment',
+  };
+}
+
 function extractLinks(visibleMarkdown: string): KnowledgePageLinkSet {
   const entityReadableIds = new Set<string>();
   const pageReferences = new Map<string, { readableId: string; fragment: string | null }>();
+  const assetUsages = new Map<
+    string,
+    { readableId: string; presentation: 'embed' | 'attachment' }
+  >();
   const matchedRanges: Array<{ start: number; end: number }> = [];
   INTERNAL_REFERENCE.lastIndex = 0;
   let match = INTERNAL_REFERENCE.exec(visibleMarkdown);
   while (match) {
-    const [, label, kind, readableId, fragment] = match;
-    if (!label?.trim() || !readableId || !isReadableId(readableId)) {
-      throw new InvalidKnowledgePageMarkdownError('Internal links need a label and a readable ID.');
-    }
-    if (fragment && !isReadableId(fragment)) {
-      throw new InvalidKnowledgePageMarkdownError('Page link fragments use lowercase heading IDs.');
-    }
-    if (kind === 'entity') {
-      if (fragment) {
-        throw new InvalidKnowledgePageMarkdownError('Entity mentions cannot target a section.');
-      }
-      entityReadableIds.add(readableId);
+    const reference = parsedInternalReference(match);
+    if (reference.kind === 'entity') {
+      entityReadableIds.add(reference.readableId);
+    } else if (reference.kind === 'page') {
+      pageReferences.set(`${reference.readableId}#${reference.fragment ?? ''}`, {
+        readableId: reference.readableId,
+        fragment: reference.fragment,
+      });
     } else {
-      const reference = { readableId, fragment: fragment ?? null };
-      pageReferences.set(`${readableId}#${fragment ?? ''}`, reference);
+      assetUsages.set(`${reference.readableId}:${reference.presentation}`, {
+        readableId: reference.readableId,
+        presentation: reference.presentation,
+      });
     }
     matchedRanges.push({ start: match.index, end: INTERNAL_REFERENCE.lastIndex });
     match = INTERNAL_REFERENCE.exec(visibleMarkdown);
@@ -189,6 +220,7 @@ function extractLinks(visibleMarkdown: string): KnowledgePageLinkSet {
   return {
     entityReadableIds: [...entityReadableIds],
     pageReferences: [...pageReferences.values()],
+    assetUsages: [...assetUsages.values()],
   };
 }
 

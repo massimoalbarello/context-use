@@ -20,7 +20,7 @@ export function ResourceArchiveAction({
 }: {
   blocked: boolean;
   pending: boolean;
-  resource: 'entity' | 'page';
+  resource: 'entity' | 'page' | 'asset';
   onBlocked: () => void;
   onConfirm: () => void;
 }) {

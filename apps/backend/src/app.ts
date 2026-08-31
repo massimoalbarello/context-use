@@ -8,6 +8,7 @@ import {
   createFrontendAssetsController,
   createFrontendFallbackController,
 } from '#routes/controller.ts';
+import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 import type { HealthServiceContract } from '#services/health/service.ts';
@@ -21,6 +22,7 @@ const OPENAPI_PATH = '/openapi';
 
 export function createApp({
   auth,
+  assetsService,
   frontendAssetsService,
   entitiesService,
   healthService,
@@ -29,6 +31,7 @@ export function createApp({
   profilesService,
 }: {
   auth: Auth;
+  assetsService: AssetsServiceContract;
   frontendAssetsService: FrontendAssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
@@ -52,6 +55,10 @@ export function createApp({
             version: '1.0.0',
           },
           tags: [
+            {
+              name: 'Assets',
+              description: 'Uploaded files embedded in or attached to knowledge pages.',
+            },
             {
               name: 'Entities',
               description: 'Stable coordinates mentioned by knowledge pages.',
@@ -82,6 +89,7 @@ export function createApp({
     .use(
       createApiController({
         auth,
+        assetsService,
         entitiesService,
         healthService,
         ownerRegistrationService,

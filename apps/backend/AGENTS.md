@@ -66,6 +66,10 @@ database migration rules live in `src/db/AGENTS.md`.
   in SQL; never load a broader result and filter it in application memory.
 - Keep transactions around one business invariant. Do not hold a database transaction open across
   network or object-storage calls unless the design explicitly proves why that is safe.
+- Treat upload headers, filenames, and browser MIME types as optional hints. Services derive
+  authoritative size, type, safe extension, and content hash from the received bytes; storage keys
+  remain private implementation details. If an object write precedes its database transaction,
+  compensate the object on persistence failure and verify stored bytes on every protected read.
 
 ## Tests
 

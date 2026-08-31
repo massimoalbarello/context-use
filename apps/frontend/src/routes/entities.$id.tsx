@@ -3,12 +3,13 @@ import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
+import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
 import { ResourceList } from '../components/knowledge/resource-list';
+import { ResourceName } from '../components/knowledge/resource-name';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
 import { useArchiveEntity } from '../lib/hooks/use-archive-entity';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';
@@ -79,18 +80,15 @@ function EntityRouteContent({ id }: { id: string }) {
         <DetailHeader>
           <ResourceDetailHeading
             actions={
-              <>
-                <Button
-                  size="lg"
-                  type="button"
-                  onClick={() => {
-                    updateEntity.reset();
-                    setArchiveConflictVisible(false);
-                    setEditing(true);
-                  }}
-                >
-                  Edit entity
-                </Button>
+              <ResourceDetailActions
+                mode="view"
+                resource="entity"
+                onEdit={() => {
+                  updateEntity.reset();
+                  setArchiveConflictVisible(false);
+                  setEditing(true);
+                }}
+              >
                 {!entity.isSelf && (
                   <ResourceArchiveAction
                     blocked={hasInboundUsages}
@@ -115,15 +113,13 @@ function EntityRouteContent({ id }: { id: string }) {
                     }}
                   />
                 )}
-              </>
+              </ResourceDetailActions>
             }
           >
             Entity {entity.isSelf && <Badge variant="secondary">You</Badge>}
           </ResourceDetailHeading>
           <div className="w-full min-w-0 max-w-3xl">
-            <h1 className="mt-2 max-w-3xl font-semibold text-4xl tracking-tight md:text-5xl">
-              {entity.name}
-            </h1>
+            <ResourceName>{entity.name}</ResourceName>
             <p className="mt-3 max-w-2xl text-lg text-muted-foreground leading-relaxed">
               {entity.description}
             </p>

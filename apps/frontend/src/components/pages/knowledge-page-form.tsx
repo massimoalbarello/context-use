@@ -2,6 +2,7 @@ import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { DuplicateResourceNameError } from '../../lib/api-error';
 import { submitThenChangeValidation } from '../../lib/form-validation';
+import { useAssetSuggestions } from '../../lib/hooks/use-assets';
 import { useEntitySuggestions } from '../../lib/hooks/use-entities';
 import { usePageSuggestions } from '../../lib/hooks/use-pages';
 import { Button } from '../ui/button';
@@ -38,6 +39,7 @@ export function KnowledgePageForm({
   const [knowledgeQuery, setKnowledgeQuery] = useState<string | null>(null);
   const { data: entitySuggestions = [] } = useEntitySuggestions(knowledgeQuery);
   const { data: pageSuggestions = [] } = usePageSuggestions(knowledgeQuery);
+  const { data: assetSuggestions = [] } = useAssetSuggestions(knowledgeQuery);
   const form = useForm({
     defaultValues: { ...initialValues, allowDuplicate: false },
     validationLogic: submitThenChangeValidation,
@@ -71,14 +73,15 @@ export function KnowledgePageForm({
                 value={field.state.value}
                 entities={entitySuggestions}
                 pages={pageSuggestions}
+                assets={assetSuggestions}
                 invalid={field.state.meta.errors.length > 0}
                 onBlur={field.handleBlur}
                 onChange={field.handleChange}
                 onQueryChange={setKnowledgeQuery}
               />
               <FieldDescription>
-                Keep one coherent idea here. Type @ to mention an entity or reference a page; use H2
-                or lower headings for linkable sections.
+                Keep one coherent idea here. Type @ to mention an entity, reference a page, or use
+                an asset; use H2 or lower headings for linkable sections.
               </FieldDescription>
               <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>

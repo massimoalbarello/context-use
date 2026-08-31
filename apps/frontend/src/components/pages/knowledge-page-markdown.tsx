@@ -1,24 +1,29 @@
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
+import { assetContentUrl } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import { EntityLink } from '../entities/entity-link';
 import { KnowledgePageLink } from './knowledge-page-link';
 
 type InternalLink =
   | { kind: 'entity'; readableId: string }
-  | { kind: 'page'; readableId: string; fragment: string | undefined };
+  | { kind: 'page'; readableId: string; fragment: string | undefined }
+  | { kind: 'asset'; readableId: string };
 
 function internalLink(href: string): InternalLink | null {
   const match =
-    /^context-use:\/\/(entity|page)\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:#([a-z0-9]+(?:-[a-z0-9]+)*))?$/.exec(
+    /^context-use:\/\/(entity|page|asset)\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:#([a-z0-9]+(?:-[a-z0-9]+)*))?$/.exec(
       href,
     );
   if (!match?.[1] || !match[2]) {
     return null;
   }
-  return match[1] === 'entity'
-    ? { kind: 'entity', readableId: match[2] }
-    : { kind: 'page', readableId: match[2], fragment: match[3] };
+  if (match[1] === 'entity') {
+    return { kind: 'entity', readableId: match[2] };
+  }
+  return match[1] === 'page'
+    ? { kind: 'page', readableId: match[2], fragment: match[3] }
+    : { kind: 'asset', readableId: match[2] };
 }
 
 function textContent(node: ReactNode): string {
@@ -77,6 +82,16 @@ export function KnowledgePageMarkdown({ markdown }: { markdown: string }) {
                 </KnowledgePageLink>
               );
             }
+            if (target?.kind === 'asset') {
+              return (
+                <a
+                  className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 hover:decoration-foreground"
+                  href={assetContentUrl(target.readableId)}
+                >
+                  {children}
+                </a>
+              );
+            }
             return (
               <a
                 className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 hover:decoration-foreground"
@@ -84,6 +99,19 @@ export function KnowledgePageMarkdown({ markdown }: { markdown: string }) {
               >
                 {children}
               </a>
+            );
+          },
+          img: ({ src, alt }) => {
+            const target = src ? internalLink(src) : null;
+            if (target?.kind !== 'asset') {
+              return null;
+            }
+            return (
+              <img
+                className="my-7 max-h-[36rem] w-full rounded-xl bg-muted object-contain"
+                src={assetContentUrl(target.readableId)}
+                alt={alt ?? ''}
+              />
             );
           },
           h1: ({ children }) => (

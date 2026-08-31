@@ -1,3 +1,4 @@
+import type { AssetPresentation, AssetSummary } from '#models/assets/model.ts';
 import type { Entity } from '#models/entities/model.ts';
 
 export const MAX_KNOWLEDGE_PAGE_BYTES = 1_000_000;
@@ -25,11 +26,17 @@ export interface KnowledgePageRevisionSummary {
   createdAt: string;
 }
 
+export interface KnowledgePageAssetUsage {
+  asset: AssetSummary;
+  presentation: AssetPresentation;
+}
+
 export interface KnowledgePage extends KnowledgePageSummary {
   markdown: string;
   mentions: Entity[];
   references: KnowledgePageReference[];
   backlinks: KnowledgePageReference[];
+  assetUsages: KnowledgePageAssetUsage[];
   revisions: KnowledgePageRevisionSummary[];
 }
 
@@ -44,4 +51,5 @@ export interface StoredKnowledgePage extends KnowledgePageSummary {
 export interface KnowledgePageLinkSet {
   entityReadableIds: string[];
   pageReferences: Array<{ readableId: string; fragment: string | null }>;
+  assetUsages: Array<{ readableId: string; presentation: AssetPresentation }>;
 }

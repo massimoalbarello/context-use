@@ -25,7 +25,7 @@ export function KnowledgeSidebar({
 }: {
   collection: KnowledgeCollection;
   count: number;
-  createTo: '/pages/new' | '/entities/new';
+  createTo: '/entities/new' | '/pages/new' | '/assets/new';
   createLabel: string;
   profile: KnowledgeProfile;
   error?: Error | null;
@@ -81,9 +81,13 @@ export function KnowledgeSidebar({
             collection={collection}
             ownerEntityId={profile.selfEntity.id}
           />
-          <Link className={cn(buttonVariants({ size: 'lg' }), 'shrink-0')} to={createTo}>
-            <Plus data-icon="inline-start" aria-hidden="true" />
-            {createLabel}
+          <Link
+            className={cn(buttonVariants({ size: 'icon-lg' }), 'shrink-0')}
+            to={createTo}
+            aria-label={createLabel}
+            title={createLabel}
+          >
+            <Plus aria-hidden="true" />
           </Link>
         </div>
 
