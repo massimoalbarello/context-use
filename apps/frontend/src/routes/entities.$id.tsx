@@ -2,7 +2,7 @@ import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-route
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
-import { ResourceArchiveButton } from '../components/knowledge/resource-archive-button';
+import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
 import { ResourceList } from '../components/knowledge/resource-list';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
@@ -92,13 +92,14 @@ function EntityRouteContent({ id }: { id: string }) {
                   Edit entity
                 </Button>
                 {!entity.isSelf && (
-                  <ResourceArchiveButton
+                  <ResourceArchiveAction
+                    blocked={hasInboundUsages}
                     pending={archiveEntity.isPending}
-                    onClick={() => {
-                      if (hasInboundUsages) {
-                        setArchiveConflictVisible(true);
-                        return;
-                      }
+                    resource="entity"
+                    onBlocked={() => {
+                      setArchiveConflictVisible(true);
+                    }}
+                    onConfirm={() => {
                       archiveEntity.mutate(
                         { readableId: entity.readableId },
                         {

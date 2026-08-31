@@ -2,7 +2,7 @@ import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-route
 import { useState } from 'react';
 import { EntityLink } from '../components/entities/entity-link';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
-import { ResourceArchiveButton } from '../components/knowledge/resource-archive-button';
+import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
 import { ResourceList } from '../components/knowledge/resource-list';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
@@ -194,13 +194,14 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
                 >
                   Edit page
                 </Button>
-                <ResourceArchiveButton
+                <ResourceArchiveAction
+                  blocked={hasInboundUsages}
                   pending={archivePage.isPending}
-                  onClick={() => {
-                    if (hasInboundUsages) {
-                      setArchiveConflictVisible(true);
-                      return;
-                    }
+                  resource="page"
+                  onBlocked={() => {
+                    setArchiveConflictVisible(true);
+                  }}
+                  onConfirm={() => {
                     archivePage.mutate(
                       { readableId: page.readableId },
                       {
