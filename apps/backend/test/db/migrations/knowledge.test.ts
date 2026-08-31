@@ -18,7 +18,7 @@ const PAGE_ARCHIVE_MIGRATION = new URL(
   import.meta.url,
 );
 const ARCHIVE_INVARIANT_MIGRATION = new URL(
-  '../../../src/db/migrations/0004_enforce_knowledge_resource_archiving.sql',
+  '../../../src/db/migrations/0004_prevent_self_entity_archiving.sql',
   import.meta.url,
 );
 const CONTENT_HASH_LENGTH = 64;
