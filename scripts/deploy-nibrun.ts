@@ -13,8 +13,6 @@ const APP_SLUG_PREFIX = `${APP_NAME}-`;
 const AUTH_SECRET_BYTES = 32;
 const FAILED_STATUS = 'failed';
 const LOG_HISTORY = '8760h';
-const MINIMUM_NIB_VERSION = '2026.8.31-2';
-const NIB_VERSION_PATTERN = /^(\d{4})\.(\d{1,2})\.(\d{1,2})-(\d+)$/;
 const MISSING_AUTH_SECRET_ERROR = missingRequiredEnvironmentVariableMessage(
   BACKEND_ENVIRONMENT.authSecret,
 );
@@ -65,31 +63,6 @@ async function output(command: string[]): Promise<string> {
   return result;
 }
 
-function supportsStructuredOutput(version: string): boolean {
-  return (
-    NIB_VERSION_PATTERN.test(version) &&
-    version.localeCompare(MINIMUM_NIB_VERSION, 'en', { numeric: true }) >= 0
-  );
-}
-
-async function requireCompatibleNib(): Promise<void> {
-  const installedVersion = (await output([nibExecutable, '--version'])).trim();
-  if (supportsStructuredOutput(installedVersion)) {
-    return;
-  }
-  console.error(
-    [
-      `nib ${installedVersion || 'unknown'} is too old; this deployment requires ${MINIMUM_NIB_VERSION} or newer.`,
-      '',
-      'Update it with:',
-      '  curl -fsSL https://nibrun.com/install.sh | sh',
-      '',
-      'Then run this deployment command again.',
-    ].join('\n'),
-  );
-  process.exit(FAILURE_EXIT_CODE);
-}
-
 function unexpectedJson(command: string[]): never {
   console.error(
     `nib --json ${command.join(' ')} returned an unexpected response; update nib and try again.`,
@@ -136,8 +109,6 @@ async function failedForMissingAuthSecret(appSlug: string): Promise<boolean> {
     record.message.includes(MISSING_AUTH_SECRET_ERROR),
   );
 }
-
-await requireCompatibleNib();
 
 const matchingApps = await contextUseApps();
 if (matchingApps.length > 1) {
