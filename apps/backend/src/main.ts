@@ -17,7 +17,7 @@ import { FrontendAssetsRepository } from '#repositories/frontend-assets/reposito
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
-import { McpConnectionsRepository } from '#repositories/mcp-connections/repository.ts';
+import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
 import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
@@ -25,7 +25,7 @@ import { FrontendAssetsService } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
-import { McpConnectionsService } from '#services/mcp-connections/service.ts';
+import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
@@ -69,7 +69,9 @@ try {
   );
   const pagesService = new KnowledgePagesService({ pages: pagesRepository, storage });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
-  const mcpConnectionsService = new McpConnectionsService(new McpConnectionsRepository(database));
+  const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
+    new McpClientAuthorizationsRepository(database),
+  );
   const mcpTransport = createMcpTransport();
   const auth = createAuth({
     database,
@@ -84,7 +86,7 @@ try {
     frontendAssetsService,
     entitiesService,
     healthService,
-    mcpConnectionsService,
+    mcpClientAuthorizationsService,
     mcpServerUrl: mcpServerUrl({ baseUrl: env.BASE_URL }),
     mcpTransport,
     ownerRegistrationService,

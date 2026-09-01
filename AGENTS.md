@@ -80,6 +80,11 @@ the current user count and database as deployment choices, not permanent domain 
   current implementation details behind owned repository and adapter boundaries.
 - Preserve these seams now, but do not build unused database adapters, tenancy machinery, extension
   points, or configuration. Generalize an abstraction when a concrete implementation needs it.
+- Keep MCP identity vocabulary precise. An **OAuth client** is the protocol registration identified
+  by `client_id`; an **MCP client** is the user-facing external consumer; an **MCP client
+  authorization** is the owner-scoped durable approval with its friendly name, credential
+  lifecycle, and stable attribution identity. The MCP transport is stateless. Do not call a client
+  authorization a connection or conflate it with a transport session.
 - Archive a knowledge resource only when it has no active inbound usages, and enforce that
   precondition in the same transaction as the archive. Archived resources are unavailable to
   ordinary reads, collections, pickers, and link resolution. Preserve canonical rows, revisions,

@@ -1,4 +1,4 @@
-import { MAX_MCP_CONNECTION_NAME_LENGTH } from '@repo/backend/mcp-connection';
+import { MAX_MCP_CLIENT_NAME_LENGTH } from '@repo/backend/mcp-client-authorization';
 import { useForm } from '@tanstack/react-form';
 import { type ReactNode, useId } from 'react';
 import { submitThenChangeValidation } from '../../lib/form-validation';
@@ -9,14 +9,14 @@ import { Input } from '../ui/input';
 function validateName({ value }: { value: string }): string | undefined {
   const length = value.trim().length;
   if (length === 0) {
-    return 'Enter a name for this connection.';
+    return 'Enter a name for this client.';
   }
-  if (length > MAX_MCP_CONNECTION_NAME_LENGTH) {
-    return `Use ${MAX_MCP_CONNECTION_NAME_LENGTH} characters or fewer.`;
+  if (length > MAX_MCP_CLIENT_NAME_LENGTH) {
+    return `Use ${MAX_MCP_CLIENT_NAME_LENGTH} characters or fewer.`;
   }
 }
 
-export function ConnectionNameForm({
+export function ClientNameForm({
   initialName,
   pending,
   error,
@@ -60,7 +60,7 @@ export function ConnectionNameForm({
               className={presentation === 'card-title' ? 'sr-only' : undefined}
               htmlFor={nameInputId}
             >
-              Connection name
+              Client name
             </FieldLabel>
             <Input
               className={
@@ -71,7 +71,7 @@ export function ConnectionNameForm({
               id={nameInputId}
               name={field.name}
               value={field.state.value}
-              maxLength={MAX_MCP_CONNECTION_NAME_LENGTH}
+              maxLength={MAX_MCP_CLIENT_NAME_LENGTH}
               onBlur={field.handleBlur}
               onChange={(event) => field.handleChange(event.target.value)}
               aria-invalid={field.state.meta.errors.length > 0}

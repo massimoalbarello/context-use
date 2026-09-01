@@ -1,14 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { FormShell } from '../components/layout/form-shell';
-import { ConnectionNameForm } from '../components/mcp-connections/connection-name-form';
+import { ClientNameForm } from '../components/mcp/client-name-form';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { authClient } from '../lib/auth';
-import {
-  approveMcpConnection,
-  mcpAuthorizationClientQueryOptions,
-} from '../queries/mcp-connections';
+import { approveMcpClient, mcpAuthorizationClientQueryOptions } from '../queries/mcp-clients';
 
 type AuthorizationSearch = {
   client_id?: string;
@@ -49,7 +46,7 @@ function McpAuthorizeRoute() {
   const search = Route.useSearch();
   const approval = useMutation({
     mutationFn: async (name: string) => {
-      await approveMcpConnection({ clientId: search.client_id!, name });
+      await approveMcpClient({ clientId: search.client_id!, name });
       const { data, error } = await authClient.oauth2.consent({
         accept: true,
         scope: search.scope,
@@ -70,21 +67,21 @@ function McpAuthorizeRoute() {
       redirectFromConsent(data);
     },
   });
-  const suggestedName = client.suggestedName ?? 'MCP connection';
+  const suggestedName = client.suggestedName ?? 'MCP client';
 
   return (
     <FormShell
       eyebrow="MCP authorization"
       title="Connect an MCP client"
-      description="Approve this client only if you started the connection. The name you choose is the identity Context Use will show in future activity."
+      description="Approve this client only if you tried to connect it. The name you choose is the identity Context Use will show in future activity."
     >
       <Card>
         <CardContent>
-          <ConnectionNameForm
+          <ClientNameForm
             initialName={suggestedName}
             pending={approval.isPending || denial.isPending}
             error={approval.error ?? denial.error}
-            submitLabel="Approve connection"
+            submitLabel="Approve client"
             description={
               client.verifiedClientId
                 ? `Verified client metadata suggested “${suggestedName}”. You can replace it.`

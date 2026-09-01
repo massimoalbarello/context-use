@@ -1,9 +1,9 @@
 import { Elysia } from 'elysia';
 import { type Auth, MCP_ROUTE_PATH } from '#lib/auth/better-auth.ts';
 import type { McpTransportContract } from '#lib/mcp/transport.ts';
-import type { McpConnectionsServiceContract } from '#services/mcp-connections/service.ts';
+import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
 
-function inactiveConnectionResponse(request: Request): Response {
+function unauthorizedClientResponse(request: Request): Response {
   const resourceMetadata = new URL(
     `/.well-known/oauth-protected-resource${MCP_ROUTE_PATH}`,
     request.url,
@@ -11,7 +11,7 @@ function inactiveConnectionResponse(request: Request): Response {
   return new Response(
     JSON.stringify({
       jsonrpc: '2.0',
-      error: { code: -32_001, message: 'MCP connection is not active' },
+      error: { code: -32_001, message: 'MCP client is not authorized' },
       id: null,
     }),
     {
@@ -26,21 +26,21 @@ function inactiveConnectionResponse(request: Request): Response {
 
 export function createMcpController({
   auth,
-  connectionsService,
+  clientAuthorizationsService,
   transport,
 }: {
   auth: Auth;
-  connectionsService: McpConnectionsServiceContract;
+  clientAuthorizationsService: McpClientAuthorizationsServiceContract;
   transport: McpTransportContract;
 }) {
   const protectedRequest = auth.protectMcpRequest({
     handler: async ({ request, token }) => {
-      const principal = await connectionsService.authenticate({
+      const principal = await clientAuthorizationsService.authenticate({
         ownerId: token.ownerId,
         oauthClientId: token.oauthClientId,
       });
       if (!principal) {
-        return inactiveConnectionResponse(request);
+        return unauthorizedClientResponse(request);
       }
       return await transport.fetch({
         request,

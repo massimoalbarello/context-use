@@ -1,21 +1,21 @@
 import { expect, test } from 'bun:test';
-import type { McpConnectionsRepositoryContract } from '#repositories/mcp-connections/repository.ts';
-import { McpConnectionsService } from '#services/mcp-connections/service.ts';
+import type { McpClientAuthorizationsRepositoryContract } from '#repositories/mcp-client-authorizations/repository.ts';
+import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
 
-test('MCP connection management rejects every non-owner actor before persistence', async () => {
+test('MCP client authorization management rejects every non-owner actor before persistence', async () => {
   let repositoryCalls = 0;
   const unexpectedCall = () => {
     repositoryCalls += 1;
     throw new Error('A non-owner request reached the repository');
   };
-  const service = new McpConnectionsService({
+  const service = new McpClientAuthorizationsService({
     oauthClient: unexpectedCall,
     approve: unexpectedCall,
     list: unexpectedCall,
     rename: unexpectedCall,
     archive: unexpectedCall,
     activePrincipal: unexpectedCall,
-  } satisfies McpConnectionsRepositoryContract);
+  } satisfies McpClientAuthorizationsRepositoryContract);
 
   expect(
     await service.authorizationClient({ actorId: 'another-user', clientId: 'client' }),
@@ -27,13 +27,16 @@ test('MCP connection management rejects every non-owner actor before persistence
   expect(
     await service.rename({
       actorId: 'another-user',
-      connectionId: 'connection',
+      clientAuthorizationId: 'client-authorization',
       name: 'Agent',
     }),
   ).toEqual({ state: 'forbidden' });
-  expect(await service.archive({ actorId: 'another-user', connectionId: 'connection' })).toEqual({
-    state: 'forbidden',
-  });
+  expect(
+    await service.archive({
+      actorId: 'another-user',
+      clientAuthorizationId: 'client-authorization',
+    }),
+  ).toEqual({ state: 'forbidden' });
   expect(
     await service.authenticate({ ownerId: 'another-user', oauthClientId: 'client' }),
   ).toBeNull();

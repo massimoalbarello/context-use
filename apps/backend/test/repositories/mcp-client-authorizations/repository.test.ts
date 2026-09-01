@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
 import type { SQL } from 'bun';
 import { OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
-import { McpConnectionsRepository } from '#repositories/mcp-connections/repository.ts';
-import { McpConnectionsService } from '#services/mcp-connections/service.ts';
+import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
+import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
 import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
 
-const EXPECTED_CONNECTION_COUNT = 3;
-const EXPECTED_ACTIVE_CONNECTION_COUNT = 2;
+const EXPECTED_CLIENT_AUTHORIZATION_COUNT = 3;
+const EXPECTED_ACTIVE_CLIENT_AUTHORIZATION_COUNT = 2;
 
 async function insertOAuthClient({
   database,
@@ -25,7 +25,7 @@ async function insertOAuthClient({
   `;
 }
 
-test('active connection identity is stable per owner and OAuth client, never per friendly name', async () => {
+test('active client authorization identity is stable per owner and OAuth client, never per friendly name', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
       const now = new Date().toISOString();
@@ -38,7 +38,9 @@ test('active connection identity is stable per owner and OAuth client, never per
       await insertOAuthClient({ database, clientId: 'verified-client', discovery: 'cimd' });
       await insertOAuthClient({ database, clientId: 'fresh-client', discovery: null });
 
-      const service = new McpConnectionsService(new McpConnectionsRepository(database));
+      const service = new McpClientAuthorizationsService(
+        new McpClientAuthorizationsRepository(database),
+      );
       const verified = await service.authorizationClient({
         actorId: OWNER_USER_ID,
         clientId: 'verified-client',
@@ -76,8 +78,8 @@ test('active connection identity is stable per owner and OAuth client, never per
       if (reconnect.state !== 'approved') {
         throw new Error('Expected reconnect approval');
       }
-      expect(reconnect.connection.id).toBe(first.connection.id);
-      expect(reconnect.connection.name).toBe('Renamed on reconnect');
+      expect(reconnect.clientAuthorization.id).toBe(first.clientAuthorization.id);
+      expect(reconnect.clientAuthorization.name).toBe('Renamed on reconnect');
 
       const similarName = await service.approve({
         actorId: OWNER_USER_ID,
@@ -88,11 +90,14 @@ test('active connection identity is stable per owner and OAuth client, never per
       if (similarName.state !== 'approved') {
         throw new Error('Expected second-client approval');
       }
-      expect(similarName.connection.id).not.toBe(first.connection.id);
-      expect(similarName.connection.verifiedClientId).toBeNull();
+      expect(similarName.clientAuthorization.id).not.toBe(first.clientAuthorization.id);
+      expect(similarName.clientAuthorization.verifiedClientId).toBeNull();
 
       expect(
-        await service.archive({ actorId: OWNER_USER_ID, connectionId: first.connection.id }),
+        await service.archive({
+          actorId: OWNER_USER_ID,
+          clientAuthorizationId: first.clientAuthorization.id,
+        }),
       ).toEqual({ state: 'archived' });
       const afterArchive = await service.approve({
         actorId: OWNER_USER_ID,
@@ -103,17 +108,17 @@ test('active connection identity is stable per owner and OAuth client, never per
       if (afterArchive.state !== 'approved') {
         throw new Error('Expected approval after archive');
       }
-      expect(afterArchive.connection.id).not.toBe(first.connection.id);
+      expect(afterArchive.clientAuthorization.id).not.toBe(first.clientAuthorization.id);
 
       const listed = await service.list({ actorId: OWNER_USER_ID });
       expect(listed.state).toBe('found');
       if (listed.state !== 'found') {
-        throw new Error('Expected connection list');
+        throw new Error('Expected client authorization list');
       }
-      expect(listed.connections).toHaveLength(EXPECTED_CONNECTION_COUNT);
-      expect(listed.connections.filter(({ archivedAt }) => archivedAt === null)).toHaveLength(
-        EXPECTED_ACTIVE_CONNECTION_COUNT,
-      );
+      expect(listed.clientAuthorizations).toHaveLength(EXPECTED_CLIENT_AUTHORIZATION_COUNT);
+      expect(
+        listed.clientAuthorizations.filter(({ archivedAt }) => archivedAt === null),
+      ).toHaveLength(EXPECTED_ACTIVE_CLIENT_AUTHORIZATION_COUNT);
     },
   });
 });

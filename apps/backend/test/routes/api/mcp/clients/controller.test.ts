@@ -2,11 +2,11 @@ import { expect, test } from 'bun:test';
 import { StatusMap } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
-import { createMcpConnectionsController } from '#routes/api/mcp/connections/controller.ts';
-import type { McpConnectionsServiceContract } from '#services/mcp-connections/service.ts';
+import { createMcpClientsController } from '#routes/api/mcp/clients/controller.ts';
+import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
 import {
   testMcpServerUrl,
-  unusedMcpConnectionsService,
+  unusedMcpClientAuthorizationsService,
   unusedMcpProtection,
 } from '../../../../support/mcp.ts';
 
@@ -34,19 +34,19 @@ const ownerAuth: Auth = {
   protectMcpRequest: unusedMcpProtection,
 };
 
-test('connection settings expose the configured public MCP server URL to the owner', async () => {
-  const connectionsService: McpConnectionsServiceContract = {
-    ...unusedMcpConnectionsService,
+test('client settings expose the configured public MCP server URL to the owner', async () => {
+  const clientAuthorizationsService: McpClientAuthorizationsServiceContract = {
+    ...unusedMcpClientAuthorizationsService,
     list: ({ actorId }) => {
       expect(actorId).toBe(OWNER_USER_ID);
-      return Promise.resolve({ state: 'found', connections: [] });
+      return Promise.resolve({ state: 'found', clientAuthorizations: [] });
     },
   };
-  const response = await createMcpConnectionsController({
+  const response = await createMcpClientsController({
     auth: ownerAuth,
-    connectionsService,
+    clientAuthorizationsService,
     mcpServerUrl: testMcpServerUrl,
-  }).handle(new Request('http://localhost/mcp/connections'));
+  }).handle(new Request('http://localhost/mcp/clients'));
 
   expect(response.status).toBe(StatusMap.OK);
   expect(await response.json()).toEqual({ serverUrl: testMcpServerUrl, items: [] });

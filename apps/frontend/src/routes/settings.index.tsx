@@ -1,16 +1,16 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { ConnectionList } from '../components/mcp-connections/connection-list';
-import { McpServerUrl } from '../components/mcp-connections/mcp-server-url';
-import { mcpConnectionsQueryOptions } from '../queries/mcp-connections';
+import { ClientList } from '../components/mcp/client-list';
+import { McpServerUrl } from '../components/mcp/mcp-server-url';
+import { mcpClientsQueryOptions } from '../queries/mcp-clients';
 
 export const Route = createFileRoute('/settings/')({
-  loader: ({ context }) => context.queryClient.ensureQueryData(mcpConnectionsQueryOptions),
+  loader: ({ context }) => context.queryClient.ensureQueryData(mcpClientsQueryOptions),
   component: McpSettingsRoute,
 });
 
 function McpSettingsRoute() {
-  const { data } = useSuspenseQuery(mcpConnectionsQueryOptions);
+  const { data } = useSuspenseQuery(mcpClientsQueryOptions);
 
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-10 px-5 py-10 md:px-10 md:py-12">
@@ -33,7 +33,7 @@ function McpSettingsRoute() {
         <McpServerUrl serverUrl={data.serverUrl} />
       </section>
 
-      <ConnectionList connections={data.items} />
+      <ClientList clients={data.items} />
     </div>
   );
 }

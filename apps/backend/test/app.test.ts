@@ -11,7 +11,7 @@ import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profi
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
 import {
   testMcpServerUrl,
-  unusedMcpConnectionsService,
+  unusedMcpClientAuthorizationsService,
   unusedMcpProtection,
   unusedMcpTransport,
 } from './support/mcp.ts';
@@ -76,7 +76,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     frontendAssetsService,
     entitiesService,
     healthService,
-    mcpConnectionsService: unusedMcpConnectionsService,
+    mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
     mcpServerUrl: testMcpServerUrl,
     mcpTransport: unusedMcpTransport,
     ownerRegistrationService,

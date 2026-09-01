@@ -14,9 +14,9 @@ import {
   OWNER_SYNTHETIC_EMAIL,
   OWNER_USER_ID,
 } from '#lib/auth/owner-registration.ts';
-import { McpConnectionsRepository } from '#repositories/mcp-connections/repository.ts';
+import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
 import { createAuthDiscoveryController } from '#routes/auth-discovery/controller.ts';
-import { McpConnectionsService } from '#services/mcp-connections/service.ts';
+import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
 import { withAuthTestDatabase } from './auth-test-database.ts';
 
 const TEST_SECRET = 'test-secret-at-least-thirty-two-characters';
@@ -299,8 +299,10 @@ describe('MCP OAuth foundation', () => {
             name: 'Desktop Agent',
             urls,
           });
-          const connections = new McpConnectionsService(new McpConnectionsRepository(database));
-          const approval = await connections.approve({
+          const clientAuthorizations = new McpClientAuthorizationsService(
+            new McpClientAuthorizationsRepository(database),
+          );
+          const approval = await clientAuthorizations.approve({
             actorId: OWNER_USER_ID,
             clientId: client.client_id,
             name: 'My coding agent',
@@ -439,14 +441,14 @@ describe('MCP OAuth foundation', () => {
             name: 'Another desktop agent',
             urls,
           });
-          const archivedApproval = await connections.approve({
+          const archivedApproval = await clientAuthorizations.approve({
             actorId: OWNER_USER_ID,
             clientId: archivedClient.client_id,
             name: 'My coding agent',
           });
           expect(archivedApproval.state).toBe('approved');
           if (archivedApproval.state !== 'approved') {
-            throw new Error('Expected approval for the connection to archive');
+            throw new Error('Expected approval for the client to archive');
           }
           const archivedTokens = JSON.parse(
             await authorizeClient({
@@ -457,13 +459,13 @@ describe('MCP OAuth foundation', () => {
             }),
           ) as OAuthTokenResponse;
           expect(
-            await connections.archive({
+            await clientAuthorizations.archive({
               actorId: OWNER_USER_ID,
-              connectionId: archivedApproval.connection.id,
+              clientAuthorizationId: archivedApproval.clientAuthorization.id,
             }),
           ).toEqual({ state: 'archived' });
           expect(
-            await connections.authenticate({
+            await clientAuthorizations.authenticate({
               ownerId: OWNER_USER_ID,
               oauthClientId: archivedClient.client_id,
             }),

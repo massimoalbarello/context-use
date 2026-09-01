@@ -17,7 +17,7 @@ import type { FrontendAssetsServiceContract } from '#services/frontend-assets/se
 import type { HealthServiceContract } from '#services/health/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
-import type { McpConnectionsServiceContract } from '#services/mcp-connections/service.ts';
+import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
 
 // Pinned rather than left to the plugin's default: the frontend links to it and the dev
@@ -30,7 +30,7 @@ export function createApp({
   frontendAssetsService,
   entitiesService,
   healthService,
-  mcpConnectionsService,
+  mcpClientAuthorizationsService,
   mcpServerUrl,
   mcpTransport,
   ownerRegistrationService,
@@ -42,7 +42,7 @@ export function createApp({
   frontendAssetsService: FrontendAssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
-  mcpConnectionsService: McpConnectionsServiceContract;
+  mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
   mcpTransport: McpTransportContract;
   ownerRegistrationService: OwnerRegistrationServiceContract;
@@ -78,8 +78,8 @@ export function createApp({
               description: 'Versioned Markdown knowledge pages and their links.',
             },
             {
-              name: 'MCP connections',
-              description: 'Owner-approved agent connections and their lifecycle.',
+              name: 'MCP clients',
+              description: 'Owner-approved MCP clients and their authorization lifecycle.',
             },
             {
               name: 'Owner registration',
@@ -104,7 +104,7 @@ export function createApp({
     .use(
       createMcpController({
         auth,
-        connectionsService: mcpConnectionsService,
+        clientAuthorizationsService: mcpClientAuthorizationsService,
         transport: mcpTransport,
       }),
     )
@@ -114,7 +114,7 @@ export function createApp({
         assetsService,
         entitiesService,
         healthService,
-        mcpConnectionsService,
+        mcpClientAuthorizationsService,
         mcpServerUrl,
         ownerRegistrationService,
         pagesService,

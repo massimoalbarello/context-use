@@ -1,10 +1,7 @@
 import { Archive } from 'lucide-react';
 import { useId, useState } from 'react';
-import {
-  useArchiveMcpConnection,
-  useRenameMcpConnection,
-} from '../../lib/hooks/use-mcp-connections';
-import type { McpConnection } from '../../queries/mcp-connections';
+import { useArchiveMcpClient, useRenameMcpClient } from '../../lib/hooks/use-mcp-clients';
+import type { McpClient } from '../../queries/mcp-clients';
 import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import {
   AlertDialog,
@@ -18,14 +15,14 @@ import {
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
-import { ConnectionNameForm } from './connection-name-form';
+import { ClientNameForm } from './client-name-form';
 
-function ConnectionArchiveAction({
-  connection,
+function ClientArchiveAction({
+  client,
   pending,
   onConfirm,
 }: {
-  connection: McpConnection;
+  client: McpClient;
   pending: boolean;
   onConfirm: () => void;
 }) {
@@ -40,10 +37,10 @@ function ConnectionArchiveAction({
         }
       />
       <AlertDialogContent>
-        <AlertDialogTitle>Archive {connection.name}?</AlertDialogTitle>
+        <AlertDialogTitle>Archive {client.name}?</AlertDialogTitle>
         <AlertDialogDescription>
-          Refresh credentials will be revoked immediately. The client must be approved as a new
-          connection before it can access Context Use again.
+          Refresh credentials will be revoked immediately. The client must be approved again before
+          it can access Context Use.
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="outline">Cancel</Button>} />
@@ -60,9 +57,9 @@ function ConnectionArchiveAction({
   );
 }
 
-function ActiveConnection({ connection }: { connection: McpConnection }) {
-  const rename = useRenameMcpConnection();
-  const archive = useArchiveMcpConnection();
+function ActiveClient({ client }: { client: McpClient }) {
+  const rename = useRenameMcpClient();
+  const archive = useArchiveMcpClient();
   const [editing, setEditing] = useState(false);
   const editFormId = useId();
   return (
@@ -70,21 +67,21 @@ function ActiveConnection({ connection }: { connection: McpConnection }) {
       <CardContent className="grid gap-5">
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           {editing ? (
-            <ConnectionNameForm
-              initialName={connection.name}
+            <ClientNameForm
+              initialName={client.name}
               pending={rename.isPending}
               error={rename.error}
               formId={editFormId}
               presentation="card-title"
               onSubmit={(name) =>
                 rename.mutate(
-                  { connectionId: connection.id, name },
+                  { clientAuthorizationId: client.id, name },
                   { onSuccess: () => setEditing(false) },
                 )
               }
             />
           ) : (
-            <strong className="min-w-0">{connection.name}</strong>
+            <strong className="min-w-0">{client.name}</strong>
           )}
           <div className="flex shrink-0 flex-wrap gap-2">
             {editing ? (
@@ -107,10 +104,10 @@ function ActiveConnection({ connection }: { connection: McpConnection }) {
                   setEditing(true);
                 }}
               >
-                <ConnectionArchiveAction
-                  connection={connection}
+                <ClientArchiveAction
+                  client={client}
                   pending={archive.isPending}
-                  onConfirm={() => archive.mutate({ connectionId: connection.id })}
+                  onConfirm={() => archive.mutate({ clientAuthorizationId: client.id })}
                 />
               </ResourceDetailActions>
             )}
@@ -126,9 +123,9 @@ function ActiveConnection({ connection }: { connection: McpConnection }) {
   );
 }
 
-export function ConnectionList({ connections }: { connections: McpConnection[] }) {
-  const active = connections.filter((connection) => connection.archivedAt === null);
-  const archived = connections.filter((connection) => connection.archivedAt !== null);
+export function ClientList({ clients }: { clients: McpClient[] }) {
+  const active = clients.filter((client) => client.archivedAt === null);
+  const archived = clients.filter((client) => client.archivedAt !== null);
   return (
     <div className="grid gap-8">
       <section className="grid gap-4">
@@ -136,19 +133,17 @@ export function ConnectionList({ connections }: { connections: McpConnection[] }
         {active.length === 0 ? (
           <p className="text-muted-foreground">No MCP clients are authenticated.</p>
         ) : (
-          active.map((connection) => (
-            <ActiveConnection key={connection.id} connection={connection} />
-          ))
+          active.map((client) => <ActiveClient key={client.id} client={client} />)
         )}
       </section>
       {archived.length > 0 && (
         <section className="grid gap-4">
           <h2 className="font-semibold text-xl">Archived clients</h2>
-          {archived.map((connection) => (
-            <Card key={connection.id}>
+          {archived.map((client) => (
+            <Card key={client.id}>
               <CardContent className="flex items-center justify-between gap-3">
                 <div>
-                  <strong>{connection.name}</strong>
+                  <strong>{client.name}</strong>
                   <p className="mt-1 text-muted-foreground text-sm">Credentials revoked</p>
                 </div>
                 <Badge variant="secondary">Archived</Badge>

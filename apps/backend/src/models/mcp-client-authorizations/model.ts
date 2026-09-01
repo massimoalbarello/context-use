@@ -1,6 +1,6 @@
-export const MAX_MCP_CONNECTION_NAME_LENGTH = 80;
+export const MAX_MCP_CLIENT_NAME_LENGTH = 80;
 
-export type McpConnection = {
+export type McpClientAuthorization = {
   id: string;
   ownerId: string;
   name: string;
@@ -17,14 +17,14 @@ export type McpOAuthClient = {
   suggestedName: string | null;
 };
 
-export type McpConnectionPrincipal = {
+export type McpClientAuthorizationPrincipal = {
   ownerId: string;
-  connectionId: string;
+  clientAuthorizationId: string;
 };
 
-export function normalizeMcpConnectionName(name: string): string | null {
+export function normalizeMcpClientName(name: string): string | null {
   const normalized = name.trim();
-  return normalized.length > 0 && normalized.length <= MAX_MCP_CONNECTION_NAME_LENGTH
+  return normalized.length > 0 && normalized.length <= MAX_MCP_CLIENT_NAME_LENGTH
     ? normalized
     : null;
 }

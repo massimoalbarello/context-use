@@ -41,6 +41,10 @@ Use the relationship verb that expresses the domain:
 - Records are **sources** or **evidence**.
 - Assets are **attached** or **embedded**.
 
+External MCP consumers are **MCP clients**. Settings groups them as **Authenticated clients** and
+**Archived clients** and uses client language for approval, naming, and lifecycle actions. The
+owner-scoped authorization is an internal identity boundary, not a user-facing “connection.”
+
 Do not replace a known relationship with generic “link” language. The interface must make it easy
 to move from pages to mentioned entities, referenced pages, and pages that reference or mention the
 current resource.

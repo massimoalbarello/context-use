@@ -1,7 +1,10 @@
 import type { SQL } from 'bun';
-import type { McpConnection, McpOAuthClient } from '#models/mcp-connections/model.ts';
+import type {
+  McpClientAuthorization,
+  McpOAuthClient,
+} from '#models/mcp-client-authorizations/model.ts';
 
-type McpConnectionRow = {
+type McpClientAuthorizationRow = {
   id: string;
   ownerId: string;
   name: string;
@@ -18,7 +21,7 @@ type OAuthClientRow = {
   name: string | null;
 };
 
-export interface McpConnectionsRepositoryContract {
+export interface McpClientAuthorizationsRepositoryContract {
   oauthClient(input: { clientId: string }): Promise<McpOAuthClient | null>;
   approve(input: {
     id: string;
@@ -27,23 +30,32 @@ export interface McpConnectionsRepositoryContract {
     oauthClientId: string;
     verifiedClientId: string | null;
     now: string;
-  }): Promise<McpConnection>;
-  list(input: { ownerId: string }): Promise<McpConnection[]>;
+  }): Promise<McpClientAuthorization>;
+  list(input: { ownerId: string }): Promise<McpClientAuthorization[]>;
   rename(input: {
     ownerId: string;
-    connectionId: string;
+    clientAuthorizationId: string;
     name: string;
     updatedAt: string;
-  }): Promise<McpConnection | null>;
-  archive(input: { ownerId: string; connectionId: string; archivedAt: string }): Promise<boolean>;
-  activePrincipal(input: { ownerId: string; oauthClientId: string }): Promise<McpConnection | null>;
+  }): Promise<McpClientAuthorization | null>;
+  archive(input: {
+    ownerId: string;
+    clientAuthorizationId: string;
+    archivedAt: string;
+  }): Promise<boolean>;
+  activePrincipal(input: {
+    ownerId: string;
+    oauthClientId: string;
+  }): Promise<McpClientAuthorization | null>;
 }
 
-function connection(row: McpConnectionRow): McpConnection {
+function clientAuthorization(row: McpClientAuthorizationRow): McpClientAuthorization {
   return row;
 }
 
-export class McpConnectionsRepository implements McpConnectionsRepositoryContract {
+export class McpClientAuthorizationsRepository
+  implements McpClientAuthorizationsRepositoryContract
+{
   private readonly sql: SQL;
 
   constructor(sql: SQL) {
@@ -79,9 +91,9 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
     oauthClientId: string;
     verifiedClientId: string | null;
     now: string;
-  }): Promise<McpConnection> {
+  }): Promise<McpClientAuthorization> {
     return await this.sql.begin(async (tx) => {
-      const active = await tx<McpConnectionRow[]>`
+      const active = await tx<McpClientAuthorizationRow[]>`
         select
           "id",
           "owner_id" as "ownerId",
@@ -91,7 +103,7 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
           "created_at" as "createdAt",
           "updated_at" as "updatedAt",
           "archived_at" as "archivedAt"
-        from "mcp_connection"
+        from "mcp_client_authorization"
         where "owner_id" = ${input.ownerId}
           and "oauth_client_id" = ${input.oauthClientId}
           and "archived_at" is null
@@ -100,15 +112,15 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
       const existing = active[0];
       if (existing) {
         await tx`
-          update "mcp_connection"
+          update "mcp_client_authorization"
           set "name" = ${input.name}, "updated_at" = ${input.now}
           where "id" = ${existing.id} and "owner_id" = ${input.ownerId}
         `;
-        return connection({ ...existing, name: input.name, updatedAt: input.now });
+        return clientAuthorization({ ...existing, name: input.name, updatedAt: input.now });
       }
 
       await tx`
-        insert into "mcp_connection"
+        insert into "mcp_client_authorization"
           ("id", "owner_id", "name", "oauth_client_id", "verified_client_id", "created_at",
            "updated_at")
         values
@@ -128,8 +140,8 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
     });
   }
 
-  async list({ ownerId }: { ownerId: string }): Promise<McpConnection[]> {
-    const rows = await this.sql<McpConnectionRow[]>`
+  async list({ ownerId }: { ownerId: string }): Promise<McpClientAuthorization[]> {
+    const rows = await this.sql<McpClientAuthorizationRow[]>`
       select
         "id",
         "owner_id" as "ownerId",
@@ -139,25 +151,25 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
         "created_at" as "createdAt",
         "updated_at" as "updatedAt",
         "archived_at" as "archivedAt"
-      from "mcp_connection"
+      from "mcp_client_authorization"
       where "owner_id" = ${ownerId}
       order by ("archived_at" is null) desc, "updated_at" desc
     `;
-    return rows.map(connection);
+    return rows.map(clientAuthorization);
   }
 
   async rename(input: {
     ownerId: string;
-    connectionId: string;
+    clientAuthorizationId: string;
     name: string;
     updatedAt: string;
-  }): Promise<McpConnection | null> {
+  }): Promise<McpClientAuthorization | null> {
     await this.sql`
-      update "mcp_connection"
+      update "mcp_client_authorization"
       set "name" = ${input.name}, "updated_at" = ${input.updatedAt}
-      where "id" = ${input.connectionId} and "owner_id" = ${input.ownerId}
+      where "id" = ${input.clientAuthorizationId} and "owner_id" = ${input.ownerId}
     `;
-    const rows = await this.sql<McpConnectionRow[]>`
+    const rows = await this.sql<McpClientAuthorizationRow[]>`
       select
         "id",
         "owner_id" as "ownerId",
@@ -167,8 +179,8 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
         "created_at" as "createdAt",
         "updated_at" as "updatedAt",
         "archived_at" as "archivedAt"
-      from "mcp_connection"
-      where "id" = ${input.connectionId} and "owner_id" = ${input.ownerId}
+      from "mcp_client_authorization"
+      where "id" = ${input.clientAuthorizationId} and "owner_id" = ${input.ownerId}
       limit 1
     `;
     return rows[0] ?? null;
@@ -176,14 +188,14 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
 
   async archive(input: {
     ownerId: string;
-    connectionId: string;
+    clientAuthorizationId: string;
     archivedAt: string;
   }): Promise<boolean> {
     return await this.sql.begin(async (tx) => {
       const rows = await tx<{ oauthClientId: string }[]>`
         select "oauth_client_id" as "oauthClientId"
-        from "mcp_connection"
-        where "id" = ${input.connectionId}
+        from "mcp_client_authorization"
+        where "id" = ${input.clientAuthorizationId}
           and "owner_id" = ${input.ownerId}
           and "archived_at" is null
         limit 1
@@ -194,9 +206,9 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
       }
 
       await tx`
-        update "mcp_connection"
+        update "mcp_client_authorization"
         set "archived_at" = ${input.archivedAt}, "updated_at" = ${input.archivedAt}
-        where "id" = ${input.connectionId} and "owner_id" = ${input.ownerId}
+        where "id" = ${input.clientAuthorizationId} and "owner_id" = ${input.ownerId}
       `;
       await tx`
         update "auth_oauthRefreshToken"
@@ -226,8 +238,8 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
   async activePrincipal(input: {
     ownerId: string;
     oauthClientId: string;
-  }): Promise<McpConnection | null> {
-    const rows = await this.sql<McpConnectionRow[]>`
+  }): Promise<McpClientAuthorization | null> {
+    const rows = await this.sql<McpClientAuthorizationRow[]>`
       select
         "id",
         "owner_id" as "ownerId",
@@ -237,7 +249,7 @@ export class McpConnectionsRepository implements McpConnectionsRepositoryContrac
         "created_at" as "createdAt",
         "updated_at" as "updatedAt",
         "archived_at" as "archivedAt"
-      from "mcp_connection"
+      from "mcp_client_authorization"
       where "owner_id" = ${input.ownerId}
         and "oauth_client_id" = ${input.oauthClientId}
         and "archived_at" is null

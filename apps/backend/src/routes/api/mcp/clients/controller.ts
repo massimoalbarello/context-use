@@ -3,17 +3,17 @@ import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import {
-  ApproveMcpConnectionBodySchema,
+  ApproveMcpClientBodySchema,
   McpAuthorizationClientQuerySchema,
   McpAuthorizationClientSchema,
-  McpConnectionListSchema,
-  McpConnectionParamsSchema,
-  McpConnectionSchema,
+  McpClientListSchema,
+  McpClientParamsSchema,
+  McpClientSchema,
   mcpAuthorizationClientResponse,
-  mcpConnectionResponse,
-  RenameMcpConnectionBodySchema,
-} from '#routes/api/mcp/connections/model.ts';
-import type { McpConnectionsServiceContract } from '#services/mcp-connections/service.ts';
+  mcpClientResponse,
+  RenameMcpClientBodySchema,
+} from '#routes/api/mcp/clients/model.ts';
+import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
 
 const errorResponses = {
   [StatusMap['Bad Request']]: ErrorResponseSchema,
@@ -22,13 +22,13 @@ const errorResponses = {
   [StatusMap['Not Found']]: ErrorResponseSchema,
 };
 
-export function createMcpConnectionsController({
+export function createMcpClientsController({
   auth,
-  connectionsService,
+  clientAuthorizationsService,
   mcpServerUrl,
 }: {
   auth: Auth;
-  connectionsService: McpConnectionsServiceContract;
+  clientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
 }) {
   return new Elysia()
@@ -37,7 +37,7 @@ export function createMcpConnectionsController({
     .get(
       '/mcp/authorization-client',
       async ({ query, user, status }) => {
-        const result = await connectionsService.authorizationClient({
+        const result = await clientAuthorizationsService.authorizationClient({
           actorId: user.id,
           clientId: query.clientId,
         });
@@ -50,93 +50,93 @@ export function createMcpConnectionsController({
         return status(StatusMap.OK, mcpAuthorizationClientResponse(result.client));
       },
       {
-        detail: { tags: ['MCP connections'], summary: 'Describe an OAuth client for approval' },
+        detail: { tags: ['MCP clients'], summary: 'Describe an OAuth client for approval' },
         query: McpAuthorizationClientQuerySchema,
         response: { [StatusMap.OK]: McpAuthorizationClientSchema },
       },
     )
     .post(
-      '/mcp/connections',
+      '/mcp/clients',
       async ({ body, user, status }) => {
-        const result = await connectionsService.approve({ actorId: user.id, ...body });
+        const result = await clientAuthorizationsService.approve({ actorId: user.id, ...body });
         if (result.state === 'forbidden') {
           return status(StatusMap.Forbidden, { error: 'Forbidden' });
         }
         if (result.state === 'invalid') {
-          return status(StatusMap['Bad Request'], { error: 'Invalid connection name' });
+          return status(StatusMap['Bad Request'], { error: 'Invalid client name' });
         }
         if (result.state === 'not_found') {
           return status(StatusMap['Not Found'], { error: 'OAuth client not found' });
         }
-        return status(StatusMap.Created, mcpConnectionResponse(result.connection));
+        return status(StatusMap.Created, mcpClientResponse(result.clientAuthorization));
       },
       {
-        detail: { tags: ['MCP connections'], summary: 'Approve and name an MCP connection' },
-        body: ApproveMcpConnectionBodySchema,
-        response: { [StatusMap.Created]: McpConnectionSchema },
+        detail: { tags: ['MCP clients'], summary: 'Approve and name an MCP client' },
+        body: ApproveMcpClientBodySchema,
+        response: { [StatusMap.Created]: McpClientSchema },
       },
     )
     .get(
-      '/mcp/connections',
+      '/mcp/clients',
       async ({ user, status }) => {
-        const result = await connectionsService.list({ actorId: user.id });
+        const result = await clientAuthorizationsService.list({ actorId: user.id });
         if (result.state === 'forbidden') {
           return status(StatusMap.Forbidden, { error: 'Forbidden' });
         }
         return status(StatusMap.OK, {
           serverUrl: mcpServerUrl,
-          items: result.connections.map(mcpConnectionResponse),
+          items: result.clientAuthorizations.map(mcpClientResponse),
         });
       },
       {
-        detail: { tags: ['MCP connections'], summary: 'List active and archived MCP connections' },
-        response: { [StatusMap.OK]: McpConnectionListSchema },
+        detail: { tags: ['MCP clients'], summary: 'List active and archived MCP clients' },
+        response: { [StatusMap.OK]: McpClientListSchema },
       },
     )
     .patch(
-      '/mcp/connections/:connectionId',
+      '/mcp/clients/:clientAuthorizationId',
       async ({ body, params, user, status }) => {
-        const result = await connectionsService.rename({
+        const result = await clientAuthorizationsService.rename({
           actorId: user.id,
-          connectionId: params.connectionId,
+          clientAuthorizationId: params.clientAuthorizationId,
           name: body.name,
         });
         if (result.state === 'forbidden') {
           return status(StatusMap.Forbidden, { error: 'Forbidden' });
         }
         if (result.state === 'invalid') {
-          return status(StatusMap['Bad Request'], { error: 'Invalid connection name' });
+          return status(StatusMap['Bad Request'], { error: 'Invalid client name' });
         }
         if (result.state === 'not_found') {
-          return status(StatusMap['Not Found'], { error: 'MCP connection not found' });
+          return status(StatusMap['Not Found'], { error: 'MCP client not found' });
         }
-        return status(StatusMap.OK, mcpConnectionResponse(result.connection));
+        return status(StatusMap.OK, mcpClientResponse(result.clientAuthorization));
       },
       {
-        detail: { tags: ['MCP connections'], summary: 'Rename an MCP connection' },
-        params: McpConnectionParamsSchema,
-        body: RenameMcpConnectionBodySchema,
-        response: { [StatusMap.OK]: McpConnectionSchema },
+        detail: { tags: ['MCP clients'], summary: 'Rename an MCP client' },
+        params: McpClientParamsSchema,
+        body: RenameMcpClientBodySchema,
+        response: { [StatusMap.OK]: McpClientSchema },
       },
     )
     .delete(
-      '/mcp/connections/:connectionId',
+      '/mcp/clients/:clientAuthorizationId',
       async ({ params, user, status }) => {
-        const result = await connectionsService.archive({
+        const result = await clientAuthorizationsService.archive({
           actorId: user.id,
-          connectionId: params.connectionId,
+          clientAuthorizationId: params.clientAuthorizationId,
         });
         if (result.state === 'forbidden') {
           return status(StatusMap.Forbidden, { error: 'Forbidden' });
         }
         if (result.state === 'not_found') {
-          return status(StatusMap['Not Found'], { error: 'MCP connection not found' });
+          return status(StatusMap['Not Found'], { error: 'MCP client not found' });
         }
         return status(StatusMap['No Content'], undefined);
       },
       {
-        detail: { tags: ['MCP connections'], summary: 'Archive and revoke an MCP connection' },
-        params: McpConnectionParamsSchema,
+        detail: { tags: ['MCP clients'], summary: 'Archive and revoke an MCP client' },
+        params: McpClientParamsSchema,
         response: { [StatusMap['No Content']]: t.Void() },
       },
     );
