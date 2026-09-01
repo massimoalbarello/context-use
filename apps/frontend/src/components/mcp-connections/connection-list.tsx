@@ -69,12 +69,23 @@ function ActiveConnection({ connection }: { connection: McpConnection }) {
     <Card>
       <CardContent className="grid gap-5">
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <div className="min-w-0">
-            <strong>{connection.name}</strong>
-            <p className="mt-1 text-muted-foreground text-sm">
-              {connection.verifiedClientId ? 'Verified client identity' : 'Registered OAuth client'}
-            </p>
-          </div>
+          {editing ? (
+            <ConnectionNameForm
+              initialName={connection.name}
+              pending={rename.isPending}
+              error={rename.error}
+              formId={editFormId}
+              presentation="card-title"
+              onSubmit={(name) =>
+                rename.mutate(
+                  { connectionId: connection.id, name },
+                  { onSuccess: () => setEditing(false) },
+                )
+              }
+            />
+          ) : (
+            <strong className="min-w-0">{connection.name}</strong>
+          )}
           <div className="flex shrink-0 flex-wrap gap-2">
             {editing ? (
               <ResourceDetailActions
@@ -105,20 +116,6 @@ function ActiveConnection({ connection }: { connection: McpConnection }) {
             )}
           </div>
         </div>
-        {editing && (
-          <ConnectionNameForm
-            initialName={connection.name}
-            pending={rename.isPending}
-            error={rename.error}
-            formId={editFormId}
-            onSubmit={(name) =>
-              rename.mutate(
-                { connectionId: connection.id, name },
-                { onSuccess: () => setEditing(false) },
-              )
-            }
-          />
-        )}
         {archive.error && (
           <p className="text-destructive text-sm" role="alert">
             {archive.error.message}
@@ -135,9 +132,9 @@ export function ConnectionList({ connections }: { connections: McpConnection[] }
   return (
     <div className="grid gap-8">
       <section className="grid gap-4">
-        <h2 className="font-semibold text-xl">Connected clients</h2>
+        <h2 className="font-semibold text-xl">Authenticated clients</h2>
         {active.length === 0 ? (
-          <p className="text-muted-foreground">No MCP clients are connected.</p>
+          <p className="text-muted-foreground">No MCP clients are authenticated.</p>
         ) : (
           active.map((connection) => (
             <ActiveConnection key={connection.id} connection={connection} />
@@ -146,7 +143,7 @@ export function ConnectionList({ connections }: { connections: McpConnection[] }
       </section>
       {archived.length > 0 && (
         <section className="grid gap-4">
-          <h2 className="font-semibold text-xl">Archived</h2>
+          <h2 className="font-semibold text-xl">Archived clients</h2>
           {archived.map((connection) => (
             <Card key={connection.id}>
               <CardContent className="flex items-center justify-between gap-3">

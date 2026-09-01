@@ -21,6 +21,7 @@ export function ConnectionNameForm({
   pending,
   error,
   formId,
+  presentation = 'field',
   submitLabel,
   description,
   onSubmit,
@@ -30,6 +31,7 @@ export function ConnectionNameForm({
   pending: boolean;
   error: Error | null;
   formId?: string;
+  presentation?: 'field' | 'card-title';
   submitLabel?: string;
   description?: string;
   onSubmit: (name: string) => void;
@@ -44,7 +46,7 @@ export function ConnectionNameForm({
 
   return (
     <form
-      className="grid gap-4"
+      className={presentation === 'card-title' ? 'grid w-full min-w-0 flex-1 gap-4' : 'grid gap-4'}
       id={formId}
       onSubmit={(event) => {
         event.preventDefault();
@@ -54,8 +56,18 @@ export function ConnectionNameForm({
       <form.Field name="name" validators={{ onDynamic: validateName }}>
         {(field) => (
           <Field data-invalid={field.state.meta.errors.length > 0}>
-            <FieldLabel htmlFor={nameInputId}>Connection name</FieldLabel>
+            <FieldLabel
+              className={presentation === 'card-title' ? 'sr-only' : undefined}
+              htmlFor={nameInputId}
+            >
+              Connection name
+            </FieldLabel>
             <Input
+              className={
+                presentation === 'card-title'
+                  ? '-mx-2 h-auto w-[calc(100%+1rem)] px-2 py-0 font-semibold text-base text-foreground md:text-base'
+                  : undefined
+              }
               id={nameInputId}
               name={field.name}
               value={field.state.value}
