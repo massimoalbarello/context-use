@@ -8,6 +8,7 @@
   "exports": {
     "./asset": "./src/models/assets/model.ts",
     "./entity": "./src/models/entities/model.ts",
+    "./mcp-client-authorization": "./src/models/mcp-client-authorizations/model.ts",
     "./runtime-config": "./src/lib/runtime-config.ts",
     "./types": "./src/types.ts"
   },
@@ -20,10 +21,14 @@
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
+    "@better-auth/cimd": "^1.7.2",
+    "@better-auth/core": "^1.7.2",
+    "@better-auth/mcp": "^1.7.2",
     "@better-auth/passkey": "catalog:",
     "@elysiajs/openapi": "^1.4.15",
     "@ilbertt/better-auth-bun-sql": "^0.4.0",
     "@ilbertt/bun-sqlgen": "^0.5.1",
+    "@modelcontextprotocol/server": "^2",
     "better-auth": "catalog:",
     "elysia": "^1.4.30"
   },

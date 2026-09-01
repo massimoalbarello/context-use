@@ -461,6 +461,61 @@ export interface IFindKnowledgeProfileResult {
     imageUpdatedAt: string | null;
 }
 
+/** Result of query `FindMcpOAuthClient`. */
+export interface IFindMcpOAuthClientResult {
+    clientId: string;
+    clientDiscoveryId: string | null;
+    name: string | null;
+}
+
+/** Result of query `FindActiveMcpClientAuthorization`. */
+export interface IFindActiveMcpClientAuthorizationResult {
+    id: string;
+    ownerId: string;
+    name: string;
+    oauthClientId: string;
+    verifiedClientId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    archivedAt: string | null;
+}
+
+/** Result of query `FindActiveMcpClientAuthorizationById`. */
+export interface IFindActiveMcpClientAuthorizationByIdResult {
+    id: string;
+    ownerId: string;
+    name: string;
+    oauthClientId: string;
+    verifiedClientId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    archivedAt: string | null;
+}
+
+/** Result of query `ListMcpClientAuthorizations`. */
+export interface IListMcpClientAuthorizationsResult {
+    id: string;
+    ownerId: string;
+    name: string;
+    oauthClientId: string;
+    verifiedClientId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    archivedAt: string | null;
+}
+
+/** Result of query `RenameActiveMcpClientAuthorization`. */
+export interface IRenameActiveMcpClientAuthorizationResult {
+    id: string;
+    ownerId: string;
+    name: string;
+    oauthClientId: string;
+    verifiedClientId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    archivedAt: string | null;
+}
+
 /** Result of query `ReadOwnerRegistrationState`. */
 export interface IReadOwnerRegistrationStateResult {
     ownerExists: number;
@@ -514,6 +569,11 @@ export interface Queries {
     FindKnowledgeProfileOwner: IFindKnowledgeProfileOwnerResult;
     CreateKnowledgeProfileEntity: ICreateKnowledgeProfileEntityResult;
     FindKnowledgeProfile: IFindKnowledgeProfileResult;
+    FindMcpOAuthClient: IFindMcpOAuthClientResult;
+    FindActiveMcpClientAuthorization: IFindActiveMcpClientAuthorizationResult;
+    FindActiveMcpClientAuthorizationById: IFindActiveMcpClientAuthorizationByIdResult;
+    ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
+    RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
 }
 

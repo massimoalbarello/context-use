@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Menu, Plus } from 'lucide-react';
+import { Menu, Plus, Settings } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
 import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
@@ -117,6 +117,14 @@ export function KnowledgeSidebar({
               <strong className="truncate font-medium text-xs">{profile.selfEntity.name}</strong>
               <small className="truncate text-[0.68rem] text-muted-foreground">Your entity</small>
             </span>
+          </Link>
+          <Link
+            className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+            to="/settings"
+            aria-label="Settings"
+            title="Settings"
+          >
+            <Settings aria-hidden="true" />
           </Link>
           <SignOutButton />
         </footer>

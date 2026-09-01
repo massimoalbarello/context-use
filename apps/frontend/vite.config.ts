@@ -14,6 +14,8 @@ export default defineConfig({
     // the browser's Origin header while proxying instead of pretending it came from the backend.
     proxy: {
       '/api': { target: BACKEND_ORIGIN },
+      '/mcp': { target: BACKEND_ORIGIN },
+      '/.well-known': { target: BACKEND_ORIGIN },
       // The docs page and the spec it fetches are served by the backend, so the dev server
       // has to hand both over rather than answering with the SPA.
       '/openapi': { target: BACKEND_ORIGIN },

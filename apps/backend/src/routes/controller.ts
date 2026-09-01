@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia';
 import { API_PATH } from '#lib/api-path.ts';
+import { MCP_ROUTE_PATH } from '#lib/auth/better-auth.ts';
 import { NotFoundError } from '#lib/errors.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 
@@ -49,5 +50,6 @@ export function createFrontendFallbackController({
 }
 
 function isClientRoutePath(pathname: string): boolean {
-  return !pathname.startsWith(API_PATH);
+  const isMcpTransportPath = pathname === MCP_ROUTE_PATH || pathname === `${MCP_ROUTE_PATH}/`;
+  return !pathname.startsWith(API_PATH) && !isMcpTransportPath;
 }
