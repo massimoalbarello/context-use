@@ -5,6 +5,7 @@ import { loadAuthSecret } from '#lib/auth/auth-secret.ts';
 import { createAuth } from '#lib/auth/better-auth.ts';
 import { loadEnv } from '#lib/env.ts';
 import { createLogger } from '#lib/logger.ts';
+import { createMcpTransport } from '#lib/mcp/transport.ts';
 import { BACKEND_ENVIRONMENT } from '#lib/runtime-config.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
@@ -15,6 +16,7 @@ import { FrontendAssetsRepository } from '#repositories/frontend-assets/reposito
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
+import { McpConnectionsRepository } from '#repositories/mcp-connections/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
 import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
@@ -22,6 +24,7 @@ import { FrontendAssetsService } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
+import { McpConnectionsService } from '#services/mcp-connections/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
@@ -65,6 +68,8 @@ try {
   );
   const pagesService = new KnowledgePagesService({ pages: pagesRepository, storage });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
+  const mcpConnectionsService = new McpConnectionsService(new McpConnectionsRepository(database));
+  const mcpTransport = createMcpTransport();
   const auth = createAuth({
     database,
     baseUrl: env.BASE_URL,
@@ -77,6 +82,8 @@ try {
     frontendAssetsService,
     entitiesService,
     healthService,
+    mcpConnectionsService,
+    mcpTransport,
     ownerRegistrationService,
     pagesService,
     profilesService,

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssetsRouteImport } from './routes/assets'
+import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PagesRouteImport } from './routes/pages'
@@ -21,6 +22,7 @@ import { Route as AssetsNewRouteImport } from './routes/assets.new'
 import { Route as EntitiesIndexRouteImport } from './routes/entities.index'
 import { Route as EntitiesIdRouteImport } from './routes/entities.$id'
 import { Route as EntitiesNewRouteImport } from './routes/entities.new'
+import { Route as McpAuthorizeRouteImport } from './routes/mcp.authorize'
 import { Route as PagesIndexRouteImport } from './routes/pages.index'
 import { Route as PagesIdRouteImport } from './routes/pages.$id'
 import { Route as PagesNewRouteImport } from './routes/pages.new'
@@ -33,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const AssetsRoute = AssetsRouteImport.update({
   id: '/assets',
   path: '/assets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectionsRoute = ConnectionsRouteImport.update({
+  id: '/connections',
+  path: '/connections',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EntitiesRoute = EntitiesRouteImport.update({
@@ -85,6 +92,11 @@ const EntitiesNewRoute = EntitiesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => EntitiesRoute,
 } as any)
+const McpAuthorizeRoute = McpAuthorizeRouteImport.update({
+  id: '/mcp/authorize',
+  path: '/mcp/authorize',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PagesIndexRoute = PagesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -104,6 +116,7 @@ const PagesNewRoute = PagesNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRouteWithChildren
+  '/connections': typeof ConnectionsRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
@@ -112,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/assets/new': typeof AssetsNewRoute
   '/entities/$id': typeof EntitiesIdRoute
   '/entities/new': typeof EntitiesNewRoute
+  '/mcp/authorize': typeof McpAuthorizeRoute
   '/pages/$id': typeof PagesIdRoute
   '/pages/new': typeof PagesNewRoute
   '/assets/': typeof AssetsIndexRoute
@@ -120,12 +134,14 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/connections': typeof ConnectionsRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/assets/$id': typeof AssetsIdRoute
   '/assets/new': typeof AssetsNewRoute
   '/entities/$id': typeof EntitiesIdRoute
   '/entities/new': typeof EntitiesNewRoute
+  '/mcp/authorize': typeof McpAuthorizeRoute
   '/pages/$id': typeof PagesIdRoute
   '/pages/new': typeof PagesNewRoute
   '/assets': typeof AssetsIndexRoute
@@ -136,6 +152,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/assets': typeof AssetsRouteWithChildren
+  '/connections': typeof ConnectionsRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
@@ -144,6 +161,7 @@ export interface FileRoutesById {
   '/assets/new': typeof AssetsNewRoute
   '/entities/$id': typeof EntitiesIdRoute
   '/entities/new': typeof EntitiesNewRoute
+  '/mcp/authorize': typeof McpAuthorizeRoute
   '/pages/$id': typeof PagesIdRoute
   '/pages/new': typeof PagesNewRoute
   '/assets/': typeof AssetsIndexRoute
@@ -155,6 +173,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/assets'
+    | '/connections'
     | '/entities'
     | '/login'
     | '/pages'
@@ -163,6 +182,7 @@ export interface FileRouteTypes {
     | '/assets/new'
     | '/entities/$id'
     | '/entities/new'
+    | '/mcp/authorize'
     | '/pages/$id'
     | '/pages/new'
     | '/assets/'
@@ -171,12 +191,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/connections'
     | '/login'
     | '/setup'
     | '/assets/$id'
     | '/assets/new'
     | '/entities/$id'
     | '/entities/new'
+    | '/mcp/authorize'
     | '/pages/$id'
     | '/pages/new'
     | '/assets'
@@ -186,6 +208,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/assets'
+    | '/connections'
     | '/entities'
     | '/login'
     | '/pages'
@@ -194,6 +217,7 @@ export interface FileRouteTypes {
     | '/assets/new'
     | '/entities/$id'
     | '/entities/new'
+    | '/mcp/authorize'
     | '/pages/$id'
     | '/pages/new'
     | '/assets/'
@@ -204,10 +228,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssetsRoute: typeof AssetsRouteWithChildren
+  ConnectionsRoute: typeof ConnectionsRoute
   EntitiesRoute: typeof EntitiesRouteWithChildren
   LoginRoute: typeof LoginRoute
   PagesRoute: typeof PagesRouteWithChildren
   SetupRoute: typeof SetupRoute
+  McpAuthorizeRoute: typeof McpAuthorizeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -224,6 +250,13 @@ declare module '@tanstack/react-router' {
       path: '/assets'
       fullPath: '/assets'
       preLoaderRoute: typeof AssetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connections': {
+      id: '/connections'
+      path: '/connections'
+      fullPath: '/connections'
+      preLoaderRoute: typeof ConnectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/entities': {
@@ -295,6 +328,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/entities/new'
       preLoaderRoute: typeof EntitiesNewRouteImport
       parentRoute: typeof EntitiesRoute
+    }
+    '/mcp/authorize': {
+      id: '/mcp/authorize'
+      path: '/mcp/authorize'
+      fullPath: '/mcp/authorize'
+      preLoaderRoute: typeof McpAuthorizeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/pages/': {
       id: '/pages/'
@@ -368,10 +408,12 @@ const PagesRouteWithChildren = PagesRoute._addFileChildren(PagesRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssetsRoute: AssetsRouteWithChildren,
+  ConnectionsRoute: ConnectionsRoute,
   EntitiesRoute: EntitiesRouteWithChildren,
   LoginRoute: LoginRoute,
   PagesRoute: PagesRouteWithChildren,
   SetupRoute: SetupRoute,
+  McpAuthorizeRoute: McpAuthorizeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

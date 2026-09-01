@@ -16,6 +16,11 @@ import type { HealthServiceContract } from '#services/health/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
+import {
+  unusedMcpConnectionsService,
+  unusedMcpProtection,
+  unusedMcpTransport,
+} from '../../../support/mcp.ts';
 
 const AUTH_MIGRATION = new URL(
   '../../../../src/db/migrations/0000_better_auth_schema.sql',
@@ -29,6 +34,7 @@ function unexpectedCall(): never {
 const auth: Auth = {
   handler: async () => new Response(null, { status: StatusMap['Not Found'] }),
   getSession: async () => null,
+  protectMcpRequest: unusedMcpProtection,
 };
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -80,6 +86,8 @@ test('owner registration API exposes only complete registration states', async (
       frontendAssetsService,
       entitiesService,
       healthService,
+      mcpConnectionsService: unusedMcpConnectionsService,
+      mcpTransport: unusedMcpTransport,
       ownerRegistrationService: new OwnerRegistrationService(
         new OwnerRegistrationRepository(database),
       ),

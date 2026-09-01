@@ -22,6 +22,11 @@ import { HealthService } from '#services/health/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
+import {
+  unusedMcpConnectionsService,
+  unusedMcpProtection,
+  unusedMcpTransport,
+} from '../../support/mcp.ts';
 
 const SHA256_HEX_LENGTH = 64;
 const EXPECTED_ASSET_BLOCKER_COUNT = 3;
@@ -53,6 +58,7 @@ function ownerAuth(): Auth {
         updatedAt: createdAt,
       },
     }),
+    protectMcpRequest: unusedMcpProtection,
   };
 }
 
@@ -88,6 +94,8 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
+      mcpConnectionsService: unusedMcpConnectionsService,
+      mcpTransport: unusedMcpTransport,
       ownerRegistrationService: new OwnerRegistrationService(
         new OwnerRegistrationRepository(database),
       ),

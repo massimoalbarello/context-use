@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Menu, Plus } from 'lucide-react';
+import { Bot, Menu, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
 import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
@@ -107,6 +107,14 @@ export function KnowledgeSidebar({
         </div>
 
         <footer className="flex shrink-0 items-center gap-2 px-3 py-3">
+          <Link
+            className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+            to="/connections"
+            aria-label="MCP connections"
+            title="MCP connections"
+          >
+            <Bot aria-hidden="true" />
+          </Link>
           <Link
             className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 hover:bg-card"
             to="/entities/$id"
