@@ -22,6 +22,14 @@ const ARCHIVE_INVARIANT_MIGRATION = new URL(
   import.meta.url,
 );
 const ASSET_MIGRATION = new URL('../../../src/db/migrations/0005_add_assets.sql', import.meta.url);
+const OAUTH_MIGRATION = new URL(
+  '../../../src/db/migrations/0006_add_oauth_provider.sql',
+  import.meta.url,
+);
+const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
+  '../../../src/db/migrations/0007_add_mcp_client_authorizations.sql',
+  import.meta.url,
+);
 const CONTENT_HASH_LENGTH = 64;
 
 test('knowledge revisions require a lowercase hexadecimal SHA-256 hash', async () => {
@@ -34,8 +42,9 @@ test('knowledge revisions require a lowercase hexadecimal SHA-256 hash', async (
       database.run(
         `insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
-           "storage_key", "size_bytes", "content_hash", "created_at")
-         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           "storage_key", "size_bytes", "content_hash", "author_kind", "author_name",
+           "created_at")
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           'revision-id',
           'page-id',
@@ -46,6 +55,8 @@ test('knowledge revisions require a lowercase hexadecimal SHA-256 hash', async (
           'storage-key',
           1,
           `a${'g'.repeat(CONTENT_HASH_LENGTH - 1)}`,
+          'owner',
+          'Owner',
           '2026-01-01T00:00:00.000Z',
         ],
       ),
@@ -104,6 +115,8 @@ test('entity image columns preserve ownership and exclusive assignment', async (
     database.exec(await Bun.file(AUTH_MIGRATION).text());
     database.exec(await Bun.file(KNOWLEDGE_MIGRATION).text());
     database.exec(await Bun.file(ASSET_MIGRATION).text());
+    database.exec(await Bun.file(OAUTH_MIGRATION).text());
+    database.exec(await Bun.file(MCP_CLIENT_AUTHORIZATION_MIGRATION).text());
     for (const ownerId of ['owner-a', 'owner-b']) {
       database.run(
         `insert into "auth_user"

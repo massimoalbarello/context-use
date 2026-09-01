@@ -17,6 +17,15 @@ import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { ClientNameForm } from './client-name-form';
 
+function ClientAuthorizedAt({ client }: { client: McpClient }) {
+  return (
+    <p className="mt-1 text-muted-foreground text-sm">
+      Authorized{' '}
+      <time dateTime={client.createdAt}>{new Date(client.createdAt).toLocaleString()}</time>
+    </p>
+  );
+}
+
 function ClientArchiveAction({
   client,
   pending,
@@ -81,7 +90,10 @@ function ActiveClient({ client }: { client: McpClient }) {
               }
             />
           ) : (
-            <strong className="min-w-0">{client.name}</strong>
+            <div className="min-w-0">
+              <strong>{client.name}</strong>
+              <ClientAuthorizedAt client={client} />
+            </div>
           )}
           <div className="flex shrink-0 flex-wrap gap-2">
             {editing ? (
@@ -144,7 +156,7 @@ export function ClientList({ clients }: { clients: McpClient[] }) {
               <CardContent className="flex items-center justify-between gap-3">
                 <div>
                   <strong>{client.name}</strong>
-                  <p className="mt-1 text-muted-foreground text-sm">Credentials revoked</p>
+                  <p className="text-muted-foreground text-sm">Credentials revoked</p>
                 </div>
                 <Badge variant="secondary">Archived</Badge>
               </CardContent>

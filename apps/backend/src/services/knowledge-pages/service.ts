@@ -5,6 +5,7 @@ import {
 } from '#models/knowledge-pages/markdown.ts';
 import type {
   KnowledgePage,
+  KnowledgePageRevisionActor,
   KnowledgePageSummary,
   StoredKnowledgePage,
 } from '#models/knowledge-pages/model.ts';
@@ -44,6 +45,7 @@ export class KnowledgePagesService {
 
   async create(input: {
     ownerId: string;
+    actor: KnowledgePageRevisionActor;
     markdown: string;
     allowDuplicate?: boolean;
   }): Promise<KnowledgePageMutationResult> {
@@ -84,6 +86,7 @@ export class KnowledgePagesService {
         contentHash: contentHash(input.markdown),
         sizeBytes,
         links: parsed.links,
+        actor: input.actor,
         createdAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -126,6 +129,7 @@ export class KnowledgePagesService {
 
   async update(input: {
     ownerId: string;
+    actor: KnowledgePageRevisionActor;
     readableId: string;
     expectedRevisionNumber: number;
     markdown: string;
@@ -166,6 +170,7 @@ export class KnowledgePagesService {
         contentHash: contentHash(input.markdown),
         sizeBytes,
         links: parsed.links,
+        actor: input.actor,
         updatedAt: new Date().toISOString(),
       });
     } catch (error) {

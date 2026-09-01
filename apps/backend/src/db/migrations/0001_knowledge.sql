@@ -61,6 +61,9 @@ create table "knowledge_page_revision" (
   "storage_key" text not null,
   "size_bytes" integer not null,
   "content_hash" text not null,
+  "author_kind" text not null,
+  "author_mcp_client_authorization_id" text,
+  "author_name" text not null,
   "created_at" text not null,
   primary key ("id"),
   unique ("id", "owner_id"),
@@ -69,11 +72,25 @@ create table "knowledge_page_revision" (
   unique ("storage_key"),
   foreign key ("page_id", "owner_id") references "knowledge_page" ("id", "owner_id")
     on delete cascade deferrable initially deferred,
+  foreign key ("author_mcp_client_authorization_id", "owner_id")
+    references "mcp_client_authorization" ("id", "owner_id"),
   check ("revision_number" > 0),
   check (length(trim("title")) between 1 and 240),
   check (length("excerpt") <= 280),
   check ("size_bytes" between 1 and 1000000),
-  check ("content_hash" not glob '*[^a-f0-9]*' and length("content_hash") = 64)
+  check ("content_hash" not glob '*[^a-f0-9]*' and length("content_hash") = 64),
+  check (
+    (
+      "author_kind" = 'owner'
+      and "author_mcp_client_authorization_id" is null
+      and length(trim("author_name")) between 1 and 160
+    )
+    or (
+      "author_kind" = 'mcp_client'
+      and "author_mcp_client_authorization_id" is not null
+      and length(trim("author_name")) between 1 and 80
+    )
+  )
 );
 
 create table "knowledge_page_entity_mention" (

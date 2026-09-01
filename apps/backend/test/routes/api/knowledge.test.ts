@@ -52,6 +52,14 @@ const ARCHIVE_INVARIANT_MIGRATION = new URL(
   import.meta.url,
 );
 const ASSET_MIGRATION = new URL('../../../src/db/migrations/0005_add_assets.sql', import.meta.url);
+const OAUTH_MIGRATION = new URL(
+  '../../../src/db/migrations/0006_add_oauth_provider.sql',
+  import.meta.url,
+);
+const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
+  '../../../src/db/migrations/0007_add_mcp_client_authorizations.sql',
+  import.meta.url,
+);
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 3;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
@@ -117,6 +125,8 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         ['0003_add_knowledge_page_archived_at.sql', Bun.file(PAGE_ARCHIVE_MIGRATION)],
         ['0004_prevent_self_entity_archiving.sql', Bun.file(ARCHIVE_INVARIANT_MIGRATION)],
         ['0005_add_assets.sql', Bun.file(ASSET_MIGRATION)],
+        ['0006_add_oauth_provider.sql', Bun.file(OAUTH_MIGRATION)],
+        ['0007_add_mcp_client_authorizations.sql', Bun.file(MCP_CLIENT_AUTHORIZATION_MIGRATION)],
       ]),
     });
     const timestamp = '2026-01-01T00:00:00.000Z';
@@ -423,6 +433,18 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
       },
     ]);
 
+    const renamedOwnerResponse = await app.handle(
+      jsonRequest({
+        method: 'PATCH',
+        path: '/entities/test-owner',
+        body: {
+          name: 'Renamed Test Owner',
+          description: 'The person represented as self inside this private knowledge base.',
+        },
+      }),
+    );
+    expect(renamedOwnerResponse.status).toBe(StatusMap.OK);
+
     const updateResponse = await app.handle(
       jsonRequest({
         method: 'PUT',
@@ -443,13 +465,25 @@ Revise the current knowledge instead of appending snapshots.`,
     const updatedPage = (await updateResponse.json()) as {
       excerpt: string;
       revisionNumber: number;
-      revisions: Array<{ revisionNumber: number; title: string }>;
+      revisions: Array<{
+        revisionNumber: number;
+        title: string;
+        author: { kind: 'owner' | 'mcp_client'; name: string };
+      }>;
     };
     expect(updatedPage.revisionNumber).toBe(2);
     expect(updatedPage.excerpt).toBe('Luca owns the live account.');
     expect(updatedPage.revisions).toEqual([
-      expect.objectContaining({ revisionNumber: 2, title: 'Growth playbook' }),
-      expect.objectContaining({ revisionNumber: 1, title: 'Growth playbook' }),
+      expect.objectContaining({
+        revisionNumber: 2,
+        title: 'Growth playbook',
+        author: { kind: 'owner', name: 'Renamed Test Owner' },
+      }),
+      expect.objectContaining({
+        revisionNumber: 1,
+        title: 'Growth playbook',
+        author: { kind: 'owner', name: 'Test Owner' },
+      }),
     ]);
     const currentMentionCount = await database<Array<{ count: number }>>`
       select count(*) as "count" from "knowledge_page_entity_mention"

@@ -6,6 +6,7 @@ import type {
   KnowledgePageAssetUsage,
   KnowledgePageLinkSet,
   KnowledgePageReference,
+  KnowledgePageRevisionActor,
   KnowledgePageRevisionSummary,
   KnowledgePageSummary,
   StoredKnowledgePage,
@@ -26,6 +27,7 @@ export interface KnowledgePagesRepositoryContract {
     contentHash: string;
     sizeBytes: number;
     links: KnowledgePageLinkSet;
+    actor: KnowledgePageRevisionActor;
     createdAt: string;
   }): Promise<
     | { state: 'created'; page: StoredKnowledgePage }
@@ -43,6 +45,7 @@ export interface KnowledgePagesRepositoryContract {
     contentHash: string;
     sizeBytes: number;
     links: KnowledgePageLinkSet;
+    actor: KnowledgePageRevisionActor;
     updatedAt: string;
   }): Promise<
     | { state: 'updated'; page: StoredKnowledgePage }
@@ -90,6 +93,44 @@ type SummaryRow = Queries['SearchKnowledgePages'];
 
 type RevisionSummaryRow = Queries['ListKnowledgePageRevisions'];
 
+async function revisionAuthorColumns({
+  db,
+  ownerId,
+  actor,
+}: {
+  db: TypedSQL<Queries>;
+  ownerId: string;
+  actor: KnowledgePageRevisionActor;
+}): Promise<{
+  kind: KnowledgePageRevisionActor['kind'];
+  clientAuthorizationId: string | null;
+  name: string;
+}> {
+  if (actor.kind === 'mcp_client') {
+    return {
+      kind: actor.kind,
+      clientAuthorizationId: actor.clientAuthorizationId,
+      name: actor.name,
+    };
+  }
+
+  const authors = await db.FindKnowledgePageOwnerRevisionAuthor`
+    /* @notNull name */
+    /* @type name string */
+    select coalesce(entity."name", auth_user."name") as "name"
+    from "auth_user" auth_user
+    left join "knowledge_profile" profile on profile."owner_id" = auth_user."id"
+    left join "entity" entity
+      on entity."id" = profile."self_entity_id" and entity."owner_id" = profile."owner_id"
+    where auth_user."id" = ${ownerId}
+  `;
+  const author = authors[0];
+  if (!author) {
+    throw new Error('Knowledge page revision owner attribution could not be resolved');
+  }
+  return { kind: actor.kind, clientAuthorizationId: null, name: author.name };
+}
+
 function storedPageFrom(row: StoredPageRow): StoredKnowledgePage {
   return { ...row, revisionNumber: Number(row.revisionNumber), sizeBytes: Number(row.sizeBytes) };
 }
@@ -99,7 +140,23 @@ function summaryFrom(row: SummaryRow): KnowledgePageSummary {
 }
 
 function revisionSummaryFrom(row: RevisionSummaryRow): KnowledgePageRevisionSummary {
-  return { ...row, revisionNumber: Number(row.revisionNumber) };
+  if (row.authorKind === 'owner' && row.authorName) {
+    return {
+      revisionNumber: Number(row.revisionNumber),
+      title: row.title,
+      author: { kind: 'owner', name: row.authorName },
+      createdAt: row.createdAt,
+    };
+  }
+  if (row.authorKind === 'mcp_client' && row.authorName) {
+    return {
+      revisionNumber: Number(row.revisionNumber),
+      title: row.title,
+      author: { kind: 'mcp_client', name: row.authorName },
+      createdAt: row.createdAt,
+    };
+  }
+  throw new Error('Knowledge page revision has invalid author attribution');
 }
 
 async function findCurrentKnowledgePage({
@@ -251,6 +308,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     contentHash: string;
     sizeBytes: number;
     links: KnowledgePageLinkSet;
+    actor: KnowledgePageRevisionActor;
     createdAt: string;
   }): Promise<
     | { state: 'created'; page: StoredKnowledgePage }
@@ -281,14 +339,20 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       if (!createdPages[0]) {
         return { state: 'readable_id_conflict' } as const;
       }
+      const author = await revisionAuthorColumns({
+        db,
+        ownerId: input.ownerId,
+        actor: input.actor,
+      });
       await db`
         insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
-           "storage_key", "size_bytes", "content_hash", "created_at")
+           "storage_key", "size_bytes", "content_hash", "author_kind",
+           "author_mcp_client_authorization_id", "author_name", "created_at")
         values
           (${input.revisionId}, ${input.pageId}, ${input.ownerId}, 1, ${input.title},
            ${input.excerpt}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
-           ${input.createdAt})
+           ${author.kind}, ${author.clientAuthorizationId}, ${author.name}, ${input.createdAt})
       `;
       await insertLinks({
         db,
@@ -330,6 +394,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     contentHash: string;
     sizeBytes: number;
     links: KnowledgePageLinkSet;
+    actor: KnowledgePageRevisionActor;
     updatedAt: string;
   }): Promise<
     | { state: 'updated'; page: StoredKnowledgePage }
@@ -377,14 +442,20 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         where "owner_id" = ${input.ownerId}
           and "source_revision_id" = ${current.currentRevisionId}
       `;
+      const author = await revisionAuthorColumns({
+        db,
+        ownerId: input.ownerId,
+        actor: input.actor,
+      });
       await db`
         insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
-           "storage_key", "size_bytes", "content_hash", "created_at")
+           "storage_key", "size_bytes", "content_hash", "author_kind",
+           "author_mcp_client_authorization_id", "author_name", "created_at")
         values
           (${input.revisionId}, ${current.id}, ${input.ownerId}, ${revisionNumber}, ${input.title},
            ${input.excerpt}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
-           ${input.updatedAt})
+           ${author.kind}, ${author.clientAuthorizationId}, ${author.name}, ${input.updatedAt})
       `;
       await insertLinks({
         db,
@@ -632,11 +703,13 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       this.backlinkRows({ ownerId, targetPageId: page.id }),
       this.assetUsageRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
       this.sql.ListKnowledgePageRevisions`
-        /* @notNull revisionNumber title createdAt */
-        select "revision_number" as "revisionNumber", "title", "created_at" as "createdAt"
-        from "knowledge_page_revision"
-        where "owner_id" = ${ownerId} and "page_id" = ${page.id}
-        order by "revision_number" desc
+        /* @notNull revisionNumber title authorKind createdAt */
+        select revision."revision_number" as "revisionNumber", revision."title",
+          revision."author_kind" as "authorKind", revision."author_name" as "authorName",
+          revision."created_at" as "createdAt"
+        from "knowledge_page_revision" revision
+        where revision."owner_id" = ${ownerId} and revision."page_id" = ${page.id}
+        order by revision."revision_number" desc
       `,
     ]);
     return {

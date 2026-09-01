@@ -52,6 +52,7 @@ export function createPageReadableIdController({
       async ({ body, params, user, status }) => {
         const result = await pagesService.update({
           ownerId: user.id,
+          actor: { kind: 'owner' },
           readableId: params.pageReadableId,
           ...body,
         });

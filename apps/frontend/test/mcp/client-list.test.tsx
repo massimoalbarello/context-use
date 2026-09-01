@@ -23,8 +23,8 @@ test('authenticated clients are read-only until the shared edit action is select
             id: 'client-authorization-2',
             name: 'Claude MacBook Pro',
             verifiedClientId: 'https://claude.ai/oauth/mcp-oauth-client-metadata',
-            createdAt: '2026-09-01T00:00:00.000Z',
-            updatedAt: '2026-09-01T00:00:00.000Z',
+            createdAt: '2026-08-31T00:00:00.000Z',
+            updatedAt: '2026-09-01T01:00:00.000Z',
             archivedAt: '2026-09-01T01:00:00.000Z',
           },
         ]}
@@ -36,6 +36,9 @@ test('authenticated clients are read-only until the shared edit action is select
   expect(viewHtml).toContain('>Archive</button>');
   expect(viewHtml).toContain('Authenticated clients');
   expect(viewHtml).toContain('Archived clients');
+  expect(viewHtml).toContain('Authorized');
+  expect(viewHtml).toContain('dateTime="2026-09-01T00:00:00.000Z"');
+  expect(viewHtml).not.toContain('dateTime="2026-08-31T00:00:00.000Z"');
   expect(viewHtml).not.toContain('Verified client identity');
   expect(viewHtml).not.toContain('Registered OAuth client');
   expect(viewHtml).not.toContain('Connection name');

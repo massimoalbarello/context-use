@@ -15,6 +15,15 @@ this file.
 - **Linter/formatter:** Biome
 - **Commits:** Conventional Commits
 
+## Beta compatibility
+
+Context Use is beta software and no instance has been deployed. Until that changes, backward
+compatibility is not a requirement: contributors may make breaking changes and edit, reorder,
+squash, rename, or delete existing migrations in place whenever that produces the simplest coherent
+design. Local development databases are disposable during this phase and must be recreated after an
+incompatible schema change; do not add compatibility migrations or legacy application paths solely
+to preserve them.
+
 ## Before implementation
 
 Do not start implementing until the problem, desired outcome, constraints, and success condition can

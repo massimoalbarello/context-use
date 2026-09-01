@@ -11,6 +11,7 @@ import { WorkspaceResourceError } from '../components/knowledge/workspace-resour
 import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../components/pages/knowledge-page-markdown';
+import { KnowledgePageRevisions } from '../components/pages/knowledge-page-revisions';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -117,36 +118,6 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
         </section>
       ))}
     </div>
-  );
-}
-
-function PageRevisionsView({ page }: { page: KnowledgePage }) {
-  return (
-    <section className="py-7">
-      <div className="mb-4 flex items-center gap-3">
-        <h2 className="font-semibold text-lg">Revisions</h2>
-        <Badge variant="secondary">{page.revisions.length}</Badge>
-      </div>
-      <ol className="grid max-w-3xl list-none gap-2 p-0">
-        {page.revisions.map((revision) => (
-          <li className="rounded-xl bg-muted px-4 py-3" key={revision.revisionNumber}>
-            <div className="flex items-center gap-2">
-              <strong className="font-semibold text-sm">Revision {revision.revisionNumber}</strong>
-              {revision.revisionNumber === page.revisionNumber && (
-                <Badge variant="secondary">Current</Badge>
-              )}
-            </div>
-            <p className="mt-1 text-sm">{revision.title}</p>
-            <time
-              className="mt-1 block text-muted-foreground text-xs"
-              dateTime={revision.createdAt.toISOString()}
-            >
-              {revision.createdAt.toLocaleString()}
-            </time>
-          </li>
-        ))}
-      </ol>
-    </section>
   );
 }
 
@@ -299,7 +270,7 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
             <PageLinksView page={page} />
           </TabsContent>
           <TabsContent value="revisions">
-            <PageRevisionsView page={page} />
+            <KnowledgePageRevisions page={page} />
           </TabsContent>
         </Tabs>
       )}

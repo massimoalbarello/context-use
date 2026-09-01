@@ -20,6 +20,7 @@ export type McpOAuthClient = {
 export type McpClientAuthorizationPrincipal = {
   ownerId: string;
   clientAuthorizationId: string;
+  clientAuthorizationName: string;
 };
 
 export function normalizeMcpClientName(name: string): string | null {

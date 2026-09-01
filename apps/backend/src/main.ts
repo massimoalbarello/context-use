@@ -19,6 +19,7 @@ import { KnowledgePagesRepository } from '#repositories/knowledge-pages/reposito
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
+import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import { FrontendAssetsService } from '#services/frontend-assets/service.ts';
@@ -72,7 +73,10 @@ try {
   const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
     new McpClientAuthorizationsRepository(database),
   );
-  const mcpTransport = createMcpTransport();
+  const mcpTransport = createMcpTransport({
+    createServer: ({ principal }) =>
+      createContextUseMcpServer({ principal, entitiesService, pagesService }),
+  });
   const auth = createAuth({
     database,
     baseUrl: env.BASE_URL,
