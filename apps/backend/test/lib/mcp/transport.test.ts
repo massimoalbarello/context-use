@@ -10,7 +10,10 @@ import {
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
-import { unusedAssetTransferCapabilities } from '../../support/mcp.ts';
+import {
+  unusedAssetTransferCapabilities,
+  unusedKnowledgeProfilesService,
+} from '../../support/mcp.ts';
 
 const LEGACY_PROTOCOL_VERSION = '2025-06-18';
 const NOW = '2026-09-01T12:00:00.000Z';
@@ -77,6 +80,7 @@ test('authenticated 2025-06-18 clients can initialize and call the same tools', 
         assetsService,
         entitiesService,
         pagesService,
+        profilesService: unusedKnowledgeProfilesService,
         transferCapabilities: unusedAssetTransferCapabilities,
       }),
   });
