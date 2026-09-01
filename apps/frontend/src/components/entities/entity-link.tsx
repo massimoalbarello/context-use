@@ -64,11 +64,15 @@ export function EntityLink({ entity, presentation, active, children }: EntityLin
   if (presentation === 'inline') {
     return (
       <Link
-        className="mx-0.5 inline-flex items-center gap-1 rounded-full bg-muted py-0.5 pr-2 pl-[0.3125rem] align-baseline font-medium text-foreground no-underline transition hover:bg-accent"
+        className="relative mx-0.5 inline-block rounded-full bg-muted py-0.5 pr-2 pl-[2.0625rem] align-baseline font-medium text-foreground no-underline transition hover:bg-accent"
         to="/entities/$id"
         params={{ id: entity.readableId }}
       >
-        <EntityAvatar entity={entity} size="sm" className="text-[0.6rem]" />
+        <EntityAvatar
+          entity={entity}
+          size="sm"
+          className="absolute top-1/2 left-[0.3125rem] -translate-y-1/2 text-[0.6rem]"
+        />
         <span>{children ?? entity.name}</span>
       </Link>
     );
