@@ -31,7 +31,3 @@ The command builds the Linux binary and creates a configured Context Use app on 
 later run deploys onto that same app. Your database, uploaded files, OAuth credentials, and generated
 auth secret live in nibrun's persistent `/app/data` directory, so clients stay authorized across
 updates and restarts.
-
-Do not use the deploy button again to update an existing instance: a new nibrun app has a new
-hostname and persistent volume, so it is a distinct OAuth server and clients must authorize it
-separately.
