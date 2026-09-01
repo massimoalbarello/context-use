@@ -23,6 +23,14 @@ import {
 } from '#routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#routes/mcp/tool-result.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
+import {
+  HYPERMEDIA_CURATION_GUIDE,
+  HYPERMEDIA_CURATION_GUIDE_VERSION,
+  HypermediaCurationGuideOutputSchema,
+  HypermediaCurationGuideRequiredSchema,
+  HypermediaCurationGuideVersionInputSchema,
+  hypermediaCurationGuideRequired,
+} from './hypermedia-curation-guide.ts';
 
 const MarkdownSchema = z
   .string()
@@ -31,6 +39,7 @@ const MarkdownSchema = z
   .describe('Complete Markdown document beginning with one H1 title');
 
 const CreateKnowledgePageInputSchema = z.object({
+  guide_version: HypermediaCurationGuideVersionInputSchema,
   markdown: MarkdownSchema,
   allowDuplicate: z
     .boolean()
@@ -40,7 +49,11 @@ const CreateKnowledgePageInputSchema = z.object({
 
 const PageAddressInputSchema = z.object({ address: PageAddressSchema });
 
-const UpdateKnowledgePageInputSchema = PageAddressInputSchema.extend({
+const GuidedPageAddressInputSchema = PageAddressInputSchema.extend({
+  guide_version: HypermediaCurationGuideVersionInputSchema,
+});
+
+const UpdateKnowledgePageInputSchema = GuidedPageAddressInputSchema.extend({
   expectedRevisionNumber: z.number().int().positive(),
   markdown: MarkdownSchema,
 });
@@ -55,6 +68,16 @@ const ArchiveKnowledgePageOutputSchema = z.object({
   archived: z.literal(true),
   address: PageAddressSchema,
 });
+
+const GuidedKnowledgePageOutputSchema = z.union([
+  McpKnowledgePageSchema,
+  HypermediaCurationGuideRequiredSchema,
+]);
+
+const GuidedArchiveKnowledgePageOutputSchema = z.union([
+  ArchiveKnowledgePageOutputSchema,
+  HypermediaCurationGuideRequiredSchema,
+]);
 
 function linkTargetAddress(target: string): string {
   return `context-use://${target}`;
@@ -76,16 +99,37 @@ export function registerKnowledgePageTools({
   };
 
   server.registerTool(
+    'read_hypermedia_curation_guide',
+    {
+      title: 'Read hypermedia curation guide',
+      description:
+        'Read the current guide required before creating, updating, or archiving a knowledge page. Pass guide_version unchanged to the mutation tool.',
+      inputSchema: z.object({}),
+      outputSchema: HypermediaCurationGuideOutputSchema,
+      annotations: MCP_READ_TOOL_ANNOTATIONS,
+    },
+    () =>
+      mcpToolSuccess({
+        guide: HYPERMEDIA_CURATION_GUIDE,
+        guide_version: HYPERMEDIA_CURATION_GUIDE_VERSION,
+      }),
+  );
+
+  server.registerTool(
     'create_knowledge_page',
     {
       title: 'Create knowledge page',
       description:
         'Create one versioned knowledge page from complete Markdown. Internal links must use canonical context-use addresses.',
       inputSchema: CreateKnowledgePageInputSchema,
-      outputSchema: McpKnowledgePageSchema,
+      outputSchema: GuidedKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async (input) => {
+    async ({ guide_version, ...input }) => {
+      const guideRequired = hypermediaCurationGuideRequired(guide_version);
+      if (guideRequired) {
+        return guideRequired;
+      }
       const result = await pagesService.create({ ownerId: principal.ownerId, actor, ...input });
       if (result.state === 'saved') {
         return mcpToolSuccess(mcpKnowledgePage(result.page));
@@ -170,10 +214,14 @@ export function registerKnowledgePageTools({
       description:
         'Create a new revision of one knowledge page. expectedRevisionNumber is required to prevent overwriting concurrent changes.',
       inputSchema: UpdateKnowledgePageInputSchema,
-      outputSchema: McpKnowledgePageSchema,
+      outputSchema: GuidedKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ address, expectedRevisionNumber, markdown }) => {
+    async ({ address, expectedRevisionNumber, guide_version, markdown }) => {
+      const guideRequired = hypermediaCurationGuideRequired(guide_version);
+      if (guideRequired) {
+        return guideRequired;
+      }
       const result = await pagesService.update({
         ownerId: principal.ownerId,
         actor,
@@ -212,11 +260,15 @@ export function registerKnowledgePageTools({
       title: 'Archive knowledge page',
       description:
         'Archive one knowledge page. This is destructive and succeeds only when no active inbound references block it.',
-      inputSchema: PageAddressInputSchema,
-      outputSchema: ArchiveKnowledgePageOutputSchema,
+      inputSchema: GuidedPageAddressInputSchema,
+      outputSchema: GuidedArchiveKnowledgePageOutputSchema,
       annotations: MCP_ARCHIVE_TOOL_ANNOTATIONS,
     },
-    async ({ address }) => {
+    async ({ address, guide_version }) => {
+      const guideRequired = hypermediaCurationGuideRequired(guide_version);
+      if (guideRequired) {
+        return guideRequired;
+      }
       const result = await pagesService.archive({
         ownerId: principal.ownerId,
         readableId: pageReadableId(address),
