@@ -21,6 +21,7 @@ describe('passkey-only authentication', () => {
           database,
           baseUrl: new URL(AUTH_ORIGIN),
           secret: TEST_SECRET,
+          fetchClientMetadataResource: async () => new Response(null, { status: 503 }),
         });
         const response = await auth.handler(
           new Request(

@@ -1,5 +1,5 @@
+import type { CimdOptions } from '@better-auth/cimd';
 import { cimd } from '@better-auth/cimd';
-import { fetchClientMetadataResource } from '@better-auth/cimd/node';
 import { mcp, requireMcpAuth } from '@better-auth/mcp';
 import { passkey } from '@better-auth/passkey';
 import { bunSqlAdapter } from '@ilbertt/better-auth-bun-sql';
@@ -52,10 +52,12 @@ export function createAuthOptions({
   database,
   baseUrl,
   secret,
+  fetchClientMetadataResource,
 }: {
   database: SQL;
   baseUrl: URL;
   secret: string;
+  fetchClientMetadataResource: CimdOptions['fetchClientMetadataResource'];
 }): BetterAuthOptions {
   const mcpResource = mcpServerUrl({ baseUrl });
   return {
@@ -156,7 +158,12 @@ export function createAuthOptions({
   };
 }
 
-export function createAuth(input: { database: SQL; baseUrl: URL; secret: string }) {
+export function createAuth(input: {
+  database: SQL;
+  baseUrl: URL;
+  secret: string;
+  fetchClientMetadataResource: CimdOptions['fetchClientMetadataResource'];
+}) {
   const mcpResource = mcpServerUrl({ baseUrl: input.baseUrl });
   const auth = betterAuth(createAuthOptions(input));
 

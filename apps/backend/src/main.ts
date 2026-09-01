@@ -3,6 +3,7 @@ import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { loadAuthSecret } from '#lib/auth/auth-secret.ts';
 import { createAuth, mcpServerUrl } from '#lib/auth/better-auth.ts';
+import { fetchClientMetadataResource } from '#lib/auth/client-metadata-resource.ts';
 import { loadEnv } from '#lib/env.ts';
 import { createLogger } from '#lib/logger.ts';
 import { createMcpTransport } from '#lib/mcp/transport.ts';
@@ -74,6 +75,7 @@ try {
     database,
     baseUrl: env.BASE_URL,
     secret: authSecret.value,
+    fetchClientMetadataResource,
   });
 
   const app = createApp({

@@ -249,6 +249,7 @@ describe('MCP OAuth foundation', () => {
           database,
           baseUrl: new URL(origin),
           secret: TEST_SECRET,
+          fetchClientMetadataResource: async () => new Response(null, { status: 503 }),
         });
         const oauth = betterAuth({
           ...options,
@@ -331,6 +332,7 @@ describe('MCP OAuth foundation', () => {
             database,
             baseUrl: new URL(origin),
             secret: TEST_SECRET,
+            fetchClientMetadataResource: async () => new Response(null, { status: 503 }),
           });
           let authenticatedToken: McpAccessToken | undefined;
           const protectedHandler = resourceServerAuth.protectMcpRequest({
