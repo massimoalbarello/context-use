@@ -4,6 +4,7 @@ import {
   fetchClientMetadataResource,
   pinnedAddressLookup,
   pinnedPublicAddress,
+  pinnedRequestOptions,
 } from '#lib/auth/client-metadata-resource.ts';
 
 const PUBLIC_ADDRESS: LookupAddress = { address: '8.8.8.8', family: 4 };
@@ -34,6 +35,36 @@ describe('CIMD client metadata transport', () => {
     const addresses = await pendingAddresses.promise;
 
     expect(addresses).toEqual([PUBLIC_ADDRESS]);
+
+    const pendingAddress = Promise.withResolvers<{ address: string; family?: number }>();
+    lookup('client.example', {}, (...parameters) => {
+      const [error, address, family] = parameters;
+      if (error) {
+        pendingAddress.reject(error);
+      } else {
+        pendingAddress.resolve({ address: address as string, family: family as number });
+      }
+    });
+    expect(await pendingAddress.promise).toEqual(PUBLIC_ADDRESS);
+  });
+
+  test('keeps the original HTTPS identity on an isolated pinned connection', () => {
+    const signal = new AbortController().signal;
+    const options = pinnedRequestOptions({
+      address: PUBLIC_ADDRESS,
+      signal,
+      url: new URL('https://client.example:8443/client.json'),
+      webRequest: new Request('https://client.example:8443/client.json', {
+        headers: { host: 'untrusted.example' },
+      }),
+    });
+
+    expect(options.agent).toBe(false);
+    expect(options.method).toBe('GET');
+    expect(options.servername).toBe('client.example');
+    expect(options.signal).toBe(signal);
+    expect((options.headers as Record<string, string>).host).toBe('client.example:8443');
+    expect(options.rejectUnauthorized).not.toBe(false);
   });
 
   test('accepts only HTTPS GET and HEAD requests', async () => {
@@ -43,5 +74,8 @@ describe('CIMD client metadata transport', () => {
     await expect(
       fetchClientMetadataResource('https://client.example/client.json', { method: 'POST' }),
     ).rejects.toThrow('CIMD transport supports only GET and HEAD');
+    await expect(fetchClientMetadataResource('https://127.0.0.1/client.json')).rejects.toThrow(
+      'metadata hostname must resolve only to public-routable addresses',
+    );
   });
 });

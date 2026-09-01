@@ -1,6 +1,6 @@
 import type { LookupAddress } from 'node:dns';
 import { lookup } from 'node:dns/promises';
-import { request } from 'node:https';
+import { type RequestOptions, request } from 'node:https';
 import { isIP, type LookupFunction } from 'node:net';
 import { Readable } from 'node:stream';
 import type { CimdOptions } from '@better-auth/cimd';
@@ -57,8 +57,37 @@ export function pinnedAddressLookup({ address }: { address: LookupAddress }): Lo
   };
 }
 
+export function pinnedRequestOptions({
+  address,
+  signal,
+  url,
+  webRequest,
+}: {
+  address: LookupAddress;
+  signal: AbortSignal;
+  url: URL;
+  webRequest: Request;
+}): RequestOptions {
+  const headers = Object.fromEntries(webRequest.headers.entries());
+  headers.host = url.host;
+  return {
+    agent: false,
+    headers,
+    method: webRequest.method,
+    servername: isIP(url.hostname.replace(/^\[|\]$/g, '')) === 0 ? url.hostname : undefined,
+    signal,
+    lookup: pinnedAddressLookup({ address }),
+  };
+}
+
 /**
- * Bun-compatible CIMD transport with the same SSRF boundary required by Better Auth.
+ * Bun CIMD transport required by Better Auth's runtime-specific security contract.
+ *
+ * This mirrors `@better-auth/cimd/node@1.7.2` with the callback correction proposed in
+ * better-auth/better-auth#10730. The published transport answers an `{ all: true }` DNS lookup
+ * with the legacy scalar shape, which fails before connecting with `ERR_INVALID_IP_ADDRESS`.
+ * Replace this module with the upstream transport once that fix ships with documented Bun support.
+ *
  * The hostname is resolved once, every answer is validated, and the chosen address is pinned
  * while Host, TLS SNI, and certificate verification continue to use the original hostname.
  */
@@ -77,21 +106,12 @@ export const fetchClientMetadataResource: CimdOptions['fetchClientMetadataResour
 
   const addresses = await lookup(url.hostname, { all: true, verbatim: true });
   const pinnedAddress = pinnedPublicAddress({ addresses });
-  const headers = Object.fromEntries(webRequest.headers.entries());
-  headers.host = url.host;
   const signal = init?.signal ?? (input instanceof Request ? input.signal : webRequest.signal);
 
   const pendingResponse = Promise.withResolvers<Response>();
   const outboundRequest = request(
     url,
-    {
-      agent: false,
-      headers,
-      method: webRequest.method,
-      servername: isIP(url.hostname.replace(/^\[|\]$/g, '')) === 0 ? url.hostname : undefined,
-      signal,
-      lookup: pinnedAddressLookup({ address: pinnedAddress }),
-    },
+    pinnedRequestOptions({ address: pinnedAddress, signal, url, webRequest }),
     (incomingResponse) => {
       const status = incomingResponse.statusCode ?? HTTP_INTERNAL_SERVER_ERROR;
       const body =
