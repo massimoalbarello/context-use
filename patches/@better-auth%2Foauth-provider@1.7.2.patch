@@ -1,0 +1,69 @@
+diff --git a/dist/authorize-BmTe2VYG.mjs b/dist/authorize-BmTe2VYG.mjs
+index 42c943dd45aa3d297a14edcc056a14e7ddd54680..25935e50a3a02f415b9aba7d6018e37c0b2f98a3 100644
+--- a/dist/authorize-BmTe2VYG.mjs
++++ b/dist/authorize-BmTe2VYG.mjs
+@@ -1710,6 +1710,19 @@ function validateClientRedirectUri(redirectUri, applicationType) {
+ 	}
+ 	if (FORBIDDEN_NATIVE_REDIRECT_SCHEMES.has(url.protocol) || !isReverseDomainPrivateUseRedirectUri(url)) invalidRedirectUri(`native private-use redirect URI schemes must be well-formed reverse-domain names, omit the naming authority, and must not use a reserved scheme: ${redirectUri}`);
+ }
++function isPublicLoopbackClient(client) {
++	const redirectUris = client.redirect_uris ?? [];
++	return client.token_endpoint_auth_method === "none" && redirectUris.length > 0 && redirectUris.every((redirectUri) => {
++		let url;
++		try {
++			url = new URL(redirectUri);
++		} catch {
++			return false;
++		}
++		const rawHttpHostname = getRawHttpHostname(redirectUri);
++		return url.protocol === "http:" && (rawHttpHostname === "localhost" || rawHttpHostname === "127.0.0.1" || rawHttpHostname === "[::1]");
++	});
++}
+ function assertValidRegistrationJwks(jwks) {
+ 	const result = validatePublicClientJwks(jwks);
+ 	if (!result.valid) throw new APIError("BAD_REQUEST", {
+@@ -1754,7 +1767,8 @@ async function registerEndpoint(ctx, opts) {
+ }
+ async function checkOAuthClient(client, opts, settings) {
+ 	const isClientMetadataDocument = settings?.registrationSource === "clientMetadataDocument";
+-	const clientWithDefaults = applyOAuthClientRegistrationDefaults(client, isClientMetadataDocument ? null : "web");
++	const defaultApplicationType = isClientMetadataDocument ? null : isPublicLoopbackClient(client) ? "native" : "web";
++	const clientWithDefaults = applyOAuthClientRegistrationDefaults(client, defaultApplicationType);
+ 	const tokenEndpointAuthMethod = clientWithDefaults.token_endpoint_auth_method ?? "client_secret_basic";
+ 	if (!new Set(getSupportedAuthMethods(opts, { includeNone: true })).has(tokenEndpointAuthMethod)) throw new APIError("BAD_REQUEST", {
+ 		error: "invalid_client_metadata",
+@@ -1914,10 +1928,12 @@ function isClientRegistrationCollision(error) {
+ * boundary.
+ */
+ async function persistOAuthClientRegistration(ctx, opts, input) {
+-	const body = applyOAuthClientRegistrationDefaults(input.registrationSource === "dynamic" && !input.metadata.scope ? {
++	const registrationMetadata = input.registrationSource === "dynamic" && !input.metadata.scope ? {
+ 		...input.metadata,
+ 		scope: (opts.clientRegistrationDefaultScopes ?? opts.scopes)?.join(" ")
+-	} : input.metadata, input.registrationSource === "clientMetadataDocument" ? null : "web");
++	} : input.metadata;
++	const defaultApplicationType = input.registrationSource === "clientMetadataDocument" ? null : isPublicLoopbackClient(registrationMetadata) ? "native" : "web";
++	const body = applyOAuthClientRegistrationDefaults(registrationMetadata, defaultApplicationType);
+ 	const isPublic = body.token_endpoint_auth_method === "none";
+ 	const isPrivateKeyJwt = body.token_endpoint_auth_method === "private_key_jwt";
+ 	const isExtensionAuthMethod = isExtensionTokenEndpointAuthMethod(opts, body.token_endpoint_auth_method);
+@@ -5381,8 +5397,8 @@ function getErrorURL(ctx, error, description) {
+ /**
+ * Finds the matching entry in a client's registered redirect_uris for a
+ * requested redirect_uri. Honors RFC 8252 §7.3 loopback port variance for
+-* the full 127.0.0.0/8 range and [::1], matching on scheme+host+path+query
+-* and ignoring port. DNS names like "localhost" are excluded per §8.3.
++* the full 127.0.0.0/8 range and [::1], and extends the same interoperable
++* behavior to localhost-based native clients.
+ */
+ function findRegisteredRedirectUri(registered, requested) {
+ 	if (!registered || !requested) return void 0;
+@@ -5395,7 +5411,7 @@ function findRegisteredRedirectUri(registered, requested) {
+ 		if (!req) return false;
+ 		try {
+ 			const reg = new URL(url);
+-			return isLoopbackIP(reg.hostname) && reg.hostname === req.hostname && reg.pathname === req.pathname && reg.protocol === req.protocol && reg.search === req.search;
++			return (isLoopbackIP(reg.hostname) || reg.hostname === "localhost") && reg.hostname === req.hostname && reg.pathname === req.pathname && reg.protocol === req.protocol && reg.search === req.search;
+ 		} catch {
+ 			return false;
+ 		}

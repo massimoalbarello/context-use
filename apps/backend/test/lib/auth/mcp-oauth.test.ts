@@ -21,6 +21,8 @@ import { withAuthTestDatabase } from './auth-test-database.ts';
 
 const TEST_SECRET = 'test-secret-at-least-thirty-two-characters';
 const CALLBACK_URL = 'http://127.0.0.1/callback';
+const CLAUDE_REGISTERED_CALLBACK_URL = 'http://localhost:3118/callback';
+const CLAUDE_AUTHORIZATION_CALLBACK_URL = 'http://localhost:43118/callback';
 const ACCESS_TOKEN_LIFETIME_SECONDS = 300;
 const HTTP_BAD_REQUEST = 400;
 const HTTP_CREATED = 201;
@@ -111,10 +113,14 @@ async function registerClient({
   handler,
   name,
   urls,
+  callbackUrl = CALLBACK_URL,
+  applicationType = 'native',
 }: {
   handler: (request: Request) => Promise<Response>;
   name: string;
   urls: OAuthTestUrls;
+  callbackUrl?: string;
+  applicationType?: 'native' | null;
 }): Promise<OAuthClientRegistration> {
   const response = await handler(
     jsonRequest({
@@ -122,8 +128,8 @@ async function registerClient({
       origin: urls.origin,
       body: {
         client_name: name,
-        application_type: 'native',
-        redirect_uris: [CALLBACK_URL],
+        ...(applicationType ? { application_type: applicationType } : {}),
+        redirect_uris: [callbackUrl],
         token_endpoint_auth_method: 'none',
         grant_types: ['authorization_code', 'refresh_token'],
         response_types: ['code'],
@@ -141,11 +147,13 @@ async function authorizeClient({
   sessionHeaders,
   clientId,
   urls,
+  callbackUrl = CALLBACK_URL,
 }: {
   handler: (request: Request) => Promise<Response>;
   sessionHeaders: Headers;
   clientId: string;
   urls: OAuthTestUrls;
+  callbackUrl?: string;
 }): Promise<string> {
   const verifier = 'oauth-test-code-verifier-with-more-than-forty-three-characters';
   const challenge = createHash('sha256').update(verifier).digest('base64url');
@@ -153,7 +161,7 @@ async function authorizeClient({
   authorizeUrl.search = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
-    redirect_uri: CALLBACK_URL,
+    redirect_uri: callbackUrl,
     scope: `${MCP_SCOPE} offline_access`,
     state: 'test-state',
     code_challenge: challenge,
@@ -194,7 +202,7 @@ async function authorizeClient({
         client_id: clientId,
         code,
         code_verifier: verifier,
-        redirect_uri: CALLBACK_URL,
+        redirect_uri: callbackUrl,
         resource: urls.mcpResource,
       },
     }),
@@ -302,6 +310,77 @@ describe('MCP OAuth foundation', () => {
           const clientAuthorizations = new McpClientAuthorizationsService(
             new McpClientAuthorizationsRepository(database),
           );
+          const explicitWebLoopbackClient = await oauth.handler(
+            jsonRequest({
+              url: `${urls.authBase}/oauth2/register`,
+              origin: urls.origin,
+              body: {
+                client_name: 'Invalid web client',
+                application_type: 'web',
+                redirect_uris: [CLAUDE_REGISTERED_CALLBACK_URL],
+                token_endpoint_auth_method: 'none',
+                grant_types: ['authorization_code', 'refresh_token'],
+                response_types: ['code'],
+                scope: `${MCP_SCOPE} offline_access`,
+              },
+            }),
+          );
+          expect(explicitWebLoopbackClient.status).toBe(HTTP_BAD_REQUEST);
+          expect(await explicitWebLoopbackClient.json()).toMatchObject({
+            error: 'invalid_redirect_uri',
+          });
+
+          const claudeCodeClient = await registerClient({
+            handler: oauth.handler,
+            name: 'Claude Code',
+            urls,
+            callbackUrl: CLAUDE_REGISTERED_CALLBACK_URL,
+            applicationType: null,
+          });
+          expect(
+            await database<{ applicationType: string | null }[]>`
+              select "applicationType" from "auth_oauthClient"
+              where "clientId" = ${claudeCodeClient.client_id}
+            `,
+          ).toEqual([{ applicationType: 'native' }]);
+          expect(
+            await clientAuthorizations.approve({
+              actorId: OWNER_USER_ID,
+              clientId: claudeCodeClient.client_id,
+              name: 'Claude Code',
+            }),
+          ).toMatchObject({ state: 'approved' });
+          const mismatchedCallbackUrl = new URL(`${urls.authBase}/oauth2/authorize`);
+          mismatchedCallbackUrl.search = new URLSearchParams({
+            response_type: 'code',
+            client_id: claudeCodeClient.client_id,
+            redirect_uri: 'http://localhost:43118/not-the-registered-path',
+            scope: `${MCP_SCOPE} offline_access`,
+            state: 'test-state',
+            code_challenge: createHash('sha256')
+              .update('oauth-test-code-verifier-with-more-than-forty-three-characters')
+              .digest('base64url'),
+            code_challenge_method: 'S256',
+            resource: urls.mcpResource,
+          }).toString();
+          const mismatchedCallback = await oauth.handler(
+            new Request(mismatchedCallbackUrl.href, { headers: sessionHeaders }),
+          );
+          expect(mismatchedCallback.status).toBe(HTTP_FOUND);
+          expect(mismatchedCallback.headers.get('location')).not.toStartWith('/mcp/authorize?');
+
+          expect(
+            JSON.parse(
+              await authorizeClient({
+                handler: oauth.handler,
+                sessionHeaders,
+                clientId: claudeCodeClient.client_id,
+                urls,
+                callbackUrl: CLAUDE_AUTHORIZATION_CALLBACK_URL,
+              }),
+            ),
+          ).toMatchObject({ access_token: expect.any(String) });
+
           const approval = await clientAuthorizations.approve({
             actorId: OWNER_USER_ID,
             clientId: client.client_id,

@@ -46,5 +46,8 @@
     "bun": "1.4.0",
     "node": "please use bun"
   },
-  "packageManager": "bun@1.4.0"
+  "packageManager": "bun@1.4.0",
+  "patchedDependencies": {
+    "@better-auth/oauth-provider@1.7.2": "patches/@better-auth%2Foauth-provider@1.7.2.patch"
+  }
 }
