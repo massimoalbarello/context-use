@@ -97,9 +97,9 @@ export class AssetsRepository implements AssetsRepositoryContract {
             and (${normalizedKind} is null or (
               "media_type" like 'image/%'
               and not exists (
-                select 1 from "entity_image"
-                where "entity_image"."owner_id" = "asset"."owner_id"
-                  and "entity_image"."asset_id" = "asset"."id"
+                select 1 from "entity"
+                where "entity"."owner_id" = "asset"."owner_id"
+                  and "entity"."image_asset_id" = "asset"."id"
               )
             ))
             and (instr(lower("name"), lower(${normalizedQuery})) > 0
@@ -116,9 +116,9 @@ export class AssetsRepository implements AssetsRepositoryContract {
             and (${normalizedKind} is null or (
               "media_type" like 'image/%'
               and not exists (
-                select 1 from "entity_image"
-                where "entity_image"."owner_id" = "asset"."owner_id"
-                  and "entity_image"."asset_id" = "asset"."id"
+                select 1 from "entity"
+                where "entity"."owner_id" = "asset"."owner_id"
+                  and "entity"."image_asset_id" = "asset"."id"
               )
             ))
           order by "updated_at" desc, "id" desc limit ${limit} offset ${offset}
@@ -131,9 +131,9 @@ export class AssetsRepository implements AssetsRepositoryContract {
             and (${normalizedKind} is null or (
               "media_type" like 'image/%'
               and not exists (
-                select 1 from "entity_image"
-                where "entity_image"."owner_id" = "asset"."owner_id"
-                  and "entity_image"."asset_id" = "asset"."id"
+                select 1 from "entity"
+                where "entity"."owner_id" = "asset"."owner_id"
+                  and "entity"."image_asset_id" = "asset"."id"
               )
             ))
             and (instr(lower("name"), lower(${normalizedQuery})) > 0
@@ -146,9 +146,9 @@ export class AssetsRepository implements AssetsRepositoryContract {
             and (${normalizedKind} is null or (
               "media_type" like 'image/%'
               and not exists (
-                select 1 from "entity_image"
-                where "entity_image"."owner_id" = "asset"."owner_id"
-                  and "entity_image"."asset_id" = "asset"."id"
+                select 1 from "entity"
+                where "entity"."owner_id" = "asset"."owner_id"
+                  and "entity"."image_asset_id" = "asset"."id"
               )
             ))
         `;
@@ -294,13 +294,10 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
         entity."description", profile."self_entity_id" is not null as "isSelf"
-      from "entity_image" entity_image
-      join "entity" entity
-        on entity."owner_id" = entity_image."owner_id"
-       and entity."id" = entity_image."entity_id"
+      from "entity" entity
       left join "knowledge_profile" profile
         on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
-      where entity_image."owner_id" = ${ownerId} and entity_image."asset_id" = ${assetId}
+      where entity."owner_id" = ${ownerId} and entity."image_asset_id" = ${assetId}
         and entity."archived_at" is null
       order by entity."name" collate nocase, entity."readable_id"
     `;

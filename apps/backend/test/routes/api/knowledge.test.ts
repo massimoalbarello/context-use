@@ -45,10 +45,6 @@ const ARCHIVE_INVARIANT_MIGRATION = new URL(
   import.meta.url,
 );
 const ASSET_MIGRATION = new URL('../../../src/db/migrations/0005_add_assets.sql', import.meta.url);
-const ENTITY_IMAGE_MIGRATION = new URL(
-  '../../../src/db/migrations/0006_add_entity_images.sql',
-  import.meta.url,
-);
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 3;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
@@ -113,7 +109,6 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         ['0003_add_knowledge_page_archived_at.sql', Bun.file(PAGE_ARCHIVE_MIGRATION)],
         ['0004_prevent_self_entity_archiving.sql', Bun.file(ARCHIVE_INVARIANT_MIGRATION)],
         ['0005_add_assets.sql', Bun.file(ASSET_MIGRATION)],
-        ['0006_add_entity_images.sql', Bun.file(ENTITY_IMAGE_MIGRATION)],
       ]),
     });
     const timestamp = '2026-01-01T00:00:00.000Z';

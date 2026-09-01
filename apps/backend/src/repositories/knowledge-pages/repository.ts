@@ -620,11 +620,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           on entity."id" = mention."target_entity_id" and entity."owner_id" = mention."owner_id"
         left join "knowledge_profile" profile
           on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
-        left join "entity_image" entity_image
-          on entity_image."owner_id" = entity."owner_id"
-         and entity_image."entity_id" = entity."id"
         left join "asset" image
-          on image."owner_id" = entity_image."owner_id" and image."id" = entity_image."asset_id"
+          on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
          and image."archived_at" is null
         where mention."owner_id" = ${ownerId}
           and mention."source_revision_id" = ${page.currentRevisionId}

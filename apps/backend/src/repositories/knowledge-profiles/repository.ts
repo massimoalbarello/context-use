@@ -93,10 +93,8 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
       from "knowledge_profile" profile
       join "entity" entity
         on entity."id" = profile."self_entity_id" and entity."owner_id" = profile."owner_id"
-      left join "entity_image" entity_image
-        on entity_image."owner_id" = entity."owner_id" and entity_image."entity_id" = entity."id"
       left join "asset" image
-        on image."owner_id" = entity_image."owner_id" and image."id" = entity_image."asset_id"
+        on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
        and image."archived_at" is null
       where profile."owner_id" = ${ownerId}
     `;

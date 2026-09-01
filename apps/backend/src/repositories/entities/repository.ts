@@ -115,12 +115,9 @@ export class EntitiesRepository implements EntityRepositoryContract {
           left join "knowledge_profile" profile
            on profile."owner_id" = entity."owner_id"
            and profile."self_entity_id" = entity."id"
-          left join "entity_image" entity_image
-            on entity_image."owner_id" = entity."owner_id"
-           and entity_image."entity_id" = entity."id"
           left join "asset" image
-            on image."owner_id" = entity_image."owner_id"
-           and image."id" = entity_image."asset_id"
+            on image."owner_id" = entity."owner_id"
+           and image."id" = entity."image_asset_id"
            and image."archived_at" is null
           where entity."owner_id" = ${ownerId}
             and entity."archived_at" is null
@@ -145,12 +142,9 @@ export class EntitiesRepository implements EntityRepositoryContract {
           left join "knowledge_profile" profile
            on profile."owner_id" = entity."owner_id"
            and profile."self_entity_id" = entity."id"
-          left join "entity_image" entity_image
-            on entity_image."owner_id" = entity."owner_id"
-           and entity_image."entity_id" = entity."id"
           left join "asset" image
-            on image."owner_id" = entity_image."owner_id"
-           and image."id" = entity_image."asset_id"
+            on image."owner_id" = entity."owner_id"
+           and image."id" = entity."image_asset_id"
            and image."archived_at" is null
           where entity."owner_id" = ${ownerId}
             and entity."archived_at" is null
@@ -207,10 +201,8 @@ export class EntitiesRepository implements EntityRepositoryContract {
       from "entity" entity
       left join "knowledge_profile" profile
         on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
-      left join "entity_image" entity_image
-        on entity_image."owner_id" = entity."owner_id" and entity_image."entity_id" = entity."id"
       left join "asset" image
-        on image."owner_id" = entity_image."owner_id" and image."id" = entity_image."asset_id"
+        on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
        and image."archived_at" is null
       where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
         and entity."archived_at" is null
@@ -256,38 +248,33 @@ export class EntitiesRepository implements EntityRepositoryContract {
     return this.sql.begin(async (db) => {
       const rows = await db.SetEntityImage`
         /* @notNull entityId */
-        insert into "entity_image" ("owner_id", "entity_id", "asset_id")
-        select entity."owner_id", entity."id", asset."id"
-        from "entity" entity
-        join "asset" asset on asset."owner_id" = entity."owner_id"
+        update "entity" as entity
+        set "image_asset_id" = ${assetId}, "updated_at" = ${updatedAt}
         where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
-          and entity."archived_at" is null and asset."id" = ${assetId}
-          and asset."archived_at" is null
-          and not exists (
-            select 1 from "entity_image" assignment
-            where assignment."owner_id" = entity."owner_id"
-              and assignment."asset_id" = asset."id"
-              and assignment."entity_id" <> entity."id"
+          and entity."archived_at" is null
+          and exists (
+            select 1 from "asset"
+            where "owner_id" = entity."owner_id" and "id" = ${assetId}
+              and "archived_at" is null
           )
-        on conflict ("entity_id") do update set
-          "owner_id" = excluded."owner_id",
-          "asset_id" = excluded."asset_id"
-        returning "entity_id" as "entityId"
+          and not exists (
+            select 1 from "entity" assignment
+            where assignment."owner_id" = entity."owner_id"
+              and assignment."image_asset_id" = ${assetId}
+              and assignment."id" <> entity."id"
+          )
+        returning "id" as "entityId"
       `;
       if (!rows[0]) {
         const assignments = await db.FindEntityImageAssignment`
           /* @notNull entityId */
-          select "entity_id" as "entityId" from "entity_image"
-          where "owner_id" = ${ownerId} and "asset_id" = ${assetId}
+          select "id" as "entityId" from "entity"
+          where "owner_id" = ${ownerId} and "image_asset_id" = ${assetId}
         `;
         return assignments[0]
           ? ({ state: 'image_in_use' } as const)
           : ({ state: 'not_found' } as const);
       }
-      await db`
-        update "entity" set "updated_at" = ${updatedAt}
-        where "owner_id" = ${ownerId} and "id" = ${rows[0].entityId}
-      `;
       const entity = await this.findWith({ db, ownerId, readableId });
       return entity ? { state: 'updated' as const, entity } : { state: 'not_found' as const };
     });
@@ -303,23 +290,17 @@ export class EntitiesRepository implements EntityRepositoryContract {
     updatedAt: string;
   }): Promise<Entity | null> {
     return this.sql.begin(async (db) => {
-      const targets = await db.FindEntityImageRemovalTarget`
+      const targets = await db.RemoveEntityImage`
         /* @notNull id */
-        select "id" from "entity"
+        update "entity"
+        set "image_asset_id" = null, "updated_at" = ${updatedAt}
         where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
           and "archived_at" is null
+        returning "id"
       `;
       if (!targets[0]) {
         return null;
       }
-      await db`
-        delete from "entity_image"
-        where "owner_id" = ${ownerId} and "entity_id" = ${targets[0].id}
-      `;
-      await db`
-        update "entity" set "updated_at" = ${updatedAt}
-        where "owner_id" = ${ownerId} and "id" = ${targets[0].id}
-      `;
       return this.findWith({ db, ownerId, readableId });
     });
   }
