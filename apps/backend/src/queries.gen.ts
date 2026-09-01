@@ -228,6 +228,11 @@ export interface IPingDatabaseResult {
     value: number;
 }
 
+/** Result of query `FindKnowledgePageOwnerRevisionAuthor`. */
+export interface IFindKnowledgePageOwnerRevisionAuthorResult {
+    name: string;
+}
+
 /** Result of query `FindCurrentKnowledgePage`. */
 export interface IFindCurrentKnowledgePageResult {
     id: string;
@@ -353,6 +358,8 @@ export interface IListKnowledgePageMentionsResult {
 export interface IListKnowledgePageRevisionsResult {
     revisionNumber: number;
     title: string;
+    authorKind: string;
+    authorName: string | null;
     createdAt: string;
 }
 
@@ -546,6 +553,7 @@ export interface Queries {
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
     PingDatabase: IPingDatabaseResult;
+    FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;
     ResolveEntityLink: IResolveEntityLinkResult;
     ResolvePageLink: IResolvePageLinkResult;

@@ -51,3 +51,40 @@ test('client settings expose the configured public MCP server URL to the owner',
   expect(response.status).toBe(StatusMap.OK);
   expect(await response.json()).toEqual({ serverUrl: testMcpServerUrl, items: [] });
 });
+
+test('duplicate active client names are returned as conflicts', async () => {
+  const clientAuthorizationsService: McpClientAuthorizationsServiceContract = {
+    ...unusedMcpClientAuthorizationsService,
+    approve: () => Promise.resolve({ state: 'name_conflict' }),
+    rename: () => Promise.resolve({ state: 'name_conflict' }),
+  };
+  const approval = await createMcpClientsController({
+    auth: ownerAuth,
+    clientAuthorizationsService,
+    mcpServerUrl: testMcpServerUrl,
+  }).handle(
+    new Request('http://localhost/mcp/clients', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ clientId: 'oauth-client', name: 'Codex' }),
+    }),
+  );
+  expect(approval.status).toBe(StatusMap.Conflict);
+  expect(await approval.json()).toEqual({ error: 'An active MCP client already uses this name' });
+
+  const rename = await createMcpClientsController({
+    auth: ownerAuth,
+    clientAuthorizationsService,
+    mcpServerUrl: testMcpServerUrl,
+  }).handle(
+    new Request('http://localhost/mcp/clients/client-authorization', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Codex' }),
+    }),
+  );
+  expect({ status: rename.status, body: await rename.json() }).toEqual({
+    status: StatusMap.Conflict,
+    body: { error: 'An active MCP client already uses this name' },
+  });
+});

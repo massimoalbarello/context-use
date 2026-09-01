@@ -6,7 +6,8 @@ create table "mcp_client_authorization" (
   "verified_client_id" text,
   "created_at" text not null,
   "updated_at" text not null,
-  "archived_at" text
+  "archived_at" text,
+  unique ("id", "owner_id")
 );
 
 create index "mcp_client_authorization_owner_status_idx"
@@ -14,4 +15,8 @@ create index "mcp_client_authorization_owner_status_idx"
 
 create unique index "mcp_client_authorization_active_oauth_client_uidx"
   on "mcp_client_authorization" ("owner_id", "oauth_client_id")
+  where "archived_at" is null;
+
+create unique index "mcp_client_authorization_active_name_uidx"
+  on "mcp_client_authorization" ("owner_id", "name" collate nocase)
   where "archived_at" is null;

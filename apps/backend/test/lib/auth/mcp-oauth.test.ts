@@ -229,7 +229,7 @@ async function refreshClient({
 }
 
 describe('MCP OAuth foundation', () => {
-  test('issues resource-bound short access tokens and rotates durable refresh credentials', async () => {
+  test('keeps resource-bound authorization valid across auth-server restarts', async () => {
     await withAuthTestDatabase({
       run: async (database) => {
         let oauthHandler: (request: Request) => Promise<Response> = async (_request) =>
@@ -413,7 +413,7 @@ describe('MCP OAuth foundation', () => {
           expect(await wrongResource.json()).toMatchObject({ error: 'invalid_target' });
 
           const refreshedResponse = await refreshClient({
-            handler: oauth.handler,
+            handler: resourceServerAuth.handler,
             clientId: client.client_id,
             refreshToken: initial.refresh_token,
             urls,
@@ -445,7 +445,7 @@ describe('MCP OAuth foundation', () => {
           const archivedApproval = await clientAuthorizations.approve({
             actorId: OWNER_USER_ID,
             clientId: archivedClient.client_id,
-            name: 'My coding agent',
+            name: 'Another coding agent',
           });
           expect(archivedApproval.state).toBe('approved');
           if (archivedApproval.state !== 'approved') {

@@ -25,7 +25,7 @@ async function insertOAuthClient({
   `;
 }
 
-test('active client authorization identity is stable per owner and OAuth client, never per friendly name', async () => {
+test('active client authorization identity is stable and its friendly name is unique', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
       const now = new Date().toISOString();
@@ -80,18 +80,34 @@ test('active client authorization identity is stable per owner and OAuth client,
       }
       expect(reconnect.clientAuthorization.id).toBe(first.clientAuthorization.id);
       expect(reconnect.clientAuthorization.name).toBe('Renamed on reconnect');
+      expect(reconnect.clientAuthorization.createdAt).toBe(first.clientAuthorization.createdAt);
 
-      const similarName = await service.approve({
+      expect(
+        await service.approve({
+          actorId: OWNER_USER_ID,
+          clientId: 'fresh-client',
+          name: 'renamed on reconnect',
+        }),
+      ).toEqual({ state: 'name_conflict' });
+
+      const fresh = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'fresh-client',
-        name: 'Renamed on reconnect',
+        name: 'Fresh client',
       });
-      expect(similarName.state).toBe('approved');
-      if (similarName.state !== 'approved') {
+      expect(fresh.state).toBe('approved');
+      if (fresh.state !== 'approved') {
         throw new Error('Expected second-client approval');
       }
-      expect(similarName.clientAuthorization.id).not.toBe(first.clientAuthorization.id);
-      expect(similarName.clientAuthorization.verifiedClientId).toBeNull();
+      expect(fresh.clientAuthorization.id).not.toBe(first.clientAuthorization.id);
+      expect(fresh.clientAuthorization.verifiedClientId).toBeNull();
+      expect(
+        await service.rename({
+          actorId: OWNER_USER_ID,
+          clientAuthorizationId: fresh.clientAuthorization.id,
+          name: 'Renamed on reconnect',
+        }),
+      ).toEqual({ state: 'name_conflict' });
 
       expect(
         await service.archive({
@@ -106,6 +122,12 @@ test('active client authorization identity is stable per owner and OAuth client,
           name: 'Archived identities stay fixed',
         }),
       ).toEqual({ state: 'not_found' });
+      const reused = await service.rename({
+        actorId: OWNER_USER_ID,
+        clientAuthorizationId: fresh.clientAuthorization.id,
+        name: 'Renamed on reconnect',
+      });
+      expect(reused.state).toBe('renamed');
       const afterArchive = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'verified-client',

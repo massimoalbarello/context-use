@@ -36,7 +36,7 @@ export class McpClientAuthorizationsService {
     if (!client) {
       return { state: 'not_found' as const };
     }
-    const clientAuthorization = await this.clientAuthorizations.approve({
+    return await this.clientAuthorizations.approve({
       id: Bun.randomUUIDv7(),
       ownerId: input.actorId,
       name,
@@ -44,7 +44,6 @@ export class McpClientAuthorizationsService {
       verifiedClientId: client.verifiedClientId,
       now: new Date().toISOString(),
     });
-    return { state: 'approved' as const, clientAuthorization };
   }
 
   async list(input: { actorId: string }) {
@@ -65,15 +64,12 @@ export class McpClientAuthorizationsService {
     if (!name) {
       return { state: 'invalid' as const };
     }
-    const clientAuthorization = await this.clientAuthorizations.rename({
+    return await this.clientAuthorizations.rename({
       ownerId: input.actorId,
       clientAuthorizationId: input.clientAuthorizationId,
       name,
       updatedAt: new Date().toISOString(),
     });
-    return clientAuthorization
-      ? { state: 'renamed' as const, clientAuthorization }
-      : { state: 'not_found' as const };
   }
 
   async archive(input: { actorId: string; clientAuthorizationId: string }) {
@@ -100,6 +96,7 @@ export class McpClientAuthorizationsService {
       ? {
           ownerId: clientAuthorization.ownerId,
           clientAuthorizationId: clientAuthorization.id,
+          clientAuthorizationName: clientAuthorization.name,
         }
       : null;
   }

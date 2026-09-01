@@ -1,6 +1,7 @@
 export const DEFAULT_BACKEND_PORT = 3000;
 export const DEFAULT_FRONTEND_PORT = 5173;
 export const DEFAULT_DATA_FOLDER = './data';
+export const NIBRUN_DATA_FOLDER = '/app/data';
 
 export const BACKEND_ENVIRONMENT = {
   port: 'PORT',

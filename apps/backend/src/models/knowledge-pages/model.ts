@@ -23,8 +23,17 @@ export interface KnowledgePageReference {
 export interface KnowledgePageRevisionSummary {
   revisionNumber: number;
   title: string;
+  author: KnowledgePageRevisionAuthor;
   createdAt: string;
 }
+
+export type KnowledgePageRevisionAuthor =
+  | { kind: 'owner'; name: string }
+  | { kind: 'mcp_client'; name: string };
+
+export type KnowledgePageRevisionActor =
+  | { kind: 'owner' }
+  | { kind: 'mcp_client'; clientAuthorizationId: string; name: string };
 
 export interface KnowledgePageAssetUsage {
   asset: AssetSummary;

@@ -36,6 +36,8 @@ test('authenticated clients are read-only until the shared edit action is select
   expect(viewHtml).toContain('>Archive</button>');
   expect(viewHtml).toContain('Authenticated clients');
   expect(viewHtml).toContain('Archived clients');
+  expect(viewHtml).toContain('Authorized');
+  expect(viewHtml).toContain('dateTime="2026-09-01T00:00:00.000Z"');
   expect(viewHtml).not.toContain('Verified client identity');
   expect(viewHtml).not.toContain('Registered OAuth client');
   expect(viewHtml).not.toContain('Connection name');
