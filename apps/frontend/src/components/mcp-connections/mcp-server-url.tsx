@@ -21,7 +21,7 @@ export function McpServerUrl({ serverUrl }: { serverUrl: string }) {
   return (
     <Card>
       <CardContent className="grid gap-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2">
           <Input
             className="font-mono"
             aria-label="MCP server URL"
@@ -29,9 +29,14 @@ export function McpServerUrl({ serverUrl }: { serverUrl: string }) {
             value={serverUrl}
             onFocus={(event) => event.currentTarget.select()}
           />
-          <Button className="sm:w-24" type="button" variant="outline" onClick={copyServerUrl}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Copy MCP server URL"
+            onClick={copyServerUrl}
+          >
             {copyState === 'copied' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-            {copyState === 'copied' ? 'Copied' : 'Copy'}
           </Button>
         </div>
         {copyState === 'failed' && (
