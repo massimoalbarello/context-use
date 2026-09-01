@@ -27,8 +27,7 @@
     "generate:queries": "bun --filter @repo/backend generate:queries",
     "check:types": "bun run --bun turbo check:types",
     "check:codestyle": "bun run --bun biome check",
-    "check:queries": "bun run --bun turbo check:queries",
-    "check:all": "bun run --parallel check:types check:codestyle check:queries",
+    "check:all": "bun run --parallel check:types check:codestyle",
     "check:commit-message": "bun run --bun commitlint",
     "test": "bun run --bun turbo test",
     "fix:codestyle": "bun run --bun biome check --write"

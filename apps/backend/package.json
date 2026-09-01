@@ -16,7 +16,7 @@
     "build": "bun run scripts/build.ts",
     "generate:queries": "bun bun-sqlgen generate 'src/repositories/**/*.ts' --migrations src/db/migrations",
     "check:queries": "bun run generate:queries --check",
-    "check:types": "bun run --bun tsc -b",
+    "check:types": "bun run check:queries && bun run --bun tsc -b",
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
