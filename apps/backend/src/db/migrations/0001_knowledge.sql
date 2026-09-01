@@ -4,12 +4,15 @@ create table "entity" (
   "readable_id" text not null,
   "name" text not null,
   "description" text not null,
+  "image_asset_id" text,
   "created_at" text not null,
   "updated_at" text not null,
   primary key ("id"),
   unique ("id", "owner_id"),
   unique ("owner_id", "readable_id"),
   foreign key ("owner_id") references "auth_user" ("id") on delete cascade,
+  foreign key ("image_asset_id", "owner_id") references "asset" ("id", "owner_id")
+    deferrable initially deferred,
   check (length("readable_id") between 1 and 120),
   check ("readable_id" = lower("readable_id")),
   check ("readable_id" not glob '*[^a-z0-9-]*'),
@@ -97,6 +100,8 @@ create table "knowledge_page_reference" (
 );
 
 create index "entity_owner_updated_idx" on "entity" ("owner_id", "updated_at" desc);
+create unique index "entity_owner_image_asset_idx"
+  on "entity" ("owner_id", "image_asset_id") where "image_asset_id" is not null;
 create index "knowledge_page_owner_updated_idx" on "knowledge_page" ("owner_id", "updated_at" desc);
 create index "knowledge_page_mention_target_idx"
   on "knowledge_page_entity_mention" ("owner_id", "target_entity_id");

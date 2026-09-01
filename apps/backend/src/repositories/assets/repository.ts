@@ -14,6 +14,7 @@ export interface AssetsRepositoryContract {
     limit: number;
     offset: number;
     query?: string;
+    kind?: 'entity_image';
   }): Promise<Page<AssetSummary>>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredAsset | null>;
   detail(input: { ownerId: string; readableId: string }): Promise<Asset | null>;
@@ -75,13 +76,16 @@ export class AssetsRepository implements AssetsRepositoryContract {
     limit,
     offset,
     query,
+    kind,
   }: {
     ownerId: string;
     limit: number;
     offset: number;
     query?: string;
+    kind?: 'entity_image';
   }) {
     const normalizedQuery = query?.trim() || null;
+    const normalizedKind = kind ?? null;
     const rowsPromise = normalizedQuery
       ? this.sql.SearchAssets`
           /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
@@ -90,6 +94,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
             "updated_at" as "updatedAt"
           from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
+            and (${normalizedKind} is null or (
+              "media_type" like 'image/%'
+              and not exists (
+                select 1 from "entity"
+                where "entity"."owner_id" = "asset"."owner_id"
+                  and "entity"."image_asset_id" = "asset"."id"
+              )
+            ))
             and (instr(lower("name"), lower(${normalizedQuery})) > 0
               or instr("readable_id", lower(${normalizedQuery})) > 0)
           order by "name" collate nocase, "readable_id" limit ${limit} offset ${offset}
@@ -101,6 +113,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
             "updated_at" as "updatedAt"
           from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
+            and (${normalizedKind} is null or (
+              "media_type" like 'image/%'
+              and not exists (
+                select 1 from "entity"
+                where "entity"."owner_id" = "asset"."owner_id"
+                  and "entity"."image_asset_id" = "asset"."id"
+              )
+            ))
           order by "updated_at" desc, "id" desc limit ${limit} offset ${offset}
         `;
     const countsPromise = normalizedQuery
@@ -108,6 +128,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
           /* @notNull total */
           select count(*) as "total" from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
+            and (${normalizedKind} is null or (
+              "media_type" like 'image/%'
+              and not exists (
+                select 1 from "entity"
+                where "entity"."owner_id" = "asset"."owner_id"
+                  and "entity"."image_asset_id" = "asset"."id"
+              )
+            ))
             and (instr(lower("name"), lower(${normalizedQuery})) > 0
               or instr("readable_id", lower(${normalizedQuery})) > 0)
         `
@@ -115,6 +143,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
           /* @notNull total */
           select count(*) as "total" from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
+            and (${normalizedKind} is null or (
+              "media_type" like 'image/%'
+              and not exists (
+                select 1 from "entity"
+                where "entity"."owner_id" = "asset"."owner_id"
+                  and "entity"."image_asset_id" = "asset"."id"
+              )
+            ))
         `;
     const [rows, counts] = await Promise.all([rowsPromise, countsPromise]);
     return pageFrom({
@@ -238,7 +274,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
     ownerId: string;
     assetId: string;
   }): Promise<AssetUsage[]> {
-    const rows = await db.ListActiveAssetUsages`
+    const pageRows = await db.ListActivePageAssetUsages`
       /* @notNull id readableId title excerpt revisionNumber createdAt updatedAt */
       /* @type presentation 'embed' | 'attachment' */
       select page."id", page."readable_id" as "readableId", revision."title",
@@ -253,9 +289,28 @@ export class AssetsRepository implements AssetsRepositoryContract {
         and page."archived_at" is null
       order by revision."title", page."readable_id", usage."presentation"
     `;
-    return rows.map(({ presentation, ...page }) => ({
-      page: { ...page, revisionNumber: Number(page.revisionNumber) },
-      presentation,
-    }));
+    const entityRows = await db.ListActiveEntityImageAssetUsages`
+      /* @notNull id readableId name description */
+      /* @type isSelf number */
+      select entity."id", entity."readable_id" as "readableId", entity."name",
+        entity."description", profile."self_entity_id" is not null as "isSelf"
+      from "entity" entity
+      left join "knowledge_profile" profile
+        on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
+      where entity."owner_id" = ${ownerId} and entity."image_asset_id" = ${assetId}
+        and entity."archived_at" is null
+      order by entity."name" collate nocase, entity."readable_id"
+    `;
+    return [
+      ...pageRows.map(({ presentation, ...page }) => ({
+        kind: 'page' as const,
+        page: { ...page, revisionNumber: Number(page.revisionNumber) },
+        presentation,
+      })),
+      ...entityRows.map((entity) => ({
+        kind: 'entity_image' as const,
+        entity: { ...entity, isSelf: Boolean(entity.isSelf) },
+      })),
+    ];
   }
 }

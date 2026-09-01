@@ -1,6 +1,8 @@
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
+import { EntityImageEditor } from '../components/entities/entity-image-editor';
+import { EntityAvatar } from '../components/entities/entity-link';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
@@ -36,6 +38,7 @@ function EntityRouteContent({ id }: { id: string }) {
   const updateEntity = useUpdateEntity();
   const archiveEntity = useArchiveEntity();
   const [editing, setEditing] = useState(false);
+  const [imageEditing, setImageEditing] = useState(false);
   const [archiveConflictVisible, setArchiveConflictVisible] = useState(false);
   const navigate = Route.useNavigate();
 
@@ -58,24 +61,37 @@ function EntityRouteContent({ id }: { id: string }) {
   return (
     <DetailShell>
       {editing ? (
-        <EntityIdentityEditor
-          key={entity.updatedAt.toISOString()}
-          name={entity.name}
-          description={entity.description}
-          isSelf={entity.isSelf}
-          pending={updateEntity.isPending}
-          error={updateEntity.error}
-          onCancel={() => {
-            updateEntity.reset();
-            setEditing(false);
-          }}
-          onSubmit={(identity) =>
-            updateEntity.mutate(
-              { readableId: entity.readableId, body: identity },
-              { onSuccess: () => setEditing(false) },
-            )
-          }
-        />
+        <div className="grid gap-5">
+          <EntityIdentityEditor
+            name={entity.name}
+            description={entity.description}
+            isSelf={entity.isSelf}
+            image={entity.image}
+            imageEditorOpen={imageEditing}
+            pending={updateEntity.isPending}
+            error={updateEntity.error}
+            onEditImage={() => setImageEditing((visible) => !visible)}
+            onCancel={() => {
+              updateEntity.reset();
+              setImageEditing(false);
+              setEditing(false);
+            }}
+            onSubmit={(identity) =>
+              updateEntity.mutate(
+                { readableId: entity.readableId, body: identity },
+                {
+                  onSuccess: () => {
+                    setImageEditing(false);
+                    setEditing(false);
+                  },
+                },
+              )
+            }
+          />
+          {imageEditing && (
+            <EntityImageEditor entity={entity} onDone={() => setImageEditing(false)} />
+          )}
+        </div>
       ) : (
         <DetailHeader>
           <ResourceDetailHeading
@@ -86,6 +102,7 @@ function EntityRouteContent({ id }: { id: string }) {
                 onEdit={() => {
                   updateEntity.reset();
                   setArchiveConflictVisible(false);
+                  setImageEditing(false);
                   setEditing(true);
                 }}
               >
@@ -118,11 +135,14 @@ function EntityRouteContent({ id }: { id: string }) {
           >
             Entity {entity.isSelf && <Badge variant="secondary">You</Badge>}
           </ResourceDetailHeading>
-          <div className="w-full min-w-0 max-w-3xl">
-            <ResourceName>{entity.name}</ResourceName>
-            <p className="mt-3 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-              {entity.description}
-            </p>
+          <div className="flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
+            <EntityAvatar entity={entity} className="size-24 text-3xl" />
+            <div className="min-w-0 flex-1">
+              <ResourceName>{entity.name}</ResourceName>
+              <p className="mt-3 max-w-2xl text-lg text-muted-foreground leading-relaxed">
+                {entity.description}
+              </p>
+            </div>
           </div>
         </DetailHeader>
       )}

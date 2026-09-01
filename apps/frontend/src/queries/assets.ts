@@ -1,7 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
-import type { KnowledgePageReference } from './pages';
 
 export type AssetPage = NonNullable<Awaited<ReturnType<typeof api.api.assets.get>>['data']>;
 export type AssetSummary = AssetPage['items'][number];
@@ -16,7 +15,7 @@ export type UpdateAssetVariables = {
 };
 export type ArchiveAssetResult =
   | { state: 'archived' }
-  | { state: 'resource_in_use'; blockers: KnowledgePageReference[] };
+  | { state: 'resource_in_use'; blockers: Asset['usages'] };
 
 export const assetsQueryKey = ['assets'] as const;
 export const assetsListQueryKey = [...assetsQueryKey, 'list'] as const;
@@ -42,6 +41,21 @@ export function assetSuggestionsQueryOptions(query: string) {
     queryFn: async () => {
       const { data, error } = await api.api.assets.get({
         query: { limit: 7, offset: 0, query },
+      });
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data.items;
+    },
+  });
+}
+
+export function imageAssetSuggestionsQueryOptions(query: string) {
+  return queryOptions({
+    queryKey: [...assetSuggestionsQueryKey, 'image', query],
+    queryFn: async () => {
+      const { data, error } = await api.api.assets.get({
+        query: { limit: 7, offset: 0, query, kind: 'entity_image' },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));

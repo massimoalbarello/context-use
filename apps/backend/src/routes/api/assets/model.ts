@@ -2,6 +2,7 @@ import { t } from 'elysia';
 import type { Asset, AssetUsage } from '#models/assets/model.ts';
 import { MAX_ASSET_BYTES, MAX_ASSET_NAME_LENGTH } from '#models/assets/model.ts';
 import { AssetSummarySchema, assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
+import { EntityReferenceSchema, entityReferenceResponse } from '#routes/api/entities/model.ts';
 import {
   PaginationMetadataSchema,
   PaginationQuerySchema,
@@ -9,9 +10,25 @@ import {
 } from '#routes/api/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
 
-export const AssetUsageSchema = t.Object({
+export const KnowledgePageAssetUsageSchema = t.Object({
+  kind: t.Literal('page'),
   page: KnowledgePageSummarySchema,
   presentation: t.Union([t.Literal('embed'), t.Literal('attachment')]),
+});
+
+export const EntityImageAssetUsageSchema = t.Object({
+  kind: t.Literal('entity_image'),
+  entity: EntityReferenceSchema,
+});
+
+export const AssetUsageSchema = t.Union([
+  KnowledgePageAssetUsageSchema,
+  EntityImageAssetUsageSchema,
+]);
+
+export const AssetResourceInUseResponseSchema = t.Object({
+  error: t.String(),
+  blockers: t.Array(AssetUsageSchema),
 });
 
 export const AssetSchema = t.Object({
@@ -27,6 +44,7 @@ export const AssetListSchema = t.Object({
 export const AssetListQuerySchema = t.Object({
   ...PaginationQuerySchema.properties,
   query: t.Optional(t.String({ maxLength: MAX_ASSET_NAME_LENGTH })),
+  kind: t.Optional(t.Literal('entity_image')),
 });
 
 export const CreateAssetBodySchema = t.Object({
@@ -46,7 +64,13 @@ export const AssetContentQuerySchema = t.Object({
 });
 
 export function assetUsageResponse(usage: AssetUsage) {
-  return { page: pageSummaryResponse(usage.page), presentation: usage.presentation };
+  return usage.kind === 'page'
+    ? {
+        kind: usage.kind,
+        page: pageSummaryResponse(usage.page),
+        presentation: usage.presentation,
+      }
+    : { kind: usage.kind, entity: entityReferenceResponse(usage.entity) };
 }
 
 export function assetResponse(asset: Asset) {

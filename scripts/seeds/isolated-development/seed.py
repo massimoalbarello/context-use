@@ -37,13 +37,12 @@ PAGES = [
         "markdown": read_seed_text("pages/weekly-review.md"),
     },
 ]
-ASSETS = [
-    {
-        "readableId": "sample-profile-portrait",
-        "name": "Sample profile portrait",
-        "path": "assets/profile.jpeg",
-    }
-]
+PROFILE_IMAGE_ASSET = {
+    "readableId": "sample-profile-portrait",
+    "name": "Sample profile portrait",
+    "path": "assets/profile.jpeg",
+}
+ASSETS = [PROFILE_IMAGE_ASSET]
 
 
 def wait_until(predicate, failure_message, timeout_seconds=UI_TIMEOUT_SECONDS):
@@ -148,6 +147,18 @@ def create_entity(entity):
         raise RuntimeError("Created entity did not match the fixture")
 
 
+def assign_owner_entity_image(profile, asset):
+    updated = api_request(
+        "PUT",
+        f"/api/entities/{profile['readableId']}/image",
+        {"assetReadableId": asset["readableId"]},
+    )
+    if not updated["isSelf"] or updated["readableId"] != profile["readableId"]:
+        raise RuntimeError("Assigned image to an unexpected entity")
+    if not updated["image"] or updated["image"]["readableId"] != asset["readableId"]:
+        raise RuntimeError("Assigned entity image did not match the fixture")
+
+
 def create_page(page):
     created = api_request("POST", "/api/pages", page)
     if created["readableId"] != page["readableId"]:
@@ -217,6 +228,7 @@ def seed_isolated_data():
         create_page(page)
     for asset in ASSETS:
         create_asset(asset)
+    assign_owner_entity_image(PROFILE, PROFILE_IMAGE_ASSET)
     update_page(
         "project-brief",
         1,

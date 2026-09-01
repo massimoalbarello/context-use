@@ -47,13 +47,15 @@ try {
   await runMigrations({ db: database });
 
   const storage = createLocalStorage({ dataFolder: env.DATA_FOLDER });
+  const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({
-    assets: new AssetsRepository(database),
+    assets: assetsRepository,
     storage,
   });
   const frontendAssetsService = new FrontendAssetsService(new FrontendAssetsRepository());
   const pagesRepository = new KnowledgePagesRepository(database);
   const entitiesService = new EntitiesService({
+    assets: assetsRepository,
     entities: new EntitiesRepository(database),
     pages: pagesRepository,
   });

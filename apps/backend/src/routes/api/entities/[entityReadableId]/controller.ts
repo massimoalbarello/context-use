@@ -7,6 +7,7 @@ import {
   EntityParamsSchema,
   EntitySchema,
   entityResponse,
+  SetEntityImageBodySchema,
   UpdateEntityBodySchema,
 } from '#routes/api/entities/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
@@ -74,6 +75,61 @@ export function createEntityReadableIdController({
         detail: { tags: ['Entities'], summary: 'Update an entity identity' },
         params: EntityParamsSchema,
         body: UpdateEntityBodySchema,
+        response: {
+          [StatusMap.OK]: EntitySchema,
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .put(
+      '/entities/:entityReadableId/image',
+      async ({ body, params, user, status }) => {
+        const result = await entitiesService.setImage({
+          ownerId: user.id,
+          readableId: params.entityReadableId,
+          assetReadableId: body.assetReadableId,
+        });
+        if (result.state === 'not_found') {
+          return status(StatusMap['Not Found'], { error: 'Entity or asset not found' });
+        }
+        if (result.state === 'invalid_asset_type') {
+          return status(StatusMap['Bad Request'], {
+            error: 'Entity images must be PNG, JPEG, GIF, or WebP assets',
+          });
+        }
+        if (result.state === 'image_in_use') {
+          return status(StatusMap.Conflict, {
+            error: 'This image asset is already assigned to another entity',
+          });
+        }
+        return status(StatusMap.OK, entityResponse(result.entity));
+      },
+      {
+        detail: { tags: ['Entities'], summary: 'Assign an image asset to an entity' },
+        params: EntityParamsSchema,
+        body: SetEntityImageBodySchema,
+        response: {
+          [StatusMap.OK]: EntitySchema,
+          [StatusMap['Bad Request']]: ErrorResponseSchema,
+          [StatusMap.Conflict]: ErrorResponseSchema,
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .delete(
+      '/entities/:entityReadableId/image',
+      async ({ params, user, status }) => {
+        const entity = await entitiesService.removeImage({
+          ownerId: user.id,
+          readableId: params.entityReadableId,
+        });
+        return entity
+          ? status(StatusMap.OK, entityResponse(entity))
+          : status(StatusMap['Not Found'], { error: 'Entity not found' });
+      },
+      {
+        detail: { tags: ['Entities'], summary: 'Remove an entity image' },
+        params: EntityParamsSchema,
         response: {
           [StatusMap.OK]: EntitySchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,

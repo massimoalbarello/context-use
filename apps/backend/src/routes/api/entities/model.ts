@@ -5,6 +5,7 @@ import {
   MAX_ENTITY_NAME_LENGTH,
   MIN_ENTITY_DESCRIPTION_LENGTH,
 } from '#models/entities/model.ts';
+import { AssetSummarySchema, assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
 import {
   PaginationMetadataSchema,
   PaginationQuerySchema,
@@ -17,8 +18,17 @@ export const EntitySchema = t.Object({
   name: t.String(),
   description: t.String(),
   isSelf: t.Boolean(),
+  image: t.Nullable(AssetSummarySchema),
   createdAt: t.Date(),
   updatedAt: t.Date(),
+});
+
+export const EntityReferenceSchema = t.Object({
+  id: EntitySchema.properties.id,
+  readableId: EntitySchema.properties.readableId,
+  name: EntitySchema.properties.name,
+  description: EntitySchema.properties.description,
+  isSelf: EntitySchema.properties.isSelf,
 });
 
 export const EntityIdentityBodySchema = t.Object({
@@ -35,6 +45,7 @@ export const CreateEntityBodySchema = t.Object({
   allowDuplicate: t.Optional(t.Boolean()),
 });
 export const UpdateEntityBodySchema = EntityIdentityBodySchema;
+export const SetEntityImageBodySchema = t.Object({ assetReadableId: ReadableIdSchema });
 export const EntityParamsSchema = t.Object({ entityReadableId: ReadableIdSchema });
 export const EntityListQuerySchema = t.Object({
   ...PaginationQuerySchema.properties,
@@ -48,7 +59,14 @@ export const EntityListSchema = t.Object({
 export function entityResponse(entity: Entity) {
   return {
     ...entity,
+    image: entity.image ? assetSummaryResponse(entity.image) : null,
     createdAt: new Date(entity.createdAt),
     updatedAt: new Date(entity.updatedAt),
   };
+}
+
+export function entityReferenceResponse(
+  entity: Pick<Entity, 'id' | 'readableId' | 'name' | 'description' | 'isSelf'>,
+) {
+  return entity;
 }

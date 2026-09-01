@@ -1,3 +1,4 @@
+import type { EntityReference } from '#models/entities/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
@@ -19,10 +20,18 @@ export interface AssetSummary {
   updatedAt: string;
 }
 
-export interface AssetUsage {
+export interface KnowledgePageAssetUsage {
+  kind: 'page';
   page: KnowledgePageSummary;
   presentation: AssetPresentation;
 }
+
+export interface EntityImageAssetUsage {
+  kind: 'entity_image';
+  entity: EntityReference;
+}
+
+export type AssetUsage = KnowledgePageAssetUsage | EntityImageAssetUsage;
 
 export interface Asset extends AssetSummary {
   usages: AssetUsage[];

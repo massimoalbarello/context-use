@@ -21,6 +21,7 @@ const ARCHIVE_INVARIANT_MIGRATION = new URL(
   '../../../src/db/migrations/0004_prevent_self_entity_archiving.sql',
   import.meta.url,
 );
+const ASSET_MIGRATION = new URL('../../../src/db/migrations/0005_add_assets.sql', import.meta.url);
 const CONTENT_HASH_LENGTH = 64;
 
 test('knowledge revisions require a lowercase hexadecimal SHA-256 hash', async () => {
@@ -90,6 +91,103 @@ test('archive schema preserves existing resources and rejects archiving the self
         'self-id',
       ]),
     ).toThrow('self entity cannot be archived');
+  } finally {
+    database.close();
+  }
+});
+
+test('entity image columns preserve ownership and exclusive assignment', async () => {
+  const database = new Database(':memory:');
+  database.exec('pragma foreign_keys = on');
+
+  try {
+    database.exec(await Bun.file(AUTH_MIGRATION).text());
+    database.exec(await Bun.file(KNOWLEDGE_MIGRATION).text());
+    database.exec(await Bun.file(ASSET_MIGRATION).text());
+    for (const ownerId of ['owner-a', 'owner-b']) {
+      database.run(
+        `insert into "auth_user"
+          ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
+         values (?, ?, ?, ?, ?, ?)`,
+        [ownerId, ownerId, `${ownerId}@example.com`, 1, 'created', 'updated'],
+      );
+    }
+    database.run(
+      `insert into "asset"
+        ("id", "owner_id", "readable_id", "name", "media_type", "extension", "size_bytes",
+         "content_hash", "storage_key", "created_at", "updated_at")
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'portrait-id',
+        'owner-a',
+        'portrait',
+        'Portrait',
+        'image/png',
+        'png',
+        1,
+        'a'.repeat(CONTENT_HASH_LENGTH),
+        'owner-a/assets/portrait',
+        'created',
+        'updated',
+      ],
+    );
+    database.run(
+      `insert into "entity"
+        ("id", "owner_id", "readable_id", "name", "description", "image_asset_id",
+         "created_at", "updated_at")
+       values (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'entity-a',
+        'owner-a',
+        'entity-a',
+        'Entity A',
+        'First entity',
+        'portrait-id',
+        'created',
+        'updated',
+      ],
+    );
+
+    expect(() =>
+      database.run(
+        `insert into "entity"
+          ("id", "owner_id", "readable_id", "name", "description", "image_asset_id",
+           "created_at", "updated_at")
+         values (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          'entity-b',
+          'owner-a',
+          'entity-b',
+          'Entity B',
+          'Second entity',
+          'portrait-id',
+          'created',
+          'updated',
+        ],
+      ),
+    ).toThrow();
+    expect(() =>
+      database.run(
+        `insert into "entity"
+          ("id", "owner_id", "readable_id", "name", "description", "image_asset_id",
+           "created_at", "updated_at")
+         values (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          'other-entity',
+          'owner-b',
+          'other-entity',
+          'Other entity',
+          'Different owner',
+          'portrait-id',
+          'created',
+          'updated',
+        ],
+      ),
+    ).toThrow();
+
+    expect(() => database.run(`delete from "auth_user" where "id" = ?`, ['owner-a'])).not.toThrow();
+    expect(database.query(`select "id" from "entity"`).all()).toEqual([]);
+    expect(database.query(`select "id" from "asset"`).all()).toEqual([]);
   } finally {
     database.close();
   }

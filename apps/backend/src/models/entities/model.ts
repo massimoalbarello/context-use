@@ -1,3 +1,4 @@
+import type { AssetSummary } from '#models/assets/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 
 export const MAX_ENTITY_NAME_LENGTH = 160;
@@ -10,9 +11,12 @@ export interface Entity {
   name: string;
   description: string;
   isSelf: boolean;
+  image: AssetSummary | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type EntityReference = Pick<Entity, 'id' | 'readableId' | 'name' | 'description' | 'isSelf'>;
 
 export interface EntityDetail extends Entity {
   pages: KnowledgePageSummary[];
