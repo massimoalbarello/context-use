@@ -24,10 +24,6 @@ design. Local development databases are disposable during this phase and must be
 incompatible schema change; do not add compatibility migrations or legacy application paths solely
 to preserve them.
 
-This exception ends as soon as any Context Use instance is deployed or any database contains shared
-state that must be preserved. Update this guide at that point and treat the deployed schema history
-as immutable.
-
 ## Before implementation
 
 Do not start implementing until the problem, desired outcome, constraints, and success condition can
