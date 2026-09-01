@@ -82,6 +82,7 @@ try {
         assetsService,
         entitiesService,
         pagesService,
+        profilesService,
         transferCapabilities: assetTransferCapabilities,
       }),
   });

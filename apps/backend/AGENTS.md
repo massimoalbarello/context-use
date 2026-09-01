@@ -67,6 +67,10 @@ database migration rules live in `src/db/AGENTS.md`.
 - Treat MCP tools as transport controllers over the same application services used by HTTP. Keep
   entity, knowledge-page, and asset tools in their distinct domain modules; do not add a generic
   resource model or copy service and repository rules into tool handlers.
+- Keep the owner's self identity in the entity MCP contract. `create_entity` with `isSelf: true`
+  delegates to the knowledge-profile service so entity creation and the one-owner relationship stay
+  atomic; do not expose parallel profile tools or create that relationship through the ordinary
+  entity repository path.
 - Move MCP asset bytes through short-lived, single-use HTTP transfer capabilities. Keep capability
   secrets in required request headers rather than URLs so access logs retain only non-secret request
   IDs. Do not persist pending uploads; after consuming a valid upload capability, construct one

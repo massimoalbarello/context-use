@@ -20,7 +20,7 @@ function EntitiesLayout() {
   const { profile } = Route.useRouteContext();
   const { entities, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntities();
   if (!profile) {
-    return null;
+    return <Outlet />;
   }
 
   return (

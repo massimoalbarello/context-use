@@ -155,8 +155,6 @@ same ownership.
 Authentication, onboarding, empty states, and recoverable failures use the same primitives and
 visual language as the workspace.
 
-- If no owner passkey exists, lead with sign-up. First-time onboarding registers the passkey and
-  creates the owner's entity before entering the workspace.
 - Do not insert a marketing screen between the user and the available authentication task.
 - Missing, empty, loading, and recoverable error states must look intentional and offer a useful
   next action. Reserve crash-style boundaries for unexpected failures.
