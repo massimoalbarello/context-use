@@ -20,7 +20,11 @@ import {
   KnowledgePagesService,
   type KnowledgePagesServiceContract,
 } from '#services/knowledge-pages/service.ts';
-import { unusedAssetTransferCapabilities } from '../../support/mcp.ts';
+import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
+import {
+  unusedAssetTransferCapabilities,
+  unusedKnowledgeProfilesService,
+} from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
 const INTERNAL_ENTITY_ID = '01900000-0000-7000-8000-000000000001';
@@ -105,12 +109,14 @@ async function withMcpClient<T>({
   assetsService = unusedAssetsService,
   entitiesService = unusedEntitiesService,
   pagesService = unusedPagesService,
+  profilesService = unusedKnowledgeProfilesService,
   run,
 }: {
   actor?: McpClientAuthorizationPrincipal;
   assetsService?: AssetsServiceContract;
   entitiesService?: EntitiesServiceContract;
   pagesService?: KnowledgePagesServiceContract;
+  profilesService?: KnowledgeProfilesServiceContract;
   run: (client: Client) => Promise<T>;
 }): Promise<T> {
   const server = createContextUseMcpServer({
@@ -118,6 +124,7 @@ async function withMcpClient<T>({
     assetsService,
     entitiesService,
     pagesService,
+    profilesService,
     transferCapabilities: unusedAssetTransferCapabilities,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -167,6 +174,9 @@ test('MCP publishes fifteen typed tools with accurate safety annotations and no 
       expect(tools.find(({ name }) => name === 'create_entity')?.annotations).toMatchObject({
         readOnlyHint: false,
         destructiveHint: false,
+      });
+      expect(tools.find(({ name }) => name === 'create_entity')?.inputSchema).toMatchObject({
+        properties: { isSelf: { type: 'boolean' } },
       });
       expect(tools.find(({ name }) => name === 'archive_entity')?.annotations).toMatchObject({
         readOnlyHint: false,
@@ -364,6 +374,48 @@ test('MCP mutation outcomes retain duplicate retries and stale revision conflict
           currentRevisionNumber: 2,
         }),
       });
+    },
+  });
+});
+
+test('MCP creates the self entity once through the knowledge profile invariant', async () => {
+  let createCalls = 0;
+  const selfEntity = { ...entity, isSelf: true };
+  const profilesService: KnowledgeProfilesServiceContract = {
+    ...unusedKnowledgeProfilesService,
+    create: (input) => {
+      createCalls += 1;
+      expect(input).toEqual({
+        ownerId: principal.ownerId,
+        name: entity.name,
+        description: entity.description,
+        allowDuplicate: undefined,
+      });
+      return Promise.resolve(
+        createCalls === 1
+          ? { state: 'created' as const, profile: { selfEntity } }
+          : { state: 'profile_exists' as const },
+      );
+    },
+  };
+
+  await withMcpClient({
+    profilesService,
+    run: async (client) => {
+      const created = await client.callTool({
+        name: 'create_entity',
+        arguments: { name: entity.name, description: entity.description, isSelf: true },
+      });
+      expect(created.isError).not.toBe(true);
+      expect(created.structuredContent).toMatchObject({ isSelf: true });
+      expectNoInternalResourceIds(created.structuredContent);
+
+      const duplicate = await client.callTool({
+        name: 'create_entity',
+        arguments: { name: entity.name, description: entity.description, isSelf: true },
+      });
+      expect(errorCode(duplicate)).toBe('self_entity_exists');
+      expect(createCalls).toBe(2);
     },
   });
 });

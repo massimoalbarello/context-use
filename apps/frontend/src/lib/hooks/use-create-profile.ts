@@ -1,4 +1,5 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
+import { entitiesQueryKey } from '../../queries/entities';
 import {
   type CreateProfileVariables,
   createProfile,
@@ -15,8 +16,9 @@ export function useCreateProfile(): UseMutationResult<
 
   return useMutation({
     mutationFn: createProfile,
-    onSuccess: (profile) => {
+    onSuccess: async (profile) => {
       queryClient.setQueryData(profileQueryKey, profile);
+      await queryClient.invalidateQueries({ queryKey: entitiesQueryKey });
     },
   });
 }

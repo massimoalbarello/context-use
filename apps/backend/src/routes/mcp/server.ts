@@ -3,6 +3,7 @@ import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authori
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
+import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import { registerAssetTools } from './assets/tools.ts';
 import type { AssetTransferCapabilitiesContract } from './assets/transfer-capabilities.ts';
 import { registerEntityTools } from './entities/tools.ts';
@@ -15,12 +16,14 @@ export function createContextUseMcpServer({
   assetsService,
   entitiesService,
   pagesService,
+  profilesService,
   transferCapabilities,
 }: {
   principal: McpClientAuthorizationPrincipal;
   assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   pagesService: KnowledgePagesServiceContract;
+  profilesService: KnowledgeProfilesServiceContract;
   transferCapabilities: AssetTransferCapabilitiesContract;
 }): McpServer {
   const server = new McpServer(
@@ -28,7 +31,7 @@ export function createContextUseMcpServer({
     { supportedProtocolVersions: [...MCP_SUPPORTED_LEGACY_PROTOCOL_VERSIONS] },
   );
   registerAssetTools({ server, principal, assetsService, transferCapabilities });
-  registerEntityTools({ server, principal, entitiesService });
+  registerEntityTools({ server, principal, entitiesService, profilesService });
   registerKnowledgePageTools({ server, principal, pagesService });
   return server;
 }

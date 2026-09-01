@@ -27,6 +27,7 @@ import {
 } from '#routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#routes/mcp/tool-result.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
+import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 
 const CreateEntityInputSchema = z.object({
   name: z
@@ -43,6 +44,12 @@ const CreateEntityInputSchema = z.object({
     .boolean()
     .optional()
     .describe('Retry with true only after a name-conflict result and a deliberate decision'),
+  isSelf: z
+    .boolean()
+    .optional()
+    .describe(
+      'Set true only during initial setup to create the knowledge base owner entity. This can succeed only once.',
+    ),
 });
 
 const EntityAddressInputSchema = z.object({ address: EntityAddressSchema });
@@ -78,22 +85,43 @@ export function registerEntityTools({
   server,
   principal,
   entitiesService,
+  profilesService,
 }: {
   server: McpServer;
   principal: McpClientAuthorizationPrincipal;
   entitiesService: EntitiesServiceContract;
+  profilesService: KnowledgeProfilesServiceContract;
 }): void {
   server.registerTool(
     'create_entity',
     {
       title: 'Create entity',
       description:
-        'Create one entity identity. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
+        'Create one entity identity. Set isSelf true only to create the knowledge base owner entity during initial setup; that role can be created only once. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
       inputSchema: CreateEntityInputSchema,
       outputSchema: McpEntitySchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async (input) => {
+    async ({ isSelf, ...input }) => {
+      if (isSelf) {
+        const result = await profilesService.create({ ownerId: principal.ownerId, ...input });
+        if (result.state === 'profile_exists') {
+          return mcpToolError({
+            code: 'self_entity_exists',
+            message: 'The knowledge base owner entity already exists.',
+          });
+        }
+        if (result.state === 'name_conflict') {
+          return mcpToolError({
+            code: 'entity_name_conflict',
+            message:
+              'An entity with this name already exists. Use a more specific name, or retry with allowDuplicate only after deciding the duplicate is intentional.',
+            details: { allowDuplicateRetryAvailable: true },
+          });
+        }
+        return mcpToolSuccess(mcpEntity(result.profile.selfEntity));
+      }
+
       const result = await entitiesService.create({ ownerId: principal.ownerId, ...input });
       if (result.state === 'name_conflict') {
         return mcpToolError({
