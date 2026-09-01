@@ -1,27 +1,26 @@
+import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import {
   OWNER_USER_ID,
   type OwnerRegistrationPersistenceState,
 } from '#lib/auth/owner-registration.ts';
+import type { Queries } from '#queries.gen.ts';
 
 export interface OwnerRegistrationRepositoryContract {
   state(): Promise<OwnerRegistrationPersistenceState>;
 }
 
-type OwnerRegistrationRow = {
-  ownerExists: number;
-  passkeyExists: number;
-};
-
 export class OwnerRegistrationRepository implements OwnerRegistrationRepositoryContract {
-  private readonly sql: SQL;
+  private readonly sql: TypedSQL<Queries>;
 
   constructor(sql: SQL) {
-    this.sql = sql;
+    this.sql = withTypes<Queries>(sql);
   }
 
   async state(): Promise<OwnerRegistrationPersistenceState> {
-    const rows = await this.sql<OwnerRegistrationRow[]>`
+    const rows = await this.sql.ReadOwnerRegistrationState`
+      /* @type ownerExists number */
+      /* @type passkeyExists number */
       select
         exists(select 1 from "auth_user" where "id" = ${OWNER_USER_ID}) as "ownerExists",
         exists(select 1 from "auth_passkey" where "userId" = ${OWNER_USER_ID}) as "passkeyExists"

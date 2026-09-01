@@ -24,6 +24,7 @@
     "deploy:nibrun": "bun run scripts/deploy-nibrun.ts",
     "build": "bun run --bun turbo build",
     "build:local": "BUILD_TARGET=host bun run --bun turbo build --filter=@repo/backend",
+    "generate:queries": "bun --filter @repo/backend generate:queries",
     "check:types": "bun run --bun turbo check:types",
     "check:codestyle": "bun run --bun biome check",
     "check:all": "bun run --parallel check:types check:codestyle",
