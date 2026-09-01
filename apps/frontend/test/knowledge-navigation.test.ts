@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  clearRememberedKnowledgeResources,
   knowledgeResourceFromPath,
   readRememberedKnowledgeResource,
   writeRememberedKnowledgeResource,
@@ -8,7 +9,14 @@ import {
 function memoryStorage() {
   const values = new Map<string, string>();
   return {
+    get length() {
+      return values.size;
+    },
     getItem: (key: string) => values.get(key) ?? null,
+    key: (index: number) => Array.from(values.keys())[index] ?? null,
+    removeItem: (key: string) => {
+      values.delete(key);
+    },
     setItem: (...args: [string, string]) => {
       values.set(...args);
     },
@@ -38,19 +46,19 @@ describe('knowledge navigation', () => {
 
     writeRememberedKnowledgeResource({
       storage,
-      ownerEntityId: 'owner-id',
+      ownerEntityReadableId: 'owner',
       collection: 'pages',
       readableId: 'context-portability',
     });
     writeRememberedKnowledgeResource({
       storage,
-      ownerEntityId: 'owner-id',
+      ownerEntityReadableId: 'owner',
       collection: 'entities',
       readableId: 'luca',
     });
     writeRememberedKnowledgeResource({
       storage,
-      ownerEntityId: 'owner-id',
+      ownerEntityReadableId: 'owner',
       collection: 'assets',
       readableId: 'quarterly-chart',
     });
@@ -58,30 +66,52 @@ describe('knowledge navigation', () => {
     expect(
       readRememberedKnowledgeResource({
         storage,
-        ownerEntityId: 'owner-id',
+        ownerEntityReadableId: 'owner',
         collection: 'assets',
       }),
     ).toBe('quarterly-chart');
     expect(
       readRememberedKnowledgeResource({
         storage,
-        ownerEntityId: 'owner-id',
+        ownerEntityReadableId: 'owner',
         collection: 'pages',
       }),
     ).toBe('context-portability');
     expect(
       readRememberedKnowledgeResource({
         storage,
-        ownerEntityId: 'owner-id',
+        ownerEntityReadableId: 'owner',
         collection: 'entities',
       }),
     ).toBe('luca');
     expect(
       readRememberedKnowledgeResource({
         storage,
-        ownerEntityId: 'another-owner',
+        ownerEntityReadableId: 'another-owner',
         collection: 'pages',
       }),
     ).toBeUndefined();
+  });
+
+  test('clears remembered resources across authentication transitions', () => {
+    const storage = memoryStorage();
+    writeRememberedKnowledgeResource({
+      storage,
+      ownerEntityReadableId: 'shared-owner-name',
+      collection: 'pages',
+      readableId: 'private-project',
+    });
+    storage.setItem('unrelated-session-state', 'preserved');
+
+    clearRememberedKnowledgeResources(storage);
+
+    expect(
+      readRememberedKnowledgeResource({
+        storage,
+        ownerEntityReadableId: 'shared-owner-name',
+        collection: 'pages',
+      }),
+    ).toBeUndefined();
+    expect(storage.getItem('unrelated-session-state')).toBe('preserved');
   });
 });

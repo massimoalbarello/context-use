@@ -17,7 +17,6 @@ import {
 } from '#routes/api/model.ts';
 
 export const KnowledgePageSummarySchema = t.Object({
-  id: t.String({ format: 'uuid' }),
   readableId: ReadableIdSchema,
   title: t.String(),
   excerpt: t.String({ maxLength: MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH }),
@@ -74,7 +73,10 @@ export const KnowledgePageListQuerySchema = t.Object({
 
 export function pageSummaryResponse(page: KnowledgePageSummary) {
   return {
-    ...page,
+    readableId: page.readableId,
+    title: page.title,
+    excerpt: page.excerpt,
+    revisionNumber: page.revisionNumber,
     createdAt: new Date(page.createdAt),
     updatedAt: new Date(page.updatedAt),
   };

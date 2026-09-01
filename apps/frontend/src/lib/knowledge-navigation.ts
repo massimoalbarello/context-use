@@ -1,9 +1,28 @@
 export type KnowledgeCollection = 'entities' | 'pages' | 'assets';
 
 type NavigationStorage = Pick<Storage, 'getItem' | 'setItem'>;
+const NAVIGATION_STORAGE_PREFIX = 'context-use:knowledge-navigation:';
 
-function storageKey(options: { ownerEntityId: string; collection: KnowledgeCollection }): string {
-  return `context-use:knowledge-navigation:${options.ownerEntityId}:${options.collection}`;
+function storageKey(options: {
+  ownerEntityReadableId: string;
+  collection: KnowledgeCollection;
+}): string {
+  return `${NAVIGATION_STORAGE_PREFIX}${options.ownerEntityReadableId}:${options.collection}`;
+}
+
+export function clearRememberedKnowledgeResources(
+  storage: Pick<Storage, 'key' | 'length' | 'removeItem'>,
+): void {
+  try {
+    for (let index = storage.length - 1; index >= 0; index -= 1) {
+      const key = storage.key(index);
+      if (key?.startsWith(NAVIGATION_STORAGE_PREFIX)) {
+        storage.removeItem(key);
+      }
+    }
+  } catch {
+    // Authentication still completes when session storage is unavailable.
+  }
 }
 
 export function knowledgeResourceFromPath(
@@ -28,7 +47,7 @@ export function knowledgeResourceFromPath(
 
 export function readRememberedKnowledgeResource(options: {
   storage: Pick<NavigationStorage, 'getItem'>;
-  ownerEntityId: string;
+  ownerEntityReadableId: string;
   collection: KnowledgeCollection;
 }): string | undefined {
   try {
@@ -40,7 +59,7 @@ export function readRememberedKnowledgeResource(options: {
 
 export function writeRememberedKnowledgeResource(options: {
   storage: Pick<NavigationStorage, 'setItem'>;
-  ownerEntityId: string;
+  ownerEntityReadableId: string;
   collection: KnowledgeCollection;
   readableId: string;
 }): void {

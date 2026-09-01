@@ -60,6 +60,10 @@ database migration rules live in `src/db/AGENTS.md`.
 ## API contracts
 
 - Validate all untrusted path, query, header, and body input at the route boundary.
+- Expose entities, knowledge pages, and assets by immutable `readableId` and their typed
+  `context-use://` address. Database UUIDs remain internal to domain and persistence models; omit
+  them from HTTP schemas and map response presenters explicitly instead of spreading internal
+  resource objects.
 - Every Elysia route declares its request and response schemas so runtime validation and OpenAPI
   stay aligned with the implementation.
 - Keep response contracts explicit and derive frontend-facing types from the validated contract or

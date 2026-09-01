@@ -13,7 +13,6 @@ import {
 } from '#routes/api/model.ts';
 
 export const EntitySchema = t.Object({
-  id: t.String({ format: 'uuid' }),
   readableId: ReadableIdSchema,
   name: t.String(),
   description: t.String(),
@@ -24,7 +23,6 @@ export const EntitySchema = t.Object({
 });
 
 export const EntityReferenceSchema = t.Object({
-  id: EntitySchema.properties.id,
   readableId: EntitySchema.properties.readableId,
   name: EntitySchema.properties.name,
   description: EntitySchema.properties.description,
@@ -58,7 +56,10 @@ export const EntityListSchema = t.Object({
 
 export function entityResponse(entity: Entity) {
   return {
-    ...entity,
+    readableId: entity.readableId,
+    name: entity.name,
+    description: entity.description,
+    isSelf: entity.isSelf,
     image: entity.image ? assetSummaryResponse(entity.image) : null,
     createdAt: new Date(entity.createdAt),
     updatedAt: new Date(entity.updatedAt),
@@ -66,7 +67,12 @@ export function entityResponse(entity: Entity) {
 }
 
 export function entityReferenceResponse(
-  entity: Pick<Entity, 'id' | 'readableId' | 'name' | 'description' | 'isSelf'>,
+  entity: Pick<Entity, 'readableId' | 'name' | 'description' | 'isSelf'>,
 ) {
-  return entity;
+  return {
+    readableId: entity.readableId,
+    name: entity.name,
+    description: entity.description,
+    isSelf: entity.isSelf,
+  };
 }

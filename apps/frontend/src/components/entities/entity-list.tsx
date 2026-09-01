@@ -23,7 +23,7 @@ export function EntityList({ entities }: { entities: EntitySummary[] }) {
   return (
     <ResourceList className="gap-2">
       {entities.map((entity) => (
-        <li key={entity.id}>
+        <li key={entity.readableId}>
           <EntityLink
             entity={entity}
             presentation="card"

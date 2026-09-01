@@ -24,9 +24,11 @@ type KnowledgeSuggestion =
 
 function suggestionId(suggestion: KnowledgeSuggestion): string {
   if (suggestion.kind === 'entity') {
-    return `entity-${suggestion.entity.id}`;
+    return `entity-${suggestion.entity.readableId}`;
   }
-  return suggestion.kind === 'page' ? `page-${suggestion.page.id}` : `asset-${suggestion.asset.id}`;
+  return suggestion.kind === 'page'
+    ? `page-${suggestion.page.readableId}`
+    : `asset-${suggestion.asset.readableId}`;
 }
 
 type PickerBounds = Pick<DOMRect, 'top' | 'bottom'>;

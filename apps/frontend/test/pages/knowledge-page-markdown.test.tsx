@@ -47,7 +47,6 @@ describe('knowledge page Markdown', () => {
           readableId: 'alex-morgan',
           name: 'Alex Morgan',
           image: {
-            id: 'alex-image-id',
             readableId: 'alex-morgan-image',
             name: 'Alex Morgan image',
             mediaType: 'image/png',
