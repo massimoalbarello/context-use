@@ -58,7 +58,7 @@ function PageLinkList({
       {links.length > 0 ? (
         <ResourceList>
           {links.map(({ page, fragment }) => (
-            <li key={`${page.id}#${fragment ?? ''}`}>
+            <li key={`${page.readableId}#${fragment ?? ''}`}>
               <KnowledgePageLink page={page} presentation="card" fragment={fragment ?? undefined} />
             </li>
           ))}
@@ -83,7 +83,7 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
         {page.mentions.length > 0 ? (
           <ResourceList>
             {page.mentions.map((entity) => (
-              <li key={entity.id}>
+              <li key={entity.readableId}>
                 <EntityLink entity={entity} presentation="card" />
               </li>
             ))}
@@ -106,7 +106,7 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
           {usages.length > 0 ? (
             <ResourceList>
               {usages.map(({ asset }) => (
-                <li key={asset.id}>
+                <li key={asset.readableId}>
                   <AssetLink asset={asset} presentation="card" />
                 </li>
               ))}

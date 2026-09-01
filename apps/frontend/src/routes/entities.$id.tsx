@@ -171,7 +171,7 @@ function EntityRouteContent({ id }: { id: string }) {
         {entity.pages.length > 0 ? (
           <ResourceList>
             {entity.pages.map((page) => (
-              <li key={page.id}>
+              <li key={page.readableId}>
                 <KnowledgePageLink page={page} presentation="card" />
               </li>
             ))}

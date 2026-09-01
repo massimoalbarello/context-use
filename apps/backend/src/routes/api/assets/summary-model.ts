@@ -4,7 +4,6 @@ import { MAX_ASSET_BYTES, MAX_ASSET_NAME_LENGTH } from '#models/assets/model.ts'
 import { ReadableIdSchema } from '#routes/api/model.ts';
 
 export const AssetSummarySchema = t.Object({
-  id: t.String({ format: 'uuid' }),
   readableId: ReadableIdSchema,
   name: t.String({ minLength: 1, maxLength: MAX_ASSET_NAME_LENGTH }),
   mediaType: t.String(),
@@ -16,7 +15,11 @@ export const AssetSummarySchema = t.Object({
 
 export function assetSummaryResponse(asset: AssetSummary) {
   return {
-    ...asset,
+    readableId: asset.readableId,
+    name: asset.name,
+    mediaType: asset.mediaType,
+    extension: asset.extension,
+    sizeBytes: asset.sizeBytes,
     createdAt: new Date(asset.createdAt),
     updatedAt: new Date(asset.updatedAt),
   };

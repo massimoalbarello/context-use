@@ -13,7 +13,7 @@ const BYTES_PER_MEBIBYTE = BYTES_PER_KIBIBYTE * KIBIBYTES_PER_MEBIBYTE;
 type AssetName = Pick<AssetSummary, 'readableId' | 'name'>;
 type AssetIdentity = Pick<
   AssetSummary,
-  'id' | 'readableId' | 'name' | 'mediaType' | 'extension' | 'sizeBytes'
+  'readableId' | 'name' | 'mediaType' | 'extension' | 'sizeBytes'
 >;
 
 type AssetLinkProps =

@@ -18,11 +18,11 @@ import { EntityAvatar } from './entity-link';
 const IMAGE_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp';
 
 function EntityImagePicker({
-  selectedImageId,
+  selectedImageReadableId,
   pending,
   onSelect,
 }: {
-  selectedImageId?: string;
+  selectedImageReadableId?: string;
   pending: boolean;
   onSelect: (assetReadableId: string) => void;
 }) {
@@ -44,12 +44,12 @@ function EntityImagePicker({
       ) : suggestions.data && suggestions.data.length > 0 ? (
         <ResourceList className="gap-2">
           {suggestions.data.map((asset) => (
-            <li key={asset.id}>
+            <li key={asset.readableId}>
               <button
                 className={cn(resourceCardVariants(), 'w-full text-left transition')}
                 type="button"
                 disabled={pending}
-                aria-pressed={selectedImageId === asset.id}
+                aria-pressed={selectedImageReadableId === asset.readableId}
                 onClick={() => onSelect(asset.readableId)}
               >
                 <AssetCardContent asset={asset} />
@@ -137,7 +137,7 @@ export function EntityImageEditor({
         </TabsList>
         <TabsContent value="existing">
           <EntityImagePicker
-            selectedImageId={entity.image?.id}
+            selectedImageReadableId={entity.image?.readableId}
             pending={pending}
             onSelect={assign}
           />

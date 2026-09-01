@@ -55,7 +55,7 @@ function AssetUsageList({
       {usages.length > 0 ? (
         <ResourceList>
           {usages.map(({ page }) => (
-            <li key={page.id}>
+            <li key={page.readableId}>
               <KnowledgePageLink page={page} presentation="card" />
             </li>
           ))}
@@ -81,7 +81,7 @@ function AssetEntityImageUsageList({ asset }: { asset: Asset }) {
       {usages.length > 0 ? (
         <ResourceList>
           {usages.map(({ entity }) => (
-            <li key={entity.id}>
+            <li key={entity.readableId}>
               <EntityLink entity={entity} presentation="card" />
             </li>
           ))}

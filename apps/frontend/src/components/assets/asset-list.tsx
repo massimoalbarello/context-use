@@ -21,7 +21,7 @@ export function AssetList({ assets }: { assets: AssetSummary[] }) {
   return (
     <ResourceList className="gap-2">
       {assets.map((asset) => (
-        <li key={asset.id}>
+        <li key={asset.readableId}>
           <AssetLink
             asset={asset}
             presentation="card"

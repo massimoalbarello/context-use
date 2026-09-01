@@ -23,10 +23,10 @@ const COLLECTIONS: Array<{ value: KnowledgeCollection; label: string }> = [
 
 export function KnowledgeCollectionNavigation({
   collection,
-  ownerEntityId,
+  ownerEntityReadableId,
 }: {
   collection: KnowledgeCollection;
-  ownerEntityId: string;
+  ownerEntityReadableId: string;
 }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -41,7 +41,7 @@ export function KnowledgeCollectionNavigation({
             value,
             readRememberedKnowledgeResource({
               storage: window.sessionStorage,
-              ownerEntityId,
+              ownerEntityReadableId,
               collection: value,
             }),
           ]),
@@ -58,13 +58,13 @@ export function KnowledgeCollectionNavigation({
       }
       writeRememberedKnowledgeResource({
         storage: window.sessionStorage,
-        ownerEntityId,
+        ownerEntityReadableId,
         collection: currentResource.collection,
         readableId: currentResource.readableId,
       });
       return { ...resources, [currentResource.collection]: currentResource.readableId };
     });
-  }, [currentResource, ownerEntityId]);
+  }, [currentResource, ownerEntityReadableId]);
 
   function openCollection(next: KnowledgeCollection) {
     const readableId = rememberedResources[next];

@@ -28,6 +28,7 @@ import {
   unusedMcpProtection,
   unusedMcpTransport,
 } from '../../support/mcp.ts';
+import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
 const SHA256_HEX_LENGTH = 64;
 const EXPECTED_ASSET_BLOCKER_COUNT = 3;
@@ -113,6 +114,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       new Request('http://localhost/api/assets', { method: 'POST', body: form }),
     );
     expect(uploadResponse.status).toBe(StatusMap.Created);
+    expectNoInternalResourceIds(await uploadResponse.clone().json());
     expect(await uploadResponse.json()).toEqual(
       expect.objectContaining({
         readableId: 'quarterly-chart',
@@ -192,6 +194,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       new Request('http://localhost/api/assets?kind=entity_image&query='),
     );
     expect(imageAssetsResponse.status).toBe(StatusMap.OK);
+    expectNoInternalResourceIds(await imageAssetsResponse.clone().json());
     expect((await imageAssetsResponse.json()) as { items: Array<{ readableId: string }> }).toEqual(
       expect.objectContaining({
         items: [expect.objectContaining({ readableId: 'quarterly-chart' })],
@@ -215,6 +218,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       }),
     );
     expect(assignImageResponse.status).toBe(StatusMap.OK);
+    expectNoInternalResourceIds(await assignImageResponse.clone().json());
     expect(await assignImageResponse.json()).toEqual(
       expect.objectContaining({
         readableId: 'luca-bianchi',
@@ -226,6 +230,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       new Request('http://localhost/api/entities/luca-bianchi'),
     );
     expect(entityDetailResponse.status).toBe(StatusMap.OK);
+    expectNoInternalResourceIds(await entityDetailResponse.clone().json());
     expect(await entityDetailResponse.json()).toEqual(
       expect.objectContaining({
         image: expect.objectContaining({ readableId: 'quarterly-chart' }),
@@ -234,6 +239,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
 
     const entitiesResponse = await app.handle(new Request('http://localhost/api/entities'));
     expect(entitiesResponse.status).toBe(StatusMap.OK);
+    expectNoInternalResourceIds(await entitiesResponse.clone().json());
     expect((await entitiesResponse.json()) as { items: unknown[] }).toEqual(
       expect.objectContaining({
         items: [
@@ -285,6 +291,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       revisionNumber: number;
       mentions: Array<{ image: { readableId: string } | null }>;
     };
+    expectNoInternalResourceIds(page);
     expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
     const detailResponse = await app.handle(
@@ -294,6 +301,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     const detail = (await detailResponse.json()) as {
       usages: Array<{ kind: string; presentation?: string; entity?: { readableId: string } }>;
     };
+    expectNoInternalResourceIds(detail);
     expect(detail.usages).toEqual([
       expect.objectContaining({ kind: 'page', presentation: 'attachment' }),
       expect.objectContaining({ kind: 'page', presentation: 'embed' }),
@@ -308,6 +316,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     );
     expect(blockedResponse.status).toBe(StatusMap.Conflict);
     const conflict = (await blockedResponse.json()) as { blockers: unknown[] };
+    expectNoInternalResourceIds(conflict);
     expect(conflict.blockers).toHaveLength(EXPECTED_ASSET_BLOCKER_COUNT);
 
     const updateResponse = await app.handle(
@@ -326,6 +335,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       jsonRequest({ method: 'PUT', path: '/assets/quarterly-chart/archive' }),
     );
     expect(entityBlockedResponse.status).toBe(StatusMap.Conflict);
+    expectNoInternalResourceIds(await entityBlockedResponse.clone().json());
     expect((await entityBlockedResponse.json()) as { blockers: unknown[] }).toEqual(
       expect.objectContaining({
         blockers: [
