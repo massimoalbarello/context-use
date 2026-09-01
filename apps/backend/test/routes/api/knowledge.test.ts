@@ -29,6 +29,7 @@ import {
   unusedMcpProtection,
   unusedMcpTransport,
 } from '../../support/mcp.ts';
+import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
 const AUTH_MIGRATION = new URL(
   '../../../src/db/migrations/0000_better_auth_schema.sql',
@@ -165,6 +166,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       }),
     );
     expect(profileResponse.status).toBe(StatusMap.Created);
+    expectNoInternalResourceIds(await profileResponse.clone().json());
     expect(await profileResponse.json()).toEqual({
       selfEntity: expect.objectContaining({
         readableId: 'test-owner',
@@ -214,8 +216,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       }),
     );
     expect(entityResponse.status).toBe(StatusMap.Created);
-    const entity = (await entityResponse.json()) as { id: string };
-    expect(entity.id[14]).toBe('7');
+    expectNoInternalResourceIds(await entityResponse.json());
 
     const entityConflictResponse = await app.handle(
       jsonRequest({
@@ -256,7 +257,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     );
     expect(firstEntityPageResponse.status).toBe(StatusMap.OK);
     const firstEntityPage = (await firstEntityPageResponse.json()) as {
-      items: Array<{ id: string }>;
+      items: Array<{ readableId: string }>;
       total: number;
       nextOffset: number | null;
     };
@@ -268,15 +269,17 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       jsonRequest({ method: 'GET', path: '/entities?limit=2&offset=2' }),
     );
     const secondEntityPage = (await secondEntityPageResponse.json()) as {
-      items: Array<{ id: string }>;
+      items: Array<{ readableId: string }>;
       total: number;
       nextOffset: number | null;
     };
     expect(secondEntityPage.items).toHaveLength(2);
     expect(secondEntityPage.total).toBe(EXPECTED_ENTITY_COUNT);
     expect(secondEntityPage.nextOffset).toBeNull();
-    expect(secondEntityPage.items[0]?.id).not.toBe(firstEntityPage.items[0]?.id);
-    expect(secondEntityPage.items[0]?.id).not.toBe(firstEntityPage.items[1]?.id);
+    expect(secondEntityPage.items[0]?.readableId).not.toBe(firstEntityPage.items[0]?.readableId);
+    expect(secondEntityPage.items[0]?.readableId).not.toBe(firstEntityPage.items[1]?.readableId);
+    expectNoInternalResourceIds(firstEntityPage);
+    expectNoInternalResourceIds(secondEntityPage);
 
     const searchedEntityPageResponse = await app.handle(
       jsonRequest({
@@ -307,12 +310,11 @@ Every observation changes the next action.`,
     );
     expect(growthResponse.status).toBe(StatusMap.Created);
     const growth = (await growthResponse.json()) as {
-      id: string;
       excerpt: string;
       revisionNumber: number;
       mentions: Array<{ readableId: string }>;
     };
-    expect(growth.id[14]).toBe('7');
+    expectNoInternalResourceIds(growth);
     expect(growth.excerpt).toBe('Luca owns this feedback system.');
     expect(growth.revisionNumber).toBe(1);
     expect(growth.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
@@ -361,7 +363,7 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0' }),
     );
     const firstKnowledgePage = (await firstKnowledgePageResponse.json()) as {
-      items: Array<{ id: string; readableId: string }>;
+      items: Array<{ readableId: string }>;
       total: number;
       nextOffset: number | null;
     };
@@ -373,13 +375,15 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=2' }),
     );
     const secondKnowledgePage = (await secondKnowledgePageResponse.json()) as {
-      items: Array<{ id: string; readableId: string }>;
+      items: Array<{ readableId: string }>;
       total: number;
       nextOffset: number | null;
     };
     expect(secondKnowledgePage.items).toHaveLength(1);
     expect(secondKnowledgePage.total).toBe(EXPECTED_PAGE_COUNT);
     expect(secondKnowledgePage.nextOffset).toBeNull();
+    expectNoInternalResourceIds(firstKnowledgePage);
+    expectNoInternalResourceIds(secondKnowledgePage);
     expect(
       [
         ...firstKnowledgePage.items.map(({ readableId }) => readableId),
@@ -411,6 +415,7 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
     const linkedGrowth = (await linkedGrowthResponse.json()) as {
       backlinks: Array<{ page: { readableId: string }; fragment: string | null }>;
     };
+    expectNoInternalResourceIds(linkedGrowth);
     expect(linkedGrowth.backlinks).toEqual([
       {
         page: expect.objectContaining({ readableId: 'operating-rhythm' }),
@@ -491,6 +496,7 @@ Revise the current knowledge instead of appending snapshots.`,
       jsonRequest({ method: 'GET', path: '/entities/luca-bianchi' }),
     );
     expect(entityDetailResponse.status).toBe(StatusMap.OK);
+    expectNoInternalResourceIds(await entityDetailResponse.clone().json());
     expect(
       ((await entityDetailResponse.json()) as { pages: Array<{ readableId: string }> }).pages.map(
         ({ readableId }) => readableId,
@@ -527,6 +533,7 @@ Revise the current knowledge instead of appending snapshots.`,
       }),
     );
     expect(blockedEntityArchiveResponse.status).toBe(StatusMap.Conflict);
+    expectNoInternalResourceIds(await blockedEntityArchiveResponse.clone().json());
     expect(await blockedEntityArchiveResponse.json()).toEqual({
       error: 'Remove or replace every active inbound relationship before archiving this resource.',
       blockers: [
@@ -544,6 +551,7 @@ Revise the current knowledge instead of appending snapshots.`,
       }),
     );
     expect(blockedPageArchiveResponse.status).toBe(StatusMap.Conflict);
+    expectNoInternalResourceIds(await blockedPageArchiveResponse.clone().json());
     expect(await blockedPageArchiveResponse.json()).toEqual({
       error: 'Remove or replace every active inbound relationship before archiving this resource.',
       blockers: [
@@ -729,6 +737,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
 
     const profileReadResponse = await app.handle(jsonRequest({ method: 'GET', path: '/profile' }));
     expect(profileReadResponse.status).toBe(StatusMap.OK);
+    expectNoInternalResourceIds(await profileReadResponse.clone().json());
     expect(
       ((await profileReadResponse.json()) as { selfEntity: { readableId: string } }).selfEntity
         .readableId,

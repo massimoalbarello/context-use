@@ -23,7 +23,7 @@ export function KnowledgePageList({ pages }: { pages: KnowledgePageSummary[] }) 
   return (
     <ResourceList className="gap-2">
       {pages.map((page) => (
-        <li key={page.id}>
+        <li key={page.readableId}>
           <KnowledgePageLink
             page={page}
             presentation="card"

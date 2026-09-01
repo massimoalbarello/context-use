@@ -78,7 +78,7 @@ export function KnowledgeSidebar({
         <div className="flex shrink-0 items-center justify-between gap-3 px-4">
           <KnowledgeCollectionNavigation
             collection={collection}
-            ownerEntityId={profile.selfEntity.id}
+            ownerEntityReadableId={profile.selfEntity.readableId}
           />
           <Link
             className={cn(buttonVariants({ size: 'icon-lg' }), 'shrink-0')}
