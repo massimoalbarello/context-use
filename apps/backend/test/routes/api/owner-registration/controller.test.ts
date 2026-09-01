@@ -47,6 +47,8 @@ const entitiesService: EntitiesServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  setImage: unexpectedCall,
+  removeImage: unexpectedCall,
   archive: unexpectedCall,
 };
 const healthService: HealthServiceContract = { check: unexpectedCall };

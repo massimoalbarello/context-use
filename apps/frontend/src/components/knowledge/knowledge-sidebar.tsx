@@ -5,7 +5,7 @@ import { cn } from '../../lib/class-names';
 import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { SignOutButton } from '../auth/sign-out-button';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { EntityAvatar } from '../entities/entity-link';
 import { Button, buttonVariants } from '../ui/button';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 import { KnowledgeCollectionNavigation } from './knowledge-collection-navigation';
@@ -36,7 +36,6 @@ export function KnowledgeSidebar({
 }) {
   const { collapsed, toggleSidebar } = useKnowledgeWorkspace();
   const initialLoadFailed = Boolean(error && count === 0);
-  const profileInitial = profile.selfEntity.name.trim().charAt(0).toLocaleUpperCase();
 
   return (
     <aside
@@ -113,9 +112,7 @@ export function KnowledgeSidebar({
             to="/entities/$id"
             params={{ id: profile.selfEntity.readableId }}
           >
-            <Avatar className="size-8 font-semibold" aria-hidden="true">
-              <AvatarFallback>{profileInitial}</AvatarFallback>
-            </Avatar>
+            <EntityAvatar entity={profile.selfEntity} className="size-8" />
             <span className="grid min-w-0 leading-tight">
               <strong className="truncate font-medium text-xs">{profile.selfEntity.name}</strong>
               <small className="truncate text-[0.68rem] text-muted-foreground">Your entity</small>

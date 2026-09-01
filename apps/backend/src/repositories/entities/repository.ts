@@ -5,6 +5,12 @@ import type { Entity } from '#models/entities/model.ts';
 import type { KnowledgePageReference } from '#models/knowledge-pages/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
+import { entityFrom } from '#views/entities/entity-view.ts';
+
+export type SetEntityImageResult =
+  | { state: 'updated'; entity: Entity }
+  | { state: 'not_found' }
+  | { state: 'image_in_use' };
 
 export interface EntityRepositoryContract {
   create(input: {
@@ -29,17 +35,22 @@ export interface EntityRepositoryContract {
     description: string;
     updatedAt: string;
   }): Promise<Entity | null>;
+  setImage(input: {
+    ownerId: string;
+    readableId: string;
+    assetId: string;
+    updatedAt: string;
+  }): Promise<SetEntityImageResult>;
+  removeImage(input: {
+    ownerId: string;
+    readableId: string;
+    updatedAt: string;
+  }): Promise<Entity | null>;
   archive(input: {
     ownerId: string;
     readableId: string;
     archivedAt: string;
   }): Promise<ArchiveResult<KnowledgePageReference> | { state: 'self_entity' }>;
-}
-
-type EntityRow = Queries['CreateEntity'];
-
-function entityFrom(row: EntityRow): Entity {
-  return { ...row, isSelf: Boolean(row.isSelf) };
 }
 
 export class EntitiesRepository implements EntityRepositoryContract {
@@ -70,7 +81,10 @@ export class EntitiesRepository implements EntityRepositoryContract {
         0 as "isSelf", "created_at" as "createdAt", "updated_at" as "updatedAt"
     `;
     return rows[0]
-      ? { state: 'created', entity: entityFrom(rows[0]) }
+      ? {
+          state: 'created',
+          entity: { ...rows[0], isSelf: Boolean(rows[0].isSelf), image: null },
+        }
       : { state: 'readable_id_conflict' };
   }
 
@@ -92,11 +106,19 @@ export class EntitiesRepository implements EntityRepositoryContract {
           /* @type isSelf number */
           select entity."id", entity."readable_id" as "readableId", entity."name",
             entity."description", profile."self_entity_id" is not null as "isSelf",
-            entity."created_at" as "createdAt", entity."updated_at" as "updatedAt"
+            entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
+            image."id" as "imageId", image."readable_id" as "imageReadableId",
+            image."name" as "imageName", image."media_type" as "imageMediaType",
+            image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
+            image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt"
           from "entity" entity
           left join "knowledge_profile" profile
-            on profile."owner_id" = entity."owner_id"
+           on profile."owner_id" = entity."owner_id"
            and profile."self_entity_id" = entity."id"
+          left join "asset" image
+            on image."owner_id" = entity."owner_id"
+           and image."id" = entity."image_asset_id"
+           and image."archived_at" is null
           where entity."owner_id" = ${ownerId}
             and entity."archived_at" is null
             and (
@@ -111,11 +133,19 @@ export class EntitiesRepository implements EntityRepositoryContract {
           /* @type isSelf number */
           select entity."id", entity."readable_id" as "readableId", entity."name",
             entity."description", profile."self_entity_id" is not null as "isSelf",
-            entity."created_at" as "createdAt", entity."updated_at" as "updatedAt"
+            entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
+            image."id" as "imageId", image."readable_id" as "imageReadableId",
+            image."name" as "imageName", image."media_type" as "imageMediaType",
+            image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
+            image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt"
           from "entity" entity
           left join "knowledge_profile" profile
-            on profile."owner_id" = entity."owner_id"
+           on profile."owner_id" = entity."owner_id"
            and profile."self_entity_id" = entity."id"
+          left join "asset" image
+            on image."owner_id" = entity."owner_id"
+           and image."id" = entity."image_asset_id"
+           and image."archived_at" is null
           where entity."owner_id" = ${ownerId}
             and entity."archived_at" is null
           order by entity."name" collate nocase, entity."readable_id"
@@ -145,22 +175,35 @@ export class EntitiesRepository implements EntityRepositoryContract {
     });
   }
 
-  async find({
+  find({ ownerId, readableId }: { ownerId: string; readableId: string }): Promise<Entity | null> {
+    return this.findWith({ db: this.sql, ownerId, readableId });
+  }
+
+  private async findWith({
+    db,
     ownerId,
     readableId,
   }: {
+    db: TypedSQL<Queries>;
     ownerId: string;
     readableId: string;
   }): Promise<Entity | null> {
-    const rows = await this.sql.FindEntity`
+    const rows = await db.FindEntity`
       /* @notNull id readableId name description createdAt updatedAt */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
         entity."description", profile."self_entity_id" is not null as "isSelf",
-        entity."created_at" as "createdAt", entity."updated_at" as "updatedAt"
+        entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
+        image."id" as "imageId", image."readable_id" as "imageReadableId",
+        image."name" as "imageName", image."media_type" as "imageMediaType",
+        image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
+        image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt"
       from "entity" entity
       left join "knowledge_profile" profile
         on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
+      left join "asset" image
+        on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
+       and image."archived_at" is null
       where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
         and entity."archived_at" is null
     `;
@@ -180,20 +223,86 @@ export class EntitiesRepository implements EntityRepositoryContract {
     description: string;
     updatedAt: string;
   }): Promise<Entity | null> {
-    const rows = await this.sql.UpdateEntity`
-      /* @notNull id readableId name description createdAt updatedAt */
-      /* @type isSelf number */
+    const rows = await this.sql.UpdateEntityIdentity`
+      /* @notNull id */
       update "entity"
       set "name" = ${name}, "description" = ${description}, "updated_at" = ${updatedAt}
       where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
         and "archived_at" is null
-      returning "id", "readable_id" as "readableId", "name", "description",
-        exists(
-          select 1 from "knowledge_profile"
-          where "owner_id" = ${ownerId} and "self_entity_id" = "entity"."id"
-        ) as "isSelf", "created_at" as "createdAt", "updated_at" as "updatedAt"
+      returning "id"
     `;
-    return rows[0] ? entityFrom(rows[0]) : null;
+    return rows[0] ? this.find({ ownerId, readableId }) : null;
+  }
+
+  setImage({
+    ownerId,
+    readableId,
+    assetId,
+    updatedAt,
+  }: {
+    ownerId: string;
+    readableId: string;
+    assetId: string;
+    updatedAt: string;
+  }): Promise<SetEntityImageResult> {
+    return this.sql.begin(async (db) => {
+      const rows = await db.SetEntityImage`
+        /* @notNull entityId */
+        update "entity" as entity
+        set "image_asset_id" = ${assetId}, "updated_at" = ${updatedAt}
+        where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
+          and entity."archived_at" is null
+          and exists (
+            select 1 from "asset"
+            where "owner_id" = entity."owner_id" and "id" = ${assetId}
+              and "archived_at" is null
+          )
+          and not exists (
+            select 1 from "entity" assignment
+            where assignment."owner_id" = entity."owner_id"
+              and assignment."image_asset_id" = ${assetId}
+              and assignment."id" <> entity."id"
+          )
+        returning "id" as "entityId"
+      `;
+      if (!rows[0]) {
+        const assignments = await db.FindEntityImageAssignment`
+          /* @notNull entityId */
+          select "id" as "entityId" from "entity"
+          where "owner_id" = ${ownerId} and "image_asset_id" = ${assetId}
+        `;
+        return assignments[0]
+          ? ({ state: 'image_in_use' } as const)
+          : ({ state: 'not_found' } as const);
+      }
+      const entity = await this.findWith({ db, ownerId, readableId });
+      return entity ? { state: 'updated' as const, entity } : { state: 'not_found' as const };
+    });
+  }
+
+  removeImage({
+    ownerId,
+    readableId,
+    updatedAt,
+  }: {
+    ownerId: string;
+    readableId: string;
+    updatedAt: string;
+  }): Promise<Entity | null> {
+    return this.sql.begin(async (db) => {
+      const targets = await db.RemoveEntityImage`
+        /* @notNull id */
+        update "entity"
+        set "image_asset_id" = null, "updated_at" = ${updatedAt}
+        where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
+          and "archived_at" is null
+        returning "id"
+      `;
+      if (!targets[0]) {
+        return null;
+      }
+      return this.findWith({ db, ownerId, readableId });
+    });
   }
 
   archive({

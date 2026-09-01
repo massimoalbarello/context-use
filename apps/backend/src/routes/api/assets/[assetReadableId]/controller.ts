@@ -5,14 +5,12 @@ import { ErrorResponseSchema } from '#lib/errors.ts';
 import {
   AssetContentQuerySchema,
   AssetParamsSchema,
+  AssetResourceInUseResponseSchema,
   AssetSchema,
   assetResponse,
+  assetUsageResponse,
   UpdateAssetBodySchema,
 } from '#routes/api/assets/model.ts';
-import {
-  ResourceInUseResponseSchema,
-  resourceInUseResponse,
-} from '#routes/api/resource-archiving/model.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 
 function contentDisposition({
@@ -116,11 +114,10 @@ export function createAssetReadableIdController({
           readableId: params.assetReadableId,
         });
         if (result.state === 'resource_in_use') {
-          const pages = [...new Map(result.blockers.map(({ page }) => [page.id, page])).values()];
-          return status(
-            StatusMap.Conflict,
-            resourceInUseResponse(pages.map((page) => ({ page, fragment: null }))),
-          );
+          return status(StatusMap.Conflict, {
+            error: 'Asset is in use',
+            blockers: result.blockers.map(assetUsageResponse),
+          });
         }
         return result.state === 'archived'
           ? status(StatusMap['No Content'], undefined)
@@ -132,7 +129,7 @@ export function createAssetReadableIdController({
         response: {
           [StatusMap['No Content']]: t.Void(),
           [StatusMap['Not Found']]: ErrorResponseSchema,
-          [StatusMap.Conflict]: ResourceInUseResponseSchema,
+          [StatusMap.Conflict]: AssetResourceInUseResponseSchema,
         },
       },
     );

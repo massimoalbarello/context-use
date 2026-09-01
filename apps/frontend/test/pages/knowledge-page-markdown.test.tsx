@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
+  entityMentionFrom,
   KnowledgePageMarkdown,
   knowledgeHeadingId,
 } from '../../src/components/pages/knowledge-page-markdown';
@@ -34,5 +35,37 @@ describe('knowledge page Markdown', () => {
 
     expect(html).toContain('src="/api/assets/quarterly-chart/content"');
     expect(html).toContain('href="/api/assets/financial-model/content"');
+  });
+
+  test('resolves assigned images into entity mention chips', () => {
+    const timestamp = new Date('2026-01-01T00:00:00.000Z');
+    const mention = entityMentionFrom({
+      readableId: 'alex-morgan',
+      name: 'Alex Morgan',
+      mentions: [
+        {
+          readableId: 'alex-morgan',
+          name: 'Alex Morgan',
+          image: {
+            id: 'alex-image-id',
+            readableId: 'alex-morgan-image',
+            name: 'Alex Morgan image',
+            mediaType: 'image/png',
+            extension: 'png',
+            sizeBytes: 42,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        },
+      ],
+    });
+
+    expect(mention).toEqual(
+      expect.objectContaining({
+        image: expect.objectContaining({
+          readableId: 'alex-morgan-image',
+        }),
+      }),
+    );
   });
 });

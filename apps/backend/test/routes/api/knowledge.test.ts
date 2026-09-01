@@ -120,6 +120,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     `;
 
     const pagesRepository = new KnowledgePagesRepository(database);
+    const assetsRepository = new AssetsRepository(database);
     const entitiesRepository = new EntitiesRepository(database);
     const storage = new LocalStorage(join(dataFolder, 'objects'));
     const pagesService = new KnowledgePagesService({
@@ -128,9 +129,10 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     });
     const app = createApp({
       auth: ownerAuth(),
-      assetsService: new AssetsService({ assets: new AssetsRepository(database), storage }),
+      assetsService: new AssetsService({ assets: assetsRepository, storage }),
       frontendAssetsService,
       entitiesService: new EntitiesService({
+        assets: assetsRepository,
         entities: entitiesRepository,
         pages: pagesRepository,
       }),

@@ -2,6 +2,7 @@ import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-route
 import { ExternalLink, File } from 'lucide-react';
 import { useState } from 'react';
 import { formatAssetSize } from '../components/assets/asset-link';
+import { EntityLink } from '../components/entities/entity-link';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
@@ -39,7 +40,10 @@ function AssetUsageList({
   asset: Asset;
   presentation: 'embed' | 'attachment';
 }) {
-  const usages = asset.usages.filter((usage) => usage.presentation === presentation);
+  const usages = asset.usages.filter(
+    (usage): usage is Extract<Asset['usages'][number], { kind: 'page' }> =>
+      usage.kind === 'page' && usage.presentation === presentation,
+  );
   return (
     <section>
       <div className="mb-4 flex items-center gap-3">
@@ -53,6 +57,32 @@ function AssetUsageList({
           {usages.map(({ page }) => (
             <li key={page.id}>
               <KnowledgePageLink page={page} presentation="card" />
+            </li>
+          ))}
+        </ResourceList>
+      ) : (
+        <p className="text-muted-foreground text-sm">None yet.</p>
+      )}
+    </section>
+  );
+}
+
+function AssetEntityImageUsageList({ asset }: { asset: Asset }) {
+  const usages = asset.usages.filter(
+    (usage): usage is Extract<Asset['usages'][number], { kind: 'entity_image' }> =>
+      usage.kind === 'entity_image',
+  );
+  return (
+    <section>
+      <div className="mb-4 flex items-center gap-3">
+        <h2 className="font-semibold text-lg">Used as image by</h2>
+        <Badge variant="secondary">{usages.length}</Badge>
+      </div>
+      {usages.length > 0 ? (
+        <ResourceList>
+          {usages.map(({ entity }) => (
+            <li key={entity.id}>
+              <EntityLink entity={entity} presentation="card" />
             </li>
           ))}
         </ResourceList>
@@ -170,7 +200,8 @@ function AssetRouteContent({ id }: { id: string }) {
       {archiveAsset.error && <FieldError>{archiveAsset.error.message}</FieldError>}
       {archiveConflictVisible && (
         <p className="text-destructive text-sm" role="alert">
-          This asset can’t be archived until every embed and attachment is removed or replaced.{' '}
+          This asset can’t be archived until every embed, attachment, and entity image is removed or
+          replaced.{' '}
           <a className="font-medium underline" href="#used-by">
             Review usages
           </a>
@@ -220,9 +251,10 @@ function AssetRouteContent({ id }: { id: string }) {
         </div>
       </section>
 
-      <div className="grid scroll-mt-24 gap-8 md:grid-cols-2" id="used-by" tabIndex={-1}>
+      <div className="grid scroll-mt-24 gap-8 md:grid-cols-3" id="used-by" tabIndex={-1}>
         <AssetUsageList asset={asset} presentation="embed" />
         <AssetUsageList asset={asset} presentation="attachment" />
+        <AssetEntityImageUsageList asset={asset} />
       </div>
     </DetailShell>
   );

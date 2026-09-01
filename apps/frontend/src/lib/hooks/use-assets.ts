@@ -3,6 +3,7 @@ import {
   assetQueryOptions,
   assetSuggestionsQueryOptions,
   assetsQueryOptions,
+  imageAssetSuggestionsQueryOptions,
 } from '../../queries/assets';
 
 export function useAssets() {
@@ -23,4 +24,8 @@ export function useAssetSuggestions(query: string | null) {
     ...assetSuggestionsQueryOptions(query ?? ''),
     enabled: query !== null,
   });
+}
+
+export function useImageAssetSuggestions(query: string) {
+  return useQuery(imageAssetSuggestionsQueryOptions(query));
 }

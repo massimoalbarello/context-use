@@ -23,6 +23,9 @@ import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 
+const SHA256_HEX_LENGTH = 64;
+const EXPECTED_ASSET_BLOCKER_COUNT = 3;
+
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
   fallback: () => null,
@@ -61,7 +64,7 @@ function jsonRequest({ method, path, body }: { method: string; path: string; bod
   });
 }
 
-test('assets are server-inspected, linked from current page Markdown, and archived only when unused', async () => {
+test('assets are server-inspected, linked or assigned, and archived only when unused', async () => {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-assets-test-'));
   const database = await createSqliteDatabase({ dataFolder });
   try {
@@ -73,12 +76,14 @@ test('assets are server-inspected, linked from current page Markdown, and archiv
       values (${OWNER_USER_ID}, 'Owner', ${OWNER_SYNTHETIC_EMAIL}, 1, ${timestamp}, ${timestamp})
     `;
     const storage = new LocalStorage(join(dataFolder, 'objects'));
+    const assetsRepository = new AssetsRepository(database);
     const pagesRepository = new KnowledgePagesRepository(database);
     const app = createApp({
       auth: ownerAuth(),
-      assetsService: new AssetsService({ assets: new AssetsRepository(database), storage }),
+      assetsService: new AssetsService({ assets: assetsRepository, storage }),
       frontendAssetsService,
       entitiesService: new EntitiesService({
+        assets: assetsRepository,
         entities: new EntitiesRepository(database),
         pages: pagesRepository,
       }),
@@ -141,28 +146,151 @@ test('assets are server-inspected, linked from current page Markdown, and archiv
     expect(pdfContentResponse.headers.get('content-type')).toBe('application/pdf');
     expect(pdfContentResponse.headers.get('content-disposition')).toStartWith('inline;');
 
+    const entityResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/entities',
+        body: { name: 'Luca Bianchi', description: 'Researcher and collaborator' },
+      }),
+    );
+    expect(entityResponse.status).toBe(StatusMap.Created);
+
+    await database`
+      insert into "auth_user"
+        ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
+      values ('other-owner', 'Other owner', 'other@example.com', 1, ${timestamp}, ${timestamp})
+    `;
+    await database`
+      insert into "asset"
+        ("id", "owner_id", "readable_id", "name", "media_type", "extension", "size_bytes",
+         "content_hash", "storage_key", "created_at", "updated_at")
+      values
+        ('other-portrait-id', 'other-owner', 'other-portrait', 'Other portrait', 'image/png',
+         'png', 1, ${'a'.repeat(SHA256_HEX_LENGTH)},
+         'other-owner/assets/other-portrait/content.png', ${timestamp}, ${timestamp})
+    `;
+    const crossOwnerImageResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/entities/luca-bianchi/image',
+        body: { assetReadableId: 'other-portrait' },
+      }),
+    );
+    expect(crossOwnerImageResponse.status).toBe(StatusMap['Not Found']);
+
+    const imageAssetsResponse = await app.handle(
+      new Request('http://localhost/api/assets?kind=entity_image&query='),
+    );
+    expect(imageAssetsResponse.status).toBe(StatusMap.OK);
+    expect((await imageAssetsResponse.json()) as { items: Array<{ readableId: string }> }).toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ readableId: 'quarterly-chart' })],
+      }),
+    );
+
+    const invalidImageResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/entities/luca-bianchi/image',
+        body: { assetReadableId: 'investment-memo' },
+      }),
+    );
+    expect(invalidImageResponse.status).toBe(StatusMap['Bad Request']);
+
+    const assignImageResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/entities/luca-bianchi/image',
+        body: { assetReadableId: 'quarterly-chart' },
+      }),
+    );
+    expect(assignImageResponse.status).toBe(StatusMap.OK);
+    expect(await assignImageResponse.json()).toEqual(
+      expect.objectContaining({
+        readableId: 'luca-bianchi',
+        image: expect.objectContaining({ readableId: 'quarterly-chart', mediaType: 'image/png' }),
+      }),
+    );
+
+    const entityDetailResponse = await app.handle(
+      new Request('http://localhost/api/entities/luca-bianchi'),
+    );
+    expect(entityDetailResponse.status).toBe(StatusMap.OK);
+    expect(await entityDetailResponse.json()).toEqual(
+      expect.objectContaining({
+        image: expect.objectContaining({ readableId: 'quarterly-chart' }),
+      }),
+    );
+
+    const entitiesResponse = await app.handle(new Request('http://localhost/api/entities'));
+    expect(entitiesResponse.status).toBe(StatusMap.OK);
+    expect((await entitiesResponse.json()) as { items: unknown[] }).toEqual(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            readableId: 'luca-bianchi',
+            image: expect.objectContaining({ readableId: 'quarterly-chart' }),
+          }),
+        ],
+      }),
+    );
+
+    const secondEntityResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/entities',
+        body: { name: 'Maya Chen', description: 'Product designer and researcher' },
+      }),
+    );
+    expect(secondEntityResponse.status).toBe(StatusMap.Created);
+    const duplicateImageResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/entities/maya-chen/image',
+        body: { assetReadableId: 'quarterly-chart' },
+      }),
+    );
+    expect(duplicateImageResponse.status).toBe(StatusMap.Conflict);
+
+    const availableImageAssetsResponse = await app.handle(
+      new Request('http://localhost/api/assets?kind=entity_image&query='),
+    );
+    expect(availableImageAssetsResponse.status).toBe(StatusMap.OK);
+    expect((await availableImageAssetsResponse.json()) as { items: unknown[] }).toEqual(
+      expect.objectContaining({ items: [] }),
+    );
+
     const pageResponse = await app.handle(
       jsonRequest({
         method: 'POST',
         path: '/pages',
         body: {
-          markdown: `# Evidence report\n\n![Quarterly chart](context-use://asset/quarterly-chart)\n\n[Download chart](context-use://asset/quarterly-chart)`,
+          markdown: `# Evidence report\n\n![Quarterly chart](context-use://asset/quarterly-chart)\n\n[Download chart](context-use://asset/quarterly-chart)\n\n[Luca Bianchi](context-use://entity/luca-bianchi) reviewed the evidence.`,
         },
       }),
     );
     expect(pageResponse.status).toBe(StatusMap.Created);
-    const page = (await pageResponse.json()) as { readableId: string; revisionNumber: number };
+    const page = (await pageResponse.json()) as {
+      readableId: string;
+      revisionNumber: number;
+      mentions: Array<{ image: { readableId: string } | null }>;
+    };
+    expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
     const detailResponse = await app.handle(
       new Request('http://localhost/api/assets/quarterly-chart'),
     );
     expect(detailResponse.status).toBe(StatusMap.OK);
     const detail = (await detailResponse.json()) as {
-      usages: Array<{ presentation: string }>;
+      usages: Array<{ kind: string; presentation?: string; entity?: { readableId: string } }>;
     };
     expect(detail.usages).toEqual([
-      expect.objectContaining({ presentation: 'attachment' }),
-      expect.objectContaining({ presentation: 'embed' }),
+      expect.objectContaining({ kind: 'page', presentation: 'attachment' }),
+      expect.objectContaining({ kind: 'page', presentation: 'embed' }),
+      expect.objectContaining({
+        kind: 'entity_image',
+        entity: expect.objectContaining({ readableId: 'luca-bianchi' }),
+      }),
     ]);
 
     const blockedResponse = await app.handle(
@@ -170,7 +298,7 @@ test('assets are server-inspected, linked from current page Markdown, and archiv
     );
     expect(blockedResponse.status).toBe(StatusMap.Conflict);
     const conflict = (await blockedResponse.json()) as { blockers: unknown[] };
-    expect(conflict.blockers).toHaveLength(1);
+    expect(conflict.blockers).toHaveLength(EXPECTED_ASSET_BLOCKER_COUNT);
 
     const updateResponse = await app.handle(
       jsonRequest({
@@ -183,6 +311,29 @@ test('assets are server-inspected, linked from current page Markdown, and archiv
       }),
     );
     expect(updateResponse.status).toBe(StatusMap.OK);
+
+    const entityBlockedResponse = await app.handle(
+      jsonRequest({ method: 'PUT', path: '/assets/quarterly-chart/archive' }),
+    );
+    expect(entityBlockedResponse.status).toBe(StatusMap.Conflict);
+    expect((await entityBlockedResponse.json()) as { blockers: unknown[] }).toEqual(
+      expect.objectContaining({
+        blockers: [
+          expect.objectContaining({
+            kind: 'entity_image',
+            entity: expect.objectContaining({ readableId: 'luca-bianchi' }),
+          }),
+        ],
+      }),
+    );
+
+    const removeImageResponse = await app.handle(
+      jsonRequest({ method: 'DELETE', path: '/entities/luca-bianchi/image' }),
+    );
+    expect(removeImageResponse.status).toBe(StatusMap.OK);
+    expect(await removeImageResponse.json()).toEqual(
+      expect.objectContaining({ readableId: 'luca-bianchi', image: null }),
+    );
 
     const storedRows = await database<Array<{ storageKey: string }>>`
       select "storage_key" as "storageKey" from "asset"
