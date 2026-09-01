@@ -1,5 +1,4 @@
 import { type AuthInfo, createMcpHandler, McpServer } from '@modelcontextprotocol/server';
-import { MCP_ROUTE_PATH } from '#lib/auth/better-auth.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 
 export interface McpTransportContract {
@@ -9,6 +8,7 @@ export interface McpTransportContract {
     oauthClientId: string;
     scopes: string[];
     expiresAt: number;
+    resource: URL;
     principal: McpClientAuthorizationPrincipal;
   }): Promise<Response>;
   close(): Promise<void>;
@@ -31,7 +31,7 @@ export function createMcpTransport(): McpTransportContract {
         clientId: input.oauthClientId,
         scopes: input.scopes,
         expiresAt: input.expiresAt,
-        resource: new URL(MCP_ROUTE_PATH, input.request.url),
+        resource: input.resource,
         extra: {
           ownerId: input.principal.ownerId,
           clientAuthorizationId: input.principal.clientAuthorizationId,

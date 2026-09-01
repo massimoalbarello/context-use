@@ -99,6 +99,13 @@ test('active client authorization identity is stable per owner and OAuth client,
           clientAuthorizationId: first.clientAuthorization.id,
         }),
       ).toEqual({ state: 'archived' });
+      expect(
+        await service.rename({
+          actorId: OWNER_USER_ID,
+          clientAuthorizationId: first.clientAuthorization.id,
+          name: 'Archived identities stay fixed',
+        }),
+      ).toEqual({ state: 'not_found' });
       const afterArchive = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'verified-client',

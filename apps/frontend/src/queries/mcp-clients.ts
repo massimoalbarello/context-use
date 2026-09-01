@@ -63,7 +63,7 @@ export async function archiveMcpClient(input: { clientAuthorizationId: string })
     .clients({
       clientAuthorizationId: input.clientAuthorizationId,
     })
-    .delete();
+    .archive.put();
   if (error) {
     throw new Error(apiErrorMessage(error));
   }

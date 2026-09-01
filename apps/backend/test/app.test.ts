@@ -29,7 +29,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   };
   const frontendAssetsService: FrontendAssetsServiceContract = {
     routes: () => new Map<string, Response>(),
-    fallback: () => null,
+    fallback: () => new Response('frontend'),
   };
   const assetsService: AssetsServiceContract = {
     create: unexpectedCall,
@@ -70,7 +70,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     },
   };
 
-  const response = await createApp({
+  const app = createApp({
     auth,
     assetsService,
     frontendAssetsService,
@@ -82,9 +82,16 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     ownerRegistrationService,
     pagesService,
     profilesService,
-  }).handle(new Request('http://localhost/api/health'));
+  });
+  const response = await app.handle(new Request('http://localhost/api/health'));
 
   expect(response.status).toBe(StatusMap.OK);
   expect(await response.json()).toEqual({ status: 'ok', uptime: 0 });
   expect(healthChecks).toBe(1);
+
+  for (const path of ['/mcp', '/mcp/']) {
+    const nonPostMcpResponse = await app.handle(new Request(`http://localhost${path}`));
+    expect(nonPostMcpResponse.status).toBe(StatusMap['Not Found']);
+    expect(await nonPostMcpResponse.json()).toEqual({ error: 'Not Found' });
+  }
 });

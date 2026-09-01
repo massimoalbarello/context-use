@@ -119,8 +119,8 @@ export function createMcpClientsController({
         response: { [StatusMap.OK]: McpClientSchema },
       },
     )
-    .delete(
-      '/mcp/clients/:clientAuthorizationId',
+    .put(
+      '/mcp/clients/:clientAuthorizationId/archive',
       async ({ params, user, status }) => {
         const result = await clientAuthorizationsService.archive({
           actorId: user.id,

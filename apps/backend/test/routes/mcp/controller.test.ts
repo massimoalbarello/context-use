@@ -7,6 +7,7 @@ import { unusedMcpClientAuthorizationsService, unusedMcpTransport } from '../../
 
 const MILLISECONDS_PER_SECOND = 1_000;
 const ACCESS_TOKEN_LIFETIME_SECONDS = 300;
+const HTTP_NOT_FOUND = 404;
 const HTTP_NO_CONTENT = 204;
 const HTTP_UNAUTHORIZED = 401;
 
@@ -25,6 +26,7 @@ test('an archived or revoked client authorization is rejected before the MCP tra
             oauthClientId: 'client',
             expiresAt:
               Math.floor(Date.now() / MILLISECONDS_PER_SECOND) + ACCESS_TOKEN_LIFETIME_SECONDS,
+            resource: new URL('https://context.example/mcp'),
             scopes: ['mcp'],
             token: 'access-token',
           },
@@ -42,11 +44,14 @@ test('an archived or revoked client authorization is rejected before the MCP tra
     },
   } satisfies McpTransportContract;
 
-  const response = await createMcpController({
+  const controller = createMcpController({
     auth,
     clientAuthorizationsService,
     transport,
-  }).handle(new Request('https://context.example/mcp', { method: 'POST' }));
+  });
+  const response = await controller.handle(
+    new Request('https://internal-proxy.invalid/mcp', { method: 'POST' }),
+  );
 
   expect(response.status).toBe(HTTP_UNAUTHORIZED);
   expect(response.headers.get('www-authenticate')).toContain(
@@ -57,4 +62,7 @@ test('an archived or revoked client authorization is rejected before the MCP tra
     error: { message: 'MCP client is not authorized' },
   });
   expect(transportCalls).toBe(0);
+
+  const nonPostResponse = await controller.handle(new Request('https://context.example/mcp'));
+  expect(nonPostResponse.status).toBe(HTTP_NOT_FOUND);
 });

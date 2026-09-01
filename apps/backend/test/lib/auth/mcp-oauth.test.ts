@@ -344,7 +344,7 @@ describe('MCP OAuth foundation', () => {
             },
           });
           const accepted = await protectedHandler(
-            new Request(urls.mcpResource, {
+            new Request('https://internal-proxy.invalid/mcp', {
               method: 'POST',
               headers: { authorization: `Bearer ${initial.access_token}` },
             }),
@@ -360,6 +360,7 @@ describe('MCP OAuth foundation', () => {
             oauthClientId: client.client_id,
             scopes: expect.arrayContaining([MCP_SCOPE]),
           });
+          expect(authenticatedToken?.resource.href).toBe(urls.mcpResource);
 
           const mismatchedIssuer = createMcpProtectedRequestHandler(
             {

@@ -3,10 +3,10 @@ import { type Auth, MCP_ROUTE_PATH } from '#lib/auth/better-auth.ts';
 import type { McpTransportContract } from '#lib/mcp/transport.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
 
-function unauthorizedClientResponse(request: Request): Response {
+function unauthorizedClientResponse(resource: URL): Response {
   const resourceMetadata = new URL(
     `/.well-known/oauth-protected-resource${MCP_ROUTE_PATH}`,
-    request.url,
+    resource.origin,
   );
   return new Response(
     JSON.stringify({
@@ -40,7 +40,7 @@ export function createMcpController({
         oauthClientId: token.oauthClientId,
       });
       if (!principal) {
-        return unauthorizedClientResponse(request);
+        return unauthorizedClientResponse(token.resource);
       }
       return await transport.fetch({
         request,
@@ -48,12 +48,13 @@ export function createMcpController({
         oauthClientId: token.oauthClientId,
         scopes: token.scopes,
         expiresAt: token.expiresAt,
+        resource: token.resource,
         principal,
       });
     },
   });
 
-  return new Elysia().all(MCP_ROUTE_PATH, ({ request }) => protectedRequest(request), {
+  return new Elysia().post(MCP_ROUTE_PATH, ({ request }) => protectedRequest(request), {
     parse: 'none',
     detail: { hide: true },
   });

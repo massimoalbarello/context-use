@@ -179,7 +179,7 @@ export function createAuth(input: {
     }: {
       handler: (input: { request: Request; token: McpAccessToken }) => Promise<Response>;
     }) {
-      return requireMcpAuth(auth, verifiedMcpRequestHandler({ handler }), {
+      return requireMcpAuth(auth, verifiedMcpRequestHandler({ handler, resource: mcpResource }), {
         resource: mcpResource,
         requiredScopes: [MCP_SCOPE],
         challengeScopes: [MCP_SCOPE, 'offline_access'],
@@ -198,9 +198,11 @@ function stringClaim(value: unknown): string | null {
 function mcpAccessToken({
   request,
   claims,
+  resource,
 }: {
   request: Request;
   claims: VerifiedMcpClaims;
+  resource: string;
 }): McpAccessToken | null {
   const ownerId = stringClaim(claims.sub);
   const oauthClientId = stringClaim(claims.client_id) ?? stringClaim(claims.azp);
@@ -208,18 +210,20 @@ function mcpAccessToken({
   const scopes = stringClaim(claims.scope)?.split(' ') ?? [];
   const token = request.headers.get('authorization')?.replace(/^\S+\s+/, '') ?? '';
   return ownerId && oauthClientId && expiresAt && token
-    ? { ownerId, oauthClientId, expiresAt, scopes, token }
+    ? { ownerId, oauthClientId, expiresAt, resource: new URL(resource), scopes, token }
     : null;
 }
 
 function verifiedMcpRequestHandler({
   handler,
+  resource,
 }: {
   handler: (input: { request: Request; token: McpAccessToken }) => Promise<Response>;
+  resource: string;
 }): VerifiedMcpRequestHandler {
   return (...parameters) => {
     const [request, claims] = parameters;
-    const token = mcpAccessToken({ request, claims });
+    const token = mcpAccessToken({ request, claims, resource });
     if (!token) {
       return new Response(JSON.stringify({ error: 'invalid_token' }), {
         status: 401,
@@ -234,6 +238,7 @@ export type McpAccessToken = {
   ownerId: string;
   oauthClientId: string;
   expiresAt: number;
+  resource: URL;
   scopes: string[];
   token: string;
 };
