@@ -321,7 +321,10 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
       expect(downloadRequest.requiredHeaders).toEqual({
         [MCP_ASSET_TRANSFER_CAPABILITY_HEADER]: expect.any(String),
       });
+      expect(downloadRequest.instructions).toContain('every required header');
       expect(downloadRequest.instructions).toContain('raw asset bytes');
+      expect(downloadRequest.instructions).toContain('not JSON or base64');
+      expect(downloadRequest.instructions).toContain('Content-Type and Content-Disposition');
       const downloadResponse = await transferController.handle(
         new Request(downloadRequest.url, {
           method: downloadRequest.method,

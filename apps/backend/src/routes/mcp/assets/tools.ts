@@ -75,7 +75,7 @@ const ArchiveAssetOutputSchema = z.object({
 const UPLOAD_INSTRUCTIONS =
   'Send the raw asset bytes as the request body. Do not base64-encode them or wrap them in JSON or multipart form data. Use this request once before expiresAt; its HTTP response is the final typed asset result.';
 const DOWNLOAD_INSTRUCTIONS =
-  'Fetch the raw asset bytes with this exact request once before expiresAt. Treat the response Content-Type and Content-Disposition as authoritative.';
+  'Send this exact GET request to the supplied URL with every required header once before expiresAt. Read the HTTP response body as raw asset bytes, not JSON or base64. Treat its Content-Type and Content-Disposition headers as authoritative.';
 
 export function registerAssetTools({
   server,
