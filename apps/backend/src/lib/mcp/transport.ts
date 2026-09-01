@@ -1,4 +1,4 @@
-import { type AuthInfo, createMcpHandler, McpServer } from '@modelcontextprotocol/server';
+import { type AuthInfo, createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 
 export interface McpTransportContract {
@@ -14,14 +14,41 @@ export interface McpTransportContract {
   close(): Promise<void>;
 }
 
-export function createMcpTransport(): McpTransportContract {
+export type ContextUseMcpServerFactory = (input: {
+  principal: McpClientAuthorizationPrincipal;
+}) => McpServer;
+
+function principalFrom(authInfo: AuthInfo | undefined): McpClientAuthorizationPrincipal {
+  const principal = authInfo?.extra?.principal;
+  if (
+    !principal ||
+    typeof principal !== 'object' ||
+    !('ownerId' in principal) ||
+    typeof principal.ownerId !== 'string' ||
+    !('clientAuthorizationId' in principal) ||
+    typeof principal.clientAuthorizationId !== 'string' ||
+    !('clientAuthorizationName' in principal) ||
+    typeof principal.clientAuthorizationName !== 'string'
+  ) {
+    throw new Error('Authenticated MCP principal is missing from the transport request');
+  }
+  return {
+    ownerId: principal.ownerId,
+    clientAuthorizationId: principal.clientAuthorizationId,
+    clientAuthorizationName: principal.clientAuthorizationName,
+  };
+}
+
+export function createMcpTransport({
+  createServer,
+}: {
+  createServer: ContextUseMcpServerFactory;
+}): McpTransportContract {
   const handler = createMcpHandler(
-    () =>
-      new McpServer({
-        name: 'context-use',
-        version: '1.0.0',
-      }),
-    { legacy: 'reject' },
+    ({ authInfo }) => createServer({ principal: principalFrom(authInfo) }),
+    // The SDK serves 2025-era requests statelessly from this same authenticated factory, so
+    // compatibility cannot drift into a second set of tools or bypass the application services.
+    { legacy: 'stateless' },
   );
 
   return {
@@ -32,10 +59,7 @@ export function createMcpTransport(): McpTransportContract {
         scopes: input.scopes,
         expiresAt: input.expiresAt,
         resource: input.resource,
-        extra: {
-          ownerId: input.principal.ownerId,
-          clientAuthorizationId: input.principal.clientAuthorizationId,
-        },
+        extra: { principal: input.principal },
       };
       return await handler.fetch(input.request, { authInfo });
     },

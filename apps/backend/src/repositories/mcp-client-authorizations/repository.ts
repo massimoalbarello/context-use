@@ -15,14 +15,20 @@ export interface McpClientAuthorizationsRepositoryContract {
     oauthClientId: string;
     verifiedClientId: string | null;
     now: string;
-  }): Promise<McpClientAuthorization>;
+  }): Promise<
+    { state: 'approved'; clientAuthorization: McpClientAuthorization } | { state: 'name_conflict' }
+  >;
   list(input: { ownerId: string }): Promise<McpClientAuthorization[]>;
   rename(input: {
     ownerId: string;
     clientAuthorizationId: string;
     name: string;
     updatedAt: string;
-  }): Promise<McpClientAuthorization | null>;
+  }): Promise<
+    | { state: 'renamed'; clientAuthorization: McpClientAuthorization }
+    | { state: 'name_conflict' }
+    | { state: 'not_found' }
+  >;
   archive(input: {
     ownerId: string;
     clientAuthorizationId: string;
@@ -131,7 +137,9 @@ export class McpClientAuthorizationsRepository
     oauthClientId: string;
     verifiedClientId: string | null;
     now: string;
-  }): Promise<McpClientAuthorization> {
+  }): Promise<
+    { state: 'approved'; clientAuthorization: McpClientAuthorization } | { state: 'name_conflict' }
+  > {
     return await this.sql.begin(async (tx) => {
       const existing = await this.activeForOAuthClient({
         db: tx,
@@ -139,32 +147,44 @@ export class McpClientAuthorizationsRepository
         oauthClientId: input.oauthClientId,
       });
       if (existing) {
-        await tx`
-          update "mcp_client_authorization"
+        const renamed = await tx`
+          update or ignore "mcp_client_authorization"
           set "name" = ${input.name}, "updated_at" = ${input.now}
           where "id" = ${existing.id} and "owner_id" = ${input.ownerId}
+          returning "id"
         `;
-        return { ...existing, name: input.name, updatedAt: input.now };
+        return renamed.length > 0
+          ? {
+              state: 'approved' as const,
+              clientAuthorization: { ...existing, name: input.name, updatedAt: input.now },
+            }
+          : { state: 'name_conflict' as const };
       }
 
-      await tx`
-        insert into "mcp_client_authorization"
+      const inserted = await tx`
+        insert or ignore into "mcp_client_authorization"
           ("id", "owner_id", "name", "oauth_client_id", "verified_client_id", "created_at",
            "updated_at")
         values
           (${input.id}, ${input.ownerId}, ${input.name}, ${input.oauthClientId},
            ${input.verifiedClientId}, ${input.now}, ${input.now})
+        returning "id"
       `;
-      return {
-        id: input.id,
-        ownerId: input.ownerId,
-        name: input.name,
-        oauthClientId: input.oauthClientId,
-        verifiedClientId: input.verifiedClientId,
-        createdAt: input.now,
-        updatedAt: input.now,
-        archivedAt: null,
-      };
+      return inserted.length > 0
+        ? {
+            state: 'approved' as const,
+            clientAuthorization: {
+              id: input.id,
+              ownerId: input.ownerId,
+              name: input.name,
+              oauthClientId: input.oauthClientId,
+              verifiedClientId: input.verifiedClientId,
+              createdAt: input.now,
+              updatedAt: input.now,
+              archivedAt: null,
+            },
+          }
+        : { state: 'name_conflict' as const };
     });
   }
 
@@ -191,25 +211,36 @@ export class McpClientAuthorizationsRepository
     clientAuthorizationId: string;
     name: string;
     updatedAt: string;
-  }): Promise<McpClientAuthorization | null> {
-    const rows = await this.sql.RenameActiveMcpClientAuthorization`
-      /* @notNull id ownerId name oauthClientId createdAt updatedAt */
-      update "mcp_client_authorization"
-      set "name" = ${input.name}, "updated_at" = ${input.updatedAt}
-      where "id" = ${input.clientAuthorizationId}
-        and "owner_id" = ${input.ownerId}
-        and "archived_at" is null
-      returning
-        "id",
-        "owner_id" as "ownerId",
-        "name",
-        "oauth_client_id" as "oauthClientId",
-        "verified_client_id" as "verifiedClientId",
-        "created_at" as "createdAt",
-        "updated_at" as "updatedAt",
-        "archived_at" as "archivedAt"
-    `;
-    return rows[0] ?? null;
+  }): Promise<
+    | { state: 'renamed'; clientAuthorization: McpClientAuthorization }
+    | { state: 'name_conflict' }
+    | { state: 'not_found' }
+  > {
+    return await this.sql.begin(async (tx) => {
+      const rows = await tx.RenameActiveMcpClientAuthorization`
+        /* @notNull id ownerId name oauthClientId createdAt updatedAt */
+        update or ignore "mcp_client_authorization"
+        set "name" = ${input.name}, "updated_at" = ${input.updatedAt}
+        where "id" = ${input.clientAuthorizationId}
+          and "owner_id" = ${input.ownerId}
+          and "archived_at" is null
+        returning
+          "id",
+          "owner_id" as "ownerId",
+          "name",
+          "oauth_client_id" as "oauthClientId",
+          "verified_client_id" as "verifiedClientId",
+          "created_at" as "createdAt",
+          "updated_at" as "updatedAt",
+          "archived_at" as "archivedAt"
+      `;
+      const clientAuthorization = rows[0];
+      if (clientAuthorization) {
+        return { state: 'renamed' as const, clientAuthorization };
+      }
+      const active = await this.activeById({ db: tx, ...input });
+      return active ? { state: 'name_conflict' as const } : { state: 'not_found' as const };
+    });
   }
 
   async archive(input: {

@@ -22,6 +22,8 @@ const errorResponses = {
   [StatusMap['Not Found']]: ErrorResponseSchema,
 };
 
+const clientNameConflict = { error: 'An MCP client already uses this name' } as const;
+
 export function createMcpClientsController({
   auth,
   clientAuthorizationsService,
@@ -68,12 +70,18 @@ export function createMcpClientsController({
         if (result.state === 'not_found') {
           return status(StatusMap['Not Found'], { error: 'OAuth client not found' });
         }
+        if (result.state === 'name_conflict') {
+          return status(StatusMap.Conflict, clientNameConflict);
+        }
         return status(StatusMap.Created, mcpClientResponse(result.clientAuthorization));
       },
       {
         detail: { tags: ['MCP clients'], summary: 'Approve and name an MCP client' },
         body: ApproveMcpClientBodySchema,
-        response: { [StatusMap.Created]: McpClientSchema },
+        response: {
+          [StatusMap.Created]: McpClientSchema,
+          [StatusMap.Conflict]: ErrorResponseSchema,
+        },
       },
     )
     .get(
@@ -110,13 +118,19 @@ export function createMcpClientsController({
         if (result.state === 'not_found') {
           return status(StatusMap['Not Found'], { error: 'MCP client not found' });
         }
+        if (result.state === 'name_conflict') {
+          return status(StatusMap.Conflict, clientNameConflict);
+        }
         return status(StatusMap.OK, mcpClientResponse(result.clientAuthorization));
       },
       {
         detail: { tags: ['MCP clients'], summary: 'Rename an MCP client' },
         params: McpClientParamsSchema,
         body: RenameMcpClientBodySchema,
-        response: { [StatusMap.OK]: McpClientSchema },
+        response: {
+          [StatusMap.OK]: McpClientSchema,
+          [StatusMap.Conflict]: ErrorResponseSchema,
+        },
       },
     )
     .put(

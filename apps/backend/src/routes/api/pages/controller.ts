@@ -29,7 +29,11 @@ export function createPagesController({
     .post(
       '/pages',
       async ({ body, user, status }) => {
-        const result = await pagesService.create({ ownerId: user.id, ...body });
+        const result = await pagesService.create({
+          ownerId: user.id,
+          actor: { kind: 'owner' },
+          ...body,
+        });
         if (result.state === 'saved') {
           return status(StatusMap.Created, knowledgePageResponse(result.page));
         }

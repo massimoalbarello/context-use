@@ -33,6 +33,10 @@ export const KnowledgePageReferenceSchema = t.Object({
 export const KnowledgePageRevisionSummarySchema = t.Object({
   revisionNumber: t.Integer({ minimum: 1 }),
   title: t.String(),
+  author: t.Union([
+    t.Object({ kind: t.Literal('owner'), name: t.String() }),
+    t.Object({ kind: t.Literal('mcp_client'), name: t.String() }),
+  ]),
   createdAt: t.Date(),
 });
 
