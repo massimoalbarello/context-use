@@ -131,6 +131,12 @@ same ownership.
   At rest, `Edit {resource}` precedes lifecycle actions. Entering edit mode replaces that group with
   `Cancel` followed by `Save {resource}` at the same top-right anchor. Routes must not rebuild that
   button group or shift the header, spacing, or content.
+- Resource-like management cards with editable identity and lifecycle actions follow that same
+  contract. At rest, values are read-only and the top-right action group contains `Edit {resource}`
+  followed by lifecycle actions such as `Archive`. Entering edit mode mounts the fields in place and
+  replaces the entire action group with `Cancel` followed by `Save {resource}`. Never leave editable
+  fields or save controls visible at rest, move lifecycle actions below the form, or invent a second
+  action placement for a card.
 - Edit displayed identity in place when the presented and editable values are the same concept.
   Entity and asset names use the shared resource-name display and input treatment, so editing swaps
   the H1 for a matching field without duplicating content in a form card or adding an “editing”

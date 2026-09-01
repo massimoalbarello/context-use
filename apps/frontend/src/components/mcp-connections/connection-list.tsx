@@ -1,8 +1,11 @@
+import { Archive } from 'lucide-react';
+import { useId, useState } from 'react';
 import {
   useArchiveMcpConnection,
   useRenameMcpConnection,
 } from '../../lib/hooks/use-mcp-connections';
 import type { McpConnection } from '../../queries/mcp-connections';
+import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -17,51 +20,105 @@ import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { ConnectionNameForm } from './connection-name-form';
 
+function ConnectionArchiveAction({
+  connection,
+  pending,
+  onConfirm,
+}: {
+  connection: McpConnection;
+  pending: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger
+        render={
+          <Button variant="destructive" size="lg" type="button" disabled={pending}>
+            <Archive data-icon="inline-start" aria-hidden="true" />
+            {pending ? 'Archiving…' : 'Archive'}
+          </Button>
+        }
+      />
+      <AlertDialogContent>
+        <AlertDialogTitle>Archive {connection.name}?</AlertDialogTitle>
+        <AlertDialogDescription>
+          Refresh credentials will be revoked immediately. The client must be approved as a new
+          connection before it can access Context Use again.
+        </AlertDialogDescription>
+        <AlertDialogFooter>
+          <AlertDialogClose render={<Button variant="outline">Cancel</Button>} />
+          <AlertDialogClose
+            render={
+              <Button variant="destructive" onClick={onConfirm}>
+                Archive client
+              </Button>
+            }
+          />
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function ActiveConnection({ connection }: { connection: McpConnection }) {
   const rename = useRenameMcpConnection();
   const archive = useArchiveMcpConnection();
+  const [editing, setEditing] = useState(false);
+  const editFormId = useId();
   return (
     <Card>
-      <CardContent className="grid gap-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+      <CardContent className="grid gap-5">
+        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+          <div className="min-w-0">
             <strong>{connection.name}</strong>
             <p className="mt-1 text-muted-foreground text-sm">
               {connection.verifiedClientId ? 'Verified client identity' : 'Registered OAuth client'}
             </p>
           </div>
-          <Badge variant="outline">Active</Badge>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {editing ? (
+              <ResourceDetailActions
+                mode="edit"
+                resource="client"
+                form={editFormId}
+                pending={rename.isPending}
+                onCancel={() => {
+                  rename.reset();
+                  setEditing(false);
+                }}
+              />
+            ) : (
+              <ResourceDetailActions
+                mode="view"
+                resource="client"
+                onEdit={() => {
+                  rename.reset();
+                  setEditing(true);
+                }}
+              >
+                <ConnectionArchiveAction
+                  connection={connection}
+                  pending={archive.isPending}
+                  onConfirm={() => archive.mutate({ connectionId: connection.id })}
+                />
+              </ResourceDetailActions>
+            )}
+          </div>
         </div>
-        <ConnectionNameForm
-          initialName={connection.name}
-          pending={rename.isPending}
-          error={rename.error}
-          submitLabel="Rename"
-          onSubmit={(name) => rename.mutate({ connectionId: connection.id, name })}
-          secondaryAction={
-            <AlertDialog>
-              <AlertDialogTrigger render={<Button variant="destructive" type="button" />}>
-                Archive connection
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogTitle>Archive {connection.name}?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Refresh credentials will be revoked immediately. The client must be approved as a
-                  new connection before it can access Context Use again.
-                </AlertDialogDescription>
-                <AlertDialogFooter>
-                  <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
-                  <AlertDialogClose
-                    render={<Button variant="destructive" disabled={archive.isPending} />}
-                    onClick={() => archive.mutate({ connectionId: connection.id })}
-                  >
-                    Archive connection
-                  </AlertDialogClose>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          }
-        />
+        {editing && (
+          <ConnectionNameForm
+            initialName={connection.name}
+            pending={rename.isPending}
+            error={rename.error}
+            formId={editFormId}
+            onSubmit={(name) =>
+              rename.mutate(
+                { connectionId: connection.id, name },
+                { onSuccess: () => setEditing(false) },
+              )
+            }
+          />
+        )}
         {archive.error && (
           <p className="text-destructive text-sm" role="alert">
             {archive.error.message}

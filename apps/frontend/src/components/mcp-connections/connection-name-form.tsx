@@ -20,6 +20,7 @@ export function ConnectionNameForm({
   initialName,
   pending,
   error,
+  formId,
   submitLabel,
   description,
   onSubmit,
@@ -28,7 +29,8 @@ export function ConnectionNameForm({
   initialName: string;
   pending: boolean;
   error: Error | null;
-  submitLabel: string;
+  formId?: string;
+  submitLabel?: string;
   description?: string;
   onSubmit: (name: string) => void;
   secondaryAction?: ReactNode;
@@ -43,6 +45,7 @@ export function ConnectionNameForm({
   return (
     <form
       className="grid gap-4"
+      id={formId}
       onSubmit={(event) => {
         event.preventDefault();
         void form.handleSubmit();
@@ -67,12 +70,16 @@ export function ConnectionNameForm({
         )}
       </form.Field>
       {error && <FieldError>{error.message}</FieldError>}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" size="lg" disabled={pending}>
-          {pending ? 'Saving…' : submitLabel}
-        </Button>
-        {secondaryAction}
-      </div>
+      {(submitLabel || secondaryAction) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {submitLabel && (
+            <Button type="submit" size="lg" disabled={pending}>
+              {pending ? 'Saving…' : submitLabel}
+            </Button>
+          )}
+          {secondaryAction}
+        </div>
+      )}
     </form>
   );
 }
