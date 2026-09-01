@@ -31,6 +31,7 @@ const INTERNAL_ENTITY_ID = '01900000-0000-7000-8000-000000000001';
 const INTERNAL_PAGE_ID = '01900000-0000-7000-8000-000000000002';
 const INTERNAL_CLIENT_AUTHORIZATION_ID = '01900000-0000-7000-8000-000000000003';
 const NOW = '2026-09-01T12:00:00.000Z';
+const MAX_HYPERMEDIA_CURATION_GUIDE_WORDS = 450;
 
 function unexpectedCall(): never {
   throw new Error('Unexpected MCP service call');
@@ -146,7 +147,15 @@ function errorCode(result: Awaited<ReturnType<Client['callTool']>>): unknown {
     : undefined;
 }
 
-test('MCP publishes fifteen typed tools with accurate safety annotations and no private coordinates', async () => {
+async function readHypermediaCurationGuideVersion(client: Client): Promise<string> {
+  const result = await client.callTool({ name: 'read_hypermedia_curation_guide' });
+  if (result.isError) {
+    throw new Error(JSON.stringify(result));
+  }
+  return (result.structuredContent as { guide_version: string }).guide_version;
+}
+
+test('MCP publishes sixteen typed tools with accurate safety annotations and no private coordinates', async () => {
   await withMcpClient({
     run: async (client) => {
       const { tools } = await client.listTools();
@@ -161,6 +170,7 @@ test('MCP publishes fifteen typed tools with accurate safety annotations and no 
         'read_entity',
         'update_entity',
         'archive_entity',
+        'read_hypermedia_curation_guide',
         'create_knowledge_page',
         'list_knowledge_pages',
         'read_knowledge_page',
@@ -191,6 +201,16 @@ test('MCP publishes fifteen typed tools with accurate safety annotations and no 
       expect(tools.find(({ name }) => name === 'read_knowledge_page')?.outputSchema).toMatchObject({
         properties: { readableId: { pattern: expect.any(String) } },
       });
+      expect(tools.find(({ name }) => name === 'read_hypermedia_curation_guide')).toMatchObject({
+        annotations: { readOnlyHint: true, destructiveHint: false },
+        inputSchema: { properties: {} },
+        outputSchema: {
+          properties: {
+            guide: { type: 'string' },
+            guide_version: { maxLength: 22, minLength: 22 },
+          },
+        },
+      });
       expect(tools.find(({ name }) => name === 'read_asset')?.inputSchema).toMatchObject({
         properties: { address: { pattern: expect.any(String) } },
       });
@@ -206,8 +226,134 @@ test('MCP publishes fifteen typed tools with accurate safety annotations and no 
       expect(assetToolDescriptions).toContain('identity, location, intent, or chronology');
       expect(JSON.stringify(tools)).not.toContain('storageKey');
       expect(JSON.stringify(tools)).not.toContain('uuid');
+
+      const gatedTools = new Set([
+        'create_knowledge_page',
+        'update_knowledge_page',
+        'archive_knowledge_page',
+      ]);
+      for (const tool of tools) {
+        const properties = tool.inputSchema.properties as Record<string, unknown>;
+        if (gatedTools.has(tool.name)) {
+          expect(properties).toHaveProperty('guide_version');
+          expect(tool.inputSchema.required).not.toContain('guide_version');
+        } else {
+          expect(properties).not.toHaveProperty('guide_version');
+        }
+      }
     },
   });
+});
+
+test('the concise guide is deterministic and names only available retrieval tools', async () => {
+  await withMcpClient({
+    run: async (client) => {
+      const { tools } = await client.listTools();
+      const result = await client.callTool({ name: 'read_hypermedia_curation_guide' });
+      expect(result.isError).not.toBe(true);
+      const { guide, guide_version } = result.structuredContent as {
+        guide: string;
+        guide_version: string;
+      };
+      expect(guide_version).toMatch(/^[A-Za-z0-9_-]{22}$/);
+      expect(guide.split(/\s+/).length).toBeLessThanOrEqual(MAX_HYPERMEDIA_CURATION_GUIDE_WORDS);
+      expect(guide).toContain('self-writing autobiography');
+      expect(guide).toMatch(/where the user\s+and their agents stay in sync/);
+      expect(guide).toContain('Do not merely inventory facts');
+      expect(guide).toContain('Learn proactively');
+      expect(guide).toContain('Never turn uncertainty into assertion');
+      expect(guide).toContain('The autobiography is the graph, not one page');
+      expect(guide).toMatch(/Never let a catch-all\s+page grow\s+without bound/);
+      expect(guide).toContain('smallest coherent revision');
+      expect(guide).toContain('explain the blockers to the user');
+      expect(guide).not.toContain('search_hypermedia');
+
+      const availableToolNames = new Set(tools.map(({ name }) => name));
+      const guideToolNames = [...guide.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)].flatMap((match) =>
+        match[1] ? [match[1]] : [],
+      );
+      expect(guideToolNames.length).toBeGreaterThan(0);
+      expect(guideToolNames.every((toolName) => availableToolNames.has(toolName))).toBe(true);
+    },
+  });
+});
+
+test('page mutations require a current guide version without transport state or version leakage', async () => {
+  let currentGuideVersion = '';
+  await withMcpClient({
+    run: async (client) => {
+      currentGuideVersion = await readHypermediaCurationGuideVersion(client);
+    },
+  });
+
+  const mutationCalls: string[] = [];
+  const pagesService: KnowledgePagesServiceContract = {
+    ...unusedPagesService,
+    create: () => {
+      mutationCalls.push('create_knowledge_page');
+      return Promise.resolve({ state: 'saved', page });
+    },
+    update: () => {
+      mutationCalls.push('update_knowledge_page');
+      return Promise.resolve({ state: 'saved', page });
+    },
+    archive: () => {
+      mutationCalls.push('archive_knowledge_page');
+      return Promise.resolve({ state: 'archived' });
+    },
+  };
+  const staleGuideVersion = `${currentGuideVersion.startsWith('A') ? 'B' : 'A'}${currentGuideVersion.slice(1)}`;
+  const mutations = [
+    {
+      name: 'create_knowledge_page',
+      arguments: { markdown: page.markdown },
+    },
+    {
+      name: 'update_knowledge_page',
+      arguments: {
+        address: 'context-use://page/growth-playbook',
+        expectedRevisionNumber: 2,
+        markdown: page.markdown,
+      },
+    },
+    {
+      name: 'archive_knowledge_page',
+      arguments: { address: 'context-use://page/growth-playbook' },
+    },
+  ];
+
+  await withMcpClient({
+    pagesService,
+    run: async (client) => {
+      for (const mutation of mutations) {
+        for (const guide_version of [undefined, staleGuideVersion]) {
+          const result = await client.callTool({
+            name: mutation.name,
+            arguments: {
+              ...mutation.arguments,
+              ...(guide_version ? { guide_version } : {}),
+            },
+          });
+          expect(result.isError).not.toBe(true);
+          expect(result.structuredContent).toEqual({
+            status: 'action_required',
+            code: 'hypermedia_curation_guide_required',
+            message:
+              'Call read_hypermedia_curation_guide, then retry this tool with the returned guide_version.',
+          });
+          expect(JSON.stringify(result)).not.toContain(currentGuideVersion);
+        }
+
+        const result = await client.callTool({
+          name: mutation.name,
+          arguments: { ...mutation.arguments, guide_version: currentGuideVersion },
+        });
+        expect(result.isError).not.toBe(true);
+        expect(result.structuredContent).not.toHaveProperty('guide_version');
+      }
+    },
+  });
+  expect(mutationCalls).toEqual(mutations.map(({ name }) => name));
 });
 
 test('MCP lists are owner-scoped, bounded, cursor-paginated, and reject invalid cursors', async () => {
@@ -363,6 +509,7 @@ test('MCP mutation outcomes retain duplicate retries and stale revision conflict
         arguments: {
           address: 'context-use://page/growth-playbook',
           expectedRevisionNumber: 1,
+          guide_version: await readHypermediaCurationGuideVersion(client),
           markdown: page.markdown,
         },
       });
@@ -496,9 +643,13 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
       actor: firstActor,
       pagesService,
       run: async (client) => {
+        const guide_version = await readHypermediaCurationGuideVersion(client);
         const created = await client.callTool({
           name: 'create_knowledge_page',
-          arguments: { markdown: '# MCP notes\n\nCreated by the research agent.' },
+          arguments: {
+            guide_version,
+            markdown: '# MCP notes\n\nCreated by the research agent.',
+          },
         });
         if (created.isError) {
           throw new Error(JSON.stringify(created));
@@ -517,11 +668,13 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
       actor: { ...firstActor, clientAuthorizationName: 'Renamed research agent' },
       pagesService,
       run: async (client) => {
+        const guide_version = await readHypermediaCurationGuideVersion(client);
         const updated = await client.callTool({
           name: 'update_knowledge_page',
           arguments: {
             address,
             expectedRevisionNumber: 1,
+            guide_version,
             markdown: '# MCP notes\n\nUpdated by the renamed research agent.',
           },
         });
