@@ -1,19 +1,68 @@
+import { MAX_ASSET_BYTES, MAX_ASSET_MEBIBYTES } from '@repo/backend/asset';
 import { useState } from 'react';
+import { DuplicateResourceNameError } from '../../lib/api-error';
 import { cn } from '../../lib/class-names';
 import { useImageAssetSuggestions } from '../../lib/hooks/use-assets';
 import { useCreateAsset } from '../../lib/hooks/use-create-asset';
 import { useRemoveEntityImage, useSetEntityImage } from '../../lib/hooks/use-entity-image';
 import type { EntityDetail } from '../../queries/entities';
 import { AssetCardContent } from '../assets/asset-link';
-import { AssetUploadForm } from '../assets/asset-upload-form';
 import { ResourceList, resourceCardVariants } from '../knowledge/resource-list';
-import { Button } from '../ui/button';
-import { FieldError } from '../ui/field';
+import { Button, buttonVariants } from '../ui/button';
+import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { createEntityImageAsset } from './entity-image-asset';
 import { EntityAvatar } from './entity-link';
 
 const IMAGE_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp';
+
+function EntityImagePicker({
+  selectedImageId,
+  pending,
+  onSelect,
+}: {
+  selectedImageId?: string;
+  pending: boolean;
+  onSelect: (assetReadableId: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const suggestions = useImageAssetSuggestions(query);
+
+  return (
+    <div className="grid gap-3 pt-4">
+      <Input
+        value={query}
+        placeholder="Search image assets"
+        aria-label="Search image assets"
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      {suggestions.isPending ? (
+        <p className="text-muted-foreground text-sm">Loading image assets…</p>
+      ) : suggestions.error ? (
+        <FieldError>{suggestions.error.message}</FieldError>
+      ) : suggestions.data && suggestions.data.length > 0 ? (
+        <ResourceList className="gap-2">
+          {suggestions.data.map((asset) => (
+            <li key={asset.id}>
+              <button
+                className={cn(resourceCardVariants(), 'w-full text-left transition')}
+                type="button"
+                disabled={pending}
+                aria-pressed={selectedImageId === asset.id}
+                onClick={() => onSelect(asset.readableId)}
+              >
+                <AssetCardContent asset={asset} />
+              </button>
+            </li>
+          ))}
+        </ResourceList>
+      ) : (
+        <p className="text-muted-foreground text-sm">No available image assets found.</p>
+      )}
+    </div>
+  );
+}
 
 export function EntityImageEditor({
   entity,
@@ -22,16 +71,45 @@ export function EntityImageEditor({
   entity: Pick<EntityDetail, 'readableId' | 'name' | 'image'>;
   onDone: () => void;
 }) {
-  const [query, setQuery] = useState('');
-  const suggestions = useImageAssetSuggestions(query);
+  const [source, setSource] = useState('existing');
+  const [file, setFile] = useState<File | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const createAsset = useCreateAsset();
   const setImage = useSetEntityImage();
   const removeImage = useRemoveEntityImage();
   const pending = createAsset.isPending || setImage.isPending || removeImage.isPending;
-  const actionError = setImage.error ?? removeImage.error;
+  const uploadError =
+    createAsset.error instanceof DuplicateResourceNameError ? null : createAsset.error;
+  const actionError = uploadError ?? setImage.error ?? removeImage.error;
 
   function assign(assetReadableId: string) {
     setImage.mutate({ readableId: entity.readableId, assetReadableId });
+  }
+
+  async function finish() {
+    if (source !== 'upload' || !file) {
+      onDone();
+      return;
+    }
+    if (file.size > MAX_ASSET_BYTES) {
+      setValidationError(`Assets can be at most ${MAX_ASSET_MEBIBYTES} MB.`);
+      return;
+    }
+    setValidationError(null);
+    try {
+      const asset = await createEntityImageAsset({
+        entityName: entity.name,
+        file,
+        createAsset: createAsset.mutateAsync,
+      });
+      await setImage.mutateAsync({
+        readableId: entity.readableId,
+        assetReadableId: asset.readableId,
+      });
+      onDone();
+    } catch {
+      // Mutation errors are rendered from their canonical TanStack Query state.
+    }
   }
 
   return (
@@ -52,58 +130,57 @@ export function EntityImageEditor({
         </div>
       </div>
 
-      <Tabs defaultValue="existing">
+      <Tabs value={source} onValueChange={setSource}>
         <TabsList variant="line" aria-label="Entity image source">
           <TabsTrigger value="existing">Choose existing</TabsTrigger>
           <TabsTrigger value="upload">Upload new</TabsTrigger>
         </TabsList>
-        <TabsContent value="existing" className="grid gap-3 pt-4">
-          <Input
-            value={query}
-            placeholder="Search image assets"
-            aria-label="Search image assets"
-            onChange={(event) => setQuery(event.target.value)}
+        <TabsContent value="existing">
+          <EntityImagePicker
+            selectedImageId={entity.image?.id}
+            pending={pending}
+            onSelect={assign}
           />
-          {suggestions.isPending ? (
-            <p className="text-muted-foreground text-sm">Loading image assets…</p>
-          ) : suggestions.error ? (
-            <FieldError>{suggestions.error.message}</FieldError>
-          ) : suggestions.data && suggestions.data.length > 0 ? (
-            <ResourceList className="gap-2">
-              {suggestions.data.map((asset) => (
-                <li key={asset.id}>
-                  <button
-                    className={cn(resourceCardVariants(), 'w-full text-left transition')}
-                    type="button"
-                    disabled={pending}
-                    aria-pressed={entity.image?.id === asset.id}
-                    onClick={() => assign(asset.readableId)}
-                  >
-                    <AssetCardContent asset={asset} />
-                  </button>
-                </li>
-              ))}
-            </ResourceList>
-          ) : (
-            <p className="text-muted-foreground text-sm">No available image assets found.</p>
-          )}
         </TabsContent>
         <TabsContent value="upload" className="pt-4">
-          <AssetUploadForm
-            accept={IMAGE_ACCEPT}
-            defaultName={`${entity.name} image`}
-            pending={pending}
-            error={createAsset.error}
-            onSubmit={(value) => {
-              createAsset.mutate(value, {
-                onSuccess: ({ readableId }) => assign(readableId),
-              });
-            }}
-          />
+          <Field>
+            <FieldLabel htmlFor="entity-image-file">File</FieldLabel>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                className="peer sr-only"
+                id="entity-image-file"
+                type="file"
+                accept={IMAGE_ACCEPT}
+                disabled={pending}
+                onChange={(event) => {
+                  setFile(event.target.files?.[0] ?? null);
+                  setValidationError(null);
+                  createAsset.reset();
+                }}
+              />
+              <label
+                className={buttonVariants({
+                  variant: 'outline',
+                  size: 'lg',
+                  className:
+                    'cursor-pointer peer-focus-visible:border-ring peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50',
+                })}
+                htmlFor="entity-image-file"
+              >
+                Choose file
+              </label>
+              <span className="min-w-0 truncate text-muted-foreground text-sm">
+                {file?.name ?? 'No file chosen'}
+              </span>
+            </div>
+            <FieldDescription>Up to {MAX_ASSET_MEBIBYTES} MB.</FieldDescription>
+          </Field>
         </TabsContent>
       </Tabs>
 
-      {actionError && <FieldError>{actionError.message}</FieldError>}
+      {(validationError || actionError) && (
+        <FieldError>{validationError ?? actionError?.message}</FieldError>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           {entity.image && (
@@ -112,6 +189,7 @@ export function EntityImageEditor({
               type="button"
               disabled={pending}
               onClick={() => {
+                setFile(null);
                 removeImage.mutate({ readableId: entity.readableId });
               }}
             >
@@ -119,8 +197,15 @@ export function EntityImageEditor({
             </Button>
           )}
         </div>
-        <Button variant="outline" type="button" disabled={pending} onClick={onDone}>
-          Done
+        <Button
+          variant="outline"
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            void finish();
+          }}
+        >
+          {pending ? 'Saving…' : 'Done'}
         </Button>
       </div>
     </section>

@@ -51,8 +51,10 @@ Each resource type owns one reusable identity component:
   distinguishing description or type.
 - Entity images are ordinary image assets, not a separate upload store, but one image asset can
   identify at most one entity. Entity edit mode exposes image changes through the avatar and lets
-  people choose an available image asset or upload a new asset. Every entity surface falls back to
-  the stable identity mark when no usable image is assigned.
+  people choose an available image asset or stage a new upload. A staged upload is created and
+  assigned on Done; its asset name is derived from the entity, and address collisions receive the
+  standard generated suffix without exposing technical identity controls. Every entity surface
+  falls back to the stable identity mark when no usable image is assigned.
 - Pages are document-led: document cue, H1 title, and—when space permits—a short excerpt computed
   from the first meaningful body text after the H1.
 - Assets are file-led: a safe thumbnail or file cue, meaningful name, and—when space permits—format

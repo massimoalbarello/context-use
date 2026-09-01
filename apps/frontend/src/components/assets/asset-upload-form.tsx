@@ -14,16 +14,14 @@ export function AssetUploadForm({
   pending,
   error,
   accept,
-  defaultName,
   onSubmit,
 }: {
   pending: boolean;
   error: Error | null;
   accept?: string;
-  defaultName?: string;
   onSubmit: (value: { name: string; file: File; allowDuplicate?: boolean }) => void;
 }) {
-  const [name, setName] = useState(() => defaultName?.trim().slice(0, MAX_ASSET_NAME_LENGTH) ?? '');
+  const [name, setName] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
