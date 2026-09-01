@@ -24,6 +24,7 @@ import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.t
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import {
   testMcpServerUrl,
+  unusedAssetTransferCapabilities,
   unusedMcpClientAuthorizationsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -89,6 +90,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     const app = createApp({
       auth: ownerAuth(),
       assetsService: new AssetsService({ assets: assetsRepository, storage }),
+      assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
         assets: assetsRepository,

@@ -19,6 +19,7 @@ import { KnowledgePagesRepository } from '#repositories/knowledge-pages/reposito
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
+import { AssetTransferCapabilities } from '#routes/mcp/assets/transfer-capabilities.ts';
 import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
@@ -57,6 +58,7 @@ try {
     assets: assetsRepository,
     storage,
   });
+  const assetTransferCapabilities = new AssetTransferCapabilities({ baseUrl: env.BASE_URL });
   const frontendAssetsService = new FrontendAssetsService(new FrontendAssetsRepository());
   const pagesRepository = new KnowledgePagesRepository(database);
   const entitiesService = new EntitiesService({
@@ -75,7 +77,13 @@ try {
   );
   const mcpTransport = createMcpTransport({
     createServer: ({ principal }) =>
-      createContextUseMcpServer({ principal, entitiesService, pagesService }),
+      createContextUseMcpServer({
+        principal,
+        assetsService,
+        entitiesService,
+        pagesService,
+        transferCapabilities: assetTransferCapabilities,
+      }),
   });
   const auth = createAuth({
     database,
@@ -87,6 +95,7 @@ try {
   const app = createApp({
     auth,
     assetsService,
+    assetTransferCapabilities,
     frontendAssetsService,
     entitiesService,
     healthService,

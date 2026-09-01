@@ -65,8 +65,12 @@ database migration rules live in `src/db/AGENTS.md`.
   them from HTTP and MCP schemas and map response presenters explicitly instead of spreading
   internal resource objects.
 - Treat MCP tools as transport controllers over the same application services used by HTTP. Keep
-  entity and knowledge-page tools in their distinct domain modules; do not add a generic resource
-  model or copy service and repository rules into tool handlers.
+  entity, knowledge-page, and asset tools in their distinct domain modules; do not add a generic
+  resource model or copy service and repository rules into tool handlers.
+- Move MCP asset bytes through short-lived, single-use HTTP transfer capabilities. Keep capability
+  secrets in required request headers rather than URLs so access logs retain only non-secret request
+  IDs. Do not persist pending uploads; after consuming a valid upload capability, construct one
+  `Blob` and call the shared asset service exactly once.
 - Every Elysia route declares its request and response schemas so runtime validation and OpenAPI
   stay aligned with the implementation.
 - Keep response contracts explicit and derive frontend-facing types from the validated contract or

@@ -11,21 +11,8 @@ import {
   assetUsageResponse,
   UpdateAssetBodySchema,
 } from '#routes/api/assets/model.ts';
+import { assetContentResponse } from '#routes/asset-content-response.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
-
-function contentDisposition({
-  name,
-  extension,
-  inline,
-}: {
-  name: string;
-  extension: string | null;
-  inline: boolean;
-}): string {
-  const filename = `${name}${extension ? `.${extension}` : ''}`;
-  const fallback = filename.replace(/[^a-zA-Z0-9._-]/g, '_') || 'asset';
-  return `${inline ? 'inline' : 'attachment'}; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
-}
 
 export function createAssetReadableIdController({
   auth,
@@ -67,18 +54,10 @@ export function createAssetReadableIdController({
             headers: { 'content-type': 'application/json' },
           });
         }
-        return new Response(content.blob, {
-          headers: {
-            'content-type': content.asset.mediaType,
-            'content-length': String(content.asset.sizeBytes),
-            'content-disposition': contentDisposition({
-              name: content.asset.name,
-              extension: content.asset.extension,
-              inline: query.download !== 'true',
-            }),
-            'x-content-type-options': 'nosniff',
-            'cache-control': 'private, no-store',
-          },
+        return assetContentResponse({
+          asset: content.asset,
+          blob: content.blob,
+          inline: query.download !== 'true',
         });
       },
       {
