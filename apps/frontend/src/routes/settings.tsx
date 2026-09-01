@@ -37,7 +37,7 @@ function SettingsLayout() {
             to="/settings"
           >
             <Bot aria-hidden="true" />
-            MCP clients
+            MCP
           </Link>
         </nav>
       </aside>

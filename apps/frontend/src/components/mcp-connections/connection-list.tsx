@@ -78,9 +78,9 @@ export function ConnectionList({ connections }: { connections: McpConnection[] }
   return (
     <div className="grid gap-8">
       <section className="grid gap-4">
-        <h2 className="font-semibold text-xl">Active</h2>
+        <h2 className="font-semibold text-xl">Connected clients</h2>
         {active.length === 0 ? (
-          <p className="text-muted-foreground">No MCP clients have been approved.</p>
+          <p className="text-muted-foreground">No MCP clients are connected.</p>
         ) : (
           active.map((connection) => (
             <ActiveConnection key={connection.id} connection={connection} />
