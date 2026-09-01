@@ -45,6 +45,12 @@ database migration rules live in `src/db/AGENTS.md`.
 - Services depend on repository contracts that describe domain persistence, never on a database
   client or SQLite-specific implementation. Repositories implement those contracts and contain SQL,
   row mapping, transaction behavior, and database-specific failure translation.
+- Name result-producing repository queries through the typed SQL client and regenerate
+  `src/queries.gen.ts` with `bun generate:queries`. Generated result types describe adapter rows
+  only; repository contracts, domain models, and row-to-domain mapping remain handwritten.
+- Treat migrations as the source of truth for generated query types. Add SQLite `@notNull` or
+  `@type` query annotations only when the query and schema prove the stronger result invariant;
+  never edit `src/queries.gen.ts` directly.
 - Scope every user-owned read, mutation, uniqueness rule, cache key, storage key, and emitted event
   by its owner where applicable. Preserve indistinguishable not-found behavior across ownership
   boundaries so identifiers cannot reveal another user's data.

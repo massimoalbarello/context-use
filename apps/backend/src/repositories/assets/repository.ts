@@ -1,7 +1,9 @@
+import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#lib/pagination.ts';
 import type { Asset, AssetSummary, AssetUsage, StoredAsset } from '#models/assets/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
+import type { Queries } from '#queries.gen.ts';
 
 export interface AssetsRepositoryContract {
   create(
@@ -28,29 +30,9 @@ export interface AssetsRepositoryContract {
   }): Promise<ArchiveResult<AssetUsage>>;
 }
 
-type AssetRow = {
-  id: string;
-  ownerId: string;
-  readableId: string;
-  name: string;
-  mediaType: string;
-  extension: string | null;
-  sizeBytes: number;
-  storageKey: string;
-  contentHash: string;
-  createdAt: string;
-  updatedAt: string;
-};
+type AssetRow = Queries['CreateAsset'];
 
-type AssetSummaryRow = Omit<AssetRow, 'ownerId' | 'storageKey' | 'contentHash'>;
-
-const ASSET_SELECT = `
-  select "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
-    "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
-    "storage_key" as "storageKey", "content_hash" as "contentHash",
-    "created_at" as "createdAt", "updated_at" as "updatedAt"
-  from "asset"
-`;
+type AssetSummaryRow = Queries['SearchAssets'];
 
 function storedAssetFrom(row: AssetRow): StoredAsset {
   return { ...row, sizeBytes: Number(row.sizeBytes) };
@@ -61,10 +43,15 @@ function assetSummaryFrom(row: AssetSummaryRow): AssetSummary {
 }
 
 export class AssetsRepository implements AssetsRepositoryContract {
-  constructor(private readonly sql: SQL) {}
+  private readonly sql: TypedSQL<Queries>;
+
+  constructor(sql: SQL) {
+    this.sql = withTypes<Queries>(sql);
+  }
 
   async create(input: StoredAsset) {
-    const rows = await this.sql<AssetRow[]>`
+    const rows = await this.sql.CreateAsset`
+      /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
       insert into "asset"
         ("id", "owner_id", "readable_id", "name", "media_type", "extension", "size_bytes",
          "content_hash", "storage_key", "created_at", "updated_at")
@@ -96,7 +83,8 @@ export class AssetsRepository implements AssetsRepositoryContract {
   }) {
     const normalizedQuery = query?.trim() || null;
     const rowsPromise = normalizedQuery
-      ? this.sql<AssetSummaryRow[]>`
+      ? this.sql.SearchAssets`
+          /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
           select "id", "readable_id" as "readableId", "name", "media_type" as "mediaType",
             "extension", "size_bytes" as "sizeBytes", "created_at" as "createdAt",
             "updated_at" as "updatedAt"
@@ -106,7 +94,8 @@ export class AssetsRepository implements AssetsRepositoryContract {
               or instr("readable_id", lower(${normalizedQuery})) > 0)
           order by "name" collate nocase, "readable_id" limit ${limit} offset ${offset}
         `
-      : this.sql<AssetSummaryRow[]>`
+      : this.sql.ListAssets`
+          /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
           select "id", "readable_id" as "readableId", "name", "media_type" as "mediaType",
             "extension", "size_bytes" as "sizeBytes", "created_at" as "createdAt",
             "updated_at" as "updatedAt"
@@ -115,13 +104,15 @@ export class AssetsRepository implements AssetsRepositoryContract {
           order by "updated_at" desc, "id" desc limit ${limit} offset ${offset}
         `;
     const countsPromise = normalizedQuery
-      ? this.sql<Array<{ total: number }>>`
+      ? this.sql.CountSearchedAssets`
+          /* @notNull total */
           select count(*) as "total" from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
             and (instr(lower("name"), lower(${normalizedQuery})) > 0
               or instr("readable_id", lower(${normalizedQuery})) > 0)
         `
-      : this.sql<Array<{ total: number }>>`
+      : this.sql.CountAssets`
+          /* @notNull total */
           select count(*) as "total" from "asset"
           where "owner_id" = ${ownerId} and "archived_at" is null
         `;
@@ -134,10 +125,16 @@ export class AssetsRepository implements AssetsRepositoryContract {
   }
 
   async find({ ownerId, readableId }: { ownerId: string; readableId: string }) {
-    const rows = await this.sql.unsafe<AssetRow[]>(
-      `${ASSET_SELECT} where "owner_id" = $1 and "readable_id" = $2 and "archived_at" is null`,
-      [ownerId, readableId],
-    );
+    const rows = await this.sql.FindAsset`
+      /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
+      select "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
+        "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
+        "storage_key" as "storageKey", "content_hash" as "contentHash",
+        "created_at" as "createdAt", "updated_at" as "updatedAt"
+      from "asset"
+      where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
+        and "archived_at" is null
+    `;
     return rows[0] ? storedAssetFrom(rows[0]) : null;
   }
 
@@ -164,7 +161,8 @@ export class AssetsRepository implements AssetsRepositoryContract {
     name: string;
     updatedAt: string;
   }) {
-    const rows = await this.sql<AssetRow[]>`
+    const rows = await this.sql.UpdateAssetName`
+      /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
       update "asset" set "name" = ${input.name}, "updated_at" = ${input.updatedAt}
       where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
         and "archived_at" is null
@@ -193,7 +191,8 @@ export class AssetsRepository implements AssetsRepositoryContract {
     archivedAt: string;
   }): Promise<ArchiveResult<AssetUsage>> {
     return this.sql.begin(async (db) => {
-      const targets = await db<Array<{ id: string; archivedAt: string | null }>>`
+      const targets = await db.FindAssetArchiveTarget`
+        /* @notNull id */
         select "id", "archived_at" as "archivedAt" from "asset"
         where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
       `;
@@ -235,22 +234,13 @@ export class AssetsRepository implements AssetsRepositoryContract {
     ownerId,
     assetId,
   }: {
-    db: SQL;
+    db: TypedSQL<Queries>;
     ownerId: string;
     assetId: string;
   }): Promise<AssetUsage[]> {
-    const rows = await db<
-      Array<{
-        id: string;
-        readableId: string;
-        title: string;
-        excerpt: string;
-        revisionNumber: number;
-        createdAt: string;
-        updatedAt: string;
-        presentation: 'embed' | 'attachment';
-      }>
-    >`
+    const rows = await db.ListActiveAssetUsages`
+      /* @notNull id readableId title excerpt revisionNumber createdAt updatedAt */
+      /* @type presentation 'embed' | 'attachment' */
       select page."id", page."readable_id" as "readableId", revision."title",
         revision."excerpt", revision."revision_number" as "revisionNumber",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt", usage."presentation"
