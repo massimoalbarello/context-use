@@ -2,9 +2,11 @@ import { createApp } from '#app.ts';
 import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { loadAuthSecret } from '#lib/auth/auth-secret.ts';
-import { createAuth } from '#lib/auth/better-auth.ts';
+import { createAuth, mcpServerUrl } from '#lib/auth/better-auth.ts';
+import { fetchClientMetadataResource } from '#lib/auth/client-metadata-resource.ts';
 import { loadEnv } from '#lib/env.ts';
 import { createLogger } from '#lib/logger.ts';
+import { createMcpTransport } from '#lib/mcp/transport.ts';
 import { BACKEND_ENVIRONMENT } from '#lib/runtime-config.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
@@ -15,6 +17,7 @@ import { FrontendAssetsRepository } from '#repositories/frontend-assets/reposito
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
+import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
 import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
@@ -22,6 +25,7 @@ import { FrontendAssetsService } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
+import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
@@ -65,10 +69,15 @@ try {
   );
   const pagesService = new KnowledgePagesService({ pages: pagesRepository, storage });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
+  const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
+    new McpClientAuthorizationsRepository(database),
+  );
+  const mcpTransport = createMcpTransport();
   const auth = createAuth({
     database,
     baseUrl: env.BASE_URL,
     secret: authSecret.value,
+    fetchClientMetadataResource,
   });
 
   const app = createApp({
@@ -77,6 +86,9 @@ try {
     frontendAssetsService,
     entitiesService,
     healthService,
+    mcpClientAuthorizationsService,
+    mcpServerUrl: mcpServerUrl({ baseUrl: env.BASE_URL }),
+    mcpTransport,
     ownerRegistrationService,
     pagesService,
     profilesService,

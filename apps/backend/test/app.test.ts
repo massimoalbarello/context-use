@@ -9,6 +9,12 @@ import type { HealthServiceContract } from '#services/health/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
+import {
+  testMcpServerUrl,
+  unusedMcpClientAuthorizationsService,
+  unusedMcpProtection,
+  unusedMcpTransport,
+} from './support/mcp.ts';
 
 function unexpectedCall(): never {
   throw new Error('Unexpected dependency call');
@@ -19,10 +25,11 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   const auth: Auth = {
     handler: async () => new Response(null, { status: 404 }),
     getSession: async () => null,
+    protectMcpRequest: unusedMcpProtection,
   };
   const frontendAssetsService: FrontendAssetsServiceContract = {
     routes: () => new Map<string, Response>(),
-    fallback: () => null,
+    fallback: () => new Response('frontend'),
   };
   const assetsService: AssetsServiceContract = {
     create: unexpectedCall,
@@ -63,18 +70,28 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     },
   };
 
-  const response = await createApp({
+  const app = createApp({
     auth,
     assetsService,
     frontendAssetsService,
     entitiesService,
     healthService,
+    mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
+    mcpServerUrl: testMcpServerUrl,
+    mcpTransport: unusedMcpTransport,
     ownerRegistrationService,
     pagesService,
     profilesService,
-  }).handle(new Request('http://localhost/api/health'));
+  });
+  const response = await app.handle(new Request('http://localhost/api/health'));
 
   expect(response.status).toBe(StatusMap.OK);
   expect(await response.json()).toEqual({ status: 'ok', uptime: 0 });
   expect(healthChecks).toBe(1);
+
+  for (const path of ['/mcp', '/mcp/']) {
+    const nonPostMcpResponse = await app.handle(new Request(`http://localhost${path}`));
+    expect(nonPostMcpResponse.status).toBe(StatusMap['Not Found']);
+    expect(await nonPostMcpResponse.json()).toEqual({ error: 'Not Found' });
+  }
 });

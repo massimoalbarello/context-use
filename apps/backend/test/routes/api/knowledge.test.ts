@@ -23,6 +23,12 @@ import { HealthService } from '#services/health/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
+import {
+  testMcpServerUrl,
+  unusedMcpClientAuthorizationsService,
+  unusedMcpProtection,
+  unusedMcpTransport,
+} from '../../support/mcp.ts';
 
 const AUTH_MIGRATION = new URL(
   '../../../src/db/migrations/0000_better_auth_schema.sql',
@@ -76,6 +82,7 @@ function ownerAuth(): Auth {
         updatedAt: createdAt,
       },
     }),
+    protectMcpRequest: unusedMcpProtection,
   };
 }
 
@@ -137,6 +144,9 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
+      mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
+      mcpServerUrl: testMcpServerUrl,
+      mcpTransport: unusedMcpTransport,
       ownerRegistrationService: new OwnerRegistrationService(
         new OwnerRegistrationRepository(database),
       ),

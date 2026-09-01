@@ -1,11 +1,17 @@
 import { describe, expect, test } from 'bun:test';
-import { createAuth } from '#lib/auth/better-auth.ts';
+import { createAuth, mcpServerUrl } from '#lib/auth/better-auth.ts';
 import { OWNER_DISPLAY_NAME } from '#lib/auth/owner-registration.ts';
 import { withAuthTestDatabase } from './auth-test-database.ts';
 
 const AUTH_ORIGIN = 'http://localhost:3000';
 const OK_STATUS = 200;
 const TEST_SECRET = 'test-secret-at-least-thirty-two-characters';
+
+test('the MCP server URL uses the configured public origin', () => {
+  expect(mcpServerUrl({ baseUrl: new URL('https://context-use.nibrun.app/dashboard') })).toBe(
+    'https://context-use.nibrun.app/mcp',
+  );
+});
 
 describe('passkey-only authentication', () => {
   test('generates first-owner registration options with required verification', async () => {
@@ -15,6 +21,7 @@ describe('passkey-only authentication', () => {
           database,
           baseUrl: new URL(AUTH_ORIGIN),
           secret: TEST_SECRET,
+          fetchClientMetadataResource: async () => new Response(null, { status: 503 }),
         });
         const response = await auth.handler(
           new Request(
