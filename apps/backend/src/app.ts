@@ -31,6 +31,7 @@ export function createApp({
   entitiesService,
   healthService,
   mcpConnectionsService,
+  mcpServerUrl,
   mcpTransport,
   ownerRegistrationService,
   pagesService,
@@ -42,6 +43,7 @@ export function createApp({
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
   mcpConnectionsService: McpConnectionsServiceContract;
+  mcpServerUrl: string;
   mcpTransport: McpTransportContract;
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
@@ -113,6 +115,7 @@ export function createApp({
         entitiesService,
         healthService,
         mcpConnectionsService,
+        mcpServerUrl,
         ownerRegistrationService,
         pagesService,
         profilesService,

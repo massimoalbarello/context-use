@@ -17,6 +17,7 @@ import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/se
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import {
+  testMcpServerUrl,
   unusedMcpConnectionsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -87,6 +88,7 @@ test('owner registration API exposes only complete registration states', async (
       entitiesService,
       healthService,
       mcpConnectionsService: unusedMcpConnectionsService,
+      mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,
       ownerRegistrationService: new OwnerRegistrationService(
         new OwnerRegistrationRepository(database),

@@ -1,9 +1,8 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
 import {
   useArchiveMcpConnection,
   useRenameMcpConnection,
 } from '../../lib/hooks/use-mcp-connections';
-import { type McpConnection, mcpConnectionsQueryOptions } from '../../queries/mcp-connections';
+import type { McpConnection } from '../../queries/mcp-connections';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -73,10 +72,9 @@ function ActiveConnection({ connection }: { connection: McpConnection }) {
   );
 }
 
-export function ConnectionList() {
-  const { data } = useSuspenseQuery(mcpConnectionsQueryOptions);
-  const active = data.items.filter((connection) => connection.archivedAt === null);
-  const archived = data.items.filter((connection) => connection.archivedAt !== null);
+export function ConnectionList({ connections }: { connections: McpConnection[] }) {
+  const active = connections.filter((connection) => connection.archivedAt === null);
+  const archived = connections.filter((connection) => connection.archivedAt !== null);
   return (
     <div className="grid gap-8">
       <section className="grid gap-4">

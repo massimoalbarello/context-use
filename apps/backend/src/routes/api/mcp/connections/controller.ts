@@ -25,9 +25,11 @@ const errorResponses = {
 export function createMcpConnectionsController({
   auth,
   connectionsService,
+  mcpServerUrl,
 }: {
   auth: Auth;
   connectionsService: McpConnectionsServiceContract;
+  mcpServerUrl: string;
 }) {
   return new Elysia()
     .use(createAuthPlugin({ auth }))
@@ -82,6 +84,7 @@ export function createMcpConnectionsController({
           return status(StatusMap.Forbidden, { error: 'Forbidden' });
         }
         return status(StatusMap.OK, {
+          serverUrl: mcpServerUrl,
           items: result.connections.map(mcpConnectionResponse),
         });
       },

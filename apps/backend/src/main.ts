@@ -2,7 +2,7 @@ import { createApp } from '#app.ts';
 import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { loadAuthSecret } from '#lib/auth/auth-secret.ts';
-import { createAuth } from '#lib/auth/better-auth.ts';
+import { createAuth, mcpServerUrl } from '#lib/auth/better-auth.ts';
 import { loadEnv } from '#lib/env.ts';
 import { createLogger } from '#lib/logger.ts';
 import { createMcpTransport } from '#lib/mcp/transport.ts';
@@ -83,6 +83,7 @@ try {
     entitiesService,
     healthService,
     mcpConnectionsService,
+    mcpServerUrl: mcpServerUrl({ baseUrl: env.BASE_URL }),
     mcpTransport,
     ownerRegistrationService,
     pagesService,

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Bot, Menu, Plus } from 'lucide-react';
+import { Menu, Plus, Settings } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
 import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
@@ -108,14 +108,6 @@ export function KnowledgeSidebar({
 
         <footer className="flex shrink-0 items-center gap-2 px-3 py-3">
           <Link
-            className={buttonVariants({ variant: 'ghost', size: 'icon' })}
-            to="/connections"
-            aria-label="MCP connections"
-            title="MCP connections"
-          >
-            <Bot aria-hidden="true" />
-          </Link>
-          <Link
             className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 hover:bg-card"
             to="/entities/$id"
             params={{ id: profile.selfEntity.readableId }}
@@ -125,6 +117,14 @@ export function KnowledgeSidebar({
               <strong className="truncate font-medium text-xs">{profile.selfEntity.name}</strong>
               <small className="truncate text-[0.68rem] text-muted-foreground">Your entity</small>
             </span>
+          </Link>
+          <Link
+            className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+            to="/settings"
+            aria-label="Settings"
+            title="Settings"
+          >
+            <Settings aria-hidden="true" />
           </Link>
           <SignOutButton />
         </footer>

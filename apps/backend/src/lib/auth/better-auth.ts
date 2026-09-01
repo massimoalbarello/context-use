@@ -22,6 +22,10 @@ export const AUTH_ROUTE_PATH = '/auth';
 export const MCP_ROUTE_PATH = '/mcp';
 export const MCP_SCOPE = 'mcp';
 
+export function mcpServerUrl({ baseUrl }: { baseUrl: URL }): string {
+  return new URL(MCP_ROUTE_PATH, baseUrl.origin).href;
+}
+
 const ACCESS_TOKEN_LIFETIME_SECONDS = 300;
 const REFRESH_TOKEN_LIFETIME_SECONDS = 315_360_000;
 const REFRESH_TOKEN_RETRY_SECONDS = 30;
@@ -53,7 +57,7 @@ export function createAuthOptions({
   baseUrl: URL;
   secret: string;
 }): BetterAuthOptions {
-  const mcpResource = new URL(MCP_ROUTE_PATH, baseUrl.origin).href;
+  const mcpResource = mcpServerUrl({ baseUrl });
   return {
     database: bunSqlAdapter({ sql: database, tablesPrefix: BETTER_AUTH_TABLES_PREFIX }),
     // The origin, never the href: better-auth drops `basePath` entirely when the base URL already
@@ -153,7 +157,7 @@ export function createAuthOptions({
 }
 
 export function createAuth(input: { database: SQL; baseUrl: URL; secret: string }) {
-  const mcpResource = new URL(MCP_ROUTE_PATH, input.baseUrl.origin).href;
+  const mcpResource = mcpServerUrl({ baseUrl: input.baseUrl });
   const auth = betterAuth(createAuthOptions(input));
 
   return {

@@ -10,6 +10,7 @@ import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/se
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
 import {
+  testMcpServerUrl,
   unusedMcpConnectionsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -76,6 +77,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     entitiesService,
     healthService,
     mcpConnectionsService: unusedMcpConnectionsService,
+    mcpServerUrl: testMcpServerUrl,
     mcpTransport: unusedMcpTransport,
     ownerRegistrationService,
     pagesService,

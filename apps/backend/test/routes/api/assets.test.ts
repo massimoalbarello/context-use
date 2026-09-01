@@ -23,6 +23,7 @@ import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import {
+  testMcpServerUrl,
   unusedMcpConnectionsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -95,6 +96,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       }),
       healthService: new HealthService(new HealthRepository(database)),
       mcpConnectionsService: unusedMcpConnectionsService,
+      mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,
       ownerRegistrationService: new OwnerRegistrationService(
         new OwnerRegistrationRepository(database),

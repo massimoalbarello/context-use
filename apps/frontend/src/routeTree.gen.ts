@@ -11,10 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssetsRouteImport } from './routes/assets'
-import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PagesRouteImport } from './routes/pages'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AssetsIndexRouteImport } from './routes/assets.index'
 import { Route as AssetsIdRouteImport } from './routes/assets.$id'
@@ -26,6 +26,7 @@ import { Route as McpAuthorizeRouteImport } from './routes/mcp.authorize'
 import { Route as PagesIndexRouteImport } from './routes/pages.index'
 import { Route as PagesIdRouteImport } from './routes/pages.$id'
 import { Route as PagesNewRouteImport } from './routes/pages.new'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,11 +36,6 @@ const IndexRoute = IndexRouteImport.update({
 const AssetsRoute = AssetsRouteImport.update({
   id: '/assets',
   path: '/assets',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConnectionsRoute = ConnectionsRouteImport.update({
-  id: '/connections',
-  path: '/connections',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EntitiesRoute = EntitiesRouteImport.update({
@@ -55,6 +51,11 @@ const LoginRoute = LoginRouteImport.update({
 const PagesRoute = PagesRouteImport.update({
   id: '/pages',
   path: '/pages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetupRoute = SetupRouteImport.update({
@@ -112,14 +113,19 @@ const PagesNewRoute = PagesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => PagesRoute,
 } as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRouteWithChildren
-  '/connections': typeof ConnectionsRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
+  '/settings': typeof SettingsRouteWithChildren
   '/setup': typeof SetupRoute
   '/assets/$id': typeof AssetsIdRoute
   '/assets/new': typeof AssetsNewRoute
@@ -131,10 +137,10 @@ export interface FileRoutesByFullPath {
   '/assets/': typeof AssetsIndexRoute
   '/entities/': typeof EntitiesIndexRoute
   '/pages/': typeof PagesIndexRoute
+  '/settings/': typeof SettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/connections': typeof ConnectionsRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/assets/$id': typeof AssetsIdRoute
@@ -147,15 +153,16 @@ export interface FileRoutesByTo {
   '/assets': typeof AssetsIndexRoute
   '/entities': typeof EntitiesIndexRoute
   '/pages': typeof PagesIndexRoute
+  '/settings': typeof SettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/assets': typeof AssetsRouteWithChildren
-  '/connections': typeof ConnectionsRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
+  '/settings': typeof SettingsRouteWithChildren
   '/setup': typeof SetupRoute
   '/assets/$id': typeof AssetsIdRoute
   '/assets/new': typeof AssetsNewRoute
@@ -167,16 +174,17 @@ export interface FileRoutesById {
   '/assets/': typeof AssetsIndexRoute
   '/entities/': typeof EntitiesIndexRoute
   '/pages/': typeof PagesIndexRoute
+  '/settings/': typeof SettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/assets'
-    | '/connections'
     | '/entities'
     | '/login'
     | '/pages'
+    | '/settings'
     | '/setup'
     | '/assets/$id'
     | '/assets/new'
@@ -188,10 +196,10 @@ export interface FileRouteTypes {
     | '/assets/'
     | '/entities/'
     | '/pages/'
+    | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/connections'
     | '/login'
     | '/setup'
     | '/assets/$id'
@@ -204,14 +212,15 @@ export interface FileRouteTypes {
     | '/assets'
     | '/entities'
     | '/pages'
+    | '/settings'
   id:
     | '__root__'
     | '/'
     | '/assets'
-    | '/connections'
     | '/entities'
     | '/login'
     | '/pages'
+    | '/settings'
     | '/setup'
     | '/assets/$id'
     | '/assets/new'
@@ -223,15 +232,16 @@ export interface FileRouteTypes {
     | '/assets/'
     | '/entities/'
     | '/pages/'
+    | '/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssetsRoute: typeof AssetsRouteWithChildren
-  ConnectionsRoute: typeof ConnectionsRoute
   EntitiesRoute: typeof EntitiesRouteWithChildren
   LoginRoute: typeof LoginRoute
   PagesRoute: typeof PagesRouteWithChildren
+  SettingsRoute: typeof SettingsRouteWithChildren
   SetupRoute: typeof SetupRoute
   McpAuthorizeRoute: typeof McpAuthorizeRoute
 }
@@ -250,13 +260,6 @@ declare module '@tanstack/react-router' {
       path: '/assets'
       fullPath: '/assets'
       preLoaderRoute: typeof AssetsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/connections': {
-      id: '/connections'
-      path: '/connections'
-      fullPath: '/connections'
-      preLoaderRoute: typeof ConnectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/entities': {
@@ -278,6 +281,13 @@ declare module '@tanstack/react-router' {
       path: '/pages'
       fullPath: '/pages'
       preLoaderRoute: typeof PagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/setup': {
@@ -357,6 +367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PagesNewRouteImport
       parentRoute: typeof PagesRoute
     }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
   }
 }
 
@@ -405,13 +422,25 @@ const PagesRouteChildren: PagesRouteChildren = {
 
 const PagesRouteWithChildren = PagesRoute._addFileChildren(PagesRouteChildren)
 
+interface SettingsRouteChildren {
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssetsRoute: AssetsRouteWithChildren,
-  ConnectionsRoute: ConnectionsRoute,
   EntitiesRoute: EntitiesRouteWithChildren,
   LoginRoute: LoginRoute,
   PagesRoute: PagesRouteWithChildren,
+  SettingsRoute: SettingsRouteWithChildren,
   SetupRoute: SetupRoute,
   McpAuthorizeRoute: McpAuthorizeRoute,
 }

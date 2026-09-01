@@ -24,6 +24,7 @@ import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import {
+  testMcpServerUrl,
   unusedMcpConnectionsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -144,6 +145,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       }),
       healthService: new HealthService(new HealthRepository(database)),
       mcpConnectionsService: unusedMcpConnectionsService,
+      mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,
       ownerRegistrationService: new OwnerRegistrationService(
         new OwnerRegistrationRepository(database),

@@ -22,3 +22,5 @@ export const unusedMcpTransport: McpTransportContract = {
   fetch: unexpectedCall,
   close: () => Promise.resolve(),
 };
+
+export const testMcpServerUrl = 'https://context-use.nibrun.app/mcp';

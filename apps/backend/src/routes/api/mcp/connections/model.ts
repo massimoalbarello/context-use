@@ -12,6 +12,7 @@ export const McpConnectionSchema = t.Object({
 });
 
 export const McpConnectionListSchema = t.Object({
+  serverUrl: t.String(),
   items: t.Array(McpConnectionSchema),
 });
 

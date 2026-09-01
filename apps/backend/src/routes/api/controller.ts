@@ -27,6 +27,7 @@ export function createApiController({
   entitiesService,
   healthService,
   mcpConnectionsService,
+  mcpServerUrl,
   ownerRegistrationService,
   pagesService,
   profilesService,
@@ -36,6 +37,7 @@ export function createApiController({
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
   mcpConnectionsService: McpConnectionsServiceContract;
+  mcpServerUrl: string;
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
@@ -43,7 +45,13 @@ export function createApiController({
   return new Elysia({ prefix: API_PATH })
     .use(createAuthController({ auth }))
     .use(createOwnerRegistrationController({ ownerRegistrationService }))
-    .use(createMcpConnectionsController({ auth, connectionsService: mcpConnectionsService }))
+    .use(
+      createMcpConnectionsController({
+        auth,
+        connectionsService: mcpConnectionsService,
+        mcpServerUrl,
+      }),
+    )
     .use(createAssetsController({ auth, assetsService }))
     .use(createAssetReadableIdController({ auth, assetsService }))
     .use(createEntitiesController({ auth, entitiesService }))
