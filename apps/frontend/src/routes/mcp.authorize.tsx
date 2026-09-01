@@ -70,12 +70,12 @@ function McpAuthorizeRoute() {
       redirectFromConsent(data);
     },
   });
-  const suggestedName = client.suggestedName ?? 'Agent connection';
+  const suggestedName = client.suggestedName ?? 'MCP connection';
 
   return (
     <FormShell
       eyebrow="MCP authorization"
-      title="Connect an agent"
+      title="Connect an MCP client"
       description="Approve this client only if you started the connection. The name you choose is the identity Context Use will show in future activity."
     >
       <Card>

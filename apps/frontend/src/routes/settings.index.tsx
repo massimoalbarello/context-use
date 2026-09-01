@@ -17,7 +17,7 @@ function McpSettingsRoute() {
       <header className="grid gap-3">
         <h1 className="font-semibold text-3xl tracking-tight">MCP</h1>
         <p className="max-w-3xl text-muted-foreground leading-relaxed">
-          Connect apps to this knowledge base and manage their access.
+          Connect MCP clients to this knowledge base and manage their access.
         </p>
       </header>
 
@@ -27,7 +27,7 @@ function McpSettingsRoute() {
             Server URL
           </h2>
           <p className="text-muted-foreground text-sm">
-            Paste this Streamable HTTP URL into an app to connect it to Context Use.
+            Paste this Streamable HTTP URL into an MCP client to connect it to Context Use.
           </p>
         </div>
         <McpServerUrl serverUrl={data.serverUrl} />
