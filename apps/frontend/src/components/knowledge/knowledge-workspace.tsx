@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
 import { cn } from '../../lib/class-names';
+import { WORKSPACE_SIDEBAR_COLUMNS } from '../layout/workspace-sidebar-columns';
 
 type KnowledgeWorkspaceContextValue = {
   collapsed: boolean;
@@ -27,7 +28,8 @@ export function KnowledgeWorkspace({ children }: { children: ReactNode }) {
     <KnowledgeWorkspaceContext value={context}>
       <main
         className={cn(
-          'relative grid h-full min-h-0 grid-rows-[minmax(14rem,22rem)_minmax(0,1fr)] overflow-hidden bg-sidebar md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-none',
+          'relative grid h-full min-h-0 grid-rows-[minmax(14rem,22rem)_minmax(0,1fr)] overflow-hidden bg-sidebar md:grid-rows-none',
+          WORKSPACE_SIDEBAR_COLUMNS,
           collapsed &&
             'grid-rows-[0_minmax(0,1fr)] md:grid-cols-[0_minmax(0,1fr)] md:grid-rows-none',
         )}

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router';
 import { ArrowLeft, Bot } from 'lucide-react';
+import { WORKSPACE_SIDEBAR_COLUMNS } from '../components/layout/workspace-sidebar-columns';
 import { buttonVariants } from '../components/ui/button';
 import { cn } from '../lib/class-names';
 
@@ -14,7 +15,12 @@ export const Route = createFileRoute('/settings')({
 
 function SettingsLayout() {
   return (
-    <main className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-sidebar md:grid-cols-[16rem_minmax(0,1fr)] md:grid-rows-none">
+    <main
+      className={cn(
+        'grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-sidebar md:grid-rows-none',
+        WORKSPACE_SIDEBAR_COLUMNS,
+      )}
+    >
       <aside className="grid content-start gap-6 px-4 py-5 md:px-5 md:py-7">
         <div className="grid gap-5">
           <Link
