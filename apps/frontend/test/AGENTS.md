@@ -1,26 +1,15 @@
-# Frontend tests
+# Frontend test invariants
 
-The root and frontend guides apply here. Use React Testing Library and `user-event` when rendering
-React behavior.
+The [root](../../../AGENTS.md) and [frontend](../AGENTS.md) guides apply here.
 
-Browser end-to-end testing is not part of the current baseline.
-
-## Layout and support
-
-- `test/support` owns the shared render function, fresh Router and Query clients, request handlers,
-  authenticated principals, and reusable builders. Keep feature-only data beside its tests.
-- Every render receives fresh state. Tests must not share caches, routers, form instances, DOM
-  state, request handlers, or mutable fixtures.
-- Keep the shared render input cohesive. Split specialized harnesses instead of accumulating flags
-  for unrelated providers or scenarios.
-
-## Test behavior
-
-- Test accessible behavior and important user-visible transitions through roles, labels, visible
-  content, and `user-event`; do not assert class names, hook calls, or incidental DOM structure.
-- Test a route only when navigation, loaders, guards, URL state, pending states, or error boundaries
-  are the risk. Test a component in isolation when route integration adds no relevant behavior.
-- Mock at the API boundary with production request and response types. Do not mock TanStack Query,
-  Router, or Form internals, and do not recreate backend contracts in test-only types.
-- Prefer focused assertions over whole-screen snapshots. Cover loading, empty, error, disabled, and
-  success states only where each represents a meaningful product risk.
+- Use React Testing Library and `user-event` to exercise accessible behavior and meaningful
+  user-visible transitions. Assert roles, labels, and content rather than class names, hook calls,
+  or incidental DOM structure.
+- Give every render fresh routers, query clients, request handlers, form state, and fixtures. Tests
+  do not share mutable browser or application state.
+- Test a route when navigation, loaders, guards, URL state, or route boundaries are the risk. Test a
+  component in isolation when route integration proves nothing additional.
+- Mock at the typed API boundary. Do not mock TanStack internals or recreate backend contracts in
+  test-only types.
+- Keep shared rendering support cohesive. Split a specialized harness rather than accumulating
+  unrelated modes in one global test world.

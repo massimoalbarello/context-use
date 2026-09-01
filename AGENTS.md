@@ -1,196 +1,91 @@
-# Context Use engineering guide
+# Context Use engineering principles
 
-Context Use is a Bun and TypeScript monorepo (`apps/*`, `packages/*`). Applications live in
-`apps/*`; reusable code and configuration belong in `packages/*`.
+Read the nearest nested `AGENTS.md` before changing a workspace. A nested guide applies only to its
+subtree and overrides broader guidance.
 
-Read the nearest nested `AGENTS.md` before changing a workspace. More specific guidance overrides
-this file.
+Scoped guidance begins in the [backend](./apps/backend/AGENTS.md),
+[frontend](./apps/frontend/AGENTS.md), and [scripts](./scripts/AGENTS.md) guides. Each guide links to
+the narrower guides it owns; follow only the branch relevant to the code being changed.
 
-## Stack
+The repository's compatibility policy is documented separately in
+[BETA-COMPATIBILITY.md](./BETA-COMPATIBILITY.md).
 
-- **Runtime:** Bun
-- **Monorepo:** Bun workspaces and Turbo
-- **Backend:** Elysia and SQLite
-- **Frontend:** React and Vite
-- **Linter/formatter:** Biome
-- **Commits:** Conventional Commits
+## What belongs in an AGENTS.md
 
-## Beta compatibility
+Use these files for durable engineering principles that require judgment. Do not record feature
+history, current project status, temporary rollout advice, or facts that are readily discoverable
+from code and configuration.
 
-Context Use is beta software and no instance has been deployed. Until that changes, backward
-compatibility is not a requirement: contributors may make breaking changes and edit, reorder,
-squash, rename, or delete existing migrations in place whenever that produces the simplest coherent
-design. Local development databases are disposable during this phase and must be recreated after an
-incompatible schema change; do not add compatibility migrations or legacy application paths solely
-to preserve them.
+Implementing a feature does not justify adding a guideline. Never append a description of the
+feature, its operations, or its implementation choices after it lands. Preserve behavior in code,
+types, and tests; use prose only to guide future decisions that those mechanisms cannot determine.
+
+Before adding or expanding a rule, all three answers must be clear:
+
+1. What future engineering judgment will this rule change?
+2. Why can that constraint not be enforced or derived deterministically?
+3. Why is this directory the narrowest scope in which the rule is valid?
+
+If any answer is missing, do not add the rule.
+
+- Put a rule in the narrowest directory where it applies.
+- Prefer types, tests, lint rules, and generated checks for deterministic constraints. Do not
+  duplicate those checks in prose.
+- Add guidance only when violating it would create a meaningful design, security, data-integrity,
+  or maintenance risk.
+- Remove guidance when its underlying constraint disappears or becomes deterministic.
 
 ## Before implementation
 
-Do not start implementing until the problem, desired outcome, constraints, and success condition can
-be stated precisely. Question the request and distinguish the root cause from its symptoms.
+State the problem, desired outcome, constraints, and success condition before writing code.
+Distinguish the root cause from its symptoms.
 
-- Before writing code, discuss the core design with the requester: ownership, boundaries,
-  abstractions, important invariants, meaningful alternatives, and tradeoffs. Do not silently commit
-  to an implementation.
-- For a non-trivial change, consider plausible alternatives—including doing nothing—and compare
-  correctness, complexity, operational risk, reversibility, and maintenance cost.
-- Do not build a feature without a concrete current need. Say no or ask for clarification when its
-  value, timing, or consequences are unclear.
+For a non-trivial change, discuss ownership, boundaries, important invariants, plausible
+alternatives, and tradeoffs with the requester. Include doing nothing when it is a meaningful
+alternative. Do not build a capability without a concrete current need.
 
-## Simplicity and deletion before addition
+## Design
 
-Simplicity is the primary design constraint. Choose the smallest coherent solution with the fewest
-necessary concepts, states, dependencies, and special cases. This is not the same as the shortest
-patch.
+- Conform new code to the patterns established by the existing code that owns the same
+  responsibility. If an established pattern appears suboptimal, explain the concern and tradeoffs
+  to the requester before extending it or introducing a competing pattern; decide together whether
+  to refactor the shared pattern first.
+- Choose the smallest coherent design with the fewest necessary concepts, states, dependencies,
+  and special cases. Prefer deletion or consolidation before addition.
+- Give each module one cohesive responsibility and one primary reason to change. Split unrelated
+  workflows instead of joining them with flags or broadly optional inputs.
+- Assign each invariant to the component that owns and can enforce it. Share a contract only when
+  its consumers should change together.
+- Keep dependencies explicit and directed toward domain-owned contracts. Construct stateful
+  dependencies at a composition root; importing a module must not acquire resources or mutate
+  global state.
+- Maintain one source of truth for schemas, identifiers, vocabulary, and enum-like values. Derive
+  secondary representations instead of copying them.
+- Keep public contracts narrow. Generalize only after concrete implementations reveal a stable
+  shared abstraction.
+- Treat contorted control flow, repeated domain logic, growing mode switches, and lengthy
+  explanations as evidence that ownership or boundaries need reconsideration.
 
-- Before adding code, dependencies, configuration, or abstractions, ask whether the existing design
-  can be simplified, consolidated, reshaped, or deleted to accommodate the change.
-- Prefer one clear path over parallel mechanisms. Do not preserve obsolete structure merely because
-  adding beside it is easier.
-- Reject quick fixes that address a symptom without resolving the cause.
-- Treat contorted control flow, excessive indirection, long explanations, and confused ownership as
-  evidence that the model or boundary needs to be reconsidered.
-- Prefer obvious, maintainable, and reversible designs over clever ones. Every added layer of
-  complexity needs a concrete justification.
+## Trust and durable state
 
-## Design, abstractions, and modularity
-
-Code that merely works is not sufficient. Its design must make ownership and future change clear.
-
-- Define the right components and abstractions—modules, classes, interfaces, or equivalent—before
-  distributing logic. Each must represent a cohesive role or boundary, not ceremony.
-- Assign a rule to the component that owns and enforces its invariant. Share it only when consumers
-  rely on the same semantic contract and should change together.
-- Every module has one responsibility and one primary reason to change. Split unrelated workflows
-  instead of joining them with flags, optional branches, or large input objects.
-- Dependencies point inward. Construct stateful dependencies in an explicit composition root;
-  importing a module must not open connections, start processes, or mutate global state.
-- Expose narrow public contracts and keep one source of truth for schemas, keys, enum-like values,
-  and types. Derive downstream representations instead of copying them.
-- Enforce deterministic constraints with types, lint rules, or tests. Use prose for principles that
-  require judgment, not as a substitute for a check the toolchain can perform.
-- Do not create generic `utils`, `helpers`, `common`, `shared`, or `types` dumping grounds. Name the
-  domain or capability that owns the code.
-- Biome enforces one function parameter. When an operation needs several values, destructure a
-  named object in its signature so call sites name every argument and cannot confuse positional
-  values, especially values of the same type. Split the operation if the object is not cohesive.
-- Use one domain term consistently. New TypeScript files use kebab-case. Index files only re-export
-  deliberate public surfaces. Comments explain non-obvious constraints or tradeoffs, not the code.
-
-## Planned evolution
-
-Context Use initially runs as a single-user instance backed by SQLite. Multi-user instances with
-strong privacy boundaries and additional databases, beginning with PostgreSQL, are planned. Treat
-the current user count and database as deployment choices, not permanent domain assumptions.
-
-- Make the acting identity and resource ownership explicit at trust, service, and persistence
-  boundaries. Never rely on an implicit “only user” or process-global principal.
-- Keep domain and application contracts independent of a database client or SQL dialect. Isolate
-  current implementation details behind owned repository and adapter boundaries.
-- Preserve these seams now, but do not build unused database adapters, tenancy machinery, extension
-  points, or configuration. Generalize an abstraction when a concrete implementation needs it.
-- Keep MCP identity vocabulary precise. An **OAuth client** is the protocol registration identified
-  by `client_id`; an **MCP client** is the user-facing external consumer; an **MCP client
-  authorization** is the owner-scoped durable approval with its friendly name, credential
-  lifecycle, and stable attribution identity. The MCP transport is stateless. Do not call a client
-  authorization a connection or conflate it with a transport session.
-- Archive a knowledge resource only when it has no active inbound usages, and enforce that
-  precondition in the same transaction as the archive. Archived resources are unavailable to
-  ordinary reads, collections, pickers, and link resolution. Preserve canonical rows, revisions,
-  and stored content, but remove an archived page's current outgoing relationship projections so it
-  leaves the active graph. The owner's self entity is never archivable.
-
-## Red flags
-
-Stop and revisit the design when:
-
-- The problem or success condition cannot be explained without referring to the proposed solution.
-- A module, function, component, or test owns unrelated workflows.
-- An abstraction needs caller-specific modes, or an input object keeps accumulating unrelated
-  fields.
-- Similar domain logic exists in several places without one clear owner.
-- New code is being added even though deleting or reshaping existing code could solve the problem.
-- The change cannot be summarized as one outcome without listing unrelated work.
+- Make the acting identity and resource owner explicit at trust, service, and persistence
+  boundaries. Never rely on a process-global principal or an implicit single user.
+- Treat persistent data and externally visible contracts as owned state. Destructive or
+  irreversible changes require a proven scope, verification method, failure behavior, and recovery
+  plan.
+- Preserve trust boundaries when sharing code. Authentication, authorization, ownership filtering,
+  and capability checks remain with the surface that can enforce them.
 
 ## Tests
 
-There is no coverage target and no expectation that every function has a test. Each test must
-protect a critical invariant, boundary, or failure mode whose regression would matter.
+Each test must protect an important invariant, boundary, or failure mode. Test at the lowest layer
+that can prove the behavior, using the real boundary when correctness depends on a database,
+filesystem, protocol, or framework contract. Assert observable behavior rather than private call
+sequences, and remove redundant tests when a stronger test supersedes them.
 
-- Use `bun:test` as the common unit and integration runner. Add another runner only when a concrete
-  boundary cannot be tested coherently with the existing stack.
-- Each workspace keeps tests in `test`, organized by the same feature, capability, and boundary
-  ownership as production code. Reusable test infrastructure belongs in that workspace's
-  `test/support`.
-- Test an invariant at the lowest layer that can prove it. Do not repeat the same behavior at every
-  layer without a distinct risk.
-- Prefer compact decision tables over near-duplicate cases.
-- Assert observable behavior and durable contracts, not private call sequences or source text when
-  behavior can be executed.
-- Keep suites scoped and remove redundant tests when a stronger test supersedes them.
-- Never weaken encapsulation solely to make implementation details testable.
+## Change scope
 
-## Browser testing passkey authentication
-
-When browser-testing a protected frontend journey, use the real Better Auth passkey flow. Browser
-end-to-end coverage is not part of the default validation baseline, but a browser pass must not add
-an auth bypass, seed a session, relax passkey verification, or enable another sign-in method.
-
-- Use `bun run dev:isolated` for authentication, onboarding, setup, and empty-state journeys. It
-  runs the normal development app against a fresh temporary `DATA_FOLDER`, opens
-  `http://localhost:5173` in the browser controlled by the browser harness, and enables a virtual
-  authenticator matching the server's resident credential and user-verification policy.
-- Use `bun run dev:isolated:seeded` for UI and UX journeys that benefit from a populated knowledge
-  graph. It uses the same disposable lifecycle and real passkey registration, then creates the
-  profile, entities, linked pages, and a page revision through authenticated application APIs.
-  Seed-specific orchestration and editable fixture content live in
-  `scripts/seeds/isolated-development`.
-- Keep either command and its browser connection alive while testing. Stopping it disables the
-  virtual authenticator and removes the disposable data without touching a developer's local
-  owner, so the next run starts from a new isolated instance.
-- Both commands require `browser-harness`. If it is not installed, follow the installation command
-  they print; do not substitute the unrelated npm package named `browser-use`.
-- Never call `WebAuthn.getCredentials`, use DevTools' Export action, commit, or otherwise persist a
-  virtual credential. Those export paths expose the credential's private key.
-
-Better Auth [recommends emulated authenticators](https://better-auth.com/docs/plugins/passkey#debugging)
-for passkey testing; Chrome exposes the required lifecycle through its
-[WebAuthn CDP domain](https://chromedevtools.github.io/devtools-protocol/tot/WebAuthn/).
-
-## Database changes
-
-Database state is durable shared state, not an implementation convenience. Read and follow
-`apps/backend/src/db/AGENTS.md` before making any database change.
-
-## Atomic changes and pull requests
-
-Every PR has one goal that a reviewer can state in one sentence.
-
-- Include only the implementation, focused tests, and documentation required for that goal.
-- Separate behavior changes from broad refactors when either can stand alone.
-- Keep unrelated upgrades, generated-file refreshes, formatting churn, and renames out of the PR.
-- Preserve unrelated work and review the final diff for accidental scope growth.
-- Keep the description brief: state the intent and any non-obvious risk or rollout detail.
-
-Follow the repository-local [open-pull-request skill](./.agents/skills/open-pull-request/SKILL.md)
-when drafting or opening a pull request.
-
-## Validation
-
-Check root and workspace scripts before running commands. Before handing off an implementation, run:
-
-1. `bun fix:codestyle`
-2. `bun check:all`
-3. `bun run test`
-4. `bun run build`
-
-Also run focused integration checks and exercise changed routes when applicable.
-
-## Documentation
-
-Published packages keep public usage docs in `pkg/README.md` and contributor guidance in
-`README.md`; the contributor README links to the public one without duplicating it. Internal-only
-packages need a README only for non-obvious contributor context. Keep the root README short.
-
-When a change establishes a convention, update the owning `AGENTS.md` in the same PR. Guidance must
-describe the code contributors are expected to write next.
+Every change should have one outcome a reviewer can state in one sentence. Keep unrelated
+refactors, upgrades, generated churn, and renames separate; preserve work already present in the
+tree. Update the nearest `AGENTS.md` only when the change establishes or removes an enduring
+principle that belongs there.
