@@ -1,10 +1,14 @@
 import { z } from 'zod';
 import type { Entity } from '#models/entities/model.ts';
-import { EntityAddressSchema, entityAddress } from '#routes/mcp/coordinates.ts';
+import {
+  EntityAddressSchema,
+  entityAddress,
+  McpReadableIdSchema,
+} from '#routes/mcp/coordinates.ts';
 
 export const McpEntitySchema = z.object({
   address: EntityAddressSchema,
-  readableId: z.string(),
+  readableId: McpReadableIdSchema,
   name: z.string(),
   description: z.string(),
   isSelf: z.boolean(),

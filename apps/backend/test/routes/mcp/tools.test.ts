@@ -148,6 +148,15 @@ test('MCP publishes ten typed tools with accurate safety annotations and no priv
         readOnlyHint: false,
         destructiveHint: true,
       });
+      expect(tools.find(({ name }) => name === 'read_entity')?.inputSchema).toMatchObject({
+        properties: { address: { pattern: expect.any(String) } },
+      });
+      expect(tools.find(({ name }) => name === 'read_knowledge_page')?.inputSchema).toMatchObject({
+        properties: { address: { pattern: expect.any(String) } },
+      });
+      expect(tools.find(({ name }) => name === 'read_knowledge_page')?.outputSchema).toMatchObject({
+        properties: { readableId: { pattern: expect.any(String) } },
+      });
       expect(JSON.stringify(tools)).not.toContain('storageKey');
       expect(JSON.stringify(tools)).not.toContain('uuid');
     },
@@ -203,6 +212,13 @@ test('MCP lists are owner-scoped, bounded, cursor-paginated, and reject invalid 
       });
       expect(invalid.isError).toBe(true);
       expect(errorCode(invalid)).toBe('invalid_cursor');
+
+      const tampered = await client.callTool({
+        name: 'list_entities',
+        arguments: { limit: 1, cursor: `${firstPage.nextCursor}!` },
+      });
+      expect(tampered.isError).toBe(true);
+      expect(errorCode(tampered)).toBe('invalid_cursor');
       expect(offsets).toEqual([0, 1]);
     },
   });

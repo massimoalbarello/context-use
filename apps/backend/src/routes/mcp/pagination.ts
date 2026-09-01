@@ -52,9 +52,11 @@ export function decodeMcpCursor({
     return { state: 'valid', offset: 0 };
   }
   try {
-    const payload = CursorPayloadSchema.parse(
-      JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')),
-    );
+    const decoded = Buffer.from(cursor, 'base64url');
+    if (decoded.toString('base64url') !== cursor) {
+      return { state: 'invalid' };
+    }
+    const payload = CursorPayloadSchema.parse(JSON.parse(decoded.toString('utf8')));
     return payload.list === list
       ? { state: 'valid', offset: payload.offset }
       : { state: 'invalid' };

@@ -5,12 +5,17 @@ import type {
   KnowledgePageRevisionSummary,
   KnowledgePageSummary,
 } from '#models/knowledge-pages/model.ts';
-import { PageAddressSchema, pageAddress } from '#routes/mcp/coordinates.ts';
+import {
+  McpReadableIdSchema,
+  PageAddressSchema,
+  PageReferenceAddressSchema,
+  pageAddress,
+} from '#routes/mcp/coordinates.ts';
 import { McpEntitySchema, mcpEntity } from '#routes/mcp/entities/model.ts';
 
 export const McpKnowledgePageSummarySchema = z.object({
   address: PageAddressSchema,
-  readableId: z.string(),
+  readableId: McpReadableIdSchema,
   title: z.string(),
   excerpt: z.string(),
   revisionNumber: z.number().int().positive(),
@@ -19,9 +24,9 @@ export const McpKnowledgePageSummarySchema = z.object({
 });
 
 const McpKnowledgePageReferenceSchema = z.object({
-  address: z.string(),
+  address: PageReferenceAddressSchema,
   page: McpKnowledgePageSummarySchema,
-  fragment: z.string().nullable(),
+  fragment: McpReadableIdSchema.nullable(),
 });
 
 const McpKnowledgePageRevisionSchema = z.object({
