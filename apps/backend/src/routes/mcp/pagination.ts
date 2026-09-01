@@ -20,11 +20,11 @@ export const McpListInputSchema = z.object({
     .describe('Opaque continuation cursor returned by the preceding list call'),
 });
 
-type McpListKind = 'entities' | 'knowledge_pages';
+type McpListKind = 'assets' | 'entities' | 'knowledge_pages';
 
 const CursorPayloadSchema = z.object({
   version: z.literal(1),
-  list: z.union([z.literal('entities'), z.literal('knowledge_pages')]),
+  list: z.union([z.literal('assets'), z.literal('entities'), z.literal('knowledge_pages')]),
   offset: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
 });
 

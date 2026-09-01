@@ -11,6 +11,7 @@ import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profi
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
 import {
   testMcpServerUrl,
+  unusedAssetTransferCapabilities,
   unusedMcpClientAuthorizationsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -73,6 +74,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   const app = createApp({
     auth,
     assetsService,
+    assetTransferCapabilities: unusedAssetTransferCapabilities,
     frontendAssetsService,
     entitiesService,
     healthService,

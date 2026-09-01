@@ -25,6 +25,7 @@ import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.t
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import {
   testMcpServerUrl,
+  unusedAssetTransferCapabilities,
   unusedMcpClientAuthorizationsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -148,6 +149,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     const app = createApp({
       auth: ownerAuth(),
       assetsService: new AssetsService({ assets: assetsRepository, storage }),
+      assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
         assets: assetsRepository,

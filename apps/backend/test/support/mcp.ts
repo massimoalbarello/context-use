@@ -1,5 +1,6 @@
 import type { Auth } from '#lib/auth/better-auth.ts';
 import type { McpTransportContract } from '#lib/mcp/transport.ts';
+import type { AssetTransferCapabilitiesContract } from '#routes/mcp/assets/transfer-capabilities.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
 
 function unexpectedCall(): never {
@@ -21,6 +22,13 @@ export const unusedMcpClientAuthorizationsService: McpClientAuthorizationsServic
 export const unusedMcpTransport: McpTransportContract = {
   fetch: unexpectedCall,
   close: () => Promise.resolve(),
+};
+
+export const unusedAssetTransferCapabilities: AssetTransferCapabilitiesContract = {
+  issueUpload: unexpectedCall,
+  issueDownload: unexpectedCall,
+  consumeUpload: unexpectedCall,
+  consumeDownload: unexpectedCall,
 };
 
 export const testMcpServerUrl = 'https://context-use.nibrun.app/mcp';

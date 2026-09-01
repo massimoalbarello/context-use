@@ -18,6 +18,7 @@ import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profi
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import {
   testMcpServerUrl,
+  unusedAssetTransferCapabilities,
   unusedMcpClientAuthorizationsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -84,6 +85,7 @@ test('owner registration API exposes only complete registration states', async (
     const app = createApp({
       auth,
       assetsService,
+      assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService,
       healthService,

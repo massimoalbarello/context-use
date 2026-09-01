@@ -7,8 +7,10 @@ import {
   createContextUseMcpServer,
   MCP_SUPPORTED_LEGACY_PROTOCOL_VERSIONS,
 } from '#routes/mcp/server.ts';
+import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
+import { unusedAssetTransferCapabilities } from '../../support/mcp.ts';
 
 const LEGACY_PROTOCOL_VERSION = '2025-06-18';
 const NOW = '2026-09-01T12:00:00.000Z';
@@ -41,6 +43,15 @@ const entitiesService: EntitiesServiceContract = {
   archive: unexpectedCall,
 };
 
+const assetsService: AssetsServiceContract = {
+  create: unexpectedCall,
+  list: unexpectedCall,
+  detail: unexpectedCall,
+  updateName: unexpectedCall,
+  archive: unexpectedCall,
+  content: unexpectedCall,
+};
+
 const pagesService: KnowledgePagesServiceContract = {
   create: unexpectedCall,
   list: unexpectedCall,
@@ -63,8 +74,10 @@ test('authenticated 2025-06-18 clients can initialize and call the same tools', 
     createServer: ({ principal: authenticatedPrincipal }) =>
       createContextUseMcpServer({
         principal: authenticatedPrincipal,
+        assetsService,
         entitiesService,
         pagesService,
+        transferCapabilities: unusedAssetTransferCapabilities,
       }),
   });
   const clientTransport = new StreamableHTTPClientTransport(

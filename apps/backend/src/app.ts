@@ -10,6 +10,8 @@ import {
   createFrontendAssetsController,
   createFrontendFallbackController,
 } from '#routes/controller.ts';
+import type { AssetTransferCapabilitiesContract } from '#routes/mcp/assets/transfer-capabilities.ts';
+import { createAssetTransferController } from '#routes/mcp/assets/transfer-controller.ts';
 import { createMcpController } from '#routes/mcp/controller.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
@@ -27,6 +29,7 @@ const OPENAPI_PATH = '/openapi';
 export function createApp({
   auth,
   assetsService,
+  assetTransferCapabilities,
   frontendAssetsService,
   entitiesService,
   healthService,
@@ -39,6 +42,7 @@ export function createApp({
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
+  assetTransferCapabilities: AssetTransferCapabilitiesContract;
   frontendAssetsService: FrontendAssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
@@ -101,6 +105,12 @@ export function createApp({
       }),
     )
     .use(createAuthDiscoveryController({ auth }))
+    .use(
+      createAssetTransferController({
+        assetsService,
+        transferCapabilities: assetTransferCapabilities,
+      }),
+    )
     .use(
       createMcpController({
         auth,
