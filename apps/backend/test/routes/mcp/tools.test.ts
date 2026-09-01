@@ -14,11 +14,13 @@ import type { KnowledgePage, KnowledgePageReference } from '#models/knowledge-pa
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { createContextUseMcpServer } from '#routes/mcp/server.ts';
+import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import {
   KnowledgePagesService,
   type KnowledgePagesServiceContract,
 } from '#services/knowledge-pages/service.ts';
+import { unusedAssetTransferCapabilities } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
 const INTERNAL_ENTITY_ID = '01900000-0000-7000-8000-000000000001';
@@ -70,6 +72,15 @@ const principal: McpClientAuthorizationPrincipal = {
   clientAuthorizationName: 'Research agent',
 };
 
+const unusedAssetsService: AssetsServiceContract = {
+  create: unexpectedCall,
+  list: unexpectedCall,
+  detail: unexpectedCall,
+  updateName: unexpectedCall,
+  archive: unexpectedCall,
+  content: unexpectedCall,
+};
+
 const unusedEntitiesService: EntitiesServiceContract = {
   create: unexpectedCall,
   list: unexpectedCall,
@@ -91,16 +102,24 @@ const unusedPagesService: KnowledgePagesServiceContract = {
 
 async function withMcpClient<T>({
   actor = principal,
+  assetsService = unusedAssetsService,
   entitiesService = unusedEntitiesService,
   pagesService = unusedPagesService,
   run,
 }: {
   actor?: McpClientAuthorizationPrincipal;
+  assetsService?: AssetsServiceContract;
   entitiesService?: EntitiesServiceContract;
   pagesService?: KnowledgePagesServiceContract;
   run: (client: Client) => Promise<T>;
 }): Promise<T> {
-  const server = createContextUseMcpServer({ principal: actor, entitiesService, pagesService });
+  const server = createContextUseMcpServer({
+    principal: actor,
+    assetsService,
+    entitiesService,
+    pagesService,
+    transferCapabilities: unusedAssetTransferCapabilities,
+  });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: 'context-use-test', version: '1.0.0' });
   await server.connect(serverTransport);
@@ -120,11 +139,16 @@ function errorCode(result: Awaited<ReturnType<Client['callTool']>>): unknown {
     : undefined;
 }
 
-test('MCP publishes ten typed tools with accurate safety annotations and no private coordinates', async () => {
+test('MCP publishes fifteen typed tools with accurate safety annotations and no private coordinates', async () => {
   await withMcpClient({
     run: async (client) => {
       const { tools } = await client.listTools();
       expect(tools.map(({ name }) => name)).toEqual([
+        'create_asset_upload',
+        'list_assets',
+        'read_asset',
+        'update_asset',
+        'archive_asset',
         'create_entity',
         'list_entities',
         'read_entity',
@@ -157,6 +181,19 @@ test('MCP publishes ten typed tools with accurate safety annotations and no priv
       expect(tools.find(({ name }) => name === 'read_knowledge_page')?.outputSchema).toMatchObject({
         properties: { readableId: { pattern: expect.any(String) } },
       });
+      expect(tools.find(({ name }) => name === 'read_asset')?.inputSchema).toMatchObject({
+        properties: { address: { pattern: expect.any(String) } },
+      });
+      expect(
+        tools.find(({ name }) => name === 'create_asset_upload')?.inputSchema,
+      ).not.toHaveProperty('properties.file');
+      const assetToolDescriptions = tools
+        .filter(({ name }) => name.includes('asset'))
+        .map(({ description }) => description)
+        .join(' ');
+      expect(assetToolDescriptions).toContain('immutable');
+      expect(assetToolDescriptions).toContain('meaningful name');
+      expect(assetToolDescriptions).toContain('identity, location, intent, or chronology');
       expect(JSON.stringify(tools)).not.toContain('storageKey');
       expect(JSON.stringify(tools)).not.toContain('uuid');
     },
