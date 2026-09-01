@@ -2,27 +2,10 @@ import { expect, test } from 'bun:test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ResourceDetailActions } from '../../src/components/knowledge/resource-detail-actions';
+import { ClientList } from '../../src/components/mcp/client-list';
 import { ClientNameForm } from '../../src/components/mcp/client-name-form';
 
-async function importClientList() {
-  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
-  Object.defineProperty(globalThis, 'window', {
-    configurable: true,
-    value: { location: { origin: 'http://localhost' } },
-  });
-  try {
-    return (await import('../../src/components/mcp/client-list')).ClientList;
-  } finally {
-    if (windowDescriptor) {
-      Object.defineProperty(globalThis, 'window', windowDescriptor);
-    } else {
-      Reflect.deleteProperty(globalThis, 'window');
-    }
-  }
-}
-
-test('authenticated clients are read-only until the shared edit action is selected', async () => {
-  const ClientList = await importClientList();
+test('authenticated clients are read-only until the shared edit action is selected', () => {
   const queryClient = new QueryClient();
   const viewHtml = renderToStaticMarkup(
     <QueryClientProvider client={queryClient}>

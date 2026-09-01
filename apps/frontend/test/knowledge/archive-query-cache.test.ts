@@ -1,22 +1,28 @@
 import { expect, test } from 'bun:test';
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
-
-Object.defineProperty(globalThis, 'window', {
-  value: { location: { origin: 'http://localhost:5173' } },
-});
-
-const { settleArchivedAssetQueries, settleArchivedEntityQueries, settleArchivedPageQueries } =
-  await import('../../src/lib/hooks/archive-query-cache');
-const { assetDetailsQueryKey, assetQueryOptions, assetsListQueryKey, assetSuggestionsQueryKey } =
-  await import('../../src/queries/assets');
-const {
+import {
+  settleArchivedAssetQueries,
+  settleArchivedEntityQueries,
+  settleArchivedPageQueries,
+} from '../../src/lib/hooks/archive-query-cache';
+import {
+  assetDetailsQueryKey,
+  assetQueryOptions,
+  assetSuggestionsQueryKey,
+  assetsListQueryKey,
+} from '../../src/queries/assets';
+import {
   entitiesListQueryKey,
   entityDetailsQueryKey,
   entityQueryOptions,
   entitySuggestionsQueryKey,
-} = await import('../../src/queries/entities');
-const { pageDetailsQueryKey, pageQueryOptions, pageSuggestionsQueryKey, pagesListQueryKey } =
-  await import('../../src/queries/pages');
+} from '../../src/queries/entities';
+import {
+  pageDetailsQueryKey,
+  pageQueryOptions,
+  pageSuggestionsQueryKey,
+  pagesListQueryKey,
+} from '../../src/queries/pages';
 
 test('page archive removes its unavailable detail without refetching it', async () => {
   const queryClient = new QueryClient();
