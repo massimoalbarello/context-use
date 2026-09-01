@@ -156,7 +156,6 @@ export function ClientList({ clients }: { clients: McpClient[] }) {
               <CardContent className="flex items-center justify-between gap-3">
                 <div>
                   <strong>{client.name}</strong>
-                  <ClientAuthorizedAt client={client} />
                   <p className="text-muted-foreground text-sm">Credentials revoked</p>
                 </div>
                 <Badge variant="secondary">Archived</Badge>
