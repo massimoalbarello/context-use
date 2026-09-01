@@ -22,7 +22,7 @@ const errorResponses = {
   [StatusMap['Not Found']]: ErrorResponseSchema,
 };
 
-const clientNameConflict = { error: 'An active MCP client already uses this name' } as const;
+const clientNameConflict = { error: 'An MCP client already uses this name' } as const;
 
 export function createMcpClientsController({
   auth,

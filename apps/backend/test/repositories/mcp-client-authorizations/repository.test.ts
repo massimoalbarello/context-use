@@ -25,7 +25,7 @@ async function insertOAuthClient({
   `;
 }
 
-test('active client authorization identity is stable and its friendly name is unique', async () => {
+test('client authorization identity is stable and its friendly name remains unique after archive', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
       const now = new Date().toISOString();
@@ -122,12 +122,20 @@ test('active client authorization identity is stable and its friendly name is un
           name: 'Archived identities stay fixed',
         }),
       ).toEqual({ state: 'not_found' });
-      const reused = await service.rename({
-        actorId: OWNER_USER_ID,
-        clientAuthorizationId: fresh.clientAuthorization.id,
-        name: 'Renamed on reconnect',
-      });
-      expect(reused.state).toBe('renamed');
+      expect(
+        await service.rename({
+          actorId: OWNER_USER_ID,
+          clientAuthorizationId: fresh.clientAuthorization.id,
+          name: 'Renamed on reconnect',
+        }),
+      ).toEqual({ state: 'name_conflict' });
+      expect(
+        await service.approve({
+          actorId: OWNER_USER_ID,
+          clientId: 'verified-client',
+          name: 'renamed on reconnect',
+        }),
+      ).toEqual({ state: 'name_conflict' });
       const afterArchive = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'verified-client',

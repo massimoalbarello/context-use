@@ -52,7 +52,7 @@ test('client settings expose the configured public MCP server URL to the owner',
   expect(await response.json()).toEqual({ serverUrl: testMcpServerUrl, items: [] });
 });
 
-test('duplicate active client names are returned as conflicts', async () => {
+test('duplicate client names are returned as conflicts', async () => {
   const clientAuthorizationsService: McpClientAuthorizationsServiceContract = {
     ...unusedMcpClientAuthorizationsService,
     approve: () => Promise.resolve({ state: 'name_conflict' }),
@@ -70,7 +70,7 @@ test('duplicate active client names are returned as conflicts', async () => {
     }),
   );
   expect(approval.status).toBe(StatusMap.Conflict);
-  expect(await approval.json()).toEqual({ error: 'An active MCP client already uses this name' });
+  expect(await approval.json()).toEqual({ error: 'An MCP client already uses this name' });
 
   const rename = await createMcpClientsController({
     auth: ownerAuth,
@@ -85,6 +85,6 @@ test('duplicate active client names are returned as conflicts', async () => {
   );
   expect({ status: rename.status, body: await rename.json() }).toEqual({
     status: StatusMap.Conflict,
-    body: { error: 'An active MCP client already uses this name' },
+    body: { error: 'An MCP client already uses this name' },
   });
 });

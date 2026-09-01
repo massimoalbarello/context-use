@@ -17,6 +17,5 @@ create unique index "mcp_client_authorization_active_oauth_client_uidx"
   on "mcp_client_authorization" ("owner_id", "oauth_client_id")
   where "archived_at" is null;
 
-create unique index "mcp_client_authorization_active_name_uidx"
-  on "mcp_client_authorization" ("owner_id", "name" collate nocase)
-  where "archived_at" is null;
+create unique index "mcp_client_authorization_owner_name_uidx"
+  on "mcp_client_authorization" ("owner_id", "name" collate nocase);
