@@ -1,7 +1,6 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { AgentSetup } from '../components/setup/agent-setup';
 import { buttonVariants } from '../components/ui/button';
-import { applicationOrigin } from '../lib/application-origin';
 import { internalAppPath } from '../lib/internal-app-path';
 import { mcpClientsQueryOptions } from '../queries/mcp-clients';
 
@@ -33,7 +32,7 @@ function SetupRoute() {
         </p>
       </header>
 
-      <AgentSetup applicationUrl={applicationOrigin()} mcpServerUrl={serverUrl} />
+      <AgentSetup mcpServerUrl={serverUrl} />
 
       <Link
         className={buttonVariants({
