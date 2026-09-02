@@ -80,12 +80,7 @@ export function KnowledgeMapFilters({
       </h2>
       <div className="mt-2 grid gap-3">
         <KnowledgeMapKeywordFilter key={query} value={query} onApply={onQueryApply} />
-        <PageDateRangeFilter
-          className="mb-0"
-          label="Interval"
-          value={dateRange}
-          onApply={onDateRangeApply}
-        />
+        <PageDateRangeFilter className="mb-0" value={dateRange} onApply={onDateRangeApply} />
       </div>
     </section>
   );

@@ -63,12 +63,10 @@ export function PageDateRangeFilter({
   value,
   onApply,
   className,
-  label = 'Filter by date range',
 }: {
   value?: CalendarDateRange;
   onApply: (value?: CalendarDateRange) => void;
   className?: string;
-  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DateRange | undefined>(() => pickerRangeFrom(value));
@@ -76,7 +74,7 @@ export function PageDateRangeFilter({
 
   return (
     <div className={cn('mb-2 grid gap-2 rounded-xl bg-muted/55 p-3', className)}>
-      <p className="font-medium text-xs">{label}</p>
+      <p className="font-medium text-xs">Filter by date range</p>
       <Popover
         open={open}
         onOpenChange={(nextOpen) => {
