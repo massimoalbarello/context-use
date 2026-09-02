@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   buildKnowledgeMapLayout,
   eagerKnowledgeMapImageKeys,
+  knowledgeMapLayoutInViewport,
   MAX_EAGER_KNOWLEDGE_MAP_IMAGES,
   mapViewportNearBoundary,
 } from '../../src/components/knowledge-map/knowledge-map-layout';
@@ -191,6 +192,27 @@ describe('knowledge map layout', () => {
       false,
     );
     expect(mapViewportNearBoundary({ x: 390, y: -90, width: 240, height: 180 }, bounds)).toBe(true);
+  });
+
+  test('shows only the page neighborhoods near the current viewport', () => {
+    const self = entity({ readableId: 'alex', name: 'Alex', isSelf: true });
+    const pageCount = 12;
+    const pages = [...Array(pageCount).keys()].map((index) =>
+      page({ readableId: `page-${index}`, title: `Page ${index}`, mentions: [self] }),
+    );
+    const layout = buildKnowledgeMapLayout(pages, { anchorEntity: self });
+
+    const closeView = knowledgeMapLayoutInViewport(layout, {
+      x: -300,
+      y: -300,
+      width: 600,
+      height: 600,
+    });
+    const fittedView = knowledgeMapLayoutInViewport(layout, layout.bounds);
+
+    expect(closeView.pages.length).toBeLessThan(fittedView.pages.length);
+    expect(fittedView.pages).toHaveLength(pages.length);
+    expect(closeView.resources.some(({ key }) => key === 'entity:alex')).toBe(true);
   });
 
   test('merges cursor batches without duplicating a page at their boundary', () => {

@@ -144,7 +144,7 @@ function KnowledgeMapRoute() {
               hasNextPage={mapQuery.hasNextPage}
               isFetchingNextPage={mapQuery.isFetchingNextPage}
               loadMoreError={mapQuery.isFetchNextPageError ? mapQuery.error : null}
-              onLoadMore={() => void mapQuery.fetchNextPage()}
+              onLoadMore={() => mapQuery.fetchNextPage()}
             />
             {selection && (
               <KnowledgeMapPreviewPanel

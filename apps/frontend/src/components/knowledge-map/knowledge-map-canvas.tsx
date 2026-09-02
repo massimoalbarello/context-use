@@ -1,6 +1,6 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
-import { ChevronsRight, File, FileText, Minus, Plus, Scan } from 'lucide-react';
+import { File, FileText, Minus, Move, Plus, Scan } from 'lucide-react';
 import {
   memo,
   type PointerEvent as ReactPointerEvent,
@@ -25,6 +25,7 @@ import {
   eagerKnowledgeMapImageKeys,
   type KnowledgeMapLayout,
   type KnowledgeMapResource,
+  knowledgeMapLayoutInViewport,
   mapViewportNearBoundary,
 } from './knowledge-map-layout';
 
@@ -437,32 +438,25 @@ function KnowledgeMapExplorationCue({
 }) {
   return (
     <div
-      className="pointer-events-none absolute top-1/2 right-0 z-10 -translate-y-1/2"
+      className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2"
       role="status"
     >
-      <div
-        className="pointer-events-none absolute top-1/2 right-0 h-28 w-40 -translate-y-1/2 bg-gradient-to-l from-card via-card/80 to-transparent"
-        aria-hidden="true"
-      />
-      <div className="relative py-4 pr-4 pl-8 text-right">
-        <p className="whitespace-nowrap font-medium text-foreground text-xs">More pages</p>
-        {loadMoreError ? (
-          <Button
-            type="button"
-            variant="link"
-            size="xs"
-            className="pointer-events-auto h-auto p-0 text-xs"
-            onClick={onLoadMore}
-          >
-            Retry loading
-          </Button>
-        ) : (
-          <p className="mt-0.5 flex items-center justify-end gap-0.5 whitespace-nowrap text-muted-foreground text-xs">
-            Drag to explore
-            <ChevronsRight className="size-3.5" aria-hidden="true" />
-          </p>
-        )}
-      </div>
+      {loadMoreError ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="pointer-events-auto rounded-full bg-card/92 shadow-sm backdrop-blur"
+          onClick={onLoadMore}
+        >
+          Retry loading nearby pages
+        </Button>
+      ) : (
+        <p className="flex items-center gap-2 whitespace-nowrap rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
+          <Move className="size-3.5" aria-hidden="true" />
+          Drag or zoom out for more pages
+        </p>
+      )}
     </div>
   );
 }
@@ -484,15 +478,16 @@ export function KnowledgeMapCanvas({
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   loadMoreError: Error | null;
-  onLoadMore: () => void;
+  onLoadMore: () => Promise<unknown>;
 }) {
   const layout = useMemo(
     () => buildKnowledgeMapLayout(pages, { anchorEntity }),
     [anchorEntity, pages],
   );
-  const eagerImageKeys = useMemo(() => eagerKnowledgeMapImageKeys(layout), [layout]);
   const [preview, setPreview] = useState<MapPreview | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox>(() => focusedViewBox(layout));
+  const viewBoxRef = useRef(viewBox);
+  const loadMorePending = useRef(false);
   const [panning, setPanning] = useState(false);
   const suppressNextCloudClick = useRef(false);
   const drag = useRef<{
@@ -504,23 +499,58 @@ export function KnowledgeMapCanvas({
     moved: boolean;
     cloudReadableId?: string;
   } | null>(null);
+  const visibleLayout = useMemo(
+    () => knowledgeMapLayoutInViewport(layout, viewBox),
+    [layout, viewBox],
+  );
+  const eagerImageKeys = useMemo(() => eagerKnowledgeMapImageKeys(visibleLayout), [visibleLayout]);
   const activeKey = preview ? previewKey(preview) : selectedKey;
 
+  function updateViewBox(nextViewBox: ViewBox) {
+    viewBoxRef.current = nextViewBox;
+    setViewBox(nextViewBox);
+  }
+
+  async function requestLoadMore(viewport?: ViewBox) {
+    if (
+      !hasNextPage ||
+      isFetchingNextPage ||
+      loadMorePending.current ||
+      (viewport && !mapViewportNearBoundary(viewport, layout.bounds))
+    ) {
+      return;
+    }
+    loadMorePending.current = true;
+    try {
+      await onLoadMore();
+    } finally {
+      loadMorePending.current = false;
+    }
+  }
+
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
-    setViewBox((current) => {
-      const minimumWidth = layout.bounds.width * 0.28;
-      const maximumWidth = layout.bounds.width * 2.5;
-      const width = Math.min(maximumWidth, Math.max(minimumWidth, current.width * factor));
-      const height = width * (current.height / current.width);
-      const anchorX = current.x + current.width * anchor.x;
-      const anchorY = current.y + current.height * anchor.y;
-      return {
-        x: anchorX - width * anchor.x,
-        y: anchorY - height * anchor.y,
-        width,
-        height,
-      };
-    });
+    const current = viewBoxRef.current;
+    const minimumWidth = layout.bounds.width * 0.28;
+    const maximumWidth = layout.bounds.width * 2.5;
+    const width = Math.min(maximumWidth, Math.max(minimumWidth, current.width * factor));
+    const height = width * (current.height / current.width);
+    const anchorX = current.x + current.width * anchor.x;
+    const anchorY = current.y + current.height * anchor.y;
+    const nextViewBox = {
+      x: anchorX - width * anchor.x,
+      y: anchorY - height * anchor.y,
+      width,
+      height,
+    };
+    updateViewBox(nextViewBox);
+    if (factor > 1) {
+      void requestLoadMore(nextViewBox);
+    }
+  }
+
+  function fitMap() {
+    updateViewBox(layout.bounds);
+    void requestLoadMore(layout.bounds);
   }
 
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
@@ -573,7 +603,7 @@ export function KnowledgeMapCanvas({
       y: drag.current.viewBox.y - dy,
     };
     drag.current.currentViewBox = currentViewBox;
-    setViewBox(currentViewBox);
+    updateViewBox(currentViewBox);
   }
 
   function handlePointerEnd(event: ReactPointerEvent<SVGSVGElement>) {
@@ -593,7 +623,7 @@ export function KnowledgeMapCanvas({
       setPanning(false);
       event.currentTarget.releasePointerCapture(event.pointerId);
       if (action.loadMore) {
-        onLoadMore();
+        void requestLoadMore();
       }
     }
   }
@@ -617,7 +647,7 @@ export function KnowledgeMapCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
-      aria-label={`Hypermedia map with ${layout.pages.length} knowledge pages and ${layout.resources.length} resource dots`}
+      aria-label={`Hypermedia map with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.resources.length} visible resource dots`}
     >
       <svg
         className={cn(
@@ -632,10 +662,10 @@ export function KnowledgeMapCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerCancel}
-        onDoubleClick={() => setViewBox(layout.bounds)}
+        onDoubleClick={fitMap}
       >
         <KnowledgeMapLayers
-          layout={layout}
+          layout={visibleLayout}
           activeKey={activeKey}
           eagerImageKeys={eagerImageKeys}
           suppressNextCloudClick={suppressNextCloudClick}
@@ -646,7 +676,10 @@ export function KnowledgeMapCanvas({
       </svg>
 
       {hasNextPage && !isFetchingNextPage && (
-        <KnowledgeMapExplorationCue loadMoreError={loadMoreError} onLoadMore={onLoadMore} />
+        <KnowledgeMapExplorationCue
+          loadMoreError={loadMoreError}
+          onLoadMore={() => void requestLoadMore()}
+        />
       )}
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
@@ -673,7 +706,7 @@ export function KnowledgeMapCanvas({
           variant="ghost"
           size="icon"
           aria-label="Fit hypermedia map"
-          onClick={() => setViewBox(layout.bounds)}
+          onClick={fitMap}
         >
           <Scan aria-hidden="true" />
         </Button>

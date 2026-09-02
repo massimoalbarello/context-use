@@ -56,6 +56,7 @@ const RESOURCE_PAGE_LABEL_Y_DISTANCE = 72;
 const RESOURCE_SPIRAL_STEP = 64;
 const RESOURCE_PLACEMENT_ATTEMPTS = 1600;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+const VIEWPORT_RENDER_MARGIN_RATIO = 0.08;
 export const MAX_EAGER_KNOWLEDGE_MAP_IMAGES = 12;
 
 function resourceKey(kind: 'entity' | 'asset', readableId: string): string {
@@ -239,6 +240,32 @@ export function mapViewportNearBoundary(viewport: MapBounds, bounds: MapBounds):
     viewport.x + viewport.width >= bounds.x + bounds.width - marginX ||
     viewport.y + viewport.height >= bounds.y + bounds.height - marginY
   );
+}
+
+function pointNearViewport(point: MapPoint, viewport: MapBounds): boolean {
+  const marginX = viewport.width * VIEWPORT_RENDER_MARGIN_RATIO;
+  const marginY = viewport.height * VIEWPORT_RENDER_MARGIN_RATIO;
+  return (
+    point.x >= viewport.x - marginX &&
+    point.x <= viewport.x + viewport.width + marginX &&
+    point.y >= viewport.y - marginY &&
+    point.y <= viewport.y + viewport.height + marginY
+  );
+}
+
+export function knowledgeMapLayoutInViewport(
+  layout: KnowledgeMapLayout,
+  viewport: MapBounds,
+): KnowledgeMapLayout {
+  const pages = layout.pages.filter(({ point }) => pointNearViewport(point, viewport));
+  const visibleResourceKeys = new Set(pages.flatMap(({ resourceKeys }) => resourceKeys));
+  const resources = layout.resources.filter(
+    (resource) =>
+      pointNearViewport(resource.point, viewport) &&
+      (visibleResourceKeys.has(resource.key) ||
+        (resource.kind === 'entity' && resource.entity.isSelf)),
+  );
+  return { ...layout, pages, resources };
 }
 
 export function eagerKnowledgeMapImageKeys(layout: KnowledgeMapLayout): Set<string> {

@@ -53,7 +53,7 @@ test('the hypermedia canvas exposes page regions, circular entities, and rounded
       hasNextPage
       isFetchingNextPage={false}
       loadMoreError={null}
-      onLoadMore={() => undefined}
+      onLoadMore={() => Promise.resolve()}
     />,
   );
 
@@ -64,8 +64,6 @@ test('the hypermedia canvas exposes page regions, circular entities, and rounded
   expect(html).toContain('aria-label="Open asset Rollout metrics"');
   expect(html).toContain('<circle');
   expect(html).toContain('<rect');
-  expect(html).toContain('More pages');
-  expect(html).toContain('Drag to explore');
 });
 
 test('a cloud click selects its page while a boundary drag loads without selecting', () => {
