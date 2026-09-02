@@ -54,6 +54,20 @@ test('Pages presents semantic and temporal pages in one list with intervals wher
   expect(html).not.toContain('General knowledge');
 });
 
+test('Pages renders a date-only interval revived by the API transport', async () => {
+  const transportedPage = {
+    ...pages[0],
+    readableId: 'design-critique',
+    title: 'Design critique',
+    temporalCoverage: new Date('2026-08-28T00:00:00.000Z'),
+  } as unknown as KnowledgePageSummary;
+
+  const html = await renderWithRouter(<KnowledgePageList pages={[transportedPage]} />);
+
+  expect(html).toContain('title="Interval: 2026-08-28."');
+  expect(html).toContain('Design critique');
+});
+
 test('entity-related pages use Temporal and Semantic sections', async () => {
   const html = await renderWithRouter(<EntityPageSections pages={pages} />);
 

@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { useArchivePage } from '../lib/hooks/use-archive-page';
 import { usePage } from '../lib/hooks/use-page';
 import { useUpdatePage } from '../lib/hooks/use-update-page';
+import { temporalCoverageExpression } from '../lib/temporal-coverage';
 import { type KnowledgePage, pageQueryOptions } from '../queries/pages';
 
 type PageView = 'preview' | 'links' | 'revisions';
@@ -203,7 +204,12 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
       {editing ? (
         <KnowledgePageForm
           key={page.revisionNumber}
-          initialValues={{ markdown: page.markdown, temporalCoverage: page.temporalCoverage }}
+          initialValues={{
+            markdown: page.markdown,
+            temporalCoverage: page.temporalCoverage
+              ? temporalCoverageExpression(page.temporalCoverage)
+              : null,
+          }}
           formId={PAGE_EDIT_FORM_ID}
           pending={updatePage.isPending}
           error={updatePage.error}

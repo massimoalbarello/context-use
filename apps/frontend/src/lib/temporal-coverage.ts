@@ -5,9 +5,16 @@ import {
 } from '@repo/backend/temporal-coverage';
 
 export type CalendarDateRange = { from: string; to: string };
+export type TransportedTemporalCoverage = string | Date;
 
 const DATE_LABEL_REFERENCE_YEAR = 2000;
 const YEAR_CHARACTER_COUNT = 4;
+
+export function temporalCoverageExpression(value: TransportedTemporalCoverage): string {
+  // Eden revives a date-only JSON string as a Date. Temporal coverage owns calendar precision,
+  // so recover the original day expression instead of treating it as an instant.
+  return value instanceof Date ? value.toISOString().slice(0, 'YYYY-MM-DD'.length) : value;
+}
 
 function calendarDateLabel({
   date,
@@ -45,10 +52,10 @@ export function temporalCoverageLabel({
   expression,
   locales,
 }: {
-  expression: string;
+  expression: TransportedTemporalCoverage;
   locales?: Intl.LocalesArgument;
 }): string {
-  const coverage = parseTemporalCoverage(expression);
+  const coverage = parseTemporalCoverage(temporalCoverageExpression(expression));
   if (coverage.ongoing) {
     return `Since ${calendarDateLabel({ date: coverage.start, locales })} · ongoing`;
   }
