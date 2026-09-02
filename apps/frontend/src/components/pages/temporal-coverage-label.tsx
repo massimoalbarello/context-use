@@ -9,7 +9,7 @@ export function TemporalCoverageLabel({
   expression: string;
   className?: string;
 }) {
-  const label = temporalCoverageLabel(expression);
+  const label = temporalCoverageLabel({ expression });
   const title = temporalCoverageTitle(expression);
   return (
     <span

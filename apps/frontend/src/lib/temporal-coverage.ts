@@ -6,47 +6,62 @@ import {
 
 export type CalendarDateRange = { from: string; to: string };
 
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-] as const;
+const DATE_LABEL_REFERENCE_YEAR = 2000;
 const YEAR_CHARACTER_COUNT = 4;
 
-function calendarDateLabel(date: TemporalCalendarDate): string {
+function calendarDateLabel({
+  date,
+  locales,
+}: {
+  date: TemporalCalendarDate;
+  locales?: Intl.LocalesArgument;
+}): string {
   const year = date.expression.slice(0, YEAR_CHARACTER_COUNT);
   const marker = date.marker ?? '';
   if (date.month === null) {
     return `${year}${marker}`;
   }
-  const month = MONTH_NAMES[date.month - 1];
-  if (date.day === null) {
-    return `${month} ${year}${marker}`;
-  }
-  return `${date.day} ${month} ${year}${marker}`;
+  const referenceDate = new Date(0);
+  referenceDate.setUTCFullYear(DATE_LABEL_REFERENCE_YEAR, date.month - 1, date.day ?? 1);
+  const formatter = new Intl.DateTimeFormat(locales, {
+    calendar: 'gregory',
+    day: date.day === null ? undefined : 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+  const localizedYear = new Intl.NumberFormat(locales, {
+    minimumIntegerDigits: YEAR_CHARACTER_COUNT,
+    useGrouping: false,
+  }).format(Number(year));
+  const label = formatter
+    .formatToParts(referenceDate)
+    .map((part) => (part.type === 'year' ? localizedYear : part.value))
+    .join('');
+  return `${label}${marker}`;
 }
 
-export function temporalCoverageLabel(expression: string): string {
+export function temporalCoverageLabel({
+  expression,
+  locales,
+}: {
+  expression: string;
+  locales?: Intl.LocalesArgument;
+}): string {
   const coverage = parseTemporalCoverage(expression);
   if (coverage.ongoing) {
-    return `Since ${calendarDateLabel(coverage.start)} · ongoing`;
+    return `Since ${calendarDateLabel({ date: coverage.start, locales })} · ongoing`;
   }
   if (coverage.start === coverage.end) {
-    return calendarDateLabel(coverage.start);
+    return calendarDateLabel({ date: coverage.start, locales });
   }
   if (!coverage.end) {
     throw new Error('Bounded temporal coverage is missing its end date.');
   }
-  return `${calendarDateLabel(coverage.start)} – ${calendarDateLabel(coverage.end)}`;
+  return `${calendarDateLabel({ date: coverage.start, locales })} – ${calendarDateLabel({
+    date: coverage.end,
+    locales,
+  })}`;
 }
 
 export function temporalCoverageTitle(expression: string): string {

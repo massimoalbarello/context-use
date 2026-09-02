@@ -15,7 +15,16 @@ describe('temporal coverage presentation', () => {
     { expression: '2025-03/2025-08', expected: 'March 2025 – August 2025' },
     { expression: '2024-11?/..', expected: 'Since November 2024? · ongoing' },
   ])('formats $expression without inventing precision', ({ expression, expected }) => {
-    expect(temporalCoverageLabel(expression)).toBe(expected);
+    expect(temporalCoverageLabel({ expression, locales: 'en-GB' })).toBe(expected);
+  });
+
+  test('uses the selected browser locale for complete dates', () => {
+    expect(temporalCoverageLabel({ expression: '2025-03-14?', locales: 'en-GB' })).toBe(
+      '14 March 2025?',
+    );
+    expect(temporalCoverageLabel({ expression: '2025-03-14?', locales: 'en-US' })).toBe(
+      'March 14, 2025?',
+    );
   });
 
   test('keeps the exact expression and marker meaning available', () => {
