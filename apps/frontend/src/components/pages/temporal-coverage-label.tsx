@@ -13,7 +13,10 @@ export function TemporalCoverageLabel({
   const title = temporalCoverageTitle(expression);
   return (
     <span
-      className={cn('inline-flex min-w-0 items-center gap-1.5 text-muted-foreground', className)}
+      className={cn(
+        'inline-flex min-w-0 items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 font-medium text-primary',
+        className,
+      )}
       title={title}
     >
       <CalendarRange className="size-3.5 shrink-0" aria-hidden="true" />

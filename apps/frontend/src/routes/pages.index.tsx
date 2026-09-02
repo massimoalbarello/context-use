@@ -1,17 +1,24 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { WorkspaceEmpty } from '../components/knowledge/workspace-empty';
+import type { CalendarDateRange } from '../lib/temporal-coverage';
 import { pagesQueryOptions } from '../queries/pages';
 
+function dateRangeFrom(search: Partial<CalendarDateRange>): CalendarDateRange | undefined {
+  return search.from && search.to ? { from: search.from, to: search.to } : undefined;
+}
+
 export const Route = createFileRoute('/pages/')({
-  loaderDeps: ({ search }) => ({ time: search.time }),
+  loaderDeps: ({ search }) => ({ dateRange: dateRangeFrom(search) }),
   loader: async ({ context, deps }) => {
-    const pages = await context.queryClient.ensureInfiniteQueryData(pagesQueryOptions(deps.time));
+    const pages = await context.queryClient.ensureInfiniteQueryData(
+      pagesQueryOptions(deps.dateRange),
+    );
     const firstPage = pages.pages[0]?.items[0];
     if (firstPage) {
       throw redirect({
         to: '/pages/$id',
         params: { id: firstPage.readableId },
-        search: { time: deps.time, view: 'preview' },
+        search: { from: deps.dateRange?.from, to: deps.dateRange?.to, view: 'preview' },
       });
     }
   },
@@ -19,13 +26,13 @@ export const Route = createFileRoute('/pages/')({
 });
 
 function PagesIndexRoute() {
-  const { time } = Route.useSearch();
-  if (time) {
+  const dateRange = dateRangeFrom(Route.useSearch());
+  if (dateRange) {
     return (
       <WorkspaceEmpty
         eyebrow="Timeline"
-        title={`No pages overlap ${time}`}
-        description="Clear the subject-time filter in the sidebar or create a page with matching coverage."
+        title="No pages for this date range"
+        description="Clear the date range in the sidebar or choose another one."
         createTo="/pages/new"
         createLabel="Create a page"
       />

@@ -45,13 +45,13 @@ async function renderWithRouter(content: ReactNode): Promise<string> {
   return renderToStaticMarkup(<RouterProvider router={router} />);
 }
 
-test('Pages presents temporal and unasserted pages as Timeline and General knowledge', async () => {
+test('Pages presents temporal and general pages in one list with intervals on temporal cards', async () => {
   const html = await renderWithRouter(<KnowledgePageList pages={pages} />);
 
-  expect(html).toContain('Timeline');
   expect(html).toContain('Since March 2025? · ongoing');
-  expect(html).toContain('General knowledge');
-  expect(html.indexOf('Timeline')).toBeLessThan(html.indexOf('General knowledge'));
+  expect(html).toContain('Ongoing work');
+  expect(html).toContain('General guidance');
+  expect(html).not.toContain('GENERAL KNOWLEDGE');
 });
 
 test('entity-related pages use the same temporal sections', async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  calendarDateRangeExpression,
   temporalCoverageLabel,
   temporalCoverageMutation,
   temporalCoverageTitle,
@@ -18,9 +19,16 @@ describe('temporal coverage presentation', () => {
 
   test('keeps the exact expression and marker meaning available', () => {
     expect(temporalCoverageTitle('2025-03~')).toBe(
-      'Subject time stored as 2025-03~. ~ means approximate.',
+      'Date or period: 2025-03~. ~ means approximate.',
     );
-    expect(temporalCoverageTitle('2025?')).toBe('Subject time stored as 2025?. ? means uncertain.');
+    expect(temporalCoverageTitle('2025?')).toBe('Date or period: 2025?. ? means uncertain.');
+  });
+
+  test('builds an inclusive calendar range for the overlap query', () => {
+    expect(calendarDateRangeExpression({ from: '2025-03-01', to: '2025-08-31' })).toBe(
+      '2025-03-01/2025-08-31',
+    );
+    expect(() => calendarDateRangeExpression({ from: '2025-08-31', to: '2025-03-01' })).toThrow();
   });
 });
 

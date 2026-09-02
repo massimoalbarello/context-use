@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { FileText } from 'lucide-react';
+import { CalendarRange, FileText } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
 import type { KnowledgePageSummary } from '../../queries/pages';
@@ -33,13 +33,18 @@ export function KnowledgePageCardContent({
   page: KnowledgePageIdentity;
   fragment?: string;
 }) {
+  const temporal = page.temporalCoverage !== null;
+  const ResourceIcon = temporal ? CalendarRange : FileText;
   return (
     <>
       <span
-        className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+        className={cn(
+          'flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground',
+          temporal && 'bg-primary/10 text-primary',
+        )}
         aria-hidden="true"
       >
-        <FileText className="size-5 fill-none stroke-[1.4] stroke-current" />
+        <ResourceIcon className="size-5 fill-none stroke-[1.4] stroke-current" />
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
         <strong className="min-w-0 truncate font-semibold text-sm leading-snug">
@@ -51,7 +56,10 @@ export function KnowledgePageCardContent({
           </span>
         )}
         {page.temporalCoverage && (
-          <TemporalCoverageLabel className="text-xs" expression={page.temporalCoverage} />
+          <TemporalCoverageLabel
+            className="w-fit max-w-full text-xs"
+            expression={page.temporalCoverage}
+          />
         )}
         {page.excerpt && (
           <small className="truncate text-muted-foreground text-xs leading-relaxed">

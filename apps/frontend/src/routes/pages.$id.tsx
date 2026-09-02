@@ -16,6 +16,7 @@ import { TemporalCoverageLabel } from '../components/pages/temporal-coverage-lab
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { cn } from '../lib/class-names';
 import { useArchivePage } from '../lib/hooks/use-archive-page';
 import { usePage } from '../lib/hooks/use-page';
 import { useUpdatePage } from '../lib/hooks/use-update-page';
@@ -209,9 +210,7 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
         {page.temporalCoverage ? (
           <TemporalCoverageLabel className="w-fit text-sm" expression={page.temporalCoverage} />
         ) : (
-          <p className="text-muted-foreground text-sm">
-            General knowledge · no subject time asserted
-          </p>
+          <p className="text-muted-foreground text-sm">General knowledge</p>
         )}
       </DetailHeader>
 
@@ -277,7 +276,12 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
             <TabsTrigger value="revisions">Revisions</TabsTrigger>
           </TabsList>
           <TabsContent value="preview">
-            <div>
+            <div
+              className={cn(
+                'border-border border-l-2 pl-5',
+                page.temporalCoverage && 'border-primary/45 bg-primary/[0.025]',
+              )}
+            >
               <KnowledgePageMarkdown markdown={page.markdown} mentions={page.mentions} />
             </div>
           </TabsContent>

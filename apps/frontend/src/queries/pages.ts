@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
+import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
 
 export type KnowledgePagePage = NonNullable<Awaited<ReturnType<typeof api.api.pages.get>>['data']>;
 
@@ -26,9 +27,10 @@ export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
 export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
 export const pageSuggestionsQueryKey = [...pagesQueryKey, 'suggestions'] as const;
 
-export function pagesQueryOptions(time?: string) {
+export function pagesQueryOptions(dateRange?: CalendarDateRange) {
+  const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
   return infiniteQueryOptions({
-    queryKey: [...pagesListQueryKey, { time: time ?? null }],
+    queryKey: [...pagesListQueryKey, { dateRange: dateRange ?? null }],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const { data, error } = await api.api.pages.get({

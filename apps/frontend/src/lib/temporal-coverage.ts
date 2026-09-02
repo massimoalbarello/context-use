@@ -1,5 +1,7 @@
 import { parseTemporalCoverage, type TemporalCalendarDate } from '@repo/backend/temporal-coverage';
 
+export type CalendarDateRange = { from: string; to: string };
+
 const MONTH_NAMES = [
   'January',
   'February',
@@ -47,7 +49,13 @@ export function temporalCoverageTitle(expression: string): string {
   const markerHelp = `${expression.includes('?') ? ' ? means uncertain.' : ''}${
     expression.includes('~') ? ' ~ means approximate.' : ''
   }`;
-  return `Subject time stored as ${expression}.${markerHelp}`;
+  return `Date or period: ${expression}.${markerHelp}`;
+}
+
+export function calendarDateRangeExpression({ from, to }: CalendarDateRange): string {
+  const expression = `${from}/${to}`;
+  parseTemporalCoverage(expression);
+  return expression;
 }
 
 export function temporalCoverageMutation({

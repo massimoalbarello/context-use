@@ -29,7 +29,7 @@ export function KnowledgePageRevisions({
                 expression={revision.temporalCoverage}
               />
             ) : (
-              <p className="mt-1 text-muted-foreground text-xs">No subject time asserted</p>
+              <p className="mt-1 text-muted-foreground text-xs">General knowledge</p>
             )}
             <p className="mt-1 text-muted-foreground text-xs">Created by {revision.author.name}</p>
             <time

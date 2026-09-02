@@ -64,7 +64,7 @@ const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
 const EXPECTED_SECOND_PAGE_OFFSET = 4;
-const EXPECTED_OVERLAPPING_PAGE_COUNT = 3;
+const EXPECTED_FILTERED_PAGE_COUNT = 5;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
 const EXPECTED_CURRENT_MENTION_COUNT = 4;
 
@@ -503,15 +503,27 @@ Every observation changes the next action.`,
       'current-programme',
       'operating-rhythm',
     ]);
-    expect(overlappingPages.total).toBe(EXPECTED_OVERLAPPING_PAGE_COUNT);
+    expect(overlappingPages.total).toBe(EXPECTED_FILTERED_PAGE_COUNT);
     expect(overlappingPages.nextOffset).toBe(2);
 
     const remainingOverlappingPagesResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=2&time=2025-04' }),
     );
     expect(await remainingOverlappingPagesResponse.json()).toEqual({
-      items: [expect.objectContaining({ readableId: 'growth-playbook' })],
-      total: 3,
+      items: [
+        expect.objectContaining({ readableId: 'growth-playbook' }),
+        expect.objectContaining({ readableId: 'alpha-principles' }),
+      ],
+      total: EXPECTED_FILTERED_PAGE_COUNT,
+      nextOffset: 4,
+    });
+
+    const finalOverlappingPagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=4&time=2025-04' }),
+    );
+    expect(await finalOverlappingPagesResponse.json()).toEqual({
+      items: [expect.objectContaining({ readableId: duplicatePage.readableId })],
+      total: EXPECTED_FILTERED_PAGE_COUNT,
       nextOffset: null,
     });
 
@@ -519,15 +531,26 @@ Every observation changes the next action.`,
       jsonRequest({ method: 'GET', path: '/pages?time=2026' }),
     );
     expect(await futurePagesResponse.json()).toEqual({
-      items: [expect.objectContaining({ readableId: 'current-programme' })],
-      total: 1,
+      items: [
+        expect.objectContaining({ readableId: 'current-programme' }),
+        expect.objectContaining({ readableId: 'alpha-principles' }),
+        expect.objectContaining({ readableId: duplicatePage.readableId }),
+      ],
+      total: 3,
       nextOffset: null,
     });
 
     const noOverlapResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?time=2024-01/2024-10' }),
     );
-    expect(await noOverlapResponse.json()).toEqual({ items: [], total: 0, nextOffset: null });
+    expect(await noOverlapResponse.json()).toEqual({
+      items: [
+        expect.objectContaining({ readableId: 'alpha-principles' }),
+        expect.objectContaining({ readableId: duplicatePage.readableId }),
+      ],
+      total: 2,
+      nextOffset: null,
+    });
 
     const invalidTimeFilterResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?time=2025-13' }),

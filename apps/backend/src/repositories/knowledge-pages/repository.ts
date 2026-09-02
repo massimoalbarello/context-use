@@ -543,9 +543,9 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         )
         and (
           ${filterStart} is null
+          or revision."temporal_coverage" is null
           or (
-            revision."temporal_coverage" is not null
-            and (${filterEnd} is null or revision."temporal_start" < ${filterEnd})
+            (${filterEnd} is null or revision."temporal_start" < ${filterEnd})
             and (revision."temporal_end" is null or revision."temporal_end" > ${filterStart})
           )
         )
@@ -582,9 +582,9 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         )
         and (
           ${filterStart} is null
+          or revision."temporal_coverage" is null
           or (
-            revision."temporal_coverage" is not null
-            and (${filterEnd} is null or revision."temporal_start" < ${filterEnd})
+            (${filterEnd} is null or revision."temporal_start" < ${filterEnd})
             and (revision."temporal_end" is null or revision."temporal_end" > ${filterStart})
           )
         )

@@ -27,6 +27,7 @@ PAGES = [
     {
         "readableId": "project-brief",
         "markdown": read_seed_text("pages/project-brief.md"),
+        "temporalCoverage": "2026-08/..",
     },
     {
         "readableId": "ui-review-checklist",
@@ -35,6 +36,12 @@ PAGES = [
     {
         "readableId": "weekly-review",
         "markdown": read_seed_text("pages/weekly-review.md"),
+        "temporalCoverage": "2026-08-24/2026-08-30",
+    },
+    {
+        "readableId": "northstar-launch-retrospective",
+        "markdown": read_seed_text("pages/northstar-launch-retrospective.md"),
+        "temporalCoverage": "2025-11~",
     },
 ]
 PROFILE_IMAGE_ASSET = {

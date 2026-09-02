@@ -123,7 +123,7 @@ export function KnowledgePageForm({
           {(field) => (
             <Field data-invalid={field.state.meta.errors.length > 0}>
               <div className="flex items-center justify-between gap-3">
-                <FieldLabel htmlFor={field.name}>Subject time (optional)</FieldLabel>
+                <FieldLabel htmlFor={field.name}>Date or period (optional)</FieldLabel>
                 {field.state.value && (
                   <Button
                     className="h-auto px-0 py-0 text-xs"
@@ -131,7 +131,7 @@ export function KnowledgePageForm({
                     variant="link"
                     onClick={() => field.handleChange('')}
                   >
-                    Clear subject time
+                    Clear date
                   </Button>
                 )}
               </div>
@@ -139,15 +139,15 @@ export function KnowledgePageForm({
                 id={field.name}
                 name={field.name}
                 maxLength={MAX_TEMPORAL_COVERAGE_LENGTH}
-                placeholder="2025-03/2025-08"
+                placeholder="2025 or 2025-03/2025-08"
                 value={field.state.value}
                 aria-invalid={field.state.meta.errors.length > 0}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
               />
               <FieldDescription>
-                When the page’s subject occurred or applied—for example 2025, 2025-03~, 2025-03-14?,
-                or 2025-03/...
+                When this knowledge applies. Use a year, date, or range, such as 2025 or
+                2025-03/2025-08.
               </FieldDescription>
               <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
