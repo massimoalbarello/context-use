@@ -29,13 +29,12 @@ export function KnowledgePageRevisions({
                 expression={revision.temporalCoverage}
               />
             )}
-            <p className="mt-1 text-muted-foreground text-xs">Created by {revision.author.name}</p>
-            <time
-              className="mt-1 block text-muted-foreground text-xs"
-              dateTime={revision.createdAt.toISOString()}
-            >
-              {revision.createdAt.toLocaleString()}
-            </time>
+            <p className="mt-1 text-muted-foreground text-xs">
+              Created by {revision.author.name} ·{' '}
+              <time dateTime={revision.createdAt.toISOString()}>
+                {revision.createdAt.toLocaleString()}
+              </time>
+            </p>
           </li>
         ))}
       </ol>
