@@ -690,7 +690,7 @@ export function KnowledgeMapCanvas({
 
       {preview && previewKey(preview) !== selectedKey && (
         <div
-          className="pointer-events-none absolute bottom-4 left-18 w-[min(20rem,calc(100%-7rem))] rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur"
+          className="pointer-events-none absolute top-4 left-18 w-[min(20rem,calc(100%-7rem))] rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur"
           aria-live="polite"
         >
           <PreviewCard preview={preview} />
