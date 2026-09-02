@@ -17,7 +17,7 @@ import {
 
 const COLLECTIONS: Array<{ value: KnowledgeCollection; label: string }> = [
   { value: 'entities', label: 'Entities' },
-  { value: 'pages', label: 'Knowledge pages' },
+  { value: 'pages', label: 'Pages' },
   { value: 'assets', label: 'Assets' },
 ];
 

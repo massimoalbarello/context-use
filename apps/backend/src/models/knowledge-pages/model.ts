@@ -56,9 +56,15 @@ export interface KnowledgeMapPage extends KnowledgePageSummary {
   assetUsages: KnowledgePageAssetUsage[];
 }
 
+export interface KnowledgeMapContinuation {
+  updatedAt: string;
+  readableId: string;
+}
+
 export interface KnowledgeMap {
   pages: KnowledgeMapPage[];
   totalPages: number;
+  nextPage: KnowledgeMapContinuation | null;
   truncated: boolean;
 }
 

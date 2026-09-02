@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, Link, Outlet, redirect } from '@tanstack/react-router';
 import { buttonVariants } from '../components/ui/button';
 import { cn } from '../lib/class-names';
+import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 import { profileQueryOptions } from '../queries/profile';
 import { sessionQueryOptions } from '../queries/session';
 
@@ -16,7 +17,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       throw redirect({ to: '/setup', search: { redirect: location.href } });
     }
     if (session && profile && setupPath) {
-      throw redirect({ to: '/map' });
+      throw redirect({ to: MAIN_KNOWLEDGE_PATH });
     }
     return { session, profile };
   },

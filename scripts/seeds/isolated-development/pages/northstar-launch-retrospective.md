@@ -1,6 +1,6 @@
 # Northstar launch retrospective
 
-[Northstar](context-use://entity/northstar) reached its first customer launch around November 2025. [Maya Chen](context-use://entity/maya-chen) led the workspace rollout.
+[Northstar](context-use://entity/northstar) reached its first customer launch around November 2025. [Alex Morgan](context-use://entity/alex-morgan) coordinated the launch and [Maya Chen](context-use://entity/maya-chen) led the workspace rollout for [Orbit Labs](context-use://entity/orbit-labs).
 
 ## What changed
 

@@ -2,9 +2,10 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginForm } from '../components/auth/login-form';
 import { FormShell } from '../components/layout/form-shell';
 import { internalAppPath } from '../lib/internal-app-path';
+import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 import { ownerRegistrationQueryOptions } from '../queries/owner-registration';
 
-const DEFAULT_REDIRECT = '/map';
+const DEFAULT_REDIRECT = MAIN_KNOWLEDGE_PATH;
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({

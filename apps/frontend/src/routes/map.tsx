@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useDeferredValue, useMemo } from 'react';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
@@ -11,7 +11,7 @@ import {
 import { filterKnowledgeMapPages } from '../components/knowledge-map/knowledge-map-layout';
 import { KnowledgeMapPreviewPanel } from '../components/knowledge-map/knowledge-map-preview-panel';
 import { KnowledgeMapSidebar } from '../components/knowledge-map/knowledge-map-sidebar';
-import { knowledgeMapQueryOptions } from '../queries/knowledge-map';
+import { knowledgeMapFrom, knowledgeMapQueryOptions } from '../queries/knowledge-map';
 
 const MAX_MAP_SEARCH_LENGTH = 160;
 const MAX_MAP_READABLE_ID_LENGTH = 240;
@@ -40,12 +40,13 @@ export const Route = createFileRoute('/map')({
     }
   },
   validateSearch: mapSearch,
-  loader: ({ context }) => context.queryClient.ensureQueryData(knowledgeMapQueryOptions),
+  loader: ({ context }) => context.queryClient.ensureInfiniteQueryData(knowledgeMapQueryOptions),
   component: KnowledgeMapRoute,
 });
 
 function KnowledgeMapRoute() {
-  const { data: map } = useSuspenseQuery(knowledgeMapQueryOptions);
+  const mapQuery = useSuspenseInfiniteQuery(knowledgeMapQueryOptions);
+  const map = useMemo(() => knowledgeMapFrom(mapQuery.data.pages), [mapQuery.data.pages]);
   const { profile } = Route.useRouteContext();
   const { q = '', kind, id } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -53,10 +54,6 @@ function KnowledgeMapRoute() {
   const pages = useMemo(
     () => filterKnowledgeMapPages({ pages: map.pages, query: deferredQuery }),
     [deferredQuery, map.pages],
-  );
-  const mapLayoutVersion = useMemo(
-    () => map.pages.map((page) => `${page.readableId}:${page.revisionNumber}`).join('|'),
-    [map.pages],
   );
   if (!profile) {
     return null;
@@ -77,7 +74,12 @@ function KnowledgeMapRoute() {
       <KnowledgeMapSidebar
         profile={profile}
         totalPages={map.totalPages}
+        loadedPages={map.pages.length}
         truncated={map.truncated}
+        hasNextPage={mapQuery.hasNextPage}
+        isFetchingNextPage={mapQuery.isFetchingNextPage}
+        loadMoreError={mapQuery.isFetchNextPageError ? mapQuery.error : null}
+        loadMore={mapQuery.fetchNextPage}
         query={q}
         onQueryChange={(query) => {
           void navigate({
@@ -92,7 +94,7 @@ function KnowledgeMapRoute() {
       <KnowledgeWorkspaceDetail>
         {map.pages.length === 0 ? (
           <WorkspaceEmpty
-            eyebrow="Knowledge map"
+            eyebrow="Hypermedia map"
             title="Your map starts with a knowledge page"
             description="Create a knowledge page that mentions an entity or includes an asset. Its relationships will become the first neighborhood on this map."
             createTo="/pages/new"
@@ -108,11 +110,14 @@ function KnowledgeMapRoute() {
         ) : (
           <div className="relative size-full">
             <KnowledgeMapCanvas
-              key={`${deferredQuery}:${mapLayoutVersion}`}
+              key={deferredQuery}
               pages={pages}
               anchorEntity={profile.selfEntity}
               selectedKey={selection ? `${selection.kind}:${selection.readableId}` : undefined}
               onSelect={selectKnowledge}
+              hasNextPage={mapQuery.hasNextPage && !deferredQuery}
+              isFetchingNextPage={mapQuery.isFetchingNextPage}
+              onLoadMore={() => void mapQuery.fetchNextPage()}
             />
             {selection && (
               <KnowledgeMapPreviewPanel

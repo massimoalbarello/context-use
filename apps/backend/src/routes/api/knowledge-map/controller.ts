@@ -4,6 +4,7 @@ import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import {
   DEFAULT_KNOWLEDGE_MAP_PAGE_LIMIT,
+  decodeKnowledgeMapCursor,
   KnowledgeMapQuerySchema,
   KnowledgeMapSchema,
   knowledgeMapResponse,
@@ -26,16 +27,26 @@ export function createKnowledgeMapController({
     .get(
       '/knowledge-map',
       async ({ query, user, status }) => {
+        const decodedCursor = decodeKnowledgeMapCursor(query.cursor);
+        if (decodedCursor.state === 'invalid') {
+          return status(StatusMap['Bad Request'], {
+            error: 'The knowledge-map cursor is invalid. Restart from the initial neighborhood.',
+          });
+        }
         const map = await pagesService.map({
           ownerId: user.id,
           limit: query.limit ?? DEFAULT_KNOWLEDGE_MAP_PAGE_LIMIT,
+          cursor: decodedCursor.cursor,
         });
         return status(StatusMap.OK, knowledgeMapResponse(map));
       },
       {
         detail: { tags: ['Pages'], summary: 'Read a bounded projection of the knowledge map' },
         query: KnowledgeMapQuerySchema,
-        response: { [StatusMap.OK]: KnowledgeMapSchema },
+        response: {
+          [StatusMap.OK]: KnowledgeMapSchema,
+          [StatusMap['Bad Request']]: ErrorResponseSchema,
+        },
       },
     );
 }

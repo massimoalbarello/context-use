@@ -7,6 +7,7 @@ import { cn } from '../lib/class-names';
 import { useCreateEntity } from '../lib/hooks/use-create-entity';
 import { useCreateProfile } from '../lib/hooks/use-create-profile';
 import { internalAppPath } from '../lib/internal-app-path';
+import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 
 const EMPTY_ENTITY: EntityFormValues = { name: '', description: '' };
 
@@ -47,7 +48,7 @@ function NewEntityRoute() {
             createProfile.mutate(values, {
               onSuccess: async () => {
                 await navigate({
-                  href: redirectTo ?? '/map',
+                  href: redirectTo ?? MAIN_KNOWLEDGE_PATH,
                 });
               },
             });

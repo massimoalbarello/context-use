@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { Menu, Settings } from 'lucide-react';
 import { cn } from '../../lib/class-names';
+import { MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { SignOutButton } from '../auth/sign-out-button';
 import { EntityAvatar } from '../entities/entity-link';
@@ -19,7 +20,7 @@ export function KnowledgeSidebarHeader() {
     >
       <Link
         className={cn('flex min-w-0 items-center', collapsed && 'hidden')}
-        to="/map"
+        to={MAIN_KNOWLEDGE_PATH}
         aria-label="Context Use"
       >
         <span className="grid min-w-0 leading-tight">

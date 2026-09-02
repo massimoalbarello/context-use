@@ -4,6 +4,7 @@ import { type Page, pageFrom } from '#lib/pagination.ts';
 import type { Entity } from '#models/entities/model.ts';
 import type {
   KnowledgeMap,
+  KnowledgeMapContinuation,
   KnowledgeMapPage,
   KnowledgePageAssetUsage,
   KnowledgePageLinkSet,
@@ -72,7 +73,11 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     entityReadableId: string;
   }): Promise<KnowledgePageSummary[]>;
-  map(input: { ownerId: string; limit: number }): Promise<KnowledgeMap>;
+  map(input: {
+    ownerId: string;
+    limit: number;
+    cursor?: KnowledgeMapContinuation;
+  }): Promise<KnowledgeMap>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredKnowledgePage | null>;
   archive(input: {
     ownerId: string;
@@ -185,7 +190,7 @@ function revisionSummaryFrom(row: RevisionSummaryRow): KnowledgePageRevisionSumm
   throw new Error('Knowledge page revision has invalid author attribution');
 }
 
-const MAX_KNOWLEDGE_MAP_RESOURCE_USAGES = 200;
+const MAX_KNOWLEDGE_MAP_RESOURCE_USAGES = 120;
 
 function rowsBySourcePage<Row extends { sourcePageReadableId: string }>(
   rows: Row[],
@@ -724,8 +729,19 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     return rows.map(summaryFrom);
   }
 
-  async map({ ownerId, limit }: { ownerId: string; limit: number }): Promise<KnowledgeMap> {
+  async map({
+    ownerId,
+    limit,
+    cursor,
+  }: {
+    ownerId: string;
+    limit: number;
+    cursor?: KnowledgeMapContinuation;
+  }): Promise<KnowledgeMap> {
     const resourceUsageQueryLimit = MAX_KNOWLEDGE_MAP_RESOURCE_USAGES + 1;
+    const pageQueryLimit = limit + 1;
+    const cursorUpdatedAt = cursor?.updatedAt ?? null;
+    const cursorReadableId = cursor?.readableId ?? null;
     const [pageRows, countRows] = await Promise.all([
       this.sql.ListKnowledgeMapPages`
         /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
@@ -736,8 +752,16 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         from "knowledge_page" page
         join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
         where page."owner_id" = ${ownerId} and page."archived_at" is null
+          and (
+            ${cursorUpdatedAt} is null
+            or page."updated_at" < ${cursorUpdatedAt}
+            or (
+              page."updated_at" = ${cursorUpdatedAt}
+              and page."readable_id" > ${cursorReadableId}
+            )
+          )
         order by page."updated_at" desc, page."readable_id"
-        limit ${limit}
+        limit ${pageQueryLimit}
       `,
       this.sql.CountKnowledgeMapPages`
         /* @notNull total */
@@ -746,7 +770,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         where "owner_id" = ${ownerId} and "archived_at" is null
       `,
     ]);
-    const pages = pageRows.map(
+    const selectedPageRows = pageRows.slice(0, limit);
+    const pages = selectedPageRows.map(
       (row): KnowledgeMapPage => ({
         ...summaryFrom(row),
         mentions: [],
@@ -754,7 +779,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       }),
     );
     if (pages.length === 0) {
-      return { pages, totalPages: 0, truncated: false };
+      return {
+        pages,
+        totalPages: Number(countRows[0]?.total ?? 0),
+        nextPage: null,
+        truncated: false,
+      };
     }
 
     const [mentionRows, assetUsageRows] = await Promise.all([
@@ -765,6 +795,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           select "id", "readable_id", "current_revision_id", "updated_at"
           from "knowledge_page"
           where "owner_id" = ${ownerId} and "archived_at" is null
+            and (
+              ${cursorUpdatedAt} is null
+              or "updated_at" < ${cursorUpdatedAt}
+              or ("updated_at" = ${cursorUpdatedAt} and "readable_id" > ${cursorReadableId})
+            )
           order by "updated_at" desc, "readable_id"
           limit ${limit}
         )
@@ -802,6 +837,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           select "id", "readable_id", "current_revision_id", "updated_at"
           from "knowledge_page"
           where "owner_id" = ${ownerId} and "archived_at" is null
+            and (
+              ${cursorUpdatedAt} is null
+              or "updated_at" < ${cursorUpdatedAt}
+              or ("updated_at" = ${cursorUpdatedAt} and "readable_id" > ${cursorReadableId})
+            )
           order by "updated_at" desc, "readable_id"
           limit ${limit}
         )
@@ -834,12 +874,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     });
 
     const totalPages = Number(countRows[0]?.total ?? 0);
+    const lastPage = selectedPageRows.at(-1);
     return {
       pages,
       totalPages,
-      truncated:
-        totalPages > pages.length ||
-        mentionRows.length + assetUsageRows.length > includedResourceUsages,
+      nextPage:
+        pageRows.length > limit && lastPage
+          ? { updatedAt: lastPage.updatedAt, readableId: lastPage.readableId }
+          : null,
+      truncated: mentionRows.length + assetUsageRows.length > includedResourceUsages,
     };
   }
 

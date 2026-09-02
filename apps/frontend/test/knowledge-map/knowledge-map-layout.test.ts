@@ -4,12 +4,15 @@ import {
   eagerKnowledgeMapImageKeys,
   filterKnowledgeMapPages,
   MAX_EAGER_KNOWLEDGE_MAP_IMAGES,
+  mapViewportNearBoundary,
 } from '../../src/components/knowledge-map/knowledge-map-layout';
 import type {
   KnowledgeMapAsset,
+  KnowledgeMapBatch,
   KnowledgeMapEntity,
   KnowledgeMapPage,
 } from '../../src/queries/knowledge-map';
+import { knowledgeMapFrom } from '../../src/queries/knowledge-map';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const MINIMUM_RESOURCE_DISTANCE = 116;
@@ -115,6 +118,7 @@ describe('knowledge map layout', () => {
 
     expect(selfResource).toBeDefined();
     expect(layout.focusPoint).toEqual(selfResource!.point);
+    expect(selfResource!.point).toEqual({ x: 0, y: 0 });
     for (const [index, resource] of layout.resources.entries()) {
       for (const other of layout.resources.slice(index + 1)) {
         expect(
@@ -122,6 +126,63 @@ describe('knowledge map layout', () => {
         ).toBeGreaterThanOrEqual(MINIMUM_RESOURCE_DISTANCE);
       }
     }
+  });
+
+  test('keeps loaded page and resource coordinates stable as later neighborhoods append', () => {
+    const self = entity({ readableId: 'alex', name: 'Alex', isSelf: true });
+    const shared = entity({ readableId: 'northstar', name: 'Northstar' });
+    const firstPages = [
+      page({ readableId: 'latest', title: 'Latest', mentions: [self, shared] }),
+      page({ readableId: 'recent', title: 'Recent', mentions: [self] }),
+    ];
+    const initial = buildKnowledgeMapLayout(firstPages, { anchorEntity: self });
+    const expanded = buildKnowledgeMapLayout(
+      [
+        ...firstPages,
+        page({
+          readableId: 'older',
+          title: 'Older',
+          mentions: [self, shared, entity({ readableId: 'maya', name: 'Maya' })],
+        }),
+      ],
+      { anchorEntity: self },
+    );
+
+    for (const initialPage of initial.pages) {
+      const expandedPage = expanded.pages.find(
+        ({ page: mapPage }) => mapPage.readableId === initialPage.page.readableId,
+      );
+      expect(expandedPage?.point).toEqual(initialPage.point);
+      expect(expandedPage?.cloudPath).toBe(initialPage.cloudPath);
+    }
+    for (const initialResource of initial.resources) {
+      expect(expanded.resources.find(({ key }) => key === initialResource.key)?.point).toEqual(
+        initialResource.point,
+      );
+    }
+  });
+
+  test('requests another neighborhood only near the explored map boundary', () => {
+    const bounds = { x: -600, y: -450, width: 1200, height: 900 };
+
+    expect(mapViewportNearBoundary({ x: -120, y: -90, width: 240, height: 180 }, bounds)).toBe(
+      false,
+    );
+    expect(mapViewportNearBoundary({ x: 390, y: -90, width: 240, height: 180 }, bounds)).toBe(true);
+  });
+
+  test('merges cursor batches without duplicating a page at their boundary', () => {
+    const first = page({ readableId: 'first', title: 'First' });
+    const second = page({ readableId: 'second', title: 'Second' });
+    const batches: KnowledgeMapBatch[] = [
+      { pages: [first], totalPages: 2, nextCursor: 'next', truncated: false },
+      { pages: [first, second], totalPages: 2, nextCursor: null, truncated: false },
+    ];
+
+    expect(knowledgeMapFrom(batches).pages.map(({ readableId }) => readableId)).toEqual([
+      'first',
+      'second',
+    ]);
   });
 
   test('filters a neighborhood through page, entity, and asset preview text', () => {

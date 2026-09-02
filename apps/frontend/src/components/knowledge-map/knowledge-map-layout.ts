@@ -9,6 +9,7 @@ import type {
 } from '../../queries/knowledge-map';
 
 export type MapPoint = { x: number; y: number };
+export type MapBounds = MapPoint & { width: number; height: number };
 
 export type KnowledgeMapResource =
   | { key: string; kind: 'entity'; entity: KnowledgeMapEntity; point: MapPoint }
@@ -26,18 +27,28 @@ export type KnowledgeMapLayout = {
   pages: KnowledgeMapPageLayout[];
   resources: KnowledgeMapResource[];
   focusPoint: MapPoint;
-  bounds: { x: number; y: number; width: number; height: number };
+  bounds: MapBounds;
 };
 
 type ResourceSeed =
-  | { kind: 'entity'; entity: KnowledgeMapEntity; pageIndexes: Set<number> }
-  | { kind: 'asset'; asset: KnowledgeMapAsset; pageIndexes: Set<number> };
+  | {
+      kind: 'entity';
+      entity: KnowledgeMapEntity;
+      pageIndexes: Set<number>;
+      firstPageIndex: number;
+    }
+  | {
+      kind: 'asset';
+      asset: KnowledgeMapAsset;
+      pageIndexes: Set<number>;
+      firstPageIndex: number;
+    };
 type ResourceSeedInput =
   | { kind: 'entity'; entity: KnowledgeMapEntity }
   | { kind: 'asset'; asset: KnowledgeMapAsset };
 
-const PAGE_X_SPACING = 340;
-const PAGE_Y_SPACING = 270;
+const MAP_CENTER: MapPoint = { x: 0, y: 0 };
+const PAGE_RADIAL_SPACING = 190;
 const MAP_PADDING = 150;
 const RESOURCE_MIN_DISTANCE = 116;
 const RESOURCE_PAGE_LABEL_X_DISTANCE = 150;
@@ -83,15 +94,15 @@ function packResourcePoints({
 }: {
   seeds: Map<string, ResourceSeed>;
   preferredPoints: Map<string, MapPoint>;
-  pagePoints: MapPoint[];
+  pagePoints: PagePoint[];
 }): Map<string, MapPoint> {
   const packedPoints = new Map<string, MapPoint>();
   const occupiedCells = new Map<string, MapPoint[]>();
-  const pageLabelCells = new Map<string, MapPoint[]>();
+  const pageLabelCells = new Map<string, Array<MapPoint & { pageIndex: number }>>();
   const orderedSeeds = [...seeds.entries()].sort(
     ([firstKey, first], [secondKey, second]) =>
       Number(seedIsSelf(second)) - Number(seedIsSelf(first)) ||
-      second.pageIndexes.size - first.pageIndexes.size ||
+      first.firstPageIndex - second.firstPageIndex ||
       firstKey.localeCompare(secondKey),
   );
   const cellCoordinate = (value: number) => Math.floor(value / RESOURCE_MIN_DISTANCE);
@@ -100,10 +111,10 @@ function packResourcePoints({
     x: Math.floor(point.x / RESOURCE_PAGE_LABEL_X_DISTANCE),
     y: Math.floor(point.y / RESOURCE_PAGE_LABEL_Y_DISTANCE),
   });
-  for (const pagePoint of pagePoints) {
+  for (const [pageIndex, pagePoint] of pagePoints.entries()) {
     const cell = pageLabelCellCoordinate(pagePoint);
     const key = cellKey(cell.x, cell.y);
-    pageLabelCells.set(key, [...(pageLabelCells.get(key) ?? []), pagePoint]);
+    pageLabelCells.set(key, [...(pageLabelCells.get(key) ?? []), { ...pagePoint, pageIndex }]);
   }
   const nearbyPoints = (point: MapPoint) => {
     const cellX = cellCoordinate(point.x);
@@ -116,27 +127,31 @@ function packResourcePoints({
     }
     return nearby;
   };
-  const nearbyPageLabels = (point: MapPoint) => {
+  const nearbyPageLabels = (point: MapPoint, firstPageIndex: number) => {
     const cell = pageLabelCellCoordinate(point);
     const nearby: MapPoint[] = [];
     for (let x = cell.x - 1; x <= cell.x + 1; x += 1) {
       for (let y = cell.y - 1; y <= cell.y + 1; y += 1) {
-        nearby.push(...(pageLabelCells.get(cellKey(x, y)) ?? []));
+        nearby.push(
+          ...(pageLabelCells.get(cellKey(x, y)) ?? []).filter(
+            ({ pageIndex }) => pageIndex <= firstPageIndex,
+          ),
+        );
       }
     }
     return nearby;
   };
-  const positionAvailable = (point: MapPoint) =>
+  const positionAvailable = (point: MapPoint, firstPageIndex: number) =>
     nearbyPoints(point).every(
       (placed) => distanceBetween(point, placed) >= RESOURCE_MIN_DISTANCE,
     ) &&
-    nearbyPageLabels(point).every(
+    nearbyPageLabels(point, firstPageIndex).every(
       (pagePoint) =>
         Math.abs(point.x - pagePoint.x) >= RESOURCE_PAGE_LABEL_X_DISTANCE ||
         Math.abs(point.y - pagePoint.y) >= RESOURCE_PAGE_LABEL_Y_DISTANCE,
     );
 
-  for (const [key] of orderedSeeds) {
+  for (const [key, seed] of orderedSeeds) {
     const preferred = preferredPoints.get(key)!;
     const phase = (stableHash(key) / 0xffffffff) * Math.PI * 2;
     let point: MapPoint | undefined;
@@ -147,7 +162,7 @@ function packResourcePoints({
         x: preferred.x + Math.cos(angle) * radius,
         y: preferred.y + Math.sin(angle) * radius,
       };
-      if (positionAvailable(candidate)) {
+      if (positionAvailable(candidate, seed.firstPageIndex)) {
         point = candidate;
         break;
       }
@@ -236,6 +251,17 @@ export function filterKnowledgeMapPages({
   );
 }
 
+export function mapViewportNearBoundary(viewport: MapBounds, bounds: MapBounds): boolean {
+  const marginX = Math.min(viewport.width * 0.18, bounds.width * 0.22);
+  const marginY = Math.min(viewport.height * 0.18, bounds.height * 0.22);
+  return (
+    viewport.x <= bounds.x + marginX ||
+    viewport.y <= bounds.y + marginY ||
+    viewport.x + viewport.width >= bounds.x + bounds.width - marginX ||
+    viewport.y + viewport.height >= bounds.y + bounds.height - marginY
+  );
+}
+
 export function eagerKnowledgeMapImageKeys(layout: KnowledgeMapLayout): Set<string> {
   return new Set(
     layout.resources
@@ -270,6 +296,7 @@ function resourceSeedsFrom({
       kind: 'entity',
       entity: anchorEntity,
       pageIndexes: new Set(),
+      firstPageIndex: -1,
     });
   }
   const addSeed = (key: string, seed: ResourceSeedInput, pageIndex: number) => {
@@ -277,7 +304,11 @@ function resourceSeedsFrom({
     if (existing) {
       existing.pageIndexes.add(pageIndex);
     } else {
-      seeds.set(key, { ...seed, pageIndexes: new Set([pageIndex]) } as ResourceSeed);
+      seeds.set(key, {
+        ...seed,
+        pageIndexes: new Set([pageIndex]),
+        firstPageIndex: pageIndex,
+      } as ResourceSeed);
     }
     const pageKeys = resourceKeysByPage.get(pageIndex) ?? new Set<string>();
     pageKeys.add(key);
@@ -303,40 +334,18 @@ function preferredResourcePointsFrom({
   pagePoints: PagePoint[];
 }): Map<string, MapPoint> {
   const preferredPoints = new Map<string, MapPoint>();
-  const singlePageResources = new Map<number, string[]>();
   for (const [key, seed] of seeds) {
-    const memberships = [...seed.pageIndexes];
-    if (memberships.length > 1) {
-      const average = pointAverage(memberships.map((index) => pagePoints[index]!));
-      const angle = (stableHash(key) / 0xffffffff) * Math.PI * 2;
-      preferredPoints.set(key, {
-        x: average.x + Math.cos(angle) * 24,
-        y: average.y + Math.sin(angle) * 24,
-      });
-    } else if (memberships.length === 0) {
-      preferredPoints.set(
-        key,
-        pagePoints.length > 0 ? pointAverage(pagePoints) : { x: MAP_PADDING, y: MAP_PADDING },
-      );
-    } else {
-      const pageIndex = memberships[0]!;
-      const keys = singlePageResources.get(pageIndex) ?? [];
-      keys.push(key);
-      singlePageResources.set(pageIndex, keys);
+    if (seedIsSelf(seed)) {
+      preferredPoints.set(key, MAP_CENTER);
+      continue;
     }
-  }
-  for (const [pageIndex, keys] of singlePageResources) {
-    keys.sort();
-    const center = pagePoints[pageIndex]!;
-    const baseAngle = (stableHash(center.page.readableId) / 0xffffffff) * Math.PI * 2;
-    for (const [index, key] of keys.entries()) {
-      const angle = baseAngle + (index / Math.max(keys.length, 3)) * Math.PI * 2;
-      const radius = 112 + (index % 2) * 28;
-      preferredPoints.set(key, {
-        x: center.x + Math.cos(angle) * radius,
-        y: center.y + Math.sin(angle) * radius,
-      });
-    }
+    const center = pagePoints[seed.firstPageIndex] ?? MAP_CENTER;
+    const angle = (stableHash(key) / 0xffffffff) * Math.PI * 2;
+    const radius = 112 + (stableHash(`${key}:radius`) % 3) * 14;
+    preferredPoints.set(key, {
+      x: center.x + Math.cos(angle) * radius,
+      y: center.y + Math.sin(angle) * radius,
+    });
   }
   return preferredPoints;
 }
@@ -354,13 +363,12 @@ export function buildKnowledgeMapLayout(
     };
   }
 
-  const columns = Math.max(1, Math.ceil(Math.sqrt(pages.length * 1.35)));
   const pagePoints = pages.map((page, index) => {
-    const row = Math.floor(index / columns);
-    const column = index % columns;
+    const angle = -Math.PI / 2 + index * GOLDEN_ANGLE;
+    const radius = PAGE_RADIAL_SPACING * Math.sqrt(index + 1);
     return {
-      x: MAP_PADDING + column * PAGE_X_SPACING + (row % 2) * 45,
-      y: MAP_PADDING + row * PAGE_Y_SPACING,
+      x: MAP_CENTER.x + Math.cos(angle) * radius,
+      y: MAP_CENTER.y + Math.sin(angle) * radius,
       page,
     };
   });

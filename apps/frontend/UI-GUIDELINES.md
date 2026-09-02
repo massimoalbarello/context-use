@@ -41,6 +41,10 @@ Each resource type owns one reusable identity treatment:
 - Assets are file-led: safe thumbnail or file cue, meaningful name, format, and size when space
   permits.
 
+Call the relationship overview the **Hypermedia map**. In the compact collection selector, use the
+plain labels **Entities**, **Pages**, and **Assets**; explain “knowledge page” where the resource type
+needs to be distinguished from a generic web page.
+
 Use those treatments consistently in sidebars, pickers, search, and relationship views. A shared
 card surface owns geometry and interaction states; the resource treatment owns its identity. Hover
 is temporary, selection is persistent and stronger, and neither may rely on color alone. Rendered
@@ -58,6 +62,8 @@ for the screen.
   content surface. On narrow screens navigation may become a drawer without changing ownership.
 - Keep collection selection, current-resource selection, and contextual creation actions in
   navigation. Resource lists scroll within their region and load incrementally.
+- Treat the Hypermedia map as the default workspace destination. Entity, page, and asset
+  collections are secondary browsing views with a labelled route back to the map.
 - Creation begins with an explicit action and receives a focused route, dialog, or surface. Do not
   leave creation forms permanently in the main workspace.
 - Add persistent chrome or primary navigation only when it owns a real product task.

@@ -1,4 +1,5 @@
 export type KnowledgeCollection = 'entities' | 'pages' | 'assets';
+export const MAIN_KNOWLEDGE_PATH = '/map' as const;
 
 type NavigationStorage = Pick<Storage, 'getItem' | 'setItem'>;
 const NAVIGATION_STORAGE_PREFIX = 'context-use:knowledge-navigation:';

@@ -1,6 +1,6 @@
 # Project brief
 
-[Northstar](context-use://entity/northstar) is the active product initiative. [Maya Chen](context-use://entity/maya-chen) owns the workspace experience.
+[Alex Morgan](context-use://entity/alex-morgan) leads [Northstar](context-use://entity/northstar), the active product initiative. [Maya Chen](context-use://entity/maya-chen) owns the workspace experience.
 
 ## Goals
 

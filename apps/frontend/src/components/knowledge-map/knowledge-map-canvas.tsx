@@ -25,6 +25,7 @@ import {
   eagerKnowledgeMapImageKeys,
   type KnowledgeMapLayout,
   type KnowledgeMapResource,
+  mapViewportNearBoundary,
 } from './knowledge-map-layout';
 
 type MapPreview =
@@ -38,6 +39,28 @@ export type KnowledgeMapSelection = {
   kind: 'page' | 'entity' | 'asset';
   readableId: string;
 };
+
+export function mapPointerEndAction({
+  moved,
+  cloudReadableId,
+  canLoadMore,
+  nearBoundary,
+}: {
+  moved: boolean;
+  cloudReadableId?: string;
+  canLoadMore: boolean;
+  nearBoundary: boolean;
+}): {
+  selectedPageReadableId?: string;
+  suppressCloudClick: boolean;
+  loadMore: boolean;
+} {
+  return {
+    selectedPageReadableId: moved ? undefined : cloudReadableId,
+    suppressCloudClick: moved || Boolean(cloudReadableId),
+    loadMore: moved && canLoadMore && nearBoundary,
+  };
+}
 
 function previewKey(preview: MapPreview): string {
   if (preview.kind === 'page') {
@@ -136,6 +159,16 @@ function mapResourceImageReadableId(
   return isEmbeddableAsset(resource.asset) ? resource.asset.readableId : undefined;
 }
 
+function resourceDotEmphasis({ active, isSelf }: { active: boolean; isSelf: boolean }): {
+  radiusOffset: number;
+  strokeWidth: number;
+} {
+  if (active) {
+    return { radiusOffset: 5, strokeWidth: 5 };
+  }
+  return isSelf ? { radiusOffset: 3, strokeWidth: 4 } : { radiusOffset: 1, strokeWidth: 2 };
+}
+
 function ResourceDot({
   resource,
   active,
@@ -152,6 +185,8 @@ function ResourceDot({
   onPreviewEnd: () => void;
 }) {
   const radius = resource.kind === 'entity' ? 25 : 22;
+  const isSelf = resource.kind === 'entity' && resource.entity.isSelf;
+  const emphasis = resourceDotEmphasis({ active, isSelf });
   const imageReadableId = mapResourceImageReadableId(resource, active || eagerImage);
   const label = resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
   const readableId =
@@ -183,11 +218,13 @@ function ResourceDot({
       <circle
         cx={resource.point.x}
         cy={resource.point.y}
-        r={radius + (active ? 5 : 1)}
+        r={radius + emphasis.radiusOffset}
         className={cn(
-          'fill-card stroke-[2] stroke-border transition-[r,stroke-width] motion-reduce:transition-none',
-          active && 'stroke-[3] stroke-foreground',
+          'fill-card stroke-border transition-[r,stroke-width] motion-reduce:transition-none',
+          (active || isSelf) && 'stroke-foreground',
         )}
+        strokeWidth={emphasis.strokeWidth}
+        vectorEffect="non-scaling-stroke"
       />
       {imageReadableId ? (
         <image
@@ -368,11 +405,17 @@ export function KnowledgeMapCanvas({
   anchorEntity,
   selectedKey,
   onSelect,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
 }: {
   pages: KnowledgeMapPage[];
   anchorEntity: KnowledgeMapEntity;
   selectedKey?: string;
   onSelect: (selection: KnowledgeMapSelection) => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
 }) {
   const layout = useMemo(
     () => buildKnowledgeMapLayout(pages, { anchorEntity }),
@@ -388,7 +431,9 @@ export function KnowledgeMapCanvas({
     clientX: number;
     clientY: number;
     viewBox: ViewBox;
+    currentViewBox: ViewBox;
     moved: boolean;
+    cloudReadableId?: string;
   } | null>(null);
   const activeKey = preview ? previewKey(preview) : selectedKey;
 
@@ -423,13 +468,18 @@ export function KnowledgeMapCanvas({
       return;
     }
     suppressNextCloudClick.current = false;
+    const cloudReadableId = (event.target as Element)
+      .closest('[data-map-cloud]')
+      ?.getAttribute('data-map-cloud');
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = {
       pointerId: event.pointerId,
       clientX: event.clientX,
       clientY: event.clientY,
       viewBox,
+      currentViewBox: viewBox,
       moved: false,
+      cloudReadableId: cloudReadableId ?? undefined,
     };
     setPanning(true);
   }
@@ -448,18 +498,45 @@ export function KnowledgeMapCanvas({
     ) {
       drag.current.moved = true;
     }
-    setViewBox({
+    const currentViewBox = {
       ...drag.current.viewBox,
       x: drag.current.viewBox.x - dx,
       y: drag.current.viewBox.y - dy,
-    });
+    };
+    drag.current.currentViewBox = currentViewBox;
+    setViewBox(currentViewBox);
   }
 
   function handlePointerEnd(event: ReactPointerEvent<SVGSVGElement>) {
     if (drag.current?.pointerId === event.pointerId) {
-      suppressNextCloudClick.current = drag.current.moved;
+      const completedDrag = drag.current;
+      const action = mapPointerEndAction({
+        moved: completedDrag.moved,
+        cloudReadableId: completedDrag.cloudReadableId,
+        canLoadMore: hasNextPage && !isFetchingNextPage,
+        nearBoundary: mapViewportNearBoundary(completedDrag.currentViewBox, layout.bounds),
+      });
+      suppressNextCloudClick.current = action.suppressCloudClick;
+      if (action.selectedPageReadableId) {
+        onSelect({ kind: 'page', readableId: action.selectedPageReadableId });
+      }
       drag.current = null;
       setPanning(false);
+      event.currentTarget.releasePointerCapture(event.pointerId);
+      if (action.loadMore) {
+        onLoadMore();
+      }
+    }
+  }
+
+  function handlePointerCancel(event: ReactPointerEvent<SVGSVGElement>) {
+    if (drag.current?.pointerId !== event.pointerId) {
+      return;
+    }
+    drag.current = null;
+    suppressNextCloudClick.current = true;
+    setPanning(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   }
@@ -471,21 +548,21 @@ export function KnowledgeMapCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
-      aria-label={`Knowledge map with ${layout.pages.length} knowledge pages and ${layout.resources.length} resource dots`}
+      aria-label={`Hypermedia map with ${layout.pages.length} knowledge pages and ${layout.resources.length} resource dots`}
     >
       <svg
         className={cn(
           'size-full touch-none select-none bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] [background-size:22px_22px]',
           panning ? 'cursor-grabbing' : 'cursor-grab',
         )}
-        aria-label="Interactive knowledge map"
+        aria-label="Interactive hypermedia map"
         viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
         preserveAspectRatio="xMidYMid meet"
         onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
-        onPointerCancel={handlePointerEnd}
+        onPointerCancel={handlePointerCancel}
         onDoubleClick={() => setViewBox(layout.bounds)}
       >
         <KnowledgeMapLayers
@@ -522,12 +599,21 @@ export function KnowledgeMapCanvas({
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Fit knowledge map"
+          aria-label="Fit hypermedia map"
           onClick={() => setViewBox(layout.bounds)}
         >
           <Scan aria-hidden="true" />
         </Button>
       </div>
+
+      {isFetchingNextPage && (
+        <div
+          className="absolute right-4 bottom-4 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
+          aria-live="polite"
+        >
+          Loading nearby knowledge…
+        </div>
+      )}
 
       {preview && previewKey(preview) !== selectedKey && (
         <div

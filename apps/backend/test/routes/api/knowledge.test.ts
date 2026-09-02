@@ -64,6 +64,7 @@ const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
 );
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
+const EXPECTED_TWO_MAP_BATCH_PAGE_COUNT = 4;
 const EXPECTED_SECOND_PAGE_OFFSET = 4;
 const EXPECTED_FILTERED_PAGE_COUNT = 5;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
@@ -525,10 +526,12 @@ Every observation changes the next action.`,
         mentions: Array<{ readableId: string }>;
       }>;
       totalPages: number;
+      nextCursor: string | null;
       truncated: boolean;
     };
     expectNoInternalResourceIds(knowledgeMap);
     expect(knowledgeMap.totalPages).toBe(EXPECTED_PAGE_COUNT);
+    expect(knowledgeMap.nextCursor).toBeNull();
     expect(knowledgeMap.truncated).toBe(false);
     const operatingRhythmMapPage = knowledgeMap.pages.find(
       ({ readableId }) => readableId === 'operating-rhythm',
@@ -543,13 +546,76 @@ Every observation changes the next action.`,
     const boundedKnowledgeMapResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/knowledge-map?limit=2' }),
     );
-    expect(await boundedKnowledgeMapResponse.json()).toEqual(
+    const boundedKnowledgeMap = (await boundedKnowledgeMapResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+      totalPages: number;
+      nextCursor: string | null;
+      truncated: boolean;
+    };
+    expect(boundedKnowledgeMap).toEqual(
       expect.objectContaining({
         pages: expect.any(Array),
         totalPages: EXPECTED_PAGE_COUNT,
-        truncated: true,
+        nextCursor: expect.any(String),
+        truncated: false,
       }),
     );
+    const nextKnowledgeMapResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: `/knowledge-map?limit=2&cursor=${encodeURIComponent(boundedKnowledgeMap.nextCursor!)}`,
+      }),
+    );
+    expect(nextKnowledgeMapResponse.status).toBe(StatusMap.OK);
+    const nextKnowledgeMap = (await nextKnowledgeMapResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+      nextCursor: string | null;
+    };
+    expect(nextKnowledgeMap.pages).toHaveLength(2);
+    expect(
+      new Set([
+        ...boundedKnowledgeMap.pages.map(({ readableId }) => readableId),
+        ...nextKnowledgeMap.pages.map(({ readableId }) => readableId),
+      ]).size,
+    ).toBe(EXPECTED_TWO_MAP_BATCH_PAGE_COUNT);
+    expect(nextKnowledgeMap.nextCursor).toEqual(expect.any(String));
+
+    const finalKnowledgeMapResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: `/knowledge-map?limit=2&cursor=${encodeURIComponent(nextKnowledgeMap.nextCursor!)}`,
+      }),
+    );
+    expect(finalKnowledgeMapResponse.status).toBe(StatusMap.OK);
+    const finalKnowledgeMap = (await finalKnowledgeMapResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+      nextCursor: string | null;
+    };
+    expect(finalKnowledgeMap.pages).toHaveLength(1);
+    expect(
+      new Set([
+        ...boundedKnowledgeMap.pages.map(({ readableId }) => readableId),
+        ...nextKnowledgeMap.pages.map(({ readableId }) => readableId),
+        ...finalKnowledgeMap.pages.map(({ readableId }) => readableId),
+      ]).size,
+    ).toBe(EXPECTED_PAGE_COUNT);
+    expect(finalKnowledgeMap.nextCursor).toBeNull();
+
+    const invalidKnowledgeMapCursorResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/knowledge-map?cursor=not-a-cursor' }),
+    );
+    expect(invalidKnowledgeMapCursorResponse.status).toBe(StatusMap['Bad Request']);
+    const forgedKnowledgeMapCursor = Buffer.from(
+      JSON.stringify({ version: 1, updatedAt: '1', readableId: 'valid-page' }),
+      'utf8',
+    ).toString('base64url');
+    const forgedKnowledgeMapCursorResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: `/knowledge-map?cursor=${encodeURIComponent(forgedKnowledgeMapCursor)}`,
+      }),
+    );
+    expect(forgedKnowledgeMapCursorResponse.status).toBe(StatusMap['Bad Request']);
 
     const overlappingPagesResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0&time=2025-04' }),

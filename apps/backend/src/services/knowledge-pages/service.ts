@@ -4,6 +4,7 @@ import {
   parseKnowledgePageMarkdown,
 } from '#models/knowledge-pages/markdown.ts';
 import type {
+  KnowledgeMapContinuation,
   KnowledgePage,
   KnowledgePageRevisionActor,
   KnowledgePageSummary,
@@ -127,7 +128,7 @@ export class KnowledgePagesService {
     return this.pages.list(input);
   }
 
-  map(input: { ownerId: string; limit: number }) {
+  map(input: { ownerId: string; limit: number; cursor?: KnowledgeMapContinuation }) {
     return this.pages.map(input);
   }
 

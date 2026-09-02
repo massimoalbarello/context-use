@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router';
-import { House, Plus } from 'lucide-react';
+import { Network, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
-import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
+import { type KnowledgeCollection, MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { buttonVariants } from '../ui/button';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
@@ -44,20 +44,21 @@ export function KnowledgeSidebar({
       <KnowledgeSidebarHeader />
 
       <div className={cn('flex min-h-0 flex-1 flex-col', collapsed && 'hidden')}>
-        <div className="flex shrink-0 items-center justify-between gap-3 px-4">
+        <div className="shrink-0 px-4">
+          <Link
+            className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-start')}
+            to={MAIN_KNOWLEDGE_PATH}
+          >
+            <Network aria-hidden="true" />
+            Hypermedia map
+          </Link>
+        </div>
+        <div className="mt-3 flex shrink-0 items-center justify-between gap-3 px-4">
           <KnowledgeCollectionNavigation
             collection={collection}
             ownerEntityReadableId={profile.selfEntity.readableId}
           />
           <div className="flex shrink-0 items-center gap-1">
-            <Link
-              className={cn(buttonVariants({ variant: 'ghost', size: 'icon-lg' }), 'shrink-0')}
-              to="/map"
-              aria-label="Back to map"
-              title="Back to map"
-            >
-              <House aria-hidden="true" />
-            </Link>
             <Link
               className={cn(buttonVariants({ size: 'icon-lg' }), 'shrink-0')}
               to={createTo}

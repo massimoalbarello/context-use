@@ -22,6 +22,11 @@ PROFILE = read_seed_json("entities/alex-morgan.json")
 ENTITIES = [
     read_seed_json("entities/maya-chen.json"),
     read_seed_json("entities/northstar.json"),
+    read_seed_json("entities/priya-shah.json"),
+    read_seed_json("entities/theo-brooks.json"),
+    read_seed_json("entities/orbit-labs.json"),
+    read_seed_json("entities/jun-park.json"),
+    read_seed_json("entities/compass.json"),
 ]
 PAGES = [
     {
@@ -43,13 +48,63 @@ PAGES = [
         "markdown": read_seed_text("pages/northstar-launch-retrospective.md"),
         "temporalCoverage": "2025-11~",
     },
+    {
+        "readableId": "customer-research-synthesis",
+        "markdown": read_seed_text("pages/customer-research-synthesis.md"),
+        "temporalCoverage": "2026-06/2026-07",
+    },
+    {
+        "readableId": "technical-map-notes",
+        "markdown": read_seed_text("pages/technical-map-notes.md"),
+        "temporalCoverage": "2026-08/..",
+    },
+    {
+        "readableId": "launch-readiness-plan",
+        "markdown": read_seed_text("pages/launch-readiness-plan.md"),
+        "temporalCoverage": "2026-09/2026-10",
+    },
+    {
+        "readableId": "decision-log",
+        "markdown": read_seed_text("pages/decision-log.md"),
+        "temporalCoverage": "2026-08/..",
+    },
+    {
+        "readableId": "pilot-feedback",
+        "markdown": read_seed_text("pages/pilot-feedback.md"),
+        "temporalCoverage": "2026-08-18/2026-08-22",
+    },
+    {
+        "readableId": "design-critique-notes",
+        "markdown": read_seed_text("pages/design-critique-notes.md"),
+        "temporalCoverage": "2026-08-28",
+    },
+    {
+        "readableId": "agent-collaboration-workflow",
+        "markdown": read_seed_text("pages/agent-collaboration-workflow.md"),
+    },
+    {
+        "readableId": "next-quarter-priorities",
+        "markdown": read_seed_text("pages/next-quarter-priorities.md"),
+        "temporalCoverage": "2026-10/2026-12",
+    },
 ]
 PROFILE_IMAGE_ASSET = {
     "readableId": "sample-profile-portrait",
     "name": "Sample profile portrait",
     "path": "assets/profile.jpeg",
+    "expectedMediaType": "image/jpeg",
 }
-ASSETS = [PROFILE_IMAGE_ASSET]
+RESEARCH_HIGHLIGHTS_ASSET = {
+    "readableId": "research-interview-highlights",
+    "name": "Research interview highlights",
+    "path": "assets/research-interview-highlights.txt",
+}
+ROLLOUT_METRICS_ASSET = {
+    "readableId": "rollout-metrics",
+    "name": "Rollout metrics",
+    "path": "assets/rollout-metrics.csv",
+}
+ASSETS = [PROFILE_IMAGE_ASSET, RESEARCH_HIGHLIGHTS_ASSET, ROLLOUT_METRICS_ASSET]
 
 
 def wait_until(predicate, failure_message, timeout_seconds=UI_TIMEOUT_SECONDS):
@@ -138,8 +193,8 @@ def create_asset(asset):
     created = checked_api_response("POST", "/api/assets", result)
     if created["readableId"] != asset["readableId"]:
         raise RuntimeError("Created asset did not match the fixture")
-    if created["mediaType"] != "image/jpeg":
-        raise RuntimeError("Seed asset bytes were not detected as JPEG")
+    if asset.get("expectedMediaType") and created["mediaType"] != asset["expectedMediaType"]:
+        raise RuntimeError("Seed asset bytes were not detected as the expected media type")
 
 
 def create_profile(profile):
@@ -231,11 +286,11 @@ def seed_isolated_data():
     create_profile(PROFILE)
     for entity in ENTITIES:
         create_entity(entity)
-    for page in PAGES:
-        create_page(page)
     for asset in ASSETS:
         create_asset(asset)
     assign_owner_entity_image(PROFILE, PROFILE_IMAGE_ASSET)
+    for page in PAGES:
+        create_page(page)
     update_page(
         "project-brief",
         1,
@@ -244,15 +299,15 @@ def seed_isolated_data():
 
     # Use a document navigation so the new app instance reads the seeded profile instead of
     # retaining the setup route's pre-seed query cache.
-    goto_url(f"{APP_URL}/pages")
+    goto_url(f"{APP_URL}/map")
     wait_for_load()
     wait_until(
-        lambda: urlparse(page_info()["url"]).path.startswith("/pages"),
+        lambda: urlparse(page_info()["url"]).path == "/map",
         "Seeded profile did not open the workspace",
     )
     print(
         f"Seeded 1 profile, {len(ENTITIES)} entities, {len(PAGES)} linked pages, "
-        f"and {len(ASSETS)} asset"
+        f"and {len(ASSETS)} assets"
     )
 
 
