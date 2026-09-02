@@ -15,7 +15,9 @@ import { knowledgeMapFrom, knowledgeMapQueryOptions } from '../../src/queries/kn
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const MINIMUM_RESOURCE_DISTANCE = 116;
+const MINIMUM_PAGE_LABEL_DISTANCE = 400;
 const CROWDED_NEIGHBOR_COUNT = 120;
+const CROWDED_PAGE_COUNT = 40;
 const EXTRA_RASTER_ASSET_COUNT = 4;
 
 function entity({
@@ -123,6 +125,27 @@ describe('knowledge map layout', () => {
         expect(
           Math.hypot(resource.point.x - other.point.x, resource.point.y - other.point.y),
         ).toBeGreaterThanOrEqual(MINIMUM_RESOURCE_DISTANCE);
+      }
+    }
+  });
+
+  test('keeps page label centers far enough apart for long titles', () => {
+    const pages: KnowledgeMapPage[] = [];
+    for (let index = 0; index < CROWDED_PAGE_COUNT; index += 1) {
+      pages.push(
+        page({
+          readableId: `page-${index}`,
+          title: `A long knowledge page title ${index}`,
+        }),
+      );
+    }
+    const layout = buildKnowledgeMapLayout(pages);
+
+    for (const [index, pageLayout] of layout.pages.entries()) {
+      for (const other of layout.pages.slice(index + 1)) {
+        expect(
+          Math.hypot(pageLayout.point.x - other.point.x, pageLayout.point.y - other.point.y),
+        ).toBeGreaterThanOrEqual(MINIMUM_PAGE_LABEL_DISTANCE);
       }
     }
   });

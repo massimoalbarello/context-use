@@ -48,7 +48,7 @@ type ResourceSeedInput =
   | { kind: 'asset'; asset: KnowledgeMapAsset };
 
 const MAP_CENTER: MapPoint = { x: 0, y: 0 };
-const PAGE_RADIAL_SPACING = 190;
+const PAGE_RADIAL_SPACING = 260;
 const MAP_PADDING = 150;
 const RESOURCE_MIN_DISTANCE = 116;
 const RESOURCE_PAGE_LABEL_X_DISTANCE = 150;
