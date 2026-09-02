@@ -12,7 +12,7 @@ test('the map composes explicit keyword and date range filters', () => {
     />,
   );
 
-  expect(html).toContain('Filter map');
+  expect(html).toContain('Filter hypermedia');
   expect(html).toContain('Keyword');
   expect(html).toContain('value="launch"');
   expect(html).toContain('Filter by date range');

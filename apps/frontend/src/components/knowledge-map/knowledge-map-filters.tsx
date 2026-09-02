@@ -76,7 +76,7 @@ export function KnowledgeMapFilters({
   return (
     <section aria-labelledby="knowledge-map-filters-heading">
       <h2 id="knowledge-map-filters-heading" className="font-medium text-sm">
-        Filter map
+        Filter hypermedia
       </h2>
       <div className="mt-2 grid gap-3">
         <KnowledgeMapKeywordFilter key={query} value={query} onApply={onQueryApply} />
