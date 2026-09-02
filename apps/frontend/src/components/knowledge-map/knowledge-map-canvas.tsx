@@ -18,6 +18,7 @@ import type {
   KnowledgeMapPage,
 } from '../../queries/knowledge-map';
 import { formatAssetSize } from '../assets/asset-link';
+import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
@@ -480,6 +481,7 @@ export function KnowledgeMapCanvas({
   loadMoreError: Error | null;
   onLoadMore: () => Promise<unknown>;
 }) {
+  const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
   const layout = useMemo(
     () => buildKnowledgeMapLayout(pages, { anchorEntity }),
     [anchorEntity, pages],
@@ -723,7 +725,11 @@ export function KnowledgeMapCanvas({
 
       {preview && previewKey(preview) !== selectedKey && (
         <div
-          className="pointer-events-none absolute top-4 left-18 w-[min(20rem,calc(100%-7rem))] rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur"
+          className={cn(
+            'pointer-events-none absolute top-4 w-[min(20rem,calc(100%-2rem))] rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
+            sidebarCollapsed && 'left-18 w-[min(20rem,calc(100%-7rem))]',
+            !sidebarCollapsed && 'left-4',
+          )}
           aria-live="polite"
         >
           <PreviewCard preview={preview} />

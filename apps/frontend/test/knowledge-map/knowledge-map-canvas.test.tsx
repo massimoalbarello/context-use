@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
 import {
   KnowledgeMapCanvas,
   mapPointerEndAction,
@@ -46,15 +47,17 @@ const page: KnowledgeMapPage = {
 
 test('the hypermedia canvas exposes page regions, circular entities, and rounded-square assets', () => {
   const html = renderToStaticMarkup(
-    <KnowledgeMapCanvas
-      pages={[page]}
-      anchorEntity={self}
-      onSelect={() => undefined}
-      hasNextPage
-      isFetchingNextPage={false}
-      loadMoreError={null}
-      onLoadMore={() => Promise.resolve()}
-    />,
+    <KnowledgeWorkspace>
+      <KnowledgeMapCanvas
+        pages={[page]}
+        anchorEntity={self}
+        onSelect={() => undefined}
+        hasNextPage
+        isFetchingNextPage={false}
+        loadMoreError={null}
+        onLoadMore={() => Promise.resolve()}
+      />
+    </KnowledgeWorkspace>,
   );
 
   expect(html).toContain('aria-label="Interactive hypermedia map"');
