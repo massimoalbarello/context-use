@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Network, Plus } from 'lucide-react';
+import { Map as MapIcon, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
 import { type KnowledgeCollection, MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
@@ -49,7 +49,7 @@ export function KnowledgeSidebar({
             className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-start')}
             to={MAIN_KNOWLEDGE_PATH}
           >
-            <Network aria-hidden="true" />
+            <MapIcon aria-hidden="true" />
             Hypermedia map
           </Link>
         </div>
