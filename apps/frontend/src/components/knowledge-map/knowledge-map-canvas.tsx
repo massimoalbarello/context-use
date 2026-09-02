@@ -441,36 +441,27 @@ function KnowledgeMapExplorationCue({
       role="status"
     >
       <div
-        className="pointer-events-none absolute top-1/2 right-0 h-44 w-36 -translate-y-1/2 bg-gradient-to-l from-card via-card/80 to-transparent"
+        className="pointer-events-none absolute top-1/2 right-0 h-28 w-40 -translate-y-1/2 bg-gradient-to-l from-card via-card/80 to-transparent"
         aria-hidden="true"
       />
-      <div className="relative flex items-center pl-8">
-        <div className="mr-1 text-right">
-          <p className="whitespace-nowrap font-medium text-foreground text-xs">More pages</p>
-          {loadMoreError ? (
-            <Button
-              type="button"
-              variant="link"
-              size="xs"
-              className="pointer-events-auto h-auto p-0 text-xs"
-              onClick={onLoadMore}
-            >
-              Retry loading
-            </Button>
-          ) : (
-            <p className="mt-0.5 flex items-center justify-end gap-0.5 whitespace-nowrap text-muted-foreground text-xs">
-              Drag to explore
-              <ChevronsRight className="size-3.5" aria-hidden="true" />
-            </p>
-          )}
-        </div>
-        <div className="pointer-events-none relative h-28 w-14 overflow-hidden" aria-hidden="true">
-          <span className="absolute top-7 left-0 h-16 w-20 rounded-[48%] border border-primary/30 bg-primary/8" />
-          <span className="absolute top-4 left-6 size-8 rounded-full border-2 border-border bg-card shadow-sm" />
-          <span className="absolute top-16 left-3 size-8 rounded-lg border-2 border-border bg-card shadow-sm" />
-          <span className="absolute top-12 left-10 h-1 w-8 rounded-full bg-foreground/35" />
-          <span className="absolute top-15 left-9 h-1 w-10 rounded-full bg-foreground/20" />
-        </div>
+      <div className="relative py-4 pr-4 pl-8 text-right">
+        <p className="whitespace-nowrap font-medium text-foreground text-xs">More pages</p>
+        {loadMoreError ? (
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="pointer-events-auto h-auto p-0 text-xs"
+            onClick={onLoadMore}
+          >
+            Retry loading
+          </Button>
+        ) : (
+          <p className="mt-0.5 flex items-center justify-end gap-0.5 whitespace-nowrap text-muted-foreground text-xs">
+            Drag to explore
+            <ChevronsRight className="size-3.5" aria-hidden="true" />
+          </p>
+        )}
       </div>
     </div>
   );
