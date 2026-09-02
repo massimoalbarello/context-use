@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { CalendarRange, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
 import type { KnowledgePageSummary } from '../../queries/pages';
@@ -33,18 +33,13 @@ export function KnowledgePageCardContent({
   page: KnowledgePageIdentity;
   fragment?: string;
 }) {
-  const temporal = page.temporalCoverage !== null;
-  const ResourceIcon = temporal ? CalendarRange : FileText;
   return (
     <>
       <span
-        className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground',
-          temporal && 'bg-primary/10 text-primary',
-        )}
+        className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
         aria-hidden="true"
       >
-        <ResourceIcon className="size-5 fill-none stroke-[1.4] stroke-current" />
+        <FileText className="size-5 fill-none stroke-[1.4] stroke-current" />
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
         <strong className="min-w-0 truncate font-semibold text-sm leading-snug">
