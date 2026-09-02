@@ -1,41 +1,18 @@
-# Backend tests
+# Backend test invariants
 
-The root and backend guides apply here. This file defines backend-specific test composition and
-proving boundaries. Keep behavior-oriented names and Given/When/Then clarity in ordinary,
-type-safe TypeScript.
+The [root](../../../AGENTS.md) and [backend](../AGENTS.md) guides apply here.
 
-## Layout and support
-
-- Mirror the owning `src` path under `test` for module- and layer-level tests, including models,
-  routes, services, repositories, database adapters, and technical support. A test spanning several
-  modules lives at their nearest shared boundary and is named after the behavior it proves; do not
-  split a coherent flow merely to manufacture one test file per source file.
-- Limit `test/support` to shared application factories, database and storage harnesses, principals,
-  clocks, builders, and focused assertions. Keep a feature-specific helper with its feature.
-- Helpers expose domain actions and typed values, not private call sequences. Avoid a global world
-  object, string-matched steps, inheritance hierarchies, or a universal scenario builder.
+- Mirror the owning production capability or boundary under `test`. Put a test spanning several
+  modules at their nearest shared boundary.
+- Limit `test/support` to genuinely shared composition, lifecycle, principals, builders, clocks,
+  and focused assertions. Keep feature-specific support with its feature.
 - Each test owns its state and cleanup. Tests must pass independently and in randomized order.
-
-## Composition and isolation
-
-- Build the application through an explicit test composition root. Production and test assemblies
-  supply dependencies to the same application factory; tests do not import production singletons,
-  mutate process globals, or rely on module-mocking side effects.
-- Give each database test a fresh temporary SQLite database, apply the production schema through
-  the production migration path, and create scenario data afterward through typed builders. The
-  harness that creates state also owns its cleanup.
-- Prefer real in-process SQLite for repository behavior and constraints. Use a fake only for a
-  boundary that is external, slow, destructive, or intentionally nondeterministic, and implement
-  the production interface rather than an independent test model.
-
-## Choose the proving boundary
-
-- Exercise routes through the assembled Elysia application's `handle(Request)` boundary. Route
-  tests cover material HTTP behavior: authentication, validation, status mapping, and response
-  contracts.
-- Test services directly only for business decisions or state transitions that route tests cannot
-  prove clearly. Supply small typed fakes for their infrastructure boundaries.
-- Test repositories and adapters against the real system when the invariant depends on SQL
-  constraints, transactions, locking, streaming, filesystem behavior, or an SDK contract.
-- Assert resulting state as well as the response when data loss, authorization, transactions, or
-  destructive behavior is the risk.
+- Assemble the application through an explicit test composition root. Production and tests supply
+  dependencies to the same application factory; do not depend on production singletons, process
+  globals, or module-mocking side effects.
+- Use a fresh database with the production schema for each database test. Prefer the real in-process
+  adapter for persistence behavior; use a fake only at an external, slow, destructive, or
+  nondeterministic boundary, implementing the production contract.
+- Exercise HTTP behavior through the assembled Elysia application. Test services directly for
+  business decisions, and repositories directly for database invariants. When authorization,
+  transactions, or data loss are the risk, assert resulting state as well as the response.
