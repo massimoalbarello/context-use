@@ -128,7 +128,7 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
   const { asset } = preview;
   return (
     <div className="flex items-start gap-3">
-      <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-muted-foreground">
+      <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
         {isEmbeddableAsset(asset) ? (
           <img src={assetContentUrl(asset.readableId)} alt="" className="size-full object-cover" />
         ) : (
@@ -187,6 +187,8 @@ function ResourceDot({
   const radius = resource.kind === 'entity' ? 25 : 22;
   const isSelf = resource.kind === 'entity' && resource.entity.isSelf;
   const emphasis = resourceDotEmphasis({ active, isSelf });
+  const outerExtent = radius + emphasis.radiusOffset;
+  const innerExtent = radius - 3;
   const imageReadableId = mapResourceImageReadableId(resource, active || eagerImage);
   const label = resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
   const readableId =
@@ -212,20 +214,46 @@ function ResourceDot({
     >
       <defs>
         <clipPath id={clipId}>
-          <circle cx={resource.point.x} cy={resource.point.y} r={radius - 3} />
+          {resource.kind === 'entity' ? (
+            <circle cx={resource.point.x} cy={resource.point.y} r={innerExtent} />
+          ) : (
+            <rect
+              x={resource.point.x - innerExtent}
+              y={resource.point.y - innerExtent}
+              width={innerExtent * 2}
+              height={innerExtent * 2}
+              rx={7}
+            />
+          )}
         </clipPath>
       </defs>
-      <circle
-        cx={resource.point.x}
-        cy={resource.point.y}
-        r={radius + emphasis.radiusOffset}
-        className={cn(
-          'fill-card stroke-border transition-[r,stroke-width] motion-reduce:transition-none',
-          (active || isSelf) && 'stroke-foreground',
-        )}
-        strokeWidth={emphasis.strokeWidth}
-        vectorEffect="non-scaling-stroke"
-      />
+      {resource.kind === 'entity' ? (
+        <circle
+          cx={resource.point.x}
+          cy={resource.point.y}
+          r={outerExtent}
+          className={cn(
+            'fill-card stroke-border transition-[r,stroke-width] motion-reduce:transition-none',
+            (active || isSelf) && 'stroke-foreground',
+          )}
+          strokeWidth={emphasis.strokeWidth}
+          vectorEffect="non-scaling-stroke"
+        />
+      ) : (
+        <rect
+          x={resource.point.x - outerExtent}
+          y={resource.point.y - outerExtent}
+          width={outerExtent * 2}
+          height={outerExtent * 2}
+          rx={10}
+          className={cn(
+            'fill-card stroke-border transition-[x,y,width,height,stroke-width] motion-reduce:transition-none',
+            active && 'stroke-foreground',
+          )}
+          strokeWidth={emphasis.strokeWidth}
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
       {imageReadableId ? (
         <image
           href={assetContentUrl(imageReadableId)}

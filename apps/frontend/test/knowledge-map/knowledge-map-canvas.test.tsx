@@ -4,7 +4,11 @@ import {
   KnowledgeMapCanvas,
   mapPointerEndAction,
 } from '../../src/components/knowledge-map/knowledge-map-canvas';
-import type { KnowledgeMapEntity, KnowledgeMapPage } from '../../src/queries/knowledge-map';
+import type {
+  KnowledgeMapAsset,
+  KnowledgeMapEntity,
+  KnowledgeMapPage,
+} from '../../src/queries/knowledge-map';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
@@ -18,6 +22,16 @@ const self: KnowledgeMapEntity = {
   updatedAt: createdAt,
 };
 
+const asset: KnowledgeMapAsset = {
+  readableId: 'rollout-metrics',
+  name: 'Rollout metrics',
+  mediaType: 'application/octet-stream',
+  extension: null,
+  sizeBytes: 105,
+  createdAt,
+  updatedAt: createdAt,
+};
+
 const page: KnowledgeMapPage = {
   readableId: 'connected-page',
   title: 'Connected page',
@@ -27,10 +41,10 @@ const page: KnowledgeMapPage = {
   createdAt,
   updatedAt: createdAt,
   mentions: [self],
-  assetUsages: [],
+  assetUsages: [{ asset, presentation: 'attachment' }],
 };
 
-test('the hypermedia canvas exposes page regions and emphasizes self without an image', () => {
+test('the hypermedia canvas exposes page regions, circular entities, and rounded-square assets', () => {
   const html = renderToStaticMarkup(
     <KnowledgeMapCanvas
       pages={[page]}
@@ -46,6 +60,9 @@ test('the hypermedia canvas exposes page regions and emphasizes self without an 
   expect(html).toContain('data-map-cloud="connected-page"');
   expect(html).toContain('stroke-width="4"');
   expect(html).toContain('>A</text>');
+  expect(html).toContain('aria-label="Open asset Rollout metrics"');
+  expect(html).toContain('<circle');
+  expect(html).toContain('<rect');
 });
 
 test('a cloud click selects its page while a boundary drag loads without selecting', () => {
