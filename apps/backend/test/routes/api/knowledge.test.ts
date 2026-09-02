@@ -543,6 +543,66 @@ Every observation changes the next action.`,
     );
     expect(operatingRhythmMapPage).not.toHaveProperty('references');
 
+    const filteredKnowledgeMapResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/knowledge-map?limit=1&query=Temporal%20subject&time=2026-06',
+      }),
+    );
+    expect(filteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
+    const filteredKnowledgeMap = (await filteredKnowledgeMapResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+      totalPages: number;
+      nextCursor: string | null;
+    };
+    expect(filteredKnowledgeMap).toEqual(
+      expect.objectContaining({
+        pages: [expect.any(Object)],
+        totalPages: 2,
+        nextCursor: expect.any(String),
+      }),
+    );
+    const remainingFilteredKnowledgeMapResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: `/knowledge-map?limit=1&query=Temporal%20subject&time=2026-06&cursor=${encodeURIComponent(filteredKnowledgeMap.nextCursor!)}`,
+      }),
+    );
+    expect(remainingFilteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
+    const remainingFilteredKnowledgeMap = (await remainingFilteredKnowledgeMapResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+      totalPages: number;
+      nextCursor: string | null;
+    };
+    expect(remainingFilteredKnowledgeMap).toEqual(
+      expect.objectContaining({
+        pages: [expect.any(Object)],
+        totalPages: 2,
+        nextCursor: null,
+      }),
+    );
+    expect(
+      [...filteredKnowledgeMap.pages, ...remainingFilteredKnowledgeMap.pages]
+        .map(({ readableId }) => readableId)
+        .sort(),
+    ).toEqual(['alpha-principles', 'current-programme']);
+
+    const excerptFilteredKnowledgeMapResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/knowledge-map?query=feedback%20system' }),
+    );
+    expect(excerptFilteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
+    expect(await excerptFilteredKnowledgeMapResponse.json()).toEqual(
+      expect.objectContaining({
+        pages: [expect.objectContaining({ readableId: 'growth-playbook' })],
+        totalPages: 1,
+      }),
+    );
+
+    const invalidKnowledgeMapIntervalResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/knowledge-map?time=2026-02-29' }),
+    );
+    expect(invalidKnowledgeMapIntervalResponse.status).toBe(StatusMap['Bad Request']);
+
     const boundedKnowledgeMapResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/knowledge-map?limit=2' }),
     );

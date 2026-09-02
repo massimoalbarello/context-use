@@ -1,6 +1,6 @@
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useDeferredValue, useMemo } from 'react';
+import { useMemo } from 'react';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { WorkspaceEmpty } from '../components/knowledge/workspace-empty';
@@ -8,19 +8,23 @@ import {
   KnowledgeMapCanvas,
   type KnowledgeMapSelection,
 } from '../components/knowledge-map/knowledge-map-canvas';
-import { filterKnowledgeMapPages } from '../components/knowledge-map/knowledge-map-layout';
 import { KnowledgeMapPreviewPanel } from '../components/knowledge-map/knowledge-map-preview-panel';
 import { KnowledgeMapSidebar } from '../components/knowledge-map/knowledge-map-sidebar';
+import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { knowledgeMapFrom, knowledgeMapQueryOptions } from '../queries/knowledge-map';
 
 const MAX_MAP_SEARCH_LENGTH = 160;
 const MAX_MAP_READABLE_ID_LENGTH = 240;
-type KnowledgeMapSearch = { q?: string; kind?: KnowledgeMapSelection['kind']; id?: string };
+type KnowledgeMapSearch = Partial<CalendarDateRange> & {
+  q?: string;
+  kind?: KnowledgeMapSelection['kind'];
+  id?: string;
+};
 
 function mapSearch(search: Record<string, unknown>): KnowledgeMapSearch {
-  const result: KnowledgeMapSearch = {};
+  const result: KnowledgeMapSearch = calendarDateRangeFromSearch(search) ?? {};
   if (typeof search.q === 'string' && search.q.trim()) {
-    result.q = search.q.slice(0, MAX_MAP_SEARCH_LENGTH);
+    result.q = search.q.trim().slice(0, MAX_MAP_SEARCH_LENGTH);
   }
   if (
     (search.kind === 'page' || search.kind === 'entity' || search.kind === 'asset') &&
@@ -40,24 +44,50 @@ export const Route = createFileRoute('/map')({
     }
   },
   validateSearch: mapSearch,
-  loader: ({ context }) => context.queryClient.ensureInfiniteQueryData(knowledgeMapQueryOptions),
+  loaderDeps: ({ search }) => ({
+    query: search.q,
+    dateRange: calendarDateRangeFromSearch(search),
+  }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureInfiniteQueryData(knowledgeMapQueryOptions(deps)),
   component: KnowledgeMapRoute,
 });
 
-function KnowledgeMapRoute() {
-  const mapQuery = useSuspenseInfiniteQuery(knowledgeMapQueryOptions);
-  const map = useMemo(() => knowledgeMapFrom(mapQuery.data.pages), [mapQuery.data.pages]);
-  const { profile } = Route.useRouteContext();
-  const { q = '', kind, id } = Route.useSearch();
-  const navigate = Route.useNavigate();
-  const deferredQuery = useDeferredValue(q);
-  const pages = useMemo(
-    () => filterKnowledgeMapPages({ pages: map.pages, query: deferredQuery }),
-    [deferredQuery, map.pages],
+function KnowledgeMapEmpty({ filtered }: { filtered: boolean }) {
+  if (filtered) {
+    return (
+      <div className="mx-auto flex min-h-[32rem] max-w-md flex-col justify-center px-6 text-center">
+        <h2 className="font-semibold text-2xl tracking-tight">Nothing matches these filters</h2>
+        <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
+          Try another keyword or widen the interval.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <WorkspaceEmpty
+      eyebrow="Hypermedia map"
+      title="Your map starts with a knowledge page"
+      description="Create a knowledge page that mentions an entity or includes an asset. Its relationships will become the first neighborhood on this map."
+      createTo="/pages/new"
+      createLabel="Create the first knowledge page"
+    />
   );
+}
+
+function KnowledgeMapRoute() {
+  const { profile } = Route.useRouteContext();
+  const search = Route.useSearch();
+  const { q = '', kind, id } = search;
+  const dateRange = calendarDateRangeFromSearch(search);
+  const mapQuery = useSuspenseInfiniteQuery(knowledgeMapQueryOptions({ query: q, dateRange }));
+  const map = useMemo(() => knowledgeMapFrom(mapQuery.data.pages), [mapQuery.data.pages]);
+  const navigate = Route.useNavigate();
   if (!profile) {
     return null;
   }
+  const filtersActive = Boolean(q || dateRange);
   const selection = kind && id ? { kind, readableId: id } : undefined;
   function selectKnowledge(nextSelection: KnowledgeMapSelection) {
     void navigate({
@@ -75,11 +105,26 @@ function KnowledgeMapRoute() {
         profile={profile}
         truncated={map.truncated}
         query={q}
-        onQueryChange={(query) => {
+        dateRange={dateRange}
+        onQueryApply={(query) => {
           void navigate({
             search: (previous) => ({
               ...previous,
               q: query.trim() ? query : undefined,
+              kind: undefined,
+              id: undefined,
+            }),
+            replace: true,
+          });
+        }}
+        onDateRangeApply={(nextRange) => {
+          void navigate({
+            search: (previous) => ({
+              ...previous,
+              from: nextRange?.from,
+              to: nextRange?.to,
+              kind: undefined,
+              id: undefined,
             }),
             replace: true,
           });
@@ -87,29 +132,16 @@ function KnowledgeMapRoute() {
       />
       <KnowledgeWorkspaceDetail>
         {map.pages.length === 0 ? (
-          <WorkspaceEmpty
-            eyebrow="Hypermedia map"
-            title="Your map starts with a knowledge page"
-            description="Create a knowledge page that mentions an entity or includes an asset. Its relationships will become the first neighborhood on this map."
-            createTo="/pages/new"
-            createLabel="Create the first knowledge page"
-          />
-        ) : pages.length === 0 ? (
-          <div className="mx-auto flex min-h-[32rem] max-w-md flex-col justify-center px-6 text-center">
-            <h2 className="font-semibold text-2xl tracking-tight">Nothing in this neighborhood</h2>
-            <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-              Try a page title, entity name, description, or asset name.
-            </p>
-          </div>
+          <KnowledgeMapEmpty filtered={filtersActive} />
         ) : (
           <div className="relative size-full">
             <KnowledgeMapCanvas
-              key={deferredQuery}
-              pages={pages}
+              key={`${q}:${dateRange?.from ?? ''}:${dateRange?.to ?? ''}`}
+              pages={map.pages}
               anchorEntity={profile.selfEntity}
               selectedKey={selection ? `${selection.kind}:${selection.readableId}` : undefined}
               onSelect={selectKnowledge}
-              hasNextPage={mapQuery.hasNextPage && !deferredQuery}
+              hasNextPage={mapQuery.hasNextPage}
               remainingPageCount={Math.max(0, map.totalPages - map.pages.length)}
               isFetchingNextPage={mapQuery.isFetchingNextPage}
               loadMoreError={mapQuery.isFetchNextPageError ? mapQuery.error : null}

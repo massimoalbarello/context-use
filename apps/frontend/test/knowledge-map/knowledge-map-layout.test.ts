@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 import {
   buildKnowledgeMapLayout,
   eagerKnowledgeMapImageKeys,
-  filterKnowledgeMapPages,
   MAX_EAGER_KNOWLEDGE_MAP_IMAGES,
   mapViewportNearBoundary,
 } from '../../src/components/knowledge-map/knowledge-map-layout';
@@ -12,7 +11,7 @@ import type {
   KnowledgeMapEntity,
   KnowledgeMapPage,
 } from '../../src/queries/knowledge-map';
-import { knowledgeMapFrom } from '../../src/queries/knowledge-map';
+import { knowledgeMapFrom, knowledgeMapQueryOptions } from '../../src/queries/knowledge-map';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const MINIMUM_RESOURCE_DISTANCE = 116;
@@ -185,40 +184,20 @@ describe('knowledge map layout', () => {
     ]);
   });
 
-  test('filters a neighborhood through page, entity, and asset preview text', () => {
-    const pages = [
-      page({
-        readableId: 'people',
-        title: 'People',
-        mentions: [entity({ readableId: 'maya', name: 'Maya Chen' })],
-      }),
-      page({
-        readableId: 'evidence',
-        title: 'Evidence',
-        assetUsages: [
-          {
-            asset: {
-              readableId: 'chart',
-              name: 'Quarterly chart',
-              mediaType: 'image/png',
-              extension: 'png',
-              sizeBytes: 1200,
-              createdAt,
-              updatedAt: createdAt,
-            },
-            presentation: 'embed',
-          },
-        ],
-      }),
-    ];
+  test('keeps every server-side map filter in the infinite-query cache key', () => {
+    const filteredKey = knowledgeMapQueryOptions({
+      query: '  launch  ',
+      dateRange: { from: '2026-01-01', to: '2026-03-31' },
+    }).queryKey;
+    expect(filteredKey[0]).toBe('knowledge-map');
+    expect(filteredKey[1]).toEqual({
+      query: 'launch',
+      time: '2026-01-01/2026-03-31',
+    });
 
-    expect(
-      filterKnowledgeMapPages({ pages, query: 'maya' }).map(({ readableId }) => readableId),
-    ).toEqual(['people']);
-    expect(
-      filterKnowledgeMapPages({ pages, query: 'quarterly' }).map(({ readableId }) => readableId),
-    ).toEqual(['evidence']);
-    expect(filterKnowledgeMapPages({ pages, query: 'missing' })).toEqual([]);
+    const unfilteredKey = knowledgeMapQueryOptions().queryKey;
+    expect(unfilteredKey[0]).toBe('knowledge-map');
+    expect(unfilteredKey[1]).toEqual({ query: null, time: null });
   });
 
   test('bounds eager full-image requests to resources nearest the initial focus', () => {

@@ -335,6 +335,17 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       }),
     ]);
 
+    const assetFilteredKnowledgeMapResponse = await app.handle(
+      new Request('http://localhost/api/knowledge-map?query=Quarterly%20chart'),
+    );
+    expect(assetFilteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
+    expect(await assetFilteredKnowledgeMapResponse.json()).toEqual(
+      expect.objectContaining({
+        pages: [expect.objectContaining({ readableId: 'evidence-report' })],
+        totalPages: 1,
+      }),
+    );
+
     const detailResponse = await app.handle(
       new Request('http://localhost/api/assets/quarterly-chart'),
     );

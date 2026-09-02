@@ -2,6 +2,7 @@ import { CalendarRange, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { enGB } from 'react-day-picker/locale';
+import { cn } from '../../lib/class-names';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import { Button } from '../ui/button';
 import { Calendar } from '../ui/calendar';
@@ -61,17 +62,21 @@ export function dateRangeButtonLabel(value?: CalendarDateRange): string {
 export function PageDateRangeFilter({
   value,
   onApply,
+  className,
+  label = 'Filter by date range',
 }: {
   value?: CalendarDateRange;
   onApply: (value?: CalendarDateRange) => void;
+  className?: string;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DateRange | undefined>(() => pickerRangeFrom(value));
   const hasSelection = Boolean(selected?.from);
 
   return (
-    <div className="mb-2 grid gap-2 rounded-xl bg-muted/55 p-3">
-      <p className="font-medium text-xs">Filter by date range</p>
+    <div className={cn('mb-2 grid gap-2 rounded-xl bg-muted/55 p-3', className)}>
+      <p className="font-medium text-xs">{label}</p>
       <Popover
         open={open}
         onOpenChange={(nextOpen) => {

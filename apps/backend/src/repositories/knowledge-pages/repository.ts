@@ -77,6 +77,8 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     limit: number;
     cursor?: KnowledgeMapContinuation;
+    query?: string;
+    temporalBounds?: TemporalBounds;
   }): Promise<KnowledgeMap>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredKnowledgePage | null>;
   archive(input: {
@@ -733,15 +735,22 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId,
     limit,
     cursor,
+    query,
+    temporalBounds,
   }: {
     ownerId: string;
     limit: number;
     cursor?: KnowledgeMapContinuation;
+    query?: string;
+    temporalBounds?: TemporalBounds;
   }): Promise<KnowledgeMap> {
     const resourceUsageQueryLimit = MAX_KNOWLEDGE_MAP_RESOURCE_USAGES + 1;
     const pageQueryLimit = limit + 1;
     const cursorUpdatedAt = cursor?.updatedAt ?? null;
     const cursorReadableId = cursor?.readableId ?? null;
+    const normalizedQuery = query?.trim().toLocaleLowerCase() || null;
+    const filterStart = temporalBounds?.start ?? null;
+    const filterEnd = temporalBounds?.end ?? null;
     const [pageRows, countRows] = await Promise.all([
       this.sql.ListKnowledgeMapPages`
         /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
@@ -752,6 +761,51 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         from "knowledge_page" page
         join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
         where page."owner_id" = ${ownerId} and page."archived_at" is null
+          and (
+            ${normalizedQuery} is null
+            or instr(lower(revision."title"), ${normalizedQuery}) > 0
+            or instr(lower(revision."excerpt"), ${normalizedQuery}) > 0
+            or instr(page."readable_id", ${normalizedQuery}) > 0
+            or exists (
+              select 1
+              from "knowledge_page_entity_mention" mention
+              join "entity" entity
+                on entity."id" = mention."target_entity_id"
+               and entity."owner_id" = mention."owner_id"
+              where mention."source_revision_id" = page."current_revision_id"
+                and mention."owner_id" = page."owner_id"
+                and entity."archived_at" is null
+                and (
+                  instr(lower(entity."name"), ${normalizedQuery}) > 0
+                  or instr(lower(entity."description"), ${normalizedQuery}) > 0
+                  or instr(entity."readable_id", ${normalizedQuery}) > 0
+                )
+            )
+            or exists (
+              select 1
+              from "knowledge_page_asset_usage" usage
+              join "asset" asset
+                on asset."id" = usage."target_asset_id" and asset."owner_id" = usage."owner_id"
+              where usage."source_revision_id" = page."current_revision_id"
+                and usage."owner_id" = page."owner_id"
+                and asset."archived_at" is null
+                and (
+                  instr(lower(asset."name"), ${normalizedQuery}) > 0
+                  or instr(asset."readable_id", ${normalizedQuery}) > 0
+                )
+            )
+          )
+          and (
+            ${filterStart} is null
+            or revision."temporal_coverage" is null
+            or (
+              (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
+              and (
+                revision."temporal_end_exclusive_ms" is null
+                or revision."temporal_end_exclusive_ms" > ${filterStart}
+              )
+            )
+          )
           and (
             ${cursorUpdatedAt} is null
             or page."updated_at" < ${cursorUpdatedAt}
@@ -766,8 +820,54 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       this.sql.CountKnowledgeMapPages`
         /* @notNull total */
         select count(*) as "total"
-        from "knowledge_page"
-        where "owner_id" = ${ownerId} and "archived_at" is null
+        from "knowledge_page" page
+        join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+        where page."owner_id" = ${ownerId} and page."archived_at" is null
+          and (
+            ${normalizedQuery} is null
+            or instr(lower(revision."title"), ${normalizedQuery}) > 0
+            or instr(lower(revision."excerpt"), ${normalizedQuery}) > 0
+            or instr(page."readable_id", ${normalizedQuery}) > 0
+            or exists (
+              select 1
+              from "knowledge_page_entity_mention" mention
+              join "entity" entity
+                on entity."id" = mention."target_entity_id"
+               and entity."owner_id" = mention."owner_id"
+              where mention."source_revision_id" = page."current_revision_id"
+                and mention."owner_id" = page."owner_id"
+                and entity."archived_at" is null
+                and (
+                  instr(lower(entity."name"), ${normalizedQuery}) > 0
+                  or instr(lower(entity."description"), ${normalizedQuery}) > 0
+                  or instr(entity."readable_id", ${normalizedQuery}) > 0
+                )
+            )
+            or exists (
+              select 1
+              from "knowledge_page_asset_usage" usage
+              join "asset" asset
+                on asset."id" = usage."target_asset_id" and asset."owner_id" = usage."owner_id"
+              where usage."source_revision_id" = page."current_revision_id"
+                and usage."owner_id" = page."owner_id"
+                and asset."archived_at" is null
+                and (
+                  instr(lower(asset."name"), ${normalizedQuery}) > 0
+                  or instr(asset."readable_id", ${normalizedQuery}) > 0
+                )
+            )
+          )
+          and (
+            ${filterStart} is null
+            or revision."temporal_coverage" is null
+            or (
+              (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
+              and (
+                revision."temporal_end_exclusive_ms" is null
+                or revision."temporal_end_exclusive_ms" > ${filterStart}
+              )
+            )
+          )
       `,
     ]);
     const selectedPageRows = pageRows.slice(0, limit);
@@ -786,6 +886,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         truncated: false,
       };
     }
+    const selectedPageIds = JSON.stringify(selectedPageRows.map(({ id }) => id));
 
     const [mentionRows, assetUsageRows] = await Promise.all([
       this.sql.ListKnowledgeMapMentions`
@@ -795,13 +896,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           select "id", "readable_id", "current_revision_id", "updated_at"
           from "knowledge_page"
           where "owner_id" = ${ownerId} and "archived_at" is null
-            and (
-              ${cursorUpdatedAt} is null
-              or "updated_at" < ${cursorUpdatedAt}
-              or ("updated_at" = ${cursorUpdatedAt} and "readable_id" > ${cursorReadableId})
-            )
+            and "id" in (select value from json_each(${selectedPageIds}))
           order by "updated_at" desc, "readable_id"
-          limit ${limit}
         )
         select selected_page."readable_id" as "sourcePageReadableId",
           entity."id", entity."readable_id" as "readableId", entity."name",
@@ -837,13 +933,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           select "id", "readable_id", "current_revision_id", "updated_at"
           from "knowledge_page"
           where "owner_id" = ${ownerId} and "archived_at" is null
-            and (
-              ${cursorUpdatedAt} is null
-              or "updated_at" < ${cursorUpdatedAt}
-              or ("updated_at" = ${cursorUpdatedAt} and "readable_id" > ${cursorReadableId})
-            )
+            and "id" in (select value from json_each(${selectedPageIds}))
           order by "updated_at" desc, "readable_id"
-          limit ${limit}
         )
         select selected_page."readable_id" as "sourcePageReadableId",
           asset."id", asset."readable_id" as "readableId", asset."name",

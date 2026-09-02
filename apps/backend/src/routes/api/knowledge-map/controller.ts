@@ -3,6 +3,11 @@ import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import {
+  InvalidTemporalCoverageError,
+  type TemporalBounds,
+  temporalBoundsFrom,
+} from '#models/knowledge-pages/temporal-coverage.ts';
+import {
   DEFAULT_KNOWLEDGE_MAP_PAGE_LIMIT,
   decodeKnowledgeMapCursor,
   KnowledgeMapQuerySchema,
@@ -27,6 +32,15 @@ export function createKnowledgeMapController({
     .get(
       '/knowledge-map',
       async ({ query, user, status }) => {
+        let temporalBounds: TemporalBounds | undefined;
+        try {
+          temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
+        } catch (error) {
+          if (error instanceof InvalidTemporalCoverageError) {
+            return status(StatusMap['Bad Request'], { error: error.message });
+          }
+          throw error;
+        }
         const decodedCursor = decodeKnowledgeMapCursor(query.cursor);
         if (decodedCursor.state === 'invalid') {
           return status(StatusMap['Bad Request'], {
@@ -37,6 +51,8 @@ export function createKnowledgeMapController({
           ownerId: user.id,
           limit: query.limit ?? DEFAULT_KNOWLEDGE_MAP_PAGE_LIMIT,
           cursor: decodedCursor.cursor,
+          query: query.query,
+          temporalBounds,
         });
         return status(StatusMap.OK, knowledgeMapResponse(map));
       },

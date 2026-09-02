@@ -230,27 +230,6 @@ function cloudPath(points: MapPoint[]): string {
   return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} ${commands.join(' ')} Z`;
 }
 
-export function filterKnowledgeMapPages({
-  pages,
-  query,
-}: {
-  pages: KnowledgeMapPage[];
-  query: string | undefined;
-}): KnowledgeMapPage[] {
-  const normalized = query?.trim().toLocaleLowerCase();
-  if (!normalized) {
-    return pages;
-  }
-  return pages.filter((page) =>
-    [
-      page.title,
-      page.excerpt,
-      ...page.mentions.flatMap((entity) => [entity.name, entity.description]),
-      ...page.assetUsages.map(({ asset }) => asset.name),
-    ].some((value) => value.toLocaleLowerCase().includes(normalized)),
-  );
-}
-
 export function mapViewportNearBoundary(viewport: MapBounds, bounds: MapBounds): boolean {
   const marginX = Math.min(viewport.width * 0.18, bounds.width * 0.22);
   const marginY = Math.min(viewport.height * 0.18, bounds.height * 0.22);

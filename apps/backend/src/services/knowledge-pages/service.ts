@@ -128,7 +128,13 @@ export class KnowledgePagesService {
     return this.pages.list(input);
   }
 
-  map(input: { ownerId: string; limit: number; cursor?: KnowledgeMapContinuation }) {
+  map(input: {
+    ownerId: string;
+    limit: number;
+    cursor?: KnowledgeMapContinuation;
+    query?: string;
+    temporalBounds?: TemporalBounds;
+  }) {
     return this.pages.map(input);
   }
 

@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
-import { Library, Search } from 'lucide-react';
+import { Library } from 'lucide-react';
 import { cn } from '../../lib/class-names';
+import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
   KnowledgeSidebarFooter,
@@ -8,18 +9,22 @@ import {
 } from '../knowledge/knowledge-sidebar-chrome';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { buttonVariants } from '../ui/button';
-import { Input } from '../ui/input';
+import { KnowledgeMapFilters } from './knowledge-map-filters';
 
 export function KnowledgeMapSidebar({
   profile,
   truncated,
   query,
-  onQueryChange,
+  dateRange,
+  onQueryApply,
+  onDateRangeApply,
 }: {
   profile: KnowledgeProfile;
   truncated: boolean;
   query: string;
-  onQueryChange: (query: string) => void;
+  dateRange?: CalendarDateRange;
+  onQueryApply: (query: string) => void;
+  onDateRangeApply: (dateRange?: CalendarDateRange) => void;
 }) {
   const { collapsed } = useKnowledgeWorkspace();
 
@@ -41,23 +46,12 @@ export function KnowledgeMapSidebar({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
-          <label className="block" htmlFor="knowledge-map-search">
-            <span className="font-medium text-sm">Find in map</span>
-            <span className="relative mt-2 block">
-              <Search
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                id="knowledge-map-search"
-                className="h-10 pl-9"
-                type="search"
-                placeholder="Knowledge page, entity, or asset"
-                value={query}
-                onChange={(event) => onQueryChange(event.currentTarget.value)}
-              />
-            </span>
-          </label>
+          <KnowledgeMapFilters
+            query={query}
+            dateRange={dateRange}
+            onQueryApply={onQueryApply}
+            onDateRangeApply={onDateRangeApply}
+          />
 
           {truncated && (
             <p className="mt-3 text-muted-foreground text-xs leading-relaxed">

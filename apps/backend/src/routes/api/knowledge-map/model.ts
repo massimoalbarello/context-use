@@ -1,5 +1,10 @@
 import { t } from 'elysia';
-import type { KnowledgeMap, KnowledgeMapContinuation } from '#models/knowledge-pages/model.ts';
+import {
+  type KnowledgeMap,
+  type KnowledgeMapContinuation,
+  MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
+} from '#models/knowledge-pages/model.ts';
+import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '#models/readable-ids/model.ts';
 import { assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
@@ -22,6 +27,8 @@ export const KnowledgeMapQuerySchema = t.Object({
     }),
   ),
   cursor: t.Optional(t.String({ minLength: 1, maxLength: MAX_KNOWLEDGE_MAP_CURSOR_LENGTH })),
+  query: t.Optional(t.String({ maxLength: MAX_KNOWLEDGE_PAGE_TITLE_LENGTH })),
+  time: t.Optional(t.String({ minLength: 1, maxLength: MAX_TEMPORAL_COVERAGE_LENGTH })),
 });
 
 export const KnowledgeMapPageSchema = t.Object({
