@@ -308,14 +308,14 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       nextOffset: null,
     });
 
-    const timelineEntityResponse = await app.handle(
+    const temporalEntityResponse = await app.handle(
       jsonRequest({
         method: 'POST',
         path: '/entities',
-        body: { name: 'Timeline subject', description: 'Subject used to verify related history.' },
+        body: { name: 'Temporal subject', description: 'Subject used to verify related history.' },
       }),
     );
-    expect(timelineEntityResponse.status).toBe(StatusMap.Created);
+    expect(temporalEntityResponse.status).toBe(StatusMap.Created);
 
     const growthResponse = await app.handle(
       jsonRequest({
@@ -397,7 +397,7 @@ Every observation changes the next action.`,
           temporalCoverage: '2025~',
           markdown: `# Operating rhythm
 
-[Timeline subject](context-use://entity/timeline-subject) uses the [feedback loop](context-use://page/growth-playbook#feedback-loop) every Friday.`,
+[Temporal subject](context-use://entity/temporal-subject) uses the [feedback loop](context-use://page/growth-playbook#feedback-loop) every Friday.`,
         },
       }),
     );
@@ -410,23 +410,23 @@ Every observation changes the next action.`,
         body: {
           temporalCoverage: '2024-11?/..',
           markdown:
-            '# Current programme\n\n[Timeline subject](context-use://entity/timeline-subject) remains evidenced and ongoing.',
+            '# Current programme\n\n[Temporal subject](context-use://entity/temporal-subject) remains evidenced and ongoing.',
         },
       }),
     );
     expect(ongoingResponse.status).toBe(StatusMap.Created);
 
-    const generalResponse = await app.handle(
+    const semanticResponse = await app.handle(
       jsonRequest({
         method: 'POST',
         path: '/pages',
         body: {
           markdown:
-            '# Alpha principles\n\n[Timeline subject](context-use://entity/timeline-subject) has general guidance with no asserted subject time.',
+            '# Alpha principles\n\n[Temporal subject](context-use://entity/temporal-subject) has semantic guidance with no asserted interval.',
         },
       }),
     );
-    expect(generalResponse.status).toBe(StatusMap.Created);
+    expect(semanticResponse.status).toBe(StatusMap.Created);
 
     const firstKnowledgePageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0' }),
@@ -560,13 +560,13 @@ Every observation changes the next action.`,
       error: expect.stringContaining('Use YYYY'),
     });
 
-    const timelineEntityDetailResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/entities/timeline-subject' }),
+    const temporalEntityDetailResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/entities/temporal-subject' }),
     );
-    const timelineEntityDetail = (await timelineEntityDetailResponse.json()) as {
+    const temporalEntityDetail = (await temporalEntityDetailResponse.json()) as {
       pages: Array<{ readableId: string }>;
     };
-    expect(timelineEntityDetail.pages.map(({ readableId }) => readableId)).toEqual([
+    expect(temporalEntityDetail.pages.map(({ readableId }) => readableId)).toEqual([
       'current-programme',
       'operating-rhythm',
       'alpha-principles',
