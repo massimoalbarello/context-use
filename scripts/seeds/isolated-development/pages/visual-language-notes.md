@@ -4,4 +4,4 @@
 
 ## Vocabulary
 
-Entities are circular, assets are rounded squares, and knowledge pages are regions connecting them. Use plain resource names in interface copy and follow the results from the [terminology testing notes](context-use://page/terminology-testing-notes).
+Entities are circular, assets are rounded squares, and knowledge pages are regions connecting them. Use plain resource names in interface copy and follow the [design critique notes](context-use://page/design-critique-notes).

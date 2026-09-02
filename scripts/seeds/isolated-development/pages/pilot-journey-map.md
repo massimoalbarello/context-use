@@ -4,4 +4,4 @@
 
 ## Friction points
 
-New users hesitate when labels overlap or controls compete with previews. These observations feed the [mobile navigation review](context-use://page/mobile-navigation-review) and [resource card patterns](context-use://page/resource-card-patterns).
+New users hesitate when labels overlap or controls compete with previews. Compare these observations with the [pilot feedback](context-use://page/pilot-feedback) and [design critique notes](context-use://page/design-critique-notes).

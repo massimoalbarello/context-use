@@ -4,4 +4,4 @@
 
 ## Result
 
-“Knowledge page” was clearer than “page cloud.” “Hypermedia” worked when paired with a map icon and an immediately explorable canvas. Apply the vocabulary in the [visual language notes](context-use://page/visual-language-notes).
+“Knowledge page” was clearer than “page cloud.” “Hypermedia” worked when paired with a map icon and an immediately explorable canvas. Carry the vocabulary into the [design critique notes](context-use://page/design-critique-notes).

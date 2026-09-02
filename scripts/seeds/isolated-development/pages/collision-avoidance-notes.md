@@ -4,4 +4,4 @@
 
 ## Constraint
 
-New placements must respect existing entity, asset, and page-label bounds without moving the self entity. Stress the rule with the [dense neighborhood states](context-use://page/dense-neighborhood-states).
+New placements must respect existing entity, asset, and page-label bounds without moving the self entity. Review the rule against the [design critique notes](context-use://page/design-critique-notes).

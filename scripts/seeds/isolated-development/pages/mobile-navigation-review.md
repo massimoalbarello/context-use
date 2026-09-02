@@ -4,4 +4,4 @@
 
 ## Decision
 
-The map remains primary, previews use the available sheet width, and resource browsing stays one clear step away. Recheck the flow against the [pilot journey map](context-use://page/pilot-journey-map).
+The map remains primary, previews use the available sheet width, and resource browsing stays one clear step away. Recheck the flow against the [pilot feedback](context-use://page/pilot-feedback).

@@ -4,4 +4,4 @@
 
 ## Direction
 
-Preserve recognizable anchors, separate page labels, and progressively summarize density. The first implementation follows the [collision avoidance notes](context-use://page/collision-avoidance-notes) and [pagination stability report](context-use://page/pagination-stability-report).
+Preserve recognizable anchors, separate page labels, and progressively summarize density. The first implementation follows the [design critique notes](context-use://page/design-critique-notes) and [technical map notes](context-use://page/technical-map-notes).

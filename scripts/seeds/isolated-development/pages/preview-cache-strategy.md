@@ -4,4 +4,4 @@
 
 ## Strategy
 
-Map batches provide enough summary data for hover. Full preview queries are cached by resource identity and retried only when a selected panel needs more detail. Validate perceived speed in the [discoverability benchmark](context-use://page/discoverability-benchmark).
+Map batches provide enough summary data for hover. Full preview queries are cached by resource identity and retried only when a selected panel needs more detail. Validate perceived speed against the [pilot feedback](context-use://page/pilot-feedback).

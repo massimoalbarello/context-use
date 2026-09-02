@@ -4,4 +4,4 @@
 
 ## Checks
 
-Verify pagination, filters, keyboard access, preview navigation, and stable placement. Review the [map observability plan](context-use://page/map-observability-plan) and record go/no-go choices in the [launch risk register](context-use://page/launch-risk-register).
+Verify pagination, filters, keyboard access, preview navigation, and stable placement. Review the [technical map notes](context-use://page/technical-map-notes) and record go/no-go choices in the [launch readiness plan](context-use://page/launch-readiness-plan).

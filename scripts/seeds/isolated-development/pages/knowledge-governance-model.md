@@ -4,4 +4,4 @@
 
 ## Responsibilities
 
-Authors maintain current pages, reviewers preserve evidence, and workspace owners archive obsolete resources without breaking history. Operational details live in the [content lifecycle policy](context-use://page/content-lifecycle-policy).
+Authors maintain current pages, reviewers preserve evidence, and workspace owners archive obsolete resources without breaking history. Important changes are recorded in the [decision log](context-use://page/decision-log).

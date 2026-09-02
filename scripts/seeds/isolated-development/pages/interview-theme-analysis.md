@@ -6,4 +6,4 @@
 
 [Download the interview highlights](context-use://asset/research-interview-highlights).
 
-The strongest theme supports the [map interaction principles](context-use://page/map-interaction-principles): people explore more readily when previews do not replace their current context.
+The strongest theme supports the [design critique notes](context-use://page/design-critique-notes): people explore more readily when previews do not replace their current context.

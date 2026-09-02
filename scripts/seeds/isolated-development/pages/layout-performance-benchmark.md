@@ -6,4 +6,4 @@
 
 [Download the rollout metrics](context-use://asset/rollout-metrics).
 
-The benchmark tracks initial layout time, incremental placement, and input responsiveness. Findings inform the [collision avoidance notes](context-use://page/collision-avoidance-notes).
+The benchmark tracks initial layout time, incremental placement, and input responsiveness. Findings are compared with the [technical map notes](context-use://page/technical-map-notes).

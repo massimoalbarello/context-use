@@ -6,4 +6,4 @@
 
 [Download the rollout metrics](context-use://asset/rollout-metrics).
 
-Track batch latency, truncated resource counts, layout duration, and preview failures without recording page contents. Thresholds come from the [knowledge map query budget](context-use://page/knowledge-map-query-budget).
+Track batch latency, truncated resource counts, layout duration, and preview failures without recording page contents. Thresholds come from the [technical map notes](context-use://page/technical-map-notes).

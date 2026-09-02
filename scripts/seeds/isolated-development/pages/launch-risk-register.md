@@ -4,4 +4,4 @@
 
 ## Active risks
 
-Dense maps may obscure labels, large entities may dominate neighborhoods, and slow previews may reduce trust. Mitigations live in the [dense neighborhood states](context-use://page/dense-neighborhood-states), [query budget](context-use://page/knowledge-map-query-budget), and [release runbook](context-use://page/release-readiness-runbook).
+Dense maps may obscure labels, large entities may dominate neighborhoods, and slow previews may reduce trust. Mitigations follow the [design critique notes](context-use://page/design-critique-notes), [technical map notes](context-use://page/technical-map-notes), and [launch readiness plan](context-use://page/launch-readiness-plan).

@@ -4,4 +4,4 @@
 
 ## Cohorts
 
-Include new contributors, frequent reviewers, and workspace owners. Compare their journeys in the [navigation study protocol](context-use://page/navigation-study-protocol) and [pilot journey map](context-use://page/pilot-journey-map).
+Include new contributors, frequent reviewers, and workspace owners. Compare their journeys with the [customer research synthesis](context-use://page/customer-research-synthesis) and [pilot feedback](context-use://page/pilot-feedback).

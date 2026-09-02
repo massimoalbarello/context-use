@@ -4,4 +4,4 @@
 
 ## Sequence
 
-Start at the self entity, find the project brief, inspect its evidence, and return through hypermedia. Compare the observed path with the [pilot journey map](context-use://page/pilot-journey-map).
+Start at the self entity, find the project brief, inspect its evidence, and return through hypermedia. Compare the observed path with the [pilot feedback](context-use://page/pilot-feedback).

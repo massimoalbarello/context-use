@@ -6,4 +6,4 @@
 
 [Download the rollout metrics](context-use://asset/rollout-metrics).
 
-Frequent reviewers used previews heavily, while new contributors relied on resource lists before exploring the map. Compare the pattern with the [interview theme analysis](context-use://page/interview-theme-analysis).
+Frequent reviewers used previews heavily, while new contributors relied on resource lists before exploring the map. Compare the pattern with the [customer research synthesis](context-use://page/customer-research-synthesis).

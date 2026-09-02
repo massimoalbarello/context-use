@@ -4,4 +4,4 @@
 
 ## Pattern
 
-Lead with identity and a useful excerpt. Show related pages where they help navigation, avoid redundant metadata, and reserve the top-right action for the dedicated resource view. Compare the [hover preview specification](context-use://page/hover-preview-specification).
+Lead with identity and a useful excerpt. Show related pages where they help navigation, avoid redundant metadata, and reserve the top-right action for the dedicated resource view. Follow the [design critique notes](context-use://page/design-critique-notes).

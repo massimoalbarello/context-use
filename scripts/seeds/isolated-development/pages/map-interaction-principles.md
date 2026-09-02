@@ -4,4 +4,4 @@
 
 ## Principles
 
-Keep the current context visible, make every dot previewable, and let movement reveal nearby knowledge. Detailed behavior lives in the [hover preview specification](context-use://page/hover-preview-specification) and [dense neighborhood states](context-use://page/dense-neighborhood-states).
+Keep the current context visible, make every dot previewable, and let movement reveal nearby knowledge. Apply the acceptance criteria in the [UI review checklist](context-use://page/ui-review-checklist) and [technical map notes](context-use://page/technical-map-notes).

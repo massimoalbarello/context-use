@@ -4,4 +4,4 @@
 
 ## Tasks
 
-Find a recent decision, trace its evidence, and return to the starting entity. Record results in the [interview theme analysis](context-use://page/interview-theme-analysis).
+Find a recent decision, trace its evidence, and return to the starting entity. Compare the results with the [customer research synthesis](context-use://page/customer-research-synthesis).

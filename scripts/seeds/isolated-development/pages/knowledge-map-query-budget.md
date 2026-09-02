@@ -4,4 +4,4 @@
 
 ## Invariants
 
-Fetch bounded page batches, resolve their entities and assets together, and never issue a query per dot. Observe the boundary with the [map observability plan](context-use://page/map-observability-plan).
+Fetch bounded page batches, resolve their entities and assets together, and never issue a query per dot. The budget makes the constraints in the [technical map notes](context-use://page/technical-map-notes) measurable.

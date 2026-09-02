@@ -4,4 +4,4 @@
 
 ## Result
 
-Loaded resources remain in place and duplicate pages are ignored when batches merge. The next pass will combine these checks with the [layout performance benchmark](context-use://page/layout-performance-benchmark).
+Loaded resources remain in place and duplicate pages are ignored when batches merge. The checks follow the constraints in the [technical map notes](context-use://page/technical-map-notes).
