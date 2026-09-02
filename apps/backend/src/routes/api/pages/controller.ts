@@ -49,7 +49,7 @@ export function createPagesController({
             error: `Link target not found: ${result.target}`,
           });
         }
-        if (result.state === 'invalid_markdown') {
+        if (result.state === 'invalid_markdown' || result.state === 'invalid_temporal_coverage') {
           return status(StatusMap['Bad Request'], { error: result.message });
         }
         return status(StatusMap['Internal Server Error'], { error: 'Page creation failed' });

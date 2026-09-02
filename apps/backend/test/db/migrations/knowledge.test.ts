@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import { expect, test } from 'bun:test';
+import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 
 const KNOWLEDGE_MIGRATION = new URL(
   '../../../src/db/migrations/0001_knowledge.sql',
@@ -60,6 +61,58 @@ test('knowledge revisions require a lowercase hexadecimal SHA-256 hash', async (
           '2026-01-01T00:00:00.000Z',
         ],
       ),
+    ).toThrow();
+  } finally {
+    database.close();
+  }
+});
+
+test('temporal coverage is revision-owned, nullable, and bounded', async () => {
+  const database = new Database(':memory:');
+
+  try {
+    database.exec(await Bun.file(KNOWLEDGE_MIGRATION).text());
+    database.run(
+      `insert into "knowledge_page_revision"
+        ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
+         "storage_key", "size_bytes", "content_hash", "author_kind", "author_name", "created_at")
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'revision-id',
+        'page-id',
+        'owner-id',
+        1,
+        'Title',
+        'Excerpt',
+        'storage-key',
+        1,
+        'a'.repeat(CONTENT_HASH_LENGTH),
+        'owner',
+        'Owner',
+        'created',
+      ],
+    );
+
+    expect(
+      database
+        .query(`select "temporal_coverage" from "knowledge_page_revision" where "id" = ?`)
+        .get('revision-id'),
+    ).toEqual({ temporal_coverage: null });
+    database.run(`update "knowledge_page_revision" set "temporal_coverage" = ? where "id" = ?`, [
+      '2025-03/2025-08',
+      'revision-id',
+    ]);
+    expect(() =>
+      database.run(`update "knowledge_page_revision" set "temporal_coverage" = ? where "id" = ?`, [
+        '',
+        'revision-id',
+      ]),
+    ).toThrow();
+    expect(() =>
+      database.run(`update "knowledge_page_revision" set "temporal_coverage" = ? where "id" = ?`, [
+        '2'.repeat(MAX_TEMPORAL_COVERAGE_LENGTH + 1),
+        'revision-id',
+      ]),
     ).toThrow();
   } finally {
     database.close();

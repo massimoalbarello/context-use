@@ -93,6 +93,7 @@ export interface IListActivePageAssetUsagesResult {
     title: string;
     excerpt: string;
     revisionNumber: number;
+    temporalCoverage: string | null;
     createdAt: string;
     updatedAt: string;
     presentation: "embed" | "attachment";
@@ -219,6 +220,7 @@ export interface IListActiveEntityMentioningPagesResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -242,6 +244,7 @@ export interface IFindCurrentKnowledgePageResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -276,6 +279,7 @@ export interface ISearchKnowledgePagesResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -287,6 +291,7 @@ export interface IListKnowledgePagesResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -308,6 +313,7 @@ export interface IListKnowledgePagesByEntityResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -321,6 +327,7 @@ export interface IFindKnowledgePageResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -358,6 +365,7 @@ export interface IListKnowledgePageMentionsResult {
 export interface IListKnowledgePageRevisionsResult {
     revisionNumber: number;
     title: string;
+    temporalCoverage: string | null;
     authorKind: string;
     authorName: string | null;
     createdAt: string;
@@ -372,6 +380,7 @@ export interface IListCurrentKnowledgePagesResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -392,6 +401,7 @@ export interface IListActiveKnowledgePageReferrersResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     createdAt: string;
     updatedAt: string;
     fragment: string;
@@ -404,6 +414,7 @@ export interface IListKnowledgePageReferencesResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     createdAt: string;
     updatedAt: string;
     fragment: string;
@@ -416,6 +427,7 @@ export interface IListKnowledgePageBacklinksResult {
     revisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     createdAt: string;
     updatedAt: string;
     fragment: string;

@@ -279,6 +279,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @type presentation 'embed' | 'attachment' */
       select page."id", page."readable_id" as "readableId", revision."title",
         revision."excerpt", revision."revision_number" as "revisionNumber",
+        revision."temporal_coverage" as "temporalCoverage",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt", usage."presentation"
       from "knowledge_page_asset_usage" usage
       join "knowledge_page" page

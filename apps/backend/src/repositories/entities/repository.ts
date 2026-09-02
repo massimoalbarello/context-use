@@ -366,6 +366,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
       select referring_page."id", referring_page."readable_id" as "readableId",
         current_referring_revision."revision_number" as "revisionNumber",
         current_referring_revision."title", current_referring_revision."excerpt",
+        current_referring_revision."temporal_coverage" as "temporalCoverage",
         referring_page."created_at" as "createdAt", referring_page."updated_at" as "updatedAt"
       from "knowledge_page_entity_mention" inbound_mention
       join "knowledge_page_revision" current_referring_revision

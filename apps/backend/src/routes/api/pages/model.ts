@@ -8,6 +8,7 @@ import {
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#models/knowledge-pages/model.ts';
+import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import { AssetSummarySchema, assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
 import {
@@ -20,6 +21,7 @@ export const KnowledgePageSummarySchema = t.Object({
   readableId: ReadableIdSchema,
   title: t.String(),
   excerpt: t.String({ maxLength: MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH }),
+  temporalCoverage: t.Nullable(t.String({ maxLength: MAX_TEMPORAL_COVERAGE_LENGTH })),
   revisionNumber: t.Integer({ minimum: 1 }),
   createdAt: t.Date(),
   updatedAt: t.Date(),
@@ -33,6 +35,7 @@ export const KnowledgePageReferenceSchema = t.Object({
 export const KnowledgePageRevisionSummarySchema = t.Object({
   revisionNumber: t.Integer({ minimum: 1 }),
   title: t.String(),
+  temporalCoverage: t.Nullable(t.String({ maxLength: MAX_TEMPORAL_COVERAGE_LENGTH })),
   author: t.Union([
     t.Object({ kind: t.Literal('owner'), name: t.String() }),
     t.Object({ kind: t.Literal('mcp_client'), name: t.String() }),
@@ -57,12 +60,14 @@ export const KnowledgePageSchema = t.Object({
 
 export const CreateKnowledgePageBodySchema = t.Object({
   markdown: t.String({ minLength: 1, maxLength: MAX_KNOWLEDGE_PAGE_BYTES }),
+  temporalCoverage: t.Optional(t.Nullable(t.String({ maxLength: MAX_TEMPORAL_COVERAGE_LENGTH }))),
   allowDuplicate: t.Optional(t.Boolean()),
 });
 
 export const UpdateKnowledgePageBodySchema = t.Object({
   expectedRevisionNumber: t.Integer({ minimum: 1 }),
   markdown: t.String({ minLength: 1, maxLength: MAX_KNOWLEDGE_PAGE_BYTES }),
+  temporalCoverage: t.Optional(t.Nullable(t.String({ maxLength: MAX_TEMPORAL_COVERAGE_LENGTH }))),
 });
 
 export const KnowledgePageParamsSchema = t.Object({ pageReadableId: ReadableIdSchema });
@@ -80,6 +85,7 @@ export function pageSummaryResponse(page: KnowledgePageSummary) {
     readableId: page.readableId,
     title: page.title,
     excerpt: page.excerpt,
+    temporalCoverage: page.temporalCoverage,
     revisionNumber: page.revisionNumber,
     createdAt: new Date(page.createdAt),
     updatedAt: new Date(page.updatedAt),

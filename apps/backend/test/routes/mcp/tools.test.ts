@@ -31,7 +31,7 @@ const INTERNAL_ENTITY_ID = '01900000-0000-7000-8000-000000000001';
 const INTERNAL_PAGE_ID = '01900000-0000-7000-8000-000000000002';
 const INTERNAL_CLIENT_AUTHORIZATION_ID = '01900000-0000-7000-8000-000000000003';
 const NOW = '2026-09-01T12:00:00.000Z';
-const MAX_HYPERMEDIA_CURATION_GUIDE_WORDS = 450;
+const MAX_HYPERMEDIA_CURATION_GUIDE_WORDS = 650;
 
 function unexpectedCall(): never {
   throw new Error('Unexpected MCP service call');
@@ -53,6 +53,7 @@ const page: KnowledgePage = {
   readableId: 'growth-playbook',
   title: 'Growth playbook',
   excerpt: 'Run the feedback loop.',
+  temporalCoverage: '2025-03/..',
   revisionNumber: 2,
   createdAt: NOW,
   updatedAt: NOW,
@@ -65,6 +66,7 @@ const page: KnowledgePage = {
     {
       revisionNumber: 2,
       title: 'Growth playbook',
+      temporalCoverage: '2025-03/..',
       author: { kind: 'mcp_client', name: 'Research agent' },
       createdAt: NOW,
     },
@@ -199,8 +201,35 @@ test('MCP publishes sixteen typed tools with accurate safety annotations and no 
         properties: { address: { pattern: expect.any(String) } },
       });
       expect(tools.find(({ name }) => name === 'read_knowledge_page')?.outputSchema).toMatchObject({
-        properties: { readableId: { pattern: expect.any(String) } },
+        properties: {
+          readableId: { pattern: expect.any(String) },
+          temporalCoverage: {},
+        },
       });
+      const createPageInput = tools.find(
+        ({ name }) => name === 'create_knowledge_page',
+      )?.inputSchema;
+      expect(createPageInput).toMatchObject({
+        properties: { temporalCoverage: { description: expect.stringContaining('asserted') } },
+      });
+      expect(
+        Array.isArray(createPageInput?.required) &&
+          createPageInput.required.includes('temporalCoverage'),
+      ).toBe(false);
+      const updatePageTool = tools.find(({ name }) => name === 'update_knowledge_page');
+      const updatePageInput = updatePageTool?.inputSchema;
+      expect(updatePageTool?.description).toMatch(
+        /temporalCoverage.*omit.*preserve.*null.*clear.*value.*replace/,
+      );
+      expect(updatePageInput).toMatchObject({
+        properties: {
+          temporalCoverage: { description: expect.stringContaining('omit it to preserve') },
+        },
+      });
+      expect(
+        Array.isArray(updatePageInput?.required) &&
+          updatePageInput.required.includes('temporalCoverage'),
+      ).toBe(false);
       expect(tools.find(({ name }) => name === 'read_hypermedia_curation_guide')).toMatchObject({
         annotations: { readOnlyHint: true, destructiveHint: false },
         inputSchema: { properties: {} },
@@ -270,6 +299,8 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('The autobiography is the graph, not one page');
       expect(guide).toMatch(/Never let a catch-all\s+page grow\s+without bound/);
       expect(guide).toContain('smallest coherent revision');
+      expect(guide).toContain('Place knowledge in time');
+      expect(guide).toContain('story is derived from its evidence, not a replacement');
       expect(guide).toContain('explain the blockers to the user');
       expect(guide).not.toContain('search_hypermedia');
 
@@ -574,6 +605,7 @@ test('MCP mutation outcomes retain duplicate retries and stale revision conflict
           expectedRevisionNumber: 1,
           guide_version: await readHypermediaCurationGuideVersion(client),
           markdown: page.markdown,
+          temporalCoverage: page.temporalCoverage,
         },
       });
       expect(stale.isError).toBe(true);
@@ -714,6 +746,7 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
           arguments: {
             guide_version,
             markdown: '# MCP notes\n\nCreated by the research agent.',
+            temporalCoverage: '2026-08',
           },
         });
         if (created.isError) {
@@ -755,9 +788,11 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
           expect.objectContaining({
             revisions: [
               expect.objectContaining({
+                temporalCoverage: '2026-08',
                 author: { kind: 'mcp_client', name: 'Renamed research agent' },
               }),
               expect.objectContaining({
+                temporalCoverage: '2026-08',
                 author: { kind: 'mcp_client', name: 'Research agent' },
               }),
             ],

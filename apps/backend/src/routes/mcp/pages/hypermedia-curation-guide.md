@@ -47,6 +47,20 @@ Curate rather than append. Use `list_knowledge_pages`, `read_knowledge_page`, `l
 `read_entity`, `list_assets`, and `read_asset` as relevant to inspect existing context and avoid
 obvious duplication; never call this exhaustive.
 
+## Place knowledge in time
+
+`temporalCoverage` describes when the subject occurred or applied, not revision creation. Use `2026`,
+`2026-09`, or `2026-09-01`; suffix `?` for uncertain or `~` for approximate; use `date/date` for a
+bounded interval and `date/..` only for evidenced ongoing state. Never invent precision. `..` is not
+an unknown end; leave unsupported coverage unset and explain nuance in prose.
+
+Give events their actual date or interval. Split unrelated scopes. A cross-period synthesis may span
+its evidence, but should state individual dates and link narrower evidence pages. Preserve those
+moments: a story is derived from its evidence, not a replacement for it.
+
+Correct past knowledge keeps its past interval. Revise errors; archive only what should leave the
+active graph. Do not add a stable/transient label; infer durability later from evidence.
+
 ## Revise and archive carefully
 
 Read the current revision before updating. Preserve unrelated and owner-authored content; make the
