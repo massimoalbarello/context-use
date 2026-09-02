@@ -59,8 +59,8 @@ create table "knowledge_page_revision" (
   "title" text not null,
   "excerpt" text not null,
   "temporal_coverage" text,
-  "temporal_start" integer,
-  "temporal_end" integer,
+  "temporal_start_ms" integer,
+  "temporal_end_exclusive_ms" integer,
   "storage_key" text not null,
   "size_bytes" integer not null,
   "content_hash" text not null,
@@ -83,14 +83,17 @@ create table "knowledge_page_revision" (
   check (
     (
       "temporal_coverage" is null
-      and "temporal_start" is null
-      and "temporal_end" is null
+      and "temporal_start_ms" is null
+      and "temporal_end_exclusive_ms" is null
     )
     or (
       length("temporal_coverage") between 1 and 23
       and "temporal_coverage" = trim("temporal_coverage")
-      and "temporal_start" is not null
-      and ("temporal_end" is null or "temporal_end" > "temporal_start")
+      and "temporal_start_ms" is not null
+      and (
+        "temporal_end_exclusive_ms" is null
+        or "temporal_end_exclusive_ms" > "temporal_start_ms"
+      )
     )
   ),
   check ("size_bytes" between 1 and 1000000),

@@ -98,13 +98,20 @@ test('temporal coverage is revision-owned, nullable, and bounded', async () => {
 
     expect(
       database
-        .query(`select "temporal_coverage" from "knowledge_page_revision" where "id" = ?`)
+        .query(
+          `select "temporal_coverage", "temporal_start_ms", "temporal_end_exclusive_ms"
+           from "knowledge_page_revision" where "id" = ?`,
+        )
         .get('revision-id'),
-    ).toEqual({ temporal_coverage: null });
+    ).toEqual({
+      temporal_coverage: null,
+      temporal_start_ms: null,
+      temporal_end_exclusive_ms: null,
+    });
     const bounds = temporalBoundsFrom('2025-03/2025-08');
     database.run(
       `update "knowledge_page_revision"
-       set "temporal_coverage" = ?, "temporal_start" = ?, "temporal_end" = ?
+       set "temporal_coverage" = ?, "temporal_start_ms" = ?, "temporal_end_exclusive_ms" = ?
        where "id" = ?`,
       ['2025-03/2025-08', bounds.start, bounds.end, 'revision-id'],
     );

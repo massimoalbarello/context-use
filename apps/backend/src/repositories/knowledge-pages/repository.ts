@@ -11,7 +11,10 @@ import type {
   KnowledgePageSummary,
   StoredKnowledgePage,
 } from '#models/knowledge-pages/model.ts';
-import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
+import type {
+  ParsedTemporalCoverage,
+  TemporalBounds,
+} from '#models/knowledge-pages/temporal-coverage.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import { entityFrom } from '#views/entities/entity-view.ts';
@@ -24,9 +27,7 @@ export interface KnowledgePagesRepositoryContract {
     readableId: string;
     title: string;
     excerpt: string;
-    temporalCoverage: string | null;
-    temporalStart: number | null;
-    temporalEnd: number | null;
+    temporalCoverage: ParsedTemporalCoverage | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -45,9 +46,7 @@ export interface KnowledgePagesRepositoryContract {
     expectedRevisionNumber: number;
     title: string;
     excerpt: string;
-    temporalCoverage: string | null;
-    temporalStart: number | null;
-    temporalEnd: number | null;
+    temporalCoverage: ParsedTemporalCoverage | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -100,6 +99,18 @@ type StoredPageRow = Queries['FindKnowledgePage'];
 type SummaryRow = Queries['SearchKnowledgePages'];
 
 type RevisionSummaryRow = Queries['ListKnowledgePageRevisions'];
+
+function temporalRevisionColumns(coverage: ParsedTemporalCoverage | null): {
+  expression: string | null;
+  startMs: number | null;
+  endExclusiveMs: number | null;
+} {
+  return {
+    expression: coverage?.expression ?? null,
+    startMs: coverage?.bounds.start ?? null,
+    endExclusiveMs: coverage?.bounds.end ?? null,
+  };
+}
 
 async function revisionAuthorColumns({
   db,
@@ -315,9 +326,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     readableId: string;
     title: string;
     excerpt: string;
-    temporalCoverage: string | null;
-    temporalStart: number | null;
-    temporalEnd: number | null;
+    temporalCoverage: ParsedTemporalCoverage | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -329,6 +338,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     | { state: 'readable_id_conflict' }
     | { state: 'link_target_not_found'; target: string }
   > {
+    const temporal = temporalRevisionColumns(input.temporalCoverage);
     return this.sql.begin(async (db) => {
       const resolved = await resolveLinks({
         db,
@@ -361,12 +371,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       await db`
         insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
-           "temporal_coverage", "temporal_start", "temporal_end", "storage_key", "size_bytes",
+           "temporal_coverage", "temporal_start_ms", "temporal_end_exclusive_ms", "storage_key", "size_bytes",
            "content_hash", "author_kind",
            "author_mcp_client_authorization_id", "author_name", "created_at")
         values
           (${input.revisionId}, ${input.pageId}, ${input.ownerId}, 1, ${input.title},
-           ${input.excerpt}, ${input.temporalCoverage}, ${input.temporalStart}, ${input.temporalEnd},
+           ${input.excerpt}, ${temporal.expression}, ${temporal.startMs}, ${temporal.endExclusiveMs},
            ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
            ${author.kind}, ${author.clientAuthorizationId}, ${author.name}, ${input.createdAt})
       `;
@@ -389,7 +399,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           revisionNumber: 1,
           title: input.title,
           excerpt: input.excerpt,
-          temporalCoverage: input.temporalCoverage,
+          temporalCoverage: temporal.expression,
           storageKey: input.storageKey,
           contentHash: input.contentHash,
           sizeBytes: input.sizeBytes,
@@ -407,9 +417,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     expectedRevisionNumber: number;
     title: string;
     excerpt: string;
-    temporalCoverage: string | null;
-    temporalStart: number | null;
-    temporalEnd: number | null;
+    temporalCoverage: ParsedTemporalCoverage | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -422,6 +430,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     | { state: 'revision_conflict'; currentRevisionNumber: number }
     | { state: 'link_target_not_found'; target: string }
   > {
+    const temporal = temporalRevisionColumns(input.temporalCoverage);
     return this.sql.begin(async (db) => {
       const current = await findCurrentKnowledgePage({
         db,
@@ -470,12 +479,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       await db`
         insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
-           "temporal_coverage", "temporal_start", "temporal_end", "storage_key", "size_bytes",
+           "temporal_coverage", "temporal_start_ms", "temporal_end_exclusive_ms", "storage_key", "size_bytes",
            "content_hash", "author_kind",
            "author_mcp_client_authorization_id", "author_name", "created_at")
         values
           (${input.revisionId}, ${current.id}, ${input.ownerId}, ${revisionNumber}, ${input.title},
-           ${input.excerpt}, ${input.temporalCoverage}, ${input.temporalStart}, ${input.temporalEnd},
+           ${input.excerpt}, ${temporal.expression}, ${temporal.startMs}, ${temporal.endExclusiveMs},
            ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
            ${author.kind}, ${author.clientAuthorizationId}, ${author.name}, ${input.updatedAt})
       `;
@@ -500,7 +509,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           revisionNumber,
           title: input.title,
           excerpt: input.excerpt,
-          temporalCoverage: input.temporalCoverage,
+          temporalCoverage: temporal.expression,
           storageKey: input.storageKey,
           contentHash: input.contentHash,
           sizeBytes: input.sizeBytes,
@@ -545,25 +554,31 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           ${filterStart} is null
           or revision."temporal_coverage" is null
           or (
-            (${filterEnd} is null or revision."temporal_start" < ${filterEnd})
-            and (revision."temporal_end" is null or revision."temporal_end" > ${filterStart})
+            (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
+            and (
+              revision."temporal_end_exclusive_ms" is null
+              or revision."temporal_end_exclusive_ms" > ${filterStart}
+            )
           )
         )
       order by
         case
           when ${normalizedQuery} is not null and ${filterStart} is null then 0
-          when revision."temporal_coverage" is not null and revision."temporal_end" is null then 0
+          when revision."temporal_coverage" is not null
+            and revision."temporal_end_exclusive_ms" is null then 0
           when revision."temporal_coverage" is not null then 1
           else 2
         end,
         case when ${normalizedQuery} is not null and ${filterStart} is null
           then revision."title" end collate nocase,
-        case when revision."temporal_coverage" is not null and revision."temporal_end" is null
-          then revision."temporal_start" end desc,
-        case when revision."temporal_coverage" is not null and revision."temporal_end" is not null
-          then revision."temporal_end" end desc,
         case when revision."temporal_coverage" is not null
-          then revision."temporal_start" end desc,
+          and revision."temporal_end_exclusive_ms" is null
+          then revision."temporal_start_ms" end desc,
+        case when revision."temporal_coverage" is not null
+          and revision."temporal_end_exclusive_ms" is not null
+          then revision."temporal_end_exclusive_ms" end desc,
+        case when revision."temporal_coverage" is not null
+          then revision."temporal_start_ms" end desc,
         revision."title" collate nocase,
         page."readable_id"
       limit ${limit} offset ${offset}
@@ -584,8 +599,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           ${filterStart} is null
           or revision."temporal_coverage" is null
           or (
-            (${filterEnd} is null or revision."temporal_start" < ${filterEnd})
-            and (revision."temporal_end" is null or revision."temporal_end" > ${filterStart})
+            (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
+            and (
+              revision."temporal_end_exclusive_ms" is null
+              or revision."temporal_end_exclusive_ms" > ${filterStart}
+            )
           )
         )
     `;
@@ -621,16 +639,19 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         and entity."archived_at" is null and page."archived_at" is null
       order by
         case
-          when revision."temporal_coverage" is not null and revision."temporal_end" is null then 0
+          when revision."temporal_coverage" is not null
+            and revision."temporal_end_exclusive_ms" is null then 0
           when revision."temporal_coverage" is not null then 1
           else 2
         end,
-        case when revision."temporal_coverage" is not null and revision."temporal_end" is null
-          then revision."temporal_start" end desc,
-        case when revision."temporal_coverage" is not null and revision."temporal_end" is not null
-          then revision."temporal_end" end desc,
         case when revision."temporal_coverage" is not null
-          then revision."temporal_start" end desc,
+          and revision."temporal_end_exclusive_ms" is null
+          then revision."temporal_start_ms" end desc,
+        case when revision."temporal_coverage" is not null
+          and revision."temporal_end_exclusive_ms" is not null
+          then revision."temporal_end_exclusive_ms" end desc,
+        case when revision."temporal_coverage" is not null
+          then revision."temporal_start_ms" end desc,
         revision."title" collate nocase,
         page."readable_id"
     `;

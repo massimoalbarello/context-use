@@ -9,6 +9,7 @@ import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
+import { temporalBoundsFrom } from '#models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#models/readable-ids/model.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
@@ -343,8 +344,31 @@ Every observation changes the next action.`,
     expectNoInternalResourceIds(growth);
     expect(growth.excerpt).toBe('Luca owns this feedback system.');
     expect(growth.temporalCoverage).toBe('2025-03/2025-08');
+    if (growth.temporalCoverage === null) {
+      throw new Error('Temporal page response omitted its coverage');
+    }
     expect(growth.revisionNumber).toBe(1);
     expect(growth.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
+    const [storedTemporalProjection] = await database<
+      Array<{
+        temporalCoverage: string | null;
+        temporalStartMs: number;
+        temporalEndExclusiveMs: number | null;
+      }>
+    >`
+      select revision."temporal_coverage" as "temporalCoverage",
+        revision."temporal_start_ms" as "temporalStartMs",
+        revision."temporal_end_exclusive_ms" as "temporalEndExclusiveMs"
+      from "knowledge_page" page
+      join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+      where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'growth-playbook'
+    `;
+    const expectedTemporalBounds = temporalBoundsFrom(growth.temporalCoverage);
+    expect(storedTemporalProjection).toEqual({
+      temporalCoverage: growth.temporalCoverage,
+      temporalStartMs: expectedTemporalBounds.start,
+      temporalEndExclusiveMs: expectedTemporalBounds.end,
+    });
 
     const invalidTemporalCoverageResponse = await app.handle(
       jsonRequest({

@@ -88,14 +88,6 @@ function calendarDate(expression: string): TemporalCalendarDate {
   return date;
 }
 
-export function temporalCoverageFrom(value: string | null): string | null {
-  if (value === null) {
-    return null;
-  }
-  temporalBoundsFrom(value);
-  return value;
-}
-
 export function temporalBoundsFrom(value: string): TemporalBounds {
   return parseTemporalCoverage(value).bounds;
 }
