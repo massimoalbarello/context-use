@@ -1,5 +1,7 @@
 // biome-ignore-all lint/complexity/useMaxParams: Geometry callbacks use coordinate pairs and indexed collection values.
 // biome-ignore-all lint/style/noMagicNumbers: The deterministic SVG layout is defined by visual geometry constants.
+
+import { isEmbeddableAsset } from '../../lib/asset-presentation';
 import type {
   KnowledgeMapAsset,
   KnowledgeMapEntity,
@@ -43,6 +45,7 @@ const RESOURCE_PAGE_LABEL_Y_DISTANCE = 72;
 const RESOURCE_SPIRAL_STEP = 27;
 const RESOURCE_PLACEMENT_ATTEMPTS = 1600;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+export const MAX_EAGER_KNOWLEDGE_MAP_IMAGES = 12;
 
 function resourceKey(kind: 'entity' | 'asset', readableId: string): string {
   return `${kind}:${readableId}`;
@@ -84,6 +87,7 @@ function packResourcePoints({
 }): Map<string, MapPoint> {
   const packedPoints = new Map<string, MapPoint>();
   const occupiedCells = new Map<string, MapPoint[]>();
+  const pageLabelCells = new Map<string, MapPoint[]>();
   const orderedSeeds = [...seeds.entries()].sort(
     ([firstKey, first], [secondKey, second]) =>
       Number(seedIsSelf(second)) - Number(seedIsSelf(first)) ||
@@ -92,6 +96,15 @@ function packResourcePoints({
   );
   const cellCoordinate = (value: number) => Math.floor(value / RESOURCE_MIN_DISTANCE);
   const cellKey = (x: number, y: number) => `${x}:${y}`;
+  const pageLabelCellCoordinate = (point: MapPoint) => ({
+    x: Math.floor(point.x / RESOURCE_PAGE_LABEL_X_DISTANCE),
+    y: Math.floor(point.y / RESOURCE_PAGE_LABEL_Y_DISTANCE),
+  });
+  for (const pagePoint of pagePoints) {
+    const cell = pageLabelCellCoordinate(pagePoint);
+    const key = cellKey(cell.x, cell.y);
+    pageLabelCells.set(key, [...(pageLabelCells.get(key) ?? []), pagePoint]);
+  }
   const nearbyPoints = (point: MapPoint) => {
     const cellX = cellCoordinate(point.x);
     const cellY = cellCoordinate(point.y);
@@ -103,11 +116,21 @@ function packResourcePoints({
     }
     return nearby;
   };
+  const nearbyPageLabels = (point: MapPoint) => {
+    const cell = pageLabelCellCoordinate(point);
+    const nearby: MapPoint[] = [];
+    for (let x = cell.x - 1; x <= cell.x + 1; x += 1) {
+      for (let y = cell.y - 1; y <= cell.y + 1; y += 1) {
+        nearby.push(...(pageLabelCells.get(cellKey(x, y)) ?? []));
+      }
+    }
+    return nearby;
+  };
   const positionAvailable = (point: MapPoint) =>
     nearbyPoints(point).every(
       (placed) => distanceBetween(point, placed) >= RESOURCE_MIN_DISTANCE,
     ) &&
-    pagePoints.every(
+    nearbyPageLabels(point).every(
       (pagePoint) =>
         Math.abs(point.x - pagePoint.x) >= RESOURCE_PAGE_LABEL_X_DISTANCE ||
         Math.abs(point.y - pagePoint.y) >= RESOURCE_PAGE_LABEL_Y_DISTANCE,
@@ -210,6 +233,24 @@ export function filterKnowledgeMapPages({
       ...page.mentions.flatMap((entity) => [entity.name, entity.description]),
       ...page.assetUsages.map(({ asset }) => asset.name),
     ].some((value) => value.toLocaleLowerCase().includes(normalized)),
+  );
+}
+
+export function eagerKnowledgeMapImageKeys(layout: KnowledgeMapLayout): Set<string> {
+  return new Set(
+    layout.resources
+      .filter((resource) =>
+        resource.kind === 'entity'
+          ? Boolean(resource.entity.image)
+          : isEmbeddableAsset(resource.asset),
+      )
+      .sort(
+        (first, second) =>
+          distanceBetween(first.point, layout.focusPoint) -
+            distanceBetween(second.point, layout.focusPoint) || first.key.localeCompare(second.key),
+      )
+      .slice(0, MAX_EAGER_KNOWLEDGE_MAP_IMAGES)
+      .map(({ key }) => key),
   );
 }
 

@@ -1,4 +1,6 @@
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
+import { useDeferredValue, useMemo } from 'react';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { WorkspaceEmpty } from '../components/knowledge/workspace-empty';
@@ -43,14 +45,22 @@ export const Route = createFileRoute('/map')({
 });
 
 function KnowledgeMapRoute() {
-  const map = Route.useLoaderData();
+  const { data: map } = useSuspenseQuery(knowledgeMapQueryOptions);
   const { profile } = Route.useRouteContext();
   const { q = '', kind, id } = Route.useSearch();
   const navigate = Route.useNavigate();
+  const deferredQuery = useDeferredValue(q);
+  const pages = useMemo(
+    () => filterKnowledgeMapPages({ pages: map.pages, query: deferredQuery }),
+    [deferredQuery, map.pages],
+  );
+  const mapLayoutVersion = useMemo(
+    () => map.pages.map((page) => `${page.readableId}:${page.revisionNumber}`).join('|'),
+    [map.pages],
+  );
   if (!profile) {
     return null;
   }
-  const pages = filterKnowledgeMapPages({ pages: map.pages, query: q });
   const selection = kind && id ? { kind, readableId: id } : undefined;
   function selectKnowledge(nextSelection: KnowledgeMapSelection) {
     void navigate({
@@ -98,7 +108,7 @@ function KnowledgeMapRoute() {
         ) : (
           <div className="relative size-full">
             <KnowledgeMapCanvas
-              key={q}
+              key={`${deferredQuery}:${mapLayoutVersion}`}
               pages={pages}
               anchorEntity={profile.selfEntity}
               selectedKey={selection ? `${selection.kind}:${selection.readableId}` : undefined}

@@ -1,13 +1,20 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildKnowledgeMapLayout,
+  eagerKnowledgeMapImageKeys,
   filterKnowledgeMapPages,
+  MAX_EAGER_KNOWLEDGE_MAP_IMAGES,
 } from '../../src/components/knowledge-map/knowledge-map-layout';
-import type { KnowledgeMapEntity, KnowledgeMapPage } from '../../src/queries/knowledge-map';
+import type {
+  KnowledgeMapAsset,
+  KnowledgeMapEntity,
+  KnowledgeMapPage,
+} from '../../src/queries/knowledge-map';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const MINIMUM_RESOURCE_DISTANCE = 116;
 const CROWDED_NEIGHBOR_COUNT = 12;
+const EXTRA_RASTER_ASSET_COUNT = 4;
 
 function entity({
   readableId,
@@ -29,6 +36,24 @@ function entity({
   };
 }
 
+function asset({
+  readableId,
+  mediaType = 'image/png',
+}: {
+  readableId: string;
+  mediaType?: string;
+}): KnowledgeMapAsset {
+  return {
+    readableId,
+    name: `Asset ${readableId}`,
+    mediaType,
+    extension: mediaType === 'image/png' ? 'png' : 'pdf',
+    sizeBytes: 1200,
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
 function page({
   readableId,
   title,
@@ -36,9 +61,7 @@ function page({
 }: {
   readableId: string;
   title: string;
-} & Partial<
-  Pick<KnowledgeMapPage, 'excerpt' | 'mentions' | 'references' | 'assetUsages'>
->): KnowledgeMapPage {
+} & Partial<Pick<KnowledgeMapPage, 'excerpt' | 'mentions' | 'assetUsages'>>): KnowledgeMapPage {
   return {
     readableId,
     title,
@@ -48,7 +71,6 @@ function page({
     createdAt,
     updatedAt: createdAt,
     mentions: options.mentions ?? [],
-    references: options.references ?? [],
     assetUsages: options.assetUsages ?? [],
   };
 }
@@ -61,7 +83,6 @@ describe('knowledge map layout', () => {
       readableId: 'second-page',
       title: 'Second page',
       mentions: [sharedEntity],
-      references: [{ page: first, fragment: null }],
     });
 
     const layout = buildKnowledgeMapLayout([first, second]);
@@ -137,5 +158,32 @@ describe('knowledge map layout', () => {
       filterKnowledgeMapPages({ pages, query: 'quarterly' }).map(({ readableId }) => readableId),
     ).toEqual(['evidence']);
     expect(filterKnowledgeMapPages({ pages, query: 'missing' })).toEqual([]);
+  });
+
+  test('bounds eager full-image requests to resources nearest the initial focus', () => {
+    const rasterAssets: KnowledgeMapAsset[] = [];
+    for (
+      let index = 0;
+      index < MAX_EAGER_KNOWLEDGE_MAP_IMAGES + EXTRA_RASTER_ASSET_COUNT;
+      index += 1
+    ) {
+      rasterAssets.push(asset({ readableId: `image-${index}` }));
+    }
+    const document = asset({ readableId: 'document', mediaType: 'application/pdf' });
+    const layout = buildKnowledgeMapLayout([
+      page({
+        readableId: 'image-heavy-page',
+        title: 'Image-heavy page',
+        assetUsages: [...rasterAssets, document].map((mapAsset) => ({
+          asset: mapAsset,
+          presentation: 'embed',
+        })),
+      }),
+    ]);
+
+    const eagerImageKeys = eagerKnowledgeMapImageKeys(layout);
+
+    expect(eagerImageKeys.size).toBe(MAX_EAGER_KNOWLEDGE_MAP_IMAGES);
+    expect(eagerImageKeys.has('asset:document')).toBe(false);
   });
 });

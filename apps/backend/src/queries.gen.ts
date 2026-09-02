@@ -338,20 +338,6 @@ export interface IListKnowledgeMapMentionsResult {
     imageUpdatedAt: string | null;
 }
 
-/** Result of query `ListKnowledgeMapReferences`. */
-export interface IListKnowledgeMapReferencesResult {
-    sourcePageReadableId: string;
-    id: string;
-    readableId: string;
-    revisionNumber: number;
-    title: string;
-    excerpt: string;
-    temporalCoverage: string | null;
-    createdAt: string;
-    updatedAt: string;
-    fragment: string;
-}
-
 /** Result of query `ListKnowledgeMapAssetUsages`. */
 export interface IListKnowledgeMapAssetUsagesResult {
     sourcePageReadableId: string;
@@ -625,7 +611,6 @@ export interface Queries {
     ListKnowledgeMapPages: IListKnowledgeMapPagesResult;
     CountKnowledgeMapPages: ICountKnowledgeMapPagesResult;
     ListKnowledgeMapMentions: IListKnowledgeMapMentionsResult;
-    ListKnowledgeMapReferences: IListKnowledgeMapReferencesResult;
     ListKnowledgeMapAssetUsages: IListKnowledgeMapAssetUsagesResult;
     FindKnowledgePage: IFindKnowledgePageResult;
     FindKnowledgePageArchiveTarget: IFindKnowledgePageArchiveTargetResult;

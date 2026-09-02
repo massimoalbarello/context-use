@@ -1,7 +1,15 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
 import { File, FileText, Minus, Plus, Scan } from 'lucide-react';
-import { type PointerEvent as ReactPointerEvent, useRef, useState, type WheelEvent } from 'react';
+import {
+  memo,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type WheelEvent,
+} from 'react';
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import type {
@@ -12,7 +20,12 @@ import type {
 import { formatAssetSize } from '../assets/asset-link';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { buildKnowledgeMapLayout, type KnowledgeMapResource } from './knowledge-map-layout';
+import {
+  buildKnowledgeMapLayout,
+  eagerKnowledgeMapImageKeys,
+  type KnowledgeMapLayout,
+  type KnowledgeMapResource,
+} from './knowledge-map-layout';
 
 type MapPreview =
   | { kind: 'page'; page: KnowledgeMapPage }
@@ -110,26 +123,36 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
   );
 }
 
+function mapResourceImageReadableId(
+  resource: KnowledgeMapResource,
+  visible: boolean,
+): string | undefined {
+  if (!visible) {
+    return undefined;
+  }
+  if (resource.kind === 'entity') {
+    return resource.entity.image?.readableId;
+  }
+  return isEmbeddableAsset(resource.asset) ? resource.asset.readableId : undefined;
+}
+
 function ResourceDot({
   resource,
   active,
+  eagerImage,
   onActivate,
   onPreview,
   onPreviewEnd,
 }: {
   resource: KnowledgeMapResource;
   active: boolean;
+  eagerImage: boolean;
   onActivate: () => void;
   onPreview: () => void;
   onPreviewEnd: () => void;
 }) {
   const radius = resource.kind === 'entity' ? 25 : 22;
-  const imageReadableId =
-    resource.kind === 'entity'
-      ? resource.entity.image?.readableId
-      : isEmbeddableAsset(resource.asset)
-        ? resource.asset.readableId
-        : undefined;
+  const imageReadableId = mapResourceImageReadableId(resource, active || eagerImage);
   const label = resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
   const readableId =
     resource.kind === 'entity' ? resource.entity.readableId : resource.asset.readableId;
@@ -206,6 +229,126 @@ function ResourceDot({
   );
 }
 
+const KnowledgeMapLayers = memo(function KnowledgeMapLayers({
+  layout,
+  activeKey,
+  eagerImageKeys,
+  suppressNextCloudClick,
+  onSelect,
+  onPreview,
+  onPreviewEnd,
+}: {
+  layout: KnowledgeMapLayout;
+  activeKey: string | undefined;
+  eagerImageKeys: Set<string>;
+  suppressNextCloudClick: { current: boolean };
+  onSelect: (selection: KnowledgeMapSelection) => void;
+  onPreview: (preview: MapPreview) => void;
+  onPreviewEnd: (key: string) => void;
+}) {
+  return (
+    <>
+      {layout.pages.map((item) => {
+        const key = `page:${item.page.readableId}`;
+        const active = activeKey === key;
+        return (
+          <a
+            key={item.page.readableId}
+            href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
+            tabIndex={-1}
+            aria-label={`Open knowledge page region ${item.page.title}`}
+            data-map-cloud={item.page.readableId}
+            className="cursor-pointer outline-none"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (suppressNextCloudClick.current) {
+                suppressNextCloudClick.current = false;
+                return;
+              }
+              onSelect({ kind: 'page', readableId: item.page.readableId });
+            }}
+            onPointerEnter={() => onPreview({ kind: 'page', page: item.page })}
+            onPointerLeave={() => onPreviewEnd(key)}
+          >
+            <path
+              d={item.cloudPath}
+              className="transition-[fill-opacity,stroke-opacity] duration-200 motion-reduce:transition-none"
+              style={{
+                color: `var(--chart-${item.colorIndex})`,
+                fill: 'currentColor',
+                fillOpacity: active ? 0.24 : 0.1,
+                stroke: 'currentColor',
+                strokeOpacity: active ? 0.9 : 0.48,
+                strokeWidth: active ? 3 : 1.5,
+              }}
+            />
+          </a>
+        );
+      })}
+
+      {layout.pages.map((item) => {
+        const key = `page:${item.page.readableId}`;
+        const active = activeKey === key;
+        return (
+          <a
+            key={item.page.readableId}
+            href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
+            data-map-resource
+            aria-label={`Open knowledge page ${item.page.title}`}
+            className="cursor-pointer outline-none"
+            onPointerEnter={() => onPreview({ kind: 'page', page: item.page })}
+            onPointerLeave={() => onPreviewEnd(key)}
+            onFocus={() => onPreview({ kind: 'page', page: item.page })}
+            onBlur={() => onPreviewEnd(key)}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onSelect({ kind: 'page', readableId: item.page.readableId });
+            }}
+          >
+            <text
+              x={item.point.x}
+              y={item.point.y + 4}
+              textAnchor="middle"
+              className={cn(
+                'fill-foreground stroke-[7] stroke-card font-semibold text-[13px] [paint-order:stroke] [stroke-linejoin:round]',
+                active && 'underline decoration-2 underline-offset-4',
+              )}
+            >
+              {shortLabel(item.page.title, 28)}
+            </text>
+          </a>
+        );
+      })}
+
+      {layout.resources.map((resource) => {
+        const preview =
+          resource.kind === 'entity'
+            ? ({ kind: 'entity', entity: resource.entity } as const)
+            : ({ kind: 'asset', asset: resource.asset } as const);
+        return (
+          <ResourceDot
+            key={resource.key}
+            resource={resource}
+            active={activeKey === resource.key}
+            eagerImage={eagerImageKeys.has(resource.key)}
+            onPreview={() => onPreview(preview)}
+            onPreviewEnd={() => onPreviewEnd(resource.key)}
+            onActivate={() => {
+              if (resource.kind === 'entity') {
+                onSelect({ kind: 'entity', readableId: resource.entity.readableId });
+              } else {
+                onSelect({ kind: 'asset', readableId: resource.asset.readableId });
+              }
+            }}
+          />
+        );
+      })}
+    </>
+  );
+});
+
 function focusedViewBox({
   bounds,
   focusPoint,
@@ -231,7 +374,11 @@ export function KnowledgeMapCanvas({
   selectedKey?: string;
   onSelect: (selection: KnowledgeMapSelection) => void;
 }) {
-  const layout = buildKnowledgeMapLayout(pages, { anchorEntity });
+  const layout = useMemo(
+    () => buildKnowledgeMapLayout(pages, { anchorEntity }),
+    [anchorEntity, pages],
+  );
+  const eagerImageKeys = useMemo(() => eagerKnowledgeMapImageKeys(layout), [layout]);
   const [preview, setPreview] = useState<MapPreview | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox>(() => focusedViewBox(layout));
   const [panning, setPanning] = useState(false);
@@ -317,9 +464,9 @@ export function KnowledgeMapCanvas({
     }
   }
 
-  function clearPreview(key: string) {
+  const clearPreview = useCallback((key: string) => {
     setPreview((current) => (current && previewKey(current) === key ? null : current));
-  }
+  }, []);
 
   return (
     <section
@@ -341,102 +488,15 @@ export function KnowledgeMapCanvas({
         onPointerCancel={handlePointerEnd}
         onDoubleClick={() => setViewBox(layout.bounds)}
       >
-        {layout.pages.map((item) => {
-          const key = `page:${item.page.readableId}`;
-          const active = activeKey === key;
-          return (
-            <a
-              key={item.page.readableId}
-              href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
-              tabIndex={-1}
-              aria-label={`Open knowledge page region ${item.page.title}`}
-              data-map-cloud={item.page.readableId}
-              className="cursor-pointer outline-none"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (suppressNextCloudClick.current) {
-                  suppressNextCloudClick.current = false;
-                  return;
-                }
-                onSelect({ kind: 'page', readableId: item.page.readableId });
-              }}
-              onPointerEnter={() => setPreview({ kind: 'page', page: item.page })}
-              onPointerLeave={() => clearPreview(key)}
-            >
-              <path
-                d={item.cloudPath}
-                className="transition-[fill-opacity,stroke-opacity] duration-200 motion-reduce:transition-none"
-                style={{
-                  color: `var(--chart-${item.colorIndex})`,
-                  fill: 'currentColor',
-                  fillOpacity: active ? 0.24 : 0.1,
-                  stroke: 'currentColor',
-                  strokeOpacity: active ? 0.9 : 0.48,
-                  strokeWidth: active ? 3 : 1.5,
-                }}
-              />
-            </a>
-          );
-        })}
-
-        {layout.pages.map((item) => {
-          const key = `page:${item.page.readableId}`;
-          const active = activeKey === key;
-          return (
-            <a
-              key={item.page.readableId}
-              href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
-              data-map-resource
-              aria-label={`Open knowledge page ${item.page.title}`}
-              className="cursor-pointer outline-none"
-              onPointerEnter={() => setPreview({ kind: 'page', page: item.page })}
-              onPointerLeave={() => clearPreview(key)}
-              onFocus={() => setPreview({ kind: 'page', page: item.page })}
-              onBlur={() => clearPreview(key)}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                onSelect({ kind: 'page', readableId: item.page.readableId });
-              }}
-            >
-              <text
-                x={item.point.x}
-                y={item.point.y + 4}
-                textAnchor="middle"
-                className={cn(
-                  'fill-foreground stroke-[7] stroke-card font-semibold text-[13px] [paint-order:stroke] [stroke-linejoin:round]',
-                  active && 'underline decoration-2 underline-offset-4',
-                )}
-              >
-                {shortLabel(item.page.title, 28)}
-              </text>
-            </a>
-          );
-        })}
-
-        {layout.resources.map((resource) => {
-          const preview =
-            resource.kind === 'entity'
-              ? ({ kind: 'entity', entity: resource.entity } as const)
-              : ({ kind: 'asset', asset: resource.asset } as const);
-          return (
-            <ResourceDot
-              key={resource.key}
-              resource={resource}
-              active={activeKey === resource.key}
-              onPreview={() => setPreview(preview)}
-              onPreviewEnd={() => clearPreview(resource.key)}
-              onActivate={() => {
-                if (resource.kind === 'entity') {
-                  onSelect({ kind: 'entity', readableId: resource.entity.readableId });
-                } else {
-                  onSelect({ kind: 'asset', readableId: resource.asset.readableId });
-                }
-              }}
-            />
-          );
-        })}
+        <KnowledgeMapLayers
+          layout={layout}
+          activeKey={activeKey}
+          eagerImageKeys={eagerImageKeys}
+          suppressNextCloudClick={suppressNextCloudClick}
+          onSelect={onSelect}
+          onPreview={setPreview}
+          onPreviewEnd={clearPreview}
+        />
       </svg>
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">

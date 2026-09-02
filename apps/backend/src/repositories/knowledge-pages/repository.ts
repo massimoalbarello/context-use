@@ -102,6 +102,8 @@ type StoredPageRow = Queries['FindKnowledgePage'];
 type SummaryRow = Queries['SearchKnowledgePages'];
 
 type RevisionSummaryRow = Queries['ListKnowledgePageRevisions'];
+type KnowledgeMapMentionRow = Queries['ListKnowledgeMapMentions'];
+type KnowledgeMapAssetUsageRow = Queries['ListKnowledgeMapAssetUsages'];
 
 function temporalRevisionColumns(coverage: ParsedTemporalCoverage | null): {
   expression: string | null;
@@ -183,7 +185,66 @@ function revisionSummaryFrom(row: RevisionSummaryRow): KnowledgePageRevisionSumm
   throw new Error('Knowledge page revision has invalid author attribution');
 }
 
-const MAX_KNOWLEDGE_MAP_RELATIONSHIPS = 600;
+const MAX_KNOWLEDGE_MAP_RESOURCE_USAGES = 200;
+
+function rowsBySourcePage<Row extends { sourcePageReadableId: string }>(
+  rows: Row[],
+): Map<string, Row[]> {
+  const grouped = new Map<string, Row[]>();
+  for (const row of rows) {
+    const group = grouped.get(row.sourcePageReadableId) ?? [];
+    group.push(row);
+    grouped.set(row.sourcePageReadableId, group);
+  }
+  return grouped;
+}
+
+function knowledgeMapAssetUsageFrom({
+  sourcePageReadableId: _sourcePageReadableId,
+  presentation,
+  ...asset
+}: KnowledgeMapAssetUsageRow): KnowledgePageAssetUsage {
+  return {
+    asset: { ...asset, sizeBytes: Number(asset.sizeBytes) },
+    presentation: presentation === 'embed' ? 'embed' : 'attachment',
+  };
+}
+
+function appendKnowledgeMapResources({
+  pages,
+  mentionRows,
+  assetUsageRows,
+}: {
+  pages: KnowledgeMapPage[];
+  mentionRows: KnowledgeMapMentionRow[];
+  assetUsageRows: KnowledgeMapAssetUsageRow[];
+}): number {
+  const mentionsByPage = rowsBySourcePage(mentionRows);
+  const assetUsagesByPage = rowsBySourcePage(assetUsageRows);
+  let included = 0;
+  let resourceIndex = 0;
+  let rowsRemain = true;
+  while (included < MAX_KNOWLEDGE_MAP_RESOURCE_USAGES && rowsRemain) {
+    rowsRemain = false;
+    for (const page of pages) {
+      const mention = mentionsByPage.get(page.readableId)?.[resourceIndex];
+      if (mention && included < MAX_KNOWLEDGE_MAP_RESOURCE_USAGES) {
+        const { sourcePageReadableId: _sourcePageReadableId, ...entity } = mention;
+        page.mentions.push(entityFrom(entity));
+        included += 1;
+        rowsRemain = true;
+      }
+      const usage = assetUsagesByPage.get(page.readableId)?.[resourceIndex];
+      if (usage && included < MAX_KNOWLEDGE_MAP_RESOURCE_USAGES) {
+        page.assetUsages.push(knowledgeMapAssetUsageFrom(usage));
+        included += 1;
+        rowsRemain = true;
+      }
+    }
+    resourceIndex += 1;
+  }
+  return included;
+}
 
 async function findCurrentKnowledgePage({
   db,
@@ -664,7 +725,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
   }
 
   async map({ ownerId, limit }: { ownerId: string; limit: number }): Promise<KnowledgeMap> {
-    const relationshipLimit = MAX_KNOWLEDGE_MAP_RELATIONSHIPS + 1;
+    const resourceUsageQueryLimit = MAX_KNOWLEDGE_MAP_RESOURCE_USAGES + 1;
     const [pageRows, countRows] = await Promise.all([
       this.sql.ListKnowledgeMapPages`
         /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
@@ -689,7 +750,6 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       (row): KnowledgeMapPage => ({
         ...summaryFrom(row),
         mentions: [],
-        references: [],
         assetUsages: [],
       }),
     );
@@ -697,12 +757,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       return { pages, totalPages: 0, truncated: false };
     }
 
-    const [mentionRows, referenceRows, assetUsageRows] = await Promise.all([
+    const [mentionRows, assetUsageRows] = await Promise.all([
       this.sql.ListKnowledgeMapMentions`
         /* @notNull sourcePageReadableId id readableId name description createdAt updatedAt */
         /* @type isSelf number */
         with selected_page as (
-          select "id", "readable_id", "current_revision_id"
+          select "id", "readable_id", "current_revision_id", "updated_at"
           from "knowledge_page"
           where "owner_id" = ${ownerId} and "archived_at" is null
           order by "updated_at" desc, "readable_id"
@@ -728,40 +788,18 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
          and image."archived_at" is null
         where entity."archived_at" is null
-        order by selected_page."readable_id", entity."name" collate nocase, entity."readable_id"
-        limit ${relationshipLimit}
-      `,
-      this.sql.ListKnowledgeMapReferences`
-        /* @notNull sourcePageReadableId id readableId revisionNumber title excerpt createdAt updatedAt fragment */
-        with selected_page as (
-          select "id", "readable_id", "current_revision_id"
-          from "knowledge_page"
-          where "owner_id" = ${ownerId} and "archived_at" is null
-          order by "updated_at" desc, "readable_id"
-          limit ${limit}
-        )
-        select source_page."readable_id" as "sourcePageReadableId",
-          target_page."id", target_page."readable_id" as "readableId",
-          target_revision."revision_number" as "revisionNumber", target_revision."title",
-          target_revision."excerpt", target_revision."temporal_coverage" as "temporalCoverage",
-          target_page."created_at" as "createdAt", target_page."updated_at" as "updatedAt",
-          reference."target_fragment" as "fragment"
-        from selected_page source_page
-        join "knowledge_page_reference" reference
-          on reference."source_revision_id" = source_page."current_revision_id"
-         and reference."owner_id" = ${ownerId}
-        join selected_page selected_target on selected_target."id" = reference."target_page_id"
-        join "knowledge_page" target_page
-          on target_page."id" = selected_target."id" and target_page."owner_id" = reference."owner_id"
-        join "knowledge_page_revision" target_revision
-          on target_revision."id" = target_page."current_revision_id"
-        order by source_page."readable_id", target_page."readable_id", reference."target_fragment"
-        limit ${relationshipLimit}
+        order by
+          row_number() over (
+            partition by selected_page."id"
+            order by entity."name" collate nocase, entity."readable_id"
+          ),
+          selected_page."updated_at" desc, selected_page."readable_id"
+        limit ${resourceUsageQueryLimit}
       `,
       this.sql.ListKnowledgeMapAssetUsages`
         /* @notNull sourcePageReadableId id readableId name mediaType sizeBytes createdAt updatedAt presentation */
         with selected_page as (
-          select "id", "readable_id", "current_revision_id"
+          select "id", "readable_id", "current_revision_id", "updated_at"
           from "knowledge_page"
           where "owner_id" = ${ownerId} and "archived_at" is null
           order by "updated_at" desc, "readable_id"
@@ -779,37 +817,21 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         join "asset" asset
           on asset."id" = usage."target_asset_id" and asset."owner_id" = usage."owner_id"
         where asset."archived_at" is null
-        order by selected_page."readable_id", asset."name" collate nocase, asset."readable_id",
-          usage."presentation"
-        limit ${relationshipLimit}
+        order by
+          row_number() over (
+            partition by selected_page."id"
+            order by asset."name" collate nocase, asset."readable_id", usage."presentation"
+          ),
+          selected_page."updated_at" desc, selected_page."readable_id"
+        limit ${resourceUsageQueryLimit}
       `,
     ]);
 
-    const pagesByReadableId = new Map(pages.map((page) => [page.readableId, page]));
-    for (const { sourcePageReadableId, ...entity } of mentionRows.slice(
-      0,
-      MAX_KNOWLEDGE_MAP_RELATIONSHIPS,
-    )) {
-      pagesByReadableId.get(sourcePageReadableId)?.mentions.push(entityFrom(entity));
-    }
-    for (const { sourcePageReadableId, fragment, ...page } of referenceRows.slice(
-      0,
-      MAX_KNOWLEDGE_MAP_RELATIONSHIPS,
-    )) {
-      pagesByReadableId.get(sourcePageReadableId)?.references.push({
-        page: summaryFrom(page),
-        fragment: fragment || null,
-      });
-    }
-    for (const { sourcePageReadableId, presentation, ...asset } of assetUsageRows.slice(
-      0,
-      MAX_KNOWLEDGE_MAP_RELATIONSHIPS,
-    )) {
-      pagesByReadableId.get(sourcePageReadableId)?.assetUsages.push({
-        asset: { ...asset, sizeBytes: Number(asset.sizeBytes) },
-        presentation: presentation === 'embed' ? 'embed' : 'attachment',
-      });
-    }
+    const includedResourceUsages = appendKnowledgeMapResources({
+      pages,
+      mentionRows,
+      assetUsageRows,
+    });
 
     const totalPages = Number(countRows[0]?.total ?? 0);
     return {
@@ -817,9 +839,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       totalPages,
       truncated:
         totalPages > pages.length ||
-        mentionRows.length > MAX_KNOWLEDGE_MAP_RELATIONSHIPS ||
-        referenceRows.length > MAX_KNOWLEDGE_MAP_RELATIONSHIPS ||
-        assetUsageRows.length > MAX_KNOWLEDGE_MAP_RELATIONSHIPS,
+        mentionRows.length + assetUsageRows.length > includedResourceUsages,
     };
   }
 

@@ -4,7 +4,6 @@ import { assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
 import {
   KnowledgePageAssetUsageSchema,
-  KnowledgePageReferenceSchema,
   KnowledgePageSummarySchema,
   pageSummaryResponse,
 } from '#routes/api/pages/model.ts';
@@ -25,7 +24,6 @@ export const KnowledgeMapQuerySchema = t.Object({
 export const KnowledgeMapPageSchema = t.Object({
   ...KnowledgePageSummarySchema.properties,
   mentions: t.Array(EntitySchema),
-  references: t.Array(KnowledgePageReferenceSchema),
   assetUsages: t.Array(KnowledgePageAssetUsageSchema),
 });
 
@@ -41,10 +39,6 @@ export function knowledgeMapResponse(map: KnowledgeMap) {
     pages: map.pages.map((page) => ({
       ...pageSummaryResponse(page),
       mentions: page.mentions.map(entityResponse),
-      references: page.references.map(({ page: target, fragment }) => ({
-        page: pageSummaryResponse(target),
-        fragment,
-      })),
       assetUsages: page.assetUsages.map(({ asset, presentation }) => ({
         asset: assetSummaryResponse(asset),
         presentation,

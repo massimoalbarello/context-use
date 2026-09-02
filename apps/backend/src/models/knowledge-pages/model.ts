@@ -53,7 +53,6 @@ export interface KnowledgePage extends KnowledgePageSummary {
 
 export interface KnowledgeMapPage extends KnowledgePageSummary {
   mentions: Entity[];
-  references: KnowledgePageReference[];
   assetUsages: KnowledgePageAssetUsage[];
 }
 

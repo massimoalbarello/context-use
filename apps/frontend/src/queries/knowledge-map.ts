@@ -13,8 +13,9 @@ export const knowledgeMapQueryKey = ['knowledge-map'] as const;
 
 export const knowledgeMapQueryOptions = queryOptions({
   queryKey: knowledgeMapQueryKey,
+  staleTime: Number.POSITIVE_INFINITY,
   queryFn: async () => {
-    const { data, error } = await api.api['knowledge-map'].get({ query: { limit: 40 } });
+    const { data, error } = await api.api['knowledge-map'].get();
     if (error) {
       throw new Error(apiErrorMessage(error));
     }
