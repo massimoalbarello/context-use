@@ -75,10 +75,7 @@ function PagesLayout() {
         isFetchingNextPage={isFetchingNextPage}
         loadMore={fetchNextPage}
       >
-        <PageTimeFilter
-          key={dateRange ? `${dateRange.from}/${dateRange.to}` : ''}
-          dateRange={dateRange}
-        />
+        <PageTimeFilter dateRange={dateRange} />
         <KnowledgePageList pages={pages} filtered={Boolean(dateRange)} />
       </KnowledgeSidebar>
       <KnowledgeWorkspaceDetail>

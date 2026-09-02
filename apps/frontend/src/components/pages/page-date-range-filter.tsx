@@ -1,4 +1,3 @@
-import { format } from 'date-fns';
 import { CalendarRange, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -8,9 +7,18 @@ import { Button } from '../ui/button';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
+const DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
 function dateFromCalendarValue(value: string): Date {
   const [year, month, day] = value.split('-').map(Number);
-  return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+  const date = new Date(0);
+  date.setHours(0, 0, 0, 0);
+  date.setFullYear(year ?? 0, (month ?? 1) - 1, day ?? 1);
+  return date;
 }
 
 export function calendarValueFromDate(date: Date): string {
@@ -26,6 +34,18 @@ function pickerRangeFrom(value?: CalendarDateRange): DateRange | undefined {
     : undefined;
 }
 
+export function calendarDateRangeFromSelection(
+  selection?: DateRange,
+): CalendarDateRange | undefined {
+  if (!selection?.from) {
+    return undefined;
+  }
+  return {
+    from: calendarValueFromDate(selection.from),
+    to: calendarValueFromDate(selection.to ?? selection.from),
+  };
+}
+
 export function dateRangeButtonLabel(value?: CalendarDateRange): string {
   if (!value) {
     return 'Choose dates';
@@ -33,9 +53,9 @@ export function dateRangeButtonLabel(value?: CalendarDateRange): string {
   const from = dateFromCalendarValue(value.from);
   const to = dateFromCalendarValue(value.to);
   if (value.from === value.to) {
-    return format(from, 'dd/MM/yyyy');
+    return DATE_FORMATTER.format(from);
   }
-  return `${format(from, 'dd/MM/yyyy')} – ${format(to, 'dd/MM/yyyy')}`;
+  return `${DATE_FORMATTER.format(from)} – ${DATE_FORMATTER.format(to)}`;
 }
 
 export function PageDateRangeFilter({
@@ -47,12 +67,20 @@ export function PageDateRangeFilter({
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DateRange | undefined>(() => pickerRangeFrom(value));
-  const complete = Boolean(selected?.from && selected.to);
+  const hasSelection = Boolean(selected?.from);
 
   return (
     <div className="mb-2 grid gap-2 rounded-xl bg-muted/55 p-3">
       <p className="font-medium text-xs">Filter by date range</p>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            setSelected(pickerRangeFrom(value));
+          }
+          setOpen(nextOpen);
+        }}
+      >
         <PopoverTrigger
           render={
             <Button
@@ -90,15 +118,13 @@ export function PageDateRangeFilter({
             <Button
               type="button"
               size="sm"
-              disabled={!complete}
+              disabled={!hasSelection}
               onClick={() => {
-                if (!selected?.from || !selected.to) {
+                const nextRange = calendarDateRangeFromSelection(selected);
+                if (!nextRange) {
                   return;
                 }
-                onApply({
-                  from: calendarValueFromDate(selected.from),
-                  to: calendarValueFromDate(selected.to),
-                });
+                onApply(nextRange);
                 setOpen(false);
               }}
             >
