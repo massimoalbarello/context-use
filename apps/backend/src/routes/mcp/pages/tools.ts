@@ -69,8 +69,22 @@ const ArchiveKnowledgePageOutputSchema = z.object({
   address: PageAddressSchema,
 });
 
-const GuidedKnowledgePageOutputSchema = z.union([
-  McpKnowledgePageSchema,
+const CreateKnowledgePageOutputSchema = z.object({
+  address: PageAddressSchema,
+  revisionNumber: z.number().int().positive(),
+});
+
+const UpdateKnowledgePageOutputSchema = z.object({
+  revisionNumber: z.number().int().positive(),
+});
+
+const GuidedCreateKnowledgePageOutputSchema = z.union([
+  CreateKnowledgePageOutputSchema,
+  HypermediaCurationGuideRequiredSchema,
+]);
+
+const GuidedUpdateKnowledgePageOutputSchema = z.union([
+  UpdateKnowledgePageOutputSchema,
   HypermediaCurationGuideRequiredSchema,
 ]);
 
@@ -122,7 +136,7 @@ export function registerKnowledgePageTools({
       description:
         'Create one versioned knowledge page from complete Markdown. Internal links must use canonical context-use addresses.',
       inputSchema: CreateKnowledgePageInputSchema,
-      outputSchema: GuidedKnowledgePageOutputSchema,
+      outputSchema: GuidedCreateKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
     async ({ guide_version, ...input }) => {
@@ -132,7 +146,10 @@ export function registerKnowledgePageTools({
       }
       const result = await pagesService.create({ ownerId: principal.ownerId, actor, ...input });
       if (result.state === 'saved') {
-        return mcpToolSuccess(mcpKnowledgePage(result.page));
+        return mcpToolSuccess({
+          address: pageAddress(result.page.readableId),
+          revisionNumber: result.page.revisionNumber,
+        });
       }
       if (result.state === 'title_conflict') {
         return mcpToolError({
@@ -214,7 +231,7 @@ export function registerKnowledgePageTools({
       description:
         'Create a new revision of one knowledge page. expectedRevisionNumber is required to prevent overwriting concurrent changes.',
       inputSchema: UpdateKnowledgePageInputSchema,
-      outputSchema: GuidedKnowledgePageOutputSchema,
+      outputSchema: GuidedUpdateKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
     async ({ address, expectedRevisionNumber, guide_version, markdown }) => {
@@ -230,7 +247,7 @@ export function registerKnowledgePageTools({
         markdown,
       });
       if (result.state === 'saved') {
-        return mcpToolSuccess(mcpKnowledgePage(result.page));
+        return mcpToolSuccess({ revisionNumber: result.page.revisionNumber });
       }
       if (result.state === 'revision_conflict') {
         return mcpToolError({

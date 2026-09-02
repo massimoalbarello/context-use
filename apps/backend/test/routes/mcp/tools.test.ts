@@ -356,6 +356,64 @@ test('page mutations require a current guide version without transport state or 
   expect(mutationCalls).toEqual(mutations.map(({ name }) => name));
 });
 
+test('successful create and update tools return only newly needed coordinates and revision state', async () => {
+  const entitiesService: EntitiesServiceContract = {
+    ...unusedEntitiesService,
+    create: () => Promise.resolve({ state: 'created', entity }),
+    update: () => Promise.resolve(entity),
+  };
+  const pagesService: KnowledgePagesServiceContract = {
+    ...unusedPagesService,
+    create: () => Promise.resolve({ state: 'saved', page }),
+    update: () => Promise.resolve({ state: 'saved', page }),
+  };
+
+  await withMcpClient({
+    entitiesService,
+    pagesService,
+    run: async (client) => {
+      const createdEntity = await client.callTool({
+        name: 'create_entity',
+        arguments: { name: entity.name, description: entity.description },
+      });
+      expect(createdEntity.structuredContent).toEqual({
+        address: 'context-use://entity/luca-bianchi',
+      });
+
+      const updatedEntity = await client.callTool({
+        name: 'update_entity',
+        arguments: {
+          address: 'context-use://entity/luca-bianchi',
+          name: entity.name,
+          description: entity.description,
+        },
+      });
+      expect(updatedEntity.structuredContent).toEqual({});
+
+      const guide_version = await readHypermediaCurationGuideVersion(client);
+      const createdPage = await client.callTool({
+        name: 'create_knowledge_page',
+        arguments: { guide_version, markdown: page.markdown },
+      });
+      expect(createdPage.structuredContent).toEqual({
+        address: 'context-use://page/growth-playbook',
+        revisionNumber: 2,
+      });
+
+      const updatedPage = await client.callTool({
+        name: 'update_knowledge_page',
+        arguments: {
+          address: 'context-use://page/growth-playbook',
+          expectedRevisionNumber: 1,
+          guide_version,
+          markdown: page.markdown,
+        },
+      });
+      expect(updatedPage.structuredContent).toEqual({ revisionNumber: 2 });
+    },
+  });
+});
+
 test('MCP lists are owner-scoped, bounded, cursor-paginated, and reject invalid cursors', async () => {
   const offsets: number[] = [];
   const entitiesService: EntitiesServiceContract = {
@@ -554,7 +612,9 @@ test('MCP creates the self entity once through the knowledge profile invariant',
         arguments: { name: entity.name, description: entity.description, isSelf: true },
       });
       expect(created.isError).not.toBe(true);
-      expect(created.structuredContent).toMatchObject({ isSelf: true });
+      expect(created.structuredContent).toEqual({
+        address: 'context-use://entity/luca-bianchi',
+      });
       expectNoInternalResourceIds(created.structuredContent);
 
       const duplicate = await client.callTool({
@@ -679,7 +739,14 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
           },
         });
         expect(updated.isError).not.toBe(true);
-        expect(updated.structuredContent).toEqual(
+        expect(updated.structuredContent).toEqual({ revisionNumber: 2 });
+
+        const current = await client.callTool({
+          name: 'read_knowledge_page',
+          arguments: { address },
+        });
+        expect(current.isError).not.toBe(true);
+        expect(current.structuredContent).toEqual(
           expect.objectContaining({
             revisions: [
               expect.objectContaining({
@@ -691,7 +758,7 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
             ],
           }),
         );
-        expectNoInternalResourceIds(updated.structuredContent);
+        expectNoInternalResourceIds(current.structuredContent);
       },
     });
 

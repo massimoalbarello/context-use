@@ -298,19 +298,13 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
       expect(metadata.download).toBeNull();
       expectNoInternalResourceIds(metadata);
 
-      const updated = successfulResult<AssetResult>(
+      const updated = successfulResult<Record<string, never>>(
         await client.callTool({
           name: 'update_asset',
           arguments: { address: created.address, name: 'Q3 evidence chart' },
         }),
       );
-      expect(updated).toEqual(
-        expect.objectContaining({
-          address: created.address,
-          readableId: created.readableId,
-          name: 'Q3 evidence chart',
-        }),
-      );
+      expect(updated).toEqual({});
 
       const withDownload = successfulResult<AssetResult>(
         await client.callTool({
@@ -318,6 +312,7 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
           arguments: { address: created.address, includeDownload: true },
         }),
       );
+      expect(withDownload.name).toBe('Q3 evidence chart');
       const downloadRequest = withDownload.download!;
       expect(downloadRequest.method).toBe('GET');
       expect(downloadRequest.requiredHeaders).toEqual({
@@ -521,7 +516,7 @@ test('raw upload endpoints enforce required headers and byte limits before one A
   expect(acceptedBody).not.toContain(accepted.secret);
 });
 
-test('asset updates preserve the address and archive blockers expose only public usage coordinates', async () => {
+test('asset updates return no echoed state and archive blockers expose only public usage coordinates', async () => {
   const asset: Asset = {
     id: 'internal-asset-id',
     readableId: 'quarterly-chart',
@@ -593,7 +588,7 @@ test('asset updates preserve the address and archive blockers expose only public
   await server.connect(serverTransport);
   await client.connect(clientTransport);
   try {
-    const updated = successfulResult<AssetResult>(
+    const updated = successfulResult<Record<string, never>>(
       await client.callTool({
         name: 'update_asset',
         arguments: {
@@ -602,13 +597,7 @@ test('asset updates preserve the address and archive blockers expose only public
         },
       }),
     );
-    expect(updated).toEqual(
-      expect.objectContaining({
-        address: 'context-use://asset/quarterly-chart',
-        readableId: 'quarterly-chart',
-        name: 'Q3 evidence chart',
-      }),
-    );
+    expect(updated).toEqual({});
     expectNoInternalResourceIds(updated);
 
     const blocked = await client.callTool({

@@ -65,6 +65,10 @@ const EntityListOutputSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 
+const CreateEntityOutputSchema = z.object({ address: EntityAddressSchema });
+
+const UpdateEntityOutputSchema = z.object({});
+
 const ArchiveEntityOutputSchema = z.object({
   archived: z.literal(true),
   address: EntityAddressSchema,
@@ -99,7 +103,7 @@ export function registerEntityTools({
       description:
         'Create one entity identity. Set isSelf true only to create the knowledge base owner entity during initial setup; that role can be created only once. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
       inputSchema: CreateEntityInputSchema,
-      outputSchema: McpEntitySchema,
+      outputSchema: CreateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
     async ({ isSelf, ...input }) => {
@@ -119,7 +123,7 @@ export function registerEntityTools({
             details: { allowDuplicateRetryAvailable: true },
           });
         }
-        return mcpToolSuccess(mcpEntity(result.profile.selfEntity));
+        return mcpToolSuccess({ address: entityAddress(result.profile.selfEntity.readableId) });
       }
 
       const result = await entitiesService.create({ ownerId: principal.ownerId, ...input });
@@ -131,7 +135,7 @@ export function registerEntityTools({
           details: { allowDuplicateRetryAvailable: true },
         });
       }
-      return mcpToolSuccess(mcpEntity(result.entity));
+      return mcpToolSuccess({ address: entityAddress(result.entity.readableId) });
     },
   );
 
@@ -192,7 +196,7 @@ export function registerEntityTools({
       title: 'Update entity',
       description: 'Update the name and description of one active entity at its exact address.',
       inputSchema: UpdateEntityInputSchema,
-      outputSchema: McpEntitySchema,
+      outputSchema: UpdateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
     async ({ address, name, description }) => {
@@ -203,7 +207,7 @@ export function registerEntityTools({
         description,
       });
       return entity
-        ? mcpToolSuccess(mcpEntity(entity))
+        ? mcpToolSuccess({})
         : mcpToolError({ code: 'not_found', message: 'Entity not found.' });
     },
   );
