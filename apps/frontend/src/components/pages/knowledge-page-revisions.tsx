@@ -23,13 +23,11 @@ export function KnowledgePageRevisions({
               )}
             </div>
             <p className="mt-1 text-sm">{revision.title}</p>
-            {revision.temporalCoverage ? (
+            {revision.temporalCoverage && (
               <TemporalCoverageLabel
                 className="mt-1 text-xs"
                 expression={revision.temporalCoverage}
               />
-            ) : (
-              <p className="mt-1 text-muted-foreground text-xs">General knowledge</p>
             )}
             <p className="mt-1 text-muted-foreground text-xs">Created by {revision.author.name}</p>
             <time

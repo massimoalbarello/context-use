@@ -30,7 +30,7 @@ function PagesIndexRoute() {
   if (dateRange) {
     return (
       <WorkspaceEmpty
-        eyebrow="Timeline"
+        eyebrow="Knowledge pages"
         title="No pages for this date range"
         description="Clear the date range in the sidebar or choose another one."
         createTo="/pages/new"

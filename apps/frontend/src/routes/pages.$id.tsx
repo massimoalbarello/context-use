@@ -16,7 +16,6 @@ import { TemporalCoverageLabel } from '../components/pages/temporal-coverage-lab
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { cn } from '../lib/class-names';
 import { useArchivePage } from '../lib/hooks/use-archive-page';
 import { usePage } from '../lib/hooks/use-page';
 import { useUpdatePage } from '../lib/hooks/use-update-page';
@@ -152,93 +151,55 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
     return null;
   }
   const hasInboundUsages = page.backlinks.length > 0;
+  const editActions = (
+    <ResourceDetailActions
+      mode="edit"
+      resource="page"
+      form={PAGE_EDIT_FORM_ID}
+      pending={updatePage.isPending}
+      onCancel={() => {
+        updatePage.reset();
+        setEditing(false);
+      }}
+    />
+  );
+  const viewActions = (
+    <ResourceDetailActions
+      mode="view"
+      resource="page"
+      onEdit={() => {
+        updatePage.reset();
+        setArchiveConflictVisible(false);
+        setEditing(true);
+      }}
+    >
+      <ResourceArchiveAction
+        blocked={hasInboundUsages}
+        pending={archivePage.isPending}
+        resource="page"
+        onBlocked={() => {
+          setArchiveConflictVisible(true);
+        }}
+        onConfirm={() => {
+          archivePage.mutate(
+            { readableId: page.readableId },
+            {
+              onSuccess: (result) => {
+                if (result.state === 'archived') {
+                  void navigate({ to: '/pages' });
+                } else {
+                  setArchiveConflictVisible(true);
+                }
+              },
+            },
+          );
+        }}
+      />
+    </ResourceDetailActions>
+  );
 
   return (
     <DetailShell className={editing ? 'gap-4' : 'gap-0'} data-editing={editing}>
-      <DetailHeader>
-        <ResourceDetailHeading
-          actions={
-            editing ? (
-              <ResourceDetailActions
-                mode="edit"
-                resource="page"
-                form={PAGE_EDIT_FORM_ID}
-                pending={updatePage.isPending}
-                onCancel={() => {
-                  updatePage.reset();
-                  setEditing(false);
-                }}
-              />
-            ) : (
-              <ResourceDetailActions
-                mode="view"
-                resource="page"
-                onEdit={() => {
-                  updatePage.reset();
-                  setArchiveConflictVisible(false);
-                  setEditing(true);
-                }}
-              >
-                <ResourceArchiveAction
-                  blocked={hasInboundUsages}
-                  pending={archivePage.isPending}
-                  resource="page"
-                  onBlocked={() => {
-                    setArchiveConflictVisible(true);
-                  }}
-                  onConfirm={() => {
-                    archivePage.mutate(
-                      { readableId: page.readableId },
-                      {
-                        onSuccess: (result) => {
-                          if (result.state === 'archived') {
-                            void navigate({ to: '/pages' });
-                          } else {
-                            setArchiveConflictVisible(true);
-                          }
-                        },
-                      },
-                    );
-                  }}
-                />
-              </ResourceDetailActions>
-            )
-          }
-        >
-          Knowledge page
-        </ResourceDetailHeading>
-        {page.temporalCoverage ? (
-          <TemporalCoverageLabel className="w-fit text-sm" expression={page.temporalCoverage} />
-        ) : (
-          <p className="text-muted-foreground text-sm">General knowledge</p>
-        )}
-      </DetailHeader>
-
-      {archivePage.error && (
-        <p className="text-destructive text-sm" role="alert">
-          {archivePage.error.message}
-        </p>
-      )}
-
-      {archiveConflictVisible && (
-        <div className="flex flex-wrap items-center gap-2 text-destructive text-sm" role="alert">
-          <span>This page can’t be archived until every incoming reference is removed.</span>
-          <Button
-            size="sm"
-            type="button"
-            variant="outline"
-            onClick={() => {
-              void navigate({
-                search: (previous) => ({ ...previous, view: 'links' }),
-                hash: 'referenced-by',
-              });
-            }}
-          >
-            Review referring pages
-          </Button>
-        </div>
-      )}
-
       {editing ? (
         <KnowledgePageForm
           key={page.revisionNumber}
@@ -246,6 +207,13 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
           formId={PAGE_EDIT_FORM_ID}
           pending={updatePage.isPending}
           error={updatePage.error}
+          header={(intervalField) => (
+            <DetailHeader>
+              <ResourceDetailHeading actions={editActions} context={intervalField}>
+                Knowledge page
+              </ResourceDetailHeading>
+            </DetailHeader>
+          )}
           onSubmit={({ markdown, temporalCoverage }) =>
             updatePage.mutate(
               {
@@ -261,37 +229,76 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
           }
         />
       ) : (
-        <Tabs
-          className="mt-5 min-w-0"
-          value={view}
-          onValueChange={(value) => {
-            if (isPageView(value)) {
-              void navigate({ search: (previous) => ({ ...previous, view: value }) });
-            }
-          }}
-        >
-          <TabsList className="gap-5" variant="line" aria-label="Page views">
-            <TabsTrigger value="preview">Preview</TabsTrigger>
-            <TabsTrigger value="links">Links</TabsTrigger>
-            <TabsTrigger value="revisions">Revisions</TabsTrigger>
-          </TabsList>
-          <TabsContent value="preview">
-            <div
-              className={cn(
-                'border-border border-l-2 pl-5',
-                page.temporalCoverage && 'border-primary/45 bg-primary/[0.025]',
-              )}
+        <>
+          <DetailHeader>
+            <ResourceDetailHeading
+              actions={viewActions}
+              context={
+                page.temporalCoverage ? (
+                  <TemporalCoverageLabel
+                    className="w-fit text-sm"
+                    expression={page.temporalCoverage}
+                  />
+                ) : null
+              }
             >
-              <KnowledgePageMarkdown markdown={page.markdown} mentions={page.mentions} />
+              Knowledge page
+            </ResourceDetailHeading>
+          </DetailHeader>
+
+          {archivePage.error && (
+            <p className="text-destructive text-sm" role="alert">
+              {archivePage.error.message}
+            </p>
+          )}
+
+          {archiveConflictVisible && (
+            <div
+              className="flex flex-wrap items-center gap-2 text-destructive text-sm"
+              role="alert"
+            >
+              <span>This page can’t be archived until every incoming reference is removed.</span>
+              <Button
+                size="sm"
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void navigate({
+                    search: (previous) => ({ ...previous, view: 'links' }),
+                    hash: 'referenced-by',
+                  });
+                }}
+              >
+                Review referring pages
+              </Button>
             </div>
-          </TabsContent>
-          <TabsContent value="links">
-            <PageLinksView page={page} />
-          </TabsContent>
-          <TabsContent value="revisions">
-            <KnowledgePageRevisions page={page} />
-          </TabsContent>
-        </Tabs>
+          )}
+
+          <Tabs
+            className="mt-5 min-w-0"
+            value={view}
+            onValueChange={(value) => {
+              if (isPageView(value)) {
+                void navigate({ search: (previous) => ({ ...previous, view: value }) });
+              }
+            }}
+          >
+            <TabsList className="gap-5" variant="line" aria-label="Page views">
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+              <TabsTrigger value="links">Links</TabsTrigger>
+              <TabsTrigger value="revisions">Revisions</TabsTrigger>
+            </TabsList>
+            <TabsContent value="preview">
+              <KnowledgePageMarkdown markdown={page.markdown} mentions={page.mentions} />
+            </TabsContent>
+            <TabsContent value="links">
+              <PageLinksView page={page} />
+            </TabsContent>
+            <TabsContent value="revisions">
+              <KnowledgePageRevisions page={page} />
+            </TabsContent>
+          </Tabs>
+        </>
       )}
     </DetailShell>
   );

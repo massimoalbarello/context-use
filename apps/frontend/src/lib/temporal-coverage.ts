@@ -49,7 +49,7 @@ export function temporalCoverageTitle(expression: string): string {
   const markerHelp = `${expression.includes('?') ? ' ? means uncertain.' : ''}${
     expression.includes('~') ? ' ~ means approximate.' : ''
   }`;
-  return `Date or period: ${expression}.${markerHelp}`;
+  return `Interval: ${expression}.${markerHelp}`;
 }
 
 export function calendarDateRangeExpression({ from, to }: CalendarDateRange): string {

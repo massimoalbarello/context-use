@@ -4,8 +4,8 @@ import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { Badge } from '../ui/badge';
 
 export function EntityPageSections({ pages }: { pages: EntityDetail['pages'] }) {
-  const timelinePages = pages.filter((page) => page.temporalCoverage !== null);
-  const generalPages = pages.filter((page) => page.temporalCoverage === null);
+  const temporalPages = pages.filter((page) => page.temporalCoverage !== null);
+  const semanticPages = pages.filter((page) => page.temporalCoverage === null);
 
   return (
     <section className="scroll-mt-24 pt-2" id="mentioned-by" tabIndex={-1}>
@@ -16,8 +16,8 @@ export function EntityPageSections({ pages }: { pages: EntityDetail['pages'] }) 
       {pages.length > 0 ? (
         <div className="grid gap-7 md:grid-cols-2">
           {[
-            { title: 'Timeline', pages: timelinePages },
-            { title: 'General knowledge', pages: generalPages },
+            { title: 'Temporal', pages: temporalPages },
+            { title: 'Semantic', pages: semanticPages },
           ].map(({ title, pages: sectionPages }) => (
             <section key={title}>
               <h3 className="mb-2 font-medium text-muted-foreground text-sm">{title}</h3>

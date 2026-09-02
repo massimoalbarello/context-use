@@ -18,10 +18,8 @@ describe('temporal coverage presentation', () => {
   });
 
   test('keeps the exact expression and marker meaning available', () => {
-    expect(temporalCoverageTitle('2025-03~')).toBe(
-      'Date or period: 2025-03~. ~ means approximate.',
-    );
-    expect(temporalCoverageTitle('2025?')).toBe('Date or period: 2025?. ? means uncertain.');
+    expect(temporalCoverageTitle('2025-03~')).toBe('Interval: 2025-03~. ~ means approximate.');
+    expect(temporalCoverageTitle('2025?')).toBe('Interval: 2025?. ? means uncertain.');
   });
 
   test('builds an inclusive calendar range for the overlap query', () => {

@@ -30,5 +30,5 @@ test('revision history shows the snapshotted readable author name', () => {
   expect(html).toContain('Created by Research agent');
   expect(html).toContain('Created by Alex Morgan');
   expect(html).toContain('Since March 2025 · ongoing');
-  expect(html).toContain('General knowledge');
+  expect(html).not.toContain('General knowledge');
 });

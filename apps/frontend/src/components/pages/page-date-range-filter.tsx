@@ -107,7 +107,7 @@ export function PageDateRangeFilter({
           </div>
         </PopoverContent>
       </Popover>
-      <p className="text-muted-foreground text-xs">General knowledge stays visible.</p>
+      <p className="text-muted-foreground text-xs">Semantic pages stay visible.</p>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import {
   parseTemporalCoverage,
 } from '@repo/backend/temporal-coverage';
 import { useForm } from '@tanstack/react-form';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { DuplicateResourceNameError } from '../../lib/api-error';
 import { submitThenChangeValidation } from '../../lib/form-validation';
 import { useAssetSuggestions } from '../../lib/hooks/use-assets';
@@ -29,6 +29,7 @@ type KnowledgePageFormProps = {
   initialValues: KnowledgePageFormValues;
   pending: boolean;
   error: Error | null;
+  header: (intervalField: ReactNode) => ReactNode;
   onSubmit: (values: KnowledgePageFormSubmission) => void;
 } & ({ submitLabel: string; formId?: never } | { formId: string; submitLabel?: never });
 
@@ -47,7 +48,7 @@ function validateTemporalCoverage({ value }: { value: string }): string | undefi
     parseTemporalCoverage(normalized);
     return undefined;
   } catch (error) {
-    return error instanceof Error ? error.message : 'Enter a supported subject time.';
+    return error instanceof Error ? error.message : 'Enter a supported interval.';
   }
 }
 
@@ -56,6 +57,7 @@ export function KnowledgePageForm({
   formId,
   pending,
   error,
+  header,
   submitLabel,
   onSubmit,
 }: KnowledgePageFormProps) {
@@ -83,6 +85,46 @@ export function KnowledgePageForm({
     },
   });
   const duplicateTitle = error instanceof DuplicateResourceNameError;
+  const intervalField = (
+    <form.Field name="temporalCoverage" validators={{ onDynamic: validateTemporalCoverage }}>
+      {(field) => (
+        <Field className="w-56 gap-1" data-invalid={field.state.meta.errors.length > 0}>
+          <FieldLabel className="sr-only" htmlFor={field.name}>
+            Interval (optional)
+          </FieldLabel>
+          <div className="flex items-center gap-2">
+            <Input
+              className="rounded-full bg-muted/55"
+              id={field.name}
+              name={field.name}
+              maxLength={MAX_TEMPORAL_COVERAGE_LENGTH}
+              placeholder="Add interval"
+              value={field.state.value}
+              aria-describedby={`${field.name}-help`}
+              aria-invalid={field.state.meta.errors.length > 0}
+              onBlur={field.handleBlur}
+              onChange={(event) => field.handleChange(event.target.value)}
+            />
+            {field.state.value && (
+              <Button
+                className="h-auto shrink-0 px-0 py-0 text-xs"
+                type="button"
+                variant="link"
+                onClick={() => field.handleChange('')}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+          <FieldDescription className="sr-only" id={`${field.name}-help`}>
+            Add an interval for temporal knowledge, such as 2025 or 2025-03/2025-08. Leave blank for
+            semantic knowledge.
+          </FieldDescription>
+          <FieldError>{field.state.meta.errors[0]}</FieldError>
+        </Field>
+      )}
+    </form.Field>
+  );
 
   return (
     <form
@@ -94,6 +136,7 @@ export function KnowledgePageForm({
         void form.handleSubmit();
       }}
     >
+      {header(intervalField)}
       <FieldGroup>
         <form.Field name="markdown" validators={{ onDynamic: validateMarkdown }}>
           {(field) => (
@@ -114,40 +157,6 @@ export function KnowledgePageForm({
               <FieldDescription>
                 Keep one coherent idea here. Type @ to mention an entity, reference a page, or use
                 an asset; use H2 or lower headings for linkable sections.
-              </FieldDescription>
-              <FieldError>{field.state.meta.errors[0]}</FieldError>
-            </Field>
-          )}
-        </form.Field>
-        <form.Field name="temporalCoverage" validators={{ onDynamic: validateTemporalCoverage }}>
-          {(field) => (
-            <Field data-invalid={field.state.meta.errors.length > 0}>
-              <div className="flex items-center justify-between gap-3">
-                <FieldLabel htmlFor={field.name}>Date or period (optional)</FieldLabel>
-                {field.state.value && (
-                  <Button
-                    className="h-auto px-0 py-0 text-xs"
-                    type="button"
-                    variant="link"
-                    onClick={() => field.handleChange('')}
-                  >
-                    Clear date
-                  </Button>
-                )}
-              </div>
-              <Input
-                id={field.name}
-                name={field.name}
-                maxLength={MAX_TEMPORAL_COVERAGE_LENGTH}
-                placeholder="2025 or 2025-03/2025-08"
-                value={field.state.value}
-                aria-invalid={field.state.meta.errors.length > 0}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-              />
-              <FieldDescription>
-                When this knowledge applies. Use a year, date, or range, such as 2025 or
-                2025-03/2025-08.
               </FieldDescription>
               <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
