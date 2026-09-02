@@ -118,7 +118,7 @@ export function parseTemporalCoverage(value: string): ParsedTemporalCoverage {
   const startDate = calendarDate(start);
   const endDate = end === '..' ? null : calendarDate(end);
   if (endDate && startDate.bounds.start >= endDate.bounds.end) {
-    throw new InvalidTemporalCoverageError('Temporal coverage must not end before it starts.');
+    throw new InvalidTemporalCoverageError('The interval must not end before it starts.');
   }
   return {
     expression: value,

@@ -5,19 +5,11 @@ import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-work
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
 import { PageDateRangeFilter } from '../components/pages/page-date-range-filter';
 import { usePages } from '../lib/hooks/use-pages';
-import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
+import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { pagesQueryOptions } from '../queries/pages';
 
 function pageSearch(search: Record<string, unknown>): Partial<CalendarDateRange> {
-  if (typeof search.from !== 'string' || typeof search.to !== 'string') {
-    return {};
-  }
-  calendarDateRangeExpression({ from: search.from, to: search.to });
-  return { from: search.from, to: search.to };
-}
-
-function dateRangeFrom(search: Partial<CalendarDateRange>): CalendarDateRange | undefined {
-  return search.from && search.to ? { from: search.from, to: search.to } : undefined;
+  return calendarDateRangeFromSearch(search) ?? {};
 }
 
 export const Route = createFileRoute('/pages')({
@@ -27,7 +19,7 @@ export const Route = createFileRoute('/pages')({
     }
   },
   validateSearch: pageSearch,
-  loaderDeps: ({ search }) => ({ dateRange: dateRangeFrom(search) }),
+  loaderDeps: ({ search }) => ({ dateRange: calendarDateRangeFromSearch(search) }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureInfiniteQueryData(pagesQueryOptions(deps.dateRange)),
   component: PagesLayout,
@@ -40,9 +32,6 @@ function PageTimeFilter({ dateRange }: { dateRange?: CalendarDateRange }) {
     <PageDateRangeFilter
       value={dateRange}
       onApply={(nextRange) => {
-        if (nextRange) {
-          calendarDateRangeExpression(nextRange);
-        }
         void navigate({
           to: '/pages',
           search: { from: nextRange?.from, to: nextRange?.to },
@@ -55,7 +44,7 @@ function PageTimeFilter({ dateRange }: { dateRange?: CalendarDateRange }) {
 function PagesLayout() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const dateRange = dateRangeFrom(search);
+  const dateRange = calendarDateRangeFromSearch(search);
   const { pages, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } =
     usePages(dateRange);
   if (!profile) {

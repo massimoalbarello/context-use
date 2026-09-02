@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   calendarDateRangeExpression,
+  calendarDateRangeFromSearch,
   temporalCoverageLabel,
   temporalCoverageMutation,
   temporalCoverageTitle,
@@ -10,7 +11,7 @@ describe('temporal coverage presentation', () => {
   test.each([
     { expression: '2025', expected: '2025' },
     { expression: '2025-03~', expected: 'March 2025~' },
-    { expression: '2025-03-14?', expected: 'March 14, 2025?' },
+    { expression: '2025-03-14?', expected: '14 March 2025?' },
     { expression: '2025-03/2025-08', expected: 'March 2025 – August 2025' },
     { expression: '2024-11?/..', expected: 'Since November 2024? · ongoing' },
   ])('formats $expression without inventing precision', ({ expression, expected }) => {
@@ -20,6 +21,9 @@ describe('temporal coverage presentation', () => {
   test('keeps the exact expression and marker meaning available', () => {
     expect(temporalCoverageTitle('2025-03~')).toBe('Interval: 2025-03~. ~ means approximate.');
     expect(temporalCoverageTitle('2025?')).toBe('Interval: 2025?. ? means uncertain.');
+    expect(temporalCoverageTitle('2025?/2026~')).toBe(
+      'Interval: 2025?/2026~. ? means uncertain. ~ means approximate.',
+    );
   });
 
   test('builds an inclusive calendar range for the overlap query', () => {
@@ -27,6 +31,16 @@ describe('temporal coverage presentation', () => {
       '2025-03-01/2025-08-31',
     );
     expect(() => calendarDateRangeExpression({ from: '2025-08-31', to: '2025-03-01' })).toThrow();
+  });
+
+  test('keeps only complete valid calendar ranges from URL state', () => {
+    expect(calendarDateRangeFromSearch({ from: '2025-03-01', to: '2025-08-31' })).toEqual({
+      from: '2025-03-01',
+      to: '2025-08-31',
+    });
+    expect(calendarDateRangeFromSearch({ from: '2025-03-01' })).toBeUndefined();
+    expect(calendarDateRangeFromSearch({ from: '2025-13-01', to: '2025-08-31' })).toBeUndefined();
+    expect(calendarDateRangeFromSearch({ from: '2025-08-31', to: '2025-03-01' })).toBeUndefined();
   });
 });
 

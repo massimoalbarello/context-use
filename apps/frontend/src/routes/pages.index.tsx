@@ -1,14 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { WorkspaceEmpty } from '../components/knowledge/workspace-empty';
-import type { CalendarDateRange } from '../lib/temporal-coverage';
+import { calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { pagesQueryOptions } from '../queries/pages';
 
-function dateRangeFrom(search: Partial<CalendarDateRange>): CalendarDateRange | undefined {
-  return search.from && search.to ? { from: search.from, to: search.to } : undefined;
-}
-
 export const Route = createFileRoute('/pages/')({
-  loaderDeps: ({ search }) => ({ dateRange: dateRangeFrom(search) }),
+  loaderDeps: ({ search }) => ({ dateRange: calendarDateRangeFromSearch(search) }),
   loader: async ({ context, deps }) => {
     const pages = await context.queryClient.ensureInfiniteQueryData(
       pagesQueryOptions(deps.dateRange),
@@ -26,7 +22,7 @@ export const Route = createFileRoute('/pages/')({
 });
 
 function PagesIndexRoute() {
-  const dateRange = dateRangeFrom(Route.useSearch());
+  const dateRange = calendarDateRangeFromSearch(Route.useSearch());
   if (dateRange) {
     return (
       <WorkspaceEmpty

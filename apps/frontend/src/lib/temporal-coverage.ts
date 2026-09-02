@@ -1,4 +1,8 @@
-import { parseTemporalCoverage, type TemporalCalendarDate } from '@repo/backend/temporal-coverage';
+import {
+  InvalidTemporalCoverageError,
+  parseTemporalCoverage,
+  type TemporalCalendarDate,
+} from '@repo/backend/temporal-coverage';
 
 export type CalendarDateRange = { from: string; to: string };
 
@@ -28,7 +32,7 @@ function calendarDateLabel(date: TemporalCalendarDate): string {
   if (date.day === null) {
     return `${month} ${year}${marker}`;
   }
-  return `${month} ${date.day}, ${year}${marker}`;
+  return `${date.day} ${month} ${year}${marker}`;
 }
 
 export function temporalCoverageLabel(expression: string): string {
@@ -46,16 +50,38 @@ export function temporalCoverageLabel(expression: string): string {
 }
 
 export function temporalCoverageTitle(expression: string): string {
-  const markerHelp = `${expression.includes('?') ? ' ? means uncertain.' : ''}${
-    expression.includes('~') ? ' ~ means approximate.' : ''
-  }`;
-  return `Interval: ${expression}.${markerHelp}`;
+  const markerHelp = [
+    expression.includes('?') ? '? means uncertain.' : null,
+    expression.includes('~') ? '~ means approximate.' : null,
+  ].filter((message) => message !== null);
+  return [`Interval: ${expression}.`, ...markerHelp].join(' ');
 }
 
 export function calendarDateRangeExpression({ from, to }: CalendarDateRange): string {
   const expression = `${from}/${to}`;
   parseTemporalCoverage(expression);
   return expression;
+}
+
+export function calendarDateRangeFromSearch({
+  from,
+  to,
+}: {
+  from?: unknown;
+  to?: unknown;
+}): CalendarDateRange | undefined {
+  if (typeof from !== 'string' || typeof to !== 'string') {
+    return undefined;
+  }
+  try {
+    calendarDateRangeExpression({ from, to });
+    return { from, to };
+  } catch (error) {
+    if (error instanceof InvalidTemporalCoverageError) {
+      return undefined;
+    }
+    throw error;
+  }
 }
 
 export function temporalCoverageMutation({
