@@ -72,6 +72,8 @@ const ArchiveAssetOutputSchema = z.object({
   address: AssetAddressSchema,
 });
 
+const UpdateAssetOutputSchema = z.object({});
+
 const UPLOAD_INSTRUCTIONS =
   'Send the raw asset bytes as the request body. Do not base64-encode them or wrap them in JSON or multipart form data. Use this request once before expiresAt; its HTTP response is the final typed asset result.';
 const DOWNLOAD_INSTRUCTIONS =
@@ -187,7 +189,7 @@ export function registerAssetTools({
       description:
         'Update the complete editable representation of one active asset, currently its meaningful name. The supplied bytes are immutable; create a new asset when content must change.',
       inputSchema: UpdateAssetInputSchema,
-      outputSchema: McpAssetSchema,
+      outputSchema: UpdateAssetOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
     async ({ address, name }) => {
@@ -197,7 +199,7 @@ export function registerAssetTools({
         name,
       });
       return asset
-        ? mcpToolSuccess(mcpAsset(asset))
+        ? mcpToolSuccess({})
         : mcpToolError({ code: 'not_found', message: 'Asset not found.' });
     },
   );
