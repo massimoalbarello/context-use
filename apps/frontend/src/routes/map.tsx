@@ -73,13 +73,7 @@ function KnowledgeMapRoute() {
     <KnowledgeWorkspace>
       <KnowledgeMapSidebar
         profile={profile}
-        totalPages={map.totalPages}
-        loadedPages={map.pages.length}
         truncated={map.truncated}
-        hasNextPage={mapQuery.hasNextPage}
-        isFetchingNextPage={mapQuery.isFetchingNextPage}
-        loadMoreError={mapQuery.isFetchNextPageError ? mapQuery.error : null}
-        loadMore={mapQuery.fetchNextPage}
         query={q}
         onQueryChange={(query) => {
           void navigate({
@@ -116,7 +110,9 @@ function KnowledgeMapRoute() {
               selectedKey={selection ? `${selection.kind}:${selection.readableId}` : undefined}
               onSelect={selectKnowledge}
               hasNextPage={mapQuery.hasNextPage && !deferredQuery}
+              remainingPageCount={Math.max(0, map.totalPages - map.pages.length)}
               isFetchingNextPage={mapQuery.isFetchingNextPage}
+              loadMoreError={mapQuery.isFetchNextPageError ? mapQuery.error : null}
               onLoadMore={() => void mapQuery.fetchNextPage()}
             />
             {selection && (

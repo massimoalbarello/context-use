@@ -1,6 +1,6 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
-import { File, FileText, Minus, Plus, Scan } from 'lucide-react';
+import { ChevronsRight, File, FileText, Minus, Plus, Scan } from 'lucide-react';
 import {
   memo,
   type PointerEvent as ReactPointerEvent,
@@ -428,13 +428,69 @@ function focusedViewBox({
   };
 }
 
+function KnowledgeMapExplorationCue({
+  remainingPageCount,
+  loadMoreError,
+  onLoadMore,
+}: {
+  remainingPageCount: number;
+  loadMoreError: Error | null;
+  onLoadMore: () => void;
+}) {
+  const pageCount = Math.max(1, remainingPageCount);
+  const pageLabel = pageCount === 1 ? 'page' : 'pages';
+  return (
+    <div
+      className="pointer-events-none absolute top-1/2 right-0 z-10 -translate-y-1/2"
+      role="status"
+    >
+      <div
+        className="pointer-events-none absolute top-1/2 right-0 h-44 w-36 -translate-y-1/2 bg-gradient-to-l from-card via-card/80 to-transparent"
+        aria-hidden="true"
+      />
+      <div className="relative flex items-center pl-8">
+        <div className="mr-1 text-right">
+          <p className="whitespace-nowrap font-medium text-foreground text-xs">
+            {pageCount} more {pageLabel}
+          </p>
+          {loadMoreError ? (
+            <Button
+              type="button"
+              variant="link"
+              size="xs"
+              className="pointer-events-auto h-auto p-0 text-xs"
+              onClick={onLoadMore}
+            >
+              Retry loading
+            </Button>
+          ) : (
+            <p className="mt-0.5 flex items-center justify-end gap-0.5 whitespace-nowrap text-muted-foreground text-xs">
+              Drag to explore
+              <ChevronsRight className="size-3.5" aria-hidden="true" />
+            </p>
+          )}
+        </div>
+        <div className="pointer-events-none relative h-28 w-14 overflow-hidden" aria-hidden="true">
+          <span className="absolute top-7 left-0 h-16 w-20 rounded-[48%] border border-primary/30 bg-primary/8" />
+          <span className="absolute top-4 left-6 size-8 rounded-full border-2 border-border bg-card shadow-sm" />
+          <span className="absolute top-16 left-3 size-8 rounded-lg border-2 border-border bg-card shadow-sm" />
+          <span className="absolute top-12 left-10 h-1 w-8 rounded-full bg-foreground/35" />
+          <span className="absolute top-15 left-9 h-1 w-10 rounded-full bg-foreground/20" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function KnowledgeMapCanvas({
   pages,
   anchorEntity,
   selectedKey,
   onSelect,
   hasNextPage,
+  remainingPageCount,
   isFetchingNextPage,
+  loadMoreError,
   onLoadMore,
 }: {
   pages: KnowledgeMapPage[];
@@ -442,7 +498,9 @@ export function KnowledgeMapCanvas({
   selectedKey?: string;
   onSelect: (selection: KnowledgeMapSelection) => void;
   hasNextPage: boolean;
+  remainingPageCount: number;
   isFetchingNextPage: boolean;
+  loadMoreError: Error | null;
   onLoadMore: () => void;
 }) {
   const layout = useMemo(
@@ -603,6 +661,14 @@ export function KnowledgeMapCanvas({
           onPreviewEnd={clearPreview}
         />
       </svg>
+
+      {hasNextPage && !isFetchingNextPage && (
+        <KnowledgeMapExplorationCue
+          remainingPageCount={remainingPageCount}
+          loadMoreError={loadMoreError}
+          onLoadMore={onLoadMore}
+        />
+      )}
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
         <Button
