@@ -30,63 +30,10 @@ ENTITIES = [
 ]
 PAGES = [
     {
-        "readableId": "project-brief",
-        "markdown": read_seed_text("pages/project-brief.md"),
-        "temporalCoverage": "2026-08/..",
-    },
-    {
-        "readableId": "ui-review-checklist",
-        "markdown": read_seed_text("pages/ui-review-checklist.md"),
-    },
-    {
-        "readableId": "weekly-review",
-        "markdown": read_seed_text("pages/weekly-review.md"),
-        "temporalCoverage": "2026-08-24/2026-08-30",
-    },
-    {
-        "readableId": "northstar-launch-retrospective",
-        "markdown": read_seed_text("pages/northstar-launch-retrospective.md"),
-        "temporalCoverage": "2025-11~",
-    },
-    {
-        "readableId": "customer-research-synthesis",
-        "markdown": read_seed_text("pages/customer-research-synthesis.md"),
-        "temporalCoverage": "2026-06/2026-07",
-    },
-    {
-        "readableId": "technical-map-notes",
-        "markdown": read_seed_text("pages/technical-map-notes.md"),
-        "temporalCoverage": "2026-08/..",
-    },
-    {
-        "readableId": "launch-readiness-plan",
-        "markdown": read_seed_text("pages/launch-readiness-plan.md"),
-        "temporalCoverage": "2026-09/2026-10",
-    },
-    {
-        "readableId": "decision-log",
-        "markdown": read_seed_text("pages/decision-log.md"),
-        "temporalCoverage": "2026-08/..",
-    },
-    {
-        "readableId": "pilot-feedback",
-        "markdown": read_seed_text("pages/pilot-feedback.md"),
-        "temporalCoverage": "2026-08-18/2026-08-22",
-    },
-    {
-        "readableId": "design-critique-notes",
-        "markdown": read_seed_text("pages/design-critique-notes.md"),
-        "temporalCoverage": "2026-08-28",
-    },
-    {
-        "readableId": "agent-collaboration-workflow",
-        "markdown": read_seed_text("pages/agent-collaboration-workflow.md"),
-    },
-    {
-        "readableId": "next-quarter-priorities",
-        "markdown": read_seed_text("pages/next-quarter-priorities.md"),
-        "temporalCoverage": "2026-10/2026-12",
-    },
+        **page,
+        "markdown": read_seed_text(f"pages/{page['readableId']}.md"),
+    }
+    for page in read_seed_json("pages/index.json")
 ]
 PROFILE_IMAGE_ASSET = {
     "readableId": "sample-profile-portrait",
