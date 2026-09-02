@@ -1,42 +1,39 @@
 import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
+import { McpServerUrl } from '../mcp/mcp-server-url';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Textarea } from '../ui/textarea';
+import INITIAL_CONTEXT_PROMPT from './initial-context-prompt.md?raw';
 
 type CopyState = 'idle' | 'copied' | 'failed';
 
-export function agentSetupPrompt({
-  applicationUrl,
-  mcpServerUrl,
-}: {
-  applicationUrl: string;
-  mcpServerUrl: string;
-}): string {
-  return `Connect to my Context Use MCP server at ${mcpServerUrl} using Streamable HTTP. When authorization is required, start the OAuth flow and wait for me to approve it in my browser. Do not ask me to copy access tokens or credentials.
-
-If you cannot add or connect to this MCP server yourself, stop. Tell me to create my first entity manually at ${applicationUrl}/entities/new, then register ${mcpServerUrl} in this agent's MCP settings. Ask me to return and tell you to continue once it is connected.
-
-Once connected, create a deliberately small but useful first picture of me in Context Use. Review only relevant context about me that is already available to you in our conversations, memory, current workspace, or services I have authorized. Do not perform broad external research, infer sensitive facts, upload secrets, or preserve transient information. If you cannot confidently identify and briefly describe me, ask me one concise question before writing anything.
-
-First call create_entity with isSelf set to true to create my owner entity. Then select only the people, organizations, projects, ideas, or places most central to my current work and life. Create at most five additional entities and at most three knowledge pages. Prefer durable, well-supported context likely to help future agents. Mention entities and reference pages using the canonical Context Use addresses returned by the tools. Do not upload assets during this first pass.
-
-When the starter context is ready, direct me to ${applicationUrl}/pages to see the result and briefly tell me what I will find there. After I have seen it, ask whether I want a deeper research and import pass. Do not begin that deeper pass without my approval.`;
+export function agentConnectionHelpPrompt(mcpServerUrl: string): string {
+  return `Guide me in setting up the Context Use MCP connector in this agent. Give me concise, numbered steps to add ${mcpServerUrl} as a custom Streamable HTTP MCP server, connect it, and approve the OAuth request in my browser. Finish by helping me confirm that the Context Use tools are available.`;
 }
 
-export function AgentSetup({
-  applicationUrl,
-  mcpServerUrl,
+export function initialContextPrompt(): string {
+  return INITIAL_CONTEXT_PROMPT.trim();
+}
+
+function CopyablePrompt({
+  ariaLabel,
+  copyLabel,
+  copiedLabel,
+  rows,
+  value,
 }: {
-  applicationUrl: string;
-  mcpServerUrl: string;
+  ariaLabel: string;
+  copyLabel: string;
+  copiedLabel: string;
+  rows: number;
+  value: string;
 }) {
   const [copyState, setCopyState] = useState<CopyState>('idle');
-  const prompt = agentSetupPrompt({ applicationUrl, mcpServerUrl });
 
   async function copyPrompt() {
     try {
-      await navigator.clipboard.writeText(prompt);
+      await navigator.clipboard.writeText(value);
       setCopyState('copied');
     } catch {
       setCopyState('failed');
@@ -44,26 +41,27 @@ export function AgentSetup({
   }
 
   return (
-    <Card>
-      <CardContent className="grid gap-4">
+    <Card size="sm">
+      <CardContent className="grid gap-3">
         <Textarea
-          aria-label="Agent setup prompt"
-          className="max-h-80 resize-none overflow-y-auto font-mono text-xs leading-relaxed"
+          aria-label={ariaLabel}
+          className="max-h-96 resize-none overflow-y-auto font-mono text-xs leading-relaxed"
           readOnly
-          rows={14}
-          value={prompt}
+          rows={rows}
+          value={value}
           onFocus={(event) => event.currentTarget.select()}
         />
 
-        <Button type="button" size="lg" className="justify-self-center" onClick={copyPrompt}>
+        <Button
+          type="button"
+          variant={rows < 10 ? 'outline' : 'default'}
+          size={rows < 10 ? 'default' : 'lg'}
+          className="justify-self-start"
+          onClick={copyPrompt}
+        >
           {copyState === 'copied' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-          {copyState === 'copied' ? 'Prompt copied' : 'Copy prompt'}
+          {copyState === 'copied' ? copiedLabel : copyLabel}
         </Button>
-
-        <p className="text-center text-muted-foreground text-sm leading-relaxed">
-          Approve the OAuth request when it opens. When the agent finishes, follow its Context Use
-          link or refresh this page.
-        </p>
 
         {copyState === 'failed' && (
           <p className="text-destructive text-sm" role="alert">
@@ -71,9 +69,105 @@ export function AgentSetup({
           </p>
         )}
         <span className="sr-only" aria-live="polite">
-          {copyState === 'copied' ? 'Agent setup prompt copied.' : ''}
+          {copyState === 'copied' ? `${copiedLabel}.` : ''}
         </span>
       </CardContent>
     </Card>
+  );
+}
+
+export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
+  const connectionHelpPrompt = agentConnectionHelpPrompt(mcpServerUrl);
+  const contextPrompt = initialContextPrompt();
+
+  return (
+    <ol className="grid list-none gap-10 p-0">
+      <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-4">
+        <span
+          aria-hidden="true"
+          className="flex size-8 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-sm"
+        >
+          1
+        </span>
+        <section className="grid min-w-0 gap-4" aria-labelledby="connect-mcp-heading">
+          <div className="grid gap-1">
+            <h2 id="connect-mcp-heading" className="font-semibold text-xl">
+              Connect to the MCP server
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Open your agent’s MCP or connector settings. Add a custom server, choose Streamable
+              HTTP, and paste this URL. Then start the connection and approve the Context Use OAuth
+              request in your browser. Continue when Context Use tools appear in your agent.
+            </p>
+          </div>
+
+          <McpServerUrl serverUrl={mcpServerUrl} />
+
+          <details>
+            <summary className="cursor-pointer font-medium text-sm">
+              Not sure where those settings are?
+            </summary>
+            <div className="grid gap-2 pt-3">
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Paste this short prompt into your agent for setup instructions.
+              </p>
+              <CopyablePrompt
+                ariaLabel="MCP setup help prompt"
+                copyLabel="Copy setup help"
+                copiedLabel="Setup help copied"
+                rows={5}
+                value={connectionHelpPrompt}
+              />
+            </div>
+          </details>
+        </section>
+      </li>
+
+      <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-4">
+        <span
+          aria-hidden="true"
+          className="flex size-8 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-sm"
+        >
+          2
+        </span>
+        <section className="grid min-w-0 gap-4" aria-labelledby="bootstrap-context-heading">
+          <div className="grid gap-1">
+            <h2 id="bootstrap-context-heading" className="font-semibold text-xl">
+              Bootstrap your context
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Once connected, paste this prompt into your agent. It will import the memories and
+              user context already available to your agent into this empty Context Use instance.
+            </p>
+          </div>
+
+          <CopyablePrompt
+            ariaLabel="Initial context prompt"
+            copyLabel="Copy context prompt"
+            copiedLabel="Context prompt copied"
+            rows={18}
+            value={contextPrompt}
+          />
+        </section>
+      </li>
+
+      <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-4">
+        <span
+          aria-hidden="true"
+          className="flex size-8 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-sm"
+        >
+          3
+        </span>
+        <section className="grid gap-1" aria-labelledby="review-context-heading">
+          <h2 id="review-context-heading" className="font-semibold text-xl">
+            Reload and review
+          </h2>
+          <p className="text-muted-foreground leading-relaxed">
+            Once your agent says the import is complete, reload this page to see the context
+            created.
+          </p>
+        </section>
+      </li>
+    </ol>
   );
 }

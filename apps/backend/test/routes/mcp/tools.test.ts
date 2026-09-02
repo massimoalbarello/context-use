@@ -261,6 +261,11 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toMatch(/where the user\s+and their agents stay in sync/);
       expect(guide).toContain('Do not merely inventory facts');
       expect(guide).toContain('Learn proactively');
+      expect(guide).toContain('Begin with retrieval and synthesis, not entities or page titles');
+      expect(guide).toContain('Keep the inquiry centered on the user');
+      expect(guide).toContain('personal relevance, future utility');
+      expect(guide).toContain('ask focused questions rather than guess');
+      expect(guide).toMatch(/Fewer well-developed items are better than broad\s+coverage/);
       expect(guide).toContain('Never turn uncertainty into assertion');
       expect(guide).toContain('The autobiography is the graph, not one page');
       expect(guide).toMatch(/Never let a catch-all\s+page grow\s+without bound/);
