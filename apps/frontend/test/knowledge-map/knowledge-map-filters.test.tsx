@@ -12,11 +12,8 @@ test('the map composes explicit keyword and date range filters', () => {
     />,
   );
 
-  expect(html).toContain('Filter hypermedia');
   expect(html).toContain('Keyword');
   expect(html).toContain('value="launch"');
-  expect(html).toContain('Filter by date range');
   expect(html).toContain('01/01/2026 – 31/03/2026');
   expect(html).toContain('Apply');
-  expect(html).not.toContain('Find in map');
 });

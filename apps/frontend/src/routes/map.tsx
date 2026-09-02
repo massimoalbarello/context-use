@@ -14,7 +14,7 @@ import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temp
 import { knowledgeMapFrom, knowledgeMapQueryOptions } from '../queries/knowledge-map';
 
 const MAX_MAP_SEARCH_LENGTH = 160;
-const MAX_MAP_READABLE_ID_LENGTH = 240;
+const MAX_MAP_READABLE_ID_LENGTH = 120;
 type KnowledgeMapSearch = Partial<CalendarDateRange> & {
   q?: string;
   kind?: KnowledgeMapSelection['kind'];
@@ -32,7 +32,7 @@ function mapSearch(search: Record<string, unknown>): KnowledgeMapSearch {
     search.id.trim()
   ) {
     result.kind = search.kind;
-    result.id = search.id.slice(0, MAX_MAP_READABLE_ID_LENGTH);
+    result.id = search.id.trim().slice(0, MAX_MAP_READABLE_ID_LENGTH);
   }
   return result;
 }
