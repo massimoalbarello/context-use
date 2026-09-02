@@ -284,25 +284,8 @@ export interface ISearchKnowledgePagesResult {
     updatedAt: string;
 }
 
-/** Result of query `ListKnowledgePages`. */
-export interface IListKnowledgePagesResult {
-    id: string;
-    readableId: string;
-    revisionNumber: number;
-    title: string;
-    excerpt: string;
-    temporalCoverage: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
 /** Result of query `CountSearchedKnowledgePages`. */
 export interface ICountSearchedKnowledgePagesResult {
-    total: number;
-}
-
-/** Result of query `CountKnowledgePages`. */
-export interface ICountKnowledgePagesResult {
     total: number;
 }
 
@@ -572,9 +555,7 @@ export interface Queries {
     ResolveAssetLink: IResolveAssetLinkResult;
     CreateKnowledgePage: ICreateKnowledgePageResult;
     SearchKnowledgePages: ISearchKnowledgePagesResult;
-    ListKnowledgePages: IListKnowledgePagesResult;
     CountSearchedKnowledgePages: ICountSearchedKnowledgePagesResult;
-    CountKnowledgePages: ICountKnowledgePagesResult;
     ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;
     FindKnowledgePage: IFindKnowledgePageResult;
     FindKnowledgePageArchiveTarget: IFindKnowledgePageArchiveTargetResult;

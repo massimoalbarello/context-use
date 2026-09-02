@@ -1,8 +1,8 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { pageSuggestionsQueryOptions, pagesQueryOptions } from '../../queries/pages';
 
-export function usePages() {
-  const query = useInfiniteQuery(pagesQueryOptions);
+export function usePages(time?: string) {
+  const query = useInfiniteQuery(pagesQueryOptions(time));
 
   return {
     ...query,

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   InvalidTemporalCoverageError,
   MAX_TEMPORAL_COVERAGE_LENGTH,
+  temporalBoundsFrom,
   temporalCoverageFrom,
 } from '#models/knowledge-pages/temporal-coverage.ts';
 
@@ -44,5 +45,20 @@ describe('knowledge page temporal coverage', () => {
     'spring 2026',
   ])('rejects ambiguous or impossible coverage: %s', (coverage) => {
     expect(() => temporalCoverageFrom(coverage)).toThrow(InvalidTemporalCoverageError);
+  });
+});
+
+test('normalizes calendar precision to closed-open bounds without expanding markers', () => {
+  expect(temporalBoundsFrom('2025')).toEqual({
+    start: Date.parse('2025-01-01T00:00:00.000Z'),
+    end: Date.parse('2026-01-01T00:00:00.000Z'),
+  });
+  expect(temporalBoundsFrom('2025-03~/2025-08?')).toEqual({
+    start: Date.parse('2025-03-01T00:00:00.000Z'),
+    end: Date.parse('2025-09-01T00:00:00.000Z'),
+  });
+  expect(temporalBoundsFrom('2025-11?/..')).toEqual({
+    start: Date.parse('2025-11-01T00:00:00.000Z'),
+    end: null,
   });
 });

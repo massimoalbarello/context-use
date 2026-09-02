@@ -11,7 +11,7 @@ test('revision history shows the snapshotted readable author name', () => {
       {
         revisionNumber: 2,
         title: 'Updated notes',
-        temporalCoverage: null,
+        temporalCoverage: '2025-03/..',
         author: { kind: 'mcp_client', name: 'Research agent' },
         createdAt: timestamp,
       },
@@ -29,4 +29,6 @@ test('revision history shows the snapshotted readable author name', () => {
 
   expect(html).toContain('Created by Research agent');
   expect(html).toContain('Created by Alex Morgan');
+  expect(html).toContain('Since March 2025 · ongoing');
+  expect(html).toContain('No subject time asserted');
 });

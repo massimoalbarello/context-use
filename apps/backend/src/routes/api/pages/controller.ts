@@ -2,6 +2,11 @@ import { Elysia, StatusMap } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
+import {
+  InvalidTemporalCoverageError,
+  type TemporalBounds,
+  temporalBoundsFrom,
+} from '#models/knowledge-pages/temporal-coverage.ts';
 import { DEFAULT_LIST_LIMIT, ResourceNameConflictSchema } from '#routes/api/model.ts';
 import {
   CreateKnowledgePageBodySchema,
@@ -68,18 +73,32 @@ export function createPagesController({
     .get(
       '/pages',
       async ({ query, user, status }) => {
-        const page = await pagesService.list({
+        let temporalBounds: TemporalBounds | undefined;
+        try {
+          temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
+        } catch (error) {
+          if (error instanceof InvalidTemporalCoverageError) {
+            return status(StatusMap['Bad Request'], { error: error.message });
+          }
+          throw error;
+        }
+        const input = {
           ownerId: user.id,
           limit: query.limit ?? DEFAULT_LIST_LIMIT,
           offset: query.offset ?? 0,
           query: query.query,
-        });
+          temporalBounds,
+        };
+        const page = await pagesService.list(input);
         return status(StatusMap.OK, { ...page, items: page.items.map(pageSummaryResponse) });
       },
       {
         detail: { tags: ['Pages'], summary: 'List current knowledge pages' },
         query: KnowledgePageListQuerySchema,
-        response: { [StatusMap.OK]: KnowledgePageListSchema },
+        response: {
+          [StatusMap.OK]: KnowledgePageListSchema,
+          [StatusMap['Bad Request']]: ErrorResponseSchema,
+        },
       },
     );
 }

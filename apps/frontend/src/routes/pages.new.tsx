@@ -8,6 +8,7 @@ import { useCreatePage } from '../lib/hooks/use-create-page';
 
 const EMPTY_PAGE: KnowledgePageFormValues = {
   markdown: '# A focused idea\n\n',
+  temporalCoverage: null,
 };
 
 export const Route = createFileRoute('/pages/new')({

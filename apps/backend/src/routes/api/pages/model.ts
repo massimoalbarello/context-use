@@ -78,6 +78,7 @@ export const KnowledgePageListSchema = t.Object({
 export const KnowledgePageListQuerySchema = t.Object({
   ...PaginationQuerySchema.properties,
   query: t.Optional(t.String({ maxLength: MAX_KNOWLEDGE_PAGE_TITLE_LENGTH })),
+  time: t.Optional(t.String({ minLength: 1, maxLength: MAX_TEMPORAL_COVERAGE_LENGTH })),
 });
 
 export function pageSummaryResponse(page: KnowledgePageSummary) {

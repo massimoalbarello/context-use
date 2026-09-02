@@ -4,9 +4,11 @@ import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { resourceCardVariants } from '../knowledge/resource-list';
+import { TemporalCoverageLabel } from './temporal-coverage-label';
 
 type KnowledgePageName = Pick<KnowledgePageSummary, 'readableId' | 'title'>;
-type KnowledgePageIdentity = KnowledgePageName & Pick<KnowledgePageSummary, 'excerpt'>;
+type KnowledgePageIdentity = KnowledgePageName &
+  Pick<KnowledgePageSummary, 'excerpt' | 'temporalCoverage'>;
 
 type KnowledgePageLinkProps =
   | {
@@ -48,6 +50,9 @@ export function KnowledgePageCardContent({
             #{fragment}
           </span>
         )}
+        {page.temporalCoverage && (
+          <TemporalCoverageLabel className="text-xs" expression={page.temporalCoverage} />
+        )}
         {page.excerpt && (
           <small className="truncate text-muted-foreground text-xs leading-relaxed">
             {page.excerpt}
@@ -71,7 +76,7 @@ export function KnowledgePageLink({
         className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 transition hover:decoration-foreground"
         to="/pages/$id"
         params={{ id: page.readableId }}
-        search={{ view: 'preview' }}
+        search={(previous) => ({ ...previous, view: 'preview' })}
         hash={fragment}
       >
         {children ?? page.title}
@@ -81,10 +86,10 @@ export function KnowledgePageLink({
 
   return (
     <Link
-      className={cn(resourceCardVariants(), 'transition')}
+      className={cn(resourceCardVariants(), 'h-auto min-h-20 transition')}
       to="/pages/$id"
       params={{ id: page.readableId }}
-      search={{ view: 'preview' }}
+      search={(previous) => ({ ...previous, view: 'preview' })}
       hash={fragment}
       activeOptions={{ exact: true, includeSearch: false }}
       data-route-selected={active ? 'true' : undefined}

@@ -11,6 +11,8 @@ import type {
 } from '#models/knowledge-pages/model.ts';
 import {
   InvalidTemporalCoverageError,
+  type TemporalBounds,
+  temporalBoundsFrom,
   temporalCoverageFrom,
 } from '#models/knowledge-pages/temporal-coverage.ts';
 import {
@@ -63,6 +65,7 @@ export class KnowledgePagesService {
     if (typeof temporalCoverage !== 'string' && temporalCoverage !== null) {
       return temporalCoverage;
     }
+    const temporalBounds = temporalCoverage === null ? null : temporalBoundsFrom(temporalCoverage);
     const derivedReadableId = readableIdFrom(parsed.title);
     const readableId = input.allowDuplicate
       ? readableIdWithSuffix({
@@ -93,6 +96,8 @@ export class KnowledgePagesService {
         title: parsed.title,
         excerpt: parsed.excerpt,
         temporalCoverage,
+        temporalStart: temporalBounds?.start ?? null,
+        temporalEnd: temporalBounds?.end ?? null,
         storageKey,
         contentHash: contentHash(input.markdown),
         sizeBytes,
@@ -115,7 +120,13 @@ export class KnowledgePagesService {
     return { state: 'saved', page };
   }
 
-  list(input: { ownerId: string; limit: number; offset: number; query?: string }) {
+  list(input: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+    query?: string;
+    temporalBounds?: TemporalBounds;
+  }) {
     return this.pages.list(input);
   }
 
@@ -164,6 +175,7 @@ export class KnowledgePagesService {
     if (typeof temporalCoverage !== 'string' && temporalCoverage !== null) {
       return temporalCoverage;
     }
+    const temporalBounds = temporalCoverage === null ? null : temporalBoundsFrom(temporalCoverage);
     const revisionId = Bun.randomUUIDv7();
     const storageKey = this.storageKey({
       ownerId: input.ownerId,
@@ -186,6 +198,8 @@ export class KnowledgePagesService {
         title: parsed.title,
         excerpt: parsed.excerpt,
         temporalCoverage,
+        temporalStart: temporalBounds?.start ?? null,
+        temporalEnd: temporalBounds?.end ?? null,
         storageKey,
         contentHash: contentHash(input.markdown),
         sizeBytes,

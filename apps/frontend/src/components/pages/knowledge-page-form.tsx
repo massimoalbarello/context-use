@@ -1,3 +1,7 @@
+import {
+  MAX_TEMPORAL_COVERAGE_LENGTH,
+  parseTemporalCoverage,
+} from '@repo/backend/temporal-coverage';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { DuplicateResourceNameError } from '../../lib/api-error';
@@ -5,15 +9,21 @@ import { submitThenChangeValidation } from '../../lib/form-validation';
 import { useAssetSuggestions } from '../../lib/hooks/use-assets';
 import { useEntitySuggestions } from '../../lib/hooks/use-entities';
 import { usePageSuggestions } from '../../lib/hooks/use-pages';
+import { temporalCoverageMutation } from '../../lib/temporal-coverage';
 import { Button } from '../ui/button';
-import { Field, FieldDescription, FieldError, FieldGroup } from '../ui/field';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
+import { Input } from '../ui/input';
 import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
 
 export type KnowledgePageFormValues = {
   markdown: string;
+  temporalCoverage: string | null;
 };
 
-type KnowledgePageFormSubmission = KnowledgePageFormValues & { allowDuplicate?: boolean };
+type KnowledgePageFormSubmission = Omit<KnowledgePageFormValues, 'temporalCoverage'> & {
+  temporalCoverage?: string | null;
+  allowDuplicate?: boolean;
+};
 
 type KnowledgePageFormProps = {
   initialValues: KnowledgePageFormValues;
@@ -26,6 +36,19 @@ function validateMarkdown({ value }: { value: string }): string | undefined {
   return /^\s*# .+\n[\s\S]*\S/.test(value)
     ? undefined
     : 'Start with one H1 title and add content below it.';
+}
+
+function validateTemporalCoverage({ value }: { value: string }): string | undefined {
+  const normalized = value.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  try {
+    parseTemporalCoverage(normalized);
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message : 'Enter a supported subject time.';
+  }
 }
 
 export function KnowledgePageForm({
@@ -41,11 +64,20 @@ export function KnowledgePageForm({
   const { data: pageSuggestions = [] } = usePageSuggestions(knowledgeQuery);
   const { data: assetSuggestions = [] } = useAssetSuggestions(knowledgeQuery);
   const form = useForm({
-    defaultValues: { ...initialValues, allowDuplicate: false },
+    defaultValues: {
+      markdown: initialValues.markdown,
+      temporalCoverage: initialValues.temporalCoverage ?? '',
+      allowDuplicate: false,
+    },
     validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) => {
+      const temporalCoverage = temporalCoverageMutation({
+        initial: initialValues.temporalCoverage,
+        current: value.temporalCoverage,
+      });
       onSubmit({
         markdown: value.markdown.trim(),
+        ...(temporalCoverage === undefined ? {} : { temporalCoverage }),
         allowDuplicate: value.allowDuplicate || undefined,
       });
     },
@@ -82,6 +114,40 @@ export function KnowledgePageForm({
               <FieldDescription>
                 Keep one coherent idea here. Type @ to mention an entity, reference a page, or use
                 an asset; use H2 or lower headings for linkable sections.
+              </FieldDescription>
+              <FieldError>{field.state.meta.errors[0]}</FieldError>
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="temporalCoverage" validators={{ onDynamic: validateTemporalCoverage }}>
+          {(field) => (
+            <Field data-invalid={field.state.meta.errors.length > 0}>
+              <div className="flex items-center justify-between gap-3">
+                <FieldLabel htmlFor={field.name}>Subject time (optional)</FieldLabel>
+                {field.state.value && (
+                  <Button
+                    className="h-auto px-0 py-0 text-xs"
+                    type="button"
+                    variant="link"
+                    onClick={() => field.handleChange('')}
+                  >
+                    Clear subject time
+                  </Button>
+                )}
+              </div>
+              <Input
+                id={field.name}
+                name={field.name}
+                maxLength={MAX_TEMPORAL_COVERAGE_LENGTH}
+                placeholder="2025-03/2025-08"
+                value={field.state.value}
+                aria-invalid={field.state.meta.errors.length > 0}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+              />
+              <FieldDescription>
+                When the page’s subject occurred or applied—for example 2025, 2025-03~, 2025-03-14?,
+                or 2025-03/...
               </FieldDescription>
               <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>

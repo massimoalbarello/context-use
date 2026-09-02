@@ -3,14 +3,15 @@ import { WorkspaceEmpty } from '../components/knowledge/workspace-empty';
 import { pagesQueryOptions } from '../queries/pages';
 
 export const Route = createFileRoute('/pages/')({
-  loader: async ({ context }) => {
-    const pages = await context.queryClient.ensureInfiniteQueryData(pagesQueryOptions);
+  loaderDeps: ({ search }) => ({ time: search.time }),
+  loader: async ({ context, deps }) => {
+    const pages = await context.queryClient.ensureInfiniteQueryData(pagesQueryOptions(deps.time));
     const firstPage = pages.pages[0]?.items[0];
     if (firstPage) {
       throw redirect({
         to: '/pages/$id',
         params: { id: firstPage.readableId },
-        search: { view: 'preview' },
+        search: { time: deps.time, view: 'preview' },
       });
     }
   },
@@ -18,6 +19,18 @@ export const Route = createFileRoute('/pages/')({
 });
 
 function PagesIndexRoute() {
+  const { time } = Route.useSearch();
+  if (time) {
+    return (
+      <WorkspaceEmpty
+        eyebrow="Timeline"
+        title={`No pages overlap ${time}`}
+        description="Clear the subject-time filter in the sidebar or create a page with matching coverage."
+        createTo="/pages/new"
+        createLabel="Create a page"
+      />
+    );
+  }
   return (
     <WorkspaceEmpty
       eyebrow="Hypermedia"

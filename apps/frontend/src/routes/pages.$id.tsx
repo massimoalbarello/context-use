@@ -12,6 +12,7 @@ import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../components/pages/knowledge-page-markdown';
 import { KnowledgePageRevisions } from '../components/pages/knowledge-page-revisions';
+import { TemporalCoverageLabel } from '../components/pages/temporal-coverage-label';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -205,6 +206,13 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
         >
           Knowledge page
         </ResourceDetailHeading>
+        {page.temporalCoverage ? (
+          <TemporalCoverageLabel className="w-fit text-sm" expression={page.temporalCoverage} />
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            General knowledge · no subject time asserted
+          </p>
+        )}
       </DetailHeader>
 
       {archivePage.error && (
@@ -221,7 +229,10 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
             type="button"
             variant="outline"
             onClick={() => {
-              void navigate({ search: { view: 'links' }, hash: 'referenced-by' });
+              void navigate({
+                search: (previous) => ({ ...previous, view: 'links' }),
+                hash: 'referenced-by',
+              });
             }}
           >
             Review referring pages
@@ -232,15 +243,19 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
       {editing ? (
         <KnowledgePageForm
           key={page.revisionNumber}
-          initialValues={{ markdown: page.markdown }}
+          initialValues={{ markdown: page.markdown, temporalCoverage: page.temporalCoverage }}
           formId={PAGE_EDIT_FORM_ID}
           pending={updatePage.isPending}
           error={updatePage.error}
-          onSubmit={({ markdown }) =>
+          onSubmit={({ markdown, temporalCoverage }) =>
             updatePage.mutate(
               {
                 readableId: page.readableId,
-                body: { expectedRevisionNumber: page.revisionNumber, markdown },
+                body: {
+                  expectedRevisionNumber: page.revisionNumber,
+                  markdown,
+                  ...(temporalCoverage === undefined ? {} : { temporalCoverage }),
+                },
               },
               { onSuccess: () => setEditing(false) },
             )
@@ -252,7 +267,7 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
           value={view}
           onValueChange={(value) => {
             if (isPageView(value)) {
-              void navigate({ search: { view: value } });
+              void navigate({ search: (previous) => ({ ...previous, view: value }) });
             }
           }}
         >

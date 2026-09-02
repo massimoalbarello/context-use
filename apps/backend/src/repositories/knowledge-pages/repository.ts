@@ -11,6 +11,7 @@ import type {
   KnowledgePageSummary,
   StoredKnowledgePage,
 } from '#models/knowledge-pages/model.ts';
+import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import { entityFrom } from '#views/entities/entity-view.ts';
@@ -24,6 +25,8 @@ export interface KnowledgePagesRepositoryContract {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    temporalStart: number | null;
+    temporalEnd: number | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -43,6 +46,8 @@ export interface KnowledgePagesRepositoryContract {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    temporalStart: number | null;
+    temporalEnd: number | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -60,6 +65,7 @@ export interface KnowledgePagesRepositoryContract {
     limit: number;
     offset: number;
     query?: string;
+    temporalBounds?: TemporalBounds;
   }): Promise<Page<KnowledgePageSummary>>;
   listByEntity(input: {
     ownerId: string;
@@ -310,6 +316,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    temporalStart: number | null;
+    temporalEnd: number | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -353,11 +361,13 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       await db`
         insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
-           "temporal_coverage", "storage_key", "size_bytes", "content_hash", "author_kind",
+           "temporal_coverage", "temporal_start", "temporal_end", "storage_key", "size_bytes",
+           "content_hash", "author_kind",
            "author_mcp_client_authorization_id", "author_name", "created_at")
         values
           (${input.revisionId}, ${input.pageId}, ${input.ownerId}, 1, ${input.title},
-           ${input.excerpt}, ${input.temporalCoverage}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
+           ${input.excerpt}, ${input.temporalCoverage}, ${input.temporalStart}, ${input.temporalEnd},
+           ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
            ${author.kind}, ${author.clientAuthorizationId}, ${author.name}, ${input.createdAt})
       `;
       await insertLinks({
@@ -398,6 +408,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    temporalStart: number | null;
+    temporalEnd: number | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -458,11 +470,13 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       await db`
         insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
-           "temporal_coverage", "storage_key", "size_bytes", "content_hash", "author_kind",
+           "temporal_coverage", "temporal_start", "temporal_end", "storage_key", "size_bytes",
+           "content_hash", "author_kind",
            "author_mcp_client_authorization_id", "author_name", "created_at")
         values
           (${input.revisionId}, ${current.id}, ${input.ownerId}, ${revisionNumber}, ${input.title},
-           ${input.excerpt}, ${input.temporalCoverage}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
+           ${input.excerpt}, ${input.temporalCoverage}, ${input.temporalStart}, ${input.temporalEnd},
+           ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
            ${author.kind}, ${author.clientAuthorizationId}, ${author.name}, ${input.updatedAt})
       `;
       await insertLinks({
@@ -501,62 +515,80 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     limit,
     offset,
     query,
+    temporalBounds,
   }: {
     ownerId: string;
     limit: number;
     offset: number;
     query?: string;
+    temporalBounds?: TemporalBounds;
   }) {
     const normalizedQuery = query?.trim() || null;
-    const rowsPromise = normalizedQuery
-      ? this.sql.SearchKnowledgePages`
-          /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
-          select page."id", page."readable_id" as "readableId",
-            revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
-            revision."temporal_coverage" as "temporalCoverage",
-            page."created_at" as "createdAt", page."updated_at" as "updatedAt"
-          from "knowledge_page" page
-          join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
-          where page."owner_id" = ${ownerId}
-            and page."archived_at" is null
-            and (
-              instr(lower(revision."title"), lower(${normalizedQuery})) > 0
-              or instr(page."readable_id", lower(${normalizedQuery})) > 0
-            )
-          order by revision."title" collate nocase, page."readable_id"
-          limit ${limit} offset ${offset}
-        `
-      : this.sql.ListKnowledgePages`
-          /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
-          select page."id", page."readable_id" as "readableId",
-            revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
-            revision."temporal_coverage" as "temporalCoverage",
-            page."created_at" as "createdAt", page."updated_at" as "updatedAt"
-          from "knowledge_page" page
-          join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
-          where page."owner_id" = ${ownerId}
-            and page."archived_at" is null
-          order by page."updated_at" desc, page."id" desc
-          limit ${limit} offset ${offset}
-        `;
-    const countsPromise = normalizedQuery
-      ? this.sql.CountSearchedKnowledgePages`
-          /* @notNull total */
-          select count(*) as "total"
-          from "knowledge_page" page
-          join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
-          where page."owner_id" = ${ownerId}
-            and page."archived_at" is null
-            and (
-              instr(lower(revision."title"), lower(${normalizedQuery})) > 0
-              or instr(page."readable_id", lower(${normalizedQuery})) > 0
-            )
-        `
-      : this.sql.CountKnowledgePages`
-          /* @notNull total */
-          select count(*) as "total" from "knowledge_page"
-          where "owner_id" = ${ownerId} and "archived_at" is null
-        `;
+    const filterStart = temporalBounds?.start ?? null;
+    const filterEnd = temporalBounds?.end ?? null;
+    const rowsPromise = this.sql.SearchKnowledgePages`
+      /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
+      select page."id", page."readable_id" as "readableId",
+        revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+        revision."temporal_coverage" as "temporalCoverage",
+        page."created_at" as "createdAt", page."updated_at" as "updatedAt"
+      from "knowledge_page" page
+      join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+      where page."owner_id" = ${ownerId}
+        and page."archived_at" is null
+        and (
+          ${normalizedQuery} is null
+          or instr(lower(revision."title"), lower(${normalizedQuery})) > 0
+          or instr(page."readable_id", lower(${normalizedQuery})) > 0
+        )
+        and (
+          ${filterStart} is null
+          or (
+            revision."temporal_coverage" is not null
+            and (${filterEnd} is null or revision."temporal_start" < ${filterEnd})
+            and (revision."temporal_end" is null or revision."temporal_end" > ${filterStart})
+          )
+        )
+      order by
+        case
+          when ${normalizedQuery} is not null and ${filterStart} is null then 0
+          when revision."temporal_coverage" is not null and revision."temporal_end" is null then 0
+          when revision."temporal_coverage" is not null then 1
+          else 2
+        end,
+        case when ${normalizedQuery} is not null and ${filterStart} is null
+          then revision."title" end collate nocase,
+        case when revision."temporal_coverage" is not null and revision."temporal_end" is null
+          then revision."temporal_start" end desc,
+        case when revision."temporal_coverage" is not null and revision."temporal_end" is not null
+          then revision."temporal_end" end desc,
+        case when revision."temporal_coverage" is not null
+          then revision."temporal_start" end desc,
+        revision."title" collate nocase,
+        page."readable_id"
+      limit ${limit} offset ${offset}
+    `;
+    const countsPromise = this.sql.CountSearchedKnowledgePages`
+      /* @notNull total */
+      select count(*) as "total"
+      from "knowledge_page" page
+      join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+      where page."owner_id" = ${ownerId}
+        and page."archived_at" is null
+        and (
+          ${normalizedQuery} is null
+          or instr(lower(revision."title"), lower(${normalizedQuery})) > 0
+          or instr(page."readable_id", lower(${normalizedQuery})) > 0
+        )
+        and (
+          ${filterStart} is null
+          or (
+            revision."temporal_coverage" is not null
+            and (${filterEnd} is null or revision."temporal_start" < ${filterEnd})
+            and (revision."temporal_end" is null or revision."temporal_end" > ${filterStart})
+          )
+        )
+    `;
     const [rows, counts] = await Promise.all([rowsPromise, countsPromise]);
     return pageFrom({
       items: rows.map(summaryFrom),
@@ -587,7 +619,20 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
       where entity."owner_id" = ${ownerId} and entity."readable_id" = ${entityReadableId}
         and entity."archived_at" is null and page."archived_at" is null
-      order by page."updated_at" desc, page."id" desc
+      order by
+        case
+          when revision."temporal_coverage" is not null and revision."temporal_end" is null then 0
+          when revision."temporal_coverage" is not null then 1
+          else 2
+        end,
+        case when revision."temporal_coverage" is not null and revision."temporal_end" is null
+          then revision."temporal_start" end desc,
+        case when revision."temporal_coverage" is not null and revision."temporal_end" is not null
+          then revision."temporal_end" end desc,
+        case when revision."temporal_coverage" is not null
+          then revision."temporal_start" end desc,
+        revision."title" collate nocase,
+        page."readable_id"
     `;
     return rows.map(summaryFrom);
   }

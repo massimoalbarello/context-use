@@ -8,6 +8,7 @@ describe('knowledge page cards', () => {
         readableId: 'target-page',
         title: 'Target page',
         excerpt: 'The page summary.',
+        temporalCoverage: null,
       },
       presentation: 'card',
       active: true,
@@ -16,11 +17,11 @@ describe('knowledge page cards', () => {
     expect(link).toMatchObject({
       props: {
         params: { id: 'target-page' },
-        search: { view: 'preview' },
         activeOptions: { exact: true, includeSearch: false },
         'data-route-selected': 'true',
         'aria-current': 'page',
       },
     });
+    expect(link.props.search({ time: '2025' })).toEqual({ time: '2025', view: 'preview' });
   });
 });

@@ -26,18 +26,22 @@ export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
 export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
 export const pageSuggestionsQueryKey = [...pagesQueryKey, 'suggestions'] as const;
 
-export const pagesQueryOptions = infiniteQueryOptions({
-  queryKey: pagesListQueryKey,
-  initialPageParam: 0,
-  queryFn: async ({ pageParam }) => {
-    const { data, error } = await api.api.pages.get({ query: { offset: pageParam } });
-    if (error) {
-      throw new Error(apiErrorMessage(error));
-    }
-    return data;
-  },
-  getNextPageParam: (page) => page.nextOffset ?? undefined,
-});
+export function pagesQueryOptions(time?: string) {
+  return infiniteQueryOptions({
+    queryKey: [...pagesListQueryKey, { time: time ?? null }],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await api.api.pages.get({
+        query: { offset: pageParam, time },
+      });
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+    getNextPageParam: (page) => page.nextOffset ?? undefined,
+  });
+}
 
 export function pageSuggestionsQueryOptions(query: string) {
   return queryOptions({
