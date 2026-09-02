@@ -1,7 +1,6 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
-import { useNavigate } from '@tanstack/react-router';
-import { File, FileText, Minus, Plus, Scan, Waypoints } from 'lucide-react';
+import { File, FileText, Minus, Plus, Scan } from 'lucide-react';
 import { type PointerEvent as ReactPointerEvent, useRef, useState, type WheelEvent } from 'react';
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
@@ -25,6 +24,11 @@ type MapPreview =
   | { kind: 'asset'; asset: KnowledgeMapAsset };
 
 type ViewBox = { x: number; y: number; width: number; height: number };
+
+export type KnowledgeMapSelection = {
+  kind: 'page' | 'entity' | 'asset';
+  readableId: string;
+};
 
 function previewKey(preview: MapPreview): string {
   if (preview.kind === 'page') {
@@ -69,19 +73,6 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
         <p className="line-clamp-3 text-muted-foreground text-sm leading-relaxed">
           {page.excerpt || 'This page has no excerpt.'}
         </p>
-        <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
-          <span>{page.mentions.length} entities</span>
-          <span aria-hidden="true">·</span>
-          <span>{page.assetUsages.length} assets</span>
-          <span aria-hidden="true">·</span>
-          <span>{page.references.length} page references</span>
-          {page.temporalCoverage && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>{page.temporalCoverage}</span>
-            </>
-          )}
-        </div>
       </div>
     );
   }
@@ -227,23 +218,38 @@ function ResourceDot({
       >
         {shortLabel(label, 22)}
       </text>
-      <text
-        x={resource.point.x}
-        y={resource.point.y + radius + 32}
-        textAnchor="middle"
-        className="pointer-events-none fill-muted-foreground font-mono text-[9px] uppercase tracking-[0.14em]"
-      >
-        {resource.kind}
-      </text>
     </a>
   );
 }
 
-export function KnowledgeMapCanvas({ pages }: { pages: KnowledgeMapPage[] }) {
-  const navigate = useNavigate();
-  const layout = buildKnowledgeMapLayout(pages);
+function focusedViewBox({
+  bounds,
+  focusPoint,
+}: ReturnType<typeof buildKnowledgeMapLayout>): ViewBox {
+  const width = Math.max(720, Math.min(1100, bounds.width));
+  const height = Math.max(500, Math.min(760, bounds.height));
+  return {
+    x: focusPoint.x - width / 2,
+    y: focusPoint.y - height / 2,
+    width,
+    height,
+  };
+}
+
+export function KnowledgeMapCanvas({
+  pages,
+  anchorEntity,
+  selectedKey,
+  onSelect,
+}: {
+  pages: KnowledgeMapPage[];
+  anchorEntity: KnowledgeMapEntity;
+  selectedKey?: string;
+  onSelect: (selection: KnowledgeMapSelection) => void;
+}) {
+  const layout = buildKnowledgeMapLayout(pages, { anchorEntity });
   const [preview, setPreview] = useState<MapPreview | null>(null);
-  const [viewBox, setViewBox] = useState<ViewBox>(layout.bounds);
+  const [viewBox, setViewBox] = useState<ViewBox>(() => focusedViewBox(layout));
   const [panning, setPanning] = useState(false);
   const drag = useRef<{
     pointerId: number;
@@ -251,7 +257,7 @@ export function KnowledgeMapCanvas({ pages }: { pages: KnowledgeMapPage[] }) {
     clientY: number;
     viewBox: ViewBox;
   } | null>(null);
-  const activeKey = preview ? previewKey(preview) : undefined;
+  const activeKey = preview ? previewKey(preview) : selectedKey;
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
     setViewBox((current) => {
@@ -329,6 +335,7 @@ export function KnowledgeMapCanvas({ pages }: { pages: KnowledgeMapPage[] }) {
           'size-full touch-none select-none bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] [background-size:22px_22px]',
           panning ? 'cursor-grabbing' : 'cursor-grab',
         )}
+        aria-label="Interactive knowledge map"
         viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
         preserveAspectRatio="xMidYMid meet"
         onWheel={handleWheel}
@@ -338,7 +345,6 @@ export function KnowledgeMapCanvas({ pages }: { pages: KnowledgeMapPage[] }) {
         onPointerCancel={handlePointerEnd}
         onDoubleClick={() => setViewBox(layout.bounds)}
       >
-        <title>Interactive knowledge map</title>
         <defs>
           <marker
             id="map-reference-arrow"
@@ -351,9 +357,6 @@ export function KnowledgeMapCanvas({ pages }: { pages: KnowledgeMapPage[] }) {
           >
             <path d="M 0 0 L 10 5 L 0 10 z" className="fill-muted-foreground" />
           </marker>
-          <filter id="map-label-shadow" x="-30%" y="-50%" width="160%" height="200%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.12" />
-          </filter>
         </defs>
 
         {layout.pages.map((item) => {
@@ -421,45 +424,19 @@ export function KnowledgeMapCanvas({ pages }: { pages: KnowledgeMapPage[] }) {
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                void navigate({
-                  to: '/pages/$id',
-                  params: { id: item.page.readableId },
-                  search: { view: 'preview' },
-                });
+                onSelect({ kind: 'page', readableId: item.page.readableId });
               }}
             >
-              <rect
-                x={item.point.x - 84}
-                y={item.point.y - 25}
-                width="168"
-                height="50"
-                rx="18"
+              <text
+                x={item.point.x}
+                y={item.point.y + 4}
+                textAnchor="middle"
                 className={cn(
-                  'fill-card stroke-[1.5] stroke-border transition-[stroke-width] motion-reduce:transition-none',
-                  active && 'stroke-[2.5] stroke-foreground',
+                  'fill-foreground stroke-[7] stroke-card font-semibold text-[13px] [paint-order:stroke] [stroke-linejoin:round]',
+                  active && 'underline decoration-2 underline-offset-4',
                 )}
-                filter="url(#map-label-shadow)"
-              />
-              <g
-                transform={`translate(${item.point.x - 67} ${item.point.y - 10})`}
-                className="fill-none stroke-[1.6] stroke-muted-foreground"
               >
-                <path d="M1 0h10l5 5v15H1z" />
-                <path d="M11 0v5h5" />
-              </g>
-              <text
-                x={item.point.x - 43}
-                y={item.point.y + 2}
-                className="fill-foreground font-semibold text-[12px]"
-              >
-                {shortLabel(item.page.title, 20)}
-              </text>
-              <text
-                x={item.point.x - 43}
-                y={item.point.y + 16}
-                className="fill-muted-foreground font-mono text-[8px] uppercase tracking-[0.13em]"
-              >
-                page cloud
+                {shortLabel(item.page.title, 28)}
               </text>
             </a>
           );
@@ -479,15 +456,9 @@ export function KnowledgeMapCanvas({ pages }: { pages: KnowledgeMapPage[] }) {
               onPreviewEnd={() => clearPreview(resource.key)}
               onActivate={() => {
                 if (resource.kind === 'entity') {
-                  void navigate({
-                    to: '/entities/$id',
-                    params: { id: resource.entity.readableId },
-                  });
+                  onSelect({ kind: 'entity', readableId: resource.entity.readableId });
                 } else {
-                  void navigate({
-                    to: '/assets/$id',
-                    params: { id: resource.asset.readableId },
-                  });
+                  onSelect({ kind: 'asset', readableId: resource.asset.readableId });
                 }
               }}
             />
@@ -495,12 +466,7 @@ export function KnowledgeMapCanvas({ pages }: { pages: KnowledgeMapPage[] }) {
         })}
       </svg>
 
-      <div className="pointer-events-none absolute top-4 left-4 flex items-center gap-2 rounded-xl border bg-card/90 px-3 py-2 shadow-sm backdrop-blur">
-        <Waypoints className="size-4 text-muted-foreground" aria-hidden="true" />
-        <span className="font-medium text-sm">Drag to move · scroll to zoom</span>
-      </div>
-
-      <div className="absolute right-4 bottom-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
+      <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
         <Button
           type="button"
           variant="ghost"
@@ -530,15 +496,12 @@ export function KnowledgeMapCanvas({ pages }: { pages: KnowledgeMapPage[] }) {
         </Button>
       </div>
 
-      {preview && (
+      {preview && !selectedKey && (
         <div
-          className="pointer-events-none absolute bottom-4 left-4 w-[min(22rem,calc(100%-6rem))] rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur"
+          className="pointer-events-none absolute bottom-4 left-18 w-[min(20rem,calc(100%-7rem))] rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur"
           aria-live="polite"
         >
           <PreviewCard preview={preview} />
-          <p className="mt-3 text-[0.68rem] text-muted-foreground uppercase tracking-[0.12em]">
-            Select to open
-          </p>
         </div>
       )}
     </section>

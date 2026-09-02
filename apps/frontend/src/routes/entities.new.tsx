@@ -45,9 +45,9 @@ function NewEntityRoute() {
         onSubmit={(values) => {
           if (!profile) {
             createProfile.mutate(values, {
-              onSuccess: async ({ selfEntity }) => {
+              onSuccess: async () => {
                 await navigate({
-                  href: redirectTo ?? `/entities/${selfEntity.readableId}`,
+                  href: redirectTo ?? '/map',
                 });
               },
             });

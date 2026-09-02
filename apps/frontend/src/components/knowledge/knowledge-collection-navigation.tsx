@@ -15,7 +15,10 @@ import {
   SelectValue,
 } from '../ui/select';
 
-const COLLECTIONS: Array<{ value: KnowledgeCollection; label: string }> = [
+type KnowledgeDestination = KnowledgeCollection | 'map';
+
+const DESTINATIONS: Array<{ value: KnowledgeDestination; label: string }> = [
+  { value: 'map', label: 'Map' },
   { value: 'entities', label: 'Entities' },
   { value: 'pages', label: 'Pages' },
   { value: 'assets', label: 'Assets' },
@@ -25,7 +28,7 @@ export function KnowledgeCollectionNavigation({
   collection,
   ownerEntityReadableId,
 }: {
-  collection: KnowledgeCollection;
+  collection: KnowledgeDestination;
   ownerEntityReadableId: string;
 }) {
   const navigate = useNavigate();
@@ -37,7 +40,10 @@ export function KnowledgeCollectionNavigation({
     typeof window === 'undefined'
       ? {}
       : Object.fromEntries(
-          COLLECTIONS.map(({ value }) => [
+          DESTINATIONS.filter(
+            (destination): destination is { value: KnowledgeCollection; label: string } =>
+              destination.value !== 'map',
+          ).map(({ value }) => [
             value,
             readRememberedKnowledgeResource({
               storage: window.sessionStorage,
@@ -85,23 +91,22 @@ export function KnowledgeCollectionNavigation({
 
   return (
     <Select
-      items={COLLECTIONS}
+      items={DESTINATIONS}
       value={collection}
       onValueChange={(nextCollection) => {
-        if (nextCollection) {
+        if (nextCollection === 'map') {
+          void navigate({ to: '/map' });
+        } else if (nextCollection) {
           openCollection(nextCollection);
         }
       }}
     >
-      <SelectTrigger
-        className="h-10 min-w-0 flex-1 font-semibold"
-        aria-label="Knowledge collection"
-      >
+      <SelectTrigger className="h-10 min-w-0 flex-1 font-semibold" aria-label="Knowledge view">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          {COLLECTIONS.map((option) => (
+          {DESTINATIONS.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
             </SelectItem>

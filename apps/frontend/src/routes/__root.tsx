@@ -16,7 +16,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       throw redirect({ to: '/setup', search: { redirect: location.href } });
     }
     if (session && profile && setupPath) {
-      throw redirect({ to: '/entities' });
+      throw redirect({ to: '/map' });
     }
     return { session, profile };
   },

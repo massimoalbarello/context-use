@@ -4,7 +4,7 @@ import { FormShell } from '../components/layout/form-shell';
 import { internalAppPath } from '../lib/internal-app-path';
 import { ownerRegistrationQueryOptions } from '../queries/owner-registration';
 
-const DEFAULT_REDIRECT = '/pages';
+const DEFAULT_REDIRECT = '/map';
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({

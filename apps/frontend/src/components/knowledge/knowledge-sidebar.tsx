@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Plus, Waypoints } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
 import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
@@ -50,14 +50,6 @@ export function KnowledgeSidebar({
             ownerEntityReadableId={profile.selfEntity.readableId}
           />
           <div className="flex shrink-0 items-center gap-1">
-            <Link
-              className={buttonVariants({ variant: 'ghost', size: 'icon-lg' })}
-              to="/map"
-              aria-label="Open knowledge map"
-              title="Knowledge map"
-            >
-              <Waypoints aria-hidden="true" />
-            </Link>
             <Link
               className={cn(buttonVariants({ size: 'icon-lg' }), 'shrink-0')}
               to={createTo}

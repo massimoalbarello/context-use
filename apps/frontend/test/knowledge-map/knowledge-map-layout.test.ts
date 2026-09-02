@@ -7,13 +7,23 @@ import {
 import type { KnowledgeMapEntity, KnowledgeMapPage } from '../../src/queries/knowledge-map';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
+const MINIMUM_RESOURCE_DISTANCE = 116;
+const CROWDED_NEIGHBOR_COUNT = 12;
 
-function entity({ readableId, name }: { readableId: string; name: string }): KnowledgeMapEntity {
+function entity({
+  readableId,
+  name,
+  isSelf = false,
+}: {
+  readableId: string;
+  name: string;
+  isSelf?: boolean;
+}): KnowledgeMapEntity {
   return {
     readableId,
     name,
     description: `${name} description`,
-    isSelf: false,
+    isSelf,
     image: null,
     createdAt,
     updatedAt: createdAt,
@@ -64,6 +74,35 @@ describe('knowledge map layout', () => {
       true,
     );
     expect(layout.references).toHaveLength(1);
+  });
+
+  test('anchors the initial focus on self and keeps resource dots apart', () => {
+    const self = entity({ readableId: 'alex', name: 'Alex', isSelf: true });
+    const neighbors: KnowledgeMapEntity[] = [];
+    for (let index = 0; index < CROWDED_NEIGHBOR_COUNT; index += 1) {
+      neighbors.push(entity({ readableId: `neighbor-${index}`, name: `Neighbor ${index}` }));
+    }
+    const layout = buildKnowledgeMapLayout(
+      [
+        page({
+          readableId: 'crowded-page',
+          title: 'Crowded page',
+          mentions: [self, ...neighbors],
+        }),
+      ],
+      { anchorEntity: self },
+    );
+    const selfResource = layout.resources.find(({ key }) => key === 'entity:alex');
+
+    expect(selfResource).toBeDefined();
+    expect(layout.focusPoint).toEqual(selfResource!.point);
+    for (const [index, resource] of layout.resources.entries()) {
+      for (const other of layout.resources.slice(index + 1)) {
+        expect(
+          Math.hypot(resource.point.x - other.point.x, resource.point.y - other.point.y),
+        ).toBeGreaterThanOrEqual(MINIMUM_RESOURCE_DISTANCE);
+      }
+    }
   });
 
   test('filters a neighborhood through page, entity, and asset preview text', () => {
