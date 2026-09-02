@@ -28,7 +28,7 @@ function SetupRoute() {
           Set up Context Use with your agent
         </h1>
         <p className="text-lg text-muted-foreground leading-relaxed">
-          Connect once, then your agent can start curating your context.
+          Connect via MCP and let your agent start curating your context.
         </p>
       </header>
 
