@@ -301,6 +301,71 @@ export interface IListKnowledgePagesByEntityResult {
     updatedAt: string;
 }
 
+/** Result of query `ListKnowledgeMapPages`. */
+export interface IListKnowledgeMapPagesResult {
+    id: string;
+    readableId: string;
+    revisionNumber: number;
+    title: string;
+    excerpt: string;
+    temporalCoverage: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Result of query `CountKnowledgeMapPages`. */
+export interface ICountKnowledgeMapPagesResult {
+    total: number;
+}
+
+/** Result of query `ListKnowledgeMapMentions`. */
+export interface IListKnowledgeMapMentionsResult {
+    sourcePageReadableId: string;
+    id: string;
+    readableId: string;
+    name: string;
+    description: string;
+    isSelf: number;
+    createdAt: string;
+    updatedAt: string;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
+}
+
+/** Result of query `ListKnowledgeMapReferences`. */
+export interface IListKnowledgeMapReferencesResult {
+    sourcePageReadableId: string;
+    id: string;
+    readableId: string;
+    revisionNumber: number;
+    title: string;
+    excerpt: string;
+    temporalCoverage: string | null;
+    createdAt: string;
+    updatedAt: string;
+    fragment: string;
+}
+
+/** Result of query `ListKnowledgeMapAssetUsages`. */
+export interface IListKnowledgeMapAssetUsagesResult {
+    sourcePageReadableId: string;
+    id: string;
+    readableId: string;
+    name: string;
+    mediaType: string;
+    extension: string | null;
+    sizeBytes: number;
+    createdAt: string;
+    updatedAt: string;
+    presentation: string;
+}
+
 /** Result of query `FindKnowledgePage`. */
 export interface IFindKnowledgePageResult {
     id: string;
@@ -557,6 +622,11 @@ export interface Queries {
     SearchKnowledgePages: ISearchKnowledgePagesResult;
     CountSearchedKnowledgePages: ICountSearchedKnowledgePagesResult;
     ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;
+    ListKnowledgeMapPages: IListKnowledgeMapPagesResult;
+    CountKnowledgeMapPages: ICountKnowledgeMapPagesResult;
+    ListKnowledgeMapMentions: IListKnowledgeMapMentionsResult;
+    ListKnowledgeMapReferences: IListKnowledgeMapReferencesResult;
+    ListKnowledgeMapAssetUsages: IListKnowledgeMapAssetUsagesResult;
     FindKnowledgePage: IFindKnowledgePageResult;
     FindKnowledgePageArchiveTarget: IFindKnowledgePageArchiveTargetResult;
     ListKnowledgePageMentions: IListKnowledgePageMentionsResult;

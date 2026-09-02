@@ -7,6 +7,7 @@ import { createAuthController } from '#routes/api/auth/controller.ts';
 import { createEntityReadableIdController } from '#routes/api/entities/[entityReadableId]/controller.ts';
 import { createEntitiesController } from '#routes/api/entities/controller.ts';
 import { createHealthController } from '#routes/api/health/controller.ts';
+import { createKnowledgeMapController } from '#routes/api/knowledge-map/controller.ts';
 import { createMcpClientsController } from '#routes/api/mcp/clients/controller.ts';
 import { createOwnerRegistrationController } from '#routes/api/owner-registration/controller.ts';
 import { createPageReadableIdController } from '#routes/api/pages/[pageReadableId]/controller.ts';
@@ -56,6 +57,7 @@ export function createApiController({
     .use(createAssetReadableIdController({ auth, assetsService }))
     .use(createEntitiesController({ auth, entitiesService }))
     .use(createEntityReadableIdController({ auth, entitiesService }))
+    .use(createKnowledgeMapController({ auth, pagesService }))
     .use(createPagesController({ auth, pagesService }))
     .use(createPageReadableIdController({ auth, pagesService }))
     .use(createKnowledgeProfileController({ auth, profilesService }))

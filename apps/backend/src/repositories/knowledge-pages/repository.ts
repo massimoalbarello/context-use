@@ -3,6 +3,8 @@ import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#lib/pagination.ts';
 import type { Entity } from '#models/entities/model.ts';
 import type {
+  KnowledgeMap,
+  KnowledgeMapPage,
   KnowledgePageAssetUsage,
   KnowledgePageLinkSet,
   KnowledgePageReference,
@@ -70,6 +72,7 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     entityReadableId: string;
   }): Promise<KnowledgePageSummary[]>;
+  map(input: { ownerId: string; limit: number }): Promise<KnowledgeMap>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredKnowledgePage | null>;
   archive(input: {
     ownerId: string;
@@ -179,6 +182,8 @@ function revisionSummaryFrom(row: RevisionSummaryRow): KnowledgePageRevisionSumm
   }
   throw new Error('Knowledge page revision has invalid author attribution');
 }
+
+const MAX_KNOWLEDGE_MAP_RELATIONSHIPS = 600;
 
 async function findCurrentKnowledgePage({
   db,
@@ -656,6 +661,166 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         page."readable_id"
     `;
     return rows.map(summaryFrom);
+  }
+
+  async map({ ownerId, limit }: { ownerId: string; limit: number }): Promise<KnowledgeMap> {
+    const relationshipLimit = MAX_KNOWLEDGE_MAP_RELATIONSHIPS + 1;
+    const [pageRows, countRows] = await Promise.all([
+      this.sql.ListKnowledgeMapPages`
+        /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
+        select page."id", page."readable_id" as "readableId",
+          revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+          revision."temporal_coverage" as "temporalCoverage",
+          page."created_at" as "createdAt", page."updated_at" as "updatedAt"
+        from "knowledge_page" page
+        join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+        where page."owner_id" = ${ownerId} and page."archived_at" is null
+        order by page."updated_at" desc, page."readable_id"
+        limit ${limit}
+      `,
+      this.sql.CountKnowledgeMapPages`
+        /* @notNull total */
+        select count(*) as "total"
+        from "knowledge_page"
+        where "owner_id" = ${ownerId} and "archived_at" is null
+      `,
+    ]);
+    const pages = pageRows.map(
+      (row): KnowledgeMapPage => ({
+        ...summaryFrom(row),
+        mentions: [],
+        references: [],
+        assetUsages: [],
+      }),
+    );
+    if (pages.length === 0) {
+      return { pages, totalPages: 0, truncated: false };
+    }
+
+    const [mentionRows, referenceRows, assetUsageRows] = await Promise.all([
+      this.sql.ListKnowledgeMapMentions`
+        /* @notNull sourcePageReadableId id readableId name description createdAt updatedAt */
+        /* @type isSelf number */
+        with selected_page as (
+          select "id", "readable_id", "current_revision_id"
+          from "knowledge_page"
+          where "owner_id" = ${ownerId} and "archived_at" is null
+          order by "updated_at" desc, "readable_id"
+          limit ${limit}
+        )
+        select selected_page."readable_id" as "sourcePageReadableId",
+          entity."id", entity."readable_id" as "readableId", entity."name",
+          entity."description", profile."self_entity_id" is not null as "isSelf",
+          entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
+          image."id" as "imageId", image."readable_id" as "imageReadableId",
+          image."name" as "imageName", image."media_type" as "imageMediaType",
+          image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
+          image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt"
+        from selected_page
+        join "knowledge_page_entity_mention" mention
+          on mention."source_revision_id" = selected_page."current_revision_id"
+         and mention."owner_id" = ${ownerId}
+        join "entity" entity
+          on entity."id" = mention."target_entity_id" and entity."owner_id" = mention."owner_id"
+        left join "knowledge_profile" profile
+          on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
+        left join "asset" image
+          on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
+         and image."archived_at" is null
+        where entity."archived_at" is null
+        order by selected_page."readable_id", entity."name" collate nocase, entity."readable_id"
+        limit ${relationshipLimit}
+      `,
+      this.sql.ListKnowledgeMapReferences`
+        /* @notNull sourcePageReadableId id readableId revisionNumber title excerpt createdAt updatedAt fragment */
+        with selected_page as (
+          select "id", "readable_id", "current_revision_id"
+          from "knowledge_page"
+          where "owner_id" = ${ownerId} and "archived_at" is null
+          order by "updated_at" desc, "readable_id"
+          limit ${limit}
+        )
+        select source_page."readable_id" as "sourcePageReadableId",
+          target_page."id", target_page."readable_id" as "readableId",
+          target_revision."revision_number" as "revisionNumber", target_revision."title",
+          target_revision."excerpt", target_revision."temporal_coverage" as "temporalCoverage",
+          target_page."created_at" as "createdAt", target_page."updated_at" as "updatedAt",
+          reference."target_fragment" as "fragment"
+        from selected_page source_page
+        join "knowledge_page_reference" reference
+          on reference."source_revision_id" = source_page."current_revision_id"
+         and reference."owner_id" = ${ownerId}
+        join selected_page selected_target on selected_target."id" = reference."target_page_id"
+        join "knowledge_page" target_page
+          on target_page."id" = selected_target."id" and target_page."owner_id" = reference."owner_id"
+        join "knowledge_page_revision" target_revision
+          on target_revision."id" = target_page."current_revision_id"
+        order by source_page."readable_id", target_page."readable_id", reference."target_fragment"
+        limit ${relationshipLimit}
+      `,
+      this.sql.ListKnowledgeMapAssetUsages`
+        /* @notNull sourcePageReadableId id readableId name mediaType sizeBytes createdAt updatedAt presentation */
+        with selected_page as (
+          select "id", "readable_id", "current_revision_id"
+          from "knowledge_page"
+          where "owner_id" = ${ownerId} and "archived_at" is null
+          order by "updated_at" desc, "readable_id"
+          limit ${limit}
+        )
+        select selected_page."readable_id" as "sourcePageReadableId",
+          asset."id", asset."readable_id" as "readableId", asset."name",
+          asset."media_type" as "mediaType", asset."extension",
+          asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt",
+          asset."updated_at" as "updatedAt", usage."presentation"
+        from selected_page
+        join "knowledge_page_asset_usage" usage
+          on usage."source_revision_id" = selected_page."current_revision_id"
+         and usage."owner_id" = ${ownerId}
+        join "asset" asset
+          on asset."id" = usage."target_asset_id" and asset."owner_id" = usage."owner_id"
+        where asset."archived_at" is null
+        order by selected_page."readable_id", asset."name" collate nocase, asset."readable_id",
+          usage."presentation"
+        limit ${relationshipLimit}
+      `,
+    ]);
+
+    const pagesByReadableId = new Map(pages.map((page) => [page.readableId, page]));
+    for (const { sourcePageReadableId, ...entity } of mentionRows.slice(
+      0,
+      MAX_KNOWLEDGE_MAP_RELATIONSHIPS,
+    )) {
+      pagesByReadableId.get(sourcePageReadableId)?.mentions.push(entityFrom(entity));
+    }
+    for (const { sourcePageReadableId, fragment, ...page } of referenceRows.slice(
+      0,
+      MAX_KNOWLEDGE_MAP_RELATIONSHIPS,
+    )) {
+      pagesByReadableId.get(sourcePageReadableId)?.references.push({
+        page: summaryFrom(page),
+        fragment: fragment || null,
+      });
+    }
+    for (const { sourcePageReadableId, presentation, ...asset } of assetUsageRows.slice(
+      0,
+      MAX_KNOWLEDGE_MAP_RELATIONSHIPS,
+    )) {
+      pagesByReadableId.get(sourcePageReadableId)?.assetUsages.push({
+        asset: { ...asset, sizeBytes: Number(asset.sizeBytes) },
+        presentation: presentation === 'embed' ? 'embed' : 'attachment',
+      });
+    }
+
+    const totalPages = Number(countRows[0]?.total ?? 0);
+    return {
+      pages,
+      totalPages,
+      truncated:
+        totalPages > pages.length ||
+        mentionRows.length > MAX_KNOWLEDGE_MAP_RELATIONSHIPS ||
+        referenceRows.length > MAX_KNOWLEDGE_MAP_RELATIONSHIPS ||
+        assetUsageRows.length > MAX_KNOWLEDGE_MAP_RELATIONSHIPS,
+    };
   }
 
   async find({

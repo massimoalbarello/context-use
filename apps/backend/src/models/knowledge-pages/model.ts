@@ -51,6 +51,18 @@ export interface KnowledgePage extends KnowledgePageSummary {
   revisions: KnowledgePageRevisionSummary[];
 }
 
+export interface KnowledgeMapPage extends KnowledgePageSummary {
+  mentions: Entity[];
+  references: KnowledgePageReference[];
+  assetUsages: KnowledgePageAssetUsage[];
+}
+
+export interface KnowledgeMap {
+  pages: KnowledgeMapPage[];
+  totalPages: number;
+  truncated: boolean;
+}
+
 export interface StoredKnowledgePage extends KnowledgePageSummary {
   ownerId: string;
   currentRevisionId: string;

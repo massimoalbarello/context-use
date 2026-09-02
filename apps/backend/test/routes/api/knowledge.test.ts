@@ -515,6 +515,45 @@ Every observation changes the next action.`,
       ].sort(),
     );
 
+    const knowledgeMapResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/knowledge-map?limit=5' }),
+    );
+    expect(knowledgeMapResponse.status).toBe(StatusMap.OK);
+    const knowledgeMap = (await knowledgeMapResponse.json()) as {
+      pages: Array<{
+        readableId: string;
+        mentions: Array<{ readableId: string }>;
+        references: Array<{ page: { readableId: string }; fragment: string | null }>;
+      }>;
+      totalPages: number;
+      truncated: boolean;
+    };
+    expectNoInternalResourceIds(knowledgeMap);
+    expect(knowledgeMap.totalPages).toBe(EXPECTED_PAGE_COUNT);
+    expect(knowledgeMap.truncated).toBe(false);
+    expect(knowledgeMap.pages.find(({ readableId }) => readableId === 'operating-rhythm')).toEqual(
+      expect.objectContaining({
+        mentions: [expect.objectContaining({ readableId: 'temporal-subject' })],
+        references: [
+          {
+            page: expect.objectContaining({ readableId: 'growth-playbook' }),
+            fragment: 'feedback-loop',
+          },
+        ],
+      }),
+    );
+
+    const boundedKnowledgeMapResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/knowledge-map?limit=2' }),
+    );
+    expect(await boundedKnowledgeMapResponse.json()).toEqual(
+      expect.objectContaining({
+        pages: expect.any(Array),
+        totalPages: EXPECTED_PAGE_COUNT,
+        truncated: true,
+      }),
+    );
+
     const overlappingPagesResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0&time=2025-04' }),
     );

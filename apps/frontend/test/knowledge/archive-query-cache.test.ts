@@ -17,6 +17,7 @@ import {
   entityQueryOptions,
   entitySuggestionsQueryKey,
 } from '../../src/queries/entities';
+import { knowledgeMapQueryKey } from '../../src/queries/knowledge-map';
 import {
   pageDetailsQueryKey,
   pageQueryOptions,
@@ -40,6 +41,7 @@ test('page archive removes its unavailable detail without refetching it', async 
   queryClient.setQueryData([...assetDetailsQueryKey, 'quarterly-chart'], {
     readableId: 'quarterly-chart',
   });
+  queryClient.setQueryData(knowledgeMapQueryKey, { pages: [] });
 
   const archivedDetailObserver = new QueryObserver(queryClient, {
     queryKey: archivedDetailQueryKey,
@@ -71,6 +73,7 @@ test('page archive removes its unavailable detail without refetching it', async 
   expect(
     queryClient.getQueryState([...assetDetailsQueryKey, 'quarterly-chart'])?.isInvalidated,
   ).toBe(true);
+  expect(queryClient.getQueryState(knowledgeMapQueryKey)?.isInvalidated).toBe(true);
 
   unsubscribe();
 });
@@ -83,6 +86,7 @@ test('asset archive removes its unavailable detail and refreshes asset discovery
   });
   queryClient.setQueryData(assetsListQueryKey, { items: [] });
   queryClient.setQueryData([...assetSuggestionsQueryKey, 'quarter'], []);
+  queryClient.setQueryData(knowledgeMapQueryKey, { pages: [] });
 
   settleArchivedAssetQueries({
     queryClient,
@@ -95,6 +99,7 @@ test('asset archive removes its unavailable detail and refreshes asset discovery
   expect(queryClient.getQueryState([...assetSuggestionsQueryKey, 'quarter'])?.isInvalidated).toBe(
     true,
   );
+  expect(queryClient.getQueryState(knowledgeMapQueryKey)?.isInvalidated).toBe(true);
 });
 
 test('entity archive refreshes only its active collections and pickers', () => {
@@ -106,6 +111,7 @@ test('entity archive refreshes only its active collections and pickers', () => {
   queryClient.setQueryData([...pageDetailsQueryKey, 'project-brief'], {
     readableId: 'project-brief',
   });
+  queryClient.setQueryData(knowledgeMapQueryKey, { pages: [] });
 
   settleArchivedEntityQueries({
     queryClient,
@@ -121,6 +127,7 @@ test('entity archive refreshes only its active collections and pickers', () => {
   expect(queryClient.getQueryState([...pageDetailsQueryKey, 'project-brief'])?.isInvalidated).toBe(
     false,
   );
+  expect(queryClient.getQueryState(knowledgeMapQueryKey)?.isInvalidated).toBe(true);
 });
 
 test('archive conflict keeps and refreshes the still-available detail', () => {

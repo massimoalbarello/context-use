@@ -13,6 +13,7 @@ import {
   entityQueryOptions,
   entitySuggestionsQueryKey,
 } from '../../queries/entities';
+import { knowledgeMapQueryKey } from '../../queries/knowledge-map';
 import {
   type ArchivePageResult,
   pageDetailsQueryKey,
@@ -40,6 +41,7 @@ export function settleArchivedAssetQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: assetsListQueryKey });
   void queryClient.invalidateQueries({ queryKey: assetSuggestionsQueryKey });
+  void queryClient.invalidateQueries({ queryKey: knowledgeMapQueryKey });
 }
 
 export function settleArchivedEntityQueries({
@@ -61,6 +63,7 @@ export function settleArchivedEntityQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: entitiesListQueryKey });
   void queryClient.invalidateQueries({ queryKey: entitySuggestionsQueryKey });
+  void queryClient.invalidateQueries({ queryKey: knowledgeMapQueryKey });
 }
 
 export function settleArchivedPageQueries({
@@ -82,6 +85,7 @@ export function settleArchivedPageQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: pagesListQueryKey });
   void queryClient.invalidateQueries({ queryKey: pageSuggestionsQueryKey });
+  void queryClient.invalidateQueries({ queryKey: knowledgeMapQueryKey });
   void queryClient.invalidateQueries({
     queryKey: pageDetailsQueryKey,
     predicate: (query) => query.queryKey[2] !== readableId,

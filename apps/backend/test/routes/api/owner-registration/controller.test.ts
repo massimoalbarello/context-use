@@ -63,6 +63,7 @@ const healthService: HealthServiceContract = { check: unexpectedCall };
 const pagesService: KnowledgePagesServiceContract = {
   create: unexpectedCall,
   list: unexpectedCall,
+  map: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,

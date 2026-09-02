@@ -296,6 +296,45 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expectNoInternalResourceIds(page);
     expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
+    const knowledgeMapResponse = await app.handle(
+      new Request('http://localhost/api/knowledge-map'),
+    );
+    const knowledgeMap = (await knowledgeMapResponse.json()) as {
+      pages: Array<{
+        readableId: string;
+        mentions: Array<{ readableId: string; image: { readableId: string } | null }>;
+        assetUsages: Array<{
+          asset: { readableId: string; mediaType: string };
+          presentation: string;
+        }>;
+      }>;
+    };
+    expectNoInternalResourceIds(knowledgeMap);
+    expect(knowledgeMap.pages).toEqual([
+      expect.objectContaining({
+        readableId: 'evidence-report',
+        mentions: [
+          expect.objectContaining({
+            readableId: 'luca-bianchi',
+            image: expect.objectContaining({ readableId: 'quarterly-chart' }),
+          }),
+        ],
+        assetUsages: [
+          expect.objectContaining({
+            asset: expect.objectContaining({
+              readableId: 'quarterly-chart',
+              mediaType: 'image/png',
+            }),
+            presentation: 'attachment',
+          }),
+          expect.objectContaining({
+            asset: expect.objectContaining({ readableId: 'quarterly-chart' }),
+            presentation: 'embed',
+          }),
+        ],
+      }),
+    ]);
+
     const detailResponse = await app.handle(
       new Request('http://localhost/api/assets/quarterly-chart'),
     );

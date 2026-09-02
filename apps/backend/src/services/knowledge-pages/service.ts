@@ -127,6 +127,10 @@ export class KnowledgePagesService {
     return this.pages.list(input);
   }
 
+  map(input: { ownerId: string; limit: number }) {
+    return this.pages.map(input);
+  }
+
   async detail({
     ownerId,
     readableId,
@@ -313,5 +317,5 @@ export class KnowledgePagesService {
 
 export type KnowledgePagesServiceContract = Pick<
   KnowledgePagesService,
-  'create' | 'list' | 'detail' | 'update' | 'archive' | 'rebuildIndex'
+  'create' | 'list' | 'map' | 'detail' | 'update' | 'archive' | 'rebuildIndex'
 >;
