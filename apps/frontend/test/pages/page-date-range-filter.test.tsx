@@ -9,6 +9,7 @@ import {
 test('date filtering uses one app-owned range trigger instead of native date inputs', () => {
   const html = renderToStaticMarkup(<PageDateRangeFilter onApply={() => undefined} />);
 
+  expect(html).toContain('Filter by date range');
   expect(html).toContain('Choose dates');
   expect(html).toContain('Semantic pages stay visible.');
   expect(html).toContain('aria-haspopup="dialog"');

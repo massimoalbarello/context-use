@@ -51,7 +51,7 @@ export function PageDateRangeFilter({
 
   return (
     <div className="mb-2 grid gap-2 rounded-xl bg-muted/55 p-3">
-      <p className="font-medium text-xs">Date range</p>
+      <p className="font-medium text-xs">Filter by date range</p>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
