@@ -54,7 +54,15 @@ function PreviewStatus({ children }: { children: ReactNode }) {
   return <p className="py-8 text-center text-muted-foreground text-sm">{children}</p>;
 }
 
-function PagePreview({ readableId, onClose }: { readableId: string; onClose: () => void }) {
+function PagePreview({
+  readableId,
+  onClose,
+  onSelect,
+}: {
+  readableId: string;
+  onClose: () => void;
+  onSelect: (selection: KnowledgeMapSelection) => void;
+}) {
   const { data: page, error } = usePage(readableId);
   return (
     <PreviewPanelShell
@@ -75,7 +83,11 @@ function PagePreview({ readableId, onClose }: { readableId: string; onClose: () 
       {error ? (
         <PreviewStatus>{error.message}</PreviewStatus>
       ) : page ? (
-        <KnowledgePageMarkdown markdown={page.markdown} mentions={page.mentions} />
+        <KnowledgePageMarkdown
+          markdown={page.markdown}
+          mentions={page.mentions}
+          onSelectResource={onSelect}
+        />
       ) : (
         <PreviewStatus>Loading page…</PreviewStatus>
       )}
@@ -207,7 +219,7 @@ export function KnowledgeMapPreviewPanel({
   onSelect: (selection: KnowledgeMapSelection) => void;
 }) {
   if (selection.kind === 'page') {
-    return <PagePreview readableId={selection.readableId} onClose={onClose} />;
+    return <PagePreview readableId={selection.readableId} onClose={onClose} onSelect={onSelect} />;
   }
   if (selection.kind === 'entity') {
     return (

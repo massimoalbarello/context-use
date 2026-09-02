@@ -10,9 +10,17 @@ import {
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { KnowledgeMapSelection } from '../../src/components/knowledge-map/knowledge-map-canvas';
 import { KnowledgeMapPreviewPanel } from '../../src/components/knowledge-map/knowledge-map-preview-panel';
+import { type KnowledgePage, pageQueryOptions } from '../../src/queries/pages';
 
 async function renderPreview(selection: KnowledgeMapSelection): Promise<string> {
   const queryClient = new QueryClient();
+  if (selection.kind === 'page') {
+    queryClient.setQueryData(pageQueryOptions(selection.readableId).queryKey, {
+      markdown:
+        '# Project brief\n\n[Maya Chen](context-use://entity/maya-chen) reviews the [launch plan](context-use://page/launch-plan) and [metrics](context-use://asset/rollout-metrics).',
+      mentions: [{ readableId: 'maya-chen', name: 'Maya Chen', image: null }],
+    } as KnowledgePage);
+  }
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
@@ -46,4 +54,14 @@ test('preview headers use visible same-window resource links without native tool
   expect(assetHtml).toContain('>Open asset</a>');
   expect(`${pageHtml}${entityHtml}${assetHtml}`).not.toContain('title=');
   expect(`${pageHtml}${entityHtml}${assetHtml}`).not.toContain('Open full');
+});
+
+test('page preview content keeps resource navigation inside the map overlay', async () => {
+  const pageHtml = await renderPreview({ kind: 'page', readableId: 'project-brief' });
+
+  expect(pageHtml).toContain('>launch plan</button>');
+  expect(pageHtml).toContain('>metrics</button>');
+  expect(pageHtml).not.toContain('href="/entities/maya-chen"');
+  expect(pageHtml).not.toContain('href="/pages/launch-plan"');
+  expect(pageHtml).not.toContain('href="/api/assets/rollout-metrics/content"');
 });
