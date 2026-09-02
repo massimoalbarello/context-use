@@ -21,32 +21,35 @@ test('connection help assigns the settings-level action to the user', () => {
 
 test('initial curation understands the user and filters evidence before writing', () => {
   const prompt = initialContextPrompt();
+  const normalizedPrompt = prompt.replace(/\s+/g, ' ');
 
-  expect(prompt).toContain(
+  expect(normalizedPrompt).toContain(
     'Context Use is connected but empty: it is the destination, not the source',
   );
-  expect(prompt).toContain('your own stored memories about me');
-  expect(prompt).toContain('past conversations');
-  expect(prompt).toContain('Verify the source and the owner');
-  expect(prompt).toContain('cannot access meaningful pre-existing memory about me');
-  expect(prompt).toContain('Do not write anything to Context Use');
-  expect(prompt).toContain('Do not substitute information about another person');
-  expect(prompt).toContain('Review the complete set of relevant memory');
-  expect(prompt).toContain('Treat retrieved memory as evidence for this import');
-  expect(prompt).toContain('evidence, confidence, durability, sensitivity');
-  expect(prompt).toContain('materially help a future agent understand me');
-  expect(prompt).toContain('Does this feel recognizably about this person');
-  expect(prompt).toContain('ask me up to three focused questions');
-  expect(prompt).toContain('read_hypermedia_curation_guide');
-  expect(prompt).toContain('Show me the import plan');
-  expect(prompt).toContain('Ask for my approval and wait for it');
-  expect(prompt).toContain('create_entity with isSelf set to true');
-  expect(prompt).toContain('at most five additional entities');
-  expect(prompt).toContain('at most three knowledge pages');
-  expect(prompt).toContain('Do not perform broad external research');
-  expect(prompt).toContain('Do not upload assets during this first pass');
-  expect(prompt).toContain('reload the Context Use setup page to see the context created');
-  expect(prompt).toContain('Do not begin that deeper pass without my approval');
+  expect(normalizedPrompt).toContain('your own stored memories about me');
+  expect(normalizedPrompt).toContain('past conversations');
+  expect(normalizedPrompt).toContain('Verify the source and the owner');
+  expect(normalizedPrompt).toContain('cannot access meaningful pre-existing memory about me');
+  expect(normalizedPrompt).toContain('Do not write anything to Context Use');
+  expect(normalizedPrompt).toContain('Do not substitute information about another person');
+  expect(normalizedPrompt).toContain('Review the complete set of relevant memory');
+  expect(normalizedPrompt).toContain('Treat retrieved memory as evidence for this import');
+  expect(normalizedPrompt).toContain('evidence, confidence, durability, sensitivity');
+  expect(normalizedPrompt).toContain('materially help a future agent understand me');
+  expect(normalizedPrompt).toContain('Does this feel recognizably about this person');
+  expect(normalizedPrompt).toContain('ask me up to three focused questions');
+  expect(normalizedPrompt).toContain('read_hypermedia_curation_guide');
+  expect(normalizedPrompt).toContain('Show me the import plan');
+  expect(normalizedPrompt).toContain('Ask for my approval and wait for it');
+  expect(normalizedPrompt).toContain('create_entity with isSelf set to true');
+  expect(normalizedPrompt).toContain('at most five additional entities');
+  expect(normalizedPrompt).toContain('at most three knowledge pages');
+  expect(normalizedPrompt).toContain('Do not perform broad external research');
+  expect(normalizedPrompt).toContain('Do not upload assets during this first pass');
+  expect(normalizedPrompt).toContain(
+    'reload the Context Use setup page to see the context created',
+  );
+  expect(normalizedPrompt).toContain('Do not begin that deeper pass without my approval');
 });
 
 test('setup presents the user-owned connection flow as three numbered steps', () => {
