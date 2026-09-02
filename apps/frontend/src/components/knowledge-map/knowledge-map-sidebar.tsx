@@ -1,12 +1,13 @@
-import { Search } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { Library, Search } from 'lucide-react';
 import { cn } from '../../lib/class-names';
 import type { KnowledgeProfile } from '../../queries/profile';
-import { KnowledgeCollectionNavigation } from '../knowledge/knowledge-collection-navigation';
 import {
   KnowledgeSidebarFooter,
   KnowledgeSidebarHeader,
 } from '../knowledge/knowledge-sidebar-chrome';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
+import { buttonVariants } from '../ui/button';
 import { Input } from '../ui/input';
 
 export function KnowledgeMapSidebar({
@@ -31,11 +32,14 @@ export function KnowledgeMapSidebar({
     >
       <KnowledgeSidebarHeader />
       <div className={cn('flex min-h-0 flex-1 flex-col', collapsed && 'hidden')}>
-        <div className="flex px-4">
-          <KnowledgeCollectionNavigation
-            collection="map"
-            ownerEntityReadableId={profile.selfEntity.readableId}
-          />
+        <div className="px-4">
+          <Link
+            className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-start')}
+            to="/pages"
+          >
+            <Library aria-hidden="true" />
+            Browse resources
+          </Link>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
@@ -50,7 +54,7 @@ export function KnowledgeMapSidebar({
                 id="knowledge-map-search"
                 className="h-10 pl-9"
                 type="search"
-                placeholder="Page, entity, or asset"
+                placeholder="Knowledge page, entity, or asset"
                 value={query}
                 onChange={(event) => onQueryChange(event.currentTarget.value)}
               />
@@ -59,8 +63,8 @@ export function KnowledgeMapSidebar({
 
           {truncated && (
             <p className="mt-3 rounded-xl border bg-card p-3 text-muted-foreground text-xs leading-relaxed">
-              Exploring the most recent neighborhood from {totalPages} pages. Search filters this
-              loaded area.
+              Exploring the most recent neighborhood from {totalPages} knowledge pages. Search
+              filters this loaded area.
             </p>
           )}
         </div>

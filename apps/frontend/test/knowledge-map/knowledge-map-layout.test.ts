@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 import {
   buildKnowledgeMapLayout,
   filterKnowledgeMapPages,
-  pageCloudWords,
 } from '../../src/components/knowledge-map/knowledge-map-layout';
 import type { KnowledgeMapEntity, KnowledgeMapPage } from '../../src/queries/knowledge-map';
 
@@ -55,7 +54,7 @@ function page({
 }
 
 describe('knowledge map layout', () => {
-  test('keeps one shared entity dot inside both page clouds', () => {
+  test('keeps one shared entity dot inside both knowledge page regions', () => {
     const sharedEntity = entity({ readableId: 'luca', name: 'Luca' });
     const first = page({ readableId: 'first-page', title: 'First page', mentions: [sharedEntity] });
     const second = page({
@@ -73,7 +72,6 @@ describe('knowledge map layout', () => {
     expect(layout.pages.every(({ resourceKeys }) => resourceKeys.includes('entity:luca'))).toBe(
       true,
     );
-    expect(layout.references).toHaveLength(1);
   });
 
   test('anchors the initial focus on self and keeps resource dots apart', () => {
@@ -139,14 +137,5 @@ describe('knowledge map layout', () => {
       filterKnowledgeMapPages({ pages, query: 'quarterly' }).map(({ readableId }) => readableId),
     ).toEqual(['evidence']);
     expect(filterKnowledgeMapPages({ pages, query: 'missing' })).toEqual([]);
-  });
-
-  test('uses meaningful excerpt terms without repeating title words', () => {
-    expect(
-      pageCloudWords({
-        title: 'Growth playbook',
-        excerpt: 'Growth comes from customer feedback, feedback, and deliberate experiments.',
-      }),
-    ).toEqual(['feedback', 'experiments', 'deliberate']);
   });
 });

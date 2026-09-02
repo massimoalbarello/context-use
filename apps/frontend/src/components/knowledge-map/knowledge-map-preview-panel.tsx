@@ -8,6 +8,8 @@ import { useEntity } from '../../lib/hooks/use-entity';
 import { usePage } from '../../lib/hooks/use-page';
 import { formatAssetSize } from '../assets/asset-link';
 import { EntityAvatar } from '../entities/entity-link';
+import { resourceCardVariants } from '../knowledge/resource-list';
+import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { Button, buttonVariants } from '../ui/button';
 import type { KnowledgeMapSelection } from './knowledge-map-canvas';
@@ -56,7 +58,7 @@ function PagePreview({ readableId, onClose }: { readableId: string; onClose: () 
   const { data: page, error } = usePage(readableId);
   return (
     <PreviewPanelShell
-      label="Page"
+      label="Knowledge page"
       onClose={onClose}
       openLink={
         <Link
@@ -64,8 +66,8 @@ function PagePreview({ readableId, onClose }: { readableId: string; onClose: () 
           to="/pages/$id"
           params={{ id: readableId }}
           search={{ view: 'preview' }}
-          aria-label="Open full page"
-          title="Open full page"
+          aria-label="Open full knowledge page"
+          title="Open full knowledge page"
         >
           <ExternalLink aria-hidden="true" />
         </Link>
@@ -82,7 +84,15 @@ function PagePreview({ readableId, onClose }: { readableId: string; onClose: () 
   );
 }
 
-function EntityPreview({ readableId, onClose }: { readableId: string; onClose: () => void }) {
+function EntityPreview({
+  readableId,
+  onClose,
+  onSelect,
+}: {
+  readableId: string;
+  onClose: () => void;
+  onSelect: (selection: KnowledgeMapSelection) => void;
+}) {
   const { data: entity, error } = useEntity(readableId);
   return (
     <PreviewPanelShell
@@ -109,6 +119,26 @@ function EntityPreview({ readableId, onClose }: { readableId: string; onClose: (
             <h2 className="font-semibold text-2xl tracking-tight">{entity.name}</h2>
             <p className="mt-3 text-muted-foreground leading-relaxed">{entity.description}</p>
           </div>
+          <section className="border-t pt-5">
+            <h3 className="font-semibold text-base">Mentioned by knowledge pages</h3>
+            {entity.pages.length > 0 ? (
+              <ul className="mt-3 grid gap-2">
+                {entity.pages.map((page) => (
+                  <li key={page.readableId}>
+                    <button
+                      type="button"
+                      className={cn(resourceCardVariants(), 'h-auto min-h-20 w-full transition')}
+                      onClick={() => onSelect({ kind: 'page', readableId: page.readableId })}
+                    >
+                      <KnowledgePageCardContent page={page} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
+            )}
+          </section>
         </div>
       ) : (
         <PreviewStatus>Loading entity…</PreviewStatus>
@@ -173,15 +203,19 @@ function AssetPreview({ readableId, onClose }: { readableId: string; onClose: ()
 export function KnowledgeMapPreviewPanel({
   selection,
   onClose,
+  onSelect,
 }: {
   selection: KnowledgeMapSelection;
   onClose: () => void;
+  onSelect: (selection: KnowledgeMapSelection) => void;
 }) {
   if (selection.kind === 'page') {
     return <PagePreview readableId={selection.readableId} onClose={onClose} />;
   }
   if (selection.kind === 'entity') {
-    return <EntityPreview readableId={selection.readableId} onClose={onClose} />;
+    return (
+      <EntityPreview readableId={selection.readableId} onClose={onClose} onSelect={onSelect} />
+    );
   }
   return <AssetPreview readableId={selection.readableId} onClose={onClose} />;
 }

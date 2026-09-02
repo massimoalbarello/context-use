@@ -19,7 +19,7 @@ export function KnowledgeSidebarHeader() {
     >
       <Link
         className={cn('flex min-w-0 items-center', collapsed && 'hidden')}
-        to="/pages"
+        to="/map"
         aria-label="Context Use"
       >
         <span className="grid min-w-0 leading-tight">

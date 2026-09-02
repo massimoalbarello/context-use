@@ -12,11 +12,7 @@ import type {
 import { formatAssetSize } from '../assets/asset-link';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import {
-  buildKnowledgeMapLayout,
-  type KnowledgeMapResource,
-  type MapPoint,
-} from './knowledge-map-layout';
+import { buildKnowledgeMapLayout, type KnowledgeMapResource } from './knowledge-map-layout';
 
 type MapPreview =
   | { kind: 'page'; page: KnowledgeMapPage }
@@ -44,18 +40,6 @@ function shortLabel(value: string, length = 24): string {
   return value.length > length ? `${value.slice(0, length - 1).trimEnd()}…` : value;
 }
 
-function pageReferencePath(source: MapPoint, target: MapPoint): string {
-  const dx = target.x - source.x;
-  const dy = target.y - source.y;
-  const curve = Math.min(80, Math.hypot(dx, dy) * 0.18);
-  const length = Math.max(1, Math.hypot(dx, dy));
-  const normalX = (-dy / length) * curve;
-  const normalY = (dx / length) * curve;
-  const midpointX = (source.x + target.x) / 2 + normalX;
-  const midpointY = (source.y + target.y) / 2 + normalY;
-  return `M ${source.x} ${source.y} Q ${midpointX.toFixed(1)} ${midpointY.toFixed(1)} ${target.x} ${target.y}`;
-}
-
 function PreviewCard({ preview }: { preview: MapPreview }) {
   if (preview.kind === 'page') {
     const { page } = preview;
@@ -66,7 +50,7 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
             <FileText className="size-5 stroke-[1.5]" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <Badge variant="secondary">Page cloud</Badge>
+            <Badge variant="secondary">Knowledge page</Badge>
             <h2 className="mt-1 truncate font-semibold text-base">{page.title}</h2>
           </div>
         </div>
@@ -251,11 +235,13 @@ export function KnowledgeMapCanvas({
   const [preview, setPreview] = useState<MapPreview | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox>(() => focusedViewBox(layout));
   const [panning, setPanning] = useState(false);
+  const suppressNextCloudClick = useRef(false);
   const drag = useRef<{
     pointerId: number;
     clientX: number;
     clientY: number;
     viewBox: ViewBox;
+    moved: boolean;
   } | null>(null);
   const activeKey = preview ? previewKey(preview) : selectedKey;
 
@@ -289,12 +275,14 @@ export function KnowledgeMapCanvas({
     if (event.button !== 0 || (event.target as Element).closest('[data-map-resource]')) {
       return;
     }
+    suppressNextCloudClick.current = false;
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = {
       pointerId: event.pointerId,
       clientX: event.clientX,
       clientY: event.clientY,
       viewBox,
+      moved: false,
     };
     setPanning(true);
   }
@@ -306,6 +294,13 @@ export function KnowledgeMapCanvas({
     const rect = event.currentTarget.getBoundingClientRect();
     const dx = ((event.clientX - drag.current.clientX) / rect.width) * drag.current.viewBox.width;
     const dy = ((event.clientY - drag.current.clientY) / rect.height) * drag.current.viewBox.height;
+    if (
+      Math.abs(event.clientX - drag.current.clientX) +
+        Math.abs(event.clientY - drag.current.clientY) >
+      4
+    ) {
+      drag.current.moved = true;
+    }
     setViewBox({
       ...drag.current.viewBox,
       x: drag.current.viewBox.x - dx,
@@ -315,6 +310,7 @@ export function KnowledgeMapCanvas({
 
   function handlePointerEnd(event: ReactPointerEvent<SVGSVGElement>) {
     if (drag.current?.pointerId === event.pointerId) {
+      suppressNextCloudClick.current = drag.current.moved;
       drag.current = null;
       setPanning(false);
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -328,7 +324,7 @@ export function KnowledgeMapCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
-      aria-label={`Knowledge map with ${layout.pages.length} page clouds and ${layout.resources.length} resource dots`}
+      aria-label={`Knowledge map with ${layout.pages.length} knowledge pages and ${layout.resources.length} resource dots`}
     >
       <svg
         className={cn(
@@ -345,67 +341,44 @@ export function KnowledgeMapCanvas({
         onPointerCancel={handlePointerEnd}
         onDoubleClick={() => setViewBox(layout.bounds)}
       >
-        <defs>
-          <marker
-            id="map-reference-arrow"
-            viewBox="0 0 10 10"
-            refX="8"
-            refY="5"
-            markerWidth="6"
-            markerHeight="6"
-            orient="auto-start-reverse"
-          >
-            <path d="M 0 0 L 10 5 L 0 10 z" className="fill-muted-foreground" />
-          </marker>
-        </defs>
-
         {layout.pages.map((item) => {
           const key = `page:${item.page.readableId}`;
           const active = activeKey === key;
           return (
-            <path
+            <a
               key={item.page.readableId}
-              d={item.cloudPath}
-              className="transition-[fill-opacity,stroke-opacity] duration-200 motion-reduce:transition-none"
-              style={{
-                color: `var(--chart-${item.colorIndex})`,
-                fill: 'currentColor',
-                fillOpacity: active ? 0.24 : 0.1,
-                stroke: 'currentColor',
-                strokeOpacity: active ? 0.9 : 0.48,
-                strokeWidth: active ? 3 : 1.5,
+              href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
+              tabIndex={-1}
+              aria-label={`Open knowledge page region ${item.page.title}`}
+              data-map-cloud={item.page.readableId}
+              className="cursor-pointer outline-none"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (suppressNextCloudClick.current) {
+                  suppressNextCloudClick.current = false;
+                  return;
+                }
+                onSelect({ kind: 'page', readableId: item.page.readableId });
               }}
               onPointerEnter={() => setPreview({ kind: 'page', page: item.page })}
               onPointerLeave={() => clearPreview(key)}
-            />
+            >
+              <path
+                d={item.cloudPath}
+                className="transition-[fill-opacity,stroke-opacity] duration-200 motion-reduce:transition-none"
+                style={{
+                  color: `var(--chart-${item.colorIndex})`,
+                  fill: 'currentColor',
+                  fillOpacity: active ? 0.24 : 0.1,
+                  stroke: 'currentColor',
+                  strokeOpacity: active ? 0.9 : 0.48,
+                  strokeWidth: active ? 3 : 1.5,
+                }}
+              />
+            </a>
           );
         })}
-
-        {layout.references.map((reference) => (
-          <path
-            key={reference.key}
-            d={pageReferencePath(reference.source, reference.target)}
-            className="fill-none stroke-[1.5] stroke-muted-foreground/65 [stroke-dasharray:6_7]"
-            markerEnd="url(#map-reference-arrow)"
-          />
-        ))}
-
-        {layout.pages.map((item) =>
-          item.words.map((word, index) => {
-            const angle = (index / Math.max(item.words.length, 1)) * Math.PI * 2 - Math.PI / 2;
-            return (
-              <text
-                key={`${item.page.readableId}:${word}`}
-                x={item.point.x + Math.cos(angle) * 86}
-                y={item.point.y + Math.sin(angle) * 62}
-                textAnchor="middle"
-                className="pointer-events-none fill-foreground/35 font-medium text-[12px]"
-              >
-                {shortLabel(word, 18)}
-              </text>
-            );
-          }),
-        )}
 
         {layout.pages.map((item) => {
           const key = `page:${item.page.readableId}`;
@@ -415,7 +388,7 @@ export function KnowledgeMapCanvas({
               key={item.page.readableId}
               href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
               data-map-resource
-              aria-label={`Open page ${item.page.title}`}
+              aria-label={`Open knowledge page ${item.page.title}`}
               className="cursor-pointer outline-none"
               onPointerEnter={() => setPreview({ kind: 'page', page: item.page })}
               onPointerLeave={() => clearPreview(key)}
@@ -496,7 +469,7 @@ export function KnowledgeMapCanvas({
         </Button>
       </div>
 
-      {preview && !selectedKey && (
+      {preview && previewKey(preview) !== selectedKey && (
         <div
           className="pointer-events-none absolute bottom-4 left-18 w-[min(20rem,calc(100%-7rem))] rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur"
           aria-live="polite"

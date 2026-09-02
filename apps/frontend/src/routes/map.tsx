@@ -52,6 +52,15 @@ function KnowledgeMapRoute() {
   }
   const pages = filterKnowledgeMapPages({ pages: map.pages, query: q });
   const selection = kind && id ? { kind, readableId: id } : undefined;
+  function selectKnowledge(nextSelection: KnowledgeMapSelection) {
+    void navigate({
+      search: (previous) => ({
+        ...previous,
+        kind: nextSelection.kind,
+        id: nextSelection.readableId,
+      }),
+    });
+  }
 
   return (
     <KnowledgeWorkspace>
@@ -74,10 +83,10 @@ function KnowledgeMapRoute() {
         {map.pages.length === 0 ? (
           <WorkspaceEmpty
             eyebrow="Knowledge map"
-            title="The first cloud starts with a page"
-            description="Create a page that mentions an entity or includes an asset. Its relationships will become the first neighborhood on this map."
+            title="Your map starts with a knowledge page"
+            description="Create a knowledge page that mentions an entity or includes an asset. Its relationships will become the first neighborhood on this map."
             createTo="/pages/new"
-            createLabel="Create the first page"
+            createLabel="Create the first knowledge page"
           />
         ) : pages.length === 0 ? (
           <div className="mx-auto flex min-h-[32rem] max-w-md flex-col justify-center px-6 text-center">
@@ -93,19 +102,12 @@ function KnowledgeMapRoute() {
               pages={pages}
               anchorEntity={profile.selfEntity}
               selectedKey={selection ? `${selection.kind}:${selection.readableId}` : undefined}
-              onSelect={(nextSelection) => {
-                void navigate({
-                  search: (previous) => ({
-                    ...previous,
-                    kind: nextSelection.kind,
-                    id: nextSelection.readableId,
-                  }),
-                });
-              }}
+              onSelect={selectKnowledge}
             />
             {selection && (
               <KnowledgeMapPreviewPanel
                 selection={selection}
+                onSelect={selectKnowledge}
                 onClose={() => {
                   void navigate({
                     search: (previous) => ({

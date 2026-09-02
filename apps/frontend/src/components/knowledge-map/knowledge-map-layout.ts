@@ -18,19 +18,11 @@ export type KnowledgeMapPageLayout = {
   cloudPath: string;
   colorIndex: number;
   resourceKeys: string[];
-  words: string[];
-};
-
-export type KnowledgeMapReferenceLayout = {
-  key: string;
-  source: MapPoint;
-  target: MapPoint;
 };
 
 export type KnowledgeMapLayout = {
   pages: KnowledgeMapPageLayout[];
   resources: KnowledgeMapResource[];
-  references: KnowledgeMapReferenceLayout[];
   focusPoint: MapPoint;
   bounds: { x: number; y: number; width: number; height: number };
 };
@@ -51,35 +43,6 @@ const RESOURCE_PAGE_LABEL_Y_DISTANCE = 72;
 const RESOURCE_SPIRAL_STEP = 27;
 const RESOURCE_PLACEMENT_ATTEMPTS = 1600;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-const WORD_STOP_LIST = new Set([
-  'about',
-  'after',
-  'again',
-  'also',
-  'and',
-  'are',
-  'been',
-  'before',
-  'being',
-  'but',
-  'can',
-  'for',
-  'from',
-  'has',
-  'have',
-  'into',
-  'its',
-  'not',
-  'that',
-  'the',
-  'their',
-  'then',
-  'this',
-  'through',
-  'was',
-  'were',
-  'with',
-]);
 
 function resourceKey(kind: 'entity' | 'asset', readableId: string): string {
   return `${kind}:${readableId}`;
@@ -229,26 +192,6 @@ function cloudPath(points: MapPoint[]): string {
   return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} ${commands.join(' ')} Z`;
 }
 
-export function pageCloudWords(page: Pick<KnowledgeMapPage, 'title' | 'excerpt'>): string[] {
-  const titleWords = new Set(page.title.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []);
-  const counts = new Map<string, { count: number; first: string }>();
-  for (const word of page.excerpt.match(/[\p{L}\p{N}]+/gu) ?? []) {
-    const normalized = word.toLocaleLowerCase();
-    if (normalized.length < 4 || WORD_STOP_LIST.has(normalized) || titleWords.has(normalized)) {
-      continue;
-    }
-    const current = counts.get(normalized);
-    counts.set(normalized, { count: (current?.count ?? 0) + 1, first: current?.first ?? word });
-  }
-  return [...counts.values()]
-    .sort(
-      (a, b) =>
-        b.count - a.count || b.first.length - a.first.length || a.first.localeCompare(b.first),
-    )
-    .slice(0, 3)
-    .map(({ first }) => first);
-}
-
 export function filterKnowledgeMapPages({
   pages,
   query,
@@ -365,7 +308,6 @@ export function buildKnowledgeMapLayout(
     return {
       pages: [],
       resources: [],
-      references: [],
       focusPoint: { x: 450, y: 300 },
       bounds: { x: 0, y: 0, width: 900, height: 600 },
     };
@@ -381,9 +323,6 @@ export function buildKnowledgeMapLayout(
       page,
     };
   });
-  const pageIndexByReadableId = new Map(
-    pagePoints.map(({ page }, index) => [page.readableId, index]),
-  );
   const { seeds, resourceKeysByPage } = resourceSeedsFrom({ pages, anchorEntity });
   const preferredResourcePoints = preferredResourcePointsFrom({ seeds, pagePoints });
 
@@ -407,24 +346,8 @@ export function buildKnowledgeMapLayout(
       cloudPath: cloudPath([{ x, y }, ...keys.map((key) => resourcePoints.get(key)!)]),
       colorIndex: (stableHash(page.readableId) % 5) + 1,
       resourceKeys: keys,
-      words: pageCloudWords(page),
     };
   });
-  const references = pageLayouts.flatMap(({ page, point }) =>
-    page.references.flatMap(({ page: target, fragment }) => {
-      const targetIndex = pageIndexByReadableId.get(target.readableId);
-      if (targetIndex === undefined) {
-        return [];
-      }
-      return [
-        {
-          key: `${page.readableId}:${target.readableId}:${fragment ?? ''}`,
-          source: point,
-          target: pagePoints[targetIndex]!,
-        },
-      ];
-    }),
-  );
   const allPoints = [
     ...pageLayouts.map(({ point }) => point),
     ...resources.map(({ point }) => point),
@@ -445,7 +368,6 @@ export function buildKnowledgeMapLayout(
   return {
     pages: pageLayouts,
     resources,
-    references,
     focusPoint,
     bounds: { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
   };

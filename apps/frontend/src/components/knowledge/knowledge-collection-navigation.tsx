@@ -15,12 +15,9 @@ import {
   SelectValue,
 } from '../ui/select';
 
-type KnowledgeDestination = KnowledgeCollection | 'map';
-
-const DESTINATIONS: Array<{ value: KnowledgeDestination; label: string }> = [
-  { value: 'map', label: 'Map' },
+const COLLECTIONS: Array<{ value: KnowledgeCollection; label: string }> = [
   { value: 'entities', label: 'Entities' },
-  { value: 'pages', label: 'Pages' },
+  { value: 'pages', label: 'Knowledge pages' },
   { value: 'assets', label: 'Assets' },
 ];
 
@@ -28,7 +25,7 @@ export function KnowledgeCollectionNavigation({
   collection,
   ownerEntityReadableId,
 }: {
-  collection: KnowledgeDestination;
+  collection: KnowledgeCollection;
   ownerEntityReadableId: string;
 }) {
   const navigate = useNavigate();
@@ -40,10 +37,7 @@ export function KnowledgeCollectionNavigation({
     typeof window === 'undefined'
       ? {}
       : Object.fromEntries(
-          DESTINATIONS.filter(
-            (destination): destination is { value: KnowledgeCollection; label: string } =>
-              destination.value !== 'map',
-          ).map(({ value }) => [
+          COLLECTIONS.map(({ value }) => [
             value,
             readRememberedKnowledgeResource({
               storage: window.sessionStorage,
@@ -91,12 +85,10 @@ export function KnowledgeCollectionNavigation({
 
   return (
     <Select
-      items={DESTINATIONS}
+      items={COLLECTIONS}
       value={collection}
       onValueChange={(nextCollection) => {
-        if (nextCollection === 'map') {
-          void navigate({ to: '/map' });
-        } else if (nextCollection) {
+        if (nextCollection) {
           openCollection(nextCollection);
         }
       }}
@@ -106,7 +98,7 @@ export function KnowledgeCollectionNavigation({
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          {DESTINATIONS.map((option) => (
+          {COLLECTIONS.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
             </SelectItem>
