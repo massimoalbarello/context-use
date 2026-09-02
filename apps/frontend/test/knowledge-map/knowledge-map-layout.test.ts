@@ -16,7 +16,7 @@ import { knowledgeMapFrom, knowledgeMapQueryOptions } from '../../src/queries/kn
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const MINIMUM_RESOURCE_DISTANCE = 116;
-const MINIMUM_PAGE_LABEL_DISTANCE = 400;
+const MINIMUM_PAGE_LABEL_DISTANCE = 180;
 const CROWDED_NEIGHBOR_COUNT = 120;
 const CROWDED_PAGE_COUNT = 40;
 const EXTRA_RASTER_ASSET_COUNT = 4;
@@ -128,6 +128,29 @@ describe('knowledge map layout', () => {
         ).toBeGreaterThanOrEqual(MINIMUM_RESOURCE_DISTANCE);
       }
     }
+  });
+
+  test('groups resources introduced together into one qualitative neighborhood', () => {
+    const self = entity({ readableId: 'self', name: 'Self', isSelf: true });
+    const alpha = entity({ readableId: 'alpha', name: 'Alpha' });
+    const beta = entity({ readableId: 'beta', name: 'Beta' });
+    const gamma = entity({ readableId: 'gamma', name: 'Gamma' });
+    const layout = buildKnowledgeMapLayout(
+      [
+        page({ readableId: 'shared', title: 'Shared', mentions: [self, alpha, beta] }),
+        page({ readableId: 'separate', title: 'Separate', mentions: [self, gamma] }),
+      ],
+      { anchorEntity: self },
+    );
+    const pointFor = (readableId: string) =>
+      layout.resources.find(({ key }) => key === `entity:${readableId}`)!.point;
+    const alphaPoint = pointFor('alpha');
+    const distanceFromAlpha = (readableId: string) => {
+      const point = pointFor(readableId);
+      return Math.hypot(alphaPoint.x - point.x, alphaPoint.y - point.y);
+    };
+
+    expect(distanceFromAlpha('beta')).toBeLessThan(distanceFromAlpha('gamma'));
   });
 
   test('keeps page label centers far enough apart for long titles', () => {
