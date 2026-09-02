@@ -1,4 +1,4 @@
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, RotateCw } from 'lucide-react';
 import { useState } from 'react';
 import { McpServerUrl } from '../mcp/mcp-server-url';
 import { Button } from '../ui/button';
@@ -12,10 +12,12 @@ export function agentConnectionHelpPrompt(mcpServerUrl: string): string {
 }
 
 export function initialContextPrompt(applicationUrl: string): string {
-  return `Build an evidence-grounded first Context Use profile of me. Context Use is already connected. Work in this order, and do not write to Context Use until steps 1–3 are complete.
+  return `Bootstrap an evidence-grounded Context Use profile of me. Context Use is already connected. Work in this order, and do not write to Context Use until steps 1–3 are complete.
 
 1. Understand me before modeling me
-Review the context about me that is already legitimately available to you: our conversation history, saved memory, the current workspace, and services I have authorized you to access. Explore those sources deliberately enough to understand my identity and roles, current priorities and projects, important relationships, working style and preferences, constraints, and durable experiences or ideas that shape my decisions. Focus on me: information about a topic matters only when it reveals my relationship to it. Do not perform broad external research.
+First determine whether the available context reliably identifies me as the person who owns this Context Use instance. If you cannot reliably identify me, stop and tell me that you cannot safely bootstrap my context from what is available. Do not write anything to Context Use, and do not substitute information about another person, a workspace, a project, or a generic user profile.
+
+If you can reliably identify me, review the context about me that is already legitimately available to you: our conversation history, saved memory, the current workspace, and services I have authorized you to access. Explore those sources deliberately enough to understand my identity and roles, current priorities and projects, important relationships, working style and preferences, constraints, and durable experiences or ideas that shape my decisions. Focus on me: information about a topic matters only when it reveals my relationship to it. Do not perform broad external research.
 
 2. Separate signal from noise
 Build a private working synthesis of candidate facts and themes. For each candidate, consider its evidence, confidence, durability, sensitivity, and whether it would materially help a future agent understand me or make better decisions for me. Keep specific, well-supported context with lasting relevance. Reject generic facts, unrelated document contents, fleeting tasks or statuses, stale or duplicated details, secrets and credentials, sensitive claims I did not provide, and unsupported inference. Distinguish direct evidence from interpretation and preserve uncertainty. Do not upload this scratch work.
@@ -27,7 +29,7 @@ Before writing, ask: “Does this feel recognizably about this person, and will 
 As the first write, call create_entity with isSelf set to true to create my owner entity. If an owner entity already exists, inspect it and do not create another. Create at most five additional entities and at most three knowledge pages, and create fewer when the evidence does not justify them. Include an entity only when it helps express a meaningful relationship. Write nuanced, readable pages that synthesize evidence rather than listing observations. Use temporal or uncertainty qualifiers where needed, and use the canonical Context Use addresses returned by the tools for mentions and references. Do not upload assets during this first pass.
 
 5. Verify and hand back
-Reread the resulting entities and pages. Confirm that every item is supported, personally relevant, non-duplicative, and useful; fix any clear mistakes before finishing. Then direct me to ${applicationUrl}/pages, briefly explain what you chose to represent and why, and mention any important uncertainty or omission. After I have reviewed it, ask whether I want a deeper research and import pass. Do not begin that deeper pass without my approval.`;
+Reread the resulting entities and pages. Confirm that every item is supported, personally relevant, non-duplicative, and useful; fix any clear mistakes before finishing. Then tell me the upload is complete, direct me to ${applicationUrl}/entities, briefly explain what you chose to represent and why, and mention any important uncertainty or omission. After I have reviewed it, ask whether I want a deeper research and import pass. Do not begin that deeper pass without my approval.`;
 }
 
 function CopyablePrompt({
@@ -122,20 +124,24 @@ export function AgentSetup({
 
           <McpServerUrl serverUrl={mcpServerUrl} />
 
-          <div className="grid gap-2">
-            <p className="font-medium text-sm">Not sure where those settings are?</p>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Paste this short prompt into the agent you want to connect. It will guide you through
-              that agent’s setup without trying to perform the settings change itself.
-            </p>
-            <CopyablePrompt
-              ariaLabel="MCP setup help prompt"
-              copyLabel="Copy setup help"
-              copiedLabel="Setup help copied"
-              rows={5}
-              value={connectionHelpPrompt}
-            />
-          </div>
+          <details>
+            <summary className="cursor-pointer font-medium text-sm">
+              Not sure where those settings are?
+            </summary>
+            <div className="grid gap-2 pt-3">
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Paste this short prompt into the agent you want to connect. It will guide you
+                through that agent’s setup without trying to perform the settings change itself.
+              </p>
+              <CopyablePrompt
+                ariaLabel="MCP setup help prompt"
+                copyLabel="Copy setup help"
+                copiedLabel="Setup help copied"
+                rows={5}
+                value={connectionHelpPrompt}
+              />
+            </div>
+          </details>
         </section>
       </li>
 
@@ -152,8 +158,7 @@ export function AgentSetup({
           </h2>
           <p className="text-muted-foreground leading-relaxed">
             Start the connection in your agent, then approve the Context Use OAuth request in your
-            browser. Continue when Context Use tools appear in the agent’s tool list. You should
-            never need to paste an access token or credential.
+            browser. Continue when Context Use tools appear in the agent’s tool list.
           </p>
         </section>
       </li>
@@ -165,14 +170,14 @@ export function AgentSetup({
         >
           3
         </span>
-        <section className="grid min-w-0 gap-4" aria-labelledby="build-context-heading">
+        <section className="grid min-w-0 gap-4" aria-labelledby="bootstrap-context-heading">
           <div className="grid gap-1">
-            <h2 id="build-context-heading" className="font-semibold text-xl">
-              Build your first context
+            <h2 id="bootstrap-context-heading" className="font-semibold text-xl">
+              Bootstrap your context
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              Once connected, paste this prompt into the agent. It will study the available evidence
-              about you, separate signal from noise, and only then create a focused first profile.
+              Once connected, paste this prompt into the agent. It will gather the available
+              evidence about you, separate signal from noise, and start curating your context.
             </p>
           </div>
 
@@ -183,6 +188,38 @@ export function AgentSetup({
             rows={18}
             value={contextPrompt}
           />
+        </section>
+      </li>
+
+      <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-4">
+        <span
+          aria-hidden="true"
+          className="flex size-8 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-sm"
+        >
+          4
+        </span>
+        <section
+          className="grid justify-items-start gap-3"
+          aria-labelledby="review-context-heading"
+        >
+          <div className="grid gap-1">
+            <h2 id="review-context-heading" className="font-semibold text-xl">
+              Reload and review
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Once your agent says the upload is complete, reload this page. Context Use will take
+              you to Entities to review what it created.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            onClick={() => window.location.reload()}
+          >
+            <RotateCw aria-hidden="true" />
+            Reload Context Use
+          </Button>
         </section>
       </li>
     </ol>

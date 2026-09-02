@@ -1,5 +1,6 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { AgentSetup } from '../components/setup/agent-setup';
+import { buttonVariants } from '../components/ui/button';
 import { applicationOrigin } from '../lib/application-origin';
 import { internalAppPath } from '../lib/internal-app-path';
 import { mcpClientsQueryOptions } from '../queries/mcp-clients';
@@ -18,6 +19,7 @@ export const Route = createFileRoute('/setup')({
 });
 
 function SetupRoute() {
+  const { redirect: redirectTo } = Route.useSearch();
   const { serverUrl } = Route.useLoaderData();
 
   return (
@@ -27,11 +29,22 @@ function SetupRoute() {
           Set up Context Use with your agent
         </h1>
         <p className="text-lg text-muted-foreground leading-relaxed">
-          Connect once, then let an agent build a small, high-signal picture of you.
+          Connect once, then your agent can start curating your context.
         </p>
       </header>
 
       <AgentSetup applicationUrl={applicationOrigin()} mcpServerUrl={serverUrl} />
+
+      <Link
+        className={buttonVariants({
+          variant: 'ghost',
+          className: 'justify-self-center text-muted-foreground',
+        })}
+        to="/entities/new"
+        search={{ redirect: redirectTo }}
+      >
+        Alternatively, set it up manually
+      </Link>
     </main>
   );
 }
