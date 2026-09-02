@@ -37,6 +37,12 @@ type MapPreview =
 
 type ViewBox = { x: number; y: number; width: number; height: number };
 
+const BUTTON_ZOOM_IN_FACTOR = 0.9;
+const BUTTON_ZOOM_OUT_FACTOR = 1.1;
+const MAX_WHEEL_ZOOM_DELTA = 80;
+const WHEEL_ZOOM_RATE = 0.001;
+const ZOOM_LOAD_THROTTLE_MS = 400;
+
 export type KnowledgeMapSelection = {
   kind: 'page' | 'entity' | 'asset';
   readableId: string;
@@ -490,6 +496,7 @@ export function KnowledgeMapCanvas({
   const [viewBox, setViewBox] = useState<ViewBox>(() => focusedViewBox(layout));
   const viewBoxRef = useRef(viewBox);
   const loadMorePending = useRef(false);
+  const lastZoomLoadAt = useRef(0);
   const [panning, setPanning] = useState(false);
   const suppressNextCloudClick = useRef(false);
   const drag = useRef<{
@@ -545,7 +552,13 @@ export function KnowledgeMapCanvas({
       height,
     };
     updateViewBox(nextViewBox);
-    if (factor > 1) {
+    const now = Date.now();
+    if (
+      factor > 1 &&
+      mapViewportNearBoundary(nextViewBox, layout.bounds) &&
+      now - lastZoomLoadAt.current >= ZOOM_LOAD_THROTTLE_MS
+    ) {
+      lastZoomLoadAt.current = now;
       void requestLoadMore(nextViewBox);
     }
   }
@@ -558,7 +571,11 @@ export function KnowledgeMapCanvas({
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
     event.preventDefault();
     const rect = event.currentTarget.getBoundingClientRect();
-    zoom(event.deltaY > 0 ? 1.12 : 0.89, {
+    const boundedDelta = Math.max(
+      -MAX_WHEEL_ZOOM_DELTA,
+      Math.min(MAX_WHEEL_ZOOM_DELTA, event.deltaY),
+    );
+    zoom(Math.exp(boundedDelta * WHEEL_ZOOM_RATE), {
       x: (event.clientX - rect.left) / rect.width,
       y: (event.clientY - rect.top) / rect.height,
     });
@@ -690,7 +707,7 @@ export function KnowledgeMapCanvas({
           variant="ghost"
           size="icon"
           aria-label="Zoom in"
-          onClick={() => zoom(0.82)}
+          onClick={() => zoom(BUTTON_ZOOM_IN_FACTOR)}
         >
           <Plus aria-hidden="true" />
         </Button>
@@ -699,7 +716,7 @@ export function KnowledgeMapCanvas({
           variant="ghost"
           size="icon"
           aria-label="Zoom out"
-          onClick={() => zoom(1.2)}
+          onClick={() => zoom(BUTTON_ZOOM_OUT_FACTOR)}
         >
           <Minus aria-hidden="true" />
         </Button>
