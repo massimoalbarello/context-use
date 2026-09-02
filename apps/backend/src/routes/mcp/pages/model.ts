@@ -5,6 +5,7 @@ import type {
   KnowledgePageRevisionSummary,
   KnowledgePageSummary,
 } from '#models/knowledge-pages/model.ts';
+import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import {
   McpReadableIdSchema,
   PageAddressSchema,
@@ -18,6 +19,7 @@ export const McpKnowledgePageSummarySchema = z.object({
   readableId: McpReadableIdSchema,
   title: z.string(),
   excerpt: z.string(),
+  temporalCoverage: z.string().max(MAX_TEMPORAL_COVERAGE_LENGTH).nullable(),
   revisionNumber: z.number().int().positive(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -32,6 +34,7 @@ const McpKnowledgePageReferenceSchema = z.object({
 const McpKnowledgePageRevisionSchema = z.object({
   revisionNumber: z.number().int().positive(),
   title: z.string(),
+  temporalCoverage: z.string().max(MAX_TEMPORAL_COVERAGE_LENGTH).nullable(),
   author: z.union([
     z.object({ kind: z.literal('owner'), name: z.string() }),
     z.object({ kind: z.literal('mcp_client'), name: z.string() }),
@@ -53,6 +56,7 @@ export function mcpKnowledgePageSummary(page: KnowledgePageSummary) {
     readableId: page.readableId,
     title: page.title,
     excerpt: page.excerpt,
+    temporalCoverage: page.temporalCoverage,
     revisionNumber: page.revisionNumber,
     createdAt: page.createdAt,
     updatedAt: page.updatedAt,
@@ -72,6 +76,7 @@ function mcpKnowledgePageRevision(revision: KnowledgePageRevisionSummary) {
   return {
     revisionNumber: revision.revisionNumber,
     title: revision.title,
+    temporalCoverage: revision.temporalCoverage,
     author: revision.author,
     createdAt: revision.createdAt,
   };

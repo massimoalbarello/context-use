@@ -11,12 +11,14 @@ test('revision history shows the snapshotted readable author name', () => {
       {
         revisionNumber: 2,
         title: 'Updated notes',
+        temporalCoverage: null,
         author: { kind: 'mcp_client', name: 'Research agent' },
         createdAt: timestamp,
       },
       {
         revisionNumber: 1,
         title: 'Initial notes',
+        temporalCoverage: null,
         author: { kind: 'owner', name: 'Alex Morgan' },
         createdAt: timestamp,
       },

@@ -534,6 +534,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
           readableId: 'evidence-report',
           title: 'Evidence report',
           excerpt: 'Quarterly evidence.',
+          temporalCoverage: null,
           revisionNumber: 1,
           createdAt: NOW,
           updatedAt: NOW,

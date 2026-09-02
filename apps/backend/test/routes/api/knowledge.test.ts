@@ -310,6 +310,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         method: 'POST',
         path: '/pages',
         body: {
+          temporalCoverage: '2025-03/2025-08',
           markdown: `# Growth playbook
 
 [Luca](context-use://entity/luca-bianchi) owns this feedback system.
@@ -323,13 +324,31 @@ Every observation changes the next action.`,
     expect(growthResponse.status).toBe(StatusMap.Created);
     const growth = (await growthResponse.json()) as {
       excerpt: string;
+      temporalCoverage: string | null;
       revisionNumber: number;
       mentions: Array<{ readableId: string }>;
     };
     expectNoInternalResourceIds(growth);
     expect(growth.excerpt).toBe('Luca owns this feedback system.');
+    expect(growth.temporalCoverage).toBe('2025-03/2025-08');
     expect(growth.revisionNumber).toBe(1);
     expect(growth.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
+
+    const invalidTemporalCoverageResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/pages',
+        body: {
+          markdown: '# Impossible date\n\nThis page must not be stored.',
+          temporalCoverage: '2026-02-29',
+        },
+      }),
+    );
+    expect(invalidTemporalCoverageResponse.status).toBe(StatusMap['Bad Request']);
+    expect(await invalidTemporalCoverageResponse.json()).toEqual({
+      error: expect.stringContaining('Use YYYY'),
+    });
+
     const pageConflictResponse = await app.handle(
       jsonRequest({
         method: 'POST',
@@ -363,6 +382,7 @@ Every observation changes the next action.`,
         method: 'POST',
         path: '/pages',
         body: {
+          temporalCoverage: '2025~',
           markdown: `# Operating rhythm
 
 Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every Friday.`,
@@ -470,6 +490,7 @@ Revise the current knowledge instead of appending snapshots.`,
       revisions: Array<{
         revisionNumber: number;
         title: string;
+        temporalCoverage: string | null;
         author: { kind: 'owner' | 'mcp_client'; name: string };
       }>;
     };
@@ -479,11 +500,13 @@ Revise the current knowledge instead of appending snapshots.`,
       expect.objectContaining({
         revisionNumber: 2,
         title: 'Growth playbook',
+        temporalCoverage: '2025-03/2025-08',
         author: { kind: 'owner', name: 'Renamed Test Owner' },
       }),
       expect.objectContaining({
         revisionNumber: 1,
         title: 'Growth playbook',
+        temporalCoverage: '2025-03/2025-08',
         author: { kind: 'owner', name: 'Test Owner' },
       }),
     ]);
@@ -604,6 +627,7 @@ Revise the current knowledge instead of appending snapshots.`,
         path: '/pages/growth-playbook',
         body: {
           expectedRevisionNumber: 2,
+          temporalCoverage: '2025-03/..',
           markdown: `# Growth playbook
 
 [Test Owner](context-use://entity/test-owner) owns the live account.
@@ -615,6 +639,10 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       }),
     );
     expect(removeEntityUsageResponse.status).toBe(StatusMap.OK);
+    expect(
+      ((await removeEntityUsageResponse.json()) as { temporalCoverage: string | null })
+        .temporalCoverage,
+    ).toBe('2025-03/..');
 
     const archivedEntityResponse = await app.handle(
       jsonRequest({ method: 'PUT', path: '/entities/luca-bianchi/archive' }),
@@ -664,11 +692,20 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
         path: '/pages/operating-rhythm',
         body: {
           expectedRevisionNumber: 1,
+          temporalCoverage: null,
           markdown: '# Operating rhythm\n\nReview the feedback system every Friday.',
         },
       }),
     );
     expect(removePageUsageResponse.status).toBe(StatusMap.OK);
+    const pageWithClearedCoverage = (await removePageUsageResponse.json()) as {
+      temporalCoverage: string | null;
+      revisions: Array<{ temporalCoverage: string | null }>;
+    };
+    expect(pageWithClearedCoverage.temporalCoverage).toBeNull();
+    expect(
+      pageWithClearedCoverage.revisions.map(({ temporalCoverage }) => temporalCoverage),
+    ).toEqual([null, '2025~']);
 
     const pageBeforeArchive = await database<
       Array<{

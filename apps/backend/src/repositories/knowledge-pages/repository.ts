@@ -23,6 +23,7 @@ export interface KnowledgePagesRepositoryContract {
     readableId: string;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -41,6 +42,7 @@ export interface KnowledgePagesRepositoryContract {
     expectedRevisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -144,6 +146,7 @@ function revisionSummaryFrom(row: RevisionSummaryRow): KnowledgePageRevisionSumm
     return {
       revisionNumber: Number(row.revisionNumber),
       title: row.title,
+      temporalCoverage: row.temporalCoverage,
       author: { kind: 'owner', name: row.authorName },
       createdAt: row.createdAt,
     };
@@ -152,6 +155,7 @@ function revisionSummaryFrom(row: RevisionSummaryRow): KnowledgePageRevisionSumm
     return {
       revisionNumber: Number(row.revisionNumber),
       title: row.title,
+      temporalCoverage: row.temporalCoverage,
       author: { kind: 'mcp_client', name: row.authorName },
       createdAt: row.createdAt,
     };
@@ -173,6 +177,7 @@ async function findCurrentKnowledgePage({
     select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
       page."current_revision_id" as "currentRevisionId",
       revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+      revision."temporal_coverage" as "temporalCoverage",
       revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
       revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
       page."updated_at" as "updatedAt"
@@ -304,6 +309,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     readableId: string;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -347,11 +353,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       await db`
         insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
-           "storage_key", "size_bytes", "content_hash", "author_kind",
+           "temporal_coverage", "storage_key", "size_bytes", "content_hash", "author_kind",
            "author_mcp_client_authorization_id", "author_name", "created_at")
         values
           (${input.revisionId}, ${input.pageId}, ${input.ownerId}, 1, ${input.title},
-           ${input.excerpt}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
+           ${input.excerpt}, ${input.temporalCoverage}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
            ${author.kind}, ${author.clientAuthorizationId}, ${author.name}, ${input.createdAt})
       `;
       await insertLinks({
@@ -373,6 +379,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           revisionNumber: 1,
           title: input.title,
           excerpt: input.excerpt,
+          temporalCoverage: input.temporalCoverage,
           storageKey: input.storageKey,
           contentHash: input.contentHash,
           sizeBytes: input.sizeBytes,
@@ -390,6 +397,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     expectedRevisionNumber: number;
     title: string;
     excerpt: string;
+    temporalCoverage: string | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -450,11 +458,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       await db`
         insert into "knowledge_page_revision"
           ("id", "page_id", "owner_id", "revision_number", "title", "excerpt",
-           "storage_key", "size_bytes", "content_hash", "author_kind",
+           "temporal_coverage", "storage_key", "size_bytes", "content_hash", "author_kind",
            "author_mcp_client_authorization_id", "author_name", "created_at")
         values
           (${input.revisionId}, ${current.id}, ${input.ownerId}, ${revisionNumber}, ${input.title},
-           ${input.excerpt}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
+           ${input.excerpt}, ${input.temporalCoverage}, ${input.storageKey}, ${input.sizeBytes}, ${input.contentHash},
            ${author.kind}, ${author.clientAuthorizationId}, ${author.name}, ${input.updatedAt})
       `;
       await insertLinks({
@@ -478,6 +486,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           revisionNumber,
           title: input.title,
           excerpt: input.excerpt,
+          temporalCoverage: input.temporalCoverage,
           storageKey: input.storageKey,
           contentHash: input.contentHash,
           sizeBytes: input.sizeBytes,
@@ -504,6 +513,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
           select page."id", page."readable_id" as "readableId",
             revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+            revision."temporal_coverage" as "temporalCoverage",
             page."created_at" as "createdAt", page."updated_at" as "updatedAt"
           from "knowledge_page" page
           join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
@@ -520,6 +530,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
           select page."id", page."readable_id" as "readableId",
             revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+            revision."temporal_coverage" as "temporalCoverage",
             page."created_at" as "createdAt", page."updated_at" as "updatedAt"
           from "knowledge_page" page
           join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
@@ -565,6 +576,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+        revision."temporal_coverage" as "temporalCoverage",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt"
       from "entity" entity
       join "knowledge_page_entity_mention" mention
@@ -592,6 +604,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
         page."current_revision_id" as "currentRevisionId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+        revision."temporal_coverage" as "temporalCoverage",
         revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
         revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
         page."updated_at" as "updatedAt"
@@ -705,6 +718,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       this.sql.ListKnowledgePageRevisions`
         /* @notNull revisionNumber title authorKind createdAt */
         select revision."revision_number" as "revisionNumber", revision."title",
+          revision."temporal_coverage" as "temporalCoverage",
           revision."author_kind" as "authorKind", revision."author_name" as "authorName",
           revision."created_at" as "createdAt"
         from "knowledge_page_revision" revision
@@ -728,6 +742,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
         page."current_revision_id" as "currentRevisionId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+        revision."temporal_coverage" as "temporalCoverage",
         revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
         revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
         page."updated_at" as "updatedAt"
@@ -819,6 +834,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select referring_page."id", referring_page."readable_id" as "readableId",
         current_referring_revision."revision_number" as "revisionNumber",
         current_referring_revision."title", current_referring_revision."excerpt",
+        current_referring_revision."temporal_coverage" as "temporalCoverage",
         referring_page."created_at" as "createdAt", referring_page."updated_at" as "updatedAt",
         inbound_reference."target_fragment" as "fragment"
       from "knowledge_page_reference" inbound_reference
@@ -852,6 +868,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt fragment */
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+        revision."temporal_coverage" as "temporalCoverage",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt",
         reference."target_fragment" as "fragment"
       from "knowledge_page_reference" reference
@@ -880,6 +897,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt fragment */
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
+        revision."temporal_coverage" as "temporalCoverage",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt",
         reference."target_fragment" as "fragment"
       from "knowledge_page_reference" reference

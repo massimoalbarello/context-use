@@ -10,6 +10,7 @@ export interface KnowledgePageSummary {
   readableId: string;
   title: string;
   excerpt: string;
+  temporalCoverage: string | null;
   revisionNumber: number;
   createdAt: string;
   updatedAt: string;
@@ -23,6 +24,7 @@ export interface KnowledgePageReference {
 export interface KnowledgePageRevisionSummary {
   revisionNumber: number;
   title: string;
+  temporalCoverage: string | null;
   author: KnowledgePageRevisionAuthor;
   createdAt: string;
 }

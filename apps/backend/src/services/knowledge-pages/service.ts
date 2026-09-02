@@ -10,6 +10,10 @@ import type {
   StoredKnowledgePage,
 } from '#models/knowledge-pages/model.ts';
 import {
+  InvalidTemporalCoverageError,
+  temporalCoverageFrom,
+} from '#models/knowledge-pages/temporal-coverage.ts';
+import {
   READABLE_ID_SUFFIX_LENGTH,
   readableIdFrom,
   readableIdWithSuffix,
@@ -19,6 +23,7 @@ import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-p
 export type KnowledgePageMutationResult =
   | { state: 'saved'; page: KnowledgePage }
   | { state: 'invalid_markdown'; message: string }
+  | { state: 'invalid_temporal_coverage'; message: string }
   | { state: 'not_found' }
   | { state: 'title_conflict' }
   | { state: 'revision_conflict'; currentRevisionNumber: number }
@@ -47,11 +52,16 @@ export class KnowledgePagesService {
     ownerId: string;
     actor: KnowledgePageRevisionActor;
     markdown: string;
+    temporalCoverage?: string | null;
     allowDuplicate?: boolean;
   }): Promise<KnowledgePageMutationResult> {
     const parsed = this.parse(input.markdown);
     if ('message' in parsed) {
       return parsed;
+    }
+    const temporalCoverage = this.parseTemporalCoverage(input.temporalCoverage ?? null);
+    if (typeof temporalCoverage !== 'string' && temporalCoverage !== null) {
+      return temporalCoverage;
     }
     const derivedReadableId = readableIdFrom(parsed.title);
     const readableId = input.allowDuplicate
@@ -82,6 +92,7 @@ export class KnowledgePagesService {
         readableId,
         title: parsed.title,
         excerpt: parsed.excerpt,
+        temporalCoverage,
         storageKey,
         contentHash: contentHash(input.markdown),
         sizeBytes,
@@ -133,6 +144,7 @@ export class KnowledgePagesService {
     readableId: string;
     expectedRevisionNumber: number;
     markdown: string;
+    temporalCoverage?: string | null;
   }): Promise<KnowledgePageMutationResult> {
     const parsed = this.parse(input.markdown);
     if ('message' in parsed) {
@@ -144,6 +156,13 @@ export class KnowledgePagesService {
     });
     if (!existing) {
       return { state: 'not_found' };
+    }
+    const temporalCoverage =
+      input.temporalCoverage === undefined
+        ? existing.temporalCoverage
+        : this.parseTemporalCoverage(input.temporalCoverage);
+    if (typeof temporalCoverage !== 'string' && temporalCoverage !== null) {
+      return temporalCoverage;
     }
     const revisionId = Bun.randomUUIDv7();
     const storageKey = this.storageKey({
@@ -166,6 +185,7 @@ export class KnowledgePagesService {
         expectedRevisionNumber: input.expectedRevisionNumber,
         title: parsed.title,
         excerpt: parsed.excerpt,
+        temporalCoverage,
         storageKey,
         contentHash: contentHash(input.markdown),
         sizeBytes,
@@ -260,10 +280,24 @@ export class KnowledgePagesService {
       readableId: page.readableId,
       title: page.title,
       excerpt: page.excerpt,
+      temporalCoverage: page.temporalCoverage,
       revisionNumber: page.revisionNumber,
       createdAt: page.createdAt,
       updatedAt: page.updatedAt,
     };
+  }
+
+  private parseTemporalCoverage(
+    value: string | null,
+  ): string | null | { state: 'invalid_temporal_coverage'; message: string } {
+    try {
+      return temporalCoverageFrom(value);
+    } catch (error) {
+      if (error instanceof InvalidTemporalCoverageError) {
+        return { state: 'invalid_temporal_coverage', message: error.message };
+      }
+      throw error;
+    }
   }
 }
 

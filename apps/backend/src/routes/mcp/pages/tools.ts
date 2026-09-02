@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-pages/model.ts';
+import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import { PageAddressSchema, pageAddress, pageReadableId } from '#routes/mcp/coordinates.ts';
 import {
@@ -38,9 +39,24 @@ const MarkdownSchema = z
   .max(MAX_KNOWLEDGE_PAGE_BYTES)
   .describe('Complete Markdown document beginning with one H1 title');
 
+const TemporalCoverageValueSchema = z
+  .string()
+  .max(MAX_TEMPORAL_COVERAGE_LENGTH)
+  .describe(
+    'When the page content applies or occurred, not when it was written. Use YYYY, YYYY-MM, or YYYY-MM-DD; append ? for uncertain or ~ for approximate, use date/date for a bounded interval, or date/.. only for an evidenced ongoing interval.',
+  );
+
+const TEMPORAL_COVERAGE_UPDATE_DESCRIPTION =
+  'For temporalCoverage, omit it to preserve the current value, including for prose-only edits; send null to clear it; or provide a value to replace it.';
+
 const CreateKnowledgePageInputSchema = z.object({
   guide_version: HypermediaCurationGuideVersionInputSchema,
   markdown: MarkdownSchema,
+  temporalCoverage: TemporalCoverageValueSchema.nullable()
+    .optional()
+    .describe(
+      'Subject-time coverage. Omit or use null when no single temporal coverage is asserted.',
+    ),
   allowDuplicate: z
     .boolean()
     .optional()
@@ -56,6 +72,9 @@ const GuidedPageAddressInputSchema = PageAddressInputSchema.extend({
 const UpdateKnowledgePageInputSchema = GuidedPageAddressInputSchema.extend({
   expectedRevisionNumber: z.number().int().positive(),
   markdown: MarkdownSchema,
+  temporalCoverage: TemporalCoverageValueSchema.nullable()
+    .optional()
+    .describe(TEMPORAL_COVERAGE_UPDATE_DESCRIPTION),
 });
 
 const KnowledgePageListOutputSchema = z.object({
@@ -166,8 +185,8 @@ export function registerKnowledgePageTools({
           details: { target: linkTargetAddress(result.target) },
         });
       }
-      if (result.state === 'invalid_markdown') {
-        return mcpToolError({ code: 'invalid_markdown', message: result.message });
+      if (result.state === 'invalid_markdown' || result.state === 'invalid_temporal_coverage') {
+        return mcpToolError({ code: result.state, message: result.message });
       }
       return mcpToolError({ code: 'not_found', message: 'Knowledge page not found.' });
     },
@@ -228,13 +247,12 @@ export function registerKnowledgePageTools({
     'update_knowledge_page',
     {
       title: 'Update knowledge page',
-      description:
-        'Create a new revision of one knowledge page. expectedRevisionNumber is required to prevent overwriting concurrent changes.',
+      description: `Create a new revision of one knowledge page. expectedRevisionNumber is required to prevent overwriting concurrent changes. ${TEMPORAL_COVERAGE_UPDATE_DESCRIPTION}`,
       inputSchema: UpdateKnowledgePageInputSchema,
       outputSchema: GuidedUpdateKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ address, expectedRevisionNumber, guide_version, markdown }) => {
+    async ({ address, expectedRevisionNumber, guide_version, markdown, temporalCoverage }) => {
       const guideRequired = hypermediaCurationGuideRequired(guide_version);
       if (guideRequired) {
         return guideRequired;
@@ -245,6 +263,7 @@ export function registerKnowledgePageTools({
         readableId: pageReadableId(address),
         expectedRevisionNumber,
         markdown,
+        temporalCoverage,
       });
       if (result.state === 'saved') {
         return mcpToolSuccess({ revisionNumber: result.page.revisionNumber });
@@ -264,8 +283,8 @@ export function registerKnowledgePageTools({
           details: { target: linkTargetAddress(result.target) },
         });
       }
-      if (result.state === 'invalid_markdown') {
-        return mcpToolError({ code: 'invalid_markdown', message: result.message });
+      if (result.state === 'invalid_markdown' || result.state === 'invalid_temporal_coverage') {
+        return mcpToolError({ code: result.state, message: result.message });
       }
       return mcpToolError({ code: 'not_found', message: 'Knowledge page not found.' });
     },
