@@ -6,6 +6,8 @@ import { cn } from '../../lib/class-names';
 import { useAsset } from '../../lib/hooks/use-assets';
 import { useEntity } from '../../lib/hooks/use-entity';
 import { usePage } from '../../lib/hooks/use-page';
+import type { Asset } from '../../queries/assets';
+import type { KnowledgePageSummary } from '../../queries/pages';
 import { formatAssetSize } from '../assets/asset-link';
 import { EntityAvatar } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
@@ -52,6 +54,77 @@ function PreviewPanelShell({
 
 function PreviewStatus({ children }: { children: ReactNode }) {
   return <p className="py-8 text-center text-muted-foreground text-sm">{children}</p>;
+}
+
+type PreviewPageItem = {
+  page: KnowledgePageSummary;
+  context?: string;
+};
+
+function PreviewPageSection({
+  title,
+  items,
+  onSelect,
+}: {
+  title: string;
+  items: PreviewPageItem[];
+  onSelect: (selection: KnowledgeMapSelection) => void;
+}) {
+  return (
+    <section className="border-t pt-5">
+      <h3 className="font-semibold text-base">{title}</h3>
+      {items.length > 0 ? (
+        <ul className="mt-3 grid gap-2">
+          {items.map(({ page, context }) => (
+            <li key={page.readableId}>
+              <button
+                type="button"
+                className={cn(resourceCardVariants(), 'h-auto min-h-20 w-full transition')}
+                onClick={() => onSelect({ kind: 'page', readableId: page.readableId })}
+              >
+                <KnowledgePageCardContent page={page} />
+                {context && (
+                  <small className="shrink-0 text-muted-foreground text-xs">{context}</small>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
+      )}
+    </section>
+  );
+}
+
+function assetPreviewPages(usages: Asset['usages']): PreviewPageItem[] {
+  const pages = new Map<
+    string,
+    { page: KnowledgePageSummary; presentations: Set<'embed' | 'attachment'> }
+  >();
+  for (const usage of usages) {
+    if (usage.kind !== 'page') {
+      continue;
+    }
+    const existing = pages.get(usage.page.readableId);
+    if (existing) {
+      existing.presentations.add(usage.presentation);
+    } else {
+      pages.set(usage.page.readableId, {
+        page: usage.page,
+        presentations: new Set([usage.presentation]),
+      });
+    }
+  }
+  return [...pages.values()].map(({ page, presentations }) => ({
+    page,
+    context:
+      presentations.size === 2
+        ? 'Embedded · Attached'
+        : presentations.has('embed')
+          ? 'Embedded'
+          : 'Attached',
+  }));
 }
 
 function PagePreview({
@@ -129,26 +202,11 @@ function EntityPreview({
             <h2 className="font-semibold text-2xl tracking-tight">{entity.name}</h2>
             <p className="mt-3 text-muted-foreground leading-relaxed">{entity.description}</p>
           </div>
-          <section className="border-t pt-5">
-            <h3 className="font-semibold text-base">Mentioned by knowledge pages</h3>
-            {entity.pages.length > 0 ? (
-              <ul className="mt-3 grid gap-2">
-                {entity.pages.map((page) => (
-                  <li key={page.readableId}>
-                    <button
-                      type="button"
-                      className={cn(resourceCardVariants(), 'h-auto min-h-20 w-full transition')}
-                      onClick={() => onSelect({ kind: 'page', readableId: page.readableId })}
-                    >
-                      <KnowledgePageCardContent page={page} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
-            )}
-          </section>
+          <PreviewPageSection
+            title="Mentioned by knowledge pages"
+            items={entity.pages.map((page) => ({ page }))}
+            onSelect={onSelect}
+          />
         </div>
       ) : (
         <PreviewStatus>Loading entity…</PreviewStatus>
@@ -157,7 +215,15 @@ function EntityPreview({
   );
 }
 
-function AssetPreview({ readableId, onClose }: { readableId: string; onClose: () => void }) {
+function AssetPreview({
+  readableId,
+  onClose,
+  onSelect,
+}: {
+  readableId: string;
+  onClose: () => void;
+  onSelect: (selection: KnowledgeMapSelection) => void;
+}) {
   const { data: asset, error } = useAsset(readableId);
   return (
     <PreviewPanelShell
@@ -201,6 +267,11 @@ function AssetPreview({ readableId, onClose }: { readableId: string; onClose: ()
               {formatAssetSize(asset.sizeBytes)}
             </p>
           </div>
+          <PreviewPageSection
+            title="Used by knowledge pages"
+            items={assetPreviewPages(asset.usages)}
+            onSelect={onSelect}
+          />
         </div>
       ) : (
         <PreviewStatus>Loading asset…</PreviewStatus>
@@ -226,5 +297,5 @@ export function KnowledgeMapPreviewPanel({
       <EntityPreview readableId={selection.readableId} onClose={onClose} onSelect={onSelect} />
     );
   }
-  return <AssetPreview readableId={selection.readableId} onClose={onClose} />;
+  return <AssetPreview readableId={selection.readableId} onClose={onClose} onSelect={onSelect} />;
 }

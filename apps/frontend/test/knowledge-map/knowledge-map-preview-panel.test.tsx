@@ -10,6 +10,7 @@ import {
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { KnowledgeMapSelection } from '../../src/components/knowledge-map/knowledge-map-canvas';
 import { KnowledgeMapPreviewPanel } from '../../src/components/knowledge-map/knowledge-map-preview-panel';
+import { type Asset, assetQueryOptions } from '../../src/queries/assets';
 import { type KnowledgePage, pageQueryOptions } from '../../src/queries/pages';
 
 async function renderPreview(selection: KnowledgeMapSelection): Promise<string> {
@@ -20,6 +21,36 @@ async function renderPreview(selection: KnowledgeMapSelection): Promise<string> 
         '# Project brief\n\n[Maya Chen](context-use://entity/maya-chen) reviews the [launch plan](context-use://page/launch-plan) and [metrics](context-use://asset/rollout-metrics).',
       mentions: [{ readableId: 'maya-chen', name: 'Maya Chen', image: null }],
     } as KnowledgePage);
+  }
+  if (selection.kind === 'asset') {
+    const timestamp = new Date('2026-01-01T00:00:00.000Z');
+    const launchPage = {
+      readableId: 'launch-readiness-plan',
+      title: 'Launch readiness plan',
+      excerpt: 'Prepare the wider rollout.',
+      temporalCoverage: null,
+      revisionNumber: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    queryClient.setQueryData(assetQueryOptions(selection.readableId).queryKey, {
+      readableId: selection.readableId,
+      name: 'Rollout metrics',
+      mediaType: 'application/octet-stream',
+      extension: null,
+      sizeBytes: 105,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      usages: [
+        { kind: 'page', presentation: 'embed', page: launchPage },
+        { kind: 'page', presentation: 'attachment', page: launchPage },
+        {
+          kind: 'page',
+          presentation: 'attachment',
+          page: { ...launchPage, readableId: 'decision-log', title: 'Decision log' },
+        },
+      ],
+    } as Asset);
   }
   const rootRoute = createRootRoute({
     component: () => (
@@ -64,4 +95,16 @@ test('page preview content keeps resource navigation inside the map overlay', as
   expect(pageHtml).not.toContain('href="/entities/maya-chen"');
   expect(pageHtml).not.toContain('href="/pages/launch-plan"');
   expect(pageHtml).not.toContain('href="/api/assets/rollout-metrics/content"');
+});
+
+test('asset previews show each knowledge page that embeds or attaches the asset', async () => {
+  const assetHtml = await renderPreview({ kind: 'asset', readableId: 'rollout-metrics' });
+
+  expect(assetHtml).toContain('Used by knowledge pages');
+  expect(assetHtml).toContain('Launch readiness plan');
+  expect(assetHtml).toContain('Embedded · Attached');
+  expect(assetHtml).toContain('Decision log');
+  expect(assetHtml).toContain('Attached');
+  expect(assetHtml).not.toContain('href="/pages/launch-readiness-plan"');
+  expect(assetHtml).not.toContain('href="/pages/decision-log"');
 });
