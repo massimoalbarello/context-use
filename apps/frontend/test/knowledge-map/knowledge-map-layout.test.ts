@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   buildKnowledgeMapLayout,
   eagerKnowledgeMapImageKeys,
+  focusedKnowledgeMapViewBox,
   knowledgeMapLayoutInViewport,
   MAX_EAGER_KNOWLEDGE_MAP_IMAGES,
   mapViewportNearBoundary,
@@ -20,6 +21,8 @@ const MINIMUM_PAGE_LABEL_DISTANCE = 180;
 const CROWDED_NEIGHBOR_COUNT = 120;
 const CROWDED_PAGE_COUNT = 40;
 const EXTRA_RASTER_ASSET_COUNT = 4;
+const FIRST_TEMPORAL_REVEAL_ZOOM = 1.01;
+const FULL_TEMPORAL_REVEAL_ZOOM = 2;
 
 function entity({
   readableId,
@@ -66,12 +69,14 @@ function page({
 }: {
   readableId: string;
   title: string;
-} & Partial<Pick<KnowledgeMapPage, 'excerpt' | 'mentions' | 'assetUsages'>>): KnowledgeMapPage {
+} & Partial<
+  Pick<KnowledgeMapPage, 'excerpt' | 'mentions' | 'assetUsages' | 'temporalCoverage'>
+>): KnowledgeMapPage {
   return {
     readableId,
     title,
     excerpt: options.excerpt ?? 'A focused account of the subject and its context.',
-    temporalCoverage: null,
+    temporalCoverage: options.temporalCoverage ?? null,
     revisionNumber: 1,
     createdAt,
     updatedAt: createdAt,
@@ -236,6 +241,43 @@ describe('knowledge map layout', () => {
     expect(closeView.pages.length).toBeLessThan(fittedView.pages.length);
     expect(fittedView.pages).toHaveLength(pages.length);
     expect(closeView.resources.some(({ key }) => key === 'entity:alex')).toBe(true);
+  });
+
+  test('reveals temporal pages newest first as the map zooms out', () => {
+    const semantic = page({ readableId: 'semantic', title: 'Semantic' });
+    const newest = page({
+      readableId: 'newest',
+      title: 'Newest',
+      temporalCoverage: '2026-08/..',
+    });
+    const middle = page({
+      readableId: 'middle',
+      title: 'Middle',
+      temporalCoverage: '2026-07',
+    });
+    const oldest = page({
+      readableId: 'oldest',
+      title: 'Oldest',
+      temporalCoverage: '2025',
+    });
+    const layout = buildKnowledgeMapLayout([semantic, oldest, middle, newest]);
+    const focused = focusedKnowledgeMapViewBox(layout);
+    const pageIdsAtWidth = (width: number) =>
+      knowledgeMapLayoutInViewport(layout, {
+        x: layout.bounds.x,
+        y: layout.bounds.y,
+        width,
+        height: layout.bounds.height,
+      }).pages.map(({ page: mapPage }) => mapPage.readableId);
+
+    expect(pageIdsAtWidth(focused.width)).toEqual(['semantic']);
+    expect(pageIdsAtWidth(focused.width * FIRST_TEMPORAL_REVEAL_ZOOM)).toEqual([
+      'semantic',
+      'newest',
+    ]);
+    expect(
+      pageIdsAtWidth(Math.max(layout.bounds.width, focused.width * FULL_TEMPORAL_REVEAL_ZOOM)),
+    ).toEqual(['semantic', 'oldest', 'middle', 'newest']);
   });
 
   test('merges cursor batches without duplicating a page at their boundary', () => {

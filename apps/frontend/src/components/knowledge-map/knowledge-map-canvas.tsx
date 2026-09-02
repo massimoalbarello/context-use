@@ -24,6 +24,7 @@ import { Button } from '../ui/button';
 import {
   buildKnowledgeMapLayout,
   eagerKnowledgeMapImageKeys,
+  focusedKnowledgeMapViewBox,
   type KnowledgeMapLayout,
   type KnowledgeMapResource,
   knowledgeMapLayoutInViewport,
@@ -422,20 +423,6 @@ const KnowledgeMapLayers = memo(function KnowledgeMapLayers({
   );
 });
 
-function focusedViewBox({
-  bounds,
-  focusPoint,
-}: ReturnType<typeof buildKnowledgeMapLayout>): ViewBox {
-  const width = Math.max(720, Math.min(1100, bounds.width));
-  const height = Math.max(500, Math.min(760, bounds.height));
-  return {
-    x: focusPoint.x - width / 2,
-    y: focusPoint.y - height / 2,
-    width,
-    height,
-  };
-}
-
 function KnowledgeMapExplorationCue({
   loadMoreError,
   onLoadMore,
@@ -493,7 +480,7 @@ export function KnowledgeMapCanvas({
     [anchorEntity, pages],
   );
   const [preview, setPreview] = useState<MapPreview | null>(null);
-  const [viewBox, setViewBox] = useState<ViewBox>(() => focusedViewBox(layout));
+  const [viewBox, setViewBox] = useState<ViewBox>(() => focusedKnowledgeMapViewBox(layout));
   const viewBoxRef = useRef(viewBox);
   const loadMorePending = useRef(false);
   const lastZoomLoadAt = useRef(0);

@@ -2,6 +2,7 @@
 // biome-ignore-all lint/style/noMagicNumbers: The deterministic SVG layout is defined by visual geometry constants.
 
 import { isEmbeddableAsset } from '../../lib/asset-presentation';
+import { temporalCoverageRecency } from '../../lib/temporal-coverage';
 import type {
   KnowledgeMapAsset,
   KnowledgeMapEntity,
@@ -26,6 +27,7 @@ export type KnowledgeMapPageLayout = {
 export type KnowledgeMapLayout = {
   pages: KnowledgeMapPageLayout[];
   resources: KnowledgeMapResource[];
+  temporalPageKeys: string[];
   focusPoint: MapPoint;
   bounds: MapBounds;
 };
@@ -63,6 +65,11 @@ const PAGE_LABEL_SPIRAL_STEP = 64;
 const PAGE_PLACEMENT_ATTEMPTS = 1600;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const VIEWPORT_RENDER_MARGIN_RATIO = 0.08;
+const MINIMUM_FOCUSED_VIEW_WIDTH = 720;
+const MAXIMUM_FOCUSED_VIEW_WIDTH = 1100;
+const MINIMUM_FOCUSED_VIEW_HEIGHT = 500;
+const MAXIMUM_FOCUSED_VIEW_HEIGHT = 760;
+const FULL_TEMPORAL_REVEAL_ZOOM = 2;
 export const MAX_EAGER_KNOWLEDGE_MAP_IMAGES = 12;
 
 function resourceKey(kind: 'entity' | 'asset', readableId: string): string {
@@ -314,15 +321,40 @@ export function knowledgeMapLayoutInViewport(
   layout: KnowledgeMapLayout,
   viewport: MapBounds,
 ): KnowledgeMapLayout {
-  const pages = layout.pages.filter(({ point }) => pointNearViewport(point, viewport));
-  const visibleResourceKeys = new Set(pages.flatMap(({ resourceKeys }) => resourceKeys));
-  const resources = layout.resources.filter(
-    (resource) =>
-      pointNearViewport(resource.point, viewport) &&
-      (visibleResourceKeys.has(resource.key) ||
-        (resource.kind === 'entity' && resource.entity.isSelf)),
+  const focusedWidth = focusedKnowledgeMapViewBox(layout).width;
+  const fullRevealWidth = Math.max(layout.bounds.width, focusedWidth * FULL_TEMPORAL_REVEAL_ZOOM);
+  const temporalProgress = Math.max(
+    0,
+    Math.min(1, (viewport.width - focusedWidth) / (fullRevealWidth - focusedWidth)),
+  );
+  const temporalPageCount = Math.ceil(layout.temporalPageKeys.length * temporalProgress);
+  const visibleTemporalPageKeys = new Set(layout.temporalPageKeys.slice(0, temporalPageCount));
+  const pages = layout.pages.filter(
+    ({ page, point }) =>
+      (page.temporalCoverage === null || visibleTemporalPageKeys.has(page.readableId)) &&
+      pointNearViewport(point, viewport),
+  );
+  const resources = layout.resources.filter((resource) =>
+    pointNearViewport(resource.point, viewport),
   );
   return { ...layout, pages, resources };
+}
+
+export function focusedKnowledgeMapViewBox(layout: KnowledgeMapLayout): MapBounds {
+  const width = Math.max(
+    MINIMUM_FOCUSED_VIEW_WIDTH,
+    Math.min(MAXIMUM_FOCUSED_VIEW_WIDTH, layout.bounds.width),
+  );
+  const height = Math.max(
+    MINIMUM_FOCUSED_VIEW_HEIGHT,
+    Math.min(MAXIMUM_FOCUSED_VIEW_HEIGHT, layout.bounds.height),
+  );
+  return {
+    x: layout.focusPoint.x - width / 2,
+    y: layout.focusPoint.y - height / 2,
+    width,
+    height,
+  };
 }
 
 export function eagerKnowledgeMapImageKeys(layout: KnowledgeMapLayout): Set<string> {
@@ -450,6 +482,7 @@ export function buildKnowledgeMapLayout(
     return {
       pages: [],
       resources: [],
+      temporalPageKeys: [],
       focusPoint: { x: 450, y: 300 },
       bounds: { x: 0, y: 0, width: 900, height: 600 },
     };
@@ -494,10 +527,29 @@ export function buildKnowledgeMapLayout(
     (pageLayouts.length > 0
       ? pointAverage(pageLayouts.map(({ point }) => point))
       : resources[0]!.point);
+  const temporalPageKeys = pageLayouts
+    .filter(({ page }) => page.temporalCoverage !== null)
+    .map((item) => ({ item, recency: temporalCoverageRecency(item.page.temporalCoverage!) }))
+    .sort(
+      (
+        { item: { page: first }, recency: firstRecency },
+        { item: { page: second }, recency: secondRecency },
+      ) => {
+        return (
+          Number(secondRecency.ongoing) - Number(firstRecency.ongoing) ||
+          secondRecency.latest - firstRecency.latest ||
+          secondRecency.start - firstRecency.start ||
+          new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime() ||
+          first.readableId.localeCompare(second.readableId)
+        );
+      },
+    )
+    .map(({ item }) => item.page.readableId);
 
   return {
     pages: pageLayouts,
     resources,
+    temporalPageKeys,
     focusPoint,
     bounds: { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
   };

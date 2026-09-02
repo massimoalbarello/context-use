@@ -16,6 +16,19 @@ export function temporalCoverageExpression(value: TransportedTemporalCoverage): 
   return value instanceof Date ? value.toISOString().slice(0, 'YYYY-MM-DD'.length) : value;
 }
 
+export function temporalCoverageRecency(value: TransportedTemporalCoverage): {
+  ongoing: boolean;
+  latest: number;
+  start: number;
+} {
+  const coverage = parseTemporalCoverage(temporalCoverageExpression(value));
+  return {
+    ongoing: coverage.ongoing,
+    latest: coverage.bounds.end ?? coverage.bounds.start,
+    start: coverage.bounds.start,
+  };
+}
+
 function calendarDateLabel({
   date,
   locales,
