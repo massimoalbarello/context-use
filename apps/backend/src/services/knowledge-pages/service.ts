@@ -11,7 +11,9 @@ import type {
 } from '#models/knowledge-pages/model.ts';
 import {
   InvalidTemporalCoverageError,
-  temporalCoverageFrom,
+  type ParsedTemporalCoverage,
+  parseTemporalCoverage as parseTemporalCoverageExpression,
+  type TemporalBounds,
 } from '#models/knowledge-pages/temporal-coverage.ts';
 import {
   READABLE_ID_SUFFIX_LENGTH,
@@ -59,9 +61,9 @@ export class KnowledgePagesService {
     if ('message' in parsed) {
       return parsed;
     }
-    const temporalCoverage = this.parseTemporalCoverage(input.temporalCoverage ?? null);
-    if (typeof temporalCoverage !== 'string' && temporalCoverage !== null) {
-      return temporalCoverage;
+    const parsedTemporalCoverage = this.parseTemporalCoverageInput(input.temporalCoverage ?? null);
+    if (parsedTemporalCoverage && 'state' in parsedTemporalCoverage) {
+      return parsedTemporalCoverage;
     }
     const derivedReadableId = readableIdFrom(parsed.title);
     const readableId = input.allowDuplicate
@@ -92,7 +94,7 @@ export class KnowledgePagesService {
         readableId,
         title: parsed.title,
         excerpt: parsed.excerpt,
-        temporalCoverage,
+        temporalCoverage: parsedTemporalCoverage,
         storageKey,
         contentHash: contentHash(input.markdown),
         sizeBytes,
@@ -115,7 +117,13 @@ export class KnowledgePagesService {
     return { state: 'saved', page };
   }
 
-  list(input: { ownerId: string; limit: number; offset: number; query?: string }) {
+  list(input: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+    query?: string;
+    temporalBounds?: TemporalBounds;
+  }) {
     return this.pages.list(input);
   }
 
@@ -157,12 +165,11 @@ export class KnowledgePagesService {
     if (!existing) {
       return { state: 'not_found' };
     }
-    const temporalCoverage =
-      input.temporalCoverage === undefined
-        ? existing.temporalCoverage
-        : this.parseTemporalCoverage(input.temporalCoverage);
-    if (typeof temporalCoverage !== 'string' && temporalCoverage !== null) {
-      return temporalCoverage;
+    const parsedTemporalCoverage = this.parseTemporalCoverageInput(
+      input.temporalCoverage === undefined ? existing.temporalCoverage : input.temporalCoverage,
+    );
+    if (parsedTemporalCoverage && 'state' in parsedTemporalCoverage) {
+      return parsedTemporalCoverage;
     }
     const revisionId = Bun.randomUUIDv7();
     const storageKey = this.storageKey({
@@ -185,7 +192,7 @@ export class KnowledgePagesService {
         expectedRevisionNumber: input.expectedRevisionNumber,
         title: parsed.title,
         excerpt: parsed.excerpt,
-        temporalCoverage,
+        temporalCoverage: parsedTemporalCoverage,
         storageKey,
         contentHash: contentHash(input.markdown),
         sizeBytes,
@@ -287,11 +294,14 @@ export class KnowledgePagesService {
     };
   }
 
-  private parseTemporalCoverage(
+  private parseTemporalCoverageInput(
     value: string | null,
-  ): string | null | { state: 'invalid_temporal_coverage'; message: string } {
+  ): ParsedTemporalCoverage | null | { state: 'invalid_temporal_coverage'; message: string } {
+    if (value === null) {
+      return null;
+    }
     try {
-      return temporalCoverageFrom(value);
+      return parseTemporalCoverageExpression(value);
     } catch (error) {
       if (error instanceof InvalidTemporalCoverageError) {
         return { state: 'invalid_temporal_coverage', message: error.message };

@@ -3,8 +3,14 @@ import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
+import { PageDateRangeFilter } from '../components/pages/page-date-range-filter';
 import { usePages } from '../lib/hooks/use-pages';
+import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { pagesQueryOptions } from '../queries/pages';
+
+function pageSearch(search: Record<string, unknown>): Partial<CalendarDateRange> {
+  return calendarDateRangeFromSearch(search) ?? {};
+}
 
 export const Route = createFileRoute('/pages')({
   beforeLoad: ({ context, location }) => {
@@ -12,13 +18,35 @@ export const Route = createFileRoute('/pages')({
       throw redirect({ to: '/login', search: { redirect: location.href } });
     }
   },
-  loader: ({ context }) => context.queryClient.ensureInfiniteQueryData(pagesQueryOptions),
+  validateSearch: pageSearch,
+  loaderDeps: ({ search }) => ({ dateRange: calendarDateRangeFromSearch(search) }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureInfiniteQueryData(pagesQueryOptions(deps.dateRange)),
   component: PagesLayout,
 });
 
+function PageTimeFilter({ dateRange }: { dateRange?: CalendarDateRange }) {
+  const navigate = Route.useNavigate();
+
+  return (
+    <PageDateRangeFilter
+      value={dateRange}
+      onApply={(nextRange) => {
+        void navigate({
+          to: '/pages',
+          search: { from: nextRange?.from, to: nextRange?.to },
+        });
+      }}
+    />
+  );
+}
+
 function PagesLayout() {
   const { profile } = Route.useRouteContext();
-  const { pages, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = usePages();
+  const search = Route.useSearch();
+  const dateRange = calendarDateRangeFromSearch(search);
+  const { pages, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    usePages(dateRange);
   if (!profile) {
     return null;
   }
@@ -36,7 +64,8 @@ function PagesLayout() {
         isFetchingNextPage={isFetchingNextPage}
         loadMore={fetchNextPage}
       >
-        <KnowledgePageList pages={pages} />
+        <PageTimeFilter dateRange={dateRange} />
+        <KnowledgePageList pages={pages} filtered={Boolean(dateRange)} />
       </KnowledgeSidebar>
       <KnowledgeWorkspaceDetail>
         <Outlet />

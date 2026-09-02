@@ -3,14 +3,13 @@ import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
 import { EntityImageEditor } from '../components/entities/entity-image-editor';
 import { EntityAvatar } from '../components/entities/entity-link';
+import { EntityPageSections } from '../components/entities/entity-page-sections';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
-import { ResourceList } from '../components/knowledge/resource-list';
 import { ResourceName } from '../components/knowledge/resource-name';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
-import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { Badge } from '../components/ui/badge';
 import { useArchiveEntity } from '../lib/hooks/use-archive-entity';
 import { useEntity } from '../lib/hooks/use-entity';
@@ -163,23 +162,7 @@ function EntityRouteContent({ id }: { id: string }) {
         </p>
       )}
 
-      <section className="max-w-3xl scroll-mt-24 pt-2" id="mentioned-by" tabIndex={-1}>
-        <div className="mb-4 flex items-center gap-3">
-          <h2 className="font-semibold text-lg">Mentioned by</h2>
-          <Badge variant="secondary">{entity.pages.length}</Badge>
-        </div>
-        {entity.pages.length > 0 ? (
-          <ResourceList>
-            {entity.pages.map((page) => (
-              <li key={page.readableId}>
-                <KnowledgePageLink page={page} presentation="card" />
-              </li>
-            ))}
-          </ResourceList>
-        ) : (
-          <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
-        )}
-      </section>
+      <EntityPageSections pages={entity.pages} />
     </DetailShell>
   );
 }

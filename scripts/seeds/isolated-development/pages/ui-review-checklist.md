@@ -1,6 +1,6 @@
 # UI review checklist
 
-[Alex Morgan](context-use://entity/alex-morgan) reviews the [project goals](context-use://page/project-brief#goals) before changing the interface.
+[Alex Morgan](context-use://entity/alex-morgan) reviews the [Northstar](context-use://entity/northstar) [project goals](context-use://page/project-brief#goals) before changing the interface.
 
 ## Checks
 

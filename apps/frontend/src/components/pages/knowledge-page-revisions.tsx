@@ -1,5 +1,6 @@
 import type { KnowledgePage } from '../../queries/pages';
 import { Badge } from '../ui/badge';
+import { TemporalCoverageLabel } from './temporal-coverage-label';
 
 export function KnowledgePageRevisions({
   page,
@@ -22,13 +23,18 @@ export function KnowledgePageRevisions({
               )}
             </div>
             <p className="mt-1 text-sm">{revision.title}</p>
-            <p className="mt-1 text-muted-foreground text-xs">Created by {revision.author.name}</p>
-            <time
-              className="mt-1 block text-muted-foreground text-xs"
-              dateTime={revision.createdAt.toISOString()}
-            >
-              {revision.createdAt.toLocaleString()}
-            </time>
+            {revision.temporalCoverage && (
+              <TemporalCoverageLabel
+                className="mt-1 text-xs"
+                expression={revision.temporalCoverage}
+              />
+            )}
+            <p className="mt-1 text-muted-foreground text-xs">
+              Created by {revision.author.name} ·{' '}
+              <time dateTime={revision.createdAt.toISOString()}>
+                {revision.createdAt.toLocaleString()}
+              </time>
+            </p>
           </li>
         ))}
       </ol>

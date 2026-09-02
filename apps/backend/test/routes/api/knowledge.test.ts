@@ -9,6 +9,7 @@ import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
+import { temporalBoundsFrom } from '#models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#models/readable-ids/model.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
@@ -62,8 +63,11 @@ const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
   import.meta.url,
 );
 const EXPECTED_ENTITY_COUNT = 4;
-const EXPECTED_PAGE_COUNT = 3;
+const EXPECTED_PAGE_COUNT = 5;
+const EXPECTED_SECOND_PAGE_OFFSET = 4;
+const EXPECTED_FILTERED_PAGE_COUNT = 5;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
+const EXPECTED_CURRENT_MENTION_COUNT = 4;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -305,6 +309,15 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       nextOffset: null,
     });
 
+    const temporalEntityResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/entities',
+        body: { name: 'Temporal subject', description: 'Subject used to verify related history.' },
+      }),
+    );
+    expect(temporalEntityResponse.status).toBe(StatusMap.Created);
+
     const growthResponse = await app.handle(
       jsonRequest({
         method: 'POST',
@@ -331,8 +344,31 @@ Every observation changes the next action.`,
     expectNoInternalResourceIds(growth);
     expect(growth.excerpt).toBe('Luca owns this feedback system.');
     expect(growth.temporalCoverage).toBe('2025-03/2025-08');
+    if (growth.temporalCoverage === null) {
+      throw new Error('Temporal page response omitted its coverage');
+    }
     expect(growth.revisionNumber).toBe(1);
     expect(growth.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
+    const [storedTemporalProjection] = await database<
+      Array<{
+        temporalCoverage: string | null;
+        temporalStartMs: number;
+        temporalEndExclusiveMs: number | null;
+      }>
+    >`
+      select revision."temporal_coverage" as "temporalCoverage",
+        revision."temporal_start_ms" as "temporalStartMs",
+        revision."temporal_end_exclusive_ms" as "temporalEndExclusiveMs"
+      from "knowledge_page" page
+      join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+      where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'growth-playbook'
+    `;
+    const expectedTemporalBounds = temporalBoundsFrom(growth.temporalCoverage);
+    expect(storedTemporalProjection).toEqual({
+      temporalCoverage: growth.temporalCoverage,
+      temporalStartMs: expectedTemporalBounds.start,
+      temporalEndExclusiveMs: expectedTemporalBounds.end,
+    });
 
     const invalidTemporalCoverageResponse = await app.handle(
       jsonRequest({
@@ -385,11 +421,36 @@ Every observation changes the next action.`,
           temporalCoverage: '2025~',
           markdown: `# Operating rhythm
 
-Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every Friday.`,
+[Temporal subject](context-use://entity/temporal-subject) uses the [feedback loop](context-use://page/growth-playbook#feedback-loop) every Friday.`,
         },
       }),
     );
     expect(rhythmResponse.status).toBe(StatusMap.Created);
+
+    const ongoingResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/pages',
+        body: {
+          temporalCoverage: '2024-11?/..',
+          markdown:
+            '# Current programme\n\n[Temporal subject](context-use://entity/temporal-subject) remains evidenced and ongoing.',
+        },
+      }),
+    );
+    expect(ongoingResponse.status).toBe(StatusMap.Created);
+
+    const semanticResponse = await app.handle(
+      jsonRequest({
+        method: 'POST',
+        path: '/pages',
+        body: {
+          markdown:
+            '# Alpha principles\n\n[Temporal subject](context-use://entity/temporal-subject) has semantic guidance with no asserted interval.',
+        },
+      }),
+    );
+    expect(semanticResponse.status).toBe(StatusMap.Created);
 
     const firstKnowledgePageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0' }),
@@ -402,6 +463,10 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
     expect(firstKnowledgePage.items).toHaveLength(2);
     expect(firstKnowledgePage.total).toBe(EXPECTED_PAGE_COUNT);
     expect(firstKnowledgePage.nextOffset).toBe(2);
+    expect(firstKnowledgePage.items.map(({ readableId }) => readableId)).toEqual([
+      'current-programme',
+      'operating-rhythm',
+    ]);
 
     const secondKnowledgePageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=2' }),
@@ -411,17 +476,125 @@ Use the [feedback loop](context-use://page/growth-playbook#feedback-loop) every 
       total: number;
       nextOffset: number | null;
     };
-    expect(secondKnowledgePage.items).toHaveLength(1);
+    expect(secondKnowledgePage.items).toHaveLength(2);
     expect(secondKnowledgePage.total).toBe(EXPECTED_PAGE_COUNT);
-    expect(secondKnowledgePage.nextOffset).toBeNull();
+    expect(secondKnowledgePage.nextOffset).toBe(EXPECTED_SECOND_PAGE_OFFSET);
+    expect(secondKnowledgePage.items.map(({ readableId }) => readableId)).toEqual([
+      'growth-playbook',
+      'alpha-principles',
+    ]);
+    const thirdKnowledgePageResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=4' }),
+    );
+    const thirdKnowledgePage = (await thirdKnowledgePageResponse.json()) as {
+      items: Array<{ readableId: string }>;
+      total: number;
+      nextOffset: number | null;
+    };
+    expect(thirdKnowledgePage.items.map(({ readableId }) => readableId)).toEqual([
+      duplicatePage.readableId,
+    ]);
+    expect(thirdKnowledgePage.total).toBe(EXPECTED_PAGE_COUNT);
+    expect(thirdKnowledgePage.nextOffset).toBeNull();
     expectNoInternalResourceIds(firstKnowledgePage);
     expectNoInternalResourceIds(secondKnowledgePage);
+    expectNoInternalResourceIds(thirdKnowledgePage);
     expect(
       [
         ...firstKnowledgePage.items.map(({ readableId }) => readableId),
         ...secondKnowledgePage.items.map(({ readableId }) => readableId),
+        ...thirdKnowledgePage.items.map(({ readableId }) => readableId),
       ].sort(),
-    ).toEqual(['growth-playbook', duplicatePage.readableId, 'operating-rhythm'].sort());
+    ).toEqual(
+      [
+        'alpha-principles',
+        'current-programme',
+        'growth-playbook',
+        duplicatePage.readableId,
+        'operating-rhythm',
+      ].sort(),
+    );
+
+    const overlappingPagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0&time=2025-04' }),
+    );
+    const overlappingPages = (await overlappingPagesResponse.json()) as {
+      items: Array<{ readableId: string }>;
+      total: number;
+      nextOffset: number | null;
+    };
+    expect(overlappingPages.items.map(({ readableId }) => readableId)).toEqual([
+      'current-programme',
+      'operating-rhythm',
+    ]);
+    expect(overlappingPages.total).toBe(EXPECTED_FILTERED_PAGE_COUNT);
+    expect(overlappingPages.nextOffset).toBe(2);
+
+    const remainingOverlappingPagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=2&time=2025-04' }),
+    );
+    expect(await remainingOverlappingPagesResponse.json()).toEqual({
+      items: [
+        expect.objectContaining({ readableId: 'growth-playbook' }),
+        expect.objectContaining({ readableId: 'alpha-principles' }),
+      ],
+      total: EXPECTED_FILTERED_PAGE_COUNT,
+      nextOffset: 4,
+    });
+
+    const finalOverlappingPagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=4&time=2025-04' }),
+    );
+    expect(await finalOverlappingPagesResponse.json()).toEqual({
+      items: [expect.objectContaining({ readableId: duplicatePage.readableId })],
+      total: EXPECTED_FILTERED_PAGE_COUNT,
+      nextOffset: null,
+    });
+
+    const futurePagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?time=2026' }),
+    );
+    expect(await futurePagesResponse.json()).toEqual({
+      items: [
+        expect.objectContaining({ readableId: 'current-programme' }),
+        expect.objectContaining({ readableId: 'alpha-principles' }),
+        expect.objectContaining({ readableId: duplicatePage.readableId }),
+      ],
+      total: 3,
+      nextOffset: null,
+    });
+
+    const noOverlapResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?time=2024-01/2024-10' }),
+    );
+    expect(await noOverlapResponse.json()).toEqual({
+      items: [
+        expect.objectContaining({ readableId: 'alpha-principles' }),
+        expect.objectContaining({ readableId: duplicatePage.readableId }),
+      ],
+      total: 2,
+      nextOffset: null,
+    });
+
+    const invalidTimeFilterResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?time=2025-13' }),
+    );
+    expect(invalidTimeFilterResponse.status).toBe(StatusMap['Bad Request']);
+    expect(await invalidTimeFilterResponse.json()).toEqual({
+      error: expect.stringContaining('Use YYYY'),
+    });
+
+    const temporalEntityDetailResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/entities/temporal-subject' }),
+    );
+    const temporalEntityDetail = (await temporalEntityDetailResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+    };
+    expect(temporalEntityDetail.pages.map(({ readableId }) => readableId)).toEqual([
+      'current-programme',
+      'operating-rhythm',
+      'alpha-principles',
+    ]);
 
     const searchedKnowledgePageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=7&offset=0&query=growth' }),
@@ -513,7 +686,7 @@ Revise the current knowledge instead of appending snapshots.`,
     const currentMentionCount = await database<Array<{ count: number }>>`
       select count(*) as "count" from "knowledge_page_entity_mention"
     `;
-    expect(Number(currentMentionCount[0]?.count)).toBe(1);
+    expect(Number(currentMentionCount[0]?.count)).toBe(EXPECTED_CURRENT_MENTION_COUNT);
 
     const staleUpdateResponse = await app.handle(
       jsonRequest({

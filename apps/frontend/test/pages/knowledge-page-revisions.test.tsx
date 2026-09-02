@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { KnowledgePageRevisions } from '../../src/components/pages/knowledge-page-revisions';
 import type { KnowledgePage } from '../../src/queries/pages';
 
-test('revision history shows the snapshotted readable author name', () => {
+test('revision history shows its snapshotted author and temporal coverage', () => {
   const timestamp = new Date('2026-09-01T12:00:00.000Z');
   const page = {
     revisionNumber: 2,
@@ -11,7 +11,7 @@ test('revision history shows the snapshotted readable author name', () => {
       {
         revisionNumber: 2,
         title: 'Updated notes',
-        temporalCoverage: null,
+        temporalCoverage: '2025-03/..',
         author: { kind: 'mcp_client', name: 'Research agent' },
         createdAt: timestamp,
       },
@@ -29,4 +29,8 @@ test('revision history shows the snapshotted readable author name', () => {
 
   expect(html).toContain('Created by Research agent');
   expect(html).toContain('Created by Alex Morgan');
+  expect(html).toContain('Research agent · <time');
+  expect(html).toContain('Alex Morgan · <time');
+  expect(html).toContain('Since March 2025 · ongoing');
+  expect(html).not.toContain('General knowledge');
 });

@@ -7,7 +7,24 @@ const DATE_PATTERN = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?([?~])?$/;
 const TEMPORAL_COVERAGE_FORMAT =
   'Use YYYY, YYYY-MM, or YYYY-MM-DD; append ? for uncertain or ~ for approximate, join two dates with / for a bounded interval, or use start/.. for an evidenced ongoing interval.';
 
-type TemporalBounds = { earliest: number; latest: number };
+export type TemporalBounds = { start: number; end: number | null };
+
+export type TemporalCalendarDate = {
+  expression: string;
+  year: number;
+  month: number | null;
+  day: number | null;
+  marker: '?' | '~' | null;
+  bounds: { start: number; end: number };
+};
+
+export type ParsedTemporalCoverage = {
+  expression: string;
+  start: TemporalCalendarDate;
+  end: TemporalCalendarDate | null;
+  ongoing: boolean;
+  bounds: TemporalBounds;
+};
 
 export class InvalidTemporalCoverageError extends Error {
   constructor(message = TEMPORAL_COVERAGE_FORMAT) {
@@ -23,7 +40,7 @@ function utcDate({ year, month, day }: { year: number; month: number; day: numbe
   return date;
 }
 
-function calendarBounds(expression: string): TemporalBounds | null {
+function calendarDateFrom(expression: string): TemporalCalendarDate | null {
   const match = DATE_PATTERN.exec(expression);
   if (!match) {
     return null;
@@ -53,29 +70,43 @@ function calendarBounds(expression: string): TemporalBounds | null {
   } else {
     after.setUTCFullYear(after.getUTCFullYear() + 1);
   }
-  return { earliest: earliestDate.getTime(), latest: after.getTime() - 1 };
+  return {
+    expression,
+    year,
+    month,
+    day,
+    marker: (match[4] as '?' | '~' | undefined) ?? null,
+    bounds: { start: earliestDate.getTime(), end: after.getTime() },
+  };
 }
 
-function expressionBounds(expression: string): TemporalBounds {
-  const bounds = calendarBounds(expression);
-  if (!bounds) {
+function calendarDate(expression: string): TemporalCalendarDate {
+  const date = calendarDateFrom(expression);
+  if (!date) {
     throw new InvalidTemporalCoverageError();
   }
-  return bounds;
+  return date;
 }
 
-export function temporalCoverageFrom(value: string | null): string | null {
-  if (value === null) {
-    return null;
-  }
+export function temporalBoundsFrom(value: string): TemporalBounds {
+  return parseTemporalCoverage(value).bounds;
+}
+
+export function parseTemporalCoverage(value: string): ParsedTemporalCoverage {
   if (value.length === 0 || value.length > MAX_TEMPORAL_COVERAGE_LENGTH || value.trim() !== value) {
     throw new InvalidTemporalCoverageError();
   }
 
   const interval = value.split('/');
   if (interval.length === 1) {
-    expressionBounds(value);
-    return value;
+    const point = calendarDate(value);
+    return {
+      expression: value,
+      start: point,
+      end: point,
+      ongoing: false,
+      bounds: point.bounds,
+    };
   }
   if (interval.length !== 2) {
     throw new InvalidTemporalCoverageError();
@@ -84,10 +115,16 @@ export function temporalCoverageFrom(value: string | null): string | null {
   if (!start || !end || start === '..') {
     throw new InvalidTemporalCoverageError();
   }
-  const startBounds = expressionBounds(start);
-  const endBounds = end === '..' ? null : expressionBounds(end);
-  if (endBounds && startBounds.earliest > endBounds.latest) {
-    throw new InvalidTemporalCoverageError('Temporal coverage must not end before it starts.');
+  const startDate = calendarDate(start);
+  const endDate = end === '..' ? null : calendarDate(end);
+  if (endDate && startDate.bounds.start >= endDate.bounds.end) {
+    throw new InvalidTemporalCoverageError('The interval must not end before it starts.');
   }
-  return value;
+  return {
+    expression: value,
+    start: startDate,
+    end: endDate,
+    ongoing: endDate === null,
+    bounds: { start: startDate.bounds.start, end: endDate?.bounds.end ?? null },
+  };
 }

@@ -4,7 +4,13 @@ import type { KnowledgePageSummary } from '../../queries/pages';
 import { ResourceList, ResourceListEmpty } from '../knowledge/resource-list';
 import { KnowledgePageLink } from './knowledge-page-link';
 
-export function KnowledgePageList({ pages }: { pages: KnowledgePageSummary[] }) {
+export function KnowledgePageList({
+  pages,
+  filtered = false,
+}: {
+  pages: KnowledgePageSummary[];
+  filtered?: boolean;
+}) {
   const activePageId = useRouterState({
     select: (state) => {
       const resource = knowledgeResourceFromPath(state.location.pathname);
@@ -14,8 +20,12 @@ export function KnowledgePageList({ pages }: { pages: KnowledgePageSummary[] }) 
 
   if (pages.length === 0) {
     return (
-      <ResourceListEmpty title="No knowledge pages yet.">
-        Start with one coherent idea and connect it to the entities it discusses.
+      <ResourceListEmpty
+        title={filtered ? 'No pages for this date range.' : 'No knowledge pages yet.'}
+      >
+        {filtered
+          ? 'Clear the date range or choose another one.'
+          : 'Start with one coherent idea and connect it to the entities it discusses.'}
       </ResourceListEmpty>
     );
   }
