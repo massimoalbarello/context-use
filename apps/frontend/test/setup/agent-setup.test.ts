@@ -23,6 +23,11 @@ test('initial curation understands the user and filters evidence before writing'
   const prompt = initialContextPrompt();
   const normalizedPrompt = prompt.replace(/\s+/g, ' ');
 
+  expect(prompt).not.toMatch(/[^\n]\n[^\n]/);
+  expect(prompt).toContain(
+    'write to Context Use until I approve the import plan in step 4.\n\n1. Verify the source and the owner',
+  );
+  expect(prompt).toContain('Do not try to retrieve existing personal context from Context Use');
   expect(normalizedPrompt).toContain(
     'Context Use is connected but empty: it is the destination, not the source',
   );
