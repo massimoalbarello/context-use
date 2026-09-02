@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { CalendarRange, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
+import { enGB } from 'react-day-picker/locale';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import { Button } from '../ui/button';
 import { Calendar } from '../ui/calendar';
@@ -32,11 +33,9 @@ export function dateRangeButtonLabel(value?: CalendarDateRange): string {
   const from = dateFromCalendarValue(value.from);
   const to = dateFromCalendarValue(value.to);
   if (value.from === value.to) {
-    return format(from, 'MMM d, yyyy');
+    return format(from, 'dd/MM/yyyy');
   }
-  return from.getFullYear() === to.getFullYear()
-    ? `${format(from, 'MMM d')} – ${format(to, 'MMM d, yyyy')}`
-    : `${format(from, 'MMM d, yyyy')} – ${format(to, 'MMM d, yyyy')}`;
+  return `${format(from, 'dd/MM/yyyy')} – ${format(to, 'dd/MM/yyyy')}`;
 }
 
 export function PageDateRangeFilter({
@@ -70,6 +69,7 @@ export function PageDateRangeFilter({
         <PopoverContent align="start" className="w-auto overflow-hidden p-0">
           <Calendar
             mode="range"
+            locale={enGB}
             selected={selected}
             defaultMonth={selected?.from}
             onSelect={setSelected}

@@ -19,9 +19,9 @@ test('calendar selections produce stable URL dates and a concise range label', (
   const marchFirst = new Date('2025-03-01T12:00:00');
   expect(calendarValueFromDate(marchFirst)).toBe('2025-03-01');
   expect(dateRangeButtonLabel({ from: '2025-03-01', to: '2025-08-31' })).toBe(
-    'Mar 1 – Aug 31, 2025',
+    '01/03/2025 – 31/08/2025',
   );
   expect(dateRangeButtonLabel({ from: '2025-12-31', to: '2026-01-01' })).toBe(
-    'Dec 31, 2025 – Jan 1, 2026',
+    '31/12/2025 – 01/01/2026',
   );
 });
