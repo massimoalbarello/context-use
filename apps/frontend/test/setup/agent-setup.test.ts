@@ -7,6 +7,8 @@ import {
   initialContextPrompt,
 } from '../../src/components/setup/agent-setup';
 
+const SETUP_STEP_COUNT = 3;
+
 test('connection help assigns the settings-level action to the user', () => {
   const prompt = agentConnectionHelpPrompt('https://personal-context.nibrun.app/mcp');
 
@@ -47,7 +49,7 @@ test('initial curation understands the user and filters evidence before writing'
   expect(prompt).toContain('Do not begin that deeper pass without my approval');
 });
 
-test('setup presents the user-owned connection flow as four numbered steps', () => {
+test('setup presents the user-owned connection flow as three numbered steps', () => {
   const html = renderToStaticMarkup(
     createElement(AgentSetup, {
       mcpServerUrl: 'https://personal-context.nibrun.app/mcp',
@@ -55,8 +57,10 @@ test('setup presents the user-owned connection flow as four numbered steps', () 
   );
 
   expect(html).toContain('<ol');
-  expect(html).toContain('Add the MCP server');
-  expect(html).toContain('Connect and authorize');
+  expect([...html.matchAll(/<li/g)]).toHaveLength(SETUP_STEP_COUNT);
+  expect(html).toContain('Connect to the MCP server');
+  expect(html).toContain('approve the Context Use OAuth');
+  expect(html).not.toContain('Connect and authorize');
   expect(html).toContain('Bootstrap your context');
   expect(html).toContain('Reload and review');
   expect(html).toContain('reload this page to see the context created');

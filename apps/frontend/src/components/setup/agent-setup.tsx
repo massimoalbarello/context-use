@@ -108,14 +108,15 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
         >
           1
         </span>
-        <section className="grid min-w-0 gap-4" aria-labelledby="add-mcp-heading">
+        <section className="grid min-w-0 gap-4" aria-labelledby="connect-mcp-heading">
           <div className="grid gap-1">
-            <h2 id="add-mcp-heading" className="font-semibold text-xl">
-              Add the MCP server
+            <h2 id="connect-mcp-heading" className="font-semibold text-xl">
+              Connect to the MCP server
             </h2>
             <p className="text-muted-foreground leading-relaxed">
               Open your agent’s MCP or connector settings. Add a custom server, choose Streamable
-              HTTP, and paste this URL.
+              HTTP, and paste this URL. Then start the connection and approve the Context Use OAuth
+              request in your browser. Continue when Context Use tools appear in your agent.
             </p>
           </div>
 
@@ -148,24 +149,6 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
         >
           2
         </span>
-        <section className="grid gap-1" aria-labelledby="authorize-heading">
-          <h2 id="authorize-heading" className="font-semibold text-xl">
-            Connect and authorize
-          </h2>
-          <p className="text-muted-foreground leading-relaxed">
-            Start the connection in your agent, then approve the Context Use OAuth request in your
-            browser. Continue when Context Use tools appear in the agent’s tool list.
-          </p>
-        </section>
-      </li>
-
-      <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-4">
-        <span
-          aria-hidden="true"
-          className="flex size-8 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-sm"
-        >
-          3
-        </span>
         <section className="grid min-w-0 gap-4" aria-labelledby="bootstrap-context-heading">
           <div className="grid gap-1">
             <h2 id="bootstrap-context-heading" className="font-semibold text-xl">
@@ -192,7 +175,7 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
           aria-hidden="true"
           className="flex size-8 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground text-sm"
         >
-          4
+          3
         </span>
         <section className="grid gap-1" aria-labelledby="review-context-heading">
           <h2 id="review-context-heading" className="font-semibold text-xl">
