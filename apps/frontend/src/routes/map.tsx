@@ -142,7 +142,6 @@ function KnowledgeMapRoute() {
               selectedKey={selection ? `${selection.kind}:${selection.readableId}` : undefined}
               onSelect={selectKnowledge}
               hasNextPage={mapQuery.hasNextPage}
-              remainingPageCount={Math.max(0, map.totalPages - map.pages.length)}
               isFetchingNextPage={mapQuery.isFetchingNextPage}
               loadMoreError={mapQuery.isFetchNextPageError ? mapQuery.error : null}
               onLoadMore={() => void mapQuery.fetchNextPage()}

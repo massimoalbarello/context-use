@@ -56,6 +56,17 @@ function PreviewStatus({ children }: { children: ReactNode }) {
   return <p className="py-8 text-center text-muted-foreground text-sm">{children}</p>;
 }
 
+function PreviewError({ error, retry }: { error: Error; retry: () => Promise<unknown> }) {
+  return (
+    <div className="grid justify-items-center gap-3 py-8 text-center">
+      <p className="text-destructive text-sm">{error.message}</p>
+      <Button type="button" variant="outline" size="sm" onClick={() => void retry()}>
+        Try again
+      </Button>
+    </div>
+  );
+}
+
 type PreviewPageItem = {
   page: KnowledgePageSummary;
   context?: string;
@@ -136,7 +147,7 @@ function PagePreview({
   onClose: () => void;
   onSelect: (selection: KnowledgeMapSelection) => void;
 }) {
-  const { data: page, error } = usePage(readableId);
+  const { data: page, error, refetch } = usePage(readableId);
   return (
     <PreviewPanelShell
       label="Knowledge page"
@@ -154,7 +165,7 @@ function PagePreview({
       }
     >
       {error ? (
-        <PreviewStatus>{error.message}</PreviewStatus>
+        <PreviewError error={error} retry={refetch} />
       ) : page ? (
         <KnowledgePageMarkdown
           markdown={page.markdown}
@@ -177,7 +188,7 @@ function EntityPreview({
   onClose: () => void;
   onSelect: (selection: KnowledgeMapSelection) => void;
 }) {
-  const { data: entity, error } = useEntity(readableId);
+  const { data: entity, error, refetch } = useEntity(readableId);
   return (
     <PreviewPanelShell
       label="Entity"
@@ -194,7 +205,7 @@ function EntityPreview({
       }
     >
       {error ? (
-        <PreviewStatus>{error.message}</PreviewStatus>
+        <PreviewError error={error} retry={refetch} />
       ) : entity ? (
         <div className="grid gap-5 py-2">
           <EntityAvatar entity={entity} className="size-20 text-2xl" />
@@ -224,7 +235,7 @@ function AssetPreview({
   onClose: () => void;
   onSelect: (selection: KnowledgeMapSelection) => void;
 }) {
-  const { data: asset, error } = useAsset(readableId);
+  const { data: asset, error, refetch } = useAsset(readableId);
   return (
     <PreviewPanelShell
       label="Asset"
@@ -241,7 +252,7 @@ function AssetPreview({
       }
     >
       {error ? (
-        <PreviewStatus>{error.message}</PreviewStatus>
+        <PreviewError error={error} retry={refetch} />
       ) : asset ? (
         <div className="grid gap-5 py-2">
           <div

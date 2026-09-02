@@ -63,7 +63,6 @@ export interface KnowledgeMapContinuation {
 
 export interface KnowledgeMap {
   pages: KnowledgeMapPage[];
-  totalPages: number;
   nextPage: KnowledgeMapContinuation | null;
   truncated: boolean;
 }

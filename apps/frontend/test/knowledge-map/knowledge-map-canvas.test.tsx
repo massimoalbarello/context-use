@@ -51,7 +51,6 @@ test('the hypermedia canvas exposes page regions, circular entities, and rounded
       anchorEntity={self}
       onSelect={() => undefined}
       hasNextPage
-      remainingPageCount={4}
       isFetchingNextPage={false}
       loadMoreError={null}
       onLoadMore={() => undefined}
@@ -65,7 +64,7 @@ test('the hypermedia canvas exposes page regions, circular entities, and rounded
   expect(html).toContain('aria-label="Open asset Rollout metrics"');
   expect(html).toContain('<circle');
   expect(html).toContain('<rect');
-  expect(html).toContain('4 more pages');
+  expect(html).toContain('More pages');
   expect(html).toContain('Drag to explore');
 });
 

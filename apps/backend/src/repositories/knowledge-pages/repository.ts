@@ -751,8 +751,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     const normalizedQuery = query?.trim().toLocaleLowerCase() || null;
     const filterStart = temporalBounds?.start ?? null;
     const filterEnd = temporalBounds?.end ?? null;
-    const [pageRows, countRows] = await Promise.all([
-      this.sql.ListKnowledgeMapPages`
+    const pageRows = await this.sql.ListKnowledgeMapPages`
         /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
         select page."id", page."readable_id" as "readableId",
           revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
@@ -816,60 +815,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           )
         order by page."updated_at" desc, page."readable_id"
         limit ${pageQueryLimit}
-      `,
-      this.sql.CountKnowledgeMapPages`
-        /* @notNull total */
-        select count(*) as "total"
-        from "knowledge_page" page
-        join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
-        where page."owner_id" = ${ownerId} and page."archived_at" is null
-          and (
-            ${normalizedQuery} is null
-            or instr(lower(revision."title"), ${normalizedQuery}) > 0
-            or instr(lower(revision."excerpt"), ${normalizedQuery}) > 0
-            or instr(page."readable_id", ${normalizedQuery}) > 0
-            or exists (
-              select 1
-              from "knowledge_page_entity_mention" mention
-              join "entity" entity
-                on entity."id" = mention."target_entity_id"
-               and entity."owner_id" = mention."owner_id"
-              where mention."source_revision_id" = page."current_revision_id"
-                and mention."owner_id" = page."owner_id"
-                and entity."archived_at" is null
-                and (
-                  instr(lower(entity."name"), ${normalizedQuery}) > 0
-                  or instr(lower(entity."description"), ${normalizedQuery}) > 0
-                  or instr(entity."readable_id", ${normalizedQuery}) > 0
-                )
-            )
-            or exists (
-              select 1
-              from "knowledge_page_asset_usage" usage
-              join "asset" asset
-                on asset."id" = usage."target_asset_id" and asset."owner_id" = usage."owner_id"
-              where usage."source_revision_id" = page."current_revision_id"
-                and usage."owner_id" = page."owner_id"
-                and asset."archived_at" is null
-                and (
-                  instr(lower(asset."name"), ${normalizedQuery}) > 0
-                  or instr(asset."readable_id", ${normalizedQuery}) > 0
-                )
-            )
-          )
-          and (
-            ${filterStart} is null
-            or revision."temporal_coverage" is null
-            or (
-              (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
-              and (
-                revision."temporal_end_exclusive_ms" is null
-                or revision."temporal_end_exclusive_ms" > ${filterStart}
-              )
-            )
-          )
-      `,
-    ]);
+      `;
     const selectedPageRows = pageRows.slice(0, limit);
     const pages = selectedPageRows.map(
       (row): KnowledgeMapPage => ({
@@ -881,7 +827,6 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     if (pages.length === 0) {
       return {
         pages,
-        totalPages: Number(countRows[0]?.total ?? 0),
         nextPage: null,
         truncated: false,
       };
@@ -964,11 +909,9 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       assetUsageRows,
     });
 
-    const totalPages = Number(countRows[0]?.total ?? 0);
     const lastPage = selectedPageRows.at(-1);
     return {
       pages,
-      totalPages,
       nextPage:
         pageRows.length > limit && lastPage
           ? { updatedAt: lastPage.updatedAt, readableId: lastPage.readableId }

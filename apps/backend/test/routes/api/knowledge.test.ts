@@ -525,12 +525,10 @@ Every observation changes the next action.`,
         readableId: string;
         mentions: Array<{ readableId: string }>;
       }>;
-      totalPages: number;
       nextCursor: string | null;
       truncated: boolean;
     };
     expectNoInternalResourceIds(knowledgeMap);
-    expect(knowledgeMap.totalPages).toBe(EXPECTED_PAGE_COUNT);
     expect(knowledgeMap.nextCursor).toBeNull();
     expect(knowledgeMap.truncated).toBe(false);
     const operatingRhythmMapPage = knowledgeMap.pages.find(
@@ -552,13 +550,11 @@ Every observation changes the next action.`,
     expect(filteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
     const filteredKnowledgeMap = (await filteredKnowledgeMapResponse.json()) as {
       pages: Array<{ readableId: string }>;
-      totalPages: number;
       nextCursor: string | null;
     };
     expect(filteredKnowledgeMap).toEqual(
       expect.objectContaining({
         pages: [expect.any(Object)],
-        totalPages: 2,
         nextCursor: expect.any(String),
       }),
     );
@@ -571,13 +567,11 @@ Every observation changes the next action.`,
     expect(remainingFilteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
     const remainingFilteredKnowledgeMap = (await remainingFilteredKnowledgeMapResponse.json()) as {
       pages: Array<{ readableId: string }>;
-      totalPages: number;
       nextCursor: string | null;
     };
     expect(remainingFilteredKnowledgeMap).toEqual(
       expect.objectContaining({
         pages: [expect.any(Object)],
-        totalPages: 2,
         nextCursor: null,
       }),
     );
@@ -594,7 +588,6 @@ Every observation changes the next action.`,
     expect(await excerptFilteredKnowledgeMapResponse.json()).toEqual(
       expect.objectContaining({
         pages: [expect.objectContaining({ readableId: 'growth-playbook' })],
-        totalPages: 1,
       }),
     );
 
@@ -608,14 +601,12 @@ Every observation changes the next action.`,
     );
     const boundedKnowledgeMap = (await boundedKnowledgeMapResponse.json()) as {
       pages: Array<{ readableId: string }>;
-      totalPages: number;
       nextCursor: string | null;
       truncated: boolean;
     };
     expect(boundedKnowledgeMap).toEqual(
       expect.objectContaining({
         pages: expect.any(Array),
-        totalPages: EXPECTED_PAGE_COUNT,
         nextCursor: expect.any(String),
         truncated: false,
       }),

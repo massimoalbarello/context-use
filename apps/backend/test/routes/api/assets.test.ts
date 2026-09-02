@@ -342,7 +342,6 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(await assetFilteredKnowledgeMapResponse.json()).toEqual(
       expect.objectContaining({
         pages: [expect.objectContaining({ readableId: 'evidence-report' })],
-        totalPages: 1,
       }),
     );
 

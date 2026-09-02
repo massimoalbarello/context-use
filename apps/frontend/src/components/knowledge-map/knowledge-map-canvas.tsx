@@ -429,16 +429,12 @@ function focusedViewBox({
 }
 
 function KnowledgeMapExplorationCue({
-  remainingPageCount,
   loadMoreError,
   onLoadMore,
 }: {
-  remainingPageCount: number;
   loadMoreError: Error | null;
   onLoadMore: () => void;
 }) {
-  const pageCount = Math.max(1, remainingPageCount);
-  const pageLabel = pageCount === 1 ? 'page' : 'pages';
   return (
     <div
       className="pointer-events-none absolute top-1/2 right-0 z-10 -translate-y-1/2"
@@ -450,9 +446,7 @@ function KnowledgeMapExplorationCue({
       />
       <div className="relative flex items-center pl-8">
         <div className="mr-1 text-right">
-          <p className="whitespace-nowrap font-medium text-foreground text-xs">
-            {pageCount} more {pageLabel}
-          </p>
+          <p className="whitespace-nowrap font-medium text-foreground text-xs">More pages</p>
           {loadMoreError ? (
             <Button
               type="button"
@@ -488,7 +482,6 @@ export function KnowledgeMapCanvas({
   selectedKey,
   onSelect,
   hasNextPage,
-  remainingPageCount,
   isFetchingNextPage,
   loadMoreError,
   onLoadMore,
@@ -498,7 +491,6 @@ export function KnowledgeMapCanvas({
   selectedKey?: string;
   onSelect: (selection: KnowledgeMapSelection) => void;
   hasNextPage: boolean;
-  remainingPageCount: number;
   isFetchingNextPage: boolean;
   loadMoreError: Error | null;
   onLoadMore: () => void;
@@ -663,11 +655,7 @@ export function KnowledgeMapCanvas({
       </svg>
 
       {hasNextPage && !isFetchingNextPage && (
-        <KnowledgeMapExplorationCue
-          remainingPageCount={remainingPageCount}
-          loadMoreError={loadMoreError}
-          onLoadMore={onLoadMore}
-        />
+        <KnowledgeMapExplorationCue loadMoreError={loadMoreError} onLoadMore={onLoadMore} />
       )}
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">

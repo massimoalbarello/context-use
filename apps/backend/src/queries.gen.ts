@@ -313,11 +313,6 @@ export interface IListKnowledgeMapPagesResult {
     updatedAt: string;
 }
 
-/** Result of query `CountKnowledgeMapPages`. */
-export interface ICountKnowledgeMapPagesResult {
-    total: number;
-}
-
 /** Result of query `ListKnowledgeMapMentions`. */
 export interface IListKnowledgeMapMentionsResult {
     sourcePageReadableId: string;
@@ -609,7 +604,6 @@ export interface Queries {
     CountSearchedKnowledgePages: ICountSearchedKnowledgePagesResult;
     ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;
     ListKnowledgeMapPages: IListKnowledgeMapPagesResult;
-    CountKnowledgeMapPages: ICountKnowledgeMapPagesResult;
     ListKnowledgeMapMentions: IListKnowledgeMapMentionsResult;
     ListKnowledgeMapAssetUsages: IListKnowledgeMapAssetUsagesResult;
     FindKnowledgePage: IFindKnowledgePageResult;

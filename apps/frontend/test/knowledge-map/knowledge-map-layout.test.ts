@@ -15,7 +15,7 @@ import { knowledgeMapFrom, knowledgeMapQueryOptions } from '../../src/queries/kn
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const MINIMUM_RESOURCE_DISTANCE = 116;
-const CROWDED_NEIGHBOR_COUNT = 12;
+const CROWDED_NEIGHBOR_COUNT = 120;
 const EXTRA_RASTER_ASSET_COUNT = 4;
 
 function entity({
@@ -174,8 +174,8 @@ describe('knowledge map layout', () => {
     const first = page({ readableId: 'first', title: 'First' });
     const second = page({ readableId: 'second', title: 'Second' });
     const batches: KnowledgeMapBatch[] = [
-      { pages: [first], totalPages: 2, nextCursor: 'next', truncated: false },
-      { pages: [first, second], totalPages: 2, nextCursor: null, truncated: false },
+      { pages: [first], nextCursor: 'next', truncated: false },
+      { pages: [first, second], nextCursor: null, truncated: false },
     ];
 
     expect(knowledgeMapFrom(batches).pages.map(({ readableId }) => readableId)).toEqual([

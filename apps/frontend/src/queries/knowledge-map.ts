@@ -11,7 +11,6 @@ export type KnowledgeMapEntity = KnowledgeMapPage['mentions'][number];
 export type KnowledgeMapAsset = KnowledgeMapPage['assetUsages'][number]['asset'];
 export type KnowledgeMap = {
   pages: KnowledgeMapPage[];
-  totalPages: number;
   truncated: boolean;
 };
 
@@ -56,7 +55,6 @@ export function knowledgeMapFrom(batches: KnowledgeMapBatch[]): KnowledgeMap {
         return true;
       }),
     ),
-    totalPages: batches[0]?.totalPages ?? 0,
     truncated: batches.some((batch) => batch.truncated),
   };
 }

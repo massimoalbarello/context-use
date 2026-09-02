@@ -39,7 +39,6 @@ export const KnowledgeMapPageSchema = t.Object({
 
 export const KnowledgeMapSchema = t.Object({
   pages: t.Array(KnowledgeMapPageSchema),
-  totalPages: t.Integer({ minimum: 0 }),
   nextCursor: t.Nullable(t.String()),
   truncated: t.Boolean(),
 });
