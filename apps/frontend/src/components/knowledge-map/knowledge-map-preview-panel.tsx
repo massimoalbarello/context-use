@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { ExternalLink, File, X } from 'lucide-react';
+import { File, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
@@ -62,14 +62,13 @@ function PagePreview({ readableId, onClose }: { readableId: string; onClose: () 
       onClose={onClose}
       openLink={
         <Link
-          className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
           to="/pages/$id"
           params={{ id: readableId }}
           search={{ view: 'preview' }}
-          aria-label="Open full knowledge page"
-          title="Open full knowledge page"
+          aria-label="Open knowledge page"
         >
-          <ExternalLink aria-hidden="true" />
+          Open page
         </Link>
       }
     >
@@ -100,13 +99,12 @@ function EntityPreview({
       onClose={onClose}
       openLink={
         <Link
-          className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
           to="/entities/$id"
           params={{ id: readableId }}
-          aria-label="Open full entity"
-          title="Open full entity"
+          aria-label="Open entity"
         >
-          <ExternalLink aria-hidden="true" />
+          Open entity
         </Link>
       }
     >
@@ -155,13 +153,12 @@ function AssetPreview({ readableId, onClose }: { readableId: string; onClose: ()
       onClose={onClose}
       openLink={
         <Link
-          className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
           to="/assets/$id"
           params={{ id: readableId }}
-          aria-label="Open full asset"
-          title="Open full asset"
+          aria-label="Open asset"
         >
-          <ExternalLink aria-hidden="true" />
+          Open asset
         </Link>
       }
     >
