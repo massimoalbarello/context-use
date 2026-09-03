@@ -30,7 +30,6 @@ export type HypermediaPageLayout = {
   page: HypermediaPage;
   point: CanvasPoint;
   cloudPath: string;
-  colorIndex: number;
   resourceKeys: string[];
 };
 
@@ -339,7 +338,6 @@ function pageLayouts(
       page,
       point,
       cloudPath: cloudPath([point, ...connectedPoints]),
-      colorIndex: (stableHash(page.readableId) % 5) + 1,
       resourceKeys,
     };
   });
