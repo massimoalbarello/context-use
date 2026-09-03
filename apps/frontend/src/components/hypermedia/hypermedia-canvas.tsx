@@ -368,15 +368,15 @@ const HypermediaLayers = memo(function HypermediaLayers({
               className={cn(
                 'transition-[fill-opacity,stroke-opacity] duration-200 motion-reduce:transition-none',
                 appearance.kind === 'semantic'
-                  ? 'text-indigo-600 dark:text-indigo-400'
-                  : 'text-amber-600 dark:text-amber-400',
+                  ? 'text-slate-500 dark:text-slate-400'
+                  : 'text-sky-600 dark:text-sky-400',
               )}
               style={{
                 fill: 'currentColor',
-                fillOpacity: active ? 0.24 : 0.12 * appearance.emphasis,
+                fillOpacity: active ? 0.1 : 0.045 * appearance.emphasis,
                 stroke: 'currentColor',
-                strokeOpacity: active ? 0.9 : 0.56 * appearance.emphasis,
-                strokeWidth: active ? 3 : 1.5,
+                strokeOpacity: active ? 0.78 : 0.4 * appearance.emphasis,
+                strokeWidth: active ? 2.5 : 1.25,
               }}
             />
           </a>
@@ -795,11 +795,11 @@ export function HypermediaCanvas({
       {!isInitialLoading && (
         <div className="absolute right-4 bottom-4 hidden items-center gap-3 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur sm:flex">
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+            <span className="size-2.5 rounded-full bg-slate-500 dark:bg-slate-400" />
             Semantic
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-amber-600 dark:bg-amber-400" />
+            <span className="size-2.5 rounded-full bg-sky-600 dark:bg-sky-400" />
             Temporal · older fades
           </span>
         </div>
