@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#models/assets/media.ts';
 import type { EntityDetail } from '#models/entities/model.ts';
 import {
   MAX_ENTITY_DESCRIPTION_LENGTH,
@@ -7,7 +8,13 @@ import {
   MIN_ENTITY_DESCRIPTION_LENGTH,
 } from '#models/entities/model.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
-import { EntityAddressSchema, entityAddress, entityReadableId } from '#routes/mcp/coordinates.ts';
+import {
+  AssetAddressSchema,
+  assetReadableId,
+  EntityAddressSchema,
+  entityAddress,
+  entityReadableId,
+} from '#routes/mcp/coordinates.ts';
 import { McpEntitySchema, mcpEntity } from '#routes/mcp/entities/model.ts';
 import {
   McpKnowledgePageSummarySchema,
@@ -28,6 +35,9 @@ import {
 import { mcpToolError, mcpToolSuccess } from '#routes/mcp/tool-result.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
+
+const ENTITY_IMAGE_MEDIA_TYPES = EMBEDDABLE_ASSET_MEDIA_TYPES.join(', ');
+const ENTITY_IMAGE_UPDATE_DESCRIPTION = `For imageAssetAddress, omit it to preserve the current image; send null to clear it; or provide a value referencing an existing asset with a supported media type (${ENTITY_IMAGE_MEDIA_TYPES}) to replace it.`;
 
 const CreateEntityInputSchema = z.object({
   name: z
@@ -50,6 +60,9 @@ const CreateEntityInputSchema = z.object({
     .describe(
       'Set true only during initial setup to create the knowledge base owner entity. This can succeed only once.',
     ),
+  imageAssetAddress: AssetAddressSchema.optional().describe(
+    `Existing asset with a supported media type (${ENTITY_IMAGE_MEDIA_TYPES}) to assign as the entity image. Omit when no image should be assigned.`,
+  ),
 });
 
 const EntityAddressInputSchema = z.object({ address: EntityAddressSchema });
@@ -57,6 +70,9 @@ const EntityAddressInputSchema = z.object({ address: EntityAddressSchema });
 const UpdateEntityInputSchema = EntityAddressInputSchema.extend({
   name: CreateEntityInputSchema.shape.name,
   description: CreateEntityInputSchema.shape.description,
+  imageAssetAddress: AssetAddressSchema.nullable()
+    .optional()
+    .describe(ENTITY_IMAGE_UPDATE_DESCRIPTION),
 });
 
 const EntityListOutputSchema = z.object({
@@ -85,6 +101,35 @@ function mcpEntityDetail(entity: EntityDetail) {
   };
 }
 
+function entityImageError({
+  state,
+  createdEntityAddress,
+}: {
+  state: 'not_found' | 'invalid_asset_type' | 'image_in_use';
+  createdEntityAddress?: string;
+}) {
+  const details = createdEntityAddress ? { createdEntityAddress } : undefined;
+  if (state === 'invalid_asset_type') {
+    return mcpToolError({
+      code: 'invalid_asset_type',
+      message: `Entity image assets must use a supported media type: ${ENTITY_IMAGE_MEDIA_TYPES}.`,
+      details,
+    });
+  }
+  if (state === 'image_in_use') {
+    return mcpToolError({
+      code: 'image_in_use',
+      message: 'This image asset is already assigned to another entity.',
+      details,
+    });
+  }
+  return mcpToolError({
+    code: 'not_found',
+    message: 'Entity or image asset not found.',
+    details,
+  });
+}
+
 export function registerEntityTools({
   server,
   principal,
@@ -101,12 +146,13 @@ export function registerEntityTools({
     {
       title: 'Create entity',
       description:
-        'Create one entity identity. Set isSelf true only to create the knowledge base owner entity during initial setup; that role can be created only once. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
+        'Create one entity identity, optionally assigning an existing image asset. Set isSelf true only to create the knowledge base owner entity during initial setup; that role can be created only once. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
       inputSchema: CreateEntityInputSchema,
       outputSchema: CreateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ isSelf, ...input }) => {
+    async ({ isSelf, imageAssetAddress, ...input }) => {
+      let readableId: string;
       if (isSelf) {
         const result = await profilesService.create({ ownerId: principal.ownerId, ...input });
         if (result.state === 'profile_exists') {
@@ -123,19 +169,32 @@ export function registerEntityTools({
             details: { allowDuplicateRetryAvailable: true },
           });
         }
-        return mcpToolSuccess({ address: entityAddress(result.profile.selfEntity.readableId) });
+        readableId = result.profile.selfEntity.readableId;
+      } else {
+        const result = await entitiesService.create({ ownerId: principal.ownerId, ...input });
+        if (result.state === 'name_conflict') {
+          return mcpToolError({
+            code: 'entity_name_conflict',
+            message:
+              'An entity with this name already exists. Use a more specific name, or retry with allowDuplicate only after deciding the duplicate is intentional.',
+            details: { allowDuplicateRetryAvailable: true },
+          });
+        }
+        readableId = result.entity.readableId;
       }
 
-      const result = await entitiesService.create({ ownerId: principal.ownerId, ...input });
-      if (result.state === 'name_conflict') {
-        return mcpToolError({
-          code: 'entity_name_conflict',
-          message:
-            'An entity with this name already exists. Use a more specific name, or retry with allowDuplicate only after deciding the duplicate is intentional.',
-          details: { allowDuplicateRetryAvailable: true },
+      const address = entityAddress(readableId);
+      if (imageAssetAddress) {
+        const imageResult = await entitiesService.setImage({
+          ownerId: principal.ownerId,
+          readableId,
+          assetReadableId: assetReadableId(imageAssetAddress),
         });
+        if (imageResult.state !== 'updated') {
+          return entityImageError({ state: imageResult.state, createdEntityAddress: address });
+        }
       }
-      return mcpToolSuccess({ address: entityAddress(result.entity.readableId) });
+      return mcpToolSuccess({ address });
     },
   );
 
@@ -194,15 +253,34 @@ export function registerEntityTools({
     'update_entity',
     {
       title: 'Update entity',
-      description: 'Update the name and description of one active entity at its exact address.',
+      description: `Update the name, description, and optionally the image of one active entity at its exact address. ${ENTITY_IMAGE_UPDATE_DESCRIPTION}`,
       inputSchema: UpdateEntityInputSchema,
       outputSchema: UpdateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ address, name, description }) => {
+    async ({ address, name, description, imageAssetAddress }) => {
+      const readableId = entityReadableId(address);
+      if (imageAssetAddress === null) {
+        const entity = await entitiesService.removeImage({
+          ownerId: principal.ownerId,
+          readableId,
+        });
+        if (!entity) {
+          return mcpToolError({ code: 'not_found', message: 'Entity not found.' });
+        }
+      } else if (imageAssetAddress !== undefined) {
+        const result = await entitiesService.setImage({
+          ownerId: principal.ownerId,
+          readableId,
+          assetReadableId: assetReadableId(imageAssetAddress),
+        });
+        if (result.state !== 'updated') {
+          return entityImageError({ state: result.state });
+        }
+      }
       const entity = await entitiesService.update({
         ownerId: principal.ownerId,
-        readableId: entityReadableId(address),
+        readableId,
         name,
         description,
       });

@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { detectAssetMedia } from '#models/assets/media.ts';
+import {
+  detectAssetMedia,
+  EMBEDDABLE_ASSET_MEDIA_TYPES,
+  isEmbeddableAssetMedia,
+} from '#models/assets/media.ts';
 
 describe('asset media detection', () => {
   test('derives safe raster types from bytes rather than upload hints', () => {
@@ -28,5 +32,13 @@ describe('asset media detection', () => {
       extension: null,
       embeddable: false,
     });
+  });
+
+  test('recognizes only the canonical embeddable media types', () => {
+    for (const mediaType of EMBEDDABLE_ASSET_MEDIA_TYPES) {
+      expect(isEmbeddableAssetMedia(mediaType)).toBe(true);
+    }
+    expect(isEmbeddableAssetMedia('image/svg+xml')).toBe(false);
+    expect(isEmbeddableAssetMedia('application/pdf')).toBe(false);
   });
 });
