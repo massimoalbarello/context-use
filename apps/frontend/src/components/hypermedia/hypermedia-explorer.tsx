@@ -159,9 +159,9 @@ export function HypermediaExplorer({
       onSelect={onSelect}
       onViewportSettled={handleViewportSettled}
       canExplore={canExplore}
-      isLoadingNeighborhood={neighborhoodQueries.some(
-        ({ isPending, isFetching }) => isPending || isFetching,
-      )}
+      isInitialLoading={
+        resources.length === 0 && neighborhoodQueries.some(({ isPending }) => isPending)
+      }
       neighborhoodError={neighborhoodError}
       onRetryNeighborhood={() => {
         for (const result of neighborhoodQueries) {

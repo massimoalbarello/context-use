@@ -454,7 +454,7 @@ export function HypermediaCanvas({
   onSelect,
   onViewportSettled,
   canExplore,
-  isLoadingNeighborhood,
+  isInitialLoading,
   neighborhoodError,
   onRetryNeighborhood,
 }: {
@@ -464,7 +464,7 @@ export function HypermediaCanvas({
   onSelect: (selection: HypermediaSelection) => void;
   onViewportSettled: (viewport: SettledHypermediaViewport) => void;
   canExplore: boolean;
-  isLoadingNeighborhood: boolean;
+  isInitialLoading: boolean;
   neighborhoodError: Error | null;
   onRetryNeighborhood: () => void;
 }) {
@@ -684,7 +684,7 @@ export function HypermediaCanvas({
         />
       </svg>
 
-      {!isLoadingNeighborhood && (neighborhoodError || (canExplore && showExplorationHint)) && (
+      {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
       )}
 
@@ -718,7 +718,7 @@ export function HypermediaCanvas({
         </Button>
       </div>
 
-      {isLoadingNeighborhood && (
+      {isInitialLoading && (
         <div
           className="absolute right-4 bottom-4 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
           aria-live="polite"
