@@ -783,6 +783,19 @@ export function HypermediaCanvas({
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
       )}
 
+      {!isInitialLoading && (
+        <div className="absolute right-4 bottom-4 z-10 flex items-center gap-3 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-slate-500 dark:bg-slate-400" />
+            Semantic
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-sky-600 dark:bg-sky-400" />
+            Temporal
+          </span>
+        </div>
+      )}
+
       {spotlightActive && (
         <div
           className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border bg-card/95 py-1 pr-1 pl-3 text-sm shadow-sm backdrop-blur md:top-6"
