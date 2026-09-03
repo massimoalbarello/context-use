@@ -119,6 +119,16 @@ function HypermediaRoute() {
       },
     });
   }
+  function clearSelectedResources() {
+    void navigate({
+      search: (previous) => ({
+        ...previous,
+        kind: undefined,
+        id: undefined,
+        focus: undefined,
+      }),
+    });
+  }
 
   return (
     <KnowledgeWorkspace>
@@ -126,6 +136,8 @@ function HypermediaRoute() {
         profile={profile}
         query={q}
         dateRange={dateRange}
+        selectedResources={selectedResources}
+        onClearSelectedResources={clearSelectedResources}
         onQueryApply={(query) => {
           void navigate({
             search: (previous) => ({
@@ -161,16 +173,6 @@ function HypermediaRoute() {
             query={q}
             dateRange={dateRange}
             onSelect={selectKnowledge}
-            onClearSelection={() => {
-              void navigate({
-                search: (previous) => ({
-                  ...previous,
-                  kind: undefined,
-                  id: undefined,
-                  focus: undefined,
-                }),
-              });
-            }}
           />
           {selection && (
             <HypermediaPreviewPanel

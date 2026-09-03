@@ -45,7 +45,6 @@ export function HypermediaExplorer({
   query,
   dateRange,
   onSelect,
-  onClearSelection,
 }: {
   selfReadableId: string;
   selection?: HypermediaSelection;
@@ -53,7 +52,6 @@ export function HypermediaExplorer({
   query: string;
   dateRange?: CalendarDateRange;
   onSelect: (selection: HypermediaSelection) => void;
-  onClearSelection: () => void;
 }) {
   const self = useMemo<HypermediaResourceReference>(
     () => ({ kind: 'entity', readableId: selfReadableId }),
@@ -243,7 +241,6 @@ export function HypermediaExplorer({
       spotlightPages={spotlightPages}
       selectedKey={selectedKey}
       onSelect={onSelect}
-      onClearSelection={onClearSelection}
       onViewportSettled={handleViewportSettled}
       canExplore={canExplore}
       isInitialLoading={
