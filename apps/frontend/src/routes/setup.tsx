@@ -3,6 +3,7 @@ import { createFileRoute, Link, Navigate, redirect } from '@tanstack/react-route
 import { AgentSetup } from '../components/setup/agent-setup';
 import { buttonVariants } from '../components/ui/button';
 import { internalAppPath } from '../lib/internal-app-path';
+import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 import { mcpClientsQueryOptions } from '../queries/mcp-clients';
 import { type KnowledgeProfile, profileQueryOptions } from '../queries/profile';
 
@@ -12,6 +13,12 @@ export function setupProfileRefetchInterval(
   profile: KnowledgeProfile | null | undefined,
 ): number | false {
   return profile ? false : SETUP_PROFILE_POLL_INTERVAL_MS;
+}
+
+export function hypermediaPathAfterSelfEntityCreation(
+  selfEntity: KnowledgeProfile['selfEntity'] | undefined,
+): typeof MAIN_KNOWLEDGE_PATH | null {
+  return selfEntity ? MAIN_KNOWLEDGE_PATH : null;
 }
 
 export const Route = createFileRoute('/setup')({
@@ -30,13 +37,14 @@ export const Route = createFileRoute('/setup')({
 function SetupRoute() {
   const { redirect: redirectTo } = Route.useSearch();
   const { serverUrl } = Route.useLoaderData();
-  const { data: profile } = useQuery({
+  const { data: knowledgeProfile } = useQuery({
     ...profileQueryOptions,
     refetchInterval: (query) => setupProfileRefetchInterval(query.state.data),
   });
+  const hypermediaPath = hypermediaPathAfterSelfEntityCreation(knowledgeProfile?.selfEntity);
 
-  if (profile) {
-    return <Navigate to="/entities/$id" params={{ id: profile.selfEntity.readableId }} replace />;
+  if (hypermediaPath) {
+    return <Navigate to={hypermediaPath} replace />;
   }
 
   return (

@@ -7,6 +7,7 @@ import {
   initialContextPrompt,
 } from '../../src/components/setup/agent-setup';
 import {
+  hypermediaPathAfterSelfEntityCreation,
   SETUP_PROFILE_POLL_INTERVAL_MS,
   setupProfileRefetchInterval,
 } from '../../src/routes/setup';
@@ -14,20 +15,22 @@ import {
 const SETUP_STEP_COUNT = 3;
 
 test('setup checks for a new profile every 15 seconds until one exists', () => {
+  const profile = {
+    selfEntity: {
+      readableId: 'alex-morgan',
+      name: 'Alex Morgan',
+      description: 'The owner',
+      image: null,
+      isSelf: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  };
+
   expect(setupProfileRefetchInterval(null)).toBe(SETUP_PROFILE_POLL_INTERVAL_MS);
-  expect(
-    setupProfileRefetchInterval({
-      selfEntity: {
-        readableId: 'alex-morgan',
-        name: 'Alex Morgan',
-        description: 'The owner',
-        image: null,
-        isSelf: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    }),
-  ).toBe(false);
+  expect(hypermediaPathAfterSelfEntityCreation(undefined)).toBeNull();
+  expect(setupProfileRefetchInterval(profile)).toBe(false);
+  expect(hypermediaPathAfterSelfEntityCreation(profile.selfEntity)).toBe('/hypermedia');
 });
 
 test('connection help assigns the settings-level action to the user', () => {
@@ -49,9 +52,12 @@ test('initial curation understands the user and filters evidence before writing'
   expect(prompt).toContain(
     'write to Context Use until I approve the import plan in step 4.\n\n1. Verify the source and the owner',
   );
-  expect(prompt).toContain('Do not try to retrieve existing personal context from Context Use');
+  expect(normalizedPrompt).toContain('This vault is guaranteed to be empty');
   expect(normalizedPrompt).toContain(
-    'Context Use is connected but empty: it is the destination, not the source',
+    'Do not call list_entities, list_knowledge_pages, list_assets',
+  );
+  expect(normalizedPrompt).toContain(
+    'duplicate-inspection step does not apply to this initial bootstrap',
   );
   expect(normalizedPrompt).toContain('start with those instead of analyzing transcripts');
   expect(normalizedPrompt).toContain('previous conversations as secondary evidence');
@@ -69,10 +75,17 @@ test('initial curation understands the user and filters evidence before writing'
   expect(normalizedPrompt).toContain('Show me the import plan');
   expect(normalizedPrompt).toContain('Ask for my approval and wait for it');
   expect(normalizedPrompt).toContain('create_entity with isSelf set to true');
-  expect(normalizedPrompt).toContain('at most five additional entities');
-  expect(normalizedPrompt).toContain('at most three knowledge pages');
+  expect(normalizedPrompt).toContain('Do not stop after an arbitrary handful of entities or pages');
+  expect(normalizedPrompt).toContain('do not impose a numeric cap');
+  expect(normalizedPrompt).not.toContain('at most five additional entities');
+  expect(normalizedPrompt).not.toContain('at most three knowledge pages');
   expect(normalizedPrompt).toContain('Do not perform broad external research');
-  expect(normalizedPrompt).toContain('Do not upload assets during this first pass');
+  expect(normalizedPrompt).toContain('create_asset_upload');
+  expect(normalizedPrompt).toContain('imageAssetAddress');
+  expect(normalizedPrompt).toContain('upload pictures of myself or those people');
+  expect(normalizedPrompt).toContain('optional and will help visualize my context in Context Use');
+  expect(normalizedPrompt).toContain('ask me to attach and identify each image');
+  expect(normalizedPrompt).toContain('Never source substitute portraits from the web');
   expect(normalizedPrompt).toContain(
     'refresh the Context Use setup page to see the context created',
   );
@@ -89,9 +102,13 @@ test('setup presents the user-owned connection flow as three numbered steps', ()
   expect(html).toContain('<ol');
   expect([...html.matchAll(/<li/g)]).toHaveLength(SETUP_STEP_COUNT);
   expect(html).toContain('Connect your agent to Context Use MCP server');
-  expect(html).toContain('name it “<strong>Context Use</strong>”');
-  expect(html).toContain('approve the Context Use OAuth');
-  expect(html).not.toContain('Continue when Context Use tools appear in your agent');
+  expect(html).toContain('Server name');
+  expect(html).toContain('Context Use');
+  expect(html).toContain('Server URL');
+  expect(html).toContain('https://personal-context.nibrun.app/mcp');
+  expect(html).toContain('Copy server name');
+  expect(html).toContain('Copy server URL');
+  expect(html).not.toContain('Open your agent’s MCP or connector settings');
   expect(html).not.toContain('Connect and authorize');
   expect(html).toContain('Import memories from your favorite agent');
   expect(html).toContain('user context already available to your agent');
