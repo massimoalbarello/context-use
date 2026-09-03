@@ -7,6 +7,7 @@ import {
   initialContextPrompt,
 } from '../../src/components/setup/agent-setup';
 import {
+  hypermediaPathAfterSelfEntityCreation,
   SETUP_PROFILE_POLL_INTERVAL_MS,
   setupProfileRefetchInterval,
 } from '../../src/routes/setup';
@@ -14,20 +15,22 @@ import {
 const SETUP_STEP_COUNT = 3;
 
 test('setup checks for a new profile every 15 seconds until one exists', () => {
+  const profile = {
+    selfEntity: {
+      readableId: 'alex-morgan',
+      name: 'Alex Morgan',
+      description: 'The owner',
+      image: null,
+      isSelf: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  };
+
   expect(setupProfileRefetchInterval(null)).toBe(SETUP_PROFILE_POLL_INTERVAL_MS);
-  expect(
-    setupProfileRefetchInterval({
-      selfEntity: {
-        readableId: 'alex-morgan',
-        name: 'Alex Morgan',
-        description: 'The owner',
-        image: null,
-        isSelf: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    }),
-  ).toBe(false);
+  expect(hypermediaPathAfterSelfEntityCreation(undefined)).toBeNull();
+  expect(setupProfileRefetchInterval(profile)).toBe(false);
+  expect(hypermediaPathAfterSelfEntityCreation(profile.selfEntity)).toBe('/hypermedia');
 });
 
 test('connection help assigns the settings-level action to the user', () => {
