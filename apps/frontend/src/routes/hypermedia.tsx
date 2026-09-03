@@ -2,13 +2,21 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import type { HypermediaSelection } from '../components/hypermedia/hypermedia-canvas';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
+import {
+  selectedHypermediaResources,
+  selectedHypermediaResourcesValue,
+  toggleHypermediaResourceSelection,
+} from '../components/hypermedia/hypermedia-selection';
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
+import { INITIAL_FOCUSED_PAGE_LIMIT } from '../components/hypermedia/hypermedia-visibility';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
+import { entitiesQueryOptions } from '../queries/entities';
 import {
   focusedHypermediaPagesQueryOptions,
   type HypermediaResourceReference,
+  hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
 } from '../queries/hypermedia';
 
@@ -18,6 +26,7 @@ type HypermediaSearch = Partial<CalendarDateRange> & {
   q?: string;
   kind?: HypermediaSelection['kind'];
   id?: string;
+  focus?: string;
 };
 
 function hypermediaSearch(search: Record<string, unknown>): HypermediaSearch {
@@ -33,6 +42,7 @@ function hypermediaSearch(search: Record<string, unknown>): HypermediaSearch {
     result.kind = search.kind;
     result.id = search.id.trim().slice(0, MAX_HYPERMEDIA_READABLE_ID_LENGTH);
   }
+  result.focus = selectedHypermediaResourcesValue(selectedHypermediaResources(search.focus));
   return result;
 }
 
@@ -59,10 +69,11 @@ export const Route = createFileRoute('/hypermedia')({
       context.queryClient.ensureQueryData(
         hypermediaResourceNeighborhoodQueryOptions({ anchor: self }),
       ),
+      context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions),
       context.queryClient.ensureQueryData(
         focusedHypermediaPagesQueryOptions({
           focus: [self],
-          limit: 8,
+          limit: INITIAL_FOCUSED_PAGE_LIMIT,
           query: deps.query,
           dateRange: deps.dateRange,
         }),
@@ -75,7 +86,7 @@ export const Route = createFileRoute('/hypermedia')({
 function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const { q = '', kind, id } = search;
+  const { q = '', kind, id, focus } = search;
   const dateRange = calendarDateRangeFromSearch(search);
   const navigate = Route.useNavigate();
   if (!profile) {
@@ -83,13 +94,29 @@ function HypermediaRoute() {
   }
   const selection: HypermediaSelection | undefined =
     kind && id ? { kind, readableId: id } : undefined;
+  const selectedResources = selectedHypermediaResources(focus);
   function selectKnowledge(nextSelection: HypermediaSelection) {
     void navigate({
-      search: (previous) => ({
-        ...previous,
-        kind: nextSelection.kind,
-        id: nextSelection.readableId,
-      }),
+      search: (previous) => {
+        const previousResources = selectedHypermediaResources(previous.focus);
+        const wasSelected =
+          nextSelection.kind !== 'page' &&
+          previousResources.some(
+            (resource) =>
+              hypermediaResourceKey(resource) ===
+              `${nextSelection.kind}:${nextSelection.readableId}`,
+          );
+        const resources = toggleHypermediaResourceSelection({
+          resources: previousResources,
+          selection: nextSelection,
+        });
+        return {
+          ...previous,
+          kind: wasSelected ? undefined : nextSelection.kind,
+          id: wasSelected ? undefined : nextSelection.readableId,
+          focus: selectedHypermediaResourcesValue(resources),
+        };
+      },
     });
   }
 
@@ -106,6 +133,7 @@ function HypermediaRoute() {
               q: query.trim() ? query : undefined,
               kind: undefined,
               id: undefined,
+              focus: undefined,
             }),
             replace: true,
           });
@@ -118,6 +146,7 @@ function HypermediaRoute() {
               to: nextRange?.to,
               kind: undefined,
               id: undefined,
+              focus: undefined,
             }),
             replace: true,
           });
@@ -128,9 +157,20 @@ function HypermediaRoute() {
           <HypermediaExplorer
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
+            selectedResources={selectedResources}
             query={q}
             dateRange={dateRange}
             onSelect={selectKnowledge}
+            onClearSelection={() => {
+              void navigate({
+                search: (previous) => ({
+                  ...previous,
+                  kind: undefined,
+                  id: undefined,
+                  focus: undefined,
+                }),
+              });
+            }}
           />
           {selection && (
             <HypermediaPreviewPanel

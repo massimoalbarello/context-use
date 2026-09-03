@@ -1,6 +1,6 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
-import { File, FileText, Minus, Move, Plus, Scan } from 'lucide-react';
+import { File, FileText, Minus, Move, Plus, Scan, X } from 'lucide-react';
 import {
   memo,
   type PointerEvent as ReactPointerEvent,
@@ -19,6 +19,7 @@ import type {
   HypermediaPage,
   HypermediaResourceReference,
 } from '../../queries/hypermedia';
+import { hypermediaResourceKey } from '../../queries/hypermedia';
 import { formatAssetSize } from '../assets/asset-link';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { Badge } from '../ui/badge';
@@ -30,14 +31,17 @@ import {
   type HypermediaLayout,
   type HypermediaLayoutResource,
   initialHypermediaViewBox,
+  spotlightHypermediaViewBox,
+  zoomedHypermediaViewBox,
 } from './hypermedia-layout';
+import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
 import {
   eagerHypermediaImageKeys,
   focusedPageLimit,
   focusedResources,
   hypermediaLayoutInViewport,
   nearestBoundaryResource,
-  viewportNearResourceBoundary,
+  viewportNeedsResourceDiscovery,
 } from './hypermedia-visibility';
 
 type HypermediaPreview =
@@ -61,6 +65,7 @@ export type HypermediaSelection = {
 export type SettledHypermediaViewport = {
   focus: HypermediaResourceReference[];
   pageLimit: number;
+  discoverMoreEntities: boolean;
   boundaryAnchor?: HypermediaResourceReference;
 };
 
@@ -161,14 +166,14 @@ function resourceImageReadableId(
   return isEmbeddableAsset(resource.asset) ? resource.asset.readableId : undefined;
 }
 
-function resourceDotEmphasis({ active, isSelf }: { active: boolean; isSelf: boolean }): {
+function resourceDotEmphasis(active: boolean): {
   radiusOffset: number;
   strokeWidth: number;
 } {
   if (active) {
     return { radiusOffset: 5, strokeWidth: 5 };
   }
-  return isSelf ? { radiusOffset: 3, strokeWidth: 4 } : { radiusOffset: 1, strokeWidth: 2 };
+  return { radiusOffset: 1, strokeWidth: 2 };
 }
 
 function ResourceDot({
@@ -187,8 +192,7 @@ function ResourceDot({
   onPreviewEnd: () => void;
 }) {
   const radius = resource.kind === 'entity' ? 25 : 22;
-  const isSelf = resource.kind === 'entity' && resource.entity.isSelf;
-  const emphasis = resourceDotEmphasis({ active, isSelf });
+  const emphasis = resourceDotEmphasis(active);
   const outerExtent = radius + emphasis.radiusOffset;
   const innerExtent = radius - 3;
   const imageReadableId = resourceImageReadableId(resource, active || eagerImage);
@@ -236,7 +240,7 @@ function ResourceDot({
           r={outerExtent}
           className={cn(
             'fill-card stroke-border transition-[r,stroke-width] motion-reduce:transition-none',
-            (active || isSelf) && 'stroke-foreground',
+            active && 'stroke-foreground',
           )}
           strokeWidth={emphasis.strokeWidth}
           vectorEffect="non-scaling-stroke"
@@ -299,6 +303,7 @@ function ResourceDot({
 const HypermediaLayers = memo(function HypermediaLayers({
   layout,
   activeKey,
+  selectedResourceKeys,
   eagerImageKeys,
   suppressNextCloudClick,
   onSelect,
@@ -307,6 +312,7 @@ const HypermediaLayers = memo(function HypermediaLayers({
 }: {
   layout: HypermediaLayout;
   activeKey: string | undefined;
+  selectedResourceKeys: Set<string>;
   eagerImageKeys: Set<string>;
   suppressNextCloudClick: { current: boolean };
   onSelect: (selection: HypermediaSelection) => void;
@@ -398,7 +404,7 @@ const HypermediaLayers = memo(function HypermediaLayers({
           <ResourceDot
             key={resource.key}
             resource={resource}
-            active={activeKey === resource.key}
+            active={activeKey === resource.key || selectedResourceKeys.has(resource.key)}
             eagerImage={eagerImageKeys.has(resource.key)}
             onPreview={() => onPreview(preview)}
             onPreviewEnd={() => onPreviewEnd(resource.key)}
@@ -451,29 +457,65 @@ function HypermediaExplorationCue({
 export function HypermediaCanvas({
   resources,
   pages,
+  selectedResources,
+  spotlightPages,
   selectedKey,
   onSelect,
+  onClearSelection,
   onViewportSettled,
   canExplore,
   isInitialLoading,
+  isSpotlightLoading,
   neighborhoodError,
   onRetryNeighborhood,
 }: {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
+  selectedResources: HypermediaResourceReference[];
+  spotlightPages?: HypermediaPage[];
   selectedKey?: string;
   onSelect: (selection: HypermediaSelection) => void;
+  onClearSelection: () => void;
   onViewportSettled: (viewport: SettledHypermediaViewport) => void;
   canExplore: boolean;
   isInitialLoading: boolean;
+  isSpotlightLoading: boolean;
   neighborhoodError: Error | null;
   onRetryNeighborhood: () => void;
 }) {
   const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
-  const layout = useMemo(() => buildHypermediaLayout(resources, pages), [resources, pages]);
   const [preview, setPreview] = useState<HypermediaPreview | null>(null);
-  const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(layout));
+  const [viewBox, setViewBox] = useState<ViewBox>(() =>
+    initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
+  );
+  const selectedResourceKeys = useMemo(
+    () => new Set(selectedResources.map(hypermediaResourceKey)),
+    [selectedResources],
+  );
+  const spotlightActive = selectedResources.length > 0;
+  const pageLimit = focusedPageLimit(viewBox);
+  const displayedPages = useMemo(() => {
+    const limitedPages = pages.slice(0, pageLimit);
+    if (!selectedKey?.startsWith('page:')) {
+      return limitedPages;
+    }
+    const selectedReadableId = selectedKey.slice('page:'.length);
+    const selectedPage = pages.find(({ readableId }) => readableId === selectedReadableId);
+    return selectedPage && !limitedPages.includes(selectedPage)
+      ? [...limitedPages, selectedPage]
+      : limitedPages;
+  }, [pageLimit, pages, selectedKey]);
+  const semanticLayout = useMemo(
+    () => buildHypermediaLayout(resources, displayedPages),
+    [displayedPages, resources],
+  );
+  const spotlightLayout = useMemo(
+    () => (spotlightActive ? buildHypermediaLayout(resources, spotlightPages ?? []) : undefined),
+    [resources, spotlightActive, spotlightPages],
+  );
+  const layout = spotlightActive && spotlightLayout ? spotlightLayout : semanticLayout;
   const viewBoxRef = useRef(viewBox);
+  const fitActive = useRef(false);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [panning, setPanning] = useState(false);
   const [showExplorationHint, setShowExplorationHint] = useState(true);
@@ -489,36 +531,51 @@ export function HypermediaCanvas({
   } | null>(null);
   const activeKey = preview ? previewKey(preview) : selectedKey;
   const visibleLayout = useMemo(
-    () => hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
-    [layout, selectedKey, viewBox],
+    () =>
+      spotlightActive
+        ? layout
+        : hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
+    [layout, selectedKey, spotlightActive, viewBox],
   );
   const eagerImageKeys = useMemo(() => eagerHypermediaImageKeys(layout), [layout]);
+  const updateViewBox = useCallback((nextViewBox: ViewBox) => {
+    viewBoxRef.current = nextViewBox;
+    setViewBox(nextViewBox);
+  }, []);
 
   const publishViewport = useCallback(
     ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
       const focus = focusedResources({ resources: layout.resources, viewport, selectedKey });
-      if (focus.length === 0) {
+      const discoverMoreEntities =
+        includeBoundary &&
+        viewportNeedsResourceDiscovery({
+          resources: layout.resources,
+          viewport,
+          bounds: layout.resourceBounds,
+        });
+      const boundaryAnchor = discoverMoreEntities
+        ? nearestBoundaryResource(layout.resources, viewport)
+        : undefined;
+      if (focus.length === 0 && !discoverMoreEntities) {
         return;
       }
       onViewportSettled({
         focus,
         pageLimit: focusedPageLimit(viewport),
-        boundaryAnchor:
-          includeBoundary && viewportNearResourceBoundary(viewport, layout.bounds)
-            ? nearestBoundaryResource(layout.resources, viewport)
-            : undefined,
+        discoverMoreEntities,
+        boundaryAnchor,
       });
     },
-    [layout.bounds, layout.resources, onViewportSettled, selectedKey],
+    [layout.resourceBounds, layout.resources, onViewportSettled, selectedKey],
   );
 
   const scheduleViewport = useCallback(
-    (viewport: ViewBox) => {
+    ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
       if (settleTimer.current) {
         clearTimeout(settleTimer.current);
       }
       settleTimer.current = setTimeout(
-        () => publishViewport({ viewport, includeBoundary: true }),
+        () => publishViewport({ viewport, includeBoundary }),
         VIEWPORT_SETTLE_MS,
       );
     },
@@ -526,42 +583,58 @@ export function HypermediaCanvas({
   );
 
   useEffect(() => {
-    publishViewport({ viewport: viewBoxRef.current, includeBoundary: false });
+    if (spotlightActive) {
+      return;
+    }
+    const viewport = fitActive.current ? layout.resourceBounds : viewBoxRef.current;
+    if (fitActive.current) {
+      updateViewBox(viewport);
+    }
+    publishViewport({ viewport, includeBoundary: true });
     return () => {
       if (settleTimer.current) {
         clearTimeout(settleTimer.current);
       }
     };
-  }, [publishViewport]);
-
-  function updateViewBox(nextViewBox: ViewBox) {
-    viewBoxRef.current = nextViewBox;
-    setViewBox(nextViewBox);
-  }
+  }, [layout.resourceBounds, publishViewport, spotlightActive, updateViewBox]);
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
+    fitActive.current = false;
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
-    const maximumWidth = Math.max(2400, layout.bounds.width * 2.5);
-    const width = Math.min(maximumWidth, Math.max(minimumWidth, current.width * factor));
-    const height = width * (current.height / current.width);
-    const anchorX = current.x + current.width * anchor.x;
-    const anchorY = current.y + current.height * anchor.y;
-    const nextViewBox = {
-      x: anchorX - width * anchor.x,
-      y: anchorY - height * anchor.y,
-      width,
-      height,
-    };
+    const maximumWidth = Math.max(2400, semanticLayout.resourceBounds.width * 2.5);
+    const nextViewBox = zoomedHypermediaViewBox({
+      current,
+      factor,
+      anchor,
+      minimumWidth,
+      maximumWidth,
+    });
+    if (nextViewBox === current) {
+      return;
+    }
     updateViewBox(nextViewBox);
-    scheduleViewport(nextViewBox);
+    if (!spotlightActive) {
+      scheduleViewport({ viewport: nextViewBox, includeBoundary: true });
+    }
   }
 
   function fitHypermedia() {
     setShowExplorationHint(false);
-    updateViewBox(layout.bounds);
-    scheduleViewport(layout.bounds);
+    if (spotlightActive && spotlightLayout) {
+      fitActive.current = false;
+      const current = viewBoxRef.current;
+      updateViewBox(
+        spotlightHypermediaViewBox(spotlightLayout, current.height / current.width, [
+          ...selectedResourceKeys,
+        ]),
+      );
+      return;
+    }
+    fitActive.current = true;
+    updateViewBox(semanticLayout.resourceBounds);
+    scheduleViewport({ viewport: semanticLayout.resourceBounds, includeBoundary: true });
   }
 
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
@@ -581,6 +654,7 @@ export function HypermediaCanvas({
     if (event.button !== 0 || (event.target as Element).closest('[data-hypermedia-resource]')) {
       return;
     }
+    fitActive.current = false;
     suppressNextCloudClick.current = false;
     const cloudReadableId = (event.target as Element)
       .closest('[data-hypermedia-cloud]')
@@ -634,7 +708,9 @@ export function HypermediaCanvas({
       drag.current = null;
       setPanning(false);
       event.currentTarget.releasePointerCapture(event.pointerId);
-      scheduleViewport(completedDrag.currentViewBox);
+      if (completedDrag.moved && !spotlightActive) {
+        scheduleViewport({ viewport: completedDrag.currentViewBox, includeBoundary: true });
+      }
     }
   }
 
@@ -677,6 +753,7 @@ export function HypermediaCanvas({
         <HypermediaLayers
           layout={visibleLayout}
           activeKey={activeKey}
+          selectedResourceKeys={selectedResourceKeys}
           eagerImageKeys={eagerImageKeys}
           suppressNextCloudClick={suppressNextCloudClick}
           onSelect={onSelect}
@@ -687,6 +764,25 @@ export function HypermediaCanvas({
 
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
+      )}
+
+      {spotlightActive && (
+        <div
+          className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border bg-card/95 py-1 pr-1 pl-3 text-sm shadow-sm backdrop-blur md:top-6"
+          aria-live="polite"
+        >
+          <span>{selectedHypermediaResourcesLabel(selectedResources)}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 rounded-full"
+            aria-label="Clear selected resources"
+            onClick={onClearSelection}
+          >
+            <X className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
       )}
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
@@ -725,6 +821,15 @@ export function HypermediaCanvas({
           aria-live="polite"
         >
           Loading nearby resources…
+        </div>
+      )}
+
+      {spotlightActive && isSpotlightLoading && (
+        <div
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
+          aria-live="polite"
+        >
+          Loading related pages…
         </div>
       )}
 

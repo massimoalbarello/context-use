@@ -5,11 +5,15 @@ import { describe, expect, test } from 'bun:test';
 import {
   buildHypermediaLayout,
   buildStableResources,
+  HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO,
+  spotlightHypermediaViewBox,
+  zoomedHypermediaViewBox,
 } from '../../src/components/hypermedia/hypermedia-layout';
 import {
   focusedPageLimit,
   focusedResources,
   hypermediaLayoutInViewport,
+  viewportNeedsResourceDiscovery,
 } from '../../src/components/hypermedia/hypermedia-visibility';
 import type {
   HypermediaPage,
@@ -19,7 +23,10 @@ import type {
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
-function entity(readableId: string, isSelf = false): HypermediaResource {
+function entity(
+  readableId: string,
+  isSelf = false,
+): Extract<HypermediaResource, { kind: 'entity' }> {
   return {
     kind: 'entity',
     entity: {
@@ -76,6 +83,26 @@ describe('resource-first hypermedia layout', () => {
     }
   });
 
+  test('keeps every listed entity on the map without moving earlier discoveries', () => {
+    const self = entity('self', true);
+    const alpha = entity('alpha');
+    const orphan = entity('orphan');
+    const initial = buildStableResources(
+      [neighborhood(self, [alpha])],
+      [self.entity, alpha.entity, orphan.entity],
+    );
+    const expanded = buildStableResources(
+      [neighborhood(self, [alpha]), neighborhood(alpha, [entity('beta')])],
+      [self.entity, alpha.entity, orphan.entity, entity('zeta').entity],
+      initial,
+    );
+
+    expect(initial.map(({ key }) => key)).toContain('entity:orphan');
+    for (const resource of initial) {
+      expect(expanded.find(({ key }) => key === resource.key)?.point).toEqual(resource.point);
+    }
+  });
+
   test('focus follows the viewport while retaining a selected resource', () => {
     const resources = buildStableResources([
       neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
@@ -91,15 +118,39 @@ describe('resource-first hypermedia layout', () => {
       kind: 'entity',
       readableId: 'self',
     });
+    expect(focusedResources({ resources, viewport })).toHaveLength(1);
   });
 
-  test('requests progressively more page information as the viewport zooms out', () => {
-    expect(focusedPageLimit({ x: 0, y: 0, width: 600, height: 400 })).toBe(4);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 900, height: 600 })).toBe(8);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 1400, height: 900 })).toBe(12);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 1750, height: 1100 })).toBe(16);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 2200, height: 1400 })).toBe(20);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 2600, height: 1600 })).toBe(32);
+  test('requests progressively more page history as the viewport zooms in', () => {
+    const limits = [260, 600, 900, 1400, 1750, 2200, 2600].map((width) =>
+      focusedPageLimit({ x: 0, y: 0, width, height: width * 0.7 }),
+    );
+
+    expect(limits).toEqual([32, 26, 20, 15, 12, 8, 4]);
+    expect(limits).toEqual([...limits].sort((first, second) => second - first));
+  });
+
+  test('discovers another neighborhood only at a sparse map edge', () => {
+    const resources = buildStableResources([
+      neighborhood(entity('self', true), [entity('alpha'), entity('beta'), entity('gamma')]),
+    ]).map((resource, index) => ({ ...resource, point: { x: index * 40, y: 0 } }));
+    const bounds = { x: -100, y: -100, width: 500, height: 200 };
+
+    expect(viewportNeedsResourceDiscovery({ resources, viewport: bounds, bounds })).toBe(false);
+    expect(
+      viewportNeedsResourceDiscovery({
+        resources,
+        viewport: { x: bounds.x + bounds.width, y: bounds.y, width: 500, height: 200 },
+        bounds,
+      }),
+    ).toBe(true);
+    expect(
+      viewportNeedsResourceDiscovery({
+        resources,
+        viewport: { x: -750, y: -500, width: 1500, height: 1000 },
+        bounds,
+      }),
+    ).toBe(true);
   });
 
   test('viewport culling cannot remove the selected page or resource', () => {
@@ -121,5 +172,62 @@ describe('resource-first hypermedia layout', () => {
         selectedKey: 'entity:self',
       }).resources.map(({ key }) => key),
     ).toEqual(['entity:self']);
+  });
+
+  test('keeps a page cloud while one of its connected resources remains visible', () => {
+    const resources = buildStableResources([neighborhood(entity('self', true), [])]);
+    const layout = buildHypermediaLayout(resources, [page('connected-page')]);
+    const connectedPage = layout.pages[0]!;
+    const viewport = { x: -50, y: -50, width: 100, height: 100 };
+    const displacedLayout = {
+      ...layout,
+      pages: [{ ...connectedPage, point: { x: 10_000, y: 10_000 } }],
+    };
+
+    expect(
+      hypermediaLayoutInViewport({ layout: displacedLayout, viewport }).pages.map(
+        ({ page: item }) => item.readableId,
+      ),
+    ).toEqual(['connected-page']);
+  });
+
+  test('fits every filtered page while retaining all resources in the map', () => {
+    const resources = buildStableResources([
+      neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
+    ]);
+    const layout = buildHypermediaLayout(resources, [page('newest'), page('older')]);
+    const viewport = spotlightHypermediaViewBox(layout, 0.7, ['entity:self']);
+    const selectedResource = layout.resources.find(({ key }) => key === 'entity:self')!;
+    const visiblePoints = [selectedResource.point, ...layout.pages.map(({ point }) => point)];
+
+    expect(layout.resources.map(({ key }) => key)).toEqual([
+      'entity:self',
+      'entity:alpha',
+      'entity:beta',
+    ]);
+    expect(layout.pages.map(({ page: item }) => item.readableId)).toEqual(['newest', 'older']);
+    expect(
+      visiblePoints.every(
+        ({ x, y }) =>
+          x >= viewport.x &&
+          x <= viewport.x + viewport.width * HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO &&
+          y >= viewport.y &&
+          y <= viewport.y + viewport.height,
+      ),
+    ).toBe(true);
+  });
+
+  test('returns the same view when zoom-out is already clamped at its maximum', () => {
+    const current = { x: -1200, y: -800, width: 2400, height: 1600 };
+
+    expect(
+      zoomedHypermediaViewBox({
+        current,
+        factor: 1.1,
+        anchor: { x: 0.9, y: 0.1 },
+        minimumWidth: 260,
+        maximumWidth: 2400,
+      }),
+    ).toBe(current);
   });
 });

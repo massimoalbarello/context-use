@@ -1,7 +1,9 @@
 import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEntities } from '../../lib/hooks/use-entities';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import {
+  allFocusedHypermediaPagesQueryOptions,
   focusedHypermediaPagesQueryOptions,
   type HypermediaPage,
   type HypermediaResourceReference,
@@ -14,6 +16,8 @@ import {
   type SettledHypermediaViewport,
 } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
+import { pagesSharedBySelectedResources } from './hypermedia-selection';
+import { INITIAL_FOCUSED_PAGE_LIMIT } from './hypermedia-visibility';
 
 type NeighborhoodRequest = {
   anchor: HypermediaResourceReference;
@@ -37,15 +41,19 @@ function resourceSelection(
 export function HypermediaExplorer({
   selfReadableId,
   selection,
+  selectedResources,
   query,
   dateRange,
   onSelect,
+  onClearSelection,
 }: {
   selfReadableId: string;
   selection?: HypermediaSelection;
+  selectedResources: HypermediaResourceReference[];
   query: string;
   dateRange?: CalendarDateRange;
   onSelect: (selection: HypermediaSelection) => void;
+  onClearSelection: () => void;
 }) {
   const self = useMemo<HypermediaResourceReference>(
     () => ({ kind: 'entity', readableId: selfReadableId }),
@@ -61,7 +69,7 @@ export function HypermediaExplorer({
   });
   const [focusedRequest, setFocusedRequest] = useState(() => ({
     focus: selectedResource ? [selectedResource, self] : [self],
-    limit: 8,
+    limit: INITIAL_FOCUSED_PAGE_LIMIT,
   }));
 
   const neighborhoodQueries = useQueries({
@@ -71,19 +79,47 @@ export function HypermediaExplorer({
     () => neighborhoodQueries.flatMap(({ data }) => (data ? [data] : [])),
     [neighborhoodQueries],
   );
-  const resources = useMemo(() => buildStableResources(neighborhoods), [neighborhoods]);
+  const {
+    data: entityData,
+    error: entityError,
+    hasNextPage: hasNextEntityPage,
+    isFetchingNextPage: isFetchingNextEntityPage,
+    isPending: entitiesPending,
+    fetchNextPage: fetchNextEntityPage,
+    refetch: refetchEntities,
+  } = useEntities();
+  const entities = useMemo(
+    () => entityData?.pages.flatMap((page) => page.items) ?? [],
+    [entityData],
+  );
+  const [resources, setResources] = useState(() => buildStableResources([], []));
 
   useEffect(() => {
-    if (!selectedResource) {
+    setResources((current) => buildStableResources(neighborhoods, entities, current));
+  }, [entities, neighborhoods]);
+
+  useEffect(() => {
+    const requestedResources = selectedResource
+      ? [...selectedResources, selectedResource]
+      : selectedResources;
+    if (requestedResources.length === 0) {
       return;
     }
     setNeighborhoodRequests((current) => {
-      const key = hypermediaResourceKey(selectedResource);
-      return current.some(({ anchor }) => hypermediaResourceKey(anchor) === key)
-        ? current
-        : [...current, { anchor: selectedResource }];
+      const requestedKeys = new Set(current.map(({ anchor }) => hypermediaResourceKey(anchor)));
+      const additional = requestedResources.filter((resource) => {
+        const key = hypermediaResourceKey(resource);
+        if (requestedKeys.has(key)) {
+          return false;
+        }
+        requestedKeys.add(key);
+        return true;
+      });
+      return additional.length > 0
+        ? [...current, ...additional.map((anchor) => ({ anchor }))]
+        : current;
     });
-  }, [selectedResource]);
+  }, [selectedResource, selectedResources]);
 
   const pageQuery = useQuery({
     ...focusedHypermediaPagesQueryOptions({
@@ -94,6 +130,19 @@ export function HypermediaExplorer({
     }),
     placeholderData: keepPreviousData,
   });
+  const selectedResourcePageQueries = useQueries({
+    queries: selectedResources.map((resource) =>
+      allFocusedHypermediaPagesQueryOptions({ focus: [resource], query, dateRange }),
+    ),
+  });
+  const loadedSelectedPageCollections = selectedResourcePageQueries.flatMap(({ data }) =>
+    data ? [data.pages] : [],
+  );
+  const spotlightPages =
+    selectedResources.length > 0 &&
+    loadedSelectedPageCollections.length === selectedResources.length
+      ? pagesSharedBySelectedResources(loadedSelectedPageCollections)
+      : undefined;
   const selectedPageReadableId = selection?.kind === 'page' ? selection.readableId : undefined;
   const focusedPages = pageQuery.data?.pages ?? EMPTY_PAGES;
   const selectedFocusedPage = focusedPages.find(
@@ -122,14 +171,19 @@ export function HypermediaExplorer({
   }, [focusedPages, retainedPageQuery.data, selectedFocusedPage, selectedPageReadableId]);
 
   const handleViewportSettled = useCallback(
-    ({ focus, pageLimit, boundaryAnchor }: SettledHypermediaViewport) => {
-      setFocusedRequest((current) => {
-        const nextKeys = focus.map(hypermediaResourceKey).sort().join(',');
-        const currentKeys = current.focus.map(hypermediaResourceKey).sort().join(',');
-        return nextKeys === currentKeys && pageLimit === current.limit
-          ? current
-          : { focus, limit: pageLimit };
-      });
+    ({ focus, pageLimit, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
+      if (focus.length > 0) {
+        setFocusedRequest((current) => {
+          const nextKeys = focus.map(hypermediaResourceKey).sort().join(',');
+          const currentKeys = current.focus.map(hypermediaResourceKey).sort().join(',');
+          return nextKeys === currentKeys && pageLimit === current.limit
+            ? current
+            : { focus, limit: pageLimit };
+        });
+      }
+      if (discoverMoreEntities && hasNextEntityPage && !isFetchingNextEntityPage) {
+        void fetchNextEntityPage();
+      }
       if (!boundaryAnchor || neighborhoodQueries.some(({ isPending }) => isPending)) {
         return;
       }
@@ -167,15 +221,17 @@ export function HypermediaExplorer({
           : [...current, next];
       });
     },
-    [neighborhoodQueries],
+    [fetchNextEntityPage, hasNextEntityPage, isFetchingNextEntityPage, neighborhoodQueries],
   );
 
-  const neighborhoodError = neighborhoodQueries.find(({ error }) => error)?.error ?? null;
+  const neighborhoodError =
+    neighborhoodQueries.find(({ error }) => error)?.error ?? entityError ?? null;
   const selectedKey = selection ? `${selection.kind}:${selection.readableId}` : undefined;
   const requestedAnchorKeys = new Set(
     neighborhoodRequests.map(({ anchor }) => hypermediaResourceKey(anchor)),
   );
   const canExplore =
+    hasNextEntityPage ||
     neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
     resources.some(({ key }) => !requestedAnchorKeys.has(key));
 
@@ -183,15 +239,23 @@ export function HypermediaExplorer({
     <HypermediaCanvas
       resources={resources}
       pages={pages}
+      selectedResources={selectedResources}
+      spotlightPages={spotlightPages}
       selectedKey={selectedKey}
       onSelect={onSelect}
+      onClearSelection={onClearSelection}
       onViewportSettled={handleViewportSettled}
       canExplore={canExplore}
       isInitialLoading={
-        resources.length === 0 && neighborhoodQueries.some(({ isPending }) => isPending)
+        resources.length === 0 &&
+        (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
       }
+      isSpotlightLoading={selectedResourcePageQueries.some(({ isPending }) => isPending)}
       neighborhoodError={neighborhoodError}
       onRetryNeighborhood={() => {
+        if (entityError) {
+          void refetchEntities();
+        }
         for (const result of neighborhoodQueries) {
           if (result.error) {
             void result.refetch();
