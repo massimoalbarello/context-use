@@ -8,43 +8,43 @@ import type {
 } from '../../queries/hypermedia';
 import { hypermediaResourceKey, hypermediaResourceReference } from '../../queries/hypermedia';
 
-export type MapPoint = { x: number; y: number };
-export type MapBounds = MapPoint & { width: number; height: number };
+export type CanvasPoint = { x: number; y: number };
+export type CanvasBounds = CanvasPoint & { width: number; height: number };
 
-export type HypermediaLandmark =
+export type HypermediaLayoutResource =
   | {
       key: string;
       kind: 'entity';
       entity: Extract<HypermediaResource, { kind: 'entity' }>['entity'];
-      point: MapPoint;
+      point: CanvasPoint;
     }
   | {
       key: string;
       kind: 'asset';
       asset: Extract<HypermediaResource, { kind: 'asset' }>['asset'];
-      point: MapPoint;
+      point: CanvasPoint;
     };
 
 export type HypermediaPageLayout = {
   page: HypermediaPage;
-  point: MapPoint;
+  point: CanvasPoint;
   cloudPath: string;
   colorIndex: number;
   resourceKeys: string[];
 };
 
 export type HypermediaLayout = {
-  landmarks: HypermediaLandmark[];
+  resources: HypermediaLayoutResource[];
   pages: HypermediaPageLayout[];
-  initialFocus: MapPoint;
-  bounds: MapBounds;
+  initialFocus: CanvasPoint;
+  bounds: CanvasBounds;
 };
 
-const MAP_PADDING = 160;
+const CANVAS_PADDING = 160;
 const INITIAL_VIEW_WIDTH = 900;
 const INITIAL_VIEW_HEIGHT = 620;
-const LANDMARK_MIN_DISTANCE = 150;
-const LANDMARK_SPIRAL_STEP = 56;
+const RESOURCE_MIN_DISTANCE = 150;
+const RESOURCE_SPIRAL_STEP = 56;
 const PAGE_MIN_DISTANCE = 240;
 const PAGE_SPIRAL_STEP = 54;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -58,7 +58,7 @@ function stableHash(value: string): number {
   return hash >>> 0;
 }
 
-function average(points: MapPoint[]): MapPoint {
+function average(points: CanvasPoint[]): CanvasPoint {
   const total = points.reduce((sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }), {
     x: 0,
     y: 0,
@@ -66,7 +66,7 @@ function average(points: MapPoint[]): MapPoint {
   return { x: total.x / points.length, y: total.y / points.length };
 }
 
-function distance(first: MapPoint, second: MapPoint): number {
+function distance(first: CanvasPoint, second: CanvasPoint): number {
   return Math.hypot(first.x - second.x, first.y - second.y);
 }
 
@@ -78,11 +78,11 @@ function openPoint({
   step,
 }: {
   key: string;
-  preferred: MapPoint;
-  occupied: MapPoint[];
+  preferred: CanvasPoint;
+  occupied: CanvasPoint[];
   minimumDistance: number;
   step: number;
-}): MapPoint {
+}): CanvasPoint {
   const phase = (stableHash(key) / 0xffffffff) * Math.PI * 2;
   for (let index = 0; index < 1200; index += 1) {
     const radius = index === 0 ? 0 : step * Math.sqrt(index);
@@ -97,27 +97,27 @@ function openPoint({
   return { x: preferred.x + occupied.length * minimumDistance, y: preferred.y };
 }
 
-function landmarkFrom(resource: HypermediaResource, point: MapPoint): HypermediaLandmark {
+function resourceAt(resource: HypermediaResource, point: CanvasPoint): HypermediaLayoutResource {
   const key = hypermediaResourceKey(hypermediaResourceReference(resource));
   return resource.kind === 'entity'
     ? { key, kind: 'entity', entity: resource.entity, point }
     : { key, kind: 'asset', asset: resource.asset, point };
 }
 
-export function buildStableLandmarks(
+export function buildStableResources(
   neighborhoods: HypermediaResourceNeighborhood[],
-): HypermediaLandmark[] {
-  const landmarks = new Map<string, HypermediaLandmark>();
-  const placed: MapPoint[] = [];
+): HypermediaLayoutResource[] {
+  const resources = new Map<string, HypermediaLayoutResource>();
+  const placed: CanvasPoint[] = [];
   const neighborCountByAnchor = new Map<string, number>();
 
-  function addAnchor(resource: HypermediaResource): HypermediaLandmark {
+  function addAnchor(resource: HypermediaResource): HypermediaLayoutResource {
     const key = hypermediaResourceKey(hypermediaResourceReference(resource));
-    const existing = landmarks.get(key);
+    const existing = resources.get(key);
     if (existing) {
       return existing;
     }
-    const index = landmarks.size;
+    const index = resources.size;
     const preferred =
       index === 0
         ? { x: 0, y: 0 }
@@ -129,13 +129,13 @@ export function buildStableLandmarks(
       key,
       preferred,
       occupied: placed,
-      minimumDistance: LANDMARK_MIN_DISTANCE,
-      step: LANDMARK_SPIRAL_STEP,
+      minimumDistance: RESOURCE_MIN_DISTANCE,
+      step: RESOURCE_SPIRAL_STEP,
     });
-    const landmark = landmarkFrom(resource, point);
-    landmarks.set(key, landmark);
+    const positionedResource = resourceAt(resource, point);
+    resources.set(key, positionedResource);
     placed.push(point);
-    return landmark;
+    return positionedResource;
   }
 
   for (const neighborhood of neighborhoods) {
@@ -143,7 +143,7 @@ export function buildStableLandmarks(
     const anchorOffset = neighborCountByAnchor.get(anchor.key) ?? 0;
     for (const [index, neighbor] of neighborhood.neighbors.entries()) {
       const key = hypermediaResourceKey(hypermediaResourceReference(neighbor.resource));
-      if (landmarks.has(key)) {
+      if (resources.has(key)) {
         continue;
       }
       const placementIndex = anchorOffset + index;
@@ -158,37 +158,37 @@ export function buildStableLandmarks(
         key,
         preferred,
         occupied: placed,
-        minimumDistance: LANDMARK_MIN_DISTANCE,
-        step: LANDMARK_SPIRAL_STEP,
+        minimumDistance: RESOURCE_MIN_DISTANCE,
+        step: RESOURCE_SPIRAL_STEP,
       });
-      landmarks.set(key, landmarkFrom(neighbor.resource, point));
+      resources.set(key, resourceAt(neighbor.resource, point));
       placed.push(point);
     }
     neighborCountByAnchor.set(anchor.key, anchorOffset + neighborhood.neighbors.length);
   }
 
-  return [...landmarks.values()];
+  return [...resources.values()];
 }
 
-function cross(origin: MapPoint, first: MapPoint, second: MapPoint): number {
+function cross(origin: CanvasPoint, first: CanvasPoint, second: CanvasPoint): number {
   return (
     (first.x - origin.x) * (second.y - origin.y) - (first.y - origin.y) * (second.x - origin.x)
   );
 }
 
-function convexHull(points: MapPoint[]): MapPoint[] {
+function convexHull(points: CanvasPoint[]): CanvasPoint[] {
   const sorted = [...points].sort((first, second) => first.x - second.x || first.y - second.y);
   if (sorted.length <= 2) {
     return sorted;
   }
-  const lower: MapPoint[] = [];
+  const lower: CanvasPoint[] = [];
   for (const point of sorted) {
     while (lower.length >= 2 && cross(lower.at(-2)!, lower.at(-1)!, point) <= 0) {
       lower.pop();
     }
     lower.push(point);
   }
-  const upper: MapPoint[] = [];
+  const upper: CanvasPoint[] = [];
   for (const point of sorted.reverse()) {
     while (upper.length >= 2 && cross(upper.at(-2)!, upper.at(-1)!, point) <= 0) {
       upper.pop();
@@ -198,7 +198,7 @@ function convexHull(points: MapPoint[]): MapPoint[] {
   return [...lower.slice(0, -1), ...upper.slice(0, -1)];
 }
 
-function cloudPath(points: MapPoint[]): string {
+function cloudPath(points: CanvasPoint[]): string {
   const outline = points.flatMap((point, pointIndex) =>
     Array.from({ length: 8 }, (_, index) => {
       const angle = (index / 8) * Math.PI * 2;
@@ -210,7 +210,7 @@ function cloudPath(points: MapPoint[]): string {
   if (hull.length === 0) {
     return '';
   }
-  const midpoint = (first: MapPoint, second: MapPoint) => ({
+  const midpoint = (first: CanvasPoint, second: CanvasPoint) => ({
     x: (first.x + second.x) / 2,
     y: (first.y + second.y) / 2,
   });
@@ -223,11 +223,11 @@ function cloudPath(points: MapPoint[]): string {
 }
 
 function pageLayouts(
-  landmarks: HypermediaLandmark[],
+  resources: HypermediaLayoutResource[],
   pages: HypermediaPage[],
 ): HypermediaPageLayout[] {
-  const pointsByKey = new Map(landmarks.map((landmark) => [landmark.key, landmark.point]));
-  const occupied: MapPoint[] = [];
+  const pointsByKey = new Map(resources.map((resource) => [resource.key, resource.point]));
+  const occupied: CanvasPoint[] = [];
   return pages.map((page, index) => {
     const resourceKeys = page.resources.map(hypermediaResourceKey);
     const connectedPoints = resourceKeys.flatMap((key) => {
@@ -260,35 +260,35 @@ function pageLayouts(
 }
 
 export function buildHypermediaLayout(
-  landmarks: HypermediaLandmark[],
+  resources: HypermediaLayoutResource[],
   pages: HypermediaPage[],
 ): HypermediaLayout {
-  const laidOutPages = pageLayouts(landmarks, pages);
+  const laidOutPages = pageLayouts(resources, pages);
   const allPoints = [
-    ...landmarks.map(({ point }) => point),
+    ...resources.map(({ point }) => point),
     ...laidOutPages.map(({ point }) => point),
   ];
   if (allPoints.length === 0) {
     return {
-      landmarks,
+      resources,
       pages: laidOutPages,
       initialFocus: { x: 0, y: 0 },
       bounds: { x: -450, y: -310, width: INITIAL_VIEW_WIDTH, height: INITIAL_VIEW_HEIGHT },
     };
   }
-  const minX = Math.min(...allPoints.map(({ x }) => x)) - MAP_PADDING;
-  const maxX = Math.max(...allPoints.map(({ x }) => x)) + MAP_PADDING;
-  const minY = Math.min(...allPoints.map(({ y }) => y)) - MAP_PADDING;
-  const maxY = Math.max(...allPoints.map(({ y }) => y)) + MAP_PADDING;
+  const minX = Math.min(...allPoints.map(({ x }) => x)) - CANVAS_PADDING;
+  const maxX = Math.max(...allPoints.map(({ x }) => x)) + CANVAS_PADDING;
+  const minY = Math.min(...allPoints.map(({ y }) => y)) - CANVAS_PADDING;
+  const maxY = Math.max(...allPoints.map(({ y }) => y)) + CANVAS_PADDING;
   return {
-    landmarks,
+    resources,
     pages: laidOutPages,
-    initialFocus: landmarks[0]?.point ?? laidOutPages[0]!.point,
+    initialFocus: resources[0]?.point ?? laidOutPages[0]!.point,
     bounds: { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
   };
 }
 
-export function initialHypermediaViewBox(layout: HypermediaLayout): MapBounds {
+export function initialHypermediaViewBox(layout: HypermediaLayout): CanvasBounds {
   return {
     x: layout.initialFocus.x - INITIAL_VIEW_WIDTH / 2,
     y: layout.initialFocus.y - INITIAL_VIEW_HEIGHT / 2,

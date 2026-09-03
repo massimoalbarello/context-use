@@ -4,11 +4,11 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildHypermediaLayout,
-  buildStableLandmarks,
+  buildStableResources,
 } from '../../src/components/hypermedia/hypermedia-layout';
 import {
-  focusedLandmarks,
   focusedPageLimit,
+  focusedResources,
   hypermediaLayoutInViewport,
 } from '../../src/components/hypermedia/hypermedia-visibility';
 import type {
@@ -62,32 +62,32 @@ function page(readableId: string): HypermediaPage {
 }
 
 describe('resource-first hypermedia layout', () => {
-  test('never moves landmarks when another resource neighborhood is appended', () => {
+  test('never moves resources when another neighborhood is appended', () => {
     const self = entity('self', true);
     const alpha = entity('alpha');
-    const initial = buildStableLandmarks([neighborhood(self, [alpha])]);
-    const expanded = buildStableLandmarks([
+    const initial = buildStableResources([neighborhood(self, [alpha])]);
+    const expanded = buildStableResources([
       neighborhood(self, [alpha]),
       neighborhood(alpha, [entity('beta')]),
     ]);
 
-    for (const landmark of initial) {
-      expect(expanded.find(({ key }) => key === landmark.key)?.point).toEqual(landmark.point);
+    for (const resource of initial) {
+      expect(expanded.find(({ key }) => key === resource.key)?.point).toEqual(resource.point);
     }
   });
 
-  test('focus follows the viewport while retaining a selected landmark', () => {
-    const landmarks = buildStableLandmarks([
+  test('focus follows the viewport while retaining a selected resource', () => {
+    const resources = buildStableResources([
       neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
     ]);
-    const beta = landmarks.find(({ key }) => key === 'entity:beta')!;
+    const beta = resources.find(({ key }) => key === 'entity:beta')!;
     const viewport = { x: beta.point.x - 50, y: beta.point.y - 50, width: 100, height: 100 };
 
-    expect(focusedLandmarks({ landmarks, viewport })[0]).toEqual({
+    expect(focusedResources({ resources, viewport })[0]).toEqual({
       kind: 'entity',
       readableId: 'beta',
     });
-    expect(focusedLandmarks({ landmarks, viewport, selectedKey: 'entity:self' })[0]).toEqual({
+    expect(focusedResources({ resources, viewport, selectedKey: 'entity:self' })[0]).toEqual({
       kind: 'entity',
       readableId: 'self',
     });
@@ -102,9 +102,9 @@ describe('resource-first hypermedia layout', () => {
     expect(focusedPageLimit({ x: 0, y: 0, width: 2600, height: 1600 })).toBe(32);
   });
 
-  test('viewport culling cannot remove the selected page or landmark', () => {
-    const landmarks = buildStableLandmarks([neighborhood(entity('self', true), [entity('alpha')])]);
-    const layout = buildHypermediaLayout(landmarks, [page('selected-page')]);
+  test('viewport culling cannot remove the selected page or resource', () => {
+    const resources = buildStableResources([neighborhood(entity('self', true), [entity('alpha')])]);
+    const layout = buildHypermediaLayout(resources, [page('selected-page')]);
     const hiddenViewport = { x: 10_000, y: 10_000, width: 100, height: 100 };
 
     expect(
@@ -119,7 +119,7 @@ describe('resource-first hypermedia layout', () => {
         layout,
         viewport: hiddenViewport,
         selectedKey: 'entity:self',
-      }).landmarks.map(({ key }) => key),
+      }).resources.map(({ key }) => key),
     ).toEqual(['entity:self']);
   });
 });

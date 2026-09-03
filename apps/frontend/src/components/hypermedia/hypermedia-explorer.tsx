@@ -12,7 +12,7 @@ import {
   type HypermediaSelection,
   type SettledHypermediaViewport,
 } from './hypermedia-canvas';
-import { buildStableLandmarks } from './hypermedia-layout';
+import { buildStableResources } from './hypermedia-layout';
 
 type NeighborhoodRequest = {
   anchor: HypermediaResourceReference;
@@ -68,7 +68,7 @@ export function HypermediaExplorer({
     () => neighborhoodQueries.flatMap(({ data }) => (data ? [data] : [])),
     [neighborhoodQueries],
   );
-  const landmarks = useMemo(() => buildStableLandmarks(neighborhoods), [neighborhoods]);
+  const resources = useMemo(() => buildStableResources(neighborhoods), [neighborhoods]);
 
   useEffect(() => {
     if (!selectedResource) {
@@ -149,11 +149,11 @@ export function HypermediaExplorer({
   );
   const canExplore =
     neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
-    landmarks.some(({ key }) => !requestedAnchorKeys.has(key));
+    resources.some(({ key }) => !requestedAnchorKeys.has(key));
 
   return (
     <HypermediaCanvas
-      landmarks={landmarks}
+      resources={resources}
       pages={pageQuery.data?.pages ?? []}
       selectedKey={selectedKey}
       onSelect={onSelect}

@@ -25,26 +25,26 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
   buildHypermediaLayout,
-  type HypermediaLandmark,
+  type CanvasBounds,
   type HypermediaLayout,
+  type HypermediaLayoutResource,
   initialHypermediaViewBox,
-  type MapBounds,
 } from './hypermedia-layout';
 import {
   eagerHypermediaImageKeys,
-  focusedLandmarks,
   focusedPageLimit,
+  focusedResources,
   hypermediaLayoutInViewport,
-  nearestBoundaryLandmark,
-  viewportNearLandmarkBoundary,
+  nearestBoundaryResource,
+  viewportNearResourceBoundary,
 } from './hypermedia-visibility';
 
-type MapPreview =
+type HypermediaPreview =
   | { kind: 'page'; page: HypermediaPage }
   | { kind: 'entity'; entity: HypermediaEntity }
   | { kind: 'asset'; asset: HypermediaAsset };
 
-type ViewBox = MapBounds;
+type ViewBox = CanvasBounds;
 
 const BUTTON_ZOOM_IN_FACTOR = 0.9;
 const BUTTON_ZOOM_OUT_FACTOR = 1.1;
@@ -63,7 +63,7 @@ export type SettledHypermediaViewport = {
   boundaryAnchor?: HypermediaResourceReference;
 };
 
-function previewKey(preview: MapPreview): string {
+function previewKey(preview: HypermediaPreview): string {
   if (preview.kind === 'page') {
     return `page:${preview.page.readableId}`;
   }
@@ -77,7 +77,7 @@ function shortLabel(value: string, length = 24): string {
   return value.length > length ? `${value.slice(0, length - 1).trimEnd()}…` : value;
 }
 
-function PreviewCard({ preview }: { preview: MapPreview }) {
+function PreviewCard({ preview }: { preview: HypermediaPreview }) {
   if (preview.kind === 'page') {
     const { page } = preview;
     return (
@@ -147,8 +147,8 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
   );
 }
 
-function mapResourceImageReadableId(
-  resource: HypermediaLandmark,
+function resourceImageReadableId(
+  resource: HypermediaLayoutResource,
   visible: boolean,
 ): string | undefined {
   if (!visible) {
@@ -178,7 +178,7 @@ function ResourceDot({
   onPreview,
   onPreviewEnd,
 }: {
-  resource: HypermediaLandmark;
+  resource: HypermediaLayoutResource;
   active: boolean;
   eagerImage: boolean;
   onActivate: () => void;
@@ -190,11 +190,11 @@ function ResourceDot({
   const emphasis = resourceDotEmphasis({ active, isSelf });
   const outerExtent = radius + emphasis.radiusOffset;
   const innerExtent = radius - 3;
-  const imageReadableId = mapResourceImageReadableId(resource, active || eagerImage);
+  const imageReadableId = resourceImageReadableId(resource, active || eagerImage);
   const label = resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
   const readableId =
     resource.kind === 'entity' ? resource.entity.readableId : resource.asset.readableId;
-  const clipId = `hypermedia-landmark-${resource.key.replaceAll(':', '-')}`;
+  const clipId = `hypermedia-resource-${resource.key.replaceAll(':', '-')}`;
   const href = `/${resource.kind === 'entity' ? 'entities' : 'assets'}/${encodeURIComponent(readableId)}`;
 
   return (
@@ -309,7 +309,7 @@ const HypermediaLayers = memo(function HypermediaLayers({
   eagerImageKeys: Set<string>;
   suppressNextCloudClick: { current: boolean };
   onSelect: (selection: HypermediaSelection) => void;
-  onPreview: (preview: MapPreview) => void;
+  onPreview: (preview: HypermediaPreview) => void;
   onPreviewEnd: (key: string) => void;
 }) {
   return (
@@ -388,7 +388,7 @@ const HypermediaLayers = memo(function HypermediaLayers({
         );
       })}
 
-      {layout.landmarks.map((resource) => {
+      {layout.resources.map((resource) => {
         const preview =
           resource.kind === 'entity'
             ? ({ kind: 'entity', entity: resource.entity } as const)
@@ -435,12 +435,12 @@ function HypermediaExplorationCue({
           className="pointer-events-auto rounded-full bg-card/92 shadow-sm backdrop-blur"
           onClick={onRetry}
         >
-          Retry loading nearby landmarks
+          Retry loading nearby resources
         </Button>
       ) : (
         <p className="flex items-center gap-2 whitespace-nowrap rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
           <Move className="size-3.5" aria-hidden="true" />
-          Drag to explore nearby landmarks
+          Drag and zoom to explore the hypermedia.
         </p>
       )}
     </div>
@@ -448,7 +448,7 @@ function HypermediaExplorationCue({
 }
 
 export function HypermediaCanvas({
-  landmarks,
+  resources,
   pages,
   selectedKey,
   onSelect,
@@ -458,7 +458,7 @@ export function HypermediaCanvas({
   neighborhoodError,
   onRetryNeighborhood,
 }: {
-  landmarks: HypermediaLandmark[];
+  resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
   selectedKey?: string;
   onSelect: (selection: HypermediaSelection) => void;
@@ -469,12 +469,13 @@ export function HypermediaCanvas({
   onRetryNeighborhood: () => void;
 }) {
   const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
-  const layout = useMemo(() => buildHypermediaLayout(landmarks, pages), [landmarks, pages]);
-  const [preview, setPreview] = useState<MapPreview | null>(null);
+  const layout = useMemo(() => buildHypermediaLayout(resources, pages), [resources, pages]);
+  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(layout));
   const viewBoxRef = useRef(viewBox);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [panning, setPanning] = useState(false);
+  const [showExplorationHint, setShowExplorationHint] = useState(true);
   const suppressNextCloudClick = useRef(false);
   const drag = useRef<{
     pointerId: number;
@@ -494,7 +495,7 @@ export function HypermediaCanvas({
 
   const publishViewport = useCallback(
     ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
-      const focus = focusedLandmarks({ landmarks: layout.landmarks, viewport, selectedKey });
+      const focus = focusedResources({ resources: layout.resources, viewport, selectedKey });
       if (focus.length === 0) {
         return;
       }
@@ -502,12 +503,12 @@ export function HypermediaCanvas({
         focus,
         pageLimit: focusedPageLimit(viewport),
         boundaryAnchor:
-          includeBoundary && viewportNearLandmarkBoundary(viewport, layout.bounds)
-            ? nearestBoundaryLandmark(layout.landmarks, viewport)
+          includeBoundary && viewportNearResourceBoundary(viewport, layout.bounds)
+            ? nearestBoundaryResource(layout.resources, viewport)
             : undefined,
       });
     },
-    [layout.bounds, layout.landmarks, onViewportSettled, selectedKey],
+    [layout.bounds, layout.resources, onViewportSettled, selectedKey],
   );
 
   const scheduleViewport = useCallback(
@@ -538,6 +539,7 @@ export function HypermediaCanvas({
   }
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
+    setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
     const maximumWidth = Math.max(2400, layout.bounds.width * 2.5);
@@ -555,7 +557,8 @@ export function HypermediaCanvas({
     scheduleViewport(nextViewBox);
   }
 
-  function fitMap() {
+  function fitHypermedia() {
+    setShowExplorationHint(false);
     updateViewBox(layout.bounds);
     scheduleViewport(layout.bounds);
   }
@@ -602,11 +605,13 @@ export function HypermediaCanvas({
     const dx = ((event.clientX - drag.current.clientX) / rect.width) * drag.current.viewBox.width;
     const dy = ((event.clientY - drag.current.clientY) / rect.height) * drag.current.viewBox.height;
     if (
+      !drag.current.moved &&
       Math.abs(event.clientX - drag.current.clientX) +
         Math.abs(event.clientY - drag.current.clientY) >
-      4
+        4
     ) {
       drag.current.moved = true;
+      setShowExplorationHint(false);
     }
     const currentViewBox = {
       ...drag.current.viewBox,
@@ -651,7 +656,7 @@ export function HypermediaCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
-      aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.landmarks.length} visible landmarks`}
+      aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.resources.length} visible entities and assets`}
     >
       <svg
         className={cn(
@@ -666,7 +671,7 @@ export function HypermediaCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerCancel}
-        onDoubleClick={fitMap}
+        onDoubleClick={fitHypermedia}
       >
         <HypermediaLayers
           layout={visibleLayout}
@@ -679,7 +684,7 @@ export function HypermediaCanvas({
         />
       </svg>
 
-      {!isLoadingNeighborhood && (canExplore || neighborhoodError) && (
+      {!isLoadingNeighborhood && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
       )}
 
@@ -707,7 +712,7 @@ export function HypermediaCanvas({
           variant="ghost"
           size="icon"
           aria-label="Fit Hypermedia"
-          onClick={fitMap}
+          onClick={fitHypermedia}
         >
           <Scan aria-hidden="true" />
         </Button>
@@ -718,7 +723,7 @@ export function HypermediaCanvas({
           className="absolute right-4 bottom-4 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
           aria-live="polite"
         >
-          Loading nearby landmarks…
+          Loading nearby resources…
         </div>
       )}
 

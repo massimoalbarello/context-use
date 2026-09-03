@@ -5,30 +5,30 @@ import { isEmbeddableAsset } from '../../lib/asset-presentation';
 import type { HypermediaResourceReference } from '../../queries/hypermedia';
 import { hypermediaResourceKey } from '../../queries/hypermedia';
 import type {
-  HypermediaLandmark,
+  CanvasBounds,
+  CanvasPoint,
   HypermediaLayout,
-  MapBounds,
-  MapPoint,
+  HypermediaLayoutResource,
 } from './hypermedia-layout';
 
-export const MAX_FOCUSED_LANDMARKS = 24;
+export const MAX_FOCUSED_RESOURCES = 24;
 export const MAX_EAGER_HYPERMEDIA_IMAGES = 12;
 
-function viewportCenter(viewport: MapBounds): MapPoint {
+function viewportCenter(viewport: CanvasBounds): CanvasPoint {
   return { x: viewport.x + viewport.width / 2, y: viewport.y + viewport.height / 2 };
 }
 
-function squaredDistance(first: MapPoint, second: MapPoint): number {
+function squaredDistance(first: CanvasPoint, second: CanvasPoint): number {
   return (first.x - second.x) ** 2 + (first.y - second.y) ** 2;
 }
 
-function referenceFromLandmark(landmark: HypermediaLandmark): HypermediaResourceReference {
-  return landmark.kind === 'entity'
-    ? { kind: 'entity', readableId: landmark.entity.readableId }
-    : { kind: 'asset', readableId: landmark.asset.readableId };
+function referenceFromResource(resource: HypermediaLayoutResource): HypermediaResourceReference {
+  return resource.kind === 'entity'
+    ? { kind: 'entity', readableId: resource.entity.readableId }
+    : { kind: 'asset', readableId: resource.asset.readableId };
 }
 
-function focusedLandmarkLimit(viewport: MapBounds): number {
+function focusedResourceLimit(viewport: CanvasBounds): number {
   if (viewport.width <= 1100) {
     return 8;
   }
@@ -41,29 +41,29 @@ function focusedLandmarkLimit(viewport: MapBounds): number {
   if (viewport.width <= 2300) {
     return 20;
   }
-  return MAX_FOCUSED_LANDMARKS;
+  return MAX_FOCUSED_RESOURCES;
 }
 
-export function focusedLandmarks({
-  landmarks,
+export function focusedResources({
+  resources,
   viewport,
   selectedKey,
 }: {
-  landmarks: HypermediaLandmark[];
-  viewport: MapBounds;
+  resources: HypermediaLayoutResource[];
+  viewport: CanvasBounds;
   selectedKey?: string;
 }): HypermediaResourceReference[] {
   const center = viewportCenter(viewport);
-  const ordered = [...landmarks].sort(
+  const ordered = [...resources].sort(
     (first, second) =>
       Number(second.key === selectedKey) - Number(first.key === selectedKey) ||
       squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
       first.key.localeCompare(second.key),
   );
-  return ordered.slice(0, focusedLandmarkLimit(viewport)).map(referenceFromLandmark);
+  return ordered.slice(0, focusedResourceLimit(viewport)).map(referenceFromResource);
 }
 
-export function focusedPageLimit(viewport: MapBounds): number {
+export function focusedPageLimit(viewport: CanvasBounds): number {
   if (viewport.width <= 720) {
     return 4;
   }
@@ -82,7 +82,10 @@ export function focusedPageLimit(viewport: MapBounds): number {
   return 32;
 }
 
-export function viewportNearLandmarkBoundary(viewport: MapBounds, bounds: MapBounds): boolean {
+export function viewportNearResourceBoundary(
+  viewport: CanvasBounds,
+  bounds: CanvasBounds,
+): boolean {
   const marginX = Math.min(viewport.width * 0.16, bounds.width * 0.2);
   const marginY = Math.min(viewport.height * 0.16, bounds.height * 0.2);
   return (
@@ -93,20 +96,20 @@ export function viewportNearLandmarkBoundary(viewport: MapBounds, bounds: MapBou
   );
 }
 
-export function nearestBoundaryLandmark(
-  landmarks: HypermediaLandmark[],
-  viewport: MapBounds,
+export function nearestBoundaryResource(
+  resources: HypermediaLayoutResource[],
+  viewport: CanvasBounds,
 ): HypermediaResourceReference | undefined {
   const center = viewportCenter(viewport);
-  const nearest = [...landmarks].sort(
+  const nearest = [...resources].sort(
     (first, second) =>
       squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
       first.key.localeCompare(second.key),
   )[0];
-  return nearest ? referenceFromLandmark(nearest) : undefined;
+  return nearest ? referenceFromResource(nearest) : undefined;
 }
 
-function pointNearViewport(point: MapPoint, viewport: MapBounds): boolean {
+function pointNearViewport(point: CanvasPoint, viewport: CanvasBounds): boolean {
   const marginX = viewport.width * 0.16;
   const marginY = viewport.height * 0.16;
   return (
@@ -123,13 +126,13 @@ export function hypermediaLayoutInViewport({
   selectedKey,
 }: {
   layout: HypermediaLayout;
-  viewport: MapBounds;
+  viewport: CanvasBounds;
   selectedKey?: string;
 }): HypermediaLayout {
   return {
     ...layout,
-    landmarks: layout.landmarks.filter(
-      (landmark) => landmark.key === selectedKey || pointNearViewport(landmark.point, viewport),
+    resources: layout.resources.filter(
+      (resource) => resource.key === selectedKey || pointNearViewport(resource.point, viewport),
     ),
     pages: layout.pages.filter(
       ({ page, point }) =>
@@ -140,13 +143,13 @@ export function hypermediaLayoutInViewport({
 
 export function eagerHypermediaImageKeys(layout: HypermediaLayout): Set<string> {
   return new Set(
-    layout.landmarks
-      .filter((landmark) =>
-        landmark.kind === 'entity'
-          ? Boolean(landmark.entity.image)
-          : isEmbeddableAsset(landmark.asset),
+    layout.resources
+      .filter((resource) =>
+        resource.kind === 'entity'
+          ? Boolean(resource.entity.image)
+          : isEmbeddableAsset(resource.asset),
       )
       .slice(0, MAX_EAGER_HYPERMEDIA_IMAGES)
-      .map((landmark) => hypermediaResourceKey(referenceFromLandmark(landmark))),
+      .map((resource) => hypermediaResourceKey(referenceFromResource(resource))),
   );
 }
