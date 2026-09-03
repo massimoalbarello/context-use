@@ -19,21 +19,25 @@ def read_seed_text(relative_path):
 
 
 PROFILE = read_seed_json("entities/alex-morgan.json")
+PAGE_INDEX = read_seed_json("pages/index.json")
+PAGE_METADATA = {page["readableId"]: page for page in PAGE_INDEX}
+PAGE_ORDER = {
+    page["readableId"]: index for index, page in enumerate(PAGE_INDEX)
+}
 ENTITIES = [
-    read_seed_json("entities/maya-chen.json"),
-    read_seed_json("entities/northstar.json"),
-    read_seed_json("entities/priya-shah.json"),
-    read_seed_json("entities/theo-brooks.json"),
-    read_seed_json("entities/orbit-labs.json"),
-    read_seed_json("entities/jun-park.json"),
-    read_seed_json("entities/compass.json"),
+    json.loads(path.read_text())
+    for path in sorted((FIXTURE_FOLDER / "entities").rglob("*.json"))
+    if path != FIXTURE_FOLDER / "entities" / "alex-morgan.json"
 ]
 PAGES = [
     {
-        **page,
-        "markdown": read_seed_text(f"pages/{page['readableId']}.md"),
+        **PAGE_METADATA.get(path.stem, {"readableId": path.stem}),
+        "markdown": path.read_text(),
     }
-    for page in read_seed_json("pages/index.json")
+    for path in sorted(
+        (FIXTURE_FOLDER / "pages").rglob("*.md"),
+        key=lambda path: (PAGE_ORDER.get(path.stem, len(PAGE_ORDER)), path.as_posix()),
+    )
 ]
 PROFILE_IMAGE_ASSET = {
     "readableId": "sample-profile-portrait",
