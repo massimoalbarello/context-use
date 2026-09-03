@@ -16,10 +16,7 @@ import {
   type SettledHypermediaViewport,
 } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
-import {
-  nextHypermediaSpotlightResource,
-  selectedHypermediaResource,
-} from './hypermedia-selection';
+import { pagesSharedBySelectedResources } from './hypermedia-selection';
 import { INITIAL_FOCUSED_PAGE_LIMIT } from './hypermedia-visibility';
 
 type NeighborhoodRequest = {
@@ -33,29 +30,36 @@ function requestKey(request: NeighborhoodRequest): string {
   return `${hypermediaResourceKey(request.anchor)}:${request.cursor ?? 'first'}`;
 }
 
+function resourceSelection(
+  selection?: HypermediaSelection,
+): HypermediaResourceReference | undefined {
+  return selection && selection.kind !== 'page'
+    ? { kind: selection.kind, readableId: selection.readableId }
+    : undefined;
+}
+
 export function HypermediaExplorer({
   selfReadableId,
   selection,
+  selectedResources,
   query,
   dateRange,
   onSelect,
+  onClearSelection,
 }: {
   selfReadableId: string;
   selection?: HypermediaSelection;
+  selectedResources: HypermediaResourceReference[];
   query: string;
   dateRange?: CalendarDateRange;
   onSelect: (selection: HypermediaSelection) => void;
+  onClearSelection: () => void;
 }) {
   const self = useMemo<HypermediaResourceReference>(
     () => ({ kind: 'entity', readableId: selfReadableId }),
     [selfReadableId],
   );
-  const selectedResource = useMemo(() => selectedHypermediaResource(selection), [selection]);
-  const [retainedSpotlightResource, setRetainedSpotlightResource] = useState<
-    HypermediaResourceReference | undefined
-  >(selectedResource);
-  const spotlightResource =
-    selectedResource ?? (selection?.kind === 'page' ? retainedSpotlightResource : undefined);
+  const selectedResource = useMemo(() => resourceSelection(selection), [selection]);
   const [neighborhoodRequests, setNeighborhoodRequests] = useState<NeighborhoodRequest[]>(() => {
     const initial = [{ anchor: self }];
     return selectedResource &&
@@ -95,22 +99,27 @@ export function HypermediaExplorer({
   }, [entities, neighborhoods]);
 
   useEffect(() => {
-    setRetainedSpotlightResource((current) =>
-      nextHypermediaSpotlightResource({ current, selection }),
-    );
-  }, [selection]);
-
-  useEffect(() => {
-    if (!selectedResource) {
+    const requestedResources = selectedResource
+      ? [...selectedResources, selectedResource]
+      : selectedResources;
+    if (requestedResources.length === 0) {
       return;
     }
     setNeighborhoodRequests((current) => {
-      const key = hypermediaResourceKey(selectedResource);
-      return current.some(({ anchor }) => hypermediaResourceKey(anchor) === key)
-        ? current
-        : [...current, { anchor: selectedResource }];
+      const requestedKeys = new Set(current.map(({ anchor }) => hypermediaResourceKey(anchor)));
+      const additional = requestedResources.filter((resource) => {
+        const key = hypermediaResourceKey(resource);
+        if (requestedKeys.has(key)) {
+          return false;
+        }
+        requestedKeys.add(key);
+        return true;
+      });
+      return additional.length > 0
+        ? [...current, ...additional.map((anchor) => ({ anchor }))]
+        : current;
     });
-  }, [selectedResource]);
+  }, [selectedResource, selectedResources]);
 
   const pageQuery = useQuery({
     ...focusedHypermediaPagesQueryOptions({
@@ -121,14 +130,19 @@ export function HypermediaExplorer({
     }),
     placeholderData: keepPreviousData,
   });
-  const selectedResourcePagesQuery = useQuery({
-    ...allFocusedHypermediaPagesQueryOptions({
-      focus: spotlightResource ? [spotlightResource] : [self],
-      query,
-      dateRange,
-    }),
-    enabled: Boolean(spotlightResource),
+  const selectedResourcePageQueries = useQueries({
+    queries: selectedResources.map((resource) =>
+      allFocusedHypermediaPagesQueryOptions({ focus: [resource], query, dateRange }),
+    ),
   });
+  const loadedSelectedPageCollections = selectedResourcePageQueries.flatMap(({ data }) =>
+    data ? [data.pages] : [],
+  );
+  const spotlightPages =
+    selectedResources.length > 0 &&
+    loadedSelectedPageCollections.length === selectedResources.length
+      ? pagesSharedBySelectedResources(loadedSelectedPageCollections)
+      : undefined;
   const selectedPageReadableId = selection?.kind === 'page' ? selection.readableId : undefined;
   const focusedPages = pageQuery.data?.pages ?? EMPTY_PAGES;
   const selectedFocusedPage = focusedPages.find(
@@ -225,17 +239,18 @@ export function HypermediaExplorer({
     <HypermediaCanvas
       resources={resources}
       pages={pages}
-      spotlightKey={spotlightResource ? hypermediaResourceKey(spotlightResource) : undefined}
-      spotlightPages={spotlightResource ? selectedResourcePagesQuery.data?.pages : undefined}
+      selectedResources={selectedResources}
+      spotlightPages={spotlightPages}
       selectedKey={selectedKey}
       onSelect={onSelect}
+      onClearSelection={onClearSelection}
       onViewportSettled={handleViewportSettled}
       canExplore={canExplore}
       isInitialLoading={
         resources.length === 0 &&
         (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
       }
-      isSpotlightLoading={Boolean(spotlightResource && selectedResourcePagesQuery.isPending)}
+      isSpotlightLoading={selectedResourcePageQueries.some(({ isPending }) => isPending)}
       neighborhoodError={neighborhoodError}
       onRetryNeighborhood={() => {
         if (entityError) {

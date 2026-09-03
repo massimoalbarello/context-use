@@ -404,32 +404,38 @@ export function initialHypermediaViewBox(layout: HypermediaLayout): CanvasBounds
 
 export const HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO = 0.68;
 
-export function buildHypermediaSpotlightLayout({
-  resources,
-  pages,
-  selectedKey,
-}: {
-  resources: HypermediaLayoutResource[];
-  pages: HypermediaPage[];
-  selectedKey: string;
-}): HypermediaLayout {
-  return buildHypermediaLayout(
-    resources.filter(({ key }) => key === selectedKey),
-    pages,
-  );
-}
-
 export function spotlightHypermediaViewBox(
   layout: HypermediaLayout,
   aspectRatio: number,
+  selectedKeys: string[],
 ): CanvasBounds {
+  const selectedKeySet = new Set(selectedKeys);
+  const focusedPoints = [
+    ...layout.pages.map(({ point }) => point),
+    ...layout.resources.filter(({ key }) => selectedKeySet.has(key)).map(({ point }) => point),
+  ];
+  const bounds =
+    focusedPoints.length > 0
+      ? {
+          x: Math.min(...focusedPoints.map(({ x }) => x)) - CANVAS_PADDING,
+          y: Math.min(...focusedPoints.map(({ y }) => y)) - CANVAS_PADDING,
+          width:
+            Math.max(...focusedPoints.map(({ x }) => x)) -
+            Math.min(...focusedPoints.map(({ x }) => x)) +
+            CANVAS_PADDING * 2,
+          height:
+            Math.max(...focusedPoints.map(({ y }) => y)) -
+            Math.min(...focusedPoints.map(({ y }) => y)) +
+            CANVAS_PADDING * 2,
+        }
+      : layout.bounds;
   const width = Math.max(
-    layout.bounds.width / HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO,
-    layout.bounds.height / aspectRatio,
+    bounds.width / HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO,
+    bounds.height / aspectRatio,
   );
   const height = width * aspectRatio;
-  const centerX = layout.bounds.x + layout.bounds.width / 2;
-  const centerY = layout.bounds.y + layout.bounds.height / 2;
+  const centerX = bounds.x + bounds.width / 2;
+  const centerY = bounds.y + bounds.height / 2;
   return {
     x: centerX - (width * HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO) / 2,
     y: centerY - height / 2,

@@ -4,7 +4,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildHypermediaLayout,
-  buildHypermediaSpotlightLayout,
   buildStableResources,
   HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO,
   spotlightHypermediaViewBox,
@@ -192,22 +191,20 @@ describe('resource-first hypermedia layout', () => {
     ).toEqual(['connected-page']);
   });
 
-  test('spotlights one resource with every page supplied for its selection', () => {
+  test('fits every filtered page while retaining all resources in the map', () => {
     const resources = buildStableResources([
       neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
     ]);
-    const layout = buildHypermediaSpotlightLayout({
-      resources,
-      pages: [page('newest'), page('older')],
-      selectedKey: 'entity:self',
-    });
-    const viewport = spotlightHypermediaViewBox(layout, 0.7);
-    const visiblePoints = [
-      ...layout.resources.map(({ point }) => point),
-      ...layout.pages.map(({ point }) => point),
-    ];
+    const layout = buildHypermediaLayout(resources, [page('newest'), page('older')]);
+    const viewport = spotlightHypermediaViewBox(layout, 0.7, ['entity:self']);
+    const selectedResource = layout.resources.find(({ key }) => key === 'entity:self')!;
+    const visiblePoints = [selectedResource.point, ...layout.pages.map(({ point }) => point)];
 
-    expect(layout.resources.map(({ key }) => key)).toEqual(['entity:self']);
+    expect(layout.resources.map(({ key }) => key)).toEqual([
+      'entity:self',
+      'entity:alpha',
+      'entity:beta',
+    ]);
     expect(layout.pages.map(({ page: item }) => item.readableId)).toEqual(['newest', 'older']);
     expect(
       visiblePoints.every(

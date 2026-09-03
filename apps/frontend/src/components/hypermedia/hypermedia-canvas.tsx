@@ -1,6 +1,6 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
-import { File, FileText, Minus, Move, Plus, Scan } from 'lucide-react';
+import { File, FileText, Minus, Move, Plus, Scan, X } from 'lucide-react';
 import {
   memo,
   type PointerEvent as ReactPointerEvent,
@@ -19,13 +19,13 @@ import type {
   HypermediaPage,
   HypermediaResourceReference,
 } from '../../queries/hypermedia';
+import { hypermediaResourceKey } from '../../queries/hypermedia';
 import { formatAssetSize } from '../assets/asset-link';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
   buildHypermediaLayout,
-  buildHypermediaSpotlightLayout,
   type CanvasBounds,
   HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
   type HypermediaLayout,
@@ -34,6 +34,7 @@ import {
   spotlightHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
+import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
 import {
   eagerHypermediaImageKeys,
   focusedPageLimit,
@@ -303,6 +304,7 @@ function ResourceDot({
 const HypermediaLayers = memo(function HypermediaLayers({
   layout,
   activeKey,
+  selectedResourceKeys,
   eagerImageKeys,
   suppressNextCloudClick,
   onSelect,
@@ -311,6 +313,7 @@ const HypermediaLayers = memo(function HypermediaLayers({
 }: {
   layout: HypermediaLayout;
   activeKey: string | undefined;
+  selectedResourceKeys: Set<string>;
   eagerImageKeys: Set<string>;
   suppressNextCloudClick: { current: boolean };
   onSelect: (selection: HypermediaSelection) => void;
@@ -402,7 +405,7 @@ const HypermediaLayers = memo(function HypermediaLayers({
           <ResourceDot
             key={resource.key}
             resource={resource}
-            active={activeKey === resource.key}
+            active={activeKey === resource.key || selectedResourceKeys.has(resource.key)}
             eagerImage={eagerImageKeys.has(resource.key)}
             onPreview={() => onPreview(preview)}
             onPreviewEnd={() => onPreviewEnd(resource.key)}
@@ -455,10 +458,11 @@ function HypermediaExplorationCue({
 export function HypermediaCanvas({
   resources,
   pages,
-  spotlightKey,
+  selectedResources,
   spotlightPages,
   selectedKey,
   onSelect,
+  onClearSelection,
   onViewportSettled,
   canExplore,
   isInitialLoading,
@@ -468,10 +472,11 @@ export function HypermediaCanvas({
 }: {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
-  spotlightKey?: string;
+  selectedResources: HypermediaResourceReference[];
   spotlightPages?: HypermediaPage[];
   selectedKey?: string;
   onSelect: (selection: HypermediaSelection) => void;
+  onClearSelection: () => void;
   onViewportSettled: (viewport: SettledHypermediaViewport) => void;
   canExplore: boolean;
   isInitialLoading: boolean;
@@ -484,7 +489,11 @@ export function HypermediaCanvas({
   const [viewBox, setViewBox] = useState<ViewBox>(() =>
     initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
   );
-  const spotlightActive = Boolean(spotlightKey);
+  const selectedResourceKeys = useMemo(
+    () => new Set(selectedResources.map(hypermediaResourceKey)),
+    [selectedResources],
+  );
+  const spotlightActive = selectedResources.length > 0;
   const pageLimit = focusedPageLimit(viewBox);
   const displayedPages = useMemo(() => {
     const limitedPages = pages.slice(0, pageLimit);
@@ -502,15 +511,8 @@ export function HypermediaCanvas({
     [displayedPages, resources],
   );
   const spotlightLayout = useMemo(
-    () =>
-      spotlightKey
-        ? buildHypermediaSpotlightLayout({
-            resources,
-            pages: spotlightPages ?? [],
-            selectedKey: spotlightKey,
-          })
-        : undefined,
-    [resources, spotlightKey, spotlightPages],
+    () => (spotlightActive ? buildHypermediaLayout(resources, spotlightPages ?? []) : undefined),
+    [resources, spotlightActive, spotlightPages],
   );
   const layout = spotlightActive && spotlightLayout ? spotlightLayout : semanticLayout;
   const viewBoxRef = useRef(viewBox);
@@ -547,8 +549,12 @@ export function HypermediaCanvas({
       return;
     }
     const current = viewBoxRef.current;
-    updateViewBox(spotlightHypermediaViewBox(spotlightLayout, current.height / current.width));
-  }, [spotlightActive, spotlightLayout, spotlightPages, updateViewBox]);
+    updateViewBox(
+      spotlightHypermediaViewBox(spotlightLayout, current.height / current.width, [
+        ...selectedResourceKeys,
+      ]),
+    );
+  }, [selectedResourceKeys, spotlightActive, spotlightLayout, spotlightPages, updateViewBox]);
 
   const publishViewport = useCallback(
     ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
@@ -632,7 +638,11 @@ export function HypermediaCanvas({
     if (spotlightActive && spotlightLayout) {
       fitActive.current = false;
       const current = viewBoxRef.current;
-      updateViewBox(spotlightHypermediaViewBox(spotlightLayout, current.height / current.width));
+      updateViewBox(
+        spotlightHypermediaViewBox(spotlightLayout, current.height / current.width, [
+          ...selectedResourceKeys,
+        ]),
+      );
       return;
     }
     fitActive.current = true;
@@ -756,6 +766,7 @@ export function HypermediaCanvas({
         <HypermediaLayers
           layout={visibleLayout}
           activeKey={activeKey}
+          selectedResourceKeys={selectedResourceKeys}
           eagerImageKeys={eagerImageKeys}
           suppressNextCloudClick={suppressNextCloudClick}
           onSelect={onSelect}
@@ -766,6 +777,25 @@ export function HypermediaCanvas({
 
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
+      )}
+
+      {spotlightActive && (
+        <div
+          className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border bg-card/95 py-1 pr-1 pl-3 text-sm shadow-sm backdrop-blur"
+          aria-live="polite"
+        >
+          <span>{selectedHypermediaResourcesLabel(selectedResources)}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 rounded-full"
+            aria-label="Clear selected resources"
+            onClick={onClearSelection}
+          >
+            <X className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
       )}
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
