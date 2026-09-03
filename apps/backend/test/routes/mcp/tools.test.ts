@@ -9,6 +9,7 @@ import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
+import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#models/assets/media.ts';
 import type { Entity } from '#models/entities/model.ts';
 import type { KnowledgePage, KnowledgePageReference } from '#models/knowledge-pages/model.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
@@ -188,8 +189,28 @@ test('MCP publishes sixteen typed tools with accurate safety annotations and no 
         destructiveHint: false,
       });
       expect(tools.find(({ name }) => name === 'create_entity')?.inputSchema).toMatchObject({
-        properties: { isSelf: { type: 'boolean' } },
+        properties: {
+          isSelf: { type: 'boolean' },
+          imageAssetAddress: { pattern: expect.any(String) },
+        },
       });
+      const updateEntityTool = tools.find(({ name }) => name === 'update_entity');
+      const updateEntityInput = updateEntityTool?.inputSchema;
+      expect(updateEntityTool?.description).toMatch(
+        /imageAssetAddress.*omit.*preserve.*null.*clear.*value.*replace/,
+      );
+      expect(updateEntityInput).toMatchObject({
+        properties: {
+          imageAssetAddress: { description: expect.stringContaining('omit it to preserve') },
+        },
+      });
+      expect(
+        Array.isArray(updateEntityInput?.required) &&
+          updateEntityInput.required.includes('imageAssetAddress'),
+      ).toBe(false);
+      for (const mediaType of EMBEDDABLE_ASSET_MEDIA_TYPES) {
+        expect(updateEntityTool?.description).toContain(mediaType);
+      }
       expect(tools.find(({ name }) => name === 'archive_entity')?.annotations).toMatchObject({
         readOnlyHint: false,
         destructiveHint: true,
@@ -457,6 +478,130 @@ test('successful create and update tools return only newly needed coordinates an
   });
 });
 
+test('entity mutations assign, preserve, replace, and remove images by canonical asset address', async () => {
+  const assignedImages: Array<{
+    ownerId: string;
+    readableId: string;
+    assetReadableId: string;
+  }> = [];
+  const removedImages: Array<{ ownerId: string; readableId: string }> = [];
+  const entitiesService: EntitiesServiceContract = {
+    ...unusedEntitiesService,
+    create: () => Promise.resolve({ state: 'created', entity }),
+    update: () => Promise.resolve(entity),
+    setImage: (input) => {
+      assignedImages.push(input);
+      return Promise.resolve({ state: 'updated', entity });
+    },
+    removeImage: (input) => {
+      removedImages.push(input);
+      return Promise.resolve(entity);
+    },
+  };
+
+  await withMcpClient({
+    entitiesService,
+    run: async (client) => {
+      const created = await client.callTool({
+        name: 'create_entity',
+        arguments: {
+          name: entity.name,
+          description: entity.description,
+          imageAssetAddress: 'context-use://asset/luca-portrait',
+        },
+      });
+      expect(created.isError).not.toBe(true);
+
+      const baseUpdate = {
+        address: 'context-use://entity/luca-bianchi',
+        name: entity.name,
+        description: entity.description,
+      };
+      const preserved = await client.callTool({ name: 'update_entity', arguments: baseUpdate });
+      expect(preserved.isError).not.toBe(true);
+
+      const replaced = await client.callTool({
+        name: 'update_entity',
+        arguments: {
+          ...baseUpdate,
+          imageAssetAddress: 'context-use://asset/new-luca-portrait',
+        },
+      });
+      expect(replaced.isError).not.toBe(true);
+
+      const removed = await client.callTool({
+        name: 'update_entity',
+        arguments: { ...baseUpdate, imageAssetAddress: null },
+      });
+      expect(removed.isError).not.toBe(true);
+    },
+  });
+
+  expect(assignedImages).toEqual([
+    {
+      ownerId: principal.ownerId,
+      readableId: entity.readableId,
+      assetReadableId: 'luca-portrait',
+    },
+    {
+      ownerId: principal.ownerId,
+      readableId: entity.readableId,
+      assetReadableId: 'new-luca-portrait',
+    },
+  ]);
+  expect(removedImages).toEqual([{ ownerId: principal.ownerId, readableId: entity.readableId }]);
+});
+
+test('entity image assignment exposes recoverable MCP errors from the service rules', async () => {
+  const states = ['not_found', 'invalid_asset_type', 'image_in_use'] as const;
+
+  for (const state of states) {
+    let updateCalls = 0;
+    const entitiesService: EntitiesServiceContract = {
+      ...unusedEntitiesService,
+      create: () => Promise.resolve({ state: 'created', entity }),
+      update: () => {
+        updateCalls += 1;
+        return Promise.resolve(entity);
+      },
+      setImage: () => Promise.resolve({ state }),
+    };
+
+    await withMcpClient({
+      entitiesService,
+      run: async (client) => {
+        const created = await client.callTool({
+          name: 'create_entity',
+          arguments: {
+            name: entity.name,
+            description: entity.description,
+            imageAssetAddress: 'context-use://asset/luca-portrait',
+          },
+        });
+        expect(errorCode(created)).toBe(state);
+        expect(created.structuredContent).toEqual({
+          error: expect.objectContaining({
+            code: state,
+            createdEntityAddress: 'context-use://entity/luca-bianchi',
+          }),
+        });
+
+        const updated = await client.callTool({
+          name: 'update_entity',
+          arguments: {
+            address: 'context-use://entity/luca-bianchi',
+            name: entity.name,
+            description: entity.description,
+            imageAssetAddress: 'context-use://asset/luca-portrait',
+          },
+        });
+        expect(errorCode(updated)).toBe(state);
+      },
+    });
+    expect(updateCalls).toBe(0);
+  }
+});
+
 test('MCP lists are owner-scoped, bounded, cursor-paginated, and reject invalid cursors', async () => {
   const offsets: number[] = [];
   const entitiesService: EntitiesServiceContract = {
@@ -629,7 +774,20 @@ test('MCP mutation outcomes retain duplicate retries and stale revision conflict
 
 test('MCP creates the self entity once through the knowledge profile invariant', async () => {
   let createCalls = 0;
+  let imageCalls = 0;
   const selfEntity = { ...entity, isSelf: true };
+  const entitiesService: EntitiesServiceContract = {
+    ...unusedEntitiesService,
+    setImage: (input) => {
+      imageCalls += 1;
+      expect(input).toEqual({
+        ownerId: principal.ownerId,
+        readableId: selfEntity.readableId,
+        assetReadableId: 'luca-portrait',
+      });
+      return Promise.resolve({ state: 'updated', entity: selfEntity });
+    },
+  };
   const profilesService: KnowledgeProfilesServiceContract = {
     ...unusedKnowledgeProfilesService,
     create: (input) => {
@@ -649,11 +807,17 @@ test('MCP creates the self entity once through the knowledge profile invariant',
   };
 
   await withMcpClient({
+    entitiesService,
     profilesService,
     run: async (client) => {
       const created = await client.callTool({
         name: 'create_entity',
-        arguments: { name: entity.name, description: entity.description, isSelf: true },
+        arguments: {
+          name: entity.name,
+          description: entity.description,
+          isSelf: true,
+          imageAssetAddress: 'context-use://asset/luca-portrait',
+        },
       });
       expect(created.isError).not.toBe(true);
       expect(created.structuredContent).toEqual({
@@ -667,6 +831,7 @@ test('MCP creates the self entity once through the knowledge profile invariant',
       });
       expect(errorCode(duplicate)).toBe('self_entity_exists');
       expect(createCalls).toBe(2);
+      expect(imageCalls).toBe(1);
     },
   });
 });

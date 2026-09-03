@@ -4,30 +4,35 @@ export interface DetectedAssetMedia {
   embeddable: boolean;
 }
 
+export const EMBEDDABLE_ASSET_MEDIA_TYPES = [
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+] as const;
+
+const EMBEDDABLE_ASSET_MEDIA_TYPE_SET = new Set<string>(EMBEDDABLE_ASSET_MEDIA_TYPES);
+
 const SIGNATURES: Array<{
   bytes: Uint8Array;
   offset?: number;
   mediaType: string;
   extension: string;
-  embeddable?: boolean;
 }> = [
   {
     bytes: Buffer.from('89504e470d0a1a0a', 'hex'),
     mediaType: 'image/png',
     extension: 'png',
-    embeddable: true,
   },
   {
     bytes: Buffer.from('ffd8ff', 'hex'),
     mediaType: 'image/jpeg',
     extension: 'jpg',
-    embeddable: true,
   },
   {
     bytes: Buffer.from('47494638', 'hex'),
     mediaType: 'image/gif',
     extension: 'gif',
-    embeddable: true,
   },
   { bytes: Buffer.from('25504446', 'hex'), mediaType: 'application/pdf', extension: 'pdf' },
   { bytes: Buffer.from('1f8b', 'hex'), mediaType: 'application/gzip', extension: 'gz' },
@@ -94,7 +99,8 @@ export function detectAssetMedia(bytes: Uint8Array): DetectedAssetMedia {
     startsWith({ bytes, signature: RIFF_SIGNATURE }) &&
     startsWith({ bytes, signature: WEBP_SIGNATURE, offset: WEBP_SIGNATURE_OFFSET })
   ) {
-    return { mediaType: 'image/webp', extension: 'webp', embeddable: true };
+    const mediaType = 'image/webp';
+    return { mediaType, extension: 'webp', embeddable: isEmbeddableAssetMedia(mediaType) };
   }
 
   const zipMedia = detectZipMedia(bytes);
@@ -109,11 +115,11 @@ export function detectAssetMedia(bytes: Uint8Array): DetectedAssetMedia {
     ? {
         mediaType: match.mediaType,
         extension: match.extension,
-        embeddable: match.embeddable ?? false,
+        embeddable: isEmbeddableAssetMedia(match.mediaType),
       }
     : { mediaType: 'application/octet-stream', extension: null, embeddable: false };
 }
 
 export function isEmbeddableAssetMedia(mediaType: string): boolean {
-  return ['image/gif', 'image/jpeg', 'image/png', 'image/webp'].includes(mediaType);
+  return EMBEDDABLE_ASSET_MEDIA_TYPE_SET.has(mediaType);
 }
