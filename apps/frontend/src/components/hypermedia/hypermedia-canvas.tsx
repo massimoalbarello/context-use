@@ -544,18 +544,6 @@ export function HypermediaCanvas({
     setViewBox(nextViewBox);
   }, []);
 
-  useEffect(() => {
-    if (!spotlightActive || !spotlightLayout || spotlightPages === undefined) {
-      return;
-    }
-    const current = viewBoxRef.current;
-    updateViewBox(
-      spotlightHypermediaViewBox(spotlightLayout, current.height / current.width, [
-        ...selectedResourceKeys,
-      ]),
-    );
-  }, [selectedResourceKeys, spotlightActive, spotlightLayout, spotlightPages, updateViewBox]);
-
   const publishViewport = useCallback(
     ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
       const focus = focusedResources({ resources: layout.resources, viewport, selectedKey });
