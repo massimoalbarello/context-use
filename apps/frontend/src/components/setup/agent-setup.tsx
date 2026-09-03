@@ -163,8 +163,7 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
             Refresh the page
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Refresh this page when the import is complete. We’ll also check every 15 seconds and
-            open your hypermedia automatically.
+            Refresh this page when the import is complete.
           </p>
         </section>
       </li>

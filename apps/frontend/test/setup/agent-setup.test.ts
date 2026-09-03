@@ -96,8 +96,9 @@ test('setup presents the user-owned connection flow as three numbered steps', ()
   expect(html).toContain('Import memories from your favorite agent');
   expect(html).toContain('user context already available to your agent');
   expect(html).toContain('Refresh the page');
-  expect(html).toContain('check every 15 seconds');
-  expect(html).toContain('open your hypermedia automatically');
+  expect(html).toContain('Refresh this page when the import is complete');
+  expect(html).not.toContain('check every 15 seconds');
+  expect(html).not.toContain('open your hypermedia automatically');
   expect(html).not.toContain('Reload Context Use');
   expect(html).toContain('<details>');
   expect(html).not.toContain('<details open');
