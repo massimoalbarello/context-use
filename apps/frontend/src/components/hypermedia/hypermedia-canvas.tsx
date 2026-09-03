@@ -37,7 +37,7 @@ import {
   focusedResources,
   hypermediaLayoutInViewport,
   nearestBoundaryResource,
-  viewportNearResourceBoundary,
+  viewportNeedsResourceDiscovery,
 } from './hypermedia-visibility';
 
 type HypermediaPreview =
@@ -61,6 +61,7 @@ export type HypermediaSelection = {
 export type SettledHypermediaViewport = {
   focus: HypermediaResourceReference[];
   pageLimit: number;
+  discoverMoreEntities: boolean;
   boundaryAnchor?: HypermediaResourceReference;
 };
 
@@ -474,6 +475,7 @@ export function HypermediaCanvas({
   const [preview, setPreview] = useState<HypermediaPreview | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(layout));
   const viewBoxRef = useRef(viewBox);
+  const fitActive = useRef(false);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [panning, setPanning] = useState(false);
   const [showExplorationHint, setShowExplorationHint] = useState(true);
@@ -493,32 +495,44 @@ export function HypermediaCanvas({
     [layout, selectedKey, viewBox],
   );
   const eagerImageKeys = useMemo(() => eagerHypermediaImageKeys(layout), [layout]);
+  const updateViewBox = useCallback((nextViewBox: ViewBox) => {
+    viewBoxRef.current = nextViewBox;
+    setViewBox(nextViewBox);
+  }, []);
 
   const publishViewport = useCallback(
     ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
       const focus = focusedResources({ resources: layout.resources, viewport, selectedKey });
-      if (focus.length === 0) {
+      const discoverMoreEntities =
+        includeBoundary &&
+        viewportNeedsResourceDiscovery({
+          resources: layout.resources,
+          viewport,
+          bounds: layout.resourceBounds,
+        });
+      const boundaryAnchor = discoverMoreEntities
+        ? nearestBoundaryResource(layout.resources, viewport)
+        : undefined;
+      if (focus.length === 0 && !discoverMoreEntities) {
         return;
       }
       onViewportSettled({
         focus,
         pageLimit: focusedPageLimit(viewport),
-        boundaryAnchor:
-          includeBoundary && viewportNearResourceBoundary(viewport, layout.bounds)
-            ? nearestBoundaryResource(layout.resources, viewport)
-            : undefined,
+        discoverMoreEntities,
+        boundaryAnchor,
       });
     },
-    [layout.bounds, layout.resources, onViewportSettled, selectedKey],
+    [layout.resourceBounds, layout.resources, onViewportSettled, selectedKey],
   );
 
   const scheduleViewport = useCallback(
-    (viewport: ViewBox) => {
+    ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
       if (settleTimer.current) {
         clearTimeout(settleTimer.current);
       }
       settleTimer.current = setTimeout(
-        () => publishViewport({ viewport, includeBoundary: true }),
+        () => publishViewport({ viewport, includeBoundary }),
         VIEWPORT_SETTLE_MS,
       );
     },
@@ -526,20 +540,20 @@ export function HypermediaCanvas({
   );
 
   useEffect(() => {
-    publishViewport({ viewport: viewBoxRef.current, includeBoundary: false });
+    const viewport = fitActive.current ? layout.resourceBounds : viewBoxRef.current;
+    if (fitActive.current) {
+      updateViewBox(viewport);
+    }
+    publishViewport({ viewport, includeBoundary: true });
     return () => {
       if (settleTimer.current) {
         clearTimeout(settleTimer.current);
       }
     };
-  }, [publishViewport]);
-
-  function updateViewBox(nextViewBox: ViewBox) {
-    viewBoxRef.current = nextViewBox;
-    setViewBox(nextViewBox);
-  }
+  }, [layout.resourceBounds, publishViewport, updateViewBox]);
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
+    fitActive.current = false;
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
@@ -555,13 +569,14 @@ export function HypermediaCanvas({
       height,
     };
     updateViewBox(nextViewBox);
-    scheduleViewport(nextViewBox);
+    scheduleViewport({ viewport: nextViewBox, includeBoundary: true });
   }
 
   function fitHypermedia() {
+    fitActive.current = true;
     setShowExplorationHint(false);
-    updateViewBox(layout.bounds);
-    scheduleViewport(layout.bounds);
+    updateViewBox(layout.resourceBounds);
+    scheduleViewport({ viewport: layout.resourceBounds, includeBoundary: true });
   }
 
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
@@ -581,6 +596,7 @@ export function HypermediaCanvas({
     if (event.button !== 0 || (event.target as Element).closest('[data-hypermedia-resource]')) {
       return;
     }
+    fitActive.current = false;
     suppressNextCloudClick.current = false;
     const cloudReadableId = (event.target as Element)
       .closest('[data-hypermedia-cloud]')
@@ -634,7 +650,7 @@ export function HypermediaCanvas({
       drag.current = null;
       setPanning(false);
       event.currentTarget.releasePointerCapture(event.pointerId);
-      scheduleViewport(completedDrag.currentViewBox);
+      scheduleViewport({ viewport: completedDrag.currentViewBox, includeBoundary: true });
     }
   }
 

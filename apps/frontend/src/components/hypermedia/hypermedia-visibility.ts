@@ -13,6 +13,7 @@ import type {
 
 export const MAX_FOCUSED_RESOURCES = 24;
 export const MAX_EAGER_HYPERMEDIA_IMAGES = 12;
+export const INITIAL_FOCUSED_PAGE_LIMIT = 20;
 
 function viewportCenter(viewport: CanvasBounds): CanvasPoint {
   return { x: viewport.x + viewport.width / 2, y: viewport.y + viewport.height / 2 };
@@ -28,22 +29,6 @@ function referenceFromResource(resource: HypermediaLayoutResource): HypermediaRe
     : { kind: 'asset', readableId: resource.asset.readableId };
 }
 
-function focusedResourceLimit(viewport: CanvasBounds): number {
-  if (viewport.width <= 1100) {
-    return 8;
-  }
-  if (viewport.width <= 1450) {
-    return 12;
-  }
-  if (viewport.width <= 1850) {
-    return 16;
-  }
-  if (viewport.width <= 2300) {
-    return 20;
-  }
-  return MAX_FOCUSED_RESOURCES;
-}
-
 export function focusedResources({
   resources,
   viewport,
@@ -54,32 +39,36 @@ export function focusedResources({
   selectedKey?: string;
 }): HypermediaResourceReference[] {
   const center = viewportCenter(viewport);
-  const ordered = [...resources].sort(
-    (first, second) =>
-      Number(second.key === selectedKey) - Number(first.key === selectedKey) ||
-      squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
-      first.key.localeCompare(second.key),
-  );
-  return ordered.slice(0, focusedResourceLimit(viewport)).map(referenceFromResource);
+  const ordered = resources
+    .filter(
+      (resource) => resource.key === selectedKey || pointNearViewport(resource.point, viewport),
+    )
+    .sort(
+      (first, second) =>
+        Number(second.key === selectedKey) - Number(first.key === selectedKey) ||
+        squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
+        first.key.localeCompare(second.key),
+    );
+  return ordered.slice(0, MAX_FOCUSED_RESOURCES).map(referenceFromResource);
 }
 
 export function focusedPageLimit(viewport: CanvasBounds): number {
   if (viewport.width <= 720) {
-    return 4;
+    return 32;
   }
   if (viewport.width <= 1100) {
-    return 8;
+    return INITIAL_FOCUSED_PAGE_LIMIT;
   }
   if (viewport.width <= 1450) {
-    return 12;
-  }
-  if (viewport.width <= 1850) {
     return 16;
   }
-  if (viewport.width <= 2300) {
-    return 20;
+  if (viewport.width <= 1850) {
+    return 12;
   }
-  return 32;
+  if (viewport.width <= 2300) {
+    return 8;
+  }
+  return 4;
 }
 
 export function viewportNearResourceBoundary(
@@ -118,6 +107,28 @@ function pointNearViewport(point: CanvasPoint, viewport: CanvasBounds): boolean 
     point.y >= viewport.y - marginY &&
     point.y <= viewport.y + viewport.height + marginY
   );
+}
+
+export function viewportNeedsResourceDiscovery({
+  resources,
+  viewport,
+  bounds,
+}: {
+  resources: HypermediaLayoutResource[];
+  viewport: CanvasBounds;
+  bounds: CanvasBounds;
+}): boolean {
+  if (!viewportNearResourceBoundary(viewport, bounds)) {
+    return false;
+  }
+  const targetEntityCount = Math.max(
+    4,
+    Math.floor(viewport.width / 180) * Math.floor(viewport.height / 140),
+  );
+  const nearbyEntityCount = resources.filter(
+    (resource) => resource.kind === 'entity' && pointNearViewport(resource.point, viewport),
+  ).length;
+  return nearbyEntityCount < targetEntityCount;
 }
 
 export function hypermediaLayoutInViewport({

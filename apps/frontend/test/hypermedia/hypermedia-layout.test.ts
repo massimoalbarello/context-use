@@ -10,6 +10,7 @@ import {
   focusedPageLimit,
   focusedResources,
   hypermediaLayoutInViewport,
+  viewportNeedsResourceDiscovery,
 } from '../../src/components/hypermedia/hypermedia-visibility';
 import type {
   HypermediaPage,
@@ -19,7 +20,10 @@ import type {
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
-function entity(readableId: string, isSelf = false): HypermediaResource {
+function entity(
+  readableId: string,
+  isSelf = false,
+): Extract<HypermediaResource, { kind: 'entity' }> {
   return {
     kind: 'entity',
     entity: {
@@ -76,6 +80,26 @@ describe('resource-first hypermedia layout', () => {
     }
   });
 
+  test('keeps every listed entity on the map without moving earlier discoveries', () => {
+    const self = entity('self', true);
+    const alpha = entity('alpha');
+    const orphan = entity('orphan');
+    const initial = buildStableResources(
+      [neighborhood(self, [alpha])],
+      [self.entity, alpha.entity, orphan.entity],
+    );
+    const expanded = buildStableResources(
+      [neighborhood(self, [alpha]), neighborhood(alpha, [entity('beta')])],
+      [self.entity, alpha.entity, orphan.entity, entity('zeta').entity],
+      initial,
+    );
+
+    expect(initial.map(({ key }) => key)).toContain('entity:orphan');
+    for (const resource of initial) {
+      expect(expanded.find(({ key }) => key === resource.key)?.point).toEqual(resource.point);
+    }
+  });
+
   test('focus follows the viewport while retaining a selected resource', () => {
     const resources = buildStableResources([
       neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
@@ -91,15 +115,39 @@ describe('resource-first hypermedia layout', () => {
       kind: 'entity',
       readableId: 'self',
     });
+    expect(focusedResources({ resources, viewport })).toHaveLength(1);
   });
 
-  test('requests progressively more page information as the viewport zooms out', () => {
-    expect(focusedPageLimit({ x: 0, y: 0, width: 600, height: 400 })).toBe(4);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 900, height: 600 })).toBe(8);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 1400, height: 900 })).toBe(12);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 1750, height: 1100 })).toBe(16);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 2200, height: 1400 })).toBe(20);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 2600, height: 1600 })).toBe(32);
+  test('requests progressively more page history as the viewport zooms in', () => {
+    expect(focusedPageLimit({ x: 0, y: 0, width: 600, height: 400 })).toBe(32);
+    expect(focusedPageLimit({ x: 0, y: 0, width: 900, height: 600 })).toBe(20);
+    expect(focusedPageLimit({ x: 0, y: 0, width: 1400, height: 900 })).toBe(16);
+    expect(focusedPageLimit({ x: 0, y: 0, width: 1750, height: 1100 })).toBe(12);
+    expect(focusedPageLimit({ x: 0, y: 0, width: 2200, height: 1400 })).toBe(8);
+    expect(focusedPageLimit({ x: 0, y: 0, width: 2600, height: 1600 })).toBe(4);
+  });
+
+  test('discovers another neighborhood only at a sparse map edge', () => {
+    const resources = buildStableResources([
+      neighborhood(entity('self', true), [entity('alpha'), entity('beta'), entity('gamma')]),
+    ]).map((resource, index) => ({ ...resource, point: { x: index * 40, y: 0 } }));
+    const bounds = { x: -100, y: -100, width: 500, height: 200 };
+
+    expect(viewportNeedsResourceDiscovery({ resources, viewport: bounds, bounds })).toBe(false);
+    expect(
+      viewportNeedsResourceDiscovery({
+        resources,
+        viewport: { x: bounds.x + bounds.width, y: bounds.y, width: 500, height: 200 },
+        bounds,
+      }),
+    ).toBe(true);
+    expect(
+      viewportNeedsResourceDiscovery({
+        resources,
+        viewport: { x: -750, y: -500, width: 1500, height: 1000 },
+        bounds,
+      }),
+    ).toBe(true);
   });
 
   test('viewport culling cannot remove the selected page or resource', () => {

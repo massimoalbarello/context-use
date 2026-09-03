@@ -3,9 +3,11 @@ import type { HypermediaSelection } from '../components/hypermedia/hypermedia-ca
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
+import { INITIAL_FOCUSED_PAGE_LIMIT } from '../components/hypermedia/hypermedia-visibility';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
+import { entitiesQueryOptions } from '../queries/entities';
 import {
   focusedHypermediaPagesQueryOptions,
   type HypermediaResourceReference,
@@ -59,10 +61,11 @@ export const Route = createFileRoute('/hypermedia')({
       context.queryClient.ensureQueryData(
         hypermediaResourceNeighborhoodQueryOptions({ anchor: self }),
       ),
+      context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions),
       context.queryClient.ensureQueryData(
         focusedHypermediaPagesQueryOptions({
           focus: [self],
-          limit: 8,
+          limit: INITIAL_FOCUSED_PAGE_LIMIT,
           query: deps.query,
           dateRange: deps.dateRange,
         }),
