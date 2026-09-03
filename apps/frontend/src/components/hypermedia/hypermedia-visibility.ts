@@ -11,7 +11,7 @@ import type {
   MapPoint,
 } from './hypermedia-layout';
 
-export const MAX_FOCUSED_LANDMARKS = 8;
+export const MAX_FOCUSED_LANDMARKS = 24;
 export const MAX_EAGER_HYPERMEDIA_IMAGES = 12;
 
 function viewportCenter(viewport: MapBounds): MapPoint {
@@ -26,6 +26,22 @@ function referenceFromLandmark(landmark: HypermediaLandmark): HypermediaResource
   return landmark.kind === 'entity'
     ? { kind: 'entity', readableId: landmark.entity.readableId }
     : { kind: 'asset', readableId: landmark.asset.readableId };
+}
+
+function focusedLandmarkLimit(viewport: MapBounds): number {
+  if (viewport.width <= 1100) {
+    return 8;
+  }
+  if (viewport.width <= 1450) {
+    return 12;
+  }
+  if (viewport.width <= 1850) {
+    return 16;
+  }
+  if (viewport.width <= 2300) {
+    return 20;
+  }
+  return MAX_FOCUSED_LANDMARKS;
 }
 
 export function focusedLandmarks({
@@ -44,7 +60,7 @@ export function focusedLandmarks({
       squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
       first.key.localeCompare(second.key),
   );
-  return ordered.slice(0, MAX_FOCUSED_LANDMARKS).map(referenceFromLandmark);
+  return ordered.slice(0, focusedLandmarkLimit(viewport)).map(referenceFromLandmark);
 }
 
 export function focusedPageLimit(viewport: MapBounds): number {
@@ -60,7 +76,10 @@ export function focusedPageLimit(viewport: MapBounds): number {
   if (viewport.width <= 1850) {
     return 16;
   }
-  return 20;
+  if (viewport.width <= 2300) {
+    return 20;
+  }
+  return 32;
 }
 
 export function viewportNearLandmarkBoundary(viewport: MapBounds, bounds: MapBounds): boolean {
@@ -88,8 +107,8 @@ export function nearestBoundaryLandmark(
 }
 
 function pointNearViewport(point: MapPoint, viewport: MapBounds): boolean {
-  const marginX = viewport.width * 0.08;
-  const marginY = viewport.height * 0.08;
+  const marginX = viewport.width * 0.16;
+  const marginY = viewport.height * 0.16;
   return (
     point.x >= viewport.x - marginX &&
     point.x <= viewport.x + viewport.width + marginX &&

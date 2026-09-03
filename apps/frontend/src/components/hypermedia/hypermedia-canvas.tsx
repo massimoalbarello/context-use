@@ -490,7 +490,7 @@ export function HypermediaCanvas({
     () => hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
     [layout, selectedKey, viewBox],
   );
-  const eagerImageKeys = useMemo(() => eagerHypermediaImageKeys(visibleLayout), [visibleLayout]);
+  const eagerImageKeys = useMemo(() => eagerHypermediaImageKeys(layout), [layout]);
 
   const publishViewport = useCallback(
     ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
