@@ -239,7 +239,6 @@ export function HypermediaExplorer({
     <HypermediaCanvas
       resources={resources}
       pages={pages}
-      dateRange={dateRange}
       selectedResources={selectedResources}
       spotlightPages={spotlightPages}
       selectedKey={selectedKey}

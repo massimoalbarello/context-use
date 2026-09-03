@@ -24,31 +24,9 @@ describe('Hypermedia page appearance', () => {
     expect(distant.emphasis).toBeGreaterThanOrEqual(emphasisFloor);
   });
 
-  test('treats ongoing and reference-range-overlapping coverage as current', () => {
+  test('treats ongoing coverage as current', () => {
     expect(hypermediaPageAppearance({ temporalCoverage: '2020/..', referenceTime }).emphasis).toBe(
       1,
     );
-    expect(
-      hypermediaPageAppearance({
-        temporalCoverage: '2018/2022',
-        dateRange: { from: '2020-01-01', to: '2020-12-31' },
-        referenceTime,
-      }).emphasis,
-    ).toBe(1);
-  });
-
-  test('uses the active date range instead of today as the temporal reference', () => {
-    const againstToday = hypermediaPageAppearance({
-      temporalCoverage: '2000',
-      referenceTime,
-    });
-    const againstHistoricalRange = hypermediaPageAppearance({
-      temporalCoverage: '2000',
-      dateRange: { from: '1999-01-01', to: '2001-12-31' },
-      referenceTime,
-    });
-
-    expect(againstHistoricalRange.emphasis).toBe(1);
-    expect(againstHistoricalRange.emphasis).toBeGreaterThan(againstToday.emphasis);
   });
 });

@@ -13,7 +13,6 @@ import {
 } from 'react';
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
-import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import type {
   HypermediaAsset,
   HypermediaEntity,
@@ -103,9 +102,7 @@ function PreviewCard({ preview }: { preview: HypermediaPreview }) {
                   className="max-w-full py-0.5 text-xs"
                   expression={page.temporalCoverage}
                 />
-              ) : (
-                <Badge variant="outline">Semantic</Badge>
-              )}
+              ) : null}
             </div>
             <h2 className="mt-1 line-clamp-2 break-words font-semibold text-base">{page.title}</h2>
           </div>
@@ -315,7 +312,6 @@ function ResourceDot({
 
 const HypermediaLayers = memo(function HypermediaLayers({
   layout,
-  dateRange,
   activeKey,
   selectedResourceKeys,
   eagerImageKeys,
@@ -325,7 +321,6 @@ const HypermediaLayers = memo(function HypermediaLayers({
   onPreviewEnd,
 }: {
   layout: HypermediaLayout;
-  dateRange?: CalendarDateRange;
   activeKey: string | undefined;
   selectedResourceKeys: Set<string>;
   eagerImageKeys: Set<string>;
@@ -341,7 +336,6 @@ const HypermediaLayers = memo(function HypermediaLayers({
         const active = activeKey === key;
         const appearance = hypermediaPageAppearance({
           temporalCoverage: item.page.temporalCoverage,
-          dateRange,
         });
         return (
           <a
@@ -480,7 +474,6 @@ function HypermediaExplorationCue({
 export function HypermediaCanvas({
   resources,
   pages,
-  dateRange,
   selectedResources,
   spotlightPages,
   selectedKey,
@@ -495,7 +488,6 @@ export function HypermediaCanvas({
 }: {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
-  dateRange?: CalendarDateRange;
   selectedResources: HypermediaResourceReference[];
   spotlightPages?: HypermediaPage[];
   selectedKey?: string;
@@ -777,7 +769,6 @@ export function HypermediaCanvas({
       >
         <HypermediaLayers
           layout={visibleLayout}
-          dateRange={dateRange}
           activeKey={activeKey}
           selectedResourceKeys={selectedResourceKeys}
           eagerImageKeys={eagerImageKeys}
@@ -790,19 +781,6 @@ export function HypermediaCanvas({
 
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
-      )}
-
-      {!isInitialLoading && (
-        <div className="absolute right-4 bottom-4 hidden items-center gap-3 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur sm:flex">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-slate-500 dark:bg-slate-400" />
-            Semantic
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-sky-600 dark:bg-sky-400" />
-            Temporal · older fades
-          </span>
-        </div>
       )}
 
       {spotlightActive && (

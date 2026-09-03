@@ -1,6 +1,4 @@
 import {
-  type CalendarDateRange,
-  calendarDateRangeExpression,
   type TransportedTemporalCoverage,
   temporalCoverageRecency,
 } from '../../lib/temporal-coverage';
@@ -22,43 +20,35 @@ export type HypermediaPageAppearance = {
 
 function distanceFromReference({
   coverage,
-  dateRange,
   referenceTime,
 }: {
   coverage: TransportedTemporalCoverage;
-  dateRange?: CalendarDateRange;
   referenceTime: number;
 }): number {
   const page = temporalCoverageRecency(coverage);
-  const reference = dateRange
-    ? temporalCoverageRecency(calendarDateRangeExpression(dateRange))
-    : { start: referenceTime, latest: referenceTime };
   const pageEnd = page.ongoing ? Number.POSITIVE_INFINITY : page.latest;
 
-  if (pageEnd < reference.start) {
-    return reference.start - pageEnd;
+  if (pageEnd < referenceTime) {
+    return referenceTime - pageEnd;
   }
-  if (page.start > reference.latest) {
-    return page.start - reference.latest;
+  if (page.start > referenceTime) {
+    return page.start - referenceTime;
   }
   return 0;
 }
 
 export function hypermediaPageAppearance({
   temporalCoverage,
-  dateRange,
   referenceTime = Date.now(),
 }: {
   temporalCoverage: TransportedTemporalCoverage | null;
-  dateRange?: CalendarDateRange;
   referenceTime?: number;
 }): HypermediaPageAppearance {
   if (temporalCoverage === null) {
     return { kind: 'semantic', emphasis: 1 };
   }
   const distanceYears =
-    distanceFromReference({ coverage: temporalCoverage, dateRange, referenceTime }) /
-    MILLISECONDS_PER_YEAR;
+    distanceFromReference({ coverage: temporalCoverage, referenceTime }) / MILLISECONDS_PER_YEAR;
   return {
     kind: 'temporal',
     emphasis:
