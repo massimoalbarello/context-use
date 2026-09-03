@@ -769,7 +769,7 @@ export function HypermediaCanvas({
 
       {spotlightActive && (
         <div
-          className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border bg-card/95 py-1 pr-1 pl-3 text-sm shadow-sm backdrop-blur"
+          className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border bg-card/95 py-1 pr-1 pl-3 text-sm shadow-sm backdrop-blur md:top-6"
           aria-live="polite"
         >
           <span>{selectedHypermediaResourcesLabel(selectedResources)}</span>
