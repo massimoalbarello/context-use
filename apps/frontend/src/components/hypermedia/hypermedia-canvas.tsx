@@ -22,6 +22,7 @@ import type {
 import { hypermediaResourceKey } from '../../queries/hypermedia';
 import { formatAssetSize } from '../assets/asset-link';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
+import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
@@ -34,6 +35,7 @@ import {
   spotlightHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
+import { hypermediaPageAppearance } from './hypermedia-page-appearance';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
 import {
   eagerHypermediaImageKeys,
@@ -93,7 +95,15 @@ function PreviewCard({ preview }: { preview: HypermediaPreview }) {
             <FileText className="size-5 stroke-[1.5]" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1 overflow-hidden">
-            <Badge variant="secondary">Knowledge page</Badge>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge variant="secondary">Knowledge page</Badge>
+              {page.temporalCoverage ? (
+                <TemporalCoverageLabel
+                  className="max-w-full py-0.5 text-xs"
+                  expression={page.temporalCoverage}
+                />
+              ) : null}
+            </div>
             <h2 className="mt-1 line-clamp-2 break-words font-semibold text-base">{page.title}</h2>
           </div>
         </div>
@@ -324,12 +334,15 @@ const HypermediaLayers = memo(function HypermediaLayers({
       {layout.pages.map((item) => {
         const key = `page:${item.page.readableId}`;
         const active = activeKey === key;
+        const appearance = hypermediaPageAppearance({
+          temporalCoverage: item.page.temporalCoverage,
+        });
         return (
           <a
             key={item.page.readableId}
             href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
             tabIndex={-1}
-            aria-label={`Open knowledge page region ${item.page.title}`}
+            aria-label={`Open ${appearance.kind} knowledge page region ${item.page.title}`}
             data-hypermedia-cloud={item.page.readableId}
             className="cursor-pointer outline-none"
             onClick={(event) => {
@@ -346,14 +359,18 @@ const HypermediaLayers = memo(function HypermediaLayers({
           >
             <path
               d={item.cloudPath}
-              className="transition-[fill-opacity,stroke-opacity] duration-200 motion-reduce:transition-none"
+              className={cn(
+                'transition-[fill-opacity,stroke-opacity] duration-200 motion-reduce:transition-none',
+                appearance.kind === 'semantic'
+                  ? 'text-slate-500 dark:text-slate-400'
+                  : 'text-sky-600 dark:text-sky-400',
+              )}
               style={{
-                color: `var(--chart-${item.colorIndex})`,
                 fill: 'currentColor',
-                fillOpacity: active ? 0.24 : 0.1,
+                fillOpacity: active ? 0.1 : 0.045 * appearance.emphasis,
                 stroke: 'currentColor',
-                strokeOpacity: active ? 0.9 : 0.48,
-                strokeWidth: active ? 3 : 1.5,
+                strokeOpacity: active ? 0.78 : 0.4 * appearance.emphasis,
+                strokeWidth: active ? 2.5 : 1.25,
               }}
             />
           </a>
@@ -764,6 +781,19 @@ export function HypermediaCanvas({
 
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
+      )}
+
+      {!isInitialLoading && (
+        <div className="absolute right-4 bottom-4 z-10 flex items-center gap-3 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-slate-500 dark:bg-slate-400" />
+            Semantic
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-sky-600 dark:bg-sky-400" />
+            Temporal
+          </span>
+        </div>
       )}
 
       {spotlightActive && (
