@@ -10,10 +10,10 @@ export type HypermediaResource = HypermediaResourceNeighborhood['anchor'];
 export type HypermediaResourceReference =
   | { kind: 'entity'; readableId: string }
   | { kind: 'asset'; readableId: string };
-export type FocusedHypermediaPages = NonNullable<
+export type HypermediaPages = NonNullable<
   Awaited<ReturnType<(typeof api.api.hypermedia.pages)['get']>>['data']
 >;
-export type HypermediaPage = FocusedHypermediaPages['pages'][number];
+export type HypermediaPage = HypermediaPages['pages'][number];
 export type HypermediaEntity = Extract<HypermediaResource, { kind: 'entity' }>['entity'];
 export type HypermediaAsset = Extract<HypermediaResource, { kind: 'asset' }>['asset'];
 
@@ -56,58 +56,16 @@ export function hypermediaResourceNeighborhoodQueryOptions({
   });
 }
 
-export type FocusedHypermediaPageQuery = {
-  focus: HypermediaResourceReference[];
-  limit: number;
+export type HypermediaPageQuery = {
+  resources: HypermediaResourceReference[];
   query?: string;
   dateRange?: CalendarDateRange;
-  retainPageReadableId?: string;
 };
 
-const SELECTED_RESOURCE_PAGE_BATCH_SIZE = 32;
+export const HYPERMEDIA_PAGE_LIMIT = 32;
 
-async function readFocusedHypermediaPages({
-  focusKeys,
-  limit,
-  query,
-  time,
-  retainPageReadableId,
-  cursor,
-  signal,
-}: {
-  focusKeys: string[];
-  limit: number;
-  query?: string;
-  time?: string;
-  retainPageReadableId?: string;
-  cursor?: string;
-  signal: AbortSignal;
-}): Promise<FocusedHypermediaPages> {
-  const { data, error } = await api.api.hypermedia.pages.get({
-    query: {
-      focus: focusKeys.join(','),
-      limit,
-      cursor,
-      query,
-      time,
-      retainPage: retainPageReadableId,
-    },
-    fetch: { signal },
-  });
-  if (error) {
-    throw new Error(apiErrorMessage(error));
-  }
-  return data;
-}
-
-export function focusedHypermediaPagesQueryOptions({
-  focus,
-  limit,
-  query,
-  dateRange,
-  retainPageReadableId,
-}: FocusedHypermediaPageQuery) {
-  const focusKeys = focus.map(hypermediaResourceKey).sort();
+export function hypermediaPagesQueryOptions({ resources, query, dateRange }: HypermediaPageQuery) {
+  const resourceKeys = resources.map(hypermediaResourceKey).sort();
   const normalizedQuery = query?.trim() || undefined;
   const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
   return queryOptions({
@@ -115,61 +73,25 @@ export function focusedHypermediaPagesQueryOptions({
       ...hypermediaQueryKey,
       'pages',
       {
-        focus: focusKeys,
-        limit,
-        query: normalizedQuery ?? null,
-        time: time ?? null,
-        retainPageReadableId: retainPageReadableId ?? null,
-      },
-    ] as const,
-    queryFn: ({ signal }) =>
-      readFocusedHypermediaPages({
-        focusKeys,
-        limit,
-        query: normalizedQuery,
-        time,
-        retainPageReadableId,
-        signal,
-      }),
-  });
-}
-
-export function allFocusedHypermediaPagesQueryOptions({
-  focus,
-  query,
-  dateRange,
-}: Omit<FocusedHypermediaPageQuery, 'limit' | 'retainPageReadableId'>) {
-  const focusKeys = focus.map(hypermediaResourceKey).sort();
-  const normalizedQuery = query?.trim() || undefined;
-  const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
-  return queryOptions({
-    queryKey: [
-      ...hypermediaQueryKey,
-      'all-pages',
-      {
-        focus: focusKeys,
+        resources: resourceKeys,
         query: normalizedQuery ?? null,
         time: time ?? null,
       },
     ] as const,
     queryFn: async ({ signal }) => {
-      const pages: FocusedHypermediaPages['pages'] = [];
-      let cursor: string | undefined;
-      let truncated = false;
-      do {
-        const result = await readFocusedHypermediaPages({
-          focusKeys,
-          limit: SELECTED_RESOURCE_PAGE_BATCH_SIZE,
+      const { data, error } = await api.api.hypermedia.pages.get({
+        query: {
+          resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
+          limit: HYPERMEDIA_PAGE_LIMIT,
           query: normalizedQuery,
           time,
-          cursor,
-          signal,
-        });
-        pages.push(...result.pages);
-        truncated ||= result.truncated;
-        cursor = result.nextCursor ?? undefined;
-      } while (cursor);
-      return { pages, nextCursor: null, truncated };
+        },
+        fetch: { signal },
+      });
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
     },
   });
 }

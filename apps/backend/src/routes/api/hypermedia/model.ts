@@ -1,7 +1,6 @@
 import { t } from 'elysia';
 import type {
-  FocusedHypermediaPages,
-  HypermediaPageContinuation,
+  HypermediaPages,
   HypermediaResource,
   HypermediaResourceContinuation,
   HypermediaResourceNeighborhood,
@@ -17,7 +16,7 @@ import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pag
 
 export const DEFAULT_HYPERMEDIA_RESOURCE_LIMIT = 16;
 export const MAX_HYPERMEDIA_RESOURCE_LIMIT = 24;
-export const DEFAULT_HYPERMEDIA_PAGE_LIMIT = 8;
+export const DEFAULT_HYPERMEDIA_PAGE_LIMIT = 32;
 export const MAX_HYPERMEDIA_PAGE_LIMIT = 32;
 export const MAX_HYPERMEDIA_PAGE_FOCUS_RESOURCES = 24;
 const MAX_HYPERMEDIA_CURSOR_LENGTH = 512;
@@ -64,11 +63,13 @@ export const HypermediaResourceNeighborhoodSchema = t.Object({
   nextCursor: t.Nullable(t.String()),
 });
 
-export const FocusedHypermediaPagesQuerySchema = t.Object({
-  focus: t.String({
-    minLength: MIN_RESOURCE_KEY_LENGTH,
-    maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
-  }),
+export const HypermediaPagesQuerySchema = t.Object({
+  resources: t.Optional(
+    t.String({
+      minLength: MIN_RESOURCE_KEY_LENGTH,
+      maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
+    }),
+  ),
   limit: t.Optional(
     t.Numeric({
       minimum: 1,
@@ -76,10 +77,8 @@ export const FocusedHypermediaPagesQuerySchema = t.Object({
       default: DEFAULT_HYPERMEDIA_PAGE_LIMIT,
     }),
   ),
-  cursor: t.Optional(t.String({ minLength: 1, maxLength: MAX_HYPERMEDIA_CURSOR_LENGTH })),
   query: t.Optional(t.String({ maxLength: MAX_KNOWLEDGE_PAGE_TITLE_LENGTH })),
   time: t.Optional(t.String({ minLength: 1, maxLength: MAX_TEMPORAL_COVERAGE_LENGTH })),
-  retainPage: t.Optional(ReadableIdSchema),
 });
 
 const HypermediaPageSchema = t.Object({
@@ -87,10 +86,15 @@ const HypermediaPageSchema = t.Object({
   resources: t.Array(HypermediaResourceReferenceSchema),
 });
 
-export const FocusedHypermediaPagesSchema = t.Object({
+export const HypermediaPagesSchema = t.Object({
   pages: t.Array(HypermediaPageSchema),
-  nextCursor: t.Nullable(t.String()),
-  truncated: t.Boolean(),
+  hasMore: t.Boolean(),
+  temporalExtent: t.Nullable(
+    t.Object({
+      start: t.Number(),
+      end: t.Number(),
+    }),
+  ),
 });
 
 export function parseHypermediaResourceReference(
@@ -109,7 +113,10 @@ export function parseHypermediaResourceReference(
   return { kind, readableId };
 }
 
-export function parseHypermediaFocus(value: string): HypermediaResourceReference[] | null {
+export function parseHypermediaResources(value?: string): HypermediaResourceReference[] | null {
+  if (value === undefined) {
+    return [];
+  }
   const references = value.split(',').map(parseHypermediaResourceReference);
   if (
     references.length === 0 ||
@@ -154,18 +161,6 @@ function validReadableId(value: unknown): value is string {
   );
 }
 
-function safeIntegerOrNull(value: unknown): value is number | null {
-  return value === null || (typeof value === 'number' && Number.isSafeInteger(value));
-}
-
-function canonicalTimestamp(value: unknown): value is string {
-  if (typeof value !== 'string') {
-    return false;
-  }
-  const date = new Date(value);
-  return Number.isFinite(date.getTime()) && date.toISOString() === value;
-}
-
 export function encodeHypermediaResourceCursor(
   cursor: HypermediaResourceContinuation | null,
 ): string | null {
@@ -199,47 +194,6 @@ export function decodeHypermediaResourceCursor(
   };
 }
 
-export function encodeHypermediaPageCursor(
-  cursor: HypermediaPageContinuation | null,
-): string | null {
-  return encodedCursor(cursor);
-}
-
-export function decodeHypermediaPageCursor(
-  value: string | undefined,
-): { state: 'valid'; cursor?: HypermediaPageContinuation } | { state: 'invalid' } {
-  const payload = cursorPayload(value);
-  if (payload === undefined) {
-    return { state: 'valid' };
-  }
-  if (
-    !payload ||
-    typeof payload.retained !== 'boolean' ||
-    typeof payload.temporal !== 'boolean' ||
-    typeof payload.ongoing !== 'boolean' ||
-    !safeIntegerOrNull(payload.latest) ||
-    !safeIntegerOrNull(payload.start) ||
-    (payload.temporal && (payload.latest === null || payload.start === null)) ||
-    (!payload.temporal && (payload.ongoing || payload.latest !== null || payload.start !== null)) ||
-    !canonicalTimestamp(payload.updatedAt) ||
-    !validReadableId(payload.readableId)
-  ) {
-    return { state: 'invalid' };
-  }
-  return {
-    state: 'valid',
-    cursor: {
-      retained: payload.retained,
-      temporal: payload.temporal,
-      ongoing: payload.ongoing,
-      latest: payload.latest,
-      start: payload.start,
-      updatedAt: payload.updatedAt,
-      readableId: payload.readableId,
-    },
-  };
-}
-
 function hypermediaResourceResponse(resource: HypermediaResource) {
   return resource.kind === 'entity'
     ? { kind: resource.kind, entity: entityResponse(resource.entity) }
@@ -259,13 +213,13 @@ export function hypermediaResourceNeighborhoodResponse(
   };
 }
 
-export function focusedHypermediaPagesResponse(result: FocusedHypermediaPages) {
+export function hypermediaPagesResponse(result: HypermediaPages) {
   return {
     pages: result.pages.map((page) => ({
       ...pageSummaryResponse(page),
       resources: page.resources,
     })),
-    nextCursor: encodeHypermediaPageCursor(result.nextPage),
-    truncated: result.truncated,
+    hasMore: result.hasMore,
+    temporalExtent: result.temporalExtent,
   };
 }

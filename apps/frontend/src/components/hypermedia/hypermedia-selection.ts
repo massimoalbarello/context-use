@@ -1,4 +1,4 @@
-import type { HypermediaPage, HypermediaResourceReference } from '../../queries/hypermedia';
+import type { HypermediaResourceReference } from '../../queries/hypermedia';
 import { hypermediaResourceKey } from '../../queries/hypermedia';
 import type { HypermediaSelection } from './hypermedia-canvas';
 
@@ -71,24 +71,4 @@ export function toggleHypermediaResourceSelection({
   return resources.length === MAX_SELECTED_HYPERMEDIA_RESOURCES
     ? resources
     : [...resources, resource];
-}
-
-export function pagesSharedBySelectedResources(
-  pageCollections: HypermediaPage[][],
-): HypermediaPage[] {
-  const [firstPages, ...remainingCollections] = pageCollections;
-  if (!firstPages) {
-    return [];
-  }
-  const remainingIds = remainingCollections.map(
-    (pages) => new Set(pages.map(({ readableId }) => readableId)),
-  );
-  const includedIds = new Set<string>();
-  return firstPages.filter(({ readableId }) => {
-    if (includedIds.has(readableId)) {
-      return false;
-    }
-    includedIds.add(readableId);
-    return remainingIds.every((ids) => ids.has(readableId));
-  });
 }
