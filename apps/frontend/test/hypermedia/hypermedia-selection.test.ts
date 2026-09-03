@@ -54,10 +54,10 @@ describe('Hypermedia resource filters', () => {
     ).toEqual([{ kind: 'asset', readableId: 'rollout-metrics' }]);
   });
 
-  test('shows only pages shared by every selected resource', () => {
+  test('shows each page shared by every selected resource once', () => {
     expect(
       pagesSharedBySelectedResources([
-        [page('newest-shared'), page('entity-only'), page('older-shared')],
+        [page('newest-shared'), page('entity-only'), page('newest-shared'), page('older-shared')],
         [page('older-shared'), page('newest-shared'), page('asset-only')],
       ]).map(({ readableId }) => readableId),
     ).toEqual(['newest-shared', 'older-shared']);

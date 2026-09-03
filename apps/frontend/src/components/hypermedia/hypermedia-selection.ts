@@ -83,5 +83,12 @@ export function pagesSharedBySelectedResources(
   const remainingIds = remainingCollections.map(
     (pages) => new Set(pages.map(({ readableId }) => readableId)),
   );
-  return firstPages.filter(({ readableId }) => remainingIds.every((ids) => ids.has(readableId)));
+  const includedIds = new Set<string>();
+  return firstPages.filter(({ readableId }) => {
+    if (includedIds.has(readableId)) {
+      return false;
+    }
+    includedIds.add(readableId);
+    return remainingIds.every((ids) => ids.has(readableId));
+  });
 }
