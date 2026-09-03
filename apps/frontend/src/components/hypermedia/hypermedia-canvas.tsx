@@ -1,6 +1,6 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
-import { File, FileText, Minus, Move, Plus, Scan, X } from 'lucide-react';
+import { File, FileText, Minus, Move, Plus, Scan } from 'lucide-react';
 import {
   memo,
   type PointerEvent as ReactPointerEvent,
@@ -34,7 +34,6 @@ import {
   spotlightHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
-import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
 import {
   eagerHypermediaImageKeys,
   focusedPageLimit,
@@ -461,7 +460,6 @@ export function HypermediaCanvas({
   spotlightPages,
   selectedKey,
   onSelect,
-  onClearSelection,
   onViewportSettled,
   canExplore,
   isInitialLoading,
@@ -475,7 +473,6 @@ export function HypermediaCanvas({
   spotlightPages?: HypermediaPage[];
   selectedKey?: string;
   onSelect: (selection: HypermediaSelection) => void;
-  onClearSelection: () => void;
   onViewportSettled: (viewport: SettledHypermediaViewport) => void;
   canExplore: boolean;
   isInitialLoading: boolean;
@@ -764,25 +761,6 @@ export function HypermediaCanvas({
 
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
-      )}
-
-      {spotlightActive && (
-        <div
-          className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border bg-card/95 py-1 pr-1 pl-3 text-sm shadow-sm backdrop-blur md:top-6"
-          aria-live="polite"
-        >
-          <span>{selectedHypermediaResourcesLabel(selectedResources)}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 rounded-full"
-            aria-label="Clear selected resources"
-            onClick={onClearSelection}
-          >
-            <X className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
       )}
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
