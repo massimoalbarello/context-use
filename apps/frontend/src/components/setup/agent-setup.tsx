@@ -1,12 +1,14 @@
 import { Check, Copy } from 'lucide-react';
-import { useState } from 'react';
-import { McpServerUrl } from '../mcp/mcp-server-url';
+import { useId, useState } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import INITIAL_CONTEXT_PROMPT from './initial-context-prompt.md?raw';
 
 type CopyState = 'idle' | 'copied' | 'failed';
+const MCP_SERVER_NAME = 'Context Use';
 
 export function agentConnectionHelpPrompt(mcpServerUrl: string): string {
   return `Guide me in setting up the Context Use MCP connector in this agent. Give me concise, numbered steps to add ${mcpServerUrl} as a custom Streamable HTTP MCP server named “Context Use”, connect it, and approve the OAuth request in my browser. Finish by helping me confirm that the Context Use tools are available.`;
@@ -14,6 +16,77 @@ export function agentConnectionHelpPrompt(mcpServerUrl: string): string {
 
 export function initialContextPrompt(): string {
   return INITIAL_CONTEXT_PROMPT.trim();
+}
+
+function CopyableConnectionValue({
+  copyLabel,
+  label,
+  value,
+}: {
+  copyLabel: string;
+  label: string;
+  value: string;
+}) {
+  const inputId = useId();
+  const [copyState, setCopyState] = useState<CopyState>('idle');
+
+  async function copyValue() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyState('copied');
+    } catch {
+      setCopyState('failed');
+    }
+  }
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={inputId} className="text-muted-foreground text-xs">
+        {label}
+      </Label>
+      <div className="flex items-center gap-2">
+        <Input
+          id={inputId}
+          className="font-mono"
+          readOnly
+          value={value}
+          onFocus={(event) => event.currentTarget.select()}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label={copyLabel}
+          onClick={copyValue}
+        >
+          {copyState === 'copied' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+        </Button>
+      </div>
+      {copyState === 'failed' && (
+        <p className="text-destructive text-sm" role="alert">
+          Could not access the clipboard. Select the value and copy it manually.
+        </p>
+      )}
+      <span className="sr-only" aria-live="polite">
+        {copyState === 'copied' ? `${label} copied.` : ''}
+      </span>
+    </div>
+  );
+}
+
+function McpServerDetails({ serverUrl }: { serverUrl: string }) {
+  return (
+    <Card>
+      <CardContent className="grid gap-4">
+        <CopyableConnectionValue
+          copyLabel="Copy server name"
+          label="Server name"
+          value={MCP_SERVER_NAME}
+        />
+        <CopyableConnectionValue copyLabel="Copy server URL" label="Server URL" value={serverUrl} />
+      </CardContent>
+    </Card>
+  );
 }
 
 function CopyablePrompt({
@@ -90,18 +163,11 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
           1
         </span>
         <section className="grid min-w-0 gap-4" aria-labelledby="connect-mcp-heading">
-          <div className="grid gap-1">
-            <h2 id="connect-mcp-heading" className="font-semibold text-xl">
-              Connect your agent to Context Use MCP server
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Open your agent’s MCP or connector settings. Add a custom server, choose Streamable
-              HTTP, name it “<strong>Context Use</strong>”, and paste this URL. Then start the
-              connection and approve the Context Use OAuth request in your browser.
-            </p>
-          </div>
+          <h2 id="connect-mcp-heading" className="font-semibold text-xl">
+            Connect your agent to Context Use MCP server
+          </h2>
 
-          <McpServerUrl serverUrl={mcpServerUrl} />
+          <McpServerDetails serverUrl={mcpServerUrl} />
 
           <details>
             <summary className="cursor-pointer font-medium text-sm">
