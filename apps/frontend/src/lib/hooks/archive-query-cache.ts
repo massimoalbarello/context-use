@@ -2,6 +2,8 @@ import type { QueryClient } from '@tanstack/react-query';
 import {
   type ArchiveAssetResult,
   assetDetailsQueryKey,
+  assetPreviewQueryOptions,
+  assetPreviewsQueryKey,
   assetQueryOptions,
   assetSuggestionsQueryKey,
   assetsListQueryKey,
@@ -10,6 +12,8 @@ import {
   type ArchiveEntityResult,
   entitiesListQueryKey,
   entityDetailsQueryKey,
+  entityPreviewQueryOptions,
+  entityPreviewsQueryKey,
   entityQueryOptions,
   entitySuggestionsQueryKey,
 } from '../../queries/entities';
@@ -17,6 +21,7 @@ import { hypermediaQueryKey } from '../../queries/hypermedia';
 import {
   type ArchivePageResult,
   pageDetailsQueryKey,
+  pagePreviewQueryOptions,
   pageQueryOptions,
   pageSuggestionsQueryKey,
   pagesListQueryKey,
@@ -32,6 +37,7 @@ export function settleArchivedAssetQueries({
   result: ArchiveAssetResult;
 }) {
   const detailQueryKey = assetQueryOptions(readableId).queryKey;
+  const previewQueryKey = assetPreviewQueryOptions(readableId).queryKey;
 
   if (result.state === 'resource_in_use') {
     void queryClient.invalidateQueries({ queryKey: detailQueryKey, exact: true });
@@ -39,6 +45,7 @@ export function settleArchivedAssetQueries({
   }
 
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
+  queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: assetsListQueryKey });
   void queryClient.invalidateQueries({ queryKey: assetSuggestionsQueryKey });
   void queryClient.invalidateQueries({ queryKey: hypermediaQueryKey });
@@ -54,6 +61,7 @@ export function settleArchivedEntityQueries({
   result: ArchiveEntityResult;
 }) {
   const detailQueryKey = entityQueryOptions(readableId).queryKey;
+  const previewQueryKey = entityPreviewQueryOptions(readableId).queryKey;
 
   if (result.state === 'resource_in_use') {
     void queryClient.invalidateQueries({ queryKey: detailQueryKey, exact: true });
@@ -61,6 +69,7 @@ export function settleArchivedEntityQueries({
   }
 
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
+  queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: entitiesListQueryKey });
   void queryClient.invalidateQueries({ queryKey: entitySuggestionsQueryKey });
   void queryClient.invalidateQueries({ queryKey: hypermediaQueryKey });
@@ -76,6 +85,7 @@ export function settleArchivedPageQueries({
   result: ArchivePageResult;
 }) {
   const detailQueryKey = pageQueryOptions(readableId).queryKey;
+  const previewQueryKey = pagePreviewQueryOptions(readableId).queryKey;
 
   if (result.state === 'resource_in_use') {
     void queryClient.invalidateQueries({ queryKey: detailQueryKey, exact: true });
@@ -83,6 +93,7 @@ export function settleArchivedPageQueries({
   }
 
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
+  queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: pagesListQueryKey });
   void queryClient.invalidateQueries({ queryKey: pageSuggestionsQueryKey });
   void queryClient.invalidateQueries({ queryKey: hypermediaQueryKey });
@@ -91,5 +102,7 @@ export function settleArchivedPageQueries({
     predicate: (query) => query.queryKey[2] !== readableId,
   });
   void queryClient.invalidateQueries({ queryKey: entityDetailsQueryKey });
+  void queryClient.invalidateQueries({ queryKey: entityPreviewsQueryKey });
   void queryClient.invalidateQueries({ queryKey: assetDetailsQueryKey });
+  void queryClient.invalidateQueries({ queryKey: assetPreviewsQueryKey });
 }

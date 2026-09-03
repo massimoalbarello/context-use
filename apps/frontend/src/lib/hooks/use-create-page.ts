@@ -1,5 +1,5 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
-import { assetDetailsQueryKey } from '../../queries/assets';
+import { assetDetailsQueryKey, assetPreviewsQueryKey } from '../../queries/assets';
 import { entitiesQueryKey } from '../../queries/entities';
 import { hypermediaQueryKey } from '../../queries/hypermedia';
 import { type CreatePageVariables, createPage, pagesQueryKey } from '../../queries/pages';
@@ -19,6 +19,7 @@ export function useCreatePage(): UseMutationResult<
         queryClient.invalidateQueries({ queryKey: hypermediaQueryKey }),
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
         queryClient.invalidateQueries({ queryKey: assetDetailsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: assetPreviewsQueryKey }),
       ]);
     },
   });
