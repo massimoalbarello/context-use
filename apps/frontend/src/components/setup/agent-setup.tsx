@@ -92,13 +92,12 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
         <section className="grid min-w-0 gap-4" aria-labelledby="connect-mcp-heading">
           <div className="grid gap-1">
             <h2 id="connect-mcp-heading" className="font-semibold text-xl">
-              Connect to the MCP server
+              Connect your agent to Context Use MCP server
             </h2>
             <p className="text-muted-foreground leading-relaxed">
               Open your agent’s MCP or connector settings. Add a custom server, choose Streamable
-              HTTP, name it “Context Use”, and paste this URL. Then start the connection and approve
-              the Context Use OAuth request in your browser. Continue when Context Use tools appear
-              in your agent.
+              HTTP, name it “<strong>Context Use</strong>”, and paste this URL. Then start the
+              connection and approve the Context Use OAuth request in your browser.
             </p>
           </div>
 
@@ -137,9 +136,8 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
               Import memories from your favorite agent
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              Once connected, paste this prompt into your agent. It will start with memories the
-              agent has created about you, using previous conversations as useful supporting context
-              when needed.
+              Once connected, paste this prompt into your agent. It will import the memories and
+              user context already available to your agent into this empty Context Use instance.
             </p>
           </div>
 

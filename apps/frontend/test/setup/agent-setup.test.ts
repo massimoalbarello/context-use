@@ -88,12 +88,13 @@ test('setup presents the user-owned connection flow as three numbered steps', ()
 
   expect(html).toContain('<ol');
   expect([...html.matchAll(/<li/g)]).toHaveLength(SETUP_STEP_COUNT);
-  expect(html).toContain('Connect to the MCP server');
-  expect(html).toContain('name it “Context Use”');
+  expect(html).toContain('Connect your agent to Context Use MCP server');
+  expect(html).toContain('name it “<strong>Context Use</strong>”');
   expect(html).toContain('approve the Context Use OAuth');
+  expect(html).not.toContain('Continue when Context Use tools appear in your agent');
   expect(html).not.toContain('Connect and authorize');
   expect(html).toContain('Import memories from your favorite agent');
-  expect(html).toContain('previous conversations as useful supporting');
+  expect(html).toContain('user context already available to your agent');
   expect(html).toContain('Refresh the page');
   expect(html).toContain('check every 15 seconds');
   expect(html).toContain('open your hypermedia automatically');
