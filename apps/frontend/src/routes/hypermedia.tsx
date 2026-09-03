@@ -46,8 +46,6 @@ export const Route = createFileRoute('/hypermedia')({
   loaderDeps: ({ search }) => ({
     query: search.q,
     dateRange: calendarDateRangeFromSearch(search),
-    kind: search.kind,
-    id: search.id,
   }),
   loader: async ({ context, deps }) => {
     if (!context.profile) {
@@ -57,27 +55,16 @@ export const Route = createFileRoute('/hypermedia')({
       kind: 'entity',
       readableId: context.profile.selfEntity.readableId,
     };
-    const selectedResource: HypermediaResourceReference | undefined =
-      deps.id && (deps.kind === 'entity' || deps.kind === 'asset')
-        ? { kind: deps.kind, readableId: deps.id }
-        : undefined;
-    const focus = selectedResource ? [selectedResource, self] : [self];
     await Promise.all([
       context.queryClient.ensureQueryData(
         hypermediaResourceNeighborhoodQueryOptions({ anchor: self }),
       ),
-      selectedResource
-        ? context.queryClient.ensureQueryData(
-            hypermediaResourceNeighborhoodQueryOptions({ anchor: selectedResource }),
-          )
-        : undefined,
       context.queryClient.ensureQueryData(
         focusedHypermediaPagesQueryOptions({
-          focus,
+          focus: [self],
           limit: 8,
           query: deps.query,
           dateRange: deps.dateRange,
-          retainPageReadableId: deps.kind === 'page' ? deps.id : undefined,
         }),
       ),
     ]);

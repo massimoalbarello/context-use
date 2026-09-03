@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import {
   focusedHypermediaPagesQueryOptions,
+  type HypermediaPage,
   type HypermediaResourceReference,
   hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
@@ -18,6 +19,8 @@ type NeighborhoodRequest = {
   anchor: HypermediaResourceReference;
   cursor?: string;
 };
+
+const EMPTY_PAGES: HypermediaPage[] = [];
 
 function requestKey(request: NeighborhoodRequest): string {
   return `${hypermediaResourceKey(request.anchor)}:${request.cursor ?? 'first'}`;
@@ -88,10 +91,35 @@ export function HypermediaExplorer({
       limit: focusedRequest.limit,
       query,
       dateRange,
-      retainPageReadableId: selection?.kind === 'page' ? selection.readableId : undefined,
     }),
     placeholderData: keepPreviousData,
   });
+  const selectedPageReadableId = selection?.kind === 'page' ? selection.readableId : undefined;
+  const focusedPages = pageQuery.data?.pages ?? EMPTY_PAGES;
+  const selectedFocusedPage = focusedPages.find(
+    ({ readableId }) => readableId === selectedPageReadableId,
+  );
+  const retainedPageQuery = useQuery({
+    ...focusedHypermediaPagesQueryOptions({
+      focus: [self],
+      limit: 1,
+      retainPageReadableId: selectedPageReadableId,
+    }),
+    enabled: Boolean(selectedPageReadableId),
+    initialData: selectedFocusedPage
+      ? { pages: [selectedFocusedPage], nextCursor: null, truncated: false }
+      : undefined,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const pages = useMemo(() => {
+    if (!selectedPageReadableId || selectedFocusedPage) {
+      return focusedPages;
+    }
+    const retainedPage = retainedPageQuery.data?.pages.find(
+      ({ readableId }) => readableId === selectedPageReadableId,
+    );
+    return retainedPage ? [...focusedPages, retainedPage] : focusedPages;
+  }, [focusedPages, retainedPageQuery.data, selectedFocusedPage, selectedPageReadableId]);
 
   const handleViewportSettled = useCallback(
     ({ focus, pageLimit, boundaryAnchor }: SettledHypermediaViewport) => {
@@ -154,7 +182,7 @@ export function HypermediaExplorer({
   return (
     <HypermediaCanvas
       resources={resources}
-      pages={pageQuery.data?.pages ?? []}
+      pages={pages}
       selectedKey={selectedKey}
       onSelect={onSelect}
       onViewportSettled={handleViewportSettled}
