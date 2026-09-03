@@ -96,8 +96,9 @@ describe('resource-first hypermedia layout', () => {
   test('requests progressively more page information as the viewport zooms out', () => {
     expect(focusedPageLimit({ x: 0, y: 0, width: 600, height: 400 })).toBe(4);
     expect(focusedPageLimit({ x: 0, y: 0, width: 900, height: 600 })).toBe(8);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 1400, height: 900 })).toBe(16);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 2200, height: 1400 })).toBe(32);
+    expect(focusedPageLimit({ x: 0, y: 0, width: 1400, height: 900 })).toBe(12);
+    expect(focusedPageLimit({ x: 0, y: 0, width: 1750, height: 1100 })).toBe(16);
+    expect(focusedPageLimit({ x: 0, y: 0, width: 2200, height: 1400 })).toBe(20);
   });
 
   test('viewport culling cannot remove the selected page or landmark', () => {

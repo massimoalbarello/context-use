@@ -54,10 +54,13 @@ export function focusedPageLimit(viewport: MapBounds): number {
   if (viewport.width <= 1100) {
     return 8;
   }
-  if (viewport.width <= 1700) {
+  if (viewport.width <= 1450) {
+    return 12;
+  }
+  if (viewport.width <= 1850) {
     return 16;
   }
-  return 32;
+  return 20;
 }
 
 export function viewportNearLandmarkBoundary(viewport: MapBounds, bounds: MapBounds): boolean {
