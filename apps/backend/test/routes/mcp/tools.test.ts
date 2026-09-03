@@ -300,7 +300,8 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('The autobiography is the graph, not one page');
       expect(guide).toMatch(/Give each page one subject from its first revision/);
       expect(guide).toMatch(/never create or accumulate a catch-all page/);
-      expect(guide).toMatch(/no\s+truthful `temporalCoverage` signal a split/);
+      expect(guide).toMatch(/retrieve or revise independently/);
+      expect(guide).toMatch(/No\s+truthful `temporalCoverage` is another signal/);
       expect(guide).toMatch(/Link targets must exist before writing/);
       expect(guide).toContain('smallest coherent revision');
       expect(guide).toContain('Decomposition is normal curation');

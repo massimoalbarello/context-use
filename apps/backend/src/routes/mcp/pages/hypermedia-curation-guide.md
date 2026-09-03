@@ -39,8 +39,8 @@ The autobiography is the graph, not one page. Give each page one subject from it
 never create or accumulate a catch-all page. Connect distinct ideas, relationships, events,
 decisions, and lines of thought with explanatory prose.
 
-Before writing, name one subject. Unrelated subjects joined by “and,” standalone headings, or no
-truthful `temporalCoverage` signal a split; cross-period synthesis may instead link narrower evidence.
+Name one subject before writing. Split material a reader would retrieve or revise independently. No
+truthful `temporalCoverage` is another signal; cross-period synthesis may link narrower evidence.
 
 Build structure bottom-up. An entity is a stable, identifiable referent, not a keyword. Put
 meaningful links inside prose that explains each relationship. A page should help someone understand
