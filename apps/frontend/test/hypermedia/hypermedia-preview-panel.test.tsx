@@ -8,12 +8,12 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { KnowledgeMapSelection } from '../../src/components/knowledge-map/knowledge-map-canvas';
-import { KnowledgeMapPreviewPanel } from '../../src/components/knowledge-map/knowledge-map-preview-panel';
+import type { HypermediaSelection } from '../../src/components/hypermedia/hypermedia-canvas';
+import { HypermediaPreviewPanel } from '../../src/components/hypermedia/hypermedia-preview-panel';
 import { type Asset, assetPreviewQueryOptions } from '../../src/queries/assets';
 import { type KnowledgePagePreview, pagePreviewQueryOptions } from '../../src/queries/pages';
 
-async function renderPreview(selection: KnowledgeMapSelection): Promise<string> {
+async function renderPreview(selection: HypermediaSelection): Promise<string> {
   const queryClient = new QueryClient();
   if (selection.kind === 'page') {
     queryClient.setQueryData(pagePreviewQueryOptions(selection.readableId).queryKey, {
@@ -55,7 +55,7 @@ async function renderPreview(selection: KnowledgeMapSelection): Promise<string> 
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <KnowledgeMapPreviewPanel
+        <HypermediaPreviewPanel
           selection={selection}
           onClose={() => undefined}
           onSelect={() => undefined}

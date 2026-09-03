@@ -5,7 +5,7 @@ import { PageDateRangeFilter } from '../pages/page-date-range-filter';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
-function KnowledgeMapKeywordFilter({
+function HypermediaKeywordFilter({
   value,
   onApply,
 }: {
@@ -22,7 +22,7 @@ function KnowledgeMapKeywordFilter({
         onApply(draft.trim());
       }}
     >
-      <label className="font-medium text-xs" htmlFor="knowledge-map-keyword">
+      <label className="font-medium text-xs" htmlFor="hypermedia-keyword">
         Keyword
       </label>
       <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ function KnowledgeMapKeywordFilter({
             aria-hidden="true"
           />
           <Input
-            id="knowledge-map-keyword"
+            id="hypermedia-keyword"
             className="h-10 pl-9"
             type="search"
             placeholder="Page, entity, or asset"
@@ -62,7 +62,7 @@ function KnowledgeMapKeywordFilter({
   );
 }
 
-export function KnowledgeMapFilters({
+export function HypermediaFilters({
   query,
   dateRange,
   onQueryApply,
@@ -74,12 +74,12 @@ export function KnowledgeMapFilters({
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
 }) {
   return (
-    <section aria-labelledby="knowledge-map-filters-heading">
-      <h2 id="knowledge-map-filters-heading" className="font-medium text-sm">
+    <section aria-labelledby="hypermedia-filters-heading">
+      <h2 id="hypermedia-filters-heading" className="font-medium text-sm">
         Filter hypermedia
       </h2>
       <div className="mt-2 grid gap-3">
-        <KnowledgeMapKeywordFilter key={query} value={query} onApply={onQueryApply} />
+        <HypermediaKeywordFilter key={query} value={query} onApply={onQueryApply} />
         <PageDateRangeFilter className="mb-0" value={dateRange} onApply={onDateRangeApply} />
       </div>
     </section>

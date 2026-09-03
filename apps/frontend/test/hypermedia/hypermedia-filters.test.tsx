@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { KnowledgeMapFilters } from '../../src/components/knowledge-map/knowledge-map-filters';
+import { HypermediaFilters } from '../../src/components/hypermedia/hypermedia-filters';
 
 test('the map composes explicit keyword and date range filters', () => {
   const html = renderToStaticMarkup(
-    <KnowledgeMapFilters
+    <HypermediaFilters
       query="launch"
       dateRange={{ from: '2026-01-01', to: '2026-03-31' }}
       onQueryApply={() => undefined}

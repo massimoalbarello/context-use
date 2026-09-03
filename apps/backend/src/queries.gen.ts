@@ -230,6 +230,77 @@ export interface IPingDatabaseResult {
     value: number;
 }
 
+/** Result of query `FindHypermediaResource`. */
+export interface IFindHypermediaResourceResult {
+    kind: "entity" | "asset";
+    id: string;
+    readableId: string;
+    name: string;
+    description: string | null;
+    isSelf: number;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
+    mediaType: string | null;
+    extension: string | null;
+    sizeBytes: number | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Result of query `ListHypermediaResourceNeighbors`. */
+export interface IListHypermediaResourceNeighborsResult {
+    kind: "entity" | "asset";
+    id: string;
+    readableId: string;
+    name: string;
+    description: string | null;
+    isSelf: number;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
+    mediaType: string | null;
+    extension: string | null;
+    sizeBytes: number | null;
+    createdAt: string;
+    updatedAt: string;
+    sharedPageCount: number;
+}
+
+/** Result of query `ListFocusedHypermediaPages`. */
+export interface IListFocusedHypermediaPagesResult {
+    id: string;
+    readableId: string;
+    revisionNumber: number;
+    title: string;
+    excerpt: string;
+    temporalCoverage: string | null;
+    retainedSort: number;
+    temporalSort: number;
+    ongoingSort: number;
+    latestSort: unknown | null;
+    startSort: unknown | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Result of query `ListFocusedHypermediaPageResources`. */
+export interface IListFocusedHypermediaPageResourcesResult {
+    sourcePageReadableId: string;
+    kind: "entity" | "asset";
+    readableId: string;
+}
+
 /** Result of query `FindKnowledgePageOwnerRevisionAuthor`. */
 export interface IFindKnowledgePageOwnerRevisionAuthorResult {
     name: string;
@@ -299,56 +370,6 @@ export interface IListKnowledgePagesByEntityResult {
     temporalCoverage: string | null;
     createdAt: string;
     updatedAt: string;
-}
-
-/** Result of query `ListKnowledgeMapPages`. */
-export interface IListKnowledgeMapPagesResult {
-    id: string;
-    readableId: string;
-    revisionNumber: number;
-    title: string;
-    excerpt: string;
-    temporalCoverage: string | null;
-    temporalSort: number;
-    ongoingSort: number;
-    latestSort: unknown | null;
-    startSort: unknown | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/** Result of query `ListKnowledgeMapMentions`. */
-export interface IListKnowledgeMapMentionsResult {
-    sourcePageReadableId: string;
-    id: string;
-    readableId: string;
-    name: string;
-    description: string;
-    isSelf: number;
-    createdAt: string;
-    updatedAt: string;
-    imageId: string | null;
-    imageReadableId: string | null;
-    imageName: string | null;
-    imageMediaType: string | null;
-    imageExtension: string | null;
-    imageSizeBytes: number | null;
-    imageCreatedAt: string | null;
-    imageUpdatedAt: string | null;
-}
-
-/** Result of query `ListKnowledgeMapAssetUsages`. */
-export interface IListKnowledgeMapAssetUsagesResult {
-    sourcePageReadableId: string;
-    id: string;
-    readableId: string;
-    name: string;
-    mediaType: string;
-    extension: string | null;
-    sizeBytes: number;
-    createdAt: string;
-    updatedAt: string;
-    presentation: string;
 }
 
 /** Result of query `FindKnowledgePage`. */
@@ -598,6 +619,10 @@ export interface Queries {
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
     PingDatabase: IPingDatabaseResult;
+    FindHypermediaResource: IFindHypermediaResourceResult;
+    ListHypermediaResourceNeighbors: IListHypermediaResourceNeighborsResult;
+    ListFocusedHypermediaPages: IListFocusedHypermediaPagesResult;
+    ListFocusedHypermediaPageResources: IListFocusedHypermediaPageResourcesResult;
     FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;
     ResolveEntityLink: IResolveEntityLinkResult;
@@ -607,9 +632,6 @@ export interface Queries {
     SearchKnowledgePages: ISearchKnowledgePagesResult;
     CountSearchedKnowledgePages: ICountSearchedKnowledgePagesResult;
     ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;
-    ListKnowledgeMapPages: IListKnowledgeMapPagesResult;
-    ListKnowledgeMapMentions: IListKnowledgeMapMentionsResult;
-    ListKnowledgeMapAssetUsages: IListKnowledgeMapAssetUsagesResult;
     FindKnowledgePage: IFindKnowledgePageResult;
     FindKnowledgePageArchiveTarget: IFindKnowledgePageArchiveTargetResult;
     ListKnowledgePageMentions: IListKnowledgePageMentionsResult;

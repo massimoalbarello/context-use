@@ -9,18 +9,16 @@ import {
 } from '../knowledge/knowledge-sidebar-chrome';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { buttonVariants } from '../ui/button';
-import { KnowledgeMapFilters } from './knowledge-map-filters';
+import { HypermediaFilters } from './hypermedia-filters';
 
-export function KnowledgeMapSidebar({
+export function HypermediaSidebar({
   profile,
-  truncated,
   query,
   dateRange,
   onQueryApply,
   onDateRangeApply,
 }: {
   profile: KnowledgeProfile;
-  truncated: boolean;
   query: string;
   dateRange?: CalendarDateRange;
   onQueryApply: (query: string) => void;
@@ -46,18 +44,12 @@ export function KnowledgeMapSidebar({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
-          <KnowledgeMapFilters
+          <HypermediaFilters
             query={query}
             dateRange={dateRange}
             onQueryApply={onQueryApply}
             onDateRangeApply={onDateRangeApply}
           />
-
-          {truncated && (
-            <p className="mt-3 text-muted-foreground text-xs leading-relaxed">
-              This dense neighborhood was simplified to keep the map responsive.
-            </p>
-          )}
         </div>
 
         <KnowledgeSidebarFooter profile={profile} />

@@ -14,7 +14,7 @@ import { resourceCardVariants } from '../knowledge/resource-list';
 import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { Button, buttonVariants } from '../ui/button';
-import type { KnowledgeMapSelection } from './knowledge-map-canvas';
+import type { HypermediaSelection } from './hypermedia-canvas';
 
 function PreviewPanelShell({
   label,
@@ -79,7 +79,7 @@ function PreviewPageSection({
 }: {
   title: string;
   items: PreviewPageItem[];
-  onSelect: (selection: KnowledgeMapSelection) => void;
+  onSelect: (selection: HypermediaSelection) => void;
 }) {
   return (
     <section className="border-t pt-5">
@@ -145,7 +145,7 @@ function PagePreview({
 }: {
   readableId: string;
   onClose: () => void;
-  onSelect: (selection: KnowledgeMapSelection) => void;
+  onSelect: (selection: HypermediaSelection) => void;
 }) {
   const { data: page, error, refetch } = usePagePreview(readableId);
   return (
@@ -186,7 +186,7 @@ function EntityPreview({
 }: {
   readableId: string;
   onClose: () => void;
-  onSelect: (selection: KnowledgeMapSelection) => void;
+  onSelect: (selection: HypermediaSelection) => void;
 }) {
   const { data: entity, error, refetch } = useEntityPreview(readableId);
   return (
@@ -233,7 +233,7 @@ function AssetPreview({
 }: {
   readableId: string;
   onClose: () => void;
-  onSelect: (selection: KnowledgeMapSelection) => void;
+  onSelect: (selection: HypermediaSelection) => void;
 }) {
   const { data: asset, error, refetch } = useAssetPreview(readableId);
   return (
@@ -291,14 +291,14 @@ function AssetPreview({
   );
 }
 
-export function KnowledgeMapPreviewPanel({
+export function HypermediaPreviewPanel({
   selection,
   onClose,
   onSelect,
 }: {
-  selection: KnowledgeMapSelection;
+  selection: HypermediaSelection;
   onClose: () => void;
-  onSelect: (selection: KnowledgeMapSelection) => void;
+  onSelect: (selection: HypermediaSelection) => void;
 }) {
   if (selection.kind === 'page') {
     return <PagePreview readableId={selection.readableId} onClose={onClose} onSelect={onSelect} />;

@@ -56,26 +56,6 @@ export interface KnowledgePagePreview extends KnowledgePageSummary {
   mentions: Entity[];
 }
 
-export interface KnowledgeMapPage extends KnowledgePageSummary {
-  mentions: Entity[];
-  assetUsages: KnowledgePageAssetUsage[];
-}
-
-export interface KnowledgeMapContinuation {
-  temporal: boolean;
-  ongoing: boolean;
-  latest: number | null;
-  start: number | null;
-  updatedAt: string;
-  readableId: string;
-}
-
-export interface KnowledgeMap {
-  pages: KnowledgeMapPage[];
-  nextPage: KnowledgeMapContinuation | null;
-  truncated: boolean;
-}
-
 export interface StoredKnowledgePage extends KnowledgePageSummary {
   ownerId: string;
   currentRevisionId: string;

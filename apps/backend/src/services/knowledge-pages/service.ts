@@ -4,7 +4,6 @@ import {
   parseKnowledgePageMarkdown,
 } from '#models/knowledge-pages/markdown.ts';
 import type {
-  KnowledgeMapContinuation,
   KnowledgePage,
   KnowledgePagePreview,
   KnowledgePageRevisionActor,
@@ -127,16 +126,6 @@ export class KnowledgePagesService {
     temporalBounds?: TemporalBounds;
   }) {
     return this.pages.list(input);
-  }
-
-  map(input: {
-    ownerId: string;
-    limit: number;
-    cursor?: KnowledgeMapContinuation;
-    query?: string;
-    temporalBounds?: TemporalBounds;
-  }) {
-    return this.pages.map(input);
   }
 
   async detail({
@@ -340,5 +329,5 @@ export class KnowledgePagesService {
 
 export type KnowledgePagesServiceContract = Pick<
   KnowledgePagesService,
-  'create' | 'list' | 'map' | 'detail' | 'preview' | 'update' | 'archive' | 'rebuildIndex'
+  'create' | 'list' | 'detail' | 'preview' | 'update' | 'archive' | 'rebuildIndex'
 >;

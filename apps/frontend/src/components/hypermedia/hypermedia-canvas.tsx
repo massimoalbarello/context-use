@@ -5,6 +5,7 @@ import {
   memo,
   type PointerEvent as ReactPointerEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -13,63 +14,54 @@ import {
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import type {
-  KnowledgeMapAsset,
-  KnowledgeMapEntity,
-  KnowledgeMapPage,
-} from '../../queries/knowledge-map';
+  HypermediaAsset,
+  HypermediaEntity,
+  HypermediaPage,
+  HypermediaResourceReference,
+} from '../../queries/hypermedia';
 import { formatAssetSize } from '../assets/asset-link';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
-  buildKnowledgeMapLayout,
-  eagerKnowledgeMapImageKeys,
-  focusedKnowledgeMapViewBox,
-  type KnowledgeMapLayout,
-  type KnowledgeMapResource,
-  knowledgeMapLayoutInViewport,
-  mapViewportNearBoundary,
-} from './knowledge-map-layout';
+  buildHypermediaLayout,
+  type HypermediaLandmark,
+  type HypermediaLayout,
+  initialHypermediaViewBox,
+  type MapBounds,
+} from './hypermedia-layout';
+import {
+  eagerHypermediaImageKeys,
+  focusedLandmarks,
+  focusedPageLimit,
+  hypermediaLayoutInViewport,
+  nearestBoundaryLandmark,
+  viewportNearLandmarkBoundary,
+} from './hypermedia-visibility';
 
 type MapPreview =
-  | { kind: 'page'; page: KnowledgeMapPage }
-  | { kind: 'entity'; entity: KnowledgeMapEntity }
-  | { kind: 'asset'; asset: KnowledgeMapAsset };
+  | { kind: 'page'; page: HypermediaPage }
+  | { kind: 'entity'; entity: HypermediaEntity }
+  | { kind: 'asset'; asset: HypermediaAsset };
 
-type ViewBox = { x: number; y: number; width: number; height: number };
+type ViewBox = MapBounds;
 
 const BUTTON_ZOOM_IN_FACTOR = 0.9;
 const BUTTON_ZOOM_OUT_FACTOR = 1.1;
 const MAX_WHEEL_ZOOM_DELTA = 80;
 const WHEEL_ZOOM_RATE = 0.001;
-const ZOOM_LOAD_THROTTLE_MS = 400;
+const VIEWPORT_SETTLE_MS = 280;
 
-export type KnowledgeMapSelection = {
+export type HypermediaSelection = {
   kind: 'page' | 'entity' | 'asset';
   readableId: string;
 };
 
-export function mapPointerEndAction({
-  moved,
-  cloudReadableId,
-  canLoadMore,
-  nearBoundary,
-}: {
-  moved: boolean;
-  cloudReadableId?: string;
-  canLoadMore: boolean;
-  nearBoundary: boolean;
-}): {
-  selectedPageReadableId?: string;
-  suppressCloudClick: boolean;
-  loadMore: boolean;
-} {
-  return {
-    selectedPageReadableId: moved ? undefined : cloudReadableId,
-    suppressCloudClick: moved || Boolean(cloudReadableId),
-    loadMore: moved && canLoadMore && nearBoundary,
-  };
-}
+export type SettledHypermediaViewport = {
+  focus: HypermediaResourceReference[];
+  pageLimit: number;
+  boundaryAnchor?: HypermediaResourceReference;
+};
 
 function previewKey(preview: MapPreview): string {
   if (preview.kind === 'page') {
@@ -156,7 +148,7 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
 }
 
 function mapResourceImageReadableId(
-  resource: KnowledgeMapResource,
+  resource: HypermediaLandmark,
   visible: boolean,
 ): string | undefined {
   if (!visible) {
@@ -186,7 +178,7 @@ function ResourceDot({
   onPreview,
   onPreviewEnd,
 }: {
-  resource: KnowledgeMapResource;
+  resource: HypermediaLandmark;
   active: boolean;
   eagerImage: boolean;
   onActivate: () => void;
@@ -303,7 +295,7 @@ function ResourceDot({
   );
 }
 
-const KnowledgeMapLayers = memo(function KnowledgeMapLayers({
+const HypermediaLayers = memo(function HypermediaLayers({
   layout,
   activeKey,
   eagerImageKeys,
@@ -312,11 +304,11 @@ const KnowledgeMapLayers = memo(function KnowledgeMapLayers({
   onPreview,
   onPreviewEnd,
 }: {
-  layout: KnowledgeMapLayout;
+  layout: HypermediaLayout;
   activeKey: string | undefined;
   eagerImageKeys: Set<string>;
   suppressNextCloudClick: { current: boolean };
-  onSelect: (selection: KnowledgeMapSelection) => void;
+  onSelect: (selection: HypermediaSelection) => void;
   onPreview: (preview: MapPreview) => void;
   onPreviewEnd: (key: string) => void;
 }) {
@@ -396,7 +388,7 @@ const KnowledgeMapLayers = memo(function KnowledgeMapLayers({
         );
       })}
 
-      {layout.resources.map((resource) => {
+      {layout.landmarks.map((resource) => {
         const preview =
           resource.kind === 'entity'
             ? ({ kind: 'entity', entity: resource.entity } as const)
@@ -423,67 +415,65 @@ const KnowledgeMapLayers = memo(function KnowledgeMapLayers({
   );
 });
 
-function KnowledgeMapExplorationCue({
-  loadMoreError,
-  onLoadMore,
+function HypermediaExplorationCue({
+  error,
+  onRetry,
 }: {
-  loadMoreError: Error | null;
-  onLoadMore: () => void;
+  error: Error | null;
+  onRetry: () => void;
 }) {
   return (
     <div
       className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2"
       role="status"
     >
-      {loadMoreError ? (
+      {error ? (
         <Button
           type="button"
           variant="outline"
           size="sm"
           className="pointer-events-auto rounded-full bg-card/92 shadow-sm backdrop-blur"
-          onClick={onLoadMore}
+          onClick={onRetry}
         >
-          Retry loading nearby pages
+          Retry loading nearby landmarks
         </Button>
       ) : (
         <p className="flex items-center gap-2 whitespace-nowrap rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
           <Move className="size-3.5" aria-hidden="true" />
-          Drag or zoom out for more pages
+          Drag around the map to explore nearby landmarks
         </p>
       )}
     </div>
   );
 }
 
-export function KnowledgeMapCanvas({
+export function HypermediaCanvas({
+  landmarks,
   pages,
-  anchorEntity,
   selectedKey,
   onSelect,
-  hasNextPage,
-  isFetchingNextPage,
-  loadMoreError,
-  onLoadMore,
+  onViewportSettled,
+  canExplore,
+  isLoadingNeighborhood,
+  neighborhoodError,
+  onRetryNeighborhood,
 }: {
-  pages: KnowledgeMapPage[];
-  anchorEntity: KnowledgeMapEntity;
+  landmarks: HypermediaLandmark[];
+  pages: HypermediaPage[];
   selectedKey?: string;
-  onSelect: (selection: KnowledgeMapSelection) => void;
-  hasNextPage: boolean;
-  isFetchingNextPage: boolean;
-  loadMoreError: Error | null;
-  onLoadMore: () => Promise<unknown>;
+  onSelect: (selection: HypermediaSelection) => void;
+  onViewportSettled: (viewport: SettledHypermediaViewport) => void;
+  canExplore: boolean;
+  isLoadingNeighborhood: boolean;
+  neighborhoodError: Error | null;
+  onRetryNeighborhood: () => void;
 }) {
   const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
-  const layout = useMemo(
-    () => buildKnowledgeMapLayout(pages, { anchorEntity }),
-    [anchorEntity, pages],
-  );
+  const layout = useMemo(() => buildHypermediaLayout(landmarks, pages), [landmarks, pages]);
   const [preview, setPreview] = useState<MapPreview | null>(null);
-  const [viewBox, setViewBox] = useState<ViewBox>(() => focusedKnowledgeMapViewBox(layout));
+  const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(layout));
   const viewBoxRef = useRef(viewBox);
-  const loadMorePending = useRef(false);
-  const lastZoomLoadAt = useRef(0);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [panning, setPanning] = useState(false);
   const suppressNextCloudClick = useRef(false);
   const drag = useRef<{
@@ -496,41 +486,61 @@ export function KnowledgeMapCanvas({
     cloudReadableId?: string;
   } | null>(null);
   const activeKey = preview ? previewKey(preview) : selectedKey;
-  const activePageReadableId = activeKey?.startsWith('page:')
-    ? activeKey.slice('page:'.length)
-    : undefined;
   const visibleLayout = useMemo(
-    () => knowledgeMapLayoutInViewport(layout, viewBox, activePageReadableId),
-    [activePageReadableId, layout, viewBox],
+    () => hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
+    [layout, selectedKey, viewBox],
   );
-  const eagerImageKeys = useMemo(() => eagerKnowledgeMapImageKeys(visibleLayout), [visibleLayout]);
+  const eagerImageKeys = useMemo(() => eagerHypermediaImageKeys(visibleLayout), [visibleLayout]);
+
+  const publishViewport = useCallback(
+    ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
+      const focus = focusedLandmarks({ landmarks: layout.landmarks, viewport, selectedKey });
+      if (focus.length === 0) {
+        return;
+      }
+      onViewportSettled({
+        focus,
+        pageLimit: focusedPageLimit(viewport),
+        boundaryAnchor:
+          includeBoundary && viewportNearLandmarkBoundary(viewport, layout.bounds)
+            ? nearestBoundaryLandmark(layout.landmarks, viewport)
+            : undefined,
+      });
+    },
+    [layout.bounds, layout.landmarks, onViewportSettled, selectedKey],
+  );
+
+  const scheduleViewport = useCallback(
+    (viewport: ViewBox) => {
+      if (settleTimer.current) {
+        clearTimeout(settleTimer.current);
+      }
+      settleTimer.current = setTimeout(
+        () => publishViewport({ viewport, includeBoundary: true }),
+        VIEWPORT_SETTLE_MS,
+      );
+    },
+    [publishViewport],
+  );
+
+  useEffect(() => {
+    publishViewport({ viewport: viewBoxRef.current, includeBoundary: false });
+    return () => {
+      if (settleTimer.current) {
+        clearTimeout(settleTimer.current);
+      }
+    };
+  }, [publishViewport]);
 
   function updateViewBox(nextViewBox: ViewBox) {
     viewBoxRef.current = nextViewBox;
     setViewBox(nextViewBox);
   }
 
-  async function requestLoadMore(viewport?: ViewBox) {
-    if (
-      !hasNextPage ||
-      isFetchingNextPage ||
-      loadMorePending.current ||
-      (viewport && !mapViewportNearBoundary(viewport, layout.bounds))
-    ) {
-      return;
-    }
-    loadMorePending.current = true;
-    try {
-      await onLoadMore();
-    } finally {
-      loadMorePending.current = false;
-    }
-  }
-
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
     const current = viewBoxRef.current;
-    const minimumWidth = focusedKnowledgeMapViewBox(layout).width * 0.28;
-    const maximumWidth = layout.bounds.width * 2.5;
+    const minimumWidth = 260;
+    const maximumWidth = Math.max(2400, layout.bounds.width * 2.5);
     const width = Math.min(maximumWidth, Math.max(minimumWidth, current.width * factor));
     const height = width * (current.height / current.width);
     const anchorX = current.x + current.width * anchor.x;
@@ -542,20 +552,12 @@ export function KnowledgeMapCanvas({
       height,
     };
     updateViewBox(nextViewBox);
-    const now = Date.now();
-    if (
-      factor > 1 &&
-      mapViewportNearBoundary(nextViewBox, layout.bounds) &&
-      now - lastZoomLoadAt.current >= ZOOM_LOAD_THROTTLE_MS
-    ) {
-      lastZoomLoadAt.current = now;
-      void requestLoadMore(nextViewBox);
-    }
+    scheduleViewport(nextViewBox);
   }
 
   function fitMap() {
     updateViewBox(layout.bounds);
-    void requestLoadMore(layout.bounds);
+    scheduleViewport(layout.bounds);
   }
 
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
@@ -618,22 +620,15 @@ export function KnowledgeMapCanvas({
   function handlePointerEnd(event: ReactPointerEvent<SVGSVGElement>) {
     if (drag.current?.pointerId === event.pointerId) {
       const completedDrag = drag.current;
-      const action = mapPointerEndAction({
-        moved: completedDrag.moved,
-        cloudReadableId: completedDrag.cloudReadableId,
-        canLoadMore: hasNextPage && !isFetchingNextPage,
-        nearBoundary: mapViewportNearBoundary(completedDrag.currentViewBox, layout.bounds),
-      });
-      suppressNextCloudClick.current = action.suppressCloudClick;
-      if (action.selectedPageReadableId) {
-        onSelect({ kind: 'page', readableId: action.selectedPageReadableId });
+      suppressNextCloudClick.current =
+        completedDrag.moved || Boolean(completedDrag.cloudReadableId);
+      if (!completedDrag.moved && completedDrag.cloudReadableId) {
+        onSelect({ kind: 'page', readableId: completedDrag.cloudReadableId });
       }
       drag.current = null;
       setPanning(false);
       event.currentTarget.releasePointerCapture(event.pointerId);
-      if (action.loadMore) {
-        void requestLoadMore();
-      }
+      scheduleViewport(completedDrag.currentViewBox);
     }
   }
 
@@ -656,7 +651,7 @@ export function KnowledgeMapCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
-      aria-label={`Hypermedia map with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.resources.length} visible resource dots`}
+      aria-label={`Hypermedia map with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.landmarks.length} visible landmarks`}
     >
       <svg
         className={cn(
@@ -673,7 +668,7 @@ export function KnowledgeMapCanvas({
         onPointerCancel={handlePointerCancel}
         onDoubleClick={fitMap}
       >
-        <KnowledgeMapLayers
+        <HypermediaLayers
           layout={visibleLayout}
           activeKey={activeKey}
           eagerImageKeys={eagerImageKeys}
@@ -684,11 +679,8 @@ export function KnowledgeMapCanvas({
         />
       </svg>
 
-      {hasNextPage && !isFetchingNextPage && (
-        <KnowledgeMapExplorationCue
-          loadMoreError={loadMoreError}
-          onLoadMore={() => void requestLoadMore()}
-        />
+      {!isLoadingNeighborhood && (canExplore || neighborhoodError) && (
+        <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
       )}
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
@@ -721,12 +713,12 @@ export function KnowledgeMapCanvas({
         </Button>
       </div>
 
-      {isFetchingNextPage && (
+      {isLoadingNeighborhood && (
         <div
           className="absolute right-4 bottom-4 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
           aria-live="polite"
         >
-          Loading nearby knowledge…
+          Loading nearby landmarks…
         </div>
       )}
 

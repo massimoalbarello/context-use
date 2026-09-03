@@ -12,6 +12,7 @@ import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
+import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
@@ -19,6 +20,7 @@ import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
+import { HypermediaService } from '#services/hypermedia/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
@@ -98,6 +100,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
+      hypermediaService: new HypermediaService(new HypermediaRepository(database)),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,
@@ -296,54 +299,49 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expectNoInternalResourceIds(page);
     expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
-    const knowledgeMapResponse = await app.handle(
-      new Request('http://localhost/api/knowledge-map'),
+    const assetNeighborhoodResponse = await app.handle(
+      new Request('http://localhost/api/hypermedia/resources?anchor=asset:quarterly-chart'),
     );
-    const knowledgeMap = (await knowledgeMapResponse.json()) as {
+    expect(assetNeighborhoodResponse.status).toBe(StatusMap.OK);
+    expect(await assetNeighborhoodResponse.json()).toEqual(
+      expect.objectContaining({
+        anchor: expect.objectContaining({
+          kind: 'asset',
+          asset: expect.objectContaining({ readableId: 'quarterly-chart' }),
+        }),
+        neighbors: [
+          expect.objectContaining({
+            resource: expect.objectContaining({
+              kind: 'entity',
+              entity: expect.objectContaining({ readableId: 'luca-bianchi' }),
+            }),
+          }),
+        ],
+      }),
+    );
+
+    const focusedAssetPagesResponse = await app.handle(
+      new Request(
+        'http://localhost/api/hypermedia/pages?focus=asset:quarterly-chart&query=Quarterly%20chart',
+      ),
+    );
+    expect(focusedAssetPagesResponse.status).toBe(StatusMap.OK);
+    const focusedAssetPages = (await focusedAssetPagesResponse.json()) as {
       pages: Array<{
         readableId: string;
-        mentions: Array<{ readableId: string; image: { readableId: string } | null }>;
-        assetUsages: Array<{
-          asset: { readableId: string; mediaType: string };
-          presentation: string;
-        }>;
+        resources: Array<{ kind: string; readableId: string }>;
       }>;
     };
-    expectNoInternalResourceIds(knowledgeMap);
-    expect(knowledgeMap.pages).toEqual([
+    expectNoInternalResourceIds(focusedAssetPages);
+    expect(focusedAssetPages.pages).toEqual([
       expect.objectContaining({
         readableId: 'evidence-report',
-        mentions: [
-          expect.objectContaining({
-            readableId: 'luca-bianchi',
-            image: expect.objectContaining({ readableId: 'quarterly-chart' }),
-          }),
-        ],
-        assetUsages: [
-          expect.objectContaining({
-            asset: expect.objectContaining({
-              readableId: 'quarterly-chart',
-              mediaType: 'image/png',
-            }),
-            presentation: 'attachment',
-          }),
-          expect.objectContaining({
-            asset: expect.objectContaining({ readableId: 'quarterly-chart' }),
-            presentation: 'embed',
-          }),
-        ],
+        resources: expect.arrayContaining([
+          { kind: 'asset', readableId: 'quarterly-chart' },
+          { kind: 'entity', readableId: 'luca-bianchi' },
+        ]),
       }),
     ]);
-
-    const assetFilteredKnowledgeMapResponse = await app.handle(
-      new Request('http://localhost/api/knowledge-map?query=Quarterly%20chart'),
-    );
-    expect(assetFilteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
-    expect(await assetFilteredKnowledgeMapResponse.json()).toEqual(
-      expect.objectContaining({
-        pages: [expect.objectContaining({ readableId: 'evidence-report' })],
-      }),
-    );
 
     const detailResponse = await app.handle(
       new Request('http://localhost/api/assets/quarterly-chart'),

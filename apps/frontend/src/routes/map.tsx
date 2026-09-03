@@ -1,28 +1,27 @@
-import { useSuspenseInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import type { HypermediaSelection } from '../components/hypermedia/hypermedia-canvas';
+import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
+import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
+import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
-import { WorkspaceEmpty } from '../components/knowledge/workspace-empty';
-import {
-  KnowledgeMapCanvas,
-  type KnowledgeMapSelection,
-} from '../components/knowledge-map/knowledge-map-canvas';
-import { KnowledgeMapPreviewPanel } from '../components/knowledge-map/knowledge-map-preview-panel';
-import { KnowledgeMapSidebar } from '../components/knowledge-map/knowledge-map-sidebar';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
-import { knowledgeMapFrom, knowledgeMapQueryOptions } from '../queries/knowledge-map';
+import {
+  focusedHypermediaPagesQueryOptions,
+  type HypermediaResourceReference,
+  hypermediaResourceNeighborhoodQueryOptions,
+} from '../queries/hypermedia';
 
 const MAX_MAP_SEARCH_LENGTH = 160;
 const MAX_MAP_READABLE_ID_LENGTH = 120;
-type KnowledgeMapSearch = Partial<CalendarDateRange> & {
+type HypermediaSearch = Partial<CalendarDateRange> & {
   q?: string;
-  kind?: KnowledgeMapSelection['kind'];
+  kind?: HypermediaSelection['kind'];
   id?: string;
 };
 
-function mapSearch(search: Record<string, unknown>): KnowledgeMapSearch {
-  const result: KnowledgeMapSearch = calendarDateRangeFromSearch(search) ?? {};
+function mapSearch(search: Record<string, unknown>): HypermediaSearch {
+  const result: HypermediaSearch = calendarDateRangeFromSearch(search) ?? {};
   if (typeof search.q === 'string' && search.q.trim()) {
     result.q = search.q.trim().slice(0, MAX_MAP_SEARCH_LENGTH);
   }
@@ -47,49 +46,57 @@ export const Route = createFileRoute('/map')({
   loaderDeps: ({ search }) => ({
     query: search.q,
     dateRange: calendarDateRangeFromSearch(search),
+    kind: search.kind,
+    id: search.id,
   }),
-  loader: ({ context, deps }) =>
-    context.queryClient.ensureInfiniteQueryData(knowledgeMapQueryOptions(deps)),
-  component: KnowledgeMapRoute,
+  loader: async ({ context, deps }) => {
+    if (!context.profile) {
+      return;
+    }
+    const self: HypermediaResourceReference = {
+      kind: 'entity',
+      readableId: context.profile.selfEntity.readableId,
+    };
+    const selectedResource: HypermediaResourceReference | undefined =
+      deps.id && (deps.kind === 'entity' || deps.kind === 'asset')
+        ? { kind: deps.kind, readableId: deps.id }
+        : undefined;
+    const focus = selectedResource ? [selectedResource, self] : [self];
+    await Promise.all([
+      context.queryClient.ensureQueryData(
+        hypermediaResourceNeighborhoodQueryOptions({ anchor: self }),
+      ),
+      selectedResource
+        ? context.queryClient.ensureQueryData(
+            hypermediaResourceNeighborhoodQueryOptions({ anchor: selectedResource }),
+          )
+        : undefined,
+      context.queryClient.ensureQueryData(
+        focusedHypermediaPagesQueryOptions({
+          focus,
+          limit: 8,
+          query: deps.query,
+          dateRange: deps.dateRange,
+          retainPageReadableId: deps.kind === 'page' ? deps.id : undefined,
+        }),
+      ),
+    ]);
+  },
+  component: HypermediaRoute,
 });
 
-function KnowledgeMapEmpty({ filtered }: { filtered: boolean }) {
-  if (filtered) {
-    return (
-      <div className="mx-auto flex min-h-[32rem] max-w-md flex-col justify-center px-6 text-center">
-        <h2 className="font-semibold text-2xl tracking-tight">Nothing matches these filters</h2>
-        <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-          Try another keyword or widen the interval.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <WorkspaceEmpty
-      eyebrow="Hypermedia map"
-      title="Your map starts with a knowledge page"
-      description="Create a knowledge page that mentions an entity or includes an asset. Its relationships will become the first neighborhood on this map."
-      createTo="/pages/new"
-      createLabel="Create the first knowledge page"
-    />
-  );
-}
-
-function KnowledgeMapRoute() {
+function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
   const { q = '', kind, id } = search;
   const dateRange = calendarDateRangeFromSearch(search);
-  const mapQuery = useSuspenseInfiniteQuery(knowledgeMapQueryOptions({ query: q, dateRange }));
-  const map = useMemo(() => knowledgeMapFrom(mapQuery.data.pages), [mapQuery.data.pages]);
   const navigate = Route.useNavigate();
   if (!profile) {
     return null;
   }
-  const filtersActive = Boolean(q || dateRange);
-  const selection = kind && id ? { kind, readableId: id } : undefined;
-  function selectKnowledge(nextSelection: KnowledgeMapSelection) {
+  const selection: HypermediaSelection | undefined =
+    kind && id ? { kind, readableId: id } : undefined;
+  function selectKnowledge(nextSelection: HypermediaSelection) {
     void navigate({
       search: (previous) => ({
         ...previous,
@@ -101,9 +108,8 @@ function KnowledgeMapRoute() {
 
   return (
     <KnowledgeWorkspace>
-      <KnowledgeMapSidebar
+      <HypermediaSidebar
         profile={profile}
-        truncated={map.truncated}
         query={q}
         dateRange={dateRange}
         onQueryApply={(query) => {
@@ -131,38 +137,31 @@ function KnowledgeMapRoute() {
         }}
       />
       <KnowledgeWorkspaceDetail>
-        {map.pages.length === 0 ? (
-          <KnowledgeMapEmpty filtered={filtersActive} />
-        ) : (
-          <div className="relative size-full">
-            <KnowledgeMapCanvas
-              key={`${q}:${dateRange?.from ?? ''}:${dateRange?.to ?? ''}`}
-              pages={map.pages}
-              anchorEntity={profile.selfEntity}
-              selectedKey={selection ? `${selection.kind}:${selection.readableId}` : undefined}
+        <div className="relative size-full">
+          <HypermediaExplorer
+            key={`${q}:${dateRange?.from ?? ''}:${dateRange?.to ?? ''}`}
+            selfReadableId={profile.selfEntity.readableId}
+            selection={selection}
+            query={q}
+            dateRange={dateRange}
+            onSelect={selectKnowledge}
+          />
+          {selection && (
+            <HypermediaPreviewPanel
+              selection={selection}
               onSelect={selectKnowledge}
-              hasNextPage={mapQuery.hasNextPage}
-              isFetchingNextPage={mapQuery.isFetchingNextPage}
-              loadMoreError={mapQuery.isFetchNextPageError ? mapQuery.error : null}
-              onLoadMore={() => mapQuery.fetchNextPage()}
+              onClose={() => {
+                void navigate({
+                  search: (previous) => ({
+                    ...previous,
+                    kind: undefined,
+                    id: undefined,
+                  }),
+                });
+              }}
             />
-            {selection && (
-              <KnowledgeMapPreviewPanel
-                selection={selection}
-                onSelect={selectKnowledge}
-                onClose={() => {
-                  void navigate({
-                    search: (previous) => ({
-                      ...previous,
-                      kind: undefined,
-                      id: undefined,
-                    }),
-                  });
-                }}
-              />
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </KnowledgeWorkspaceDetail>
     </KnowledgeWorkspace>
   );

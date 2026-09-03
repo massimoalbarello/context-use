@@ -14,6 +14,7 @@ import { READABLE_ID_SUFFIX_LENGTH } from '#models/readable-ids/model.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
+import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
@@ -21,6 +22,7 @@ import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
+import { HypermediaService } from '#services/hypermedia/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
@@ -64,11 +66,10 @@ const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
 );
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
-const EXPECTED_TWO_MAP_BATCH_PAGE_COUNT = 4;
 const EXPECTED_SECOND_PAGE_OFFSET = 4;
 const EXPECTED_FILTERED_PAGE_COUNT = 5;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
-const EXPECTED_CURRENT_MENTION_COUNT = 4;
+const EXPECTED_CURRENT_MENTION_COUNT = 5;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -162,6 +163,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
+      hypermediaService: new HypermediaService(new HypermediaRepository(database)),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,
@@ -327,7 +329,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
           temporalCoverage: '2025-03/2025-08',
           markdown: `# Growth playbook
 
-[Luca](context-use://entity/luca-bianchi) owns this feedback system.
+[Luca](context-use://entity/luca-bianchi) owns this feedback system with [Test Owner](context-use://entity/test-owner).
 
 ## Feedback loop
 
@@ -343,13 +345,16 @@ Every observation changes the next action.`,
       mentions: Array<{ readableId: string }>;
     };
     expectNoInternalResourceIds(growth);
-    expect(growth.excerpt).toBe('Luca owns this feedback system.');
+    expect(growth.excerpt).toBe('Luca owns this feedback system with Test Owner.');
     expect(growth.temporalCoverage).toBe('2025-03/2025-08');
     if (growth.temporalCoverage === null) {
       throw new Error('Temporal page response omitted its coverage');
     }
     expect(growth.revisionNumber).toBe(1);
-    expect(growth.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
+    expect(growth.mentions.map(({ readableId }) => readableId)).toEqual([
+      'luca-bianchi',
+      'test-owner',
+    ]);
     const [storedTemporalProjection] = await database<
       Array<{
         temporalCoverage: string | null;
@@ -447,7 +452,7 @@ Every observation changes the next action.`,
         path: '/pages',
         body: {
           markdown:
-            '# Alpha principles\n\n[Temporal subject](context-use://entity/temporal-subject) has semantic guidance with no asserted interval.',
+            '# Alpha principles\n\n[Temporal subject](context-use://entity/temporal-subject) and [Test Owner](context-use://entity/test-owner) share semantic guidance with no asserted interval.',
         },
       }),
     );
@@ -516,164 +521,87 @@ Every observation changes the next action.`,
       ].sort(),
     );
 
-    const knowledgeMapResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/knowledge-map?limit=5' }),
+    const firstNeighborhoodResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/resources?anchor=entity:test-owner&limit=1',
+      }),
     );
-    expect(knowledgeMapResponse.status).toBe(StatusMap.OK);
-    const knowledgeMap = (await knowledgeMapResponse.json()) as {
+    expect(firstNeighborhoodResponse.status).toBe(StatusMap.OK);
+    const firstNeighborhood = (await firstNeighborhoodResponse.json()) as {
+      anchor: { kind: string; entity: { readableId: string } };
+      neighbors: Array<{ resource: { kind: string; entity: { readableId: string } } }>;
+      nextCursor: string | null;
+    };
+    expectNoInternalResourceIds(firstNeighborhood);
+    expect(firstNeighborhood.anchor).toEqual(
+      expect.objectContaining({
+        kind: 'entity',
+        entity: expect.objectContaining({ readableId: 'test-owner', isSelf: true }),
+      }),
+    );
+    expect(firstNeighborhood.neighbors).toEqual([
+      expect.objectContaining({
+        resource: expect.objectContaining({
+          kind: 'entity',
+          entity: expect.objectContaining({ readableId: 'luca-bianchi' }),
+        }),
+      }),
+    ]);
+    expect(firstNeighborhood.nextCursor).toEqual(expect.any(String));
+
+    const remainingNeighborhoodResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: `/hypermedia/resources?anchor=entity:test-owner&limit=1&cursor=${encodeURIComponent(firstNeighborhood.nextCursor!)}`,
+      }),
+    );
+    const remainingNeighborhood = (await remainingNeighborhoodResponse.json()) as {
+      neighbors: Array<{ resource: { entity: { readableId: string } } }>;
+      nextCursor: string | null;
+    };
+    expect(remainingNeighborhood.neighbors[0]?.resource.entity.readableId).toBe('temporal-subject');
+    expect(remainingNeighborhood.nextCursor).toBeNull();
+
+    const focusedResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?focus=entity:temporal-subject&limit=2',
+      }),
+    );
+    expect(focusedResponse.status).toBe(StatusMap.OK);
+    const focused = (await focusedResponse.json()) as {
       pages: Array<{
         readableId: string;
-        mentions: Array<{ readableId: string }>;
+        temporalCoverage: string | null;
+        resources: Array<{ kind: string; readableId: string }>;
       }>;
       nextCursor: string | null;
       truncated: boolean;
     };
-    expectNoInternalResourceIds(knowledgeMap);
-    expect(knowledgeMap.nextCursor).toBeNull();
-    expect(knowledgeMap.truncated).toBe(false);
-    expect(knowledgeMap.pages.map(({ readableId }) => readableId)).toEqual([
+    expectNoInternalResourceIds(focused);
+    expect(focused.pages.map(({ readableId }) => readableId)).toEqual([
       'alpha-principles',
-      duplicatePage.readableId,
       'current-programme',
-      'operating-rhythm',
-      'growth-playbook',
     ]);
-    const operatingRhythmMapPage = knowledgeMap.pages.find(
-      ({ readableId }) => readableId === 'operating-rhythm',
-    );
-    expect(operatingRhythmMapPage).toEqual(
-      expect.objectContaining({
-        mentions: [expect.objectContaining({ readableId: 'temporal-subject' })],
-      }),
-    );
-    expect(operatingRhythmMapPage).not.toHaveProperty('references');
+    expect(focused.pages[0]?.temporalCoverage).toBeNull();
+    expect(focused.pages[0]?.resources).toContainEqual({
+      kind: 'entity',
+      readableId: 'temporal-subject',
+    });
+    expect(focused.nextCursor).toEqual(expect.any(String));
+    expect(focused.truncated).toBe(false);
 
-    const filteredKnowledgeMapResponse = await app.handle(
+    const retainedResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/knowledge-map?limit=1&query=Temporal%20subject&time=2026-06',
+        path: '/hypermedia/pages?focus=entity:temporal-subject&limit=1&retainPage=growth-playbook',
       }),
     );
-    expect(filteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
-    const filteredKnowledgeMap = (await filteredKnowledgeMapResponse.json()) as {
+    const retained = (await retainedResponse.json()) as {
       pages: Array<{ readableId: string }>;
-      nextCursor: string | null;
     };
-    expect(filteredKnowledgeMap).toEqual(
-      expect.objectContaining({
-        pages: [expect.any(Object)],
-        nextCursor: expect.any(String),
-      }),
-    );
-    const remainingFilteredKnowledgeMapResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: `/knowledge-map?limit=1&query=Temporal%20subject&time=2026-06&cursor=${encodeURIComponent(filteredKnowledgeMap.nextCursor!)}`,
-      }),
-    );
-    expect(remainingFilteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
-    const remainingFilteredKnowledgeMap = (await remainingFilteredKnowledgeMapResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-      nextCursor: string | null;
-    };
-    expect(remainingFilteredKnowledgeMap).toEqual(
-      expect.objectContaining({
-        pages: [expect.any(Object)],
-        nextCursor: null,
-      }),
-    );
-    expect(
-      [...filteredKnowledgeMap.pages, ...remainingFilteredKnowledgeMap.pages]
-        .map(({ readableId }) => readableId)
-        .sort(),
-    ).toEqual(['alpha-principles', 'current-programme']);
-
-    const excerptFilteredKnowledgeMapResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/knowledge-map?query=feedback%20system' }),
-    );
-    expect(excerptFilteredKnowledgeMapResponse.status).toBe(StatusMap.OK);
-    expect(await excerptFilteredKnowledgeMapResponse.json()).toEqual(
-      expect.objectContaining({
-        pages: [expect.objectContaining({ readableId: 'growth-playbook' })],
-      }),
-    );
-
-    const invalidKnowledgeMapIntervalResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/knowledge-map?time=2026-02-29' }),
-    );
-    expect(invalidKnowledgeMapIntervalResponse.status).toBe(StatusMap['Bad Request']);
-
-    const boundedKnowledgeMapResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/knowledge-map?limit=2' }),
-    );
-    const boundedKnowledgeMap = (await boundedKnowledgeMapResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-      nextCursor: string | null;
-      truncated: boolean;
-    };
-    expect(boundedKnowledgeMap).toEqual(
-      expect.objectContaining({
-        pages: expect.any(Array),
-        nextCursor: expect.any(String),
-        truncated: false,
-      }),
-    );
-    const nextKnowledgeMapResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: `/knowledge-map?limit=2&cursor=${encodeURIComponent(boundedKnowledgeMap.nextCursor!)}`,
-      }),
-    );
-    expect(nextKnowledgeMapResponse.status).toBe(StatusMap.OK);
-    const nextKnowledgeMap = (await nextKnowledgeMapResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-      nextCursor: string | null;
-    };
-    expect(nextKnowledgeMap.pages).toHaveLength(2);
-    expect(
-      new Set([
-        ...boundedKnowledgeMap.pages.map(({ readableId }) => readableId),
-        ...nextKnowledgeMap.pages.map(({ readableId }) => readableId),
-      ]).size,
-    ).toBe(EXPECTED_TWO_MAP_BATCH_PAGE_COUNT);
-    expect(nextKnowledgeMap.nextCursor).toEqual(expect.any(String));
-
-    const finalKnowledgeMapResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: `/knowledge-map?limit=2&cursor=${encodeURIComponent(nextKnowledgeMap.nextCursor!)}`,
-      }),
-    );
-    expect(finalKnowledgeMapResponse.status).toBe(StatusMap.OK);
-    const finalKnowledgeMap = (await finalKnowledgeMapResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-      nextCursor: string | null;
-    };
-    expect(finalKnowledgeMap.pages).toHaveLength(1);
-    expect(
-      new Set([
-        ...boundedKnowledgeMap.pages.map(({ readableId }) => readableId),
-        ...nextKnowledgeMap.pages.map(({ readableId }) => readableId),
-        ...finalKnowledgeMap.pages.map(({ readableId }) => readableId),
-      ]).size,
-    ).toBe(EXPECTED_PAGE_COUNT);
-    expect(finalKnowledgeMap.nextCursor).toBeNull();
-
-    const invalidKnowledgeMapCursorResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/knowledge-map?cursor=not-a-cursor' }),
-    );
-    expect(invalidKnowledgeMapCursorResponse.status).toBe(StatusMap['Bad Request']);
-    const forgedKnowledgeMapCursor = Buffer.from(
-      JSON.stringify({ version: 1, updatedAt: '1', readableId: 'valid-page' }),
-      'utf8',
-    ).toString('base64url');
-    const forgedKnowledgeMapCursorResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: `/knowledge-map?cursor=${encodeURIComponent(forgedKnowledgeMapCursor)}`,
-      }),
-    );
-    expect(forgedKnowledgeMapCursorResponse.status).toBe(StatusMap['Bad Request']);
+    expect(retained.pages.map(({ readableId }) => readableId)).toEqual(['growth-playbook']);
 
     const overlappingPagesResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0&time=2025-04' }),
@@ -780,7 +708,7 @@ Every observation changes the next action.`,
       items: [
         expect.objectContaining({
           readableId: 'growth-playbook',
-          excerpt: 'Luca owns this feedback system.',
+          excerpt: 'Luca owns this feedback system with Test Owner.',
         }),
         expect.objectContaining({
           readableId: duplicatePage.readableId,
