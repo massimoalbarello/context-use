@@ -16,6 +16,10 @@ import {
   type SettledHypermediaViewport,
 } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
+import {
+  nextHypermediaSpotlightResource,
+  selectedHypermediaResource,
+} from './hypermedia-selection';
 import { INITIAL_FOCUSED_PAGE_LIMIT } from './hypermedia-visibility';
 
 type NeighborhoodRequest = {
@@ -27,14 +31,6 @@ const EMPTY_PAGES: HypermediaPage[] = [];
 
 function requestKey(request: NeighborhoodRequest): string {
   return `${hypermediaResourceKey(request.anchor)}:${request.cursor ?? 'first'}`;
-}
-
-function resourceSelection(
-  selection?: HypermediaSelection,
-): HypermediaResourceReference | undefined {
-  return selection && selection.kind !== 'page'
-    ? { kind: selection.kind, readableId: selection.readableId }
-    : undefined;
 }
 
 export function HypermediaExplorer({
@@ -54,7 +50,12 @@ export function HypermediaExplorer({
     () => ({ kind: 'entity', readableId: selfReadableId }),
     [selfReadableId],
   );
-  const selectedResource = useMemo(() => resourceSelection(selection), [selection]);
+  const selectedResource = useMemo(() => selectedHypermediaResource(selection), [selection]);
+  const [retainedSpotlightResource, setRetainedSpotlightResource] = useState<
+    HypermediaResourceReference | undefined
+  >(selectedResource);
+  const spotlightResource =
+    selectedResource ?? (selection?.kind === 'page' ? retainedSpotlightResource : undefined);
   const [neighborhoodRequests, setNeighborhoodRequests] = useState<NeighborhoodRequest[]>(() => {
     const initial = [{ anchor: self }];
     return selectedResource &&
@@ -94,6 +95,12 @@ export function HypermediaExplorer({
   }, [entities, neighborhoods]);
 
   useEffect(() => {
+    setRetainedSpotlightResource((current) =>
+      nextHypermediaSpotlightResource({ current, selection }),
+    );
+  }, [selection]);
+
+  useEffect(() => {
     if (!selectedResource) {
       return;
     }
@@ -116,11 +123,11 @@ export function HypermediaExplorer({
   });
   const selectedResourcePagesQuery = useQuery({
     ...allFocusedHypermediaPagesQueryOptions({
-      focus: selectedResource ? [selectedResource] : [self],
+      focus: spotlightResource ? [spotlightResource] : [self],
       query,
       dateRange,
     }),
-    enabled: Boolean(selectedResource),
+    enabled: Boolean(spotlightResource),
   });
   const selectedPageReadableId = selection?.kind === 'page' ? selection.readableId : undefined;
   const focusedPages = pageQuery.data?.pages ?? EMPTY_PAGES;
@@ -218,7 +225,8 @@ export function HypermediaExplorer({
     <HypermediaCanvas
       resources={resources}
       pages={pages}
-      spotlightPages={selectedResource ? selectedResourcePagesQuery.data?.pages : undefined}
+      spotlightKey={spotlightResource ? hypermediaResourceKey(spotlightResource) : undefined}
+      spotlightPages={spotlightResource ? selectedResourcePagesQuery.data?.pages : undefined}
       selectedKey={selectedKey}
       onSelect={onSelect}
       onViewportSettled={handleViewportSettled}
@@ -227,7 +235,7 @@ export function HypermediaExplorer({
         resources.length === 0 &&
         (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
       }
-      isSpotlightLoading={Boolean(selectedResource && selectedResourcePagesQuery.isPending)}
+      isSpotlightLoading={Boolean(spotlightResource && selectedResourcePagesQuery.isPending)}
       neighborhoodError={neighborhoodError}
       onRetryNeighborhood={() => {
         if (entityError) {

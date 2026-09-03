@@ -455,6 +455,7 @@ function HypermediaExplorationCue({
 export function HypermediaCanvas({
   resources,
   pages,
+  spotlightKey,
   spotlightPages,
   selectedKey,
   onSelect,
@@ -467,6 +468,7 @@ export function HypermediaCanvas({
 }: {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
+  spotlightKey?: string;
   spotlightPages?: HypermediaPage[];
   selectedKey?: string;
   onSelect: (selection: HypermediaSelection) => void;
@@ -482,12 +484,7 @@ export function HypermediaCanvas({
   const [viewBox, setViewBox] = useState<ViewBox>(() =>
     initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
   );
-  const selectedResourceKey =
-    selectedKey?.startsWith('entity:') || selectedKey?.startsWith('asset:')
-      ? selectedKey
-      : undefined;
-  const [spotlightKey, setSpotlightKey] = useState(selectedResourceKey);
-  const spotlightActive = Boolean(selectedResourceKey && spotlightKey === selectedResourceKey);
+  const spotlightActive = Boolean(spotlightKey);
   const pageLimit = focusedPageLimit(viewBox);
   const displayedPages = useMemo(() => {
     const limitedPages = pages.slice(0, pageLimit);
@@ -506,14 +503,14 @@ export function HypermediaCanvas({
   );
   const spotlightLayout = useMemo(
     () =>
-      selectedResourceKey
+      spotlightKey
         ? buildHypermediaSpotlightLayout({
             resources,
             pages: spotlightPages ?? [],
-            selectedKey: selectedResourceKey,
+            selectedKey: spotlightKey,
           })
         : undefined,
-    [resources, selectedResourceKey, spotlightPages],
+    [resources, spotlightKey, spotlightPages],
   );
   const layout = spotlightActive && spotlightLayout ? spotlightLayout : semanticLayout;
   const viewBoxRef = useRef(viewBox);
@@ -544,10 +541,6 @@ export function HypermediaCanvas({
     viewBoxRef.current = nextViewBox;
     setViewBox(nextViewBox);
   }, []);
-
-  useEffect(() => {
-    setSpotlightKey(selectedResourceKey);
-  }, [selectedResourceKey]);
 
   useEffect(() => {
     if (!spotlightActive || !spotlightLayout || spotlightPages === undefined) {
@@ -613,8 +606,6 @@ export function HypermediaCanvas({
   }, [layout.resourceBounds, publishViewport, spotlightActive, updateViewBox]);
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
-    const wasSpotlightActive = spotlightActive;
-    setSpotlightKey(undefined);
     fitActive.current = false;
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
@@ -631,20 +622,22 @@ export function HypermediaCanvas({
       return;
     }
     updateViewBox(nextViewBox);
-    if (!wasSpotlightActive) {
+    if (!spotlightActive) {
       scheduleViewport({ viewport: nextViewBox, includeBoundary: true });
     }
   }
 
   function fitHypermedia() {
-    const wasSpotlightActive = spotlightActive;
-    setSpotlightKey(undefined);
-    fitActive.current = true;
     setShowExplorationHint(false);
-    updateViewBox(semanticLayout.resourceBounds);
-    if (!wasSpotlightActive) {
-      scheduleViewport({ viewport: semanticLayout.resourceBounds, includeBoundary: true });
+    if (spotlightActive && spotlightLayout) {
+      fitActive.current = false;
+      const current = viewBoxRef.current;
+      updateViewBox(spotlightHypermediaViewBox(spotlightLayout, current.height / current.width));
+      return;
     }
+    fitActive.current = true;
+    updateViewBox(semanticLayout.resourceBounds);
+    scheduleViewport({ viewport: semanticLayout.resourceBounds, includeBoundary: true });
   }
 
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
@@ -696,7 +689,6 @@ export function HypermediaCanvas({
         4
     ) {
       drag.current.moved = true;
-      setSpotlightKey(undefined);
       setShowExplorationHint(false);
     }
     const currentViewBox = {
@@ -719,7 +711,7 @@ export function HypermediaCanvas({
       drag.current = null;
       setPanning(false);
       event.currentTarget.releasePointerCapture(event.pointerId);
-      if (completedDrag.moved) {
+      if (completedDrag.moved && !spotlightActive) {
         scheduleViewport({ viewport: completedDrag.currentViewBox, includeBoundary: true });
       }
     }
