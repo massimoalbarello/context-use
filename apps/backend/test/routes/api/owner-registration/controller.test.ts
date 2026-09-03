@@ -16,6 +16,7 @@ import type { HealthServiceContract } from '#services/health/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
+import { unusedHypermediaService } from '../../../support/app.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -63,6 +64,7 @@ const healthService: HealthServiceContract = { check: unexpectedCall };
 const pagesService: KnowledgePagesServiceContract = {
   create: unexpectedCall,
   list: unexpectedCall,
+  preview: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,
@@ -89,6 +91,7 @@ test('owner registration API exposes only complete registration states', async (
       frontendAssetsService,
       entitiesService,
       healthService,
+      hypermediaService: unusedHypermediaService,
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,

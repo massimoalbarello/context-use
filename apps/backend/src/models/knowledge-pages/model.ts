@@ -51,6 +51,11 @@ export interface KnowledgePage extends KnowledgePageSummary {
   revisions: KnowledgePageRevisionSummary[];
 }
 
+export interface KnowledgePagePreview extends KnowledgePageSummary {
+  markdown: string;
+  mentions: Entity[];
+}
+
 export interface StoredKnowledgePage extends KnowledgePageSummary {
   ownerId: string;
   currentRevisionId: string;

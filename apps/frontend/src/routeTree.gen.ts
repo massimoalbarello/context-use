@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssetsRouteImport } from './routes/assets'
 import { Route as EntitiesRouteImport } from './routes/entities'
+import { Route as HypermediaRouteImport } from './routes/hypermedia'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PagesRouteImport } from './routes/pages'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -41,6 +42,11 @@ const AssetsRoute = AssetsRouteImport.update({
 const EntitiesRoute = EntitiesRouteImport.update({
   id: '/entities',
   path: '/entities',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HypermediaRoute = HypermediaRouteImport.update({
+  id: '/hypermedia',
+  path: '/hypermedia',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRouteWithChildren
   '/entities': typeof EntitiesRouteWithChildren
+  '/hypermedia': typeof HypermediaRoute
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
@@ -141,6 +148,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/hypermedia': typeof HypermediaRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/assets/$id': typeof AssetsIdRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRouteWithChildren
   '/entities': typeof EntitiesRouteWithChildren
+  '/hypermedia': typeof HypermediaRoute
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
@@ -182,6 +191,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assets'
     | '/entities'
+    | '/hypermedia'
     | '/login'
     | '/pages'
     | '/settings'
@@ -200,6 +210,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/hypermedia'
     | '/login'
     | '/setup'
     | '/assets/$id'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assets'
     | '/entities'
+    | '/hypermedia'
     | '/login'
     | '/pages'
     | '/settings'
@@ -239,6 +251,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssetsRoute: typeof AssetsRouteWithChildren
   EntitiesRoute: typeof EntitiesRouteWithChildren
+  HypermediaRoute: typeof HypermediaRoute
   LoginRoute: typeof LoginRoute
   PagesRoute: typeof PagesRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
@@ -267,6 +280,13 @@ declare module '@tanstack/react-router' {
       path: '/entities'
       fullPath: '/entities'
       preLoaderRoute: typeof EntitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hypermedia': {
+      id: '/hypermedia'
+      path: '/hypermedia'
+      fullPath: '/hypermedia'
+      preLoaderRoute: typeof HypermediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -438,6 +458,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssetsRoute: AssetsRouteWithChildren,
   EntitiesRoute: EntitiesRouteWithChildren,
+  HypermediaRoute: HypermediaRoute,
   LoginRoute: LoginRoute,
   PagesRoute: PagesRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,

@@ -4,7 +4,9 @@ import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import {
   KnowledgePageParamsSchema,
+  KnowledgePagePreviewSchema,
   KnowledgePageSchema,
+  knowledgePagePreviewResponse,
   knowledgePageResponse,
   UpdateKnowledgePageBodySchema,
 } from '#routes/api/pages/model.ts';
@@ -27,6 +29,26 @@ export function createPageReadableIdController({
       auth: true,
       response: { [StatusMap.Unauthorized]: ErrorResponseSchema },
     })
+    .get(
+      '/pages/:pageReadableId/preview',
+      async ({ params, user, status }) => {
+        const page = await pagesService.preview({
+          ownerId: user.id,
+          readableId: params.pageReadableId,
+        });
+        return page
+          ? status(StatusMap.OK, knowledgePagePreviewResponse(page))
+          : status(StatusMap['Not Found'], { error: 'Knowledge page not found' });
+      },
+      {
+        detail: { tags: ['Pages'], summary: 'Read a knowledge page preview' },
+        params: KnowledgePageParamsSchema,
+        response: {
+          [StatusMap.OK]: KnowledgePagePreviewSchema,
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+        },
+      },
+    )
     .get(
       '/pages/:pageReadableId',
       async ({ params, user, status }) => {

@@ -62,15 +62,21 @@ export class EntitiesService {
   async detail({
     ownerId,
     readableId,
+    pageLimit,
   }: {
     ownerId: string;
     readableId: string;
+    pageLimit?: number;
   }): Promise<EntityDetail | null> {
     const entity = await this.entities.find({ ownerId, readableId });
     if (!entity) {
       return null;
     }
-    const pages = await this.pages.listByEntity({ ownerId, entityReadableId: readableId });
+    const pages = await this.pages.listByEntity({
+      ownerId,
+      entityReadableId: readableId,
+      limit: pageLimit,
+    });
     return { ...entity, pages };
   }
 

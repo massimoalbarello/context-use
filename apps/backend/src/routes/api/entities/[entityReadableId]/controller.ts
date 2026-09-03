@@ -10,6 +10,7 @@ import {
   SetEntityImageBodySchema,
   UpdateEntityBodySchema,
 } from '#routes/api/entities/model.ts';
+import { PreviewRelationshipsQuerySchema } from '#routes/api/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
 import {
   ResourceInUseResponseSchema,
@@ -41,10 +42,11 @@ export function createEntityReadableIdController({
     })
     .get(
       '/entities/:entityReadableId',
-      async ({ params, user, status }) => {
+      async ({ params, query, user, status }) => {
         const entity = await entitiesService.detail({
           ownerId: user.id,
           readableId: params.entityReadableId,
+          pageLimit: query.relationshipLimit,
         });
         return entity
           ? status(StatusMap.OK, entityDetailResponse(entity))
@@ -53,6 +55,7 @@ export function createEntityReadableIdController({
       {
         detail: { tags: ['Entities'], summary: 'Read an entity and its knowledge pages' },
         params: EntityParamsSchema,
+        query: PreviewRelationshipsQuerySchema,
         response: {
           [StatusMap.OK]: EntityDetailSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,

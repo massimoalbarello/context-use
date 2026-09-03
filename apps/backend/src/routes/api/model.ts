@@ -22,6 +22,11 @@ export const ReadableIdSchema = t.String({
   pattern: READABLE_ID_PATTERN.source,
 });
 
+export const MAX_PREVIEW_RELATIONSHIPS = 12;
+export const PreviewRelationshipsQuerySchema = t.Object({
+  relationshipLimit: t.Optional(t.Numeric({ minimum: 1, maximum: MAX_PREVIEW_RELATIONSHIPS })),
+});
+
 export const ResourceNameConflictSchema = t.Object({
   error: t.String(),
   nameConflict: t.Literal(true),

@@ -67,4 +67,23 @@ describe('knowledge page Markdown', () => {
       }),
     );
   });
+
+  test('can replace internal links with embedded resource-selection controls', () => {
+    const html = renderToStaticMarkup(
+      <KnowledgePageMarkdown
+        markdown={
+          '# Launch\n\n[Alex](context-use://entity/alex-morgan) reviews the [plan](context-use://page/launch-plan) and [metrics](context-use://asset/rollout-metrics).\n\n![Dashboard](context-use://asset/dashboard)'
+        }
+        onSelectResource={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('<button');
+    expect(html).toContain('>plan</button>');
+    expect(html).toContain('>metrics</button>');
+    expect(html).toContain('aria-label="Open Dashboard preview"');
+    expect(html).not.toContain('href="/entities/alex-morgan"');
+    expect(html).not.toContain('href="/pages/launch-plan"');
+    expect(html).not.toContain('href="/api/assets/rollout-metrics/content"');
+  });
 });

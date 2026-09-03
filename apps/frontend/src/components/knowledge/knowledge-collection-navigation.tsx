@@ -93,10 +93,7 @@ export function KnowledgeCollectionNavigation({
         }
       }}
     >
-      <SelectTrigger
-        className="h-10 min-w-0 flex-1 font-semibold"
-        aria-label="Knowledge collection"
-      >
+      <SelectTrigger className="h-10 min-w-0 flex-1 font-semibold" aria-label="Knowledge view">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

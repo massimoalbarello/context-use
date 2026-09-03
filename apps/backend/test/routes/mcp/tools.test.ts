@@ -102,6 +102,7 @@ const unusedEntitiesService: EntitiesServiceContract = {
 const unusedPagesService: KnowledgePagesServiceContract = {
   create: unexpectedCall,
   list: unexpectedCall,
+  preview: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,

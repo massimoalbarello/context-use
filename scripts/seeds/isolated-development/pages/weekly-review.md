@@ -1,6 +1,6 @@
 # Weekly review
 
-[Maya Chen](context-use://entity/maya-chen) compares the [project brief](context-use://page/project-brief) with the [UI review checklist](context-use://page/ui-review-checklist#checks).
+[Alex Morgan](context-use://entity/alex-morgan) and [Maya Chen](context-use://entity/maya-chen) compare the [Northstar](context-use://entity/northstar) [project brief](context-use://page/project-brief) with the [UI review checklist](context-use://page/ui-review-checklist#checks).
 
 ## Notes
 

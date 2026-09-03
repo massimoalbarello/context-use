@@ -3,6 +3,7 @@ import { ArrowLeft, Bot } from 'lucide-react';
 import { WorkspaceSplitLayout } from '../components/layout/workspace-split-layout';
 import { buttonVariants } from '../components/ui/button';
 import { cn } from '../lib/class-names';
+import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 
 export const Route = createFileRoute('/settings')({
   beforeLoad: ({ context, location }) => {
@@ -20,10 +21,10 @@ function SettingsLayout() {
         <div className="grid gap-5">
           <Link
             className={cn(buttonVariants({ variant: 'ghost' }), 'w-fit justify-start')}
-            to="/pages"
+            to={MAIN_KNOWLEDGE_PATH}
           >
             <ArrowLeft aria-hidden="true" />
-            Back to workspace
+            Back to Hypermedia
           </Link>
           <strong className="px-2 font-semibold text-xl tracking-tight">Settings</strong>
         </div>

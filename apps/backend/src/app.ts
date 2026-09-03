@@ -17,6 +17,7 @@ import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 import type { HealthServiceContract } from '#services/health/service.ts';
+import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
@@ -33,6 +34,7 @@ export function createApp({
   frontendAssetsService,
   entitiesService,
   healthService,
+  hypermediaService,
   mcpClientAuthorizationsService,
   mcpServerUrl,
   mcpTransport,
@@ -46,6 +48,7 @@ export function createApp({
   frontendAssetsService: FrontendAssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
+  hypermediaService: HypermediaServiceContract;
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
   mcpTransport: McpTransportContract;
@@ -97,6 +100,10 @@ export function createApp({
               name: 'Health',
               description: 'Liveness of the server and its database.',
             },
+            {
+              name: 'Hypermedia',
+              description: 'Bounded resource neighborhoods and their connected knowledge pages.',
+            },
           ],
           components: {
             securitySchemes: sessionSecuritySchemes,
@@ -124,6 +131,7 @@ export function createApp({
         assetsService,
         entitiesService,
         healthService,
+        hypermediaService,
         mcpClientAuthorizationsService,
         mcpServerUrl,
         ownerRegistrationService,

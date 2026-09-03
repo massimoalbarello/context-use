@@ -1,16 +1,22 @@
 import { CalendarRange } from 'lucide-react';
 import { cn } from '../../lib/class-names';
-import { temporalCoverageLabel, temporalCoverageTitle } from '../../lib/temporal-coverage';
+import {
+  type TransportedTemporalCoverage,
+  temporalCoverageExpression,
+  temporalCoverageLabel,
+  temporalCoverageTitle,
+} from '../../lib/temporal-coverage';
 
 export function TemporalCoverageLabel({
   expression,
   className,
 }: {
-  expression: string;
+  expression: TransportedTemporalCoverage;
   className?: string;
 }) {
-  const label = temporalCoverageLabel({ expression });
-  const title = temporalCoverageTitle(expression);
+  const normalizedExpression = temporalCoverageExpression(expression);
+  const label = temporalCoverageLabel({ expression: normalizedExpression });
+  const title = temporalCoverageTitle(normalizedExpression);
   return (
     <span
       className={cn(

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   calendarDateRangeExpression,
   calendarDateRangeFromSearch,
+  temporalCoverageExpression,
   temporalCoverageLabel,
   temporalCoverageMutation,
   temporalCoverageTitle,
@@ -24,6 +25,15 @@ describe('temporal coverage presentation', () => {
     );
     expect(temporalCoverageLabel({ expression: '2025-03-14?', locales: 'en-US' })).toBe(
       'March 14, 2025?',
+    );
+  });
+
+  test('recovers a date-only expression revived by the API transport', () => {
+    const transported = new Date('2025-03-14T00:00:00.000Z');
+
+    expect(temporalCoverageExpression(transported)).toBe('2025-03-14');
+    expect(temporalCoverageLabel({ expression: transported, locales: 'en-GB' })).toBe(
+      '14 March 2025',
     );
   });
 

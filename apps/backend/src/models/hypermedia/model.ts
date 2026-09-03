@@ -1,0 +1,51 @@
+import type { AssetSummary } from '#models/assets/model.ts';
+import type { Entity } from '#models/entities/model.ts';
+import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
+
+export type HypermediaResourceKind = 'entity' | 'asset';
+
+export type HypermediaResourceReference = {
+  kind: HypermediaResourceKind;
+  readableId: string;
+};
+
+export type HypermediaResource =
+  | { kind: 'entity'; entity: Entity }
+  | { kind: 'asset'; asset: AssetSummary };
+
+export type HypermediaResourceContinuation = {
+  sharedPageCount: number;
+  kind: HypermediaResourceKind;
+  readableId: string;
+};
+
+export type HypermediaResourceNeighbor = {
+  resource: HypermediaResource;
+  sharedPageCount: number;
+};
+
+export type HypermediaResourceNeighborhood = {
+  anchor: HypermediaResource;
+  neighbors: HypermediaResourceNeighbor[];
+  nextPage: HypermediaResourceContinuation | null;
+};
+
+export interface HypermediaPage extends KnowledgePageSummary {
+  resources: HypermediaResourceReference[];
+}
+
+export type HypermediaPageContinuation = {
+  retained: boolean;
+  temporal: boolean;
+  ongoing: boolean;
+  latest: number | null;
+  start: number | null;
+  updatedAt: string;
+  readableId: string;
+};
+
+export type FocusedHypermediaPages = {
+  pages: HypermediaPage[];
+  nextPage: HypermediaPageContinuation | null;
+  truncated: boolean;
+};

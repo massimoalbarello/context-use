@@ -1,0 +1,111 @@
+[
+  { "readableId": "project-brief", "temporalCoverage": "2026-08/.." },
+  { "readableId": "ui-review-checklist" },
+  {
+    "readableId": "weekly-review",
+    "temporalCoverage": "2026-08-24/2026-08-30"
+  },
+  {
+    "readableId": "northstar-launch-retrospective",
+    "temporalCoverage": "2025-11~"
+  },
+  {
+    "readableId": "customer-research-synthesis",
+    "temporalCoverage": "2026-06/2026-07"
+  },
+  {
+    "readableId": "technical-hypermedia-notes",
+    "temporalCoverage": "2026-08/.."
+  },
+  {
+    "readableId": "launch-readiness-plan",
+    "temporalCoverage": "2026-09/2026-10"
+  },
+  { "readableId": "decision-log", "temporalCoverage": "2026-08/.." },
+  {
+    "readableId": "pilot-feedback",
+    "temporalCoverage": "2026-08-18/2026-08-22"
+  },
+  { "readableId": "design-critique-notes", "temporalCoverage": "2026-08-28" },
+  { "readableId": "agent-collaboration-workflow" },
+  {
+    "readableId": "next-quarter-priorities",
+    "temporalCoverage": "2026-10/2026-12"
+  },
+  {
+    "readableId": "research-recruitment-plan",
+    "temporalCoverage": "2026-04/2026-05"
+  },
+  { "readableId": "navigation-study-protocol", "temporalCoverage": "2026-05" },
+  { "readableId": "interview-theme-analysis", "temporalCoverage": "2026-06" },
+  { "readableId": "pilot-hypermedia-journey", "temporalCoverage": "2026-07" },
+  {
+    "readableId": "terminology-testing-notes",
+    "temporalCoverage": "2026-07-14/2026-07-18"
+  },
+  {
+    "readableId": "discoverability-benchmark",
+    "temporalCoverage": "2026-07/2026-08"
+  },
+  { "readableId": "research-archive-guide" },
+  {
+    "readableId": "hypermedia-interaction-principles",
+    "temporalCoverage": "2026-07/.."
+  },
+  {
+    "readableId": "hover-preview-specification",
+    "temporalCoverage": "2026-08-03/2026-08-07"
+  },
+  {
+    "readableId": "dense-neighborhood-states",
+    "temporalCoverage": "2026-08-10/2026-08-14"
+  },
+  {
+    "readableId": "accessibility-audit",
+    "temporalCoverage": "2026-08-17/2026-08-21"
+  },
+  {
+    "readableId": "mobile-navigation-review",
+    "temporalCoverage": "2026-08-21"
+  },
+  { "readableId": "resource-card-patterns" },
+  { "readableId": "visual-language-notes", "temporalCoverage": "2026-08" },
+  {
+    "readableId": "hypermedia-query-budget",
+    "temporalCoverage": "2026-08/.."
+  },
+  {
+    "readableId": "pagination-stability-report",
+    "temporalCoverage": "2026-08-20/2026-08-27"
+  },
+  {
+    "readableId": "layout-performance-benchmark",
+    "temporalCoverage": "2026-08-25"
+  },
+  {
+    "readableId": "collision-avoidance-notes",
+    "temporalCoverage": "2026-08-26"
+  },
+  { "readableId": "preview-cache-strategy", "temporalCoverage": "2026-08/.." },
+  {
+    "readableId": "hypermedia-observability-plan",
+    "temporalCoverage": "2026-09/.."
+  },
+  { "readableId": "release-readiness-runbook", "temporalCoverage": "2026-09" },
+  {
+    "readableId": "pilot-onboarding-plan",
+    "temporalCoverage": "2026-05/2026-06"
+  },
+  { "readableId": "stakeholder-sync-notes", "temporalCoverage": "2026-07-30" },
+  {
+    "readableId": "launch-risk-register",
+    "temporalCoverage": "2026-08/2026-10"
+  },
+  {
+    "readableId": "rollout-support-playbook",
+    "temporalCoverage": "2026-09/2026-11"
+  },
+  { "readableId": "adoption-review", "temporalCoverage": "2026-10" },
+  { "readableId": "knowledge-governance-model" },
+  { "readableId": "content-lifecycle-policy", "temporalCoverage": "2026-09/.." }
+]

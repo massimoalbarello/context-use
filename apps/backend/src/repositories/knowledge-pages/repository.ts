@@ -69,7 +69,12 @@ export interface KnowledgePagesRepositoryContract {
   listByEntity(input: {
     ownerId: string;
     entityReadableId: string;
+    limit?: number;
   }): Promise<KnowledgePageSummary[]>;
+  preview(input: { ownerId: string; readableId: string }): Promise<{
+    page: StoredKnowledgePage;
+    mentions: Entity[];
+  } | null>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredKnowledgePage | null>;
   archive(input: {
     ownerId: string;
@@ -99,7 +104,6 @@ type StoredPageRow = Queries['FindKnowledgePage'];
 type SummaryRow = Queries['SearchKnowledgePages'];
 
 type RevisionSummaryRow = Queries['ListKnowledgePageRevisions'];
-
 function temporalRevisionColumns(coverage: ParsedTemporalCoverage | null): {
   expression: string | null;
   startMs: number | null;
@@ -618,10 +622,13 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
   async listByEntity({
     ownerId,
     entityReadableId,
+    limit,
   }: {
     ownerId: string;
     entityReadableId: string;
+    limit?: number;
   }): Promise<KnowledgePageSummary[]> {
+    const queryLimit = limit ?? -1;
     const rows = await this.sql.ListKnowledgePagesByEntity`
       /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
       select page."id", page."readable_id" as "readableId",
@@ -654,6 +661,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           then revision."temporal_start_ms" end desc,
         revision."title" collate nocase,
         page."readable_id"
+      limit ${queryLimit}
     `;
     return rows.map(summaryFrom);
   }
@@ -683,6 +691,23 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         and page."archived_at" is null
     `;
     return rows[0] ? storedPageFrom(rows[0]) : null;
+  }
+
+  async preview({
+    ownerId,
+    readableId,
+  }: {
+    ownerId: string;
+    readableId: string;
+  }): Promise<{ page: StoredKnowledgePage; mentions: Entity[] } | null> {
+    const page = await this.find({ ownerId, readableId });
+    if (!page) {
+      return null;
+    }
+    return {
+      page,
+      mentions: await this.listMentions({ ownerId, revisionId: page.currentRevisionId }),
+    };
   }
 
   archive({
@@ -741,6 +766,38 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     });
   }
 
+  private async listMentions({
+    ownerId,
+    revisionId,
+  }: {
+    ownerId: string;
+    revisionId: string;
+  }): Promise<Entity[]> {
+    const rows = await this.sql.ListKnowledgePageMentions`
+      /* @notNull id readableId name description createdAt updatedAt */
+      /* @type isSelf number */
+      select entity."id", entity."readable_id" as "readableId", entity."name",
+        entity."description", profile."self_entity_id" is not null as "isSelf",
+        entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
+        image."id" as "imageId", image."readable_id" as "imageReadableId",
+        image."name" as "imageName", image."media_type" as "imageMediaType",
+        image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
+        image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt"
+      from "knowledge_page_entity_mention" mention
+      join "entity" entity
+        on entity."id" = mention."target_entity_id" and entity."owner_id" = mention."owner_id"
+      left join "knowledge_profile" profile
+        on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
+      left join "asset" image
+        on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
+       and image."archived_at" is null
+      where mention."owner_id" = ${ownerId} and mention."source_revision_id" = ${revisionId}
+        and entity."archived_at" is null
+      order by entity."name" collate nocase, entity."readable_id"
+    `;
+    return rows.map(entityFrom);
+  }
+
   async detail({ ownerId, readableId }: { ownerId: string; readableId: string }): Promise<{
     page: StoredKnowledgePage;
     mentions: Entity[];
@@ -754,30 +811,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       return null;
     }
     const [mentions, references, backlinks, assetUsages, revisions] = await Promise.all([
-      this.sql.ListKnowledgePageMentions`
-        /* @notNull id readableId name description createdAt updatedAt */
-        /* @type isSelf number */
-        select entity."id", entity."readable_id" as "readableId", entity."name",
-          entity."description", profile."self_entity_id" is not null as "isSelf",
-          entity."created_at" as "createdAt",
-          entity."updated_at" as "updatedAt", image."id" as "imageId",
-          image."readable_id" as "imageReadableId", image."name" as "imageName",
-          image."media_type" as "imageMediaType", image."extension" as "imageExtension",
-          image."size_bytes" as "imageSizeBytes", image."created_at" as "imageCreatedAt",
-          image."updated_at" as "imageUpdatedAt"
-        from "knowledge_page_entity_mention" mention
-        join "entity" entity
-          on entity."id" = mention."target_entity_id" and entity."owner_id" = mention."owner_id"
-        left join "knowledge_profile" profile
-          on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
-        left join "asset" image
-          on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
-         and image."archived_at" is null
-        where mention."owner_id" = ${ownerId}
-          and mention."source_revision_id" = ${page.currentRevisionId}
-          and entity."archived_at" is null
-        order by entity."name" collate nocase, entity."readable_id"
-      `,
+      this.listMentions({ ownerId, revisionId: page.currentRevisionId }),
       this.referenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
       this.backlinkRows({ ownerId, targetPageId: page.id }),
       this.assetUsageRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
@@ -794,7 +828,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ]);
     return {
       page,
-      mentions: mentions.map(entityFrom),
+      mentions,
       references,
       backlinks,
       assetUsages,

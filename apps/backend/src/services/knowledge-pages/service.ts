@@ -5,6 +5,7 @@ import {
 } from '#models/knowledge-pages/markdown.ts';
 import type {
   KnowledgePage,
+  KnowledgePagePreview,
   KnowledgePageRevisionActor,
   KnowledgePageSummary,
   StoredKnowledgePage,
@@ -144,6 +145,21 @@ export class KnowledgePagesService {
       markdown: await this.readMarkdown(page),
       ...links,
     };
+  }
+
+  async preview({
+    ownerId,
+    readableId,
+  }: {
+    ownerId: string;
+    readableId: string;
+  }): Promise<KnowledgePagePreview | null> {
+    const preview = await this.pages.preview({ ownerId, readableId });
+    if (!preview) {
+      return null;
+    }
+    const { page, mentions } = preview;
+    return { ...this.summary(page), markdown: await this.readMarkdown(page), mentions };
   }
 
   async update(input: {
@@ -313,5 +329,5 @@ export class KnowledgePagesService {
 
 export type KnowledgePagesServiceContract = Pick<
   KnowledgePagesService,
-  'create' | 'list' | 'detail' | 'update' | 'archive' | 'rebuildIndex'
+  'create' | 'list' | 'detail' | 'preview' | 'update' | 'archive' | 'rebuildIndex'
 >;

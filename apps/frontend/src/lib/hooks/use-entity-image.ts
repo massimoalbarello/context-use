@@ -7,6 +7,7 @@ import {
   type SetEntityImageVariables,
   setEntityImage,
 } from '../../queries/entities';
+import { hypermediaQueryKey } from '../../queries/hypermedia';
 import { pagesQueryKey } from '../../queries/pages';
 import { profileQueryKey } from '../../queries/profile';
 
@@ -23,6 +24,7 @@ function useEntityImageMutation<TVariables>({
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
         queryClient.invalidateQueries({ queryKey: assetsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: hypermediaQueryKey }),
         queryClient.invalidateQueries({ queryKey: profileQueryKey }),
       ]);
     },

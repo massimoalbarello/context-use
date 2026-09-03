@@ -7,6 +7,7 @@ import { cn } from '../lib/class-names';
 import { useCreateEntity } from '../lib/hooks/use-create-entity';
 import { useCreateProfile } from '../lib/hooks/use-create-profile';
 import { internalAppPath } from '../lib/internal-app-path';
+import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 
 const EMPTY_ENTITY: EntityFormValues = { name: '', description: '' };
 
@@ -45,9 +46,9 @@ function NewEntityRoute() {
         onSubmit={(values) => {
           if (!profile) {
             createProfile.mutate(values, {
-              onSuccess: async ({ selfEntity }) => {
+              onSuccess: async () => {
                 await navigate({
-                  href: redirectTo ?? `/entities/${selfEntity.readableId}`,
+                  href: redirectTo ?? MAIN_KNOWLEDGE_PATH,
                 });
               },
             });

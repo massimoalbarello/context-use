@@ -26,7 +26,9 @@ export type ArchiveEntityResult =
 export const entitiesQueryKey = ['entities'] as const;
 export const entitiesListQueryKey = [...entitiesQueryKey, 'list'] as const;
 export const entityDetailsQueryKey = [...entitiesQueryKey, 'detail'] as const;
+export const entityPreviewsQueryKey = [...entitiesQueryKey, 'preview'] as const;
 export const entitySuggestionsQueryKey = [...entitiesQueryKey, 'suggestions'] as const;
+const PREVIEW_RELATIONSHIP_LIMIT = 12;
 
 export const entitiesQueryOptions = infiniteQueryOptions({
   queryKey: entitiesListQueryKey,
@@ -61,6 +63,21 @@ export function entityQueryOptions(readableId: string) {
     queryKey: [...entityDetailsQueryKey, readableId],
     queryFn: async () => {
       const { data, error } = await api.api.entities({ entityReadableId: readableId }).get();
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+  });
+}
+
+export function entityPreviewQueryOptions(readableId: string) {
+  return queryOptions({
+    queryKey: [...entityPreviewsQueryKey, readableId],
+    queryFn: async () => {
+      const { data, error } = await api.api
+        .entities({ entityReadableId: readableId })
+        .get({ query: { relationshipLimit: PREVIEW_RELATIONSHIP_LIMIT } });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }
