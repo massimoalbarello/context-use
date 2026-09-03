@@ -45,9 +45,20 @@ const INITIAL_VIEW_WIDTH = 900;
 const INITIAL_VIEW_HEIGHT = 620;
 const RESOURCE_MIN_DISTANCE = 150;
 const RESOURCE_SPIRAL_STEP = 56;
-const PAGE_MIN_DISTANCE = 240;
-const PAGE_SPIRAL_STEP = 54;
+const PAGE_SPIRAL_STEP = 76;
+const RESOURCE_RESERVED_WIDTH = 200;
+const RESOURCE_RESERVED_HEIGHT = 144;
+const PAGE_LABEL_CHARACTER_WIDTH = 9;
+const PAGE_LABEL_HORIZONTAL_PADDING = 56;
+const PAGE_LABEL_RESERVED_HEIGHT = 72;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+export const HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS = 28;
+
+type CanvasArea = {
+  point: CanvasPoint;
+  halfWidth: number;
+  halfHeight: number;
+};
 
 function stableHash(value: string): number {
   let hash = 2166136261;
@@ -73,15 +84,13 @@ function distance(first: CanvasPoint, second: CanvasPoint): number {
 function openPoint({
   key,
   preferred,
-  occupied,
-  minimumDistance,
   step,
+  isAvailable,
 }: {
   key: string;
   preferred: CanvasPoint;
-  occupied: CanvasPoint[];
-  minimumDistance: number;
   step: number;
+  isAvailable: (candidate: CanvasPoint) => boolean;
 }): CanvasPoint {
   const phase = (stableHash(key) / 0xffffffff) * Math.PI * 2;
   for (let index = 0; index < 1200; index += 1) {
@@ -90,11 +99,35 @@ function openPoint({
       x: preferred.x + Math.cos(phase + index * GOLDEN_ANGLE) * radius,
       y: preferred.y + Math.sin(phase + index * GOLDEN_ANGLE) * radius,
     };
-    if (occupied.every((point) => distance(candidate, point) >= minimumDistance)) {
+    if (isAvailable(candidate)) {
       return candidate;
     }
   }
-  return { x: preferred.x + occupied.length * minimumDistance, y: preferred.y };
+  return preferred;
+}
+
+function areasOverlap(first: CanvasArea, second: CanvasArea): boolean {
+  return (
+    Math.abs(first.point.x - second.point.x) < first.halfWidth + second.halfWidth &&
+    Math.abs(first.point.y - second.point.y) < first.halfHeight + second.halfHeight
+  );
+}
+
+function resourceArea(resource: HypermediaLayoutResource): CanvasArea {
+  return {
+    point: resource.point,
+    halfWidth: RESOURCE_RESERVED_WIDTH / 2,
+    halfHeight: RESOURCE_RESERVED_HEIGHT / 2,
+  };
+}
+
+function pageLabelArea(title: string, point: CanvasPoint): CanvasArea {
+  const visibleCharacters = Math.min(title.length, HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS);
+  return {
+    point,
+    halfWidth: (visibleCharacters * PAGE_LABEL_CHARACTER_WIDTH + PAGE_LABEL_HORIZONTAL_PADDING) / 2,
+    halfHeight: PAGE_LABEL_RESERVED_HEIGHT / 2,
+  };
 }
 
 function resourceAt(resource: HypermediaResource, point: CanvasPoint): HypermediaLayoutResource {
@@ -128,9 +161,9 @@ export function buildStableResources(
     const point = openPoint({
       key,
       preferred,
-      occupied: placed,
-      minimumDistance: RESOURCE_MIN_DISTANCE,
       step: RESOURCE_SPIRAL_STEP,
+      isAvailable: (candidate) =>
+        placed.every((placedPoint) => distance(candidate, placedPoint) >= RESOURCE_MIN_DISTANCE),
     });
     const positionedResource = resourceAt(resource, point);
     resources.set(key, positionedResource);
@@ -157,9 +190,9 @@ export function buildStableResources(
       const point = openPoint({
         key,
         preferred,
-        occupied: placed,
-        minimumDistance: RESOURCE_MIN_DISTANCE,
         step: RESOURCE_SPIRAL_STEP,
+        isAvailable: (candidate) =>
+          placed.every((placedPoint) => distance(candidate, placedPoint) >= RESOURCE_MIN_DISTANCE),
       });
       resources.set(key, resourceAt(neighbor.resource, point));
       placed.push(point);
@@ -227,7 +260,7 @@ function pageLayouts(
   pages: HypermediaPage[],
 ): HypermediaPageLayout[] {
   const pointsByKey = new Map(resources.map((resource) => [resource.key, resource.point]));
-  const occupied: CanvasPoint[] = [];
+  const occupiedAreas = resources.map(resourceArea);
   return pages.map((page, index) => {
     const resourceKeys = page.resources.map(hypermediaResourceKey);
     const connectedPoints = resourceKeys.flatMap((key) => {
@@ -244,11 +277,13 @@ function pageLayouts(
     const point = openPoint({
       key: `page:${page.readableId}`,
       preferred,
-      occupied: [...occupied, ...connectedPoints],
-      minimumDistance: PAGE_MIN_DISTANCE,
       step: PAGE_SPIRAL_STEP,
+      isAvailable: (candidate) => {
+        const candidateArea = pageLabelArea(page.title, candidate);
+        return occupiedAreas.every((area) => !areasOverlap(candidateArea, area));
+      },
     });
-    occupied.push(point);
+    occupiedAreas.push(pageLabelArea(page.title, point));
     return {
       page,
       point,

@@ -26,6 +26,7 @@ import { Button } from '../ui/button';
 import {
   buildHypermediaLayout,
   type CanvasBounds,
+  HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
   type HypermediaLayout,
   type HypermediaLayoutResource,
   initialHypermediaViewBox,
@@ -382,7 +383,7 @@ const HypermediaLayers = memo(function HypermediaLayers({
                 active && 'underline decoration-2 underline-offset-4',
               )}
             >
-              {shortLabel(item.page.title, 28)}
+              {shortLabel(item.page.title, HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS)}
             </text>
           </a>
         );
