@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 APP_URL = os.environ["CONTEXT_USE_APP_URL"]
 EXPECTED_ORIGIN = f"{urlparse(APP_URL).scheme}://{urlparse(APP_URL).netloc}"
 FIXTURE_FOLDER = Path(os.environ["CONTEXT_USE_SEED_FOLDER"])
+SEED_ALL_RESOURCES = os.environ.get("CONTEXT_USE_SEED_ALL") == "true"
 UI_TIMEOUT_SECONDS = 30
 
 
@@ -19,21 +20,36 @@ def read_seed_text(relative_path):
 
 
 PROFILE = read_seed_json("entities/alex-morgan.json")
+DEFAULT_ENTITY_READABLE_IDS = {
+    "compass",
+    "jun-park",
+    "maya-chen",
+    "northstar",
+    "orbit-labs",
+    "priya-shah",
+    "theo-brooks",
+}
+PAGE_INDEX = read_seed_json("pages/index.json")
+PAGE_METADATA = {page["readableId"]: page for page in PAGE_INDEX}
+PAGE_ORDER = {
+    page["readableId"]: index for index, page in enumerate(PAGE_INDEX)
+}
 ENTITIES = [
-    read_seed_json("entities/maya-chen.json"),
-    read_seed_json("entities/northstar.json"),
-    read_seed_json("entities/priya-shah.json"),
-    read_seed_json("entities/theo-brooks.json"),
-    read_seed_json("entities/orbit-labs.json"),
-    read_seed_json("entities/jun-park.json"),
-    read_seed_json("entities/compass.json"),
+    json.loads(path.read_text())
+    for path in sorted((FIXTURE_FOLDER / "entities").glob("*.json"))
+    if path != FIXTURE_FOLDER / "entities" / "alex-morgan.json"
+    and (SEED_ALL_RESOURCES or path.stem in DEFAULT_ENTITY_READABLE_IDS)
 ]
 PAGES = [
     {
-        **page,
-        "markdown": read_seed_text(f"pages/{page['readableId']}.md"),
+        **PAGE_METADATA.get(path.stem, {"readableId": path.stem}),
+        "markdown": path.read_text(),
     }
-    for page in read_seed_json("pages/index.json")
+    for path in sorted(
+        (FIXTURE_FOLDER / "pages").glob("*.md"),
+        key=lambda path: (PAGE_ORDER.get(path.stem, len(PAGE_ORDER)), path.as_posix()),
+    )
+    if SEED_ALL_RESOURCES or path.stem in PAGE_METADATA
 ]
 PROFILE_IMAGE_ASSET = {
     "readableId": "sample-profile-portrait",

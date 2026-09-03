@@ -14,6 +14,7 @@ const BROWSER_SCRIPTS_FOLDER = join(import.meta.dir, '..', '.agents', 'scripts')
 const ISOLATED_DEVELOPMENT_SEED_FOLDER = join(import.meta.dir, 'seeds', 'isolated-development');
 const ISOLATED_DEVELOPMENT_SEED_SCRIPT = join(ISOLATED_DEVELOPMENT_SEED_FOLDER, 'seed.py');
 const seedIsolatedData = Bun.argv.includes('--seed');
+const seedAllIsolatedData = seedIsolatedData && Bun.argv.includes('--all');
 
 const appUrlAlreadyInUse = await fetch(APP_URL, {
   signal: AbortSignal.timeout(APP_PROBE_TIMEOUT_MS),
@@ -46,6 +47,7 @@ const runBrowserScripts = async (scriptPaths: string[]) => {
     env: {
       ...process.env,
       CONTEXT_USE_APP_URL: APP_URL,
+      CONTEXT_USE_SEED_ALL: String(seedAllIsolatedData),
       CONTEXT_USE_SEED_FOLDER: ISOLATED_DEVELOPMENT_SEED_FOLDER,
     },
     stdin: new Blob(scriptParts),
