@@ -166,14 +166,14 @@ function resourceImageReadableId(
   return isEmbeddableAsset(resource.asset) ? resource.asset.readableId : undefined;
 }
 
-function resourceDotEmphasis({ active, isSelf }: { active: boolean; isSelf: boolean }): {
+function resourceDotEmphasis(active: boolean): {
   radiusOffset: number;
   strokeWidth: number;
 } {
   if (active) {
     return { radiusOffset: 5, strokeWidth: 5 };
   }
-  return isSelf ? { radiusOffset: 3, strokeWidth: 4 } : { radiusOffset: 1, strokeWidth: 2 };
+  return { radiusOffset: 1, strokeWidth: 2 };
 }
 
 function ResourceDot({
@@ -192,8 +192,7 @@ function ResourceDot({
   onPreviewEnd: () => void;
 }) {
   const radius = resource.kind === 'entity' ? 25 : 22;
-  const isSelf = resource.kind === 'entity' && resource.entity.isSelf;
-  const emphasis = resourceDotEmphasis({ active, isSelf });
+  const emphasis = resourceDotEmphasis(active);
   const outerExtent = radius + emphasis.radiusOffset;
   const innerExtent = radius - 3;
   const imageReadableId = resourceImageReadableId(resource, active || eagerImage);
@@ -241,7 +240,7 @@ function ResourceDot({
           r={outerExtent}
           className={cn(
             'fill-card stroke-border transition-[r,stroke-width] motion-reduce:transition-none',
-            (active || isSelf) && 'stroke-foreground',
+            active && 'stroke-foreground',
           )}
           strokeWidth={emphasis.strokeWidth}
           vectorEffect="non-scaling-stroke"
