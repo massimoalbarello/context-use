@@ -4,7 +4,11 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildHypermediaLayout,
+  buildHypermediaSpotlightLayout,
   buildStableResources,
+  HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO,
+  spotlightHypermediaViewBox,
+  zoomedHypermediaViewBox,
 } from '../../src/components/hypermedia/hypermedia-layout';
 import {
   focusedPageLimit,
@@ -186,5 +190,47 @@ describe('resource-first hypermedia layout', () => {
         ({ page: item }) => item.readableId,
       ),
     ).toEqual(['connected-page']);
+  });
+
+  test('spotlights one resource with every page supplied for its selection', () => {
+    const resources = buildStableResources([
+      neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
+    ]);
+    const layout = buildHypermediaSpotlightLayout({
+      resources,
+      pages: [page('newest'), page('older')],
+      selectedKey: 'entity:self',
+    });
+    const viewport = spotlightHypermediaViewBox(layout, 0.7);
+    const visiblePoints = [
+      ...layout.resources.map(({ point }) => point),
+      ...layout.pages.map(({ point }) => point),
+    ];
+
+    expect(layout.resources.map(({ key }) => key)).toEqual(['entity:self']);
+    expect(layout.pages.map(({ page: item }) => item.readableId)).toEqual(['newest', 'older']);
+    expect(
+      visiblePoints.every(
+        ({ x, y }) =>
+          x >= viewport.x &&
+          x <= viewport.x + viewport.width * HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO &&
+          y >= viewport.y &&
+          y <= viewport.y + viewport.height,
+      ),
+    ).toBe(true);
+  });
+
+  test('returns the same view when zoom-out is already clamped at its maximum', () => {
+    const current = { x: -1200, y: -800, width: 2400, height: 1600 };
+
+    expect(
+      zoomedHypermediaViewBox({
+        current,
+        factor: 1.1,
+        anchor: { x: 0.9, y: 0.1 },
+        minimumWidth: 260,
+        maximumWidth: 2400,
+      }),
+    ).toBe(current);
   });
 });

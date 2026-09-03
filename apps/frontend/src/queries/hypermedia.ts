@@ -64,6 +64,42 @@ export type FocusedHypermediaPageQuery = {
   retainPageReadableId?: string;
 };
 
+const SELECTED_RESOURCE_PAGE_BATCH_SIZE = 32;
+
+async function readFocusedHypermediaPages({
+  focusKeys,
+  limit,
+  query,
+  time,
+  retainPageReadableId,
+  cursor,
+  signal,
+}: {
+  focusKeys: string[];
+  limit: number;
+  query?: string;
+  time?: string;
+  retainPageReadableId?: string;
+  cursor?: string;
+  signal: AbortSignal;
+}): Promise<FocusedHypermediaPages> {
+  const { data, error } = await api.api.hypermedia.pages.get({
+    query: {
+      focus: focusKeys.join(','),
+      limit,
+      cursor,
+      query,
+      time,
+      retainPage: retainPageReadableId,
+    },
+    fetch: { signal },
+  });
+  if (error) {
+    throw new Error(apiErrorMessage(error));
+  }
+  return data;
+}
+
 export function focusedHypermediaPagesQueryOptions({
   focus,
   limit,
@@ -86,21 +122,54 @@ export function focusedHypermediaPagesQueryOptions({
         retainPageReadableId: retainPageReadableId ?? null,
       },
     ] as const,
+    queryFn: ({ signal }) =>
+      readFocusedHypermediaPages({
+        focusKeys,
+        limit,
+        query: normalizedQuery,
+        time,
+        retainPageReadableId,
+        signal,
+      }),
+  });
+}
+
+export function allFocusedHypermediaPagesQueryOptions({
+  focus,
+  query,
+  dateRange,
+}: Omit<FocusedHypermediaPageQuery, 'limit' | 'retainPageReadableId'>) {
+  const focusKeys = focus.map(hypermediaResourceKey).sort();
+  const normalizedQuery = query?.trim() || undefined;
+  const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
+  return queryOptions({
+    queryKey: [
+      ...hypermediaQueryKey,
+      'all-pages',
+      {
+        focus: focusKeys,
+        query: normalizedQuery ?? null,
+        time: time ?? null,
+      },
+    ] as const,
     queryFn: async ({ signal }) => {
-      const { data, error } = await api.api.hypermedia.pages.get({
-        query: {
-          focus: focusKeys.join(','),
-          limit,
+      const pages: FocusedHypermediaPages['pages'] = [];
+      let cursor: string | undefined;
+      let truncated = false;
+      do {
+        const result = await readFocusedHypermediaPages({
+          focusKeys,
+          limit: SELECTED_RESOURCE_PAGE_BATCH_SIZE,
           query: normalizedQuery,
           time,
-          retainPage: retainPageReadableId,
-        },
-        fetch: { signal },
-      });
-      if (error) {
-        throw new Error(apiErrorMessage(error));
-      }
-      return data;
+          cursor,
+          signal,
+        });
+        pages.push(...result.pages);
+        truncated ||= result.truncated;
+        cursor = result.nextCursor ?? undefined;
+      } while (cursor);
+      return { pages, nextCursor: null, truncated };
     },
   });
 }

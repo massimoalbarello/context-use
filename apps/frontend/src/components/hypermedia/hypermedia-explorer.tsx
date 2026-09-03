@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useEntities } from '../../lib/hooks/use-entities';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import {
+  allFocusedHypermediaPagesQueryOptions,
   focusedHypermediaPagesQueryOptions,
   type HypermediaPage,
   type HypermediaResourceReference,
@@ -113,6 +114,14 @@ export function HypermediaExplorer({
     }),
     placeholderData: keepPreviousData,
   });
+  const selectedResourcePagesQuery = useQuery({
+    ...allFocusedHypermediaPagesQueryOptions({
+      focus: selectedResource ? [selectedResource] : [self],
+      query,
+      dateRange,
+    }),
+    enabled: Boolean(selectedResource),
+  });
   const selectedPageReadableId = selection?.kind === 'page' ? selection.readableId : undefined;
   const focusedPages = pageQuery.data?.pages ?? EMPTY_PAGES;
   const selectedFocusedPage = focusedPages.find(
@@ -209,6 +218,7 @@ export function HypermediaExplorer({
     <HypermediaCanvas
       resources={resources}
       pages={pages}
+      spotlightPages={selectedResource ? selectedResourcePagesQuery.data?.pages : undefined}
       selectedKey={selectedKey}
       onSelect={onSelect}
       onViewportSettled={handleViewportSettled}
@@ -217,6 +227,7 @@ export function HypermediaExplorer({
         resources.length === 0 &&
         (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
       }
+      isSpotlightLoading={Boolean(selectedResource && selectedResourcePagesQuery.isPending)}
       neighborhoodError={neighborhoodError}
       onRetryNeighborhood={() => {
         if (entityError) {

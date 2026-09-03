@@ -401,3 +401,67 @@ export function initialHypermediaViewBox(layout: HypermediaLayout): CanvasBounds
     height: INITIAL_VIEW_HEIGHT,
   };
 }
+
+export const HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO = 0.68;
+
+export function buildHypermediaSpotlightLayout({
+  resources,
+  pages,
+  selectedKey,
+}: {
+  resources: HypermediaLayoutResource[];
+  pages: HypermediaPage[];
+  selectedKey: string;
+}): HypermediaLayout {
+  return buildHypermediaLayout(
+    resources.filter(({ key }) => key === selectedKey),
+    pages,
+  );
+}
+
+export function spotlightHypermediaViewBox(
+  layout: HypermediaLayout,
+  aspectRatio: number,
+): CanvasBounds {
+  const width = Math.max(
+    layout.bounds.width / HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO,
+    layout.bounds.height / aspectRatio,
+  );
+  const height = width * aspectRatio;
+  const centerX = layout.bounds.x + layout.bounds.width / 2;
+  const centerY = layout.bounds.y + layout.bounds.height / 2;
+  return {
+    x: centerX - (width * HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO) / 2,
+    y: centerY - height / 2,
+    width,
+    height,
+  };
+}
+
+export function zoomedHypermediaViewBox({
+  current,
+  factor,
+  anchor,
+  minimumWidth,
+  maximumWidth,
+}: {
+  current: CanvasBounds;
+  factor: number;
+  anchor: CanvasPoint;
+  minimumWidth: number;
+  maximumWidth: number;
+}): CanvasBounds {
+  const width = Math.min(maximumWidth, Math.max(minimumWidth, current.width * factor));
+  if (width === current.width) {
+    return current;
+  }
+  const height = width * (current.height / current.width);
+  const anchorX = current.x + current.width * anchor.x;
+  const anchorY = current.y + current.height * anchor.y;
+  return {
+    x: anchorX - width * anchor.x,
+    y: anchorY - height * anchor.y,
+    width,
+    height,
+  };
+}

@@ -25,11 +25,14 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
   buildHypermediaLayout,
+  buildHypermediaSpotlightLayout,
   type CanvasBounds,
   HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
   type HypermediaLayout,
   type HypermediaLayoutResource,
   initialHypermediaViewBox,
+  spotlightHypermediaViewBox,
+  zoomedHypermediaViewBox,
 } from './hypermedia-layout';
 import {
   eagerHypermediaImageKeys,
@@ -452,21 +455,25 @@ function HypermediaExplorationCue({
 export function HypermediaCanvas({
   resources,
   pages,
+  spotlightPages,
   selectedKey,
   onSelect,
   onViewportSettled,
   canExplore,
   isInitialLoading,
+  isSpotlightLoading,
   neighborhoodError,
   onRetryNeighborhood,
 }: {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
+  spotlightPages?: HypermediaPage[];
   selectedKey?: string;
   onSelect: (selection: HypermediaSelection) => void;
   onViewportSettled: (viewport: SettledHypermediaViewport) => void;
   canExplore: boolean;
   isInitialLoading: boolean;
+  isSpotlightLoading: boolean;
   neighborhoodError: Error | null;
   onRetryNeighborhood: () => void;
 }) {
@@ -475,6 +482,12 @@ export function HypermediaCanvas({
   const [viewBox, setViewBox] = useState<ViewBox>(() =>
     initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
   );
+  const selectedResourceKey =
+    selectedKey?.startsWith('entity:') || selectedKey?.startsWith('asset:')
+      ? selectedKey
+      : undefined;
+  const [spotlightKey, setSpotlightKey] = useState(selectedResourceKey);
+  const spotlightActive = Boolean(selectedResourceKey && spotlightKey === selectedResourceKey);
   const pageLimit = focusedPageLimit(viewBox);
   const displayedPages = useMemo(() => {
     const limitedPages = pages.slice(0, pageLimit);
@@ -487,10 +500,22 @@ export function HypermediaCanvas({
       ? [...limitedPages, selectedPage]
       : limitedPages;
   }, [pageLimit, pages, selectedKey]);
-  const layout = useMemo(
+  const semanticLayout = useMemo(
     () => buildHypermediaLayout(resources, displayedPages),
     [displayedPages, resources],
   );
+  const spotlightLayout = useMemo(
+    () =>
+      selectedResourceKey
+        ? buildHypermediaSpotlightLayout({
+            resources,
+            pages: spotlightPages ?? [],
+            selectedKey: selectedResourceKey,
+          })
+        : undefined,
+    [resources, selectedResourceKey, spotlightPages],
+  );
+  const layout = spotlightActive && spotlightLayout ? spotlightLayout : semanticLayout;
   const viewBoxRef = useRef(viewBox);
   const fitActive = useRef(false);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -508,14 +533,29 @@ export function HypermediaCanvas({
   } | null>(null);
   const activeKey = preview ? previewKey(preview) : selectedKey;
   const visibleLayout = useMemo(
-    () => hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
-    [layout, selectedKey, viewBox],
+    () =>
+      spotlightActive
+        ? layout
+        : hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
+    [layout, selectedKey, spotlightActive, viewBox],
   );
   const eagerImageKeys = useMemo(() => eagerHypermediaImageKeys(layout), [layout]);
   const updateViewBox = useCallback((nextViewBox: ViewBox) => {
     viewBoxRef.current = nextViewBox;
     setViewBox(nextViewBox);
   }, []);
+
+  useEffect(() => {
+    setSpotlightKey(selectedResourceKey);
+  }, [selectedResourceKey]);
+
+  useEffect(() => {
+    if (!spotlightActive || !spotlightLayout || spotlightPages === undefined) {
+      return;
+    }
+    const current = viewBoxRef.current;
+    updateViewBox(spotlightHypermediaViewBox(spotlightLayout, current.height / current.width));
+  }, [spotlightActive, spotlightLayout, spotlightPages, updateViewBox]);
 
   const publishViewport = useCallback(
     ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
@@ -557,6 +597,9 @@ export function HypermediaCanvas({
   );
 
   useEffect(() => {
+    if (spotlightActive) {
+      return;
+    }
     const viewport = fitActive.current ? layout.resourceBounds : viewBoxRef.current;
     if (fitActive.current) {
       updateViewBox(viewport);
@@ -567,33 +610,41 @@ export function HypermediaCanvas({
         clearTimeout(settleTimer.current);
       }
     };
-  }, [layout.resourceBounds, publishViewport, updateViewBox]);
+  }, [layout.resourceBounds, publishViewport, spotlightActive, updateViewBox]);
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
+    const wasSpotlightActive = spotlightActive;
+    setSpotlightKey(undefined);
     fitActive.current = false;
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
-    const maximumWidth = Math.max(2400, layout.bounds.width * 2.5);
-    const width = Math.min(maximumWidth, Math.max(minimumWidth, current.width * factor));
-    const height = width * (current.height / current.width);
-    const anchorX = current.x + current.width * anchor.x;
-    const anchorY = current.y + current.height * anchor.y;
-    const nextViewBox = {
-      x: anchorX - width * anchor.x,
-      y: anchorY - height * anchor.y,
-      width,
-      height,
-    };
+    const maximumWidth = Math.max(2400, semanticLayout.resourceBounds.width * 2.5);
+    const nextViewBox = zoomedHypermediaViewBox({
+      current,
+      factor,
+      anchor,
+      minimumWidth,
+      maximumWidth,
+    });
+    if (nextViewBox === current) {
+      return;
+    }
     updateViewBox(nextViewBox);
-    scheduleViewport({ viewport: nextViewBox, includeBoundary: true });
+    if (!wasSpotlightActive) {
+      scheduleViewport({ viewport: nextViewBox, includeBoundary: true });
+    }
   }
 
   function fitHypermedia() {
+    const wasSpotlightActive = spotlightActive;
+    setSpotlightKey(undefined);
     fitActive.current = true;
     setShowExplorationHint(false);
-    updateViewBox(layout.resourceBounds);
-    scheduleViewport({ viewport: layout.resourceBounds, includeBoundary: true });
+    updateViewBox(semanticLayout.resourceBounds);
+    if (!wasSpotlightActive) {
+      scheduleViewport({ viewport: semanticLayout.resourceBounds, includeBoundary: true });
+    }
   }
 
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
@@ -645,6 +696,7 @@ export function HypermediaCanvas({
         4
     ) {
       drag.current.moved = true;
+      setSpotlightKey(undefined);
       setShowExplorationHint(false);
     }
     const currentViewBox = {
@@ -667,7 +719,9 @@ export function HypermediaCanvas({
       drag.current = null;
       setPanning(false);
       event.currentTarget.releasePointerCapture(event.pointerId);
-      scheduleViewport({ viewport: completedDrag.currentViewBox, includeBoundary: true });
+      if (completedDrag.moved) {
+        scheduleViewport({ viewport: completedDrag.currentViewBox, includeBoundary: true });
+      }
     }
   }
 
@@ -758,6 +812,15 @@ export function HypermediaCanvas({
           aria-live="polite"
         >
           Loading nearby resources…
+        </div>
+      )}
+
+      {spotlightActive && isSpotlightLoading && (
+        <div
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
+          aria-live="polite"
+        >
+          Loading related pages…
         </div>
       )}
 
