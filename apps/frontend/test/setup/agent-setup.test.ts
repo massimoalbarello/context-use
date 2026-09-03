@@ -82,9 +82,10 @@ test('initial curation understands the user and filters evidence before writing'
   expect(normalizedPrompt).toContain('Do not perform broad external research');
   expect(normalizedPrompt).toContain('create_asset_upload');
   expect(normalizedPrompt).toContain('imageAssetAddress');
-  expect(normalizedPrompt).toContain('ask whether I would like to upload one');
-  expect(normalizedPrompt).toContain('ask me to attach the image files and identify each person');
-  expect(normalizedPrompt).toContain('Do not source substitute portraits from the web');
+  expect(normalizedPrompt).toContain('upload pictures of myself or those people');
+  expect(normalizedPrompt).toContain('optional and will help visualize my context in Context Use');
+  expect(normalizedPrompt).toContain('ask me to attach and identify each image');
+  expect(normalizedPrompt).toContain('Never source substitute portraits from the web');
   expect(normalizedPrompt).toContain(
     'refresh the Context Use setup page to see the context created',
   );

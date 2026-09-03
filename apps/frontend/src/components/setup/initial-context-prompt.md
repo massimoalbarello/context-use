@@ -26,7 +26,7 @@ For each approved asset whose raw bytes you can access, call create_asset_upload
 
 6. Offer to add missing portraits
 
-If you did not find a suitable, reliably identified photo of me or another important person represented by an entity, ask whether I would like to upload one. Name the people who are missing portraits, make clear that this is optional, and wait for my response. If I agree, ask me to attach the image files and identify each person. After I provide and authorize them, upload each image and assign it to the corresponding entity with imageAssetAddress. Do not source substitute portraits from the web.
+If no suitable, reliably identified photo is available for me or another important person, ask whether I would like to upload pictures of myself or those people. Explain that this is optional and will help visualize my context in Context Use. If I agree, ask me to attach and identify each image, then upload it and assign it to the corresponding entity with imageAssetAddress. Never source substitute portraits from the web.
 
 7. Verify and hand back
 
