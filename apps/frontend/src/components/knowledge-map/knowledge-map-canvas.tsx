@@ -89,17 +89,17 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
   if (preview.kind === 'page') {
     const { page } = preview;
     return (
-      <div className="grid gap-3">
-        <div className="flex items-center gap-2">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+      <div className="grid min-w-0 gap-3 overflow-hidden">
+        <div className="flex min-w-0 items-start gap-2">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
             <FileText className="size-5 stroke-[1.5]" aria-hidden="true" />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <Badge variant="secondary">Knowledge page</Badge>
-            <h2 className="mt-1 truncate font-semibold text-base">{page.title}</h2>
+            <h2 className="mt-1 line-clamp-2 break-words font-semibold text-base">{page.title}</h2>
           </div>
         </div>
-        <p className="line-clamp-3 text-muted-foreground text-sm leading-relaxed">
+        <p className="line-clamp-3 break-words text-muted-foreground text-sm leading-relaxed">
           {page.excerpt || 'This page has no excerpt.'}
         </p>
       </div>
@@ -108,7 +108,7 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
   if (preview.kind === 'entity') {
     const { entity } = preview;
     return (
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3 overflow-hidden">
         <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted font-semibold text-lg">
           {entity.image ? (
             <img
@@ -120,13 +120,13 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
             entity.name.trim().charAt(0).toLocaleUpperCase() || '?'
           )}
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <div className="flex items-center gap-2">
             <Badge variant="secondary">Entity</Badge>
             {entity.isSelf && <Badge variant="secondary">You</Badge>}
           </div>
-          <h2 className="mt-2 truncate font-semibold text-base">{entity.name}</h2>
-          <p className="mt-1 line-clamp-3 text-muted-foreground text-sm leading-relaxed">
+          <h2 className="mt-2 line-clamp-2 break-words font-semibold text-base">{entity.name}</h2>
+          <p className="mt-1 line-clamp-3 break-words text-muted-foreground text-sm leading-relaxed">
             {entity.description}
           </p>
         </div>
@@ -136,7 +136,7 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
 
   const { asset } = preview;
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex min-w-0 items-start gap-3 overflow-hidden">
       <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
         {isEmbeddableAsset(asset) ? (
           <img src={assetContentUrl(asset.readableId)} alt="" className="size-full object-cover" />
@@ -144,10 +144,10 @@ function PreviewCard({ preview }: { preview: MapPreview }) {
           <File className="size-6 stroke-[1.4]" aria-hidden="true" />
         )}
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <Badge variant="secondary">Asset</Badge>
-        <h2 className="mt-2 truncate font-semibold text-base">{asset.name}</h2>
-        <p className="mt-1 text-muted-foreground text-sm">
+        <h2 className="mt-2 line-clamp-2 break-words font-semibold text-base">{asset.name}</h2>
+        <p className="mt-1 break-words text-muted-foreground text-sm">
           {asset.extension?.toUpperCase() ?? asset.mediaType} · {formatAssetSize(asset.sizeBytes)}
         </p>
       </div>
@@ -733,7 +733,7 @@ export function KnowledgeMapCanvas({
       {preview && previewKey(preview) !== selectedKey && (
         <div
           className={cn(
-            'pointer-events-none absolute top-4 w-[min(20rem,calc(100%-2rem))] rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
+            'pointer-events-none absolute top-4 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
             sidebarCollapsed && 'left-18 w-[min(20rem,calc(100%-7rem))]',
             !sidebarCollapsed && 'left-4',
           )}
