@@ -109,7 +109,7 @@ export class AssetsService {
     return this.assets.list(input);
   }
 
-  detail(input: { ownerId: string; readableId: string }) {
+  detail(input: { ownerId: string; readableId: string; usageLimit?: number }) {
     return this.assets.detail(input);
   }
 

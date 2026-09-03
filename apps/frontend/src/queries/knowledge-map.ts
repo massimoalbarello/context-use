@@ -29,7 +29,6 @@ export function knowledgeMapQueryOptions(filters: KnowledgeMapFilters = {}) {
   return infiniteQueryOptions({
     queryKey: [...knowledgeMapQueryKey, { query: query ?? null, time: time ?? null }] as const,
     initialPageParam: undefined as string | undefined,
-    staleTime: Number.POSITIVE_INFINITY,
     queryFn: async ({ pageParam }) => {
       const { data, error } = await api.api['knowledge-map'].get({
         query: { cursor: pageParam, limit: KNOWLEDGE_MAP_BATCH_SIZE, query, time },

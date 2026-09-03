@@ -20,7 +20,9 @@ export type ArchiveAssetResult =
 export const assetsQueryKey = ['assets'] as const;
 export const assetsListQueryKey = [...assetsQueryKey, 'list'] as const;
 export const assetDetailsQueryKey = [...assetsQueryKey, 'detail'] as const;
+export const assetPreviewsQueryKey = [...assetsQueryKey, 'preview'] as const;
 export const assetSuggestionsQueryKey = [...assetsQueryKey, 'suggestions'] as const;
+const PREVIEW_RELATIONSHIP_LIMIT = 12;
 
 export const assetsQueryOptions = infiniteQueryOptions({
   queryKey: assetsListQueryKey,
@@ -70,6 +72,21 @@ export function assetQueryOptions(readableId: string) {
     queryKey: [...assetDetailsQueryKey, readableId],
     queryFn: async () => {
       const { data, error } = await api.api.assets({ assetReadableId: readableId }).get();
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+  });
+}
+
+export function assetPreviewQueryOptions(readableId: string) {
+  return queryOptions({
+    queryKey: [...assetPreviewsQueryKey, readableId],
+    queryFn: async () => {
+      const { data, error } = await api.api
+        .assets({ assetReadableId: readableId })
+        .get({ query: { relationshipLimit: PREVIEW_RELATIONSHIP_LIMIT } });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }

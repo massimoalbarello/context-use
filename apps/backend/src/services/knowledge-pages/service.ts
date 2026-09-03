@@ -6,6 +6,7 @@ import {
 import type {
   KnowledgeMapContinuation,
   KnowledgePage,
+  KnowledgePagePreview,
   KnowledgePageRevisionActor,
   KnowledgePageSummary,
   StoredKnowledgePage,
@@ -155,6 +156,21 @@ export class KnowledgePagesService {
       markdown: await this.readMarkdown(page),
       ...links,
     };
+  }
+
+  async preview({
+    ownerId,
+    readableId,
+  }: {
+    ownerId: string;
+    readableId: string;
+  }): Promise<KnowledgePagePreview | null> {
+    const preview = await this.pages.preview({ ownerId, readableId });
+    if (!preview) {
+      return null;
+    }
+    const { page, mentions } = preview;
+    return { ...this.summary(page), markdown: await this.readMarkdown(page), mentions };
   }
 
   async update(input: {
@@ -324,5 +340,5 @@ export class KnowledgePagesService {
 
 export type KnowledgePagesServiceContract = Pick<
   KnowledgePagesService,
-  'create' | 'list' | 'map' | 'detail' | 'update' | 'archive' | 'rebuildIndex'
+  'create' | 'list' | 'map' | 'detail' | 'preview' | 'update' | 'archive' | 'rebuildIndex'
 >;

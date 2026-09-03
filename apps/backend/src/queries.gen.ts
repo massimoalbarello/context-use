@@ -309,6 +309,10 @@ export interface IListKnowledgeMapPagesResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    temporalSort: number;
+    ongoingSort: number;
+    latestSort: unknown | null;
+    startSort: unknown | null;
     createdAt: string;
     updatedAt: string;
 }

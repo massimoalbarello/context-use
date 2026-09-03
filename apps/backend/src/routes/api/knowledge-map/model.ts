@@ -47,10 +47,11 @@ export function encodeKnowledgeMapCursor(cursor: KnowledgeMapContinuation | null
   if (!cursor) {
     return null;
   }
-  return Buffer.from(
-    JSON.stringify({ version: 1, updatedAt: cursor.updatedAt, readableId: cursor.readableId }),
-    'utf8',
-  ).toString('base64url');
+  return Buffer.from(JSON.stringify({ version: 1, ...cursor }), 'utf8').toString('base64url');
+}
+
+function isSafeIntegerOrNull(value: unknown): value is number | null {
+  return value === null || (typeof value === 'number' && Number.isSafeInteger(value));
 }
 
 function isCanonicalIsoTimestamp(value: unknown): value is string {
@@ -75,6 +76,13 @@ export function decodeKnowledgeMapCursor(
     const payload = JSON.parse(decoded.toString('utf8')) as Record<string, unknown>;
     if (
       payload.version !== 1 ||
+      typeof payload.temporal !== 'boolean' ||
+      typeof payload.ongoing !== 'boolean' ||
+      !isSafeIntegerOrNull(payload.latest) ||
+      !isSafeIntegerOrNull(payload.start) ||
+      (payload.temporal && (payload.latest === null || payload.start === null)) ||
+      (!payload.temporal &&
+        (payload.ongoing || payload.latest !== null || payload.start !== null)) ||
       !isCanonicalIsoTimestamp(payload.updatedAt) ||
       typeof payload.readableId !== 'string' ||
       payload.readableId.length > MAX_READABLE_ID_LENGTH ||
@@ -84,7 +92,14 @@ export function decodeKnowledgeMapCursor(
     }
     return {
       state: 'valid',
-      cursor: { updatedAt: payload.updatedAt, readableId: payload.readableId },
+      cursor: {
+        temporal: payload.temporal,
+        ongoing: payload.ongoing,
+        latest: payload.latest,
+        start: payload.start,
+        updatedAt: payload.updatedAt,
+        readableId: payload.readableId,
+      },
     };
   } catch {
     return { state: 'invalid' };

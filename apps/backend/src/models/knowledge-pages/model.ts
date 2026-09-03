@@ -51,12 +51,21 @@ export interface KnowledgePage extends KnowledgePageSummary {
   revisions: KnowledgePageRevisionSummary[];
 }
 
+export interface KnowledgePagePreview extends KnowledgePageSummary {
+  markdown: string;
+  mentions: Entity[];
+}
+
 export interface KnowledgeMapPage extends KnowledgePageSummary {
   mentions: Entity[];
   assetUsages: KnowledgePageAssetUsage[];
 }
 
 export interface KnowledgeMapContinuation {
+  temporal: boolean;
+  ongoing: boolean;
+  latest: number | null;
+  start: number | null;
   updatedAt: string;
   readableId: string;
 }

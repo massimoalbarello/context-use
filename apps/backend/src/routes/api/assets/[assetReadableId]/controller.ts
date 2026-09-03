@@ -11,6 +11,7 @@ import {
   assetUsageResponse,
   UpdateAssetBodySchema,
 } from '#routes/api/assets/model.ts';
+import { PreviewRelationshipsQuerySchema } from '#routes/api/model.ts';
 import { assetContentResponse } from '#routes/asset-content-response.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 
@@ -26,10 +27,11 @@ export function createAssetReadableIdController({
     .guard({ auth: true, response: { [StatusMap.Unauthorized]: ErrorResponseSchema } })
     .get(
       '/assets/:assetReadableId',
-      async ({ params, user, status }) => {
+      async ({ params, query, user, status }) => {
         const asset = await assetsService.detail({
           ownerId: user.id,
           readableId: params.assetReadableId,
+          usageLimit: query.relationshipLimit,
         });
         return asset
           ? status(StatusMap.OK, assetResponse(asset))
@@ -38,6 +40,7 @@ export function createAssetReadableIdController({
       {
         detail: { tags: ['Assets'], summary: 'Read an asset and its usages' },
         params: AssetParamsSchema,
+        query: PreviewRelationshipsQuerySchema,
         response: { [StatusMap.OK]: AssetSchema, [StatusMap['Not Found']]: ErrorResponseSchema },
       },
     )

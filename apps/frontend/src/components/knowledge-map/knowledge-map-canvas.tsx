@@ -495,12 +495,15 @@ export function KnowledgeMapCanvas({
     moved: boolean;
     cloudReadableId?: string;
   } | null>(null);
+  const activeKey = preview ? previewKey(preview) : selectedKey;
+  const activePageReadableId = activeKey?.startsWith('page:')
+    ? activeKey.slice('page:'.length)
+    : undefined;
   const visibleLayout = useMemo(
-    () => knowledgeMapLayoutInViewport(layout, viewBox),
-    [layout, viewBox],
+    () => knowledgeMapLayoutInViewport(layout, viewBox, activePageReadableId),
+    [activePageReadableId, layout, viewBox],
   );
   const eagerImageKeys = useMemo(() => eagerKnowledgeMapImageKeys(visibleLayout), [visibleLayout]);
-  const activeKey = preview ? previewKey(preview) : selectedKey;
 
   function updateViewBox(nextViewBox: ViewBox) {
     viewBoxRef.current = nextViewBox;
@@ -526,7 +529,7 @@ export function KnowledgeMapCanvas({
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
     const current = viewBoxRef.current;
-    const minimumWidth = layout.bounds.width * 0.28;
+    const minimumWidth = focusedKnowledgeMapViewBox(layout).width * 0.28;
     const maximumWidth = layout.bounds.width * 2.5;
     const width = Math.min(maximumWidth, Math.max(minimumWidth, current.width * factor));
     const height = width * (current.height / current.width);

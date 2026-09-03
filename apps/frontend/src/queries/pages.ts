@@ -10,6 +10,9 @@ export type KnowledgePageSummary = KnowledgePagePage['items'][number];
 export type KnowledgePage = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.pages>['get']>>['data']
 >;
+export type KnowledgePagePreview = NonNullable<
+  Awaited<ReturnType<ReturnType<typeof api.api.pages>['preview']['get']>>['data']
+>;
 export type KnowledgePageReference = KnowledgePage['references'][number];
 
 export type CreatePageVariables = Parameters<typeof api.api.pages.post>[0];
@@ -25,6 +28,7 @@ export type ArchivePageResult =
 export const pagesQueryKey = ['pages'] as const;
 export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
 export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
+export const pagePreviewsQueryKey = [...pagesQueryKey, 'preview'] as const;
 export const pageSuggestionsQueryKey = [...pagesQueryKey, 'suggestions'] as const;
 
 export function pagesQueryOptions(dateRange?: CalendarDateRange) {
@@ -65,6 +69,19 @@ export function pageQueryOptions(readableId: string) {
     queryKey: [...pageDetailsQueryKey, readableId],
     queryFn: async () => {
       const { data, error } = await api.api.pages({ pageReadableId: readableId }).get();
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+  });
+}
+
+export function pagePreviewQueryOptions(readableId: string) {
+  return queryOptions({
+    queryKey: [...pagePreviewsQueryKey, readableId],
+    queryFn: async () => {
+      const { data, error } = await api.api.pages({ pageReadableId: readableId }).preview.get();
       if (error) {
         throw new Error(apiErrorMessage(error));
       }

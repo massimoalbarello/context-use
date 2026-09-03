@@ -361,6 +361,10 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         entity: expect.objectContaining({ readableId: 'luca-bianchi' }),
       }),
     ]);
+    const previewDetailResponse = await app.handle(
+      new Request('http://localhost/api/assets/quarterly-chart?relationshipLimit=2'),
+    );
+    expect(((await previewDetailResponse.json()) as { usages: unknown[] }).usages).toHaveLength(2);
 
     const blockedResponse = await app.handle(
       jsonRequest({ method: 'PUT', path: '/assets/quarterly-chart/archive' }),

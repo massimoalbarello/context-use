@@ -17,7 +17,11 @@ export interface AssetsRepositoryContract {
     kind?: 'entity_image';
   }): Promise<Page<AssetSummary>>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredAsset | null>;
-  detail(input: { ownerId: string; readableId: string }): Promise<Asset | null>;
+  detail(input: {
+    ownerId: string;
+    readableId: string;
+    usageLimit?: number;
+  }): Promise<Asset | null>;
   updateName(input: {
     ownerId: string;
     readableId: string;
@@ -177,9 +181,11 @@ export class AssetsRepository implements AssetsRepositoryContract {
   async detail({
     ownerId,
     readableId,
+    usageLimit,
   }: {
     ownerId: string;
     readableId: string;
+    usageLimit?: number;
   }): Promise<Asset | null> {
     const asset = await this.find({ ownerId, readableId });
     if (!asset) {
@@ -187,7 +193,12 @@ export class AssetsRepository implements AssetsRepositoryContract {
     }
     return {
       ...this.summary(asset),
-      usages: await this.listActiveUsages({ db: this.sql, ownerId, assetId: asset.id }),
+      usages: await this.listActiveUsages({
+        db: this.sql,
+        ownerId,
+        assetId: asset.id,
+        limit: usageLimit,
+      }),
     };
   }
 
@@ -269,11 +280,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
     db,
     ownerId,
     assetId,
+    limit,
   }: {
     db: TypedSQL<Queries>;
     ownerId: string;
     assetId: string;
+    limit?: number;
   }): Promise<AssetUsage[]> {
+    const pageUsageLimit = limit ?? -1;
     const pageRows = await db.ListActivePageAssetUsages`
       /* @notNull id readableId title excerpt revisionNumber createdAt updatedAt */
       /* @type presentation 'embed' | 'attachment' */
@@ -289,8 +303,13 @@ export class AssetsRepository implements AssetsRepositoryContract {
       where usage."owner_id" = ${ownerId} and usage."target_asset_id" = ${assetId}
         and page."archived_at" is null
       order by revision."title", page."readable_id", usage."presentation"
+      limit ${pageUsageLimit}
     `;
-    const entityRows = await db.ListActiveEntityImageAssetUsages`
+    const entityUsageLimit = limit === undefined ? -1 : Math.max(0, limit - pageRows.length);
+    const entityRows =
+      entityUsageLimit === 0
+        ? []
+        : await db.ListActiveEntityImageAssetUsages`
       /* @notNull id readableId name description */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
@@ -301,6 +320,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
       where entity."owner_id" = ${ownerId} and entity."image_asset_id" = ${assetId}
         and entity."archived_at" is null
       order by entity."name" collate nocase, entity."readable_id"
+      limit ${entityUsageLimit}
     `;
     return [
       ...pageRows.map(({ presentation, ...page }) => ({

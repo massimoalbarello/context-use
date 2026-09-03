@@ -531,6 +531,13 @@ Every observation changes the next action.`,
     expectNoInternalResourceIds(knowledgeMap);
     expect(knowledgeMap.nextCursor).toBeNull();
     expect(knowledgeMap.truncated).toBe(false);
+    expect(knowledgeMap.pages.map(({ readableId }) => readableId)).toEqual([
+      'alpha-principles',
+      duplicatePage.readableId,
+      'current-programme',
+      'operating-rhythm',
+      'growth-playbook',
+    ]);
     const operatingRhythmMapPage = knowledgeMap.pages.find(
       ({ readableId }) => readableId === 'operating-rhythm',
     );
@@ -748,6 +755,23 @@ Every observation changes the next action.`,
       'operating-rhythm',
       'alpha-principles',
     ]);
+    const temporalEntityPreviewResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/entities/temporal-subject?relationshipLimit=1',
+      }),
+    );
+    expect(
+      ((await temporalEntityPreviewResponse.json()) as { pages: unknown[] }).pages,
+    ).toHaveLength(1);
+
+    const knowledgePagePreviewResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages/growth-playbook/preview' }),
+    );
+    expect(knowledgePagePreviewResponse.status).toBe(StatusMap.OK);
+    expect(await knowledgePagePreviewResponse.json()).toEqual(
+      expect.not.objectContaining({ revisions: expect.anything(), backlinks: expect.anything() }),
+    );
 
     const searchedKnowledgePageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=7&offset=0&query=growth' }),

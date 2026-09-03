@@ -260,7 +260,7 @@ describe('knowledge map layout', () => {
       title: 'Oldest',
       temporalCoverage: '2025',
     });
-    const layout = buildKnowledgeMapLayout([semantic, oldest, middle, newest]);
+    const layout = buildKnowledgeMapLayout([semantic, newest, middle, oldest]);
     const focused = focusedKnowledgeMapViewBox(layout);
     const pageIdsAtWidth = (width: number) =>
       knowledgeMapLayoutInViewport(layout, {
@@ -277,7 +277,19 @@ describe('knowledge map layout', () => {
     ]);
     expect(
       pageIdsAtWidth(Math.max(layout.bounds.width, focused.width * FULL_TEMPORAL_REVEAL_ZOOM)),
-    ).toEqual(['semantic', 'oldest', 'middle', 'newest']);
+    ).toEqual(['semantic', 'newest', 'middle', 'oldest']);
+    expect(
+      knowledgeMapLayoutInViewport(
+        layout,
+        {
+          x: layout.bounds.x,
+          y: layout.bounds.y,
+          width: focused.width,
+          height: layout.bounds.height,
+        },
+        'middle',
+      ).pages.map(({ page: mapPage }) => mapPage.readableId),
+    ).toEqual(['semantic', 'middle']);
   });
 
   test('merges cursor batches without duplicating a page at their boundary', () => {

@@ -3,9 +3,9 @@ import { File, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
-import { useAsset } from '../../lib/hooks/use-assets';
-import { useEntity } from '../../lib/hooks/use-entity';
-import { usePage } from '../../lib/hooks/use-page';
+import { useAssetPreview } from '../../lib/hooks/use-assets';
+import { useEntityPreview } from '../../lib/hooks/use-entity';
+import { usePagePreview } from '../../lib/hooks/use-page';
 import type { Asset } from '../../queries/assets';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { formatAssetSize } from '../assets/asset-link';
@@ -147,7 +147,7 @@ function PagePreview({
   onClose: () => void;
   onSelect: (selection: KnowledgeMapSelection) => void;
 }) {
-  const { data: page, error, refetch } = usePage(readableId);
+  const { data: page, error, refetch } = usePagePreview(readableId);
   return (
     <PreviewPanelShell
       label="Knowledge page"
@@ -188,7 +188,7 @@ function EntityPreview({
   onClose: () => void;
   onSelect: (selection: KnowledgeMapSelection) => void;
 }) {
-  const { data: entity, error, refetch } = useEntity(readableId);
+  const { data: entity, error, refetch } = useEntityPreview(readableId);
   return (
     <PreviewPanelShell
       label="Entity"
@@ -235,7 +235,7 @@ function AssetPreview({
   onClose: () => void;
   onSelect: (selection: KnowledgeMapSelection) => void;
 }) {
-  const { data: asset, error, refetch } = useAsset(readableId);
+  const { data: asset, error, refetch } = useAssetPreview(readableId);
   return (
     <PreviewPanelShell
       label="Asset"

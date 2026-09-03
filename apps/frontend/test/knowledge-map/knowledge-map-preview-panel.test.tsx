@@ -10,17 +10,17 @@ import {
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { KnowledgeMapSelection } from '../../src/components/knowledge-map/knowledge-map-canvas';
 import { KnowledgeMapPreviewPanel } from '../../src/components/knowledge-map/knowledge-map-preview-panel';
-import { type Asset, assetQueryOptions } from '../../src/queries/assets';
-import { type KnowledgePage, pageQueryOptions } from '../../src/queries/pages';
+import { type Asset, assetPreviewQueryOptions } from '../../src/queries/assets';
+import { type KnowledgePagePreview, pagePreviewQueryOptions } from '../../src/queries/pages';
 
 async function renderPreview(selection: KnowledgeMapSelection): Promise<string> {
   const queryClient = new QueryClient();
   if (selection.kind === 'page') {
-    queryClient.setQueryData(pageQueryOptions(selection.readableId).queryKey, {
+    queryClient.setQueryData(pagePreviewQueryOptions(selection.readableId).queryKey, {
       markdown:
         '# Project brief\n\n[Maya Chen](context-use://entity/maya-chen) reviews the [launch plan](context-use://page/launch-plan) and [metrics](context-use://asset/rollout-metrics).',
       mentions: [{ readableId: 'maya-chen', name: 'Maya Chen', image: null }],
-    } as KnowledgePage);
+    } as KnowledgePagePreview);
   }
   if (selection.kind === 'asset') {
     const timestamp = new Date('2026-01-01T00:00:00.000Z');
@@ -33,7 +33,7 @@ async function renderPreview(selection: KnowledgeMapSelection): Promise<string> 
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    queryClient.setQueryData(assetQueryOptions(selection.readableId).queryKey, {
+    queryClient.setQueryData(assetPreviewQueryOptions(selection.readableId).queryKey, {
       readableId: selection.readableId,
       name: 'Rollout metrics',
       mediaType: 'application/octet-stream',

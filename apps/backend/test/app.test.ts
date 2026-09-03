@@ -53,6 +53,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     create: unexpectedCall,
     list: unexpectedCall,
     map: unexpectedCall,
+    preview: unexpectedCall,
     detail: unexpectedCall,
     update: unexpectedCall,
     archive: unexpectedCall,

@@ -1,6 +1,7 @@
 import { t } from 'elysia';
 import {
   type KnowledgePage,
+  type KnowledgePagePreview,
   type KnowledgePageReference,
   type KnowledgePageRevisionSummary,
   type KnowledgePageSummary,
@@ -58,6 +59,12 @@ export const KnowledgePageSchema = t.Object({
   revisions: t.Array(KnowledgePageRevisionSummarySchema),
 });
 
+export const KnowledgePagePreviewSchema = t.Object({
+  ...KnowledgePageSummarySchema.properties,
+  markdown: t.String(),
+  mentions: t.Array(EntitySchema),
+});
+
 export const CreateKnowledgePageBodySchema = t.Object({
   markdown: t.String({ minLength: 1, maxLength: MAX_KNOWLEDGE_PAGE_BYTES }),
   temporalCoverage: t.Optional(t.Nullable(t.String({ maxLength: MAX_TEMPORAL_COVERAGE_LENGTH }))),
@@ -113,5 +120,13 @@ export function knowledgePageResponse(page: KnowledgePage) {
       presentation,
     })),
     revisions: page.revisions.map(pageRevisionResponse),
+  };
+}
+
+export function knowledgePagePreviewResponse(page: KnowledgePagePreview) {
+  return {
+    ...pageSummaryResponse(page),
+    markdown: page.markdown,
+    mentions: page.mentions.map(entityResponse),
   };
 }

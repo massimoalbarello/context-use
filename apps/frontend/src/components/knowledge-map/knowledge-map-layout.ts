@@ -2,7 +2,6 @@
 // biome-ignore-all lint/style/noMagicNumbers: The deterministic SVG layout is defined by visual geometry constants.
 
 import { isEmbeddableAsset } from '../../lib/asset-presentation';
-import { temporalCoverageRecency } from '../../lib/temporal-coverage';
 import type {
   KnowledgeMapAsset,
   KnowledgeMapEntity,
@@ -61,7 +60,7 @@ const RESOURCE_PAGE_LABEL_Y_DISTANCE = 72;
 const RESOURCE_SPIRAL_STEP = 64;
 const RESOURCE_PLACEMENT_ATTEMPTS = 1600;
 const PAGE_LABEL_MIN_DISTANCE = 180;
-const PAGE_LABEL_SPIRAL_STEP = 64;
+const PAGE_COLLISION_SPIRAL_STEP = 64;
 const PAGE_PLACEMENT_ATTEMPTS = 1600;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const VIEWPORT_RENDER_MARGIN_RATIO = 0.08;
@@ -110,24 +109,40 @@ function radialPoint(index: number, spacing: number): MapPoint {
   };
 }
 
-function resourceCellCoordinate(value: number): number {
-  return Math.floor(value / RESOURCE_MIN_DISTANCE);
+type PointGrid = {
+  cellWidth: number;
+  cellHeight: number;
+  cells: Map<string, MapPoint[]>;
+};
+
+function pointCellCoordinate(value: number, size: number): number {
+  return Math.floor(value / size);
 }
 
-function resourceCellKey(x: number, y: number): string {
+function pointCellKey(x: number, y: number): string {
   return `${x}:${y}`;
 }
 
-function nearbyResourcePoints(point: MapPoint, occupiedCells: Map<string, MapPoint[]>): MapPoint[] {
-  const cellX = resourceCellCoordinate(point.x);
-  const cellY = resourceCellCoordinate(point.y);
+function nearbyGridPoints(point: MapPoint, grid: PointGrid): MapPoint[] {
+  const cellX = pointCellCoordinate(point.x, grid.cellWidth);
+  const cellY = pointCellCoordinate(point.y, grid.cellHeight);
   const nearby: MapPoint[] = [];
   for (let x = cellX - 1; x <= cellX + 1; x += 1) {
     for (let y = cellY - 1; y <= cellY + 1; y += 1) {
-      nearby.push(...(occupiedCells.get(resourceCellKey(x, y)) ?? []));
+      nearby.push(...(grid.cells.get(pointCellKey(x, y)) ?? []));
     }
   }
   return nearby;
+}
+
+function addGridPoint(point: MapPoint, grid: PointGrid): void {
+  const key = pointCellKey(
+    pointCellCoordinate(point.x, grid.cellWidth),
+    pointCellCoordinate(point.y, grid.cellHeight),
+  );
+  const cell = grid.cells.get(key) ?? [];
+  cell.push(point);
+  grid.cells.set(key, cell);
 }
 
 function preferredResourcePoint({
@@ -171,11 +186,11 @@ function preferredResourcePoint({
 function availableResourcePoint({
   key,
   preferred,
-  occupiedCells,
+  occupied,
 }: {
   key: string;
   preferred: MapPoint;
-  occupiedCells: Map<string, MapPoint[]>;
+  occupied: PointGrid;
 }): MapPoint | undefined {
   const phase = (stableHash(key) / 0xffffffff) * Math.PI * 2;
   for (let attempt = 0; attempt < RESOURCE_PLACEMENT_ATTEMPTS; attempt += 1) {
@@ -185,7 +200,7 @@ function availableResourcePoint({
       x: preferred.x + Math.cos(angle) * radius,
       y: preferred.y + Math.sin(angle) * radius,
     };
-    const available = nearbyResourcePoints(candidate, occupiedCells).every(
+    const available = nearbyGridPoints(candidate, occupied).every(
       (placed) => distanceBetween(candidate, placed) >= RESOURCE_MIN_DISTANCE,
     );
     if (available) {
@@ -203,7 +218,11 @@ function packResourcePoints({
   resourceKeysByPage: Map<number, Set<string>>;
 }): Map<string, MapPoint> {
   const packedPoints = new Map<string, MapPoint>();
-  const occupiedCells = new Map<string, MapPoint[]>();
+  const occupied: PointGrid = {
+    cellWidth: RESOURCE_MIN_DISTANCE,
+    cellHeight: RESOURCE_MIN_DISTANCE,
+    cells: new Map(),
+  };
   const orderedSeeds = [...seeds.entries()].sort(
     ([firstKey, first], [secondKey, second]) =>
       Number(seedIsSelf(second)) - Number(seedIsSelf(first)) ||
@@ -228,19 +247,13 @@ function packResourcePoints({
       resourceKeysByPage,
       discoveryIndexByPage,
     });
-    const point = availableResourcePoint({ key, preferred, occupiedCells });
+    const point = availableResourcePoint({ key, preferred, occupied });
     const placed = point ?? {
       x: preferred.x + RESOURCE_MIN_DISTANCE * (packedPoints.size + 1),
       y: preferred.y + RESOURCE_MIN_DISTANCE,
     };
     packedPoints.set(key, placed);
-    const keyForPoint = resourceCellKey(
-      resourceCellCoordinate(placed.x),
-      resourceCellCoordinate(placed.y),
-    );
-    const cell = occupiedCells.get(keyForPoint) ?? [];
-    cell.push(placed);
-    occupiedCells.set(keyForPoint, cell);
+    addGridPoint(placed, occupied);
   }
   return packedPoints;
 }
@@ -320,6 +333,7 @@ function pointNearViewport(point: MapPoint, viewport: MapBounds): boolean {
 export function knowledgeMapLayoutInViewport(
   layout: KnowledgeMapLayout,
   viewport: MapBounds,
+  activePageReadableId?: string,
 ): KnowledgeMapLayout {
   const focusedWidth = focusedKnowledgeMapViewBox(layout).width;
   const fullRevealWidth = Math.max(layout.bounds.width, focusedWidth * FULL_TEMPORAL_REVEAL_ZOOM);
@@ -331,7 +345,9 @@ export function knowledgeMapLayoutInViewport(
   const visibleTemporalPageKeys = new Set(layout.temporalPageKeys.slice(0, temporalPageCount));
   const pages = layout.pages.filter(
     ({ page, point }) =>
-      (page.temporalCoverage === null || visibleTemporalPageKeys.has(page.readableId)) &&
+      (page.temporalCoverage === null ||
+        visibleTemporalPageKeys.has(page.readableId) ||
+        page.readableId === activePageReadableId) &&
       pointNearViewport(point, viewport),
   );
   const resources = layout.resources.filter((resource) =>
@@ -376,6 +392,34 @@ export function eagerKnowledgeMapImageKeys(layout: KnowledgeMapLayout): Set<stri
 }
 
 type PagePoint = MapPoint & { page: KnowledgeMapPage };
+
+function availablePagePoint({
+  preferred,
+  phase,
+  firstPlacementIndex,
+  radialSpacing,
+  positionAvailable,
+}: {
+  preferred: MapPoint;
+  phase: number;
+  firstPlacementIndex: number;
+  radialSpacing: number;
+  positionAvailable: (point: MapPoint) => boolean;
+}): MapPoint | undefined {
+  for (let attempt = 0; attempt < PAGE_PLACEMENT_ATTEMPTS; attempt += 1) {
+    const placementIndex = firstPlacementIndex + attempt;
+    const radius = placementIndex === 0 ? 0 : radialSpacing * Math.sqrt(placementIndex);
+    const angle = phase + placementIndex * GOLDEN_ANGLE;
+    const candidate = {
+      x: preferred.x + Math.cos(angle) * radius,
+      y: preferred.y + Math.sin(angle) * radius,
+    };
+    if (positionAvailable(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
 
 function resourceSeedsFrom({
   pages,
@@ -431,17 +475,33 @@ function packPagePoints({
   resourcePoints: Map<string, MapPoint>;
 }): PagePoint[] {
   const placed: PagePoint[] = [];
-  const allResourcePoints = [...resourcePoints.values()];
+  const pageCountByNeighborhood = new Map<string, number>();
+  const pagePoints: PointGrid = {
+    cellWidth: PAGE_LABEL_MIN_DISTANCE,
+    cellHeight: PAGE_LABEL_MIN_DISTANCE,
+    cells: new Map(),
+  };
+  const resourceLabelPoints: PointGrid = {
+    cellWidth: RESOURCE_PAGE_LABEL_X_DISTANCE,
+    cellHeight: RESOURCE_PAGE_LABEL_Y_DISTANCE,
+    cells: new Map(),
+  };
+  for (const point of resourcePoints.values()) {
+    addGridPoint(point, resourceLabelPoints);
+  }
   const positionAvailable = (point: MapPoint) =>
-    placed.every((other) => distanceBetween(point, other) >= PAGE_LABEL_MIN_DISTANCE) &&
-    allResourcePoints.every(
+    nearbyGridPoints(point, pagePoints).every(
+      (other) => distanceBetween(point, other) >= PAGE_LABEL_MIN_DISTANCE,
+    ) &&
+    nearbyGridPoints(point, resourceLabelPoints).every(
       (resourcePoint) =>
         Math.abs(point.x - resourcePoint.x) >= RESOURCE_PAGE_LABEL_X_DISTANCE ||
         Math.abs(point.y - resourcePoint.y) >= RESOURCE_PAGE_LABEL_Y_DISTANCE,
     );
 
   for (const [index, page] of pages.entries()) {
-    const connectedPoints = [...(resourceKeysByPage.get(index) ?? [])].flatMap((key) => {
+    const resourceKeys = [...(resourceKeysByPage.get(index) ?? [])].sort();
+    const connectedPoints = resourceKeys.flatMap((key) => {
       const point = resourcePoints.get(key);
       return point ? [point] : [];
     });
@@ -449,27 +509,27 @@ function packPagePoints({
       connectedPoints.length > 0
         ? pointAverage(connectedPoints)
         : radialPoint(index, UNCONNECTED_PAGE_RADIAL_SPACING);
-    const phase = (stableHash(page.readableId) / 0xffffffff) * Math.PI * 2;
-    let point: MapPoint | undefined;
-    for (let attempt = 0; attempt < PAGE_PLACEMENT_ATTEMPTS; attempt += 1) {
-      const radius = attempt === 0 ? 0 : PAGE_LABEL_SPIRAL_STEP * Math.sqrt(attempt);
-      const angle = phase + attempt * GOLDEN_ANGLE;
-      const candidate = {
-        x: preferred.x + Math.cos(angle) * radius,
-        y: preferred.y + Math.sin(angle) * radius,
-      };
-      if (positionAvailable(candidate)) {
-        point = candidate;
-        break;
-      }
-    }
-    placed.push({
+    const neighborhoodKey = resourceKeys.join('|');
+    const neighborhoodIndex = pageCountByNeighborhood.get(neighborhoodKey) ?? 0;
+    pageCountByNeighborhood.set(neighborhoodKey, neighborhoodIndex + 1);
+    const phase = (stableHash(neighborhoodKey || page.readableId) / 0xffffffff) * Math.PI * 2;
+    const connected = connectedPoints.length > 0;
+    const point = availablePagePoint({
+      preferred,
+      phase,
+      firstPlacementIndex: connected ? neighborhoodIndex + 1 : 0,
+      radialSpacing: connected ? PAGE_LABEL_MIN_DISTANCE : PAGE_COLLISION_SPIRAL_STEP,
+      positionAvailable,
+    });
+    const placedPage = {
       ...(point ?? {
         x: preferred.x + PAGE_LABEL_MIN_DISTANCE * (placed.length + 1),
         y: preferred.y + PAGE_LABEL_MIN_DISTANCE,
       }),
       page,
-    });
+    };
+    placed.push(placedPage);
+    addGridPoint(placedPage, pagePoints);
   }
   return placed;
 }
@@ -529,22 +589,7 @@ export function buildKnowledgeMapLayout(
       : resources[0]!.point);
   const temporalPageKeys = pageLayouts
     .filter(({ page }) => page.temporalCoverage !== null)
-    .map((item) => ({ item, recency: temporalCoverageRecency(item.page.temporalCoverage!) }))
-    .sort(
-      (
-        { item: { page: first }, recency: firstRecency },
-        { item: { page: second }, recency: secondRecency },
-      ) => {
-        return (
-          Number(secondRecency.ongoing) - Number(firstRecency.ongoing) ||
-          secondRecency.latest - firstRecency.latest ||
-          secondRecency.start - firstRecency.start ||
-          new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime() ||
-          first.readableId.localeCompare(second.readableId)
-        );
-      },
-    )
-    .map(({ item }) => item.page.readableId);
+    .map(({ page }) => page.readableId);
 
   return {
     pages: pageLayouts,
