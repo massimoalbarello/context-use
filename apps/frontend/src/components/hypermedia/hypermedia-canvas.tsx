@@ -471,9 +471,26 @@ export function HypermediaCanvas({
   onRetryNeighborhood: () => void;
 }) {
   const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
-  const layout = useMemo(() => buildHypermediaLayout(resources, pages), [resources, pages]);
   const [preview, setPreview] = useState<HypermediaPreview | null>(null);
-  const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(layout));
+  const [viewBox, setViewBox] = useState<ViewBox>(() =>
+    initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
+  );
+  const pageLimit = focusedPageLimit(viewBox);
+  const displayedPages = useMemo(() => {
+    const limitedPages = pages.slice(0, pageLimit);
+    if (!selectedKey?.startsWith('page:')) {
+      return limitedPages;
+    }
+    const selectedReadableId = selectedKey.slice('page:'.length);
+    const selectedPage = pages.find(({ readableId }) => readableId === selectedReadableId);
+    return selectedPage && !limitedPages.includes(selectedPage)
+      ? [...limitedPages, selectedPage]
+      : limitedPages;
+  }, [pageLimit, pages, selectedKey]);
+  const layout = useMemo(
+    () => buildHypermediaLayout(resources, displayedPages),
+    [displayedPages, resources],
+  );
   const viewBoxRef = useRef(viewBox);
   const fitActive = useRef(false);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

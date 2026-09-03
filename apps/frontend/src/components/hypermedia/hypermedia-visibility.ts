@@ -14,6 +14,11 @@ import type {
 export const MAX_FOCUSED_RESOURCES = 24;
 export const MAX_EAGER_HYPERMEDIA_IMAGES = 12;
 export const INITIAL_FOCUSED_PAGE_LIMIT = 20;
+const MIN_FOCUSED_PAGE_LIMIT = 4;
+const MAX_FOCUSED_PAGE_LIMIT = 32;
+const INITIAL_VIEWPORT_WIDTH = 900;
+const MINIMUM_VIEWPORT_WIDTH = 260;
+const OVERVIEW_VIEWPORT_WIDTH = 2600;
 
 function viewportCenter(viewport: CanvasBounds): CanvasPoint {
   return { x: viewport.x + viewport.width / 2, y: viewport.y + viewport.height / 2 };
@@ -53,22 +58,26 @@ export function focusedResources({
 }
 
 export function focusedPageLimit(viewport: CanvasBounds): number {
-  if (viewport.width <= 720) {
-    return 32;
+  if (viewport.width <= INITIAL_VIEWPORT_WIDTH) {
+    const zoomedInProgress =
+      (INITIAL_VIEWPORT_WIDTH - viewport.width) / (INITIAL_VIEWPORT_WIDTH - MINIMUM_VIEWPORT_WIDTH);
+    return Math.min(
+      MAX_FOCUSED_PAGE_LIMIT,
+      Math.round(
+        INITIAL_FOCUSED_PAGE_LIMIT +
+          zoomedInProgress * (MAX_FOCUSED_PAGE_LIMIT - INITIAL_FOCUSED_PAGE_LIMIT),
+      ),
+    );
   }
-  if (viewport.width <= 1100) {
-    return INITIAL_FOCUSED_PAGE_LIMIT;
-  }
-  if (viewport.width <= 1450) {
-    return 16;
-  }
-  if (viewport.width <= 1850) {
-    return 12;
-  }
-  if (viewport.width <= 2300) {
-    return 8;
-  }
-  return 4;
+  const zoomedOutProgress =
+    (viewport.width - INITIAL_VIEWPORT_WIDTH) / (OVERVIEW_VIEWPORT_WIDTH - INITIAL_VIEWPORT_WIDTH);
+  return Math.max(
+    MIN_FOCUSED_PAGE_LIMIT,
+    Math.round(
+      INITIAL_FOCUSED_PAGE_LIMIT -
+        zoomedOutProgress * (INITIAL_FOCUSED_PAGE_LIMIT - MIN_FOCUSED_PAGE_LIMIT),
+    ),
+  );
 }
 
 export function viewportNearResourceBoundary(
@@ -140,14 +149,21 @@ export function hypermediaLayoutInViewport({
   viewport: CanvasBounds;
   selectedKey?: string;
 }): HypermediaLayout {
+  const visibleResourceKeys = new Set(
+    layout.resources
+      .filter(
+        (resource) => resource.key === selectedKey || pointNearViewport(resource.point, viewport),
+      )
+      .map(({ key }) => key),
+  );
   return {
     ...layout,
-    resources: layout.resources.filter(
-      (resource) => resource.key === selectedKey || pointNearViewport(resource.point, viewport),
-    ),
+    resources: layout.resources.filter(({ key }) => visibleResourceKeys.has(key)),
     pages: layout.pages.filter(
-      ({ page, point }) =>
-        `page:${page.readableId}` === selectedKey || pointNearViewport(point, viewport),
+      ({ page, point, resourceKeys }) =>
+        `page:${page.readableId}` === selectedKey ||
+        resourceKeys.some((key) => visibleResourceKeys.has(key)) ||
+        (resourceKeys.length === 0 && pointNearViewport(point, viewport)),
     ),
   };
 }

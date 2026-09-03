@@ -119,12 +119,12 @@ describe('resource-first hypermedia layout', () => {
   });
 
   test('requests progressively more page history as the viewport zooms in', () => {
-    expect(focusedPageLimit({ x: 0, y: 0, width: 600, height: 400 })).toBe(32);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 900, height: 600 })).toBe(20);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 1400, height: 900 })).toBe(16);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 1750, height: 1100 })).toBe(12);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 2200, height: 1400 })).toBe(8);
-    expect(focusedPageLimit({ x: 0, y: 0, width: 2600, height: 1600 })).toBe(4);
+    const limits = [260, 600, 900, 1400, 1750, 2200, 2600].map((width) =>
+      focusedPageLimit({ x: 0, y: 0, width, height: width * 0.7 }),
+    );
+
+    expect(limits).toEqual([32, 26, 20, 15, 12, 8, 4]);
+    expect(limits).toEqual([...limits].sort((first, second) => second - first));
   });
 
   test('discovers another neighborhood only at a sparse map edge', () => {
@@ -169,5 +169,22 @@ describe('resource-first hypermedia layout', () => {
         selectedKey: 'entity:self',
       }).resources.map(({ key }) => key),
     ).toEqual(['entity:self']);
+  });
+
+  test('keeps a page cloud while one of its connected resources remains visible', () => {
+    const resources = buildStableResources([neighborhood(entity('self', true), [])]);
+    const layout = buildHypermediaLayout(resources, [page('connected-page')]);
+    const connectedPage = layout.pages[0]!;
+    const viewport = { x: -50, y: -50, width: 100, height: 100 };
+    const displacedLayout = {
+      ...layout,
+      pages: [{ ...connectedPage, point: { x: 10_000, y: 10_000 } }],
+    };
+
+    expect(
+      hypermediaLayoutInViewport({ layout: displacedLayout, viewport }).pages.map(
+        ({ page: item }) => item.readableId,
+      ),
+    ).toEqual(['connected-page']);
   });
 });
