@@ -41,7 +41,7 @@ export function createPageReadableIdController({
           : status(StatusMap['Not Found'], { error: 'Knowledge page not found' });
       },
       {
-        detail: { tags: ['Pages'], summary: 'Read a knowledge page map preview' },
+        detail: { tags: ['Pages'], summary: 'Read a knowledge page preview' },
         params: KnowledgePageParamsSchema,
         response: {
           [StatusMap.OK]: KnowledgePagePreviewSchema,

@@ -139,7 +139,6 @@ function HypermediaRoute() {
       <KnowledgeWorkspaceDetail>
         <div className="relative size-full">
           <HypermediaExplorer
-            key={`${q}:${dateRange?.from ?? ''}:${dateRange?.to ?? ''}`}
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
             query={q}
