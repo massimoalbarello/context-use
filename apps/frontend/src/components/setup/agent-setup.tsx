@@ -9,7 +9,7 @@ import INITIAL_CONTEXT_PROMPT from './initial-context-prompt.md?raw';
 type CopyState = 'idle' | 'copied' | 'failed';
 
 export function agentConnectionHelpPrompt(mcpServerUrl: string): string {
-  return `Guide me in setting up the Context Use MCP connector in this agent. Give me concise, numbered steps to add ${mcpServerUrl} as a custom Streamable HTTP MCP server, connect it, and approve the OAuth request in my browser. Finish by helping me confirm that the Context Use tools are available.`;
+  return `Guide me in setting up the Context Use MCP connector in this agent. Give me concise, numbered steps to add ${mcpServerUrl} as a custom Streamable HTTP MCP server named “Context Use”, connect it, and approve the OAuth request in my browser. Finish by helping me confirm that the Context Use tools are available.`;
 }
 
 export function initialContextPrompt(): string {
@@ -92,12 +92,12 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
         <section className="grid min-w-0 gap-4" aria-labelledby="connect-mcp-heading">
           <div className="grid gap-1">
             <h2 id="connect-mcp-heading" className="font-semibold text-xl">
-              Connect to the MCP server
+              Connect your agent to Context Use MCP server
             </h2>
             <p className="text-muted-foreground leading-relaxed">
               Open your agent’s MCP or connector settings. Add a custom server, choose Streamable
-              HTTP, and paste this URL. Then start the connection and approve the Context Use OAuth
-              request in your browser. Continue when Context Use tools appear in your agent.
+              HTTP, name it “<strong>Context Use</strong>”, and paste this URL. Then start the
+              connection and approve the Context Use OAuth request in your browser.
             </p>
           </div>
 
@@ -130,10 +130,10 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
         >
           2
         </span>
-        <section className="grid min-w-0 gap-4" aria-labelledby="bootstrap-context-heading">
+        <section className="grid min-w-0 gap-4" aria-labelledby="import-memories-heading">
           <div className="grid gap-1">
-            <h2 id="bootstrap-context-heading" className="font-semibold text-xl">
-              Bootstrap your context
+            <h2 id="import-memories-heading" className="font-semibold text-xl">
+              Import memories from your favorite agent
             </h2>
             <p className="text-muted-foreground leading-relaxed">
               Once connected, paste this prompt into your agent. It will import the memories and
@@ -158,13 +158,12 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
         >
           3
         </span>
-        <section className="grid gap-1" aria-labelledby="review-context-heading">
-          <h2 id="review-context-heading" className="font-semibold text-xl">
-            Reload and review
+        <section className="grid gap-1" aria-labelledby="refresh-page-heading">
+          <h2 id="refresh-page-heading" className="font-semibold text-xl">
+            Refresh the page
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Once your agent says the import is complete, reload this page to see the context
-            created.
+            Refresh this page when the import is complete.
           </p>
         </section>
       </li>
