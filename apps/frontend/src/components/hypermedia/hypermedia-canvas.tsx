@@ -194,13 +194,13 @@ function ResourceDot({
   const label = resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
   const readableId =
     resource.kind === 'entity' ? resource.entity.readableId : resource.asset.readableId;
-  const clipId = `map-dot-${resource.key.replaceAll(':', '-')}`;
+  const clipId = `hypermedia-landmark-${resource.key.replaceAll(':', '-')}`;
   const href = `/${resource.kind === 'entity' ? 'entities' : 'assets'}/${encodeURIComponent(readableId)}`;
 
   return (
     <a
       href={href}
-      data-map-resource
+      data-hypermedia-resource
       aria-label={`Open ${resource.kind} ${label}`}
       className="cursor-pointer outline-none"
       onPointerEnter={onPreview}
@@ -323,7 +323,7 @@ const HypermediaLayers = memo(function HypermediaLayers({
             href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
             tabIndex={-1}
             aria-label={`Open knowledge page region ${item.page.title}`}
-            data-map-cloud={item.page.readableId}
+            data-hypermedia-cloud={item.page.readableId}
             className="cursor-pointer outline-none"
             onClick={(event) => {
               event.preventDefault();
@@ -360,7 +360,7 @@ const HypermediaLayers = memo(function HypermediaLayers({
           <a
             key={item.page.readableId}
             href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
-            data-map-resource
+            data-hypermedia-resource
             aria-label={`Open knowledge page ${item.page.title}`}
             className="cursor-pointer outline-none"
             onPointerEnter={() => onPreview({ kind: 'page', page: item.page })}
@@ -440,7 +440,7 @@ function HypermediaExplorationCue({
       ) : (
         <p className="flex items-center gap-2 whitespace-nowrap rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
           <Move className="size-3.5" aria-hidden="true" />
-          Drag around the map to explore nearby landmarks
+          Drag to explore nearby landmarks
         </p>
       )}
     </div>
@@ -574,13 +574,13 @@ export function HypermediaCanvas({
   }
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
-    if (event.button !== 0 || (event.target as Element).closest('[data-map-resource]')) {
+    if (event.button !== 0 || (event.target as Element).closest('[data-hypermedia-resource]')) {
       return;
     }
     suppressNextCloudClick.current = false;
     const cloudReadableId = (event.target as Element)
-      .closest('[data-map-cloud]')
-      ?.getAttribute('data-map-cloud');
+      .closest('[data-hypermedia-cloud]')
+      ?.getAttribute('data-hypermedia-cloud');
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = {
       pointerId: event.pointerId,
@@ -651,14 +651,14 @@ export function HypermediaCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
-      aria-label={`Hypermedia map with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.landmarks.length} visible landmarks`}
+      aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.landmarks.length} visible landmarks`}
     >
       <svg
         className={cn(
           'size-full touch-none select-none bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] [background-size:22px_22px]',
           panning ? 'cursor-grabbing' : 'cursor-grab',
         )}
-        aria-label="Interactive hypermedia map"
+        aria-label="Interactive Hypermedia"
         viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
         preserveAspectRatio="xMidYMid meet"
         onWheel={handleWheel}
@@ -706,7 +706,7 @@ export function HypermediaCanvas({
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Fit hypermedia map"
+          aria-label="Fit Hypermedia"
           onClick={fitMap}
         >
           <Scan aria-hidden="true" />

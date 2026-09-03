@@ -1,6 +1,6 @@
 # Accessibility audit
 
-[Maya Chen](context-use://entity/maya-chen), [Priya Shah](context-use://entity/priya-shah), and [Theo Brooks](context-use://entity/theo-brooks) audited the [Northstar](context-use://entity/northstar) map with keyboard and screen-reader workflows.
+[Maya Chen](context-use://entity/maya-chen), [Priya Shah](context-use://entity/priya-shah), and [Theo Brooks](context-use://entity/theo-brooks) audited Hypermedia in [Northstar](context-use://entity/northstar) with keyboard and screen-reader workflows.
 
 ## Findings
 

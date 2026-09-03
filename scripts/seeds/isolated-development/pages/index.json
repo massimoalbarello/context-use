@@ -13,7 +13,10 @@
     "readableId": "customer-research-synthesis",
     "temporalCoverage": "2026-06/2026-07"
   },
-  { "readableId": "technical-map-notes", "temporalCoverage": "2026-08/.." },
+  {
+    "readableId": "technical-hypermedia-notes",
+    "temporalCoverage": "2026-08/.."
+  },
   {
     "readableId": "launch-readiness-plan",
     "temporalCoverage": "2026-09/2026-10"
@@ -35,7 +38,7 @@
   },
   { "readableId": "navigation-study-protocol", "temporalCoverage": "2026-05" },
   { "readableId": "interview-theme-analysis", "temporalCoverage": "2026-06" },
-  { "readableId": "pilot-journey-map", "temporalCoverage": "2026-07" },
+  { "readableId": "pilot-hypermedia-journey", "temporalCoverage": "2026-07" },
   {
     "readableId": "terminology-testing-notes",
     "temporalCoverage": "2026-07-14/2026-07-18"
@@ -46,7 +49,7 @@
   },
   { "readableId": "research-archive-guide" },
   {
-    "readableId": "map-interaction-principles",
+    "readableId": "hypermedia-interaction-principles",
     "temporalCoverage": "2026-07/.."
   },
   {
@@ -68,7 +71,7 @@
   { "readableId": "resource-card-patterns" },
   { "readableId": "visual-language-notes", "temporalCoverage": "2026-08" },
   {
-    "readableId": "knowledge-map-query-budget",
+    "readableId": "hypermedia-query-budget",
     "temporalCoverage": "2026-08/.."
   },
   {
@@ -84,7 +87,10 @@
     "temporalCoverage": "2026-08-26"
   },
   { "readableId": "preview-cache-strategy", "temporalCoverage": "2026-08/.." },
-  { "readableId": "map-observability-plan", "temporalCoverage": "2026-09/.." },
+  {
+    "readableId": "hypermedia-observability-plan",
+    "temporalCoverage": "2026-09/.."
+  },
   { "readableId": "release-readiness-runbook", "temporalCoverage": "2026-09" },
   {
     "readableId": "pilot-onboarding-plan",

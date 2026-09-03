@@ -246,10 +246,10 @@ def seed_isolated_data():
 
     # Use a document navigation so the new app instance reads the seeded profile instead of
     # retaining the setup route's pre-seed query cache.
-    goto_url(f"{APP_URL}/map")
+    goto_url(f"{APP_URL}/hypermedia")
     wait_for_load()
     wait_until(
-        lambda: urlparse(page_info()["url"]).path == "/map",
+        lambda: urlparse(page_info()["url"]).path == "/hypermedia",
         "Seeded profile did not open the workspace",
     )
     print(

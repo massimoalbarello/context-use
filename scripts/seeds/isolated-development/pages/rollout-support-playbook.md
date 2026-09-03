@@ -4,4 +4,4 @@
 
 ## Response path
 
-Capture the confusing resource, link it to the relevant knowledge page, and route performance reports through the [technical map notes](context-use://page/technical-map-notes). Review recurring themes in the [pilot feedback](context-use://page/pilot-feedback).
+Capture the confusing resource, link it to the relevant knowledge page, and route performance reports through the [technical Hypermedia notes](context-use://page/technical-hypermedia-notes). Review recurring themes in the [pilot feedback](context-use://page/pilot-feedback).

@@ -1,4 +1,4 @@
-// biome-ignore-all lint/style/noMagicNumbers: The deterministic map geometry is defined by visual constants.
+// biome-ignore-all lint/style/noMagicNumbers: The deterministic Hypermedia geometry is defined by visual constants.
 // biome-ignore-all lint/complexity/useMaxParams: Geometry helpers read more clearly with point pairs and collection indexes.
 
 import type {

@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { HypermediaFilters } from '../../src/components/hypermedia/hypermedia-filters';
 
-test('the map composes explicit keyword and date range filters', () => {
+test('Hypermedia composes explicit keyword and date range filters', () => {
   const html = renderToStaticMarkup(
     <HypermediaFilters
       query="launch"

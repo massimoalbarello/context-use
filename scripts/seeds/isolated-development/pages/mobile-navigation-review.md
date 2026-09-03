@@ -4,4 +4,4 @@
 
 ## Decision
 
-The map remains primary, previews use the available sheet width, and resource browsing stays one clear step away. Recheck the flow against the [pilot feedback](context-use://page/pilot-feedback).
+Hypermedia remains primary, previews use the available sheet width, and resource browsing stays one clear step away. Recheck the flow against the [pilot feedback](context-use://page/pilot-feedback).

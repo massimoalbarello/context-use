@@ -4,4 +4,4 @@
 
 ## Direction
 
-Preserve recognizable anchors, separate page labels, and progressively summarize density. The first implementation follows the [design critique notes](context-use://page/design-critique-notes) and [technical map notes](context-use://page/technical-map-notes).
+Preserve recognizable anchors, separate page labels, and progressively summarize density. The first implementation follows the [design critique notes](context-use://page/design-critique-notes) and [technical Hypermedia notes](context-use://page/technical-hypermedia-notes).

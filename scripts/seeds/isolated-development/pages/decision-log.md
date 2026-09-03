@@ -4,7 +4,7 @@
 
 ## Current decisions
 
-- Keep the hypermedia map as the main workspace.
+- Keep Hypermedia as the main workspace.
 - Reveal older pages through stable, cursor-paginated neighborhoods.
 - Preserve direct access to entities, pages, and assets through [resource browsing](context-use://page/ui-review-checklist).
 

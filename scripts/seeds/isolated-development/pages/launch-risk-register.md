@@ -4,4 +4,4 @@
 
 ## Active risks
 
-Dense maps may obscure labels, large entities may dominate neighborhoods, and slow previews may reduce trust. Mitigations follow the [design critique notes](context-use://page/design-critique-notes), [technical map notes](context-use://page/technical-map-notes), and [launch readiness plan](context-use://page/launch-readiness-plan).
+Dense Hypermedia views may obscure labels, large entities may dominate neighborhoods, and slow previews may reduce trust. Mitigations follow the [design critique notes](context-use://page/design-critique-notes), [technical Hypermedia notes](context-use://page/technical-hypermedia-notes), and [launch readiness plan](context-use://page/launch-readiness-plan).

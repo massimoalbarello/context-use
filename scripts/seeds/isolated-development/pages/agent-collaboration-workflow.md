@@ -4,6 +4,6 @@
 
 ## Workflow
 
-Start from the hypermedia map, inspect the relevant neighborhood, open the resource preview, and only then change durable knowledge.
+Start from Hypermedia, inspect the relevant neighborhood, open the resource preview, and only then change durable knowledge.
 
-The workflow follows the [technical map notes](context-use://page/technical-map-notes) and records important choices in the [decision log](context-use://page/decision-log).
+The workflow follows the [technical Hypermedia notes](context-use://page/technical-hypermedia-notes) and records important choices in the [decision log](context-use://page/decision-log).

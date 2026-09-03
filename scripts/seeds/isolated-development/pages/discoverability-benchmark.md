@@ -4,4 +4,4 @@
 
 ## Measure
 
-Track time to locate a decision, number of wrong turns, and whether the participant can explain why two pages overlap. Use the [technical map notes](context-use://page/technical-map-notes) to keep the test responsive.
+Track time to locate a decision, number of wrong turns, and whether the participant can explain why two pages overlap. Use the [technical Hypermedia notes](context-use://page/technical-hypermedia-notes) to keep the test responsive.

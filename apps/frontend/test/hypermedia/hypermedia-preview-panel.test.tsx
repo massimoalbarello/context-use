@@ -87,7 +87,7 @@ test('preview headers use visible same-window resource links without native tool
   expect(`${pageHtml}${entityHtml}${assetHtml}`).not.toContain('Open full');
 });
 
-test('page preview content keeps resource navigation inside the map overlay', async () => {
+test('page preview content keeps resource navigation inside the Hypermedia overlay', async () => {
   const pageHtml = await renderPreview({ kind: 'page', readableId: 'project-brief' });
 
   expect(pageHtml).toContain('>launch plan</button>');

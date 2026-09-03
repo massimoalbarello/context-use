@@ -6,4 +6,4 @@
 
 [Download the rollout metrics](context-use://asset/rollout-metrics).
 
-Frequent reviewers used previews heavily, while new contributors relied on resource lists before exploring the map. Compare the pattern with the [customer research synthesis](context-use://page/customer-research-synthesis).
+Frequent reviewers used previews heavily, while new contributors relied on resource lists before exploring Hypermedia. Compare the pattern with the [customer research synthesis](context-use://page/customer-research-synthesis).

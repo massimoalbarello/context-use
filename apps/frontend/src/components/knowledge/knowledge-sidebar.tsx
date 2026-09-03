@@ -50,7 +50,7 @@ export function KnowledgeSidebar({
             to={MAIN_KNOWLEDGE_PATH}
           >
             <MapIcon aria-hidden="true" />
-            Hypermedia map
+            Hypermedia
           </Link>
         </div>
         <div className="mt-3 flex shrink-0 items-center justify-between gap-3 px-4">

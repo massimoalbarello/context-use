@@ -1,4 +1,4 @@
-# Technical map notes
+# Technical Hypermedia notes
 
 [Alex Morgan](context-use://entity/alex-morgan) and [Theo Brooks](context-use://entity/theo-brooks) are testing [Compass](context-use://entity/compass) against the [Northstar](context-use://entity/northstar) workspace.
 

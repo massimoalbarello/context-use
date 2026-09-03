@@ -4,4 +4,4 @@
 
 ## Agreements
 
-Keep the map as the main entry point, preserve resource lists for exhaustive browsing, and test dense neighborhoods before rollout. The agreements update the [decision log](context-use://page/decision-log).
+Keep Hypermedia as the main entry point, preserve resource lists for exhaustive browsing, and test dense neighborhoods before rollout. The agreements update the [decision log](context-use://page/decision-log).

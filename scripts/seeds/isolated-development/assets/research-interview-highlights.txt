@@ -1,2 +1,2 @@
 Orbit Labs participants found entity previews useful when names appeared in several project pages.
-They wanted the map to reveal more context progressively without moving knowledge they had already seen.
+They wanted Hypermedia to reveal more context progressively without moving knowledge they had already seen.

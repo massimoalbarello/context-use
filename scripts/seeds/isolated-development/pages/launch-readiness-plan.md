@@ -6,4 +6,4 @@
 
 [Download the rollout metrics](context-use://asset/rollout-metrics).
 
-The plan combines the [launch retrospective](context-use://page/northstar-launch-retrospective), [customer research](context-use://page/customer-research-synthesis), and [technical map notes](context-use://page/technical-map-notes#constraints).
+The plan combines the [launch retrospective](context-use://page/northstar-launch-retrospective), [customer research](context-use://page/customer-research-synthesis), and [technical Hypermedia notes](context-use://page/technical-hypermedia-notes#constraints).
