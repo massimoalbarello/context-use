@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import {
-  addHypermediaResourceSelection,
   pagesSharedBySelectedResources,
   selectedHypermediaResources,
   selectedHypermediaResourcesLabel,
   selectedHypermediaResourcesValue,
+  toggleHypermediaResourceSelection,
 } from '../../src/components/hypermedia/hypermedia-selection';
 import type { HypermediaPage } from '../../src/queries/hypermedia';
 
@@ -25,8 +25,9 @@ function page(readableId: string): HypermediaPage {
 
 describe('Hypermedia resource filters', () => {
   test('accumulates canonical entity and asset selections without page previews changing them', () => {
+    const entitySelection = { kind: 'entity' as const, readableId: 'jun-park' };
     const initial = selectedHypermediaResources('entity:jun-park,entity:jun-park,invalid');
-    const withAsset = addHypermediaResourceSelection({
+    const withAsset = toggleHypermediaResourceSelection({
       resources: initial,
       selection: { kind: 'asset', readableId: 'rollout-metrics' },
     });
@@ -37,7 +38,7 @@ describe('Hypermedia resource filters', () => {
       { kind: 'asset', readableId: 'rollout-metrics' },
     ]);
     expect(
-      addHypermediaResourceSelection({
+      toggleHypermediaResourceSelection({
         resources: withAsset,
         selection: { kind: 'page', readableId: 'preview-cache-strategy' },
       }),
@@ -48,6 +49,9 @@ describe('Hypermedia resource filters', () => {
     expect(selectedHypermediaResourcesLabel(initial)).toBe('1 entity selected');
     expect(selectedHypermediaResourcesLabel([withAsset[1]!])).toBe('1 asset selected');
     expect(selectedHypermediaResourcesLabel(withAsset)).toBe('2 resources selected');
+    expect(
+      toggleHypermediaResourceSelection({ resources: withAsset, selection: entitySelection }),
+    ).toEqual([{ kind: 'asset', readableId: 'rollout-metrics' }]);
   });
 
   test('shows only pages shared by every selected resource', () => {

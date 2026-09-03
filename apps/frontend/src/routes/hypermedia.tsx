@@ -3,9 +3,9 @@ import type { HypermediaSelection } from '../components/hypermedia/hypermedia-ca
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
 import {
-  addHypermediaResourceSelection,
   selectedHypermediaResources,
   selectedHypermediaResourcesValue,
+  toggleHypermediaResourceSelection,
 } from '../components/hypermedia/hypermedia-selection';
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
 import { INITIAL_FOCUSED_PAGE_LIMIT } from '../components/hypermedia/hypermedia-visibility';
@@ -16,6 +16,7 @@ import { entitiesQueryOptions } from '../queries/entities';
 import {
   focusedHypermediaPagesQueryOptions,
   type HypermediaResourceReference,
+  hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
 } from '../queries/hypermedia';
 
@@ -97,14 +98,22 @@ function HypermediaRoute() {
   function selectKnowledge(nextSelection: HypermediaSelection) {
     void navigate({
       search: (previous) => {
-        const resources = addHypermediaResourceSelection({
-          resources: selectedHypermediaResources(previous.focus),
+        const previousResources = selectedHypermediaResources(previous.focus);
+        const wasSelected =
+          nextSelection.kind !== 'page' &&
+          previousResources.some(
+            (resource) =>
+              hypermediaResourceKey(resource) ===
+              `${nextSelection.kind}:${nextSelection.readableId}`,
+          );
+        const resources = toggleHypermediaResourceSelection({
+          resources: previousResources,
           selection: nextSelection,
         });
         return {
           ...previous,
-          kind: nextSelection.kind,
-          id: nextSelection.readableId,
+          kind: wasSelected ? undefined : nextSelection.kind,
+          id: wasSelected ? undefined : nextSelection.readableId,
           focus: selectedHypermediaResourcesValue(resources),
         };
       },

@@ -53,18 +53,22 @@ export function selectedHypermediaResourcesLabel(resources: HypermediaResourceRe
   return `${resources.length} resources selected`;
 }
 
-export function addHypermediaResourceSelection({
+export function toggleHypermediaResourceSelection({
   resources,
   selection,
 }: {
   resources: HypermediaResourceReference[];
   selection: HypermediaSelection;
 }): HypermediaResourceReference[] {
-  if (selection.kind === 'page' || resources.length === MAX_SELECTED_HYPERMEDIA_RESOURCES) {
+  if (selection.kind === 'page') {
     return resources;
   }
   const resource = { kind: selection.kind, readableId: selection.readableId };
-  return resources.some((item) => hypermediaResourceKey(item) === hypermediaResourceKey(resource))
+  const key = hypermediaResourceKey(resource);
+  if (resources.some((item) => hypermediaResourceKey(item) === key)) {
+    return resources.filter((item) => hypermediaResourceKey(item) !== key);
+  }
+  return resources.length === MAX_SELECTED_HYPERMEDIA_RESOURCES
     ? resources
     : [...resources, resource];
 }
