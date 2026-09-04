@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { Library } from 'lucide-react';
 import { cn } from '../../lib/class-names';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
+import type { HypermediaResourceReference } from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
   KnowledgeSidebarFooter,
@@ -15,14 +16,18 @@ export function HypermediaSidebar({
   profile,
   query,
   dateRange,
+  selectedResources,
   onQueryApply,
   onDateRangeApply,
+  onClearSelectedResources,
 }: {
   profile: KnowledgeProfile;
   query: string;
   dateRange?: CalendarDateRange;
+  selectedResources: HypermediaResourceReference[];
   onQueryApply: (query: string) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
+  onClearSelectedResources: () => void;
 }) {
   const { collapsed } = useKnowledgeWorkspace();
 
@@ -47,8 +52,10 @@ export function HypermediaSidebar({
           <HypermediaFilters
             query={query}
             dateRange={dateRange}
+            selectedResources={selectedResources}
             onQueryApply={onQueryApply}
             onDateRangeApply={onDateRangeApply}
+            onClearSelectedResources={onClearSelectedResources}
           />
         </div>
 
