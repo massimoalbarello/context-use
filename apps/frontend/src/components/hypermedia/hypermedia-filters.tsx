@@ -85,6 +85,8 @@ export function HypermediaFilters({
         Filter hypermedia
       </h2>
       <div className="mt-2 grid gap-3">
+        <HypermediaKeywordFilter key={query} value={query} onApply={onQueryApply} />
+        <PageDateRangeFilter className="mb-0" value={dateRange} onApply={onDateRangeApply} />
         {selectedResources.length > 0 && (
           <div className="flex items-center gap-3 rounded-xl bg-muted/55 p-3" aria-live="polite">
             <div className="min-w-0 flex-1">
@@ -105,8 +107,6 @@ export function HypermediaFilters({
             </Button>
           </div>
         )}
-        <HypermediaKeywordFilter key={query} value={query} onApply={onQueryApply} />
-        <PageDateRangeFilter className="mb-0" value={dateRange} onApply={onDateRangeApply} />
       </div>
     </section>
   );

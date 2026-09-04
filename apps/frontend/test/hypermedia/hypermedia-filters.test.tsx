@@ -23,5 +23,8 @@ test('Hypermedia composes explicit resource, keyword, and date range filters', (
   expect(html).toContain('2 resources selected');
   expect(html).toContain('Pages include every selection.');
   expect(html).toContain('aria-label="Clear selected resources"');
+  expect(html.indexOf('2 resources selected')).toBeGreaterThan(
+    html.indexOf('01/01/2026 – 31/03/2026'),
+  );
   expect(html).toContain('Apply');
 });
