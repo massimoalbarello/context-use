@@ -13,16 +13,19 @@ import { EntityAvatar } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
+import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { Button, buttonVariants } from '../ui/button';
 import type { HypermediaSelection } from './hypermedia-canvas';
 
 function PreviewPanelShell({
   label,
+  context,
   openLink,
   onClose,
   children,
 }: {
   label: string;
+  context?: ReactNode;
   openLink: ReactNode;
   onClose: () => void;
   children: ReactNode;
@@ -33,9 +36,10 @@ function PreviewPanelShell({
       aria-label={`${label} preview`}
     >
       <header className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
-        <span className="min-w-0 flex-1 truncate font-medium text-muted-foreground text-sm">
-          {label}
-        </span>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <span className="truncate font-medium text-muted-foreground text-sm">{label}</span>
+          {context}
+        </div>
         {openLink}
         <Button
           type="button"
@@ -151,6 +155,14 @@ function PagePreview({
   return (
     <PreviewPanelShell
       label="Knowledge page"
+      context={
+        page?.temporalCoverage ? (
+          <TemporalCoverageLabel
+            className="max-w-full text-xs"
+            expression={page.temporalCoverage}
+          />
+        ) : null
+      }
       onClose={onClose}
       openLink={
         <Link
