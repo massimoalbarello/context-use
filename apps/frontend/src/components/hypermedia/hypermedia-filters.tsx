@@ -42,12 +42,7 @@ function HypermediaKeywordFilter({
             onChange={(event) => setDraft(event.currentTarget.value)}
           />
         </span>
-        <Button
-          type="submit"
-          size="sm"
-          className="h-10 shrink-0"
-          disabled={draft.trim() === value}
-        >
+        <Button type="submit" size="sm" className="h-10 shrink-0" disabled={draft.trim() === value}>
           Apply
         </Button>
       </div>

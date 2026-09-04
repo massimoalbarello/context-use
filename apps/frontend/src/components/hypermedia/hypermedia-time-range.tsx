@@ -1,4 +1,4 @@
-import { CalendarRange, RotateCcw } from 'lucide-react';
+import { CalendarRange, ChevronDown, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   type CalendarDateRange,
@@ -7,6 +7,7 @@ import {
 } from '../../lib/temporal-coverage';
 import type { HypermediaPages } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Slider, SliderControl, SliderIndicator, SliderThumb, SliderTrack } from '../ui/slider';
 
 const MILLISECONDS_PER_DAY = 86_400_000;
@@ -61,6 +62,15 @@ function ariaDateLabel(...[, day]: [string, number, number]): string {
   return dateLabel(day);
 }
 
+function rangeLabel(value?: CalendarDateRange): string {
+  if (!value) {
+    return 'All time';
+  }
+  return `${dateLabel(epochDayFromCalendarDate(value.from))} – ${dateLabel(
+    epochDayFromCalendarDate(value.to),
+  )}`;
+}
+
 export function HypermediaTimeRange({
   value,
   extent,
@@ -82,6 +92,7 @@ export function HypermediaTimeRange({
   const maximum = extent ? epochDayFromMilliseconds(extent.end) : 0;
   const appliedRange = dayRange({ value, minimum, maximum });
   const [draft, setDraft] = useState<DayRange>(appliedRange);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     setDraft(appliedRange);
@@ -104,72 +115,111 @@ export function HypermediaTimeRange({
   }
 
   return (
-    <div className="shrink-0 border-b bg-card px-4 py-3">
+    <div className="grid gap-2 rounded-xl bg-muted/55 p-3">
       {error ? (
-        <div className="flex items-center justify-center gap-3 text-sm" role="alert">
+        <div className="grid gap-2 text-sm" role="alert">
+          <p className="font-medium text-xs">Time range</p>
           <span className="text-destructive">Couldn’t load pages.</span>
-          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          <Button
+            className="justify-self-start"
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRetry}
+          >
             Try again
           </Button>
         </div>
       ) : extent ? (
-        <div className="mx-auto grid max-w-4xl gap-2">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:flex">
-            <span className="flex min-w-0 items-center gap-2 font-medium text-sm sm:flex-1">
-              <CalendarRange className="size-4 text-muted-foreground" aria-hidden="true" />
-              <span>Time range</span>
-            </span>
-            <output className="col-span-2 row-start-2 justify-self-end text-muted-foreground text-xs tabular-nums sm:order-2 sm:col-span-1 sm:justify-self-auto">
-              {dateLabel(draft[0])} – {dateLabel(draft[1])}
-            </output>
-            {value && (
-              <Button
-                className="col-start-2 row-start-1 sm:order-3"
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onApply(undefined)}
-              >
-                <RotateCcw aria-hidden="true" />
-                All time
-              </Button>
-            )}
-          </div>
-          {minimum < maximum && (
-            <Slider
-              value={draft}
-              min={minimum}
-              max={maximum}
-              step={1}
-              thumbCollisionBehavior="none"
-              disabled={loading}
-              onValueChange={(next) => setDraft([next[0] ?? minimum, next[1] ?? maximum])}
-              onValueCommitted={commit}
+        <>
+          <p className="font-medium text-xs">Time range</p>
+          <Popover
+            open={open}
+            onOpenChange={(nextOpen) => {
+              if (nextOpen) {
+                setDraft(appliedRange);
+              }
+              setOpen(nextOpen);
+            }}
+          >
+            <PopoverTrigger
+              render={
+                <Button
+                  className="w-full justify-start overflow-hidden font-normal"
+                  type="button"
+                  variant="outline"
+                />
+              }
             >
-              <SliderControl>
-                <SliderTrack>
-                  <SliderIndicator />
-                  <SliderThumb
-                    index={0}
-                    getAriaLabel={() => 'Start date'}
-                    getAriaValueText={ariaDateLabel}
-                  />
-                  <SliderThumb
-                    index={1}
-                    getAriaLabel={() => 'End date'}
-                    getAriaValueText={ariaDateLabel}
-                  />
-                </SliderTrack>
-              </SliderControl>
-            </Slider>
-          )}
-        </div>
+              <CalendarRange data-icon="inline-start" />
+              <span className="min-w-0 flex-1 truncate text-left">{rangeLabel(value)}</span>
+              <ChevronDown data-icon="inline-end" className="text-muted-foreground" />
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              side="right"
+              className="grid w-[min(22rem,calc(100vw-2rem))] gap-3 p-4"
+              aria-label="Choose time range"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium text-sm">Pages in time</p>
+                <output className="text-right text-muted-foreground text-xs tabular-nums">
+                  {dateLabel(draft[0])} – {dateLabel(draft[1])}
+                </output>
+              </div>
+              {minimum < maximum && (
+                <Slider
+                  value={draft}
+                  min={minimum}
+                  max={maximum}
+                  step={1}
+                  thumbCollisionBehavior="none"
+                  disabled={loading}
+                  onValueChange={(next) => setDraft([next[0] ?? minimum, next[1] ?? maximum])}
+                  onValueCommitted={commit}
+                >
+                  <SliderControl>
+                    <SliderTrack>
+                      <SliderIndicator />
+                      <SliderThumb
+                        index={0}
+                        getAriaLabel={() => 'Start date'}
+                        getAriaValueText={ariaDateLabel}
+                      />
+                      <SliderThumb
+                        index={1}
+                        getAriaLabel={() => 'End date'}
+                        getAriaValueText={ariaDateLabel}
+                      />
+                    </SliderTrack>
+                  </SliderControl>
+                </Slider>
+              )}
+              <div className="flex items-center justify-end gap-2 border-t pt-3">
+                {value && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setDraft([minimum, maximum]);
+                      onApply(undefined);
+                    }}
+                  >
+                    <RotateCcw aria-hidden="true" />
+                    All time
+                  </Button>
+                )}
+                <Button type="button" size="sm" onClick={() => setOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </>
       ) : null}
       {hasMore && (
-        <p
-          className="mx-auto mt-2 max-w-4xl rounded-lg border bg-muted/55 px-3 py-2 text-center text-sm"
-          role="status"
-        >
+        <p className="rounded-lg border bg-background/60 px-3 py-2 text-sm" role="status">
           This view is too dense. Select entities or narrow the time range.
         </p>
       )}
