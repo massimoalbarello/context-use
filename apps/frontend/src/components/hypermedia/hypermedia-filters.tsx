@@ -1,11 +1,11 @@
 import { Search, X } from 'lucide-react';
 import { useState } from 'react';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
-import type { HypermediaResourceReference } from '../../queries/hypermedia';
-import { PageDateRangeFilter } from '../pages/page-date-range-filter';
+import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
+import { HypermediaTimeRange } from './hypermedia-time-range';
 
 function HypermediaKeywordFilter({
   value,
@@ -67,16 +67,26 @@ function HypermediaKeywordFilter({
 export function HypermediaFilters({
   query,
   dateRange,
+  temporalExtent,
+  hasMorePages,
+  pagesLoading,
+  pagesError,
   selectedResources,
   onQueryApply,
   onDateRangeApply,
+  onRetryPages,
   onClearSelectedResources,
 }: {
   query: string;
   dateRange?: CalendarDateRange;
+  temporalExtent: HypermediaPages['temporalExtent'];
+  hasMorePages: boolean;
+  pagesLoading: boolean;
+  pagesError: Error | null;
   selectedResources: HypermediaResourceReference[];
   onQueryApply: (query: string) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
+  onRetryPages: () => void;
   onClearSelectedResources: () => void;
 }) {
   return (
@@ -86,7 +96,15 @@ export function HypermediaFilters({
       </h2>
       <div className="mt-2 grid gap-3">
         <HypermediaKeywordFilter key={query} value={query} onApply={onQueryApply} />
-        <PageDateRangeFilter className="mb-0" value={dateRange} onApply={onDateRangeApply} />
+        <HypermediaTimeRange
+          value={dateRange}
+          extent={temporalExtent}
+          hasMore={hasMorePages}
+          loading={pagesLoading}
+          error={pagesError}
+          onApply={onDateRangeApply}
+          onRetry={onRetryPages}
+        />
         {selectedResources.length > 0 && (
           <div className="flex items-center gap-3 rounded-xl bg-muted/55 p-3" aria-live="polite">
             <div className="min-w-0 flex-1">

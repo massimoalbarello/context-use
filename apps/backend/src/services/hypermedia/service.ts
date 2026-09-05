@@ -1,5 +1,4 @@
 import type {
-  HypermediaPageContinuation,
   HypermediaResourceContinuation,
   HypermediaResourceReference,
 } from '#models/hypermedia/model.ts';
@@ -18,20 +17,15 @@ export class HypermediaService {
     return this.hypermedia.resourceNeighborhood(input);
   }
 
-  focusedPages(input: {
+  pages(input: {
     ownerId: string;
     resources: HypermediaResourceReference[];
     limit: number;
-    cursor?: HypermediaPageContinuation;
     query?: string;
     temporalBounds?: TemporalBounds;
-    retainPageReadableId?: string;
   }) {
-    return this.hypermedia.focusedPages(input);
+    return this.hypermedia.pages(input);
   }
 }
 
-export type HypermediaServiceContract = Pick<
-  HypermediaService,
-  'resourceNeighborhood' | 'focusedPages'
->;
+export type HypermediaServiceContract = Pick<HypermediaService, 'resourceNeighborhood' | 'pages'>;

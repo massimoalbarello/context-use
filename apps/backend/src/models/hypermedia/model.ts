@@ -34,18 +34,13 @@ export interface HypermediaPage extends KnowledgePageSummary {
   resources: HypermediaResourceReference[];
 }
 
-export type HypermediaPageContinuation = {
-  retained: boolean;
-  temporal: boolean;
-  ongoing: boolean;
-  latest: number | null;
-  start: number | null;
-  updatedAt: string;
-  readableId: string;
+export type HypermediaTemporalExtent = {
+  start: number;
+  end: number;
 };
 
-export type FocusedHypermediaPages = {
+export type HypermediaPages = {
   pages: HypermediaPage[];
-  nextPage: HypermediaPageContinuation | null;
-  truncated: boolean;
+  hasMore: boolean;
+  temporalExtent: HypermediaTemporalExtent | null;
 };

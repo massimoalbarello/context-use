@@ -9,6 +9,7 @@ export type TransportedTemporalCoverage = string | Date;
 
 const DATE_LABEL_REFERENCE_YEAR = 2000;
 const YEAR_CHARACTER_COUNT = 4;
+const MILLISECONDS_PER_DAY = 86_400_000;
 
 export function temporalCoverageExpression(value: TransportedTemporalCoverage): string {
   // Eden revives a date-only JSON string as a Date. Temporal coverage owns calendar precision,
@@ -96,6 +97,18 @@ export function calendarDateRangeExpression({ from, to }: CalendarDateRange): st
   const expression = `${from}/${to}`;
   parseTemporalCoverage(expression);
   return expression;
+}
+
+export function epochDayFromCalendarDate(value: string): number {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year ?? 0, (month ?? 1) - 1, day ?? 1);
+  return Math.floor(date.getTime() / MILLISECONDS_PER_DAY);
+}
+
+export function calendarDateFromEpochDay(value: number): string {
+  return new Date(value * MILLISECONDS_PER_DAY).toISOString().slice(0, 'YYYY-MM-DD'.length);
 }
 
 export function calendarDateRangeFromSearch({

@@ -36,7 +36,6 @@ import {
 } from './hypermedia-layout';
 import {
   eagerHypermediaImageKeys,
-  focusedPageLimit,
   focusedResources,
   hypermediaLayoutInViewport,
   nearestBoundaryResource,
@@ -63,7 +62,6 @@ export type HypermediaSelection = {
 
 export type SettledHypermediaViewport = {
   focus: HypermediaResourceReference[];
-  pageLimit: number;
   discoverMoreEntities: boolean;
   boundaryAnchor?: HypermediaResourceReference;
 };
@@ -457,26 +455,22 @@ export function HypermediaCanvas({
   resources,
   pages,
   selectedResources,
-  spotlightPages,
   selectedKey,
   onSelect,
   onViewportSettled,
   canExplore,
   isInitialLoading,
-  isSpotlightLoading,
   neighborhoodError,
   onRetryNeighborhood,
 }: {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
   selectedResources: HypermediaResourceReference[];
-  spotlightPages?: HypermediaPage[];
   selectedKey?: string;
   onSelect: (selection: HypermediaSelection) => void;
   onViewportSettled: (viewport: SettledHypermediaViewport) => void;
   canExplore: boolean;
   isInitialLoading: boolean;
-  isSpotlightLoading: boolean;
   neighborhoodError: Error | null;
   onRetryNeighborhood: () => void;
 }) {
@@ -490,27 +484,7 @@ export function HypermediaCanvas({
     [selectedResources],
   );
   const spotlightActive = selectedResources.length > 0;
-  const pageLimit = focusedPageLimit(viewBox);
-  const displayedPages = useMemo(() => {
-    const limitedPages = pages.slice(0, pageLimit);
-    if (!selectedKey?.startsWith('page:')) {
-      return limitedPages;
-    }
-    const selectedReadableId = selectedKey.slice('page:'.length);
-    const selectedPage = pages.find(({ readableId }) => readableId === selectedReadableId);
-    return selectedPage && !limitedPages.includes(selectedPage)
-      ? [...limitedPages, selectedPage]
-      : limitedPages;
-  }, [pageLimit, pages, selectedKey]);
-  const semanticLayout = useMemo(
-    () => buildHypermediaLayout(resources, displayedPages),
-    [displayedPages, resources],
-  );
-  const spotlightLayout = useMemo(
-    () => (spotlightActive ? buildHypermediaLayout(resources, spotlightPages ?? []) : undefined),
-    [resources, spotlightActive, spotlightPages],
-  );
-  const layout = spotlightActive && spotlightLayout ? spotlightLayout : semanticLayout;
+  const layout = useMemo(() => buildHypermediaLayout(resources, pages), [pages, resources]);
   const viewBoxRef = useRef(viewBox);
   const fitActive = useRef(false);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -558,7 +532,6 @@ export function HypermediaCanvas({
       }
       onViewportSettled({
         focus,
-        pageLimit: focusedPageLimit(viewport),
         discoverMoreEntities,
         boundaryAnchor,
       });
@@ -600,7 +573,7 @@ export function HypermediaCanvas({
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
-    const maximumWidth = Math.max(2400, semanticLayout.resourceBounds.width * 2.5);
+    const maximumWidth = Math.max(2400, layout.resourceBounds.width * 2.5);
     const nextViewBox = zoomedHypermediaViewBox({
       current,
       factor,
@@ -619,19 +592,19 @@ export function HypermediaCanvas({
 
   function fitHypermedia() {
     setShowExplorationHint(false);
-    if (spotlightActive && spotlightLayout) {
+    if (spotlightActive) {
       fitActive.current = false;
       const current = viewBoxRef.current;
       updateViewBox(
-        spotlightHypermediaViewBox(spotlightLayout, current.height / current.width, [
+        spotlightHypermediaViewBox(layout, current.height / current.width, [
           ...selectedResourceKeys,
         ]),
       );
       return;
     }
     fitActive.current = true;
-    updateViewBox(semanticLayout.resourceBounds);
-    scheduleViewport({ viewport: semanticLayout.resourceBounds, includeBoundary: true });
+    updateViewBox(layout.resourceBounds);
+    scheduleViewport({ viewport: layout.resourceBounds, includeBoundary: true });
   }
 
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
@@ -799,15 +772,6 @@ export function HypermediaCanvas({
           aria-live="polite"
         >
           Loading nearby resources…
-        </div>
-      )}
-
-      {spotlightActive && isSpotlightLoading && (
-        <div
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
-          aria-live="polite"
-        >
-          Loading related pages…
         </div>
       )}
 

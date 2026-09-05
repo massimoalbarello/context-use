@@ -1,3 +1,4 @@
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import type { HypermediaSelection } from '../components/hypermedia/hypermedia-canvas';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
@@ -8,20 +9,21 @@ import {
   toggleHypermediaResourceSelection,
 } from '../components/hypermedia/hypermedia-selection';
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
-import { INITIAL_FOCUSED_PAGE_LIMIT } from '../components/hypermedia/hypermedia-visibility';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { entitiesQueryOptions } from '../queries/entities';
 import {
-  focusedHypermediaPagesQueryOptions,
+  type HypermediaPage,
   type HypermediaResourceReference,
+  hypermediaPagesQueryOptions,
   hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
 } from '../queries/hypermedia';
 
 const MAX_HYPERMEDIA_SEARCH_LENGTH = 160;
 const MAX_HYPERMEDIA_READABLE_ID_LENGTH = 120;
+const EMPTY_HYPERMEDIA_PAGES: HypermediaPage[] = [];
 type HypermediaSearch = Partial<CalendarDateRange> & {
   q?: string;
   kind?: HypermediaSelection['kind'];
@@ -56,6 +58,7 @@ export const Route = createFileRoute('/hypermedia')({
   loaderDeps: ({ search }) => ({
     query: search.q,
     dateRange: calendarDateRangeFromSearch(search),
+    resources: selectedHypermediaResources(search.focus),
   }),
   loader: async ({ context, deps }) => {
     if (!context.profile) {
@@ -71,9 +74,8 @@ export const Route = createFileRoute('/hypermedia')({
       ),
       context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions),
       context.queryClient.ensureQueryData(
-        focusedHypermediaPagesQueryOptions({
-          focus: [self],
-          limit: INITIAL_FOCUSED_PAGE_LIMIT,
+        hypermediaPagesQueryOptions({
+          resources: deps.resources,
           query: deps.query,
           dateRange: deps.dateRange,
         }),
@@ -89,12 +91,21 @@ function HypermediaRoute() {
   const { q = '', kind, id, focus } = search;
   const dateRange = calendarDateRangeFromSearch(search);
   const navigate = Route.useNavigate();
-  if (!profile) {
-    return null;
-  }
   const selection: HypermediaSelection | undefined =
     kind && id ? { kind, readableId: id } : undefined;
   const selectedResources = selectedHypermediaResources(focus);
+  const pageQuery = useQuery({
+    ...hypermediaPagesQueryOptions({
+      resources: selectedResources,
+      query: q,
+      dateRange,
+    }),
+    placeholderData: keepPreviousData,
+    enabled: Boolean(profile),
+  });
+  if (!profile) {
+    return null;
+  }
   function selectKnowledge(nextSelection: HypermediaSelection) {
     void navigate({
       search: (previous) => {
@@ -136,6 +147,10 @@ function HypermediaRoute() {
         profile={profile}
         query={q}
         dateRange={dateRange}
+        temporalExtent={pageQuery.data?.temporalExtent ?? null}
+        hasMorePages={pageQuery.data?.hasMore ?? false}
+        pagesLoading={pageQuery.isFetching}
+        pagesError={pageQuery.error}
         selectedResources={selectedResources}
         onClearSelectedResources={clearSelectedResources}
         onQueryApply={(query) => {
@@ -145,7 +160,6 @@ function HypermediaRoute() {
               q: query.trim() ? query : undefined,
               kind: undefined,
               id: undefined,
-              focus: undefined,
             }),
             replace: true,
           });
@@ -156,13 +170,11 @@ function HypermediaRoute() {
               ...previous,
               from: nextRange?.from,
               to: nextRange?.to,
-              kind: undefined,
-              id: undefined,
-              focus: undefined,
             }),
             replace: true,
           });
         }}
+        onRetryPages={() => void pageQuery.refetch()}
       />
       <KnowledgeWorkspaceDetail>
         <div className="relative size-full">
@@ -170,8 +182,7 @@ function HypermediaRoute() {
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
             selectedResources={selectedResources}
-            query={q}
-            dateRange={dateRange}
+            pages={pageQuery.data?.pages ?? EMPTY_HYPERMEDIA_PAGES}
             onSelect={selectKnowledge}
           />
           {selection && (

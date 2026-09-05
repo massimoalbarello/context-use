@@ -13,12 +13,6 @@ import type {
 
 export const MAX_FOCUSED_RESOURCES = 24;
 export const MAX_EAGER_HYPERMEDIA_IMAGES = 12;
-export const INITIAL_FOCUSED_PAGE_LIMIT = 20;
-const MIN_FOCUSED_PAGE_LIMIT = 4;
-const MAX_FOCUSED_PAGE_LIMIT = 32;
-const INITIAL_VIEWPORT_WIDTH = 900;
-const MINIMUM_VIEWPORT_WIDTH = 260;
-const OVERVIEW_VIEWPORT_WIDTH = 2600;
 
 function viewportCenter(viewport: CanvasBounds): CanvasPoint {
   return { x: viewport.x + viewport.width / 2, y: viewport.y + viewport.height / 2 };
@@ -55,29 +49,6 @@ export function focusedResources({
         first.key.localeCompare(second.key),
     );
   return ordered.slice(0, MAX_FOCUSED_RESOURCES).map(referenceFromResource);
-}
-
-export function focusedPageLimit(viewport: CanvasBounds): number {
-  if (viewport.width <= INITIAL_VIEWPORT_WIDTH) {
-    const zoomedInProgress =
-      (INITIAL_VIEWPORT_WIDTH - viewport.width) / (INITIAL_VIEWPORT_WIDTH - MINIMUM_VIEWPORT_WIDTH);
-    return Math.min(
-      MAX_FOCUSED_PAGE_LIMIT,
-      Math.round(
-        INITIAL_FOCUSED_PAGE_LIMIT +
-          zoomedInProgress * (MAX_FOCUSED_PAGE_LIMIT - INITIAL_FOCUSED_PAGE_LIMIT),
-      ),
-    );
-  }
-  const zoomedOutProgress =
-    (viewport.width - INITIAL_VIEWPORT_WIDTH) / (OVERVIEW_VIEWPORT_WIDTH - INITIAL_VIEWPORT_WIDTH);
-  return Math.max(
-    MIN_FOCUSED_PAGE_LIMIT,
-    Math.round(
-      INITIAL_FOCUSED_PAGE_LIMIT -
-        zoomedOutProgress * (INITIAL_FOCUSED_PAGE_LIMIT - MIN_FOCUSED_PAGE_LIMIT),
-    ),
-  );
 }
 
 export function viewportNearResourceBoundary(

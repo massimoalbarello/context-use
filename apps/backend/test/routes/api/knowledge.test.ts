@@ -563,45 +563,83 @@ Every observation changes the next action.`,
     expect(remainingNeighborhood.neighbors[0]?.resource.entity.readableId).toBe('temporal-subject');
     expect(remainingNeighborhood.nextCursor).toBeNull();
 
-    const focusedResponse = await app.handle(
+    const allHypermediaPagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/hypermedia/pages?limit=10' }),
+    );
+    const allHypermediaPages = (await allHypermediaPagesResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+      hasMore: boolean;
+      temporalExtent: { start: number; end: number } | null;
+    };
+    expect(allHypermediaPages.pages.map(({ readableId }) => readableId)).toEqual([
+      'alpha-principles',
+      'current-programme',
+      'operating-rhythm',
+      'growth-playbook',
+    ]);
+    expect(allHypermediaPages.hasMore).toBe(false);
+    expect(allHypermediaPages.temporalExtent).toEqual({
+      start: temporalBoundsFrom('2024-11').start,
+      end: expect.any(Number),
+    });
+    expect(allHypermediaPages.temporalExtent?.end).toBeGreaterThanOrEqual(
+      temporalBoundsFrom('2025').start,
+    );
+
+    const filteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?focus=entity:temporal-subject&limit=2',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&limit=2',
       }),
     );
-    expect(focusedResponse.status).toBe(StatusMap.OK);
-    const focused = (await focusedResponse.json()) as {
+    expect(filteredHypermediaResponse.status).toBe(StatusMap.OK);
+    const filteredHypermedia = (await filteredHypermediaResponse.json()) as {
       pages: Array<{
         readableId: string;
         temporalCoverage: string | null;
         resources: Array<{ kind: string; readableId: string }>;
       }>;
-      nextCursor: string | null;
-      truncated: boolean;
+      hasMore: boolean;
     };
-    expectNoInternalResourceIds(focused);
-    expect(focused.pages.map(({ readableId }) => readableId)).toEqual([
+    expectNoInternalResourceIds(filteredHypermedia);
+    expect(filteredHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
       'alpha-principles',
       'current-programme',
     ]);
-    expect(focused.pages[0]?.temporalCoverage).toBeNull();
-    expect(focused.pages[0]?.resources).toContainEqual({
+    expect(filteredHypermedia.pages[0]?.temporalCoverage).toBeNull();
+    expect(filteredHypermedia.pages[0]?.resources).toContainEqual({
       kind: 'entity',
       readableId: 'temporal-subject',
     });
-    expect(focused.nextCursor).toEqual(expect.any(String));
-    expect(focused.truncated).toBe(false);
+    expect(filteredHypermedia.hasMore).toBe(true);
 
-    const retainedResponse = await app.handle(
+    const intersectedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?focus=entity:temporal-subject&limit=1&retainPage=growth-playbook',
+        path: '/hypermedia/pages?resources=entity:temporal-subject,entity:test-owner',
       }),
     );
-    const retained = (await retainedResponse.json()) as {
+    const intersectedHypermedia = (await intersectedHypermediaResponse.json()) as {
       pages: Array<{ readableId: string }>;
     };
-    expect(retained.pages.map(({ readableId }) => readableId)).toEqual(['growth-playbook']);
+    expect(intersectedHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
+      'alpha-principles',
+    ]);
+
+    const rangedHypermediaResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&time=2025-04',
+      }),
+    );
+    const rangedHypermedia = (await rangedHypermediaResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+    };
+    expect(rangedHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
+      'alpha-principles',
+      'current-programme',
+      'operating-rhythm',
+    ]);
 
     const overlappingPagesResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0&time=2025-04' }),

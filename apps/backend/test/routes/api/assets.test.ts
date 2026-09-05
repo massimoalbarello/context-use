@@ -320,20 +320,20 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       }),
     );
 
-    const focusedAssetPagesResponse = await app.handle(
+    const filteredAssetPagesResponse = await app.handle(
       new Request(
-        'http://localhost/api/hypermedia/pages?focus=asset:quarterly-chart&query=Quarterly%20chart',
+        'http://localhost/api/hypermedia/pages?resources=asset:quarterly-chart&query=Quarterly%20chart',
       ),
     );
-    expect(focusedAssetPagesResponse.status).toBe(StatusMap.OK);
-    const focusedAssetPages = (await focusedAssetPagesResponse.json()) as {
+    expect(filteredAssetPagesResponse.status).toBe(StatusMap.OK);
+    const filteredAssetPages = (await filteredAssetPagesResponse.json()) as {
       pages: Array<{
         readableId: string;
         resources: Array<{ kind: string; readableId: string }>;
       }>;
     };
-    expectNoInternalResourceIds(focusedAssetPages);
-    expect(focusedAssetPages.pages).toEqual([
+    expectNoInternalResourceIds(filteredAssetPages);
+    expect(filteredAssetPages.pages).toEqual([
       expect.objectContaining({
         readableId: 'evidence-report',
         resources: expect.arrayContaining([

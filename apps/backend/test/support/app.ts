@@ -6,5 +6,5 @@ function unexpectedCall(): never {
 
 export const unusedHypermediaService: HypermediaServiceContract = {
   resourceNeighborhood: unexpectedCall,
-  focusedPages: unexpectedCall,
+  pages: unexpectedCall,
 };
