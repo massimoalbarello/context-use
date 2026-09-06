@@ -218,8 +218,6 @@ function HypermediaRoute() {
             dateRange={dateRange}
             pagesLoading={pageQuery.isFetching}
             pagesError={pageQuery.error}
-            hasMorePages={pageQuery.data?.hasMorePages ?? false}
-            pageReferencesTruncated={pageQuery.data?.resourceReferencesTruncated ?? false}
             onSelect={selectKnowledge}
             onDateRangeApply={(nextRange) => {
               void navigate({

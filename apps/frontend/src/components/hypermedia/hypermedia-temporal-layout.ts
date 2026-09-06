@@ -27,14 +27,15 @@ const MAXIMUM_TIMELINE_WIDTH = 24_000;
 const PIXELS_PER_DAY = 0.75;
 const TIMELINE_HORIZONTAL_PADDING = 120;
 const TIMELINE_HEADER_HEIGHT = 64;
-const RESOURCE_ROW_HEIGHT = 92;
-const RESOURCE_VERTICAL_PADDING = 56;
+const RESOURCE_ROW_HEIGHT = 116;
+const RESOURCE_VERTICAL_PADDING = 80;
 const MINIMUM_CANVAS_HEIGHT = 620;
-const CLOUD_HORIZONTAL_PADDING = 38;
-const CLOUD_VERTICAL_PADDING = 28;
-const MINIMUM_CLOUD_WIDTH = 112;
-
-export const TEMPORAL_RESOURCE_LABEL_WIDTH = 216;
+const CLOUD_HORIZONTAL_PADDING = 34;
+const CLOUD_HEIGHT = 52;
+const CLOUD_LANE_ORIGIN = TIMELINE_HEADER_HEIGHT + 40;
+const CLOUD_LANE_SPACING = 76;
+const CLOUD_HORIZONTAL_GAP = 24;
+const MINIMUM_CLOUD_WIDTH = 240;
 
 type TemporalExtent = NonNullable<HypermediaPages['temporalExtent']>;
 
@@ -50,6 +51,7 @@ export type TemporalHypermediaPage = {
   resourceKeys: string[];
   path: string;
   label: { x: number; y: number };
+  bounds: { left: number; right: number; top: number; bottom: number };
   colorIndex: number;
   start: number;
   end: number;
@@ -132,20 +134,16 @@ function cloudPath({
   top: number;
   bottom: number;
 }): string {
-  const horizontalRadius = Math.min(32, (right - left) / 5);
-  const verticalRadius = Math.min(24, (bottom - top) / 4);
-  const middleX = (left + right) / 2;
-  const middleY = (top + bottom) / 2;
+  const radius = (bottom - top) / 2;
+  const centerY = top + radius;
   return [
-    `M ${left + horizontalRadius} ${top}`,
-    `C ${left + horizontalRadius / 2} ${top - 8} ${middleX - horizontalRadius} ${top - 8} ${middleX} ${top}`,
-    `C ${middleX + horizontalRadius} ${top - 8} ${right - horizontalRadius / 2} ${top - 8} ${right - horizontalRadius} ${top}`,
-    `C ${right + 8} ${top + verticalRadius} ${right + 8} ${middleY - verticalRadius} ${right} ${middleY}`,
-    `C ${right + 8} ${middleY + verticalRadius} ${right + 8} ${bottom - verticalRadius} ${right - horizontalRadius} ${bottom}`,
-    `C ${right - horizontalRadius / 2} ${bottom + 8} ${middleX + horizontalRadius} ${bottom + 8} ${middleX} ${bottom}`,
-    `C ${middleX - horizontalRadius} ${bottom + 8} ${left + horizontalRadius / 2} ${bottom + 8} ${left + horizontalRadius} ${bottom}`,
-    `C ${left - 8} ${bottom - verticalRadius} ${left - 8} ${middleY + verticalRadius} ${left} ${middleY}`,
-    `C ${left - 8} ${middleY - verticalRadius} ${left - 8} ${top + verticalRadius} ${left + horizontalRadius} ${top}`,
+    `M ${left + radius} ${top}`,
+    `H ${right - radius}`,
+    `A ${radius} ${radius} 0 0 1 ${right} ${centerY}`,
+    `A ${radius} ${radius} 0 0 1 ${right - radius} ${bottom}`,
+    `H ${left + radius}`,
+    `A ${radius} ${radius} 0 0 1 ${left} ${centerY}`,
+    `A ${radius} ${radius} 0 0 1 ${left + radius} ${top}`,
     'Z',
   ].join(' ');
 }
@@ -202,7 +200,7 @@ export function buildTemporalHypermediaLayout({
   const temporalPages = pages.filter(({ temporalCoverage }) => temporalCoverage !== null);
   const rows = resourceRows({ resources, pages: temporalPages });
   const rowByKey = new Map(rows.map((row) => [row.key, row]));
-  const laidOutPages = temporalPages.flatMap((page): TemporalHypermediaPage[] => {
+  const candidates = temporalPages.flatMap((page) => {
     if (!page.temporalCoverage) {
       return [];
     }
@@ -212,8 +210,9 @@ export function buildTemporalHypermediaLayout({
       ? coverage.bounds.end - MILLISECONDS_PER_DAY
       : extent.end;
     const end = clamp(Math.max(start, inclusiveEnd), extent.start, extent.end);
-    const connectedRows = page.resources.flatMap((reference) => {
-      const row = rowByKey.get(hypermediaResourceKey(reference));
+    const resourceKeys = [...new Set(page.resources.map(hypermediaResourceKey))];
+    const connectedRows = resourceKeys.flatMap((resourceKey) => {
+      const row = rowByKey.get(resourceKey);
       return row ? [row] : [];
     });
     if (connectedRows.length === 0) {
@@ -235,23 +234,79 @@ export function buildTemporalHypermediaLayout({
       endPosition + CLOUD_HORIZONTAL_PADDING,
       centerX + MINIMUM_CLOUD_WIDTH / 2,
     );
-    const top = Math.min(...connectedRows.map(({ y }) => y)) - CLOUD_VERTICAL_PADDING;
-    const bottom = Math.max(...connectedRows.map(({ y }) => y)) + CLOUD_VERTICAL_PADDING;
     return [
       {
         page,
-        resourceKeys: page.resources.map(hypermediaResourceKey),
-        path: cloudPath({ left, right, top, bottom }),
-        label: { x: centerX, y: (top + bottom) / 2 },
+        resourceKeys,
+        left,
+        right,
+        preferredY: connectedRows.reduce((total, { y }) => total + y, 0) / connectedRows.length,
         colorIndex: hypermediaPageColorIndex(page.readableId),
         start,
         end,
       },
     ];
   });
+  candidates.sort(
+    (first, second) =>
+      first.start - second.start ||
+      first.end - second.end ||
+      first.page.readableId.localeCompare(second.page.readableId),
+  );
+  const occupiedByLane = new Map<number, Array<{ left: number; right: number }>>();
+  const laidOutPages = candidates.map((candidate): TemporalHypermediaPage => {
+    const preferredLane = Math.max(
+      0,
+      Math.round((candidate.preferredY - CLOUD_LANE_ORIGIN) / CLOUD_LANE_SPACING),
+    );
+    let lane = preferredLane;
+    for (let distance = 0; distance <= candidates.length + rows.length; distance += 1) {
+      const possibleLanes =
+        distance === 0
+          ? [preferredLane]
+          : [preferredLane - distance, preferredLane + distance].filter(
+              (possibleLane) => possibleLane >= 0,
+            );
+      const availableLane = possibleLanes.find((possibleLane) =>
+        (occupiedByLane.get(possibleLane) ?? []).every(
+          (occupied) =>
+            candidate.left >= occupied.right + CLOUD_HORIZONTAL_GAP ||
+            candidate.right + CLOUD_HORIZONTAL_GAP <= occupied.left,
+        ),
+      );
+      if (availableLane !== undefined) {
+        lane = availableLane;
+        break;
+      }
+    }
+    const centerY = CLOUD_LANE_ORIGIN + lane * CLOUD_LANE_SPACING;
+    const bounds = {
+      left: candidate.left,
+      right: candidate.right,
+      top: centerY - CLOUD_HEIGHT / 2,
+      bottom: centerY + CLOUD_HEIGHT / 2,
+    };
+    occupiedByLane.set(lane, [
+      ...(occupiedByLane.get(lane) ?? []),
+      { left: bounds.left, right: bounds.right },
+    ]);
+    return {
+      page: candidate.page,
+      resourceKeys: candidate.resourceKeys,
+      path: cloudPath(bounds),
+      label: { x: (bounds.left + bounds.right) / 2, y: centerY },
+      bounds,
+      colorIndex: candidate.colorIndex,
+      start: candidate.start,
+      end: candidate.end,
+    };
+  });
+  const rowBottom = rows.at(-1)?.y ?? 0;
+  const pageBottom = Math.max(0, ...laidOutPages.map(({ bounds }) => bounds.bottom));
   const height = Math.max(
     MINIMUM_CANVAS_HEIGHT,
-    TIMELINE_HEADER_HEIGHT + RESOURCE_VERTICAL_PADDING * 2 + rows.length * RESOURCE_ROW_HEIGHT,
+    rowBottom + RESOURCE_VERTICAL_PADDING,
+    pageBottom + RESOURCE_VERTICAL_PADDING,
   );
   const span = extent.end - extent.start;
   const ticks = Array.from({ length: 9 }, (_, index): TemporalHypermediaTick => {

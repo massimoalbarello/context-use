@@ -1,16 +1,8 @@
 // biome-ignore-all lint/style/noMagicNumbers: Temporal canvas geometry and interaction thresholds are visual constants.
 // biome-ignore-all lint/complexity/useMaxParams: Small render and event callbacks remain clearer inline.
 
-import { FileText, MoveHorizontal } from 'lucide-react';
-import {
-  type UIEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type WheelEvent,
-} from 'react';
+import { FileText } from 'lucide-react';
+import { type UIEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 import { cn } from '../../lib/class-names';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
@@ -22,7 +14,6 @@ import {
 } from './hypermedia-selection';
 import {
   buildTemporalHypermediaLayout,
-  TEMPORAL_RESOURCE_LABEL_WIDTH,
   type TemporalHypermediaResource,
   temporalRangeForViewport,
   temporalScrollLeftForRange,
@@ -39,62 +30,58 @@ const RANGE_SETTLE_MS = 280;
 const RESOURCE_SETTLE_MS = 280;
 const RESOURCE_DISCOVERY_DISTANCE = 360;
 
-const DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
-
-function dateRangeLabel(range?: CalendarDateRange): string {
-  if (!range) {
-    return 'All time';
-  }
-  return `${DATE_FORMATTER.format(new Date(`${range.from}T00:00:00.000Z`))} – ${DATE_FORMATTER.format(
-    new Date(`${range.to}T00:00:00.000Z`),
-  )}`;
-}
-
 function resourceReference(resource: TemporalHypermediaResource): HypermediaResourceReference {
   return { kind: resource.kind, readableId: resource.readableId };
 }
 
-function TemporalResourceLabels({
+function TemporalResourceWagons({
   resources,
+  width,
   activeKey,
   selectedResourceKeys,
-  trackRef,
   onSelect,
 }: {
   resources: TemporalHypermediaResource[];
+  width: number;
   activeKey?: string;
   selectedResourceKeys: Set<string>;
-  trackRef: { current: HTMLDivElement | null };
   onSelect: (selection: HypermediaSelection) => void;
 }) {
   return (
-    <div ref={trackRef} className="absolute inset-x-0 top-0 will-change-transform">
+    <div className="pointer-events-none absolute inset-0 z-20">
       {resources.map((resource) => {
         const active = activeKey === resource.key || selectedResourceKeys.has(resource.key);
         return (
-          <Button
+          <div
             key={resource.key}
-            type="button"
-            variant="ghost"
-            className={cn(
-              'absolute left-2 h-14 w-[calc(100%-1rem)] justify-start gap-2 rounded-xl px-2',
-              active && 'border bg-accent shadow-sm',
-            )}
-            style={{ top: resource.y - 28 }}
-            aria-pressed={selectedResourceKeys.has(resource.key)}
-            onClick={() => onSelect({ kind: resource.kind, readableId: resource.readableId })}
+            className="pointer-events-none absolute left-0 h-14"
+            style={{ top: resource.y - 60, width }}
           >
-            <HypermediaResourceCardContent
-              resource={resource.resource}
-              reference={resourceReference(resource)}
-              fallbackLabel={resource.label}
-            />
-          </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className={cn(
+                'pointer-events-auto sticky left-4 h-14 w-60 justify-start gap-2 rounded-xl bg-card/95 px-3 text-left shadow-sm backdrop-blur transition-transform hover:-translate-y-0.5 motion-reduce:transform-none',
+                active && 'border-foreground bg-accent shadow-md',
+              )}
+              aria-pressed={selectedResourceKeys.has(resource.key)}
+              onClick={() => onSelect({ kind: resource.kind, readableId: resource.readableId })}
+            >
+              <HypermediaResourceCardContent
+                resource={resource.resource}
+                reference={resourceReference(resource)}
+                fallbackLabel={resource.label}
+              />
+              <span
+                className="absolute -bottom-1 left-8 size-2 rounded-full border bg-card"
+                aria-hidden="true"
+              />
+              <span
+                className="absolute right-8 -bottom-1 size-2 rounded-full border bg-card"
+                aria-hidden="true"
+              />
+            </Button>
+          </div>
         );
       })}
     </div>
@@ -117,12 +104,10 @@ export function HypermediaTemporalCanvas({
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const labelTrackRef = useRef<HTMLDivElement | null>(null);
   const rangeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resourceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrollLeft = useRef<number | null>(null);
   const initializedView = useRef<string | null>(null);
-  const [visibleRange, setVisibleRange] = useState<CalendarDateRange | undefined>(dateRange);
   const layout = useMemo(
     () => (extent ? buildTemporalHypermediaLayout({ resources, pages, extent }) : null),
     [extent, pages, resources],
@@ -130,6 +115,10 @@ export function HypermediaTemporalCanvas({
   const selectedResourceKeys = useMemo(
     () => selectedHypermediaResourceKeys(selectedResources),
     [selectedResources],
+  );
+  const resourceByKey = useMemo(
+    () => new Map(layout?.resources.map((resource) => [resource.key, resource]) ?? []),
+    [layout],
   );
 
   useEffect(() => {
@@ -150,13 +139,6 @@ export function HypermediaTemporalCanvas({
     });
     scroller.scrollLeft = scrollLeft;
     lastScrollLeft.current = scrollLeft;
-    setVisibleRange(
-      temporalRangeForViewport({
-        layout,
-        scrollLeft,
-        viewportWidth: scroller.clientWidth,
-      }),
-    );
   }, [dateRange, layout]);
 
   useEffect(
@@ -194,9 +176,6 @@ export function HypermediaTemporalCanvas({
 
   function handleScroll(event: UIEvent<HTMLDivElement>) {
     const scroller = event.currentTarget;
-    if (labelTrackRef.current) {
-      labelTrackRef.current.style.transform = `translateY(${-scroller.scrollTop}px)`;
-    }
     if (resourceTimer.current) {
       clearTimeout(resourceTimer.current);
     }
@@ -210,17 +189,10 @@ export function HypermediaTemporalCanvas({
       scrollLeft: scroller.scrollLeft,
       viewportWidth: scroller.clientWidth,
     });
-    setVisibleRange(nextRange);
     if (rangeTimer.current) {
       clearTimeout(rangeTimer.current);
     }
     rangeTimer.current = setTimeout(() => onDateRangeApply(nextRange), RANGE_SETTLE_MS);
-  }
-
-  function scrollLabels(event: WheelEvent<HTMLDivElement>) {
-    if (scrollerRef.current) {
-      scrollerRef.current.scrollTop += event.deltaY;
-    }
   }
 
   if (!layout) {
@@ -242,27 +214,10 @@ export function HypermediaTemporalCanvas({
 
   return (
     <section
-      className="relative grid size-full min-h-[28rem] grid-cols-[13.5rem_minmax(0,1fr)] overflow-hidden bg-card"
+      className="relative size-full min-h-[28rem] overflow-hidden bg-card"
       aria-label={`Temporal Hypermedia with ${layout.pages.length} knowledge pages and ${layout.resources.length} entities and assets`}
     >
-      <div
-        className="relative z-20 overflow-hidden border-r bg-card"
-        style={{ width: TEMPORAL_RESOURCE_LABEL_WIDTH }}
-        onWheel={scrollLabels}
-      >
-        <div className="absolute inset-x-0 top-0 z-10 flex h-16 items-end bg-card px-4 pb-2 font-medium text-muted-foreground text-xs">
-          Entities and assets
-        </div>
-        <TemporalResourceLabels
-          resources={layout.resources}
-          activeKey={selectedKey}
-          selectedResourceKeys={selectedResourceKeys}
-          trackRef={labelTrackRef}
-          onSelect={onSelect}
-        />
-      </div>
-
-      <div ref={scrollerRef} className="relative overflow-auto" onScroll={handleScroll}>
+      <div ref={scrollerRef} className="relative size-full overflow-auto" onScroll={handleScroll}>
         <div className="relative" style={{ width: layout.width, height: layout.height }}>
           <svg
             className="absolute inset-0 size-full select-none"
@@ -314,6 +269,10 @@ export function HypermediaTemporalCanvas({
                 readableId: item.page.readableId,
               });
               const active = selectedKey === key;
+              const connectedRows = item.resourceKeys.flatMap((resourceKey) => {
+                const row = resourceByKey.get(resourceKey);
+                return row ? [row] : [];
+              });
               return (
                 <HypermediaPageLink
                   key={item.page.readableId}
@@ -322,43 +281,56 @@ export function HypermediaTemporalCanvas({
                   onSelect={onSelect}
                 >
                   <title>{item.page.title}</title>
+                  {connectedRows.map((row) => {
+                    const cloudEdgeY =
+                      row.y < item.bounds.top
+                        ? item.bounds.top
+                        : row.y > item.bounds.bottom
+                          ? item.bounds.bottom
+                          : row.y;
+                    return (
+                      <line
+                        key={`connector:${row.key}`}
+                        x1={item.label.x}
+                        y1={cloudEdgeY}
+                        x2={item.label.x}
+                        y2={row.y}
+                        style={{ color: `var(--chart-${item.colorIndex})` }}
+                        className="pointer-events-none stroke-current opacity-45"
+                        strokeWidth={active ? 2.5 : 1.5}
+                        strokeDasharray="3 5"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    );
+                  })}
                   <HypermediaPageCloud
                     path={item.path}
                     colorIndex={item.colorIndex}
                     active={active}
                   />
-                  {item.resourceKeys.flatMap((resourceKey) => {
-                    const row = layout.resources.find(
-                      ({ key: candidate }) => candidate === resourceKey,
-                    );
-                    return row
-                      ? [
-                          <circle
-                            key={resourceKey}
-                            cx={item.label.x}
-                            cy={row.y}
-                            r={active ? 5 : 3.5}
-                            style={{ color: `var(--chart-${item.colorIndex})` }}
-                            className="fill-current"
-                          />,
-                        ]
-                      : [];
-                  })}
+                  {connectedRows.map((row) => (
+                    <circle
+                      key={row.key}
+                      cx={item.label.x}
+                      cy={row.y}
+                      r={active ? 5 : 3.5}
+                      style={{ color: `var(--chart-${item.colorIndex})` }}
+                      className="pointer-events-none fill-current"
+                    />
+                  ))}
                   <HypermediaPageLabel page={item.page} point={item.label} active={active} />
                 </HypermediaPageLink>
               );
             })}
           </svg>
+          <TemporalResourceWagons
+            resources={layout.resources}
+            width={layout.width}
+            activeKey={selectedKey}
+            selectedResourceKeys={selectedResourceKeys}
+            onSelect={onSelect}
+          />
         </div>
-      </div>
-
-      <div className="pointer-events-none absolute top-3 right-4 z-30 flex items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
-        <MoveHorizontal className="size-3.5" aria-hidden="true" />
-        <span>Scroll through time</span>
-        <span aria-hidden="true">·</span>
-        <output className="font-medium text-foreground tabular-nums">
-          {dateRangeLabel(visibleRange)}
-        </output>
       </div>
     </section>
   );

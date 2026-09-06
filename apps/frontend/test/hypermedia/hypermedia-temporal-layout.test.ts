@@ -15,6 +15,9 @@ const extent = {
   start: Date.parse('2020-01-01T00:00:00.000Z'),
   end: Date.parse('2026-12-31T00:00:00.000Z'),
 };
+const EXPECTED_CLOUD_HEIGHT = 52;
+const MINIMUM_CLOUD_GAP = 20;
+const DENSE_PAGE_COUNT = 10;
 
 function page({
   readableId,
@@ -90,8 +93,49 @@ describe('temporal Hypermedia side projection', () => {
       'asset:project-plan',
     ]);
     expect(layout.resources[2]?.label).toBe('Project Plan');
-    expect(layout.pages[0]?.path).toContain('C ');
+    expect(layout.pages[0]?.path).toContain('A ');
+    expect(layout.pages[0]!.bounds.bottom - layout.pages[0]!.bounds.top).toBe(
+      EXPECTED_CLOUD_HEIGHT,
+    );
     expect(layout.pages[0]!.start).toBeLessThan(layout.pages[0]!.end);
+  });
+
+  test('spaces overlapping temporal pages into separate thin lanes', () => {
+    const densePages = [...Array(DENSE_PAGE_COUNT).keys()].map((index) =>
+      page({
+        readableId: `temporal-page-${index}`,
+        temporalCoverage: '2025-03/2025-08',
+        resources: [
+          { kind: 'entity', readableId: 'self' },
+          { kind: 'entity', readableId: 'collaborator' },
+        ],
+      }),
+    );
+    const layout = buildTemporalHypermediaLayout({
+      resources: [entity('self'), entity('collaborator')],
+      pages: densePages,
+      extent,
+    });
+
+    expect(layout.pages).toHaveLength(densePages.length);
+    for (const [index, first] of layout.pages.entries()) {
+      expect(first.bounds.bottom - first.bounds.top).toBe(EXPECTED_CLOUD_HEIGHT);
+      expect(first.bounds.right - first.bounds.left).toBeGreaterThan(
+        first.bounds.bottom - first.bounds.top,
+      );
+      for (const second of layout.pages.slice(index + 1)) {
+        const horizontalOverlap =
+          first.bounds.left < second.bounds.right && first.bounds.right > second.bounds.left;
+        if (!horizontalOverlap) {
+          continue;
+        }
+        const verticalGap = Math.max(
+          second.bounds.top - first.bounds.bottom,
+          first.bounds.top - second.bounds.bottom,
+        );
+        expect(verticalGap).toBeGreaterThanOrEqual(MINIMUM_CLOUD_GAP);
+      }
+    }
   });
 
   test('maps horizontal scrolling to a stable date interval', () => {

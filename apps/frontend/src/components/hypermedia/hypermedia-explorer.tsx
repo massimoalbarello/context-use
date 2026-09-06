@@ -45,8 +45,6 @@ export function HypermediaExplorer({
   dateRange,
   pagesLoading,
   pagesError,
-  hasMorePages,
-  pageReferencesTruncated,
   onSelect,
   onDateRangeApply,
   onRetryPages,
@@ -60,8 +58,6 @@ export function HypermediaExplorer({
   dateRange?: CalendarDateRange;
   pagesLoading: boolean;
   pagesError: Error | null;
-  hasMorePages: boolean;
-  pageReferencesTruncated: boolean;
   onSelect: (selection: HypermediaSelection) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
   onRetryPages: () => void;
@@ -228,8 +224,6 @@ export function HypermediaExplorer({
         pageCount={pages.length}
         loading={pagesLoading}
         error={pagesError}
-        hasMorePages={hasMorePages}
-        referencesTruncated={pageReferencesTruncated}
         onRetry={onRetryPages}
       />
     </div>
@@ -241,19 +235,15 @@ function HypermediaPageStatus({
   pageCount,
   loading,
   error,
-  hasMorePages,
-  referencesTruncated,
   onRetry,
 }: {
   projection: HypermediaPageProjection;
   pageCount: number;
   loading: boolean;
   error: Error | null;
-  hasMorePages: boolean;
-  referencesTruncated: boolean;
   onRetry: () => void;
 }) {
-  if (!loading && !error && !hasMorePages && !referencesTruncated && pageCount > 0) {
+  if (!loading && !error && pageCount > 0) {
     return null;
   }
   let message: string | undefined;
@@ -261,11 +251,6 @@ function HypermediaPageStatus({
     message = `Couldn’t load ${projection} pages.`;
   } else if (loading) {
     message = `Loading ${projection} pages…`;
-  } else if (hasMorePages || referencesTruncated) {
-    message =
-      projection === 'temporal'
-        ? 'More temporal context is available. Scroll to a narrower interval or select resources.'
-        : 'More semantic context is available. Select resources or refine the keyword.';
   } else if (pageCount === 0) {
     message = `No ${projection} pages match this view.`;
   }

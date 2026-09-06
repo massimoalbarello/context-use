@@ -61,5 +61,6 @@ test('temporal canvas keeps resource filtering and page preview selection access
     screen.getByRole('link', { name: 'Open temporal knowledge page Launch period' }),
   );
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'page', readableId: 'launch-period' });
-  expect(screen.getByText('Scroll through time')).toBeTruthy();
+  expect(screen.queryByText('Scroll through time')).toBeNull();
+  expect(screen.queryByText('Entities and assets')).toBeNull();
 });
