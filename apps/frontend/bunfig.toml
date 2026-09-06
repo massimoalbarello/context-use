@@ -1,2 +1,2 @@
 [test]
-preload = ["./test/support/browser.ts"]
+preload = ["./test/support/dom.ts"]

@@ -1,7 +1,4 @@
-// biome-ignore-all assist/source/organizeImports: Browser globals must exist before UI modules are evaluated.
-
-import { expect, test } from 'bun:test';
-import { render, screen, userEvent, waitFor } from '../support/browser';
+import { afterEach, expect, test } from 'bun:test';
 import {
   createMemoryHistory,
   createRootRoute,
@@ -10,6 +7,8 @@ import {
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { HypermediaTimeRange } from '../../src/components/hypermedia/hypermedia-time-range';
 import {
   calendarDateFromEpochDay,
@@ -17,6 +16,8 @@ import {
   epochDayFromCalendarDate,
 } from '../../src/lib/temporal-coverage';
 import { type HypermediaSearch, hypermediaSearchWithDateRange } from '../../src/routes/hypermedia';
+
+afterEach(cleanup);
 
 const TEMPORAL_EXTENT = {
   start: Date.parse('2024-01-01T00:00:00.000Z'),
