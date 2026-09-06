@@ -16,7 +16,7 @@ import {
   buildTemporalHypermediaLayout,
   type TemporalHypermediaResource,
   temporalRangeForViewport,
-  temporalScrollLeftForRange,
+  temporalScrollTopForRange,
 } from './hypermedia-temporal-layout';
 import {
   HypermediaPageCloud,
@@ -29,12 +29,13 @@ import {
 const RANGE_SETTLE_MS = 280;
 const RESOURCE_SETTLE_MS = 280;
 const RESOURCE_DISCOVERY_DISTANCE = 360;
+const LONG_INTERVAL_THRESHOLD = 72;
 
 function resourceReference(resource: TemporalHypermediaResource): HypermediaResourceReference {
   return { kind: resource.kind, readableId: resource.readableId };
 }
 
-function TemporalResourceWagons({
+function TemporalResourceHeaders({
   resources,
   width,
   activeKey,
@@ -48,20 +49,20 @@ function TemporalResourceWagons({
   onSelect: (selection: HypermediaSelection) => void;
 }) {
   return (
-    <div className="pointer-events-none absolute inset-0 z-20">
+    <div className="pointer-events-none sticky top-0 z-30 h-24 border-b bg-card" style={{ width }}>
       {resources.map((resource) => {
         const active = activeKey === resource.key || selectedResourceKeys.has(resource.key);
         return (
           <div
             key={resource.key}
-            className="pointer-events-none absolute left-0 h-14"
-            style={{ top: resource.y - 60, width }}
+            className="pointer-events-none absolute top-3 -translate-x-1/2"
+            style={{ left: resource.x }}
           >
             <Button
               type="button"
               variant="outline"
               className={cn(
-                'pointer-events-auto sticky left-4 h-14 w-60 justify-start gap-2 rounded-xl bg-card/95 px-3 text-left shadow-sm backdrop-blur transition-transform hover:-translate-y-0.5 motion-reduce:transform-none',
+                'pointer-events-auto h-16 w-56 justify-start gap-2 rounded-xl bg-card/95 px-3 text-left shadow-sm backdrop-blur transition-transform hover:-translate-y-0.5 motion-reduce:transform-none',
                 active && 'border-foreground bg-accent shadow-md',
               )}
               aria-pressed={selectedResourceKeys.has(resource.key)}
@@ -73,17 +74,33 @@ function TemporalResourceWagons({
                 fallbackLabel={resource.label}
               />
               <span
-                className="absolute -bottom-1 left-8 size-2 rounded-full border bg-card"
-                aria-hidden="true"
-              />
-              <span
-                className="absolute right-8 -bottom-1 size-2 rounded-full border bg-card"
+                className="absolute -bottom-1 left-1/2 size-2 -translate-x-1/2 rounded-full border bg-card"
                 aria-hidden="true"
               />
             </Button>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function TemporalTimeLabels({
+  ticks,
+  width,
+}: {
+  ticks: Array<{ y: number; label: string }>;
+  width: number;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10">
+      {ticks.map((tick) => (
+        <div key={tick.y} className="absolute left-0 h-px" style={{ top: tick.y, width }}>
+          <time className="sticky left-3 inline-block -translate-y-1/2 rounded-md bg-card/90 px-2 py-1 font-medium text-muted-foreground text-xs tabular-nums backdrop-blur">
+            {tick.label}
+          </time>
+        </div>
+      ))}
     </div>
   );
 }
@@ -106,6 +123,7 @@ export function HypermediaTemporalCanvas({
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const rangeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resourceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastScrollTop = useRef<number | null>(null);
   const lastScrollLeft = useRef<number | null>(null);
   const initializedView = useRef<string | null>(null);
   const layout = useMemo(
@@ -132,13 +150,14 @@ export function HypermediaTemporalCanvas({
       return;
     }
     initializedView.current = viewKey;
-    const scrollLeft = temporalScrollLeftForRange({
+    const scrollTop = temporalScrollTopForRange({
       layout,
       range: dateRange,
-      viewportWidth: scroller.clientWidth,
+      viewportHeight: scroller.clientHeight,
     });
-    scroller.scrollLeft = scrollLeft;
-    lastScrollLeft.current = scrollLeft;
+    scroller.scrollTop = scrollTop;
+    lastScrollTop.current = scrollTop;
+    lastScrollLeft.current = scroller.scrollLeft;
   }, [dateRange, layout]);
 
   useEffect(
@@ -158,12 +177,12 @@ export function HypermediaTemporalCanvas({
       if (!layout) {
         return;
       }
-      const top = scroller.scrollTop;
-      const bottom = top + scroller.clientHeight;
-      const visible = layout.resources.filter(({ y }) => y >= top && y <= bottom);
+      const left = scroller.scrollLeft;
+      const right = left + scroller.clientWidth;
+      const visible = layout.resources.filter(({ x }) => x >= left && x <= right);
       const detailed = visible.filter(({ resource }) => resource !== undefined);
       const focus = detailed.slice(0, 8).map(resourceReference);
-      const discoverMoreEntities = scroller.scrollHeight - bottom < RESOURCE_DISCOVERY_DISTANCE;
+      const discoverMoreEntities = scroller.scrollWidth - right < RESOURCE_DISCOVERY_DISTANCE;
       const boundary = detailed.at(-1);
       onViewportSettled({
         focus,
@@ -174,20 +193,33 @@ export function HypermediaTemporalCanvas({
     [layout, onViewportSettled],
   );
 
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (layout && scroller) {
+      publishVisibleResources(scroller);
+    }
+  }, [layout, publishVisibleResources]);
+
   function handleScroll(event: UIEvent<HTMLDivElement>) {
     const scroller = event.currentTarget;
-    if (resourceTimer.current) {
-      clearTimeout(resourceTimer.current);
+    if (lastScrollLeft.current !== scroller.scrollLeft) {
+      lastScrollLeft.current = scroller.scrollLeft;
+      if (resourceTimer.current) {
+        clearTimeout(resourceTimer.current);
+      }
+      resourceTimer.current = setTimeout(
+        () => publishVisibleResources(scroller),
+        RESOURCE_SETTLE_MS,
+      );
     }
-    resourceTimer.current = setTimeout(() => publishVisibleResources(scroller), RESOURCE_SETTLE_MS);
-    if (!layout || lastScrollLeft.current === scroller.scrollLeft) {
+    if (!layout || lastScrollTop.current === scroller.scrollTop) {
       return;
     }
-    lastScrollLeft.current = scroller.scrollLeft;
+    lastScrollTop.current = scroller.scrollTop;
     const nextRange = temporalRangeForViewport({
       layout,
-      scrollLeft: scroller.scrollLeft,
-      viewportWidth: scroller.clientWidth,
+      scrollTop: scroller.scrollTop,
+      viewportHeight: scroller.clientHeight,
     });
     if (rangeTimer.current) {
       clearTimeout(rangeTimer.current);
@@ -226,36 +258,57 @@ export function HypermediaTemporalCanvas({
             preserveAspectRatio="none"
           >
             {layout.ticks.map((tick) => (
-              <g key={tick.x}>
-                <line
-                  x1={tick.x}
-                  y1={52}
-                  x2={tick.x}
-                  y2={layout.height}
-                  className="stroke-border/60"
-                  strokeDasharray="3 7"
-                  vectorEffect="non-scaling-stroke"
-                />
-                <text
-                  x={tick.x}
-                  y={42}
-                  textAnchor="middle"
-                  className="fill-muted-foreground text-[11px]"
-                >
-                  {tick.label}
-                </text>
-              </g>
+              <line
+                key={tick.time}
+                x1={88}
+                y1={tick.y}
+                x2={layout.width - 64}
+                y2={tick.y}
+                className="stroke-border/60"
+                strokeDasharray="3 7"
+                vectorEffect="non-scaling-stroke"
+              />
             ))}
+
+            {[...layout.pages]
+              .sort((first, second) => second.duration - first.duration)
+              .map((item) => {
+                const intervalHeight = item.intervalBounds.bottom - item.intervalBounds.top;
+                if (intervalHeight <= LONG_INTERVAL_THRESHOLD) {
+                  return null;
+                }
+                const key = hypermediaSelectionKey({
+                  kind: 'page',
+                  readableId: item.page.readableId,
+                });
+                const active = selectedKey === key;
+                return (
+                  <rect
+                    key={`interval:${item.page.readableId}`}
+                    x={item.intervalBounds.left}
+                    y={item.intervalBounds.top}
+                    width={item.intervalBounds.right - item.intervalBounds.left}
+                    height={intervalHeight}
+                    rx={24}
+                    style={{ color: `var(--chart-${item.colorIndex})` }}
+                    className="pointer-events-none fill-current stroke-current"
+                    fillOpacity={active ? 0.07 : 0.025}
+                    strokeOpacity={active ? 0.28 : 0.1}
+                    strokeWidth={active ? 2 : 1}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              })}
 
             {layout.resources.map((resource) => {
               const active = selectedKey === resource.key || selectedResourceKeys.has(resource.key);
               return (
                 <line
                   key={resource.key}
-                  x1={layout.timelineStartX}
-                  y1={resource.y}
-                  x2={layout.timelineEndX}
-                  y2={resource.y}
+                  x1={resource.x}
+                  y1={76}
+                  x2={resource.x}
+                  y2={layout.height}
                   className={cn('stroke-border', active && 'stroke-foreground')}
                   strokeWidth={active ? 3 : 1.5}
                   vectorEffect="non-scaling-stroke"
@@ -269,9 +322,9 @@ export function HypermediaTemporalCanvas({
                 readableId: item.page.readableId,
               });
               const active = selectedKey === key;
-              const connectedRows = item.resourceKeys.flatMap((resourceKey) => {
-                const row = resourceByKey.get(resourceKey);
-                return row ? [row] : [];
+              const connectedColumns = item.resourceKeys.flatMap((resourceKey) => {
+                const column = resourceByKey.get(resourceKey);
+                return column ? [column] : [];
               });
               return (
                 <HypermediaPageLink
@@ -281,38 +334,19 @@ export function HypermediaTemporalCanvas({
                   onSelect={onSelect}
                 >
                   <title>{item.page.title}</title>
-                  {connectedRows.map((row) => {
-                    const cloudEdgeY =
-                      row.y < item.bounds.top
-                        ? item.bounds.top
-                        : row.y > item.bounds.bottom
-                          ? item.bounds.bottom
-                          : row.y;
-                    return (
-                      <line
-                        key={`connector:${row.key}`}
-                        x1={item.label.x}
-                        y1={cloudEdgeY}
-                        x2={item.label.x}
-                        y2={row.y}
-                        style={{ color: `var(--chart-${item.colorIndex})` }}
-                        className="pointer-events-none stroke-current opacity-45"
-                        strokeWidth={active ? 2.5 : 1.5}
-                        strokeDasharray="3 5"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    );
-                  })}
                   <HypermediaPageCloud
                     path={item.path}
                     colorIndex={item.colorIndex}
                     active={active}
+                    subdued={
+                      item.intervalBounds.bottom - item.intervalBounds.top > LONG_INTERVAL_THRESHOLD
+                    }
                   />
-                  {connectedRows.map((row) => (
+                  {connectedColumns.map((column) => (
                     <circle
-                      key={row.key}
-                      cx={item.label.x}
-                      cy={row.y}
+                      key={column.key}
+                      cx={column.x}
+                      cy={item.label.y}
                       r={active ? 5 : 3.5}
                       style={{ color: `var(--chart-${item.colorIndex})` }}
                       className="pointer-events-none fill-current"
@@ -323,7 +357,8 @@ export function HypermediaTemporalCanvas({
               );
             })}
           </svg>
-          <TemporalResourceWagons
+          <TemporalTimeLabels ticks={layout.ticks} width={layout.width} />
+          <TemporalResourceHeaders
             resources={layout.resources}
             width={layout.width}
             activeKey={selectedKey}

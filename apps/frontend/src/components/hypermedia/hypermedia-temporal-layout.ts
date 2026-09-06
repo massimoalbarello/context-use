@@ -15,6 +15,7 @@ import type {
 } from '../../queries/hypermedia';
 import { hypermediaResourceKey } from '../../queries/hypermedia';
 import {
+  HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
   type HypermediaLayoutResource,
   hypermediaLayoutResourceLabel,
   hypermediaLayoutResourceReference,
@@ -22,27 +23,32 @@ import {
 } from './hypermedia-layout';
 
 const MILLISECONDS_PER_DAY = 86_400_000;
-const MINIMUM_TIMELINE_WIDTH = 1_900;
-const MAXIMUM_TIMELINE_WIDTH = 24_000;
+const MINIMUM_CANVAS_WIDTH = 1_200;
+const MINIMUM_TIMELINE_HEIGHT = 1_900;
+const MAXIMUM_TIMELINE_HEIGHT = 24_000;
 const PIXELS_PER_DAY = 0.75;
-const TIMELINE_HORIZONTAL_PADDING = 120;
-const TIMELINE_HEADER_HEIGHT = 64;
-const RESOURCE_ROW_HEIGHT = 116;
-const RESOURCE_VERTICAL_PADDING = 80;
-const MINIMUM_CANVAS_HEIGHT = 620;
-const CLOUD_HORIZONTAL_PADDING = 34;
-const CLOUD_HEIGHT = 52;
-const CLOUD_LANE_ORIGIN = TIMELINE_HEADER_HEIGHT + 40;
-const CLOUD_LANE_SPACING = 76;
-const CLOUD_HORIZONTAL_GAP = 24;
-const MINIMUM_CLOUD_WIDTH = 240;
+const RESOURCE_COLUMN_START_X = 224;
+const RESOURCE_COLUMN_SPACING = 280;
+const RESOURCE_RIGHT_PADDING = 176;
+const TIMELINE_START_Y = 144;
+const TIMELINE_BOTTOM_PADDING = 120;
+const PAGE_RESOURCE_PADDING = 64;
+const PAGE_HEIGHT = 48;
+const PAGE_STACK_SPACING = 24;
+const PAGE_LABEL_HEIGHT = 18;
+const PAGE_LABEL_CHARACTER_WIDTH = 7;
+const PAGE_LABEL_MINIMUM_WIDTH = 72;
+const PAGE_LABEL_PADDING = 24;
+const PAGE_LABEL_GAP = 6;
+const MINIMUM_PAGE_WIDTH = 220;
 
 type TemporalExtent = NonNullable<HypermediaPages['temporalExtent']>;
+type Bounds = { left: number; right: number; top: number; bottom: number };
 
 export type TemporalHypermediaResource = HypermediaResourceReference & {
   key: string;
   label: string;
-  y: number;
+  x: number;
   resource?: HypermediaLayoutResource;
 };
 
@@ -51,14 +57,17 @@ export type TemporalHypermediaPage = {
   resourceKeys: string[];
   path: string;
   label: { x: number; y: number };
-  bounds: { left: number; right: number; top: number; bottom: number };
+  bounds: Bounds;
+  labelBounds: Bounds;
+  intervalBounds: Bounds;
   colorIndex: number;
   start: number;
   end: number;
+  duration: number;
 };
 
 export type TemporalHypermediaTick = {
-  x: number;
+  y: number;
   time: number;
   label: string;
 };
@@ -66,12 +75,25 @@ export type TemporalHypermediaTick = {
 export type TemporalHypermediaLayout = {
   width: number;
   height: number;
-  timelineStartX: number;
-  timelineEndX: number;
+  timelineStartY: number;
+  timelineEndY: number;
   extent: TemporalExtent;
   resources: TemporalHypermediaResource[];
   pages: TemporalHypermediaPage[];
   ticks: TemporalHypermediaTick[];
+};
+
+type TemporalPageCandidate = {
+  page: HypermediaPage;
+  resourceKeys: string[];
+  left: number;
+  right: number;
+  recentY: number;
+  oldY: number;
+  colorIndex: number;
+  start: number;
+  end: number;
+  duration: number;
 };
 
 function fallbackResourceLabel(reference: HypermediaResourceReference): string {
@@ -86,54 +108,53 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-function timelineWidth(extent: TemporalExtent): number {
+function timelineHeight(extent: TemporalExtent): number {
   const days = Math.max(1, (extent.end - extent.start) / MILLISECONDS_PER_DAY);
   return Math.min(
-    MAXIMUM_TIMELINE_WIDTH,
-    Math.max(MINIMUM_TIMELINE_WIDTH, days * PIXELS_PER_DAY + TIMELINE_HORIZONTAL_PADDING * 2),
+    MAXIMUM_TIMELINE_HEIGHT,
+    Math.max(
+      MINIMUM_TIMELINE_HEIGHT,
+      days * PIXELS_PER_DAY + TIMELINE_START_Y + TIMELINE_BOTTOM_PADDING,
+    ),
   );
 }
 
-function timeX({
+function canvasWidth(resourceCount: number): number {
+  const lastResourceX =
+    RESOURCE_COLUMN_START_X + Math.max(0, resourceCount - 1) * RESOURCE_COLUMN_SPACING;
+  return Math.max(MINIMUM_CANVAS_WIDTH, lastResourceX + RESOURCE_RIGHT_PADDING);
+}
+
+function timeY({
   time,
   extent,
-  startX,
-  endX,
+  startY,
+  endY,
 }: {
   time: number;
   extent: TemporalExtent;
-  startX: number;
-  endX: number;
+  startY: number;
+  endY: number;
 }): number {
   if (extent.start === extent.end) {
-    return (startX + endX) / 2;
+    return (startY + endY) / 2;
   }
   const progress =
-    (clamp(time, extent.start, extent.end) - extent.start) / (extent.end - extent.start);
-  return startX + progress * (endX - startX);
+    (extent.end - clamp(time, extent.start, extent.end)) / (extent.end - extent.start);
+  return startY + progress * (endY - startY);
 }
 
-function timeAtX({ x, layout }: { x: number; layout: TemporalHypermediaLayout }): number {
-  if (layout.timelineStartX === layout.timelineEndX) {
-    return layout.extent.start;
+function timeAtY({ y, layout }: { y: number; layout: TemporalHypermediaLayout }): number {
+  if (layout.timelineStartY === layout.timelineEndY) {
+    return layout.extent.end;
   }
   const progress =
-    (clamp(x, layout.timelineStartX, layout.timelineEndX) - layout.timelineStartX) /
-    (layout.timelineEndX - layout.timelineStartX);
-  return layout.extent.start + progress * (layout.extent.end - layout.extent.start);
+    (clamp(y, layout.timelineStartY, layout.timelineEndY) - layout.timelineStartY) /
+    (layout.timelineEndY - layout.timelineStartY);
+  return layout.extent.end - progress * (layout.extent.end - layout.extent.start);
 }
 
-function cloudPath({
-  left,
-  right,
-  top,
-  bottom,
-}: {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-}): string {
+function capsulePath({ left, right, top, bottom }: Bounds): string {
   const radius = (bottom - top) / 2;
   const centerY = top + radius;
   return [
@@ -156,17 +177,17 @@ function tickLabel(time: number, span: number): string {
   }).format(new Date(time));
 }
 
-function resourceRows({
+function resourceColumns({
   resources,
   pages,
 }: {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
 }): TemporalHypermediaResource[] {
-  const rows = new Map<string, Omit<TemporalHypermediaResource, 'y'>>();
+  const columns = new Map<string, Omit<TemporalHypermediaResource, 'x'>>();
   for (const resource of resources) {
     const reference = hypermediaLayoutResourceReference(resource);
-    rows.set(resource.key, {
+    columns.set(resource.key, {
       key: resource.key,
       ...reference,
       label: hypermediaLayoutResourceLabel(resource),
@@ -175,14 +196,48 @@ function resourceRows({
   }
   for (const reference of pages.flatMap(({ resources: references }) => references)) {
     const key = hypermediaResourceKey(reference);
-    if (!rows.has(key)) {
-      rows.set(key, { ...reference, key, label: fallbackResourceLabel(reference) });
+    if (!columns.has(key)) {
+      columns.set(key, { ...reference, key, label: fallbackResourceLabel(reference) });
     }
   }
-  return [...rows.values()].map((row, index) => ({
-    ...row,
-    y: TIMELINE_HEADER_HEIGHT + RESOURCE_VERTICAL_PADDING + index * RESOURCE_ROW_HEIGHT,
+  return [...columns.values()].map((column, index) => ({
+    ...column,
+    x: RESOURCE_COLUMN_START_X + index * RESOURCE_COLUMN_SPACING,
   }));
+}
+
+function pageLabelBounds({
+  candidate,
+  centerY,
+}: {
+  candidate: TemporalPageCandidate;
+  centerY: number;
+}): Bounds {
+  const centerX = (candidate.left + candidate.right) / 2;
+  const availableWidth = candidate.right - candidate.left - PAGE_LABEL_PADDING;
+  const labelWidth = Math.min(
+    availableWidth,
+    Math.max(
+      PAGE_LABEL_MINIMUM_WIDTH,
+      Math.min(candidate.page.title.length, HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS) *
+        PAGE_LABEL_CHARACTER_WIDTH,
+    ),
+  );
+  return {
+    left: centerX - labelWidth / 2,
+    right: centerX + labelWidth / 2,
+    top: centerY - PAGE_LABEL_HEIGHT / 2,
+    bottom: centerY + PAGE_LABEL_HEIGHT / 2,
+  };
+}
+
+function labelBoundsOverlap(first: Bounds, second: Bounds): boolean {
+  return (
+    first.left < second.right + PAGE_LABEL_GAP &&
+    first.right + PAGE_LABEL_GAP > second.left &&
+    first.top < second.bottom + PAGE_LABEL_GAP &&
+    first.bottom + PAGE_LABEL_GAP > second.top
+  );
 }
 
 export function buildTemporalHypermediaLayout({
@@ -194,13 +249,13 @@ export function buildTemporalHypermediaLayout({
   pages: HypermediaPage[];
   extent: TemporalExtent;
 }): TemporalHypermediaLayout {
-  const width = timelineWidth(extent);
-  const timelineStartX = TIMELINE_HORIZONTAL_PADDING;
-  const timelineEndX = width - TIMELINE_HORIZONTAL_PADDING;
   const temporalPages = pages.filter(({ temporalCoverage }) => temporalCoverage !== null);
-  const rows = resourceRows({ resources, pages: temporalPages });
-  const rowByKey = new Map(rows.map((row) => [row.key, row]));
-  const candidates = temporalPages.flatMap((page) => {
+  const columns = resourceColumns({ resources, pages: temporalPages });
+  const width = canvasWidth(columns.length);
+  const baseHeight = timelineHeight(extent);
+  const timelineEndY = baseHeight - TIMELINE_BOTTOM_PADDING;
+  const columnByKey = new Map(columns.map((column) => [column.key, column]));
+  const candidates = temporalPages.flatMap((page): TemporalPageCandidate[] => {
     if (!page.temporalCoverage) {
       return [];
     }
@@ -211,108 +266,100 @@ export function buildTemporalHypermediaLayout({
       : extent.end;
     const end = clamp(Math.max(start, inclusiveEnd), extent.start, extent.end);
     const resourceKeys = [...new Set(page.resources.map(hypermediaResourceKey))];
-    const connectedRows = resourceKeys.flatMap((resourceKey) => {
-      const row = rowByKey.get(resourceKey);
-      return row ? [row] : [];
+    const connectedColumns = resourceKeys.flatMap((resourceKey) => {
+      const column = columnByKey.get(resourceKey);
+      return column ? [column] : [];
     });
-    if (connectedRows.length === 0) {
+    if (connectedColumns.length === 0) {
       return [];
     }
-    const startPosition = timeX({
-      time: start,
-      extent,
-      startX: timelineStartX,
-      endX: timelineEndX,
-    });
-    const endPosition = timeX({ time: end, extent, startX: timelineStartX, endX: timelineEndX });
-    const centerX = (startPosition + endPosition) / 2;
-    const left = Math.min(
-      startPosition - CLOUD_HORIZONTAL_PADDING,
-      centerX - MINIMUM_CLOUD_WIDTH / 2,
-    );
-    const right = Math.max(
-      endPosition + CLOUD_HORIZONTAL_PADDING,
-      centerX + MINIMUM_CLOUD_WIDTH / 2,
-    );
+    const minimumX = Math.min(...connectedColumns.map(({ x }) => x));
+    const maximumX = Math.max(...connectedColumns.map(({ x }) => x));
+    const centerX = (minimumX + maximumX) / 2;
+    const left = Math.min(minimumX - PAGE_RESOURCE_PADDING, centerX - MINIMUM_PAGE_WIDTH / 2);
+    const right = Math.max(maximumX + PAGE_RESOURCE_PADDING, centerX + MINIMUM_PAGE_WIDTH / 2);
     return [
       {
         page,
         resourceKeys,
         left,
         right,
-        preferredY: connectedRows.reduce((total, { y }) => total + y, 0) / connectedRows.length,
+        recentY: timeY({
+          time: end,
+          extent,
+          startY: TIMELINE_START_Y,
+          endY: timelineEndY,
+        }),
+        oldY: timeY({
+          time: start,
+          extent,
+          startY: TIMELINE_START_Y,
+          endY: timelineEndY,
+        }),
         colorIndex: hypermediaPageColorIndex(page.readableId),
         start,
         end,
+        duration: end - start,
       },
     ];
   });
   candidates.sort(
     (first, second) =>
-      first.start - second.start ||
-      first.end - second.end ||
+      first.recentY - second.recentY ||
+      first.duration - second.duration ||
       first.page.readableId.localeCompare(second.page.readableId),
   );
-  const occupiedByLane = new Map<number, Array<{ left: number; right: number }>>();
+
+  const occupiedLabelBounds: Bounds[] = [];
   const laidOutPages = candidates.map((candidate): TemporalHypermediaPage => {
-    const preferredLane = Math.max(
-      0,
-      Math.round((candidate.preferredY - CLOUD_LANE_ORIGIN) / CLOUD_LANE_SPACING),
-    );
-    let lane = preferredLane;
-    for (let distance = 0; distance <= candidates.length + rows.length; distance += 1) {
-      const possibleLanes =
-        distance === 0
-          ? [preferredLane]
-          : [preferredLane - distance, preferredLane + distance].filter(
-              (possibleLane) => possibleLane >= 0,
-            );
-      const availableLane = possibleLanes.find((possibleLane) =>
-        (occupiedByLane.get(possibleLane) ?? []).every(
-          (occupied) =>
-            candidate.left >= occupied.right + CLOUD_HORIZONTAL_GAP ||
-            candidate.right + CLOUD_HORIZONTAL_GAP <= occupied.left,
-        ),
-      );
-      if (availableLane !== undefined) {
-        lane = availableLane;
+    let centerY = Math.max(TIMELINE_START_Y + PAGE_HEIGHT / 2, candidate.recentY);
+    let labelBounds = pageLabelBounds({ candidate, centerY });
+    do {
+      if (!occupiedLabelBounds.some((occupied) => labelBoundsOverlap(labelBounds, occupied))) {
         break;
       }
-    }
-    const centerY = CLOUD_LANE_ORIGIN + lane * CLOUD_LANE_SPACING;
+      centerY += PAGE_STACK_SPACING;
+      labelBounds = pageLabelBounds({ candidate, centerY });
+    } while (centerY <= baseHeight + candidates.length * PAGE_STACK_SPACING);
+    occupiedLabelBounds.push(labelBounds);
     const bounds = {
       left: candidate.left,
       right: candidate.right,
-      top: centerY - CLOUD_HEIGHT / 2,
-      bottom: centerY + CLOUD_HEIGHT / 2,
+      top: centerY - PAGE_HEIGHT / 2,
+      bottom: centerY + PAGE_HEIGHT / 2,
     };
-    occupiedByLane.set(lane, [
-      ...(occupiedByLane.get(lane) ?? []),
-      { left: bounds.left, right: bounds.right },
-    ]);
+    const intervalBounds = {
+      left: bounds.left,
+      right: bounds.right,
+      top: candidate.recentY,
+      bottom: candidate.oldY,
+    };
     return {
       page: candidate.page,
       resourceKeys: candidate.resourceKeys,
-      path: cloudPath(bounds),
+      path: capsulePath(bounds),
       label: { x: (bounds.left + bounds.right) / 2, y: centerY },
       bounds,
+      labelBounds,
+      intervalBounds,
       colorIndex: candidate.colorIndex,
       start: candidate.start,
       end: candidate.end,
+      duration: candidate.duration,
     };
   });
-  const rowBottom = rows.at(-1)?.y ?? 0;
-  const pageBottom = Math.max(0, ...laidOutPages.map(({ bounds }) => bounds.bottom));
   const height = Math.max(
-    MINIMUM_CANVAS_HEIGHT,
-    rowBottom + RESOURCE_VERTICAL_PADDING,
-    pageBottom + RESOURCE_VERTICAL_PADDING,
+    baseHeight,
+    ...laidOutPages.map(
+      ({ bounds, intervalBounds }) =>
+        Math.max(bounds.bottom, intervalBounds.bottom) + TIMELINE_BOTTOM_PADDING,
+    ),
   );
   const span = extent.end - extent.start;
   const ticks = Array.from({ length: 9 }, (_, index): TemporalHypermediaTick => {
-    const time = extent.start + (span * index) / 8;
+    const time = extent.end - (span * index) / 8;
     return {
-      x: timeX({ time, extent, startX: timelineStartX, endX: timelineEndX }),
+      y: timeY({ time, extent, startY: TIMELINE_START_Y, endY: timelineEndY }),
       time,
       label: tickLabel(time, span),
     };
@@ -320,10 +367,10 @@ export function buildTemporalHypermediaLayout({
   return {
     width,
     height,
-    timelineStartX,
-    timelineEndX,
+    timelineStartY: TIMELINE_START_Y,
+    timelineEndY,
     extent,
-    resources: rows,
+    resources: columns,
     pages: laidOutPages,
     ticks,
   };
@@ -331,42 +378,42 @@ export function buildTemporalHypermediaLayout({
 
 export function temporalRangeForViewport({
   layout,
-  scrollLeft,
-  viewportWidth,
+  scrollTop,
+  viewportHeight,
 }: {
   layout: TemporalHypermediaLayout;
-  scrollLeft: number;
-  viewportWidth: number;
+  scrollTop: number;
+  viewportHeight: number;
 }): CalendarDateRange {
-  const from = timeAtX({ x: scrollLeft, layout });
-  const to = timeAtX({ x: scrollLeft + viewportWidth, layout });
+  const newer = timeAtY({ y: scrollTop, layout });
+  const older = timeAtY({ y: scrollTop + viewportHeight, layout });
   return {
-    from: calendarDateFromEpochDay(Math.floor(from / MILLISECONDS_PER_DAY)),
-    to: calendarDateFromEpochDay(Math.floor(to / MILLISECONDS_PER_DAY)),
+    from: calendarDateFromEpochDay(Math.floor(older / MILLISECONDS_PER_DAY)),
+    to: calendarDateFromEpochDay(Math.floor(newer / MILLISECONDS_PER_DAY)),
   };
 }
 
-export function temporalScrollLeftForRange({
+export function temporalScrollTopForRange({
   layout,
   range,
-  viewportWidth,
+  viewportHeight,
 }: {
   layout: TemporalHypermediaLayout;
   range?: CalendarDateRange;
-  viewportWidth: number;
+  viewportHeight: number;
 }): number {
-  const maximum = Math.max(0, layout.width - viewportWidth);
   if (!range) {
-    return maximum;
+    return 0;
   }
+  const maximum = Math.max(0, layout.height - viewportHeight);
   const center =
     ((epochDayFromCalendarDate(range.from) + epochDayFromCalendarDate(range.to)) / 2) *
     MILLISECONDS_PER_DAY;
-  const centerX = timeX({
+  const centerY = timeY({
     time: center,
     extent: layout.extent,
-    startX: layout.timelineStartX,
-    endX: layout.timelineEndX,
+    startY: layout.timelineStartY,
+    endY: layout.timelineEndY,
   });
-  return clamp(centerX - viewportWidth / 2, 0, maximum);
+  return clamp(centerY - viewportHeight / 2, 0, maximum);
 }
