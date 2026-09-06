@@ -19,6 +19,7 @@ import {
   hypermediaLayoutResourceLabel,
   hypermediaLayoutResourceReference,
   hypermediaPageColorIndex,
+  hypermediaPagePlacementRatio,
 } from './hypermedia-layout';
 
 const MILLISECONDS_PER_DAY = 86_400_000;
@@ -36,6 +37,8 @@ const PAGE_HEIGHT = 48;
 const PAGE_GAP = 8;
 const PAGE_STACK_SPACING = PAGE_HEIGHT + PAGE_GAP;
 const MINIMUM_PAGE_WIDTH = 220;
+const DISTRIBUTED_INTERVAL_MINIMUM_DURATION = MILLISECONDS_PER_DAY * 4;
+const DISTRIBUTED_INTERVAL_EDGE_RATIO = 0.12;
 
 type TemporalExtent = NonNullable<HypermediaPages['temporalExtent']>;
 type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -78,7 +81,9 @@ type TemporalPageCandidate = {
   resourceKeys: string[];
   left: number;
   right: number;
-  recentY: number;
+  minimumY: number;
+  maximumY: number;
+  preferredY: number;
   colorIndex: number;
   duration: number;
 };
@@ -217,6 +222,32 @@ function pageBoundsOverlap(first: Bounds, second: Bounds): boolean {
   );
 }
 
+function openPageCenter({
+  candidate,
+  occupiedPageBounds,
+}: {
+  candidate: TemporalPageCandidate;
+  occupiedPageBounds: Bounds[];
+}): number | undefined {
+  const intervalSpan = candidate.maximumY - candidate.minimumY;
+  const maximumSteps = Math.ceil(intervalSpan / PAGE_STACK_SPACING);
+  const possibleCenters = [candidate.preferredY];
+  for (let step = 1; step <= maximumSteps; step += 1) {
+    const offset = step * PAGE_STACK_SPACING;
+    if (candidate.preferredY + offset <= candidate.maximumY) {
+      possibleCenters.push(candidate.preferredY + offset);
+    }
+    if (candidate.preferredY - offset >= candidate.minimumY) {
+      possibleCenters.push(candidate.preferredY - offset);
+    }
+  }
+  possibleCenters.push(candidate.minimumY, candidate.maximumY);
+  return possibleCenters.find((centerY) => {
+    const bounds = pageBounds({ candidate, centerY });
+    return !occupiedPageBounds.some((occupied) => pageBoundsOverlap(bounds, occupied));
+  });
+}
+
 export function buildTemporalHypermediaLayout({
   resources,
   pages,
@@ -255,18 +286,36 @@ export function buildTemporalHypermediaLayout({
     const centerX = (minimumX + maximumX) / 2;
     const left = Math.min(minimumX - PAGE_RESOURCE_PADDING, centerX - MINIMUM_PAGE_WIDTH / 2);
     const right = Math.max(maximumX + PAGE_RESOURCE_PADDING, centerX + MINIMUM_PAGE_WIDTH / 2);
+    const recentY = timeY({
+      time: end,
+      extent,
+      startY: TIMELINE_START_Y,
+      endY: timelineEndY,
+    });
+    const olderY = timeY({
+      time: start,
+      extent,
+      startY: TIMELINE_START_Y,
+      endY: timelineEndY,
+    });
+    const minimumY = Math.max(TIMELINE_START_Y + PAGE_HEIGHT / 2, recentY);
+    const maximumY = Math.max(minimumY, olderY);
+    const placementRatio =
+      DISTRIBUTED_INTERVAL_EDGE_RATIO +
+      hypermediaPagePlacementRatio(page.readableId) * (1 - DISTRIBUTED_INTERVAL_EDGE_RATIO * 2);
+    const preferredY =
+      end - start >= DISTRIBUTED_INTERVAL_MINIMUM_DURATION
+        ? minimumY + (maximumY - minimumY) * placementRatio
+        : minimumY;
     return [
       {
         page,
         resourceKeys,
         left,
         right,
-        recentY: timeY({
-          time: end,
-          extent,
-          startY: TIMELINE_START_Y,
-          endY: timelineEndY,
-        }),
+        minimumY,
+        maximumY,
+        preferredY,
         colorIndex: hypermediaPageColorIndex(page.readableId),
         duration: end - start,
       },
@@ -274,22 +323,19 @@ export function buildTemporalHypermediaLayout({
   });
   candidates.sort(
     (first, second) =>
-      first.recentY - second.recentY ||
+      first.preferredY - second.preferredY ||
       first.duration - second.duration ||
       first.page.readableId.localeCompare(second.page.readableId),
   );
 
   const occupiedPageBounds: Bounds[] = [];
   const laidOutPages = candidates.map((candidate): TemporalHypermediaPage => {
-    let centerY = Math.max(TIMELINE_START_Y + PAGE_HEIGHT / 2, candidate.recentY);
+    let centerY = openPageCenter({ candidate, occupiedPageBounds }) ?? candidate.maximumY;
     let bounds = pageBounds({ candidate, centerY });
-    do {
-      if (!occupiedPageBounds.some((occupied) => pageBoundsOverlap(bounds, occupied))) {
-        break;
-      }
+    while (occupiedPageBounds.some((occupied) => pageBoundsOverlap(bounds, occupied))) {
       centerY += PAGE_STACK_SPACING;
       bounds = pageBounds({ candidate, centerY });
-    } while (centerY <= baseHeight + candidates.length * PAGE_STACK_SPACING);
+    }
     occupiedPageBounds.push(bounds);
     return {
       page: candidate.page,
@@ -300,6 +346,11 @@ export function buildTemporalHypermediaLayout({
       colorIndex: candidate.colorIndex,
     };
   });
+  laidOutPages.sort(
+    (first, second) =>
+      first.bounds.top - second.bounds.top ||
+      first.page.readableId.localeCompare(second.page.readableId),
+  );
   const height = Math.max(
     baseHeight,
     ...laidOutPages.map(({ bounds }) => bounds.bottom + TIMELINE_BOTTOM_PADDING),

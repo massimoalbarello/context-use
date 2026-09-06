@@ -85,6 +85,16 @@ function stableHash(value: string): number {
   return hash >>> 0;
 }
 
+export function hypermediaPagePlacementRatio(readableId: string): number {
+  let hash = stableHash(readableId) ^ stableHash([...readableId].reverse().join(''));
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85ebca6b);
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2ae35);
+  hash ^= hash >>> 16;
+  return (hash >>> 0) / 0xffffffff;
+}
+
 export function hypermediaPageColorIndex(readableId: string): number {
   return (stableHash(readableId) % 5) + 1;
 }

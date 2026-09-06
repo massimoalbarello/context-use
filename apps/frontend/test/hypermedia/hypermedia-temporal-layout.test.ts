@@ -18,6 +18,8 @@ const extent = {
 const EXPECTED_CLOUD_HEIGHT = 48;
 const MINIMUM_CLOUD_GAP = 8;
 const DENSE_PAGE_COUNT = 10;
+const DISTRIBUTED_PAGE_COUNT = 5;
+const MINIMUM_DISTRIBUTED_SPREAD = 400;
 
 function page({
   readableId,
@@ -139,6 +141,29 @@ describe('temporal Hypermedia side projection', () => {
         expect(verticalGap).toBeGreaterThanOrEqual(MINIMUM_CLOUD_GAP);
       }
     }
+  });
+
+  test('distributes longer-lived pages across their asserted interval', () => {
+    const distributedResources = [...Array(DISTRIBUTED_PAGE_COUNT).keys()].map((index) =>
+      entity(`resource-${index}`),
+    );
+    const layout = buildTemporalHypermediaLayout({
+      resources: distributedResources,
+      pages: distributedResources.map((resource) =>
+        page({
+          readableId: `long-lived-page-${resource.key}`,
+          temporalCoverage: '2021/2026',
+          resources: [{ kind: 'entity', readableId: resource.key.slice('entity:'.length) }],
+        }),
+      ),
+      extent,
+    });
+    const pageCenters = layout.pages.map(({ label }) => label.y);
+
+    expect(new Set(pageCenters).size).toBe(DISTRIBUTED_PAGE_COUNT);
+    expect(Math.max(...pageCenters) - Math.min(...pageCenters)).toBeGreaterThan(
+      MINIMUM_DISTRIBUTED_SPREAD,
+    );
   });
 
   test('maps vertical scrolling to a reverse-chronological date interval', () => {

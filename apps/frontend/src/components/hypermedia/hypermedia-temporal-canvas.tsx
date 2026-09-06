@@ -2,7 +2,7 @@
 // biome-ignore-all lint/complexity/useMaxParams: Small render and event callbacks remain clearer inline.
 
 import { FileText } from 'lucide-react';
-import { type UIEvent, useCallback, useEffect, useMemo, useRef } from 'react';
+import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '../../lib/class-names';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
@@ -29,6 +29,30 @@ import {
 const RANGE_SETTLE_MS = 280;
 const RESOURCE_SETTLE_MS = 280;
 const RESOURCE_DISCOVERY_DISTANCE = 360;
+const RESOURCE_HEADER_HEIGHT = 96;
+const PAGE_FADE_DISTANCE = 96;
+
+type TemporalPageViewport = { scrollTop: number; height: number };
+
+function temporalPageOpacity({
+  bounds,
+  viewport,
+}: {
+  bounds: { top: number; bottom: number };
+  viewport: TemporalPageViewport | null;
+}): number {
+  if (!viewport) {
+    return 1;
+  }
+  const topEdge = viewport.scrollTop + RESOURCE_HEADER_HEIGHT;
+  const bottomEdge = viewport.scrollTop + viewport.height;
+  const distanceFromTop = bounds.bottom - topEdge;
+  const distanceFromBottom = bottomEdge - bounds.top;
+  return Math.min(
+    1,
+    Math.max(0, Math.min(distanceFromTop, distanceFromBottom) / PAGE_FADE_DISTANCE),
+  );
+}
 
 function resourceReference(resource: TemporalHypermediaResource): HypermediaResourceReference {
   return { kind: resource.kind, readableId: resource.readableId };
@@ -125,6 +149,7 @@ export function HypermediaTemporalCanvas({
   const lastScrollTop = useRef<number | null>(null);
   const lastScrollLeft = useRef<number | null>(null);
   const initializedView = useRef<string | null>(null);
+  const [pageViewport, setPageViewport] = useState<TemporalPageViewport | null>(null);
   const layout = useMemo(
     () => (extent ? buildTemporalHypermediaLayout({ resources, pages, extent }) : null),
     [extent, pages, resources],
@@ -157,6 +182,7 @@ export function HypermediaTemporalCanvas({
     scroller.scrollTop = scrollTop;
     lastScrollTop.current = scrollTop;
     lastScrollLeft.current = scroller.scrollLeft;
+    setPageViewport({ scrollTop, height: scroller.clientHeight });
   }, [dateRange, layout]);
 
   useEffect(
@@ -215,6 +241,7 @@ export function HypermediaTemporalCanvas({
       return;
     }
     lastScrollTop.current = scroller.scrollTop;
+    setPageViewport({ scrollTop: scroller.scrollTop, height: scroller.clientHeight });
     const nextRange = temporalRangeForViewport({
       layout,
       scrollTop: scroller.scrollTop,
@@ -299,6 +326,10 @@ export function HypermediaTemporalCanvas({
                 <HypermediaPageLink
                   key={item.page.readableId}
                   page={item.page}
+                  className="transition-opacity duration-100 ease-out motion-reduce:transition-none"
+                  style={{
+                    opacity: temporalPageOpacity({ bounds: item.bounds, viewport: pageViewport }),
+                  }}
                   aria-label={`Open temporal knowledge page ${item.page.title}`}
                   onSelect={onSelect}
                 >
@@ -333,14 +364,6 @@ export function HypermediaTemporalCanvas({
           />
         </div>
       </div>
-      <div
-        className="pointer-events-none absolute inset-x-0 top-24 z-20 h-24 [background:linear-gradient(to_bottom,var(--card),transparent)]"
-        aria-hidden="true"
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-24 [background:linear-gradient(to_top,var(--card),transparent)]"
-        aria-hidden="true"
-      />
     </section>
   );
 }
