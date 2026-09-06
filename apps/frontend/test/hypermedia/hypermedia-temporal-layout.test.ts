@@ -16,7 +16,7 @@ const extent = {
   end: Date.parse('2026-12-31T00:00:00.000Z'),
 };
 const EXPECTED_CLOUD_HEIGHT = 48;
-const MINIMUM_LABEL_GAP = 6;
+const MINIMUM_CLOUD_GAP = 8;
 const DENSE_PAGE_COUNT = 10;
 
 function page({
@@ -102,15 +102,11 @@ describe('temporal Hypermedia side projection', () => {
     expect(layout.pages[0]!.bounds.bottom - layout.pages[0]!.bounds.top).toBe(
       EXPECTED_CLOUD_HEIGHT,
     );
-    expect(
-      layout.pages[0]!.intervalBounds.bottom - layout.pages[0]!.intervalBounds.top,
-    ).toBeGreaterThan(EXPECTED_CLOUD_HEIGHT);
-    expect(layout.pages[0]!.start).toBeLessThan(layout.pages[0]!.end);
     expect(layout.ticks[0]!.time).toBeGreaterThan(layout.ticks.at(-1)!.time);
     expect(layout.ticks[0]!.y).toBeLessThan(layout.ticks.at(-1)!.y);
   });
 
-  test('stacks names for pages at the same time while keeping each page thin', () => {
+  test('stacks overlapping page clouds at the same time while keeping each page thin', () => {
     const densePages = [...Array(DENSE_PAGE_COUNT).keys()].map((index) =>
       page({
         readableId: `temporal-page-${index}`,
@@ -135,13 +131,12 @@ describe('temporal Hypermedia side projection', () => {
       );
       for (const second of layout.pages.slice(index + 1)) {
         const horizontalOverlap =
-          first.labelBounds.left < second.labelBounds.right &&
-          first.labelBounds.right > second.labelBounds.left;
+          first.bounds.left < second.bounds.right && first.bounds.right > second.bounds.left;
         if (!horizontalOverlap) {
           continue;
         }
-        const verticalGap = second.labelBounds.top - first.labelBounds.bottom;
-        expect(verticalGap).toBeGreaterThanOrEqual(MINIMUM_LABEL_GAP);
+        const verticalGap = second.bounds.top - first.bounds.bottom;
+        expect(verticalGap).toBeGreaterThanOrEqual(MINIMUM_CLOUD_GAP);
       }
     }
   });

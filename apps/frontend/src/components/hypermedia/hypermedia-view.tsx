@@ -19,10 +19,8 @@ import type { SettledHypermediaViewport } from './hypermedia-visibility';
 const PAGE_LABEL_Y_OFFSET = 4;
 const ACTIVE_CLOUD_FILL_OPACITY = 0.24;
 const INACTIVE_CLOUD_FILL_OPACITY = 0.1;
-const SUBDUED_CLOUD_FILL_OPACITY = 0.04;
 const ACTIVE_CLOUD_STROKE_OPACITY = 0.9;
 const INACTIVE_CLOUD_STROKE_OPACITY = 0.48;
-const SUBDUED_CLOUD_STROKE_OPACITY = 0.22;
 const ACTIVE_CLOUD_STROKE_WIDTH = 3;
 const INACTIVE_CLOUD_STROKE_WIDTH = 1.5;
 
@@ -173,12 +171,10 @@ export function HypermediaPageCloud({
   path,
   colorIndex,
   active,
-  subdued = false,
 }: {
   path: string;
   colorIndex: number;
   active: boolean;
-  subdued?: boolean;
 }) {
   return (
     <path
@@ -187,17 +183,9 @@ export function HypermediaPageCloud({
       style={{
         color: `var(--chart-${colorIndex})`,
         fill: 'currentColor',
-        fillOpacity: active
-          ? ACTIVE_CLOUD_FILL_OPACITY
-          : subdued
-            ? SUBDUED_CLOUD_FILL_OPACITY
-            : INACTIVE_CLOUD_FILL_OPACITY,
+        fillOpacity: active ? ACTIVE_CLOUD_FILL_OPACITY : INACTIVE_CLOUD_FILL_OPACITY,
         stroke: 'currentColor',
-        strokeOpacity: active
-          ? ACTIVE_CLOUD_STROKE_OPACITY
-          : subdued
-            ? SUBDUED_CLOUD_STROKE_OPACITY
-            : INACTIVE_CLOUD_STROKE_OPACITY,
+        strokeOpacity: active ? ACTIVE_CLOUD_STROKE_OPACITY : INACTIVE_CLOUD_STROKE_OPACITY,
         strokeWidth: active ? ACTIVE_CLOUD_STROKE_WIDTH : INACTIVE_CLOUD_STROKE_WIDTH,
       }}
       vectorEffect="non-scaling-stroke"

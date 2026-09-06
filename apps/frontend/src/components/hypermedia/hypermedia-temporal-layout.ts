@@ -15,7 +15,6 @@ import type {
 } from '../../queries/hypermedia';
 import { hypermediaResourceKey } from '../../queries/hypermedia';
 import {
-  HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
   type HypermediaLayoutResource,
   hypermediaLayoutResourceLabel,
   hypermediaLayoutResourceReference,
@@ -24,9 +23,9 @@ import {
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 const MINIMUM_CANVAS_WIDTH = 1_200;
-const MINIMUM_TIMELINE_HEIGHT = 1_900;
+const MINIMUM_TIMELINE_HEIGHT = 2_800;
 const MAXIMUM_TIMELINE_HEIGHT = 24_000;
-const PIXELS_PER_DAY = 0.75;
+const PIXELS_PER_DAY = 1.25;
 const RESOURCE_COLUMN_START_X = 224;
 const RESOURCE_COLUMN_SPACING = 280;
 const RESOURCE_RIGHT_PADDING = 176;
@@ -34,12 +33,8 @@ const TIMELINE_START_Y = 144;
 const TIMELINE_BOTTOM_PADDING = 120;
 const PAGE_RESOURCE_PADDING = 64;
 const PAGE_HEIGHT = 48;
-const PAGE_STACK_SPACING = 24;
-const PAGE_LABEL_HEIGHT = 18;
-const PAGE_LABEL_CHARACTER_WIDTH = 7;
-const PAGE_LABEL_MINIMUM_WIDTH = 72;
-const PAGE_LABEL_PADDING = 24;
-const PAGE_LABEL_GAP = 6;
+const PAGE_GAP = 8;
+const PAGE_STACK_SPACING = PAGE_HEIGHT + PAGE_GAP;
 const MINIMUM_PAGE_WIDTH = 220;
 
 type TemporalExtent = NonNullable<HypermediaPages['temporalExtent']>;
@@ -58,12 +53,7 @@ export type TemporalHypermediaPage = {
   path: string;
   label: { x: number; y: number };
   bounds: Bounds;
-  labelBounds: Bounds;
-  intervalBounds: Bounds;
   colorIndex: number;
-  start: number;
-  end: number;
-  duration: number;
 };
 
 export type TemporalHypermediaTick = {
@@ -89,10 +79,7 @@ type TemporalPageCandidate = {
   left: number;
   right: number;
   recentY: number;
-  oldY: number;
   colorIndex: number;
-  start: number;
-  end: number;
   duration: number;
 };
 
@@ -206,37 +193,27 @@ function resourceColumns({
   }));
 }
 
-function pageLabelBounds({
+function pageBounds({
   candidate,
   centerY,
 }: {
   candidate: TemporalPageCandidate;
   centerY: number;
 }): Bounds {
-  const centerX = (candidate.left + candidate.right) / 2;
-  const availableWidth = candidate.right - candidate.left - PAGE_LABEL_PADDING;
-  const labelWidth = Math.min(
-    availableWidth,
-    Math.max(
-      PAGE_LABEL_MINIMUM_WIDTH,
-      Math.min(candidate.page.title.length, HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS) *
-        PAGE_LABEL_CHARACTER_WIDTH,
-    ),
-  );
   return {
-    left: centerX - labelWidth / 2,
-    right: centerX + labelWidth / 2,
-    top: centerY - PAGE_LABEL_HEIGHT / 2,
-    bottom: centerY + PAGE_LABEL_HEIGHT / 2,
+    left: candidate.left,
+    right: candidate.right,
+    top: centerY - PAGE_HEIGHT / 2,
+    bottom: centerY + PAGE_HEIGHT / 2,
   };
 }
 
-function labelBoundsOverlap(first: Bounds, second: Bounds): boolean {
+function pageBoundsOverlap(first: Bounds, second: Bounds): boolean {
   return (
-    first.left < second.right + PAGE_LABEL_GAP &&
-    first.right + PAGE_LABEL_GAP > second.left &&
-    first.top < second.bottom + PAGE_LABEL_GAP &&
-    first.bottom + PAGE_LABEL_GAP > second.top
+    first.left < second.right + PAGE_GAP &&
+    first.right + PAGE_GAP > second.left &&
+    first.top < second.bottom + PAGE_GAP &&
+    first.bottom + PAGE_GAP > second.top
   );
 }
 
@@ -290,15 +267,7 @@ export function buildTemporalHypermediaLayout({
           startY: TIMELINE_START_Y,
           endY: timelineEndY,
         }),
-        oldY: timeY({
-          time: start,
-          extent,
-          startY: TIMELINE_START_Y,
-          endY: timelineEndY,
-        }),
         colorIndex: hypermediaPageColorIndex(page.readableId),
-        start,
-        end,
         duration: end - start,
       },
     ];
@@ -310,50 +279,30 @@ export function buildTemporalHypermediaLayout({
       first.page.readableId.localeCompare(second.page.readableId),
   );
 
-  const occupiedLabelBounds: Bounds[] = [];
+  const occupiedPageBounds: Bounds[] = [];
   const laidOutPages = candidates.map((candidate): TemporalHypermediaPage => {
     let centerY = Math.max(TIMELINE_START_Y + PAGE_HEIGHT / 2, candidate.recentY);
-    let labelBounds = pageLabelBounds({ candidate, centerY });
+    let bounds = pageBounds({ candidate, centerY });
     do {
-      if (!occupiedLabelBounds.some((occupied) => labelBoundsOverlap(labelBounds, occupied))) {
+      if (!occupiedPageBounds.some((occupied) => pageBoundsOverlap(bounds, occupied))) {
         break;
       }
       centerY += PAGE_STACK_SPACING;
-      labelBounds = pageLabelBounds({ candidate, centerY });
+      bounds = pageBounds({ candidate, centerY });
     } while (centerY <= baseHeight + candidates.length * PAGE_STACK_SPACING);
-    occupiedLabelBounds.push(labelBounds);
-    const bounds = {
-      left: candidate.left,
-      right: candidate.right,
-      top: centerY - PAGE_HEIGHT / 2,
-      bottom: centerY + PAGE_HEIGHT / 2,
-    };
-    const intervalBounds = {
-      left: bounds.left,
-      right: bounds.right,
-      top: candidate.recentY,
-      bottom: candidate.oldY,
-    };
+    occupiedPageBounds.push(bounds);
     return {
       page: candidate.page,
       resourceKeys: candidate.resourceKeys,
       path: capsulePath(bounds),
       label: { x: (bounds.left + bounds.right) / 2, y: centerY },
       bounds,
-      labelBounds,
-      intervalBounds,
       colorIndex: candidate.colorIndex,
-      start: candidate.start,
-      end: candidate.end,
-      duration: candidate.duration,
     };
   });
   const height = Math.max(
     baseHeight,
-    ...laidOutPages.map(
-      ({ bounds, intervalBounds }) =>
-        Math.max(bounds.bottom, intervalBounds.bottom) + TIMELINE_BOTTOM_PADDING,
-    ),
+    ...laidOutPages.map(({ bounds }) => bounds.bottom + TIMELINE_BOTTOM_PADDING),
   );
   const span = extent.end - extent.start;
   const ticks = Array.from({ length: 9 }, (_, index): TemporalHypermediaTick => {

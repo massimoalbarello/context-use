@@ -29,7 +29,6 @@ import {
 const RANGE_SETTLE_MS = 280;
 const RESOURCE_SETTLE_MS = 280;
 const RESOURCE_DISCOVERY_DISTANCE = 360;
-const LONG_INTERVAL_THRESHOLD = 72;
 
 function resourceReference(resource: TemporalHypermediaResource): HypermediaResourceReference {
   return { kind: resource.kind, readableId: resource.readableId };
@@ -270,36 +269,6 @@ export function HypermediaTemporalCanvas({
               />
             ))}
 
-            {[...layout.pages]
-              .sort((first, second) => second.duration - first.duration)
-              .map((item) => {
-                const intervalHeight = item.intervalBounds.bottom - item.intervalBounds.top;
-                if (intervalHeight <= LONG_INTERVAL_THRESHOLD) {
-                  return null;
-                }
-                const key = hypermediaSelectionKey({
-                  kind: 'page',
-                  readableId: item.page.readableId,
-                });
-                const active = selectedKey === key;
-                return (
-                  <rect
-                    key={`interval:${item.page.readableId}`}
-                    x={item.intervalBounds.left}
-                    y={item.intervalBounds.top}
-                    width={item.intervalBounds.right - item.intervalBounds.left}
-                    height={intervalHeight}
-                    rx={24}
-                    style={{ color: `var(--chart-${item.colorIndex})` }}
-                    className="pointer-events-none fill-current stroke-current"
-                    fillOpacity={active ? 0.07 : 0.025}
-                    strokeOpacity={active ? 0.28 : 0.1}
-                    strokeWidth={active ? 2 : 1}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                );
-              })}
-
             {layout.resources.map((resource) => {
               const active = selectedKey === resource.key || selectedResourceKeys.has(resource.key);
               return (
@@ -338,9 +307,6 @@ export function HypermediaTemporalCanvas({
                     path={item.path}
                     colorIndex={item.colorIndex}
                     active={active}
-                    subdued={
-                      item.intervalBounds.bottom - item.intervalBounds.top > LONG_INTERVAL_THRESHOLD
-                    }
                   />
                   {connectedColumns.map((column) => (
                     <circle
@@ -367,6 +333,14 @@ export function HypermediaTemporalCanvas({
           />
         </div>
       </div>
+      <div
+        className="pointer-events-none absolute inset-x-0 top-24 z-20 h-24 [background:linear-gradient(to_bottom,var(--card),transparent)]"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-24 [background:linear-gradient(to_top,var(--card),transparent)]"
+        aria-hidden="true"
+      />
     </section>
   );
 }
