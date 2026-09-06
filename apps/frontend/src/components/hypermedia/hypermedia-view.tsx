@@ -79,10 +79,12 @@ export function HypermediaHoverPreview({
   preview,
   selectedKey,
   sidebarCollapsed,
+  position,
 }: {
   preview: HypermediaPreview | null;
   selectedKey?: string;
   sidebarCollapsed: boolean;
+  position: 'canvas-top' | 'below-resource-headers';
 }) {
   if (!preview || hypermediaPreviewKey(preview) === selectedKey) {
     return null;
@@ -90,7 +92,9 @@ export function HypermediaHoverPreview({
   return (
     <div
       className={cn(
-        'pointer-events-none absolute top-4 z-40 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
+        'pointer-events-none absolute z-40 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
+        position === 'canvas-top' && 'top-4',
+        position === 'below-resource-headers' && 'top-28',
         sidebarCollapsed && 'left-18 w-[min(20rem,calc(100%-7rem))]',
         !sidebarCollapsed && 'left-4',
       )}

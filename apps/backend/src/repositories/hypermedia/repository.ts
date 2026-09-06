@@ -133,6 +133,7 @@ export interface HypermediaRepositoryContract {
     ownerId: string;
     resources: HypermediaResourceReference[];
     limit: number;
+    offset: number;
     query?: string;
     projection?: HypermediaPageProjection;
     temporalBounds?: TemporalBounds;
@@ -330,6 +331,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     ownerId,
     resources,
     limit,
+    offset,
     query,
     projection,
     temporalBounds,
@@ -337,6 +339,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     ownerId: string;
     resources: HypermediaResourceReference[];
     limit: number;
+    offset: number;
     query?: string;
     projection?: HypermediaPageProjection;
     temporalBounds?: TemporalBounds;
@@ -361,6 +364,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         filterStart,
         filterEnd,
         rowLimit,
+        offset,
       }),
       this.temporalExtentRows({ ownerId, currentDayStart }),
     ]);
@@ -376,7 +380,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     if (pages.length === 0) {
       return {
         pages,
-        hasMorePages: pageRows.length > limit,
+        nextOffset: pageRows.length > limit ? offset + limit : null,
         resourceReferencesTruncated: false,
         temporalExtent,
       };
@@ -401,7 +405,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     }
     return {
       pages,
-      hasMorePages: pageRows.length > limit,
+      nextOffset: pageRows.length > limit ? offset + limit : null,
       resourceReferencesTruncated: referenceRows.length > returnedReferenceLimit,
       temporalExtent,
     };
@@ -416,6 +420,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     filterStart,
     filterEnd,
     rowLimit,
+    offset,
   }: {
     ownerId: string;
     resourceKeys: string;
@@ -425,6 +430,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     filterStart: number | null;
     filterEnd: number | null;
     rowLimit: number;
+    offset: number;
   }): Promise<IListHypermediaPagesResult[]> {
     return this.sql.ListHypermediaPages`
       /* @notNull id readableId revisionNumber title excerpt temporalSort ongoingSort createdAt updatedAt */
@@ -521,6 +527,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       order by "temporalSort", "ongoingSort" desc,
         "latestSort" desc, "startSort" desc, "updatedAt" desc, "readableId"
       limit ${rowLimit}
+      offset ${offset}
     `;
   }
 

@@ -27,16 +27,16 @@ const MINIMUM_CANVAS_WIDTH = 1_200;
 const MINIMUM_TIMELINE_HEIGHT = 2_800;
 const MAXIMUM_TIMELINE_HEIGHT = 24_000;
 const PIXELS_PER_DAY = 1.25;
-const RESOURCE_COLUMN_START_X = 224;
-const RESOURCE_COLUMN_SPACING = 280;
-const RESOURCE_RIGHT_PADDING = 176;
+const RESOURCE_COLUMN_START_X = 176;
+const RESOURCE_COLUMN_SPACING = 180;
+const RESOURCE_RIGHT_PADDING = 128;
 const TIMELINE_START_Y = 144;
 const TIMELINE_BOTTOM_PADDING = 120;
-const PAGE_RESOURCE_PADDING = 64;
+const PAGE_RESOURCE_PADDING = 52;
 const PAGE_HEIGHT = 48;
 const PAGE_GAP = 8;
 const PAGE_STACK_SPACING = PAGE_HEIGHT + PAGE_GAP;
-const MINIMUM_PAGE_WIDTH = 220;
+const MINIMUM_PAGE_WIDTH = 160;
 const DISTRIBUTED_INTERVAL_MINIMUM_DURATION = MILLISECONDS_PER_DAY * 4;
 const DISTRIBUTED_INTERVAL_EDGE_RATIO = 0.12;
 
@@ -70,6 +70,7 @@ export type TemporalHypermediaLayout = {
   height: number;
   timelineStartY: number;
   timelineEndY: number;
+  pageLoadBoundaryY: number | null;
   extent: TemporalExtent;
   resources: TemporalHypermediaResource[];
   pages: TemporalHypermediaPage[];
@@ -321,6 +322,7 @@ export function buildTemporalHypermediaLayout({
       },
     ];
   });
+  const pageLoadBoundaryY = candidates.at(-1)?.minimumY ?? null;
   candidates.sort(
     (first, second) =>
       first.preferredY - second.preferredY ||
@@ -369,6 +371,7 @@ export function buildTemporalHypermediaLayout({
     height,
     timelineStartY: TIMELINE_START_Y,
     timelineEndY,
+    pageLoadBoundaryY,
     extent,
     resources: columns,
     pages: laidOutPages,

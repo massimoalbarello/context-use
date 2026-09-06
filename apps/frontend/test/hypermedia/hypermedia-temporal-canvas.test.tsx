@@ -1,5 +1,5 @@
 import { afterEach, expect, mock, test } from 'bun:test';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
 import { HypermediaTemporalCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
@@ -9,6 +9,7 @@ import type { HypermediaPage } from '../../src/queries/hypermedia';
 afterEach(cleanup);
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
+const PAGE_DISCOVERY_SCROLL_TOP = 1_000;
 const self: HypermediaLayoutResource = {
   key: 'entity:self',
   kind: 'entity',
@@ -36,6 +37,7 @@ const temporalPage: HypermediaPage = {
 
 test('temporal canvas keeps resource filtering and page preview selection accessible', async () => {
   const onSelect = mock(() => undefined);
+  const onDiscoverMorePages = mock(() => undefined);
   const user = userEvent.setup();
   render(
     <KnowledgeWorkspace>
@@ -51,6 +53,9 @@ test('temporal canvas keeps resource filtering and page preview selection access
         onSelect={onSelect}
         onDateRangeApply={() => undefined}
         onViewportSettled={() => undefined}
+        hasNextPage={true}
+        isFetchingNextPage={false}
+        onDiscoverMorePages={onDiscoverMorePages}
       />
     </KnowledgeWorkspace>,
   );
@@ -59,6 +64,12 @@ test('temporal canvas keeps resource filtering and page preview selection access
   expect(entityButton.getAttribute('aria-pressed')).toBe('true');
   await user.click(entityButton);
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'entity', readableId: 'self' });
+
+  const scroller = screen.getByLabelText(/Temporal Hypermedia/).querySelector('.overflow-auto');
+  expect(scroller).toBeTruthy();
+  scroller!.scrollTop = PAGE_DISCOVERY_SCROLL_TOP;
+  fireEvent.scroll(scroller!);
+  expect(onDiscoverMorePages).toHaveBeenCalledTimes(1);
 
   const pageLink = screen.getByRole('link', {
     name: 'Open temporal knowledge page Launch period',

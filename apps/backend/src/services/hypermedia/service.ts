@@ -22,6 +22,7 @@ export class HypermediaService {
     ownerId: string;
     resources: HypermediaResourceReference[];
     limit: number;
+    offset: number;
     query?: string;
     projection?: HypermediaPageProjection;
     temporalBounds?: TemporalBounds;

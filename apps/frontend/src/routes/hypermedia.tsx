@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
@@ -81,7 +81,6 @@ export const Route = createFileRoute('/hypermedia')({
   loaderDeps: ({ search }) => ({
     query: search.q,
     projection: hypermediaProjection(search),
-    dateRange: search.view === 'temporal' ? calendarDateRangeFromSearch(search) : undefined,
     resources: selectedHypermediaResources(search.focus),
   }),
   loader: async ({ context, deps }) => {
@@ -97,12 +96,11 @@ export const Route = createFileRoute('/hypermedia')({
         hypermediaResourceNeighborhoodQueryOptions({ anchor: self }),
       ),
       context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions),
-      context.queryClient.ensureQueryData(
+      context.queryClient.ensureInfiniteQueryData(
         hypermediaPagesQueryOptions({
           projection: deps.projection,
           resources: deps.resources,
           query: deps.query,
-          dateRange: deps.dateRange,
         }),
       ),
     ]);
@@ -120,12 +118,11 @@ function HypermediaRoute() {
   const selection: HypermediaSelection | undefined =
     kind && id ? { kind, readableId: id } : undefined;
   const selectedResources = selectedHypermediaResources(focus);
-  const pageQuery = useQuery({
+  const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
       projection,
       resources: selectedResources,
       query: q,
-      dateRange: projection === 'temporal' ? dateRange : undefined,
     }),
     enabled: Boolean(profile),
   });
@@ -203,11 +200,16 @@ function HypermediaRoute() {
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
             selectedResources={selectedResources}
-            pages={pageQuery.data?.pages ?? EMPTY_HYPERMEDIA_PAGES}
-            temporalExtent={pageQuery.data?.temporalExtent ?? null}
+            pages={
+              pageQuery.data?.pages.flatMap(({ pages: pageItems }) => pageItems) ??
+              EMPTY_HYPERMEDIA_PAGES
+            }
+            temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
             dateRange={dateRange}
             pagesLoading={pageQuery.isFetching}
             pagesError={pageQuery.error}
+            hasNextPage={pageQuery.hasNextPage}
+            isFetchingNextPage={pageQuery.isFetchingNextPage}
             onSelect={selectKnowledge}
             onDateRangeApply={(nextRange) => {
               void navigate({
@@ -216,6 +218,7 @@ function HypermediaRoute() {
               });
             }}
             onRetryPages={() => void pageQuery.refetch()}
+            onDiscoverMorePages={() => void pageQuery.fetchNextPage()}
           />
           {selection && (
             <HypermediaPreviewPanel

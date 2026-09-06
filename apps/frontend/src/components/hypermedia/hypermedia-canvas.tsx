@@ -654,6 +654,7 @@ export function HypermediaCanvas({
         preview={preview}
         selectedKey={selectedKey}
         sidebarCollapsed={sidebarCollapsed}
+        position="canvas-top"
       />
     </section>
   );

@@ -20,7 +20,7 @@ test('Hypermedia keeps projection, keyword, and resource filters in the shared s
   expect(html).toContain('aria-label="Hypermedia projection"');
   expect(html).toContain('Semantic');
   expect(html).toContain('Temporal');
-  expect(html.indexOf('Semantic')).toBeLessThan(html.indexOf('Filter hypermedia'));
+  expect(html.indexOf('Semantic')).toBeGreaterThan(html.indexOf('Filter hypermedia'));
   expect(html).toContain('Keyword');
   expect(html).toContain('value="launch"');
   expect(html).not.toContain('Time range');

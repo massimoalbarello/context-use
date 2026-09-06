@@ -83,16 +83,16 @@ export function HypermediaFilters({
 }) {
   return (
     <section aria-labelledby="hypermedia-filters-heading">
-      <Tabs value={projection} onValueChange={onProjectionChange}>
-        <TabsList className="grid w-full grid-cols-2" aria-label="Hypermedia projection">
-          <TabsTrigger value="semantic">Semantic</TabsTrigger>
-          <TabsTrigger value="temporal">Temporal</TabsTrigger>
-        </TabsList>
-      </Tabs>
-      <h2 id="hypermedia-filters-heading" className="mt-6 font-medium text-sm">
+      <h2 id="hypermedia-filters-heading" className="font-medium text-sm">
         Filter hypermedia
       </h2>
       <div className="mt-2 grid gap-3">
+        <Tabs value={projection} onValueChange={onProjectionChange}>
+          <TabsList className="grid w-full grid-cols-2" aria-label="Hypermedia projection">
+            <TabsTrigger value="semantic">Semantic</TabsTrigger>
+            <TabsTrigger value="temporal">Temporal</TabsTrigger>
+          </TabsList>
+        </Tabs>
         <HypermediaKeywordFilter key={query} value={query} onApply={onQueryApply} />
         {selectedResources.length > 0 && (
           <div className="flex items-center gap-3 rounded-xl bg-muted/55 p-3" aria-live="polite">

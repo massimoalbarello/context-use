@@ -45,9 +45,12 @@ export function HypermediaExplorer({
   dateRange,
   pagesLoading,
   pagesError,
+  hasNextPage,
+  isFetchingNextPage,
   onSelect,
   onDateRangeApply,
   onRetryPages,
+  onDiscoverMorePages,
 }: {
   projection: HypermediaPageProjection;
   selfReadableId: string;
@@ -58,9 +61,12 @@ export function HypermediaExplorer({
   dateRange?: CalendarDateRange;
   pagesLoading: boolean;
   pagesError: Error | null;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
   onSelect: (selection: HypermediaSelection) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
   onRetryPages: () => void;
+  onDiscoverMorePages: () => void;
 }) {
   const self = useMemo<HypermediaResourceReference>(
     () => ({ kind: 'entity', readableId: selfReadableId }),
@@ -217,6 +223,9 @@ export function HypermediaExplorer({
           onSelect={onSelect}
           onDateRangeApply={onDateRangeApply}
           onViewportSettled={handleViewportSettled}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onDiscoverMorePages={onDiscoverMorePages}
         />
       )}
       <HypermediaPageStatus

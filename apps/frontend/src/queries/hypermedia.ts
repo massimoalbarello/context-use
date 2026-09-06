@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { apiErrorMessage } from '../lib/api-error';
 import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
@@ -78,7 +78,7 @@ export function hypermediaPagesQueryOptions({
   const resourceKeys = resources.map(hypermediaResourceKey).sort();
   const normalizedQuery = query?.trim() || undefined;
   const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
-  return queryOptions({
+  return infiniteQueryOptions({
     queryKey: [
       ...hypermediaQueryKey,
       'pages',
@@ -89,12 +89,14 @@ export function hypermediaPagesQueryOptions({
         time: time ?? null,
       },
     ] as const,
-    queryFn: async ({ signal }) => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam, signal }) => {
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {
           projection,
           resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
           limit: HYPERMEDIA_PAGE_LIMIT,
+          offset: pageParam,
           query: normalizedQuery,
           time,
         },
@@ -105,5 +107,6 @@ export function hypermediaPagesQueryOptions({
       }
       return data;
     },
+    getNextPageParam: (page) => page.nextOffset ?? undefined,
   });
 }

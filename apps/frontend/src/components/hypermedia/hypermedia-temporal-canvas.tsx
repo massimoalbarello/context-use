@@ -33,6 +33,7 @@ import {
 const RANGE_SETTLE_MS = 280;
 const RESOURCE_SETTLE_MS = 280;
 const RESOURCE_DISCOVERY_DISTANCE = 360;
+const PAGE_DISCOVERY_DISTANCE = 360;
 const RESOURCE_HEADER_HEIGHT = 96;
 const PAGE_FADE_DISTANCE = 96;
 
@@ -89,7 +90,7 @@ function TemporalResourceHeaders({
               type="button"
               variant="outline"
               className={cn(
-                'pointer-events-auto h-16 w-56 justify-start gap-2 rounded-xl bg-card/95 px-3 text-left shadow-sm backdrop-blur transition-transform hover:-translate-y-0.5 motion-reduce:transform-none',
+                'pointer-events-auto h-12 w-40 justify-start gap-2 rounded-xl bg-card/95 px-3 text-left shadow-sm backdrop-blur transition-transform hover:-translate-y-0.5 motion-reduce:transform-none [&_small]:hidden',
                 active && 'border-foreground bg-accent shadow-md',
               )}
               aria-pressed={selectedResourceKeys.has(resource.key)}
@@ -142,10 +143,16 @@ export function HypermediaTemporalCanvas({
   onSelect,
   onDateRangeApply,
   onViewportSettled,
+  hasNextPage,
+  isFetchingNextPage,
+  onDiscoverMorePages,
 }: HypermediaViewProps & {
   extent: HypermediaPages['temporalExtent'];
   dateRange?: CalendarDateRange;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onDiscoverMorePages: () => void;
 }) {
   const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -154,6 +161,7 @@ export function HypermediaTemporalCanvas({
   const lastScrollTop = useRef<number | null>(null);
   const lastScrollLeft = useRef<number | null>(null);
   const initializedView = useRef<string | null>(null);
+  const pageDiscoveryPending = useRef(false);
   const [preview, setPreview] = useState<HypermediaPreview | null>(null);
   const [pageViewport, setPageViewport] = useState<TemporalPageViewport | null>(null);
   const layout = useMemo(
@@ -225,12 +233,42 @@ export function HypermediaTemporalCanvas({
     [layout, onViewportSettled],
   );
 
+  const discoverMorePages = useCallback(
+    (scroller: HTMLDivElement) => {
+      if (
+        layout?.pageLoadBoundaryY === null ||
+        !layout ||
+        !hasNextPage ||
+        isFetchingNextPage ||
+        pageDiscoveryPending.current ||
+        scroller.scrollTop + scroller.clientHeight + PAGE_DISCOVERY_DISTANCE <
+          layout.pageLoadBoundaryY
+      ) {
+        return;
+      }
+      pageDiscoveryPending.current = true;
+      onDiscoverMorePages();
+    },
+    [hasNextPage, isFetchingNextPage, layout, onDiscoverMorePages],
+  );
+
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (layout && scroller) {
       publishVisibleResources(scroller);
     }
   }, [layout, publishVisibleResources]);
+
+  useEffect(() => {
+    if (isFetchingNextPage) {
+      return;
+    }
+    pageDiscoveryPending.current = false;
+    const scroller = scrollerRef.current;
+    if (layout && scroller) {
+      discoverMorePages(scroller);
+    }
+  }, [discoverMorePages, isFetchingNextPage, layout]);
 
   function handleScroll(event: UIEvent<HTMLDivElement>) {
     const scroller = event.currentTarget;
@@ -249,6 +287,7 @@ export function HypermediaTemporalCanvas({
     }
     lastScrollTop.current = scroller.scrollTop;
     setPageViewport({ scrollTop: scroller.scrollTop, height: scroller.clientHeight });
+    discoverMorePages(scroller);
     const nextRange = temporalRangeForViewport({
       layout,
       scrollTop: scroller.scrollTop,
@@ -381,6 +420,7 @@ export function HypermediaTemporalCanvas({
         preview={preview}
         selectedKey={selectedKey}
         sidebarCollapsed={sidebarCollapsed}
+        position="below-resource-headers"
       />
     </section>
   );
