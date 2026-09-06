@@ -129,6 +129,11 @@ function HypermediaRoute() {
   if (!profile) {
     return null;
   }
+  const loadedPages =
+    pageQuery.data?.pages.flatMap(({ pages: pageItems }) => pageItems) ?? EMPTY_HYPERMEDIA_PAGES;
+  const pageReferencesTruncated =
+    pageQuery.data?.pages.some(({ resourceReferencesTruncated }) => resourceReferencesTruncated) ??
+    false;
   function selectKnowledge(nextSelection: HypermediaSelection) {
     void navigate({
       search: (previous) => {
@@ -200,15 +205,13 @@ function HypermediaRoute() {
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
             selectedResources={selectedResources}
-            pages={
-              pageQuery.data?.pages.flatMap(({ pages: pageItems }) => pageItems) ??
-              EMPTY_HYPERMEDIA_PAGES
-            }
+            pages={loadedPages}
             temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
             dateRange={dateRange}
             pagesLoading={pageQuery.isFetching}
             pagesError={pageQuery.error}
             hasNextPage={pageQuery.hasNextPage}
+            pageReferencesTruncated={pageReferencesTruncated}
             isFetchingNextPage={pageQuery.isFetchingNextPage}
             onSelect={selectKnowledge}
             onDateRangeApply={(nextRange) => {
@@ -217,7 +220,11 @@ function HypermediaRoute() {
                 replace: true,
               });
             }}
-            onRetryPages={() => void pageQuery.refetch()}
+            onRetryPages={() => {
+              void (pageQuery.isFetchNextPageError
+                ? pageQuery.fetchNextPage()
+                : pageQuery.refetch());
+            }}
             onDiscoverMorePages={() => void pageQuery.fetchNextPage()}
           />
           {selection && (

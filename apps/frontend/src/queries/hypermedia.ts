@@ -1,7 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { apiErrorMessage } from '../lib/api-error';
-import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
 
 export type HypermediaResourceNeighborhood = NonNullable<
   Awaited<ReturnType<(typeof api.api.hypermedia.resources)['get']>>['data']
@@ -64,20 +63,13 @@ export type HypermediaPageQuery = {
   projection: HypermediaPageProjection;
   resources: HypermediaResourceReference[];
   query?: string;
-  dateRange?: CalendarDateRange;
 };
 
 export const HYPERMEDIA_PAGE_LIMIT = 32;
 
-export function hypermediaPagesQueryOptions({
-  projection,
-  resources,
-  query,
-  dateRange,
-}: HypermediaPageQuery) {
+export function hypermediaPagesQueryOptions({ projection, resources, query }: HypermediaPageQuery) {
   const resourceKeys = resources.map(hypermediaResourceKey).sort();
   const normalizedQuery = query?.trim() || undefined;
-  const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
   return infiniteQueryOptions({
     queryKey: [
       ...hypermediaQueryKey,
@@ -86,7 +78,6 @@ export function hypermediaPagesQueryOptions({
         projection,
         resources: resourceKeys,
         query: normalizedQuery ?? null,
-        time: time ?? null,
       },
     ] as const,
     initialPageParam: 0,
@@ -98,7 +89,6 @@ export function hypermediaPagesQueryOptions({
           limit: HYPERMEDIA_PAGE_LIMIT,
           offset: pageParam,
           query: normalizedQuery,
-          time,
         },
         fetch: { signal },
       });

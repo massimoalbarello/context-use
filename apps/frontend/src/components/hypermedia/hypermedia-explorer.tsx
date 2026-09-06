@@ -46,6 +46,7 @@ export function HypermediaExplorer({
   pagesLoading,
   pagesError,
   hasNextPage,
+  pageReferencesTruncated,
   isFetchingNextPage,
   onSelect,
   onDateRangeApply,
@@ -62,6 +63,7 @@ export function HypermediaExplorer({
   pagesLoading: boolean;
   pagesError: Error | null;
   hasNextPage: boolean;
+  pageReferencesTruncated: boolean;
   isFetchingNextPage: boolean;
   onSelect: (selection: HypermediaSelection) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
@@ -233,26 +235,36 @@ export function HypermediaExplorer({
         pageCount={pages.length}
         loading={pagesLoading}
         error={pagesError}
+        hasNextPage={hasNextPage}
+        referencesTruncated={pageReferencesTruncated}
         onRetry={onRetryPages}
+        onLoadMore={onDiscoverMorePages}
       />
     </div>
   );
 }
 
-function HypermediaPageStatus({
+export function HypermediaPageStatus({
   projection,
   pageCount,
   loading,
   error,
+  hasNextPage,
+  referencesTruncated,
   onRetry,
+  onLoadMore,
 }: {
   projection: HypermediaPageProjection;
   pageCount: number;
   loading: boolean;
   error: Error | null;
+  hasNextPage: boolean;
+  referencesTruncated: boolean;
   onRetry: () => void;
+  onLoadMore: () => void;
 }) {
-  if (!loading && !error && pageCount > 0) {
+  const canLoadMore = projection === 'semantic' && hasNextPage;
+  if (!loading && !error && pageCount > 0 && !canLoadMore && !referencesTruncated) {
     return null;
   }
   let message: string | undefined;
@@ -262,6 +274,12 @@ function HypermediaPageStatus({
     message = `Loading ${projection} pages…`;
   } else if (pageCount === 0) {
     message = `No ${projection} pages match this view.`;
+  } else if (canLoadMore && referencesTruncated) {
+    message = 'More pages are available, and some page connections are hidden.';
+  } else if (canLoadMore) {
+    message = 'More pages are available.';
+  } else if (referencesTruncated) {
+    message = 'Some page connections are hidden.';
   }
   if (!message) {
     return null;
@@ -276,6 +294,11 @@ function HypermediaPageStatus({
       {error && (
         <Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={onRetry}>
           Try again
+        </Button>
+      )}
+      {!loading && !error && canLoadMore && (
+        <Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={onLoadMore}>
+          Load more pages
         </Button>
       )}
     </div>

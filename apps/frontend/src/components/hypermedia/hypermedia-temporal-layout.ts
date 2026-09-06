@@ -223,13 +223,7 @@ function pageBoundsOverlap(first: Bounds, second: Bounds): boolean {
   );
 }
 
-function openPageCenter({
-  candidate,
-  occupiedPageBounds,
-}: {
-  candidate: TemporalPageCandidate;
-  occupiedPageBounds: Bounds[];
-}): number | undefined {
+function pageCenterCandidates(candidate: TemporalPageCandidate): number[] {
   const intervalSpan = candidate.maximumY - candidate.minimumY;
   const maximumSteps = Math.ceil(intervalSpan / PAGE_STACK_SPACING);
   const possibleCenters = [candidate.preferredY];
@@ -243,9 +237,50 @@ function openPageCenter({
     }
   }
   possibleCenters.push(candidate.minimumY, candidate.maximumY);
-  return possibleCenters.find((centerY) => {
+  return [...new Set(possibleCenters)];
+}
+
+function pageOverlapArea(first: Bounds, second: Bounds): number {
+  const width = Math.max(
+    0,
+    Math.min(first.right, second.right) - Math.max(first.left, second.left),
+  );
+  const height = Math.max(
+    0,
+    Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top),
+  );
+  return width * height;
+}
+
+function pageOverlapScore(bounds: Bounds, occupiedPageBounds: Bounds[]): number {
+  return occupiedPageBounds.reduce(
+    (total, occupied) => total + pageOverlapArea(bounds, occupied),
+    0,
+  );
+}
+
+function openPageCenter({
+  candidate,
+  occupiedPageBounds,
+}: {
+  candidate: TemporalPageCandidate;
+  occupiedPageBounds: Bounds[];
+}): number {
+  const possibleCenters = pageCenterCandidates(candidate);
+  const available = possibleCenters.find((centerY) => {
     const bounds = pageBounds({ candidate, centerY });
     return !occupiedPageBounds.some((occupied) => pageBoundsOverlap(bounds, occupied));
+  });
+  if (available !== undefined) {
+    return available;
+  }
+  return possibleCenters.reduce((best, centerY) => {
+    const overlap = pageOverlapScore(pageBounds({ candidate, centerY }), occupiedPageBounds);
+    const bestOverlap = pageOverlapScore(
+      pageBounds({ candidate, centerY: best }),
+      occupiedPageBounds,
+    );
+    return overlap < bestOverlap ? centerY : best;
   });
 }
 
@@ -322,7 +357,6 @@ export function buildTemporalHypermediaLayout({
       },
     ];
   });
-  const pageLoadBoundaryY = candidates.at(-1)?.minimumY ?? null;
   candidates.sort(
     (first, second) =>
       first.preferredY - second.preferredY ||
@@ -332,12 +366,8 @@ export function buildTemporalHypermediaLayout({
 
   const occupiedPageBounds: Bounds[] = [];
   const laidOutPages = candidates.map((candidate): TemporalHypermediaPage => {
-    let centerY = openPageCenter({ candidate, occupiedPageBounds }) ?? candidate.maximumY;
-    let bounds = pageBounds({ candidate, centerY });
-    while (occupiedPageBounds.some((occupied) => pageBoundsOverlap(bounds, occupied))) {
-      centerY += PAGE_STACK_SPACING;
-      bounds = pageBounds({ candidate, centerY });
-    }
+    const centerY = openPageCenter({ candidate, occupiedPageBounds });
+    const bounds = pageBounds({ candidate, centerY });
     occupiedPageBounds.push(bounds);
     return {
       page: candidate.page,
@@ -353,6 +383,8 @@ export function buildTemporalHypermediaLayout({
       first.bounds.top - second.bounds.top ||
       first.page.readableId.localeCompare(second.page.readableId),
   );
+  const pageLoadBoundaryY =
+    laidOutPages.length > 0 ? Math.max(...laidOutPages.map(({ bounds }) => bounds.bottom)) : null;
   const height = Math.max(
     baseHeight,
     ...laidOutPages.map(({ bounds }) => bounds.bottom + TIMELINE_BOTTOM_PADDING),

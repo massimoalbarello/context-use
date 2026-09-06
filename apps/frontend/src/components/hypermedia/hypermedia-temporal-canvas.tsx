@@ -325,7 +325,12 @@ export function HypermediaTemporalCanvas({
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
       aria-label={`Temporal Hypermedia with ${layout.pages.length} knowledge pages and ${layout.resources.length} entities and assets`}
     >
-      <div ref={scrollerRef} className="relative size-full overflow-auto" onScroll={handleScroll}>
+      <section
+        ref={scrollerRef}
+        className="relative size-full overflow-auto"
+        aria-label="Temporal timeline viewport"
+        onScroll={handleScroll}
+      >
         <div className="relative" style={{ width: layout.width, height: layout.height }}>
           <svg
             className="absolute inset-0 size-full select-none"
@@ -415,7 +420,7 @@ export function HypermediaTemporalCanvas({
             onSelect={onSelect}
           />
         </div>
-      </div>
+      </section>
       <HypermediaHoverPreview
         preview={preview}
         selectedKey={selectedKey}

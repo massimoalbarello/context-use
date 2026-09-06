@@ -17,7 +17,8 @@ const extent = {
 };
 const EXPECTED_CLOUD_HEIGHT = 48;
 const MINIMUM_CLOUD_GAP = 8;
-const DENSE_PAGE_COUNT = 10;
+const SEPARATED_PAGE_COUNT = 3;
+const OVERFLOW_PAGE_COUNT = 10;
 const DISTRIBUTED_PAGE_COUNT = 5;
 const MINIMUM_DISTRIBUTED_SPREAD = 400;
 
@@ -109,7 +110,7 @@ describe('temporal Hypermedia side projection', () => {
   });
 
   test('stacks overlapping page clouds at the same time while keeping each page thin', () => {
-    const densePages = [...Array(DENSE_PAGE_COUNT).keys()].map((index) =>
+    const densePages = [...Array(SEPARATED_PAGE_COUNT).keys()].map((index) =>
       page({
         readableId: `temporal-page-${index}`,
         temporalCoverage: '2025-03/2025-08',
@@ -141,6 +142,30 @@ describe('temporal Hypermedia side projection', () => {
         expect(verticalGap).toBeGreaterThanOrEqual(MINIMUM_CLOUD_GAP);
       }
     }
+  });
+
+  test('keeps dense page centers inside their asserted interval', () => {
+    const densePages = [...Array(OVERFLOW_PAGE_COUNT).keys()].map((index) =>
+      page({
+        readableId: `dense-page-${index}`,
+        temporalCoverage: '2025-03/2025-08',
+        resources: [{ kind: 'entity', readableId: 'self' }],
+      }),
+    );
+    const layout = buildTemporalHypermediaLayout({
+      resources: [entity('self')],
+      pages: densePages,
+      extent,
+    });
+    const pageDates = layout.pages.map(
+      ({ label }) =>
+        temporalRangeForViewport({ layout, scrollTop: label.y, viewportHeight: 0 }).from,
+    );
+
+    expect(pageDates.every((date) => date >= '2025-03-01' && date <= '2025-08-31')).toBe(true);
+    expect(layout.pageLoadBoundaryY).toBe(
+      Math.max(...layout.pages.map(({ bounds }) => bounds.bottom)),
+    );
   });
 
   test('distributes longer-lived pages across their asserted interval', () => {
