@@ -11,7 +11,12 @@ import type {
 } from '#models/hypermedia/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
-import type { Queries } from '#queries.gen.ts';
+import type {
+  IListHypermediaPageResourcesResult,
+  IListHypermediaPagesResult,
+  IReadHypermediaTemporalExtentResult,
+  Queries,
+} from '#queries.gen.ts';
 
 const MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES = 120;
 const MILLISECONDS_PER_DAY = 86_400_000;
@@ -343,13 +348,84 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     const now = new Date();
     const currentDayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     const [pageRows, extentRows] = await Promise.all([
-      this.sql.ListHypermediaPages`
+      this.matchingPageRows({
+        ownerId,
+        resourceKeys,
+        selectedResourceCount,
+        normalizedQuery,
+        filterStart,
+        filterEnd,
+        rowLimit,
+      }),
+      this.temporalExtentRows({ ownerId, currentDayStart }),
+    ]);
+    const selectedPageRows = pageRows.slice(0, limit);
+    const pages = selectedPageRows.map(
+      (row): HypermediaPage => ({ ...pageSummaryFrom(row), resources: [] }),
+    );
+    const extent = extentRows[0];
+    const temporalExtent =
+      !extent || extent.start === null || extent.end === null
+        ? null
+        : { start: Number(extent.start), end: Number(extent.end) };
+    if (pages.length === 0) {
+      return {
+        pages,
+        hasMorePages: pageRows.length > limit,
+        resourceReferencesTruncated: false,
+        temporalExtent,
+      };
+    }
+    const selectedPageIds = JSON.stringify(selectedPageRows.map(({ id }) => id));
+    const maximumSelectedResourceReferences = selectedResourceCount * selectedPageRows.length;
+    const referenceLimit =
+      MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES + maximumSelectedResourceReferences + 1;
+    const referenceRows = await this.pageResourceRows({
+      ownerId,
+      resourceKeys,
+      selectedPageIds,
+      referenceLimit,
+    });
+    const pagesById = new Map(pages.map((page) => [page.readableId, page]));
+    const returnedReferenceLimit = referenceLimit - 1;
+    for (const row of referenceRows.slice(0, returnedReferenceLimit)) {
+      pagesById.get(row.sourcePageReadableId)?.resources.push({
+        kind: row.kind,
+        readableId: row.readableId,
+      });
+    }
+    return {
+      pages,
+      hasMorePages: pageRows.length > limit,
+      resourceReferencesTruncated: referenceRows.length > returnedReferenceLimit,
+      temporalExtent,
+    };
+  }
+
+  private matchingPageRows({
+    ownerId,
+    resourceKeys,
+    selectedResourceCount,
+    normalizedQuery,
+    filterStart,
+    filterEnd,
+    rowLimit,
+  }: {
+    ownerId: string;
+    resourceKeys: string;
+    selectedResourceCount: number;
+    normalizedQuery: string | null;
+    filterStart: number | null;
+    filterEnd: number | null;
+    rowLimit: number;
+  }): Promise<IListHypermediaPagesResult[]> {
+    return this.sql.ListHypermediaPages`
       /* @notNull id readableId revisionNumber title excerpt temporalSort ongoingSort createdAt updatedAt */
       /* @type temporalSort number */
       /* @type ongoingSort number */
       with selected_key as (
         select value as "key" from json_each(${resourceKeys})
-      ), resource_reference as (
+      ), active_resource_reference as (
         select mention."source_revision_id" as "revisionId",
           'entity:' || entity."readable_id" as "key"
         from "knowledge_page_entity_mention" mention
@@ -363,14 +439,14 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         join "asset" asset
           on asset."owner_id" = usage."owner_id" and asset."id" = usage."target_asset_id"
         where usage."owner_id" = ${ownerId} and asset."archived_at" is null
-      ), matching_revision as (
+      ), resource_matched_revision as (
         select reference."revisionId"
-        from resource_reference reference
+        from active_resource_reference reference
         left join selected_key on selected_key."key" = reference."key"
         group by reference."revisionId"
         having ${selectedResourceCount} = 0
           or count(distinct selected_key."key") = ${selectedResourceCount}
-      ), matching_page as (
+      ), filtered_page as (
         select page."id", page."readable_id" as "readableId",
           revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
           revision."temporal_coverage" as "temporalCoverage",
@@ -388,7 +464,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         join "knowledge_page_revision" revision
           on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
         where page."owner_id" = ${ownerId} and page."archived_at" is null
-          and page."current_revision_id" in (select "revisionId" from matching_revision)
+          and page."current_revision_id" in (select "revisionId" from resource_matched_revision)
           and (
             ${normalizedQuery} is null
             or instr(lower(revision."title"), ${normalizedQuery}) > 0
@@ -429,65 +505,65 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
             )
           )
       )
-      select * from matching_page
+      select * from filtered_page
       order by "temporalSort", "ongoingSort" desc,
         "latestSort" desc, "startSort" desc, "updatedAt" desc, "readableId"
       limit ${rowLimit}
-    `,
-      this.sql.ReadHypermediaTemporalExtent`
-        select min(revision."temporal_start_ms") as "start",
-          max(case
-            when revision."temporal_end_exclusive_ms" is null
-              then max(revision."temporal_start_ms", ${currentDayStart})
-            else revision."temporal_end_exclusive_ms" - ${MILLISECONDS_PER_DAY}
-          end) as "end"
-        from "knowledge_page" page
-        join "knowledge_page_revision" revision
-          on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
-        where page."owner_id" = ${ownerId} and page."archived_at" is null
-          and revision."temporal_coverage" is not null
-          and (
-            exists (
-              select 1 from "knowledge_page_entity_mention" mention
-              join "entity" entity
-                on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
-              where mention."owner_id" = page."owner_id"
-                and mention."source_revision_id" = page."current_revision_id"
-                and entity."archived_at" is null
-            )
-            or exists (
-              select 1 from "knowledge_page_asset_usage" usage
-              join "asset" asset
-                on asset."owner_id" = usage."owner_id" and asset."id" = usage."target_asset_id"
-              where usage."owner_id" = page."owner_id"
-                and usage."source_revision_id" = page."current_revision_id"
-                and asset."archived_at" is null
-            )
+    `;
+  }
+
+  private temporalExtentRows({
+    ownerId,
+    currentDayStart,
+  }: {
+    ownerId: string;
+    currentDayStart: number;
+  }): Promise<IReadHypermediaTemporalExtentResult[]> {
+    return this.sql.ReadHypermediaTemporalExtent`
+      select min(revision."temporal_start_ms") as "start",
+        max(case
+          when revision."temporal_end_exclusive_ms" is null
+            then max(revision."temporal_start_ms", ${currentDayStart})
+          else revision."temporal_end_exclusive_ms" - ${MILLISECONDS_PER_DAY}
+        end) as "end"
+      from "knowledge_page" page
+      join "knowledge_page_revision" revision
+        on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
+      where page."owner_id" = ${ownerId} and page."archived_at" is null
+        and revision."temporal_coverage" is not null
+        and (
+          exists (
+            select 1 from "knowledge_page_entity_mention" mention
+            join "entity" entity
+              on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
+            where mention."owner_id" = page."owner_id"
+              and mention."source_revision_id" = page."current_revision_id"
+              and entity."archived_at" is null
           )
-      `,
-    ]);
-    const selectedPageRows = pageRows.slice(0, limit);
-    const pages = selectedPageRows.map(
-      (row): HypermediaPage => ({ ...pageSummaryFrom(row), resources: [] }),
-    );
-    const extent = extentRows[0];
-    const temporalExtent =
-      !extent || extent.start === null || extent.end === null
-        ? null
-        : { start: Number(extent.start), end: Number(extent.end) };
-    if (pages.length === 0) {
-      return {
-        pages,
-        hasMorePages: pageRows.length > limit,
-        resourceReferencesTruncated: false,
-        temporalExtent,
-      };
-    }
-    const selectedPageIds = JSON.stringify(selectedPageRows.map(({ id }) => id));
-    const maximumSelectedResourceReferences = selectedResourceCount * selectedPageRows.length;
-    const referenceLimit =
-      MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES + maximumSelectedResourceReferences + 1;
-    const referenceRows = await this.sql.ListHypermediaPageResources`
+          or exists (
+            select 1 from "knowledge_page_asset_usage" usage
+            join "asset" asset
+              on asset."owner_id" = usage."owner_id" and asset."id" = usage."target_asset_id"
+            where usage."owner_id" = page."owner_id"
+              and usage."source_revision_id" = page."current_revision_id"
+              and asset."archived_at" is null
+          )
+        )
+    `;
+  }
+
+  private pageResourceRows({
+    ownerId,
+    resourceKeys,
+    selectedPageIds,
+    referenceLimit,
+  }: {
+    ownerId: string;
+    resourceKeys: string;
+    selectedPageIds: string;
+    referenceLimit: number;
+  }): Promise<IListHypermediaPageResourcesResult[]> {
+    return this.sql.ListHypermediaPageResources`
       /* @notNull sourcePageReadableId kind readableId */
       /* @type kind 'entity' | 'asset' */
       with selected_key as (
@@ -525,19 +601,5 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       ), "sourcePageReadableId"
       limit ${referenceLimit}
     `;
-    const pagesById = new Map(pages.map((page) => [page.readableId, page]));
-    const returnedReferenceLimit = referenceLimit - 1;
-    for (const row of referenceRows.slice(0, returnedReferenceLimit)) {
-      pagesById.get(row.sourcePageReadableId)?.resources.push({
-        kind: row.kind,
-        readableId: row.readableId,
-      });
-    }
-    return {
-      pages,
-      hasMorePages: pageRows.length > limit,
-      resourceReferencesTruncated: referenceRows.length > returnedReferenceLimit,
-      temporalExtent,
-    };
   }
 }

@@ -1,8 +1,8 @@
 # Backend invariants
 
 The [root engineering principles](../../AGENTS.md) apply here. More specific guidance lives in the
-[database](./src/db/AGENTS.md), [transport](./src/routes/AGENTS.md), and
-[backend test](./test/AGENTS.md) guides.
+[database](./src/db/AGENTS.md), [repository persistence](./src/repositories/AGENTS.md),
+[transport](./src/routes/AGENTS.md), and [backend test](./test/AGENTS.md) guides.
 
 ## Layer ownership
 
