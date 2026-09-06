@@ -1,10 +1,7 @@
-import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useEntities } from '../../lib/hooks/use-entities';
-import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import {
-  allFocusedHypermediaPagesQueryOptions,
-  focusedHypermediaPagesQueryOptions,
   type HypermediaPage,
   type HypermediaResourceReference,
   hypermediaResourceKey,
@@ -16,15 +13,11 @@ import {
   type SettledHypermediaViewport,
 } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
-import { pagesSharedBySelectedResources } from './hypermedia-selection';
-import { INITIAL_FOCUSED_PAGE_LIMIT } from './hypermedia-visibility';
 
 type NeighborhoodRequest = {
   anchor: HypermediaResourceReference;
   cursor?: string;
 };
-
-const EMPTY_PAGES: HypermediaPage[] = [];
 
 function requestKey(request: NeighborhoodRequest): string {
   return `${hypermediaResourceKey(request.anchor)}:${request.cursor ?? 'first'}`;
@@ -42,15 +35,13 @@ export function HypermediaExplorer({
   selfReadableId,
   selection,
   selectedResources,
-  query,
-  dateRange,
+  pages,
   onSelect,
 }: {
   selfReadableId: string;
   selection?: HypermediaSelection;
   selectedResources: HypermediaResourceReference[];
-  query: string;
-  dateRange?: CalendarDateRange;
+  pages: HypermediaPage[];
   onSelect: (selection: HypermediaSelection) => void;
 }) {
   const self = useMemo<HypermediaResourceReference>(
@@ -65,11 +56,6 @@ export function HypermediaExplorer({
       ? [...initial, { anchor: selectedResource }]
       : initial;
   });
-  const [focusedRequest, setFocusedRequest] = useState(() => ({
-    focus: selectedResource ? [selectedResource, self] : [self],
-    limit: INITIAL_FOCUSED_PAGE_LIMIT,
-  }));
-
   const neighborhoodQueries = useQueries({
     queries: neighborhoodRequests.map(hypermediaResourceNeighborhoodQueryOptions),
   });
@@ -119,66 +105,8 @@ export function HypermediaExplorer({
     });
   }, [selectedResource, selectedResources]);
 
-  const pageQuery = useQuery({
-    ...focusedHypermediaPagesQueryOptions({
-      focus: focusedRequest.focus,
-      limit: focusedRequest.limit,
-      query,
-      dateRange,
-    }),
-    placeholderData: keepPreviousData,
-  });
-  const selectedResourcePageQueries = useQueries({
-    queries: selectedResources.map((resource) =>
-      allFocusedHypermediaPagesQueryOptions({ focus: [resource], query, dateRange }),
-    ),
-  });
-  const loadedSelectedPageCollections = selectedResourcePageQueries.flatMap(({ data }) =>
-    data ? [data.pages] : [],
-  );
-  const spotlightPages =
-    selectedResources.length > 0 &&
-    loadedSelectedPageCollections.length === selectedResources.length
-      ? pagesSharedBySelectedResources(loadedSelectedPageCollections)
-      : undefined;
-  const selectedPageReadableId = selection?.kind === 'page' ? selection.readableId : undefined;
-  const focusedPages = pageQuery.data?.pages ?? EMPTY_PAGES;
-  const selectedFocusedPage = focusedPages.find(
-    ({ readableId }) => readableId === selectedPageReadableId,
-  );
-  const retainedPageQuery = useQuery({
-    ...focusedHypermediaPagesQueryOptions({
-      focus: [self],
-      limit: 1,
-      retainPageReadableId: selectedPageReadableId,
-    }),
-    enabled: Boolean(selectedPageReadableId),
-    initialData: selectedFocusedPage
-      ? { pages: [selectedFocusedPage], nextCursor: null, truncated: false }
-      : undefined,
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-  const pages = useMemo(() => {
-    if (!selectedPageReadableId || selectedFocusedPage) {
-      return focusedPages;
-    }
-    const retainedPage = retainedPageQuery.data?.pages.find(
-      ({ readableId }) => readableId === selectedPageReadableId,
-    );
-    return retainedPage ? [...focusedPages, retainedPage] : focusedPages;
-  }, [focusedPages, retainedPageQuery.data, selectedFocusedPage, selectedPageReadableId]);
-
   const handleViewportSettled = useCallback(
-    ({ focus, pageLimit, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
-      if (focus.length > 0) {
-        setFocusedRequest((current) => {
-          const nextKeys = focus.map(hypermediaResourceKey).sort().join(',');
-          const currentKeys = current.focus.map(hypermediaResourceKey).sort().join(',');
-          return nextKeys === currentKeys && pageLimit === current.limit
-            ? current
-            : { focus, limit: pageLimit };
-        });
-      }
+    ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
       if (discoverMoreEntities && hasNextEntityPage && !isFetchingNextEntityPage) {
         void fetchNextEntityPage();
       }
@@ -234,31 +162,31 @@ export function HypermediaExplorer({
     resources.some(({ key }) => !requestedAnchorKeys.has(key));
 
   return (
-    <HypermediaCanvas
-      resources={resources}
-      pages={pages}
-      selectedResources={selectedResources}
-      spotlightPages={spotlightPages}
-      selectedKey={selectedKey}
-      onSelect={onSelect}
-      onViewportSettled={handleViewportSettled}
-      canExplore={canExplore}
-      isInitialLoading={
-        resources.length === 0 &&
-        (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
-      }
-      isSpotlightLoading={selectedResourcePageQueries.some(({ isPending }) => isPending)}
-      neighborhoodError={neighborhoodError}
-      onRetryNeighborhood={() => {
-        if (entityError) {
-          void refetchEntities();
+    <div className="relative size-full min-h-[28rem]">
+      <HypermediaCanvas
+        resources={resources}
+        pages={pages}
+        selectedResources={selectedResources}
+        selectedKey={selectedKey}
+        onSelect={onSelect}
+        onViewportSettled={handleViewportSettled}
+        canExplore={canExplore}
+        isInitialLoading={
+          resources.length === 0 &&
+          (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
         }
-        for (const result of neighborhoodQueries) {
-          if (result.error) {
-            void result.refetch();
+        neighborhoodError={neighborhoodError}
+        onRetryNeighborhood={() => {
+          if (entityError) {
+            void refetchEntities();
           }
-        }
-      }}
-    />
+          for (const result of neighborhoodQueries) {
+            if (result.error) {
+              void result.refetch();
+            }
+          }
+        }}
+      />
+    </div>
   );
 }

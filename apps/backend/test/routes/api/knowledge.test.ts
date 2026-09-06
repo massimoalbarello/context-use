@@ -70,6 +70,7 @@ const EXPECTED_SECOND_PAGE_OFFSET = 4;
 const EXPECTED_FILTERED_PAGE_COUNT = 5;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
 const EXPECTED_CURRENT_MENTION_COUNT = 5;
+const EXPECTED_BOUNDED_HYPERMEDIA_REFERENCE_COUNT = 121;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -563,45 +564,87 @@ Every observation changes the next action.`,
     expect(remainingNeighborhood.neighbors[0]?.resource.entity.readableId).toBe('temporal-subject');
     expect(remainingNeighborhood.nextCursor).toBeNull();
 
-    const focusedResponse = await app.handle(
+    const allHypermediaPagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/hypermedia/pages?limit=10' }),
+    );
+    const allHypermediaPages = (await allHypermediaPagesResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+      hasMorePages: boolean;
+      resourceReferencesTruncated: boolean;
+      temporalExtent: { start: number; end: number } | null;
+    };
+    expect(allHypermediaPages.pages.map(({ readableId }) => readableId)).toEqual([
+      'alpha-principles',
+      'current-programme',
+      'operating-rhythm',
+      'growth-playbook',
+    ]);
+    expect(allHypermediaPages.hasMorePages).toBe(false);
+    expect(allHypermediaPages.resourceReferencesTruncated).toBe(false);
+    expect(allHypermediaPages.temporalExtent).toEqual({
+      start: temporalBoundsFrom('2024-11').start,
+      end: expect.any(Number),
+    });
+    expect(allHypermediaPages.temporalExtent?.end).toBeGreaterThanOrEqual(
+      temporalBoundsFrom('2025').start,
+    );
+
+    const filteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?focus=entity:temporal-subject&limit=2',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&limit=2',
       }),
     );
-    expect(focusedResponse.status).toBe(StatusMap.OK);
-    const focused = (await focusedResponse.json()) as {
+    expect(filteredHypermediaResponse.status).toBe(StatusMap.OK);
+    const filteredHypermedia = (await filteredHypermediaResponse.json()) as {
       pages: Array<{
         readableId: string;
         temporalCoverage: string | null;
         resources: Array<{ kind: string; readableId: string }>;
       }>;
-      nextCursor: string | null;
-      truncated: boolean;
+      hasMorePages: boolean;
+      resourceReferencesTruncated: boolean;
     };
-    expectNoInternalResourceIds(focused);
-    expect(focused.pages.map(({ readableId }) => readableId)).toEqual([
+    expectNoInternalResourceIds(filteredHypermedia);
+    expect(filteredHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
       'alpha-principles',
       'current-programme',
     ]);
-    expect(focused.pages[0]?.temporalCoverage).toBeNull();
-    expect(focused.pages[0]?.resources).toContainEqual({
+    expect(filteredHypermedia.pages[0]?.temporalCoverage).toBeNull();
+    expect(filteredHypermedia.pages[0]?.resources).toContainEqual({
       kind: 'entity',
       readableId: 'temporal-subject',
     });
-    expect(focused.nextCursor).toEqual(expect.any(String));
-    expect(focused.truncated).toBe(false);
+    expect(filteredHypermedia.hasMorePages).toBe(true);
+    expect(filteredHypermedia.resourceReferencesTruncated).toBe(false);
 
-    const retainedResponse = await app.handle(
+    const intersectedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?focus=entity:temporal-subject&limit=1&retainPage=growth-playbook',
+        path: '/hypermedia/pages?resources=entity:temporal-subject,entity:test-owner',
       }),
     );
-    const retained = (await retainedResponse.json()) as {
+    const intersectedHypermedia = (await intersectedHypermediaResponse.json()) as {
       pages: Array<{ readableId: string }>;
     };
-    expect(retained.pages.map(({ readableId }) => readableId)).toEqual(['growth-playbook']);
+    expect(intersectedHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
+      'alpha-principles',
+    ]);
+
+    const rangedHypermediaResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&time=2025-04',
+      }),
+    );
+    const rangedHypermedia = (await rangedHypermediaResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+    };
+    expect(rangedHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
+      'alpha-principles',
+      'current-programme',
+      'operating-rhythm',
+    ]);
 
     const overlappingPagesResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0&time=2025-04' }),
@@ -1085,6 +1128,56 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     expect(
       await pagesRepository.find({ ownerId: 'someone-else', readableId: 'growth-playbook' }),
     ).toBeNull();
+
+    await database`
+      with recursive sequence("value") as (
+        select 1
+        union all
+        select "value" + 1 from sequence where "value" < 121
+      )
+      insert into "entity"
+        ("id", "owner_id", "readable_id", "name", "description", "created_at", "updated_at")
+      select 'dense-entity-id-' || "value", ${OWNER_USER_ID},
+        'dense-entity-' || printf('%03d', "value"),
+        'Dense entity ' || "value", 'Exercises bounded hypermedia page connections.',
+        ${timestamp}, ${timestamp}
+      from sequence
+    `;
+    await database`
+      insert into "knowledge_page_entity_mention"
+        ("owner_id", "source_revision_id", "target_entity_id")
+      select ${OWNER_USER_ID}, page."current_revision_id", entity."id"
+      from "knowledge_page" page
+      join "entity" entity
+        on entity."owner_id" = page."owner_id"
+       and entity."readable_id" like 'dense-entity-%'
+      where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'alpha-principles'
+    `;
+    const denseHypermediaResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&query=alpha',
+      }),
+    );
+    const denseHypermedia = (await denseHypermediaResponse.json()) as {
+      pages: Array<{
+        readableId: string;
+        resources: Array<{ kind: string; readableId: string }>;
+      }>;
+      hasMorePages: boolean;
+      resourceReferencesTruncated: boolean;
+    };
+    expect(denseHypermedia.pages).toHaveLength(1);
+    expect(denseHypermedia.pages[0]?.readableId).toBe('alpha-principles');
+    expect(denseHypermedia.pages[0]?.resources).toContainEqual({
+      kind: 'entity',
+      readableId: 'temporal-subject',
+    });
+    expect(denseHypermedia.pages[0]?.resources).toHaveLength(
+      EXPECTED_BOUNDED_HYPERMEDIA_REFERENCE_COUNT,
+    );
+    expect(denseHypermedia.hasMorePages).toBe(false);
+    expect(denseHypermedia.resourceReferencesTruncated).toBe(true);
 
     const profileReadResponse = await app.handle(jsonRequest({ method: 'GET', path: '/profile' }));
     expect(profileReadResponse.status).toBe(StatusMap.OK);

@@ -1,27 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import {
-  pagesSharedBySelectedResources,
   selectedHypermediaResources,
   selectedHypermediaResourcesLabel,
   selectedHypermediaResourcesValue,
   toggleHypermediaResourceSelection,
 } from '../../src/components/hypermedia/hypermedia-selection';
-import type { HypermediaPage } from '../../src/queries/hypermedia';
-
-const timestamp = new Date('2026-01-01T00:00:00.000Z');
-
-function page(readableId: string): HypermediaPage {
-  return {
-    readableId,
-    title: readableId,
-    excerpt: '',
-    temporalCoverage: null,
-    revisionNumber: 1,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    resources: [],
-  };
-}
 
 describe('Hypermedia resource filters', () => {
   test('accumulates canonical entity and asset selections without page previews changing them', () => {
@@ -52,14 +35,5 @@ describe('Hypermedia resource filters', () => {
     expect(
       toggleHypermediaResourceSelection({ resources: withAsset, selection: entitySelection }),
     ).toEqual([{ kind: 'asset', readableId: 'rollout-metrics' }]);
-  });
-
-  test('shows each page shared by every selected resource once', () => {
-    expect(
-      pagesSharedBySelectedResources([
-        [page('newest-shared'), page('entity-only'), page('newest-shared'), page('older-shared')],
-        [page('older-shared'), page('newest-shared'), page('asset-only')],
-      ]).map(({ readableId }) => readableId),
-    ).toEqual(['newest-shared', 'older-shared']);
   });
 });

@@ -10,16 +10,15 @@ import {
 import {
   DEFAULT_HYPERMEDIA_PAGE_LIMIT,
   DEFAULT_HYPERMEDIA_RESOURCE_LIMIT,
-  decodeHypermediaPageCursor,
   decodeHypermediaResourceCursor,
-  FocusedHypermediaPagesQuerySchema,
-  FocusedHypermediaPagesSchema,
-  focusedHypermediaPagesResponse,
+  HypermediaPagesQuerySchema,
+  HypermediaPagesSchema,
   HypermediaResourceNeighborhoodQuerySchema,
   HypermediaResourceNeighborhoodSchema,
+  hypermediaPagesResponse,
   hypermediaResourceNeighborhoodResponse,
-  parseHypermediaFocus,
   parseHypermediaResourceReference,
+  parseHypermediaResources,
 } from '#routes/api/hypermedia/model.ts';
 import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
 
@@ -64,8 +63,7 @@ export function createHypermediaController({
     .get(
       '/pages',
       async ({ query, user, status }) => {
-        const resources = parseHypermediaFocus(query.focus);
-        const decodedCursor = decodeHypermediaPageCursor(query.cursor);
+        const resources = parseHypermediaResources(query.resources);
         let temporalBounds: TemporalBounds | undefined;
         try {
           temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
@@ -75,25 +73,23 @@ export function createHypermediaController({
           }
           throw error;
         }
-        if (!resources || decodedCursor.state === 'invalid') {
-          return status(StatusMap['Bad Request'], { error: 'Invalid focused pages query' });
+        if (!resources) {
+          return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
-        const pages = await hypermediaService.focusedPages({
+        const pages = await hypermediaService.pages({
           ownerId: user.id,
           resources,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
-          cursor: decodedCursor.cursor,
           query: query.query,
           temporalBounds,
-          retainPageReadableId: query.retainPage,
         });
-        return status(StatusMap.OK, focusedHypermediaPagesResponse(pages));
+        return status(StatusMap.OK, hypermediaPagesResponse(pages));
       },
       {
-        detail: { tags: ['Hypermedia'], summary: 'Read pages connected to focused resources' },
-        query: FocusedHypermediaPagesQuerySchema,
+        detail: { tags: ['Hypermedia'], summary: 'Read a bounded hypermedia page view' },
+        query: HypermediaPagesQuerySchema,
         response: {
-          [StatusMap.OK]: FocusedHypermediaPagesSchema,
+          [StatusMap.OK]: HypermediaPagesSchema,
           [StatusMap['Bad Request']]: ErrorResponseSchema,
         },
       },

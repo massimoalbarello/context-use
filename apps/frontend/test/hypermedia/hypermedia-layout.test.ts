@@ -10,7 +10,6 @@ import {
   zoomedHypermediaViewBox,
 } from '../../src/components/hypermedia/hypermedia-layout';
 import {
-  focusedPageLimit,
   focusedResources,
   hypermediaLayoutInViewport,
   viewportNeedsResourceDiscovery,
@@ -119,15 +118,6 @@ describe('resource-first hypermedia layout', () => {
       readableId: 'self',
     });
     expect(focusedResources({ resources, viewport })).toHaveLength(1);
-  });
-
-  test('requests progressively more page history as the viewport zooms in', () => {
-    const limits = [260, 600, 900, 1400, 1750, 2200, 2600].map((width) =>
-      focusedPageLimit({ x: 0, y: 0, width, height: width * 0.7 }),
-    );
-
-    expect(limits).toEqual([32, 26, 20, 15, 12, 8, 4]);
-    expect(limits).toEqual([...limits].sort((first, second) => second - first));
   });
 
   test('discovers another neighborhood only at a sparse map edge', () => {

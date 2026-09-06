@@ -277,15 +277,14 @@ export interface IListHypermediaResourceNeighborsResult {
     sharedPageCount: number;
 }
 
-/** Result of query `ListFocusedHypermediaPages`. */
-export interface IListFocusedHypermediaPagesResult {
+/** Result of query `ListHypermediaPages`. */
+export interface IListHypermediaPagesResult {
     id: string;
     readableId: string;
     revisionNumber: number;
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
-    retainedSort: number;
     temporalSort: number;
     ongoingSort: number;
     latestSort: unknown | null;
@@ -294,8 +293,14 @@ export interface IListFocusedHypermediaPagesResult {
     updatedAt: string;
 }
 
-/** Result of query `ListFocusedHypermediaPageResources`. */
-export interface IListFocusedHypermediaPageResourcesResult {
+/** Result of query `ReadHypermediaTemporalExtent`. */
+export interface IReadHypermediaTemporalExtentResult {
+    start: unknown | null;
+    end: unknown | null;
+}
+
+/** Result of query `ListHypermediaPageResources`. */
+export interface IListHypermediaPageResourcesResult {
     sourcePageReadableId: string;
     kind: "entity" | "asset";
     readableId: string;
@@ -621,8 +626,9 @@ export interface Queries {
     PingDatabase: IPingDatabaseResult;
     FindHypermediaResource: IFindHypermediaResourceResult;
     ListHypermediaResourceNeighbors: IListHypermediaResourceNeighborsResult;
-    ListFocusedHypermediaPages: IListFocusedHypermediaPagesResult;
-    ListFocusedHypermediaPageResources: IListFocusedHypermediaPageResourcesResult;
+    ListHypermediaPages: IListHypermediaPagesResult;
+    ReadHypermediaTemporalExtent: IReadHypermediaTemporalExtentResult;
+    ListHypermediaPageResources: IListHypermediaPageResourcesResult;
     FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;
     ResolveEntityLink: IResolveEntityLinkResult;
