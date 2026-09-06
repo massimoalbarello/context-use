@@ -16,7 +16,10 @@ export type HypermediaPages = NonNullable<
 export type HypermediaPage = HypermediaPages['pages'][number];
 export type HypermediaEntity = Extract<HypermediaResource, { kind: 'entity' }>['entity'];
 export type HypermediaAsset = Extract<HypermediaResource, { kind: 'asset' }>['asset'];
-export type HypermediaPageProjection = 'semantic' | 'temporal';
+type HypermediaPagesRequest = NonNullable<Parameters<(typeof api.api.hypermedia.pages)['get']>[0]>;
+export type HypermediaPageProjection = NonNullable<
+  NonNullable<HypermediaPagesRequest['query']>['projection']
+>;
 
 export const hypermediaQueryKey = ['hypermedia'] as const;
 export const HYPERMEDIA_NEIGHBORHOOD_SIZE = 16;

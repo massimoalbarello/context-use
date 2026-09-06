@@ -12,13 +12,11 @@ import {
   hypermediaResourceNeighborhoodQueryOptions,
 } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
-import {
-  HypermediaCanvas,
-  type HypermediaSelection,
-  type SettledHypermediaViewport,
-} from './hypermedia-canvas';
+import { HypermediaCanvas } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
+import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import { HypermediaTemporalCanvas } from './hypermedia-temporal-canvas';
+import type { SettledHypermediaViewport } from './hypermedia-visibility';
 
 type NeighborhoodRequest = {
   anchor: HypermediaResourceReference;
@@ -176,7 +174,7 @@ export function HypermediaExplorer({
 
   const neighborhoodError =
     neighborhoodQueries.find(({ error }) => error)?.error ?? entityError ?? null;
-  const selectedKey = selection ? `${selection.kind}:${selection.readableId}` : undefined;
+  const selectedKey = selection ? hypermediaSelectionKey(selection) : undefined;
   const requestedAnchorKeys = new Set(
     neighborhoodRequests.map(({ anchor }) => hypermediaResourceKey(anchor)),
   );

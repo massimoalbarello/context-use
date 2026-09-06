@@ -1,7 +1,7 @@
 // biome-ignore-all lint/style/noMagicNumbers: Temporal canvas geometry and interaction thresholds are visual constants.
 // biome-ignore-all lint/complexity/useMaxParams: Small render and event callbacks remain clearer inline.
 
-import { File, FileText, MoveHorizontal } from 'lucide-react';
+import { FileText, MoveHorizontal } from 'lucide-react';
 import {
   type UIEvent,
   useCallback,
@@ -11,18 +11,15 @@ import {
   useState,
   type WheelEvent,
 } from 'react';
-import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
-import type {
-  HypermediaPage,
-  HypermediaPages,
-  HypermediaResourceReference,
-} from '../../queries/hypermedia';
-import { hypermediaResourceKey } from '../../queries/hypermedia';
+import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
-import type { HypermediaSelection, SettledHypermediaViewport } from './hypermedia-canvas';
-import type { HypermediaLayoutResource } from './hypermedia-layout';
+import {
+  type HypermediaSelection,
+  hypermediaSelectionKey,
+  selectedHypermediaResourceKeys,
+} from './hypermedia-selection';
 import {
   buildTemporalHypermediaLayout,
   TEMPORAL_RESOURCE_LABEL_WIDTH,
@@ -30,6 +27,13 @@ import {
   temporalRangeForViewport,
   temporalScrollLeftForRange,
 } from './hypermedia-temporal-layout';
+import {
+  HypermediaPageCloud,
+  HypermediaPageLabel,
+  HypermediaPageLink,
+  HypermediaResourceCardContent,
+  type HypermediaViewProps,
+} from './hypermedia-view';
 
 const RANGE_SETTLE_MS = 280;
 const RESOURCE_SETTLE_MS = 280;
@@ -42,10 +46,6 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'UTC',
 });
 
-function shortLabel(value: string, length = 28): string {
-  return value.length > length ? `${value.slice(0, length - 1).trimEnd()}…` : value;
-}
-
 function dateRangeLabel(range?: CalendarDateRange): string {
   if (!range) {
     return 'All time';
@@ -57,40 +57,6 @@ function dateRangeLabel(range?: CalendarDateRange): string {
 
 function resourceReference(resource: TemporalHypermediaResource): HypermediaResourceReference {
   return { kind: resource.kind, readableId: resource.readableId };
-}
-
-function ResourceIdentity({ resource }: { resource: TemporalHypermediaResource }) {
-  const detail = resource.resource;
-  const imageReadableId =
-    detail?.kind === 'entity'
-      ? detail.entity.image?.readableId
-      : detail?.kind === 'asset' && isEmbeddableAsset(detail.asset)
-        ? detail.asset.readableId
-        : undefined;
-  return (
-    <>
-      <span
-        className={cn(
-          'flex size-9 shrink-0 items-center justify-center overflow-hidden bg-muted text-muted-foreground',
-          resource.kind === 'entity' ? 'rounded-full' : 'rounded-lg',
-        )}
-      >
-        {imageReadableId ? (
-          <img className="size-full object-cover" src={assetContentUrl(imageReadableId)} alt="" />
-        ) : resource.kind === 'entity' ? (
-          <span className="font-semibold">{resource.label.trim().charAt(0) || '?'}</span>
-        ) : (
-          <File className="size-4" aria-hidden="true" />
-        )}
-      </span>
-      <span className="min-w-0 text-left">
-        <span className="block truncate font-medium text-sm">{resource.label}</span>
-        <span className="block text-muted-foreground text-xs">
-          {resource.kind === 'entity' ? 'Entity' : 'Asset'}
-        </span>
-      </span>
-    </>
-  );
 }
 
 function TemporalResourceLabels({
@@ -123,7 +89,11 @@ function TemporalResourceLabels({
             aria-pressed={selectedResourceKeys.has(resource.key)}
             onClick={() => onSelect({ kind: resource.kind, readableId: resource.readableId })}
           >
-            <ResourceIdentity resource={resource} />
+            <HypermediaResourceCardContent
+              resource={resource.resource}
+              reference={resourceReference(resource)}
+              fallbackLabel={resource.label}
+            />
           </Button>
         );
       })}
@@ -141,16 +111,10 @@ export function HypermediaTemporalCanvas({
   onSelect,
   onDateRangeApply,
   onViewportSettled,
-}: {
-  resources: HypermediaLayoutResource[];
-  pages: HypermediaPage[];
+}: HypermediaViewProps & {
   extent: HypermediaPages['temporalExtent'];
   dateRange?: CalendarDateRange;
-  selectedResources: HypermediaResourceReference[];
-  selectedKey?: string;
-  onSelect: (selection: HypermediaSelection) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
-  onViewportSettled: (viewport: SettledHypermediaViewport) => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const labelTrackRef = useRef<HTMLDivElement | null>(null);
@@ -164,7 +128,7 @@ export function HypermediaTemporalCanvas({
     [extent, pages, resources],
   );
   const selectedResourceKeys = useMemo(
-    () => new Set(selectedResources.map(hypermediaResourceKey)),
+    () => selectedHypermediaResourceKeys(selectedResources),
     [selectedResources],
   );
 
@@ -345,31 +309,23 @@ export function HypermediaTemporalCanvas({
             })}
 
             {layout.pages.map((item) => {
-              const key = `page:${item.page.readableId}`;
+              const key = hypermediaSelectionKey({
+                kind: 'page',
+                readableId: item.page.readableId,
+              });
               const active = selectedKey === key;
               return (
-                <a
+                <HypermediaPageLink
                   key={item.page.readableId}
-                  href={`/pages/${encodeURIComponent(item.page.readableId)}?view=preview`}
+                  page={item.page}
                   aria-label={`Open temporal knowledge page ${item.page.title}`}
-                  className="cursor-pointer outline-none"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    onSelect({ kind: 'page', readableId: item.page.readableId });
-                  }}
+                  onSelect={onSelect}
                 >
                   <title>{item.page.title}</title>
-                  <path
-                    d={item.path}
-                    style={{
-                      color: `var(--chart-${item.colorIndex})`,
-                      fill: 'currentColor',
-                      fillOpacity: active ? 0.25 : 0.12,
-                      stroke: 'currentColor',
-                      strokeOpacity: active ? 0.95 : 0.62,
-                      strokeWidth: active ? 3 : 1.5,
-                    }}
-                    vectorEffect="non-scaling-stroke"
+                  <HypermediaPageCloud
+                    path={item.path}
+                    colorIndex={item.colorIndex}
+                    active={active}
                   />
                   {item.resourceKeys.flatMap((resourceKey) => {
                     const row = layout.resources.find(
@@ -388,18 +344,8 @@ export function HypermediaTemporalCanvas({
                         ]
                       : [];
                   })}
-                  <text
-                    x={item.label.x}
-                    y={item.label.y + 4}
-                    textAnchor="middle"
-                    className={cn(
-                      'fill-foreground stroke-[7] stroke-card font-semibold text-[13px] [paint-order:stroke] [stroke-linejoin:round]',
-                      active && 'underline decoration-2 underline-offset-4',
-                    )}
-                  >
-                    {shortLabel(item.page.title)}
-                  </text>
-                </a>
+                  <HypermediaPageLabel page={item.page} point={item.label} active={active} />
+                </HypermediaPageLink>
               );
             })}
           </svg>

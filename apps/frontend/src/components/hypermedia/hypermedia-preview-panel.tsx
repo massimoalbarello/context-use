@@ -15,7 +15,7 @@ import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { Button, buttonVariants } from '../ui/button';
-import type { HypermediaSelection } from './hypermedia-canvas';
+import type { HypermediaSelection } from './hypermedia-selection';
 
 function PreviewPanelShell({
   label,

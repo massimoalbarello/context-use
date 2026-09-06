@@ -14,7 +14,12 @@ import type {
   HypermediaResourceReference,
 } from '../../queries/hypermedia';
 import { hypermediaResourceKey } from '../../queries/hypermedia';
-import type { HypermediaLayoutResource } from './hypermedia-layout';
+import {
+  type HypermediaLayoutResource,
+  hypermediaLayoutResourceLabel,
+  hypermediaLayoutResourceReference,
+  hypermediaPageColorIndex,
+} from './hypermedia-layout';
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 const MINIMUM_TIMELINE_WIDTH = 1_900;
@@ -73,19 +78,6 @@ function fallbackResourceLabel(reference: HypermediaResourceReference): string {
     .filter(Boolean)
     .map((part) => `${part.charAt(0).toLocaleUpperCase()}${part.slice(1)}`)
     .join(' ');
-}
-
-function detailedResourceLabel(resource: HypermediaLayoutResource): string {
-  return resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
-}
-
-function stableHash(value: string): number {
-  let hash = 2_166_136_261;
-  for (const character of value) {
-    hash ^= character.codePointAt(0) ?? 0;
-    hash = Math.imul(hash, 16_777_619);
-  }
-  return hash >>> 0;
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -175,13 +167,11 @@ function resourceRows({
 }): TemporalHypermediaResource[] {
   const rows = new Map<string, Omit<TemporalHypermediaResource, 'y'>>();
   for (const resource of resources) {
-    const readableId =
-      resource.kind === 'entity' ? resource.entity.readableId : resource.asset.readableId;
+    const reference = hypermediaLayoutResourceReference(resource);
     rows.set(resource.key, {
       key: resource.key,
-      kind: resource.kind,
-      readableId,
-      label: detailedResourceLabel(resource),
+      ...reference,
+      label: hypermediaLayoutResourceLabel(resource),
       resource,
     });
   }
@@ -253,7 +243,7 @@ export function buildTemporalHypermediaLayout({
         resourceKeys: page.resources.map(hypermediaResourceKey),
         path: cloudPath({ left, right, top, bottom }),
         label: { x: centerX, y: (top + bottom) / 2 },
-        colorIndex: (stableHash(page.readableId) % 5) + 1,
+        colorIndex: hypermediaPageColorIndex(page.readableId),
         start,
         end,
       },

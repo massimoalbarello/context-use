@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import type { HypermediaSelection } from '../components/hypermedia/hypermedia-canvas';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
 import {
+  type HypermediaSelection,
   selectedHypermediaResources,
   selectedHypermediaResourcesValue,
   toggleHypermediaResourceSelection,

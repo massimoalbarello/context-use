@@ -8,8 +8,8 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { HypermediaSelection } from '../../src/components/hypermedia/hypermedia-canvas';
 import { HypermediaPreviewPanel } from '../../src/components/hypermedia/hypermedia-preview-panel';
+import type { HypermediaSelection } from '../../src/components/hypermedia/hypermedia-selection';
 import { type Asset, assetPreviewQueryOptions } from '../../src/queries/assets';
 import { type KnowledgePagePreview, pagePreviewQueryOptions } from '../../src/queries/pages';
 
