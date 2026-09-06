@@ -88,7 +88,8 @@ const HypermediaPageSchema = t.Object({
 
 export const HypermediaPagesSchema = t.Object({
   pages: t.Array(HypermediaPageSchema),
-  hasMore: t.Boolean(),
+  hasMorePages: t.Boolean(),
+  resourceReferencesTruncated: t.Boolean(),
   temporalExtent: t.Nullable(
     t.Object({
       start: t.Number(),
@@ -219,7 +220,8 @@ export function hypermediaPagesResponse(result: HypermediaPages) {
       ...pageSummaryResponse(page),
       resources: page.resources,
     })),
-    hasMore: result.hasMore,
+    hasMorePages: result.hasMorePages,
+    resourceReferencesTruncated: result.resourceReferencesTruncated,
     temporalExtent: result.temporalExtent,
   };
 }

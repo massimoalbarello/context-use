@@ -69,6 +69,7 @@ export function HypermediaFilters({
   dateRange,
   temporalExtent,
   hasMorePages,
+  pageReferencesTruncated,
   pagesLoading,
   pagesError,
   selectedResources,
@@ -81,6 +82,7 @@ export function HypermediaFilters({
   dateRange?: CalendarDateRange;
   temporalExtent: HypermediaPages['temporalExtent'];
   hasMorePages: boolean;
+  pageReferencesTruncated: boolean;
   pagesLoading: boolean;
   pagesError: Error | null;
   selectedResources: HypermediaResourceReference[];
@@ -99,7 +101,8 @@ export function HypermediaFilters({
         <HypermediaTimeRange
           value={dateRange}
           extent={temporalExtent}
-          hasMore={hasMorePages}
+          hasMorePages={hasMorePages}
+          referencesTruncated={pageReferencesTruncated}
           loading={pagesLoading}
           error={pagesError}
           onApply={onDateRangeApply}

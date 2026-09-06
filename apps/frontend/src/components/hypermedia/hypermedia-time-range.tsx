@@ -74,7 +74,8 @@ function rangeLabel(value?: CalendarDateRange): string {
 export function HypermediaTimeRange({
   value,
   extent,
-  hasMore,
+  hasMorePages,
+  referencesTruncated,
   loading,
   error,
   onApply,
@@ -82,7 +83,8 @@ export function HypermediaTimeRange({
 }: {
   value?: CalendarDateRange;
   extent: TemporalExtent | null;
-  hasMore: boolean;
+  hasMorePages: boolean;
+  referencesTruncated: boolean;
   loading: boolean;
   error: Error | null;
   onApply: (value?: CalendarDateRange) => void;
@@ -98,7 +100,7 @@ export function HypermediaTimeRange({
     setDraft(appliedRange);
   }, [appliedRange[0], appliedRange[1]]);
 
-  if (!error && !extent && !hasMore) {
+  if (!error && !extent && !hasMorePages && !referencesTruncated) {
     return null;
   }
 
@@ -218,9 +220,13 @@ export function HypermediaTimeRange({
           </Popover>
         </>
       ) : null}
-      {hasMore && (
+      {(hasMorePages || referencesTruncated) && (
         <p className="rounded-lg border bg-background/60 px-3 py-2 text-sm" role="status">
-          This view is too dense. Select entities or narrow the time range.
+          {hasMorePages && referencesTruncated
+            ? 'More pages match this view, and some page connections are hidden. Select entities or narrow the time range.'
+            : hasMorePages
+              ? 'More pages match this view. Select entities or narrow the time range.'
+              : 'Some page connections are hidden. Select entities or narrow the time range.'}
         </p>
       )}
     </div>

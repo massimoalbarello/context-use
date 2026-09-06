@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import type { HypermediaSelection } from '../components/hypermedia/hypermedia-canvas';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
@@ -24,12 +24,26 @@ import {
 const MAX_HYPERMEDIA_SEARCH_LENGTH = 160;
 const MAX_HYPERMEDIA_READABLE_ID_LENGTH = 120;
 const EMPTY_HYPERMEDIA_PAGES: HypermediaPage[] = [];
-type HypermediaSearch = Partial<CalendarDateRange> & {
+export type HypermediaSearch = Partial<CalendarDateRange> & {
   q?: string;
   kind?: HypermediaSelection['kind'];
   id?: string;
   focus?: string;
 };
+
+export function hypermediaSearchWithDateRange({
+  previous,
+  nextRange,
+}: {
+  previous: HypermediaSearch;
+  nextRange?: CalendarDateRange;
+}): HypermediaSearch {
+  return {
+    ...previous,
+    from: nextRange?.from,
+    to: nextRange?.to,
+  };
+}
 
 function hypermediaSearch(search: Record<string, unknown>): HypermediaSearch {
   const result: HypermediaSearch = calendarDateRangeFromSearch(search) ?? {};
@@ -100,7 +114,6 @@ function HypermediaRoute() {
       query: q,
       dateRange,
     }),
-    placeholderData: keepPreviousData,
     enabled: Boolean(profile),
   });
   if (!profile) {
@@ -148,7 +161,8 @@ function HypermediaRoute() {
         query={q}
         dateRange={dateRange}
         temporalExtent={pageQuery.data?.temporalExtent ?? null}
-        hasMorePages={pageQuery.data?.hasMore ?? false}
+        hasMorePages={pageQuery.data?.hasMorePages ?? false}
+        pageReferencesTruncated={pageQuery.data?.resourceReferencesTruncated ?? false}
         pagesLoading={pageQuery.isFetching}
         pagesError={pageQuery.error}
         selectedResources={selectedResources}
@@ -166,11 +180,7 @@ function HypermediaRoute() {
         }}
         onDateRangeApply={(nextRange) => {
           void navigate({
-            search: (previous) => ({
-              ...previous,
-              from: nextRange?.from,
-              to: nextRange?.to,
-            }),
+            search: (previous) => hypermediaSearchWithDateRange({ previous, nextRange }),
             replace: true,
           });
         }}

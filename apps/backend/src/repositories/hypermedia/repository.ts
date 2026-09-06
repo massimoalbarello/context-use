@@ -476,14 +476,23 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         ? null
         : { start: Number(extent.start), end: Number(extent.end) };
     if (pages.length === 0) {
-      return { pages, hasMore: pageRows.length > limit, temporalExtent };
+      return {
+        pages,
+        hasMorePages: pageRows.length > limit,
+        resourceReferencesTruncated: false,
+        temporalExtent,
+      };
     }
     const selectedPageIds = JSON.stringify(selectedPageRows.map(({ id }) => id));
-    const referenceLimit = MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES + 1;
+    const maximumSelectedResourceReferences = selectedResourceCount * selectedPageRows.length;
+    const referenceLimit =
+      MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES + maximumSelectedResourceReferences + 1;
     const referenceRows = await this.sql.ListHypermediaPageResources`
       /* @notNull sourcePageReadableId kind readableId */
       /* @type kind 'entity' | 'asset' */
-      with selected_page as (
+      with selected_key as (
+        select value as "key" from json_each(${resourceKeys})
+      ), selected_page as (
         select "id", "readable_id" as "readableId", "current_revision_id" as "revisionId"
         from "knowledge_page"
         where "owner_id" = ${ownerId} and "archived_at" is null
@@ -510,13 +519,15 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         where asset."archived_at" is null
       )
       select "sourcePageReadableId", "kind", "readableId" from page_resource
-      order by row_number() over (
+      order by ("kind" || ':' || "readableId") in (select "key" from selected_key) desc,
+        row_number() over (
         partition by "sourcePageReadableId" order by "kind", "readableId"
       ), "sourcePageReadableId"
       limit ${referenceLimit}
     `;
     const pagesById = new Map(pages.map((page) => [page.readableId, page]));
-    for (const row of referenceRows.slice(0, MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES)) {
+    const returnedReferenceLimit = referenceLimit - 1;
+    for (const row of referenceRows.slice(0, returnedReferenceLimit)) {
       pagesById.get(row.sourcePageReadableId)?.resources.push({
         kind: row.kind,
         readableId: row.readableId,
@@ -524,8 +535,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     }
     return {
       pages,
-      hasMore:
-        pageRows.length > limit || referenceRows.length > MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES,
+      hasMorePages: pageRows.length > limit,
+      resourceReferencesTruncated: referenceRows.length > returnedReferenceLimit,
       temporalExtent,
     };
   }

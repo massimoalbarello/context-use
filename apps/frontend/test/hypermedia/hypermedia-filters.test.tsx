@@ -12,6 +12,7 @@ test('Hypermedia composes resource, keyword, and time filters in sidebar order',
         end: Date.parse('2026-12-31T00:00:00.000Z'),
       }}
       hasMorePages={false}
+      pageReferencesTruncated={false}
       pagesLoading={false}
       pagesError={null}
       selectedResources={[

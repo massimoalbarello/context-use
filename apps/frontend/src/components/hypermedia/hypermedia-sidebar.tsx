@@ -18,6 +18,7 @@ export function HypermediaSidebar({
   dateRange,
   temporalExtent,
   hasMorePages,
+  pageReferencesTruncated,
   pagesLoading,
   pagesError,
   selectedResources,
@@ -31,6 +32,7 @@ export function HypermediaSidebar({
   dateRange?: CalendarDateRange;
   temporalExtent: HypermediaPages['temporalExtent'];
   hasMorePages: boolean;
+  pageReferencesTruncated: boolean;
   pagesLoading: boolean;
   pagesError: Error | null;
   selectedResources: HypermediaResourceReference[];
@@ -64,6 +66,7 @@ export function HypermediaSidebar({
             dateRange={dateRange}
             temporalExtent={temporalExtent}
             hasMorePages={hasMorePages}
+            pageReferencesTruncated={pageReferencesTruncated}
             pagesLoading={pagesLoading}
             pagesError={pagesError}
             selectedResources={selectedResources}

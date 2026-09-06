@@ -41,6 +41,7 @@ export type HypermediaTemporalExtent = {
 
 export type HypermediaPages = {
   pages: HypermediaPage[];
-  hasMore: boolean;
+  hasMorePages: boolean;
+  resourceReferencesTruncated: boolean;
   temporalExtent: HypermediaTemporalExtent | null;
 };
