@@ -1,8 +1,12 @@
 import { Search, X } from 'lucide-react';
 import { useState } from 'react';
-import type { HypermediaResourceReference } from '../../queries/hypermedia';
+import type {
+  HypermediaPageProjection,
+  HypermediaResourceReference,
+} from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
 
 function HypermediaKeywordFilter({
@@ -63,19 +67,29 @@ function HypermediaKeywordFilter({
 }
 
 export function HypermediaFilters({
+  projection,
   query,
   selectedResources,
+  onProjectionChange,
   onQueryApply,
   onClearSelectedResources,
 }: {
+  projection: HypermediaPageProjection;
   query: string;
   selectedResources: HypermediaResourceReference[];
+  onProjectionChange: (projection: HypermediaPageProjection) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
 }) {
   return (
     <section aria-labelledby="hypermedia-filters-heading">
-      <h2 id="hypermedia-filters-heading" className="font-medium text-sm">
+      <Tabs value={projection} onValueChange={onProjectionChange}>
+        <TabsList className="grid w-full grid-cols-2" aria-label="Hypermedia projection">
+          <TabsTrigger value="semantic">Semantic</TabsTrigger>
+          <TabsTrigger value="temporal">Temporal</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <h2 id="hypermedia-filters-heading" className="mt-6 font-medium text-sm">
         Filter hypermedia
       </h2>
       <div className="mt-2 grid gap-3">

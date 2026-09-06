@@ -6,6 +6,7 @@ import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from 
 import { cn } from '../../lib/class-names';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
+import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { Button } from '../ui/button';
 import {
   type HypermediaSelection,
@@ -19,11 +20,14 @@ import {
   temporalScrollTopForRange,
 } from './hypermedia-temporal-layout';
 import {
+  HypermediaHoverPreview,
   HypermediaPageCloud,
   HypermediaPageLabel,
   HypermediaPageLink,
+  type HypermediaPreview,
   HypermediaResourceCardContent,
   type HypermediaViewProps,
+  hypermediaPreviewKey,
 } from './hypermedia-view';
 
 const RANGE_SETTLE_MS = 280;
@@ -143,12 +147,14 @@ export function HypermediaTemporalCanvas({
   dateRange?: CalendarDateRange;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
 }) {
+  const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const rangeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resourceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrollTop = useRef<number | null>(null);
   const lastScrollLeft = useRef<number | null>(null);
   const initializedView = useRef<string | null>(null);
+  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
   const [pageViewport, setPageViewport] = useState<TemporalPageViewport | null>(null);
   const layout = useMemo(
     () => (extent ? buildTemporalHypermediaLayout({ resources, pages, extent }) : null),
@@ -162,6 +168,7 @@ export function HypermediaTemporalCanvas({
     () => new Map(layout?.resources.map((resource) => [resource.key, resource]) ?? []),
     [layout],
   );
+  const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -253,6 +260,10 @@ export function HypermediaTemporalCanvas({
     rangeTimer.current = setTimeout(() => onDateRangeApply(nextRange), RANGE_SETTLE_MS);
   }
 
+  const clearPreview = useCallback((key: string) => {
+    setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
+  }, []);
+
   if (!layout) {
     return (
       <section
@@ -317,7 +328,7 @@ export function HypermediaTemporalCanvas({
                 kind: 'page',
                 readableId: item.page.readableId,
               });
-              const active = selectedKey === key;
+              const active = activeKey === key;
               const connectedColumns = item.resourceKeys.flatMap((resourceKey) => {
                 const column = resourceByKey.get(resourceKey);
                 return column ? [column] : [];
@@ -332,6 +343,8 @@ export function HypermediaTemporalCanvas({
                   }}
                   aria-label={`Open temporal knowledge page ${item.page.title}`}
                   onSelect={onSelect}
+                  onPreview={setPreview}
+                  onPreviewEnd={clearPreview}
                 >
                   <title>{item.page.title}</title>
                   <HypermediaPageCloud
@@ -364,6 +377,11 @@ export function HypermediaTemporalCanvas({
           />
         </div>
       </div>
+      <HypermediaHoverPreview
+        preview={preview}
+        selectedKey={selectedKey}
+        sidebarCollapsed={sidebarCollapsed}
+      />
     </section>
   );
 }

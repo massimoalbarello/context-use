@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
 import { HypermediaTemporalCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
+import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
 import type { HypermediaPage } from '../../src/queries/hypermedia';
 
 afterEach(cleanup);
@@ -37,19 +38,21 @@ test('temporal canvas keeps resource filtering and page preview selection access
   const onSelect = mock(() => undefined);
   const user = userEvent.setup();
   render(
-    <HypermediaTemporalCanvas
-      resources={[self]}
-      pages={[temporalPage]}
-      extent={{
-        start: Date.parse('2024-01-01T00:00:00.000Z'),
-        end: Date.parse('2026-12-31T00:00:00.000Z'),
-      }}
-      selectedResources={[{ kind: 'entity', readableId: 'self' }]}
-      selectedKey="page:launch-period"
-      onSelect={onSelect}
-      onDateRangeApply={() => undefined}
-      onViewportSettled={() => undefined}
-    />,
+    <KnowledgeWorkspace>
+      <div />
+      <HypermediaTemporalCanvas
+        resources={[self]}
+        pages={[temporalPage]}
+        extent={{
+          start: Date.parse('2024-01-01T00:00:00.000Z'),
+          end: Date.parse('2026-12-31T00:00:00.000Z'),
+        }}
+        selectedResources={[{ kind: 'entity', readableId: 'self' }]}
+        onSelect={onSelect}
+        onDateRangeApply={() => undefined}
+        onViewportSettled={() => undefined}
+      />
+    </KnowledgeWorkspace>,
   );
 
   const entityButton = screen.getByRole('button', { name: /Self Entity/ });
@@ -57,9 +60,12 @@ test('temporal canvas keeps resource filtering and page preview selection access
   await user.click(entityButton);
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'entity', readableId: 'self' });
 
-  await user.click(
-    screen.getByRole('link', { name: 'Open temporal knowledge page Launch period' }),
-  );
+  const pageLink = screen.getByRole('link', {
+    name: 'Open temporal knowledge page Launch period',
+  });
+  await user.hover(pageLink);
+  expect(screen.getByText('A temporal page.')).toBeTruthy();
+  await user.click(pageLink);
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'page', readableId: 'launch-period' });
   expect(screen.queryByText('Scroll through time')).toBeNull();
   expect(screen.queryByText('Entities and assets')).toBeNull();

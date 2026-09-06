@@ -1,7 +1,10 @@
 import { Link } from '@tanstack/react-router';
 import { Library } from 'lucide-react';
 import { cn } from '../../lib/class-names';
-import type { HypermediaResourceReference } from '../../queries/hypermedia';
+import type {
+  HypermediaPageProjection,
+  HypermediaResourceReference,
+} from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
   KnowledgeSidebarFooter,
@@ -13,14 +16,18 @@ import { HypermediaFilters } from './hypermedia-filters';
 
 export function HypermediaSidebar({
   profile,
+  projection,
   query,
   selectedResources,
+  onProjectionChange,
   onQueryApply,
   onClearSelectedResources,
 }: {
   profile: KnowledgeProfile;
+  projection: HypermediaPageProjection;
   query: string;
   selectedResources: HypermediaResourceReference[];
+  onProjectionChange: (projection: HypermediaPageProjection) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
 }) {
@@ -45,8 +52,10 @@ export function HypermediaSidebar({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
           <HypermediaFilters
+            projection={projection}
             query={query}
             selectedResources={selectedResources}
+            onProjectionChange={onProjectionChange}
             onQueryApply={onQueryApply}
             onClearSelectedResources={onClearSelectedResources}
           />

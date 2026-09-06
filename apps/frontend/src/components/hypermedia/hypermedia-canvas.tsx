@@ -34,11 +34,11 @@ import {
   selectedHypermediaResourceKeys,
 } from './hypermedia-selection';
 import {
+  HypermediaHoverPreview,
   HypermediaPageCloud,
   HypermediaPageLabel,
   HypermediaPageLink,
   type HypermediaPreview,
-  HypermediaPreviewCard,
   type HypermediaViewProps,
   hypermediaPreviewKey,
   shortHypermediaLabel,
@@ -650,18 +650,11 @@ export function HypermediaCanvas({
         </div>
       )}
 
-      {preview && hypermediaPreviewKey(preview) !== selectedKey && (
-        <div
-          className={cn(
-            'pointer-events-none absolute top-4 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
-            sidebarCollapsed && 'left-18 w-[min(20rem,calc(100%-7rem))]',
-            !sidebarCollapsed && 'left-4',
-          )}
-          aria-live="polite"
-        >
-          <HypermediaPreviewCard preview={preview} />
-        </div>
-      )}
+      <HypermediaHoverPreview
+        preview={preview}
+        selectedKey={selectedKey}
+        sidebarCollapsed={sidebarCollapsed}
+      />
     </section>
   );
 }

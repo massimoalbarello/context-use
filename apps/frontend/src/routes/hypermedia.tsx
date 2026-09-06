@@ -11,7 +11,6 @@ import {
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
-import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { entitiesQueryOptions } from '../queries/entities';
 import {
@@ -172,8 +171,18 @@ function HypermediaRoute() {
     <KnowledgeWorkspace>
       <HypermediaSidebar
         profile={profile}
+        projection={projection}
         query={q}
         selectedResources={selectedResources}
+        onProjectionChange={(nextProjection) => {
+          void navigate({
+            search: (previous) => ({
+              ...previous,
+              view: nextProjection === 'temporal' ? 'temporal' : undefined,
+            }),
+            replace: true,
+          });
+        }}
         onClearSelectedResources={clearSelectedResources}
         onQueryApply={(query) => {
           void navigate({
@@ -189,25 +198,6 @@ function HypermediaRoute() {
       />
       <KnowledgeWorkspaceDetail>
         <div className="relative size-full">
-          <div className="absolute top-3 left-1/2 z-40 -translate-x-1/2 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
-            <Tabs
-              value={projection}
-              onValueChange={(value) => {
-                void navigate({
-                  search: (previous) => ({
-                    ...previous,
-                    view: value === 'temporal' ? 'temporal' : undefined,
-                  }),
-                  replace: true,
-                });
-              }}
-            >
-              <TabsList aria-label="Hypermedia projection">
-                <TabsTrigger value="semantic">Semantic</TabsTrigger>
-                <TabsTrigger value="temporal">Temporal</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
           <HypermediaExplorer
             projection={projection}
             selfReadableId={profile.selfEntity.readableId}

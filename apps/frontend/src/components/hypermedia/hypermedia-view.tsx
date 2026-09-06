@@ -1,5 +1,6 @@
 import { File } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
+import { cn } from '../../lib/class-names';
 import type {
   HypermediaAsset,
   HypermediaEntity,
@@ -70,6 +71,32 @@ export function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview 
       ) : (
         <AssetCardContent asset={preview.asset} />
       )}
+    </div>
+  );
+}
+
+export function HypermediaHoverPreview({
+  preview,
+  selectedKey,
+  sidebarCollapsed,
+}: {
+  preview: HypermediaPreview | null;
+  selectedKey?: string;
+  sidebarCollapsed: boolean;
+}) {
+  if (!preview || hypermediaPreviewKey(preview) === selectedKey) {
+    return null;
+  }
+  return (
+    <div
+      className={cn(
+        'pointer-events-none absolute top-4 z-40 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
+        sidebarCollapsed && 'left-18 w-[min(20rem,calc(100%-7rem))]',
+        !sidebarCollapsed && 'left-4',
+      )}
+      aria-live="polite"
+    >
+      <HypermediaPreviewCard preview={preview} />
     </div>
   );
 }
