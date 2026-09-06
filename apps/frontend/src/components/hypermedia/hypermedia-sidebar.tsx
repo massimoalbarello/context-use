@@ -1,8 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { Library } from 'lucide-react';
 import { cn } from '../../lib/class-names';
-import type { CalendarDateRange } from '../../lib/temporal-coverage';
-import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
+import type { HypermediaResourceReference } from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
   KnowledgeSidebarFooter,
@@ -15,30 +14,14 @@ import { HypermediaFilters } from './hypermedia-filters';
 export function HypermediaSidebar({
   profile,
   query,
-  dateRange,
-  temporalExtent,
-  hasMorePages,
-  pageReferencesTruncated,
-  pagesLoading,
-  pagesError,
   selectedResources,
   onQueryApply,
-  onDateRangeApply,
-  onRetryPages,
   onClearSelectedResources,
 }: {
   profile: KnowledgeProfile;
   query: string;
-  dateRange?: CalendarDateRange;
-  temporalExtent: HypermediaPages['temporalExtent'];
-  hasMorePages: boolean;
-  pageReferencesTruncated: boolean;
-  pagesLoading: boolean;
-  pagesError: Error | null;
   selectedResources: HypermediaResourceReference[];
   onQueryApply: (query: string) => void;
-  onDateRangeApply: (dateRange?: CalendarDateRange) => void;
-  onRetryPages: () => void;
   onClearSelectedResources: () => void;
 }) {
   const { collapsed } = useKnowledgeWorkspace();
@@ -63,16 +46,8 @@ export function HypermediaSidebar({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
           <HypermediaFilters
             query={query}
-            dateRange={dateRange}
-            temporalExtent={temporalExtent}
-            hasMorePages={hasMorePages}
-            pageReferencesTruncated={pageReferencesTruncated}
-            pagesLoading={pagesLoading}
-            pagesError={pagesError}
             selectedResources={selectedResources}
             onQueryApply={onQueryApply}
-            onDateRangeApply={onDateRangeApply}
-            onRetryPages={onRetryPages}
             onClearSelectedResources={onClearSelectedResources}
           />
         </div>

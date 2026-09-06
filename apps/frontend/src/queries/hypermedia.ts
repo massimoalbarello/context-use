@@ -16,6 +16,7 @@ export type HypermediaPages = NonNullable<
 export type HypermediaPage = HypermediaPages['pages'][number];
 export type HypermediaEntity = Extract<HypermediaResource, { kind: 'entity' }>['entity'];
 export type HypermediaAsset = Extract<HypermediaResource, { kind: 'asset' }>['asset'];
+export type HypermediaPageProjection = 'semantic' | 'temporal';
 
 export const hypermediaQueryKey = ['hypermedia'] as const;
 export const HYPERMEDIA_NEIGHBORHOOD_SIZE = 16;
@@ -57,6 +58,7 @@ export function hypermediaResourceNeighborhoodQueryOptions({
 }
 
 export type HypermediaPageQuery = {
+  projection: HypermediaPageProjection;
   resources: HypermediaResourceReference[];
   query?: string;
   dateRange?: CalendarDateRange;
@@ -64,7 +66,12 @@ export type HypermediaPageQuery = {
 
 export const HYPERMEDIA_PAGE_LIMIT = 32;
 
-export function hypermediaPagesQueryOptions({ resources, query, dateRange }: HypermediaPageQuery) {
+export function hypermediaPagesQueryOptions({
+  projection,
+  resources,
+  query,
+  dateRange,
+}: HypermediaPageQuery) {
   const resourceKeys = resources.map(hypermediaResourceKey).sort();
   const normalizedQuery = query?.trim() || undefined;
   const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
@@ -73,6 +80,7 @@ export function hypermediaPagesQueryOptions({ resources, query, dateRange }: Hyp
       ...hypermediaQueryKey,
       'pages',
       {
+        projection,
         resources: resourceKeys,
         query: normalizedQuery ?? null,
         time: time ?? null,
@@ -81,6 +89,7 @@ export function hypermediaPagesQueryOptions({ resources, query, dateRange }: Hyp
     queryFn: async ({ signal }) => {
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {
+          projection,
           resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
           limit: HYPERMEDIA_PAGE_LIMIT,
           query: normalizedQuery,

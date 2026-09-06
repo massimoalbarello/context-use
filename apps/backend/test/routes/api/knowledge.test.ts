@@ -589,6 +589,33 @@ Every observation changes the next action.`,
       temporalBoundsFrom('2025').start,
     );
 
+    const semanticProjectionResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/hypermedia/pages?projection=semantic&limit=10' }),
+    );
+    expect(semanticProjectionResponse.status).toBe(StatusMap.OK);
+    const semanticProjection = (await semanticProjectionResponse.json()) as {
+      pages: Array<{ readableId: string; temporalCoverage: string | null }>;
+    };
+    expect(semanticProjection.pages).toEqual([
+      expect.objectContaining({ readableId: 'alpha-principles', temporalCoverage: null }),
+    ]);
+
+    const temporalProjectionResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/hypermedia/pages?projection=temporal&limit=10' }),
+    );
+    expect(temporalProjectionResponse.status).toBe(StatusMap.OK);
+    const temporalProjection = (await temporalProjectionResponse.json()) as {
+      pages: Array<{ readableId: string; temporalCoverage: string | null }>;
+    };
+    expect(temporalProjection.pages.map(({ readableId }) => readableId)).toEqual([
+      'current-programme',
+      'operating-rhythm',
+      'growth-playbook',
+    ]);
+    expect(
+      temporalProjection.pages.every(({ temporalCoverage }) => temporalCoverage !== null),
+    ).toBe(true);
+
     const filteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',

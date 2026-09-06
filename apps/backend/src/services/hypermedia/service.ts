@@ -1,4 +1,5 @@
 import type {
+  HypermediaPageProjection,
   HypermediaResourceContinuation,
   HypermediaResourceReference,
 } from '#models/hypermedia/model.ts';
@@ -22,6 +23,7 @@ export class HypermediaService {
     resources: HypermediaResourceReference[];
     limit: number;
     query?: string;
+    projection?: HypermediaPageProjection;
     temporalBounds?: TemporalBounds;
   }) {
     return this.hypermedia.pages(input);
