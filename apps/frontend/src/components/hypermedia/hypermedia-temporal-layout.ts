@@ -24,7 +24,7 @@ import {
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 const MINIMUM_CANVAS_WIDTH = 1_200;
-const MINIMUM_TIMELINE_HEIGHT = 2_800;
+const MINIMUM_TIMELINE_HEIGHT = 7_200;
 const MAXIMUM_TIMELINE_HEIGHT = 24_000;
 const PIXELS_PER_DAY = 1.25;
 const RESOURCE_COLUMN_START_X = 176;
@@ -33,9 +33,8 @@ const RESOURCE_RIGHT_PADDING = 128;
 const TIMELINE_START_Y = 144;
 const TIMELINE_BOTTOM_PADDING = 120;
 const PAGE_RESOURCE_PADDING = 52;
-const PAGE_HEIGHT = 48;
-const PAGE_GAP = 8;
-const PAGE_STACK_SPACING = PAGE_HEIGHT + PAGE_GAP;
+const PAGE_HEIGHT = 32;
+const PAGE_GAP = 6;
 const MINIMUM_PAGE_WIDTH = 160;
 const DISTRIBUTED_INTERVAL_MINIMUM_DURATION = MILLISECONDS_PER_DAY * 4;
 const DISTRIBUTED_INTERVAL_EDGE_RATIO = 0.12;
@@ -223,21 +222,40 @@ function pageBoundsOverlap(first: Bounds, second: Bounds): boolean {
   );
 }
 
-function pageCenterCandidates(candidate: TemporalPageCandidate): number[] {
-  const intervalSpan = candidate.maximumY - candidate.minimumY;
-  const maximumSteps = Math.ceil(intervalSpan / PAGE_STACK_SPACING);
-  const possibleCenters = [candidate.preferredY];
-  for (let step = 1; step <= maximumSteps; step += 1) {
-    const offset = step * PAGE_STACK_SPACING;
-    if (candidate.preferredY + offset <= candidate.maximumY) {
-      possibleCenters.push(candidate.preferredY + offset);
+function pageBoundsOverlapHorizontally(first: Bounds, second: Bounds): boolean {
+  return first.left < second.right + PAGE_GAP && first.right + PAGE_GAP > second.left;
+}
+
+function pageCenterCandidates({
+  candidate,
+  occupiedPageBounds,
+  currentCenter,
+}: {
+  candidate: TemporalPageCandidate;
+  occupiedPageBounds: Bounds[];
+  currentCenter?: number;
+}): number[] {
+  const candidateBounds = pageBounds({ candidate, centerY: candidate.preferredY });
+  const possibleCenters = [
+    candidate.preferredY,
+    candidate.minimumY,
+    candidate.maximumY,
+    ...(currentCenter === undefined ? [] : [currentCenter]),
+  ];
+  for (const occupied of occupiedPageBounds) {
+    if (!pageBoundsOverlapHorizontally(candidateBounds, occupied)) {
+      continue;
     }
-    if (candidate.preferredY - offset >= candidate.minimumY) {
-      possibleCenters.push(candidate.preferredY - offset);
-    }
+    possibleCenters.push(
+      occupied.top - PAGE_HEIGHT / 2 - PAGE_GAP,
+      occupied.top - PAGE_HEIGHT / 2,
+      occupied.bottom + PAGE_HEIGHT / 2,
+      occupied.bottom + PAGE_HEIGHT / 2 + PAGE_GAP,
+    );
   }
-  possibleCenters.push(candidate.minimumY, candidate.maximumY);
-  return [...new Set(possibleCenters)];
+  return [...new Set(possibleCenters)].filter(
+    (centerY) => centerY >= candidate.minimumY && centerY <= candidate.maximumY,
+  );
 }
 
 function pageOverlapArea(first: Bounds, second: Bounds): number {
@@ -262,11 +280,12 @@ function pageOverlapScore(bounds: Bounds, occupiedPageBounds: Bounds[]): number 
 function openPageCenter({
   candidate,
   occupiedPageBounds,
+  possibleCenters,
 }: {
   candidate: TemporalPageCandidate;
   occupiedPageBounds: Bounds[];
+  possibleCenters: number[];
 }): number {
-  const possibleCenters = pageCenterCandidates(candidate);
   const available = possibleCenters.find((centerY) => {
     const bounds = pageBounds({ candidate, centerY });
     return !occupiedPageBounds.some((occupied) => pageBoundsOverlap(bounds, occupied));
@@ -282,6 +301,40 @@ function openPageCenter({
     );
     return overlap < bestOverlap ? centerY : best;
   });
+}
+
+function earliestOpenPageCenter({
+  candidate,
+  occupiedPageBounds,
+}: {
+  candidate: TemporalPageCandidate;
+  occupiedPageBounds: Bounds[];
+}): number {
+  const possibleCenters = pageCenterCandidates({ candidate, occupiedPageBounds }).sort(
+    (first, second) => first - second,
+  );
+  return openPageCenter({ candidate, occupiedPageBounds, possibleCenters });
+}
+
+function preferredOpenPageCenter({
+  candidate,
+  currentCenter,
+  occupiedPageBounds,
+}: {
+  candidate: TemporalPageCandidate;
+  currentCenter: number;
+  occupiedPageBounds: Bounds[];
+}): number {
+  const possibleCenters = pageCenterCandidates({
+    candidate,
+    currentCenter,
+    occupiedPageBounds,
+  }).sort(
+    (first, second) =>
+      Math.abs(first - candidate.preferredY) - Math.abs(second - candidate.preferredY) ||
+      first - second,
+  );
+  return openPageCenter({ candidate, occupiedPageBounds, possibleCenters });
 }
 
 export function buildTemporalHypermediaLayout({
@@ -359,16 +412,32 @@ export function buildTemporalHypermediaLayout({
   });
   candidates.sort(
     (first, second) =>
-      first.preferredY - second.preferredY ||
+      first.maximumY - second.maximumY ||
+      first.minimumY - second.minimumY ||
       first.duration - second.duration ||
       first.page.readableId.localeCompare(second.page.readableId),
   );
 
-  const occupiedPageBounds: Bounds[] = [];
-  const laidOutPages = candidates.map((candidate): TemporalHypermediaPage => {
-    const centerY = openPageCenter({ candidate, occupiedPageBounds });
+  // Establish a collision-free baseline first, then move each page toward its stable preferred
+  // date without sacrificing a slot that already fits inside its asserted interval.
+  const placements: Array<{ candidate: TemporalPageCandidate; centerY: number }> = [];
+  for (const candidate of candidates) {
+    const occupiedPageBounds = placements.map((placement) => pageBounds(placement));
+    const centerY = earliestOpenPageCenter({ candidate, occupiedPageBounds });
+    placements.push({ candidate, centerY });
+  }
+  for (const placement of placements) {
+    const occupiedPageBounds = placements
+      .filter((other) => other !== placement)
+      .map((other) => pageBounds(other));
+    placement.centerY = preferredOpenPageCenter({
+      candidate: placement.candidate,
+      currentCenter: placement.centerY,
+      occupiedPageBounds,
+    });
+  }
+  const laidOutPages = placements.map(({ candidate, centerY }): TemporalHypermediaPage => {
     const bounds = pageBounds({ candidate, centerY });
-    occupiedPageBounds.push(bounds);
     return {
       page: candidate.page,
       resourceKeys: candidate.resourceKeys,

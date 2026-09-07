@@ -15,10 +15,9 @@ const extent = {
   start: Date.parse('2020-01-01T00:00:00.000Z'),
   end: Date.parse('2026-12-31T00:00:00.000Z'),
 };
-const EXPECTED_CLOUD_HEIGHT = 48;
-const MINIMUM_CLOUD_GAP = 8;
-const SEPARATED_PAGE_COUNT = 3;
-const OVERFLOW_PAGE_COUNT = 10;
+const EXPECTED_CLOUD_HEIGHT = 32;
+const MINIMUM_CLOUD_GAP = 6;
+const SEPARATED_PAGE_COUNT = 10;
 const DISTRIBUTED_PAGE_COUNT = 5;
 const MINIMUM_DISTRIBUTED_SPREAD = 400;
 
@@ -109,7 +108,7 @@ describe('temporal Hypermedia side projection', () => {
     expect(layout.ticks[0]!.y).toBeLessThan(layout.ticks.at(-1)!.y);
   });
 
-  test('stacks overlapping page clouds at the same time while keeping each page thin', () => {
+  test('separates dense page clouds when their asserted interval has room', () => {
     const densePages = [...Array(SEPARATED_PAGE_COUNT).keys()].map((index) =>
       page({
         readableId: `temporal-page-${index}`,
@@ -142,21 +141,6 @@ describe('temporal Hypermedia side projection', () => {
         expect(verticalGap).toBeGreaterThanOrEqual(MINIMUM_CLOUD_GAP);
       }
     }
-  });
-
-  test('keeps dense page centers inside their asserted interval', () => {
-    const densePages = [...Array(OVERFLOW_PAGE_COUNT).keys()].map((index) =>
-      page({
-        readableId: `dense-page-${index}`,
-        temporalCoverage: '2025-03/2025-08',
-        resources: [{ kind: 'entity', readableId: 'self' }],
-      }),
-    );
-    const layout = buildTemporalHypermediaLayout({
-      resources: [entity('self')],
-      pages: densePages,
-      extent,
-    });
     const pageDates = layout.pages.map(
       ({ label }) =>
         temporalRangeForViewport({ layout, scrollTop: label.y, viewportHeight: 0 }).from,
@@ -191,6 +175,29 @@ describe('temporal Hypermedia side projection', () => {
     );
   });
 
+  test('keeps an irreducible same-day collision anchored to the asserted date', () => {
+    const layout = buildTemporalHypermediaLayout({
+      resources: [entity('self')],
+      pages: ['first', 'second'].map((readableId) =>
+        page({
+          readableId,
+          temporalCoverage: '2025-08-25',
+          resources: [{ kind: 'entity', readableId: 'self' }],
+        }),
+      ),
+      extent,
+    });
+
+    expect(
+      layout.pages.map(({ label }) =>
+        temporalRangeForViewport({ layout, scrollTop: label.y, viewportHeight: 0 }),
+      ),
+    ).toEqual([
+      { from: '2025-08-25', to: '2025-08-25' },
+      { from: '2025-08-25', to: '2025-08-25' },
+    ]);
+  });
+
   test('maps vertical scrolling to a reverse-chronological date interval', () => {
     const layout = buildTemporalHypermediaLayout({
       resources: [entity('self')],
@@ -204,7 +211,7 @@ describe('temporal Hypermedia side projection', () => {
       extent,
     });
     const viewportHeight = 640;
-    const range = { from: '2024-01-01', to: '2025-01-01' };
+    const range = { from: '2024-06-01', to: '2024-07-01' };
     const scrollTop = temporalScrollTopForRange({ layout, range, viewportHeight });
     const visible = temporalRangeForViewport({ layout, scrollTop, viewportHeight });
 
