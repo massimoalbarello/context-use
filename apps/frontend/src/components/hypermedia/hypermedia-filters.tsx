@@ -1,11 +1,13 @@
 import { Search, X } from 'lucide-react';
 import { useState } from 'react';
-import type { CalendarDateRange } from '../../lib/temporal-coverage';
-import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
+import type {
+  HypermediaPageProjection,
+  HypermediaResourceReference,
+} from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
-import { HypermediaTimeRange } from './hypermedia-time-range';
 
 function HypermediaKeywordFilter({
   value,
@@ -65,30 +67,18 @@ function HypermediaKeywordFilter({
 }
 
 export function HypermediaFilters({
+  projection,
   query,
-  dateRange,
-  temporalExtent,
-  hasMorePages,
-  pageReferencesTruncated,
-  pagesLoading,
-  pagesError,
   selectedResources,
+  onProjectionChange,
   onQueryApply,
-  onDateRangeApply,
-  onRetryPages,
   onClearSelectedResources,
 }: {
+  projection: HypermediaPageProjection;
   query: string;
-  dateRange?: CalendarDateRange;
-  temporalExtent: HypermediaPages['temporalExtent'];
-  hasMorePages: boolean;
-  pageReferencesTruncated: boolean;
-  pagesLoading: boolean;
-  pagesError: Error | null;
   selectedResources: HypermediaResourceReference[];
+  onProjectionChange: (projection: HypermediaPageProjection) => void;
   onQueryApply: (query: string) => void;
-  onDateRangeApply: (dateRange?: CalendarDateRange) => void;
-  onRetryPages: () => void;
   onClearSelectedResources: () => void;
 }) {
   return (
@@ -97,17 +87,13 @@ export function HypermediaFilters({
         Filter hypermedia
       </h2>
       <div className="mt-2 grid gap-3">
+        <Tabs value={projection} onValueChange={onProjectionChange}>
+          <TabsList className="grid w-full grid-cols-2" aria-label="Hypermedia projection">
+            <TabsTrigger value="semantic">Semantic</TabsTrigger>
+            <TabsTrigger value="temporal">Temporal</TabsTrigger>
+          </TabsList>
+        </Tabs>
         <HypermediaKeywordFilter key={query} value={query} onApply={onQueryApply} />
-        <HypermediaTimeRange
-          value={dateRange}
-          extent={temporalExtent}
-          hasMorePages={hasMorePages}
-          referencesTruncated={pageReferencesTruncated}
-          loading={pagesLoading}
-          error={pagesError}
-          onApply={onDateRangeApply}
-          onRetry={onRetryPages}
-        />
         {selectedResources.length > 0 && (
           <div className="flex items-center gap-3 rounded-xl bg-muted/55 p-3" aria-live="polite">
             <div className="min-w-0 flex-1">

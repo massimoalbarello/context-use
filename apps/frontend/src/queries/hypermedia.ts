@@ -1,7 +1,6 @@
-import { queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { apiErrorMessage } from '../lib/api-error';
-import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
 
 export type HypermediaResourceNeighborhood = NonNullable<
   Awaited<ReturnType<(typeof api.api.hypermedia.resources)['get']>>['data']
@@ -16,6 +15,10 @@ export type HypermediaPages = NonNullable<
 export type HypermediaPage = HypermediaPages['pages'][number];
 export type HypermediaEntity = Extract<HypermediaResource, { kind: 'entity' }>['entity'];
 export type HypermediaAsset = Extract<HypermediaResource, { kind: 'asset' }>['asset'];
+type HypermediaPagesRequest = NonNullable<Parameters<(typeof api.api.hypermedia.pages)['get']>[0]>;
+export type HypermediaPageProjection = NonNullable<
+  NonNullable<HypermediaPagesRequest['query']>['projection']
+>;
 
 export const hypermediaQueryKey = ['hypermedia'] as const;
 export const HYPERMEDIA_NEIGHBORHOOD_SIZE = 16;
@@ -57,34 +60,35 @@ export function hypermediaResourceNeighborhoodQueryOptions({
 }
 
 export type HypermediaPageQuery = {
+  projection: HypermediaPageProjection;
   resources: HypermediaResourceReference[];
   query?: string;
-  dateRange?: CalendarDateRange;
 };
 
 export const HYPERMEDIA_PAGE_LIMIT = 32;
 
-export function hypermediaPagesQueryOptions({ resources, query, dateRange }: HypermediaPageQuery) {
+export function hypermediaPagesQueryOptions({ projection, resources, query }: HypermediaPageQuery) {
   const resourceKeys = resources.map(hypermediaResourceKey).sort();
   const normalizedQuery = query?.trim() || undefined;
-  const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
-  return queryOptions({
+  return infiniteQueryOptions({
     queryKey: [
       ...hypermediaQueryKey,
       'pages',
       {
+        projection,
         resources: resourceKeys,
         query: normalizedQuery ?? null,
-        time: time ?? null,
       },
     ] as const,
-    queryFn: async ({ signal }) => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam, signal }) => {
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {
+          projection,
           resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
           limit: HYPERMEDIA_PAGE_LIMIT,
+          offset: pageParam,
           query: normalizedQuery,
-          time,
         },
         fetch: { signal },
       });
@@ -93,5 +97,6 @@ export function hypermediaPagesQueryOptions({ resources, query, dateRange }: Hyp
       }
       return data;
     },
+    getNextPageParam: (page) => page.nextOffset ?? undefined,
   });
 }

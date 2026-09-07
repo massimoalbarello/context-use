@@ -1,10 +1,24 @@
 import type { HypermediaResourceReference } from '../../queries/hypermedia';
 import { hypermediaResourceKey } from '../../queries/hypermedia';
-import type { HypermediaSelection } from './hypermedia-canvas';
+
+export type HypermediaSelection = {
+  kind: 'page' | 'entity' | 'asset';
+  readableId: string;
+};
 
 export const MAX_SELECTED_HYPERMEDIA_RESOURCES = 24;
 const MAX_HYPERMEDIA_READABLE_ID_LENGTH = 120;
 const HYPERMEDIA_READABLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function hypermediaSelectionKey(selection: HypermediaSelection): string {
+  return `${selection.kind}:${selection.readableId}`;
+}
+
+export function selectedHypermediaResourceKeys(
+  resources: HypermediaResourceReference[],
+): Set<string> {
+  return new Set(resources.map(hypermediaResourceKey));
+}
 
 function resourceReferenceFromKey(key: string): HypermediaResourceReference | undefined {
   const separator = key.indexOf(':');

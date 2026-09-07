@@ -10,6 +10,14 @@ import type {
   HypermediaLayout,
   HypermediaLayoutResource,
 } from './hypermedia-layout';
+import { hypermediaLayoutResourceReference } from './hypermedia-layout';
+import { hypermediaSelectionKey } from './hypermedia-selection';
+
+export type SettledHypermediaViewport = {
+  focus: HypermediaResourceReference[];
+  discoverMoreEntities: boolean;
+  boundaryAnchor?: HypermediaResourceReference;
+};
 
 export const MAX_FOCUSED_RESOURCES = 24;
 export const MAX_EAGER_HYPERMEDIA_IMAGES = 12;
@@ -20,12 +28,6 @@ function viewportCenter(viewport: CanvasBounds): CanvasPoint {
 
 function squaredDistance(first: CanvasPoint, second: CanvasPoint): number {
   return (first.x - second.x) ** 2 + (first.y - second.y) ** 2;
-}
-
-function referenceFromResource(resource: HypermediaLayoutResource): HypermediaResourceReference {
-  return resource.kind === 'entity'
-    ? { kind: 'entity', readableId: resource.entity.readableId }
-    : { kind: 'asset', readableId: resource.asset.readableId };
 }
 
 export function focusedResources({
@@ -48,7 +50,7 @@ export function focusedResources({
         squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
         first.key.localeCompare(second.key),
     );
-  return ordered.slice(0, MAX_FOCUSED_RESOURCES).map(referenceFromResource);
+  return ordered.slice(0, MAX_FOCUSED_RESOURCES).map(hypermediaLayoutResourceReference);
 }
 
 export function viewportNearResourceBoundary(
@@ -75,7 +77,7 @@ export function nearestBoundaryResource(
       squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
       first.key.localeCompare(second.key),
   )[0];
-  return nearest ? referenceFromResource(nearest) : undefined;
+  return nearest ? hypermediaLayoutResourceReference(nearest) : undefined;
 }
 
 function pointNearViewport(point: CanvasPoint, viewport: CanvasBounds): boolean {
@@ -132,7 +134,7 @@ export function hypermediaLayoutInViewport({
     resources: layout.resources.filter(({ key }) => visibleResourceKeys.has(key)),
     pages: layout.pages.filter(
       ({ page, point, resourceKeys }) =>
-        `page:${page.readableId}` === selectedKey ||
+        hypermediaSelectionKey({ kind: 'page', readableId: page.readableId }) === selectedKey ||
         resourceKeys.some((key) => visibleResourceKeys.has(key)) ||
         (resourceKeys.length === 0 && pointNearViewport(point, viewport)),
     ),
@@ -148,6 +150,6 @@ export function eagerHypermediaImageKeys(layout: HypermediaLayout): Set<string> 
           : isEmbeddableAsset(resource.asset),
       )
       .slice(0, MAX_EAGER_HYPERMEDIA_IMAGES)
-      .map((resource) => hypermediaResourceKey(referenceFromResource(resource))),
+      .map((resource) => hypermediaResourceKey(hypermediaLayoutResourceReference(resource))),
   );
 }

@@ -1,8 +1,10 @@
 import { Link } from '@tanstack/react-router';
 import { Library } from 'lucide-react';
 import { cn } from '../../lib/class-names';
-import type { CalendarDateRange } from '../../lib/temporal-coverage';
-import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
+import type {
+  HypermediaPageProjection,
+  HypermediaResourceReference,
+} from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
   KnowledgeSidebarFooter,
@@ -14,31 +16,19 @@ import { HypermediaFilters } from './hypermedia-filters';
 
 export function HypermediaSidebar({
   profile,
+  projection,
   query,
-  dateRange,
-  temporalExtent,
-  hasMorePages,
-  pageReferencesTruncated,
-  pagesLoading,
-  pagesError,
   selectedResources,
+  onProjectionChange,
   onQueryApply,
-  onDateRangeApply,
-  onRetryPages,
   onClearSelectedResources,
 }: {
   profile: KnowledgeProfile;
+  projection: HypermediaPageProjection;
   query: string;
-  dateRange?: CalendarDateRange;
-  temporalExtent: HypermediaPages['temporalExtent'];
-  hasMorePages: boolean;
-  pageReferencesTruncated: boolean;
-  pagesLoading: boolean;
-  pagesError: Error | null;
   selectedResources: HypermediaResourceReference[];
+  onProjectionChange: (projection: HypermediaPageProjection) => void;
   onQueryApply: (query: string) => void;
-  onDateRangeApply: (dateRange?: CalendarDateRange) => void;
-  onRetryPages: () => void;
   onClearSelectedResources: () => void;
 }) {
   const { collapsed } = useKnowledgeWorkspace();
@@ -62,17 +52,11 @@ export function HypermediaSidebar({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
           <HypermediaFilters
+            projection={projection}
             query={query}
-            dateRange={dateRange}
-            temporalExtent={temporalExtent}
-            hasMorePages={hasMorePages}
-            pageReferencesTruncated={pageReferencesTruncated}
-            pagesLoading={pagesLoading}
-            pagesError={pagesError}
             selectedResources={selectedResources}
+            onProjectionChange={onProjectionChange}
             onQueryApply={onQueryApply}
-            onDateRangeApply={onDateRangeApply}
-            onRetryPages={onRetryPages}
             onClearSelectedResources={onClearSelectedResources}
           />
         </div>

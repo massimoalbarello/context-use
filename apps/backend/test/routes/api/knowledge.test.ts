@@ -569,7 +569,7 @@ Every observation changes the next action.`,
     );
     const allHypermediaPages = (await allHypermediaPagesResponse.json()) as {
       pages: Array<{ readableId: string }>;
-      hasMorePages: boolean;
+      nextOffset: number | null;
       resourceReferencesTruncated: boolean;
       temporalExtent: { start: number; end: number } | null;
     };
@@ -579,7 +579,7 @@ Every observation changes the next action.`,
       'operating-rhythm',
       'growth-playbook',
     ]);
-    expect(allHypermediaPages.hasMorePages).toBe(false);
+    expect(allHypermediaPages.nextOffset).toBeNull();
     expect(allHypermediaPages.resourceReferencesTruncated).toBe(false);
     expect(allHypermediaPages.temporalExtent).toEqual({
       start: temporalBoundsFrom('2024-11').start,
@@ -588,6 +588,33 @@ Every observation changes the next action.`,
     expect(allHypermediaPages.temporalExtent?.end).toBeGreaterThanOrEqual(
       temporalBoundsFrom('2025').start,
     );
+
+    const semanticProjectionResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/hypermedia/pages?projection=semantic&limit=10' }),
+    );
+    expect(semanticProjectionResponse.status).toBe(StatusMap.OK);
+    const semanticProjection = (await semanticProjectionResponse.json()) as {
+      pages: Array<{ readableId: string; temporalCoverage: string | null }>;
+    };
+    expect(semanticProjection.pages).toEqual([
+      expect.objectContaining({ readableId: 'alpha-principles', temporalCoverage: null }),
+    ]);
+
+    const temporalProjectionResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/hypermedia/pages?projection=temporal&limit=10' }),
+    );
+    expect(temporalProjectionResponse.status).toBe(StatusMap.OK);
+    const temporalProjection = (await temporalProjectionResponse.json()) as {
+      pages: Array<{ readableId: string; temporalCoverage: string | null }>;
+    };
+    expect(temporalProjection.pages.map(({ readableId }) => readableId)).toEqual([
+      'current-programme',
+      'operating-rhythm',
+      'growth-playbook',
+    ]);
+    expect(
+      temporalProjection.pages.every(({ temporalCoverage }) => temporalCoverage !== null),
+    ).toBe(true);
 
     const filteredHypermediaResponse = await app.handle(
       jsonRequest({
@@ -602,7 +629,7 @@ Every observation changes the next action.`,
         temporalCoverage: string | null;
         resources: Array<{ kind: string; readableId: string }>;
       }>;
-      hasMorePages: boolean;
+      nextOffset: number | null;
       resourceReferencesTruncated: boolean;
     };
     expectNoInternalResourceIds(filteredHypermedia);
@@ -615,8 +642,26 @@ Every observation changes the next action.`,
       kind: 'entity',
       readableId: 'temporal-subject',
     });
-    expect(filteredHypermedia.hasMorePages).toBe(true);
+    expect(filteredHypermedia.nextOffset).toBe(2);
     expect(filteredHypermedia.resourceReferencesTruncated).toBe(false);
+
+    const remainingFilteredHypermediaResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&limit=2&offset=2',
+      }),
+    );
+    expect(remainingFilteredHypermediaResponse.status).toBe(StatusMap.OK);
+    const remainingFilteredHypermedia = (await remainingFilteredHypermediaResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+      nextOffset: number | null;
+    };
+    expect(remainingFilteredHypermedia.pages.length).toBeGreaterThan(0);
+    expect(
+      remainingFilteredHypermedia.pages.some(({ readableId }) =>
+        filteredHypermedia.pages.some((page) => page.readableId === readableId),
+      ),
+    ).toBe(false);
 
     const intersectedHypermediaResponse = await app.handle(
       jsonRequest({
@@ -1164,7 +1209,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
         readableId: string;
         resources: Array<{ kind: string; readableId: string }>;
       }>;
-      hasMorePages: boolean;
+      nextOffset: number | null;
       resourceReferencesTruncated: boolean;
     };
     expect(denseHypermedia.pages).toHaveLength(1);
@@ -1176,7 +1221,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     expect(denseHypermedia.pages[0]?.resources).toHaveLength(
       EXPECTED_BOUNDED_HYPERMEDIA_REFERENCE_COUNT,
     );
-    expect(denseHypermedia.hasMorePages).toBe(false);
+    expect(denseHypermedia.nextOffset).toBeNull();
     expect(denseHypermedia.resourceReferencesTruncated).toBe(true);
 
     const profileReadResponse = await app.handle(jsonRequest({ method: 'GET', path: '/profile' }));

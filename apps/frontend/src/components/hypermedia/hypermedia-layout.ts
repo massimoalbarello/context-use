@@ -6,8 +6,10 @@ import type {
   HypermediaPage,
   HypermediaResource,
   HypermediaResourceNeighborhood,
+  HypermediaResourceReference,
 } from '../../queries/hypermedia';
 import { hypermediaResourceKey, hypermediaResourceReference } from '../../queries/hypermedia';
+import { hypermediaSelectionKey } from './hypermedia-selection';
 
 export type CanvasPoint = { x: number; y: number };
 export type CanvasBounds = CanvasPoint & { width: number; height: number };
@@ -42,6 +44,18 @@ export type HypermediaLayout = {
   bounds: CanvasBounds;
 };
 
+export function hypermediaLayoutResourceReference(
+  resource: HypermediaLayoutResource,
+): HypermediaResourceReference {
+  return resource.kind === 'entity'
+    ? { kind: 'entity', readableId: resource.entity.readableId }
+    : { kind: 'asset', readableId: resource.asset.readableId };
+}
+
+export function hypermediaLayoutResourceLabel(resource: HypermediaLayoutResource): string {
+  return resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
+}
+
 const CANVAS_PADDING = 160;
 const INITIAL_VIEW_WIDTH = 900;
 const INITIAL_VIEW_HEIGHT = 620;
@@ -69,6 +83,20 @@ function stableHash(value: string): number {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+}
+
+export function hypermediaPagePlacementRatio(readableId: string): number {
+  let hash = stableHash(readableId) ^ stableHash([...readableId].reverse().join(''));
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85ebca6b);
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2ae35);
+  hash ^= hash >>> 16;
+  return (hash >>> 0) / 0xffffffff;
+}
+
+export function hypermediaPageColorIndex(readableId: string): number {
+  return (stableHash(readableId) % 5) + 1;
 }
 
 function average(points: CanvasPoint[]): CanvasPoint {
@@ -326,7 +354,7 @@ function pageLayouts(
             y: Math.sin(index * GOLDEN_ANGLE) * 220 * Math.sqrt(index + 1),
           };
     const point = openPoint({
-      key: `page:${page.readableId}`,
+      key: hypermediaSelectionKey({ kind: 'page', readableId: page.readableId }),
       preferred,
       step: PAGE_SPIRAL_STEP,
       isAvailable: (candidate) => {
@@ -339,7 +367,7 @@ function pageLayouts(
       page,
       point,
       cloudPath: cloudPath([point, ...connectedPoints]),
-      colorIndex: (stableHash(page.readableId) % 5) + 1,
+      colorIndex: hypermediaPageColorIndex(page.readableId),
       resourceKeys,
     };
   });

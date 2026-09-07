@@ -3,6 +3,7 @@ import type { Entity } from '#models/entities/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 
 export type HypermediaResourceKind = 'entity' | 'asset';
+export type HypermediaPageProjection = 'semantic' | 'temporal';
 
 export type HypermediaResourceReference = {
   kind: HypermediaResourceKind;
@@ -41,7 +42,7 @@ export type HypermediaTemporalExtent = {
 
 export type HypermediaPages = {
   pages: HypermediaPage[];
-  hasMorePages: boolean;
+  nextOffset: number | null;
   resourceReferencesTruncated: boolean;
   temporalExtent: HypermediaTemporalExtent | null;
 };

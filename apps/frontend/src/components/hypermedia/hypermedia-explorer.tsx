@@ -1,18 +1,22 @@
 import { useQueries } from '@tanstack/react-query';
+import { LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useEntities } from '../../lib/hooks/use-entities';
+import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import {
   type HypermediaPage,
+  type HypermediaPageProjection,
+  type HypermediaPages,
   type HypermediaResourceReference,
   hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
 } from '../../queries/hypermedia';
-import {
-  HypermediaCanvas,
-  type HypermediaSelection,
-  type SettledHypermediaViewport,
-} from './hypermedia-canvas';
+import { Button } from '../ui/button';
+import { HypermediaCanvas } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
+import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
+import { HypermediaTemporalCanvas } from './hypermedia-temporal-canvas';
+import type { SettledHypermediaViewport } from './hypermedia-visibility';
 
 type NeighborhoodRequest = {
   anchor: HypermediaResourceReference;
@@ -32,17 +36,39 @@ function resourceSelection(
 }
 
 export function HypermediaExplorer({
+  projection,
   selfReadableId,
   selection,
   selectedResources,
   pages,
+  temporalExtent,
+  dateRange,
+  pagesLoading,
+  pagesError,
+  hasNextPage,
+  pageReferencesTruncated,
+  isFetchingNextPage,
   onSelect,
+  onDateRangeApply,
+  onRetryPages,
+  onDiscoverMorePages,
 }: {
+  projection: HypermediaPageProjection;
   selfReadableId: string;
   selection?: HypermediaSelection;
   selectedResources: HypermediaResourceReference[];
   pages: HypermediaPage[];
+  temporalExtent: HypermediaPages['temporalExtent'];
+  dateRange?: CalendarDateRange;
+  pagesLoading: boolean;
+  pagesError: Error | null;
+  hasNextPage: boolean;
+  pageReferencesTruncated: boolean;
+  isFetchingNextPage: boolean;
   onSelect: (selection: HypermediaSelection) => void;
+  onDateRangeApply: (dateRange?: CalendarDateRange) => void;
+  onRetryPages: () => void;
+  onDiscoverMorePages: () => void;
 }) {
   const self = useMemo<HypermediaResourceReference>(
     () => ({ kind: 'entity', readableId: selfReadableId }),
@@ -152,7 +178,7 @@ export function HypermediaExplorer({
 
   const neighborhoodError =
     neighborhoodQueries.find(({ error }) => error)?.error ?? entityError ?? null;
-  const selectedKey = selection ? `${selection.kind}:${selection.readableId}` : undefined;
+  const selectedKey = selection ? hypermediaSelectionKey(selection) : undefined;
   const requestedAnchorKeys = new Set(
     neighborhoodRequests.map(({ anchor }) => hypermediaResourceKey(anchor)),
   );
@@ -163,30 +189,118 @@ export function HypermediaExplorer({
 
   return (
     <div className="relative size-full min-h-[28rem]">
-      <HypermediaCanvas
-        resources={resources}
-        pages={pages}
-        selectedResources={selectedResources}
-        selectedKey={selectedKey}
-        onSelect={onSelect}
-        onViewportSettled={handleViewportSettled}
-        canExplore={canExplore}
-        isInitialLoading={
-          resources.length === 0 &&
-          (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
-        }
-        neighborhoodError={neighborhoodError}
-        onRetryNeighborhood={() => {
-          if (entityError) {
-            void refetchEntities();
+      {projection === 'semantic' ? (
+        <HypermediaCanvas
+          resources={resources}
+          pages={pages}
+          selectedResources={selectedResources}
+          selectedKey={selectedKey}
+          onSelect={onSelect}
+          onViewportSettled={handleViewportSettled}
+          canExplore={canExplore}
+          isInitialLoading={
+            resources.length === 0 &&
+            (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
           }
-          for (const result of neighborhoodQueries) {
-            if (result.error) {
-              void result.refetch();
+          neighborhoodError={neighborhoodError}
+          onRetryNeighborhood={() => {
+            if (entityError) {
+              void refetchEntities();
             }
-          }
-        }}
+            for (const result of neighborhoodQueries) {
+              if (result.error) {
+                void result.refetch();
+              }
+            }
+          }}
+        />
+      ) : (
+        <HypermediaTemporalCanvas
+          resources={resources}
+          pages={pages}
+          extent={temporalExtent}
+          dateRange={dateRange}
+          selectedResources={selectedResources}
+          selectedKey={selectedKey}
+          onSelect={onSelect}
+          onDateRangeApply={onDateRangeApply}
+          onViewportSettled={handleViewportSettled}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onDiscoverMorePages={onDiscoverMorePages}
+        />
+      )}
+      <HypermediaPageStatus
+        projection={projection}
+        pageCount={pages.length}
+        loading={pagesLoading}
+        error={pagesError}
+        hasNextPage={hasNextPage}
+        referencesTruncated={pageReferencesTruncated}
+        onRetry={onRetryPages}
+        onLoadMore={onDiscoverMorePages}
       />
+    </div>
+  );
+}
+
+export function HypermediaPageStatus({
+  projection,
+  pageCount,
+  loading,
+  error,
+  hasNextPage,
+  referencesTruncated,
+  onRetry,
+  onLoadMore,
+}: {
+  projection: HypermediaPageProjection;
+  pageCount: number;
+  loading: boolean;
+  error: Error | null;
+  hasNextPage: boolean;
+  referencesTruncated: boolean;
+  onRetry: () => void;
+  onLoadMore: () => void;
+}) {
+  const canLoadMore = projection === 'semantic' && hasNextPage;
+  if (!loading && !error && pageCount > 0 && !canLoadMore && !referencesTruncated) {
+    return null;
+  }
+  let message: string | undefined;
+  if (error) {
+    message = `Couldn’t load ${projection} pages.`;
+  } else if (loading) {
+    message = `Loading ${projection} pages…`;
+  } else if (pageCount === 0) {
+    message = `No ${projection} pages match this view.`;
+  } else if (canLoadMore && referencesTruncated) {
+    message = 'More pages are available, and some page connections are hidden.';
+  } else if (canLoadMore) {
+    message = 'More pages are available.';
+  } else if (referencesTruncated) {
+    message = 'Some page connections are hidden.';
+  }
+  if (!message) {
+    return null;
+  }
+  return (
+    <div
+      className="absolute right-4 bottom-4 z-20 flex items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur"
+      role={error ? 'alert' : 'status'}
+    >
+      {loading && <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />}
+      <span>{message}</span>
+      {error && (
+        <Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={onRetry}>
+          Try again
+        </Button>
+      )}
+      {!loading && !error && canLoadMore && (
+        <Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={onLoadMore}>
+          Load more pages
+        </Button>
+      )}
     </div>
   );
 }

@@ -80,7 +80,9 @@ export function createHypermediaController({
           ownerId: user.id,
           resources,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
+          offset: query.offset ?? 0,
           query: query.query,
+          projection: query.projection,
           temporalBounds,
         });
         return status(StatusMap.OK, hypermediaPagesResponse(pages));
