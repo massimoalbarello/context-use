@@ -70,6 +70,7 @@ export type TemporalHypermediaLayout = {
   timelineStartY: number;
   timelineEndY: number;
   pageLoadBoundaryY: number | null;
+  hasOverlappingPages: boolean;
   extent: TemporalExtent;
   resources: TemporalHypermediaResource[];
   pages: TemporalHypermediaPage[];
@@ -277,6 +278,17 @@ function pageOverlapScore(bounds: Bounds, occupiedPageBounds: Bounds[]): number 
   );
 }
 
+function hasOverlappingPages(pages: TemporalHypermediaPage[]): boolean {
+  for (const [index, page] of pages.entries()) {
+    for (const other of pages.slice(index + 1)) {
+      if (pageOverlapArea(page.bounds, other.bounds) > 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function openPageCenter({
   candidate,
   occupiedPageBounds,
@@ -473,6 +485,7 @@ export function buildTemporalHypermediaLayout({
     timelineStartY: TIMELINE_START_Y,
     timelineEndY,
     pageLoadBoundaryY,
+    hasOverlappingPages: hasOverlappingPages(laidOutPages),
     extent,
     resources: columns,
     pages: laidOutPages,

@@ -12,6 +12,7 @@ afterEach(cleanup);
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const PAGE_DISCOVERY_SCROLL_TOP = 10_000;
+const OVERLAP_NOTE = 'Overlapping clouds mark pages on the same or nearby dates';
 const self: HypermediaLayoutResource = {
   key: 'entity:self',
   kind: 'entity',
@@ -97,4 +98,39 @@ test('temporal canvas keeps resource filtering and page preview selection access
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'page', readableId: 'launch-period' });
   expect(screen.queryByText('Scroll through time')).toBeNull();
   expect(screen.queryByText('Entities and assets')).toBeNull();
+  expect(screen.queryByRole('note', { name: OVERLAP_NOTE })).toBeNull();
+});
+
+test('temporal canvas explains unavoidable page overlap', () => {
+  const overlappingPages = ['first-page', 'second-page'].map(
+    (readableId): HypermediaPage => ({
+      ...temporalPage,
+      readableId,
+      title: readableId,
+      temporalCoverage: '2025-08-25',
+    }),
+  );
+
+  render(
+    <KnowledgeWorkspace>
+      <div />
+      <HypermediaTemporalCanvas
+        resources={[self]}
+        pages={overlappingPages}
+        extent={{
+          start: Date.parse('2025-01-01T00:00:00.000Z'),
+          end: Date.parse('2025-12-31T00:00:00.000Z'),
+        }}
+        selectedResources={[]}
+        onSelect={() => undefined}
+        onDateRangeApply={() => undefined}
+        onViewportSettled={() => undefined}
+        hasNextPage={false}
+        isFetchingNextPage={false}
+        onDiscoverMorePages={() => undefined}
+      />
+    </KnowledgeWorkspace>,
+  );
+
+  expect(screen.getByRole('note', { name: OVERLAP_NOTE })).toBeTruthy();
 });

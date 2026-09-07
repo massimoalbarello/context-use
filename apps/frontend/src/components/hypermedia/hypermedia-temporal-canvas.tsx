@@ -1,12 +1,13 @@
 // biome-ignore-all lint/style/noMagicNumbers: Temporal canvas geometry and interaction thresholds are visual constants.
 // biome-ignore-all lint/complexity/useMaxParams: Small render and event callbacks remain clearer inline.
 
-import { FileText } from 'lucide-react';
+import { FileText, Layers2 } from 'lucide-react';
 import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '../../lib/class-names';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
   type HypermediaSelection,
@@ -36,6 +37,7 @@ const RESOURCE_DISCOVERY_DISTANCE = 360;
 const PAGE_DISCOVERY_DISTANCE = 360;
 const RESOURCE_HEADER_HEIGHT = 96;
 const PAGE_FADE_DISTANCE = 96;
+const OVERLAPPING_PAGES_NOTE = 'Overlapping clouds mark pages on the same or nearby dates';
 
 type TemporalPageViewport = { scrollTop: number; height: number };
 
@@ -427,6 +429,17 @@ export function HypermediaTemporalCanvas({
         sidebarCollapsed={sidebarCollapsed}
         position="below-resource-headers"
       />
+      {layout.hasOverlappingPages && (
+        <Badge
+          variant="outline"
+          role="note"
+          aria-label={OVERLAPPING_PAGES_NOTE}
+          className="pointer-events-none absolute right-4 bottom-4 z-30 h-7 gap-1.5 bg-card/95 px-2.5 text-muted-foreground shadow-sm backdrop-blur"
+        >
+          <Layers2 data-icon="inline-start" aria-hidden="true" />
+          {OVERLAPPING_PAGES_NOTE}
+        </Badge>
+      )}
     </section>
   );
 }

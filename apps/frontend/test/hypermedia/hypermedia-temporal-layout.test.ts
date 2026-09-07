@@ -147,6 +147,7 @@ describe('temporal Hypermedia side projection', () => {
     );
 
     expect(pageDates.every((date) => date >= '2025-03-01' && date <= '2025-08-31')).toBe(true);
+    expect(layout.hasOverlappingPages).toBe(false);
     expect(layout.pageLoadBoundaryY).toBe(
       Math.max(...layout.pages.map(({ bounds }) => bounds.bottom)),
     );
@@ -196,6 +197,7 @@ describe('temporal Hypermedia side projection', () => {
       { from: '2025-08-25', to: '2025-08-25' },
       { from: '2025-08-25', to: '2025-08-25' },
     ]);
+    expect(layout.hasOverlappingPages).toBe(true);
   });
 
   test('maps vertical scrolling to a reverse-chronological date interval', () => {
