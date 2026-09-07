@@ -14,7 +14,6 @@ import {
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import { entityInitial } from '../entities/entity-link';
-import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { Button } from '../ui/button';
 import {
   buildHypermediaLayout,
@@ -28,11 +27,7 @@ import {
   spotlightHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
-import {
-  type HypermediaSelection,
-  hypermediaSelectionKey,
-  selectedHypermediaResourceKeys,
-} from './hypermedia-selection';
+import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import {
   HypermediaHoverPreview,
   HypermediaPageCloud,
@@ -40,8 +35,8 @@ import {
   HypermediaPageLink,
   type HypermediaPreview,
   type HypermediaViewProps,
-  hypermediaPreviewKey,
   shortHypermediaLabel,
+  useHypermediaViewState,
 } from './hypermedia-view';
 import {
   eagerHypermediaImageKeys,
@@ -349,15 +344,11 @@ export function HypermediaCanvas({
   neighborhoodError: Error | null;
   onRetryNeighborhood: () => void;
 }) {
-  const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
-  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox>(() =>
     initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
   );
-  const selectedResourceKeys = useMemo(
-    () => selectedHypermediaResourceKeys(selectedResources),
-    [selectedResources],
-  );
+  const { activeKey, clearPreview, preview, selectedResourceKeys, setPreview } =
+    useHypermediaViewState({ selectedResources, selectedKey });
   const spotlightActive = selectedResources.length > 0;
   const layout = useMemo(() => buildHypermediaLayout(resources, pages), [pages, resources]);
   const viewBoxRef = useRef(viewBox);
@@ -375,7 +366,6 @@ export function HypermediaCanvas({
     moved: boolean;
     cloudReadableId?: string;
   } | null>(null);
-  const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
   const visibleLayout = useMemo(
     () =>
       spotlightActive
@@ -571,10 +561,6 @@ export function HypermediaCanvas({
     }
   }
 
-  const clearPreview = useCallback((key: string) => {
-    setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
-  }, []);
-
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
@@ -650,12 +636,7 @@ export function HypermediaCanvas({
         </div>
       )}
 
-      <HypermediaHoverPreview
-        preview={preview}
-        selectedKey={selectedKey}
-        sidebarCollapsed={sidebarCollapsed}
-        position="canvas-top"
-      />
+      <HypermediaHoverPreview preview={preview} selectedKey={selectedKey} className="top-4" />
     </section>
   );
 }

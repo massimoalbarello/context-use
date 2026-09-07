@@ -6,14 +6,9 @@ import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from 
 import { cn } from '../../lib/class-names';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
-import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import {
-  type HypermediaSelection,
-  hypermediaSelectionKey,
-  selectedHypermediaResourceKeys,
-} from './hypermedia-selection';
+import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import {
   buildTemporalHypermediaLayout,
   type TemporalHypermediaResource,
@@ -25,10 +20,9 @@ import {
   HypermediaPageCloud,
   HypermediaPageLabel,
   HypermediaPageLink,
-  type HypermediaPreview,
   HypermediaResourceCardContent,
   type HypermediaViewProps,
-  hypermediaPreviewKey,
+  useHypermediaViewState,
 } from './hypermedia-view';
 
 const RANGE_SETTLE_MS = 280;
@@ -156,7 +150,6 @@ export function HypermediaTemporalCanvas({
   isFetchingNextPage: boolean;
   onDiscoverMorePages: () => void;
 }) {
-  const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const rangeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resourceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -164,22 +157,17 @@ export function HypermediaTemporalCanvas({
   const lastScrollLeft = useRef<number | null>(null);
   const initializedView = useRef<string | null>(null);
   const pageDiscoveryPending = useRef(false);
-  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
   const [pageViewport, setPageViewport] = useState<TemporalPageViewport | null>(null);
   const layout = useMemo(
     () => (extent ? buildTemporalHypermediaLayout({ resources, pages, extent }) : null),
     [extent, pages, resources],
   );
-  const selectedResourceKeys = useMemo(
-    () => selectedHypermediaResourceKeys(selectedResources),
-    [selectedResources],
-  );
+  const { activeKey, clearPreview, preview, selectedResourceKeys, setPreview } =
+    useHypermediaViewState({ selectedResources, selectedKey });
   const resourceByKey = useMemo(
     () => new Map(layout?.resources.map((resource) => [resource.key, resource]) ?? []),
     [layout],
   );
-  const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
-
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!layout || !scroller) {
@@ -301,10 +289,6 @@ export function HypermediaTemporalCanvas({
     rangeTimer.current = setTimeout(() => onDateRangeApply(nextRange), RANGE_SETTLE_MS);
   }
 
-  const clearPreview = useCallback((key: string) => {
-    setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
-  }, []);
-
   if (!layout) {
     return (
       <section
@@ -423,12 +407,7 @@ export function HypermediaTemporalCanvas({
           />
         </div>
       </section>
-      <HypermediaHoverPreview
-        preview={preview}
-        selectedKey={selectedKey}
-        sidebarCollapsed={sidebarCollapsed}
-        position="below-resource-headers"
-      />
+      <HypermediaHoverPreview preview={preview} selectedKey={selectedKey} className="top-28" />
       {layout.hasOverlappingPages && (
         <Badge
           variant="outline"

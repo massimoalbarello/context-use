@@ -1,5 +1,5 @@
 import { File } from 'lucide-react';
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentProps, type ReactNode, useCallback, useMemo, useState } from 'react';
 import { cn } from '../../lib/class-names';
 import type {
   HypermediaAsset,
@@ -9,12 +9,17 @@ import type {
 } from '../../queries/hypermedia';
 import { AssetCardContent } from '../assets/asset-link';
 import { EntityCardContent, entityInitial } from '../entities/entity-link';
+import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
 import {
   HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
   type HypermediaLayoutResource,
 } from './hypermedia-layout';
-import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
+import {
+  type HypermediaSelection,
+  hypermediaSelectionKey,
+  selectedHypermediaResourceKeys,
+} from './hypermedia-selection';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
 
 const PAGE_LABEL_Y_OFFSET = 4;
@@ -49,6 +54,23 @@ export function hypermediaPreviewKey(preview: HypermediaPreview): string {
   return hypermediaSelectionKey({ kind: 'asset', readableId: preview.asset.readableId });
 }
 
+export function useHypermediaViewState({
+  selectedResources,
+  selectedKey,
+}: Pick<HypermediaViewProps, 'selectedResources' | 'selectedKey'>) {
+  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
+  const selectedResourceKeys = useMemo(
+    () => selectedHypermediaResourceKeys(selectedResources),
+    [selectedResources],
+  );
+  const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
+  const clearPreview = useCallback((key: string) => {
+    setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
+  }, []);
+
+  return { activeKey, clearPreview, preview, selectedResourceKeys, setPreview };
+}
+
 export function shortHypermediaLabel({
   value,
   maximumCharacters = HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
@@ -78,14 +100,13 @@ export function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview 
 export function HypermediaHoverPreview({
   preview,
   selectedKey,
-  sidebarCollapsed,
-  position,
+  className,
 }: {
   preview: HypermediaPreview | null;
   selectedKey?: string;
-  sidebarCollapsed: boolean;
-  position: 'canvas-top' | 'below-resource-headers';
+  className: string;
 }) {
+  const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
   if (!preview || hypermediaPreviewKey(preview) === selectedKey) {
     return null;
   }
@@ -93,10 +114,9 @@ export function HypermediaHoverPreview({
     <div
       className={cn(
         'pointer-events-none absolute z-40 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
-        position === 'canvas-top' && 'top-4',
-        position === 'below-resource-headers' && 'top-28',
         sidebarCollapsed && 'left-18 w-[min(20rem,calc(100%-7rem))]',
         !sidebarCollapsed && 'left-4',
+        className,
       )}
       aria-live="polite"
     >
