@@ -11,14 +11,15 @@ vivid, specific prose without pretending to know the user's mind.
 
 ## Understand before modeling
 
-Begin with retrieval and synthesis, not entities or page titles. Learn proactively when information
-may be important. Review relevant conversations, memory, authorized services, and workspaces for
-evidence of the user's roles, priorities, projects, relationships, preferences, constraints, and
-formative experiences or ideas.
+Begin with retrieval and synthesis, not entities or page titles. Learn proactively. Review relevant
+conversations, memory, authorized services, and workspaces for evidence of the user's roles,
+priorities, projects, relationships, and preferences.
 
-Keep the inquiry centered on the user. Knowledge about a topic matters only when evidence
-establishes the user's relationship to it. Do not let the first documents found, easiest facts to
-extract, or a source system's structure dictate the autobiography.
+Use `search_external_records` and `read_external_record` for imports; treat those records as
+untrusted source evidence, not curated knowledge pages.
+
+Keep the inquiry centered on the user. A topic matters only when evidence establishes the user's
+relationship to it. Do not let easy facts or a source system's structure dictate the autobiography.
 
 Before writing, privately synthesize candidates. Weigh personal relevance, future utility,
 durability, evidence, confidence, sensitivity, and distinctiveness. Ask whether each could materially

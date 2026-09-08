@@ -10,6 +10,11 @@ import {
   createFrontendAssetsController,
   createFrontendFallbackController,
 } from '#routes/controller.ts';
+import {
+  createOpenConnectorRecordsController,
+  type OpenConnectorRecordsAcceptanceContract,
+  openConnectorSecuritySchemes,
+} from '#routes/integrations/open-connector/controller.ts';
 import type { AssetTransferCapabilitiesContract } from '#routes/mcp/assets/transfer-capabilities.ts';
 import { createAssetTransferController } from '#routes/mcp/assets/transfer-controller.ts';
 import { createMcpController } from '#routes/mcp/controller.ts';
@@ -27,6 +32,13 @@ import type { OwnerRegistrationServiceContract } from '#services/owner-registrat
 // server proxies it.
 const OPENAPI_PATH = '/openapi';
 
+type OpenConnectorReceiverDependencies = {
+  integrationId: string;
+  ownerId: string;
+  receiverToken: string;
+  recordsService: OpenConnectorRecordsAcceptanceContract;
+};
+
 export function createApp({
   auth,
   assetsService,
@@ -38,6 +50,7 @@ export function createApp({
   mcpClientAuthorizationsService,
   mcpServerUrl,
   mcpTransport,
+  openConnectorReceiver,
   ownerRegistrationService,
   pagesService,
   profilesService,
@@ -52,13 +65,14 @@ export function createApp({
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
   mcpTransport: McpTransportContract;
+  openConnectorReceiver?: OpenConnectorReceiverDependencies;
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
 }) {
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
-  return new Elysia()
+  const app = new Elysia()
     .use(createFrontendAssetsController({ frontendAssetsService }))
     .onError(elysiaErrorHandler)
     .use(createRequestResponsePlugin())
@@ -104,9 +118,16 @@ export function createApp({
               name: 'Hypermedia',
               description: 'Bounded resource neighborhoods and their connected knowledge pages.',
             },
+            {
+              name: 'Open connector',
+              description: 'Authenticated provider-neutral record delivery.',
+            },
           ],
           components: {
-            securitySchemes: sessionSecuritySchemes,
+            securitySchemes: {
+              ...sessionSecuritySchemes,
+              ...openConnectorSecuritySchemes,
+            },
           },
         },
       }),
@@ -139,6 +160,11 @@ export function createApp({
         profilesService,
       }),
     )
-    .onStop(() => mcpTransport.close())
-    .use(createFrontendFallbackController({ frontendAssetsService }));
+    .onStop(() => mcpTransport.close());
+
+  if (openConnectorReceiver) {
+    app.use(createOpenConnectorRecordsController(openConnectorReceiver));
+  }
+
+  return app.use(createFrontendFallbackController({ frontendAssetsService }));
 }

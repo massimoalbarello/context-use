@@ -3,6 +3,7 @@ import type { McpTransportContract } from '#lib/mcp/transport.ts';
 import type { AssetTransferCapabilitiesContract } from '#routes/mcp/assets/transfer-capabilities.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
+import type { OpenConnectorRecordsRetrievalServiceContract } from '#services/open-connector/service.ts';
 
 function unexpectedCall(): never {
   throw new Error('Unexpected MCP dependency call');
@@ -28,6 +29,11 @@ export const unusedMcpTransport: McpTransportContract = {
 export const unusedKnowledgeProfilesService: KnowledgeProfilesServiceContract = {
   create: unexpectedCall,
   find: unexpectedCall,
+};
+
+export const unusedOpenConnectorRecordsService: OpenConnectorRecordsRetrievalServiceContract = {
+  find: unexpectedCall,
+  search: unexpectedCall,
 };
 
 export const unusedAssetTransferCapabilities: AssetTransferCapabilitiesContract = {

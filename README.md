@@ -14,6 +14,10 @@ Open [http://localhost:5173](http://localhost:5173). The first person to registe
 the owner of the instance. Context Use generates its auth secret inside the configured `data/`
 directory; set `BETTER_AUTH_SECRET` only when you need to supply your own.
 
+To receive provider-neutral records from open-connector, configure the trusted owner mapping and
+register this server as a receiver. See [Open-connector record sync](docs/open-connector.md) for the
+setup, public HTTPS tunnel, initial backfill, and recovery procedure.
+
 ## Deploy it on nibrun
 
 [nibrun](https://github.com/ilbertt/nibrun) runs Context Use as one small server with an HTTPS URL
