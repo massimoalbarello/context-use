@@ -84,7 +84,7 @@ function ResourceDot({
         onActivate();
       }}
     >
-      <HypermediaResourceNode point={resource.point} label={label} active={active} />
+      <HypermediaResourceNode point={resource.point} resource={resource} active={active} />
     </a>
   );
 }

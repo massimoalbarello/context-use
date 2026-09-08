@@ -1,4 +1,6 @@
-import { type ComponentProps, type ReactNode, useCallback, useMemo, useState } from 'react';
+import { FileText } from 'lucide-react';
+import { type ComponentProps, type ReactNode, useCallback, useId, useMemo, useState } from 'react';
+import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import type {
   HypermediaAsset,
@@ -33,12 +35,151 @@ const HYPERMEDIA_RESOURCE_LABEL_WIDTH = 120;
 const HYPERMEDIA_RESOURCE_LABEL_HEIGHT = 42;
 const HYPERMEDIA_RESOURCE_INITIAL_BASELINE_OFFSET = 6;
 const HYPERMEDIA_RESOURCE_LABEL_MAX_CHARACTERS = 20;
+const HYPERMEDIA_ASSET_NODE_CORNER_RADIUS = 10;
+const HYPERMEDIA_RESOURCE_ICON_SIZE = 22;
 
 function hypermediaResourceNodeEmphasis(active: boolean): {
-  radiusOffset: number;
+  sizeOffset: number;
   strokeWidth: number;
 } {
-  return active ? { radiusOffset: 5, strokeWidth: 5 } : { radiusOffset: 1, strokeWidth: 2 };
+  return active ? { sizeOffset: 5, strokeWidth: 5 } : { sizeOffset: 1, strokeWidth: 2 };
+}
+
+type HypermediaResourceNodeFallback = HypermediaResourceReference & { label: string };
+type HypermediaResourceNodeData = HypermediaLayoutResource | HypermediaResourceNodeFallback;
+type HypermediaResourceNodeIdentity = {
+  kind: HypermediaResourceReference['kind'];
+  label: string;
+  imageUrl?: string;
+};
+
+function hypermediaResourceNodeIdentity(
+  resource: HypermediaResourceNodeData,
+): HypermediaResourceNodeIdentity {
+  if (resource.kind === 'entity') {
+    return 'entity' in resource
+      ? {
+          kind: resource.kind,
+          label: resource.entity.name,
+          imageUrl: resource.entity.image
+            ? assetContentUrl(resource.entity.image.readableId)
+            : undefined,
+        }
+      : { kind: resource.kind, label: resource.label };
+  }
+  return 'asset' in resource
+    ? {
+        kind: resource.kind,
+        label: resource.asset.name,
+        imageUrl: isEmbeddableAsset(resource.asset)
+          ? assetContentUrl(resource.asset.readableId)
+          : undefined,
+      }
+    : { kind: resource.kind, label: resource.label };
+}
+
+function HypermediaResourceShape({
+  kind,
+  point,
+  sizeOffset = 0,
+  className,
+  strokeWidth,
+}: {
+  kind: HypermediaResourceReference['kind'];
+  point: { x: number; y: number };
+  sizeOffset?: number;
+  className?: string;
+  strokeWidth?: number;
+}) {
+  const radius = HYPERMEDIA_RESOURCE_NODE_RADIUS + sizeOffset;
+  return kind === 'entity' ? (
+    <circle
+      cx={point.x}
+      cy={point.y}
+      r={radius}
+      className={className}
+      strokeWidth={strokeWidth}
+      vectorEffect="non-scaling-stroke"
+    />
+  ) : (
+    <rect
+      x={point.x - radius}
+      y={point.y - radius}
+      width={radius * 2}
+      height={radius * 2}
+      rx={HYPERMEDIA_ASSET_NODE_CORNER_RADIUS + sizeOffset}
+      className={className}
+      strokeWidth={strokeWidth}
+      vectorEffect="non-scaling-stroke"
+    />
+  );
+}
+
+function HypermediaResourceMark({
+  identity,
+  point,
+  active,
+}: {
+  identity: HypermediaResourceNodeIdentity;
+  point: { x: number; y: number };
+  active: boolean;
+}) {
+  const clipPathId = `hypermedia-resource-${useId().replaceAll(':', '')}`;
+  const emphasis = hypermediaResourceNodeEmphasis(active);
+  const iconOffset = HYPERMEDIA_RESOURCE_ICON_SIZE / 2;
+  return (
+    <g data-hypermedia-resource-kind={identity.kind}>
+      <HypermediaResourceShape
+        kind={identity.kind}
+        point={point}
+        sizeOffset={emphasis.sizeOffset}
+        className={cn(
+          'fill-card stroke-border transition-[r,x,y,width,height,rx,stroke-width] motion-reduce:transition-none',
+          active && 'stroke-foreground',
+        )}
+        strokeWidth={emphasis.strokeWidth}
+      />
+      <HypermediaResourceShape kind={identity.kind} point={point} className="fill-card" />
+      {identity.kind === 'entity' ? (
+        <text
+          x={point.x}
+          y={point.y + HYPERMEDIA_RESOURCE_INITIAL_BASELINE_OFFSET}
+          textAnchor="middle"
+          className="fill-foreground font-semibold text-lg uppercase"
+        >
+          {entityInitial(identity.label)}
+        </text>
+      ) : (
+        <FileText
+          x={point.x - iconOffset}
+          y={point.y - iconOffset}
+          width={HYPERMEDIA_RESOURCE_ICON_SIZE}
+          height={HYPERMEDIA_RESOURCE_ICON_SIZE}
+          className="text-muted-foreground"
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+      )}
+      {identity.imageUrl && (
+        <>
+          <defs>
+            <clipPath id={clipPathId}>
+              <HypermediaResourceShape kind={identity.kind} point={point} />
+            </clipPath>
+          </defs>
+          <image
+            href={identity.imageUrl}
+            x={point.x - HYPERMEDIA_RESOURCE_NODE_RADIUS}
+            y={point.y - HYPERMEDIA_RESOURCE_NODE_RADIUS}
+            width={HYPERMEDIA_RESOURCE_NODE_RADIUS * 2}
+            height={HYPERMEDIA_RESOURCE_NODE_RADIUS * 2}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#${clipPathId})`}
+          />
+        </>
+      )}
+    </g>
+  );
 }
 
 export type HypermediaPreview =
@@ -96,42 +237,23 @@ export function shortHypermediaLabel({
 
 export function HypermediaResourceNode({
   point,
-  label,
+  resource,
   active,
   labelWidth = HYPERMEDIA_RESOURCE_LABEL_WIDTH,
 }: {
   point: { x: number; y: number };
-  label: string;
+  resource: HypermediaResourceNodeData;
   active: boolean;
   labelWidth?: number;
 }) {
-  const emphasis = hypermediaResourceNodeEmphasis(active);
-  const outerRadius = HYPERMEDIA_RESOURCE_NODE_RADIUS + emphasis.radiusOffset;
+  const identity = hypermediaResourceNodeIdentity(resource);
   const displayLabel = shortHypermediaLabel({
-    value: label,
+    value: identity.label,
     maximumCharacters: HYPERMEDIA_RESOURCE_LABEL_MAX_CHARACTERS,
   });
   return (
     <g>
-      <circle
-        cx={point.x}
-        cy={point.y}
-        r={outerRadius}
-        className={cn(
-          'fill-card stroke-border transition-[r,stroke-width] motion-reduce:transition-none',
-          active && 'stroke-foreground',
-        )}
-        strokeWidth={emphasis.strokeWidth}
-        vectorEffect="non-scaling-stroke"
-      />
-      <text
-        x={point.x}
-        y={point.y + HYPERMEDIA_RESOURCE_INITIAL_BASELINE_OFFSET}
-        textAnchor="middle"
-        className="fill-foreground font-semibold text-lg uppercase"
-      >
-        {entityInitial(label)}
-      </text>
+      <HypermediaResourceMark identity={identity} point={point} active={active} />
       <foreignObject
         x={point.x - labelWidth / 2}
         y={point.y + HYPERMEDIA_RESOURCE_NODE_RADIUS + 10}
