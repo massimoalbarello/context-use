@@ -1,13 +1,13 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { entitiesQueryOptions, entitySuggestionsQueryOptions } from '../../queries/entities';
 
-export function useEntities({ enabled = true }: { enabled?: boolean } = {}) {
-  const query = useInfiniteQuery({ ...entitiesQueryOptions, enabled });
+export function useEntities({ enabled = true, query }: { enabled?: boolean; query?: string } = {}) {
+  const result = useInfiniteQuery({ ...entitiesQueryOptions(query), enabled });
 
   return {
-    ...query,
-    entities: query.data?.pages.flatMap((page) => page.items) ?? [],
-    total: query.data?.pages[0]?.total ?? 0,
+    ...result,
+    entities: result.data?.pages.flatMap((page) => page.items) ?? [],
+    total: result.data?.pages[0]?.total ?? 0,
   };
 }
 

@@ -131,7 +131,7 @@ export const Route = createFileRoute('/hypermedia')({
         hypermediaResourceNeighborhoodQueryOptions({ anchor: self, kinds: deps.kinds }),
       ),
       deps.kinds.includes('entity')
-        ? context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions)
+        ? context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions())
         : Promise.resolve(),
       context.queryClient.ensureInfiniteQueryData(
         hypermediaPagesQueryOptions({

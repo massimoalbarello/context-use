@@ -7,12 +7,12 @@ import {
   imageAssetSuggestionsQueryOptions,
 } from '../../queries/assets';
 
-export function useAssets() {
-  const query = useInfiniteQuery(assetsQueryOptions);
+export function useAssets(query?: string) {
+  const result = useInfiniteQuery(assetsQueryOptions(query));
   return {
-    ...query,
-    assets: query.data?.pages.flatMap((page) => page.items) ?? [],
-    total: query.data?.pages[0]?.total ?? 0,
+    ...result,
+    assets: result.data?.pages.flatMap((page) => page.items) ?? [],
+    total: result.data?.pages[0]?.total ?? 0,
   };
 }
 

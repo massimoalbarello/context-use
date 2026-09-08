@@ -30,18 +30,23 @@ export const entityPreviewsQueryKey = [...entitiesQueryKey, 'preview'] as const;
 export const entitySuggestionsQueryKey = [...entitiesQueryKey, 'suggestions'] as const;
 const PREVIEW_RELATIONSHIP_LIMIT = 12;
 
-export const entitiesQueryOptions = infiniteQueryOptions({
-  queryKey: entitiesListQueryKey,
-  initialPageParam: 0,
-  queryFn: async ({ pageParam }) => {
-    const { data, error } = await api.api.entities.get({ query: { offset: pageParam } });
-    if (error) {
-      throw new Error(apiErrorMessage(error));
-    }
-    return data;
-  },
-  getNextPageParam: (page) => page.nextOffset ?? undefined,
-});
+export function entitiesQueryOptions(query?: string) {
+  const normalizedQuery = query?.trim() || undefined;
+  return infiniteQueryOptions({
+    queryKey: [...entitiesListQueryKey, { query: normalizedQuery ?? null }],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await api.api.entities.get({
+        query: { offset: pageParam, query: normalizedQuery },
+      });
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+    getNextPageParam: (page) => page.nextOffset ?? undefined,
+  });
+}
 
 export function entitySuggestionsQueryOptions(query: string) {
   return queryOptions({

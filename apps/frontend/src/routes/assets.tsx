@@ -1,10 +1,20 @@
+import { MAX_ASSET_NAME_LENGTH } from '@repo/backend/asset';
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AssetList } from '../components/assets/asset-list';
+import { CollectionKeywordFilter } from '../components/knowledge/collection-keyword-filter';
 import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { useAssets } from '../lib/hooks/use-assets';
 import { assetsQueryOptions } from '../queries/assets';
+
+export type AssetSearch = { q?: string };
+
+export function assetSearch(search: Record<string, unknown>): AssetSearch {
+  return typeof search.q === 'string' && search.q.trim()
+    ? { q: search.q.trim().slice(0, MAX_ASSET_NAME_LENGTH) }
+    : {};
+}
 
 export const Route = createFileRoute('/assets')({
   beforeLoad: ({ context, location }) => {
@@ -12,13 +22,37 @@ export const Route = createFileRoute('/assets')({
       throw redirect({ to: '/login', search: { redirect: location.href } });
     }
   },
-  loader: ({ context }) => context.queryClient.ensureInfiniteQueryData(assetsQueryOptions),
+  validateSearch: assetSearch,
+  loaderDeps: ({ search }) => ({ query: search.q }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureInfiniteQueryData(assetsQueryOptions(deps.query)),
   component: AssetsLayout,
 });
 
+function AssetFilterControl({ query }: { query: string }) {
+  const navigate = Route.useNavigate();
+  return (
+    <CollectionKeywordFilter
+      title="Filter assets"
+      query={query}
+      inputId="asset-keyword"
+      placeholder="Asset name"
+      maxLength={MAX_ASSET_NAME_LENGTH}
+      onApply={(nextQuery) => {
+        void navigate({
+          to: '/assets',
+          search: { q: nextQuery || undefined },
+          replace: true,
+        });
+      }}
+    />
+  );
+}
+
 function AssetsLayout() {
   const { profile } = Route.useRouteContext();
-  const { assets, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useAssets();
+  const { q = '' } = Route.useSearch();
+  const { assets, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useAssets(q);
   if (!profile) {
     return null;
   }
@@ -34,8 +68,9 @@ function AssetsLayout() {
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         loadMore={fetchNextPage}
+        actions={<AssetFilterControl query={q} />}
       >
-        <AssetList assets={assets} />
+        <AssetList assets={assets} filtered={Boolean(q)} />
       </KnowledgeSidebar>
       <KnowledgeWorkspaceDetail>
         <Outlet />
