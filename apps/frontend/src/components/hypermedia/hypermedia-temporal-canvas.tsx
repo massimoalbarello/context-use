@@ -85,17 +85,17 @@ function TemporalResourceHeaders({
             <Button
               type="button"
               variant="ghost"
-              className="pointer-events-auto h-28 w-[88px] rounded-none p-0 hover:bg-transparent dark:hover:bg-transparent"
+              className="pointer-events-auto h-28 w-[72px] rounded-none p-0 hover:bg-transparent dark:hover:bg-transparent"
               aria-label={resource.label}
               aria-pressed={selectedResourceKeys.has(resource.key)}
               onClick={() => onSelect({ kind: resource.kind, readableId: resource.readableId })}
             >
-              <svg className="size-full overflow-visible" viewBox="0 0 88 112" aria-hidden="true">
+              <svg className="size-full overflow-visible" viewBox="0 0 72 112" aria-hidden="true">
                 <HypermediaResourceNode
-                  point={{ x: 44, y: 31 }}
+                  point={{ x: 36, y: 31 }}
                   label={resource.label}
                   active={active}
-                  labelWidth={88}
+                  labelWidth={72}
                 />
               </svg>
             </Button>

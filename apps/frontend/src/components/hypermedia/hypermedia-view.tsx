@@ -134,7 +134,7 @@ export function HypermediaResourceNode({
         height={HYPERMEDIA_RESOURCE_LABEL_HEIGHT}
         className="pointer-events-none overflow-visible"
       >
-        <div className="flex size-full justify-center whitespace-normal px-1 text-center font-medium text-[12px] text-foreground leading-[14px] [overflow-wrap:anywhere]">
+        <div className="flex size-full justify-center whitespace-normal text-center font-medium text-[12px] text-foreground leading-[14px] [overflow-wrap:anywhere]">
           {label}
         </div>
       </foreignObject>
