@@ -14,6 +14,10 @@ import {
 import { Button } from '../ui/button';
 import { HypermediaCanvas } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
+import {
+  filterHypermediaByResourceKinds,
+  type HypermediaResourceKind,
+} from './hypermedia-resource-filter';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import { HypermediaTemporalCanvas } from './hypermedia-temporal-canvas';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
@@ -37,6 +41,7 @@ function resourceSelection(
 
 export function HypermediaExplorer({
   projection,
+  resourceKinds,
   selfReadableId,
   selection,
   selectedResources,
@@ -54,6 +59,7 @@ export function HypermediaExplorer({
   onDiscoverMorePages,
 }: {
   projection: HypermediaPageProjection;
+  resourceKinds: HypermediaResourceKind[];
   selfReadableId: string;
   selection?: HypermediaSelection;
   selectedResources: HypermediaResourceReference[];
@@ -104,6 +110,15 @@ export function HypermediaExplorer({
   );
   const [resources, setResources] = useState(() => buildStableResources([], []));
 
+  const visualizedHypermedia = useMemo(
+    () => filterHypermediaByResourceKinds({ resources, pages, kinds: resourceKinds }),
+    [pages, resourceKinds, resources],
+  );
+  const visualizedSelectedResources = useMemo(
+    () => selectedResources.filter(({ kind }) => resourceKinds.includes(kind)),
+    [resourceKinds, selectedResources],
+  );
+
   useEffect(() => {
     setResources((current) => buildStableResources(neighborhoods, entities, current));
   }, [entities, neighborhoods]);
@@ -133,7 +148,12 @@ export function HypermediaExplorer({
 
   const handleViewportSettled = useCallback(
     ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
-      if (discoverMoreEntities && hasNextEntityPage && !isFetchingNextEntityPage) {
+      if (
+        resourceKinds.includes('entity') &&
+        discoverMoreEntities &&
+        hasNextEntityPage &&
+        !isFetchingNextEntityPage
+      ) {
         void fetchNextEntityPage();
       }
       if (!boundaryAnchor || neighborhoodQueries.some(({ isPending }) => isPending)) {
@@ -173,38 +193,48 @@ export function HypermediaExplorer({
           : [...current, next];
       });
     },
-    [fetchNextEntityPage, hasNextEntityPage, isFetchingNextEntityPage, neighborhoodQueries],
+    [
+      fetchNextEntityPage,
+      hasNextEntityPage,
+      isFetchingNextEntityPage,
+      neighborhoodQueries,
+      resourceKinds,
+    ],
   );
 
   const neighborhoodError =
-    neighborhoodQueries.find(({ error }) => error)?.error ?? entityError ?? null;
+    neighborhoodQueries.find(({ error }) => error)?.error ??
+    (resourceKinds.includes('entity') ? entityError : null);
   const selectedKey = selection ? hypermediaSelectionKey(selection) : undefined;
   const requestedAnchorKeys = new Set(
     neighborhoodRequests.map(({ anchor }) => hypermediaResourceKey(anchor)),
   );
   const canExplore =
-    hasNextEntityPage ||
+    (resourceKinds.includes('entity') && hasNextEntityPage) ||
     neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
-    resources.some(({ key }) => !requestedAnchorKeys.has(key));
+    visualizedHypermedia.resources.some(({ key }) => !requestedAnchorKeys.has(key));
+  const resourceDisplayKey = resourceKinds.join(':');
 
   return (
     <div className="relative size-full min-h-[28rem]">
       {projection === 'semantic' ? (
         <HypermediaCanvas
-          resources={resources}
-          pages={pages}
-          selectedResources={selectedResources}
+          key={resourceDisplayKey}
+          resources={visualizedHypermedia.resources}
+          pages={visualizedHypermedia.pages}
+          selectedResources={visualizedSelectedResources}
           selectedKey={selectedKey}
           onSelect={onSelect}
           onViewportSettled={handleViewportSettled}
           canExplore={canExplore}
           isInitialLoading={
-            resources.length === 0 &&
-            (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
+            visualizedHypermedia.resources.length === 0 &&
+            ((resourceKinds.includes('entity') && entitiesPending) ||
+              neighborhoodQueries.some(({ isPending }) => isPending))
           }
           neighborhoodError={neighborhoodError}
           onRetryNeighborhood={() => {
-            if (entityError) {
+            if (resourceKinds.includes('entity') && entityError) {
               void refetchEntities();
             }
             for (const result of neighborhoodQueries) {
@@ -216,11 +246,12 @@ export function HypermediaExplorer({
         />
       ) : (
         <HypermediaTemporalCanvas
-          resources={resources}
-          pages={pages}
+          key={resourceDisplayKey}
+          resources={visualizedHypermedia.resources}
+          pages={visualizedHypermedia.pages}
           extent={temporalExtent}
           dateRange={dateRange}
-          selectedResources={selectedResources}
+          selectedResources={visualizedSelectedResources}
           selectedKey={selectedKey}
           onSelect={onSelect}
           onDateRangeApply={onDateRangeApply}

@@ -3,6 +3,12 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
 import {
+  displayedHypermediaResourceKinds,
+  displayedHypermediaResourceKindsValue,
+  type HypermediaResourceDisplay,
+  toggleDisplayedHypermediaResourceKind,
+} from '../components/hypermedia/hypermedia-resource-filter';
+import {
   type HypermediaSelection,
   selectedHypermediaResources,
   selectedHypermediaResourcesValue,
@@ -31,6 +37,7 @@ export type HypermediaSearch = Partial<CalendarDateRange> & {
   kind?: HypermediaSelection['kind'];
   id?: string;
   focus?: string;
+  show?: HypermediaResourceDisplay;
 };
 
 export function hypermediaSearchWithDateRange({
@@ -55,12 +62,19 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
   if (search.view === 'temporal') {
     result.view = 'temporal';
   }
-  if (
-    (search.kind === 'page' || search.kind === 'entity' || search.kind === 'asset') &&
-    typeof search.id === 'string' &&
-    search.id.trim()
-  ) {
-    result.kind = search.kind;
+  if (search.show === 'assets' || search.show === 'all') {
+    result.show = search.show;
+  }
+  const selectionKind =
+    search.kind === 'page' || search.kind === 'entity' || search.kind === 'asset'
+      ? search.kind
+      : undefined;
+  const selectionIsVisible =
+    selectionKind === 'page' ||
+    (selectionKind !== undefined &&
+      displayedHypermediaResourceKinds(result.show).includes(selectionKind));
+  if (selectionKind && selectionIsVisible && typeof search.id === 'string' && search.id.trim()) {
+    result.kind = selectionKind;
     result.id = search.id.trim().slice(0, MAX_HYPERMEDIA_READABLE_ID_LENGTH);
   }
   result.focus = selectedHypermediaResourcesValue(selectedHypermediaResources(search.focus));
@@ -111,8 +125,9 @@ export const Route = createFileRoute('/hypermedia')({
 function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const { q = '', kind, id, focus } = search;
+  const { q = '', kind, id, focus, show } = search;
   const projection = hypermediaProjection(search);
+  const resourceKinds = displayedHypermediaResourceKinds(show);
   const dateRange = calendarDateRangeFromSearch(search);
   const navigate = Route.useNavigate();
   const selection: HypermediaSelection | undefined =
@@ -174,6 +189,7 @@ function HypermediaRoute() {
       <HypermediaSidebar
         profile={profile}
         projection={projection}
+        resourceKinds={resourceKinds}
         query={q}
         selectedResources={selectedResources}
         onProjectionChange={(nextProjection) => {
@@ -182,6 +198,27 @@ function HypermediaRoute() {
               ...previous,
               view: nextProjection === 'temporal' ? 'temporal' : undefined,
             }),
+            replace: true,
+          });
+        }}
+        onResourceKindToggle={(kind) => {
+          void navigate({
+            search: (previous) => {
+              const nextKinds = toggleDisplayedHypermediaResourceKind({
+                kinds: displayedHypermediaResourceKinds(previous.show),
+                kind,
+              });
+              const previewRemainsVisible =
+                previous.kind === undefined ||
+                previous.kind === 'page' ||
+                nextKinds.includes(previous.kind);
+              return {
+                ...previous,
+                show: displayedHypermediaResourceKindsValue(nextKinds),
+                kind: previewRemainsVisible ? previous.kind : undefined,
+                id: previewRemainsVisible ? previous.id : undefined,
+              };
+            },
             replace: true,
           });
         }}
@@ -202,6 +239,7 @@ function HypermediaRoute() {
         <div className="relative size-full">
           <HypermediaExplorer
             projection={projection}
+            resourceKinds={resourceKinds}
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
             selectedResources={selectedResources}

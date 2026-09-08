@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react';
+import { Check, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import type {
   HypermediaPageProjection,
@@ -7,6 +7,7 @@ import type {
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
+import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
 
 function HypermediaKeywordFilter({
@@ -68,16 +69,20 @@ function HypermediaKeywordFilter({
 
 export function HypermediaFilters({
   projection,
+  resourceKinds,
   query,
   selectedResources,
   onProjectionChange,
+  onResourceKindToggle,
   onQueryApply,
   onClearSelectedResources,
 }: {
   projection: HypermediaPageProjection;
+  resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
   onProjectionChange: (projection: HypermediaPageProjection) => void;
+  onResourceKindToggle: (kind: HypermediaResourceKind) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
 }) {
@@ -93,6 +98,38 @@ export function HypermediaFilters({
             <TabsTrigger value="temporal">Temporal</TabsTrigger>
           </TabsList>
         </Tabs>
+        <fieldset className="grid gap-2" aria-label="Hypermedia resource types">
+          <legend className="font-medium text-xs">Visualize</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { kind: 'entity', label: 'Entities' },
+                { kind: 'asset', label: 'Assets' },
+              ] as const
+            ).map(({ kind, label }) => {
+              const selected = resourceKinds.includes(kind);
+              return (
+                <Button
+                  key={kind}
+                  type="button"
+                  variant={selected ? 'secondary' : 'outline'}
+                  className="h-9 justify-start px-3"
+                  aria-pressed={selected}
+                  onClick={() => onResourceKindToggle(kind)}
+                >
+                  <span
+                    className="grid size-4 place-items-center rounded-sm border border-current"
+                    aria-hidden="true"
+                  >
+                    {selected && <Check className="size-3" />}
+                  </span>
+                  {label}
+                </Button>
+              );
+            })}
+          </div>
+          <p className="sr-only">Select one or both resource types to visualize.</p>
+        </fieldset>
         <HypermediaKeywordFilter key={query} value={query} onApply={onQueryApply} />
         {selectedResources.length > 0 && (
           <div className="flex items-center gap-3 rounded-xl bg-muted/55 p-3" aria-live="polite">

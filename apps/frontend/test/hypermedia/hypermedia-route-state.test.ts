@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { displayedHypermediaResourceKinds } from '../../src/components/hypermedia/hypermedia-resource-filter';
 import {
   hypermediaProjection,
   hypermediaSearch,
@@ -31,5 +32,21 @@ test('Hypermedia projection and temporal viewport are canonical URL state', () =
     q: 'launch',
     from: '2024-01-01',
     to: '2024-12-31',
+  });
+});
+
+test('Hypermedia resource visibility is canonical URL state with entities as the default', () => {
+  expect(displayedHypermediaResourceKinds(hypermediaSearch({}).show)).toEqual(['entity']);
+  expect(displayedHypermediaResourceKinds(hypermediaSearch({ show: 'assets' }).show)).toEqual([
+    'asset',
+  ]);
+  expect(displayedHypermediaResourceKinds(hypermediaSearch({ show: 'all' }).show)).toEqual([
+    'entity',
+    'asset',
+  ]);
+  expect(hypermediaSearch({ show: 'neither' }).show).toBeUndefined();
+  expect(hypermediaSearch({ show: 'assets', kind: 'entity', id: 'hidden-entity' })).toEqual({
+    show: 'assets',
+    focus: undefined,
   });
 });
