@@ -310,7 +310,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         method: 'POST',
         path: '/pages',
         body: {
-          markdown: `# Evidence report\n\n![Quarterly chart](context-use://asset/quarterly-chart)\n\n[Download chart](context-use://asset/quarterly-chart)\n\n[Luca Bianchi](context-use://entity/luca-bianchi) reviewed the evidence.`,
+          markdown: `# Evidence report\n\n![Quarterly chart](context-use://asset/quarterly-chart)\n\n[Download chart](context-use://asset/quarterly-chart)\n\n[Investment memo](context-use://asset/investment-memo)\n\n[Luca Bianchi](context-use://entity/luca-bianchi) reviewed the evidence.`,
         },
       }),
     );
@@ -324,7 +324,9 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
     const assetNeighborhoodResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/resources?anchor=asset:quarterly-chart'),
+      new Request(
+        'http://localhost/api/hypermedia/resources?anchor=asset:quarterly-chart&kinds=entity&limit=1',
+      ),
     );
     expect(assetNeighborhoodResponse.status).toBe(StatusMap.OK);
     expect(await assetNeighborhoodResponse.json()).toEqual(
@@ -341,12 +343,33 @@ test('assets are server-inspected, linked or assigned, and archived only when un
             }),
           }),
         ],
+        nextCursor: null,
+      }),
+    );
+
+    const assetOnlyNeighborhoodResponse = await app.handle(
+      new Request(
+        'http://localhost/api/hypermedia/resources?anchor=asset:quarterly-chart&kinds=asset&limit=1',
+      ),
+    );
+    expect(assetOnlyNeighborhoodResponse.status).toBe(StatusMap.OK);
+    expect(await assetOnlyNeighborhoodResponse.json()).toEqual(
+      expect.objectContaining({
+        neighbors: [
+          expect.objectContaining({
+            resource: expect.objectContaining({
+              kind: 'asset',
+              asset: expect.objectContaining({ readableId: 'investment-memo' }),
+            }),
+          }),
+        ],
+        nextCursor: null,
       }),
     );
 
     const filteredAssetPagesResponse = await app.handle(
       new Request(
-        'http://localhost/api/hypermedia/pages?resources=asset:quarterly-chart&query=Quarterly%20chart',
+        'http://localhost/api/hypermedia/pages?resources=asset:quarterly-chart&kinds=entity,asset&query=Quarterly%20chart',
       ),
     );
     expect(filteredAssetPagesResponse.status).toBe(StatusMap.OK);
@@ -362,10 +385,29 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         readableId: 'evidence-report',
         resources: expect.arrayContaining([
           { kind: 'asset', readableId: 'quarterly-chart' },
+          { kind: 'asset', readableId: 'investment-memo' },
           { kind: 'entity', readableId: 'luca-bianchi' },
         ]),
       }),
     ]);
+
+    const entityOnlyAssetPagesResponse = await app.handle(
+      new Request(
+        'http://localhost/api/hypermedia/pages?resources=asset:quarterly-chart&kinds=entity&query=Quarterly%20chart',
+      ),
+    );
+    expect(entityOnlyAssetPagesResponse.status).toBe(StatusMap.OK);
+    expect(await entityOnlyAssetPagesResponse.json()).toEqual(
+      expect.objectContaining({
+        pages: [
+          expect.objectContaining({
+            readableId: 'evidence-report',
+            resources: [{ kind: 'entity', readableId: 'luca-bianchi' }],
+          }),
+        ],
+        resourceReferencesTruncated: false,
+      }),
+    );
 
     const detailResponse = await app.handle(
       new Request('http://localhost/api/assets/quarterly-chart'),

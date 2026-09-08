@@ -1,8 +1,8 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { entitiesQueryOptions, entitySuggestionsQueryOptions } from '../../queries/entities';
 
-export function useEntities() {
-  const query = useInfiniteQuery(entitiesQueryOptions);
+export function useEntities({ enabled = true }: { enabled?: boolean } = {}) {
+  const query = useInfiniteQuery({ ...entitiesQueryOptions, enabled });
 
   return {
     ...query,

@@ -13,21 +13,26 @@ import {
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { buttonVariants } from '../ui/button';
 import { HypermediaFilters } from './hypermedia-filters';
+import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 
 export function HypermediaSidebar({
   profile,
   projection,
+  resourceKinds,
   query,
   selectedResources,
   onProjectionChange,
+  onResourceKindToggle,
   onQueryApply,
   onClearSelectedResources,
 }: {
   profile: KnowledgeProfile;
   projection: HypermediaPageProjection;
+  resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
   onProjectionChange: (projection: HypermediaPageProjection) => void;
+  onResourceKindToggle: (kind: HypermediaResourceKind) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
 }) {
@@ -53,9 +58,11 @@ export function HypermediaSidebar({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
           <HypermediaFilters
             projection={projection}
+            resourceKinds={resourceKinds}
             query={query}
             selectedResources={selectedResources}
             onProjectionChange={onProjectionChange}
+            onResourceKindToggle={onResourceKindToggle}
             onQueryApply={onQueryApply}
             onClearSelectedResources={onClearSelectedResources}
           />

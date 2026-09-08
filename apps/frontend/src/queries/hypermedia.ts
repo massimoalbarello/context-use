@@ -9,6 +9,7 @@ export type HypermediaResource = HypermediaResourceNeighborhood['anchor'];
 export type HypermediaResourceReference =
   | { kind: 'entity'; readableId: string }
   | { kind: 'asset'; readableId: string };
+export type HypermediaResourceKind = HypermediaResourceReference['kind'];
 export type HypermediaPages = NonNullable<
   Awaited<ReturnType<(typeof api.api.hypermedia.pages)['get']>>['data']
 >;
@@ -37,17 +38,30 @@ export function hypermediaResourceReference(
 
 export function hypermediaResourceNeighborhoodQueryOptions({
   anchor,
+  kinds,
   cursor,
 }: {
   anchor: HypermediaResourceReference;
+  kinds: HypermediaResourceKind[];
   cursor?: string;
 }) {
   const anchorKey = hypermediaResourceKey(anchor);
+  const resourceKinds = [...kinds].sort();
   return queryOptions({
-    queryKey: [...hypermediaQueryKey, 'resources', anchorKey, cursor ?? null] as const,
+    queryKey: [
+      ...hypermediaQueryKey,
+      'resources',
+      anchorKey,
+      { kinds: resourceKinds, cursor: cursor ?? null },
+    ] as const,
     queryFn: async ({ signal }) => {
       const { data, error } = await api.api.hypermedia.resources.get({
-        query: { anchor: anchorKey, cursor, limit: HYPERMEDIA_NEIGHBORHOOD_SIZE },
+        query: {
+          anchor: anchorKey,
+          kinds: resourceKinds.join(','),
+          cursor,
+          limit: HYPERMEDIA_NEIGHBORHOOD_SIZE,
+        },
         fetch: { signal },
       });
       if (error) {
@@ -62,13 +76,20 @@ export function hypermediaResourceNeighborhoodQueryOptions({
 export type HypermediaPageQuery = {
   projection: HypermediaPageProjection;
   resources: HypermediaResourceReference[];
+  kinds: HypermediaResourceKind[];
   query?: string;
 };
 
 export const HYPERMEDIA_PAGE_LIMIT = 32;
 
-export function hypermediaPagesQueryOptions({ projection, resources, query }: HypermediaPageQuery) {
+export function hypermediaPagesQueryOptions({
+  projection,
+  resources,
+  kinds,
+  query,
+}: HypermediaPageQuery) {
   const resourceKeys = resources.map(hypermediaResourceKey).sort();
+  const resourceKinds = [...kinds].sort();
   const normalizedQuery = query?.trim() || undefined;
   return infiniteQueryOptions({
     queryKey: [
@@ -77,6 +98,7 @@ export function hypermediaPagesQueryOptions({ projection, resources, query }: Hy
       {
         projection,
         resources: resourceKeys,
+        kinds: resourceKinds,
         query: normalizedQuery ?? null,
       },
     ] as const,
@@ -86,6 +108,7 @@ export function hypermediaPagesQueryOptions({ projection, resources, query }: Hy
         query: {
           projection,
           resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
+          kinds: resourceKinds.join(','),
           limit: HYPERMEDIA_PAGE_LIMIT,
           offset: pageParam,
           query: normalizedQuery,
