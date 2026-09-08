@@ -35,7 +35,9 @@ export function createRequestResponsePlugin() {
       const response = `${formatRequest(request)} ${status}${elapsed}`;
 
       let logger = httpLogger.info;
-      if (status >= StatusMap['Bad Request']) {
+      if (status === StatusMap['Not Found']) {
+        logger = httpLogger.warn;
+      } else if (status >= StatusMap['Bad Request']) {
         logger = httpLogger.error;
       }
       logger(response);
