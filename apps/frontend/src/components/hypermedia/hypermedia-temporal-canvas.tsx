@@ -113,7 +113,7 @@ function TemporalResourceHeaders({
               <svg className="size-full overflow-visible" viewBox="0 0 72 112" aria-hidden="true">
                 <HypermediaResourceNode
                   point={{ x: 36, y: 31 }}
-                  label={resource.label}
+                  resource={resource.resource ?? resource}
                   active={active}
                   labelWidth={72}
                 />
