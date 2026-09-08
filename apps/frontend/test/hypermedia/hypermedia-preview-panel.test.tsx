@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { afterEach, expect, test } from 'bun:test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
@@ -7,11 +7,16 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { HypermediaPreviewPanel } from '../../src/components/hypermedia/hypermedia-preview-panel';
 import type { HypermediaSelection } from '../../src/components/hypermedia/hypermedia-selection';
 import { type Asset, assetPreviewQueryOptions } from '../../src/queries/assets';
 import { type KnowledgePagePreview, pagePreviewQueryOptions } from '../../src/queries/pages';
+
+afterEach(cleanup);
 
 async function renderPreview(selection: HypermediaSelection): Promise<string> {
   const queryClient = new QueryClient();
@@ -58,6 +63,7 @@ async function renderPreview(selection: HypermediaSelection): Promise<string> {
         <HypermediaPreviewPanel
           selection={selection}
           onClose={() => undefined}
+          onEscape={() => undefined}
           onSelect={() => undefined}
         />
       </QueryClientProvider>
@@ -70,6 +76,61 @@ async function renderPreview(selection: HypermediaSelection): Promise<string> {
   });
   await router.load();
   return renderToStaticMarkup(<RouterProvider router={router} />);
+}
+
+async function renderInteractivePreview(onEscape: () => void) {
+  const initialSelection = { kind: 'page' as const, readableId: 'project-brief' };
+  const nextSelection = { kind: 'page' as const, readableId: 'delivery-brief' };
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { staleTime: Number.POSITIVE_INFINITY } },
+  });
+  const timestamp = new Date('2026-01-01T00:00:00.000Z');
+  for (const [selection, title] of [
+    [initialSelection, 'Project brief'],
+    [nextSelection, 'Delivery brief'],
+  ] as const) {
+    queryClient.setQueryData(pagePreviewQueryOptions(selection.readableId).queryKey, {
+      readableId: selection.readableId,
+      title,
+      excerpt: title,
+      temporalCoverage: null,
+      revisionNumber: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      markdown: `# ${title}`,
+      mentions: [],
+    } as KnowledgePagePreview);
+  }
+  function InteractivePreview() {
+    const [selection, setSelection] = useState<HypermediaSelection>(initialSelection);
+    return (
+      <>
+        <button type="button" onClick={() => setSelection(nextSelection)}>
+          Select another page
+        </button>
+        <HypermediaPreviewPanel
+          selection={selection}
+          onClose={() => undefined}
+          onEscape={onEscape}
+          onSelect={setSelection}
+        />
+      </>
+    );
+  }
+  const rootRoute = createRootRoute({
+    component: () => (
+      <QueryClientProvider client={queryClient}>
+        <InteractivePreview />
+      </QueryClientProvider>
+    ),
+  });
+  const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
 }
 
 test('preview headers use visible same-window resource links without native tooltips', async () => {
@@ -107,4 +168,27 @@ test('asset previews show each knowledge page that embeds or attaches the asset'
   expect(assetHtml).toContain('Attached');
   expect(assetHtml).not.toContain('href="/pages/launch-readiness-plan"');
   expect(assetHtml).not.toContain('href="/pages/decision-log"');
+});
+
+test('each selected preview receives focus and handles Escape locally', async () => {
+  const user = userEvent.setup();
+  let escapeCount = 0;
+  await renderInteractivePreview(() => {
+    escapeCount += 1;
+  });
+
+  expect(document.activeElement).toBe(
+    screen.getByRole('complementary', { name: 'Knowledge page preview' }),
+  );
+
+  await user.click(screen.getByRole('button', { name: 'Select another page' }));
+
+  expect(screen.getByRole('heading', { name: 'Delivery brief' })).toBeTruthy();
+  expect(document.activeElement).toBe(
+    screen.getByRole('complementary', { name: 'Knowledge page preview' }),
+  );
+
+  await user.keyboard('{Escape}');
+
+  expect(escapeCount).toBe(1);
 });

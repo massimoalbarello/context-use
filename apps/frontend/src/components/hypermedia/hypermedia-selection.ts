@@ -86,3 +86,17 @@ export function toggleHypermediaResourceSelection({
     ? resources
     : [...resources, resource];
 }
+
+export function removeHypermediaResourceSelection({
+  resources,
+  selection,
+}: {
+  resources: HypermediaResourceReference[];
+  selection: HypermediaSelection;
+}): HypermediaResourceReference[] {
+  if (selection.kind === 'page') {
+    return resources;
+  }
+  const key = hypermediaSelectionKey(selection);
+  return resources.filter((resource) => hypermediaResourceKey(resource) !== key);
+}

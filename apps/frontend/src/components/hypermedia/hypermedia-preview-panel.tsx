@@ -16,25 +16,40 @@ import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { Button, buttonVariants } from '../ui/button';
-import type { HypermediaSelection } from './hypermedia-selection';
+import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
+
+function focusPreviewPanel(panel: HTMLElement | null) {
+  panel?.focus();
+}
 
 function PreviewPanelShell({
   label,
   context,
   openLink,
   onClose,
+  onEscape,
   children,
 }: {
   label: string;
   context?: ReactNode;
   openLink: ReactNode;
   onClose: () => void;
+  onEscape: () => void;
   children: ReactNode;
 }) {
   return (
     <aside
       className="absolute right-2 bottom-2 left-2 z-30 flex max-h-[70%] flex-col overflow-hidden rounded-2xl border bg-card shadow-xl md:top-3 md:right-3 md:bottom-3 md:left-auto md:max-h-none md:w-[28rem]"
       aria-label={`${label} preview`}
+      tabIndex={-1}
+      ref={focusPreviewPanel}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || event.defaultPrevented) {
+          return;
+        }
+        event.preventDefault();
+        onEscape();
+      }}
     >
       <header className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -143,15 +158,14 @@ function assetPreviewPages(usages: Asset['usages']): PreviewPageItem[] {
   }));
 }
 
-function PagePreview({
-  readableId,
-  onClose,
-  onSelect,
-}: {
+type PreviewProps = {
   readableId: string;
   onClose: () => void;
+  onEscape: () => void;
   onSelect: (selection: HypermediaSelection) => void;
-}) {
+};
+
+function PagePreview({ readableId, onClose, onEscape, onSelect }: PreviewProps) {
   const { data: page, error, refetch } = usePagePreview(readableId);
   return (
     <PreviewPanelShell
@@ -165,6 +179,7 @@ function PagePreview({
         ) : null
       }
       onClose={onClose}
+      onEscape={onEscape}
       openLink={
         <Link
           className={buttonVariants({ variant: 'ghost', size: 'sm' })}
@@ -192,20 +207,13 @@ function PagePreview({
   );
 }
 
-function EntityPreview({
-  readableId,
-  onClose,
-  onSelect,
-}: {
-  readableId: string;
-  onClose: () => void;
-  onSelect: (selection: HypermediaSelection) => void;
-}) {
+function EntityPreview({ readableId, onClose, onEscape, onSelect }: PreviewProps) {
   const { data: entity, error, refetch } = useEntityPreview(readableId);
   return (
     <PreviewPanelShell
       label="Entity"
       onClose={onClose}
+      onEscape={onEscape}
       openLink={
         <Link
           className={buttonVariants({ variant: 'ghost', size: 'sm' })}
@@ -239,20 +247,13 @@ function EntityPreview({
   );
 }
 
-function AssetPreview({
-  readableId,
-  onClose,
-  onSelect,
-}: {
-  readableId: string;
-  onClose: () => void;
-  onSelect: (selection: HypermediaSelection) => void;
-}) {
+function AssetPreview({ readableId, onClose, onEscape, onSelect }: PreviewProps) {
   const { data: asset, error, refetch } = useAssetPreview(readableId);
   return (
     <PreviewPanelShell
       label="Asset"
       onClose={onClose}
+      onEscape={onEscape}
       openLink={
         <Link
           className={buttonVariants({ variant: 'ghost', size: 'sm' })}
@@ -303,19 +304,45 @@ function AssetPreview({
 export function HypermediaPreviewPanel({
   selection,
   onClose,
+  onEscape,
   onSelect,
 }: {
   selection: HypermediaSelection;
   onClose: () => void;
+  onEscape: () => void;
   onSelect: (selection: HypermediaSelection) => void;
 }) {
+  const key = hypermediaSelectionKey(selection);
+
   if (selection.kind === 'page') {
-    return <PagePreview readableId={selection.readableId} onClose={onClose} onSelect={onSelect} />;
+    return (
+      <PagePreview
+        key={key}
+        readableId={selection.readableId}
+        onClose={onClose}
+        onEscape={onEscape}
+        onSelect={onSelect}
+      />
+    );
   }
   if (selection.kind === 'entity') {
     return (
-      <EntityPreview readableId={selection.readableId} onClose={onClose} onSelect={onSelect} />
+      <EntityPreview
+        key={key}
+        readableId={selection.readableId}
+        onClose={onClose}
+        onEscape={onEscape}
+        onSelect={onSelect}
+      />
     );
   }
-  return <AssetPreview readableId={selection.readableId} onClose={onClose} onSelect={onSelect} />;
+  return (
+    <AssetPreview
+      key={key}
+      readableId={selection.readableId}
+      onClose={onClose}
+      onEscape={onEscape}
+      onSelect={onSelect}
+    />
+  );
 }
