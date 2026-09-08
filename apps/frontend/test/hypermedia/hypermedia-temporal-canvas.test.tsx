@@ -27,6 +27,20 @@ const self: HypermediaLayoutResource = {
   },
   point: { x: 0, y: 0 },
 };
+const projectPlan: HypermediaLayoutResource = {
+  key: 'asset:long-project-plan',
+  kind: 'asset',
+  asset: {
+    readableId: 'long-project-plan',
+    name: 'Long Project Plan With Review Notes',
+    mediaType: 'application/pdf',
+    extension: 'pdf',
+    sizeBytes: 1_024,
+    createdAt,
+    updatedAt: createdAt,
+  },
+  point: { x: 0, y: 0 },
+};
 const temporalPage: HypermediaPage = {
   readableId: 'launch-period',
   title: 'Launch period',
@@ -35,7 +49,10 @@ const temporalPage: HypermediaPage = {
   revisionNumber: 1,
   createdAt,
   updatedAt: createdAt,
-  resources: [{ kind: 'entity', readableId: 'self' }],
+  resources: [
+    { kind: 'entity', readableId: 'self' },
+    { kind: 'asset', readableId: 'long-project-plan' },
+  ],
 };
 const continuedPage: HypermediaPage = {
   ...temporalPage,
@@ -54,7 +71,7 @@ function TemporalPaginationFixture({
     <KnowledgeWorkspace>
       <div />
       <HypermediaTemporalCanvas
-        resources={[self]}
+        resources={[self, projectPlan]}
         pages={continued ? [temporalPage, continuedPage] : [temporalPage]}
         extent={{
           start: Date.parse('2024-01-01T00:00:00.000Z'),
@@ -79,6 +96,16 @@ test('temporal canvas keeps resource filtering and page preview selection access
 
   const entityButton = screen.getByRole('button', { name: /Self Entity/ });
   expect(entityButton.getAttribute('aria-pressed')).toBe('true');
+  expect(screen.getByText('Long Project Plan W…')).toBeTruthy();
+  const assetButton = screen.getByRole('button', {
+    name: 'Long Project Plan With Review Notes',
+  });
+  await user.hover(entityButton);
+  expect(screen.getByText('The owner.')).toBeTruthy();
+  await user.unhover(entityButton);
+  await user.hover(assetButton);
+  expect(screen.getByText('Long Project Plan With Review Notes')).toBeTruthy();
+  await user.unhover(assetButton);
   await user.click(entityButton);
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'entity', readableId: 'self' });
 

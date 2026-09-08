@@ -20,6 +20,9 @@ const MINIMUM_CLOUD_GAP = 6;
 const SEPARATED_PAGE_COUNT = 10;
 const DISTRIBUTED_PAGE_COUNT = 5;
 const MINIMUM_DISTRIBUTED_SPREAD = 400;
+const DENSE_RESOURCE_COUNT = 15;
+const INITIAL_TEMPORAL_CANVAS_WIDTH = 1_200;
+const MAXIMUM_DENSE_RESOURCE_SPAN = 1_050;
 
 function page({
   readableId,
@@ -106,6 +109,19 @@ describe('temporal Hypermedia side projection', () => {
     );
     expect(layout.ticks[0]!.time).toBeGreaterThan(layout.ticks.at(-1)!.time);
     expect(layout.ticks[0]!.y).toBeLessThan(layout.ticks.at(-1)!.y);
+  });
+
+  test('packs many resource columns into the initial canvas width', () => {
+    const resources = [...Array(DENSE_RESOURCE_COUNT).keys()].map((index) =>
+      entity(`resource-${index}`),
+    );
+    const layout = buildTemporalHypermediaLayout({ resources, pages: [], extent });
+
+    expect(layout.width).toBe(INITIAL_TEMPORAL_CANVAS_WIDTH);
+    expect(layout.resources).toHaveLength(DENSE_RESOURCE_COUNT);
+    expect(layout.resources.at(-1)!.x - layout.resources[0]!.x).toBeLessThan(
+      MAXIMUM_DENSE_RESOURCE_SPAN,
+    );
   });
 
   test('separates dense page clouds when their asserted interval has room', () => {
