@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { File, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
+import { isEmbeddableAsset, isVideoAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import { useAssetPreview } from '../../lib/hooks/use-assets';
 import { useEntityPreview } from '../../lib/hooks/use-entity';
@@ -9,6 +9,7 @@ import { usePagePreview } from '../../lib/hooks/use-page';
 import type { Asset } from '../../queries/assets';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { formatAssetSize } from '../assets/asset-link';
+import { AssetMedia } from '../assets/asset-media';
 import { EntityAvatar } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
@@ -270,15 +271,11 @@ function AssetPreview({
           <div
             className={cn(
               'flex min-h-48 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground',
-              isEmbeddableAsset(asset) && 'min-h-0',
+              (isEmbeddableAsset(asset) || isVideoAsset(asset)) && 'min-h-0',
             )}
           >
-            {isEmbeddableAsset(asset) ? (
-              <img
-                className="max-h-80 w-full object-contain"
-                src={assetContentUrl(asset.readableId)}
-                alt={asset.name}
-              />
+            {isEmbeddableAsset(asset) || isVideoAsset(asset) ? (
+              <AssetMedia asset={asset} className="max-h-80 w-full object-contain" />
             ) : (
               <File className="size-12 stroke-[1.3]" aria-hidden="true" />
             )}

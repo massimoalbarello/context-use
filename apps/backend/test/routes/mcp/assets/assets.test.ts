@@ -27,7 +27,10 @@ import { expectNoInternalResourceIds } from '../../../support/public-api.ts';
 
 const NOW = '2026-09-01T12:00:00.000Z';
 const INTERNAL_CLIENT_AUTHORIZATION_ID = '01900000-0000-7000-8000-000000000003';
-const PNG_BYTES = Buffer.from('89504e470d0a1a0a00010203', 'hex');
+const PNG_BYTES = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z5sAAAAASUVORK5CYII=',
+  'base64',
+);
 
 type TransferRequest = {
   method: 'GET' | 'PUT';

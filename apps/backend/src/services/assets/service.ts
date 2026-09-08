@@ -57,7 +57,7 @@ export class AssetsService {
       };
     }
     const bytes = new Uint8Array(await input.file.arrayBuffer());
-    const media = detectAssetMedia(bytes);
+    const media = await detectAssetMedia(bytes);
     const id = Bun.randomUUIDv7();
     const derivedReadableId = readableIdFrom(name);
     const readableId = input.allowDuplicate
@@ -141,7 +141,7 @@ export class AssetsService {
     if (bytes.byteLength !== asset.sizeBytes || hash(bytes) !== asset.contentHash) {
       throw new Error(`Asset blob ${asset.id} failed its integrity check`);
     }
-    return { asset, blob: new Blob([bytes], { type: asset.mediaType }) };
+    return { asset, blob };
   }
 }
 

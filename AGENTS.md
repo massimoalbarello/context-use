@@ -50,6 +50,9 @@ alternative. Do not build a capability without a concrete current need.
   responsibility. If an established pattern appears suboptimal, explain the concern and tradeoffs
   to the requester before extending it or introducing a competing pattern; decide together whether
   to refactor the shared pattern first.
+- Before writing custom logic for a broadly solved problem, evaluate established, maintained
+  libraries. Prefer a suitable library when it meets the required behavior, security, runtime, and
+  dependency constraints; use bespoke code only when concrete tradeoffs justify owning it.
 - Choose the smallest coherent design with the fewest necessary concepts, states, dependencies,
   and special cases. Prefer deletion or consolidation before addition.
 - Give each module one cohesive responsibility and one primary reason to change. Split unrelated

@@ -2,6 +2,7 @@ import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-route
 import { ExternalLink, File } from 'lucide-react';
 import { useState } from 'react';
 import { formatAssetSize } from '../components/assets/asset-link';
+import { AssetMedia } from '../components/assets/asset-media';
 import { EntityLink } from '../components/entities/entity-link';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
@@ -14,7 +15,12 @@ import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { Badge } from '../components/ui/badge';
 import { buttonVariants } from '../components/ui/button';
 import { FieldError } from '../components/ui/field';
-import { assetContentUrl, assetDownloadUrl, isEmbeddableAsset } from '../lib/asset-presentation';
+import {
+  assetContentUrl,
+  assetDownloadUrl,
+  isEmbeddableAsset,
+  isVideoAsset,
+} from '../lib/asset-presentation';
 import { useArchiveAsset } from '../lib/hooks/use-archive-asset';
 import { useAsset } from '../lib/hooks/use-assets';
 import { useUpdateAsset } from '../lib/hooks/use-update-asset';
@@ -210,11 +216,10 @@ function AssetRouteContent({ id }: { id: string }) {
       )}
 
       <section className="grid gap-5 rounded-xl bg-muted p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-        {isEmbeddableAsset(asset) ? (
-          <img
+        {isEmbeddableAsset(asset) || isVideoAsset(asset) ? (
+          <AssetMedia
+            asset={asset}
             className="max-h-[28rem] w-full rounded-lg bg-background object-contain"
-            src={contentUrl}
-            alt={asset.name}
           />
         ) : (
           <div className="flex min-h-48 items-center justify-center rounded-lg bg-background text-muted-foreground">
