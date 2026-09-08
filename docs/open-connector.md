@@ -97,6 +97,10 @@ reported as setup errors without printing either secret.
 - Receiver registration is instance-wide: every enabled receiver gets future changes from every
   synced source. Use only a trusted open-connector instance with the explicit owner mapping above.
 - Disabling a receiver is not a lossless pause. Re-enabling it does not fill the resulting gap.
+- Prefer disabling or editing the destination instead of deleting it in open-connector's sync
+  management UI. Deletion cancels pending delivery, clears the credential, and permanently reserves
+  that receiver ID. Recovery then requires a new receiver ID, Context Use restart, and targeted
+  backfill; retained records remain available under the prior integration namespace.
 - When receiver configuration is absent, Context Use recovers any already accepted ingestion jobs
   (including delayed retries and expired leases), then stops the recovery worker once none remain.
 - Re-registering the same ID preserves prior acknowledgements. If Context Use storage is lost,
