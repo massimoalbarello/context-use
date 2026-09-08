@@ -6,9 +6,11 @@ export type PageTypeFilterValue = KnowledgePageKind | 'all';
 export function PageTypeFilter({
   value,
   onValueChange,
+  includeAll = true,
 }: {
   value: PageTypeFilterValue;
   onValueChange: (value: PageTypeFilterValue) => void;
+  includeAll?: boolean;
 }) {
   return (
     <div className="grid gap-2">
@@ -16,8 +18,11 @@ export function PageTypeFilter({
         Page type
       </p>
       <Tabs value={value} onValueChange={onValueChange}>
-        <TabsList className="grid w-full grid-cols-3" aria-labelledby="page-type-label">
-          <TabsTrigger value="all">All</TabsTrigger>
+        <TabsList
+          className={`grid w-full ${includeAll ? 'grid-cols-3' : 'grid-cols-2'}`}
+          aria-labelledby="page-type-label"
+        >
+          {includeAll && <TabsTrigger value="all">All</TabsTrigger>}
           <TabsTrigger value="semantic">Semantic</TabsTrigger>
           <TabsTrigger value="temporal">Temporal</TabsTrigger>
         </TabsList>

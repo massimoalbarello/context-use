@@ -74,7 +74,7 @@ export function hypermediaResourceNeighborhoodQueryOptions({
 }
 
 export type HypermediaPageQuery = {
-  projection?: HypermediaPageProjection;
+  projection: HypermediaPageProjection;
   resources: HypermediaResourceReference[];
   kinds: HypermediaResourceKind[];
   query?: string;

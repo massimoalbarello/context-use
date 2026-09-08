@@ -15,11 +15,11 @@ function HypermediaResourceFilterFixture() {
   const [resourceKinds, setResourceKinds] = useState<HypermediaResourceKind[]>(['entity']);
   return (
     <HypermediaFilters
-      pageType="all"
+      projection="semantic"
       resourceKinds={resourceKinds}
       query=""
       selectedResources={[]}
-      onPageTypeChange={() => undefined}
+      onProjectionChange={() => undefined}
       onResourceKindToggle={(kind) => {
         setResourceKinds((current) =>
           toggleDisplayedHypermediaResourceKind({ kinds: current, kind }),
@@ -34,14 +34,14 @@ function HypermediaResourceFilterFixture() {
 test('Hypermedia keeps page type, keyword, and resource filters in the shared sidebar', () => {
   const html = renderToStaticMarkup(
     <HypermediaFilters
-      pageType="temporal"
+      projection="temporal"
       resourceKinds={['entity']}
       query="launch"
       selectedResources={[
         { kind: 'entity', readableId: 'maya-chen' },
         { kind: 'asset', readableId: 'rollout-metrics' },
       ]}
-      onPageTypeChange={() => undefined}
+      onProjectionChange={() => undefined}
       onResourceKindToggle={() => undefined}
       onQueryApply={() => undefined}
       onClearSelectedResources={() => undefined}
@@ -49,7 +49,7 @@ test('Hypermedia keeps page type, keyword, and resource filters in the shared si
   );
 
   expect(html).toContain('Page type');
-  expect(html).toContain('All');
+  expect(html).not.toContain('>All<');
   expect(html).toContain('Semantic');
   expect(html).toContain('Temporal');
   expect(html).toContain('Visualize');
@@ -58,7 +58,7 @@ test('Hypermedia keeps page type, keyword, and resource filters in the shared si
   expect(html).toContain('aria-label="Hypermedia resource types"');
   expect(html).toContain('aria-pressed="true"');
   expect(html).toContain('aria-pressed="false"');
-  expect(html.indexOf('All')).toBeGreaterThan(html.indexOf('Filter hypermedia'));
+  expect(html.indexOf('Semantic')).toBeGreaterThan(html.indexOf('Filter hypermedia'));
   expect(html.indexOf('Visualize')).toBeGreaterThan(html.indexOf('Temporal'));
   expect(html).toContain('Keyword');
   expect(html.indexOf('Keyword')).toBeGreaterThan(html.indexOf('Assets'));

@@ -1,26 +1,29 @@
 import { Check, X } from 'lucide-react';
-import type { HypermediaResourceReference } from '../../queries/hypermedia';
+import type {
+  HypermediaPageProjection,
+  HypermediaResourceReference,
+} from '../../queries/hypermedia';
 import { KeywordFilter } from '../knowledge/keyword-filter';
-import { PageTypeFilter, type PageTypeFilterValue } from '../pages/page-type-filter';
+import { PageTypeFilter } from '../pages/page-type-filter';
 import { Button } from '../ui/button';
 import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
 
 export function HypermediaFilters({
-  pageType,
+  projection,
   resourceKinds,
   query,
   selectedResources,
-  onPageTypeChange,
+  onProjectionChange,
   onResourceKindToggle,
   onQueryApply,
   onClearSelectedResources,
 }: {
-  pageType: PageTypeFilterValue;
+  projection: HypermediaPageProjection;
   resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
-  onPageTypeChange: (pageType: PageTypeFilterValue) => void;
+  onProjectionChange: (projection: HypermediaPageProjection) => void;
   onResourceKindToggle: (kind: HypermediaResourceKind) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
@@ -31,7 +34,15 @@ export function HypermediaFilters({
         Filter hypermedia
       </h2>
       <div className="mt-2 grid gap-3">
-        <PageTypeFilter value={pageType} onValueChange={onPageTypeChange} />
+        <PageTypeFilter
+          value={projection}
+          includeAll={false}
+          onValueChange={(value) => {
+            if (value !== 'all') {
+              onProjectionChange(value);
+            }
+          }}
+        />
         <fieldset className="grid gap-2" aria-label="Hypermedia resource types">
           <legend className="font-medium text-xs">Visualize</legend>
           <div className="grid grid-cols-2 gap-2">

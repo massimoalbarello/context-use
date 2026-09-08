@@ -1,35 +1,37 @@
 import { Link } from '@tanstack/react-router';
 import { Library } from 'lucide-react';
 import { cn } from '../../lib/class-names';
-import type { HypermediaResourceReference } from '../../queries/hypermedia';
+import type {
+  HypermediaPageProjection,
+  HypermediaResourceReference,
+} from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
   KnowledgeSidebarFooter,
   KnowledgeSidebarHeader,
 } from '../knowledge/knowledge-sidebar-chrome';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
-import type { PageTypeFilterValue } from '../pages/page-type-filter';
 import { buttonVariants } from '../ui/button';
 import { HypermediaFilters } from './hypermedia-filters';
 import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 
 export function HypermediaSidebar({
   profile,
-  pageType,
+  projection,
   resourceKinds,
   query,
   selectedResources,
-  onPageTypeChange,
+  onProjectionChange,
   onResourceKindToggle,
   onQueryApply,
   onClearSelectedResources,
 }: {
   profile: KnowledgeProfile;
-  pageType: PageTypeFilterValue;
+  projection: HypermediaPageProjection;
   resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
-  onPageTypeChange: (pageType: PageTypeFilterValue) => void;
+  onProjectionChange: (projection: HypermediaPageProjection) => void;
   onResourceKindToggle: (kind: HypermediaResourceKind) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
@@ -55,11 +57,11 @@ export function HypermediaSidebar({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
           <HypermediaFilters
-            pageType={pageType}
+            projection={projection}
             resourceKinds={resourceKinds}
             query={query}
             selectedResources={selectedResources}
-            onPageTypeChange={onPageTypeChange}
+            onProjectionChange={onProjectionChange}
             onResourceKindToggle={onResourceKindToggle}
             onQueryApply={onQueryApply}
             onClearSelectedResources={onClearSelectedResources}
