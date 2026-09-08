@@ -4,7 +4,13 @@ import type { EntitySummary } from '../../queries/entities';
 import { ResourceList, ResourceListEmpty } from '../knowledge/resource-list';
 import { EntityLink } from './entity-link';
 
-export function EntityList({ entities }: { entities: EntitySummary[] }) {
+export function EntityList({
+  entities,
+  filtered = false,
+}: {
+  entities: EntitySummary[];
+  filtered?: boolean;
+}) {
   const activeEntityId = useRouterState({
     select: (state) => {
       const resource = knowledgeResourceFromPath(state.location.pathname);
@@ -14,8 +20,10 @@ export function EntityList({ entities }: { entities: EntitySummary[] }) {
 
   if (entities.length === 0) {
     return (
-      <ResourceListEmpty title="No entities yet.">
-        Create a stable coordinate before mentioning it from a page.
+      <ResourceListEmpty title={filtered ? 'No entities match this search.' : 'No entities yet.'}>
+        {filtered
+          ? 'Clear or change the keyword search.'
+          : 'Create a stable coordinate before mentioning it from a page.'}
       </ResourceListEmpty>
     );
   }

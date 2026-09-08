@@ -1,5 +1,5 @@
 import { CalendarRange, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { enGB } from 'react-day-picker/locale';
 import { cn } from '../../lib/class-names';
@@ -63,17 +63,19 @@ export function PageDateRangeFilter({
   value,
   onApply,
   className,
+  hint = 'Semantic pages stay visible.',
 }: {
   value?: CalendarDateRange;
   onApply: (value?: CalendarDateRange) => void;
   className?: string;
+  hint?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DateRange | undefined>(() => pickerRangeFrom(value));
   const hasSelection = Boolean(selected?.from);
 
   return (
-    <div className={cn('mb-2 grid gap-2 rounded-xl bg-muted/55 p-3', className)}>
+    <div className={cn('grid gap-2 rounded-xl bg-muted/55 p-3', className)}>
       <p className="font-medium text-xs">Filter by date range</p>
       <Popover
         open={open}
@@ -136,7 +138,7 @@ export function PageDateRangeFilter({
           </div>
         </PopoverContent>
       </Popover>
-      <p className="text-muted-foreground text-xs">Semantic pages stay visible.</p>
+      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
     </div>
   );
 }

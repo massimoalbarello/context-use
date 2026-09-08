@@ -1,5 +1,6 @@
 import { t } from 'elysia';
 import {
+  KNOWLEDGE_PAGE_KINDS,
   type KnowledgePage,
   type KnowledgePagePreview,
   type KnowledgePageReference,
@@ -85,6 +86,9 @@ export const KnowledgePageListSchema = t.Object({
 export const KnowledgePageListQuerySchema = t.Object({
   ...PaginationQuerySchema.properties,
   query: t.Optional(t.String({ maxLength: MAX_KNOWLEDGE_PAGE_TITLE_LENGTH })),
+  kind: t.Optional(
+    t.Union([t.Literal(KNOWLEDGE_PAGE_KINDS[0]), t.Literal(KNOWLEDGE_PAGE_KINDS[1])]),
+  ),
   time: t.Optional(t.String({ minLength: 1, maxLength: MAX_TEMPORAL_COVERAGE_LENGTH })),
 });
 

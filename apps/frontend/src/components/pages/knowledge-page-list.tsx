@@ -21,10 +21,10 @@ export function KnowledgePageList({
   if (pages.length === 0) {
     return (
       <ResourceListEmpty
-        title={filtered ? 'No pages for this date range.' : 'No knowledge pages yet.'}
+        title={filtered ? 'No pages match these filters.' : 'No knowledge pages yet.'}
       >
         {filtered
-          ? 'Clear the date range or choose another one.'
+          ? 'Clear or change the filters.'
           : 'Start with one coherent idea and connect it to the entities it discusses.'}
       </ResourceListEmpty>
     );

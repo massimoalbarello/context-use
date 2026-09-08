@@ -87,6 +87,7 @@ export function createPagesController({
           limit: query.limit ?? DEFAULT_LIST_LIMIT,
           offset: query.offset ?? 0,
           query: query.query,
+          kind: query.kind,
           temporalBounds,
         };
         const page = await pagesService.list(input);

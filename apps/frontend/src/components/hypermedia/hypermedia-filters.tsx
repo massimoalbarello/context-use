@@ -1,94 +1,13 @@
-import { Check, Search, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Check, X } from 'lucide-react';
 import type {
   HypermediaPageProjection,
   HypermediaResourceReference,
 } from '../../queries/hypermedia';
+import { KeywordFilter } from '../knowledge/keyword-filter';
+import { PageTypeFilter } from '../pages/page-type-filter';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
-
-function HypermediaKeywordFilter({
-  value,
-  onApply,
-}: {
-  value: string;
-  onApply: (value: string) => void;
-}) {
-  const [draft, setDraft] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    function focusKeywordInput(event: KeyboardEvent) {
-      if (
-        event.key.toLocaleLowerCase() !== 'k' ||
-        !event.metaKey ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.shiftKey
-      ) {
-        return;
-      }
-      event.preventDefault();
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-
-    window.addEventListener('keydown', focusKeywordInput);
-    return () => window.removeEventListener('keydown', focusKeywordInput);
-  }, []);
-
-  return (
-    <form
-      className="grid gap-2 rounded-xl bg-muted/55 p-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onApply(draft.trim());
-      }}
-    >
-      <label className="font-medium text-xs" htmlFor="hypermedia-keyword">
-        Keyword
-      </label>
-      <div className="flex items-center gap-2">
-        <span className="relative min-w-0 flex-1">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            ref={inputRef}
-            id="hypermedia-keyword"
-            className="h-10 pl-9"
-            type="search"
-            aria-keyshortcuts="Meta+K"
-            placeholder="Page, entity, or asset"
-            value={draft}
-            onChange={(event) => setDraft(event.currentTarget.value)}
-          />
-        </span>
-        <Button type="submit" size="sm" className="h-10 shrink-0" disabled={draft.trim() === value}>
-          Apply
-        </Button>
-      </div>
-      {(draft || value) && (
-        <Button
-          className="justify-self-end"
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setDraft('');
-            onApply('');
-          }}
-        >
-          Clear
-        </Button>
-      )}
-    </form>
-  );
-}
 
 export function HypermediaFilters({
   projection,
@@ -115,12 +34,15 @@ export function HypermediaFilters({
         Filter hypermedia
       </h2>
       <div className="mt-2 grid gap-3">
-        <Tabs value={projection} onValueChange={onProjectionChange}>
-          <TabsList className="grid w-full grid-cols-2" aria-label="Hypermedia projection">
-            <TabsTrigger value="semantic">Semantic</TabsTrigger>
-            <TabsTrigger value="temporal">Temporal</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <PageTypeFilter
+          value={projection}
+          includeAll={false}
+          onValueChange={(value) => {
+            if (value !== 'all') {
+              onProjectionChange(value);
+            }
+          }}
+        />
         <fieldset className="grid gap-2" aria-label="Hypermedia resource types">
           <legend className="font-medium text-xs">Visualize</legend>
           <div className="grid grid-cols-2 gap-2">
@@ -153,7 +75,13 @@ export function HypermediaFilters({
           </div>
           <p className="sr-only">Select one or both resource types to visualize.</p>
         </fieldset>
-        <HypermediaKeywordFilter key={query} value={query} onApply={onQueryApply} />
+        <KeywordFilter
+          key={query}
+          inputId="hypermedia-keyword"
+          value={query}
+          placeholder="Page, entity, or asset"
+          onApply={onQueryApply}
+        />
         {selectedResources.length > 0 && (
           <div className="flex items-center gap-3 rounded-xl bg-muted/55 p-3" aria-live="polite">
             <div className="min-w-0 flex-1">

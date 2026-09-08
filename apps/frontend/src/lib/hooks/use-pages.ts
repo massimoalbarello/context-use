@@ -1,9 +1,12 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { pageSuggestionsQueryOptions, pagesQueryOptions } from '../../queries/pages';
-import type { CalendarDateRange } from '../temporal-coverage';
+import {
+  type KnowledgePageListFilters,
+  pageSuggestionsQueryOptions,
+  pagesQueryOptions,
+} from '../../queries/pages';
 
-export function usePages(dateRange?: CalendarDateRange) {
-  const query = useInfiniteQuery(pagesQueryOptions(dateRange));
+export function usePages(filters: KnowledgePageListFilters = {}) {
+  const query = useInfiniteQuery(pagesQueryOptions(filters));
 
   return {
     ...query,

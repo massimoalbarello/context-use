@@ -1,20 +1,26 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { WorkspaceEmpty } from '../components/knowledge/workspace-empty';
-import { calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { pagesQueryOptions } from '../queries/pages';
+import { pageListFilters } from './pages';
 
 export const Route = createFileRoute('/pages/')({
-  loaderDeps: ({ search }) => ({ dateRange: calendarDateRangeFromSearch(search) }),
+  loaderDeps: ({ search }) => ({ filters: pageListFilters(search) }),
   loader: async ({ context, deps }) => {
     const pages = await context.queryClient.ensureInfiniteQueryData(
-      pagesQueryOptions(deps.dateRange),
+      pagesQueryOptions(deps.filters),
     );
     const firstPage = pages.pages[0]?.items[0];
     if (firstPage) {
       throw redirect({
         to: '/pages/$id',
         params: { id: firstPage.readableId },
-        search: { from: deps.dateRange?.from, to: deps.dateRange?.to, view: 'preview' },
+        search: {
+          from: deps.filters.dateRange?.from,
+          to: deps.filters.dateRange?.to,
+          q: deps.filters.query,
+          pageType: deps.filters.kind,
+          view: 'preview',
+        },
       });
     }
   },
@@ -22,13 +28,13 @@ export const Route = createFileRoute('/pages/')({
 });
 
 function PagesIndexRoute() {
-  const dateRange = calendarDateRangeFromSearch(Route.useSearch());
-  if (dateRange) {
+  const filters = pageListFilters(Route.useSearch());
+  if (filters.dateRange || filters.query || filters.kind) {
     return (
       <WorkspaceEmpty
         eyebrow="Knowledge pages"
-        title="No pages for this date range"
-        description="Clear the date range in the sidebar or choose another one."
+        title="No pages match these filters"
+        description="Clear or change the filters in the sidebar."
         createTo="/pages/new"
         createLabel="Create a page"
       />

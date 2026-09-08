@@ -4,7 +4,13 @@ import type { AssetSummary } from '../../queries/assets';
 import { ResourceList, ResourceListEmpty } from '../knowledge/resource-list';
 import { AssetLink } from './asset-link';
 
-export function AssetList({ assets }: { assets: AssetSummary[] }) {
+export function AssetList({
+  assets,
+  filtered = false,
+}: {
+  assets: AssetSummary[];
+  filtered?: boolean;
+}) {
   const activeAssetId = useRouterState({
     select: (state) => {
       const resource = knowledgeResourceFromPath(state.location.pathname);
@@ -13,8 +19,10 @@ export function AssetList({ assets }: { assets: AssetSummary[] }) {
   });
   if (assets.length === 0) {
     return (
-      <ResourceListEmpty title="No assets yet.">
-        Upload a file to embed it in or attach it to a knowledge page.
+      <ResourceListEmpty title={filtered ? 'No assets match this search.' : 'No assets yet.'}>
+        {filtered
+          ? 'Clear or change the keyword search.'
+          : 'Upload a file to embed it in or attach it to a knowledge page.'}
       </ResourceListEmpty>
     );
   }

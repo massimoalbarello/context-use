@@ -24,18 +24,23 @@ export const assetPreviewsQueryKey = [...assetsQueryKey, 'preview'] as const;
 export const assetSuggestionsQueryKey = [...assetsQueryKey, 'suggestions'] as const;
 const PREVIEW_RELATIONSHIP_LIMIT = 12;
 
-export const assetsQueryOptions = infiniteQueryOptions({
-  queryKey: assetsListQueryKey,
-  initialPageParam: 0,
-  queryFn: async ({ pageParam }) => {
-    const { data, error } = await api.api.assets.get({ query: { offset: pageParam } });
-    if (error) {
-      throw new Error(apiErrorMessage(error));
-    }
-    return data;
-  },
-  getNextPageParam: (page) => page.nextOffset ?? undefined,
-});
+export function assetsQueryOptions(query?: string) {
+  const normalizedQuery = query?.trim() || undefined;
+  return infiniteQueryOptions({
+    queryKey: [...assetsListQueryKey, { query: normalizedQuery ?? null }],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await api.api.assets.get({
+        query: { offset: pageParam, query: normalizedQuery },
+      });
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+    getNextPageParam: (page) => page.nextOffset ?? undefined,
+  });
+}
 
 export function assetSuggestionsQueryOptions(query: string) {
   return queryOptions({

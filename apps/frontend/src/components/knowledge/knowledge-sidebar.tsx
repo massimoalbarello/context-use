@@ -20,6 +20,7 @@ export function KnowledgeSidebar({
   hasNextPage,
   isFetchingNextPage,
   loadMore,
+  actions,
   children,
 }: {
   collection: KnowledgeCollection;
@@ -31,6 +32,7 @@ export function KnowledgeSidebar({
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   loadMore: () => Promise<unknown>;
+  actions?: ReactNode;
   children: ReactNode;
 }) {
   const { collapsed } = useKnowledgeWorkspace();
@@ -59,6 +61,7 @@ export function KnowledgeSidebar({
             ownerEntityReadableId={profile.selfEntity.readableId}
           />
           <div className="flex shrink-0 items-center gap-1">
+            {actions}
             <Link
               className={cn(buttonVariants({ size: 'icon-lg' }), 'shrink-0')}
               to={createTo}

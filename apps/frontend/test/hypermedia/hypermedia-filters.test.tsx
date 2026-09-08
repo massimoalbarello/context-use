@@ -31,7 +31,7 @@ function HypermediaResourceFilterFixture() {
   );
 }
 
-test('Hypermedia keeps projection, keyword, and resource filters in the shared sidebar', () => {
+test('Hypermedia keeps page type, keyword, and resource filters in the shared sidebar', () => {
   const html = renderToStaticMarkup(
     <HypermediaFilters
       projection="temporal"
@@ -48,7 +48,8 @@ test('Hypermedia keeps projection, keyword, and resource filters in the shared s
     />,
   );
 
-  expect(html).toContain('aria-label="Hypermedia projection"');
+  expect(html).toContain('Page type');
+  expect(html).not.toContain('>All<');
   expect(html).toContain('Semantic');
   expect(html).toContain('Temporal');
   expect(html).toContain('Visualize');
