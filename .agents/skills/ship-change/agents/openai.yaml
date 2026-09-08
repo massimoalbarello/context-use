@@ -1,0 +1,7 @@
+interface:
+  display_name: "Ship Change"
+  short_description: "Implement, validate, and open a focused PR"
+  default_prompt: "Use $ship-change to implement this repository change and carry it through validation and a pull request."
+
+policy:
+  allow_implicit_invocation: true
