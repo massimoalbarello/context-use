@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import { expect, test } from 'bun:test';
+import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
 import {
   MAX_TEMPORAL_COVERAGE_LENGTH,
   temporalBoundsFrom,
@@ -35,6 +36,48 @@ const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
   import.meta.url,
 );
 const CONTENT_HASH_LENGTH = 64;
+
+test('asset size constraint enforces the configured limit', async () => {
+  const database = new Database(':memory:');
+  database.exec('pragma foreign_keys = on');
+
+  try {
+    database.exec(await Bun.file(AUTH_MIGRATION).text());
+    database.exec(await Bun.file(KNOWLEDGE_MIGRATION).text());
+    database.exec(await Bun.file(ASSET_MIGRATION).text());
+    database.run(
+      `insert into "auth_user"
+        ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
+       values (?, ?, ?, ?, ?, ?)`,
+      ['owner-id', 'Owner', 'owner@example.com', 1, 'created', 'updated'],
+    );
+
+    const insertAtSize = ({ id, sizeBytes }: { id: string; sizeBytes: number }) =>
+      database.run(
+        `insert into "asset"
+          ("id", "owner_id", "readable_id", "name", "media_type", "extension", "size_bytes",
+           "content_hash", "storage_key", "created_at", "updated_at")
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          'owner-id',
+          id,
+          id,
+          'video/mp4',
+          'mp4',
+          sizeBytes,
+          'c'.repeat(CONTENT_HASH_LENGTH),
+          `owner-id/assets/${id}`,
+          'created',
+          'updated',
+        ],
+      );
+    expect(() => insertAtSize({ id: 'maximum-size', sizeBytes: MAX_ASSET_BYTES })).not.toThrow();
+    expect(() => insertAtSize({ id: 'too-large', sizeBytes: MAX_ASSET_BYTES + 1 })).toThrow();
+  } finally {
+    database.close();
+  }
+});
 
 test('knowledge revisions require a lowercase hexadecimal SHA-256 hash', async () => {
   const database = new Database(':memory:');

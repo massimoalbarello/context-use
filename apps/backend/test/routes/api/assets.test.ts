@@ -111,7 +111,10 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),
     });
 
-    const pngBytes = Buffer.from('89504e470d0a1a0a00010203', 'hex');
+    const pngBytes = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z5sAAAAASUVORK5CYII=',
+      'base64',
+    );
     const form = new FormData();
     form.set('name', 'Quarterly chart');
     form.set('file', new File([pngBytes], 'misleading.html', { type: 'text/html' }));
@@ -162,6 +165,27 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     );
     expect(pdfContentResponse.headers.get('content-type')).toBe('application/pdf');
     expect(pdfContentResponse.headers.get('content-disposition')).toStartWith('inline;');
+
+    const mp4Bytes = Buffer.from('00000018667479706d703432000000006d70343169736f6d', 'hex');
+    const mp4Form = new FormData();
+    mp4Form.set('name', 'Factory recording');
+    mp4Form.set('file', new File([mp4Bytes], 'misleading.bin'));
+    const mp4UploadResponse = await app.handle(
+      new Request('http://localhost/api/assets', { method: 'POST', body: mp4Form }),
+    );
+    expect(mp4UploadResponse.status).toBe(StatusMap.Created);
+    expect(await mp4UploadResponse.json()).toEqual(
+      expect.objectContaining({
+        readableId: 'factory-recording',
+        mediaType: 'video/mp4',
+        extension: 'mp4',
+      }),
+    );
+    const mp4ContentResponse = await app.handle(
+      new Request('http://localhost/api/assets/factory-recording/content'),
+    );
+    expect(mp4ContentResponse.headers.get('content-type')).toBe('video/mp4');
+    expect(mp4ContentResponse.headers.get('content-disposition')).toStartWith('inline;');
 
     const entityResponse = await app.handle(
       jsonRequest({

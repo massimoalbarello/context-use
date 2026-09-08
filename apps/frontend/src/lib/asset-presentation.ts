@@ -9,3 +9,7 @@ export function assetDownloadUrl(readableId: string): string {
 export function isEmbeddableAsset(asset: { mediaType: string }): boolean {
   return ['image/gif', 'image/jpeg', 'image/png', 'image/webp'].includes(asset.mediaType);
 }
+
+export function isVideoAsset(asset: { mediaType: string }): boolean {
+  return asset.mediaType === 'video/mp4';
+}

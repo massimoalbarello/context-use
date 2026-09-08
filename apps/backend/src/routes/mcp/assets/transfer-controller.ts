@@ -46,33 +46,8 @@ async function uploadBlob({
     return { state: 'accepted', blob: new Blob([]) };
   }
 
-  const chunks: Uint8Array[] = [];
-  let sizeBytes = 0;
-  const reader = request.body.getReader();
-  try {
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) {
-        break;
-      }
-      sizeBytes += chunk.value.byteLength;
-      if (sizeBytes > MAX_ASSET_BYTES) {
-        await reader.cancel();
-        return { state: 'too_large' };
-      }
-      chunks.push(chunk.value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  const bytes = new Uint8Array(sizeBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return { state: 'accepted', blob: new Blob([bytes], { type: ASSET_UPLOAD_MEDIA_TYPE }) };
+  const blob = await request.blob();
+  return blob.size > MAX_ASSET_BYTES ? { state: 'too_large' } : { state: 'accepted', blob };
 }
 
 export function createAssetTransferController({

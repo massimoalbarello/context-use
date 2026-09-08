@@ -3,7 +3,7 @@ import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const KIBIBYTES_PER_MEBIBYTE = 1024;
-export const MAX_ASSET_MEBIBYTES = 5;
+export const MAX_ASSET_MEBIBYTES = 100;
 export const MAX_ASSET_BYTES = MAX_ASSET_MEBIBYTES * KIBIBYTES_PER_MEBIBYTE * BYTES_PER_KIBIBYTE;
 export const MAX_ASSET_NAME_LENGTH = 160;
 

@@ -28,6 +28,7 @@
         "@modelcontextprotocol/server": "^2",
         "better-auth": "catalog:",
         "elysia": "^1.4.30",
+        "file-type": "^22.0.2",
         "zod": "^4.4.3",
       },
       "devDependencies": {
