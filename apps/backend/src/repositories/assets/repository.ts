@@ -13,7 +13,6 @@ export interface AssetsRepositoryContract {
     ownerId: string;
     limit: number;
     offset: number;
-    query?: string;
     kind?: 'entity_image';
   }): Promise<Page<AssetSummary>>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredAsset | null>;
@@ -37,7 +36,7 @@ export interface AssetsRepositoryContract {
 
 type AssetRow = Queries['CreateAsset'];
 
-type AssetSummaryRow = Queries['SearchAssets'];
+type AssetSummaryRow = Queries['ListAssets'];
 
 function storedAssetFrom(row: AssetRow): StoredAsset {
   return { ...row, sizeBytes: Number(row.sizeBytes) };
@@ -54,108 +53,79 @@ export class AssetsRepository implements AssetsRepositoryContract {
     this.sql = withTypes<Queries>(sql);
   }
 
-  async create(input: StoredAsset) {
-    const rows = await this.sql.CreateAsset`
-      /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
-      insert into "asset"
-        ("id", "owner_id", "readable_id", "name", "media_type", "extension", "size_bytes",
-         "content_hash", "storage_key", "created_at", "updated_at")
-      values
-        (${input.id}, ${input.ownerId}, ${input.readableId}, ${input.name}, ${input.mediaType},
-         ${input.extension}, ${input.sizeBytes}, ${input.contentHash}, ${input.storageKey},
-         ${input.createdAt}, ${input.updatedAt})
-      on conflict ("owner_id", "readable_id") do nothing
-      returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
-        "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
-        "storage_key" as "storageKey", "content_hash" as "contentHash",
-        "created_at" as "createdAt", "updated_at" as "updatedAt"
-    `;
-    return rows[0]
-      ? { state: 'created' as const, asset: storedAssetFrom(rows[0]) }
-      : { state: 'readable_id_conflict' as const };
+  create(input: StoredAsset) {
+    return this.sql.begin(async (db) => {
+      const rows = await db.CreateAsset`
+        /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
+        insert into "asset"
+          ("id", "owner_id", "readable_id", "name", "media_type", "extension", "size_bytes",
+           "content_hash", "storage_key", "created_at", "updated_at")
+        values
+          (${input.id}, ${input.ownerId}, ${input.readableId}, ${input.name}, ${input.mediaType},
+           ${input.extension}, ${input.sizeBytes}, ${input.contentHash}, ${input.storageKey},
+           ${input.createdAt}, ${input.updatedAt})
+        on conflict ("owner_id", "readable_id") do nothing
+        returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
+          "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
+          "storage_key" as "storageKey", "content_hash" as "contentHash",
+          "created_at" as "createdAt", "updated_at" as "updatedAt"
+      `;
+      if (!rows[0]) {
+        return { state: 'readable_id_conflict' } as const;
+      }
+      await db.CreateAssetSearchDocument`
+        insert into "hypermedia_search_document"
+          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
+        values (${input.ownerId}, 'asset', ${input.readableId}, ${input.name}, '', '')
+        on conflict ("owner_id", "resource_type", "readable_id") do update set
+          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
+      `;
+      return { state: 'created' as const, asset: storedAssetFrom(rows[0]) };
+    });
   }
 
   async list({
     ownerId,
     limit,
     offset,
-    query,
     kind,
   }: {
     ownerId: string;
     limit: number;
     offset: number;
-    query?: string;
     kind?: 'entity_image';
   }) {
-    const normalizedQuery = query?.trim() || null;
     const normalizedKind = kind ?? null;
-    const rowsPromise = normalizedQuery
-      ? this.sql.SearchAssets`
-          /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
-          select "id", "readable_id" as "readableId", "name", "media_type" as "mediaType",
-            "extension", "size_bytes" as "sizeBytes", "created_at" as "createdAt",
-            "updated_at" as "updatedAt"
-          from "asset"
-          where "owner_id" = ${ownerId} and "archived_at" is null
-            and (${normalizedKind} is null or (
-              "media_type" like 'image/%'
-              and not exists (
-                select 1 from "entity"
-                where "entity"."owner_id" = "asset"."owner_id"
-                  and "entity"."image_asset_id" = "asset"."id"
-              )
-            ))
-            and (instr(lower("name"), lower(${normalizedQuery})) > 0
-              or instr("readable_id", lower(${normalizedQuery})) > 0)
-          order by "name" collate nocase, "readable_id" limit ${limit} offset ${offset}
-        `
-      : this.sql.ListAssets`
-          /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
-          select "id", "readable_id" as "readableId", "name", "media_type" as "mediaType",
-            "extension", "size_bytes" as "sizeBytes", "created_at" as "createdAt",
-            "updated_at" as "updatedAt"
-          from "asset"
-          where "owner_id" = ${ownerId} and "archived_at" is null
-            and (${normalizedKind} is null or (
-              "media_type" like 'image/%'
-              and not exists (
-                select 1 from "entity"
-                where "entity"."owner_id" = "asset"."owner_id"
-                  and "entity"."image_asset_id" = "asset"."id"
-              )
-            ))
-          order by "updated_at" desc, "id" desc limit ${limit} offset ${offset}
-        `;
-    const countsPromise = normalizedQuery
-      ? this.sql.CountSearchedAssets`
-          /* @notNull total */
-          select count(*) as "total" from "asset"
-          where "owner_id" = ${ownerId} and "archived_at" is null
-            and (${normalizedKind} is null or (
-              "media_type" like 'image/%'
-              and not exists (
-                select 1 from "entity"
-                where "entity"."owner_id" = "asset"."owner_id"
-                  and "entity"."image_asset_id" = "asset"."id"
-              )
-            ))
-            and (instr(lower("name"), lower(${normalizedQuery})) > 0
-              or instr("readable_id", lower(${normalizedQuery})) > 0)
-        `
-      : this.sql.CountAssets`
-          /* @notNull total */
-          select count(*) as "total" from "asset"
-          where "owner_id" = ${ownerId} and "archived_at" is null
-            and (${normalizedKind} is null or (
-              "media_type" like 'image/%'
-              and not exists (
-                select 1 from "entity"
-                where "entity"."owner_id" = "asset"."owner_id"
-                  and "entity"."image_asset_id" = "asset"."id"
-              )
-            ))
-        `;
+    const rowsPromise = this.sql.ListAssets`
+      /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
+      select "id", "readable_id" as "readableId", "name", "media_type" as "mediaType",
+        "extension", "size_bytes" as "sizeBytes", "created_at" as "createdAt",
+        "updated_at" as "updatedAt"
+      from "asset"
+      where "owner_id" = ${ownerId} and "archived_at" is null
+        and (${normalizedKind} is null or (
+          "media_type" like 'image/%'
+          and not exists (
+            select 1 from "entity"
+            where "entity"."owner_id" = "asset"."owner_id"
+              and "entity"."image_asset_id" = "asset"."id"
+          )
+        ))
+      order by "updated_at" desc, "id" desc limit ${limit} offset ${offset}
+    `;
+    const countsPromise = this.sql.CountAssets`
+      /* @notNull total */
+      select count(*) as "total" from "asset"
+      where "owner_id" = ${ownerId} and "archived_at" is null
+        and (${normalizedKind} is null or (
+          "media_type" like 'image/%'
+          and not exists (
+            select 1 from "entity"
+            where "entity"."owner_id" = "asset"."owner_id"
+              and "entity"."image_asset_id" = "asset"."id"
+          )
+        ))
+    `;
     const [rows, counts] = await Promise.all([rowsPromise, countsPromise]);
     return pageFrom({
       items: rows.map(assetSummaryFrom),
@@ -202,34 +172,38 @@ export class AssetsRepository implements AssetsRepositoryContract {
     };
   }
 
-  async updateName(input: {
-    ownerId: string;
-    readableId: string;
-    name: string;
-    updatedAt: string;
-  }) {
-    const rows = await this.sql.UpdateAssetName`
-      /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
-      update "asset" set "name" = ${input.name}, "updated_at" = ${input.updatedAt}
-      where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
-        and "archived_at" is null
-      returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
-        "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
-        "storage_key" as "storageKey", "content_hash" as "contentHash",
-        "created_at" as "createdAt", "updated_at" as "updatedAt"
-    `;
-    if (!rows[0]) {
-      return null;
-    }
-    const asset = storedAssetFrom(rows[0]);
-    return {
-      ...this.summary(asset),
-      usages: await this.listActiveUsages({
-        db: this.sql,
-        ownerId: input.ownerId,
-        assetId: asset.id,
-      }),
-    };
+  updateName(input: { ownerId: string; readableId: string; name: string; updatedAt: string }) {
+    return this.sql.begin(async (db) => {
+      const rows = await db.UpdateAssetName`
+        /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
+        update "asset" set "name" = ${input.name}, "updated_at" = ${input.updatedAt}
+        where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
+          and "archived_at" is null
+        returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
+          "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
+          "storage_key" as "storageKey", "content_hash" as "contentHash",
+          "created_at" as "createdAt", "updated_at" as "updatedAt"
+      `;
+      if (!rows[0]) {
+        return null;
+      }
+      await db.UpdateAssetSearchDocument`
+        insert into "hypermedia_search_document"
+          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
+        values (${input.ownerId}, 'asset', ${input.readableId}, ${input.name}, '', '')
+        on conflict ("owner_id", "resource_type", "readable_id") do update set
+          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
+      `;
+      const asset = storedAssetFrom(rows[0]);
+      return {
+        ...this.summary(asset),
+        usages: await this.listActiveUsages({
+          db,
+          ownerId: input.ownerId,
+          assetId: asset.id,
+        }),
+      };
+    });
   }
 
   archive(input: {
@@ -261,6 +235,11 @@ export class AssetsRepository implements AssetsRepositoryContract {
       await db`
         update "asset" set "archived_at" = ${input.archivedAt}
         where "owner_id" = ${input.ownerId} and "id" = ${target.id}
+      `;
+      await db.RemoveAssetSearchDocument`
+        delete from "hypermedia_search_document"
+        where "owner_id" = ${input.ownerId} and "resource_type" = 'asset'
+          and "readable_id" = ${input.readableId}
       `;
       return { state: 'archived' } as const;
     });

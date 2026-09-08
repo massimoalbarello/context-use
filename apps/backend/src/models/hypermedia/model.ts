@@ -13,6 +13,11 @@ export type HypermediaResourceReference = {
   readableId: string;
 };
 
+export interface HypermediaRetrievalMatches {
+  pageReadableIds: string[];
+  resources: HypermediaResourceReference[];
+}
+
 export type HypermediaResource =
   | { kind: 'entity'; entity: Entity }
   | { kind: 'asset'; asset: AssetSummary };

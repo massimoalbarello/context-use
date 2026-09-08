@@ -28,6 +28,7 @@ export interface KnowledgePagesRepositoryContract {
     readableId: string;
     title: string;
     excerpt: string;
+    searchableText: string;
     temporalCoverage: ParsedTemporalCoverage | null;
     storageKey: string;
     contentHash: string;
@@ -47,6 +48,7 @@ export interface KnowledgePagesRepositoryContract {
     expectedRevisionNumber: number;
     title: string;
     excerpt: string;
+    searchableText: string;
     temporalCoverage: ParsedTemporalCoverage | null;
     storageKey: string;
     contentHash: string;
@@ -64,7 +66,6 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     limit: number;
     offset: number;
-    query?: string;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
   }): Promise<Page<KnowledgePageSummary>>;
@@ -97,13 +98,14 @@ export interface KnowledgePagesRepositoryContract {
     readableId: string;
     title: string;
     excerpt: string;
+    searchableText: string;
     links: KnowledgePageLinkSet;
   }): Promise<{ state: 'replaced' } | { state: 'link_target_not_found'; target: string }>;
 }
 
 type StoredPageRow = Queries['FindKnowledgePage'];
 
-type SummaryRow = Queries['SearchKnowledgePages'];
+type SummaryRow = Queries['ListKnowledgePages'];
 
 type RevisionSummaryRow = Queries['ListKnowledgePageRevisions'];
 function temporalRevisionColumns(coverage: ParsedTemporalCoverage | null): {
@@ -332,6 +334,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     readableId: string;
     title: string;
     excerpt: string;
+    searchableText: string;
     temporalCoverage: ParsedTemporalCoverage | null;
     storageKey: string;
     contentHash: string;
@@ -394,6 +397,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         pageReferences: resolved.pageReferences,
         assetUsages: resolved.assetUsages,
       });
+      await db.CreateKnowledgePageSearchDocument`
+        insert into "hypermedia_search_document"
+          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
+        values
+          (${input.ownerId}, 'knowledge_page', ${input.readableId}, ${input.title},
+           ${input.excerpt}, ${input.searchableText})
+        on conflict ("owner_id", "resource_type", "readable_id") do update set
+          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
+      `;
 
       return {
         state: 'created' as const,
@@ -423,6 +435,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     expectedRevisionNumber: number;
     title: string;
     excerpt: string;
+    searchableText: string;
     temporalCoverage: ParsedTemporalCoverage | null;
     storageKey: string;
     contentHash: string;
@@ -507,6 +520,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         set "current_revision_id" = ${input.revisionId}, "updated_at" = ${input.updatedAt}
         where "id" = ${current.id} and "owner_id" = ${input.ownerId}
       `;
+      await db.UpdateKnowledgePageSearchDocument`
+        insert into "hypermedia_search_document"
+          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
+        values
+          (${input.ownerId}, 'knowledge_page', ${input.readableId}, ${input.title},
+           ${input.excerpt}, ${input.searchableText})
+        on conflict ("owner_id", "resource_type", "readable_id") do update set
+          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
+      `;
       return {
         state: 'updated' as const,
         page: {
@@ -529,21 +551,18 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId,
     limit,
     offset,
-    query,
     interval,
     temporalBounds,
   }: {
     ownerId: string;
     limit: number;
     offset: number;
-    query?: string;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
   }) {
-    const normalizedQuery = query?.trim() || null;
     const filterStart = temporalBounds?.start ?? null;
     const filterEnd = temporalBounds?.end ?? null;
-    const rowsPromise = this.sql.SearchKnowledgePages`
+    const rowsPromise = this.sql.ListKnowledgePages`
       /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
@@ -553,11 +572,6 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
       where page."owner_id" = ${ownerId}
         and page."archived_at" is null
-        and (
-          ${normalizedQuery} is null
-          or instr(lower(revision."title"), lower(${normalizedQuery})) > 0
-          or instr(page."readable_id", lower(${normalizedQuery})) > 0
-        )
         and (
           ${interval} is null
           or (${interval} = 'without' and revision."temporal_coverage" is null)
@@ -577,14 +591,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         )
       order by
         case
-          when ${normalizedQuery} is not null and ${filterStart} is null then 0
           when revision."temporal_coverage" is not null
             and revision."temporal_end_exclusive_ms" is null then 0
           when revision."temporal_coverage" is not null then 1
           else 2
         end,
-        case when ${normalizedQuery} is not null and ${filterStart} is null
-          then revision."title" end collate nocase,
         case when revision."temporal_coverage" is not null
           and revision."temporal_end_exclusive_ms" is null
           then revision."temporal_start_ms" end desc,
@@ -597,18 +608,13 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         page."readable_id"
       limit ${limit} offset ${offset}
     `;
-    const countsPromise = this.sql.CountSearchedKnowledgePages`
+    const countsPromise = this.sql.CountKnowledgePages`
       /* @notNull total */
       select count(*) as "total"
       from "knowledge_page" page
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
       where page."owner_id" = ${ownerId}
         and page."archived_at" is null
-        and (
-          ${normalizedQuery} is null
-          or instr(lower(revision."title"), lower(${normalizedQuery})) > 0
-          or instr(page."readable_id", lower(${normalizedQuery})) > 0
-        )
         and (
           ${interval} is null
           or (${interval} = 'without' and revision."temporal_coverage" is null)
@@ -778,6 +784,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         set "archived_at" = ${archivedAt}
         where "owner_id" = ${ownerId} and "id" = ${target.id}
       `;
+      await db.RemoveKnowledgePageSearchDocument`
+        delete from "hypermedia_search_document"
+        where "owner_id" = ${ownerId} and "resource_type" = 'knowledge_page'
+          and "readable_id" = ${readableId}
+      `;
       return { state: 'archived' } as const;
     });
   }
@@ -878,12 +889,14 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     readableId,
     title,
     excerpt,
+    searchableText,
     links,
   }: {
     ownerId: string;
     readableId: string;
     title: string;
     excerpt: string;
+    searchableText: string;
     links: KnowledgePageLinkSet;
   }): Promise<{ state: 'replaced' } | { state: 'link_target_not_found'; target: string }> {
     return this.sql.begin(async (db) => {
@@ -932,6 +945,14 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         pageReferences: resolved.pageReferences,
         assetUsages: resolved.assetUsages,
       });
+      await db.RebuildKnowledgePageSearchDocument`
+        insert into "hypermedia_search_document"
+          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
+        values
+          (${ownerId}, 'knowledge_page', ${readableId}, ${title}, ${excerpt}, ${searchableText})
+        on conflict ("owner_id", "resource_type", "readable_id") do update set
+          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
+      `;
       return { state: 'replaced' as const };
     });
   }

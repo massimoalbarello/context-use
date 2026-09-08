@@ -9,6 +9,7 @@ import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
+import { MAX_HYPERMEDIA_SEARCH_LIMIT } from '#models/hypermedia-retrieval/model.ts';
 import { temporalBoundsFrom } from '#models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#models/readable-ids/model.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
@@ -27,6 +28,7 @@ import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import { unusedRecordSyncsService, unusedRecordsService } from '../../support/app.ts';
+import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -65,6 +67,10 @@ const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
   '../../../src/db/migrations/0007_add_mcp_client_authorizations.sql',
   import.meta.url,
 );
+const HYPERMEDIA_RETRIEVAL_MIGRATION = new URL(
+  '../../../src/db/migrations/0008_add_hypermedia_retrieval.sql',
+  import.meta.url,
+);
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
 const EXPECTED_TEMPORAL_PAGE_COUNT = 3;
@@ -72,7 +78,6 @@ const EXPECTED_SECOND_PAGE_OFFSET = 4;
 const EXPECTED_FILTERED_PAGE_COUNT = 3;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
 const EXPECTED_CURRENT_MENTION_COUNT = 5;
-const EXPECTED_BOUNDED_HYPERMEDIA_REFERENCE_COUNT = 121;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -137,6 +142,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         ['0005_add_assets.sql', Bun.file(ASSET_MIGRATION)],
         ['0006_add_oauth_provider.sql', Bun.file(OAUTH_MIGRATION)],
         ['0007_add_mcp_client_authorizations.sql', Bun.file(MCP_CLIENT_AUTHORIZATION_MIGRATION)],
+        ['0008_add_hypermedia_retrieval.sql', Bun.file(HYPERMEDIA_RETRIEVAL_MIGRATION)],
       ]),
     });
     const timestamp = '2026-01-01T00:00:00.000Z';
@@ -150,23 +156,29 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     const pagesRepository = new KnowledgePagesRepository(database);
     const assetsRepository = new AssetsRepository(database);
     const entitiesRepository = new EntitiesRepository(database);
+    const retrieval = createTestHypermediaRetrievalService(database);
     const storage = new LocalStorage(join(dataFolder, 'objects'));
     const pagesService = new KnowledgePagesService({
       pages: pagesRepository,
+      retrieval,
       storage,
     });
     const app = createApp({
       auth: ownerAuth(),
-      assetsService: new AssetsService({ assets: assetsRepository, storage }),
+      assetsService: new AssetsService({ assets: assetsRepository, retrieval, storage }),
       assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
         assets: assetsRepository,
         entities: entitiesRepository,
         pages: pagesRepository,
+        retrieval,
       }),
       healthService: new HealthService(new HealthRepository(database)),
-      hypermediaService: new HypermediaService(new HypermediaRepository(database)),
+      hypermediaService: new HypermediaService({
+        hypermedia: new HypermediaRepository(database),
+        retrieval,
+      }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,
@@ -838,12 +850,12 @@ Every observation changes the next action.`,
     expect(await searchedKnowledgePageResponse.json()).toEqual({
       items: [
         expect.objectContaining({
-          readableId: 'growth-playbook',
-          excerpt: 'Luca owns this feedback system with Test Owner.',
-        }),
-        expect.objectContaining({
           readableId: duplicatePage.readableId,
           excerpt: 'A different page with the same title.',
+        }),
+        expect.objectContaining({
+          readableId: 'growth-playbook',
+          excerpt: 'Luca owns this feedback system with Test Owner.',
         }),
       ],
       total: 2,
@@ -1232,6 +1244,13 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       from sequence
     `;
     await database`
+      insert into "hypermedia_search_document"
+        ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
+      select "owner_id", 'entity', "readable_id", "name", "description", ''
+      from "entity"
+      where "owner_id" = ${OWNER_USER_ID} and "readable_id" like 'dense-entity-%'
+    `;
+    await database`
       insert into "knowledge_page_entity_mention"
         ("owner_id", "source_revision_id", "target_entity_id")
       select ${OWNER_USER_ID}, page."current_revision_id", entity."id"
@@ -1278,9 +1297,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
         readableId.startsWith('dense-entity-'),
       ),
     ).toBe(true);
-    expect(denseHypermedia.pages[0]?.resources).toHaveLength(
-      EXPECTED_BOUNDED_HYPERMEDIA_REFERENCE_COUNT,
-    );
+    expect(denseHypermedia.pages[0]?.resources).toHaveLength(MAX_HYPERMEDIA_SEARCH_LIMIT);
     expect(denseHypermedia.nextOffset).toBeNull();
     expect(denseHypermedia.resourceReferencesTruncated).toBe(true);
 

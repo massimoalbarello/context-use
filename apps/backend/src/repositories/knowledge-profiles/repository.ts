@@ -75,6 +75,14 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
         insert into "knowledge_profile" ("owner_id", "self_entity_id")
         values (${input.ownerId}, ${entity.id})
       `;
+      await db.CreateKnowledgeProfileSearchDocument`
+        insert into "hypermedia_search_document"
+          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
+        values
+          (${input.ownerId}, 'entity', ${input.readableId}, ${input.name}, ${input.description}, '')
+        on conflict ("owner_id", "resource_type", "readable_id") do update set
+          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
+      `;
       return { state: 'created' as const, profile: createdProfileFrom(entity) };
     });
   }

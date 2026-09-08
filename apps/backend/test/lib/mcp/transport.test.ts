@@ -12,6 +12,7 @@ import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import {
   unusedAssetTransferCapabilities,
+  unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
 } from '../../support/mcp.ts';
 
@@ -80,6 +81,7 @@ test('authenticated 2025-06-18 clients can initialize and call the same tools', 
         principal: authenticatedPrincipal,
         assetsService,
         entitiesService,
+        retrievalService: unusedHypermediaRetrievalService,
         pagesService,
         profilesService: unusedKnowledgeProfilesService,
         transferCapabilities: unusedAssetTransferCapabilities,

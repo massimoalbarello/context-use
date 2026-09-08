@@ -1,6 +1,7 @@
 import type { Auth } from '#lib/auth/better-auth.ts';
 import type { McpTransportContract } from '#lib/mcp/transport.ts';
 import type { AssetTransferCapabilitiesContract } from '#routes/mcp/assets/transfer-capabilities.ts';
+import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
 
@@ -23,6 +24,11 @@ export const unusedMcpClientAuthorizationsService: McpClientAuthorizationsServic
 export const unusedMcpTransport: McpTransportContract = {
   fetch: unexpectedCall,
   close: () => Promise.resolve(),
+};
+
+export const unusedHypermediaRetrievalService: HypermediaRetrievalServiceContract = {
+  search: unexpectedCall,
+  rebuildIndex: unexpectedCall,
 };
 
 export const unusedKnowledgeProfilesService: KnowledgeProfilesServiceContract = {

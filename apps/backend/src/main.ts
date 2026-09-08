@@ -18,6 +18,7 @@ import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { FrontendAssetsRepository } from '#repositories/frontend-assets/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
+import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
@@ -31,6 +32,7 @@ import { EntitiesService } from '#services/entities/service.ts';
 import { FrontendAssetsService } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
 import { HypermediaService } from '#services/hypermedia/service.ts';
+import { HypermediaRetrievalService } from '#services/hypermedia-retrieval/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
@@ -62,9 +64,12 @@ try {
   await runMigrations({ db: database });
 
   const storage = createLocalStorage({ dataFolder: env.DATA_FOLDER });
+  const retrievalRepository = new HypermediaRetrievalRepository(database);
+  const retrievalService = new HypermediaRetrievalService(retrievalRepository);
   const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({
     assets: assetsRepository,
+    retrieval: retrievalRepository,
     storage,
   });
   const assetTransferCapabilities = new AssetTransferCapabilities({ baseUrl: env.BASE_URL });
@@ -74,9 +79,13 @@ try {
     assets: assetsRepository,
     entities: new EntitiesRepository(database),
     pages: pagesRepository,
+    retrieval: retrievalRepository,
   });
   const healthService = new HealthService(new HealthRepository(database));
-  const hypermediaService = new HypermediaService(new HypermediaRepository(database));
+  const hypermediaService = new HypermediaService({
+    hypermedia: new HypermediaRepository(database),
+    retrieval: retrievalRepository,
+  });
   const ownerRegistrationService = new OwnerRegistrationService(
     new OwnerRegistrationRepository(database),
   );
@@ -88,7 +97,11 @@ try {
   const syncsService = new RecordSyncsService({
     syncs: new RecordSyncsRepository(database),
   });
-  const pagesService = new KnowledgePagesService({ pages: pagesRepository, storage });
+  const pagesService = new KnowledgePagesService({
+    pages: pagesRepository,
+    retrieval: retrievalRepository,
+    storage,
+  });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
   const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
     new McpClientAuthorizationsRepository(database),
@@ -99,6 +112,7 @@ try {
         principal,
         assetsService,
         entitiesService,
+        retrievalService,
         pagesService,
         profilesService,
         transferCapabilities: assetTransferCapabilities,

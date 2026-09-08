@@ -17,13 +17,16 @@ import { KnowledgePagesRepository } from '#repositories/knowledge-pages/reposito
 import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
+import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 import {
   KnowledgePagesService,
   type KnowledgePagesServiceContract,
 } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
+import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import {
   unusedAssetTransferCapabilities,
+  unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
@@ -113,6 +116,7 @@ async function withMcpClient<T>({
   actor = principal,
   assetsService = unusedAssetsService,
   entitiesService = unusedEntitiesService,
+  retrievalService = unusedHypermediaRetrievalService,
   pagesService = unusedPagesService,
   profilesService = unusedKnowledgeProfilesService,
   run,
@@ -120,6 +124,7 @@ async function withMcpClient<T>({
   actor?: McpClientAuthorizationPrincipal;
   assetsService?: AssetsServiceContract;
   entitiesService?: EntitiesServiceContract;
+  retrievalService?: HypermediaRetrievalServiceContract;
   pagesService?: KnowledgePagesServiceContract;
   profilesService?: KnowledgeProfilesServiceContract;
   run: (client: Client) => Promise<T>;
@@ -128,6 +133,7 @@ async function withMcpClient<T>({
     principal: actor,
     assetsService,
     entitiesService,
+    retrievalService,
     pagesService,
     profilesService,
     transferCapabilities: unusedAssetTransferCapabilities,
@@ -159,7 +165,7 @@ async function readHypermediaCurationGuideVersion(client: Client): Promise<strin
   return (result.structuredContent as { guide_version: string }).guide_version;
 }
 
-test('MCP publishes sixteen typed tools with accurate safety annotations and no private coordinates', async () => {
+test('MCP publishes typed tools with accurate safety annotations and no private coordinates', async () => {
   await withMcpClient({
     run: async (client) => {
       const { tools } = await client.listTools();
@@ -174,6 +180,7 @@ test('MCP publishes sixteen typed tools with accurate safety annotations and no 
         'read_entity',
         'update_entity',
         'archive_entity',
+        'search_hypermedia',
         'read_hypermedia_curation_guide',
         'create_knowledge_page',
         'list_knowledge_pages',
@@ -216,6 +223,19 @@ test('MCP publishes sixteen typed tools with accurate safety annotations and no 
         readOnlyHint: false,
         destructiveHint: true,
       });
+      expect(tools.find(({ name }) => name === 'search_hypermedia')).toMatchObject({
+        annotations: { readOnlyHint: true, destructiveHint: false },
+        inputSchema: {
+          properties: {
+            query: { type: 'string' },
+            resourceTypes: { type: 'array' },
+            limit: { maximum: 50, minimum: 1 },
+          },
+        },
+      });
+      expect(JSON.stringify(tools.find(({ name }) => name === 'search_hypermedia'))).not.toContain(
+        'cursor',
+      );
       expect(tools.find(({ name }) => name === 'read_entity')?.inputSchema).toMatchObject({
         properties: { address: { pattern: expect.any(String) } },
       });
@@ -296,6 +316,72 @@ test('MCP publishes sixteen typed tools with accurate safety annotations and no 
   });
 });
 
+test('search_hypermedia returns compact typed previews and canonical dereference addresses', async () => {
+  const retrievalService: HypermediaRetrievalServiceContract = {
+    search: (input) => {
+      expect(input).toEqual({
+        ownerId: principal.ownerId,
+        query: 'Luca Tidepool',
+        resourceTypes: ['entity', 'knowledge_page'],
+        limit: 2,
+      });
+      return Promise.resolve({
+        results: [
+          { resourceType: 'entity' as const, entity, matchExcerpt: null },
+          {
+            resourceType: 'knowledge_page' as const,
+            knowledgePage: page,
+            matchExcerpt: 'Luca became involved with Tidepool.',
+          },
+        ],
+        totalMatches: 4,
+        truncated: true,
+      });
+    },
+    rebuildIndex: unexpectedCall,
+  };
+
+  await withMcpClient({
+    retrievalService,
+    run: async (client) => {
+      const result = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: {
+          query: 'Luca Tidepool',
+          resourceTypes: ['entity', 'knowledge_page'],
+          limit: 2,
+        },
+      });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toEqual({
+        results: [
+          {
+            resourceType: 'entity',
+            address: 'context-use://entity/luca-bianchi',
+            readableId: 'luca-bianchi',
+            name: 'Luca Bianchi',
+            description: 'Researcher and collaborator',
+            matchExcerpt: null,
+          },
+          {
+            resourceType: 'knowledge_page',
+            address: 'context-use://page/growth-playbook',
+            readableId: 'growth-playbook',
+            title: 'Growth playbook',
+            excerpt: 'Run the feedback loop.',
+            temporalCoverage: '2025-03/..',
+            matchExcerpt: 'Luca became involved with Tidepool.',
+          },
+        ],
+        truncated: true,
+      });
+      expectNoInternalResourceIds(result.structuredContent);
+      expect(JSON.stringify(result.structuredContent)).not.toContain(INTERNAL_ENTITY_ID);
+      expect(JSON.stringify(result.structuredContent)).not.toContain(INTERNAL_PAGE_ID);
+    },
+  });
+});
+
 test('the concise guide is deterministic and names only available retrieval tools', async () => {
   await withMcpClient({
     run: async (client) => {
@@ -333,7 +419,9 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('Place knowledge in time');
       expect(guide).toContain('story is derived from its evidence, not a replacement');
       expect(guide).toContain('explain the blockers to the user');
-      expect(guide).not.toContain('search_hypermedia');
+      expect(guide).toContain('search_hypermedia');
+      expect(guide).toContain('names, aliases, identifiers, and topic phrases');
+      expect(guide).toContain('Similarity and rank are evidence of relevance');
 
       const availableToolNames = new Set(tools.map(({ name }) => name));
       const guideToolNames = [...guide.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)].flatMap((match) =>
@@ -907,6 +995,7 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
     await seedMcpAuthorization(database);
     const pagesService = new KnowledgePagesService({
       pages: new KnowledgePagesRepository(database),
+      retrieval: createTestHypermediaRetrievalService(database),
       storage: new LocalStorage(join(dataFolder, 'objects')),
     });
     const firstActor = { ...principal, ownerId: OWNER_USER_ID };

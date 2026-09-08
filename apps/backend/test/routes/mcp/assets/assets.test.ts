@@ -22,7 +22,11 @@ import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import { AssetsService, type AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
-import { unusedKnowledgeProfilesService } from '../../../support/mcp.ts';
+import { createTestHypermediaRetrievalService } from '../../../support/hypermedia-retrieval.ts';
+import {
+  unusedHypermediaRetrievalService,
+  unusedKnowledgeProfilesService,
+} from '../../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../../support/public-api.ts';
 
 const NOW = '2026-09-01T12:00:00.000Z';
@@ -118,6 +122,7 @@ async function withAssetMcp({
   const storage = new LocalStorage(join(dataFolder, 'objects'));
   const assetsService = new AssetsService({
     assets: new AssetsRepository(database),
+    retrieval: createTestHypermediaRetrievalService(database),
     storage,
   });
   const transferCapabilities = new AssetTransferCapabilities({
@@ -131,6 +136,7 @@ async function withAssetMcp({
     principal,
     assetsService,
     entitiesService: unusedEntitiesService,
+    retrievalService: unusedHypermediaRetrievalService,
     pagesService: unusedPagesService,
     profilesService: unusedKnowledgeProfilesService,
     transferCapabilities,
@@ -584,6 +590,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
     principal,
     assetsService,
     entitiesService: unusedEntitiesService,
+    retrievalService: unusedHypermediaRetrievalService,
     pagesService: unusedPagesService,
     profilesService: unusedKnowledgeProfilesService,
     transferCapabilities,

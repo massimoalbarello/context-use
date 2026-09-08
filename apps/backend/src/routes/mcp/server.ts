@@ -2,11 +2,13 @@ import { McpServer } from '@modelcontextprotocol/server';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
+import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import { registerAssetTools } from './assets/tools.ts';
 import type { AssetTransferCapabilitiesContract } from './assets/transfer-capabilities.ts';
 import { registerEntityTools } from './entities/tools.ts';
+import { registerHypermediaRetrievalTools } from './hypermedia-retrieval/tools.ts';
 import { registerKnowledgePageTools } from './pages/tools.ts';
 
 export const MCP_SUPPORTED_LEGACY_PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18'] as const;
@@ -15,6 +17,7 @@ export function createContextUseMcpServer({
   principal,
   assetsService,
   entitiesService,
+  retrievalService,
   pagesService,
   profilesService,
   transferCapabilities,
@@ -22,6 +25,7 @@ export function createContextUseMcpServer({
   principal: McpClientAuthorizationPrincipal;
   assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
+  retrievalService: Pick<HypermediaRetrievalServiceContract, 'search'>;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
   transferCapabilities: AssetTransferCapabilitiesContract;
@@ -32,6 +36,7 @@ export function createContextUseMcpServer({
   );
   registerAssetTools({ server, principal, assetsService, transferCapabilities });
   registerEntityTools({ server, principal, entitiesService, profilesService });
+  registerHypermediaRetrievalTools({ server, principal, retrievalService });
   registerKnowledgePageTools({ server, principal, pagesService });
   return server;
 }

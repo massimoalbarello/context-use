@@ -25,6 +25,7 @@ import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import { unusedRecordSyncsService, unusedRecordsService } from '../../support/app.ts';
+import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -90,25 +91,30 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     const storage = new LocalStorage(join(dataFolder, 'objects'));
     const assetsRepository = new AssetsRepository(database);
     const pagesRepository = new KnowledgePagesRepository(database);
+    const retrieval = createTestHypermediaRetrievalService(database);
     const app = createApp({
       auth: ownerAuth(),
-      assetsService: new AssetsService({ assets: assetsRepository, storage }),
+      assetsService: new AssetsService({ assets: assetsRepository, retrieval, storage }),
       assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
         assets: assetsRepository,
         entities: new EntitiesRepository(database),
         pages: pagesRepository,
+        retrieval,
       }),
       healthService: new HealthService(new HealthRepository(database)),
-      hypermediaService: new HypermediaService(new HypermediaRepository(database)),
+      hypermediaService: new HypermediaService({
+        hypermedia: new HypermediaRepository(database),
+        retrieval,
+      }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,
       ownerRegistrationService: new OwnerRegistrationService(
         new OwnerRegistrationRepository(database),
       ),
-      pagesService: new KnowledgePagesService({ pages: pagesRepository, storage }),
+      pagesService: new KnowledgePagesService({ pages: pagesRepository, retrieval, storage }),
       profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),
       recordsService: unusedRecordsService,
       syncsService: unusedRecordSyncsService,
