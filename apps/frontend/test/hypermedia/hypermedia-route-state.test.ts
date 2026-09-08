@@ -3,6 +3,7 @@ import { displayedHypermediaResourceKinds } from '../../src/components/hypermedi
 import {
   hypermediaProjection,
   hypermediaSearch,
+  hypermediaSearchAfterEscape,
   hypermediaSearchWithDateRange,
 } from '../../src/routes/hypermedia';
 
@@ -48,5 +49,34 @@ test('Hypermedia resource visibility is canonical URL state with entities as the
   expect(hypermediaSearch({ show: 'assets', kind: 'entity', id: 'hidden-entity' })).toEqual({
     show: 'assets',
     focus: undefined,
+  });
+});
+
+test('Escape closes the current preview and deselects only its resource', () => {
+  const previous = {
+    kind: 'asset' as const,
+    id: 'rollout-metrics',
+    focus: 'entity:jun-park,asset:rollout-metrics,entity:maya-chen',
+  };
+
+  expect(
+    hypermediaSearchAfterEscape({
+      previous,
+      selection: { kind: 'asset', readableId: 'rollout-metrics' },
+    }),
+  ).toEqual({
+    kind: undefined,
+    id: undefined,
+    focus: 'entity:jun-park,entity:maya-chen',
+  });
+  expect(
+    hypermediaSearchAfterEscape({
+      previous: { ...previous, kind: 'page', id: 'launch-plan' },
+      selection: { kind: 'page', readableId: 'launch-plan' },
+    }),
+  ).toEqual({
+    kind: undefined,
+    id: undefined,
+    focus: previous.focus,
   });
 });

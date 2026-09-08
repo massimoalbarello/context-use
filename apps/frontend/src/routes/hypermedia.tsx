@@ -10,6 +10,7 @@ import {
 } from '../components/hypermedia/hypermedia-resource-filter';
 import {
   type HypermediaSelection,
+  removeHypermediaResourceSelection,
   selectedHypermediaResources,
   selectedHypermediaResourcesValue,
   toggleHypermediaResourceSelection,
@@ -83,6 +84,25 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
 
 export function hypermediaProjection(search: HypermediaSearch): HypermediaPageProjection {
   return search.view ?? 'semantic';
+}
+
+export function hypermediaSearchAfterEscape({
+  previous,
+  selection,
+}: {
+  previous: HypermediaSearch;
+  selection: HypermediaSelection;
+}): HypermediaSearch {
+  const resources = removeHypermediaResourceSelection({
+    resources: selectedHypermediaResources(previous.focus),
+    selection,
+  });
+  return {
+    ...previous,
+    kind: undefined,
+    id: undefined,
+    focus: selectedHypermediaResourcesValue(resources),
+  };
 }
 
 export const Route = createFileRoute('/hypermedia')({
@@ -276,6 +296,11 @@ function HypermediaRoute() {
             <HypermediaPreviewPanel
               selection={selection}
               onSelect={selectKnowledge}
+              onEscape={() => {
+                void navigate({
+                  search: (previous) => hypermediaSearchAfterEscape({ previous, selection }),
+                });
+              }}
               onClose={() => {
                 void navigate({
                   search: (previous) => ({

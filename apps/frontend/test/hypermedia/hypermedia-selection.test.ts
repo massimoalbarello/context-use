@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  removeHypermediaResourceSelection,
   selectedHypermediaResources,
   selectedHypermediaResourcesLabel,
   selectedHypermediaResourcesValue,
@@ -35,5 +36,27 @@ describe('Hypermedia resource filters', () => {
     expect(
       toggleHypermediaResourceSelection({ resources: withAsset, selection: entitySelection }),
     ).toEqual([{ kind: 'asset', readableId: 'rollout-metrics' }]);
+  });
+
+  test('removes only the current resource and leaves page previews out of resource state', () => {
+    const resources = selectedHypermediaResources(
+      'entity:jun-park,asset:rollout-metrics,entity:maya-chen',
+    );
+
+    expect(
+      removeHypermediaResourceSelection({
+        resources,
+        selection: { kind: 'asset', readableId: 'rollout-metrics' },
+      }),
+    ).toEqual([
+      { kind: 'entity', readableId: 'jun-park' },
+      { kind: 'entity', readableId: 'maya-chen' },
+    ]);
+    expect(
+      removeHypermediaResourceSelection({
+        resources,
+        selection: { kind: 'page', readableId: 'launch-plan' },
+      }),
+    ).toBe(resources);
   });
 });
