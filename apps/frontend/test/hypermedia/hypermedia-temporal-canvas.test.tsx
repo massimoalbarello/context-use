@@ -35,7 +35,10 @@ const temporalPage: HypermediaPage = {
   revisionNumber: 1,
   createdAt,
   updatedAt: createdAt,
-  resources: [{ kind: 'entity', readableId: 'self' }],
+  resources: [
+    { kind: 'entity', readableId: 'self' },
+    { kind: 'asset', readableId: 'long-project-plan' },
+  ],
 };
 const continuedPage: HypermediaPage = {
   ...temporalPage,
@@ -79,6 +82,8 @@ test('temporal canvas keeps resource filtering and page preview selection access
 
   const entityButton = screen.getByRole('button', { name: /Self Entity/ });
   expect(entityButton.getAttribute('aria-pressed')).toBe('true');
+  expect(screen.getByText('Long Project Plan')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Long Project Plan' })).toBeTruthy();
   await user.click(entityButton);
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'entity', readableId: 'self' });
 

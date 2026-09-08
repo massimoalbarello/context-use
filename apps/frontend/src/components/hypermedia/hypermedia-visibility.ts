@@ -1,9 +1,7 @@
 // biome-ignore-all lint/style/noMagicNumbers: Viewport thresholds are explicit interaction tuning values.
 // biome-ignore-all lint/complexity/useMaxParams: Geometry helpers read more clearly with point pairs and sort callbacks.
 
-import { isEmbeddableAsset } from '../../lib/asset-presentation';
 import type { HypermediaResourceReference } from '../../queries/hypermedia';
-import { hypermediaResourceKey } from '../../queries/hypermedia';
 import type {
   CanvasBounds,
   CanvasPoint,
@@ -20,7 +18,6 @@ export type SettledHypermediaViewport = {
 };
 
 export const MAX_FOCUSED_RESOURCES = 24;
-export const MAX_EAGER_HYPERMEDIA_IMAGES = 12;
 
 function viewportCenter(viewport: CanvasBounds): CanvasPoint {
   return { x: viewport.x + viewport.width / 2, y: viewport.y + viewport.height / 2 };
@@ -139,17 +136,4 @@ export function hypermediaLayoutInViewport({
         (resourceKeys.length === 0 && pointNearViewport(point, viewport)),
     ),
   };
-}
-
-export function eagerHypermediaImageKeys(layout: HypermediaLayout): Set<string> {
-  return new Set(
-    layout.resources
-      .filter((resource) =>
-        resource.kind === 'entity'
-          ? Boolean(resource.entity.image)
-          : isEmbeddableAsset(resource.asset),
-      )
-      .slice(0, MAX_EAGER_HYPERMEDIA_IMAGES)
-      .map((resource) => hypermediaResourceKey(hypermediaLayoutResourceReference(resource))),
-  );
 }

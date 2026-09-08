@@ -1,4 +1,3 @@
-import { File } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useCallback, useMemo, useState } from 'react';
 import { cn } from '../../lib/class-names';
 import type {
@@ -29,6 +28,17 @@ const ACTIVE_CLOUD_STROKE_OPACITY = 0.9;
 const INACTIVE_CLOUD_STROKE_OPACITY = 0.48;
 const ACTIVE_CLOUD_STROKE_WIDTH = 3;
 const INACTIVE_CLOUD_STROKE_WIDTH = 1.5;
+const HYPERMEDIA_RESOURCE_NODE_RADIUS = 25;
+const HYPERMEDIA_RESOURCE_LABEL_WIDTH = 120;
+const HYPERMEDIA_RESOURCE_LABEL_HEIGHT = 42;
+const HYPERMEDIA_RESOURCE_INITIAL_BASELINE_OFFSET = 6;
+
+function hypermediaResourceNodeEmphasis(active: boolean): {
+  radiusOffset: number;
+  strokeWidth: number;
+} {
+  return active ? { radiusOffset: 5, strokeWidth: 5 } : { radiusOffset: 1, strokeWidth: 2 };
+}
 
 export type HypermediaPreview =
   | { kind: 'page'; page: HypermediaPage }
@@ -83,6 +93,55 @@ export function shortHypermediaLabel({
     : value;
 }
 
+export function HypermediaResourceNode({
+  point,
+  label,
+  active,
+  labelWidth = HYPERMEDIA_RESOURCE_LABEL_WIDTH,
+}: {
+  point: { x: number; y: number };
+  label: string;
+  active: boolean;
+  labelWidth?: number;
+}) {
+  const emphasis = hypermediaResourceNodeEmphasis(active);
+  const outerRadius = HYPERMEDIA_RESOURCE_NODE_RADIUS + emphasis.radiusOffset;
+  return (
+    <g>
+      <circle
+        cx={point.x}
+        cy={point.y}
+        r={outerRadius}
+        className={cn(
+          'fill-card stroke-border transition-[r,stroke-width] motion-reduce:transition-none',
+          active && 'stroke-foreground',
+        )}
+        strokeWidth={emphasis.strokeWidth}
+        vectorEffect="non-scaling-stroke"
+      />
+      <text
+        x={point.x}
+        y={point.y + HYPERMEDIA_RESOURCE_INITIAL_BASELINE_OFFSET}
+        textAnchor="middle"
+        className="fill-foreground font-semibold text-lg uppercase"
+      >
+        {entityInitial(label)}
+      </text>
+      <foreignObject
+        x={point.x - labelWidth / 2}
+        y={point.y + HYPERMEDIA_RESOURCE_NODE_RADIUS + 10}
+        width={labelWidth}
+        height={HYPERMEDIA_RESOURCE_LABEL_HEIGHT}
+        className="pointer-events-none overflow-visible"
+      >
+        <div className="flex size-full justify-center whitespace-normal px-1 text-center font-medium text-[12px] text-foreground leading-[14px] [overflow-wrap:anywhere]">
+          {label}
+        </div>
+      </foreignObject>
+    </g>
+  );
+}
+
 export function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview }) {
   return (
     <div className="flex min-w-0 items-start gap-3 overflow-hidden">
@@ -122,45 +181,6 @@ export function HypermediaHoverPreview({
     >
       <HypermediaPreviewCard preview={preview} />
     </div>
-  );
-}
-
-export function HypermediaResourceCardContent({
-  resource,
-  reference,
-  fallbackLabel,
-}: {
-  resource?: HypermediaLayoutResource;
-  reference: HypermediaResourceReference;
-  fallbackLabel: string;
-}) {
-  if (resource?.kind === 'entity') {
-    return <EntityCardContent entity={resource.entity} />;
-  }
-  if (resource?.kind === 'asset') {
-    return <AssetCardContent asset={resource.asset} />;
-  }
-  return (
-    <>
-      <span
-        className={`flex size-9 shrink-0 items-center justify-center overflow-hidden bg-muted text-muted-foreground ${
-          reference.kind === 'entity' ? 'rounded-full' : 'rounded-md'
-        }`}
-        aria-hidden="true"
-      >
-        {reference.kind === 'entity' ? (
-          <span className="font-semibold text-xs uppercase">{entityInitial(fallbackLabel)}</span>
-        ) : (
-          <File className="size-5 stroke-[1.4]" />
-        )}
-      </span>
-      <span className="grid min-w-0 flex-1 gap-0.5 text-left">
-        <strong className="truncate font-semibold text-sm">{fallbackLabel}</strong>
-        <small className="truncate text-muted-foreground text-xs">
-          {reference.kind === 'entity' ? 'Entity' : 'Asset'}
-        </small>
-      </span>
-    </>
   );
 }
 

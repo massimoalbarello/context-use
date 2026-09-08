@@ -20,7 +20,7 @@ import {
   HypermediaPageCloud,
   HypermediaPageLabel,
   HypermediaPageLink,
-  HypermediaResourceCardContent,
+  HypermediaResourceNode,
   type HypermediaViewProps,
   useHypermediaViewState,
 } from './hypermedia-view';
@@ -29,7 +29,7 @@ const RANGE_SETTLE_MS = 280;
 const RESOURCE_SETTLE_MS = 280;
 const RESOURCE_DISCOVERY_DISTANCE = 360;
 const PAGE_DISCOVERY_DISTANCE = 360;
-const RESOURCE_HEADER_HEIGHT = 96;
+const RESOURCE_HEADER_HEIGHT = 112;
 const PAGE_FADE_DISTANCE = 96;
 const OVERLAPPING_PAGES_NOTE = 'Overlapping clouds mark pages on the same or nearby dates';
 
@@ -73,34 +73,31 @@ function TemporalResourceHeaders({
   onSelect: (selection: HypermediaSelection) => void;
 }) {
   return (
-    <div className="pointer-events-none sticky top-0 z-30 h-24 border-b bg-card" style={{ width }}>
+    <div className="pointer-events-none sticky top-0 z-30 h-28 border-b bg-card" style={{ width }}>
       {resources.map((resource) => {
         const active = activeKey === resource.key || selectedResourceKeys.has(resource.key);
         return (
           <div
             key={resource.key}
-            className="pointer-events-none absolute top-3 -translate-x-1/2"
+            className="pointer-events-none absolute top-0 -translate-x-1/2"
             style={{ left: resource.x }}
           >
             <Button
               type="button"
-              variant="outline"
-              className={cn(
-                'pointer-events-auto h-12 w-40 justify-start gap-2 rounded-xl bg-card/95 px-3 text-left shadow-sm backdrop-blur transition-transform hover:-translate-y-0.5 motion-reduce:transform-none [&_small]:hidden',
-                active && 'border-foreground bg-accent shadow-md',
-              )}
+              variant="ghost"
+              className="pointer-events-auto h-28 w-[104px] rounded-none p-0 hover:bg-transparent dark:hover:bg-transparent"
+              aria-label={resource.label}
               aria-pressed={selectedResourceKeys.has(resource.key)}
               onClick={() => onSelect({ kind: resource.kind, readableId: resource.readableId })}
             >
-              <HypermediaResourceCardContent
-                resource={resource.resource}
-                reference={resourceReference(resource)}
-                fallbackLabel={resource.label}
-              />
-              <span
-                className="absolute -bottom-1 left-1/2 size-2 -translate-x-1/2 rounded-full border bg-card"
-                aria-hidden="true"
-              />
+              <svg className="size-full overflow-visible" viewBox="0 0 104 112" aria-hidden="true">
+                <HypermediaResourceNode
+                  point={{ x: 52, y: 31 }}
+                  label={resource.label}
+                  active={active}
+                  labelWidth={104}
+                />
+              </svg>
             </Button>
           </div>
         );

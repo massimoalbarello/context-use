@@ -11,9 +11,7 @@ import {
   useState,
   type WheelEvent,
 } from 'react';
-import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
-import { entityInitial } from '../entities/entity-link';
 import { Button } from '../ui/button';
 import {
   buildHypermediaLayout,
@@ -34,12 +32,11 @@ import {
   HypermediaPageLabel,
   HypermediaPageLink,
   type HypermediaPreview,
+  HypermediaResourceNode,
   type HypermediaViewProps,
-  shortHypermediaLabel,
   useHypermediaViewState,
 } from './hypermedia-view';
 import {
-  eagerHypermediaImageKeys,
   focusedResources,
   hypermediaLayoutInViewport,
   nearestBoundaryResource,
@@ -54,52 +51,21 @@ const MAX_WHEEL_ZOOM_DELTA = 80;
 const WHEEL_ZOOM_RATE = 0.001;
 const VIEWPORT_SETTLE_MS = 280;
 
-function resourceImageReadableId(
-  resource: HypermediaLayoutResource,
-  visible: boolean,
-): string | undefined {
-  if (!visible) {
-    return undefined;
-  }
-  if (resource.kind === 'entity') {
-    return resource.entity.image?.readableId;
-  }
-  return isEmbeddableAsset(resource.asset) ? resource.asset.readableId : undefined;
-}
-
-function resourceDotEmphasis(active: boolean): {
-  radiusOffset: number;
-  strokeWidth: number;
-} {
-  if (active) {
-    return { radiusOffset: 5, strokeWidth: 5 };
-  }
-  return { radiusOffset: 1, strokeWidth: 2 };
-}
-
 function ResourceDot({
   resource,
   active,
-  eagerImage,
   onActivate,
   onPreview,
   onPreviewEnd,
 }: {
   resource: HypermediaLayoutResource;
   active: boolean;
-  eagerImage: boolean;
   onActivate: () => void;
   onPreview: () => void;
   onPreviewEnd: () => void;
 }) {
-  const radius = resource.kind === 'entity' ? 25 : 22;
-  const emphasis = resourceDotEmphasis(active);
-  const outerExtent = radius + emphasis.radiusOffset;
-  const innerExtent = radius - 3;
-  const imageReadableId = resourceImageReadableId(resource, active || eagerImage);
   const label = hypermediaLayoutResourceLabel(resource);
   const reference = hypermediaLayoutResourceReference(resource);
-  const clipId = `hypermedia-resource-${resource.key.replaceAll(':', '-')}`;
   const href = `/${reference.kind === 'entity' ? 'entities' : 'assets'}/${encodeURIComponent(reference.readableId)}`;
 
   return (
@@ -118,84 +84,7 @@ function ResourceDot({
         onActivate();
       }}
     >
-      <defs>
-        <clipPath id={clipId}>
-          {resource.kind === 'entity' ? (
-            <circle cx={resource.point.x} cy={resource.point.y} r={innerExtent} />
-          ) : (
-            <rect
-              x={resource.point.x - innerExtent}
-              y={resource.point.y - innerExtent}
-              width={innerExtent * 2}
-              height={innerExtent * 2}
-              rx={7}
-            />
-          )}
-        </clipPath>
-      </defs>
-      {resource.kind === 'entity' ? (
-        <circle
-          cx={resource.point.x}
-          cy={resource.point.y}
-          r={outerExtent}
-          className={cn(
-            'fill-card stroke-border transition-[r,stroke-width] motion-reduce:transition-none',
-            active && 'stroke-foreground',
-          )}
-          strokeWidth={emphasis.strokeWidth}
-          vectorEffect="non-scaling-stroke"
-        />
-      ) : (
-        <rect
-          x={resource.point.x - outerExtent}
-          y={resource.point.y - outerExtent}
-          width={outerExtent * 2}
-          height={outerExtent * 2}
-          rx={10}
-          className={cn(
-            'fill-card stroke-border transition-[x,y,width,height,stroke-width] motion-reduce:transition-none',
-            active && 'stroke-foreground',
-          )}
-          strokeWidth={emphasis.strokeWidth}
-          vectorEffect="non-scaling-stroke"
-        />
-      )}
-      {imageReadableId ? (
-        <image
-          href={assetContentUrl(imageReadableId)}
-          x={resource.point.x - radius + 3}
-          y={resource.point.y - radius + 3}
-          width={(radius - 3) * 2}
-          height={(radius - 3) * 2}
-          preserveAspectRatio="xMidYMid slice"
-          clipPath={`url(#${clipId})`}
-        />
-      ) : resource.kind === 'entity' ? (
-        <text
-          x={resource.point.x}
-          y={resource.point.y + 6}
-          textAnchor="middle"
-          className="fill-foreground font-semibold text-lg"
-        >
-          {entityInitial(resource.entity.name)}
-        </text>
-      ) : (
-        <g
-          transform={`translate(${resource.point.x - 9} ${resource.point.y - 11})`}
-          className="fill-none stroke-[1.7] stroke-muted-foreground"
-        >
-          <path d="M4 1.5h8l5 5v14H4z" />
-          <path d="M12 1.5v5h5" />
-        </g>
-      )}
-      <text
-        x={resource.point.x}
-        y={resource.point.y + radius + 18}
-        textAnchor="middle"
-        className="pointer-events-none fill-foreground font-medium text-[12px]"
-      >
-        {shortHypermediaLabel({ value: label, maximumCharacters: 22 })}
-      </text>
+      <HypermediaResourceNode point={resource.point} label={label} active={active} />
     </a>
   );
 }
@@ -204,7 +93,6 @@ const HypermediaLayers = memo(function HypermediaLayers({
   layout,
   activeKey,
   selectedResourceKeys,
-  eagerImageKeys,
   suppressNextCloudClick,
   onSelect,
   onPreview,
@@ -213,7 +101,6 @@ const HypermediaLayers = memo(function HypermediaLayers({
   layout: HypermediaLayout;
   activeKey: string | undefined;
   selectedResourceKeys: Set<string>;
-  eagerImageKeys: Set<string>;
   suppressNextCloudClick: { current: boolean };
   onSelect: (selection: HypermediaSelection) => void;
   onPreview: (preview: HypermediaPreview) => void;
@@ -284,7 +171,6 @@ const HypermediaLayers = memo(function HypermediaLayers({
             key={resource.key}
             resource={resource}
             active={activeKey === resource.key || selectedResourceKeys.has(resource.key)}
-            eagerImage={eagerImageKeys.has(resource.key)}
             onPreview={() => onPreview(preview)}
             onPreviewEnd={() => onPreviewEnd(resource.key)}
             onActivate={() => onSelect(hypermediaLayoutResourceReference(resource))}
@@ -373,7 +259,6 @@ export function HypermediaCanvas({
         : hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
     [layout, selectedKey, spotlightActive, viewBox],
   );
-  const eagerImageKeys = useMemo(() => eagerHypermediaImageKeys(layout), [layout]);
   const updateViewBox = useCallback((nextViewBox: ViewBox) => {
     viewBoxRef.current = nextViewBox;
     setViewBox(nextViewBox);
@@ -585,7 +470,6 @@ export function HypermediaCanvas({
           layout={visibleLayout}
           activeKey={activeKey}
           selectedResourceKeys={selectedResourceKeys}
-          eagerImageKeys={eagerImageKeys}
           suppressNextCloudClick={suppressNextCloudClick}
           onSelect={onSelect}
           onPreview={setPreview}
