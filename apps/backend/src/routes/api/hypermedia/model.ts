@@ -3,6 +3,7 @@ import type {
   HypermediaPages,
   HypermediaResource,
   HypermediaResourceContinuation,
+  HypermediaResourceKind,
   HypermediaResourceNeighborhood,
   HypermediaResourceReference,
 } from '#models/hypermedia/model.ts';
@@ -25,6 +26,7 @@ const RESOURCE_KIND_PREFIX_LENGTH = 'entity:'.length;
 const MAX_HYPERMEDIA_FOCUS_LENGTH =
   MAX_HYPERMEDIA_PAGE_FOCUS_RESOURCES * (MAX_READABLE_ID_LENGTH + 'entity:,'.length);
 const RESOURCE_KEY_PATTERN = `^(?:entity|asset):${READABLE_ID_PATTERN.source.slice(1, -1)}$`;
+const RESOURCE_KINDS_PATTERN = '^(?:entity|asset)(?:,(?:entity|asset))?$';
 
 const HypermediaResourceReferenceSchema = t.Object({
   kind: t.Union([t.Literal('entity'), t.Literal('asset')]),
@@ -50,6 +52,11 @@ export const HypermediaResourceNeighborhoodQuerySchema = t.Object({
     }),
   ),
   cursor: t.Optional(t.String({ minLength: 1, maxLength: MAX_HYPERMEDIA_CURSOR_LENGTH })),
+  kinds: t.String({
+    minLength: 'asset'.length,
+    maxLength: 'entity,asset'.length,
+    pattern: RESOURCE_KINDS_PATTERN,
+  }),
 });
 
 export const HypermediaResourceNeighborhoodSchema = t.Object({
@@ -65,6 +72,11 @@ export const HypermediaResourceNeighborhoodSchema = t.Object({
 
 export const HypermediaPagesQuerySchema = t.Object({
   projection: t.Optional(t.Union([t.Literal('semantic'), t.Literal('temporal')])),
+  kinds: t.String({
+    minLength: 'asset'.length,
+    maxLength: 'entity,asset'.length,
+    pattern: RESOURCE_KINDS_PATTERN,
+  }),
   resources: t.Optional(
     t.String({
       minLength: MIN_RESOURCE_KEY_LENGTH,
@@ -114,6 +126,14 @@ export function parseHypermediaResourceReference(
     return null;
   }
   return { kind, readableId };
+}
+
+export function parseHypermediaResourceKinds(value: string): HypermediaResourceKind[] | null {
+  const kinds = new Set(value.split(','));
+  if (kinds.size === 0 || [...kinds].some((kind) => kind !== 'entity' && kind !== 'asset')) {
+    return null;
+  }
+  return (['entity', 'asset'] as const).filter((kind) => kinds.has(kind));
 }
 
 export function parseHypermediaResources(value?: string): HypermediaResourceReference[] | null {

@@ -9,7 +9,11 @@ import {
   toggleDisplayedHypermediaResourceKind,
 } from '../../src/components/hypermedia/hypermedia-resource-filter';
 import { buildTemporalHypermediaLayout } from '../../src/components/hypermedia/hypermedia-temporal-layout';
-import type { HypermediaPage } from '../../src/queries/hypermedia';
+import {
+  type HypermediaPage,
+  hypermediaPagesQueryOptions,
+  hypermediaResourceNeighborhoodQueryOptions,
+} from '../../src/queries/hypermedia';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const resources: HypermediaLayoutResource[] = [
@@ -87,5 +91,29 @@ describe('Hypermedia resource type filter', () => {
     expect(semantic.pages[0]?.resourceKeys).toEqual(['entity:owner']);
     expect(temporal.resources.map(({ key }) => key)).toEqual(['entity:owner']);
     expect(temporal.pages[0]?.resourceKeys).toEqual(['entity:owner']);
+  });
+
+  test('separates cached API results by selected resource kinds', () => {
+    const entityNeighborhood = hypermediaResourceNeighborhoodQueryOptions({
+      anchor: { kind: 'entity', readableId: 'owner' },
+      kinds: ['entity'],
+    });
+    const assetNeighborhood = hypermediaResourceNeighborhoodQueryOptions({
+      anchor: { kind: 'entity', readableId: 'owner' },
+      kinds: ['asset'],
+    });
+    const entityPages = hypermediaPagesQueryOptions({
+      projection: 'semantic',
+      resources: [],
+      kinds: ['entity'],
+    });
+    const allPages = hypermediaPagesQueryOptions({
+      projection: 'semantic',
+      resources: [],
+      kinds: ['entity', 'asset'],
+    });
+
+    expect(entityNeighborhood.queryKey).not.toEqual(assetNeighborhood.queryKey);
+    expect(entityPages.queryKey).not.toEqual(allPages.queryKey);
   });
 });

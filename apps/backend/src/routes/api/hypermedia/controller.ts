@@ -17,6 +17,7 @@ import {
   HypermediaResourceNeighborhoodSchema,
   hypermediaPagesResponse,
   hypermediaResourceNeighborhoodResponse,
+  parseHypermediaResourceKinds,
   parseHypermediaResourceReference,
   parseHypermediaResources,
 } from '#routes/api/hypermedia/model.ts';
@@ -36,13 +37,15 @@ export function createHypermediaController({
       '/resources',
       async ({ query, user, status }) => {
         const anchor = parseHypermediaResourceReference(query.anchor);
+        const kinds = parseHypermediaResourceKinds(query.kinds);
         const decodedCursor = decodeHypermediaResourceCursor(query.cursor);
-        if (!anchor || decodedCursor.state === 'invalid') {
+        if (!anchor || !kinds || decodedCursor.state === 'invalid') {
           return status(StatusMap['Bad Request'], { error: 'Invalid resource neighborhood query' });
         }
         const neighborhood = await hypermediaService.resourceNeighborhood({
           ownerId: user.id,
           anchor,
+          kinds,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_RESOURCE_LIMIT,
           cursor: decodedCursor.cursor,
         });
@@ -64,6 +67,7 @@ export function createHypermediaController({
       '/pages',
       async ({ query, user, status }) => {
         const resources = parseHypermediaResources(query.resources);
+        const kinds = parseHypermediaResourceKinds(query.kinds);
         let temporalBounds: TemporalBounds | undefined;
         try {
           temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
@@ -73,12 +77,13 @@ export function createHypermediaController({
           }
           throw error;
         }
-        if (!resources) {
+        if (!resources || !kinds) {
           return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
         const pages = await hypermediaService.pages({
           ownerId: user.id,
           resources,
+          kinds,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
           offset: query.offset ?? 0,
           query: query.query,

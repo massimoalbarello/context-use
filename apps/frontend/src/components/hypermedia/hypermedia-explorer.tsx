@@ -89,7 +89,9 @@ export function HypermediaExplorer({
       : initial;
   });
   const neighborhoodQueries = useQueries({
-    queries: neighborhoodRequests.map(hypermediaResourceNeighborhoodQueryOptions),
+    queries: neighborhoodRequests.map((request) =>
+      hypermediaResourceNeighborhoodQueryOptions({ ...request, kinds: resourceKinds }),
+    ),
   });
   const neighborhoods = useMemo(
     () => neighborhoodQueries.flatMap(({ data }) => (data ? [data] : [])),
@@ -103,10 +105,13 @@ export function HypermediaExplorer({
     isPending: entitiesPending,
     fetchNextPage: fetchNextEntityPage,
     refetch: refetchEntities,
-  } = useEntities();
+  } = useEntities({ enabled: resourceKinds.includes('entity') });
   const entities = useMemo(
-    () => entityData?.pages.flatMap((page) => page.items) ?? [],
-    [entityData],
+    () =>
+      resourceKinds.includes('entity')
+        ? (entityData?.pages.flatMap((page) => page.items) ?? [])
+        : [],
+    [entityData, resourceKinds],
   );
   const [resources, setResources] = useState(() => buildStableResources([], []));
 
@@ -213,13 +218,10 @@ export function HypermediaExplorer({
     (resourceKinds.includes('entity') && hasNextEntityPage) ||
     neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
     visualizedHypermedia.resources.some(({ key }) => !requestedAnchorKeys.has(key));
-  const resourceDisplayKey = resourceKinds.join(':');
-
   return (
     <div className="relative size-full min-h-[28rem]">
       {projection === 'semantic' ? (
         <HypermediaCanvas
-          key={resourceDisplayKey}
           resources={visualizedHypermedia.resources}
           pages={visualizedHypermedia.pages}
           selectedResources={visualizedSelectedResources}
@@ -246,7 +248,6 @@ export function HypermediaExplorer({
         />
       ) : (
         <HypermediaTemporalCanvas
-          key={resourceDisplayKey}
           resources={visualizedHypermedia.resources}
           pages={visualizedHypermedia.pages}
           extent={temporalExtent}

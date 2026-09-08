@@ -126,12 +126,14 @@ export interface HypermediaRepositoryContract {
   resourceNeighborhood(input: {
     ownerId: string;
     anchor: HypermediaResourceReference;
+    kinds: HypermediaResourceKind[];
     limit: number;
     cursor?: HypermediaResourceContinuation;
   }): Promise<HypermediaResourceNeighborhood | null>;
   pages(input: {
     ownerId: string;
     resources: HypermediaResourceReference[];
+    kinds: HypermediaResourceKind[];
     limit: number;
     offset: number;
     query?: string;
@@ -150,14 +152,17 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
   async resourceNeighborhood({
     ownerId,
     anchor,
+    kinds,
     limit,
     cursor,
   }: {
     ownerId: string;
     anchor: HypermediaResourceReference;
+    kinds: HypermediaResourceKind[];
     limit: number;
     cursor?: HypermediaResourceContinuation;
   }): Promise<HypermediaResourceNeighborhood | null> {
+    const resourceKinds = JSON.stringify(kinds);
     const { cursorSharedPageCount, cursorKind, cursorReadableId } =
       resourceCursorParameters(cursor);
     const rowLimit = limit + 1;
@@ -215,7 +220,9 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         /* @type name string */
         /* @type createdAt string */
         /* @type updatedAt string */
-        with anchor_revision as (
+        with selected_kind as (
+          select value as "kind" from json_each(${resourceKinds})
+        ), anchor_revision as (
           select mention."source_revision_id" as "revisionId"
           from "entity" anchor_entity
           join "knowledge_page_entity_mention" mention
@@ -253,6 +260,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
             on entity."owner_id" = mention."owner_id"
            and entity."id" = mention."target_entity_id"
           where entity."archived_at" is null
+            and 'entity' in (select "kind" from selected_kind)
             and not (${anchor.kind} = 'entity' and entity."readable_id" = ${anchor.readableId})
           group by entity."id", entity."readable_id"
           union all
@@ -266,6 +274,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           join "asset" asset
             on asset."owner_id" = usage."owner_id" and asset."id" = usage."target_asset_id"
           where asset."archived_at" is null
+            and 'asset' in (select "kind" from selected_kind)
             and not (${anchor.kind} = 'asset' and asset."readable_id" = ${anchor.readableId})
           group by asset."id", asset."readable_id"
         )
@@ -330,6 +339,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
   async pages({
     ownerId,
     resources,
+    kinds,
     limit,
     offset,
     query,
@@ -338,6 +348,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
   }: {
     ownerId: string;
     resources: HypermediaResourceReference[];
+    kinds: HypermediaResourceKind[];
     limit: number;
     offset: number;
     query?: string;
@@ -348,6 +359,10 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       resources.map(({ kind, readableId }) => `${kind}:${readableId}`),
     );
     const selectedResourceCount = resources.length;
+    const visibleSelectedResourceCount = resources.filter(({ kind }) =>
+      kinds.includes(kind),
+    ).length;
+    const resourceKinds = JSON.stringify(kinds);
     const normalizedQuery = query?.trim().toLocaleLowerCase() || null;
     const filterStart = temporalBounds?.start ?? null;
     const filterEnd = temporalBounds?.end ?? null;
@@ -386,11 +401,13 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       };
     }
     const selectedPageIds = JSON.stringify(selectedPageRows.map(({ id }) => id));
-    const maximumSelectedResourceReferences = selectedResourceCount * selectedPageRows.length;
+    const maximumSelectedResourceReferences =
+      visibleSelectedResourceCount * selectedPageRows.length;
     const referenceLimit =
       MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES + maximumSelectedResourceReferences + 1;
     const referenceRows = await this.pageResourceRows({
       ownerId,
+      resourceKinds,
       resourceKeys,
       selectedPageIds,
       referenceLimit,
@@ -573,11 +590,13 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
 
   private pageResourceRows({
     ownerId,
+    resourceKinds,
     resourceKeys,
     selectedPageIds,
     referenceLimit,
   }: {
     ownerId: string;
+    resourceKinds: string;
     resourceKeys: string;
     selectedPageIds: string;
     referenceLimit: number;
@@ -585,7 +604,9 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     return this.sql.ListHypermediaPageResources`
       /* @notNull sourcePageReadableId kind readableId */
       /* @type kind 'entity' | 'asset' */
-      with selected_key as (
+      with selected_kind as (
+        select value as "kind" from json_each(${resourceKinds})
+      ), selected_key as (
         select value as "key" from json_each(${resourceKeys})
       ), selected_page as (
         select "id", "readable_id" as "readableId", "current_revision_id" as "revisionId"
@@ -602,6 +623,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         join "entity" entity
           on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
         where entity."archived_at" is null
+          and 'entity' in (select "kind" from selected_kind)
         union
         select selected_page."readableId" as "sourcePageReadableId", 'asset' as "kind",
           asset."readable_id" as "readableId"
@@ -612,6 +634,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         join "asset" asset
           on asset."owner_id" = usage."owner_id" and asset."id" = usage."target_asset_id"
         where asset."archived_at" is null
+          and 'asset' in (select "kind" from selected_kind)
       )
       select "sourcePageReadableId", "kind", "readableId" from page_resource
       order by ("kind" || ':' || "readableId") in (select "key" from selected_key) desc,

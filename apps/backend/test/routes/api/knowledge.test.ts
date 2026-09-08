@@ -525,7 +525,7 @@ Every observation changes the next action.`,
     const firstNeighborhoodResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/resources?anchor=entity:test-owner&limit=1',
+        path: '/hypermedia/resources?anchor=entity:test-owner&kinds=entity&limit=1',
       }),
     );
     expect(firstNeighborhoodResponse.status).toBe(StatusMap.OK);
@@ -554,7 +554,7 @@ Every observation changes the next action.`,
     const remainingNeighborhoodResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: `/hypermedia/resources?anchor=entity:test-owner&limit=1&cursor=${encodeURIComponent(firstNeighborhood.nextCursor!)}`,
+        path: `/hypermedia/resources?anchor=entity:test-owner&kinds=entity&limit=1&cursor=${encodeURIComponent(firstNeighborhood.nextCursor!)}`,
       }),
     );
     const remainingNeighborhood = (await remainingNeighborhoodResponse.json()) as {
@@ -565,7 +565,7 @@ Every observation changes the next action.`,
     expect(remainingNeighborhood.nextCursor).toBeNull();
 
     const allHypermediaPagesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/hypermedia/pages?limit=10' }),
+      jsonRequest({ method: 'GET', path: '/hypermedia/pages?kinds=entity&limit=10' }),
     );
     const allHypermediaPages = (await allHypermediaPagesResponse.json()) as {
       pages: Array<{ readableId: string }>;
@@ -590,7 +590,10 @@ Every observation changes the next action.`,
     );
 
     const semanticProjectionResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/hypermedia/pages?projection=semantic&limit=10' }),
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?projection=semantic&kinds=entity&limit=10',
+      }),
     );
     expect(semanticProjectionResponse.status).toBe(StatusMap.OK);
     const semanticProjection = (await semanticProjectionResponse.json()) as {
@@ -601,7 +604,10 @@ Every observation changes the next action.`,
     ]);
 
     const temporalProjectionResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/hypermedia/pages?projection=temporal&limit=10' }),
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?projection=temporal&kinds=entity&limit=10',
+      }),
     );
     expect(temporalProjectionResponse.status).toBe(StatusMap.OK);
     const temporalProjection = (await temporalProjectionResponse.json()) as {
@@ -619,7 +625,7 @@ Every observation changes the next action.`,
     const filteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject&limit=2',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&limit=2',
       }),
     );
     expect(filteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -648,7 +654,7 @@ Every observation changes the next action.`,
     const remainingFilteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject&limit=2&offset=2',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&limit=2&offset=2',
       }),
     );
     expect(remainingFilteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -666,7 +672,7 @@ Every observation changes the next action.`,
     const intersectedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject,entity:test-owner',
+        path: '/hypermedia/pages?resources=entity:temporal-subject,entity:test-owner&kinds=entity',
       }),
     );
     const intersectedHypermedia = (await intersectedHypermediaResponse.json()) as {
@@ -679,7 +685,7 @@ Every observation changes the next action.`,
     const rangedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject&time=2025-04',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&time=2025-04',
       }),
     );
     const rangedHypermedia = (await rangedHypermediaResponse.json()) as {
@@ -1201,7 +1207,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     const denseHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject&query=alpha',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&query=alpha',
       }),
     );
     const denseHypermedia = (await denseHypermediaResponse.json()) as {

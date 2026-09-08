@@ -1,7 +1,7 @@
-import type { HypermediaPage, HypermediaResourceReference } from '../../queries/hypermedia';
+import type { HypermediaPage, HypermediaResourceKind } from '../../queries/hypermedia';
 import type { HypermediaLayoutResource } from './hypermedia-layout';
 
-export type HypermediaResourceKind = HypermediaResourceReference['kind'];
+export type { HypermediaResourceKind } from '../../queries/hypermedia';
 export type HypermediaResourceDisplay = 'assets' | 'all';
 
 const ALL_HYPERMEDIA_RESOURCE_KINDS: HypermediaResourceKind[] = ['entity', 'asset'];

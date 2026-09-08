@@ -96,6 +96,7 @@ export const Route = createFileRoute('/hypermedia')({
     query: search.q,
     projection: hypermediaProjection(search),
     resources: selectedHypermediaResources(search.focus),
+    kinds: displayedHypermediaResourceKinds(search.show),
   }),
   loader: async ({ context, deps }) => {
     if (!context.profile) {
@@ -107,13 +108,16 @@ export const Route = createFileRoute('/hypermedia')({
     };
     await Promise.all([
       context.queryClient.ensureQueryData(
-        hypermediaResourceNeighborhoodQueryOptions({ anchor: self }),
+        hypermediaResourceNeighborhoodQueryOptions({ anchor: self, kinds: deps.kinds }),
       ),
-      context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions),
+      deps.kinds.includes('entity')
+        ? context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions)
+        : Promise.resolve(),
       context.queryClient.ensureInfiniteQueryData(
         hypermediaPagesQueryOptions({
           projection: deps.projection,
           resources: deps.resources,
+          kinds: deps.kinds,
           query: deps.query,
         }),
       ),
@@ -137,6 +141,7 @@ function HypermediaRoute() {
     ...hypermediaPagesQueryOptions({
       projection,
       resources: selectedResources,
+      kinds: resourceKinds,
       query: q,
     }),
     enabled: Boolean(profile),
@@ -238,6 +243,7 @@ function HypermediaRoute() {
       <KnowledgeWorkspaceDetail>
         <div className="relative size-full">
           <HypermediaExplorer
+            key={resourceKinds.join(':')}
             projection={projection}
             resourceKinds={resourceKinds}
             selfReadableId={profile.selfEntity.readableId}
