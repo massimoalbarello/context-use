@@ -249,6 +249,7 @@ function HypermediaRoute() {
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
             selectedResources={selectedResources}
+            query={q}
             pages={loadedPages}
             temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
             dateRange={dateRange}

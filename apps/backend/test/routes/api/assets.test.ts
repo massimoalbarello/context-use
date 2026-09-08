@@ -383,11 +383,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(filteredAssetPages.pages).toEqual([
       expect.objectContaining({
         readableId: 'evidence-report',
-        resources: expect.arrayContaining([
-          { kind: 'asset', readableId: 'quarterly-chart' },
-          { kind: 'asset', readableId: 'investment-memo' },
-          { kind: 'entity', readableId: 'luca-bianchi' },
-        ]),
+        resources: [{ kind: 'asset', readableId: 'quarterly-chart' }],
       }),
     ]);
 
@@ -402,7 +398,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         pages: [
           expect.objectContaining({
             readableId: 'evidence-report',
-            resources: [{ kind: 'entity', readableId: 'luca-bianchi' }],
+            resources: [],
           }),
         ],
         resourceReferencesTruncated: false,

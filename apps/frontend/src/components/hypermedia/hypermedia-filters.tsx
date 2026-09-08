@@ -1,5 +1,5 @@
 import { Check, Search, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   HypermediaPageProjection,
   HypermediaResourceReference,
@@ -18,6 +18,27 @@ function HypermediaKeywordFilter({
   onApply: (value: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function focusKeywordInput(event: KeyboardEvent) {
+      if (
+        event.key.toLocaleLowerCase() !== 'k' ||
+        !event.metaKey ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+      event.preventDefault();
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+
+    window.addEventListener('keydown', focusKeywordInput);
+    return () => window.removeEventListener('keydown', focusKeywordInput);
+  }, []);
 
   return (
     <form
@@ -37,9 +58,11 @@ function HypermediaKeywordFilter({
             aria-hidden="true"
           />
           <Input
+            ref={inputRef}
             id="hypermedia-keyword"
             className="h-10 pl-9"
             type="search"
+            aria-keyshortcuts="Meta+K"
             placeholder="Page, entity, or asset"
             value={draft}
             onChange={(event) => setDraft(event.currentTarget.value)}

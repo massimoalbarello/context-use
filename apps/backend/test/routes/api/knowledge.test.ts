@@ -1184,7 +1184,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       with recursive sequence("value") as (
         select 1
         union all
-        select "value" + 1 from sequence where "value" < 121
+        select "value" + 1 from sequence where "value" < 122
       )
       insert into "entity"
         ("id", "owner_id", "readable_id", "name", "description", "created_at", "updated_at")
@@ -1204,10 +1204,26 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
        and entity."readable_id" like 'dense-entity-%'
       where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'alpha-principles'
     `;
-    const denseHypermediaResponse = await app.handle(
+    const pageTextHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
         path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&query=alpha',
+      }),
+    );
+    const pageTextHypermedia = (await pageTextHypermediaResponse.json()) as {
+      pages: Array<{
+        readableId: string;
+        resources: Array<{ kind: string; readableId: string }>;
+      }>;
+    };
+    expect(pageTextHypermedia.pages).toEqual([
+      expect.objectContaining({ readableId: 'alpha-principles', resources: [] }),
+    ]);
+
+    const denseHypermediaResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&query=dense',
       }),
     );
     const denseHypermedia = (await denseHypermediaResponse.json()) as {
@@ -1220,10 +1236,11 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     };
     expect(denseHypermedia.pages).toHaveLength(1);
     expect(denseHypermedia.pages[0]?.readableId).toBe('alpha-principles');
-    expect(denseHypermedia.pages[0]?.resources).toContainEqual({
-      kind: 'entity',
-      readableId: 'temporal-subject',
-    });
+    expect(
+      denseHypermedia.pages[0]?.resources.every(({ readableId }) =>
+        readableId.startsWith('dense-entity-'),
+      ),
+    ).toBe(true);
     expect(denseHypermedia.pages[0]?.resources).toHaveLength(
       EXPECTED_BOUNDED_HYPERMEDIA_REFERENCE_COUNT,
     );

@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -89,4 +89,16 @@ test('Hypermedia resource type buttons select either type or both', async () => 
 
   await user.click(assets);
   expect(assets.getAttribute('aria-pressed')).toBe('true');
+});
+
+test('Command K focuses the Hypermedia keyword search', () => {
+  render(<HypermediaResourceFilterFixture />);
+  const keyword = screen.getByRole('searchbox', { name: 'Keyword' });
+  const entities = screen.getByRole('button', { name: 'Entities' });
+  entities.focus();
+
+  expect(document.activeElement).toBe(entities);
+  expect(fireEvent.keyDown(window, { key: 'k', metaKey: true })).toBe(false);
+  expect(document.activeElement).toBe(keyword);
+  expect(keyword.getAttribute('aria-keyshortcuts')).toBe('Meta+K');
 });
