@@ -32,6 +32,7 @@ const HYPERMEDIA_RESOURCE_NODE_RADIUS = 25;
 const HYPERMEDIA_RESOURCE_LABEL_WIDTH = 120;
 const HYPERMEDIA_RESOURCE_LABEL_HEIGHT = 42;
 const HYPERMEDIA_RESOURCE_INITIAL_BASELINE_OFFSET = 6;
+const HYPERMEDIA_RESOURCE_LABEL_MAX_CHARACTERS = 20;
 
 function hypermediaResourceNodeEmphasis(active: boolean): {
   radiusOffset: number;
@@ -106,6 +107,10 @@ export function HypermediaResourceNode({
 }) {
   const emphasis = hypermediaResourceNodeEmphasis(active);
   const outerRadius = HYPERMEDIA_RESOURCE_NODE_RADIUS + emphasis.radiusOffset;
+  const displayLabel = shortHypermediaLabel({
+    value: label,
+    maximumCharacters: HYPERMEDIA_RESOURCE_LABEL_MAX_CHARACTERS,
+  });
   return (
     <g>
       <circle
@@ -135,7 +140,7 @@ export function HypermediaResourceNode({
         className="pointer-events-none overflow-visible"
       >
         <div className="flex size-full justify-center whitespace-normal text-center font-medium text-[12px] text-foreground leading-[14px] [overflow-wrap:anywhere]">
-          {label}
+          {displayLabel}
         </div>
       </foreignObject>
     </g>

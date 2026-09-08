@@ -20,6 +20,7 @@ import {
   HypermediaPageCloud,
   HypermediaPageLabel,
   HypermediaPageLink,
+  type HypermediaPreview,
   HypermediaResourceNode,
   type HypermediaViewProps,
   useHypermediaViewState,
@@ -59,23 +60,38 @@ function resourceReference(resource: TemporalHypermediaResource): HypermediaReso
   return { kind: resource.kind, readableId: resource.readableId };
 }
 
+function resourcePreview(resource: TemporalHypermediaResource): HypermediaPreview | null {
+  if (resource.resource?.kind === 'entity') {
+    return { kind: 'entity', entity: resource.resource.entity };
+  }
+  if (resource.resource?.kind === 'asset') {
+    return { kind: 'asset', asset: resource.resource.asset };
+  }
+  return null;
+}
+
 function TemporalResourceHeaders({
   resources,
   width,
   activeKey,
   selectedResourceKeys,
   onSelect,
+  onPreview,
+  onPreviewEnd,
 }: {
   resources: TemporalHypermediaResource[];
   width: number;
   activeKey?: string;
   selectedResourceKeys: Set<string>;
   onSelect: (selection: HypermediaSelection) => void;
+  onPreview: (preview: HypermediaPreview) => void;
+  onPreviewEnd: (key: string) => void;
 }) {
   return (
     <div className="pointer-events-none sticky top-0 z-30 h-28 border-b bg-card" style={{ width }}>
       {resources.map((resource) => {
         const active = activeKey === resource.key || selectedResourceKeys.has(resource.key);
+        const preview = resourcePreview(resource);
         return (
           <div
             key={resource.key}
@@ -88,6 +104,10 @@ function TemporalResourceHeaders({
               className="pointer-events-auto h-28 w-[72px] rounded-none p-0 hover:bg-transparent dark:hover:bg-transparent"
               aria-label={resource.label}
               aria-pressed={selectedResourceKeys.has(resource.key)}
+              onPointerEnter={() => preview && onPreview(preview)}
+              onPointerLeave={() => onPreviewEnd(resource.key)}
+              onFocus={() => preview && onPreview(preview)}
+              onBlur={() => onPreviewEnd(resource.key)}
               onClick={() => onSelect({ kind: resource.kind, readableId: resource.readableId })}
             >
               <svg className="size-full overflow-visible" viewBox="0 0 72 112" aria-hidden="true">
@@ -398,13 +418,15 @@ export function HypermediaTemporalCanvas({
           <TemporalResourceHeaders
             resources={layout.resources}
             width={layout.width}
-            activeKey={selectedKey}
+            activeKey={activeKey}
             selectedResourceKeys={selectedResourceKeys}
             onSelect={onSelect}
+            onPreview={setPreview}
+            onPreviewEnd={clearPreview}
           />
         </div>
       </section>
-      <HypermediaHoverPreview preview={preview} selectedKey={selectedKey} className="top-28" />
+      <HypermediaHoverPreview preview={preview} selectedKey={selectedKey} className="top-32" />
       {layout.hasOverlappingPages && (
         <Badge
           variant="outline"
