@@ -9,41 +9,23 @@ Carry the user's requested repository change from problem framing through a revi
 The user's explicit instructions take precedence, including any request to stop before opening a pull
 request.
 
-## Frame the change
+Use the repository's [`AGENTS.md`](../../../AGENTS.md) files as the source of truth for engineering
+judgment. Do not restate their design, trust, testing, or change-scope guidance in this skill.
 
-1. Read the root `AGENTS.md` and every narrower guide governing files the change may touch. Follow
-   only the linked instruction branches relevant to the work.
-2. Before editing, state the problem, desired outcome, constraints, and observable success
-   condition. For a fix, distinguish the reported symptom from the root cause and reproduce the
-   failure when practical.
-3. Inspect the code that owns the behavior. Identify its boundaries, important invariants,
-   established patterns, and the smallest coherent place to make the change.
-4. For a non-trivial change, share a concise design note covering ownership, boundaries,
-   invariants, plausible alternatives, and tradeoffs. Include doing nothing when it is meaningful.
-   Pause only when a choice would materially alter the user's intent or scope.
-5. Prefer the simplest design that addresses the concrete need and, for a fix, removes the root
-   cause rather than masking a symptom.
+## Before implementation
+
+1. Read the root [`AGENTS.md`](../../../AGENTS.md), then follow its links to every narrower guide
+   governing files the change may touch. Read only the relevant instruction branches.
+2. Inspect the owning code and complete the analysis required by the applicable guidelines before
+   editing. Share that analysis with the user when the guidelines require discussion.
 
 ## Implement and review
 
 1. Work on a focused `codex/` branch unless the user supplied a branch or the current branch is
-   already the correct one. Preserve unrelated work already present in the tree.
-2. Follow the owning code's established patterns and keep the diff to one reviewer-statable
-   outcome. Add or update tests at the lowest layer that proves the important invariant, boundary,
-   or failure mode.
-3. Review the complete diff after implementation against the request and every applicable
-   engineering guideline. Check in particular:
-
-   - the root cause and relevant failure modes;
-   - whether deletion or consolidation would make the design simpler;
-   - ownership, trust boundaries, durable-state safety, and sources of truth;
-   - consistency with established patterns and public contracts;
-   - test strength, redundancy, and missing regression coverage;
-   - unrelated changes, generated churn, and accidental scope growth.
-
-4. Resolve every actionable review finding and re-review the resulting diff. Proceed only when no
-   known issue remains that would make the change unnecessarily complex, incorrect, unsafe, or
-   incomplete.
+   already the correct one.
+2. Implement the change and its tests according to every applicable `AGENTS.md`.
+3. After implementation, review the complete diff against the user's request and the same
+   guidelines. Resolve every actionable finding, then repeat the review until none remain.
 
 ## Validate in the real app
 
