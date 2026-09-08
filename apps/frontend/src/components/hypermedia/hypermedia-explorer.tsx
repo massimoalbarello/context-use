@@ -14,10 +14,7 @@ import {
 import { Button } from '../ui/button';
 import { HypermediaCanvas } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
-import {
-  filterHypermediaByResourceKinds,
-  type HypermediaResourceKind,
-} from './hypermedia-resource-filter';
+import { filterHypermedia, type HypermediaResourceKind } from './hypermedia-resource-filter';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import { HypermediaTemporalCanvas } from './hypermedia-temporal-canvas';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
@@ -45,6 +42,7 @@ export function HypermediaExplorer({
   selfReadableId,
   selection,
   selectedResources,
+  query,
   pages,
   temporalExtent,
   dateRange,
@@ -63,6 +61,7 @@ export function HypermediaExplorer({
   selfReadableId: string;
   selection?: HypermediaSelection;
   selectedResources: HypermediaResourceReference[];
+  query: string;
   pages: HypermediaPage[];
   temporalExtent: HypermediaPages['temporalExtent'];
   dateRange?: CalendarDateRange;
@@ -116,13 +115,23 @@ export function HypermediaExplorer({
   const [resources, setResources] = useState(() => buildStableResources([], []));
 
   const visualizedHypermedia = useMemo(
-    () => filterHypermediaByResourceKinds({ resources, pages, kinds: resourceKinds }),
-    [pages, resourceKinds, resources],
+    () => filterHypermedia({ resources, pages, kinds: resourceKinds, query }),
+    [pages, query, resourceKinds, resources],
   );
-  const visualizedSelectedResources = useMemo(
-    () => selectedResources.filter(({ kind }) => resourceKinds.includes(kind)),
-    [resourceKinds, selectedResources],
-  );
+  const visualizedSelectedResources = useMemo(() => {
+    const normalizedQuery = query.trim();
+    const visibleResourceKeys = new Set([
+      ...visualizedHypermedia.resources.map(({ key }) => key),
+      ...visualizedHypermedia.pages.flatMap(({ resources: references }) =>
+        references.map(hypermediaResourceKey),
+      ),
+    ]);
+    return selectedResources.filter(
+      (resource) =>
+        resourceKinds.includes(resource.kind) &&
+        (!normalizedQuery || visibleResourceKeys.has(hypermediaResourceKey(resource))),
+    );
+  }, [query, resourceKinds, selectedResources, visualizedHypermedia]);
 
   useEffect(() => {
     setResources((current) => buildStableResources(neighborhoods, entities, current));
@@ -222,6 +231,7 @@ export function HypermediaExplorer({
     <div className="relative size-full min-h-[28rem]">
       {projection === 'semantic' ? (
         <HypermediaCanvas
+          key={query.trim().toLocaleLowerCase()}
           resources={visualizedHypermedia.resources}
           pages={visualizedHypermedia.pages}
           selectedResources={visualizedSelectedResources}
@@ -248,6 +258,7 @@ export function HypermediaExplorer({
         />
       ) : (
         <HypermediaTemporalCanvas
+          key={query.trim().toLocaleLowerCase()}
           resources={visualizedHypermedia.resources}
           pages={visualizedHypermedia.pages}
           extent={temporalExtent}

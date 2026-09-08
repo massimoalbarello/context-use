@@ -1,4 +1,8 @@
-import type { HypermediaPage, HypermediaResourceKind } from '../../queries/hypermedia';
+import {
+  type HypermediaPage,
+  type HypermediaResourceKind,
+  hypermediaResourceKey,
+} from '../../queries/hypermedia';
 import type { HypermediaLayoutResource } from './hypermedia-layout';
 
 export type { HypermediaResourceKind } from '../../queries/hypermedia';
@@ -42,23 +46,53 @@ export function toggleDisplayedHypermediaResourceKind({
   return ALL_HYPERMEDIA_RESOURCE_KINDS.filter((candidate) => selectedKinds.has(candidate));
 }
 
-export function filterHypermediaByResourceKinds({
+function hypermediaResourceMatchesQuery({
+  resource,
+  normalizedQuery,
+}: {
+  resource: HypermediaLayoutResource;
+  normalizedQuery: string;
+}): boolean {
+  const values =
+    resource.kind === 'entity'
+      ? [resource.entity.readableId, resource.entity.name, resource.entity.description]
+      : [resource.asset.readableId, resource.asset.name];
+  return values.some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
+}
+
+export function filterHypermedia({
   resources,
   pages,
   kinds,
+  query,
 }: {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
   kinds: HypermediaResourceKind[];
+  query?: string;
 }): { resources: HypermediaLayoutResource[]; pages: HypermediaPage[] } {
   const visibleKinds = new Set(kinds);
+  const normalizedQuery = query?.trim().toLocaleLowerCase() ?? '';
+  const knownResourceKeys = new Set(resources.map(({ key }) => key));
+  const visibleResources = resources.filter(
+    (resource) =>
+      visibleKinds.has(resource.kind) &&
+      (!normalizedQuery || hypermediaResourceMatchesQuery({ resource, normalizedQuery })),
+  );
+  const visibleResourceKeys = new Set(visibleResources.map(({ key }) => key));
   return {
-    resources: resources.filter(({ kind }) => visibleKinds.has(kind)),
+    resources: visibleResources,
     pages: pages.map((page) => {
-      const visibleResources = page.resources.filter(({ kind }) => visibleKinds.has(kind));
-      return visibleResources.length === page.resources.length
+      const visibleReferences = page.resources.filter((reference) => {
+        if (!visibleKinds.has(reference.kind)) {
+          return false;
+        }
+        const key = hypermediaResourceKey(reference);
+        return !normalizedQuery || !knownResourceKeys.has(key) || visibleResourceKeys.has(key);
+      });
+      return visibleReferences.length === page.resources.length
         ? page
-        : { ...page, resources: visibleResources };
+        : { ...page, resources: visibleReferences };
     }),
   };
 }

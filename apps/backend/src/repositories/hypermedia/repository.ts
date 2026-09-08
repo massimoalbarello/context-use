@@ -411,6 +411,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       resourceKeys,
       selectedPageIds,
       referenceLimit,
+      normalizedQuery,
     });
     const pagesById = new Map(pages.map((page) => [page.readableId, page]));
     const returnedReferenceLimit = referenceLimit - 1;
@@ -594,12 +595,14 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     resourceKeys,
     selectedPageIds,
     referenceLimit,
+    normalizedQuery,
   }: {
     ownerId: string;
     resourceKinds: string;
     resourceKeys: string;
     selectedPageIds: string;
     referenceLimit: number;
+    normalizedQuery: string | null;
   }): Promise<IListHypermediaPageResourcesResult[]> {
     return this.sql.ListHypermediaPageResources`
       /* @notNull sourcePageReadableId kind readableId */
@@ -624,6 +627,12 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
         where entity."archived_at" is null
           and 'entity' in (select "kind" from selected_kind)
+          and (
+            ${normalizedQuery} is null
+            or instr(lower(entity."name"), ${normalizedQuery}) > 0
+            or instr(lower(entity."description"), ${normalizedQuery}) > 0
+            or instr(entity."readable_id", ${normalizedQuery}) > 0
+          )
         union
         select selected_page."readableId" as "sourcePageReadableId", 'asset' as "kind",
           asset."readable_id" as "readableId"
@@ -635,6 +644,11 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           on asset."owner_id" = usage."owner_id" and asset."id" = usage."target_asset_id"
         where asset."archived_at" is null
           and 'asset' in (select "kind" from selected_kind)
+          and (
+            ${normalizedQuery} is null
+            or instr(lower(asset."name"), ${normalizedQuery}) > 0
+            or instr(asset."readable_id", ${normalizedQuery}) > 0
+          )
       )
       select "sourcePageReadableId", "kind", "readableId" from page_resource
       order by ("kind" || ':' || "readableId") in (select "key" from selected_key) desc,

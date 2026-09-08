@@ -5,7 +5,7 @@ import {
 } from '../../src/components/hypermedia/hypermedia-layout';
 import {
   displayedHypermediaResourceKindsValue,
-  filterHypermediaByResourceKinds,
+  filterHypermedia,
   toggleDisplayedHypermediaResourceKind,
 } from '../../src/components/hypermedia/hypermedia-resource-filter';
 import { buildTemporalHypermediaLayout } from '../../src/components/hypermedia/hypermedia-temporal-layout';
@@ -73,7 +73,7 @@ describe('Hypermedia resource type filter', () => {
   });
 
   test('removes hidden resource nodes and page connections from both projections', () => {
-    const filtered = filterHypermediaByResourceKinds({
+    const filtered = filterHypermedia({
       resources,
       pages: [page],
       kinds: ['entity'],
@@ -91,6 +91,37 @@ describe('Hypermedia resource type filter', () => {
     expect(semantic.pages[0]?.resourceKeys).toEqual(['entity:owner']);
     expect(temporal.resources.map(({ key }) => key)).toEqual(['entity:owner']);
     expect(temporal.pages[0]?.resourceKeys).toEqual(['entity:owner']);
+  });
+
+  test('keeps only keyword-matching resource nodes and connections in both projections', () => {
+    const filtered = filterHypermedia({
+      resources,
+      pages: [page],
+      kinds: ['entity', 'asset'],
+      query: 'the OWNER',
+    });
+    const semantic = buildHypermediaLayout(filtered.resources, filtered.pages);
+    const temporal = buildTemporalHypermediaLayout({
+      ...filtered,
+      extent: {
+        start: Date.parse('2026-01-01T00:00:00.000Z'),
+        end: Date.parse('2026-12-31T00:00:00.000Z'),
+      },
+    });
+
+    expect(semantic.resources.map(({ key }) => key)).toEqual(['entity:owner']);
+    expect(semantic.pages[0]?.resourceKeys).toEqual(['entity:owner']);
+    expect(temporal.resources.map(({ key }) => key)).toEqual(['entity:owner']);
+    expect(temporal.pages[0]?.resourceKeys).toEqual(['entity:owner']);
+
+    const cleared = filterHypermedia({
+      resources,
+      pages: [page],
+      kinds: ['entity', 'asset'],
+      query: '  ',
+    });
+    expect(cleared.resources).toEqual(resources);
+    expect(cleared.pages[0]).toBe(page);
   });
 
   test('separates cached API results by selected resource kinds', () => {
