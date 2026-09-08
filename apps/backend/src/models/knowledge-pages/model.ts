@@ -4,6 +4,9 @@ import type { Entity } from '#models/entities/model.ts';
 export const MAX_KNOWLEDGE_PAGE_BYTES = 1_000_000;
 export const MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH = 280;
 export const MAX_KNOWLEDGE_PAGE_TITLE_LENGTH = 240;
+export const KNOWLEDGE_PAGE_KINDS = ['semantic', 'temporal'] as const;
+
+export type KnowledgePageKind = (typeof KNOWLEDGE_PAGE_KINDS)[number];
 
 export interface KnowledgePageSummary {
   id: string;

@@ -1,15 +1,36 @@
+import { type KnowledgePageKind, MAX_KNOWLEDGE_PAGE_TITLE_LENGTH } from '@repo/backend/page';
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
-import { PageDateRangeFilter } from '../components/pages/page-date-range-filter';
+import { PageFilters } from '../components/pages/page-filters';
 import { usePages } from '../lib/hooks/use-pages';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
-import { pagesQueryOptions } from '../queries/pages';
+import { type KnowledgePageListFilters, pagesQueryOptions } from '../queries/pages';
 
-function pageSearch(search: Record<string, unknown>): Partial<CalendarDateRange> {
-  return calendarDateRangeFromSearch(search) ?? {};
+export type PageSearch = Partial<CalendarDateRange> & {
+  q?: string;
+  pageType?: KnowledgePageKind;
+};
+
+export function pageSearch(search: Record<string, unknown>): PageSearch {
+  const result: PageSearch = calendarDateRangeFromSearch(search) ?? {};
+  if (typeof search.q === 'string' && search.q.trim()) {
+    result.q = search.q.trim().slice(0, MAX_KNOWLEDGE_PAGE_TITLE_LENGTH);
+  }
+  if (search.pageType === 'semantic' || search.pageType === 'temporal') {
+    result.pageType = search.pageType;
+  }
+  return result;
+}
+
+export function pageListFilters(search: PageSearch): KnowledgePageListFilters {
+  return {
+    dateRange: calendarDateRangeFromSearch(search),
+    query: search.q,
+    kind: search.pageType,
+  };
 }
 
 export const Route = createFileRoute('/pages')({
@@ -19,22 +40,52 @@ export const Route = createFileRoute('/pages')({
     }
   },
   validateSearch: pageSearch,
-  loaderDeps: ({ search }) => ({ dateRange: calendarDateRangeFromSearch(search) }),
+  loaderDeps: ({ search }) => ({ filters: pageListFilters(search) }),
   loader: ({ context, deps }) =>
-    context.queryClient.ensureInfiniteQueryData(pagesQueryOptions(deps.dateRange)),
+    context.queryClient.ensureInfiniteQueryData(pagesQueryOptions(deps.filters)),
   component: PagesLayout,
 });
 
-function PageTimeFilter({ dateRange }: { dateRange?: CalendarDateRange }) {
+function PageFilterControl({ search }: { search: PageSearch }) {
   const navigate = Route.useNavigate();
+  const { q = '', pageType } = search;
+  const dateRange = calendarDateRangeFromSearch(search);
+  const commonSearch = {
+    q: search.q,
+    pageType,
+    from: dateRange?.from,
+    to: dateRange?.to,
+  };
 
   return (
-    <PageDateRangeFilter
-      value={dateRange}
-      onApply={(nextRange) => {
+    <PageFilters
+      query={q}
+      kind={pageType}
+      dateRange={dateRange}
+      onQueryApply={(query) => {
         void navigate({
           to: '/pages',
-          search: { from: nextRange?.from, to: nextRange?.to },
+          search: { ...commonSearch, q: query || undefined },
+          replace: true,
+        });
+      }}
+      onKindChange={(nextKind) => {
+        void navigate({
+          to: '/pages',
+          search: {
+            ...commonSearch,
+            pageType: nextKind,
+            from: nextKind === 'semantic' ? undefined : commonSearch.from,
+            to: nextKind === 'semantic' ? undefined : commonSearch.to,
+          },
+          replace: true,
+        });
+      }}
+      onDateRangeApply={(nextRange) => {
+        void navigate({
+          to: '/pages',
+          search: { ...commonSearch, from: nextRange?.from, to: nextRange?.to },
+          replace: true,
         });
       }}
     />
@@ -44,9 +95,8 @@ function PageTimeFilter({ dateRange }: { dateRange?: CalendarDateRange }) {
 function PagesLayout() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const dateRange = calendarDateRangeFromSearch(search);
-  const { pages, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } =
-    usePages(dateRange);
+  const filters = pageListFilters(search);
+  const { pages, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = usePages(filters);
   if (!profile) {
     return null;
   }
@@ -63,9 +113,12 @@ function PagesLayout() {
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         loadMore={fetchNextPage}
+        actions={<PageFilterControl search={search} />}
       >
-        <PageTimeFilter dateRange={dateRange} />
-        <KnowledgePageList pages={pages} filtered={Boolean(dateRange)} />
+        <KnowledgePageList
+          pages={pages}
+          filtered={Boolean(filters.dateRange || filters.query || filters.kind)}
+        />
       </KnowledgeSidebar>
       <KnowledgeWorkspaceDetail>
         <Outlet />

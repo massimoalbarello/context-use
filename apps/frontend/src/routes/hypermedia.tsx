@@ -18,6 +18,7 @@ import {
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
+import type { PageTypeFilterValue } from '../components/pages/page-type-filter';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { entitiesQueryOptions } from '../queries/entities';
 import {
@@ -34,7 +35,7 @@ const MAX_HYPERMEDIA_READABLE_ID_LENGTH = 120;
 const EMPTY_HYPERMEDIA_PAGES: HypermediaPage[] = [];
 export type HypermediaSearch = Partial<CalendarDateRange> & {
   q?: string;
-  view?: 'temporal';
+  view?: HypermediaPageProjection;
   kind?: HypermediaSelection['kind'];
   id?: string;
   focus?: string;
@@ -60,8 +61,8 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
   if (typeof search.q === 'string' && search.q.trim()) {
     result.q = search.q.trim().slice(0, MAX_HYPERMEDIA_SEARCH_LENGTH);
   }
-  if (search.view === 'temporal') {
-    result.view = 'temporal';
+  if (search.view === 'semantic' || search.view === 'temporal') {
+    result.view = search.view;
   }
   if (search.show === 'assets' || search.show === 'all') {
     result.show = search.show;
@@ -83,7 +84,11 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
 }
 
 export function hypermediaProjection(search: HypermediaSearch): HypermediaPageProjection {
-  return search.view ?? 'semantic';
+  return search.view === 'temporal' ? 'temporal' : 'semantic';
+}
+
+export function hypermediaPageType(search: HypermediaSearch): PageTypeFilterValue {
+  return search.view ?? 'all';
 }
 
 export function hypermediaSearchAfterEscape({
@@ -114,7 +119,7 @@ export const Route = createFileRoute('/hypermedia')({
   validateSearch: hypermediaSearch,
   loaderDeps: ({ search }) => ({
     query: search.q,
-    projection: hypermediaProjection(search),
+    projection: search.view,
     resources: selectedHypermediaResources(search.focus),
     kinds: displayedHypermediaResourceKinds(search.show),
   }),
@@ -150,6 +155,7 @@ function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
   const { q = '', kind, id, focus, show } = search;
+  const pageType = hypermediaPageType(search);
   const projection = hypermediaProjection(search);
   const resourceKinds = displayedHypermediaResourceKinds(show);
   const dateRange = calendarDateRangeFromSearch(search);
@@ -159,7 +165,7 @@ function HypermediaRoute() {
   const selectedResources = selectedHypermediaResources(focus);
   const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
-      projection,
+      projection: search.view,
       resources: selectedResources,
       kinds: resourceKinds,
       query: q,
@@ -213,15 +219,15 @@ function HypermediaRoute() {
     <KnowledgeWorkspace>
       <HypermediaSidebar
         profile={profile}
-        projection={projection}
+        pageType={pageType}
         resourceKinds={resourceKinds}
         query={q}
         selectedResources={selectedResources}
-        onProjectionChange={(nextProjection) => {
+        onPageTypeChange={(nextPageType) => {
           void navigate({
             search: (previous) => ({
               ...previous,
-              view: nextProjection === 'temporal' ? 'temporal' : undefined,
+              view: nextPageType === 'all' ? undefined : nextPageType,
             }),
             replace: true,
           });
@@ -264,6 +270,7 @@ function HypermediaRoute() {
         <div className="relative size-full">
           <HypermediaExplorer
             key={resourceKinds.join(':')}
+            pageType={pageType}
             projection={projection}
             resourceKinds={resourceKinds}
             selfReadableId={profile.selfEntity.readableId}

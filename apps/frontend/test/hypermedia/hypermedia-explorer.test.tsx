@@ -10,7 +10,7 @@ test('semantic Hypermedia exposes the next page batch without hiding incomplete 
   const user = userEvent.setup();
   render(
     <HypermediaPageStatus
-      projection="semantic"
+      pageType="semantic"
       pageCount={32}
       loading={false}
       error={null}
@@ -31,7 +31,7 @@ test('semantic Hypermedia exposes the next page batch without hiding incomplete 
 test('temporal Hypermedia reports incomplete page connections without a manual paging action', () => {
   render(
     <HypermediaPageStatus
-      projection="temporal"
+      pageType="temporal"
       pageCount={32}
       loading={false}
       error={null}
@@ -44,4 +44,21 @@ test('temporal Hypermedia reports incomplete page connections without a manual p
 
   expect(screen.getByText('Some page connections are hidden.')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Load more pages' })).toBeNull();
+});
+
+test('all-page Hypermedia status does not describe mixed results as semantic', () => {
+  render(
+    <HypermediaPageStatus
+      pageType="all"
+      pageCount={0}
+      loading={false}
+      error={null}
+      hasNextPage={false}
+      referencesTruncated={false}
+      onRetry={() => undefined}
+      onLoadMore={() => undefined}
+    />,
+  );
+
+  expect(screen.getByText('No pages match this view.')).toBeTruthy();
 });

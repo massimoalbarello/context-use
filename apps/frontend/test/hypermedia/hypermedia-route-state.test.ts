@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { displayedHypermediaResourceKinds } from '../../src/components/hypermedia/hypermedia-resource-filter';
 import {
+  hypermediaPageType,
   hypermediaProjection,
   hypermediaSearch,
   hypermediaSearchAfterEscape,
@@ -14,6 +15,7 @@ test('Hypermedia projection and temporal viewport are canonical URL state', () =
     to: '2025-08-31',
   });
   expect(hypermediaProjection(temporalSearch)).toBe('temporal');
+  expect(hypermediaPageType(temporalSearch)).toBe('temporal');
   expect(temporalSearch).toMatchObject({
     view: 'temporal',
     from: '2025-03-01',
@@ -22,7 +24,11 @@ test('Hypermedia projection and temporal viewport are canonical URL state', () =
 
   const defaultSearch = hypermediaSearch({ view: 'unknown' });
   expect(hypermediaProjection(defaultSearch)).toBe('semantic');
+  expect(hypermediaPageType(defaultSearch)).toBe('all');
   expect(defaultSearch.view).toBeUndefined();
+  const semanticSearch = hypermediaSearch({ view: 'semantic' });
+  expect(hypermediaProjection(semanticSearch)).toBe('semantic');
+  expect(hypermediaPageType(semanticSearch)).toBe('semantic');
   expect(
     hypermediaSearchWithDateRange({
       previous: { view: 'temporal', q: 'launch' },

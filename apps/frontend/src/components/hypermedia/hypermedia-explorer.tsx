@@ -11,6 +11,7 @@ import {
   hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
 } from '../../queries/hypermedia';
+import type { PageTypeFilterValue } from '../pages/page-type-filter';
 import { Button } from '../ui/button';
 import { HypermediaCanvas } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
@@ -23,6 +24,10 @@ type NeighborhoodRequest = {
   anchor: HypermediaResourceReference;
   cursor?: string;
 };
+
+function pageTypeLabel(pageType: PageTypeFilterValue): string {
+  return pageType === 'all' ? 'pages' : `${pageType} pages`;
+}
 
 function requestKey(request: NeighborhoodRequest): string {
   return `${hypermediaResourceKey(request.anchor)}:${request.cursor ?? 'first'}`;
@@ -37,6 +42,7 @@ function resourceSelection(
 }
 
 export function HypermediaExplorer({
+  pageType,
   projection,
   resourceKinds,
   selfReadableId,
@@ -56,6 +62,7 @@ export function HypermediaExplorer({
   onRetryPages,
   onDiscoverMorePages,
 }: {
+  pageType: PageTypeFilterValue;
   projection: HypermediaPageProjection;
   resourceKinds: HypermediaResourceKind[];
   selfReadableId: string;
@@ -274,7 +281,7 @@ export function HypermediaExplorer({
         />
       )}
       <HypermediaPageStatus
-        projection={projection}
+        pageType={pageType}
         pageCount={pages.length}
         loading={pagesLoading}
         error={pagesError}
@@ -288,7 +295,7 @@ export function HypermediaExplorer({
 }
 
 export function HypermediaPageStatus({
-  projection,
+  pageType,
   pageCount,
   loading,
   error,
@@ -297,7 +304,7 @@ export function HypermediaPageStatus({
   onRetry,
   onLoadMore,
 }: {
-  projection: HypermediaPageProjection;
+  pageType: PageTypeFilterValue;
   pageCount: number;
   loading: boolean;
   error: Error | null;
@@ -306,17 +313,18 @@ export function HypermediaPageStatus({
   onRetry: () => void;
   onLoadMore: () => void;
 }) {
-  const canLoadMore = projection === 'semantic' && hasNextPage;
+  const canLoadMore = pageType !== 'temporal' && hasNextPage;
+  const pageLabel = pageTypeLabel(pageType);
   if (!loading && !error && pageCount > 0 && !canLoadMore && !referencesTruncated) {
     return null;
   }
   let message: string | undefined;
   if (error) {
-    message = `Couldn’t load ${projection} pages.`;
+    message = `Couldn’t load ${pageLabel}.`;
   } else if (loading) {
-    message = `Loading ${projection} pages…`;
+    message = `Loading ${pageLabel}…`;
   } else if (pageCount === 0) {
-    message = `No ${projection} pages match this view.`;
+    message = `No ${pageLabel} match this view.`;
   } else if (canLoadMore && referencesTruncated) {
     message = 'More pages are available, and some page connections are hidden.';
   } else if (canLoadMore) {

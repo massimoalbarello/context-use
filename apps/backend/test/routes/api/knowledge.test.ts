@@ -66,6 +66,7 @@ const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
 );
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
+const EXPECTED_TEMPORAL_PAGE_COUNT = 3;
 const EXPECTED_SECOND_PAGE_OFFSET = 4;
 const EXPECTED_FILTERED_PAGE_COUNT = 5;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
@@ -521,6 +522,46 @@ Every observation changes the next action.`,
         'operating-rhythm',
       ].sort(),
     );
+
+    const semanticPagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?kind=semantic' }),
+    );
+    expect(semanticPagesResponse.status).toBe(StatusMap.OK);
+    const semanticPages = (await semanticPagesResponse.json()) as {
+      items: Array<{ readableId: string; temporalCoverage: string | null }>;
+      total: number;
+    };
+    expect(semanticPages.items.map(({ readableId }) => readableId)).toEqual([
+      'alpha-principles',
+      duplicatePage.readableId,
+    ]);
+    expect(semanticPages.items.every(({ temporalCoverage }) => temporalCoverage === null)).toBe(
+      true,
+    );
+    expect(semanticPages.total).toBe(2);
+
+    const temporalPagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?kind=temporal' }),
+    );
+    expect(temporalPagesResponse.status).toBe(StatusMap.OK);
+    const temporalPages = (await temporalPagesResponse.json()) as {
+      items: Array<{ readableId: string; temporalCoverage: string | null }>;
+      total: number;
+    };
+    expect(temporalPages.items.map(({ readableId }) => readableId)).toEqual([
+      'current-programme',
+      'operating-rhythm',
+      'growth-playbook',
+    ]);
+    expect(temporalPages.items.every(({ temporalCoverage }) => temporalCoverage !== null)).toBe(
+      true,
+    );
+    expect(temporalPages.total).toBe(EXPECTED_TEMPORAL_PAGE_COUNT);
+
+    const invalidPageKindResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?kind=archived' }),
+    );
+    expect(invalidPageKindResponse.status).toBe(StatusMap['Bad Request']);
 
     const firstNeighborhoodResponse = await app.handle(
       jsonRequest({
