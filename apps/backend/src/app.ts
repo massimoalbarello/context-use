@@ -5,16 +5,15 @@ import { elysiaErrorHandler } from '#lib/errors.ts';
 import type { McpTransportContract } from '#lib/mcp/transport.ts';
 import { createRequestResponsePlugin } from '#lib/request-response.ts';
 import { createApiController } from '#routes/api/controller.ts';
+import {
+  createRecordDeliveryController,
+  recordSyncSecuritySchemes,
+} from '#routes/api/records/delivery-controller.ts';
 import { createAuthDiscoveryController } from '#routes/auth-discovery/controller.ts';
 import {
   createFrontendAssetsController,
   createFrontendFallbackController,
 } from '#routes/controller.ts';
-import {
-  createOpenConnectorRecordsController,
-  type OpenConnectorRecordsAcceptanceContract,
-  openConnectorSecuritySchemes,
-} from '#routes/integrations/open-connector/controller.ts';
 import type { AssetTransferCapabilitiesContract } from '#routes/mcp/assets/transfer-capabilities.ts';
 import { createAssetTransferController } from '#routes/mcp/assets/transfer-controller.ts';
 import { createMcpController } from '#routes/mcp/controller.ts';
@@ -26,8 +25,15 @@ import type { HypermediaServiceContract } from '#services/hypermedia/service.ts'
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
-import type { OpenConnectorRecordResourcesServiceContract } from '#services/open-connector/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
+import type {
+  RecordDeliveryAcceptanceContract,
+  RecordResourcesServiceContract,
+} from '#services/records/service.ts';
+import type {
+  RecordSyncAuthenticationContract,
+  RecordSyncsServiceContract,
+} from '#services/syncs/service.ts';
 
 // Pinned rather than left to the plugin's default: the frontend links to it and the dev
 // server proxies it.
@@ -48,6 +54,7 @@ export function createApp({
   pagesService,
   profilesService,
   recordsService,
+  syncsService,
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
@@ -62,8 +69,8 @@ export function createApp({
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
-  recordsService: OpenConnectorRecordsAcceptanceContract &
-    OpenConnectorRecordResourcesServiceContract;
+  recordsService: RecordDeliveryAcceptanceContract & RecordResourcesServiceContract;
+  syncsService: RecordSyncAuthenticationContract & RecordSyncsServiceContract;
 }) {
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
@@ -118,14 +125,14 @@ export function createApp({
               description: 'Bounded resource neighborhoods and their connected knowledge pages.',
             },
             {
-              name: 'Open connector',
-              description: 'Authenticated provider-neutral record delivery.',
+              name: 'Syncs',
+              description: 'External services authorized to deliver records.',
             },
           ],
           components: {
             securitySchemes: {
               ...sessionSecuritySchemes,
-              ...openConnectorSecuritySchemes,
+              ...recordSyncSecuritySchemes,
             },
           },
         },
@@ -158,9 +165,10 @@ export function createApp({
         pagesService,
         profilesService,
         recordsService,
+        syncsService,
       }),
     )
-    .use(createOpenConnectorRecordsController({ recordsService }))
+    .use(createRecordDeliveryController({ recordsService, syncsService }))
     .onStop(() => mcpTransport.close());
 
   return app.use(createFrontendFallbackController({ frontendAssetsService }));

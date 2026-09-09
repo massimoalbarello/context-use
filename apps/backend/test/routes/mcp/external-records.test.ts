@@ -3,23 +3,23 @@ import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import type { SQL } from 'bun';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
-import type {
-  OpenConnectorDeliveryEnvelope,
-  OpenConnectorDeliveryRecord,
-} from '#models/open-connector/model.ts';
-import { canonicalOpenConnectorContent } from '#models/open-connector/model.ts';
-import { OpenConnectorRecordsRepository } from '#repositories/open-connector/repository.ts';
+import type { DeliveredRecord, RecordDeliveryEnvelope } from '#models/records/model.ts';
+import { canonicalRecordContent } from '#models/records/model.ts';
+import { RecordsRepository } from '#repositories/records/repository.ts';
 import { ExternalRecordAddressSchema, externalRecordIdentity } from '#routes/mcp/coordinates.ts';
 import { registerExternalRecordTools } from '#routes/mcp/external-records/tools.ts';
-import { OpenConnectorRecordsService } from '#services/open-connector/service.ts';
-import { OpenConnectorIngestionWorker } from '#services/open-connector/worker.ts';
+import { RecordsService } from '#services/records/service.ts';
+import { RecordIngestionWorker } from '#services/records/worker.ts';
 import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
 
 const OWNER_A = 'external-record-owner-a';
 const OWNER_B = 'external-record-owner-b';
-const INTEGRATION_A = 'receiver-a';
-const INTEGRATION_A_SECOND = 'receiver-a-second';
-const INTEGRATION_B = 'receiver-b';
+const SYNC_A_ID = '01991f43-0c00-7000-8000-000000000030';
+const SYNC_A_SECOND_ID = '01991f43-0c00-7000-8000-000000000031';
+const SYNC_B_ID = '01991f43-0c00-7000-8000-000000000032';
+const SYNC_A = 'receiver-a';
+const SYNC_A_SECOND = 'receiver-a-second';
+const SYNC_B = 'receiver-b';
 const NOW = '2026-09-08T12:00:00.000Z';
 
 function digest(value: string): string {
@@ -38,7 +38,7 @@ function record({
   body?: string;
   revision?: number;
   operation?: 'added' | 'updated' | 'deleted';
-}): OpenConnectorDeliveryRecord {
+}): DeliveredRecord {
   const content =
     operation === 'deleted'
       ? undefined
@@ -64,7 +64,7 @@ function record({
     id: recordId,
     revision,
     operation,
-    contentHash: content ? digest(canonicalOpenConnectorContent(content)!) : digest('deleted'),
+    contentHash: content ? digest(canonicalRecordContent(content)!) : digest('deleted'),
     committedAt: NOW,
     ...(content ? { content } : {}),
   };
@@ -84,13 +84,34 @@ async function insertOwner({
   `;
 }
 
+async function insertSync({
+  database,
+  id,
+  ownerId,
+  readableId,
+}: {
+  database: SQL;
+  id: string;
+  ownerId: string;
+  readableId: string;
+}): Promise<void> {
+  await database`
+    insert into "record_sync"
+      ("id", "owner_id", "readable_id", "name", "api_key_sha256", "created_at")
+    values (
+      ${id}, ${ownerId}, ${readableId}, ${readableId},
+      ${digest(`api-key:${id}`)}, ${NOW}
+    )
+  `;
+}
+
 async function withExternalRecordClient<T>({
   ownerId,
   recordsService,
   run,
 }: {
   ownerId: string;
-  recordsService: OpenConnectorRecordsService;
+  recordsService: RecordsService;
   run: (client: Client) => Promise<T>;
 }): Promise<T> {
   const principal: McpClientAuthorizationPrincipal = {
@@ -114,21 +135,21 @@ async function withExternalRecordClient<T>({
 
 async function accept({
   service,
-  integrationId,
+  syncId,
   ownerId,
   batchId,
   records,
 }: {
-  service: OpenConnectorRecordsService;
-  integrationId: string;
+  service: RecordsService;
+  syncId: string;
   ownerId: string;
   batchId: string;
-  records: OpenConnectorDeliveryRecord[];
+  records: DeliveredRecord[];
 }): Promise<void> {
-  const envelope: OpenConnectorDeliveryEnvelope = { version: 1, batchId, records };
+  const envelope: RecordDeliveryEnvelope = { version: 1, batchId, records };
   expect(
     await service.accept({
-      integrationId,
+      syncId,
       ownerId,
       envelope,
       payloadHash: digest(JSON.stringify(envelope)),
@@ -148,40 +169,27 @@ test('MCP searches owner-wide external records and reads only the current owner-
     run: async (database) => {
       await insertOwner({ database, ownerId: OWNER_A });
       await insertOwner({ database, ownerId: OWNER_B });
-      const repository = new OpenConnectorRecordsRepository(database);
-      const ownerRegistration = {
-        state: async () => ({ ownerExists: true, passkeyExists: true }),
-      };
-      const service = new OpenConnectorRecordsService({
+      const repository = new RecordsRepository(database);
+      const service = new RecordsService({
         records: repository,
-        ownerRegistration,
         now: () => new Date(NOW),
       });
-      const worker = new OpenConnectorIngestionWorker({
+      const worker = new RecordIngestionWorker({
         records: repository,
         now: () => new Date(NOW),
         leaseToken: () => Bun.randomUUIDv7(),
       });
 
-      for (const [integrationId, ownerId] of [
-        [INTEGRATION_A, OWNER_A],
-        [INTEGRATION_A_SECOND, OWNER_A],
-        [INTEGRATION_B, OWNER_B],
+      for (const [id, readableId, ownerId] of [
+        [SYNC_A_ID, SYNC_A, OWNER_A],
+        [SYNC_A_SECOND_ID, SYNC_A_SECOND, OWNER_A],
+        [SYNC_B_ID, SYNC_B, OWNER_B],
       ] as const) {
-        expect(
-          await repository.bindIntegration({
-            integrationId,
-            ownerId,
-            name: integrationId,
-            createdAt: NOW,
-          }),
-        ).toEqual({
-          state: 'bound',
-        });
+        await insertSync({ database, id, ownerId, readableId });
       }
       await accept({
         service,
-        integrationId: INTEGRATION_A,
+        syncId: SYNC_A_ID,
         ownerId: OWNER_A,
         batchId: 'batch-owner-a-first',
         records: [
@@ -194,7 +202,7 @@ test('MCP searches owner-wide external records and reads only the current owner-
       });
       await accept({
         service,
-        integrationId: INTEGRATION_A_SECOND,
+        syncId: SYNC_A_SECOND_ID,
         ownerId: OWNER_A,
         batchId: 'batch-owner-a-second',
         records: [
@@ -207,7 +215,7 @@ test('MCP searches owner-wide external records and reads only the current owner-
       });
       await accept({
         service,
-        integrationId: INTEGRATION_B,
+        syncId: SYNC_B_ID,
         ownerId: OWNER_B,
         batchId: 'batch-owner-b',
         records: [
@@ -252,13 +260,13 @@ test('MCP searches owner-wide external records and reads only the current owner-
           ).toBe(true);
           firstAddress = search.items.find(({ recordId }) => recordId === 'owner-a-first')!.address;
           expect(externalRecordIdentity(firstAddress)).toEqual({
-            integrationId: INTEGRATION_A,
+            syncReadableId: SYNC_A,
             sourceId: 'github-account',
             kind: 'pull-request',
             recordId: 'owner-a-first',
           });
           const unknownVersionAddress = `context-use://external-record/${Buffer.from(
-            JSON.stringify([2, INTEGRATION_A, 'github-account', 'pull-request', 'owner-a-first']),
+            JSON.stringify([2, SYNC_A, 'github-account', 'pull-request', 'owner-a-first']),
             'utf8',
           ).toString('base64url')}`;
           expect(ExternalRecordAddressSchema.safeParse(unknownVersionAddress).success).toBe(false);
@@ -332,7 +340,7 @@ test('MCP searches owner-wide external records and reads only the current owner-
 
       await accept({
         service,
-        integrationId: INTEGRATION_A,
+        syncId: SYNC_A_ID,
         ownerId: OWNER_A,
         batchId: 'batch-owner-a-delete',
         records: [

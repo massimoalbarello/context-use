@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
-import { MAX_OPEN_CONNECTOR_SEARCH_RESULTS } from '#models/open-connector/model.ts';
+import { MAX_RECORD_SEARCH_RESULTS } from '#models/records/model.ts';
 import { ExternalRecordAddressSchema, externalRecordIdentity } from '#routes/mcp/coordinates.ts';
 import {
   McpExternalRecordSchema,
@@ -11,7 +11,7 @@ import {
 } from '#routes/mcp/external-records/model.ts';
 import { MCP_READ_TOOL_ANNOTATIONS } from '#routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#routes/mcp/tool-result.ts';
-import type { OpenConnectorRecordsRetrievalServiceContract } from '#services/open-connector/service.ts';
+import type { RecordsRetrievalServiceContract } from '#services/records/service.ts';
 
 const DEFAULT_EXTERNAL_RECORD_SEARCH_LIMIT = 10;
 const MAX_EXTERNAL_RECORD_QUERY_LENGTH = 1024;
@@ -23,7 +23,7 @@ const SearchExternalRecordsInputSchema = z.object({
     .max(MAX_EXTERNAL_RECORD_QUERY_LENGTH)
     .regex(/\S/u)
     .describe('Words to match in current external-record content and provenance'),
-  limit: z.number().int().min(1).max(MAX_OPEN_CONNECTOR_SEARCH_RESULTS).optional(),
+  limit: z.number().int().min(1).max(MAX_RECORD_SEARCH_RESULTS).optional(),
 });
 
 const SearchExternalRecordsOutputSchema = z.object({
@@ -39,7 +39,7 @@ export function registerExternalRecordTools({
 }: {
   server: McpServer;
   principal: McpClientAuthorizationPrincipal;
-  recordsService: OpenConnectorRecordsRetrievalServiceContract;
+  recordsService: RecordsRetrievalServiceContract;
 }): void {
   server.registerTool(
     'search_external_records',

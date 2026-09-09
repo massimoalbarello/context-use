@@ -594,93 +594,58 @@ export interface IRenameActiveMcpClientAuthorizationResult {
     archivedAt: string | null;
 }
 
-/** Result of query `FindOpenConnectorOwner`. */
-export interface IFindOpenConnectorOwnerResult {
-    id: string;
+/** Result of query `ReadOwnerRegistrationState`. */
+export interface IReadOwnerRegistrationStateResult {
+    ownerExists: number;
+    passkeyExists: number;
 }
 
-/** Result of query `BindOpenConnectorIntegration`. */
-export interface IBindOpenConnectorIntegrationResult {
-    id: string;
-    ownerId: string;
-}
-
-/** Result of query `FindOpenConnectorIntegration`. */
-export interface IFindOpenConnectorIntegrationResult {
-    id: string;
-    ownerId: string;
-}
-
-/** Result of query `AuthenticateOpenConnectorCredentialFingerprint`. */
-export interface IAuthenticateOpenConnectorCredentialFingerprintResult {
-    integrationId: string;
-    ownerId: string;
-    name: string;
-}
-
-/** Result of query `FindOpenConnectorCredentialFingerprint`. */
-export interface IFindOpenConnectorCredentialFingerprintResult {
-    id: string;
-    ownerId: string;
-    deliveryApiKeySha256: string | null;
-}
-
-/** Result of query `FindOpenConnectorEventFingerprint`. */
-export interface IFindOpenConnectorEventFingerprintResult {
+/** Result of query `FindRecordEventFingerprint`. */
+export interface IFindRecordEventFingerprintResult {
     eventFingerprint: string;
 }
 
-/** Result of query `FindOpenConnectorRecordRevisionFingerprints`. */
-export interface IFindOpenConnectorRecordRevisionFingerprintsResult {
+/** Result of query `FindRecordRevisionFingerprints`. */
+export interface IFindRecordRevisionFingerprintsResult {
     eventFingerprint: string;
 }
 
-/** Result of query `CreateOpenConnectorRecordEvent`. */
-export interface ICreateOpenConnectorRecordEventResult {
+/** Result of query `CreateRecordEvent`. */
+export interface ICreateRecordEventResult {
 }
 
-/** Result of query `ApplyOpenConnectorRecordRevision`. */
-export interface IApplyOpenConnectorRecordRevisionResult {
+/** Result of query `ApplyRecordRevision`. */
+export interface IApplyRecordRevisionResult {
     revision: number;
 }
 
-/** Result of query `EnqueueOpenConnectorIngestionJob`. */
-export interface IEnqueueOpenConnectorIngestionJobResult {
+/** Result of query `EnqueueRecordIngestionJob`. */
+export interface IEnqueueRecordIngestionJobResult {
 }
 
-/** Result of query `FindOpenConnectorAcceptanceIntegration`. */
-export interface IFindOpenConnectorAcceptanceIntegrationResult {
+/** Result of query `FindActiveRecordSyncForAcceptance`. */
+export interface IFindActiveRecordSyncForAcceptanceResult {
     id: string;
     ownerId: string;
 }
 
-/** Result of query `FindOpenConnectorBatchReceipt`. */
-export interface IFindOpenConnectorBatchReceiptResult {
+/** Result of query `FindRecordBatchReceipt`. */
+export interface IFindRecordBatchReceiptResult {
     payloadHash: string;
 }
 
-/** Result of query `CreateOpenConnectorBatchReceipt`. */
-export interface ICreateOpenConnectorBatchReceiptResult {
+/** Result of query `CreateRecordBatchReceipt`. */
+export interface ICreateRecordBatchReceiptResult {
 }
 
-/** Result of query `RecordOpenConnectorCredentialFingerprint`. */
-export interface IRecordOpenConnectorCredentialFingerprintResult {
-    id: string | null;
-}
-
-/** Result of query `FindOpenConnectorCredentialFingerprintOwner`. */
-export interface IFindOpenConnectorCredentialFingerprintOwnerResult {
-    id: string;
-}
-
-/** Result of query `HasUnfinishedOpenConnectorIngestionJobs`. */
-export interface IHasUnfinishedOpenConnectorIngestionJobsResult {
+/** Result of query `HasUnfinishedRecordIngestionJobs`. */
+export interface IHasUnfinishedRecordIngestionJobsResult {
     unfinished: number;
 }
 
-/** Result of query `ClaimOpenConnectorIngestionJob`. */
-export interface IClaimOpenConnectorIngestionJobResult {
-    integrationId: string;
+/** Result of query `ClaimRecordIngestionJob`. */
+export interface IClaimRecordIngestionJobResult {
+    syncId: string;
     ownerId: string;
     eventId: string;
     sourceId: string;
@@ -692,8 +657,8 @@ export interface IClaimOpenConnectorIngestionJobResult {
     leaseExpiresAt: string;
 }
 
-/** Result of query `ReadClaimedOpenConnectorEvent`. */
-export interface IReadClaimedOpenConnectorEventResult {
+/** Result of query `ReadClaimedRecordEvent`. */
+export interface IReadClaimedRecordEventResult {
     provider: string;
     operation: "added" | "updated" | "deleted";
     contentHash: string;
@@ -701,42 +666,43 @@ export interface IReadClaimedOpenConnectorEventResult {
     contentJson: string | null;
 }
 
-/** Result of query `FindLeasedOpenConnectorIngestionJob`. */
-export interface IFindLeasedOpenConnectorIngestionJobResult {
+/** Result of query `FindLeasedRecordIngestionJob`. */
+export interface IFindLeasedRecordIngestionJobResult {
     revision: number;
 }
 
-/** Result of query `FindCurrentOpenConnectorRecordForIngestion`. */
-export interface IFindCurrentOpenConnectorRecordForIngestionResult {
+/** Result of query `FindCurrentRecordForIngestion`. */
+export interface IFindCurrentRecordForIngestionResult {
     provider: string;
     revision: number;
     operation: "added" | "updated" | "deleted";
 }
 
-/** Result of query `SupersedeOpenConnectorIngestionJob`. */
-export interface ISupersedeOpenConnectorIngestionJobResult {
+/** Result of query `SupersedeRecordIngestionJob`. */
+export interface ISupersedeRecordIngestionJobResult {
 }
 
-/** Result of query `DeleteOpenConnectorSearchDocument`. */
-export interface IDeleteOpenConnectorSearchDocumentResult {
+/** Result of query `DeleteRecordSearchDocument`. */
+export interface IDeleteRecordSearchDocumentResult {
 }
 
-/** Result of query `UpsertOpenConnectorSearchDocument`. */
-export interface IUpsertOpenConnectorSearchDocumentResult {
+/** Result of query `UpsertRecordSearchDocument`. */
+export interface IUpsertRecordSearchDocumentResult {
 }
 
-/** Result of query `CompleteOpenConnectorIngestionJob`. */
-export interface ICompleteOpenConnectorIngestionJobResult {
+/** Result of query `CompleteRecordIngestionJob`. */
+export interface ICompleteRecordIngestionJobResult {
 }
 
-/** Result of query `RetryOpenConnectorIngestionJob`. */
-export interface IRetryOpenConnectorIngestionJobResult {
+/** Result of query `RetryRecordIngestionJob`. */
+export interface IRetryRecordIngestionJobResult {
     event_id: string | null;
 }
 
-/** Result of query `FindOpenConnectorRecord`. */
-export interface IFindOpenConnectorRecordResult {
-    integrationId: string;
+/** Result of query `FindRecord`. */
+export interface IFindRecordResult {
+    syncId: string;
+    syncReadableId: string;
     ownerId: string;
     readableId: string;
     provider: string;
@@ -753,9 +719,10 @@ export interface IFindOpenConnectorRecordResult {
     updatedAt: string;
 }
 
-/** Result of query `SearchOpenConnectorRecords`. */
-export interface ISearchOpenConnectorRecordsResult {
-    integrationId: string;
+/** Result of query `SearchRecords`. */
+export interface ISearchRecordsResult {
+    syncReadableId: string;
+    readableId: string;
     provider: string;
     sourceId: string;
     kind: string;
@@ -767,10 +734,10 @@ export interface ISearchOpenConnectorRecordsResult {
     rawMatchExcerpt: string;
 }
 
-/** Result of query `ListOpenConnectorRecordResources`. */
-export interface IListOpenConnectorRecordResourcesResult {
-    integrationId: string;
-    integrationName: string;
+/** Result of query `ListRecordResources`. */
+export interface IListRecordResourcesResult {
+    syncReadableId: string;
+    syncName: string;
     readableId: string;
     title: string;
     excerpt: string;
@@ -778,10 +745,10 @@ export interface IListOpenConnectorRecordResourcesResult {
     updatedAt: string;
 }
 
-/** Result of query `FindOpenConnectorRecordResource`. */
-export interface IFindOpenConnectorRecordResourceResult {
-    integrationId: string;
-    integrationName: string;
+/** Result of query `FindRecordResource`. */
+export interface IFindRecordResourceResult {
+    syncReadableId: string;
+    syncName: string;
     readableId: string;
     title: string;
     excerpt: string;
@@ -790,10 +757,36 @@ export interface IFindOpenConnectorRecordResourceResult {
     updatedAt: string;
 }
 
-/** Result of query `ReadOwnerRegistrationState`. */
-export interface IReadOwnerRegistrationStateResult {
-    ownerExists: number;
-    passkeyExists: number;
+/** Result of query `FindActiveRecordSyncByName`. */
+export interface IFindActiveRecordSyncByNameResult {
+    id: string;
+}
+
+/** Result of query `CreateRecordSync`. */
+export interface ICreateRecordSyncResult {
+    id: string | null;
+}
+
+/** Result of query `ListRecordSyncs`. */
+export interface IListRecordSyncsResult {
+    readableId: string;
+    ownerId: string;
+    name: string;
+    createdAt: string;
+    revokedAt: string | null;
+}
+
+/** Result of query `RevokeRecordSync`. */
+export interface IRevokeRecordSyncResult {
+    id: string | null;
+}
+
+/** Result of query `AuthenticateRecordSyncApiKey`. */
+export interface IAuthenticateRecordSyncApiKeyResult {
+    syncId: string;
+    syncReadableId: string;
+    ownerId: string;
+    name: string;
 }
 
 export interface Queries {
@@ -852,36 +845,34 @@ export interface Queries {
     FindActiveMcpClientAuthorizationById: IFindActiveMcpClientAuthorizationByIdResult;
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
-    FindOpenConnectorOwner: IFindOpenConnectorOwnerResult;
-    BindOpenConnectorIntegration: IBindOpenConnectorIntegrationResult;
-    FindOpenConnectorIntegration: IFindOpenConnectorIntegrationResult;
-    AuthenticateOpenConnectorCredentialFingerprint: IAuthenticateOpenConnectorCredentialFingerprintResult;
-    FindOpenConnectorCredentialFingerprint: IFindOpenConnectorCredentialFingerprintResult;
-    FindOpenConnectorEventFingerprint: IFindOpenConnectorEventFingerprintResult;
-    FindOpenConnectorRecordRevisionFingerprints: IFindOpenConnectorRecordRevisionFingerprintsResult;
-    CreateOpenConnectorRecordEvent: ICreateOpenConnectorRecordEventResult;
-    ApplyOpenConnectorRecordRevision: IApplyOpenConnectorRecordRevisionResult;
-    EnqueueOpenConnectorIngestionJob: IEnqueueOpenConnectorIngestionJobResult;
-    FindOpenConnectorAcceptanceIntegration: IFindOpenConnectorAcceptanceIntegrationResult;
-    FindOpenConnectorBatchReceipt: IFindOpenConnectorBatchReceiptResult;
-    CreateOpenConnectorBatchReceipt: ICreateOpenConnectorBatchReceiptResult;
-    RecordOpenConnectorCredentialFingerprint: IRecordOpenConnectorCredentialFingerprintResult;
-    FindOpenConnectorCredentialFingerprintOwner: IFindOpenConnectorCredentialFingerprintOwnerResult;
-    HasUnfinishedOpenConnectorIngestionJobs: IHasUnfinishedOpenConnectorIngestionJobsResult;
-    ClaimOpenConnectorIngestionJob: IClaimOpenConnectorIngestionJobResult;
-    ReadClaimedOpenConnectorEvent: IReadClaimedOpenConnectorEventResult;
-    FindLeasedOpenConnectorIngestionJob: IFindLeasedOpenConnectorIngestionJobResult;
-    FindCurrentOpenConnectorRecordForIngestion: IFindCurrentOpenConnectorRecordForIngestionResult;
-    SupersedeOpenConnectorIngestionJob: ISupersedeOpenConnectorIngestionJobResult;
-    DeleteOpenConnectorSearchDocument: IDeleteOpenConnectorSearchDocumentResult;
-    UpsertOpenConnectorSearchDocument: IUpsertOpenConnectorSearchDocumentResult;
-    CompleteOpenConnectorIngestionJob: ICompleteOpenConnectorIngestionJobResult;
-    RetryOpenConnectorIngestionJob: IRetryOpenConnectorIngestionJobResult;
-    FindOpenConnectorRecord: IFindOpenConnectorRecordResult;
-    SearchOpenConnectorRecords: ISearchOpenConnectorRecordsResult;
-    ListOpenConnectorRecordResources: IListOpenConnectorRecordResourcesResult;
-    FindOpenConnectorRecordResource: IFindOpenConnectorRecordResourceResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    FindRecordEventFingerprint: IFindRecordEventFingerprintResult;
+    FindRecordRevisionFingerprints: IFindRecordRevisionFingerprintsResult;
+    CreateRecordEvent: ICreateRecordEventResult;
+    ApplyRecordRevision: IApplyRecordRevisionResult;
+    EnqueueRecordIngestionJob: IEnqueueRecordIngestionJobResult;
+    FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
+    FindRecordBatchReceipt: IFindRecordBatchReceiptResult;
+    CreateRecordBatchReceipt: ICreateRecordBatchReceiptResult;
+    HasUnfinishedRecordIngestionJobs: IHasUnfinishedRecordIngestionJobsResult;
+    ClaimRecordIngestionJob: IClaimRecordIngestionJobResult;
+    ReadClaimedRecordEvent: IReadClaimedRecordEventResult;
+    FindLeasedRecordIngestionJob: IFindLeasedRecordIngestionJobResult;
+    FindCurrentRecordForIngestion: IFindCurrentRecordForIngestionResult;
+    SupersedeRecordIngestionJob: ISupersedeRecordIngestionJobResult;
+    DeleteRecordSearchDocument: IDeleteRecordSearchDocumentResult;
+    UpsertRecordSearchDocument: IUpsertRecordSearchDocumentResult;
+    CompleteRecordIngestionJob: ICompleteRecordIngestionJobResult;
+    RetryRecordIngestionJob: IRetryRecordIngestionJobResult;
+    FindRecord: IFindRecordResult;
+    SearchRecords: ISearchRecordsResult;
+    ListRecordResources: IListRecordResourcesResult;
+    FindRecordResource: IFindRecordResourceResult;
+    FindActiveRecordSyncByName: IFindActiveRecordSyncByNameResult;
+    CreateRecordSync: ICreateRecordSyncResult;
+    ListRecordSyncs: IListRecordSyncsResult;
+    RevokeRecordSync: IRevokeRecordSyncResult;
+    AuthenticateRecordSyncApiKey: IAuthenticateRecordSyncApiKeyResult;
 }
 
 declare module "@ilbertt/bun-sqlgen" {

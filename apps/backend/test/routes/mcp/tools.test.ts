@@ -25,7 +25,7 @@ import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profi
 import {
   unusedAssetTransferCapabilities,
   unusedKnowledgeProfilesService,
-  unusedOpenConnectorRecordsService,
+  unusedRecordsService,
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
@@ -131,7 +131,7 @@ async function withMcpClient<T>({
     entitiesService,
     pagesService,
     profilesService,
-    recordsService: unusedOpenConnectorRecordsService,
+    recordsService: unusedRecordsService,
     transferCapabilities: unusedAssetTransferCapabilities,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

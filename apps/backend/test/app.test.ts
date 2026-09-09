@@ -3,9 +3,9 @@ import { StatusMap } from 'elysia';
 import { createApp } from '#app.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import {
-  OPEN_CONNECTOR_RECORDS_ROUTE_PATH,
-  OPEN_CONNECTOR_SECURITY_SCHEME,
-} from '#routes/integrations/open-connector/controller.ts';
+  RECORD_DELIVERY_ROUTE_PATH,
+  RECORD_SYNC_SECURITY_SCHEME,
+} from '#routes/api/records/delivery-controller.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
@@ -78,7 +78,8 @@ test('createApp uses supplied dependencies without production bootstrap', async 
       return Promise.resolve({ status: 'ok', uptime: 0 });
     },
   };
-  let acceptedOpenConnectorDeliveries = 0;
+  let acceptedRecordDeliveries = 0;
+  const deliveryApiKey = '01991f43-0c00-7000-8000-000000000010';
 
   const app = createApp({
     auth,
@@ -92,20 +93,26 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     mcpServerUrl: testMcpServerUrl,
     mcpTransport: unusedMcpTransport,
     recordsService: {
-      authenticateDeliveryApiKey: async ({ deliveryApiKey }) =>
-        deliveryApiKey === 'delivery-api-key-0123456789abcdef'
-          ? {
-              integrationId: 'github-sync',
-              ownerId: 'context-use-owner',
-              name: 'GitHub sync',
-            }
-          : null,
       accept: () => {
-        acceptedOpenConnectorDeliveries += 1;
+        acceptedRecordDeliveries += 1;
         return Promise.resolve({ state: 'accepted' });
       },
       findResource: unexpectedCall,
       listResources: unexpectedCall,
+    },
+    syncsService: {
+      authenticate: async ({ apiKey }) =>
+        apiKey === deliveryApiKey
+          ? {
+              syncId: '01991f43-0c00-7000-8000-000000000011',
+              syncReadableId: 'github-sync-7df8e8f7f2dc5a00b4408901',
+              ownerId: 'context-use-owner',
+              name: 'GitHub sync',
+            }
+          : null,
+      create: unexpectedCall,
+      list: unexpectedCall,
+      revoke: unexpectedCall,
     },
     ownerRegistrationService,
     pagesService,
@@ -119,10 +126,10 @@ test('createApp uses supplied dependencies without production bootstrap', async 
 
   const batchId = 'mounted-receiver-batch';
   const receiverResponse = await app.handle(
-    new Request('http://localhost/api/integrations/open-connector/records', {
+    new Request('http://localhost/api/records', {
       method: 'POST',
       headers: {
-        authorization: 'Bearer delivery-api-key-0123456789abcdef',
+        authorization: `Bearer ${deliveryApiKey}`,
         'content-type': 'application/json',
         'idempotency-key': batchId,
       },
@@ -146,7 +153,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     }),
   );
   expect(receiverResponse.status).toBe(StatusMap.OK);
-  expect(acceptedOpenConnectorDeliveries).toBe(1);
+  expect(acceptedRecordDeliveries).toBe(1);
 
   const openApiResponse = await app.handle(new Request('http://localhost/openapi/json'));
   expect(openApiResponse.status).toBe(StatusMap.OK);
@@ -163,12 +170,12 @@ test('createApp uses supplied dependencies without production bootstrap', async 
       }
     >;
   };
-  expect(openApi.components?.securitySchemes?.[OPEN_CONNECTOR_SECURITY_SCHEME]).toMatchObject({
+  expect(openApi.components?.securitySchemes?.[RECORD_SYNC_SECURITY_SCHEME]).toMatchObject({
     type: 'http',
     scheme: 'bearer',
   });
-  const receiverOperation = openApi.paths?.[OPEN_CONNECTOR_RECORDS_ROUTE_PATH]?.post;
-  expect(receiverOperation?.security).toContainEqual({ [OPEN_CONNECTOR_SECURITY_SCHEME]: [] });
+  const receiverOperation = openApi.paths?.[RECORD_DELIVERY_ROUTE_PATH]?.post;
+  expect(receiverOperation?.security).toContainEqual({ [RECORD_SYNC_SECURITY_SCHEME]: [] });
   const requiredHeaderNames = receiverOperation?.parameters
     ?.filter((parameter) => parameter.in === 'header' && parameter.required)
     .map((parameter) => parameter.name?.toLowerCase());

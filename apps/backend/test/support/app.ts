@@ -1,6 +1,12 @@
-import type { OpenConnectorRecordsAcceptanceContract } from '#routes/integrations/open-connector/controller.ts';
 import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
-import type { OpenConnectorRecordResourcesServiceContract } from '#services/open-connector/service.ts';
+import type {
+  RecordDeliveryAcceptanceContract,
+  RecordResourcesServiceContract,
+} from '#services/records/service.ts';
+import type {
+  RecordSyncAuthenticationContract,
+  RecordSyncsServiceContract,
+} from '#services/syncs/service.ts';
 
 function unexpectedCall(): never {
   throw new Error('Unexpected hypermedia service call');
@@ -11,10 +17,17 @@ export const unusedHypermediaService: HypermediaServiceContract = {
   pages: unexpectedCall,
 };
 
-export const unusedOpenConnectorRecordsService: OpenConnectorRecordsAcceptanceContract &
-  OpenConnectorRecordResourcesServiceContract = {
+export const unusedRecordsService: RecordDeliveryAcceptanceContract &
+  RecordResourcesServiceContract = {
   accept: unexpectedCall,
-  authenticateDeliveryApiKey: unexpectedCall,
   findResource: unexpectedCall,
   listResources: unexpectedCall,
+};
+
+export const unusedRecordSyncsService: RecordSyncAuthenticationContract &
+  RecordSyncsServiceContract = {
+  authenticate: unexpectedCall,
+  create: unexpectedCall,
+  list: unexpectedCall,
+  revoke: unexpectedCall,
 };

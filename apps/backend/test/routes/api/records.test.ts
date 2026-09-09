@@ -3,17 +3,19 @@ import type { SQL } from 'bun';
 import { Elysia, StatusMap } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
-import type { OpenConnectorDeliveryRecord } from '#models/open-connector/model.ts';
-import { canonicalOpenConnectorContent } from '#models/open-connector/model.ts';
-import { OpenConnectorRecordsRepository } from '#repositories/open-connector/repository.ts';
+import type { DeliveredRecord } from '#models/records/model.ts';
+import { canonicalRecordContent } from '#models/records/model.ts';
+import { RecordsRepository } from '#repositories/records/repository.ts';
 import { createRecordReadableIdController } from '#routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#routes/api/records/controller.ts';
-import { OpenConnectorRecordsService } from '#services/open-connector/service.ts';
+import { RecordsService } from '#services/records/service.ts';
 import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
 import { unusedMcpProtection } from '../../support/mcp.ts';
 
 const NOW = '2026-09-09T09:00:00.000Z';
 const OTHER_OWNER_ID = 'records-other-owner';
+const OWNER_SYNC_ID = '01991f43-0c00-7000-8000-000000000020';
+const OTHER_SYNC_ID = '01991f43-0c00-7000-8000-000000000021';
 
 function digest(value: string): string {
   return new Bun.CryptoHasher('sha256').update(value).digest('hex');
@@ -24,6 +26,26 @@ async function insertOwner({ database, ownerId }: { database: SQL; ownerId: stri
     insert into "auth_user"
       ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
     values (${ownerId}, ${ownerId}, ${`${ownerId}@example.invalid`}, 1, ${NOW}, ${NOW})
+  `;
+}
+
+async function insertSync({
+  database,
+  id,
+  ownerId,
+  readableId,
+  name,
+}: {
+  database: SQL;
+  id: string;
+  ownerId: string;
+  readableId: string;
+  name: string;
+}) {
+  await database`
+    insert into "record_sync"
+      ("id", "owner_id", "readable_id", "name", "api_key_sha256", "created_at")
+    values (${id}, ${ownerId}, ${readableId}, ${name}, ${digest(`${id}-key`)}, ${NOW})
   `;
 }
 
@@ -65,7 +87,7 @@ function record({
   body?: string;
   revision?: number;
   operation?: 'added' | 'updated' | 'deleted';
-}): OpenConnectorDeliveryRecord {
+}): DeliveredRecord {
   const content =
     operation === 'deleted'
       ? undefined
@@ -82,7 +104,7 @@ function record({
     id,
     revision,
     operation,
-    contentHash: content ? digest(canonicalOpenConnectorContent(content)!) : digest('deleted'),
+    contentHash: content ? digest(canonicalRecordContent(content)!) : digest('deleted'),
     committedAt: NOW,
     ...(content ? { content } : {}),
   };
@@ -90,20 +112,20 @@ function record({
 
 async function accept({
   service,
-  integrationId,
+  syncId,
   ownerId,
   batchId,
   records,
 }: {
-  service: OpenConnectorRecordsService;
-  integrationId: string;
+  service: RecordsService;
+  syncId: string;
   ownerId: string;
   batchId: string;
-  records: OpenConnectorDeliveryRecord[];
+  records: DeliveredRecord[];
 }) {
   expect(
     await service.accept({
-      integrationId,
+      syncId,
       ownerId,
       envelope: { version: 1, batchId, records },
       payloadHash: digest(batchId),
@@ -111,34 +133,27 @@ async function accept({
   ).toEqual({ state: 'accepted' });
 }
 
-test('record API lists active owner records and returns Markdown detail with service provenance', async () => {
+test('record API lists active owner records and returns Markdown detail with sync provenance', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
       await insertOwner({ database, ownerId: OWNER_USER_ID });
       await insertOwner({ database, ownerId: OTHER_OWNER_ID });
-      const repository = new OpenConnectorRecordsRepository(database);
-      const service = new OpenConnectorRecordsService({
-        records: repository,
-        ownerRegistration: {
-          state: async () => ({ ownerExists: true, passkeyExists: true }),
-        },
-        now: () => new Date(NOW),
+      const repository = new RecordsRepository(database);
+      const service = new RecordsService({ records: repository, now: () => new Date(NOW) });
+      await insertSync({
+        database,
+        id: OWNER_SYNC_ID,
+        ownerId: OWNER_USER_ID,
+        readableId: 'github-sync',
+        name: 'Engineering GitHub',
       });
-      expect(
-        await service.bindIntegration({
-          integrationId: 'github-sync',
-          ownerId: OWNER_USER_ID,
-          name: 'Engineering GitHub',
-        }),
-      ).toEqual({ state: 'bound' });
-      expect(
-        await repository.bindIntegration({
-          integrationId: 'other-sync',
-          ownerId: OTHER_OWNER_ID,
-          name: 'Other owner service',
-          createdAt: NOW,
-        }),
-      ).toEqual({ state: 'bound' });
+      await insertSync({
+        database,
+        id: OTHER_SYNC_ID,
+        ownerId: OTHER_OWNER_ID,
+        readableId: 'other-sync',
+        name: 'Other owner service',
+      });
 
       const markdown = [
         '<script>hidden title</script>',
@@ -153,7 +168,7 @@ test('record API lists active owner records and returns Markdown detail with ser
       ].join('\n');
       await accept({
         service,
-        integrationId: 'github-sync',
+        syncId: OWNER_SYNC_ID,
         ownerId: OWNER_USER_ID,
         batchId: 'owner-batch',
         records: [
@@ -169,7 +184,7 @@ test('record API lists active owner records and returns Markdown detail with ser
       });
       await accept({
         service,
-        integrationId: 'other-sync',
+        syncId: OTHER_SYNC_ID,
         ownerId: OTHER_OWNER_ID,
         batchId: 'other-batch',
         records: [record({ eventId: 'other-event', id: 'other', body: '# Other owner' })],
@@ -202,7 +217,7 @@ test('record API lists active owner records and returns Markdown detail with ser
           readableId: string;
           title: string;
           excerpt: string;
-          externalService: { id: string; name: string };
+          sync: { readableId: string; name: string };
         }>;
         nextOffset: number | null;
       };
@@ -213,7 +228,7 @@ test('record API lists active owner records and returns Markdown detail with ser
           readableId: expect.stringMatching(/^linked-title-[a-f0-9]{24}$/),
           title: 'Linked title',
           excerpt: 'Architecture diagram',
-          externalService: { id: 'github-sync', name: 'Engineering GitHub' },
+          sync: { readableId: 'github-sync', name: 'Engineering GitHub' },
         }),
       );
       expect(JSON.stringify(list)).not.toContain('hidden title');
@@ -230,7 +245,7 @@ test('record API lists active owner records and returns Markdown detail with ser
           title: 'Linked title',
           excerpt: 'Architecture diagram',
           markdown,
-          externalService: { id: 'github-sync', name: 'Engineering GitHub' },
+          sync: { readableId: 'github-sync', name: 'Engineering GitHub' },
         }),
       );
       expect(detail).not.toHaveProperty('sourceUrl');
@@ -245,7 +260,7 @@ test('record API lists active owner records and returns Markdown detail with ser
 
       await accept({
         service,
-        integrationId: 'github-sync',
+        syncId: OWNER_SYNC_ID,
         ownerId: OWNER_USER_ID,
         batchId: 'renamed-batch',
         records: [
@@ -269,6 +284,33 @@ test('record API lists active owner records and returns Markdown detail with ser
           markdown: '# Renamed title\n\nA replacement excerpt.',
         }),
       );
+
+      await database`
+        update "record_sync" set "revoked_at" = ${NOW} where "id" = ${OWNER_SYNC_ID}
+      `;
+      expect(
+        (await app.handle(new Request(`http://localhost/api/records/${visible!.readableId}`)))
+          .status,
+      ).toBe(StatusMap.OK);
+      expect(
+        await service.accept({
+          syncId: OWNER_SYNC_ID,
+          ownerId: OWNER_USER_ID,
+          envelope: {
+            version: 1,
+            batchId: 'revoked-sync-batch',
+            records: [
+              record({
+                eventId: 'revoked-sync-event',
+                id: 'visible',
+                revision: 3,
+                body: '# Must not replace the retained record',
+              }),
+            ],
+          },
+          payloadHash: digest('revoked-sync-batch'),
+        }),
+      ).toEqual({ state: 'inactive_sync' });
       expect(
         (await app.handle(new Request('http://localhost/api/records/does-not-exist'))).status,
       ).toBe(StatusMap['Not Found']);

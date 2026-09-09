@@ -41,7 +41,7 @@ Each resource type owns one reusable identity treatment:
 - Assets are file-led: safe thumbnail or file cue, meaningful name, format, and size when space
   permits.
 - Records are source-led: document cue, title and excerpt derived from the delivered body, and the
-  external service that synced them.
+  sync that delivered them.
 
 Call the relationship overview **Hypermedia**. In the compact collection selector, use the
 plain labels **Entities**, **Pages**, **Assets**, and **Records**; explain “knowledge page” where the

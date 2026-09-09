@@ -4,7 +4,7 @@ import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
-import type { OpenConnectorRecordsRetrievalServiceContract } from '#services/open-connector/service.ts';
+import type { RecordsRetrievalServiceContract } from '#services/records/service.ts';
 import { registerAssetTools } from './assets/tools.ts';
 import type { AssetTransferCapabilitiesContract } from './assets/transfer-capabilities.ts';
 import { registerEntityTools } from './entities/tools.ts';
@@ -27,7 +27,7 @@ export function createContextUseMcpServer({
   entitiesService: EntitiesServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
-  recordsService: OpenConnectorRecordsRetrievalServiceContract;
+  recordsService: RecordsRetrievalServiceContract;
   transferCapabilities: AssetTransferCapabilitiesContract;
 }): McpServer {
   const server = new McpServer(

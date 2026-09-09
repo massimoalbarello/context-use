@@ -13,7 +13,7 @@ import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/se
 import {
   unusedAssetTransferCapabilities,
   unusedKnowledgeProfilesService,
-  unusedOpenConnectorRecordsService,
+  unusedRecordsService,
 } from '../../support/mcp.ts';
 
 const LEGACY_PROTOCOL_VERSION = '2025-06-18';
@@ -83,7 +83,7 @@ test('authenticated 2025-06-18 clients can initialize and call the same tools', 
         entitiesService,
         pagesService,
         profilesService: unusedKnowledgeProfilesService,
-        recordsService: unusedOpenConnectorRecordsService,
+        recordsService: unusedRecordsService,
         transferCapabilities: unusedAssetTransferCapabilities,
       }),
   });

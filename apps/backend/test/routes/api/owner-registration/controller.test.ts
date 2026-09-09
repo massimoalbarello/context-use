@@ -18,7 +18,8 @@ import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profi
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import {
   unusedHypermediaService,
-  unusedOpenConnectorRecordsService,
+  unusedRecordSyncsService,
+  unusedRecordsService,
 } from '../../../support/app.ts';
 import {
   testMcpServerUrl,
@@ -103,7 +104,8 @@ test('owner registration API exposes only complete registration states', async (
       ),
       pagesService,
       profilesService,
-      recordsService: unusedOpenConnectorRecordsService,
+      recordsService: unusedRecordsService,
+      syncsService: unusedRecordSyncsService,
     });
 
     const availableResponse = await app.handle(

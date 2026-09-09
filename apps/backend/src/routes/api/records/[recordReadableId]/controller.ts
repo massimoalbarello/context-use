@@ -3,14 +3,14 @@ import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import { RecordParamsSchema, RecordSchema, recordResponse } from '#routes/api/records/model.ts';
-import type { OpenConnectorRecordResourcesServiceContract } from '#services/open-connector/service.ts';
+import type { RecordResourcesServiceContract } from '#services/records/service.ts';
 
 export function createRecordReadableIdController({
   auth,
   recordsService,
 }: {
   auth: Auth;
-  recordsService: OpenConnectorRecordResourcesServiceContract;
+  recordsService: RecordResourcesServiceContract;
 }) {
   return new Elysia()
     .use(createAuthPlugin({ auth }))

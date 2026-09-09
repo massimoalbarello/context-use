@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import type {
-  OpenConnectorSearchResult,
-  StoredOpenConnectorRecord,
-} from '#models/open-connector/model.ts';
+import type { RecordSearchResult, StoredRecord } from '#models/records/model.ts';
 import { ExternalRecordAddressSchema, externalRecordAddress } from '#routes/mcp/coordinates.ts';
 
 const ExternalRecordIdentityShape = {
@@ -32,7 +29,7 @@ export const McpExternalRecordSchema = z.object({
   content: McpExternalRecordContentSchema,
 });
 
-export function mcpExternalRecordSearchResult(result: OpenConnectorSearchResult) {
+export function mcpExternalRecordSearchResult(result: RecordSearchResult) {
   return {
     address: externalRecordAddress(result),
     provider: result.provider,
@@ -47,7 +44,7 @@ export function mcpExternalRecordSearchResult(result: OpenConnectorSearchResult)
   };
 }
 
-export function mcpExternalRecord(record: StoredOpenConnectorRecord) {
+export function mcpExternalRecord(record: StoredRecord) {
   if (record.operation === 'deleted' || !record.content) {
     throw new Error('Cannot expose a deleted external record');
   }

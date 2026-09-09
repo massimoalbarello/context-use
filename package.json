@@ -22,7 +22,6 @@
     "dev:isolated": "bun run scripts/dev-isolated.ts",
     "dev:isolated:seeded": "bun run scripts/dev-isolated.ts --seed",
     "deploy:nibrun": "bun run scripts/deploy-nibrun.ts",
-    "open-connector:setup": "bun run --cwd apps/backend open-connector:setup",
     "build": "bun run --bun turbo build",
     "build:local": "BUILD_TARGET=host bun run --bun turbo build --filter=@repo/backend",
     "generate:queries": "bun --filter @repo/backend generate:queries",

@@ -31,6 +31,7 @@ import { Route as PagesNewRouteImport } from './routes/pages.new'
 import { Route as RecordsIndexRouteImport } from './routes/records.index'
 import { Route as RecordsIdRouteImport } from './routes/records.$id'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsSyncsRouteImport } from './routes/settings.syncs'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -142,6 +143,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsSyncsRoute = SettingsSyncsRouteImport.update({
+  id: '/syncs',
+  path: '/syncs',
+  getParentRoute: () => SettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/pages/$id': typeof PagesIdRoute
   '/pages/new': typeof PagesNewRoute
   '/records/$id': typeof RecordsIdRoute
+  '/settings/syncs': typeof SettingsSyncsRoute
   '/assets/': typeof AssetsIndexRoute
   '/entities/': typeof EntitiesIndexRoute
   '/pages/': typeof PagesIndexRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/pages/$id': typeof PagesIdRoute
   '/pages/new': typeof PagesNewRoute
   '/records/$id': typeof RecordsIdRoute
+  '/settings/syncs': typeof SettingsSyncsRoute
   '/assets': typeof AssetsIndexRoute
   '/entities': typeof EntitiesIndexRoute
   '/pages': typeof PagesIndexRoute
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/pages/$id': typeof PagesIdRoute
   '/pages/new': typeof PagesNewRoute
   '/records/$id': typeof RecordsIdRoute
+  '/settings/syncs': typeof SettingsSyncsRoute
   '/assets/': typeof AssetsIndexRoute
   '/entities/': typeof EntitiesIndexRoute
   '/pages/': typeof PagesIndexRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/pages/$id'
     | '/pages/new'
     | '/records/$id'
+    | '/settings/syncs'
     | '/assets/'
     | '/entities/'
     | '/pages/'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/pages/$id'
     | '/pages/new'
     | '/records/$id'
+    | '/settings/syncs'
     | '/assets'
     | '/entities'
     | '/pages'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/pages/$id'
     | '/pages/new'
     | '/records/$id'
+    | '/settings/syncs'
     | '/assets/'
     | '/entities/'
     | '/pages/'
@@ -450,6 +462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/syncs': {
+      id: '/settings/syncs'
+      path: '/syncs'
+      fullPath: '/settings/syncs'
+      preLoaderRoute: typeof SettingsSyncsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
   }
 }
 
@@ -512,10 +531,12 @@ const RecordsRouteWithChildren =
   RecordsRoute._addFileChildren(RecordsRouteChildren)
 
 interface SettingsRouteChildren {
+  SettingsSyncsRoute: typeof SettingsSyncsRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsSyncsRoute: SettingsSyncsRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 

@@ -8,14 +8,14 @@ import {
   RecordListSchema,
   recordSummaryResponse,
 } from '#routes/api/records/model.ts';
-import type { OpenConnectorRecordResourcesServiceContract } from '#services/open-connector/service.ts';
+import type { RecordResourcesServiceContract } from '#services/records/service.ts';
 
 export function createRecordsController({
   auth,
   recordsService,
 }: {
   auth: Auth;
-  recordsService: OpenConnectorRecordResourcesServiceContract;
+  recordsService: RecordResourcesServiceContract;
 }) {
   return new Elysia()
     .use(createAuthPlugin({ auth }))

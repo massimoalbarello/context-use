@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router';
-import { ArrowLeft, Bot } from 'lucide-react';
+import { ArrowLeft, Bot, RefreshCw } from 'lucide-react';
 import { WorkspaceSplitLayout } from '../components/layout/workspace-split-layout';
 import { buttonVariants } from '../components/ui/button';
 import { cn } from '../lib/class-names';
@@ -40,6 +40,17 @@ function SettingsLayout() {
           >
             <Bot aria-hidden="true" />
             MCP
+          </Link>
+          <Link
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'w-full justify-start text-muted-foreground',
+            )}
+            activeProps={{ className: 'bg-muted text-foreground' }}
+            to="/settings/syncs"
+          >
+            <RefreshCw aria-hidden="true" />
+            Syncs
           </Link>
         </nav>
       </aside>

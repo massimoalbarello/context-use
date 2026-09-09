@@ -17,7 +17,7 @@ const record: ExternalRecordSummary = {
   readableId: 'context-use-pr-57-a1b2c3',
   title: 'massimoalbarello/context-use #57: Receive external records',
   excerpt: 'Context Use accepts a durable batch of Markdown records.',
-  externalService: { id: 'open-connector', name: 'Open Connector' },
+  sync: { readableId: 'example-sync-a1b2c3', name: 'Example sync' },
   createdAt: new Date('2026-09-09T11:00:00.000Z'),
   updatedAt: new Date('2026-09-09T12:00:00.000Z'),
 };
@@ -27,8 +27,8 @@ test('record cards identify their content and syncing external service', () => {
 
   expect(screen.getByText(record.title)).toBeTruthy();
   expect(screen.getByText(record.excerpt)).toBeTruthy();
-  expect(screen.getByText('Synced by Open Connector')).toBeTruthy();
-  expect(screen.queryByText(record.externalService.id)).toBeNull();
+  expect(screen.getByText('Synced by Example sync')).toBeTruthy();
+  expect(screen.queryByText(record.sync.readableId)).toBeNull();
 });
 
 test('record links navigate by local readable ID and expose their selected state', async () => {

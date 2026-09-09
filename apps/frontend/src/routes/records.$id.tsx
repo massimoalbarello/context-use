@@ -41,7 +41,7 @@ function RecordRoute() {
       <DetailHeader>
         <ResourceDetailHeading
           actions={null}
-          context={<Badge variant="secondary">Synced by {record.externalService.name}</Badge>}
+          context={<Badge variant="secondary">Synced by {record.sync.name}</Badge>}
         >
           Record
         </ResourceDetailHeading>

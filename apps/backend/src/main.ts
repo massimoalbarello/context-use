@@ -11,7 +11,7 @@ import { BACKEND_ENVIRONMENT } from '#lib/runtime-config.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-pages/model.ts';
-import { MAX_OPEN_CONNECTOR_DELIVERY_BYTES } from '#models/open-connector/model.ts';
+import { MAX_RECORD_DELIVERY_BYTES } from '#models/records/model.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { FrontendAssetsRepository } from '#repositories/frontend-assets/repository.ts';
@@ -20,8 +20,9 @@ import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
-import { OpenConnectorRecordsRepository } from '#repositories/open-connector/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
+import { RecordsRepository } from '#repositories/records/repository.ts';
+import { RecordSyncsRepository } from '#repositories/syncs/repository.ts';
 import { AssetTransferCapabilities } from '#routes/mcp/assets/transfer-capabilities.ts';
 import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import { AssetsService } from '#services/assets/service.ts';
@@ -32,9 +33,10 @@ import { HypermediaService } from '#services/hypermedia/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
-import { OpenConnectorRecordsService } from '#services/open-connector/service.ts';
-import { OpenConnectorIngestionWorker } from '#services/open-connector/worker.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
+import { RecordsService } from '#services/records/service.ts';
+import { RecordIngestionWorker } from '#services/records/worker.ts';
+import { RecordSyncsService } from '#services/syncs/service.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const REQUEST_BODY_OVERHEAD_KIBIBYTES = 64;
@@ -54,7 +56,7 @@ if (authSecret.source.kind === 'environment') {
   logger.info(`using auth secret from ${authSecret.source.path}`);
 }
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
-let openConnectorIngestionWorker: OpenConnectorIngestionWorker | undefined;
+let recordIngestionWorker: RecordIngestionWorker | undefined;
 
 try {
   await runMigrations({ db: database });
@@ -75,17 +77,18 @@ try {
   });
   const healthService = new HealthService(new HealthRepository(database));
   const hypermediaService = new HypermediaService(new HypermediaRepository(database));
-  const ownerRegistrationRepository = new OwnerRegistrationRepository(database);
-  const ownerRegistrationService = new OwnerRegistrationService(ownerRegistrationRepository);
-  const openConnectorRecordsRepository = new OpenConnectorRecordsRepository(database);
-  const openConnectorRecordsService = new OpenConnectorRecordsService({
-    records: openConnectorRecordsRepository,
-    ownerRegistration: ownerRegistrationRepository,
+  const ownerRegistrationService = new OwnerRegistrationService(
+    new OwnerRegistrationRepository(database),
+  );
+  const recordsRepository = new RecordsRepository(database);
+  const recordsService = new RecordsService({ records: recordsRepository });
+  const syncsService = new RecordSyncsService({
+    syncs: new RecordSyncsRepository(database),
   });
-  openConnectorIngestionWorker = new OpenConnectorIngestionWorker({
-    records: openConnectorRecordsRepository,
+  recordIngestionWorker = new RecordIngestionWorker({
+    records: recordsRepository,
   });
-  openConnectorIngestionWorker.start();
+  recordIngestionWorker.start();
   const pagesService = new KnowledgePagesService({ pages: pagesRepository, storage });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
   const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
@@ -99,7 +102,7 @@ try {
         entitiesService,
         pagesService,
         profilesService,
-        recordsService: openConnectorRecordsService,
+        recordsService,
         transferCapabilities: assetTransferCapabilities,
       }),
   });
@@ -124,22 +127,23 @@ try {
     ownerRegistrationService,
     pagesService,
     profilesService,
-    recordsService: openConnectorRecordsService,
+    recordsService,
+    syncsService,
   }).onStop(async () => {
-    await openConnectorIngestionWorker?.stop();
+    await recordIngestionWorker?.stop();
     await database.close();
   });
   const { server } = app.listen({
     port: env.PORT,
     hostname: '0.0.0.0',
     maxRequestBodySize:
-      Math.max(MAX_ASSET_BYTES, MAX_KNOWLEDGE_PAGE_BYTES, MAX_OPEN_CONNECTOR_DELIVERY_BYTES) +
+      Math.max(MAX_ASSET_BYTES, MAX_KNOWLEDGE_PAGE_BYTES, MAX_RECORD_DELIVERY_BYTES) +
       REQUEST_BODY_OVERHEAD_BYTES,
   });
 
   logger.info(`listening on ${server!.url.origin}`);
 } catch (error) {
-  await openConnectorIngestionWorker?.stop();
+  await recordIngestionWorker?.stop();
   await database.close();
   throw error;
 }
