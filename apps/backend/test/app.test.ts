@@ -91,16 +91,21 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
     mcpServerUrl: testMcpServerUrl,
     mcpTransport: unusedMcpTransport,
-    openConnectorReceiver: {
-      integrationId: 'context-use',
-      ownerId: 'context-use-owner',
-      receiverToken: 'receiver-token',
-      recordsService: {
-        accept: () => {
-          acceptedOpenConnectorDeliveries += 1;
-          return Promise.resolve({ state: 'accepted' });
-        },
+    recordsService: {
+      authenticateDeliveryApiKey: async ({ deliveryApiKey }) =>
+        deliveryApiKey === 'delivery-api-key-0123456789abcdef'
+          ? {
+              integrationId: 'github-sync',
+              ownerId: 'context-use-owner',
+              name: 'GitHub sync',
+            }
+          : null,
+      accept: () => {
+        acceptedOpenConnectorDeliveries += 1;
+        return Promise.resolve({ state: 'accepted' });
       },
+      findResource: unexpectedCall,
+      listResources: unexpectedCall,
     },
     ownerRegistrationService,
     pagesService,
@@ -117,7 +122,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     new Request('http://localhost/api/integrations/open-connector/records', {
       method: 'POST',
       headers: {
-        authorization: 'Bearer receiver-token',
+        authorization: 'Bearer delivery-api-key-0123456789abcdef',
         'content-type': 'application/json',
         'idempotency-key': batchId,
       },

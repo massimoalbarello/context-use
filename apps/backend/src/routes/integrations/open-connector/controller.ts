@@ -1,9 +1,16 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { Elysia, StatusMap, t } from 'elysia';
 import type { OpenAPIV3 } from 'openapi-types';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import { OPEN_CONNECTOR_RECORDS_PATH } from '#lib/open-connector/config.ts';
-import { MAX_OPEN_CONNECTOR_DELIVERY_BYTES } from '#models/open-connector/model.ts';
+import {
+  InvalidOpenConnectorDeliveryError,
+  isOpenConnectorDeliveryApiKey,
+  MAX_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES,
+  MAX_OPEN_CONNECTOR_DELIVERY_BYTES,
+  MIN_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES,
+  type OpenConnectorIntegrationPrincipal,
+} from '#models/open-connector/model.ts';
 import { OpenConnectorDeliveryEnvelopeSchema } from '#routes/integrations/open-connector/model.ts';
 import type { OpenConnectorRecordsServiceContract } from '#services/open-connector/service.ts';
 
@@ -17,15 +24,16 @@ export const openConnectorSecuritySchemes = {
   [OPEN_CONNECTOR_SECURITY_SCHEME]: {
     type: 'http',
     scheme: 'bearer',
-    description: 'Receiver credential registered with the trusted open-connector instance.',
+    description: 'Delivery API key assigned to one trusted external service.',
   },
 } satisfies Record<string, OpenAPIV3.SecuritySchemeObject>;
 
 const OpenConnectorDeliveryHeadersSchema = t.Object(
   {
     authorization: t.String({
-      minLength: 8,
-      description: 'Bearer receiver credential.',
+      minLength: 'Bearer '.length + MIN_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES,
+      maxLength: 'Bearer '.length + MAX_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES,
+      description: 'Bearer delivery API key.',
     }),
     'content-type': t.String({
       minLength: 16,
@@ -49,7 +57,7 @@ const OpenConnectorDeliveryHeadersSchema = t.Object(
 
 export type OpenConnectorRecordsAcceptanceContract = Pick<
   OpenConnectorRecordsServiceContract,
-  'accept'
+  'accept' | 'authenticateDeliveryApiKey'
 >;
 
 type ParsedDeliveryBody =
@@ -65,8 +73,16 @@ const errorMessage = {
   conflict: 'Conflicting open-connector delivery',
 } as const;
 
-function digest(value: string | Uint8Array): Buffer {
-  return createHash('sha256').update(value).digest();
+function deliveryApiKey(request: Request): string | null {
+  const authorization = request.headers.get('authorization');
+  if (!authorization?.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authorization.slice('Bearer '.length);
+  return isOpenConnectorDeliveryApiKey(token) &&
+    Buffer.byteLength(token, 'utf8') <= MAX_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES
+    ? token
+    : null;
 }
 
 function hasJsonMediaType(request: Request): boolean {
@@ -144,22 +160,40 @@ function isOpenConnectorDeliveryRequest(request: Request): boolean {
   );
 }
 
+function deliveryRequestRejection(request: Request): {
+  status: 400 | 413 | 415;
+  error: string;
+} | null {
+  if (!hasJsonMediaType(request)) {
+    return {
+      status: StatusMap['Unsupported Media Type'],
+      error: errorMessage.unsupportedMediaType,
+    };
+  }
+  const contentLength = declaredContentLength(request);
+  if (contentLength === 'invalid') {
+    return { status: StatusMap['Bad Request'], error: errorMessage.invalid };
+  }
+  if (contentLength !== undefined && contentLength > BigInt(MAX_OPEN_CONNECTOR_DELIVERY_BYTES)) {
+    return { status: StatusMap['Payload Too Large'], error: errorMessage.tooLarge };
+  }
+  const idempotencyKey = request.headers.get('idempotency-key');
+  if (
+    !idempotencyKey ||
+    idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH ||
+    !/\S/u.test(idempotencyKey)
+  ) {
+    return { status: StatusMap['Bad Request'], error: errorMessage.invalid };
+  }
+  return null;
+}
+
 export function createOpenConnectorRecordsController({
-  integrationId,
-  ownerId,
-  receiverToken,
   recordsService,
 }: {
-  integrationId: string;
-  ownerId: string;
-  receiverToken: string;
   recordsService: OpenConnectorRecordsAcceptanceContract;
 }) {
-  if (!integrationId || !ownerId || !receiverToken) {
-    throw new Error('Open-connector receiver configuration is incomplete.');
-  }
-
-  const expectedAuthorizationDigest = digest(`Bearer ${receiverToken}`);
+  const principals = new WeakMap<Request, OpenConnectorIntegrationPrincipal>();
 
   return new Elysia({ name: 'open-connector-records' })
     .onRequest(async ({ request, status }) => {
@@ -167,39 +201,19 @@ export function createOpenConnectorRecordsController({
         return;
       }
 
-      const presentedAuthorizationDigest = digest(request.headers.get('authorization') ?? '');
-      if (!timingSafeEqual(expectedAuthorizationDigest, presentedAuthorizationDigest)) {
+      const apiKey = deliveryApiKey(request);
+      const principal = apiKey
+        ? await recordsService.authenticateDeliveryApiKey({ deliveryApiKey: apiKey })
+        : null;
+      if (!principal) {
         return status(StatusMap.Unauthorized, { error: errorMessage.unauthorized });
       }
+      principals.set(request, principal);
 
-      if (!hasJsonMediaType(request)) {
+      const rejection = deliveryRequestRejection(request);
+      if (rejection) {
         await cancelBody(request);
-        return status(StatusMap['Unsupported Media Type'], {
-          error: errorMessage.unsupportedMediaType,
-        });
-      }
-
-      const contentLength = declaredContentLength(request);
-      if (contentLength === 'invalid') {
-        await cancelBody(request);
-        return status(StatusMap['Bad Request'], { error: errorMessage.invalid });
-      }
-      if (
-        contentLength !== undefined &&
-        contentLength > BigInt(MAX_OPEN_CONNECTOR_DELIVERY_BYTES)
-      ) {
-        await cancelBody(request);
-        return status(StatusMap['Payload Too Large'], { error: errorMessage.tooLarge });
-      }
-
-      const idempotencyKey = request.headers.get('idempotency-key');
-      if (
-        !idempotencyKey ||
-        idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH ||
-        !/\S/u.test(idempotencyKey)
-      ) {
-        await cancelBody(request);
-        return status(StatusMap['Bad Request'], { error: errorMessage.invalid });
+        return status(rejection.status, { error: rejection.error });
       }
     })
     .parser(DELIVERY_PARSER, ({ request }) => parseDeliveryBody(request))
@@ -215,8 +229,12 @@ export function createOpenConnectorRecordsController({
       (context as unknown as { body: unknown }).body = parsed.value;
       return { deliveryPayloadHash: parsed.payloadHash };
     })
-    .onError(({ code, status }) => {
-      if (code === 'VALIDATION' || code === 'PARSE') {
+    .onError(({ code, error, status }) => {
+      if (
+        code === 'VALIDATION' ||
+        code === 'PARSE' ||
+        error instanceof InvalidOpenConnectorDeliveryError
+      ) {
         return status(StatusMap['Bad Request'], { error: errorMessage.invalid });
       }
     })
@@ -227,9 +245,13 @@ export function createOpenConnectorRecordsController({
           return status(StatusMap['Bad Request'], { error: errorMessage.invalid });
         }
 
+        const principal = principals.get(request);
+        if (!principal) {
+          return status(StatusMap.Unauthorized, { error: errorMessage.unauthorized });
+        }
         const result = await recordsService.accept({
-          integrationId,
-          ownerId,
+          integrationId: principal.integrationId,
+          ownerId: principal.ownerId,
           envelope: body,
           payloadHash: deliveryPayloadHash,
         });

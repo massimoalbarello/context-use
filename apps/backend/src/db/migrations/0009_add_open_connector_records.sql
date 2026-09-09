@@ -2,7 +2,8 @@
 create table "open_connector_integration" (
   "id" text not null,
   "owner_id" text not null,
-  "receiver_token_sha256" text,
+  "name" text not null,
+  "delivery_api_key_sha256" text,
   "created_at" text not null,
   primary key ("id"),
   unique ("id", "owner_id"),
@@ -10,15 +11,20 @@ create table "open_connector_integration" (
   check (length("id") between 1 and 128),
   check (substr("id", 1, 1) glob '[A-Za-z0-9]'),
   check ("id" not glob '*[^A-Za-z0-9_.-]*'),
+  check (length(trim("name")) between 1 and 160),
   check (
-    "receiver_token_sha256" is null
+    "delivery_api_key_sha256" is null
     or (
-      "receiver_token_sha256" not glob '*[^a-f0-9]*'
-      and length("receiver_token_sha256") = 64
+      "delivery_api_key_sha256" not glob '*[^a-f0-9]*'
+      and length("delivery_api_key_sha256") = 64
     )
   ),
   check (length(trim("created_at")) > 0)
 );
+
+create unique index "open_connector_integration_delivery_api_key_uidx"
+  on "open_connector_integration" ("delivery_api_key_sha256")
+  where "delivery_api_key_sha256" is not null;
 
 create table "open_connector_batch_receipt" (
   "integration_id" text not null,
@@ -83,6 +89,9 @@ create table "open_connector_record_event" (
 create table "open_connector_record" (
   "integration_id" text not null,
   "owner_id" text not null,
+  "readable_id" text not null,
+  "title" text not null,
+  "excerpt" text not null,
   "provider" text not null,
   "source_id" text not null,
   "kind" text not null,
@@ -93,13 +102,20 @@ create table "open_connector_record" (
   "committed_at" text not null,
   "content_json" text,
   "current_event_id" text not null,
+  "created_at" text not null,
   "updated_at" text not null,
   primary key ("integration_id", "source_id", "kind", "record_id"),
+  unique ("owner_id", "readable_id"),
   foreign key ("integration_id", "owner_id")
     references "open_connector_integration" ("id", "owner_id") on delete cascade,
   foreign key ("integration_id", "current_event_id")
     references "open_connector_record_event" ("integration_id", "event_id"),
   check (length(trim("provider")) > 0),
+  check (length("readable_id") between 1 and 120),
+  check (substr("readable_id", 1, 1) glob '[a-z0-9]'),
+  check ("readable_id" not glob '*[^a-z0-9-]*'),
+  check (length("title") between 1 and 240),
+  check (length("excerpt") between 1 and 280),
   check (length(trim("source_id")) > 0),
   check (length(trim("kind")) > 0),
   check (length(trim("record_id")) > 0),
@@ -116,6 +132,7 @@ create table "open_connector_record" (
     )
   ),
   check (length(trim("current_event_id")) > 0),
+  check (length(trim("created_at")) > 0),
   check (length(trim("updated_at")) > 0)
 );
 

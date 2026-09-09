@@ -6,6 +6,7 @@ import type {
   OpenConnectorDeliveryRecord,
   OpenConnectorRecordContent,
 } from '#models/open-connector/model.ts';
+import { canonicalOpenConnectorContent } from '#models/open-connector/model.ts';
 import { OpenConnectorRecordsRepository } from '#repositories/open-connector/repository.ts';
 import { OpenConnectorRecordsService } from '#services/open-connector/service.ts';
 import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
@@ -18,6 +19,8 @@ const INITIAL_REVISION = 1;
 const STALE_REVISION = 2;
 const CURRENT_REVISION = 3;
 const DELETED_REVISION = 4;
+const SHA256_HEX_LENGTH = 64;
+const SHARED_DELIVERY_API_KEY = 'shared-key-candidate-0123456789abc';
 
 const ownerRegistration = {
   state: async () => ({ ownerExists: true, passkeyExists: true }),
@@ -55,6 +58,7 @@ function activeRecord({
   revision?: number;
   body?: string;
 }): OpenConnectorDeliveryRecord {
+  const recordContent = content(body);
   return {
     eventId,
     provider: 'github',
@@ -63,9 +67,9 @@ function activeRecord({
     id: recordId,
     revision,
     operation: revision === INITIAL_REVISION ? 'added' : 'updated',
-    contentHash: digest(body),
+    contentHash: digest(canonicalOpenConnectorContent(recordContent)!),
     committedAt: '2026-08-09T10:11:12+05:30',
-    content: content(body),
+    content: recordContent,
   };
 }
 
@@ -132,6 +136,9 @@ test('record acceptance is owner-bound, idempotent, monotonic, and atomically co
         ownerRegistration,
         now: () => RECEIVED_AT,
       });
+      await expect(
+        service.authenticateDeliveryApiKey({ deliveryApiKey: 'short-key' }),
+      ).rejects.toThrow('Invalid open-connector delivery API key');
 
       const initial = activeRecord({ eventId: 'event-initial' });
       const firstEnvelope = envelope({ batchId: 'batch-initial', records: [initial] });
@@ -156,6 +163,24 @@ test('record acceptance is owner-bound, idempotent, monotonic, and atomically co
       expect(
         await service.bindIntegration({ integrationId: INTEGRATION_ID, ownerId: SECOND_OWNER_ID }),
       ).toEqual({ state: 'owner_not_found' });
+
+      const mismatched = activeRecord({
+        eventId: 'event-content-hash-mismatch',
+        recordId: 'content-hash-mismatch',
+      });
+      mismatched.contentHash = 'f'.repeat(SHA256_HEX_LENGTH);
+      await expect(
+        service.accept({
+          integrationId: INTEGRATION_ID,
+          ownerId: OWNER_ID,
+          envelope: envelope({
+            batchId: 'batch-content-hash-mismatch',
+            records: [initial, mismatched],
+          }),
+          payloadHash: digest('batch-content-hash-mismatch'),
+        }),
+      ).rejects.toThrow('contentHash must match the canonical record content');
+      expect(await tableCounts(database)).toEqual({ batches: 0, events: 0, records: 0, jobs: 0 });
 
       expect(
         await service.accept({
@@ -233,6 +258,7 @@ test('record acceptance is owner-bound, idempotent, monotonic, and atomically co
         }),
         content: { body: 'newest searchable material' },
       };
+      current.contentHash = digest(canonicalOpenConnectorContent(current.content)!);
       expect(
         await service.accept({
           integrationId: INTEGRATION_ID,
@@ -492,6 +518,61 @@ test('a durable acceptance failure rolls back before a later retry succeeds', as
       expect(await service.accept(input)).toEqual({ state: 'accepted' });
       expect(await tableCounts(database)).toEqual({ batches: 1, events: 1, records: 1, jobs: 1 });
       expect(await service.accept(input)).toEqual({ state: 'duplicate' });
+    },
+  });
+});
+
+test('each delivery API key resolves one external service and cannot be assigned twice', async () => {
+  await withAuthTestDatabase({
+    run: async (database) => {
+      await insertOwner({ database, ownerId: OWNER_ID });
+      const service = new OpenConnectorRecordsService({
+        records: new OpenConnectorRecordsRepository(database),
+        ownerRegistration,
+        now: () => RECEIVED_AT,
+      });
+      expect(
+        await service.bindIntegration({
+          integrationId: 'github-sync',
+          ownerId: OWNER_ID,
+          name: 'Engineering GitHub',
+        }),
+      ).toEqual({ state: 'bound' });
+      expect(
+        await service.bindIntegration({
+          integrationId: 'linear-sync',
+          ownerId: OWNER_ID,
+          name: 'Product Linear',
+        }),
+      ).toEqual({ state: 'bound' });
+
+      await service.recordDeliveryApiKeyRegistration({
+        integrationId: 'github-sync',
+        ownerId: OWNER_ID,
+        deliveryApiKey: SHARED_DELIVERY_API_KEY,
+      });
+      expect(
+        await service.authenticateDeliveryApiKey({ deliveryApiKey: SHARED_DELIVERY_API_KEY }),
+      ).toEqual({
+        integrationId: 'github-sync',
+        ownerId: OWNER_ID,
+        name: 'Engineering GitHub',
+      });
+
+      await expect(
+        service.recordDeliveryApiKeyRegistration({
+          integrationId: 'linear-sync',
+          ownerId: OWNER_ID,
+          deliveryApiKey: SHARED_DELIVERY_API_KEY,
+        }),
+      ).rejects.toThrow('delivery API key already identifies another integration');
+      expect(
+        await service.authenticateDeliveryApiKey({ deliveryApiKey: SHARED_DELIVERY_API_KEY }),
+      ).toEqual({
+        integrationId: 'github-sync',
+        ownerId: OWNER_ID,
+        name: 'Engineering GitHub',
+      });
     },
   });
 });

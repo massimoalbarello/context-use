@@ -7,10 +7,6 @@ import { fetchClientMetadataResource } from '#lib/auth/client-metadata-resource.
 import { loadEnv } from '#lib/env.ts';
 import { createLogger } from '#lib/logger.ts';
 import { createMcpTransport } from '#lib/mcp/transport.ts';
-import {
-  loadOpenConnectorReceiverRuntimeConfig,
-  OPEN_CONNECTOR_ENVIRONMENT,
-} from '#lib/open-connector/config.ts';
 import { BACKEND_ENVIRONMENT } from '#lib/runtime-config.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
@@ -86,68 +82,10 @@ try {
     records: openConnectorRecordsRepository,
     ownerRegistration: ownerRegistrationRepository,
   });
-  const openConnectorReceiver = await loadOpenConnectorReceiverRuntimeConfig({
-    dataFolder: env.DATA_FOLDER,
+  openConnectorIngestionWorker = new OpenConnectorIngestionWorker({
+    records: openConnectorRecordsRepository,
   });
-  if (openConnectorReceiver) {
-    const binding = await openConnectorRecordsService.bindIntegration({
-      integrationId: openConnectorReceiver.integrationId,
-      ownerId: openConnectorReceiver.ownerId,
-    });
-    if (binding.state === 'owner_not_found') {
-      throw new Error(
-        `${OPEN_CONNECTOR_ENVIRONMENT.ownerId} must identify the fully claimed Context Use owner. Complete passkey registration before enabling record sync.`,
-      );
-    }
-    if (binding.state === 'conflict') {
-      throw new Error(
-        `${OPEN_CONNECTOR_ENVIRONMENT.receiverId} is already bound to a different Context Use owner.`,
-      );
-    }
-
-    const credentialState = await openConnectorRecordsService.verifyReceiverToken({
-      integrationId: openConnectorReceiver.integrationId,
-      ownerId: openConnectorReceiver.ownerId,
-      receiverToken: openConnectorReceiver.bearerToken,
-      initializeIfMissing: binding.state === 'bound',
-    });
-    if (credentialState === 'missing') {
-      throw new Error(
-        'The durable open-connector receiver token is missing. Restore the original token or run `bun run open-connector:setup -- register` to rotate it explicitly.',
-      );
-    }
-    if (credentialState === 'mismatch') {
-      throw new Error(
-        'The configured open-connector receiver token does not match its durable registration. Restore the registered token or run `bun run open-connector:setup -- register` to rotate it explicitly.',
-      );
-    }
-    if (credentialState === 'integration_not_found') {
-      throw new Error('The open-connector receiver credential lost its trusted owner binding.');
-    }
-
-    if (openConnectorReceiver.bearerTokenSource.kind === 'environment') {
-      logger.info(
-        `using open-connector receiver token from ${OPEN_CONNECTOR_ENVIRONMENT.receiverToken}`,
-      );
-    } else if (openConnectorReceiver.bearerTokenSource.kind === 'generated-file') {
-      logger.info(
-        `generated open-connector receiver token at ${openConnectorReceiver.bearerTokenSource.path}`,
-      );
-    } else {
-      logger.info(
-        `using open-connector receiver token from ${openConnectorReceiver.bearerTokenSource.path}`,
-      );
-    }
-  }
-  // Accepted jobs no longer depend on receiver credentials. Recover durable work when the route
-  // is disabled, but do not keep an otherwise unused process polling SQLite.
-  if (openConnectorReceiver || (await openConnectorRecordsRepository.hasUnfinishedJobs())) {
-    openConnectorIngestionWorker = new OpenConnectorIngestionWorker({
-      records: openConnectorRecordsRepository,
-      stopWhenDrained: !openConnectorReceiver,
-    });
-    openConnectorIngestionWorker.start();
-  }
+  openConnectorIngestionWorker.start();
   const pagesService = new KnowledgePagesService({ pages: pagesRepository, storage });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
   const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
@@ -183,17 +121,10 @@ try {
     mcpClientAuthorizationsService,
     mcpServerUrl: mcpServerUrl({ baseUrl: env.BASE_URL }),
     mcpTransport,
-    openConnectorReceiver: openConnectorReceiver
-      ? {
-          integrationId: openConnectorReceiver.integrationId,
-          ownerId: openConnectorReceiver.ownerId,
-          receiverToken: openConnectorReceiver.bearerToken,
-          recordsService: openConnectorRecordsService,
-        }
-      : undefined,
     ownerRegistrationService,
     pagesService,
     profilesService,
+    recordsService: openConnectorRecordsService,
   }).onStop(async () => {
     await openConnectorIngestionWorker?.stop();
     await database.close();

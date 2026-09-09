@@ -13,6 +13,8 @@ import { createOwnerRegistrationController } from '#routes/api/owner-registratio
 import { createPageReadableIdController } from '#routes/api/pages/[pageReadableId]/controller.ts';
 import { createPagesController } from '#routes/api/pages/controller.ts';
 import { createKnowledgeProfileController } from '#routes/api/profile/controller.ts';
+import { createRecordReadableIdController } from '#routes/api/records/[recordReadableId]/controller.ts';
+import { createRecordsController } from '#routes/api/records/controller.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { HealthServiceContract } from '#services/health/service.ts';
@@ -20,6 +22,7 @@ import type { HypermediaServiceContract } from '#services/hypermedia/service.ts'
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
+import type { OpenConnectorRecordResourcesServiceContract } from '#services/open-connector/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
 
 // The `/api` prefix is applied here, so child controllers keep bare path strings.
@@ -34,6 +37,7 @@ export function createApiController({
   ownerRegistrationService,
   pagesService,
   profilesService,
+  recordsService,
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
@@ -45,6 +49,7 @@ export function createApiController({
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
+  recordsService: OpenConnectorRecordResourcesServiceContract;
 }) {
   return new Elysia({ prefix: API_PATH })
     .use(createAuthController({ auth }))
@@ -63,6 +68,8 @@ export function createApiController({
     .use(createHypermediaController({ auth, hypermediaService }))
     .use(createPagesController({ auth, pagesService }))
     .use(createPageReadableIdController({ auth, pagesService }))
+    .use(createRecordsController({ auth, recordsService }))
+    .use(createRecordReadableIdController({ auth, recordsService }))
     .use(createKnowledgeProfileController({ auth, profilesService }))
     .use(createHealthController({ healthService }));
 }

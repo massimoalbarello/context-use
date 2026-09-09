@@ -1,14 +1,14 @@
 import { loadEnv } from '../src/lib/env.ts';
 import { loadOpenConnectorSetupConfig } from '../src/lib/open-connector/config.ts';
 import {
+  configureOpenConnectorDestination,
   continueOpenConnectorAcquisition,
-  registerOpenConnectorReceiver,
   startOpenConnectorBackfill,
 } from '../src/lib/open-connector/setup-client.ts';
 import {
   bindOpenConnectorTrustedOwner,
-  recordOpenConnectorReceiverRegistration,
-  verifyOpenConnectorReceiverCredential,
+  recordOpenConnectorDeliveryApiKey,
+  verifyOpenConnectorDeliveryApiKey,
 } from './open-connector-local-binding.ts';
 
 const FAILURE_EXIT_CODE = 1;
@@ -19,8 +19,8 @@ function usage(): string {
   return [
     'Usage: bun run open-connector:setup -- <register|backfill|continue>',
     '',
-    '  register  Create or update the stable receiver destination.',
-    '  backfill  Start or restart the targeted GitHub pull-request scan once.',
+    '  register  Create or update the delivery destination and API key.',
+    '  backfill  Start or restart the GitHub pull-request scan once.',
     '  continue  Continue the same acquisition without resetting its scan.',
   ].join('\n');
 }
@@ -47,21 +47,20 @@ try {
     ownerId: config.ownerId,
   });
   if (operation === 'register') {
-    const registered = await registerOpenConnectorReceiver({ config });
-    await recordOpenConnectorReceiverRegistration({
+    await recordOpenConnectorDeliveryApiKey({
       dataFolder: env.DATA_FOLDER,
       integrationId: config.integrationId,
       ownerId: config.ownerId,
-      receiverToken: config.bearerToken,
+      deliveryApiKey: config.deliveryApiKey,
     });
-    console.log(`Registered open-connector receiver ${registered.id}.`);
+    const destination = await configureOpenConnectorDestination({ config });
+    console.log(`Configured open-connector delivery destination ${destination.url}.`);
   } else {
-    await verifyOpenConnectorReceiverCredential({
+    await verifyOpenConnectorDeliveryApiKey({
       dataFolder: env.DATA_FOLDER,
       integrationId: config.integrationId,
       ownerId: config.ownerId,
-      receiverToken: config.bearerToken,
-      initializeIfMissing: false,
+      deliveryApiKey: config.deliveryApiKey,
     });
     const result =
       operation === 'backfill'
@@ -73,11 +72,11 @@ try {
       );
     } else if (!result.complete) {
       console.warn(
-        `Open-connector committed ${result.records} records across ${result.pages} pages in run ${result.runId}, but the targeted GitHub pull-request scan is incomplete. Run continue without backfill to resume the same checkpoint; the enabled scheduler may also continue it automatically.`,
+        `Open-connector committed ${result.records} records across ${result.pages} pages in run ${result.runId}, but the GitHub pull-request scan is incomplete. Run continue without backfill to resume the same checkpoint; the enabled scheduler may also continue it automatically.`,
       );
     } else if (operation === 'backfill') {
       console.log(
-        `Open-connector completed the targeted GitHub pull-request backfill in run ${result.runId} (${result.pages} pages, ${result.records} records).`,
+        `Open-connector completed the GitHub pull-request backfill in run ${result.runId} (${result.pages} pages, ${result.records} records).`,
       );
     } else {
       console.log(

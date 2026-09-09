@@ -2,47 +2,56 @@ import { randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ensureDir } from '#lib/filesystem.ts';
+import { OPEN_CONNECTOR_INTEGRATION_ID_PATTERN } from '#models/open-connector/model.ts';
 
-const RECEIVER_SECRET_BYTES = 32;
-export const OPEN_CONNECTOR_RECEIVER_SECRET_FILE_NAME = '.open-connector-receiver-token';
+const DELIVERY_API_KEY_BYTES = 32;
 const PRIVATE_FILE_MODE = 0o600;
 
-export type OpenConnectorReceiverSecretSource =
+export type OpenConnectorDeliveryApiKeySource =
   | { kind: 'environment' }
   | { kind: 'stored-file'; path: string }
   | { kind: 'generated-file'; path: string };
 
-export type OpenConnectorReceiverSecret = {
+export type OpenConnectorDeliveryApiKey = {
   value: string;
-  source: OpenConnectorReceiverSecretSource;
+  source: OpenConnectorDeliveryApiKeySource;
 };
 
+export function openConnectorDeliveryApiKeyFileName(integrationId: string): string {
+  if (!OPEN_CONNECTOR_INTEGRATION_ID_PATTERN.test(integrationId)) {
+    throw new Error('Invalid open-connector integration ID for delivery API key storage.');
+  }
+  return `.open-connector-integration-${integrationId}.api-key`;
+}
+
 /**
- * Loads a receiver-owned delivery credential candidate.
+ * Loads an integration-owned delivery API key candidate.
  *
  * An operator-supplied value wins. Otherwise the first caller creates a private file in the
  * durable data folder, while concurrent and later callers reuse that same value. The durable
- * integration fingerprint decides whether an existing receiver may actually use the candidate.
+ * integration fingerprint decides whether an existing integration may actually use the candidate.
  */
-export async function loadOpenConnectorReceiverSecret({
+export async function loadOpenConnectorDeliveryApiKey({
   dataFolder,
-  environmentSecret,
+  integrationId,
+  environmentValue,
 }: {
   dataFolder: string;
-  environmentSecret: string | undefined;
-}): Promise<OpenConnectorReceiverSecret> {
-  if (environmentSecret) {
-    return { value: environmentSecret, source: { kind: 'environment' } };
+  integrationId: string;
+  environmentValue: string | undefined;
+}): Promise<OpenConnectorDeliveryApiKey> {
+  if (environmentValue) {
+    return { value: environmentValue, source: { kind: 'environment' } };
   }
 
   ensureDir(dataFolder);
-  const path = join(dataFolder, OPEN_CONNECTOR_RECEIVER_SECRET_FILE_NAME);
+  const path = join(dataFolder, openConnectorDeliveryApiKeyFileName(integrationId));
   const stored = await readStoredSecret(path);
   if (stored !== undefined) {
     return { value: stored, source: { kind: 'stored-file', path } };
   }
 
-  const generated = randomBytes(RECEIVER_SECRET_BYTES).toString('base64url');
+  const generated = randomBytes(DELIVERY_API_KEY_BYTES).toString('base64url');
   try {
     await writeFile(path, generated, { encoding: 'utf8', flag: 'wx', mode: PRIVATE_FILE_MODE });
     return { value: generated, source: { kind: 'generated-file', path } };
@@ -68,7 +77,7 @@ async function readStoredSecret(path: string): Promise<string | undefined> {
 async function requireStoredSecret(path: string): Promise<string> {
   const secret = await readFile(path, 'utf8');
   if (!secret) {
-    throw new Error(`Open-connector receiver token file is empty: ${path}`);
+    throw new Error(`Open-connector delivery API key file is empty: ${path}`);
   }
   return secret;
 }

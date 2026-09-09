@@ -3,11 +3,13 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  loadOpenConnectorReceiverRuntimeConfig,
   loadOpenConnectorSetupConfig,
   OPEN_CONNECTOR_ENVIRONMENT,
-  OPEN_CONNECTOR_MAX_BEARER_TOKEN_BYTES,
 } from '#lib/open-connector/config.ts';
+import { MAX_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES } from '#models/open-connector/model.ts';
+
+const DELIVERY_API_KEY = 'delivery-api-key-0123456789abcdef';
+const SHARED_SECRET = 'same-secret-0123456789abcdefghij';
 
 async function withDataFolder(run: (dataFolder: string) => Promise<void>): Promise<void> {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-open-connector-config-'));
@@ -18,147 +20,121 @@ async function withDataFolder(run: (dataFolder: string) => Promise<void>): Promi
   }
 }
 
-function receiverEnvironment(overrides: Record<string, string> = {}) {
+function setupEnvironment(overrides: Record<string, string> = {}) {
   return {
-    [OPEN_CONNECTOR_ENVIRONMENT.receiverId]: 'context-use',
+    [OPEN_CONNECTOR_ENVIRONMENT.baseUrl]: 'http://127.0.0.1:8787',
+    [OPEN_CONNECTOR_ENVIRONMENT.adminToken]: 'admin-token',
+    [OPEN_CONNECTOR_ENVIRONMENT.integrationId]: 'github-sync',
+    [OPEN_CONNECTOR_ENVIRONMENT.callbackUrl]:
+      'https://context-use-tunnel.example/api/integrations/open-connector/records',
+    [OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey]: DELIVERY_API_KEY,
     [OPEN_CONNECTOR_ENVIRONMENT.ownerId]: 'context-use-owner',
     ...overrides,
   };
 }
 
-function setupEnvironment(overrides: Record<string, string> = {}) {
-  return receiverEnvironment({
-    [OPEN_CONNECTOR_ENVIRONMENT.baseUrl]: 'http://127.0.0.1:8787',
-    [OPEN_CONNECTOR_ENVIRONMENT.adminToken]: 'admin-token',
-    [OPEN_CONNECTOR_ENVIRONMENT.callbackUrl]:
-      'https://context-use-tunnel.example/api/integrations/open-connector/records',
-    [OPEN_CONNECTOR_ENVIRONMENT.receiverToken]: 'receiver-token',
-    ...overrides,
-  });
-}
-
-test('runtime receiver configuration is absent only when no receiver settings are present', async () => {
+test('setup configuration creates stable, distinct delivery API keys per integration', async () => {
   await withDataFolder(async (dataFolder) => {
-    expect(await loadOpenConnectorReceiverRuntimeConfig({ dataFolder, environment: {} })).toBe(
-      undefined,
-    );
-    await expect(
-      loadOpenConnectorReceiverRuntimeConfig({
-        dataFolder,
-        environment: { [OPEN_CONNECTOR_ENVIRONMENT.receiverToken]: 'partial-token' },
-      }),
-    ).rejects.toThrow('OPEN_CONNECTOR_RECEIVER_ID is required');
-    await expect(
-      loadOpenConnectorReceiverRuntimeConfig({
-        dataFolder,
-        environment: { [OPEN_CONNECTOR_ENVIRONMENT.receiverId]: 'context-use' },
-      }),
-    ).rejects.toThrow('OPEN_CONNECTOR_OWNER_ID is required');
-  });
-});
-
-test('runtime and setup configuration resolve the same stable generated receiver token', async () => {
-  await withDataFolder(async (dataFolder) => {
-    const runtime = await loadOpenConnectorReceiverRuntimeConfig({
+    const first = await loadOpenConnectorSetupConfig({
       dataFolder,
-      environment: receiverEnvironment(),
+      environment: setupEnvironment({ [OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey]: '' }),
     });
-    const setup = await loadOpenConnectorSetupConfig({
+    const repeated = await loadOpenConnectorSetupConfig({
       dataFolder,
-      environment: setupEnvironment({ [OPEN_CONNECTOR_ENVIRONMENT.receiverToken]: '' }),
+      environment: setupEnvironment({ [OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey]: '' }),
     });
-    if (!runtime) {
-      throw new Error('Expected receiver runtime configuration');
-    }
+    const second = await loadOpenConnectorSetupConfig({
+      dataFolder,
+      environment: setupEnvironment({
+        [OPEN_CONNECTOR_ENVIRONMENT.integrationId]: 'linear-sync',
+        [OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey]: '',
+      }),
+    });
 
-    expect(runtime).toEqual(
+    expect(first).toEqual(
       expect.objectContaining({
-        integrationId: 'context-use',
-        receiverId: 'context-use',
+        integrationId: 'github-sync',
         ownerId: 'context-use-owner',
+        baseUrl: new URL('http://127.0.0.1:8787'),
+        callbackUrl: new URL(
+          'https://context-use-tunnel.example/api/integrations/open-connector/records',
+        ),
+        adminToken: 'admin-token',
       }),
     );
-    expect(setup.bearerToken).toBe(runtime.bearerToken);
-    expect(runtime.bearerTokenSource.kind).toBe('generated-file');
-    expect(setup.bearerTokenSource.kind).toBe('stored-file');
+    expect(first.deliveryApiKeySource.kind).toBe('generated-file');
+    expect(repeated.deliveryApiKeySource.kind).toBe('stored-file');
+    expect(repeated.deliveryApiKey).toBe(first.deliveryApiKey);
+    expect(second.deliveryApiKey).not.toBe(first.deliveryApiKey);
   });
 });
 
-test('setup configuration validates receiver identity, URL boundaries, and distinct secrets', async () => {
+test('setup configuration validates identity, owner, URL boundaries, and distinct secrets', async () => {
   await withDataFolder(async (dataFolder) => {
-    await expect(
-      loadOpenConnectorSetupConfig({
-        dataFolder,
-        environment: setupEnvironment({
-          [OPEN_CONNECTOR_ENVIRONMENT.receiverId]: '/invalid',
-        }),
-      }),
-    ).rejects.toThrow('OPEN_CONNECTOR_RECEIVER_ID must match');
-    await expect(
-      loadOpenConnectorSetupConfig({
-        dataFolder,
-        environment: setupEnvironment({
-          [OPEN_CONNECTOR_ENVIRONMENT.ownerId]: 'some-auth-user',
-        }),
-      }),
-    ).rejects.toThrow(
-      'OPEN_CONNECTOR_OWNER_ID must be context-use-owner, the claimed Context Use owner',
-    );
-    await expect(
-      loadOpenConnectorSetupConfig({
-        dataFolder,
-        environment: setupEnvironment({
+    for (const [overrides, message] of [
+      [
+        { [OPEN_CONNECTOR_ENVIRONMENT.integrationId]: '' },
+        'OPEN_CONNECTOR_INTEGRATION_ID is required',
+      ],
+      [
+        { [OPEN_CONNECTOR_ENVIRONMENT.integrationId]: '/invalid' },
+        'OPEN_CONNECTOR_INTEGRATION_ID must match',
+      ],
+      [
+        { [OPEN_CONNECTOR_ENVIRONMENT.ownerId]: 'some-auth-user' },
+        'OPEN_CONNECTOR_OWNER_ID must be context-use-owner',
+      ],
+      [
+        {
           [OPEN_CONNECTOR_ENVIRONMENT.callbackUrl]:
             'http://context-use.example/api/integrations/open-connector/records',
-        }),
-      }),
-    ).rejects.toThrow('OPEN_CONNECTOR_CALLBACK_URL must use public HTTPS');
-    await expect(
-      loadOpenConnectorSetupConfig({
-        dataFolder,
-        environment: setupEnvironment({
+        },
+        'OPEN_CONNECTOR_CALLBACK_URL must use public HTTPS',
+      ],
+      [
+        {
           [OPEN_CONNECTOR_ENVIRONMENT.callbackUrl]:
             'https://127.0.0.1/api/integrations/open-connector/records',
+        },
+        'OPEN_CONNECTOR_CALLBACK_URL must use a public hostname',
+      ],
+      [
+        { [OPEN_CONNECTOR_ENVIRONMENT.callbackUrl]: 'https://context-use.example/wrong' },
+        'OPEN_CONNECTOR_CALLBACK_URL must end at /api/integrations/open-connector/records',
+      ],
+      [
+        {
+          [OPEN_CONNECTOR_ENVIRONMENT.adminToken]: SHARED_SECRET,
+          [OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey]: SHARED_SECRET,
+        },
+        'must be distinct',
+      ],
+    ] as const) {
+      await expect(
+        loadOpenConnectorSetupConfig({
+          dataFolder,
+          environment: setupEnvironment(overrides),
         }),
-      }),
-    ).rejects.toThrow('OPEN_CONNECTOR_CALLBACK_URL must use a public hostname');
-    await expect(
-      loadOpenConnectorSetupConfig({
-        dataFolder,
-        environment: setupEnvironment({
-          [OPEN_CONNECTOR_ENVIRONMENT.callbackUrl]: 'https://context-use.example/wrong',
-        }),
-      }),
-    ).rejects.toThrow(
-      'OPEN_CONNECTOR_CALLBACK_URL must end at /api/integrations/open-connector/records',
-    );
-    await expect(
-      loadOpenConnectorSetupConfig({
-        dataFolder,
-        environment: setupEnvironment({
-          [OPEN_CONNECTOR_ENVIRONMENT.adminToken]: 'same-secret',
-          [OPEN_CONNECTOR_ENVIRONMENT.receiverToken]: 'same-secret',
-        }),
-      }),
-    ).rejects.toThrow('must be distinct');
+      ).rejects.toThrow(message);
+    }
   });
 });
 
-test('setup configuration accepts only bounded HTTP-header-safe Bearer tokens', async () => {
+test('setup configuration accepts only bounded HTTP-header-safe credentials', async () => {
   await withDataFolder(async (dataFolder) => {
     for (const [name, value] of [
       [OPEN_CONNECTOR_ENVIRONMENT.adminToken, 'admin token'],
-      [OPEN_CONNECTOR_ENVIRONMENT.receiverToken, 'receiver\ttoken'],
+      [OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey, 'delivery\tkey'],
       [OPEN_CONNECTOR_ENVIRONMENT.adminToken, 'admin\u0001token'],
-      [OPEN_CONNECTOR_ENVIRONMENT.receiverToken, 'receiver\u007ftoken'],
+      [OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey, 'delivery\u007fkey'],
       [OPEN_CONNECTOR_ENVIRONMENT.adminToken, 'admin-🔑'],
       [
         OPEN_CONNECTOR_ENVIRONMENT.adminToken,
-        'a'.repeat(OPEN_CONNECTOR_MAX_BEARER_TOKEN_BYTES + 1),
+        'a'.repeat(MAX_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES + 1),
       ],
       [
-        OPEN_CONNECTOR_ENVIRONMENT.receiverToken,
-        'r'.repeat(OPEN_CONNECTOR_MAX_BEARER_TOKEN_BYTES + 1),
+        OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey,
+        'r'.repeat(MAX_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES + 1),
       ],
     ] as const) {
       await expect(
@@ -166,49 +142,20 @@ test('setup configuration accepts only bounded HTTP-header-safe Bearer tokens', 
           dataFolder,
           environment: setupEnvironment({ [name]: value }),
         }),
-      ).rejects.toThrow('must be a visible ASCII Bearer token');
+      ).rejects.toThrow('visible ASCII');
     }
   });
 });
 
-test('a generated receiver token can be reused without presenting its environment variable', async () => {
+test('setup rejects operator delivery API keys shorter than 32 bytes', async () => {
   await withDataFolder(async (dataFolder) => {
-    const runtime = await loadOpenConnectorReceiverRuntimeConfig({
-      dataFolder,
-      environment: receiverEnvironment(),
-    });
-    const error = await loadOpenConnectorSetupConfig({
-      dataFolder,
-      environment: setupEnvironment({
-        [OPEN_CONNECTOR_ENVIRONMENT.adminToken]: runtime?.bearerToken ?? '',
-        [OPEN_CONNECTOR_ENVIRONMENT.receiverToken]: '',
+    await expect(
+      loadOpenConnectorSetupConfig({
+        dataFolder,
+        environment: setupEnvironment({
+          [OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey]: 'short-api-key',
+        }),
       }),
-    }).catch((caught) => caught);
-
-    expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toContain('must be distinct');
-    expect((error as Error).message).not.toContain(OPEN_CONNECTOR_ENVIRONMENT.receiverToken);
-  });
-});
-
-test('setup configuration keeps setup-only credentials out of runtime configuration', async () => {
-  await withDataFolder(async (dataFolder) => {
-    const environment = setupEnvironment();
-    const runtime = await loadOpenConnectorReceiverRuntimeConfig({ dataFolder, environment });
-    const setup = await loadOpenConnectorSetupConfig({ dataFolder, environment });
-
-    expect(runtime).not.toHaveProperty('adminToken');
-    expect(runtime).not.toHaveProperty('baseUrl');
-    expect(runtime).not.toHaveProperty('callbackUrl');
-    expect(setup).toEqual(
-      expect.objectContaining({
-        baseUrl: new URL('http://127.0.0.1:8787'),
-        callbackUrl: new URL(
-          'https://context-use-tunnel.example/api/integrations/open-connector/records',
-        ),
-        adminToken: 'admin-token',
-        bearerToken: 'receiver-token',
-      }),
-    );
+    ).rejects.toThrow('must be between 32 and 8192 visible ASCII bytes');
   });
 });

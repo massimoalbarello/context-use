@@ -10,6 +10,7 @@ import type {
   OpenConnectorDeliveryEnvelope,
   OpenConnectorDeliveryRecord,
 } from '#models/open-connector/model.ts';
+import { canonicalOpenConnectorContent } from '#models/open-connector/model.ts';
 import { OpenConnectorRecordsRepository } from '#repositories/open-connector/repository.ts';
 import { OpenConnectorRecordsService } from '#services/open-connector/service.ts';
 import { OpenConnectorIngestionWorker } from '#services/open-connector/worker.ts';
@@ -43,6 +44,7 @@ function record({
   revision: number;
   body: string;
 }): OpenConnectorDeliveryRecord {
+  const content = { body };
   return {
     eventId,
     provider: 'github',
@@ -51,9 +53,9 @@ function record({
     id: recordId,
     revision,
     operation: revision === FIRST_REVISION ? 'added' : 'updated',
-    contentHash: digest(body),
+    contentHash: digest(canonicalOpenConnectorContent(content)!),
     committedAt: `2026-09-08T08:00:0${revision}.000Z`,
-    content: { body },
+    content,
   };
 }
 
@@ -132,7 +134,17 @@ test('leased ingestion survives restart and fences stale updates and deletions',
           eventId: 'event-visible-first',
           recordId: 'visible-record',
           revision: FIRST_REVISION,
-          body: 'legacytoken initial body',
+          body: [
+            '<script>Hidden label</script>',
+            '',
+            '[reference]: https://example.invalid',
+            '',
+            '![Diagram alt](https://example.invalid/diagram.png)',
+            '',
+            '# Visible label',
+            '',
+            '[legacytoken discussion](https://example.invalid/discussion)',
+          ].join('\n'),
         }),
       ],
     });
@@ -145,7 +157,7 @@ test('leased ingestion survives restart and fences stale updates and deletions',
         query: 'legacytoken',
         limit: 10,
       }),
-    ).toHaveLength(1);
+    ).toMatchObject([{ recordId: 'visible-record', label: 'Visible label' }]);
 
     nowMilliseconds += SECOND;
     await accept({

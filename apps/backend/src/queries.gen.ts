@@ -611,21 +611,18 @@ export interface IFindOpenConnectorIntegrationResult {
     ownerId: string;
 }
 
+/** Result of query `AuthenticateOpenConnectorCredentialFingerprint`. */
+export interface IAuthenticateOpenConnectorCredentialFingerprintResult {
+    integrationId: string;
+    ownerId: string;
+    name: string;
+}
+
 /** Result of query `FindOpenConnectorCredentialFingerprint`. */
 export interface IFindOpenConnectorCredentialFingerprintResult {
     id: string;
     ownerId: string;
-    receiverTokenSha256: string | null;
-}
-
-/** Result of query `InitializeOpenConnectorCredentialFingerprint`. */
-export interface IInitializeOpenConnectorCredentialFingerprintResult {
-    id: string;
-}
-
-/** Result of query `ReadOpenConnectorCredentialFingerprintAfterRace`. */
-export interface IReadOpenConnectorCredentialFingerprintAfterRaceResult {
-    receiverTokenSha256: string | null;
+    deliveryApiKeySha256: string | null;
 }
 
 /** Result of query `FindOpenConnectorEventFingerprint`. */
@@ -669,6 +666,11 @@ export interface ICreateOpenConnectorBatchReceiptResult {
 /** Result of query `RecordOpenConnectorCredentialFingerprint`. */
 export interface IRecordOpenConnectorCredentialFingerprintResult {
     id: string | null;
+}
+
+/** Result of query `FindOpenConnectorCredentialFingerprintOwner`. */
+export interface IFindOpenConnectorCredentialFingerprintOwnerResult {
+    id: string;
 }
 
 /** Result of query `HasUnfinishedOpenConnectorIngestionJobs`. */
@@ -736,6 +738,7 @@ export interface IRetryOpenConnectorIngestionJobResult {
 export interface IFindOpenConnectorRecordResult {
     integrationId: string;
     ownerId: string;
+    readableId: string;
     provider: string;
     sourceId: string;
     kind: string;
@@ -746,6 +749,7 @@ export interface IFindOpenConnectorRecordResult {
     committedAt: string;
     contentJson: string | null;
     currentEventId: string;
+    createdAt: string;
     updatedAt: string;
 }
 
@@ -761,6 +765,29 @@ export interface ISearchOpenConnectorRecordsResult {
     committedAt: string;
     label: string;
     rawMatchExcerpt: string;
+}
+
+/** Result of query `ListOpenConnectorRecordResources`. */
+export interface IListOpenConnectorRecordResourcesResult {
+    integrationId: string;
+    integrationName: string;
+    readableId: string;
+    title: string;
+    excerpt: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Result of query `FindOpenConnectorRecordResource`. */
+export interface IFindOpenConnectorRecordResourceResult {
+    integrationId: string;
+    integrationName: string;
+    readableId: string;
+    title: string;
+    excerpt: string;
+    contentJson: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 /** Result of query `ReadOwnerRegistrationState`. */
@@ -828,9 +855,8 @@ export interface Queries {
     FindOpenConnectorOwner: IFindOpenConnectorOwnerResult;
     BindOpenConnectorIntegration: IBindOpenConnectorIntegrationResult;
     FindOpenConnectorIntegration: IFindOpenConnectorIntegrationResult;
+    AuthenticateOpenConnectorCredentialFingerprint: IAuthenticateOpenConnectorCredentialFingerprintResult;
     FindOpenConnectorCredentialFingerprint: IFindOpenConnectorCredentialFingerprintResult;
-    InitializeOpenConnectorCredentialFingerprint: IInitializeOpenConnectorCredentialFingerprintResult;
-    ReadOpenConnectorCredentialFingerprintAfterRace: IReadOpenConnectorCredentialFingerprintAfterRaceResult;
     FindOpenConnectorEventFingerprint: IFindOpenConnectorEventFingerprintResult;
     FindOpenConnectorRecordRevisionFingerprints: IFindOpenConnectorRecordRevisionFingerprintsResult;
     CreateOpenConnectorRecordEvent: ICreateOpenConnectorRecordEventResult;
@@ -840,6 +866,7 @@ export interface Queries {
     FindOpenConnectorBatchReceipt: IFindOpenConnectorBatchReceiptResult;
     CreateOpenConnectorBatchReceipt: ICreateOpenConnectorBatchReceiptResult;
     RecordOpenConnectorCredentialFingerprint: IRecordOpenConnectorCredentialFingerprintResult;
+    FindOpenConnectorCredentialFingerprintOwner: IFindOpenConnectorCredentialFingerprintOwnerResult;
     HasUnfinishedOpenConnectorIngestionJobs: IHasUnfinishedOpenConnectorIngestionJobsResult;
     ClaimOpenConnectorIngestionJob: IClaimOpenConnectorIngestionJobResult;
     ReadClaimedOpenConnectorEvent: IReadClaimedOpenConnectorEventResult;
@@ -852,6 +879,8 @@ export interface Queries {
     RetryOpenConnectorIngestionJob: IRetryOpenConnectorIngestionJobResult;
     FindOpenConnectorRecord: IFindOpenConnectorRecordResult;
     SearchOpenConnectorRecords: ISearchOpenConnectorRecordsResult;
+    ListOpenConnectorRecordResources: IListOpenConnectorRecordResourcesResult;
+    FindOpenConnectorRecordResource: IFindOpenConnectorRecordResourceResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
 }
 

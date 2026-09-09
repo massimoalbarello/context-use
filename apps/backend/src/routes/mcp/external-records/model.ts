@@ -22,24 +22,8 @@ export const McpExternalRecordSearchResultSchema = z.object({
   matchExcerpt: z.string().nullable(),
 });
 
-const McpExternalRecordParticipantSchema = z.object({
-  identities: z.array(
-    z.object({
-      namespace: z.string(),
-      id: z.string(),
-    }),
-  ),
-  roles: z.array(z.string()),
-  name: z.string().optional(),
-});
-
 const McpExternalRecordContentSchema = z.object({
   body: z.string(),
-  sourceUrl: z.string().optional(),
-  sourceCreatedAt: z.string().optional(),
-  sourceUpdatedAt: z.string().optional(),
-  participants: z.array(McpExternalRecordParticipantSchema).optional(),
-  attributes: z.record(z.string(), z.json()).optional(),
 });
 
 export const McpExternalRecordSchema = z.object({
@@ -77,6 +61,6 @@ export function mcpExternalRecord(record: StoredOpenConnectorRecord) {
     operation: record.operation,
     contentHash: record.contentHash,
     committedAt: record.committedAt,
-    content: record.content,
+    content: { body: record.content.body },
   };
 }

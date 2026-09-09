@@ -26,18 +26,12 @@ import type { HypermediaServiceContract } from '#services/hypermedia/service.ts'
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
+import type { OpenConnectorRecordResourcesServiceContract } from '#services/open-connector/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
 
 // Pinned rather than left to the plugin's default: the frontend links to it and the dev
 // server proxies it.
 const OPENAPI_PATH = '/openapi';
-
-type OpenConnectorReceiverDependencies = {
-  integrationId: string;
-  ownerId: string;
-  receiverToken: string;
-  recordsService: OpenConnectorRecordsAcceptanceContract;
-};
 
 export function createApp({
   auth,
@@ -50,10 +44,10 @@ export function createApp({
   mcpClientAuthorizationsService,
   mcpServerUrl,
   mcpTransport,
-  openConnectorReceiver,
   ownerRegistrationService,
   pagesService,
   profilesService,
+  recordsService,
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
@@ -65,10 +59,11 @@ export function createApp({
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
   mcpTransport: McpTransportContract;
-  openConnectorReceiver?: OpenConnectorReceiverDependencies;
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
+  recordsService: OpenConnectorRecordsAcceptanceContract &
+    OpenConnectorRecordResourcesServiceContract;
 }) {
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
@@ -97,6 +92,10 @@ export function createApp({
             {
               name: 'Pages',
               description: 'Versioned Markdown knowledge pages and their links.',
+            },
+            {
+              name: 'Records',
+              description: 'Markdown records delivered by trusted external services.',
             },
             {
               name: 'MCP clients',
@@ -158,13 +157,11 @@ export function createApp({
         ownerRegistrationService,
         pagesService,
         profilesService,
+        recordsService,
       }),
     )
+    .use(createOpenConnectorRecordsController({ recordsService }))
     .onStop(() => mcpTransport.close());
-
-  if (openConnectorReceiver) {
-    app.use(createOpenConnectorRecordsController(openConnectorReceiver));
-  }
 
   return app.use(createFrontendFallbackController({ frontendAssetsService }));
 }

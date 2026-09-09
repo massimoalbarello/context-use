@@ -6,33 +6,32 @@ import { OpenConnectorRecordsService } from '../src/services/open-connector/serv
 
 export type OpenConnectorLocalBindingState = 'bound' | 'already_bound';
 
-type VerifyReceiverCredentialInput = {
+type VerifyDeliveryApiKeyInput = {
   integrationId: string;
   ownerId: string;
-  receiverToken: string;
-  initializeIfMissing: boolean;
+  deliveryApiKey: string;
 };
 
-async function verifyReceiverCredential({
+async function verifyDeliveryApiKey({
   records,
   input,
 }: {
   records: OpenConnectorRecordsService;
-  input: VerifyReceiverCredentialInput;
+  input: VerifyDeliveryApiKeyInput;
 }): Promise<void> {
-  const state = await records.verifyReceiverToken(input);
+  const state = await records.verifyDeliveryApiKey(input);
   if (state === 'missing') {
     throw new Error(
-      'No durable open-connector receiver credential is recorded. Run `bun run open-connector:setup -- register` before starting or continuing acquisition.',
+      'No durable open-connector delivery API key is recorded. Run `bun run open-connector:setup -- register` before starting or continuing acquisition.',
     );
   }
   if (state === 'mismatch') {
     throw new Error(
-      'The configured open-connector receiver token does not match its durable registration. Restore the registered token or run `bun run open-connector:setup -- register` to rotate it explicitly.',
+      'The configured open-connector delivery API key does not match its durable registration. Restore the registered key or run `bun run open-connector:setup -- register` to rotate it explicitly.',
     );
   }
   if (state === 'integration_not_found') {
-    throw new Error('The open-connector receiver credential has no trusted owner binding.');
+    throw new Error('The open-connector delivery API key has no trusted owner binding.');
   }
 }
 
@@ -58,7 +57,7 @@ async function withOpenConnectorRecords<T>({
 }
 
 /**
- * Establishes the receiver-to-owner trust boundary before setup mutates open-connector.
+ * Establishes the integration-to-owner trust boundary before setup mutates open-connector.
  * The setup command gets a short-lived database connection and always releases it before
  * performing any network operation.
  */
@@ -82,7 +81,7 @@ export function bindOpenConnectorTrustedOwner({
       }
       if (result.state === 'conflict') {
         throw new Error(
-          'OPEN_CONNECTOR_RECEIVER_ID is already bound to a different Context Use owner. Restore the original owner mapping or choose a new receiver ID.',
+          'OPEN_CONNECTOR_INTEGRATION_ID is already bound to a different Context Use owner. Restore the original owner mapping or choose a new integration ID.',
         );
       }
       return result.state;
@@ -90,48 +89,45 @@ export function bindOpenConnectorTrustedOwner({
   });
 }
 
-export async function verifyOpenConnectorReceiverCredential({
+export async function verifyOpenConnectorDeliveryApiKey({
   dataFolder,
   integrationId,
   ownerId,
-  receiverToken,
-  initializeIfMissing,
+  deliveryApiKey,
 }: {
   dataFolder: string;
   integrationId: string;
   ownerId: string;
-  receiverToken: string;
-  initializeIfMissing: boolean;
+  deliveryApiKey: string;
 }): Promise<void> {
   await withOpenConnectorRecords({
     dataFolder,
     run: (records) =>
-      verifyReceiverCredential({
+      verifyDeliveryApiKey({
         records,
         input: {
           integrationId,
           ownerId,
-          receiverToken,
-          initializeIfMissing,
+          deliveryApiKey,
         },
       }),
   });
 }
 
-export async function recordOpenConnectorReceiverRegistration({
+export async function recordOpenConnectorDeliveryApiKey({
   dataFolder,
   integrationId,
   ownerId,
-  receiverToken,
+  deliveryApiKey,
 }: {
   dataFolder: string;
   integrationId: string;
   ownerId: string;
-  receiverToken: string;
+  deliveryApiKey: string;
 }): Promise<void> {
   await withOpenConnectorRecords({
     dataFolder,
     run: (records) =>
-      records.recordReceiverTokenRegistration({ integrationId, ownerId, receiverToken }),
+      records.recordDeliveryApiKeyRegistration({ integrationId, ownerId, deliveryApiKey }),
   });
 }

@@ -269,16 +269,16 @@ function conflictError({
   const suffix = upstreamDetailsSuffix(details);
   if (details.code === 'credential_changed') {
     return new OpenConnectorSetupError(
-      `Open-connector reports changed credentials while trying to ${operation}. Re-register the receiver, then retry without resetting its checkpoint.${suffix}`,
+      `Open-connector reports changed GitHub source credentials while trying to ${operation}. Restore or reverify the GitHub source connection, then retry without resetting its checkpoint.${suffix}`,
     );
   }
   if (details.code === 'binding_conflict') {
     return new OpenConnectorSetupError(
-      `Open-connector reports a receiver binding conflict while trying to ${operation}. Restore the registered callback and credential or choose a new receiver ID.${suffix}`,
+      `Open-connector reports a GitHub source binding conflict while trying to ${operation}. Restore or reverify the GitHub source connection binding, then retry without resetting its checkpoint.${suffix}`,
     );
   }
   return new OpenConnectorSetupError(
-    `Open-connector reported a conflict while trying to ${operation} (HTTP 409). Check the receiver binding and credentials before retrying.${suffix}`,
+    `Open-connector reported a conflict while trying to ${operation} (HTTP 409). Check the delivery destination and credentials before retrying.${suffix}`,
   );
 }
 
@@ -319,29 +319,29 @@ async function readResponseError({
 }): Promise<UpstreamErrorDetails> {
   return responseErrorDetails({
     value: await readBoundedJson(response),
-    secrets: [config.adminToken, config.bearerToken],
+    secrets: [config.adminToken, config.deliveryApiKey],
   });
 }
 
-export async function registerOpenConnectorReceiver({
+export async function configureOpenConnectorDestination({
   config,
   fetch = globalThis.fetch,
 }: {
   config: OpenConnectorSetupConfig;
   fetch?: Fetch;
-}): Promise<{ id: string }> {
-  const operation = `register receiver ${config.receiverId}`;
+}): Promise<{ url: string; enabled: true }> {
+  const operation = `configure the delivery destination for integration ${config.integrationId}`;
   const response = await send({
     fetch,
     url: endpoint({
       baseUrl: config.baseUrl,
-      path: `/api/sync/receivers/${config.receiverId}`,
+      path: '/api/sync/destination',
     }),
     method: 'PUT',
     adminToken: config.adminToken,
     body: {
       url: config.callbackUrl.href,
-      bearerToken: config.bearerToken,
+      bearerToken: config.deliveryApiKey,
       enabled: true,
     },
     operation,
@@ -359,14 +359,19 @@ export async function registerOpenConnectorReceiver({
   if (
     !result ||
     typeof result !== 'object' ||
-    !('id' in result) ||
-    result.id !== config.receiverId
+    !('destination' in result) ||
+    !result.destination ||
+    typeof result.destination !== 'object' ||
+    !('url' in result.destination) ||
+    result.destination.url !== config.callbackUrl.href ||
+    !('enabled' in result.destination) ||
+    result.destination.enabled !== true
   ) {
     throw new OpenConnectorSetupError(
-      `Open-connector did not confirm receiver ${config.receiverId}; registration was not accepted.`,
+      `Open-connector did not confirm the enabled delivery destination for integration ${config.integrationId}.`,
     );
   }
-  return { id: config.receiverId };
+  return { url: config.callbackUrl.href, enabled: true };
 }
 
 async function runGithubPullRequestAcquisition({
@@ -391,7 +396,6 @@ async function runGithubPullRequestAcquisition({
     adminToken: config.adminToken,
     body: {
       connectionName: DEFAULT_CONNECTION_NAME,
-      targetReceiverId: config.receiverId,
       ...(backfill ? { backfill: true } : {}),
       maxPages: DEFAULT_MAX_PAGES,
     },

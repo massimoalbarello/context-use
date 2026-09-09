@@ -7,6 +7,7 @@ import type {
   OpenConnectorDeliveryEnvelope,
   OpenConnectorDeliveryRecord,
 } from '#models/open-connector/model.ts';
+import { canonicalOpenConnectorContent } from '#models/open-connector/model.ts';
 import { OpenConnectorRecordsRepository } from '#repositories/open-connector/repository.ts';
 import { ExternalRecordAddressSchema, externalRecordIdentity } from '#routes/mcp/coordinates.ts';
 import { registerExternalRecordTools } from '#routes/mcp/external-records/tools.ts';
@@ -38,6 +39,23 @@ function record({
   revision?: number;
   operation?: 'added' | 'updated' | 'deleted';
 }): OpenConnectorDeliveryRecord {
+  const content =
+    operation === 'deleted'
+      ? undefined
+      : {
+          body: body!,
+          sourceUrl: `https://github.example/pull/${recordId}`,
+          sourceCreatedAt: '2026-09-01T08:00:00.123456Z',
+          sourceUpdatedAt: '2026-09-08T11:59:59.987654Z',
+          participants: [
+            {
+              identities: [{ namespace: 'github', id: 'octocat' }],
+              roles: ['author'],
+              name: 'Octo Cat',
+            },
+          ],
+          attributes: { repository: 'octo/example', number: 42, draft: false },
+        };
   return {
     eventId,
     provider: 'github',
@@ -46,26 +64,9 @@ function record({
     id: recordId,
     revision,
     operation,
-    contentHash: digest(body ?? 'deleted'),
+    contentHash: content ? digest(canonicalOpenConnectorContent(content)!) : digest('deleted'),
     committedAt: NOW,
-    ...(operation === 'deleted'
-      ? {}
-      : {
-          content: {
-            body: body!,
-            sourceUrl: `https://github.example/pull/${recordId}`,
-            sourceCreatedAt: '2026-09-01T08:00:00.123456Z',
-            sourceUpdatedAt: '2026-09-08T11:59:59.987654Z',
-            participants: [
-              {
-                identities: [{ namespace: 'github', id: 'octocat' }],
-                roles: ['author'],
-                name: 'Octo Cat',
-              },
-            ],
-            attributes: { repository: 'octo/example', number: 42, draft: false },
-          },
-        }),
+    ...(content ? { content } : {}),
   };
 }
 
@@ -168,7 +169,12 @@ test('MCP searches owner-wide external records and reads only the current owner-
         [INTEGRATION_B, OWNER_B],
       ] as const) {
         expect(
-          await repository.bindIntegration({ integrationId, ownerId, createdAt: NOW }),
+          await repository.bindIntegration({
+            integrationId,
+            ownerId,
+            name: integrationId,
+            createdAt: NOW,
+          }),
         ).toEqual({
           state: 'bound',
         });
@@ -264,8 +270,6 @@ test('MCP searches owner-wide external records and reads only the current owner-
             operation: string;
             content: {
               body: string;
-              sourceCreatedAt: string;
-              attributes: Record<string, unknown>;
             };
           }>(
             await client.callTool({
@@ -279,10 +283,9 @@ test('MCP searches owner-wide external records and reads only the current owner-
             operation: 'added',
             content: {
               body: '# First PR\n\nSharedneedle implementation evidence.',
-              sourceCreatedAt: '2026-09-01T08:00:00.123456Z',
-              attributes: { repository: 'octo/example', number: 42, draft: false },
             },
           });
+          expect(Object.keys(detail.content)).toEqual(['body']);
           expect(JSON.stringify(detail)).not.toContain(OWNER_A);
           expect(JSON.stringify(detail)).not.toContain('currentEventId');
         },

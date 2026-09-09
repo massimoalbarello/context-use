@@ -6,14 +6,14 @@ import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import {
-  loadOpenConnectorReceiverRuntimeConfig,
+  loadOpenConnectorSetupConfig,
   OPEN_CONNECTOR_ENVIRONMENT,
 } from '#lib/open-connector/config.ts';
-import { OPEN_CONNECTOR_RECEIVER_SECRET_FILE_NAME } from '#lib/open-connector/receiver-secret.ts';
+import { openConnectorDeliveryApiKeyFileName } from '#lib/open-connector/delivery-api-key.ts';
 import {
   bindOpenConnectorTrustedOwner,
-  recordOpenConnectorReceiverRegistration,
-  verifyOpenConnectorReceiverCredential,
+  recordOpenConnectorDeliveryApiKey,
+  verifyOpenConnectorDeliveryApiKey,
 } from '../../scripts/open-connector-local-binding.ts';
 
 const FIRST_OWNER_ID = OWNER_USER_ID;
@@ -132,8 +132,8 @@ test('local setup detects an existing integration bound to a different database 
     const database = await createSqliteDatabase({ dataFolder });
     try {
       await database`
-        insert into "open_connector_integration" ("id", "owner_id", "created_at")
-        values ('context-use', ${SECOND_OWNER_ID}, ${TIMESTAMP})
+        insert into "open_connector_integration" ("id", "owner_id", "name", "created_at")
+        values ('context-use', ${SECOND_OWNER_ID}, 'Existing service', ${TIMESTAMP})
       `;
     } finally {
       await database.close();
@@ -149,7 +149,7 @@ test('local setup detects an existing integration bound to a different database 
   });
 });
 
-test('a lost receiver token cannot be adopted implicitly on either of two restarts', async () => {
+test('a lost delivery API key requires explicit registration before it is trusted', async () => {
   await withDataFolder(async (dataFolder) => {
     await seedOwners({
       dataFolder,
@@ -157,13 +157,15 @@ test('a lost receiver token cannot be adopted implicitly on either of two restar
       passkeyOwnerIds: [FIRST_OWNER_ID],
     });
     const environment = {
-      [OPEN_CONNECTOR_ENVIRONMENT.receiverId]: 'context-use',
+      [OPEN_CONNECTOR_ENVIRONMENT.baseUrl]: 'http://127.0.0.1:8787',
+      [OPEN_CONNECTOR_ENVIRONMENT.adminToken]: 'admin-token',
+      [OPEN_CONNECTOR_ENVIRONMENT.integrationId]: 'context-use',
+      [OPEN_CONNECTOR_ENVIRONMENT.callbackUrl]:
+        'https://context-use.example/api/integrations/open-connector/records',
+      [OPEN_CONNECTOR_ENVIRONMENT.deliveryApiKey]: '',
       [OPEN_CONNECTOR_ENVIRONMENT.ownerId]: FIRST_OWNER_ID,
     };
-    const original = await loadOpenConnectorReceiverRuntimeConfig({ dataFolder, environment });
-    if (!original) {
-      throw new Error('Expected receiver configuration');
-    }
+    const original = await loadOpenConnectorSetupConfig({ dataFolder, environment });
     expect(
       await bindOpenConnectorTrustedOwner({
         dataFolder,
@@ -171,51 +173,45 @@ test('a lost receiver token cannot be adopted implicitly on either of two restar
         ownerId: original.ownerId,
       }),
     ).toBe('bound');
-    await verifyOpenConnectorReceiverCredential({
+    await recordOpenConnectorDeliveryApiKey({
       dataFolder,
       integrationId: original.integrationId,
       ownerId: original.ownerId,
-      receiverToken: original.bearerToken,
-      initializeIfMissing: true,
+      deliveryApiKey: original.deliveryApiKey,
     });
 
-    await unlink(join(dataFolder, OPEN_CONNECTOR_RECEIVER_SECRET_FILE_NAME));
-    let replacementToken = '';
+    await unlink(join(dataFolder, openConnectorDeliveryApiKeyFileName(original.integrationId)));
+    let replacementApiKey = '';
     for (const expectedSource of ['generated-file', 'stored-file'] as const) {
-      const replacement = await loadOpenConnectorReceiverRuntimeConfig({
+      const replacement = await loadOpenConnectorSetupConfig({
         dataFolder,
         environment,
       });
-      if (!replacement) {
-        throw new Error('Expected receiver configuration');
-      }
-      replacementToken = replacement.bearerToken;
-      expect(replacement.bearerToken).not.toBe(original.bearerToken);
-      expect(replacement.bearerTokenSource.kind).toBe(expectedSource);
+      replacementApiKey = replacement.deliveryApiKey;
+      expect(replacement.deliveryApiKey).not.toBe(original.deliveryApiKey);
+      expect(replacement.deliveryApiKeySource.kind).toBe(expectedSource);
       await expect(
-        verifyOpenConnectorReceiverCredential({
+        verifyOpenConnectorDeliveryApiKey({
           dataFolder,
           integrationId: replacement.integrationId,
           ownerId: replacement.ownerId,
-          receiverToken: replacement.bearerToken,
-          initializeIfMissing: false,
+          deliveryApiKey: replacement.deliveryApiKey,
         }),
       ).rejects.toThrow('does not match its durable registration');
     }
 
-    await recordOpenConnectorReceiverRegistration({
+    await recordOpenConnectorDeliveryApiKey({
       dataFolder,
       integrationId: original.integrationId,
       ownerId: original.ownerId,
-      receiverToken: replacementToken,
+      deliveryApiKey: replacementApiKey,
     });
     await expect(
-      verifyOpenConnectorReceiverCredential({
+      verifyOpenConnectorDeliveryApiKey({
         dataFolder,
         integrationId: original.integrationId,
         ownerId: original.ownerId,
-        receiverToken: replacementToken,
-        initializeIfMissing: false,
+        deliveryApiKey: replacementApiKey,
       }),
     ).resolves.toBeUndefined();
   });

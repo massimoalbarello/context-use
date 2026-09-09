@@ -1,5 +1,8 @@
 import { createLogger } from '#lib/logger.ts';
-import type { OpenConnectorIngestionJob } from '#models/open-connector/model.ts';
+import {
+  type OpenConnectorIngestionJob,
+  openConnectorRecordPresentation,
+} from '#models/open-connector/model.ts';
 import type {
   OpenConnectorJobProjection,
   OpenConnectorRecordsRepositoryContract,
@@ -59,7 +62,7 @@ function projectionFor(job: OpenConnectorIngestionJob): OpenConnectorJobProjecti
     throw new Error('Open-connector ingestion content is missing');
   }
   return {
-    label: `${job.provider} ${job.kind} ${job.recordId}`,
+    label: openConnectorRecordPresentation(job.content.body).title,
     body: job.content.body,
   };
 }

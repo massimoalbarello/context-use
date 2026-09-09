@@ -16,7 +16,10 @@ import type { HealthServiceContract } from '#services/health/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
-import { unusedHypermediaService } from '../../../support/app.ts';
+import {
+  unusedHypermediaService,
+  unusedOpenConnectorRecordsService,
+} from '../../../support/app.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -100,6 +103,7 @@ test('owner registration API exposes only complete registration states', async (
       ),
       pagesService,
       profilesService,
+      recordsService: unusedOpenConnectorRecordsService,
     });
 
     const availableResponse = await app.handle(

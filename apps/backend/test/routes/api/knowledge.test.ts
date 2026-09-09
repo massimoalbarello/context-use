@@ -26,6 +26,7 @@ import { HypermediaService } from '#services/hypermedia/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
+import { unusedOpenConnectorRecordsService } from '../../support/app.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -174,6 +175,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
       ),
       pagesService,
       profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),
+      recordsService: unusedOpenConnectorRecordsService,
     });
 
     const profileResponse = await app.handle(

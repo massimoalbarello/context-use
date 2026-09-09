@@ -5,8 +5,12 @@ import type {
   OpenConnectorDeliveryRecord,
   OpenConnectorIngestionJob,
   OpenConnectorIntegrationBindingResult,
+  OpenConnectorIntegrationPrincipal,
   OpenConnectorRecordContent,
   OpenConnectorRecordIdentity,
+  OpenConnectorRecordPage,
+  OpenConnectorRecordResource,
+  OpenConnectorRecordSummary,
   OpenConnectorSearchResult,
   StoredOpenConnectorRecord,
 } from '#models/open-connector/model.ts';
@@ -32,6 +36,9 @@ class OpenConnectorAcceptanceConflict extends Error {
 
 export type AcceptedOpenConnectorRecord = {
   record: OpenConnectorDeliveryRecord;
+  readableId: string;
+  title: string;
+  excerpt: string;
   contentJson: string | null;
   fingerprint: string;
 };
@@ -51,7 +58,6 @@ export type OpenConnectorJobProjection = {
 };
 
 export type OpenConnectorCredentialVerificationResult =
-  | 'initialized'
   | 'verified'
   | 'missing'
   | 'mismatch'
@@ -61,13 +67,16 @@ export interface OpenConnectorRecordsRepositoryContract {
   bindIntegration(input: {
     integrationId: string;
     ownerId: string;
+    name: string;
     createdAt: string;
   }): Promise<OpenConnectorIntegrationBindingResult>;
+  authenticateCredentialFingerprint(input: {
+    fingerprint: string;
+  }): Promise<OpenConnectorIntegrationPrincipal | null>;
   verifyCredentialFingerprint(input: {
     integrationId: string;
     ownerId: string;
     fingerprint: string;
-    initializeIfMissing: boolean;
   }): Promise<OpenConnectorCredentialVerificationResult>;
   recordCredentialFingerprint(input: {
     integrationId: string;
@@ -100,6 +109,15 @@ export interface OpenConnectorRecordsRepositoryContract {
     query: string;
     limit: number;
   }): Promise<OpenConnectorSearchResult[]>;
+  listResources(input: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+  }): Promise<OpenConnectorRecordPage>;
+  findResource(input: {
+    ownerId: string;
+    readableId: string;
+  }): Promise<OpenConnectorRecordResource | null>;
 }
 
 function contentFrom(serialized: string | null): OpenConnectorRecordContent | null {
@@ -122,15 +140,44 @@ function matchExcerpt(raw: string | null): string | null {
   return raw.replaceAll(MATCH_START, '').replaceAll(MATCH_END, '').trim();
 }
 
+function recordSummaryFrom({
+  integrationId,
+  integrationName,
+  readableId,
+  title,
+  excerpt,
+  createdAt,
+  updatedAt,
+}: {
+  integrationId: string;
+  integrationName: string;
+  readableId: string;
+  title: string;
+  excerpt: string;
+  createdAt: string;
+  updatedAt: string;
+}): OpenConnectorRecordSummary {
+  return {
+    readableId,
+    title,
+    excerpt,
+    externalService: { id: integrationId, name: integrationName },
+    createdAt,
+    updatedAt,
+  };
+}
+
 async function bindIntegration({
   db,
   integrationId,
   ownerId,
+  name,
   createdAt,
 }: {
   db: TypedSQL<Queries>;
   integrationId: string;
   ownerId: string;
+  name: string;
   createdAt: string;
 }): Promise<OpenConnectorIntegrationBindingResult> {
   const owners = await db.FindOpenConnectorOwner`
@@ -145,8 +192,8 @@ async function bindIntegration({
 
   const inserted = await db.BindOpenConnectorIntegration`
     /* @notNull id ownerId */
-    insert into "open_connector_integration" ("id", "owner_id", "created_at")
-    values (${integrationId}, ${ownerId}, ${createdAt})
+    insert into "open_connector_integration" ("id", "owner_id", "name", "created_at")
+    values (${integrationId}, ${ownerId}, ${name}, ${createdAt})
     on conflict ("id") do nothing
     returning "id", "owner_id" as "ownerId"
   `;
@@ -162,23 +209,38 @@ async function bindIntegration({
   return existing[0]?.ownerId === ownerId ? { state: 'already_bound' } : { state: 'conflict' };
 }
 
+async function authenticateCredentialFingerprint({
+  db,
+  fingerprint,
+}: {
+  db: TypedSQL<Queries>;
+  fingerprint: string;
+}): Promise<OpenConnectorIntegrationPrincipal | null> {
+  const rows = await db.AuthenticateOpenConnectorCredentialFingerprint`
+    /* @notNull integrationId ownerId name */
+    select "id" as "integrationId", "owner_id" as "ownerId", "name"
+    from "open_connector_integration"
+    where "delivery_api_key_sha256" = ${fingerprint}
+    limit 1
+  `;
+  return rows[0] ?? null;
+}
+
 async function verifyCredentialFingerprint({
   db,
   integrationId,
   ownerId,
   fingerprint,
-  initializeIfMissing,
 }: {
   db: TypedSQL<Queries>;
   integrationId: string;
   ownerId: string;
   fingerprint: string;
-  initializeIfMissing: boolean;
 }): Promise<OpenConnectorCredentialVerificationResult> {
   const integrations = await db.FindOpenConnectorCredentialFingerprint`
     /* @notNull id ownerId */
     select "id", "owner_id" as "ownerId",
-      "receiver_token_sha256" as "receiverTokenSha256"
+      "delivery_api_key_sha256" as "deliveryApiKeySha256"
     from "open_connector_integration"
     where "id" = ${integrationId}
   `;
@@ -186,34 +248,10 @@ async function verifyCredentialFingerprint({
   if (!integration || integration.ownerId !== ownerId) {
     return 'integration_not_found';
   }
-  if (integration.receiverTokenSha256 === fingerprint) {
+  if (integration.deliveryApiKeySha256 === fingerprint) {
     return 'verified';
   }
-  if (integration.receiverTokenSha256 !== null) {
-    return 'mismatch';
-  }
-  if (!initializeIfMissing) {
-    return 'missing';
-  }
-
-  const initialized = await db.InitializeOpenConnectorCredentialFingerprint`
-    /* @notNull id */
-    update "open_connector_integration"
-    set "receiver_token_sha256" = ${fingerprint}
-    where "id" = ${integrationId} and "owner_id" = ${ownerId}
-      and "receiver_token_sha256" is null
-    returning "id"
-  `;
-  if (initialized[0]) {
-    return 'initialized';
-  }
-
-  const current = await db.ReadOpenConnectorCredentialFingerprintAfterRace`
-    select "receiver_token_sha256" as "receiverTokenSha256"
-    from "open_connector_integration"
-    where "id" = ${integrationId} and "owner_id" = ${ownerId}
-  `;
-  return current[0]?.receiverTokenSha256 === fingerprint ? 'verified' : 'mismatch';
+  return integration.deliveryApiKeySha256 === null ? 'missing' : 'mismatch';
 }
 
 async function acceptRecord({
@@ -269,16 +307,20 @@ async function acceptRecord({
   const applied = await db.ApplyOpenConnectorRecordRevision`
     /* @notNull revision */
     insert into "open_connector_record"
-      ("integration_id", "owner_id", "provider", "source_id", "kind", "record_id",
+      ("integration_id", "owner_id", "readable_id", "title", "excerpt", "provider",
+       "source_id", "kind", "record_id",
        "revision", "operation", "content_hash", "committed_at", "content_json",
-       "current_event_id", "updated_at")
+       "current_event_id", "created_at", "updated_at")
     values
-      (${input.integrationId}, ${input.ownerId}, ${record.provider}, ${record.sourceId},
-       ${record.kind}, ${record.id}, ${record.revision}, ${record.operation},
+      (${input.integrationId}, ${input.ownerId}, ${accepted.readableId}, ${accepted.title},
+       ${accepted.excerpt}, ${record.provider}, ${record.sourceId}, ${record.kind}, ${record.id},
+       ${record.revision}, ${record.operation},
        ${record.contentHash}, ${record.committedAt}, ${accepted.contentJson}, ${record.eventId},
-       ${input.receivedAt})
+       ${input.receivedAt}, ${input.receivedAt})
     on conflict ("integration_id", "source_id", "kind", "record_id") do update set
       "owner_id" = excluded."owner_id",
+      "title" = excluded."title",
+      "excerpt" = excluded."excerpt",
       "provider" = excluded."provider",
       "revision" = excluded."revision",
       "operation" = excluded."operation",
@@ -361,21 +403,28 @@ export class OpenConnectorRecordsRepository implements OpenConnectorRecordsRepos
   bindIntegration(input: {
     integrationId: string;
     ownerId: string;
+    name: string;
     createdAt: string;
   }): Promise<OpenConnectorIntegrationBindingResult> {
     return this.serialize(() => this.sql.begin((db) => bindIntegration({ db, ...input })));
+  }
+
+  authenticateCredentialFingerprint({
+    fingerprint,
+  }: {
+    fingerprint: string;
+  }): Promise<OpenConnectorIntegrationPrincipal | null> {
+    return this.serialize(() => authenticateCredentialFingerprint({ db: this.sql, fingerprint }));
   }
 
   verifyCredentialFingerprint({
     integrationId,
     ownerId,
     fingerprint,
-    initializeIfMissing,
   }: {
     integrationId: string;
     ownerId: string;
     fingerprint: string;
-    initializeIfMissing: boolean;
   }): Promise<OpenConnectorCredentialVerificationResult> {
     return this.serialize(() =>
       this.sql.begin((db) =>
@@ -384,7 +433,6 @@ export class OpenConnectorRecordsRepository implements OpenConnectorRecordsRepos
           integrationId,
           ownerId,
           fingerprint,
-          initializeIfMissing,
         }),
       ),
     );
@@ -399,15 +447,30 @@ export class OpenConnectorRecordsRepository implements OpenConnectorRecordsRepos
     ownerId: string;
     fingerprint: string;
   }): Promise<boolean> {
-    const recorded = await this.serialize(
-      () => this.sql.RecordOpenConnectorCredentialFingerprint`
-        update "open_connector_integration"
-        set "receiver_token_sha256" = ${fingerprint}
-        where "id" = ${integrationId} and "owner_id" = ${ownerId}
-        returning "id"
-      `,
+    return await this.serialize(() =>
+      this.sql.begin(async (db) => {
+        const recorded = await db.RecordOpenConnectorCredentialFingerprint`
+          update or ignore "open_connector_integration"
+          set "delivery_api_key_sha256" = ${fingerprint}
+          where "id" = ${integrationId} and "owner_id" = ${ownerId}
+          returning "id"
+        `;
+        if (recorded.length > 0) {
+          return true;
+        }
+        const collision = await db.FindOpenConnectorCredentialFingerprintOwner`
+          /* @notNull id */
+          select "id"
+          from "open_connector_integration"
+          where "delivery_api_key_sha256" = ${fingerprint}
+          limit 1
+        `;
+        if (collision[0]?.id !== undefined && collision[0].id !== integrationId) {
+          throw new Error('Open-connector delivery API key already identifies another integration');
+        }
+        return false;
+      }),
     );
-    return recorded.length > 0;
   }
 
   async accept(input: AcceptOpenConnectorRecordsInput): Promise<OpenConnectorAcceptanceResult> {
@@ -610,13 +673,14 @@ export class OpenConnectorRecordsRepository implements OpenConnectorRecordsRepos
   ): Promise<StoredOpenConnectorRecord | null> {
     return await this.serialize(async () => {
       const rows = await this.sql.FindOpenConnectorRecord`
-        /* @notNull integrationId ownerId provider sourceId kind recordId revision operation contentHash committedAt currentEventId updatedAt */
+        /* @notNull integrationId ownerId readableId provider sourceId kind recordId revision operation contentHash committedAt currentEventId createdAt updatedAt */
         /* @type operation 'added' | 'updated' | 'deleted' */
-        select "integration_id" as "integrationId", "owner_id" as "ownerId", "provider",
+        select "integration_id" as "integrationId", "owner_id" as "ownerId",
+          "readable_id" as "readableId", "provider",
           "source_id" as "sourceId", "kind", "record_id" as "recordId", "revision", "operation",
           "content_hash" as "contentHash", "committed_at" as "committedAt",
           "content_json" as "contentJson", "current_event_id" as "currentEventId",
-          "updated_at" as "updatedAt"
+          "created_at" as "createdAt", "updated_at" as "updatedAt"
         from "open_connector_record"
         where "integration_id" = ${input.integrationId} and "owner_id" = ${input.ownerId}
           and "source_id" = ${input.sourceId} and "kind" = ${input.kind}
@@ -679,6 +743,69 @@ export class OpenConnectorRecordsRepository implements OpenConnectorRecordsRepos
         revision: Number(row.revision),
         matchExcerpt: matchExcerpt(rawMatchExcerpt),
       }));
+    });
+  }
+
+  async listResources({
+    ownerId,
+    limit,
+    offset,
+  }: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+  }): Promise<OpenConnectorRecordPage> {
+    return await this.serialize(async () => {
+      const rows = await this.sql.ListOpenConnectorRecordResources`
+        /* @notNull integrationId integrationName readableId title excerpt createdAt updatedAt */
+        select record."integration_id" as "integrationId", integration."name" as "integrationName",
+          record."readable_id" as "readableId", record."title", record."excerpt",
+          record."created_at" as "createdAt", record."updated_at" as "updatedAt"
+        from "open_connector_record" record
+        join "open_connector_integration" integration
+          on integration."id" = record."integration_id"
+         and integration."owner_id" = record."owner_id"
+        where record."owner_id" = ${ownerId} and record."operation" <> 'deleted'
+        order by record."updated_at" desc, record."readable_id"
+        limit ${limit + 1} offset ${offset}
+      `;
+      const hasNextPage = rows.length > limit;
+      const items = rows.slice(0, limit).map(recordSummaryFrom);
+      return { items, nextOffset: hasNextPage ? offset + items.length : null };
+    });
+  }
+
+  async findResource({
+    ownerId,
+    readableId,
+  }: {
+    ownerId: string;
+    readableId: string;
+  }): Promise<OpenConnectorRecordResource | null> {
+    return await this.serialize(async () => {
+      const rows = await this.sql.FindOpenConnectorRecordResource`
+        /* @notNull integrationId integrationName readableId title excerpt contentJson createdAt updatedAt */
+        select record."integration_id" as "integrationId", integration."name" as "integrationName",
+          record."readable_id" as "readableId", record."title", record."excerpt",
+          record."content_json" as "contentJson", record."created_at" as "createdAt",
+          record."updated_at" as "updatedAt"
+        from "open_connector_record" record
+        join "open_connector_integration" integration
+          on integration."id" = record."integration_id"
+         and integration."owner_id" = record."owner_id"
+        where record."owner_id" = ${ownerId} and record."readable_id" = ${readableId}
+          and record."operation" <> 'deleted'
+        limit 1
+      `;
+      const row = rows[0];
+      if (!row) {
+        return null;
+      }
+      const content = contentFrom(row.contentJson);
+      if (!content) {
+        throw new Error('An active open-connector record is missing content');
+      }
+      return { ...recordSummaryFrom(row), markdown: content.body };
     });
   }
 

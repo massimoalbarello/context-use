@@ -2,6 +2,8 @@ import { expect, mock, test } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { Elysia, StatusMap } from 'elysia';
 import {
+  canonicalOpenConnectorContent,
+  InvalidOpenConnectorDeliveryError,
   MAX_OPEN_CONNECTOR_BATCH_RECORDS,
   MAX_OPEN_CONNECTOR_DELIVERY_BYTES,
   MAX_OPEN_CONNECTOR_RECORD_CONTENT_BYTES,
@@ -15,12 +17,26 @@ import {
 
 const integrationId = 'open-connector';
 const ownerId = 'owner-id';
-const receiverToken = 'receiver-secret';
+const deliveryApiKey = 'delivery-api-key-0123456789abcdef';
 const batchId = 'batch-id';
 const SHA256_HEX_LENGTH = 64;
 const SENDER_VALID_LONG_PARTICIPANT_VALUE_LENGTH = 1_025;
 
 function validEnvelope(): OpenConnectorDeliveryEnvelope {
+  const content = {
+    body: '# Pull request',
+    sourceUrl: 'https://github.com/example/repository/pull/1',
+    sourceCreatedAt: '2026-09-01T10:00:00.123456Z',
+    sourceUpdatedAt: '2026-09-08T11:00:00Z',
+    participants: [
+      {
+        identities: [{ namespace: 'github', id: 'user-node-id' }],
+        roles: ['author'],
+        name: 'octocat',
+      },
+    ],
+    attributes: { repository: 'example/repository', number: 1, draft: false },
+  };
   return {
     version: 1,
     batchId,
@@ -33,22 +49,11 @@ function validEnvelope(): OpenConnectorDeliveryEnvelope {
         id: 'opaque-record-id',
         revision: 1,
         operation: 'added',
-        contentHash: 'a'.repeat(SHA256_HEX_LENGTH),
+        contentHash: createHash('sha256')
+          .update(canonicalOpenConnectorContent(content)!)
+          .digest('hex'),
         committedAt: '2026-09-08T12:34:56.123Z',
-        content: {
-          body: '# Pull request',
-          sourceUrl: 'https://github.com/example/repository/pull/1',
-          sourceCreatedAt: '2026-09-01T10:00:00.123456Z',
-          sourceUpdatedAt: '2026-09-08T11:00:00Z',
-          participants: [
-            {
-              identities: [{ namespace: 'github', id: 'user-node-id' }],
-              roles: ['author'],
-              name: 'octocat',
-            },
-          ],
-          attributes: { repository: 'example/repository', number: 1, draft: false },
-        },
+        content,
       },
     ],
   };
@@ -56,7 +61,7 @@ function validEnvelope(): OpenConnectorDeliveryEnvelope {
 
 function request({
   body,
-  authorization = `Bearer ${receiverToken}`,
+  authorization = `Bearer ${deliveryApiKey}`,
   contentType = 'application/json',
   idempotencyKey = batchId,
   headers,
@@ -79,14 +84,19 @@ function request({
   });
 }
 
-function controller(
-  accept: OpenConnectorRecordsAcceptanceContract['accept'] = async () => ({ state: 'accepted' }),
-) {
+function controller({
+  accept = async () => ({ state: 'accepted' }),
+  authenticateDeliveryApiKey = async ({ deliveryApiKey: presented }) =>
+    presented === deliveryApiKey ? { integrationId, ownerId, name: 'GitHub sync' } : null,
+}: {
+  accept?: OpenConnectorRecordsAcceptanceContract['accept'];
+  authenticateDeliveryApiKey?: OpenConnectorRecordsAcceptanceContract['authenticateDeliveryApiKey'];
+} = {}) {
   return createOpenConnectorRecordsController({
-    integrationId,
-    ownerId,
-    receiverToken,
-    recordsService: { accept },
+    recordsService: {
+      accept,
+      authenticateDeliveryApiKey,
+    },
   });
 }
 
@@ -107,6 +117,10 @@ function firstContent(envelope: OpenConnectorDeliveryEnvelope) {
 }
 
 test('authenticates before reading or inspecting the delivery body', async () => {
+  const unknownDeliveryApiKey = 'unknown-delivery-api-key-0123456789';
+  const authenticateDeliveryApiKey = mock<
+    OpenConnectorRecordsAcceptanceContract['authenticateDeliveryApiKey']
+  >(async () => null);
   let pulls = 0;
   const unreadBody = new ReadableStream<Uint8Array>(
     {
@@ -118,18 +132,37 @@ test('authenticates before reading or inspecting the delivery body', async () =>
     { highWaterMark: 0 },
   );
   const delivery = request({
-    authorization: 'Bearer wrong-secret',
+    authorization: `Bearer ${unknownDeliveryApiKey}`,
     contentType: 'text/plain',
     idempotencyKey: '',
     body: unreadBody,
     headers: { 'content-length': String(MAX_OPEN_CONNECTOR_DELIVERY_BYTES + 1) },
   });
 
-  const response = await controller().handle(delivery);
+  const response = await controller({ authenticateDeliveryApiKey }).handle(delivery);
 
   expect(response.status).toBe(StatusMap.Unauthorized);
+  expect(authenticateDeliveryApiKey).toHaveBeenCalledWith({
+    deliveryApiKey: unknownDeliveryApiKey,
+  });
   expect(pulls).toBe(0);
   expect(delivery.bodyUsed).toBe(false);
+});
+
+test('rejects a short delivery API key as unauthorized before repository lookup', async () => {
+  const authenticateDeliveryApiKey = mock<
+    OpenConnectorRecordsAcceptanceContract['authenticateDeliveryApiKey']
+  >(async () => null);
+
+  const response = await controller({ authenticateDeliveryApiKey }).handle(
+    request({
+      authorization: 'Bearer short-key',
+      body: JSON.stringify(validEnvelope()),
+    }),
+  );
+
+  expect(response.status).toBe(StatusMap.Unauthorized);
+  expect(authenticateDeliveryApiKey).not.toHaveBeenCalled();
 });
 
 test('accepts a valid batch and passes explicit ownership plus the raw payload hash', async () => {
@@ -139,7 +172,7 @@ test('accepts a valid batch and passes explicit ownership plus the raw payload h
     state: 'accepted',
   }));
 
-  const response = await controller(accept).handle(request({ body: rawBody }));
+  const response = await controller({ accept }).handle(request({ body: rawBody }));
 
   expect(response.status).toBe(StatusMap.OK);
   expect(await response.text()).toBe('');
@@ -153,27 +186,28 @@ test('accepts a valid batch and passes explicit ownership plus the raw payload h
 });
 
 test('acknowledges duplicate batches and returns a fixed conflict response', async () => {
-  const duplicate = await controller(async () => ({ state: 'duplicate' })).handle(
+  const duplicate = await controller({ accept: async () => ({ state: 'duplicate' }) }).handle(
     request({ body: JSON.stringify(validEnvelope()) }),
   );
   expect(duplicate.status).toBe(StatusMap.OK);
 
-  const conflict = await controller(async () => ({
-    state: 'conflict',
-    reason: 'batch',
-  })).handle(request({ body: JSON.stringify(validEnvelope()) }));
+  const conflict = await controller({
+    accept: async () => ({ state: 'conflict', reason: 'batch' }),
+  }).handle(request({ body: JSON.stringify(validEnvelope()) }));
   expect(conflict.status).toBe(StatusMap.Conflict);
   expect(await conflict.json()).toEqual({ error: 'Conflicting open-connector delivery' });
 });
 
 test('does not acknowledge a durable acceptance failure and allows the sender to retry', async () => {
   let failAcceptance = true;
-  const receiver = controller(() => {
-    if (failAcceptance) {
-      failAcceptance = false;
-      return Promise.reject(new Error('simulated durable write failure'));
-    }
-    return Promise.resolve({ state: 'accepted' });
+  const receiver = controller({
+    accept: () => {
+      if (failAcceptance) {
+        failAcceptance = false;
+        return Promise.reject(new Error('simulated durable write failure'));
+      }
+      return Promise.resolve({ state: 'accepted' });
+    },
   });
   const body = JSON.stringify(validEnvelope());
 
@@ -265,6 +299,9 @@ test('enforces the canonical per-record content limit', async () => {
   firstRecord(envelope).content = {
     body: 'x'.repeat(MAX_OPEN_CONNECTOR_RECORD_CONTENT_BYTES - emptyContentBytes),
   };
+  firstRecord(envelope).contentHash = createHash('sha256')
+    .update(canonicalOpenConnectorContent(firstContent(envelope))!)
+    .digest('hex');
 
   const accepted = await controller().handle(request({ body: JSON.stringify(envelope) }));
   expect(accepted.status).toBe(StatusMap.OK);
@@ -286,10 +323,27 @@ test('validates the whole batch before calling the acceptance service', async ()
     state: 'accepted',
   }));
 
-  const response = await controller(accept).handle(request({ body: JSON.stringify(envelope) }));
+  const response = await controller({ accept }).handle(request({ body: JSON.stringify(envelope) }));
 
   expect(response.status).toBe(StatusMap['Bad Request']);
   expect(accept).not.toHaveBeenCalled();
+});
+
+test('reports a service-level content integrity rejection as a bad request', async () => {
+  const accept = mock<OpenConnectorRecordsAcceptanceContract['accept']>(() =>
+    Promise.reject(
+      new InvalidOpenConnectorDeliveryError(
+        'Record contentHash must match the canonical record content',
+      ),
+    ),
+  );
+
+  const response = await controller({ accept }).handle(
+    request({ body: JSON.stringify(validEnvelope()) }),
+  );
+
+  expect(response.status).toBe(StatusMap['Bad Request']);
+  expect(await response.json()).toEqual({ error: 'Invalid open-connector delivery' });
 });
 
 test('enforces record count, deletion shape, hashes, and nonempty Markdown', async () => {
@@ -356,7 +410,7 @@ test('requires the idempotency key to match the validated batch ID', async () =>
     new Request(`http://localhost${OPEN_CONNECTOR_RECORDS_ROUTE_PATH}`, {
       method: 'POST',
       headers: {
-        authorization: `Bearer ${receiverToken}`,
+        authorization: `Bearer ${deliveryApiKey}`,
         'content-type': 'application/json',
       },
       body: JSON.stringify(validEnvelope()),

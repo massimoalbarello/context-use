@@ -1,6 +1,15 @@
+import { fromMarkdown } from 'mdast-util-from-markdown';
+import { toString as mdastToString } from 'mdast-util-to-string';
+
 export const OPEN_CONNECTOR_DELIVERY_VERSION = 1 as const;
+export const OPEN_CONNECTOR_INTEGRATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
 export const MAX_OPEN_CONNECTOR_BATCH_RECORDS = 50;
 export const MAX_OPEN_CONNECTOR_SEARCH_RESULTS = 50;
+export const MIN_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES = 32;
+export const MAX_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES = 8_192;
+export const MAX_OPEN_CONNECTOR_INTEGRATION_NAME_LENGTH = 160;
+export const MAX_OPEN_CONNECTOR_RECORD_TITLE_LENGTH = 240;
+export const MAX_OPEN_CONNECTOR_RECORD_EXCERPT_LENGTH = 280;
 
 const BYTES_PER_KIBIBYTE = 1024;
 const KIBIBYTES_PER_MEBIBYTE = 1024;
@@ -63,8 +72,15 @@ export type OpenConnectorRecordIdentity = {
   recordId: string;
 };
 
+export type OpenConnectorIntegrationPrincipal = {
+  integrationId: string;
+  ownerId: string;
+  name: string;
+};
+
 export type StoredOpenConnectorRecord = OpenConnectorRecordIdentity & {
   ownerId: string;
+  readableId: string;
   provider: string;
   revision: number;
   operation: OpenConnectorOperation;
@@ -72,7 +88,26 @@ export type StoredOpenConnectorRecord = OpenConnectorRecordIdentity & {
   committedAt: string;
   content: OpenConnectorRecordContent | null;
   currentEventId: string;
+  createdAt: string;
   updatedAt: string;
+};
+
+export type OpenConnectorRecordSummary = {
+  readableId: string;
+  title: string;
+  excerpt: string;
+  externalService: { id: string; name: string };
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OpenConnectorRecordResource = OpenConnectorRecordSummary & {
+  markdown: string;
+};
+
+export type OpenConnectorRecordPage = {
+  items: OpenConnectorRecordSummary[];
+  nextOffset: number | null;
 };
 
 export type OpenConnectorIngestionJob = OpenConnectorRecordIdentity & {
@@ -120,10 +155,74 @@ export class InvalidOpenConnectorDeliveryError extends Error {
 }
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+const FIRST_VISIBLE_ASCII_CODE_UNIT = 0x21;
+const LAST_VISIBLE_ASCII_CODE_UNIT = 0x7e;
+
+export function isOpenConnectorDeliveryApiKey(value: string): boolean {
+  if (
+    value.length < MIN_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES ||
+    value.length > MAX_OPEN_CONNECTOR_DELIVERY_API_KEY_BYTES
+  ) {
+    return false;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const codeUnit = value.charCodeAt(index);
+    if (codeUnit < FIRST_VISIBLE_ASCII_CODE_UNIT || codeUnit > LAST_VISIBLE_ASCII_CODE_UNIT) {
+      return false;
+    }
+  }
+  return true;
+}
 
 function requiredString({ value, name }: { value: string; name: string }): void {
   if (value.trim().length === 0) {
     throw new InvalidOpenConnectorDeliveryError(`${name} must not be empty`);
+  }
+}
+
+function clipped({ value, maximum }: { value: string; maximum: number }): string {
+  if (value.length <= maximum) {
+    return value;
+  }
+  return `${value.slice(0, maximum - 1).trimEnd()}…`;
+}
+
+function sha256(value: string): string {
+  return new Bun.CryptoHasher('sha256').update(value).digest('hex');
+}
+
+/** Derives forgiving list presentation without imposing knowledge-page structure on imports. */
+export function openConnectorRecordPresentation(body: string): {
+  title: string;
+  excerpt: string;
+} {
+  try {
+    const tree = fromMarkdown(body);
+    const blocks = tree.children
+      .filter((node) => node.type !== 'html' && node.type !== 'definition')
+      .map((node) => ({ node, text: mdastToString(node).replace(/\s+/gu, ' ').trim() }))
+      .filter(({ text }) => text.length > 0);
+    const titleBlock = blocks.find(({ node }) => node.type === 'heading') ?? blocks[0];
+    const excerptBlock =
+      blocks.find((block) => block !== titleBlock && block.node.type !== 'heading') ??
+      blocks.find((block) => block !== titleBlock) ??
+      titleBlock;
+    return {
+      title: clipped({
+        value: titleBlock?.text || 'Record',
+        maximum: MAX_OPEN_CONNECTOR_RECORD_TITLE_LENGTH,
+      }),
+      excerpt: clipped({
+        value: excerptBlock?.text || 'Record',
+        maximum: MAX_OPEN_CONNECTOR_RECORD_EXCERPT_LENGTH,
+      }),
+    };
+  } catch {
+    const fallback = body.replace(/\s+/gu, ' ').trim() || 'Record';
+    return {
+      title: clipped({ value: fallback, maximum: MAX_OPEN_CONNECTOR_RECORD_TITLE_LENGTH }),
+      excerpt: clipped({ value: fallback, maximum: MAX_OPEN_CONNECTOR_RECORD_EXCERPT_LENGTH }),
+    };
   }
 }
 
@@ -147,6 +246,11 @@ function validateContent(record: OpenConnectorDeliveryRecord): void {
   ) {
     throw new InvalidOpenConnectorDeliveryError(
       `Canonical record content must not exceed ${MAX_OPEN_CONNECTOR_RECORD_CONTENT_BYTES} bytes`,
+    );
+  }
+  if (sha256(canonicalContent) !== record.contentHash) {
+    throw new InvalidOpenConnectorDeliveryError(
+      'Record contentHash must match the canonical record content',
     );
   }
 }

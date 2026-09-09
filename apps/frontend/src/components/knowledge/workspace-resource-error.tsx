@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { Eyebrow } from '../layout/eyebrow';
 import { Button, buttonVariants } from '../ui/button';
 
-type KnowledgeResource = 'entity' | 'page' | 'asset';
+type KnowledgeResource = 'entity' | 'page' | 'asset' | 'record';
 
 const resourceCopy = {
   page: {
@@ -19,6 +19,11 @@ const resourceCopy = {
     eyebrow: 'Asset',
     collection: 'assets',
     collectionPath: '/assets',
+  },
+  record: {
+    eyebrow: 'Record',
+    collection: 'records',
+    collectionPath: '/records',
   },
 } as const;
 
