@@ -15,13 +15,11 @@ export function RecordCardContent({ record }: { record: ExternalRecordSummary })
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
         <strong className="min-w-0 truncate font-semibold text-sm leading-snug">
-          {record.title}
+          {record.kind}
         </strong>
-        {record.excerpt && (
-          <small className="truncate text-muted-foreground text-xs leading-relaxed">
-            {record.excerpt}
-          </small>
-        )}
+        <small className="truncate text-muted-foreground text-xs leading-relaxed">
+          {record.recordId}
+        </small>
         <small className="truncate text-muted-foreground text-xs leading-relaxed">
           Synced by {record.sync.name}
         </small>

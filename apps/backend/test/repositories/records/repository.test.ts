@@ -5,8 +5,7 @@ import type {
   DeliveredRecord,
   RecordContent,
   RecordDeliveryEnvelope,
-} from '#models/records/model.ts';
-import { canonicalRecordContent } from '#models/records/model.ts';
+} from '#models/records/delivery-contract.generated.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { RecordsService } from '#services/records/service.ts';
 import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
@@ -22,7 +21,6 @@ const INITIAL_REVISION = 1;
 const STALE_REVISION = 2;
 const CURRENT_REVISION = 3;
 const DELETED_REVISION = 4;
-const SHA256_HEX_LENGTH = 64;
 
 function digest(value: string): string {
   return new Bun.CryptoHasher('sha256').update(value).digest('hex');
@@ -49,7 +47,7 @@ function activeRecord({
   eventId,
   recordId = 'record-1',
   revision = INITIAL_REVISION,
-  body = 'initial searchable material',
+  body = 'initial Markdown body',
 }: {
   eventId: string;
   recordId?: string;
@@ -65,7 +63,7 @@ function activeRecord({
     id: recordId,
     revision,
     operation: revision === INITIAL_REVISION ? 'added' : 'updated',
-    contentHash: digest(canonicalRecordContent(recordContent)!),
+    contentHash: digest(JSON.stringify(recordContent)),
     committedAt: '2026-08-09T10:11:12+05:30',
     content: recordContent,
   };
@@ -173,20 +171,6 @@ test('a batch atomically applies owner-bound current records', async () => {
       ).toEqual({ state: 'inactive_sync' });
       await insertSync({ database });
 
-      const invalid = activeRecord({
-        eventId: 'event-content-hash-mismatch',
-        recordId: 'content-hash-mismatch',
-      });
-      invalid.contentHash = 'f'.repeat(SHA256_HEX_LENGTH);
-      await expect(
-        service.accept({
-          syncId: SYNC_ID,
-          ownerId: OWNER_ID,
-          envelope: envelope({ batchId: 'batch-invalid', records: [initial, invalid] }),
-        }),
-      ).rejects.toThrow('contentHash must match the canonical record content');
-      expect(await recordCount(database)).toBe(0);
-
       expect(
         await service.accept({ syncId: SYNC_ID, ownerId: OWNER_ID, envelope: firstEnvelope }),
       ).toEqual({ state: 'accepted' });
@@ -200,13 +184,13 @@ test('a batch atomically applies owner-bound current records', async () => {
         ownerId: OWNER_ID,
         revision: INITIAL_REVISION,
         operation: 'added',
-        markdown: 'initial searchable material',
+        markdown: 'initial Markdown body',
       });
 
       const current = activeRecord({
         eventId: 'event-current',
         revision: CURRENT_REVISION,
-        body: 'newest searchable material',
+        body: 'newest Markdown body',
       });
       expect(
         await service.accept({
@@ -233,7 +217,7 @@ test('a batch atomically applies owner-bound current records', async () => {
       ).toEqual({ state: 'accepted' });
       expect(await storedRecord({ database })).toMatchObject({
         revision: CURRENT_REVISION,
-        markdown: 'newest searchable material',
+        markdown: 'newest Markdown body',
       });
 
       const beforeConflict = await recordCount(database);

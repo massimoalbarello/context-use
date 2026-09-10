@@ -1,7 +1,7 @@
 import { Elysia, StatusMap, t } from 'elysia';
 import type { OpenAPIV3 } from 'openapi-types';
 import { ErrorResponseSchema } from '#lib/errors.ts';
-import { InvalidRecordDeliveryError, MAX_RECORD_DELIVERY_BYTES } from '#models/records/model.ts';
+import { MAX_RECORD_DELIVERY_BYTES } from '#models/records/delivery-contract.generated.ts';
 import { isUuidV7, type RecordSyncPrincipal } from '#models/syncs/model.ts';
 import { RecordDeliveryEnvelopeSchema } from '#routes/api/records/delivery-model.generated.ts';
 import type { RecordDeliveryAcceptanceContract } from '#services/records/service.ts';
@@ -207,12 +207,8 @@ export function createRecordDeliveryController({
       (context as unknown as { body: unknown }).body = parsed.value;
       return {};
     })
-    .onError(({ code, error, status }) => {
-      if (
-        code === 'VALIDATION' ||
-        code === 'PARSE' ||
-        error instanceof InvalidRecordDeliveryError
-      ) {
+    .onError(({ code, status }) => {
+      if (code === 'VALIDATION' || code === 'PARSE') {
         return status(StatusMap['Bad Request'], { error: errorMessage.invalid });
       }
     })

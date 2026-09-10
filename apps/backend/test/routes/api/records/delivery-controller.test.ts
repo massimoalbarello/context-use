@@ -1,14 +1,12 @@
 import { expect, mock, test } from 'bun:test';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { Elysia, StatusMap } from 'elysia';
 import {
-  canonicalRecordContent,
-  InvalidRecordDeliveryError,
   MAX_RECORD_CONTENT_BYTES,
   MAX_RECORD_DELIVERY_BATCH_RECORDS,
   MAX_RECORD_DELIVERY_BYTES,
   type RecordDeliveryEnvelope,
-} from '#models/records/model.ts';
+} from '#models/records/delivery-contract.generated.ts';
 import {
   createRecordDeliveryController,
   RECORD_DELIVERY_ROUTE_PATH,
@@ -22,6 +20,7 @@ const ownerId = 'owner-id';
 const apiKey = '01991f43-0c00-7000-8000-000000000002';
 const batchId = '01991f43-0c00-7000-8000-000000000003';
 const SHA256_HEX_LENGTH = 64;
+const CONTENT_HASH = 'a'.repeat(SHA256_HEX_LENGTH);
 const SENDER_VALID_LONG_PARTICIPANT_VALUE_LENGTH = 1_025;
 
 function validEnvelope(): RecordDeliveryEnvelope {
@@ -51,7 +50,7 @@ function validEnvelope(): RecordDeliveryEnvelope {
         id: 'opaque-record-id',
         revision: 1,
         operation: 'added',
-        contentHash: createHash('sha256').update(canonicalRecordContent(content)!).digest('hex'),
+        contentHash: CONTENT_HASH,
         committedAt: '2026-09-08T12:34:56.123Z',
         content,
       },
@@ -189,7 +188,7 @@ test('accepts multiple revisions of one record in the same contract-compliant ba
     revision: 2,
     operation: 'updated',
     content,
-    contentHash: createHash('sha256').update(canonicalRecordContent(content)!).digest('hex'),
+    contentHash: CONTENT_HASH,
   });
   const accept = mock<RecordDeliveryAcceptanceContract['accept']>(async () => ({
     state: 'accepted',
@@ -321,7 +320,7 @@ test('allows an exact-limit body and rejects malformed JSON cleanly', async () =
   expect(await malformed.json()).toEqual({ error: 'Invalid record delivery' });
 });
 
-test('enforces the canonical per-record content limit', async () => {
+test('enforces the per-record content limit', async () => {
   const envelope = validEnvelope();
   const emptyContentBytes = Buffer.byteLength(JSON.stringify({ body: '' }));
   const record = firstRecord(envelope);
@@ -331,10 +330,6 @@ test('enforces the canonical per-record content limit', async () => {
   record.content = {
     body: 'x'.repeat(MAX_RECORD_CONTENT_BYTES - emptyContentBytes),
   };
-  record.contentHash = createHash('sha256')
-    .update(canonicalRecordContent(firstContent(envelope))!)
-    .digest('hex');
-
   const accepted = await controller().handle(request({ body: JSON.stringify(envelope) }));
   expect(accepted.status).toBe(StatusMap.OK);
 
@@ -359,21 +354,6 @@ test('validates the whole batch before calling the acceptance service', async ()
 
   expect(response.status).toBe(StatusMap['Bad Request']);
   expect(accept).not.toHaveBeenCalled();
-});
-
-test('reports a service-level content integrity rejection as a bad request', async () => {
-  const accept = mock<RecordDeliveryAcceptanceContract['accept']>(() =>
-    Promise.reject(
-      new InvalidRecordDeliveryError('Record contentHash must match the canonical record content'),
-    ),
-  );
-
-  const response = await controller({ accept }).handle(
-    request({ body: JSON.stringify(validEnvelope()) }),
-  );
-
-  expect(response.status).toBe(StatusMap['Bad Request']);
-  expect(await response.json()).toEqual({ error: 'Invalid record delivery' });
 });
 
 test('enforces record count, deletion shape, hashes, and nonempty Markdown', async () => {

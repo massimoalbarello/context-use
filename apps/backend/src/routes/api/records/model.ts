@@ -1,6 +1,5 @@
 import { t } from 'elysia';
 import type { RecordResource, RecordSummary } from '#models/records/model.ts';
-import { MAX_RECORD_EXCERPT_LENGTH, MAX_RECORD_TITLE_LENGTH } from '#models/records/model.ts';
 import { MAX_SYNC_NAME_LENGTH } from '#models/syncs/model.ts';
 import { PaginationQuerySchema, ReadableIdSchema } from '#routes/api/model.ts';
 
@@ -11,8 +10,9 @@ export const RecordSyncReferenceSchema = t.Object({
 
 export const RecordSummarySchema = t.Object({
   readableId: ReadableIdSchema,
-  title: t.String({ minLength: 1, maxLength: MAX_RECORD_TITLE_LENGTH }),
-  excerpt: t.String({ minLength: 1, maxLength: MAX_RECORD_EXCERPT_LENGTH }),
+  sourceId: t.String({ minLength: 1 }),
+  kind: t.String({ minLength: 1 }),
+  recordId: t.String({ minLength: 1 }),
   sync: RecordSyncReferenceSchema,
   createdAt: t.Date(),
   updatedAt: t.Date(),

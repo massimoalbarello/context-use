@@ -1,7 +1,7 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
+import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
 import type {
-  DeliveredRecord,
   RecordAcceptanceResult,
   RecordPage,
   RecordResource,
@@ -19,10 +19,7 @@ class RecordAcceptanceConflict extends Error {
 export type AcceptedRecord = {
   record: DeliveredRecord;
   readableId: string;
-  title: string;
-  excerpt: string;
   markdown: string | null;
-  revisionFingerprint: string;
 };
 
 export type AcceptRecordsInput = {
@@ -42,23 +39,26 @@ function recordSummaryFrom({
   syncReadableId,
   syncName,
   readableId,
-  title,
-  excerpt,
+  sourceId,
+  kind,
+  recordId,
   createdAt,
   updatedAt,
 }: {
   syncReadableId: string;
   syncName: string;
   readableId: string;
-  title: string;
-  excerpt: string;
+  sourceId: string;
+  kind: string;
+  recordId: string;
   createdAt: string;
   updatedAt: string;
 }): RecordSummary {
   return {
     readableId,
-    title,
-    excerpt,
+    sourceId,
+    kind,
+    recordId,
     sync: { readableId: syncReadableId, name: syncName },
     createdAt,
     updatedAt,
@@ -76,8 +76,8 @@ async function applyRecord({
 }): Promise<void> {
   const { record } = accepted;
   const currentRows = await db.FindCurrentRecordRevision`
-    /* @notNull revision revisionFingerprint */
-    select "revision", "revision_fingerprint" as "revisionFingerprint"
+    /* @notNull revision operation contentHash */
+    select "revision", "operation", "content_hash" as "contentHash", "markdown"
     from "record"
     where "sync_id" = ${input.syncId}
       and "source_id" = ${record.sourceId}
@@ -89,7 +89,9 @@ async function applyRecord({
     const currentRevision = Number(current.revision);
     if (
       currentRevision === record.revision &&
-      current.revisionFingerprint !== accepted.revisionFingerprint
+      (current.operation !== record.operation ||
+        current.contentHash !== record.contentHash ||
+        current.markdown !== accepted.markdown)
     ) {
       throw new RecordAcceptanceConflict();
     }
@@ -100,26 +102,18 @@ async function applyRecord({
 
   await db.ApplyRecordRevision`
     insert into "record"
-      ("sync_id", "owner_id", "readable_id", "title", "excerpt", "provider",
-       "source_id", "kind", "record_id", "revision", "operation", "content_hash",
-       "committed_at", "markdown", "revision_fingerprint", "created_at", "updated_at")
+      ("sync_id", "owner_id", "readable_id", "source_id", "kind", "record_id", "revision",
+       "operation", "content_hash", "markdown", "created_at", "updated_at")
     values
-      (${input.syncId}, ${input.ownerId}, ${accepted.readableId}, ${accepted.title},
-       ${accepted.excerpt}, ${record.provider}, ${record.sourceId}, ${record.kind}, ${record.id},
-       ${record.revision}, ${record.operation}, ${record.contentHash}, ${record.committedAt},
-       ${accepted.markdown}, ${accepted.revisionFingerprint}, ${input.receivedAt},
-       ${input.receivedAt})
+      (${input.syncId}, ${input.ownerId}, ${accepted.readableId}, ${record.sourceId}, ${record.kind},
+       ${record.id}, ${record.revision}, ${record.operation}, ${record.contentHash},
+       ${accepted.markdown}, ${input.receivedAt}, ${input.receivedAt})
     on conflict ("sync_id", "source_id", "kind", "record_id") do update set
       "owner_id" = excluded."owner_id",
-      "title" = excluded."title",
-      "excerpt" = excluded."excerpt",
-      "provider" = excluded."provider",
       "revision" = excluded."revision",
       "operation" = excluded."operation",
       "content_hash" = excluded."content_hash",
-      "committed_at" = excluded."committed_at",
       "markdown" = excluded."markdown",
-      "revision_fingerprint" = excluded."revision_fingerprint",
       "updated_at" = excluded."updated_at"
     where excluded."revision" > "record"."revision"
   `;
@@ -178,9 +172,10 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }): Promise<RecordPage> {
     return await this.serialize(async () => {
       const rows = await this.sql.ListRecordResources`
-        /* @notNull syncReadableId syncName readableId title excerpt createdAt updatedAt */
+        /* @notNull syncReadableId syncName readableId sourceId kind recordId createdAt updatedAt */
         select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-          record."readable_id" as "readableId", record."title", record."excerpt",
+          record."readable_id" as "readableId", record."source_id" as "sourceId", record."kind",
+          record."record_id" as "recordId",
           record."created_at" as "createdAt", record."updated_at" as "updatedAt"
         from "record" record
         join "record_sync" sync
@@ -205,10 +200,10 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }): Promise<RecordResource | null> {
     return await this.serialize(async () => {
       const rows = await this.sql.FindRecordResource`
-        /* @notNull syncReadableId syncName readableId title excerpt markdown createdAt updatedAt */
+        /* @notNull syncReadableId syncName readableId sourceId kind recordId markdown createdAt updatedAt */
         select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-          record."readable_id" as "readableId", record."title", record."excerpt",
-          record."markdown", record."created_at" as "createdAt",
+          record."readable_id" as "readableId", record."source_id" as "sourceId", record."kind",
+          record."record_id" as "recordId", record."markdown", record."created_at" as "createdAt",
           record."updated_at" as "updatedAt"
         from "record" record
         join "record_sync" sync

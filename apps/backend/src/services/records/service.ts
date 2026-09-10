@@ -1,16 +1,11 @@
 import { readableIdFrom, readableIdWithSuffix } from '#models/readable-ids/model.ts';
-import {
-  canonicalDeliveredRecord,
-  InvalidRecordDeliveryError,
-  type RecordAcceptanceResult,
-  type RecordDeliveryEnvelope,
-  type RecordIdentity,
-  type RecordPage,
-  type RecordResource,
-  recordPresentation,
-  validateRecordDeliveryEnvelope,
+import type { RecordDeliveryEnvelope } from '#models/records/delivery-contract.generated.ts';
+import type {
+  RecordAcceptanceResult,
+  RecordIdentity,
+  RecordPage,
+  RecordResource,
 } from '#models/records/model.ts';
-import { isUuidV7 } from '#models/syncs/model.ts';
 import type { RecordsRepositoryContract } from '#repositories/records/repository.ts';
 
 const RECORD_READABLE_ID_SUFFIX_LENGTH = 24;
@@ -19,27 +14,12 @@ function sha256(value: string): string {
   return new Bun.CryptoHasher('sha256').update(value).digest('hex');
 }
 
-function validatePrincipal({ syncId, ownerId }: { syncId: string; ownerId: string }): void {
-  if (!isUuidV7(syncId)) {
-    throw new InvalidRecordDeliveryError('Invalid record sync ID');
-  }
-  if (ownerId.trim().length === 0 || ownerId !== ownerId.trim()) {
-    throw new InvalidRecordDeliveryError('Invalid record owner ID');
-  }
-}
-
-function recordReadableId({
-  syncId,
-  sourceId,
-  kind,
-  recordId,
-  title,
-}: RecordIdentity & { title: string }): string {
+function recordReadableId({ syncId, sourceId, kind, recordId }: RecordIdentity): string {
   const suffix = sha256(JSON.stringify([syncId, sourceId, kind, recordId])).slice(
     0,
     RECORD_READABLE_ID_SUFFIX_LENGTH,
   );
-  return readableIdWithSuffix({ readableId: readableIdFrom(title), suffix });
+  return readableIdWithSuffix({ readableId: readableIdFrom(`${kind}-${recordId}`), suffix });
 }
 
 export class RecordsService {
@@ -66,15 +46,11 @@ export class RecordsService {
     ownerId: string;
     envelope: RecordDeliveryEnvelope;
   }): Promise<RecordAcceptanceResult> {
-    validatePrincipal({ syncId, ownerId });
-    validateRecordDeliveryEnvelope(envelope);
-
     return await this.records.accept({
       syncId,
       ownerId,
       records: envelope.records.map((record) => {
         const markdown = record.operation === 'deleted' ? null : record.content.body;
-        const presentation = recordPresentation(markdown ?? 'Record');
         return {
           record,
           readableId: recordReadableId({
@@ -82,11 +58,8 @@ export class RecordsService {
             sourceId: record.sourceId,
             kind: record.kind,
             recordId: record.id,
-            title: presentation.title,
           }),
-          ...presentation,
           markdown,
-          revisionFingerprint: sha256(canonicalDeliveredRecord(record)),
         };
       }),
       receivedAt: this.now().toISOString(),

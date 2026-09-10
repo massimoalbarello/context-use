@@ -28,46 +28,34 @@ create table "record" (
   "sync_id" text not null,
   "owner_id" text not null,
   "readable_id" text not null,
-  "title" text not null,
-  "excerpt" text not null,
-  "provider" text not null,
   "source_id" text not null,
   "kind" text not null,
   "record_id" text not null,
   "revision" integer not null,
   "operation" text not null,
   "content_hash" text not null,
-  "committed_at" text not null,
   "markdown" text,
-  "revision_fingerprint" text not null,
   "created_at" text not null,
   "updated_at" text not null,
   primary key ("sync_id", "source_id", "kind", "record_id"),
   unique ("owner_id", "readable_id"),
   foreign key ("sync_id", "owner_id")
     references "record_sync" ("id", "owner_id") on delete cascade,
-  check (length(trim("provider")) > 0),
   check (length("readable_id") between 1 and 120),
   check (substr("readable_id", 1, 1) glob '[a-z0-9]'),
   check ("readable_id" not glob '*[^a-z0-9-]*'),
-  check (length("title") between 1 and 240),
-  check (length("excerpt") between 1 and 280),
   check (length(trim("source_id")) > 0),
   check (length(trim("kind")) > 0),
   check (length(trim("record_id")) > 0),
   check ("revision" between 1 and 9007199254740991),
   check ("operation" in ('added', 'updated', 'deleted')),
   check ("content_hash" not glob '*[^a-f0-9]*' and length("content_hash") = 64),
-  check (length(trim("committed_at")) > 0),
   check (
     ("operation" = 'deleted' and "markdown" is null)
     or ("operation" in ('added', 'updated') and length("markdown") > 0)
-  ),
-  check (
-    "revision_fingerprint" not glob '*[^a-f0-9]*' and length("revision_fingerprint") = 64
   ),
   check (length(trim("created_at")) > 0),
   check (length(trim("updated_at")) > 0)
 );
 
-create index "record_owner_kind_idx" on "record" ("owner_id", "provider", "kind", "updated_at" desc);
+create index "record_owner_kind_idx" on "record" ("owner_id", "kind", "updated_at" desc);

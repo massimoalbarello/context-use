@@ -58,12 +58,10 @@ export const MAX_RECORD_ATTRIBUTES_BYTES = ${maximumAttributesBytes};
 
 ${declarations}
 export type DeliveredRecord = RecordDeliveryEnvelope['records'][number];
-export type RecordOperation = DeliveredRecord['operation'];
 export type RecordContent = Extract<
   DeliveredRecord,
   { operation: 'added' | 'updated' }
 >['content'];
-export type RecordParticipant = NonNullable<RecordContent['participants']>[number];
 `,
 });
 const zodModule = jsonSchemaToZod(runtimeSchema, {

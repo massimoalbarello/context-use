@@ -603,7 +603,9 @@ export interface IReadOwnerRegistrationStateResult {
 /** Result of query `FindCurrentRecordRevision`. */
 export interface IFindCurrentRecordRevisionResult {
     revision: number;
-    revisionFingerprint: string;
+    operation: string;
+    contentHash: string;
+    markdown: string | null;
 }
 
 /** Result of query `ApplyRecordRevision`. */
@@ -621,8 +623,9 @@ export interface IListRecordResourcesResult {
     syncReadableId: string;
     syncName: string;
     readableId: string;
-    title: string;
-    excerpt: string;
+    sourceId: string;
+    kind: string;
+    recordId: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -632,8 +635,9 @@ export interface IFindRecordResourceResult {
     syncReadableId: string;
     syncName: string;
     readableId: string;
-    title: string;
-    excerpt: string;
+    sourceId: string;
+    kind: string;
+    recordId: string;
     markdown: string;
     createdAt: string;
     updatedAt: string;

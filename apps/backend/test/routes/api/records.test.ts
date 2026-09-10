@@ -3,8 +3,7 @@ import type { SQL } from 'bun';
 import { Elysia, StatusMap } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
-import type { DeliveredRecord } from '#models/records/model.ts';
-import { canonicalRecordContent } from '#models/records/model.ts';
+import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { createRecordReadableIdController } from '#routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#routes/api/records/controller.ts';
@@ -108,7 +107,7 @@ function record({
   return {
     ...common,
     operation,
-    contentHash: digest(canonicalRecordContent(content)!),
+    contentHash: digest(JSON.stringify(content)),
     content,
   };
 }
@@ -217,19 +216,21 @@ test('record API lists active owner records and returns Markdown detail with syn
       const list = (await listResponse.json()) as {
         items: Array<{
           readableId: string;
-          title: string;
-          excerpt: string;
+          sourceId: string;
+          kind: string;
+          recordId: string;
           sync: { readableId: string; name: string };
         }>;
         nextOffset: number | null;
       };
       expect(list.items).toHaveLength(2);
-      const visible = list.items.find(({ title }) => title === 'Linked title');
+      const visible = list.items.find(({ recordId }) => recordId === 'visible');
       expect(visible).toEqual(
         expect.objectContaining({
-          readableId: expect.stringMatching(/^linked-title-[a-f0-9]{24}$/),
-          title: 'Linked title',
-          excerpt: 'Architecture diagram',
+          readableId: expect.stringMatching(/^pull-request-visible-[a-f0-9]{24}$/),
+          sourceId: 'github.example',
+          kind: 'pull-request',
+          recordId: 'visible',
           sync: { readableId: 'github-sync', name: 'Engineering GitHub' },
         }),
       );
@@ -244,8 +245,9 @@ test('record API lists active owner records and returns Markdown detail with syn
       expect(detail).toEqual(
         expect.objectContaining({
           readableId: visible!.readableId,
-          title: 'Linked title',
-          excerpt: 'Architecture diagram',
+          sourceId: 'github.example',
+          kind: 'pull-request',
+          recordId: 'visible',
           markdown,
           sync: { readableId: 'github-sync', name: 'Engineering GitHub' },
         }),
@@ -281,8 +283,9 @@ test('record API lists active owner records and returns Markdown detail with syn
       expect(await renamedResponse.json()).toEqual(
         expect.objectContaining({
           readableId: visible!.readableId,
-          title: 'Renamed title',
-          excerpt: 'A replacement excerpt.',
+          sourceId: 'github.example',
+          kind: 'pull-request',
+          recordId: 'visible',
           markdown: '# Renamed title\n\nA replacement excerpt.',
         }),
       );

@@ -11,7 +11,7 @@ import { BACKEND_ENVIRONMENT } from '#lib/runtime-config.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-pages/model.ts';
-import { MAX_RECORD_DELIVERY_BYTES } from '#models/records/model.ts';
+import { MAX_RECORD_DELIVERY_BYTES } from '#models/records/delivery-contract.generated.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { FrontendAssetsRepository } from '#repositories/frontend-assets/repository.ts';

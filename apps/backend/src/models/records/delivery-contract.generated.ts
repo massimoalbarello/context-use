@@ -143,6 +143,4 @@ export interface RecordDeliveryEnvelope {
 }
 
 export type DeliveredRecord = RecordDeliveryEnvelope['records'][number];
-export type RecordOperation = DeliveredRecord['operation'];
 export type RecordContent = Extract<DeliveredRecord, { operation: 'added' | 'updated' }>['content'];
-export type RecordParticipant = NonNullable<RecordContent['participants']>[number];

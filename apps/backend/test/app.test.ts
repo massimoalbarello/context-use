@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { StatusMap } from 'elysia';
 import { createApp } from '#app.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
-import { MAX_RECORD_DELIVERY_BATCH_RECORDS } from '#models/records/model.ts';
+import { MAX_RECORD_DELIVERY_BATCH_RECORDS } from '#models/records/delivery-contract.generated.ts';
 import {
   RECORD_DELIVERY_ROUTE_PATH,
   RECORD_SYNC_SECURITY_SCHEME,

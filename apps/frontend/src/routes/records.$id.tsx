@@ -46,7 +46,10 @@ function RecordRoute() {
           Record
         </ResourceDetailHeading>
       </DetailHeader>
-      <ExternalRecordMarkdown markdown={record.markdown} label={record.title} />
+      <ExternalRecordMarkdown
+        markdown={record.markdown}
+        label={`${record.kind} ${record.recordId}`}
+      />
     </DetailShell>
   );
 }
