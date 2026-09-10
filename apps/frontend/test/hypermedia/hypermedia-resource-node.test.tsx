@@ -174,16 +174,12 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
   expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
 
   fireEvent.wheel(canvas, { deltaY: 40 });
-  const interval = screen.getByRole('img', { name: 'Pages without a time interval' });
-  const rail = interval.parentElement?.firstElementChild as HTMLElement | undefined;
-  expect(rail).toBeTruthy();
-  expect(rail?.style.top).toBe(interval.style.top);
-  const partialPosition = interval.style.top;
+  expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
+  expect(screen.queryByText('Now')).toBeNull();
+  expect(screen.queryByText('Past')).toBeNull();
+
   fireEvent.wheel(canvas, { deltaY: 40 });
-  expect(interval.style.top).not.toBe(partialPosition);
-  expect(rail?.style.top).toBe(interval.style.top);
-  expect(screen.getByText('Now')).toBeTruthy();
-  expect(screen.getByText('Past')).toBeTruthy();
+  expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
   expect(onMonthChange).not.toHaveBeenCalled();
 
   fireEvent.wheel(canvas, { deltaY: 80 });
@@ -192,6 +188,7 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
   expect(
     screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
   ).toBeTruthy();
+  expect(screen.getByText('Past')).toBeTruthy();
 
   fireEvent.wheel(canvas, { deltaY: 120 });
   fireEvent.wheel(canvas, { deltaY: 40 });
@@ -202,8 +199,16 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
 
   fireEvent.wheel(canvas, { deltaY: -120 });
   fireEvent.wheel(canvas, { deltaY: -40 });
-  fireEvent.wheel(canvas, { deltaY: -120 });
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
+  ).toBeTruthy();
+
   fireEvent.wheel(canvas, { deltaY: -40 });
+  expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
+  expect(screen.queryByText('Now')).toBeNull();
+  expect(screen.queryByText('Past')).toBeNull();
+
+  fireEvent.wheel(canvas, { deltaY: -120 });
   expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
   expect(screen.queryByText('Now')).toBeNull();
   expect(screen.queryByText('Past')).toBeNull();
