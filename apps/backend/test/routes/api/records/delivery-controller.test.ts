@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Elysia, StatusMap } from 'elysia';
 import {
   canonicalRecordContent,
@@ -20,7 +20,7 @@ const syncId = '01991f43-0c00-7000-8000-000000000001';
 const syncReadableId = 'github-sync';
 const ownerId = 'owner-id';
 const apiKey = '01991f43-0c00-7000-8000-000000000002';
-const batchId = 'batch-id';
+const batchId = '01991f43-0c00-7000-8000-000000000003';
 const SHA256_HEX_LENGTH = 64;
 const SENDER_VALID_LONG_PARTICIPANT_VALUE_LENGTH = 1_025;
 
@@ -44,7 +44,7 @@ function validEnvelope(): RecordDeliveryEnvelope {
     batchId,
     records: [
       {
-        eventId: 'event-id',
+        eventId: '01991f43-0c00-7000-8000-000000000004',
         provider: 'github',
         sourceId: 'source-id',
         kind: 'pull-request',
@@ -107,11 +107,11 @@ function firstRecord(envelope: RecordDeliveryEnvelope) {
 }
 
 function firstContent(envelope: RecordDeliveryEnvelope) {
-  const content = firstRecord(envelope).content;
-  if (!content) {
+  const record = firstRecord(envelope);
+  if (record.operation === 'deleted') {
     throw new Error('Expected record content');
   }
-  return content;
+  return record.content;
 }
 
 test('authenticates before reading or inspecting the delivery body', async () => {
@@ -174,6 +174,31 @@ test('accepts a valid batch and passes explicit ownership from the bearer key', 
     ownerId,
     envelope,
   });
+});
+
+test('accepts multiple revisions of one record in the same contract-compliant batch', async () => {
+  const envelope = validEnvelope();
+  const current = firstRecord(envelope);
+  if (current.operation === 'deleted') {
+    throw new Error('Expected record content');
+  }
+  const content = { ...current.content, body: '# Updated pull request' };
+  envelope.records.push({
+    ...current,
+    eventId: '01991f43-0c00-7000-8000-000000000006',
+    revision: 2,
+    operation: 'updated',
+    content,
+    contentHash: createHash('sha256').update(canonicalRecordContent(content)!).digest('hex'),
+  });
+  const accept = mock<RecordDeliveryAcceptanceContract['accept']>(async () => ({
+    state: 'accepted',
+  }));
+
+  const response = await controller({ accept }).handle(request({ body: JSON.stringify(envelope) }));
+
+  expect(response.status).toBe(StatusMap.OK);
+  expect(accept).toHaveBeenCalledWith({ syncId, ownerId, envelope });
 });
 
 test('rejects sender-supplied sync identity because provenance comes only from the bearer key', async () => {
@@ -299,10 +324,14 @@ test('allows an exact-limit body and rejects malformed JSON cleanly', async () =
 test('enforces the canonical per-record content limit', async () => {
   const envelope = validEnvelope();
   const emptyContentBytes = Buffer.byteLength(JSON.stringify({ body: '' }));
-  firstRecord(envelope).content = {
+  const record = firstRecord(envelope);
+  if (record.operation === 'deleted') {
+    throw new Error('Expected record content');
+  }
+  record.content = {
     body: 'x'.repeat(MAX_RECORD_CONTENT_BYTES - emptyContentBytes),
   };
-  firstRecord(envelope).contentHash = createHash('sha256')
+  record.contentHash = createHash('sha256')
     .update(canonicalRecordContent(firstContent(envelope))!)
     .digest('hex');
 
@@ -318,7 +347,7 @@ test('validates the whole batch before calling the acceptance service', async ()
   const envelope = validEnvelope();
   envelope.records.push({
     ...envelope.records[0]!,
-    eventId: 'second-event',
+    eventId: '01991f43-0c00-7000-8000-000000000005',
     id: 'second-record',
     revision: Number.MAX_SAFE_INTEGER + 1,
   });
@@ -357,7 +386,7 @@ test('enforces record count, deletion shape, hashes, and nonempty Markdown', asy
     recordIndex += 1;
     return {
       ...tooMany.records[0]!,
-      eventId: `event-${index}`,
+      eventId: randomUUID(),
       id: `record-${index}`,
     };
   });
@@ -367,7 +396,7 @@ test('enforces record count, deletion shape, hashes, and nonempty Markdown', asy
   deletionWithContent.records[0] = {
     ...deletionWithContent.records[0]!,
     operation: 'deleted',
-  } as RecordDeliveryEnvelope['records'][number];
+  } as unknown as RecordDeliveryEnvelope['records'][number];
   cases.push(deletionWithContent);
 
   const invalidHash = validEnvelope();

@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { StatusMap } from 'elysia';
 import { createApp } from '#app.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
+import { MAX_RECORD_DELIVERY_BATCH_RECORDS } from '#models/records/model.ts';
 import {
   RECORD_DELIVERY_ROUTE_PATH,
   RECORD_SYNC_SECURITY_SCHEME,
@@ -124,7 +125,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   expect(await response.json()).toEqual({ status: 'ok', uptime: 0 });
   expect(healthChecks).toBe(1);
 
-  const batchId = 'mounted-receiver-batch';
+  const batchId = '01991f43-0c00-7000-8000-000000000012';
   const receiverResponse = await app.handle(
     new Request('http://localhost/api/records/batch', {
       method: 'POST',
@@ -138,7 +139,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
         batchId,
         records: [
           {
-            eventId: 'mounted-receiver-event',
+            eventId: '01991f43-0c00-7000-8000-000000000013',
             provider: 'github',
             sourceId: 'github-account',
             kind: 'pull-request',
@@ -164,6 +165,13 @@ test('createApp uses supplied dependencies without production bootstrap', async 
       {
         post?: {
           parameters?: Array<{ in?: string; name?: string; required?: boolean }>;
+          requestBody?: {
+            content?: {
+              'application/json'?: {
+                schema?: { properties?: { records?: { maxItems?: number } } };
+              };
+            };
+          };
           responses?: Record<string, unknown>;
           security?: Array<Record<string, string[]>>;
         };
@@ -176,6 +184,10 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   });
   const receiverOperation = openApi.paths?.[RECORD_DELIVERY_ROUTE_PATH]?.post;
   expect(receiverOperation?.security).toContainEqual({ [RECORD_SYNC_SECURITY_SCHEME]: [] });
+  expect(
+    receiverOperation?.requestBody?.content?.['application/json']?.schema?.properties?.records
+      ?.maxItems,
+  ).toBe(MAX_RECORD_DELIVERY_BATCH_RECORDS);
   const requiredHeaderNames = receiverOperation?.parameters
     ?.filter((parameter) => parameter.in === 'header' && parameter.required)
     .map((parameter) => parameter.name?.toLowerCase());

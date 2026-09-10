@@ -1,22 +1,33 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toString as mdastToString } from 'mdast-util-to-string';
+import type {
+  DeliveredRecord as GeneratedDeliveredRecord,
+  RecordContent as GeneratedRecordContent,
+  RecordDeliveryEnvelope as GeneratedRecordDeliveryEnvelope,
+  RecordOperation as GeneratedRecordOperation,
+  RecordParticipant as GeneratedRecordParticipant,
+} from '#models/records/delivery-contract.generated.ts';
+import {
+  MAX_RECORD_ATTRIBUTES_BYTES as GENERATED_MAX_RECORD_ATTRIBUTES_BYTES,
+  MAX_RECORD_CONTENT_BYTES as GENERATED_MAX_RECORD_CONTENT_BYTES,
+  MAX_RECORD_DELIVERY_BATCH_RECORDS as GENERATED_MAX_RECORD_DELIVERY_BATCH_RECORDS,
+  MAX_RECORD_DELIVERY_BYTES as GENERATED_MAX_RECORD_DELIVERY_BYTES,
+  RECORD_DELIVERY_VERSION as GENERATED_RECORD_DELIVERY_VERSION,
+} from '#models/records/delivery-contract.generated.ts';
 
-export const RECORD_DELIVERY_VERSION = 1 as const;
-export const MAX_RECORD_DELIVERY_BATCH_RECORDS = 50;
 export const MAX_RECORD_TITLE_LENGTH = 240;
 export const MAX_RECORD_EXCERPT_LENGTH = 280;
 
-const BYTES_PER_KIBIBYTE = 1024;
-const KIBIBYTES_PER_MEBIBYTE = 1024;
-const RECORD_CONTENT_MEBIBYTES = 8;
-const DELIVERY_MEBIBYTES = 16;
-export const MAX_RECORD_CONTENT_BYTES =
-  RECORD_CONTENT_MEBIBYTES * KIBIBYTES_PER_MEBIBYTE * BYTES_PER_KIBIBYTE;
-export const MAX_RECORD_DELIVERY_BYTES =
-  DELIVERY_MEBIBYTES * KIBIBYTES_PER_MEBIBYTE * BYTES_PER_KIBIBYTE;
-
-export const RECORD_OPERATIONS = ['added', 'updated', 'deleted'] as const;
-export type RecordOperation = (typeof RECORD_OPERATIONS)[number];
+export const MAX_RECORD_ATTRIBUTES_BYTES = GENERATED_MAX_RECORD_ATTRIBUTES_BYTES;
+export const MAX_RECORD_CONTENT_BYTES = GENERATED_MAX_RECORD_CONTENT_BYTES;
+export const MAX_RECORD_DELIVERY_BATCH_RECORDS = GENERATED_MAX_RECORD_DELIVERY_BATCH_RECORDS;
+export const MAX_RECORD_DELIVERY_BYTES = GENERATED_MAX_RECORD_DELIVERY_BYTES;
+export const RECORD_DELIVERY_VERSION = GENERATED_RECORD_DELIVERY_VERSION;
+export type DeliveredRecord = GeneratedDeliveredRecord;
+export type RecordContent = GeneratedRecordContent;
+export type RecordDeliveryEnvelope = GeneratedRecordDeliveryEnvelope;
+export type RecordOperation = GeneratedRecordOperation;
+export type RecordParticipant = GeneratedRecordParticipant;
 
 export type JsonValue =
   | null
@@ -25,40 +36,6 @@ export type JsonValue =
   | string
   | JsonValue[]
   | { [key: string]: JsonValue };
-
-export type RecordParticipant = {
-  identities: Array<{ namespace: string; id: string }>;
-  roles: string[];
-  name?: string;
-};
-
-export type RecordContent = {
-  body: string;
-  sourceUrl?: string;
-  sourceCreatedAt?: string;
-  sourceUpdatedAt?: string;
-  participants?: RecordParticipant[];
-  attributes?: Record<string, JsonValue>;
-};
-
-export type DeliveredRecord = {
-  eventId: string;
-  provider: string;
-  sourceId: string;
-  kind: string;
-  id: string;
-  revision: number;
-  operation: RecordOperation;
-  contentHash: string;
-  committedAt: string;
-  content?: RecordContent;
-};
-
-export type RecordDeliveryEnvelope = {
-  version: typeof RECORD_DELIVERY_VERSION;
-  batchId: string;
-  records: DeliveredRecord[];
-};
 
 export type RecordIdentity = {
   syncId: string;
@@ -94,14 +71,6 @@ export class InvalidRecordDeliveryError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'InvalidRecordDeliveryError';
-  }
-}
-
-const SHA256_PATTERN = /^[a-f0-9]{64}$/;
-
-function requiredString({ value, name }: { value: string; name: string }): void {
-  if (value.trim().length === 0) {
-    throw new InvalidRecordDeliveryError(`${name} must not be empty`);
   }
 }
 
@@ -150,16 +119,7 @@ export function recordPresentation(body: string): {
 
 function validateContent(record: DeliveredRecord): void {
   if (record.operation === 'deleted') {
-    if (record.content !== undefined) {
-      throw new InvalidRecordDeliveryError('Deleted records must omit content');
-    }
     return;
-  }
-  if (!record.content) {
-    throw new InvalidRecordDeliveryError('Added and updated records require content');
-  }
-  if (record.content.body.trim().length === 0) {
-    throw new InvalidRecordDeliveryError('Record content bodies must not be blank');
   }
   const canonicalContent = canonicalRecordContent(record.content);
   if (
@@ -168,6 +128,15 @@ function validateContent(record: DeliveredRecord): void {
   ) {
     throw new InvalidRecordDeliveryError(
       `Canonical record content must not exceed ${MAX_RECORD_CONTENT_BYTES} bytes`,
+    );
+  }
+  if (
+    record.content.attributes !== undefined &&
+    Buffer.byteLength(canonicalJson(record.content.attributes as JsonValue), 'utf8') >
+      MAX_RECORD_ATTRIBUTES_BYTES
+  ) {
+    throw new InvalidRecordDeliveryError(
+      `Canonical record attributes must not exceed ${MAX_RECORD_ATTRIBUTES_BYTES} bytes`,
     );
   }
   if (sha256(canonicalContent) !== record.contentHash) {
@@ -181,45 +150,7 @@ export function validateRecordDeliveryEnvelope(envelope: RecordDeliveryEnvelope)
   if (envelope.version !== RECORD_DELIVERY_VERSION) {
     throw new InvalidRecordDeliveryError('Unsupported delivery version');
   }
-  requiredString({ value: envelope.batchId, name: 'batchId' });
-  if (
-    envelope.records.length === 0 ||
-    envelope.records.length > MAX_RECORD_DELIVERY_BATCH_RECORDS
-  ) {
-    throw new InvalidRecordDeliveryError(
-      `Delivery batches must contain between 1 and ${MAX_RECORD_DELIVERY_BATCH_RECORDS} records`,
-    );
-  }
-
-  const eventIds = new Set<string>();
-  const recordIdentities = new Set<string>();
   for (const record of envelope.records) {
-    requiredString({ value: record.eventId, name: 'eventId' });
-    requiredString({ value: record.provider, name: 'provider' });
-    requiredString({ value: record.sourceId, name: 'sourceId' });
-    requiredString({ value: record.kind, name: 'kind' });
-    requiredString({ value: record.id, name: 'id' });
-    requiredString({ value: record.committedAt, name: 'committedAt' });
-    if (!Number.isSafeInteger(record.revision) || record.revision <= 0) {
-      throw new InvalidRecordDeliveryError('Record revisions must be positive safe integers');
-    }
-    if (!RECORD_OPERATIONS.includes(record.operation)) {
-      throw new InvalidRecordDeliveryError('Unsupported record operation');
-    }
-    if (!SHA256_PATTERN.test(record.contentHash)) {
-      throw new InvalidRecordDeliveryError(
-        'Record contentHash values must be lowercase SHA-256 digests',
-      );
-    }
-    if (eventIds.has(record.eventId)) {
-      throw new InvalidRecordDeliveryError('A delivery batch cannot repeat an eventId');
-    }
-    eventIds.add(record.eventId);
-    const recordIdentity = canonicalJson([record.sourceId, record.kind, record.id]);
-    if (recordIdentities.has(recordIdentity)) {
-      throw new InvalidRecordDeliveryError('A delivery batch cannot repeat a record identity');
-    }
-    recordIdentities.add(recordIdentity);
     validateContent(record);
   }
 }
@@ -270,7 +201,7 @@ function contentValue(content: RecordContent): JsonValue {
     });
   }
   if (content.attributes !== undefined) {
-    value.attributes = content.attributes;
+    value.attributes = content.attributes as JsonValue;
   }
   return value;
 }
@@ -290,7 +221,7 @@ export function canonicalDeliveredRecord(record: DeliveredRecord): string {
     contentHash: record.contentHash,
     committedAt: record.committedAt,
   };
-  if (record.content !== undefined) {
+  if ('content' in record) {
     value.content = contentValue(record.content);
   }
   return canonicalJson(value);

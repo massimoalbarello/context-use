@@ -3,7 +3,7 @@ import type { OpenAPIV3 } from 'openapi-types';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import { InvalidRecordDeliveryError, MAX_RECORD_DELIVERY_BYTES } from '#models/records/model.ts';
 import { isUuidV7, type RecordSyncPrincipal } from '#models/syncs/model.ts';
-import { RecordDeliveryEnvelopeSchema } from '#routes/api/records/delivery-model.ts';
+import { RecordDeliveryEnvelopeSchema } from '#routes/api/records/delivery-model.generated.ts';
 import type { RecordDeliveryAcceptanceContract } from '#services/records/service.ts';
 import type { RecordSyncAuthenticationContract } from '#services/syncs/service.ts';
 
@@ -241,7 +241,7 @@ export function createRecordDeliveryController({
         return null;
       },
       {
-        parse: DELIVERY_PARSER,
+        parse: [DELIVERY_PARSER, 'application/json'],
         headers: RecordDeliveryHeadersSchema,
         body: RecordDeliveryEnvelopeSchema,
         response: {

@@ -34,10 +34,10 @@ test('accepts the record delivery canonical content-hash golden vector', () => {
   expect(() =>
     validateRecordDeliveryEnvelope({
       version: 1,
-      batchId: 'golden-batch',
+      batchId: '01991f43-0c00-7000-8000-000000000007',
       records: [
         {
-          eventId: 'golden-event',
+          eventId: '01991f43-0c00-7000-8000-000000000008',
           provider: 'github',
           sourceId: 'github.example/acme/repo',
           kind: 'pull-request',

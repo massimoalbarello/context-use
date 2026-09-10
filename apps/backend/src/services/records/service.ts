@@ -73,7 +73,8 @@ export class RecordsService {
       syncId,
       ownerId,
       records: envelope.records.map((record) => {
-        const presentation = recordPresentation(record.content?.body ?? 'Record');
+        const markdown = record.operation === 'deleted' ? null : record.content.body;
+        const presentation = recordPresentation(markdown ?? 'Record');
         return {
           record,
           readableId: recordReadableId({
@@ -84,7 +85,7 @@ export class RecordsService {
             title: presentation.title,
           }),
           ...presentation,
-          markdown: record.content?.body ?? null,
+          markdown,
           revisionFingerprint: sha256(canonicalDeliveredRecord(record)),
         };
       }),

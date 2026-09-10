@@ -88,25 +88,28 @@ function record({
   revision?: number;
   operation?: 'added' | 'updated' | 'deleted';
 }): DeliveredRecord {
-  const content =
-    operation === 'deleted'
-      ? undefined
-      : {
-          body: body!,
-          sourceUrl: `https://github.example/pulls/${id}`,
-          attributes: { ignoredForNow: true },
-        };
-  return {
+  const common = {
     eventId,
     provider: 'github',
     sourceId: 'github.example',
     kind: 'pull-request',
     id,
     revision,
-    operation,
-    contentHash: content ? digest(canonicalRecordContent(content)!) : digest('deleted'),
     committedAt: NOW,
-    ...(content ? { content } : {}),
+  };
+  if (operation === 'deleted') {
+    return { ...common, operation, contentHash: digest('deleted') };
+  }
+  const content = {
+    body: body!,
+    sourceUrl: `https://github.example/pulls/${id}`,
+    attributes: { ignoredForNow: true },
+  };
+  return {
+    ...common,
+    operation,
+    contentHash: digest(canonicalRecordContent(content)!),
+    content,
   };
 }
 

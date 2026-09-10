@@ -309,6 +309,41 @@ test('a batch atomically applies owner-bound current records', async () => {
   });
 });
 
+test('one batch can converge multiple changes for the same record on its highest revision', async () => {
+  await withAuthTestDatabase({
+    run: async (database) => {
+      await insertOwner({ database, ownerId: OWNER_ID });
+      await insertSync({ database });
+      const service = new RecordsService({
+        records: new RecordsRepository(database),
+        now: () => RECEIVED_AT,
+      });
+
+      expect(
+        await service.accept({
+          syncId: SYNC_ID,
+          ownerId: OWNER_ID,
+          envelope: envelope({
+            batchId: 'batch-multiple-revisions',
+            records: [
+              activeRecord({ eventId: 'event-revision-one', body: 'first revision' }),
+              activeRecord({
+                eventId: 'event-revision-two',
+                revision: STALE_REVISION,
+                body: 'second revision',
+              }),
+            ],
+          }),
+        }),
+      ).toEqual({ state: 'accepted' });
+      expect(await storedRecord({ database })).toMatchObject({
+        revision: STALE_REVISION,
+        markdown: 'second revision',
+      });
+    },
+  });
+});
+
 test('concurrent retries are harmless and converge on the highest record revision', async () => {
   await withAuthTestDatabase({
     run: async (database) => {

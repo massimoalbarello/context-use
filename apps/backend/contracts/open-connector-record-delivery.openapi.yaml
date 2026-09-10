@@ -1,0 +1,202 @@
+# Pinned from https://github.com/massimoalbarello/open-connector/blob/b16b86d84a1a3c8777f07ddb6edeadef878b82ae/docs/record-delivery.openapi.yaml
+# Do not edit directly; update from upstream and regenerate the delivery contract.
+openapi: 3.1.1
+info:
+  title: OpenConnector record delivery contract
+  version: 1.0.0
+  description: The webhook contract implemented by every OpenConnector record destination.
+paths: {}
+webhooks:
+  recordDelivery:
+    post:
+      operationId: receiveRecordDelivery
+      summary: Receive a batch of record changes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Stable delivery batch ID. It equals batchId in the request body.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordDeliveryEnvelope"
+      responses:
+        2XX:
+          description: The complete batch was durably accepted and will not be retried.
+        default:
+          description: The batch was not accepted and may be retried with the same body.
+          headers:
+            Retry-After:
+              description: Optional delay before another delivery attempt.
+              schema:
+                type: string
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Opaque token supplied by the destination when it is configured.
+  schemas:
+    RecordDeliveryEnvelope:
+      title: Record delivery envelope
+      description: A durable batch delivered by OpenConnector to one configured destination.
+      type: object
+      additionalProperties: false
+      required: [version, batchId, records]
+      x-open-connector-maximum-body-bytes: 16777216
+      x-open-connector-maximum-record-bytes: 8388608
+      properties:
+        version:
+          const: 1
+        batchId:
+          type: string
+          format: uuid
+          description: Stable batch identity. Retries preserve this value and the exact request body.
+        records:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/RecordUpsert"
+              - $ref: "#/components/schemas/RecordDeletion"
+    RecordUpsert:
+      type: object
+      additionalProperties: false
+      required: [eventId, provider, sourceId, kind, id, revision, operation, contentHash, content, committedAt]
+      properties:
+        eventId:
+          $ref: "#/components/schemas/EventId"
+        provider:
+          $ref: "#/components/schemas/OpaqueIdentifier"
+        sourceId:
+          $ref: "#/components/schemas/OpaqueIdentifier"
+        kind:
+          $ref: "#/components/schemas/OpaqueIdentifier"
+        id:
+          $ref: "#/components/schemas/OpaqueIdentifier"
+        revision:
+          $ref: "#/components/schemas/Revision"
+        operation:
+          enum: [added, updated]
+        contentHash:
+          $ref: "#/components/schemas/ContentHash"
+        content:
+          $ref: "#/components/schemas/RecordContent"
+        committedAt:
+          type: string
+          format: date-time
+    RecordDeletion:
+      type: object
+      additionalProperties: false
+      required: [eventId, provider, sourceId, kind, id, revision, operation, contentHash, committedAt]
+      properties:
+        eventId:
+          $ref: "#/components/schemas/EventId"
+        provider:
+          $ref: "#/components/schemas/OpaqueIdentifier"
+        sourceId:
+          $ref: "#/components/schemas/OpaqueIdentifier"
+        kind:
+          $ref: "#/components/schemas/OpaqueIdentifier"
+        id:
+          $ref: "#/components/schemas/OpaqueIdentifier"
+        revision:
+          $ref: "#/components/schemas/Revision"
+        operation:
+          const: deleted
+        contentHash:
+          $ref: "#/components/schemas/ContentHash"
+        committedAt:
+          type: string
+          format: date-time
+    EventId:
+      type: string
+      format: uuid
+      description: Stable event identity used to deduplicate retries.
+    OpaqueIdentifier:
+      type: string
+      minLength: 1
+      maxLength: 1024
+      pattern: "\\S"
+    Revision:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    ContentHash:
+      type: string
+      pattern: "^[0-9a-f]{64}$"
+      description: SHA-256 of the canonical JSON record content, or the last content for a deletion.
+    RecordContent:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          pattern: "\\S"
+          description: Markdown body of the record.
+        sourceUrl:
+          type: string
+          format: uri
+          pattern: "^https?://"
+        sourceCreatedAt:
+          type: string
+          format: date-time
+        sourceUpdatedAt:
+          type: string
+          format: date-time
+        participants:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: "#/components/schemas/Participant"
+        attributes:
+          type: object
+          additionalProperties: true
+          description: Provider-defined JSON object, limited to 16 KiB when canonically serialized.
+          x-open-connector-maximum-bytes: 16384
+    Participant:
+      type: object
+      additionalProperties: false
+      required: [identities, roles]
+      properties:
+        identities:
+          type: array
+          minItems: 1
+          maxItems: 16
+          items:
+            $ref: "#/components/schemas/ParticipantIdentity"
+        roles:
+          type: array
+          minItems: 1
+          maxItems: 32
+          items:
+            type: string
+            minLength: 1
+            pattern: "\\S"
+        name:
+          type: string
+          minLength: 1
+          pattern: "\\S"
+    ParticipantIdentity:
+      type: object
+      additionalProperties: false
+      required: [namespace, id]
+      properties:
+        namespace:
+          type: string
+          minLength: 1
+          pattern: "\\S"
+        id:
+          type: string
+          minLength: 1
+          pattern: "\\S"
