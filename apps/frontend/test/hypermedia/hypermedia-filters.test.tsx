@@ -16,7 +16,6 @@ function HypermediaResourceFilterFixture() {
   return (
     <HypermediaFilters
       view="map"
-      temporalExtent={null}
       resourceKinds={resourceKinds}
       query=""
       selectedResources={[]}
@@ -32,15 +31,10 @@ function HypermediaResourceFilterFixture() {
   );
 }
 
-test('Hypermedia keeps view, interval, keyword, and resource filters in the shared sidebar', () => {
+test('Hypermedia keeps view, keyword, and resource filters in the shared sidebar', () => {
   const html = renderToStaticMarkup(
     <HypermediaFilters
       view="timeline"
-      month="2026-09"
-      temporalExtent={{
-        start: Date.parse('2025-01-01T00:00:00.000Z'),
-        end: Date.parse('2026-09-30T00:00:00.000Z'),
-      }}
       resourceKinds={['entity']}
       query="launch"
       selectedResources={[
@@ -57,12 +51,8 @@ test('Hypermedia keeps view, interval, keyword, and resource filters in the shar
   expect(html).toContain('View');
   expect(html).toContain('Map');
   expect(html).toContain('Timeline');
-  expect(html).toContain('Interval');
-  expect(html).toContain('September 2026');
-  expect(html).toContain('Selected interval: September 2026');
-  expect(html).toContain('Undated');
-  expect(html).toContain('Past');
-  expect(html).toContain('Scroll one month at a time.');
+  expect(html).not.toContain('Interval');
+  expect(html).not.toContain('Selected interval');
   expect(html).toContain('Visualize');
   expect(html).toContain('Entities');
   expect(html).toContain('Assets');
@@ -70,7 +60,7 @@ test('Hypermedia keeps view, interval, keyword, and resource filters in the shar
   expect(html).toContain('aria-pressed="true"');
   expect(html).toContain('aria-pressed="false"');
   expect(html.indexOf('Map')).toBeGreaterThan(html.indexOf('Explore hypermedia'));
-  expect(html.indexOf('Visualize')).toBeGreaterThan(html.indexOf('September 2026'));
+  expect(html.indexOf('Visualize')).toBeGreaterThan(html.indexOf('Timeline'));
   expect(html).toContain('Keyword');
   expect(html.indexOf('Keyword')).toBeGreaterThan(html.indexOf('Assets'));
   expect(html).toContain('value="launch"');

@@ -1,12 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { Library } from 'lucide-react';
-import type { CalendarMonth } from '../../lib/calendar-month';
 import { cn } from '../../lib/class-names';
-import type {
-  HypermediaPages,
-  HypermediaResourceReference,
-  HypermediaView,
-} from '../../queries/hypermedia';
+import type { HypermediaResourceReference, HypermediaView } from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
   KnowledgeSidebarFooter,
@@ -20,8 +15,6 @@ import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 export function HypermediaSidebar({
   profile,
   view,
-  month,
-  temporalExtent,
   resourceKinds,
   query,
   selectedResources,
@@ -32,8 +25,6 @@ export function HypermediaSidebar({
 }: {
   profile: KnowledgeProfile;
   view: HypermediaView;
-  month?: CalendarMonth;
-  temporalExtent: HypermediaPages['temporalExtent'];
   resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
@@ -64,8 +55,6 @@ export function HypermediaSidebar({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-none px-4 py-6">
           <HypermediaFilters
             view={view}
-            month={month}
-            temporalExtent={temporalExtent}
             resourceKinds={resourceKinds}
             query={query}
             selectedResources={selectedResources}

@@ -1,21 +1,13 @@
 import { Check, X } from 'lucide-react';
-import type { CalendarMonth } from '../../lib/calendar-month';
-import type {
-  HypermediaPages,
-  HypermediaResourceReference,
-  HypermediaView,
-} from '../../queries/hypermedia';
+import type { HypermediaResourceReference, HypermediaView } from '../../queries/hypermedia';
 import { KeywordFilter } from '../knowledge/keyword-filter';
 import { Button } from '../ui/button';
-import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
 import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
 import { HypermediaViewFilter } from './hypermedia-view-filter';
 
 export function HypermediaFilters({
   view,
-  month,
-  temporalExtent,
   resourceKinds,
   query,
   selectedResources,
@@ -25,8 +17,6 @@ export function HypermediaFilters({
   onClearSelectedResources,
 }: {
   view: HypermediaView;
-  month?: CalendarMonth;
-  temporalExtent: HypermediaPages['temporalExtent'];
   resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
@@ -42,7 +32,6 @@ export function HypermediaFilters({
       </h2>
       <div className="mt-2 grid gap-3">
         <HypermediaViewFilter value={view} onValueChange={onViewChange} />
-        <HypermediaIntervalIndicator month={month} extent={temporalExtent} />
         <fieldset className="grid gap-2" aria-label="Hypermedia resource types">
           <legend className="font-medium text-xs">Visualize</legend>
           <div className="grid grid-cols-2 gap-2">

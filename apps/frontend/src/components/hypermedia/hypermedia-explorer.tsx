@@ -1,6 +1,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { CalendarMonth } from '../../lib/calendar-month';
 import { useEntities } from '../../lib/hooks/use-entities';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import {
@@ -44,6 +45,7 @@ export function HypermediaExplorer({
   selectedResources,
   query,
   pages,
+  month,
   temporalExtent,
   dateRange,
   pagesLoading,
@@ -53,7 +55,7 @@ export function HypermediaExplorer({
   isFetchingNextPage,
   onSelect,
   onDateRangeApply,
-  onTimeNavigate,
+  onMonthChange,
   onVisibleResourcesChange,
   onRetryPages,
   onDiscoverMorePages,
@@ -65,6 +67,7 @@ export function HypermediaExplorer({
   selectedResources: HypermediaResourceReference[];
   query: string;
   pages: HypermediaPage[];
+  month?: CalendarMonth;
   temporalExtent: HypermediaPages['temporalExtent'];
   dateRange?: CalendarDateRange;
   pagesLoading: boolean;
@@ -74,7 +77,7 @@ export function HypermediaExplorer({
   isFetchingNextPage: boolean;
   onSelect: (selection: HypermediaSelection) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
-  onTimeNavigate: (direction: 'older' | 'newer') => void;
+  onMonthChange: (month?: CalendarMonth) => void;
   onVisibleResourcesChange: (resources: HypermediaResourceReference[]) => void;
   onRetryPages: () => void;
   onDiscoverMorePages: () => void;
@@ -240,11 +243,13 @@ export function HypermediaExplorer({
           key={query.trim().toLocaleLowerCase()}
           resources={visualizedHypermedia.resources}
           pages={visualizedHypermedia.pages}
+          month={month}
+          temporalExtent={temporalExtent}
           selectedResources={visualizedSelectedResources}
           selectedKey={selectedKey}
           onSelect={onSelect}
           onViewportSettled={handleViewportSettled}
-          onTimeNavigate={onTimeNavigate}
+          onMonthChange={onMonthChange}
           canExplore={canExplore}
           isInitialLoading={
             visualizedHypermedia.resources.length === 0 &&

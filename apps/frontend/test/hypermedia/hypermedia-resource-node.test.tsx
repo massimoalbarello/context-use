@@ -4,11 +4,15 @@ import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-can
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
 import { HypermediaTimelineCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
 import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
+import {
+  calendarMonthLabel,
+  currentCalendarMonth,
+  shiftCalendarMonth,
+} from '../../src/lib/calendar-month';
 
 afterEach(cleanup);
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
-const WHEEL_GESTURE_PAUSE_MS = 240;
 const portrait = {
   readableId: 'grace-portrait',
   name: 'Grace portrait',
@@ -123,9 +127,9 @@ function expectResourceIdentities(role: InteractiveRole) {
 }
 
 function HypermediaMapFixture({
-  onTimeNavigate,
+  onMonthChange,
 }: {
-  onTimeNavigate: (direction: 'older' | 'newer') => void;
+  onMonthChange: (month?: `${number}-${string}`) => void;
 }) {
   return (
     <KnowledgeWorkspace>
@@ -133,10 +137,14 @@ function HypermediaMapFixture({
       <HypermediaCanvas
         resources={resources}
         pages={[]}
+        temporalExtent={{
+          start: Date.parse('2025-01-01T00:00:00.000Z'),
+          end: Date.parse('2026-12-31T00:00:00.000Z'),
+        }}
         selectedResources={[{ kind: 'entity', readableId: 'grace-hopper' }]}
         onSelect={() => undefined}
         onViewportSettled={() => undefined}
-        onTimeNavigate={onTimeNavigate}
+        onMonthChange={onMonthChange}
         canExplore={false}
         isInitialLoading={false}
         neighborhoodError={null}
@@ -146,31 +154,45 @@ function HypermediaMapFixture({
   );
 }
 
-test('Map distinguishes entity and asset identities and advances once per scroll gesture', async () => {
-  const onTimeNavigate = mock(() => undefined);
-  const rendered = render(<HypermediaMapFixture onTimeNavigate={onTimeNavigate} />);
+test('Map distinguishes resource identities and moves smoothly through consecutive months', () => {
+  const onMonthChange = mock(() => undefined);
+  render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
 
   expectResourceIdentities('link');
-  fireEvent.wheel(screen.getByLabelText('Interactive Hypermedia'), { deltaY: 90 });
-  expect(onTimeNavigate).toHaveBeenLastCalledWith('older');
-  fireEvent.wheel(screen.getByLabelText('Interactive Hypermedia'), { deltaY: 90 });
-  expect(onTimeNavigate).toHaveBeenCalledTimes(1);
-  rendered.rerender(<HypermediaMapFixture onTimeNavigate={onTimeNavigate} />);
-  await new Promise((resolve) => setTimeout(resolve, WHEEL_GESTURE_PAUSE_MS));
-  fireEvent.wheel(screen.getByLabelText('Interactive Hypermedia'), { deltaY: -90 });
-  expect(onTimeNavigate).toHaveBeenLastCalledWith('newer');
-  expect(onTimeNavigate).toHaveBeenCalledTimes(2);
+  const canvas = screen.getByLabelText('Interactive Hypermedia');
+  const interval = screen.getByRole('img', { name: 'Selected interval: Undated' });
+  const initialPosition = interval.querySelector<HTMLElement>('[aria-live="polite"]')?.style.top;
+
+  fireEvent.wheel(canvas, { deltaY: 80 });
+  expect(interval.querySelector<HTMLElement>('[aria-live="polite"]')?.style.top).not.toBe(
+    initialPosition,
+  );
+  expect(onMonthChange).not.toHaveBeenCalled();
+
+  const present = currentCalendarMonth();
+  fireEvent.wheel(canvas, { deltaY: 80 });
+  expect(onMonthChange).toHaveBeenLastCalledWith(present);
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
+  ).toBeTruthy();
+
+  fireEvent.wheel(canvas, { deltaY: 120 });
+  fireEvent.wheel(canvas, { deltaY: 40 });
+  expect(onMonthChange).toHaveBeenLastCalledWith(
+    shiftCalendarMonth({ value: present, offset: -1 }),
+  );
+  expect(onMonthChange).toHaveBeenCalledTimes(2);
 });
 
 test('Map consumes pinch zoom before the browser can zoom the dashboard', () => {
-  const onTimeNavigate = mock(() => undefined);
-  render(<HypermediaMapFixture onTimeNavigate={onTimeNavigate} />);
+  const onMonthChange = mock(() => undefined);
+  render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
   const canvas = screen.getByLabelText('Interactive Hypermedia');
   const pinch = new WheelEvent('wheel', { cancelable: true, deltaY: -80 });
   Object.defineProperty(pinch, 'ctrlKey', { value: true });
 
   expect(fireEvent(canvas, pinch)).toBe(false);
-  expect(onTimeNavigate).not.toHaveBeenCalled();
+  expect(onMonthChange).not.toHaveBeenCalled();
 });
 
 test('Timeline uses the same entity and asset identities', () => {

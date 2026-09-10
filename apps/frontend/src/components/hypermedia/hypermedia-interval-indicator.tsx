@@ -3,12 +3,14 @@ import {
   calendarMonth,
   calendarMonthLabel,
   currentCalendarMonth,
+  mapMonthAfterScroll,
 } from '../../lib/calendar-month';
+import { cn } from '../../lib/class-names';
 import type { HypermediaPages } from '../../queries/hypermedia';
 
-const UNDATED_POSITION = 2;
-const PRESENT_POSITION = 28;
-const PAST_POSITION = 88;
+const UNDATED_POSITION = 3;
+const PRESENT_POSITION = 22;
+const PAST_POSITION = 94;
 const MONTHS_PER_YEAR = 12;
 const DEFAULT_HISTORY_MONTHS = 12;
 
@@ -42,51 +44,88 @@ function intervalPosition({
   return PRESENT_POSITION + progress * (PAST_POSITION - PRESENT_POSITION);
 }
 
-export function HypermediaIntervalIndicator({
+function scrollPosition({
   month,
   extent,
+  scrollProgress,
+  now,
 }: {
   month?: CalendarMonth;
   extent: HypermediaPages['temporalExtent'];
+  scrollProgress: number;
+  now: Date;
+}): number {
+  const currentPosition = intervalPosition({ month, extent, now });
+  if (scrollProgress === 0) {
+    return currentPosition;
+  }
+  const direction = scrollProgress > 0 ? 'older' : 'newer';
+  const adjacentMonth = mapMonthAfterScroll({ month, direction, now });
+  if (adjacentMonth === month) {
+    return currentPosition;
+  }
+  const adjacentPosition = intervalPosition({ month: adjacentMonth, extent, now });
+  return (
+    currentPosition + (adjacentPosition - currentPosition) * Math.min(1, Math.abs(scrollProgress))
+  );
+}
+
+export function HypermediaIntervalIndicator({
+  month,
+  extent,
+  scrollProgress = 0,
+  scrolling = false,
+}: {
+  month?: CalendarMonth;
+  extent: HypermediaPages['temporalExtent'];
+  scrollProgress?: number;
+  scrolling?: boolean;
 }) {
   const now = new Date();
   const present = currentCalendarMonth(now);
   const label = calendarMonthLabel(month);
-  const position = intervalPosition({ month, extent, now });
+  const position = scrollPosition({ month, extent, scrollProgress, now });
   const selectedIsPresent = month === present;
+  const motion = scrolling
+    ? 'transition-none'
+    : 'transition-[top] duration-200 ease-out motion-reduce:transition-none';
 
   return (
-    <section aria-labelledby="hypermedia-interval-heading">
-      <h3 id="hypermedia-interval-heading" className="font-medium text-xs">
-        Interval
-      </h3>
-      <div className="relative mt-2 h-32" role="img" aria-label={`Selected interval: ${label}`}>
-        <span className="absolute top-1 bottom-2 left-1.5 w-px bg-border" aria-hidden="true" />
-        <span
-          className="absolute left-0 size-3 -translate-y-1/2 rounded-full border-2 border-sidebar bg-foreground transition-[top] duration-300 ease-out motion-reduce:transition-none"
-          style={{ top: `${position}%` }}
-          aria-hidden="true"
-        />
-        {month && (
-          <span className="absolute top-[2%] left-7 -translate-y-1/2 text-muted-foreground text-xs">
-            Undated
-          </span>
+    <div
+      className="pointer-events-none absolute inset-y-5 right-0 z-10 w-40 select-none"
+      role="img"
+      aria-label={`Selected interval: ${label}`}
+    >
+      <span className="absolute inset-y-2 right-3 w-px bg-border/80" aria-hidden="true" />
+      {month && (
+        <span className="absolute top-[3%] right-7 -translate-y-1/2 text-muted-foreground text-xs">
+          Undated
+        </span>
+      )}
+      {!selectedIsPresent && (
+        <span className="absolute top-[22%] right-7 -translate-y-1/2 text-muted-foreground text-xs">
+          Now
+        </span>
+      )}
+      <span className="absolute right-7 bottom-[2%] text-muted-foreground text-xs">Past</span>
+      <span
+        className={cn(
+          'absolute right-3 size-2.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground ring-4 ring-card/85',
+          motion,
         )}
-        {!selectedIsPresent && (
-          <span className="absolute top-[28%] left-7 -translate-y-1/2 text-muted-foreground text-xs">
-            Now
-          </span>
+        style={{ top: `${position}%` }}
+        aria-hidden="true"
+      />
+      <span
+        className={cn(
+          'absolute right-7 -translate-y-1/2 whitespace-nowrap rounded-full border bg-card/92 px-2.5 py-1 font-medium text-xs tabular-nums shadow-sm backdrop-blur',
+          motion,
         )}
-        <p
-          className="absolute left-7 -translate-y-1/2 font-medium text-sm tabular-nums transition-[top] duration-300 ease-out motion-reduce:transition-none"
-          style={{ top: `${position}%` }}
-          aria-live="polite"
-        >
-          {label}
-        </p>
-        <span className="absolute bottom-0 left-7 text-muted-foreground text-xs">Past</span>
-      </div>
-      <p className="text-muted-foreground text-xs">Scroll one month at a time.</p>
-    </section>
+        style={{ top: `${position}%` }}
+        aria-live="polite"
+      >
+        {label}
+      </span>
+    </div>
   );
 }

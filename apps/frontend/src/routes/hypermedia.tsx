@@ -25,7 +25,6 @@ import {
   calendarMonthFromRange,
   calendarMonthRange,
   currentCalendarMonth,
-  mapMonthAfterScroll,
 } from '../lib/calendar-month';
 import { entitiesQueryOptions } from '../queries/entities';
 import {
@@ -231,8 +230,6 @@ function HypermediaRoute() {
       <HypermediaSidebar
         profile={profile}
         view={view}
-        month={activeMonth}
-        temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
         resourceKinds={resourceKinds}
         query={q}
         selectedResources={selectedResources}
@@ -294,6 +291,7 @@ function HypermediaRoute() {
             selectedResources={selectedResources}
             query={q}
             pages={loadedPages}
+            month={activeMonth}
             temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
             dateRange={dateRange}
             pagesLoading={pageQuery.isFetching}
@@ -316,14 +314,11 @@ function HypermediaRoute() {
                 replace: true,
               });
             }}
-            onTimeNavigate={(direction) => {
+            onMonthChange={(nextMonth) => {
               void navigate({
                 search: (previous) => ({
                   ...previous,
-                  month: mapMonthAfterScroll({
-                    month: calendarMonth(previous.month),
-                    direction,
-                  }),
+                  month: nextMonth,
                   kind: previous.kind === 'page' ? undefined : previous.kind,
                   id: previous.kind === 'page' ? undefined : previous.id,
                 }),

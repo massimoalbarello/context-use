@@ -11,8 +11,11 @@ import {
   useRef,
   useState,
 } from 'react';
+import { type CalendarMonth, mapMonthAfterScroll } from '../../lib/calendar-month';
 import { cn } from '../../lib/class-names';
+import type { HypermediaPages } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
+import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
 import {
   buildHypermediaLayout,
   type CanvasBounds,
@@ -45,9 +48,12 @@ import {
 type ViewBox = CanvasBounds;
 
 const MAX_WHEEL_ZOOM_DELTA = 80;
-const WHEEL_ZOOM_RATE = 0.0016;
-const WHEEL_INTERVAL_THRESHOLD = 56;
-const WHEEL_INTERVAL_GESTURE_END_MS = 220;
+const WHEEL_ZOOM_RATE = 0.0032;
+const WHEEL_MONTH_DISTANCE = 160;
+const MAX_WHEEL_INTERVAL_DELTA = 120;
+const WHEEL_INTERVAL_SETTLE_MS = 120;
+const WHEEL_INTERVAL_SNAP_THRESHOLD = 0.35;
+const WHEEL_LINE_HEIGHT = 16;
 const VIEWPORT_SETTLE_MS = 280;
 
 function ResourceDot({
@@ -215,11 +221,13 @@ function HypermediaExplorationCue({
 export function HypermediaCanvas({
   resources,
   pages,
+  month,
+  temporalExtent,
   selectedResources,
   selectedKey,
   onSelect,
   onViewportSettled,
-  onTimeNavigate,
+  onMonthChange,
   canExplore,
   isInitialLoading,
   neighborhoodError,
@@ -229,7 +237,9 @@ export function HypermediaCanvas({
   isInitialLoading: boolean;
   neighborhoodError: Error | null;
   onRetryNeighborhood: () => void;
-  onTimeNavigate: (direction: 'older' | 'newer') => void;
+  month?: CalendarMonth;
+  temporalExtent: HypermediaPages['temporalExtent'];
+  onMonthChange: (month?: CalendarMonth) => void;
 }) {
   const [viewBox, setViewBox] = useState<ViewBox>(() =>
     initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
@@ -242,8 +252,11 @@ export function HypermediaCanvas({
   const canvasRef = useRef<SVGSVGElement | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wheelIntervalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wheelIntervalDelta = useRef(0);
-  const wheelIntervalLocked = useRef(false);
+  const intervalProgressRef = useRef(0);
+  const displayedMonthRef = useRef(month);
+  const [intervalProgress, setIntervalProgress] = useState(0);
+  const [displayedMonth, setDisplayedMonth] = useState(month);
+  const [intervalScrolling, setIntervalScrolling] = useState(false);
   const [panning, setPanning] = useState(false);
   const [showExplorationHint, setShowExplorationHint] = useState(true);
   const suppressNextCloudClick = useRef(false);
@@ -328,6 +341,16 @@ export function HypermediaCanvas({
     [],
   );
 
+  useEffect(() => {
+    if (month === displayedMonthRef.current) {
+      return;
+    }
+    displayedMonthRef.current = month;
+    intervalProgressRef.current = 0;
+    setDisplayedMonth(month);
+    setIntervalProgress(0);
+  }, [month]);
+
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
@@ -349,27 +372,68 @@ export function HypermediaCanvas({
     }
   }
 
-  function handleIntervalWheel(deltaY: number) {
+  function updateDisplayedMonth(direction: 'older' | 'newer'): boolean {
+    const nextMonth = mapMonthAfterScroll({
+      month: displayedMonthRef.current,
+      direction,
+    });
+    if (nextMonth === displayedMonthRef.current) {
+      return false;
+    }
+    displayedMonthRef.current = nextMonth;
+    setDisplayedMonth(nextMonth);
+    onMonthChange(nextMonth);
+    return true;
+  }
+
+  function settleIntervalScroll() {
+    const progress = intervalProgressRef.current;
+    if (Math.abs(progress) >= WHEEL_INTERVAL_SNAP_THRESHOLD) {
+      updateDisplayedMonth(progress > 0 ? 'older' : 'newer');
+    }
+    intervalProgressRef.current = 0;
+    setIntervalProgress(0);
+    setIntervalScrolling(false);
+  }
+
+  function intervalWheelDelta(event: globalThis.WheelEvent): number {
+    const canvasHeight = canvasRef.current?.clientHeight ?? WHEEL_MONTH_DISTANCE;
+    const pixelDelta =
+      event.deltaMode === globalThis.WheelEvent.DOM_DELTA_LINE
+        ? event.deltaY * WHEEL_LINE_HEIGHT
+        : event.deltaMode === globalThis.WheelEvent.DOM_DELTA_PAGE
+          ? event.deltaY * canvasHeight
+          : event.deltaY;
+    return Math.max(-MAX_WHEEL_INTERVAL_DELTA, Math.min(MAX_WHEEL_INTERVAL_DELTA, pixelDelta));
+  }
+
+  function moveIntervalThroughMonths(progress: number): number {
+    let remainingProgress = progress;
+    while (Math.abs(remainingProgress) >= 1) {
+      const step = remainingProgress > 0 ? 1 : -1;
+      if (!updateDisplayedMonth(step > 0 ? 'older' : 'newer')) {
+        return 0;
+      }
+      remainingProgress -= step;
+    }
+    return remainingProgress;
+  }
+
+  function handleIntervalWheel(event: globalThis.WheelEvent) {
+    const deltaY = intervalWheelDelta(event);
     if (deltaY === 0) {
       return;
     }
+    setIntervalScrolling(true);
     if (wheelIntervalTimer.current) {
       clearTimeout(wheelIntervalTimer.current);
     }
-    wheelIntervalTimer.current = setTimeout(() => {
-      wheelIntervalDelta.current = 0;
-      wheelIntervalLocked.current = false;
-    }, WHEEL_INTERVAL_GESTURE_END_MS);
-    if (wheelIntervalLocked.current) {
-      return;
-    }
-    wheelIntervalDelta.current += deltaY;
-    if (Math.abs(wheelIntervalDelta.current) < WHEEL_INTERVAL_THRESHOLD) {
-      return;
-    }
-    onTimeNavigate(wheelIntervalDelta.current > 0 ? 'older' : 'newer');
-    wheelIntervalDelta.current = 0;
-    wheelIntervalLocked.current = true;
+    wheelIntervalTimer.current = setTimeout(settleIntervalScroll, WHEEL_INTERVAL_SETTLE_MS);
+    const progress = moveIntervalThroughMonths(
+      intervalProgressRef.current + deltaY / WHEEL_MONTH_DISTANCE,
+    );
+    intervalProgressRef.current = progress;
+    setIntervalProgress(progress);
     setShowExplorationHint(false);
   }
 
@@ -395,7 +459,7 @@ export function HypermediaCanvas({
       handlePinchZoom(event);
       return;
     }
-    handleIntervalWheel(event.deltaY);
+    handleIntervalWheel(event);
   });
 
   useEffect(() => {
@@ -511,6 +575,13 @@ export function HypermediaCanvas({
           onPreviewEnd={clearPreview}
         />
       </svg>
+
+      <HypermediaIntervalIndicator
+        month={displayedMonth}
+        extent={temporalExtent}
+        scrollProgress={intervalProgress}
+        scrolling={intervalScrolling}
+      />
 
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
