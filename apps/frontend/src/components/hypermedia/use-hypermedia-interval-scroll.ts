@@ -106,6 +106,15 @@ export function useHypermediaIntervalScroll({
   }
 
   function moveThroughMonths(nextProgress: number): number {
+    if (
+      allowPagesWithoutInterval &&
+      displayedMonthRef.current !== undefined &&
+      nextProgress < 0 &&
+      adjacentMonth('newer') === undefined
+    ) {
+      updateDisplayedMonth('newer');
+      return Math.max(0, 1 + nextProgress);
+    }
     const remaining = advanceWholeMonths({
       progress: nextProgress,
       advance: updateDisplayedMonth,

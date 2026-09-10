@@ -15,6 +15,7 @@ const MIN_POSITION = 3;
 const PAST_POSITION = 94;
 const MAX_MONTH_POSITION = 14;
 const MONTHS_PER_YEAR = 12;
+const NOW_LABEL_FADE_DISTANCE = 0.3;
 
 function monthOrdinal(value: CalendarMonth): number {
   const [year = 0, month = 1] = value.split('-').map(Number);
@@ -55,9 +56,21 @@ function scrollPosition({
 }
 
 function intervalPositionStyle(position: number): string {
+  if (position < 0) {
+    const progressFromTop = position + 1;
+    if (progressFromTop <= 0) {
+      return `${MIN_POSITION}%`;
+    }
+    const percentagePosition = (1 - progressFromTop) * MIN_POSITION;
+    const pixelPosition = progressFromTop * PRESENT_POSITION;
+    return `clamp(${MIN_POSITION}%, calc(${percentagePosition}% + ${pixelPosition}px), ${PAST_POSITION}%)`;
+  }
   const distance = position * MONTH_POSITION_DISTANCE;
-  const signedDistance = distance < 0 ? `- ${Math.abs(distance)}%` : `+ ${distance}%`;
-  return `clamp(${MIN_POSITION}%, calc(${PRESENT_POSITION}px ${signedDistance}), ${PAST_POSITION}%)`;
+  return `clamp(${MIN_POSITION}%, calc(${PRESENT_POSITION}px + ${distance}%), ${PAST_POSITION}%)`;
+}
+
+function nowLabelOpacity(position: number): number {
+  return position < 0 ? Math.min(1, -position / NOW_LABEL_FADE_DISTANCE) : 1;
 }
 
 export function HypermediaIntervalIndicator({
@@ -78,8 +91,8 @@ export function HypermediaIntervalIndicator({
       <span className="absolute inset-y-0 right-3 w-px bg-border/80" aria-hidden="true" />
       {!selectedIsPresent && (
         <span
-          className="absolute right-7 -translate-y-1/2 text-muted-foreground text-xs"
-          style={{ top: PRESENT_POSITION }}
+          className="absolute right-7 -translate-y-1/2 text-muted-foreground text-xs transition-opacity duration-100 ease-out motion-reduce:transition-none"
+          style={{ top: PRESENT_POSITION, opacity: nowLabelOpacity(position) }}
         >
           Now
         </span>

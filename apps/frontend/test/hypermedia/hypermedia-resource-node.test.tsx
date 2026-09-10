@@ -21,13 +21,8 @@ async function settleIntervalScroll() {
   await act(() => new Promise((resolve) => setTimeout(resolve, INTERVAL_SETTLE_WAIT_MS)));
 }
 
-function intervalIndicatorPosition(name: string): number {
-  const position = screen.getByRole('img', { name }).style.getPropertyValue('--interval-position');
-  const distance = position.match(/calc\(\d+px ([+-]) ([\d.]+)%\)/);
-  if (!distance) {
-    throw new Error(`Unexpected interval indicator position: ${position}`);
-  }
-  return Number.parseFloat(distance[2] ?? '0') * (distance[1] === '-' ? -1 : 1);
+function intervalIndicatorPosition(name: string): string {
+  return screen.getByRole('img', { name }).style.getPropertyValue('--interval-position');
 }
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
@@ -230,7 +225,7 @@ test('Map distinguishes resource identities and retains partial progress between
   const previousPosition = intervalIndicatorPosition(
     `Selected interval: ${calendarMonthLabel(previousMonth)}`,
   );
-  expect(previousPosition - presentPosition).toBe(presentPosition - undatedPosition);
+  expect(previousPosition).not.toBe(presentPosition);
   expect(onMonthChange).toHaveBeenCalledTimes(1);
   await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(previousMonth);
@@ -244,20 +239,21 @@ test('Map distinguishes resource identities and retains partial progress between
   await settleIntervalScroll();
 
   fireEvent.wheel(canvas, { deltaY: -40 });
-  expect(
-    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
-  ).toBeTruthy();
-  expect(screen.queryByText('Now')).toBeNull();
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
+  expect(screen.getByText('Undated')).toBeTruthy();
+  expect(intervalIndicatorPosition('Pages without a time interval')).not.toBe(undatedPosition);
+  expect(screen.getByText('Now')).toBeTruthy();
   expect(screen.getByText('Past')).toBeTruthy();
   await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
 
   fireEvent.wheel(canvas, { deltaY: -120 });
   await settleIntervalScroll();
-  expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
   expect(screen.getByText('Undated')).toBeTruthy();
   expect(screen.getByText('Now')).toBeTruthy();
   expect(screen.getByText('Past')).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
+  expect(intervalIndicatorPosition('Pages without a time interval')).toBe(undatedPosition);
   expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
 });
 
