@@ -82,7 +82,7 @@ export function createHypermediaController({
           !resources ||
           !visibleResources ||
           !kinds ||
-          (query.layer === 'undated' && query.time)
+          (query.interval === 'without' && query.time)
         ) {
           return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
@@ -91,7 +91,7 @@ export function createHypermediaController({
           resources,
           visibleResources,
           kinds,
-          layer: query.layer,
+          interval: query.interval,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
           offset: query.offset ?? 0,
           query: query.query,

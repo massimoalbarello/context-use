@@ -8,6 +8,7 @@ import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-wor
 afterEach(cleanup);
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
+const WHEEL_GESTURE_PAUSE_MS = 240;
 const portrait = {
   readableId: 'grace-portrait',
   name: 'Grace portrait',
@@ -121,9 +122,12 @@ function expectResourceIdentities(role: InteractiveRole) {
   expect(brief.querySelector('svg.lucide-file-text')).toBeTruthy();
 }
 
-test('Map distinguishes entity and asset identities and scrolls through time', () => {
-  const onTimeNavigate = mock(() => undefined);
-  render(
+function HypermediaMapFixture({
+  onTimeNavigate,
+}: {
+  onTimeNavigate: (direction: 'older' | 'newer') => void;
+}) {
+  return (
     <KnowledgeWorkspace>
       <div />
       <HypermediaCanvas
@@ -138,14 +142,24 @@ test('Map distinguishes entity and asset identities and scrolls through time', (
         neighborhoodError={null}
         onRetryNeighborhood={() => undefined}
       />
-    </KnowledgeWorkspace>,
+    </KnowledgeWorkspace>
   );
+}
+
+test('Map distinguishes entity and asset identities and advances once per scroll gesture', async () => {
+  const onTimeNavigate = mock(() => undefined);
+  const rendered = render(<HypermediaMapFixture onTimeNavigate={onTimeNavigate} />);
 
   expectResourceIdentities('link');
   fireEvent.wheel(screen.getByLabelText('Interactive Hypermedia'), { deltaY: 90 });
   expect(onTimeNavigate).toHaveBeenLastCalledWith('older');
+  fireEvent.wheel(screen.getByLabelText('Interactive Hypermedia'), { deltaY: 90 });
+  expect(onTimeNavigate).toHaveBeenCalledTimes(1);
+  rendered.rerender(<HypermediaMapFixture onTimeNavigate={onTimeNavigate} />);
+  await new Promise((resolve) => setTimeout(resolve, WHEEL_GESTURE_PAUSE_MS));
   fireEvent.wheel(screen.getByLabelText('Interactive Hypermedia'), { deltaY: -90 });
   expect(onTimeNavigate).toHaveBeenLastCalledWith('newer');
+  expect(onTimeNavigate).toHaveBeenCalledTimes(2);
 });
 
 test('Timeline uses the same entity and asset identities', () => {

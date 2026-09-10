@@ -1,5 +1,5 @@
 import type {
-  HypermediaPageLayer,
+  HypermediaPageInterval,
   HypermediaResourceContinuation,
   HypermediaResourceKind,
   HypermediaResourceReference,
@@ -25,7 +25,7 @@ export class HypermediaService {
     resources: HypermediaResourceReference[];
     visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
-    layer: HypermediaPageLayer;
+    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     query?: string;

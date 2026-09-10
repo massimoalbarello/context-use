@@ -605,47 +605,52 @@ Every observation changes the next action.`,
     expect(remainingNeighborhood.neighbors[0]?.resource.entity.readableId).toBe('temporal-subject');
     expect(remainingNeighborhood.nextCursor).toBeNull();
 
-    const undatedLayerResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/hypermedia/pages?layer=undated&kinds=entity&limit=10' }),
+    const withoutIntervalResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?interval=without&kinds=entity&limit=10',
+      }),
     );
-    const undatedLayer = (await undatedLayerResponse.json()) as {
+    const withoutInterval = (await withoutIntervalResponse.json()) as {
       pages: Array<{ readableId: string }>;
       nextOffset: number | null;
       resourceReferencesTruncated: boolean;
       temporalExtent: { start: number; end: number } | null;
     };
-    expect(undatedLayer.pages.map(({ readableId }) => readableId)).toEqual(['alpha-principles']);
-    expect(undatedLayer.nextOffset).toBeNull();
-    expect(undatedLayer.resourceReferencesTruncated).toBe(false);
-    expect(undatedLayer.temporalExtent).toEqual({
+    expect(withoutInterval.pages.map(({ readableId }) => readableId)).toEqual(['alpha-principles']);
+    expect(withoutInterval.nextOffset).toBeNull();
+    expect(withoutInterval.resourceReferencesTruncated).toBe(false);
+    expect(withoutInterval.temporalExtent).toEqual({
       start: temporalBoundsFrom('2024-11').start,
       end: expect.any(Number),
     });
-    expect(undatedLayer.temporalExtent?.end).toBeGreaterThanOrEqual(
+    expect(withoutInterval.temporalExtent?.end).toBeGreaterThanOrEqual(
       temporalBoundsFrom('2025').start,
     );
 
-    const datedLayerResponse = await app.handle(
+    const withIntervalResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=dated&kinds=entity&limit=10',
+        path: '/hypermedia/pages?interval=with&kinds=entity&limit=10',
       }),
     );
-    expect(datedLayerResponse.status).toBe(StatusMap.OK);
-    const datedLayer = (await datedLayerResponse.json()) as {
+    expect(withIntervalResponse.status).toBe(StatusMap.OK);
+    const withInterval = (await withIntervalResponse.json()) as {
       pages: Array<{ readableId: string; temporalCoverage: string | null }>;
     };
-    expect(datedLayer.pages.map(({ readableId }) => readableId)).toEqual([
+    expect(withInterval.pages.map(({ readableId }) => readableId)).toEqual([
       'current-programme',
       'operating-rhythm',
       'growth-playbook',
     ]);
-    expect(datedLayer.pages.every(({ temporalCoverage }) => temporalCoverage !== null)).toBe(true);
+    expect(withInterval.pages.every(({ temporalCoverage }) => temporalCoverage !== null)).toBe(
+      true,
+    );
 
     const undatedTimeResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=undated&kinds=entity&time=2025-04',
+        path: '/hypermedia/pages?interval=without&kinds=entity&time=2025-04',
       }),
     );
     expect(undatedTimeResponse.status).toBe(StatusMap['Bad Request']);
@@ -653,7 +658,7 @@ Every observation changes the next action.`,
     const filteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=dated&resources=entity:temporal-subject&kinds=entity&limit=2',
+        path: '/hypermedia/pages?interval=with&resources=entity:temporal-subject&kinds=entity&limit=2',
       }),
     );
     expect(filteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -682,7 +687,7 @@ Every observation changes the next action.`,
     const remainingFilteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=dated&resources=entity:temporal-subject&kinds=entity&limit=2&offset=2',
+        path: '/hypermedia/pages?interval=with&resources=entity:temporal-subject&kinds=entity&limit=2&offset=2',
       }),
     );
     expect(remainingFilteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -696,7 +701,7 @@ Every observation changes the next action.`,
     const intersectedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=undated&resources=entity:temporal-subject,entity:test-owner&kinds=entity',
+        path: '/hypermedia/pages?interval=without&resources=entity:temporal-subject,entity:test-owner&kinds=entity',
       }),
     );
     const intersectedHypermedia = (await intersectedHypermediaResponse.json()) as {
@@ -709,7 +714,7 @@ Every observation changes the next action.`,
     const viewportHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=dated&visible=entity:temporal-subject,entity:test-owner&kinds=entity',
+        path: '/hypermedia/pages?interval=with&visible=entity:temporal-subject,entity:test-owner&kinds=entity',
       }),
     );
     const viewportHypermedia = (await viewportHypermediaResponse.json()) as {
@@ -724,7 +729,7 @@ Every observation changes the next action.`,
     const combinedScopeResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=dated&resources=entity:test-owner&visible=entity:temporal-subject&kinds=entity',
+        path: '/hypermedia/pages?interval=with&resources=entity:test-owner&visible=entity:temporal-subject&kinds=entity',
       }),
     );
     expect(
@@ -734,7 +739,7 @@ Every observation changes the next action.`,
     const rangedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=dated&resources=entity:temporal-subject&kinds=entity&time=2025-04',
+        path: '/hypermedia/pages?interval=with&resources=entity:temporal-subject&kinds=entity&time=2025-04',
       }),
     );
     const rangedHypermedia = (await rangedHypermediaResponse.json()) as {
@@ -1236,7 +1241,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     const pageTextHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=undated&resources=entity:temporal-subject&kinds=entity&query=alpha',
+        path: '/hypermedia/pages?interval=without&resources=entity:temporal-subject&kinds=entity&query=alpha',
       }),
     );
     const pageTextHypermedia = (await pageTextHypermediaResponse.json()) as {
@@ -1252,7 +1257,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     const denseHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?layer=undated&resources=entity:temporal-subject&kinds=entity&query=dense',
+        path: '/hypermedia/pages?interval=without&resources=entity:temporal-subject&kinds=entity&query=dense',
       }),
     );
     const denseHypermedia = (await denseHypermediaResponse.json()) as {

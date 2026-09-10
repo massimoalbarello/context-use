@@ -2,7 +2,7 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type {
   HypermediaPage,
-  HypermediaPageLayer,
+  HypermediaPageInterval,
   HypermediaPages,
   HypermediaResource,
   HypermediaResourceContinuation,
@@ -135,7 +135,7 @@ export interface HypermediaRepositoryContract {
     resources: HypermediaResourceReference[];
     visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
-    layer: HypermediaPageLayer;
+    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     query?: string;
@@ -342,7 +342,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     resources,
     visibleResources,
     kinds,
-    layer,
+    interval,
     limit,
     offset,
     query,
@@ -352,7 +352,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     resources: HypermediaResourceReference[];
     visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
-    layer: HypermediaPageLayer;
+    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     query?: string;
@@ -391,7 +391,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         visibleResourceKeys,
         visibleResourceCount,
         normalizedQuery,
-        layer,
+        interval,
         filterStart,
         filterEnd,
         rowLimit,
@@ -451,7 +451,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     visibleResourceKeys,
     visibleResourceCount,
     normalizedQuery,
-    layer,
+    interval,
     filterStart,
     filterEnd,
     rowLimit,
@@ -463,7 +463,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     visibleResourceKeys: string;
     visibleResourceCount: number;
     normalizedQuery: string | null;
-    layer: HypermediaPageLayer;
+    interval: HypermediaPageInterval;
     filterStart: number | null;
     filterEnd: number | null;
     rowLimit: number;
@@ -519,8 +519,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         where page."owner_id" = ${ownerId} and page."archived_at" is null
           and page."current_revision_id" in (select "revisionId" from resource_matched_revision)
           and (
-            (${layer} = 'undated' and revision."temporal_coverage" is null)
-            or (${layer} = 'dated' and revision."temporal_coverage" is not null)
+            (${interval} = 'without' and revision."temporal_coverage" is null)
+            or (${interval} = 'with' and revision."temporal_coverage" is not null)
           )
           and (
             ${normalizedQuery} is null
@@ -553,7 +553,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
             )
           )
           and (
-            ${layer} = 'undated'
+            ${interval} = 'without'
             or ${filterStart} is null
             or (
               (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})

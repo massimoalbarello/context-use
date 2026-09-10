@@ -45,9 +45,9 @@ import {
 type ViewBox = CanvasBounds;
 
 const MAX_WHEEL_ZOOM_DELTA = 80;
-const WHEEL_ZOOM_RATE = 0.001;
-const WHEEL_LAYER_THRESHOLD = 80;
-const WHEEL_LAYER_RESET_MS = 180;
+const WHEEL_ZOOM_RATE = 0.0016;
+const WHEEL_INTERVAL_THRESHOLD = 56;
+const WHEEL_INTERVAL_GESTURE_END_MS = 220;
 const VIEWPORT_SETTLE_MS = 280;
 
 function ResourceDot({
@@ -88,7 +88,7 @@ function ResourceDot({
   );
 }
 
-const HypermediaLayers = memo(function HypermediaLayers({
+const HypermediaScene = memo(function HypermediaScene({
   layout,
   activeKey,
   selectedResourceKeys,
@@ -240,8 +240,9 @@ export function HypermediaCanvas({
   const layout = useMemo(() => buildHypermediaLayout(resources, pages), [pages, resources]);
   const viewBoxRef = useRef(viewBox);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wheelLayerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wheelLayerDelta = useRef(0);
+  const wheelIntervalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheelIntervalDelta = useRef(0);
+  const wheelIntervalLocked = useRef(false);
   const [panning, setPanning] = useState(false);
   const [showExplorationHint, setShowExplorationHint] = useState(true);
   const suppressNextCloudClick = useRef(false);
@@ -314,11 +315,17 @@ export function HypermediaCanvas({
       if (settleTimer.current) {
         clearTimeout(settleTimer.current);
       }
-      if (wheelLayerTimer.current) {
-        clearTimeout(wheelLayerTimer.current);
-      }
     };
   }, [publishViewport, spotlightActive]);
+
+  useEffect(
+    () => () => {
+      if (wheelIntervalTimer.current) {
+        clearTimeout(wheelIntervalTimer.current);
+      }
+    },
+    [],
+  );
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
     setShowExplorationHint(false);
@@ -341,26 +348,31 @@ export function HypermediaCanvas({
     }
   }
 
-  function handleWheel(event: WheelEvent<SVGSVGElement>) {
-    event.preventDefault();
-    if (!event.ctrlKey) {
-      if (event.deltaY === 0) {
-        return;
-      }
-      wheelLayerDelta.current += event.deltaY;
-      if (Math.abs(wheelLayerDelta.current) >= WHEEL_LAYER_THRESHOLD) {
-        onTimeNavigate(wheelLayerDelta.current > 0 ? 'older' : 'newer');
-        wheelLayerDelta.current = 0;
-        setShowExplorationHint(false);
-      }
-      if (wheelLayerTimer.current) {
-        clearTimeout(wheelLayerTimer.current);
-      }
-      wheelLayerTimer.current = setTimeout(() => {
-        wheelLayerDelta.current = 0;
-      }, WHEEL_LAYER_RESET_MS);
+  function handleIntervalWheel(deltaY: number) {
+    if (deltaY === 0) {
       return;
     }
+    if (wheelIntervalTimer.current) {
+      clearTimeout(wheelIntervalTimer.current);
+    }
+    wheelIntervalTimer.current = setTimeout(() => {
+      wheelIntervalDelta.current = 0;
+      wheelIntervalLocked.current = false;
+    }, WHEEL_INTERVAL_GESTURE_END_MS);
+    if (wheelIntervalLocked.current) {
+      return;
+    }
+    wheelIntervalDelta.current += deltaY;
+    if (Math.abs(wheelIntervalDelta.current) < WHEEL_INTERVAL_THRESHOLD) {
+      return;
+    }
+    onTimeNavigate(wheelIntervalDelta.current > 0 ? 'older' : 'newer');
+    wheelIntervalDelta.current = 0;
+    wheelIntervalLocked.current = true;
+    setShowExplorationHint(false);
+  }
+
+  function handlePinchZoom(event: WheelEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const boundedDelta = Math.max(
       -MAX_WHEEL_ZOOM_DELTA,
@@ -370,6 +382,15 @@ export function HypermediaCanvas({
       x: (event.clientX - rect.left) / rect.width,
       y: (event.clientY - rect.top) / rect.height,
     });
+  }
+
+  function handleWheel(event: WheelEvent<SVGSVGElement>) {
+    event.preventDefault();
+    if (event.ctrlKey) {
+      handlePinchZoom(event);
+      return;
+    }
+    handleIntervalWheel(event.deltaY);
   }
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
@@ -449,7 +470,7 @@ export function HypermediaCanvas({
 
   return (
     <section
-      className="relative size-full min-h-[28rem] overflow-hidden bg-card"
+      className="relative size-full min-h-[28rem] overflow-hidden overscroll-none bg-card"
       aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.resources.length} visible entities and assets`}
     >
       <svg
@@ -466,7 +487,7 @@ export function HypermediaCanvas({
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerCancel}
       >
-        <HypermediaLayers
+        <HypermediaScene
           layout={visibleLayout}
           activeKey={activeKey}
           selectedResourceKeys={selectedResourceKeys}

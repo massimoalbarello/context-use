@@ -17,8 +17,8 @@ export type HypermediaPage = HypermediaPages['pages'][number];
 export type HypermediaEntity = Extract<HypermediaResource, { kind: 'entity' }>['entity'];
 export type HypermediaAsset = Extract<HypermediaResource, { kind: 'asset' }>['asset'];
 type HypermediaPagesRequest = NonNullable<Parameters<(typeof api.api.hypermedia.pages)['get']>[0]>;
-export type HypermediaPageLayer = NonNullable<
-  NonNullable<HypermediaPagesRequest['query']>['layer']
+export type HypermediaPageInterval = NonNullable<
+  NonNullable<HypermediaPagesRequest['query']>['interval']
 >;
 export type HypermediaView = 'map' | 'timeline';
 
@@ -75,7 +75,7 @@ export function hypermediaResourceNeighborhoodQueryOptions({
 }
 
 export type HypermediaPageQuery = {
-  layer: HypermediaPageLayer;
+  interval: HypermediaPageInterval;
   resources: HypermediaResourceReference[];
   visibleResources: HypermediaResourceReference[];
   kinds: HypermediaResourceKind[];
@@ -86,7 +86,7 @@ export type HypermediaPageQuery = {
 export const HYPERMEDIA_PAGE_LIMIT = 32;
 
 export function hypermediaPagesQueryOptions({
-  layer,
+  interval,
   resources,
   visibleResources,
   kinds,
@@ -102,7 +102,7 @@ export function hypermediaPagesQueryOptions({
       ...hypermediaQueryKey,
       'pages',
       {
-        layer,
+        interval,
         resources: resourceKeys,
         visibleResources: visibleResourceKeys,
         kinds: resourceKinds,
@@ -114,7 +114,7 @@ export function hypermediaPagesQueryOptions({
     queryFn: async ({ pageParam, signal }) => {
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {
-          layer,
+          interval,
           resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
           visible: visibleResourceKeys.length > 0 ? visibleResourceKeys.join(',') : undefined,
           kinds: resourceKinds.join(','),

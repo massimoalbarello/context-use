@@ -330,7 +330,7 @@ export function HypermediaTimelineCanvas({
     >
       <section
         ref={scrollerRef}
-        className="relative size-full overflow-auto"
+        className="relative size-full overflow-auto overscroll-none"
         aria-label="Timeline viewport"
         onScroll={handleScroll}
       >

@@ -146,7 +146,7 @@ export const Route = createFileRoute('/hypermedia')({
         : Promise.resolve(),
       context.queryClient.ensureInfiniteQueryData(
         hypermediaPagesQueryOptions({
-          layer: deps.month ? 'dated' : 'undated',
+          interval: deps.month ? 'with' : 'without',
           resources: deps.resources,
           visibleResources: [],
           kinds: deps.kinds,
@@ -174,7 +174,7 @@ function HypermediaRoute() {
   const selectedResources = selectedHypermediaResources(focus);
   const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
-      layer: activeMonth ? 'dated' : 'undated',
+      interval: activeMonth ? 'with' : 'without',
       resources: selectedResources,
       visibleResources,
       kinds: resourceKinds,
@@ -232,6 +232,7 @@ function HypermediaRoute() {
         profile={profile}
         view={view}
         month={activeMonth}
+        temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
         resourceKinds={resourceKinds}
         query={q}
         selectedResources={selectedResources}

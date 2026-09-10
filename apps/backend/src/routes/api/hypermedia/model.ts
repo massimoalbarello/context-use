@@ -71,7 +71,7 @@ export const HypermediaResourceNeighborhoodSchema = t.Object({
 });
 
 export const HypermediaPagesQuerySchema = t.Object({
-  layer: t.Union([t.Literal('undated'), t.Literal('dated')]),
+  interval: t.Union([t.Literal('with'), t.Literal('without')]),
   kinds: t.String({
     minLength: 'asset'.length,
     maxLength: 'entity,asset'.length,

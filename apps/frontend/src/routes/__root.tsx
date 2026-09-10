@@ -33,7 +33,7 @@ function RouteComponent() {
   return (
     <div
       className={cn(
-        'grid h-dvh min-h-0 overflow-hidden',
+        'grid h-dvh min-h-0 overflow-hidden overscroll-none',
         showPublicHeader ? 'grid-rows-[auto_minmax(0,1fr)]' : 'grid-rows-[minmax(0,1fr)]',
       )}
     >

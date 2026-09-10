@@ -323,7 +323,7 @@ export function HypermediaPageStatus({
   } else if (loading) {
     message = 'Loading pages…';
   } else if (pageCount === 0) {
-    message = 'No pages match this layer.';
+    message = 'No pages match this interval.';
   } else if (canLoadMore && referencesTruncated) {
     message = 'More pages are available, and some page connections are hidden.';
   } else if (canLoadMore) {

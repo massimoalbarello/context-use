@@ -16,6 +16,7 @@ function HypermediaResourceFilterFixture() {
   return (
     <HypermediaFilters
       view="map"
+      temporalExtent={null}
       resourceKinds={resourceKinds}
       query=""
       selectedResources={[]}
@@ -31,11 +32,15 @@ function HypermediaResourceFilterFixture() {
   );
 }
 
-test('Hypermedia keeps view, layer, keyword, and resource filters in the shared sidebar', () => {
+test('Hypermedia keeps view, interval, keyword, and resource filters in the shared sidebar', () => {
   const html = renderToStaticMarkup(
     <HypermediaFilters
       view="timeline"
       month="2026-09"
+      temporalExtent={{
+        start: Date.parse('2025-01-01T00:00:00.000Z'),
+        end: Date.parse('2026-09-30T00:00:00.000Z'),
+      }}
       resourceKinds={['entity']}
       query="launch"
       selectedResources={[
@@ -52,8 +57,12 @@ test('Hypermedia keeps view, layer, keyword, and resource filters in the shared 
   expect(html).toContain('View');
   expect(html).toContain('Map');
   expect(html).toContain('Timeline');
-  expect(html).toContain('Layer');
+  expect(html).toContain('Interval');
   expect(html).toContain('September 2026');
+  expect(html).toContain('Selected interval: September 2026');
+  expect(html).toContain('Undated');
+  expect(html).toContain('Past');
+  expect(html).toContain('Scroll one month at a time.');
   expect(html).toContain('Visualize');
   expect(html).toContain('Entities');
   expect(html).toContain('Assets');

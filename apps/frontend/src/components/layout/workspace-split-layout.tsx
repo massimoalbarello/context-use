@@ -5,7 +5,7 @@ export function WorkspaceSplitLayout({ className, ...props }: ComponentProps<'ma
   return (
     <main
       className={cn(
-        'grid h-full min-h-0 overflow-hidden bg-sidebar md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-none',
+        'grid h-full min-h-0 overflow-hidden overscroll-none bg-sidebar md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-none',
         className,
       )}
       {...props}

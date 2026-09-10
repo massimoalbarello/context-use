@@ -134,13 +134,13 @@ describe('Hypermedia resource type filter', () => {
       kinds: ['asset'],
     });
     const entityPages = hypermediaPagesQueryOptions({
-      layer: 'undated',
+      interval: 'without',
       resources: [],
       visibleResources: [],
       kinds: ['entity'],
     });
     const allPages = hypermediaPagesQueryOptions({
-      layer: 'undated',
+      interval: 'without',
       resources: [],
       visibleResources: [],
       kinds: ['entity', 'asset'],
