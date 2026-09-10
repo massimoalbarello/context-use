@@ -83,7 +83,7 @@ export function HypermediaIntervalIndicator({
 }) {
   const now = new Date();
   const present = currentCalendarMonth(now);
-  const label = calendarMonthLabel(month);
+  const label = month ? calendarMonthLabel(month) : undefined;
   const position = scrollPosition({ month, extent, scrollProgress, now });
   const selectedIsPresent = month === present;
   const motion = scrolling
@@ -91,41 +91,33 @@ export function HypermediaIntervalIndicator({
     : 'transition-[top] duration-200 ease-out motion-reduce:transition-none';
 
   return (
-    <div
-      className="pointer-events-none absolute inset-y-5 right-0 z-10 w-40 select-none"
-      role="img"
-      aria-label={`Selected interval: ${label}`}
-    >
-      <span className="absolute inset-y-2 right-3 w-px bg-border/80" aria-hidden="true" />
-      {month && (
-        <span className="absolute top-[3%] right-7 -translate-y-1/2 text-muted-foreground text-xs">
-          Undated
-        </span>
-      )}
+    <div className="pointer-events-none absolute inset-y-5 right-0 z-10 w-40 select-none">
+      <span className="absolute top-[22%] right-3 bottom-2 w-px bg-border/80" aria-hidden="true" />
       {!selectedIsPresent && (
         <span className="absolute top-[22%] right-7 -translate-y-1/2 text-muted-foreground text-xs">
           Now
         </span>
       )}
       <span className="absolute right-7 bottom-[2%] text-muted-foreground text-xs">Past</span>
-      <span
-        className={cn(
-          'absolute right-3 size-2.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground ring-4 ring-card/85',
-          motion,
-        )}
+      <div
+        className={cn('absolute inset-x-0 -translate-y-1/2', motion)}
         style={{ top: `${position}%` }}
-        aria-hidden="true"
-      />
-      <span
-        className={cn(
-          'absolute right-7 -translate-y-1/2 whitespace-nowrap rounded-full border bg-card/92 px-2.5 py-1 font-medium text-xs tabular-nums shadow-sm backdrop-blur',
-          motion,
-        )}
-        style={{ top: `${position}%` }}
-        aria-live="polite"
+        role="img"
+        aria-label={label ? `Selected interval: ${label}` : 'Pages without a time interval'}
       >
-        {label}
-      </span>
+        <span
+          className="absolute top-0 right-3 size-2.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground ring-4 ring-card/85"
+          aria-hidden="true"
+        />
+        {label && (
+          <span
+            className="absolute top-0 right-7 -translate-y-1/2 whitespace-nowrap rounded-full border bg-card/92 px-2.5 py-1 font-medium text-xs tabular-nums shadow-sm backdrop-blur"
+            aria-live="polite"
+          >
+            {label}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

@@ -160,13 +160,13 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
 
   expectResourceIdentities('link');
   const canvas = screen.getByLabelText('Interactive Hypermedia');
-  const interval = screen.getByRole('img', { name: 'Selected interval: Undated' });
-  const initialPosition = interval.querySelector<HTMLElement>('[aria-live="polite"]')?.style.top;
+  const interval = screen.getByRole('img', { name: 'Pages without a time interval' });
+  const initialPosition = interval.style.top;
+
+  expect(screen.queryByText('Undated')).toBeNull();
 
   fireEvent.wheel(canvas, { deltaY: 80 });
-  expect(interval.querySelector<HTMLElement>('[aria-live="polite"]')?.style.top).not.toBe(
-    initialPosition,
-  );
+  expect(interval.style.top).not.toBe(initialPosition);
   expect(onMonthChange).not.toHaveBeenCalled();
 
   const present = currentCalendarMonth();
