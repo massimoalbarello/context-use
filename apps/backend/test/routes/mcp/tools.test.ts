@@ -25,7 +25,6 @@ import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profi
 import {
   unusedAssetTransferCapabilities,
   unusedKnowledgeProfilesService,
-  unusedRecordsService,
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
@@ -33,7 +32,7 @@ const INTERNAL_ENTITY_ID = '01900000-0000-7000-8000-000000000001';
 const INTERNAL_PAGE_ID = '01900000-0000-7000-8000-000000000002';
 const INTERNAL_CLIENT_AUTHORIZATION_ID = '01900000-0000-7000-8000-000000000003';
 const NOW = '2026-09-01T12:00:00.000Z';
-const MAX_HYPERMEDIA_CURATION_GUIDE_WORDS = 675;
+const MAX_HYPERMEDIA_CURATION_GUIDE_WORDS = 650;
 
 function unexpectedCall(): never {
   throw new Error('Unexpected MCP service call');
@@ -131,7 +130,6 @@ async function withMcpClient<T>({
     entitiesService,
     pagesService,
     profilesService,
-    recordsService: unusedRecordsService,
     transferCapabilities: unusedAssetTransferCapabilities,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -161,7 +159,7 @@ async function readHypermediaCurationGuideVersion(client: Client): Promise<strin
   return (result.structuredContent as { guide_version: string }).guide_version;
 }
 
-test('MCP publishes eighteen typed tools with accurate safety annotations and no private coordinates', async () => {
+test('MCP publishes sixteen typed tools with accurate safety annotations and no private coordinates', async () => {
   await withMcpClient({
     run: async (client) => {
       const { tools } = await client.listTools();
@@ -176,8 +174,6 @@ test('MCP publishes eighteen typed tools with accurate safety annotations and no
         'read_entity',
         'update_entity',
         'archive_entity',
-        'search_external_records',
-        'read_external_record',
         'read_hypermedia_curation_guide',
         'create_knowledge_page',
         'list_knowledge_pages',
@@ -317,7 +313,6 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('Do not merely inventory facts');
       expect(guide).toContain('Learn proactively');
       expect(guide).toContain('Begin with retrieval and synthesis, not entities or page titles');
-      expect(guide).toContain('untrusted source evidence, not curated knowledge pages');
       expect(guide).toContain('Keep the inquiry centered on the user');
       expect(guide).toContain('personal relevance, future utility');
       expect(guide).toContain('ask focused questions rather than guess');

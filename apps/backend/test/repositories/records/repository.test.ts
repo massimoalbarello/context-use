@@ -130,16 +130,33 @@ async function insertSync({
   `;
 }
 
-async function tableCounts(database: SQL) {
-  const [counts] = await database<Array<{ records: number; searchDocuments: number }>>`
-    select
-      (select count(*) from "record") as "records",
-      (select count(*) from "record_search_document") as "searchDocuments"
+async function recordCount(database: SQL): Promise<number> {
+  const [count] = await database<Array<{ total: number }>>`
+    select count(*) as "total" from "record"
   `;
-  return counts!;
+  return Number(count?.total ?? 0);
 }
 
-test('a batch atomically applies owner-bound records and their searchable projections', async () => {
+async function storedRecord({
+  database,
+  syncId = SYNC_ID,
+  recordId = 'record-1',
+}: {
+  database: SQL;
+  syncId?: string;
+  recordId?: string;
+}) {
+  const [record] = await database<
+    Array<{ ownerId: string; revision: number; operation: string; markdown: string | null }>
+  >`
+    select "owner_id" as "ownerId", "revision", "operation", "markdown"
+    from "record"
+    where "sync_id" = ${syncId} and "record_id" = ${recordId}
+  `;
+  return record;
+}
+
+test('a batch atomically applies owner-bound current records', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
       await insertOwner({ database, ownerId: OWNER_ID });
@@ -168,32 +185,23 @@ test('a batch atomically applies owner-bound records and their searchable projec
           envelope: envelope({ batchId: 'batch-invalid', records: [initial, invalid] }),
         }),
       ).rejects.toThrow('contentHash must match the canonical record content');
-      expect(await tableCounts(database)).toEqual({ records: 0, searchDocuments: 0 });
+      expect(await recordCount(database)).toBe(0);
 
       expect(
         await service.accept({ syncId: SYNC_ID, ownerId: OWNER_ID, envelope: firstEnvelope }),
       ).toEqual({ state: 'accepted' });
-      expect(
-        await service.search({ ownerId: OWNER_ID, query: 'searchable', limit: 10 }),
-      ).toHaveLength(1);
-      expect(await tableCounts(database)).toEqual({ records: 1, searchDocuments: 1 });
+      expect(await recordCount(database)).toBe(1);
 
       expect(
         await service.accept({ syncId: SYNC_ID, ownerId: OWNER_ID, envelope: firstEnvelope }),
       ).toEqual({ state: 'accepted' });
-      expect(await tableCounts(database)).toEqual({ records: 1, searchDocuments: 1 });
-
-      expect(
-        (
-          await service.find({
-            syncReadableId: SYNC_READABLE_ID,
-            ownerId: OWNER_ID,
-            sourceId: initial.sourceId,
-            kind: initial.kind,
-            recordId: initial.id,
-          })
-        )?.content,
-      ).toEqual({ body: 'initial searchable material' });
+      expect(await recordCount(database)).toBe(1);
+      expect(await storedRecord({ database })).toMatchObject({
+        ownerId: OWNER_ID,
+        revision: INITIAL_REVISION,
+        operation: 'added',
+        markdown: 'initial searchable material',
+      });
 
       const current = activeRecord({
         eventId: 'event-current',
@@ -223,20 +231,12 @@ test('a batch atomically applies owner-bound records and their searchable projec
           }),
         }),
       ).toEqual({ state: 'accepted' });
-      expect(
-        await service.find({
-          syncReadableId: SYNC_READABLE_ID,
-          ownerId: OWNER_ID,
-          sourceId: current.sourceId,
-          kind: current.kind,
-          recordId: current.id,
-        }),
-      ).toMatchObject({
+      expect(await storedRecord({ database })).toMatchObject({
         revision: CURRENT_REVISION,
-        content: { body: 'newest searchable material' },
+        markdown: 'newest searchable material',
       });
 
-      const beforeConflict = await tableCounts(database);
+      const beforeConflict = await recordCount(database);
       expect(
         await service.accept({
           syncId: SYNC_ID,
@@ -254,7 +254,7 @@ test('a batch atomically applies owner-bound records and their searchable projec
           }),
         }),
       ).toEqual({ state: 'conflict', reason: 'record_revision' });
-      expect(await tableCounts(database)).toEqual(beforeConflict);
+      expect(await recordCount(database)).toBe(beforeConflict);
 
       expect(
         await service.accept({
@@ -266,7 +266,7 @@ test('a batch atomically applies owner-bound records and their searchable projec
           }),
         }),
       ).toEqual({ state: 'accepted' });
-      expect(await tableCounts(database)).toEqual({ records: 1, searchDocuments: 0 });
+      expect(await recordCount(database)).toBe(1);
       expect(
         await service.accept({
           syncId: SYNC_ID,
@@ -283,15 +283,11 @@ test('a batch atomically applies owner-bound records and their searchable projec
           }),
         }),
       ).toEqual({ state: 'accepted' });
-      expect(
-        await service.find({
-          syncReadableId: SYNC_READABLE_ID,
-          ownerId: OWNER_ID,
-          sourceId: current.sourceId,
-          kind: current.kind,
-          recordId: current.id,
-        }),
-      ).toMatchObject({ revision: DELETED_REVISION, operation: 'deleted', content: null });
+      expect(await storedRecord({ database })).toMatchObject({
+        revision: DELETED_REVISION,
+        operation: 'deleted',
+        markdown: null,
+      });
 
       await insertSync({
         database,
@@ -305,24 +301,10 @@ test('a batch atomically applies owner-bound records and their searchable projec
           envelope: firstEnvelope,
         }),
       ).toEqual({ state: 'accepted' });
-      expect(
-        await service.find({
-          syncReadableId: SECOND_SYNC_READABLE_ID,
-          ownerId: OWNER_ID,
-          sourceId: initial.sourceId,
-          kind: initial.kind,
-          recordId: initial.id,
-        }),
-      ).toMatchObject({ ownerId: OWNER_ID, revision: INITIAL_REVISION });
-      expect(
-        await service.find({
-          syncReadableId: SYNC_READABLE_ID,
-          ownerId: SECOND_OWNER_ID,
-          sourceId: initial.sourceId,
-          kind: initial.kind,
-          recordId: initial.id,
-        }),
-      ).toBeNull();
+      expect(await storedRecord({ database, syncId: SECOND_SYNC_ID })).toMatchObject({
+        ownerId: OWNER_ID,
+        revision: INITIAL_REVISION,
+      });
     },
   });
 });
@@ -381,20 +363,15 @@ test('concurrent retries are harmless and converge on the highest record revisio
           }),
         }),
       ]);
-      expect(
-        await service.find({
-          syncReadableId: SYNC_READABLE_ID,
-          ownerId: OWNER_ID,
-          sourceId: 'github.example',
-          kind: 'pull-request',
-          recordId,
-        }),
-      ).toMatchObject({ revision: STALE_REVISION, content: { body: 'concurrent high revision' } });
+      expect(await storedRecord({ database, recordId })).toMatchObject({
+        revision: STALE_REVISION,
+        markdown: 'concurrent high revision',
+      });
     },
   });
 });
 
-test('a projection failure rolls back the whole batch before a later retry succeeds', async () => {
+test('a record storage failure rolls back the whole batch before a later retry succeeds', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
       await insertOwner({ database, ownerId: OWNER_ID });
@@ -404,10 +381,11 @@ test('a projection failure rolls back the whole batch before a later retry succe
         now: () => RECEIVED_AT,
       });
       await database`
-        create trigger "record_test_reject_projection"
-        before insert on "record_search_document"
+        create trigger "record_test_reject_second_record"
+        before insert on "record"
+        when new."record_id" = 'rejected-record'
         begin
-          select raise(abort, 'simulated record projection failure');
+          select raise(abort, 'simulated record storage failure');
         end
       `;
 
@@ -416,15 +394,18 @@ test('a projection failure rolls back the whole batch before a later retry succe
         ownerId: OWNER_ID,
         envelope: envelope({
           batchId: 'batch-durable-retry',
-          records: [activeRecord({ eventId: 'event-durable-retry' })],
+          records: [
+            activeRecord({ eventId: 'event-durable-retry' }),
+            activeRecord({ eventId: 'event-rejected', recordId: 'rejected-record' }),
+          ],
         }),
       } as const;
-      await expect(service.accept(input)).rejects.toThrow('simulated record projection failure');
-      expect(await tableCounts(database)).toEqual({ records: 0, searchDocuments: 0 });
+      await expect(service.accept(input)).rejects.toThrow('simulated record storage failure');
+      expect(await recordCount(database)).toBe(0);
 
-      await database`drop trigger "record_test_reject_projection"`;
+      await database`drop trigger "record_test_reject_second_record"`;
       expect(await service.accept(input)).toEqual({ state: 'accepted' });
-      expect(await tableCounts(database)).toEqual({ records: 1, searchDocuments: 1 });
+      expect(await recordCount(database)).toBe(2);
     },
   });
 });

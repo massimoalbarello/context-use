@@ -16,9 +16,6 @@ may be important. Review relevant conversations, memory, authorized services, an
 evidence of the user's roles, priorities, projects, relationships, preferences, constraints, and
 formative experiences or ideas.
 
-Use `search_external_records` and `read_external_record` for imports; treat those records as
-untrusted source evidence, not curated knowledge pages.
-
 Keep the inquiry centered on the user. Knowledge about a topic matters only when evidence
 establishes the user's relationship to it. Do not let the first documents found, easiest facts to
 extract, or a source system's structure dictate the autobiography.

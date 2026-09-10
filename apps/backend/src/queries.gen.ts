@@ -610,52 +610,10 @@ export interface IFindCurrentRecordRevisionResult {
 export interface IApplyRecordRevisionResult {
 }
 
-/** Result of query `DeleteRecordSearchDocument`. */
-export interface IDeleteRecordSearchDocumentResult {
-}
-
-/** Result of query `UpsertRecordSearchDocument`. */
-export interface IUpsertRecordSearchDocumentResult {
-}
-
 /** Result of query `FindActiveRecordSyncForAcceptance`. */
 export interface IFindActiveRecordSyncForAcceptanceResult {
     id: string;
     ownerId: string;
-}
-
-/** Result of query `FindRecord`. */
-export interface IFindRecordResult {
-    syncId: string;
-    syncReadableId: string;
-    ownerId: string;
-    readableId: string;
-    provider: string;
-    sourceId: string;
-    kind: string;
-    recordId: string;
-    revision: number;
-    operation: "added" | "updated" | "deleted";
-    contentHash: string;
-    committedAt: string;
-    markdown: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/** Result of query `SearchRecords`. */
-export interface ISearchRecordsResult {
-    syncReadableId: string;
-    readableId: string;
-    provider: string;
-    sourceId: string;
-    kind: string;
-    recordId: string;
-    revision: number;
-    contentHash: string;
-    committedAt: string;
-    label: string;
-    rawMatchExcerpt: string;
 }
 
 /** Result of query `ListRecordResources`. */
@@ -772,11 +730,7 @@ export interface Queries {
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
     FindCurrentRecordRevision: IFindCurrentRecordRevisionResult;
     ApplyRecordRevision: IApplyRecordRevisionResult;
-    DeleteRecordSearchDocument: IDeleteRecordSearchDocumentResult;
-    UpsertRecordSearchDocument: IUpsertRecordSearchDocumentResult;
     FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
-    FindRecord: IFindRecordResult;
-    SearchRecords: ISearchRecordsResult;
     ListRecordResources: IListRecordResourcesResult;
     FindRecordResource: IFindRecordResourceResult;
     FindActiveRecordSyncByName: IFindActiveRecordSyncByNameResult;

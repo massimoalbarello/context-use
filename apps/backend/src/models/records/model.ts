@@ -3,7 +3,6 @@ import { toString as mdastToString } from 'mdast-util-to-string';
 
 export const RECORD_DELIVERY_VERSION = 1 as const;
 export const MAX_RECORD_DELIVERY_BATCH_RECORDS = 50;
-export const MAX_RECORD_SEARCH_RESULTS = 50;
 export const MAX_RECORD_TITLE_LENGTH = 240;
 export const MAX_RECORD_EXCERPT_LENGTH = 280;
 
@@ -68,27 +67,6 @@ export type RecordIdentity = {
   recordId: string;
 };
 
-export type ExternalRecordIdentity = {
-  syncReadableId: string;
-  sourceId: string;
-  kind: string;
-  recordId: string;
-};
-
-export type StoredRecord = RecordIdentity &
-  ExternalRecordIdentity & {
-    ownerId: string;
-    readableId: string;
-    provider: string;
-    revision: number;
-    operation: RecordOperation;
-    contentHash: string;
-    committedAt: string;
-    content: RecordContent | null;
-    createdAt: string;
-    updatedAt: string;
-  };
-
 export type RecordSummary = {
   readableId: string;
   title: string;
@@ -105,16 +83,6 @@ export type RecordResource = RecordSummary & {
 export type RecordPage = {
   items: RecordSummary[];
   nextOffset: number | null;
-};
-
-export type RecordSearchResult = ExternalRecordIdentity & {
-  readableId: string;
-  provider: string;
-  revision: number;
-  contentHash: string;
-  committedAt: string;
-  label: string;
-  matchExcerpt: string | null;
 };
 
 export type RecordAcceptanceResult =

@@ -1,16 +1,13 @@
 import { readableIdFrom, readableIdWithSuffix } from '#models/readable-ids/model.ts';
 import {
   canonicalDeliveredRecord,
-  type ExternalRecordIdentity,
   InvalidRecordDeliveryError,
   type RecordAcceptanceResult,
   type RecordDeliveryEnvelope,
   type RecordIdentity,
   type RecordPage,
   type RecordResource,
-  type RecordSearchResult,
   recordPresentation,
-  type StoredRecord,
   validateRecordDeliveryEnvelope,
 } from '#models/records/model.ts';
 import { isUuidV7 } from '#models/syncs/model.ts';
@@ -95,14 +92,6 @@ export class RecordsService {
     });
   }
 
-  find(input: ExternalRecordIdentity & { ownerId: string }): Promise<StoredRecord | null> {
-    return this.records.find(input);
-  }
-
-  search(input: { ownerId: string; query: string; limit: number }): Promise<RecordSearchResult[]> {
-    return this.records.search(input);
-  }
-
   listResources(input: { ownerId: string; limit: number; offset: number }): Promise<RecordPage> {
     return this.records.listResources(input);
   }
@@ -113,5 +102,4 @@ export class RecordsService {
 }
 
 export type RecordDeliveryAcceptanceContract = Pick<RecordsService, 'accept'>;
-export type RecordsRetrievalServiceContract = Pick<RecordsService, 'find' | 'search'>;
 export type RecordResourcesServiceContract = Pick<RecordsService, 'findResource' | 'listResources'>;

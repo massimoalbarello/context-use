@@ -96,7 +96,6 @@ try {
         entitiesService,
         pagesService,
         profilesService,
-        recordsService,
         transferCapabilities: assetTransferCapabilities,
       }),
   });
