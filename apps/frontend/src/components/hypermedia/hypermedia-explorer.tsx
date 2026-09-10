@@ -1,6 +1,6 @@
 import { useQueries } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
 import { useEntities } from '../../lib/hooks/use-entities';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
@@ -19,6 +19,8 @@ import { filterHypermedia, type HypermediaResourceKind } from './hypermedia-reso
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import { HypermediaTimelineCanvas } from './hypermedia-temporal-canvas';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
+
+const PAGE_STATUS_SCROLL_SETTLE_MS = 400;
 
 type NeighborhoodRequest = {
   anchor: HypermediaResourceReference;
@@ -120,6 +122,25 @@ export function HypermediaExplorer({
     [entityData, resourceKinds],
   );
   const [resources, setResources] = useState(() => buildStableResources([], []));
+  const explorerRef = useRef<HTMLDivElement | null>(null);
+  const statusSuppressionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleIntervalScrollingChange = useCallback((scrolling: boolean) => {
+    const explorer = explorerRef.current;
+    if (!explorer) {
+      return;
+    }
+    if (statusSuppressionTimer.current) {
+      clearTimeout(statusSuppressionTimer.current);
+    }
+    if (scrolling) {
+      explorer.dataset.intervalScrolling = 'true';
+      return;
+    }
+    statusSuppressionTimer.current = setTimeout(() => {
+      delete explorer.dataset.intervalScrolling;
+    }, PAGE_STATUS_SCROLL_SETTLE_MS);
+  }, []);
 
   const visualizedHypermedia = useMemo(
     () => filterHypermedia({ resources, pages, kinds: resourceKinds, query }),
@@ -143,6 +164,15 @@ export function HypermediaExplorer({
   useEffect(() => {
     setResources((current) => buildStableResources(neighborhoods, entities, current));
   }, [entities, neighborhoods]);
+
+  useEffect(
+    () => () => {
+      if (statusSuppressionTimer.current) {
+        clearTimeout(statusSuppressionTimer.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const requestedResources = selectedResource
@@ -237,7 +267,11 @@ export function HypermediaExplorer({
     neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
     visualizedHypermedia.resources.some(({ key }) => !requestedAnchorKeys.has(key));
   return (
-    <div className="relative size-full min-h-[28rem]">
+    <div
+      ref={explorerRef}
+      className="group/hypermedia relative size-full min-h-[28rem]"
+      data-hypermedia-explorer
+    >
       {view === 'map' ? (
         <HypermediaCanvas
           key={query.trim().toLocaleLowerCase()}
@@ -250,6 +284,7 @@ export function HypermediaExplorer({
           onSelect={onSelect}
           onViewportSettled={handleViewportSettled}
           onMonthChange={onMonthChange}
+          onIntervalScrollingChange={handleIntervalScrollingChange}
           canExplore={canExplore}
           isInitialLoading={
             visualizedHypermedia.resources.length === 0 &&
@@ -341,7 +376,7 @@ export function HypermediaPageStatus({
   }
   return (
     <div
-      className="absolute right-4 bottom-4 z-20 flex items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur"
+      className="absolute right-4 bottom-4 z-20 flex items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur group-data-[interval-scrolling=true]/hypermedia:hidden"
       role={error ? 'alert' : 'status'}
     >
       {loading && <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />}

@@ -129,10 +129,12 @@ function expectResourceIdentities(role: InteractiveRole) {
 
 function HypermediaMapFixture({
   onMonthChange,
+  onIntervalScrollingChange = () => undefined,
   month,
   selectedKey,
 }: {
   onMonthChange: (month?: `${number}-${string}`) => void;
+  onIntervalScrollingChange?: (scrolling: boolean) => void;
   month?: CalendarMonth;
   selectedKey?: string;
 }) {
@@ -152,6 +154,7 @@ function HypermediaMapFixture({
         onSelect={() => undefined}
         onViewportSettled={() => undefined}
         onMonthChange={onMonthChange}
+        onIntervalScrollingChange={onIntervalScrollingChange}
         canExplore={false}
         isInitialLoading={false}
         neighborhoodError={null}
@@ -163,7 +166,13 @@ function HypermediaMapFixture({
 
 test('Map distinguishes resource identities and moves smoothly through consecutive months', () => {
   const onMonthChange = mock(() => undefined);
-  render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
+  const onIntervalScrollingChange = mock(() => undefined);
+  render(
+    <HypermediaMapFixture
+      onMonthChange={onMonthChange}
+      onIntervalScrollingChange={onIntervalScrollingChange}
+    />,
+  );
 
   expectResourceIdentities('link');
   const canvas = screen.getByLabelText('Interactive Hypermedia');
@@ -174,6 +183,7 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
   expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
 
   fireEvent.wheel(canvas, { deltaY: 40 });
+  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
   expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
   expect(screen.queryByText('Now')).toBeNull();
   expect(screen.queryByText('Past')).toBeNull();

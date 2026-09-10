@@ -228,6 +228,7 @@ export function HypermediaCanvas({
   onSelect,
   onViewportSettled,
   onMonthChange,
+  onIntervalScrollingChange,
   canExplore,
   isInitialLoading,
   neighborhoodError,
@@ -240,6 +241,7 @@ export function HypermediaCanvas({
   month?: CalendarMonth;
   temporalExtent: HypermediaPages['temporalExtent'];
   onMonthChange: (month?: CalendarMonth) => void;
+  onIntervalScrollingChange: (scrolling: boolean) => void;
 }) {
   const [viewBox, setViewBox] = useState<ViewBox>(() =>
     initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
@@ -337,8 +339,9 @@ export function HypermediaCanvas({
       if (wheelIntervalTimer.current) {
         clearTimeout(wheelIntervalTimer.current);
       }
+      onIntervalScrollingChange(false);
     },
-    [],
+    [onIntervalScrollingChange],
   );
 
   useEffect(() => {
@@ -394,6 +397,7 @@ export function HypermediaCanvas({
     intervalProgressRef.current = 0;
     setIntervalProgress(0);
     setIntervalScrolling(false);
+    onIntervalScrollingChange(false);
   }
 
   function intervalWheelDelta(event: globalThis.WheelEvent): number {
@@ -425,6 +429,7 @@ export function HypermediaCanvas({
       return;
     }
     setIntervalScrolling(true);
+    onIntervalScrollingChange(true);
     if (wheelIntervalTimer.current) {
       clearTimeout(wheelIntervalTimer.current);
     }
