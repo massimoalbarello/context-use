@@ -1,6 +1,6 @@
 import { MAX_SYNC_NAME_LENGTH } from '@repo/backend/sync';
 import { useForm } from '@tanstack/react-form';
-import { Check, Copy, KeyRound, RefreshCwOff } from 'lucide-react';
+import { Check, Copy, KeyRound, Plus, RefreshCwOff } from 'lucide-react';
 import { useId, useState } from 'react';
 import { submitThenChangeValidation } from '../../lib/form-validation';
 import type { CreatedRecordSync, RecordSync } from '../../queries/syncs';
@@ -16,7 +16,7 @@ import {
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
-import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
+import { Field, FieldError, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 
 type CopyState = 'idle' | 'copied' | 'failed';
@@ -86,10 +86,12 @@ export function CreateSyncForm({
   pending,
   error,
   onSubmit,
+  onCancel,
 }: {
   pending: boolean;
   error: Error | null;
   onSubmit: (name: string) => void;
+  onCancel: () => void;
 }) {
   const nameInputId = useId();
   const form = useForm({
@@ -120,21 +122,87 @@ export function CreateSyncForm({
               onChange={(event) => field.handleChange(event.target.value)}
               aria-invalid={field.state.meta.errors.length > 0}
             />
-            <FieldDescription>
-              Use the name of the external service that will deliver these records.
-            </FieldDescription>
             <FieldError>{field.state.meta.errors[0]}</FieldError>
           </Field>
         )}
       </form.Field>
       {error && <FieldError>{error.message}</FieldError>}
-      <div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" size="lg" variant="outline" disabled={pending} onClick={onCancel}>
+          Cancel
+        </Button>
         <Button type="submit" size="lg" disabled={pending}>
           <KeyRound data-icon="inline-start" aria-hidden="true" />
-          {pending ? 'Creating…' : 'Create sync'}
+          {pending ? 'Adding…' : 'Add sync'}
         </Button>
       </div>
     </form>
+  );
+}
+
+export function SyncCreation({
+  created,
+  recordEndpoint,
+  pending,
+  error,
+  onSubmit,
+  onReset,
+}: {
+  created: CreatedRecordSync | undefined;
+  recordEndpoint: string;
+  pending: boolean;
+  error: Error | null;
+  onSubmit: (name: string) => void;
+  onReset: () => void;
+}) {
+  const [adding, setAdding] = useState(false);
+
+  if (created) {
+    return (
+      <NewSyncCredential
+        created={created}
+        recordEndpoint={recordEndpoint}
+        onDone={() => {
+          onReset();
+          setAdding(false);
+        }}
+      />
+    );
+  }
+
+  if (!adding) {
+    return (
+      <div>
+        <Button
+          type="button"
+          size="lg"
+          onClick={() => {
+            onReset();
+            setAdding(true);
+          }}
+        >
+          <Plus data-icon="inline-start" aria-hidden="true" />
+          Add sync
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <section className="grid gap-4" aria-labelledby="add-sync-heading">
+      <h2 id="add-sync-heading" className="font-semibold text-xl">
+        Add sync
+      </h2>
+      <CreateSyncForm
+        pending={pending}
+        error={error}
+        onSubmit={onSubmit}
+        onCancel={() => {
+          onReset();
+          setAdding(false);
+        }}
+      />
+    </section>
   );
 }
 
@@ -153,8 +221,7 @@ export function NewSyncCredential({
         <div className="grid gap-1">
           <h3 className="font-semibold text-lg">Save the API key for {created.sync.name}</h3>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            This key is shown only now. Give the endpoint and key to the external service that will
-            deliver records for this sync.
+            Copy these now. The API key won’t be shown again.
           </p>
         </div>
         <CopyableSyncValue label="Record endpoint" value={recordEndpoint} />
@@ -228,19 +295,19 @@ export function SyncList({
   error: Error | null;
   onRevoke: (syncReadableId: string) => void;
 }) {
-  const active = syncs.filter((sync) => sync.revokedAt === null);
+  const authorized = syncs.filter((sync) => sync.revokedAt === null);
   const revoked = syncs.filter((sync) => sync.revokedAt !== null);
 
   return (
     <div className="grid gap-8">
-      <section className="grid gap-4" aria-labelledby="active-syncs-heading">
-        <h2 id="active-syncs-heading" className="font-semibold text-xl">
-          Active syncs
+      <section className="grid gap-4" aria-labelledby="authorized-syncs-heading">
+        <h2 id="authorized-syncs-heading" className="font-semibold text-xl">
+          Authorized syncs
         </h2>
-        {active.length === 0 ? (
-          <p className="text-muted-foreground">No external services can deliver records yet.</p>
+        {authorized.length === 0 ? (
+          <p className="text-muted-foreground">No authorized syncs.</p>
         ) : (
-          active.map((sync) => (
+          authorized.map((sync) => (
             <Card key={sync.readableId}>
               <CardContent className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                 <div className="min-w-0">

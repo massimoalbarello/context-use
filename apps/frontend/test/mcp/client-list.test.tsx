@@ -5,7 +5,7 @@ import { ResourceDetailActions } from '../../src/components/knowledge/resource-d
 import { ClientList } from '../../src/components/mcp/client-list';
 import { ClientNameForm } from '../../src/components/mcp/client-name-form';
 
-test('authenticated clients are read-only until the shared edit action is selected', () => {
+test('authorized clients are read-only until the shared edit action is selected', () => {
   const queryClient = new QueryClient();
   const viewHtml = renderToStaticMarkup(
     <QueryClientProvider client={queryClient}>
@@ -34,7 +34,7 @@ test('authenticated clients are read-only until the shared edit action is select
 
   expect(viewHtml).toContain('Edit client');
   expect(viewHtml).toContain('>Archive</button>');
-  expect(viewHtml).toContain('Authenticated clients');
+  expect(viewHtml).toContain('Authorized clients');
   expect(viewHtml).toContain('Archived clients');
   expect(viewHtml).toContain('Authorized');
   expect(viewHtml).toContain('dateTime="2026-09-01T00:00:00.000Z"');

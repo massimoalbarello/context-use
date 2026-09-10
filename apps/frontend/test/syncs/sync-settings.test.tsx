@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import {
   CreateSyncForm,
   NewSyncCredential,
+  SyncCreation,
   SyncList,
 } from '../../src/components/syncs/sync-settings';
 
@@ -22,16 +23,45 @@ const created = {
 
 test('sync creation requires a name and submits its trimmed external-service identity', async () => {
   const onSubmit = mock(() => undefined);
+  const onCancel = mock(() => undefined);
   const user = userEvent.setup({ document });
-  const view = render(<CreateSyncForm pending={false} error={null} onSubmit={onSubmit} />);
+  const view = render(
+    <CreateSyncForm pending={false} error={null} onSubmit={onSubmit} onCancel={onCancel} />,
+  );
 
-  await user.click(view.getByRole('button', { name: 'Create sync' }));
+  await user.click(view.getByRole('button', { name: 'Add sync' }));
   expect((await view.findByRole('alert')).textContent).toContain('Enter a name for this sync.');
   expect(onSubmit).not.toHaveBeenCalled();
 
   await user.type(view.getByRole('textbox', { name: 'Sync name' }), '  Engineering activity  ');
-  await user.click(view.getByRole('button', { name: 'Create sync' }));
+  await user.click(view.getByRole('button', { name: 'Add sync' }));
   await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('Engineering activity'));
+});
+
+test('sync setup stays hidden until add sync is selected', async () => {
+  const onReset = mock(() => undefined);
+  const user = userEvent.setup({ document });
+  const view = render(
+    <SyncCreation
+      created={undefined}
+      recordEndpoint="https://context.example/api/records"
+      pending={false}
+      error={null}
+      onSubmit={() => undefined}
+      onReset={onReset}
+    />,
+  );
+
+  expect(view.queryByRole('textbox', { name: 'Sync name' })).toBeNull();
+  expect(view.queryByRole('textbox', { name: 'Record endpoint' })).toBeNull();
+
+  await user.click(view.getByRole('button', { name: 'Add sync' }));
+  expect(view.getByRole('textbox', { name: 'Sync name' })).toBeTruthy();
+  expect(view.queryByRole('textbox', { name: 'Record endpoint' })).toBeNull();
+
+  await user.click(view.getByRole('button', { name: 'Cancel' }));
+  expect(view.queryByRole('textbox', { name: 'Sync name' })).toBeNull();
+  expect(onReset).toHaveBeenCalledTimes(2);
 });
 
 test('new credentials expose the generic endpoint and UUIDv7 key with copy actions', async () => {
@@ -53,7 +83,7 @@ test('new credentials expose the generic endpoint and UUIDv7 key with copy actio
   expect((view.getByRole('textbox', { name: 'API key' }) as HTMLInputElement).value).toBe(
     created.apiKey,
   );
-  expect(view.getByText(/shown only now/i)).toBeTruthy();
+  expect(view.getByText(/won’t be shown again/i)).toBeTruthy();
 
   await user.click(view.getByRole('button', { name: /copy api key/i }));
   await waitFor(() => expect(writes).toEqual([created.apiKey]));
@@ -63,7 +93,7 @@ test('new credentials expose the generic endpoint and UUIDv7 key with copy actio
   expect(onDone).toHaveBeenCalledTimes(1);
 });
 
-test('sync list separates active and revoked senders while preserving the revoke warning', () => {
+test('sync list separates authorized and revoked senders while preserving the revoke warning', () => {
   const view = render(
     <SyncList
       syncs={[
@@ -81,7 +111,7 @@ test('sync list separates active and revoked senders while preserving the revoke
     />,
   );
 
-  expect(view.getByRole('heading', { name: 'Active syncs' })).toBeTruthy();
+  expect(view.getByRole('heading', { name: 'Authorized syncs' })).toBeTruthy();
   expect(view.getByRole('heading', { name: 'Revoked syncs' })).toBeTruthy();
   expect(view.getByText('Engineering activity')).toBeTruthy();
   expect(view.getByText('Old sync')).toBeTruthy();

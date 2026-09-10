@@ -141,9 +141,9 @@ export function ClientList({ clients }: { clients: McpClient[] }) {
   return (
     <div className="grid gap-8">
       <section className="grid gap-4">
-        <h2 className="font-semibold text-xl">Authenticated clients</h2>
+        <h2 className="font-semibold text-xl">Authorized clients</h2>
         {active.length === 0 ? (
-          <p className="text-muted-foreground">No MCP clients are authenticated.</p>
+          <p className="text-muted-foreground">No MCP clients are authorized.</p>
         ) : (
           active.map((client) => <ActiveClient key={client.id} client={client} />)
         )}

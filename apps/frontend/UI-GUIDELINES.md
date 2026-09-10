@@ -30,8 +30,8 @@ Use the relationship verb that expresses the domain:
 - Assets are **attached** or **embedded**.
 
 Do not replace a known relationship with generic “link” language. External consumers are **MCP
-clients**, not connections; authorization is an internal identity boundary rather than user-facing
-product language.
+clients**, not connections. Describe clients and syncs with valid credentials as **authorized**, not
+authenticated or active; Context Use grants access but cannot observe whether they are running.
 
 Each resource type owns one reusable identity treatment:
 
