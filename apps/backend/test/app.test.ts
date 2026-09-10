@@ -126,7 +126,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
 
   const batchId = 'mounted-receiver-batch';
   const receiverResponse = await app.handle(
-    new Request('http://localhost/api/records', {
+    new Request('http://localhost/api/records/batch', {
       method: 'POST',
       headers: {
         authorization: `Bearer ${deliveryApiKey}`,

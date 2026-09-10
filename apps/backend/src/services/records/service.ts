@@ -1,7 +1,6 @@
 import { readableIdFrom, readableIdWithSuffix } from '#models/readable-ids/model.ts';
 import {
   canonicalDeliveredRecord,
-  canonicalRecordContent,
   type ExternalRecordIdentity,
   InvalidRecordDeliveryError,
   type RecordAcceptanceResult,
@@ -17,7 +16,6 @@ import {
 import { isUuidV7 } from '#models/syncs/model.ts';
 import type { RecordsRepositoryContract } from '#repositories/records/repository.ts';
 
-const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const RECORD_READABLE_ID_SUFFIX_LENGTH = 24;
 
 function sha256(value: string): string {
@@ -66,26 +64,17 @@ export class RecordsService {
     syncId,
     ownerId,
     envelope,
-    payloadHash,
   }: {
     syncId: string;
     ownerId: string;
     envelope: RecordDeliveryEnvelope;
-    payloadHash: string;
   }): Promise<RecordAcceptanceResult> {
     validatePrincipal({ syncId, ownerId });
-    if (!SHA256_PATTERN.test(payloadHash)) {
-      throw new InvalidRecordDeliveryError(
-        'Delivery payloadHash must be a lowercase SHA-256 digest',
-      );
-    }
     validateRecordDeliveryEnvelope(envelope);
 
     return await this.records.accept({
       syncId,
       ownerId,
-      batchId: envelope.batchId,
-      payloadHash,
       records: envelope.records.map((record) => {
         const presentation = recordPresentation(record.content?.body ?? 'Record');
         return {
@@ -98,8 +87,8 @@ export class RecordsService {
             title: presentation.title,
           }),
           ...presentation,
-          contentJson: canonicalRecordContent(record.content),
-          fingerprint: sha256(canonicalDeliveredRecord(record)),
+          markdown: record.content?.body ?? null,
+          revisionFingerprint: sha256(canonicalDeliveredRecord(record)),
         };
       }),
       receivedAt: this.now().toISOString(),

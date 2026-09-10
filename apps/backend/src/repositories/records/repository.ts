@@ -5,7 +5,6 @@ import type {
   ExternalRecordIdentity,
   RecordAcceptanceResult,
   RecordContent,
-  RecordIngestionJob,
   RecordPage,
   RecordResource,
   RecordSearchResult,
@@ -20,11 +19,9 @@ const MATCH_END = '\u{e001}';
 const MATCH_ELLIPSIS = ' … ';
 const MATCH_EXCERPT_TOKENS = 32;
 
-type RecordConflictReason = Extract<RecordAcceptanceResult, { state: 'conflict' }>['reason'];
-
 class RecordAcceptanceConflict extends Error {
-  constructor(readonly reason: RecordConflictReason) {
-    super(`Record delivery acceptance conflict: ${reason}`);
+  constructor() {
+    super('A record revision conflicts with stored content');
     this.name = 'RecordAcceptanceConflict';
   }
 }
@@ -34,51 +31,27 @@ export type AcceptedRecord = {
   readableId: string;
   title: string;
   excerpt: string;
-  contentJson: string | null;
-  fingerprint: string;
+  markdown: string | null;
+  revisionFingerprint: string;
 };
 
 export type AcceptRecordsInput = {
   syncId: string;
   ownerId: string;
-  batchId: string;
-  payloadHash: string;
   records: AcceptedRecord[];
   receivedAt: string;
 };
 
-export type RecordJobProjection = {
-  label: string;
-  body: string;
-};
-
 export interface RecordsRepositoryContract {
   accept(input: AcceptRecordsInput): Promise<RecordAcceptanceResult>;
-  hasUnfinishedJobs(): Promise<boolean>;
-  claimJob(input: {
-    now: string;
-    leaseToken: string;
-    leaseExpiresAt: string;
-  }): Promise<RecordIngestionJob | null>;
-  completeJob(input: {
-    job: RecordIngestionJob;
-    projection: RecordJobProjection | null;
-    completedAt: string;
-  }): Promise<'completed' | 'superseded' | 'lost_lease'>;
-  retryJob(input: {
-    job: RecordIngestionJob;
-    availableAt: string;
-    error: string;
-    updatedAt: string;
-  }): Promise<boolean>;
   find(input: ExternalRecordIdentity & { ownerId: string }): Promise<StoredRecord | null>;
   search(input: { ownerId: string; query: string; limit: number }): Promise<RecordSearchResult[]>;
   listResources(input: { ownerId: string; limit: number; offset: number }): Promise<RecordPage>;
   findResource(input: { ownerId: string; readableId: string }): Promise<RecordResource | null>;
 }
 
-function contentFrom(serialized: string | null): RecordContent | null {
-  return serialized === null ? null : (JSON.parse(serialized) as RecordContent);
+function contentFrom(markdown: string | null): RecordContent | null {
+  return markdown === null ? null : { body: markdown };
 }
 
 function queryTokens(query: string): string[] {
@@ -124,7 +97,7 @@ function recordSummaryFrom({
   };
 }
 
-async function acceptRecord({
+async function applyRecord({
   db,
   input,
   accepted,
@@ -134,59 +107,40 @@ async function acceptRecord({
   accepted: AcceptedRecord;
 }): Promise<void> {
   const { record } = accepted;
-  const events = await db.FindRecordEventFingerprint`
-    /* @notNull eventFingerprint */
-    select "event_fingerprint" as "eventFingerprint"
-    from "record_event"
-    where "sync_id" = ${input.syncId} and "event_id" = ${record.eventId}
-  `;
-  const event = events[0];
-  if (event) {
-    if (event.eventFingerprint !== accepted.fingerprint) {
-      throw new RecordAcceptanceConflict('event');
-    }
-    return;
-  }
-
-  const revisions = await db.FindRecordRevisionFingerprints`
-    /* @notNull eventFingerprint */
-    select "event_fingerprint" as "eventFingerprint"
-    from "record_event"
+  const currentRows = await db.FindCurrentRecordRevision`
+    /* @notNull revision revisionFingerprint */
+    select "revision", "revision_fingerprint" as "revisionFingerprint"
+    from "record"
     where "sync_id" = ${input.syncId}
       and "source_id" = ${record.sourceId}
       and "kind" = ${record.kind}
       and "record_id" = ${record.id}
-      and "revision" = ${record.revision}
   `;
-  if (revisions.some(({ eventFingerprint }) => eventFingerprint !== accepted.fingerprint)) {
-    throw new RecordAcceptanceConflict('record_revision');
+  const current = currentRows[0];
+  if (current) {
+    const currentRevision = Number(current.revision);
+    if (
+      currentRevision === record.revision &&
+      current.revisionFingerprint !== accepted.revisionFingerprint
+    ) {
+      throw new RecordAcceptanceConflict();
+    }
+    if (currentRevision >= record.revision) {
+      return;
+    }
   }
 
-  await db.CreateRecordEvent`
-    insert into "record_event"
-      ("sync_id", "owner_id", "event_id", "batch_id", "provider", "source_id",
-       "kind", "record_id", "revision", "operation", "content_hash", "committed_at",
-       "content_json", "event_fingerprint", "received_at")
-    values
-      (${input.syncId}, ${input.ownerId}, ${record.eventId}, ${input.batchId},
-       ${record.provider}, ${record.sourceId}, ${record.kind}, ${record.id}, ${record.revision},
-       ${record.operation}, ${record.contentHash}, ${record.committedAt}, ${accepted.contentJson},
-       ${accepted.fingerprint}, ${input.receivedAt})
-  `;
-
-  const applied = await db.ApplyRecordRevision`
-    /* @notNull revision */
+  await db.ApplyRecordRevision`
     insert into "record"
       ("sync_id", "owner_id", "readable_id", "title", "excerpt", "provider",
-       "source_id", "kind", "record_id",
-       "revision", "operation", "content_hash", "committed_at", "content_json",
-       "current_event_id", "created_at", "updated_at")
+       "source_id", "kind", "record_id", "revision", "operation", "content_hash",
+       "committed_at", "markdown", "revision_fingerprint", "created_at", "updated_at")
     values
       (${input.syncId}, ${input.ownerId}, ${accepted.readableId}, ${accepted.title},
        ${accepted.excerpt}, ${record.provider}, ${record.sourceId}, ${record.kind}, ${record.id},
-       ${record.revision}, ${record.operation},
-       ${record.contentHash}, ${record.committedAt}, ${accepted.contentJson}, ${record.eventId},
-       ${input.receivedAt}, ${input.receivedAt})
+       ${record.revision}, ${record.operation}, ${record.contentHash}, ${record.committedAt},
+       ${accepted.markdown}, ${accepted.revisionFingerprint}, ${input.receivedAt},
+       ${input.receivedAt})
     on conflict ("sync_id", "source_id", "kind", "record_id") do update set
       "owner_id" = excluded."owner_id",
       "title" = excluded."title",
@@ -196,24 +150,38 @@ async function acceptRecord({
       "operation" = excluded."operation",
       "content_hash" = excluded."content_hash",
       "committed_at" = excluded."committed_at",
-      "content_json" = excluded."content_json",
-      "current_event_id" = excluded."current_event_id",
+      "markdown" = excluded."markdown",
+      "revision_fingerprint" = excluded."revision_fingerprint",
       "updated_at" = excluded."updated_at"
     where excluded."revision" > "record"."revision"
-    returning "revision"
   `;
-  if (!applied[0]) {
+
+  if (record.operation === 'deleted') {
+    await db.DeleteRecordSearchDocument`
+      delete from "record_search_document"
+      where "sync_id" = ${input.syncId}
+        and "source_id" = ${record.sourceId}
+        and "kind" = ${record.kind}
+        and "record_id" = ${record.id}
+    `;
     return;
   }
-
-  await db.EnqueueRecordIngestionJob`
-    insert into "record_ingestion_job"
-      ("sync_id", "owner_id", "event_id", "source_id", "kind", "record_id",
-       "revision", "state", "available_at", "created_at", "updated_at")
+  if (accepted.markdown === null) {
+    throw new Error('An active record is missing Markdown');
+  }
+  await db.UpsertRecordSearchDocument`
+    insert into "record_search_document"
+      ("sync_id", "owner_id", "provider", "source_id", "kind", "record_id", "revision",
+       "label", "body")
     values
-      (${input.syncId}, ${input.ownerId}, ${record.eventId}, ${record.sourceId},
-       ${record.kind}, ${record.id}, ${record.revision}, 'pending', ${input.receivedAt},
-       ${input.receivedAt}, ${input.receivedAt})
+      (${input.syncId}, ${input.ownerId}, ${record.provider}, ${record.sourceId}, ${record.kind},
+       ${record.id}, ${record.revision}, ${accepted.title}, ${accepted.markdown})
+    on conflict ("sync_id", "source_id", "kind", "record_id") do update set
+      "owner_id" = excluded."owner_id",
+      "provider" = excluded."provider",
+      "revision" = excluded."revision",
+      "label" = excluded."label",
+      "body" = excluded."body"
   `;
 }
 
@@ -234,30 +202,8 @@ async function acceptDelivery({
     return { state: 'inactive_sync' };
   }
 
-  const receipts = await db.FindRecordBatchReceipt`
-    /* @notNull payloadHash */
-    select "payload_hash" as "payloadHash"
-    from "record_delivery_batch"
-    where "sync_id" = ${input.syncId} and "batch_id" = ${input.batchId}
-  `;
-  const receipt = receipts[0];
-  if (receipt) {
-    if (receipt.payloadHash !== input.payloadHash) {
-      throw new RecordAcceptanceConflict('batch');
-    }
-    return { state: 'duplicate' };
-  }
-
-  await db.CreateRecordBatchReceipt`
-    insert into "record_delivery_batch"
-      ("sync_id", "owner_id", "batch_id", "payload_hash", "record_count", "received_at")
-    values
-      (${input.syncId}, ${input.ownerId}, ${input.batchId}, ${input.payloadHash},
-       ${input.records.length}, ${input.receivedAt})
-  `;
-
-  for (const accepted of input.records) {
-    await acceptRecord({ db, input, accepted });
+  for (const record of input.records) {
+    await applyRecord({ db, input, accepted: record });
   }
   return { state: 'accepted' };
 }
@@ -275,208 +221,24 @@ export class RecordsRepository implements RecordsRepositoryContract {
       return await this.serialize(() => this.sql.begin((db) => acceptDelivery({ db, input })));
     } catch (error) {
       if (error instanceof RecordAcceptanceConflict) {
-        return { state: 'conflict', reason: error.reason };
+        return { state: 'conflict', reason: 'record_revision' };
       }
       throw error;
     }
   }
 
-  async hasUnfinishedJobs(): Promise<boolean> {
-    const rows = await this.serialize(
-      () => this.sql.HasUnfinishedRecordIngestionJobs`
-        /* @notNull unfinished */
-        select exists(
-          select 1
-          from "record_ingestion_job"
-          where "state" in ('pending', 'leased')
-        ) as "unfinished"
-      `,
-    );
-    return Boolean(rows[0]?.unfinished);
-  }
-
-  claimJob({
-    now,
-    leaseToken,
-    leaseExpiresAt,
-  }: {
-    now: string;
-    leaseToken: string;
-    leaseExpiresAt: string;
-  }): Promise<RecordIngestionJob | null> {
-    return this.serialize(() =>
-      this.sql.begin(async (db) => {
-        const claimed = await db.ClaimRecordIngestionJob`
-        /* @notNull syncId ownerId eventId sourceId kind recordId revision attemptCount leaseToken leaseExpiresAt */
-        update "record_ingestion_job"
-        set "state" = 'leased', "attempt_count" = "attempt_count" + 1,
-          "lease_token" = ${leaseToken}, "lease_expires_at" = ${leaseExpiresAt},
-          "last_error" = null, "updated_at" = ${now}
-        where ("sync_id", "event_id") = (
-          select "sync_id", "event_id"
-          from "record_ingestion_job"
-          where (
-              "state" = 'pending' and "available_at" <= ${now}
-            ) or (
-              "state" = 'leased' and "lease_expires_at" <= ${now}
-            )
-          order by "available_at", "created_at", "sync_id", "event_id"
-          limit 1
-        )
-        returning "sync_id" as "syncId", "owner_id" as "ownerId",
-          "event_id" as "eventId", "source_id" as "sourceId", "kind", "record_id" as "recordId",
-          "revision", "attempt_count" as "attemptCount", "lease_token" as "leaseToken",
-          "lease_expires_at" as "leaseExpiresAt"
-      `;
-        const job = claimed[0];
-        if (!job) {
-          return null;
-        }
-        const events = await db.ReadClaimedRecordEvent`
-        /* @notNull provider operation contentHash committedAt */
-        /* @type operation 'added' | 'updated' | 'deleted' */
-        select "provider", "operation", "content_hash" as "contentHash",
-          "committed_at" as "committedAt", "content_json" as "contentJson"
-        from "record_event"
-        where "sync_id" = ${job.syncId} and "event_id" = ${job.eventId}
-      `;
-        const event = events[0];
-        if (!event) {
-          throw new Error('Claimed record delivery event is missing');
-        }
-        return {
-          ...job,
-          revision: Number(job.revision),
-          attemptCount: Number(job.attemptCount),
-          provider: event.provider,
-          operation: event.operation,
-          contentHash: event.contentHash,
-          committedAt: event.committedAt,
-          content: contentFrom(event.contentJson),
-        };
-      }),
-    );
-  }
-
-  completeJob({
-    job,
-    projection,
-    completedAt,
-  }: {
-    job: RecordIngestionJob;
-    projection: RecordJobProjection | null;
-    completedAt: string;
-  }): Promise<'completed' | 'superseded' | 'lost_lease'> {
-    return this.serialize(() =>
-      this.sql.begin(async (db) => {
-        const leases = await db.FindLeasedRecordIngestionJob`
-        /* @notNull revision */
-        select "revision"
-        from "record_ingestion_job"
-        where "sync_id" = ${job.syncId} and "event_id" = ${job.eventId}
-          and "state" = 'leased' and "lease_token" = ${job.leaseToken}
-      `;
-        if (!leases[0]) {
-          return 'lost_lease';
-        }
-        const currentRows = await db.FindCurrentRecordForIngestion`
-        /* @notNull provider revision operation */
-        /* @type operation 'added' | 'updated' | 'deleted' */
-        select "provider", "revision", "operation"
-        from "record"
-        where "sync_id" = ${job.syncId}
-          and "source_id" = ${job.sourceId}
-          and "kind" = ${job.kind}
-          and "record_id" = ${job.recordId}
-      `;
-        const current = currentRows[0];
-        if (!current || Number(current.revision) !== job.revision) {
-          await db.SupersedeRecordIngestionJob`
-          update "record_ingestion_job"
-          set "state" = 'superseded', "lease_token" = null, "lease_expires_at" = null,
-            "updated_at" = ${completedAt}
-          where "sync_id" = ${job.syncId} and "event_id" = ${job.eventId}
-            and "state" = 'leased' and "lease_token" = ${job.leaseToken}
-        `;
-          return 'superseded';
-        }
-
-        if (current.operation === 'deleted') {
-          await db.DeleteRecordSearchDocument`
-          delete from "record_search_document"
-          where "sync_id" = ${job.syncId}
-            and "source_id" = ${job.sourceId}
-            and "kind" = ${job.kind}
-            and "record_id" = ${job.recordId}
-        `;
-        } else {
-          if (!projection) {
-            throw new Error('A current record requires a search projection');
-          }
-          await db.UpsertRecordSearchDocument`
-          insert into "record_search_document"
-            ("sync_id", "owner_id", "provider", "source_id", "kind", "record_id",
-             "revision", "label", "body")
-          values
-            (${job.syncId}, ${job.ownerId}, ${current.provider}, ${job.sourceId}, ${job.kind},
-             ${job.recordId}, ${job.revision}, ${projection.label}, ${projection.body})
-          on conflict ("sync_id", "source_id", "kind", "record_id") do update set
-            "owner_id" = excluded."owner_id",
-            "provider" = excluded."provider",
-            "revision" = excluded."revision",
-            "label" = excluded."label",
-            "body" = excluded."body"
-        `;
-        }
-
-        await db.CompleteRecordIngestionJob`
-        update "record_ingestion_job"
-        set "state" = 'completed', "lease_token" = null, "lease_expires_at" = null,
-          "last_error" = null, "updated_at" = ${completedAt}
-        where "sync_id" = ${job.syncId} and "event_id" = ${job.eventId}
-          and "state" = 'leased' and "lease_token" = ${job.leaseToken}
-      `;
-        return 'completed';
-      }),
-    );
-  }
-
-  async retryJob({
-    job,
-    availableAt,
-    error,
-    updatedAt,
-  }: {
-    job: RecordIngestionJob;
-    availableAt: string;
-    error: string;
-    updatedAt: string;
-  }): Promise<boolean> {
-    const retried = await this.serialize(
-      () => this.sql.RetryRecordIngestionJob`
-        update "record_ingestion_job"
-        set "state" = 'pending', "available_at" = ${availableAt}, "lease_token" = null,
-          "lease_expires_at" = null, "last_error" = ${error}, "updated_at" = ${updatedAt}
-        where "sync_id" = ${job.syncId} and "event_id" = ${job.eventId}
-          and "state" = 'leased' and "lease_token" = ${job.leaseToken}
-        returning "event_id"
-      `,
-    );
-    return retried.length > 0;
-  }
-
   async find(input: ExternalRecordIdentity & { ownerId: string }): Promise<StoredRecord | null> {
     return await this.serialize(async () => {
       const rows = await this.sql.FindRecord`
-        /* @notNull syncId syncReadableId ownerId readableId provider sourceId kind recordId revision operation contentHash committedAt currentEventId createdAt updatedAt */
+        /* @notNull syncId syncReadableId ownerId readableId provider sourceId kind recordId revision operation contentHash committedAt createdAt updatedAt */
         /* @type operation 'added' | 'updated' | 'deleted' */
         select record."sync_id" as "syncId", sync."readable_id" as "syncReadableId",
           record."owner_id" as "ownerId", record."readable_id" as "readableId",
           record."provider", record."source_id" as "sourceId", record."kind",
           record."record_id" as "recordId", record."revision", record."operation",
           record."content_hash" as "contentHash", record."committed_at" as "committedAt",
-          record."content_json" as "contentJson", record."current_event_id" as "currentEventId",
-          record."created_at" as "createdAt", record."updated_at" as "updatedAt"
+          record."markdown", record."created_at" as "createdAt",
+          record."updated_at" as "updatedAt"
         from "record" record
         join "record_sync" sync
           on sync."id" = record."sync_id" and sync."owner_id" = record."owner_id"
@@ -490,7 +252,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
         ? {
             ...row,
             revision: Number(row.revision),
-            content: contentFrom(row.contentJson),
+            content: contentFrom(row.markdown),
           }
         : null;
     });
@@ -515,10 +277,10 @@ export class RecordsRepository implements RecordsRepositoryContract {
         /* @notNull syncReadableId readableId provider sourceId kind recordId revision contentHash committedAt label rawMatchExcerpt */
         /* @type rawMatchExcerpt string */
         select sync."readable_id" as "syncReadableId", current."readable_id" as "readableId",
-          document."provider",
-          document."source_id" as "sourceId", document."kind", document."record_id" as "recordId",
-          document."revision", current."content_hash" as "contentHash",
-          current."committed_at" as "committedAt", document."label",
+          document."provider", document."source_id" as "sourceId", document."kind",
+          document."record_id" as "recordId", document."revision",
+          current."content_hash" as "contentHash", current."committed_at" as "committedAt",
+          document."label",
           snippet("record_search_fts", 5, ${MATCH_START}, ${MATCH_END}, ${MATCH_ELLIPSIS},
             ${MATCH_EXCERPT_TOKENS}) as "rawMatchExcerpt"
         from "record_search_fts"
@@ -586,10 +348,10 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }): Promise<RecordResource | null> {
     return await this.serialize(async () => {
       const rows = await this.sql.FindRecordResource`
-        /* @notNull syncReadableId syncName readableId title excerpt contentJson createdAt updatedAt */
+        /* @notNull syncReadableId syncName readableId title excerpt markdown createdAt updatedAt */
         select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
           record."readable_id" as "readableId", record."title", record."excerpt",
-          record."content_json" as "contentJson", record."created_at" as "createdAt",
+          record."markdown", record."created_at" as "createdAt",
           record."updated_at" as "updatedAt"
         from "record" record
         join "record_sync" sync
@@ -600,14 +362,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
         limit 1
       `;
       const row = rows[0];
-      if (!row) {
-        return null;
-      }
-      const content = contentFrom(row.contentJson);
-      if (!content) {
-        throw new Error('An active record is missing content');
-      }
-      return { ...recordSummaryFrom(row), markdown: content.body };
+      return row ? { ...recordSummaryFrom(row), markdown: row.markdown } : null;
     });
   }
 

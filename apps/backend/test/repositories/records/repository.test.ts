@@ -131,95 +131,58 @@ async function insertSync({
 }
 
 async function tableCounts(database: SQL) {
-  const [counts] = await database<
-    Array<{ batches: number; events: number; records: number; jobs: number }>
-  >`
+  const [counts] = await database<Array<{ records: number; searchDocuments: number }>>`
     select
-      (select count(*) from "record_delivery_batch") as "batches",
-      (select count(*) from "record_event") as "events",
       (select count(*) from "record") as "records",
-      (select count(*) from "record_ingestion_job") as "jobs"
+      (select count(*) from "record_search_document") as "searchDocuments"
   `;
   return counts!;
 }
 
-test('record acceptance is owner-bound, idempotent, monotonic, and atomically conflict-safe', async () => {
+test('a batch atomically applies owner-bound records and their searchable projections', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
       await insertOwner({ database, ownerId: OWNER_ID });
       await insertOwner({ database, ownerId: SECOND_OWNER_ID });
-      const records = new RecordsRepository(database);
-      const service = new RecordsService({ records, now: () => RECEIVED_AT });
+      const service = new RecordsService({
+        records: new RecordsRepository(database),
+        now: () => RECEIVED_AT,
+      });
 
       const initial = activeRecord({ eventId: 'event-initial' });
       const firstEnvelope = envelope({ batchId: 'batch-initial', records: [initial] });
       expect(
-        await service.accept({
-          syncId: SYNC_ID,
-          ownerId: OWNER_ID,
-          envelope: firstEnvelope,
-          payloadHash: digest('batch-initial'),
-        }),
+        await service.accept({ syncId: SYNC_ID, ownerId: OWNER_ID, envelope: firstEnvelope }),
       ).toEqual({ state: 'inactive_sync' });
       await insertSync({ database });
 
-      const mismatched = activeRecord({
+      const invalid = activeRecord({
         eventId: 'event-content-hash-mismatch',
         recordId: 'content-hash-mismatch',
       });
-      mismatched.contentHash = 'f'.repeat(SHA256_HEX_LENGTH);
+      invalid.contentHash = 'f'.repeat(SHA256_HEX_LENGTH);
       await expect(
         service.accept({
           syncId: SYNC_ID,
           ownerId: OWNER_ID,
-          envelope: envelope({
-            batchId: 'batch-content-hash-mismatch',
-            records: [initial, mismatched],
-          }),
-          payloadHash: digest('batch-content-hash-mismatch'),
+          envelope: envelope({ batchId: 'batch-invalid', records: [initial, invalid] }),
         }),
       ).rejects.toThrow('contentHash must match the canonical record content');
-      expect(await tableCounts(database)).toEqual({ batches: 0, events: 0, records: 0, jobs: 0 });
+      expect(await tableCounts(database)).toEqual({ records: 0, searchDocuments: 0 });
 
       expect(
-        await service.accept({
-          syncId: SYNC_ID,
-          ownerId: OWNER_ID,
-          envelope: firstEnvelope,
-          payloadHash: digest('batch-initial'),
-        }),
+        await service.accept({ syncId: SYNC_ID, ownerId: OWNER_ID, envelope: firstEnvelope }),
       ).toEqual({ state: 'accepted' });
       expect(
-        await service.accept({
-          syncId: SYNC_ID,
-          ownerId: OWNER_ID,
-          envelope: firstEnvelope,
-          payloadHash: digest('batch-initial'),
-        }),
-      ).toEqual({ state: 'duplicate' });
+        await service.search({ ownerId: OWNER_ID, query: 'searchable', limit: 10 }),
+      ).toHaveLength(1);
+      expect(await tableCounts(database)).toEqual({ records: 1, searchDocuments: 1 });
 
       expect(
-        await service.accept({
-          syncId: SYNC_ID,
-          ownerId: OWNER_ID,
-          envelope: envelope({ batchId: 'batch-repeated-event', records: [initial] }),
-          payloadHash: digest('batch-repeated-event'),
-        }),
+        await service.accept({ syncId: SYNC_ID, ownerId: OWNER_ID, envelope: firstEnvelope }),
       ).toEqual({ state: 'accepted' });
-      expect(await tableCounts(database)).toEqual({ batches: 2, events: 1, records: 1, jobs: 1 });
+      expect(await tableCounts(database)).toEqual({ records: 1, searchDocuments: 1 });
 
-      expect(
-        await service.accept({
-          syncId: SYNC_ID,
-          ownerId: OWNER_ID,
-          envelope: envelope({
-            batchId: 'batch-alias-event',
-            records: [{ ...initial, eventId: 'event-material-alias' }],
-          }),
-          payloadHash: digest('batch-alias-event'),
-        }),
-      ).toEqual({ state: 'accepted' });
-      expect(await tableCounts(database)).toEqual({ batches: 3, events: 2, records: 1, jobs: 1 });
       expect(
         (
           await service.find({
@@ -230,40 +193,18 @@ test('record acceptance is owner-bound, idempotent, monotonic, and atomically co
             recordId: initial.id,
           })
         )?.content,
-      ).toMatchObject({
-        sourceCreatedAt: '2025-01-02T03:04:05-04:00',
-        sourceUpdatedAt: '2026-08-09T10:11:12+05:30',
+      ).toEqual({ body: 'initial searchable material' });
+
+      const current = activeRecord({
+        eventId: 'event-current',
+        revision: CURRENT_REVISION,
+        body: 'newest searchable material',
       });
-
-      expect(
-        await service.accept({
-          syncId: SYNC_ID,
-          ownerId: OWNER_ID,
-          envelope: envelope({
-            batchId: 'batch-event-conflict',
-            records: [
-              activeRecord({ eventId: 'event-material-alias', body: 'changed event material' }),
-            ],
-          }),
-          payloadHash: digest('batch-event-conflict'),
-        }),
-      ).toEqual({ state: 'conflict', reason: 'event' });
-
-      const current = {
-        ...activeRecord({
-          eventId: 'event-current',
-          revision: CURRENT_REVISION,
-          body: 'newest searchable material',
-        }),
-        content: { body: 'newest searchable material' },
-      };
-      current.contentHash = digest(canonicalRecordContent(current.content)!);
       expect(
         await service.accept({
           syncId: SYNC_ID,
           ownerId: OWNER_ID,
           envelope: envelope({ batchId: 'batch-current', records: [current] }),
-          payloadHash: digest('batch-current'),
         }),
       ).toEqual({ state: 'accepted' });
       expect(
@@ -280,54 +221,6 @@ test('record acceptance is owner-bound, idempotent, monotonic, and atomically co
               }),
             ],
           }),
-          payloadHash: digest('batch-stale'),
-        }),
-      ).toEqual({ state: 'accepted' });
-
-      const stored = await service.find({
-        syncReadableId: SYNC_READABLE_ID,
-        ownerId: OWNER_ID,
-        sourceId: current.sourceId,
-        kind: current.kind,
-        recordId: current.id,
-      });
-      expect(stored).toMatchObject({
-        revision: CURRENT_REVISION,
-        currentEventId: current.eventId,
-        committedAt: current.committedAt,
-      });
-      expect(stored?.content).toEqual({ body: 'newest searchable material' });
-
-      const beforeAtomicConflict = await tableCounts(database);
-      expect(
-        await service.accept({
-          syncId: SYNC_ID,
-          ownerId: OWNER_ID,
-          envelope: envelope({
-            batchId: 'batch-atomic-conflict',
-            records: [
-              activeRecord({ eventId: 'event-must-rollback', recordId: 'must-rollback' }),
-              activeRecord({
-                eventId: 'event-revision-conflict',
-                revision: CURRENT_REVISION,
-                body: 'conflicting current revision',
-              }),
-            ],
-          }),
-          payloadHash: digest('batch-atomic-conflict'),
-        }),
-      ).toEqual({ state: 'conflict', reason: 'record_revision' });
-      expect(await tableCounts(database)).toEqual(beforeAtomicConflict);
-
-      expect(
-        await service.accept({
-          syncId: SYNC_ID,
-          ownerId: OWNER_ID,
-          envelope: envelope({
-            batchId: 'batch-delete',
-            records: [deletedRecord({ eventId: 'event-delete', revision: DELETED_REVISION })],
-          }),
-          payloadHash: digest('batch-delete'),
         }),
       ).toEqual({ state: 'accepted' });
       expect(
@@ -338,7 +231,42 @@ test('record acceptance is owner-bound, idempotent, monotonic, and atomically co
           kind: current.kind,
           recordId: current.id,
         }),
-      ).toMatchObject({ revision: DELETED_REVISION, operation: 'deleted', content: null });
+      ).toMatchObject({
+        revision: CURRENT_REVISION,
+        content: { body: 'newest searchable material' },
+      });
+
+      const beforeConflict = await tableCounts(database);
+      expect(
+        await service.accept({
+          syncId: SYNC_ID,
+          ownerId: OWNER_ID,
+          envelope: envelope({
+            batchId: 'batch-conflict',
+            records: [
+              activeRecord({ eventId: 'event-must-rollback', recordId: 'must-rollback' }),
+              activeRecord({
+                eventId: 'event-revision-conflict',
+                revision: CURRENT_REVISION,
+                body: 'conflicting current revision',
+              }),
+            ],
+          }),
+        }),
+      ).toEqual({ state: 'conflict', reason: 'record_revision' });
+      expect(await tableCounts(database)).toEqual(beforeConflict);
+
+      expect(
+        await service.accept({
+          syncId: SYNC_ID,
+          ownerId: OWNER_ID,
+          envelope: envelope({
+            batchId: 'batch-delete',
+            records: [deletedRecord({ eventId: 'event-delete', revision: DELETED_REVISION })],
+          }),
+        }),
+      ).toEqual({ state: 'accepted' });
+      expect(await tableCounts(database)).toEqual({ records: 1, searchDocuments: 0 });
       expect(
         await service.accept({
           syncId: SYNC_ID,
@@ -353,7 +281,6 @@ test('record acceptance is owner-bound, idempotent, monotonic, and atomically co
               }),
             ],
           }),
-          payloadHash: digest('batch-stale-after-delete'),
         }),
       ).toEqual({ state: 'accepted' });
       expect(
@@ -376,7 +303,6 @@ test('record acceptance is owner-bound, idempotent, monotonic, and atomically co
           syncId: SECOND_SYNC_ID,
           ownerId: OWNER_ID,
           envelope: firstEnvelope,
-          payloadHash: digest('batch-initial'),
         }),
       ).toEqual({ state: 'accepted' });
       expect(
@@ -401,16 +327,15 @@ test('record acceptance is owner-bound, idempotent, monotonic, and atomically co
   });
 });
 
-test('concurrent deliveries deduplicate batches and converge on the highest revision', async () => {
+test('concurrent retries are harmless and converge on the highest record revision', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
       await insertOwner({ database, ownerId: OWNER_ID });
+      await insertSync({ database });
       const service = new RecordsService({
         records: new RecordsRepository(database),
         now: () => RECEIVED_AT,
       });
-      await insertSync({ database });
-
       const duplicateInput = {
         syncId: SYNC_ID,
         ownerId: OWNER_ID,
@@ -418,16 +343,13 @@ test('concurrent deliveries deduplicate batches and converge on the highest revi
           batchId: 'batch-concurrent-duplicate',
           records: [activeRecord({ eventId: 'event-concurrent-duplicate' })],
         }),
-        payloadHash: digest('batch-concurrent-duplicate'),
       } as const;
-      const duplicateResults = await Promise.all([
-        service.accept(duplicateInput),
-        service.accept(duplicateInput),
-      ]);
-      expect(duplicateResults.map(({ state }) => state).sort()).toEqual(['accepted', 'duplicate']);
+      expect(
+        await Promise.all([service.accept(duplicateInput), service.accept(duplicateInput)]),
+      ).toEqual([{ state: 'accepted' }, { state: 'accepted' }]);
 
       const recordId = 'concurrent-revisions';
-      const revisionResults = await Promise.all([
+      await Promise.all([
         service.accept({
           syncId: SYNC_ID,
           ownerId: OWNER_ID,
@@ -442,7 +364,6 @@ test('concurrent deliveries deduplicate batches and converge on the highest revi
               }),
             ],
           }),
-          payloadHash: digest('batch-concurrent-low'),
         }),
         service.accept({
           syncId: SYNC_ID,
@@ -458,10 +379,8 @@ test('concurrent deliveries deduplicate batches and converge on the highest revi
               }),
             ],
           }),
-          payloadHash: digest('batch-concurrent-high'),
         }),
       ]);
-      expect(revisionResults).toEqual([{ state: 'accepted' }, { state: 'accepted' }]);
       expect(
         await service.find({
           syncReadableId: SYNC_READABLE_ID,
@@ -471,32 +390,24 @@ test('concurrent deliveries deduplicate batches and converge on the highest revi
           recordId,
         }),
       ).toMatchObject({ revision: STALE_REVISION, content: { body: 'concurrent high revision' } });
-
-      const duplicateJobs = await database<Array<{ eventId: string; total: number }>>`
-        select "event_id" as "eventId", count(*) as "total"
-        from "record_ingestion_job"
-        group by "sync_id", "event_id"
-        having count(*) > 1
-      `;
-      expect(duplicateJobs).toEqual([]);
     },
   });
 });
 
-test('a durable acceptance failure rolls back before a later retry succeeds', async () => {
+test('a projection failure rolls back the whole batch before a later retry succeeds', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
       await insertOwner({ database, ownerId: OWNER_ID });
+      await insertSync({ database });
       const service = new RecordsService({
         records: new RecordsRepository(database),
         now: () => RECEIVED_AT,
       });
-      await insertSync({ database });
       await database`
-        create trigger "record_test_reject_job"
-        before insert on "record_ingestion_job"
+        create trigger "record_test_reject_projection"
+        before insert on "record_search_document"
         begin
-          select raise(abort, 'simulated durable acceptance failure');
+          select raise(abort, 'simulated record projection failure');
         end
       `;
 
@@ -507,15 +418,13 @@ test('a durable acceptance failure rolls back before a later retry succeeds', as
           batchId: 'batch-durable-retry',
           records: [activeRecord({ eventId: 'event-durable-retry' })],
         }),
-        payloadHash: digest('batch-durable-retry'),
       } as const;
-      await expect(service.accept(input)).rejects.toThrow('simulated durable acceptance failure');
-      expect(await tableCounts(database)).toEqual({ batches: 0, events: 0, records: 0, jobs: 0 });
+      await expect(service.accept(input)).rejects.toThrow('simulated record projection failure');
+      expect(await tableCounts(database)).toEqual({ records: 0, searchDocuments: 0 });
 
-      await database`drop trigger "record_test_reject_job"`;
+      await database`drop trigger "record_test_reject_projection"`;
       expect(await service.accept(input)).toEqual({ state: 'accepted' });
-      expect(await tableCounts(database)).toEqual({ batches: 1, events: 1, records: 1, jobs: 1 });
-      expect(await service.accept(input)).toEqual({ state: 'duplicate' });
+      expect(await tableCounts(database)).toEqual({ records: 1, searchDocuments: 1 });
     },
   });
 });

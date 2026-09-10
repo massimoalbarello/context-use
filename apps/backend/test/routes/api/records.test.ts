@@ -128,7 +128,6 @@ async function accept({
       syncId,
       ownerId,
       envelope: { version: 1, batchId, records },
-      payloadHash: digest(batchId),
     }),
   ).toEqual({ state: 'accepted' });
 }
@@ -308,7 +307,6 @@ test('record API lists active owner records and returns Markdown detail with syn
               }),
             ],
           },
-          payloadHash: digest('revoked-sync-batch'),
         }),
       ).toEqual({ state: 'inactive_sync' });
       expect(

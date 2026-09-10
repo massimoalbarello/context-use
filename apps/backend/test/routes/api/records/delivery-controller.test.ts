@@ -157,7 +157,7 @@ test('rejects a non-UUIDv7 API key as unauthorized before repository lookup', as
   expect(authenticate).not.toHaveBeenCalled();
 });
 
-test('accepts a valid batch and passes explicit ownership plus the raw payload hash', async () => {
+test('accepts a valid batch and passes explicit ownership from the bearer key', async () => {
   const envelope = validEnvelope();
   const rawBody = `${JSON.stringify(envelope)}  `;
   const accept = mock<RecordDeliveryAcceptanceContract['accept']>(async () => ({
@@ -173,7 +173,6 @@ test('accepts a valid batch and passes explicit ownership plus the raw payload h
     syncId,
     ownerId,
     envelope,
-    payloadHash: createHash('sha256').update(rawBody).digest('hex'),
   });
 });
 
@@ -189,14 +188,9 @@ test('rejects sender-supplied sync identity because provenance comes only from t
   expect(accept).not.toHaveBeenCalled();
 });
 
-test('acknowledges duplicate batches and returns a fixed conflict response', async () => {
-  const duplicate = await controller({ accept: async () => ({ state: 'duplicate' }) }).handle(
-    request({ body: JSON.stringify(validEnvelope()) }),
-  );
-  expect(duplicate.status).toBe(StatusMap.OK);
-
+test('returns fixed responses for record conflicts and revoked syncs', async () => {
   const conflict = await controller({
-    accept: async () => ({ state: 'conflict', reason: 'batch' }),
+    accept: async () => ({ state: 'conflict', reason: 'record_revision' }),
   }).handle(request({ body: JSON.stringify(validEnvelope()) }));
   expect(conflict.status).toBe(StatusMap.Conflict);
   expect(await conflict.json()).toEqual({ error: 'Conflicting record delivery' });

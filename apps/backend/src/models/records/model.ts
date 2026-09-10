@@ -85,7 +85,6 @@ export type StoredRecord = RecordIdentity &
     contentHash: string;
     committedAt: string;
     content: RecordContent | null;
-    currentEventId: string;
     createdAt: string;
     updatedAt: string;
   };
@@ -108,20 +107,6 @@ export type RecordPage = {
   nextOffset: number | null;
 };
 
-export type RecordIngestionJob = RecordIdentity & {
-  ownerId: string;
-  eventId: string;
-  provider: string;
-  revision: number;
-  operation: RecordOperation;
-  contentHash: string;
-  committedAt: string;
-  content: RecordContent | null;
-  attemptCount: number;
-  leaseToken: string;
-  leaseExpiresAt: string;
-};
-
 export type RecordSearchResult = ExternalRecordIdentity & {
   readableId: string;
   provider: string;
@@ -134,9 +119,8 @@ export type RecordSearchResult = ExternalRecordIdentity & {
 
 export type RecordAcceptanceResult =
   | { state: 'accepted' }
-  | { state: 'duplicate' }
   | { state: 'inactive_sync' }
-  | { state: 'conflict'; reason: 'batch' | 'event' | 'record_revision' };
+  | { state: 'conflict'; reason: 'record_revision' };
 
 export class InvalidRecordDeliveryError extends Error {
   constructor(message: string) {
@@ -240,6 +224,7 @@ export function validateRecordDeliveryEnvelope(envelope: RecordDeliveryEnvelope)
   }
 
   const eventIds = new Set<string>();
+  const recordIdentities = new Set<string>();
   for (const record of envelope.records) {
     requiredString({ value: record.eventId, name: 'eventId' });
     requiredString({ value: record.provider, name: 'provider' });
@@ -262,6 +247,11 @@ export function validateRecordDeliveryEnvelope(envelope: RecordDeliveryEnvelope)
       throw new InvalidRecordDeliveryError('A delivery batch cannot repeat an eventId');
     }
     eventIds.add(record.eventId);
+    const recordIdentity = canonicalJson([record.sourceId, record.kind, record.id]);
+    if (recordIdentities.has(recordIdentity)) {
+      throw new InvalidRecordDeliveryError('A delivery batch cannot repeat a record identity');
+    }
+    recordIdentities.add(recordIdentity);
     validateContent(record);
   }
 }

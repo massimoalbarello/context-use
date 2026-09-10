@@ -600,86 +600,14 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
-/** Result of query `FindRecordEventFingerprint`. */
-export interface IFindRecordEventFingerprintResult {
-    eventFingerprint: string;
-}
-
-/** Result of query `FindRecordRevisionFingerprints`. */
-export interface IFindRecordRevisionFingerprintsResult {
-    eventFingerprint: string;
-}
-
-/** Result of query `CreateRecordEvent`. */
-export interface ICreateRecordEventResult {
+/** Result of query `FindCurrentRecordRevision`. */
+export interface IFindCurrentRecordRevisionResult {
+    revision: number;
+    revisionFingerprint: string;
 }
 
 /** Result of query `ApplyRecordRevision`. */
 export interface IApplyRecordRevisionResult {
-    revision: number;
-}
-
-/** Result of query `EnqueueRecordIngestionJob`. */
-export interface IEnqueueRecordIngestionJobResult {
-}
-
-/** Result of query `FindActiveRecordSyncForAcceptance`. */
-export interface IFindActiveRecordSyncForAcceptanceResult {
-    id: string;
-    ownerId: string;
-}
-
-/** Result of query `FindRecordBatchReceipt`. */
-export interface IFindRecordBatchReceiptResult {
-    payloadHash: string;
-}
-
-/** Result of query `CreateRecordBatchReceipt`. */
-export interface ICreateRecordBatchReceiptResult {
-}
-
-/** Result of query `HasUnfinishedRecordIngestionJobs`. */
-export interface IHasUnfinishedRecordIngestionJobsResult {
-    unfinished: number;
-}
-
-/** Result of query `ClaimRecordIngestionJob`. */
-export interface IClaimRecordIngestionJobResult {
-    syncId: string;
-    ownerId: string;
-    eventId: string;
-    sourceId: string;
-    kind: string;
-    recordId: string;
-    revision: number;
-    attemptCount: number;
-    leaseToken: string;
-    leaseExpiresAt: string;
-}
-
-/** Result of query `ReadClaimedRecordEvent`. */
-export interface IReadClaimedRecordEventResult {
-    provider: string;
-    operation: "added" | "updated" | "deleted";
-    contentHash: string;
-    committedAt: string;
-    contentJson: string | null;
-}
-
-/** Result of query `FindLeasedRecordIngestionJob`. */
-export interface IFindLeasedRecordIngestionJobResult {
-    revision: number;
-}
-
-/** Result of query `FindCurrentRecordForIngestion`. */
-export interface IFindCurrentRecordForIngestionResult {
-    provider: string;
-    revision: number;
-    operation: "added" | "updated" | "deleted";
-}
-
-/** Result of query `SupersedeRecordIngestionJob`. */
-export interface ISupersedeRecordIngestionJobResult {
 }
 
 /** Result of query `DeleteRecordSearchDocument`. */
@@ -690,13 +618,10 @@ export interface IDeleteRecordSearchDocumentResult {
 export interface IUpsertRecordSearchDocumentResult {
 }
 
-/** Result of query `CompleteRecordIngestionJob`. */
-export interface ICompleteRecordIngestionJobResult {
-}
-
-/** Result of query `RetryRecordIngestionJob`. */
-export interface IRetryRecordIngestionJobResult {
-    event_id: string | null;
+/** Result of query `FindActiveRecordSyncForAcceptance`. */
+export interface IFindActiveRecordSyncForAcceptanceResult {
+    id: string;
+    ownerId: string;
 }
 
 /** Result of query `FindRecord`. */
@@ -713,8 +638,7 @@ export interface IFindRecordResult {
     operation: "added" | "updated" | "deleted";
     contentHash: string;
     committedAt: string;
-    contentJson: string | null;
-    currentEventId: string;
+    markdown: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -752,7 +676,7 @@ export interface IFindRecordResourceResult {
     readableId: string;
     title: string;
     excerpt: string;
-    contentJson: string;
+    markdown: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -846,24 +770,11 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
-    FindRecordEventFingerprint: IFindRecordEventFingerprintResult;
-    FindRecordRevisionFingerprints: IFindRecordRevisionFingerprintsResult;
-    CreateRecordEvent: ICreateRecordEventResult;
+    FindCurrentRecordRevision: IFindCurrentRecordRevisionResult;
     ApplyRecordRevision: IApplyRecordRevisionResult;
-    EnqueueRecordIngestionJob: IEnqueueRecordIngestionJobResult;
-    FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
-    FindRecordBatchReceipt: IFindRecordBatchReceiptResult;
-    CreateRecordBatchReceipt: ICreateRecordBatchReceiptResult;
-    HasUnfinishedRecordIngestionJobs: IHasUnfinishedRecordIngestionJobsResult;
-    ClaimRecordIngestionJob: IClaimRecordIngestionJobResult;
-    ReadClaimedRecordEvent: IReadClaimedRecordEventResult;
-    FindLeasedRecordIngestionJob: IFindLeasedRecordIngestionJobResult;
-    FindCurrentRecordForIngestion: IFindCurrentRecordForIngestionResult;
-    SupersedeRecordIngestionJob: ISupersedeRecordIngestionJobResult;
     DeleteRecordSearchDocument: IDeleteRecordSearchDocumentResult;
     UpsertRecordSearchDocument: IUpsertRecordSearchDocumentResult;
-    CompleteRecordIngestionJob: ICompleteRecordIngestionJobResult;
-    RetryRecordIngestionJob: IRetryRecordIngestionJobResult;
+    FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
     FindRecord: IFindRecordResult;
     SearchRecords: ISearchRecordsResult;
     ListRecordResources: IListRecordResourcesResult;

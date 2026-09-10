@@ -35,7 +35,6 @@ import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.t
 import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import { RecordsService } from '#services/records/service.ts';
-import { RecordIngestionWorker } from '#services/records/worker.ts';
 import { RecordSyncsService } from '#services/syncs/service.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
@@ -56,7 +55,6 @@ if (authSecret.source.kind === 'environment') {
   logger.info(`using auth secret from ${authSecret.source.path}`);
 }
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
-let recordIngestionWorker: RecordIngestionWorker | undefined;
 
 try {
   await runMigrations({ db: database });
@@ -85,10 +83,6 @@ try {
   const syncsService = new RecordSyncsService({
     syncs: new RecordSyncsRepository(database),
   });
-  recordIngestionWorker = new RecordIngestionWorker({
-    records: recordsRepository,
-  });
-  recordIngestionWorker.start();
   const pagesService = new KnowledgePagesService({ pages: pagesRepository, storage });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
   const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
@@ -130,7 +124,6 @@ try {
     recordsService,
     syncsService,
   }).onStop(async () => {
-    await recordIngestionWorker?.stop();
     await database.close();
   });
   const { server } = app.listen({
@@ -143,7 +136,6 @@ try {
 
   logger.info(`listening on ${server!.url.origin}`);
 } catch (error) {
-  await recordIngestionWorker?.stop();
   await database.close();
   throw error;
 }

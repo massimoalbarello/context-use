@@ -9,7 +9,6 @@ import { RecordsRepository } from '#repositories/records/repository.ts';
 import { ExternalRecordAddressSchema, externalRecordIdentity } from '#routes/mcp/coordinates.ts';
 import { registerExternalRecordTools } from '#routes/mcp/external-records/tools.ts';
 import { RecordsService } from '#services/records/service.ts';
-import { RecordIngestionWorker } from '#services/records/worker.ts';
 import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
 
 const OWNER_A = 'external-record-owner-a';
@@ -152,7 +151,6 @@ async function accept({
       syncId,
       ownerId,
       envelope,
-      payloadHash: digest(JSON.stringify(envelope)),
     }),
   ).toEqual({ state: 'accepted' });
 }
@@ -174,12 +172,6 @@ test('MCP searches owner-wide external records and reads only the current owner-
         records: repository,
         now: () => new Date(NOW),
       });
-      const worker = new RecordIngestionWorker({
-        records: repository,
-        now: () => new Date(NOW),
-        leaseToken: () => Bun.randomUUIDv7(),
-      });
-
       for (const [id, readableId, ownerId] of [
         [SYNC_A_ID, SYNC_A, OWNER_A],
         [SYNC_A_SECOND_ID, SYNC_A_SECOND, OWNER_A],
@@ -226,10 +218,6 @@ test('MCP searches owner-wide external records and reads only the current owner-
           }),
         ],
       });
-      expect(await worker.tick()).toBe('completed');
-      expect(await worker.tick()).toBe('completed');
-      expect(await worker.tick()).toBe('completed');
-
       let firstAddress = '';
       let ownerBAddress = '';
       await withExternalRecordClient({
@@ -352,8 +340,6 @@ test('MCP searches owner-wide external records and reads only the current owner-
           }),
         ],
       });
-      expect(await worker.tick()).toBe('completed');
-
       await withExternalRecordClient({
         ownerId: OWNER_A,
         recordsService: service,

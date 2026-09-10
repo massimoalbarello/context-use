@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { Elysia, StatusMap, t } from 'elysia';
 import type { OpenAPIV3 } from 'openapi-types';
 import { ErrorResponseSchema } from '#lib/errors.ts';
@@ -8,7 +7,7 @@ import { RecordDeliveryEnvelopeSchema } from '#routes/api/records/delivery-model
 import type { RecordDeliveryAcceptanceContract } from '#services/records/service.ts';
 import type { RecordSyncAuthenticationContract } from '#services/syncs/service.ts';
 
-export const RECORD_DELIVERY_ROUTE_PATH = '/api/records';
+export const RECORD_DELIVERY_ROUTE_PATH = '/api/records/batch';
 
 const DELIVERY_PARSER = 'recordDeliveryJson' as const;
 const MAX_IDEMPOTENCY_KEY_LENGTH = 1024;
@@ -51,7 +50,7 @@ const RecordDeliveryHeadersSchema = t.Object(
 );
 
 type ParsedDeliveryBody =
-  | { state: 'parsed'; value: unknown; payloadHash: string }
+  | { state: 'parsed'; value: unknown }
   | { state: 'invalid' }
   | { state: 'too_large' };
 
@@ -106,7 +105,6 @@ async function parseDeliveryBody(request: Request): Promise<ParsedDeliveryBody> 
 
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
-  const payloadDigest = createHash('sha256');
   let totalBytes = 0;
 
   try {
@@ -121,7 +119,6 @@ async function parseDeliveryBody(request: Request): Promise<ParsedDeliveryBody> 
         return { state: 'too_large' };
       }
       chunks.push(value);
-      payloadDigest.update(value);
     }
   } finally {
     reader.releaseLock();
@@ -131,11 +128,7 @@ async function parseDeliveryBody(request: Request): Promise<ParsedDeliveryBody> 
     const text = new TextDecoder('utf-8', { fatal: true }).decode(
       Buffer.concat(chunks, totalBytes),
     );
-    return {
-      state: 'parsed',
-      value: JSON.parse(text) as unknown,
-      payloadHash: payloadDigest.digest('hex'),
-    };
+    return { state: 'parsed', value: JSON.parse(text) as unknown };
   } catch {
     return { state: 'invalid' };
   }
@@ -212,7 +205,7 @@ export function createRecordDeliveryController({
       }
 
       (context as unknown as { body: unknown }).body = parsed.value;
-      return { deliveryPayloadHash: parsed.payloadHash };
+      return {};
     })
     .onError(({ code, error, status }) => {
       if (
@@ -225,7 +218,7 @@ export function createRecordDeliveryController({
     })
     .post(
       RECORD_DELIVERY_ROUTE_PATH,
-      async ({ body, deliveryPayloadHash, request, status }) => {
+      async ({ body, request, status }) => {
         if (request.headers.get('idempotency-key') !== body.batchId) {
           return status(StatusMap['Bad Request'], { error: errorMessage.invalid });
         }
@@ -238,7 +231,6 @@ export function createRecordDeliveryController({
           syncId: principal.syncId,
           ownerId: principal.ownerId,
           envelope: body,
-          payloadHash: deliveryPayloadHash,
         });
         if (result.state === 'inactive_sync') {
           return status(StatusMap.Unauthorized, { error: errorMessage.unauthorized });
