@@ -86,13 +86,22 @@ export function HypermediaIntervalIndicator({
   const label = month ? calendarMonthLabel(month) : undefined;
   const position = scrollPosition({ month, extent, scrollProgress, now });
   const selectedIsPresent = month === present;
+  const visible = month !== undefined || scrollProgress !== 0;
   const motion = scrolling
     ? 'transition-none'
     : 'transition-[top] duration-200 ease-out motion-reduce:transition-none';
 
+  if (!visible) {
+    return null;
+  }
+
   return (
     <div className="pointer-events-none absolute inset-y-5 right-0 z-10 w-40 select-none">
-      <span className="absolute top-[22%] right-3 bottom-2 w-px bg-border/80" aria-hidden="true" />
+      <span
+        className={cn('absolute right-3 bottom-2 w-px bg-border/80', motion)}
+        style={{ top: `${Math.min(PRESENT_POSITION, position)}%` }}
+        aria-hidden="true"
+      />
       {!selectedIsPresent && (
         <span className="absolute top-[22%] right-7 -translate-y-1/2 text-muted-foreground text-xs">
           Now

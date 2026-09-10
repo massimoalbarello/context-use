@@ -5,6 +5,7 @@ import type { HypermediaLayoutResource } from '../../src/components/hypermedia/h
 import { HypermediaTimelineCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
 import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
 import {
+  type CalendarMonth,
   calendarMonthLabel,
   currentCalendarMonth,
   shiftCalendarMonth,
@@ -128,8 +129,12 @@ function expectResourceIdentities(role: InteractiveRole) {
 
 function HypermediaMapFixture({
   onMonthChange,
+  month,
+  selectedKey,
 }: {
   onMonthChange: (month?: `${number}-${string}`) => void;
+  month?: CalendarMonth;
+  selectedKey?: string;
 }) {
   return (
     <KnowledgeWorkspace>
@@ -142,6 +147,8 @@ function HypermediaMapFixture({
           end: Date.parse('2026-12-31T00:00:00.000Z'),
         }}
         selectedResources={[{ kind: 'entity', readableId: 'grace-hopper' }]}
+        selectedKey={selectedKey}
+        month={month}
         onSelect={() => undefined}
         onViewportSettled={() => undefined}
         onMonthChange={onMonthChange}
@@ -160,17 +167,27 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
 
   expectResourceIdentities('link');
   const canvas = screen.getByLabelText('Interactive Hypermedia');
-  const interval = screen.getByRole('img', { name: 'Pages without a time interval' });
-  const initialPosition = interval.style.top;
 
   expect(screen.queryByText('Undated')).toBeNull();
+  expect(screen.queryByText('Now')).toBeNull();
+  expect(screen.queryByText('Past')).toBeNull();
+  expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
 
-  fireEvent.wheel(canvas, { deltaY: 80 });
-  expect(interval.style.top).not.toBe(initialPosition);
+  fireEvent.wheel(canvas, { deltaY: 40 });
+  const interval = screen.getByRole('img', { name: 'Pages without a time interval' });
+  const rail = interval.parentElement?.firstElementChild as HTMLElement | undefined;
+  expect(rail).toBeTruthy();
+  expect(rail?.style.top).toBe(interval.style.top);
+  const partialPosition = interval.style.top;
+  fireEvent.wheel(canvas, { deltaY: 40 });
+  expect(interval.style.top).not.toBe(partialPosition);
+  expect(rail?.style.top).toBe(interval.style.top);
+  expect(screen.getByText('Now')).toBeTruthy();
+  expect(screen.getByText('Past')).toBeTruthy();
   expect(onMonthChange).not.toHaveBeenCalled();
 
-  const present = currentCalendarMonth();
   fireEvent.wheel(canvas, { deltaY: 80 });
+  const present = currentCalendarMonth();
   expect(onMonthChange).toHaveBeenLastCalledWith(present);
   expect(
     screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
@@ -182,6 +199,32 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
     shiftCalendarMonth({ value: present, offset: -1 }),
   );
   expect(onMonthChange).toHaveBeenCalledTimes(2);
+
+  fireEvent.wheel(canvas, { deltaY: -120 });
+  fireEvent.wheel(canvas, { deltaY: -40 });
+  fireEvent.wheel(canvas, { deltaY: -120 });
+  fireEvent.wheel(canvas, { deltaY: -40 });
+  expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
+  expect(screen.queryByText('Now')).toBeNull();
+  expect(screen.queryByText('Past')).toBeNull();
+  expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
+  expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
+});
+
+test('Map hides the interval indicator while a detail card is open', () => {
+  const present = currentCalendarMonth();
+  render(
+    <HypermediaMapFixture
+      onMonthChange={() => undefined}
+      month={present}
+      selectedKey="entity:grace-hopper"
+    />,
+  );
+
+  expect(screen.queryByText(calendarMonthLabel(present))).toBeNull();
+  expect(screen.queryByText('Now')).toBeNull();
+  expect(screen.queryByText('Past')).toBeNull();
+  expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
 });
 
 test('Map consumes pinch zoom before the browser can zoom the dashboard', () => {

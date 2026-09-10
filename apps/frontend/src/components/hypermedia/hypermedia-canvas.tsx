@@ -576,12 +576,14 @@ export function HypermediaCanvas({
         />
       </svg>
 
-      <HypermediaIntervalIndicator
-        month={displayedMonth}
-        extent={temporalExtent}
-        scrollProgress={intervalProgress}
-        scrolling={intervalScrolling}
-      />
+      {!selectedKey && (
+        <HypermediaIntervalIndicator
+          month={displayedMonth}
+          extent={temporalExtent}
+          scrollProgress={intervalProgress}
+          scrolling={intervalScrolling}
+        />
+      )}
 
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
