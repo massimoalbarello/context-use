@@ -273,7 +273,6 @@ export function HypermediaExplorer({
           resources={visualizedHypermedia.resources}
           pages={visualizedHypermedia.pages}
           month={month}
-          temporalExtent={temporalExtent}
           selectedResources={visualizedSelectedResources}
           selectedKey={selectedKey}
           onSelect={onSelect}

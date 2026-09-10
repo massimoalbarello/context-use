@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { keepPreviousData } from '@tanstack/react-query';
 import {
   buildHypermediaLayout,
   type HypermediaLayoutResource,
@@ -148,5 +149,17 @@ describe('Hypermedia resource type filter', () => {
 
     expect(entityNeighborhood.queryKey).not.toEqual(assetNeighborhood.queryKey);
     expect(entityPages.queryKey).not.toEqual(allPages.queryKey);
+  });
+
+  test('retains the displayed page set while a changed interval loads', () => {
+    const pages = hypermediaPagesQueryOptions({
+      interval: 'with',
+      resources: [],
+      visibleResources: [],
+      kinds: ['entity'],
+      month: '2026-09',
+    });
+
+    expect(pages.placeholderData).toBe(keepPreviousData);
   });
 });

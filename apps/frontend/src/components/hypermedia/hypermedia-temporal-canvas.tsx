@@ -443,9 +443,7 @@ export function HypermediaTimelineCanvas({
       {!selectedKey && (
         <HypermediaIntervalIndicator
           month={intervalScroll.displayedMonth}
-          extent={extent}
           scrollProgress={intervalScroll.progress}
-          scrolling={intervalScroll.scrolling}
         />
       )}
       <HypermediaHoverPreview preview={preview} selectedKey={selectedKey} className="top-32" />

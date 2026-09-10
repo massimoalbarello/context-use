@@ -59,10 +59,10 @@ export function useHypermediaIntervalScroll({
 }) {
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRef = useRef(0);
+  const committedMonthRef = useRef(month);
   const displayedMonthRef = useRef(month);
   const [progress, setProgress] = useState(0);
   const [displayedMonth, setDisplayedMonth] = useState(month);
-  const [scrolling, setScrolling] = useState(false);
 
   useEffect(
     () => () => {
@@ -75,6 +75,7 @@ export function useHypermediaIntervalScroll({
   );
 
   useEffect(() => {
+    committedMonthRef.current = month;
     if (month === displayedMonthRef.current) {
       return;
     }
@@ -101,7 +102,6 @@ export function useHypermediaIntervalScroll({
     }
     displayedMonthRef.current = nextMonth;
     setDisplayedMonth(nextMonth);
-    onMonthChange(nextMonth);
     return true;
   }
 
@@ -120,7 +120,10 @@ export function useHypermediaIntervalScroll({
   }
 
   function settle() {
-    setScrolling(false);
+    if (committedMonthRef.current !== displayedMonthRef.current) {
+      committedMonthRef.current = displayedMonthRef.current;
+      onMonthChange(displayedMonthRef.current);
+    }
     onIntervalScrollingChange(false);
   }
 
@@ -130,7 +133,6 @@ export function useHypermediaIntervalScroll({
       if (deltaY === 0) {
         return;
       }
-      setScrolling(true);
       onIntervalScrollingChange(true);
       if (wheelTimer.current) {
         clearTimeout(wheelTimer.current);
@@ -142,5 +144,5 @@ export function useHypermediaIntervalScroll({
     },
   );
 
-  return { displayedMonth, handleWheel, progress, scrolling };
+  return { displayedMonth, handleWheel, progress };
 }

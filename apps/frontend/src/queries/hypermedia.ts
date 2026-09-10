@@ -1,4 +1,4 @@
-import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { apiErrorMessage } from '../lib/api-error';
 
@@ -111,6 +111,7 @@ export function hypermediaPagesQueryOptions({
       },
     ] as const,
     initialPageParam: 0,
+    placeholderData: keepPreviousData,
     queryFn: async ({ pageParam, signal }) => {
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {

@@ -13,7 +13,6 @@ import {
 } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
 import { cn } from '../../lib/class-names';
-import type { HypermediaPages } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
 import {
@@ -218,7 +217,6 @@ export function HypermediaCanvas({
   resources,
   pages,
   month,
-  temporalExtent,
   selectedResources,
   selectedKey,
   onSelect,
@@ -235,7 +233,6 @@ export function HypermediaCanvas({
   neighborhoodError: Error | null;
   onRetryNeighborhood: () => void;
   month?: CalendarMonth;
-  temporalExtent: HypermediaPages['temporalExtent'];
   onMonthChange: (month?: CalendarMonth) => void;
   onIntervalScrollingChange: (scrolling: boolean) => void;
 }) {
@@ -493,9 +490,7 @@ export function HypermediaCanvas({
       {!selectedKey && (
         <HypermediaIntervalIndicator
           month={intervalScroll.displayedMonth}
-          extent={temporalExtent}
           scrollProgress={intervalScroll.progress}
-          scrolling={intervalScroll.scrolling}
         />
       )}
 

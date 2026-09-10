@@ -1,5 +1,5 @@
 import { afterEach, expect, mock, test } from 'bun:test';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-canvas';
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
 import { HypermediaTimelineCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
@@ -14,6 +14,15 @@ import {
 afterEach(cleanup);
 
 const INTERVAL_SETTLE_WAIT_MS = 160;
+
+async function settleIntervalScroll() {
+  // biome-ignore lint/nursery/useAwaitThenable: React act intentionally returns a thenable.
+  await act(() => new Promise((resolve) => setTimeout(resolve, INTERVAL_SETTLE_WAIT_MS)));
+}
+
+function intervalIndicatorPosition(name: string): number {
+  return Number.parseFloat(screen.getByRole('img', { name }).style.top);
+}
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const portrait = {
@@ -146,10 +155,6 @@ function HypermediaMapFixture({
       <HypermediaCanvas
         resources={resources}
         pages={[]}
-        temporalExtent={{
-          start: Date.parse('2025-01-01T00:00:00.000Z'),
-          end: Date.parse('2026-12-31T00:00:00.000Z'),
-        }}
         selectedResources={[{ kind: 'entity', readableId: 'grace-hopper' }]}
         selectedKey={selectedKey}
         month={month}
@@ -183,20 +188,17 @@ test('Map distinguishes resource identities and retains partial progress between
   expect(screen.getByText('Now')).toBeTruthy();
   expect(screen.getByText('Past')).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
+  const undatedPosition = intervalIndicatorPosition('Pages without a time interval');
 
   fireEvent.wheel(canvas, { deltaY: 40 });
   expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
   expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
   expect(screen.getByText('Now')).toBeTruthy();
   expect(screen.getByText('Past')).toBeTruthy();
-  const partialPosition = screen
-    .getByRole('img', { name: 'Pages without a time interval' })
-    .getAttribute('style');
-  await new Promise((resolve) => setTimeout(resolve, INTERVAL_SETTLE_WAIT_MS));
+  const partialPosition = intervalIndicatorPosition('Pages without a time interval');
+  await settleIntervalScroll();
   expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(false);
-  expect(
-    screen.getByRole('img', { name: 'Pages without a time interval' }).getAttribute('style'),
-  ).toBe(partialPosition);
+  expect(intervalIndicatorPosition('Pages without a time interval')).toBe(partialPosition);
   expect(onMonthChange).not.toHaveBeenCalled();
 
   fireEvent.wheel(canvas, { deltaY: 40 });
@@ -205,17 +207,27 @@ test('Map distinguishes resource identities and retains partial progress between
 
   fireEvent.wheel(canvas, { deltaY: 80 });
   const present = currentCalendarMonth();
-  expect(onMonthChange).toHaveBeenLastCalledWith(present);
   expect(
     screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
   ).toBeTruthy();
+  const presentPosition = intervalIndicatorPosition(
+    `Selected interval: ${calendarMonthLabel(present)}`,
+  );
+  expect(onMonthChange).not.toHaveBeenCalled();
+  await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith(present);
   expect(screen.getByText('Past')).toBeTruthy();
 
   fireEvent.wheel(canvas, { deltaY: 120 });
   fireEvent.wheel(canvas, { deltaY: 40 });
-  expect(onMonthChange).toHaveBeenLastCalledWith(
-    shiftCalendarMonth({ value: present, offset: -1 }),
+  const previousMonth = shiftCalendarMonth({ value: present, offset: -1 });
+  const previousPosition = intervalIndicatorPosition(
+    `Selected interval: ${calendarMonthLabel(previousMonth)}`,
   );
+  expect(previousPosition - presentPosition).toBe(presentPosition - undatedPosition);
+  expect(onMonthChange).toHaveBeenCalledTimes(1);
+  await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith(previousMonth);
   expect(onMonthChange).toHaveBeenCalledTimes(2);
 
   fireEvent.wheel(canvas, { deltaY: -120 });
@@ -223,6 +235,7 @@ test('Map distinguishes resource identities and retains partial progress between
   expect(
     screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
   ).toBeTruthy();
+  await settleIntervalScroll();
 
   fireEvent.wheel(canvas, { deltaY: -40 });
   expect(
@@ -230,14 +243,39 @@ test('Map distinguishes resource identities and retains partial progress between
   ).toBeTruthy();
   expect(screen.queryByText('Now')).toBeNull();
   expect(screen.getByText('Past')).toBeTruthy();
+  await settleIntervalScroll();
 
   fireEvent.wheel(canvas, { deltaY: -120 });
+  await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
   expect(screen.getByText('Undated')).toBeTruthy();
   expect(screen.getByText('Now')).toBeTruthy();
   expect(screen.getByText('Past')).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
   expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
+});
+
+test('Map keeps the indicator at Past while older month labels continue changing', async () => {
+  const onMonthChange = mock(() => undefined);
+  const oldMonth = shiftCalendarMonth({ value: currentCalendarMonth(), offset: -24 });
+  render(<HypermediaMapFixture onMonthChange={onMonthChange} month={oldMonth} />);
+
+  const canvas = screen.getByLabelText('Interactive Hypermedia');
+  const oldPosition = intervalIndicatorPosition(
+    `Selected interval: ${calendarMonthLabel(oldMonth)}`,
+  );
+  fireEvent.wheel(canvas, { deltaY: 120 });
+  fireEvent.wheel(canvas, { deltaY: 40 });
+  const olderMonth = shiftCalendarMonth({ value: oldMonth, offset: -1 });
+
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(olderMonth)}` }),
+  ).toBeTruthy();
+  expect(intervalIndicatorPosition(`Selected interval: ${calendarMonthLabel(olderMonth)}`)).toBe(
+    oldPosition,
+  );
+  await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith(olderMonth);
 });
 
 test('Map hides the interval indicator while a detail card is open', () => {

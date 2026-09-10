@@ -1,5 +1,5 @@
 import { afterEach, expect, mock, test } from 'bun:test';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
@@ -16,6 +16,7 @@ import type { HypermediaPage } from '../../src/queries/hypermedia';
 afterEach(cleanup);
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
+const INTERVAL_SETTLE_WAIT_MS = 160;
 const PAGE_DISCOVERY_SCROLL_TOP = 10_000;
 const OVERLAP_NOTE = 'Overlapping clouds mark pages on the same or nearby dates';
 const self: HypermediaLayoutResource = {
@@ -137,9 +138,15 @@ test('timeline keeps resource filtering and page preview selection accessible', 
   fireEvent.wheel(scroller, { deltaY: 120 });
   fireEvent.wheel(scroller, { deltaY: 40 });
   expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
-  expect(onMonthChange).toHaveBeenLastCalledWith(
-    shiftCalendarMonth({ value: present, offset: -1 }),
-  );
+  const previousMonth = shiftCalendarMonth({ value: present, offset: -1 });
+  expect(onMonthChange).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(previousMonth)}` }),
+  ).toBeTruthy();
+  // biome-ignore lint/nursery/useAwaitThenable: React act intentionally returns a thenable.
+  await act(() => new Promise((resolve) => setTimeout(resolve, INTERVAL_SETTLE_WAIT_MS)));
+  expect(onMonthChange).toHaveBeenLastCalledWith(previousMonth);
+  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(false);
   scroller.scrollTop = PAGE_DISCOVERY_SCROLL_TOP;
   fireEvent.scroll(scroller);
   expect(screen.getByRole('link', { name: 'Open knowledge page Earlier period' })).toBeTruthy();
