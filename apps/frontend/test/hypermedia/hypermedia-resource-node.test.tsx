@@ -1,8 +1,8 @@
-import { afterEach, expect, test } from 'bun:test';
-import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, expect, mock, test } from 'bun:test';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-canvas';
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
-import { HypermediaTemporalCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
+import { HypermediaTimelineCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
 import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
 
 afterEach(cleanup);
@@ -121,7 +121,8 @@ function expectResourceIdentities(role: InteractiveRole) {
   expect(brief.querySelector('svg.lucide-file-text')).toBeTruthy();
 }
 
-test('semantic Hypermedia distinguishes entity and asset identities', () => {
+test('Map distinguishes entity and asset identities and scrolls through time', () => {
+  const onTimeNavigate = mock(() => undefined);
   render(
     <KnowledgeWorkspace>
       <div />
@@ -131,6 +132,7 @@ test('semantic Hypermedia distinguishes entity and asset identities', () => {
         selectedResources={[{ kind: 'entity', readableId: 'grace-hopper' }]}
         onSelect={() => undefined}
         onViewportSettled={() => undefined}
+        onTimeNavigate={onTimeNavigate}
         canExplore={false}
         isInitialLoading={false}
         neighborhoodError={null}
@@ -140,13 +142,17 @@ test('semantic Hypermedia distinguishes entity and asset identities', () => {
   );
 
   expectResourceIdentities('link');
+  fireEvent.wheel(screen.getByLabelText('Interactive Hypermedia'), { deltaY: 90 });
+  expect(onTimeNavigate).toHaveBeenLastCalledWith('older');
+  fireEvent.wheel(screen.getByLabelText('Interactive Hypermedia'), { deltaY: -90 });
+  expect(onTimeNavigate).toHaveBeenLastCalledWith('newer');
 });
 
-test('temporal Hypermedia uses the same entity and asset identities', () => {
+test('Timeline uses the same entity and asset identities', () => {
   render(
     <KnowledgeWorkspace>
       <div />
-      <HypermediaTemporalCanvas
+      <HypermediaTimelineCanvas
         resources={resources}
         pages={[]}
         extent={{

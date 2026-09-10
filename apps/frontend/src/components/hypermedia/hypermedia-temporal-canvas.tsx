@@ -146,7 +146,7 @@ function TemporalTimeLabels({
   );
 }
 
-export function HypermediaTemporalCanvas({
+export function HypermediaTimelineCanvas({
   resources,
   pages,
   extent,
@@ -310,11 +310,11 @@ export function HypermediaTemporalCanvas({
     return (
       <section
         className="grid size-full min-h-[28rem] place-items-center bg-card"
-        aria-label="Temporal Hypermedia"
+        aria-label="Hypermedia timeline"
       >
         <div className="max-w-sm text-center">
           <FileText className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
-          <h2 className="mt-3 font-semibold">No temporal pages yet</h2>
+          <h2 className="mt-3 font-semibold">No pages with intervals yet</h2>
           <p className="mt-1 text-muted-foreground text-sm">
             Add a time interval to a knowledge page to place it in this view.
           </p>
@@ -326,18 +326,18 @@ export function HypermediaTemporalCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
-      aria-label={`Temporal Hypermedia with ${layout.pages.length} knowledge pages and ${layout.resources.length} entities and assets`}
+      aria-label={`Hypermedia timeline with ${layout.pages.length} knowledge pages and ${layout.resources.length} entities and assets`}
     >
       <section
         ref={scrollerRef}
         className="relative size-full overflow-auto"
-        aria-label="Temporal timeline viewport"
+        aria-label="Timeline viewport"
         onScroll={handleScroll}
       >
         <div className="relative" style={{ width: layout.width, height: layout.height }}>
           <svg
             className="absolute inset-0 size-full select-none"
-            aria-label="Scrollable temporal page timeline"
+            aria-label="Scrollable page timeline"
             viewBox={`0 0 ${layout.width} ${layout.height}`}
             preserveAspectRatio="none"
           >
@@ -388,7 +388,7 @@ export function HypermediaTemporalCanvas({
                   style={{
                     opacity: temporalPageOpacity({ bounds: item.bounds, viewport: pageViewport }),
                   }}
-                  aria-label={`Open temporal knowledge page ${item.page.title}`}
+                  aria-label={`Open knowledge page ${item.page.title}`}
                   onSelect={onSelect}
                   onPreview={setPreview}
                   onPreviewEnd={clearPreview}

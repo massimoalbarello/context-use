@@ -1,6 +1,6 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
-import { Minus, Move, Plus, Scan } from 'lucide-react';
+import { Move } from 'lucide-react';
 import {
   memo,
   type PointerEvent as ReactPointerEvent,
@@ -22,7 +22,6 @@ import {
   hypermediaLayoutResourceLabel,
   hypermediaLayoutResourceReference,
   initialHypermediaViewBox,
-  spotlightHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
@@ -45,10 +44,10 @@ import {
 
 type ViewBox = CanvasBounds;
 
-const BUTTON_ZOOM_IN_FACTOR = 0.9;
-const BUTTON_ZOOM_OUT_FACTOR = 1.1;
 const MAX_WHEEL_ZOOM_DELTA = 80;
 const WHEEL_ZOOM_RATE = 0.001;
+const WHEEL_LAYER_THRESHOLD = 80;
+const WHEEL_LAYER_RESET_MS = 180;
 const VIEWPORT_SETTLE_MS = 280;
 
 function ResourceDot({
@@ -206,7 +205,7 @@ function HypermediaExplorationCue({
       ) : (
         <p className="flex items-center gap-2 whitespace-nowrap rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
           <Move className="size-3.5" aria-hidden="true" />
-          Drag and zoom to explore the hypermedia.
+          Drag to move, pinch to zoom, and scroll through time.
         </p>
       )}
     </div>
@@ -220,6 +219,7 @@ export function HypermediaCanvas({
   selectedKey,
   onSelect,
   onViewportSettled,
+  onTimeNavigate,
   canExplore,
   isInitialLoading,
   neighborhoodError,
@@ -229,6 +229,7 @@ export function HypermediaCanvas({
   isInitialLoading: boolean;
   neighborhoodError: Error | null;
   onRetryNeighborhood: () => void;
+  onTimeNavigate: (direction: 'older' | 'newer') => void;
 }) {
   const [viewBox, setViewBox] = useState<ViewBox>(() =>
     initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
@@ -238,8 +239,9 @@ export function HypermediaCanvas({
   const spotlightActive = selectedResources.length > 0;
   const layout = useMemo(() => buildHypermediaLayout(resources, pages), [pages, resources]);
   const viewBoxRef = useRef(viewBox);
-  const fitActive = useRef(false);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheelLayerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheelLayerDelta = useRef(0);
   const [panning, setPanning] = useState(false);
   const [showExplorationHint, setShowExplorationHint] = useState(true);
   const suppressNextCloudClick = useRef(false);
@@ -306,20 +308,19 @@ export function HypermediaCanvas({
     if (spotlightActive) {
       return;
     }
-    const viewport = fitActive.current ? layout.resourceBounds : viewBoxRef.current;
-    if (fitActive.current) {
-      updateViewBox(viewport);
-    }
+    const viewport = viewBoxRef.current;
     publishViewport({ viewport, includeBoundary: true });
     return () => {
       if (settleTimer.current) {
         clearTimeout(settleTimer.current);
       }
+      if (wheelLayerTimer.current) {
+        clearTimeout(wheelLayerTimer.current);
+      }
     };
-  }, [layout.resourceBounds, publishViewport, spotlightActive, updateViewBox]);
+  }, [publishViewport, spotlightActive]);
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
-    fitActive.current = false;
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
@@ -340,25 +341,26 @@ export function HypermediaCanvas({
     }
   }
 
-  function fitHypermedia() {
-    setShowExplorationHint(false);
-    if (spotlightActive) {
-      fitActive.current = false;
-      const current = viewBoxRef.current;
-      updateViewBox(
-        spotlightHypermediaViewBox(layout, current.height / current.width, [
-          ...selectedResourceKeys,
-        ]),
-      );
-      return;
-    }
-    fitActive.current = true;
-    updateViewBox(layout.resourceBounds);
-    scheduleViewport({ viewport: layout.resourceBounds, includeBoundary: true });
-  }
-
   function handleWheel(event: WheelEvent<SVGSVGElement>) {
     event.preventDefault();
+    if (!event.ctrlKey) {
+      if (event.deltaY === 0) {
+        return;
+      }
+      wheelLayerDelta.current += event.deltaY;
+      if (Math.abs(wheelLayerDelta.current) >= WHEEL_LAYER_THRESHOLD) {
+        onTimeNavigate(wheelLayerDelta.current > 0 ? 'older' : 'newer');
+        wheelLayerDelta.current = 0;
+        setShowExplorationHint(false);
+      }
+      if (wheelLayerTimer.current) {
+        clearTimeout(wheelLayerTimer.current);
+      }
+      wheelLayerTimer.current = setTimeout(() => {
+        wheelLayerDelta.current = 0;
+      }, WHEEL_LAYER_RESET_MS);
+      return;
+    }
     const rect = event.currentTarget.getBoundingClientRect();
     const boundedDelta = Math.max(
       -MAX_WHEEL_ZOOM_DELTA,
@@ -374,7 +376,6 @@ export function HypermediaCanvas({
     if (event.button !== 0 || (event.target as Element).closest('[data-hypermedia-resource]')) {
       return;
     }
-    fitActive.current = false;
     suppressNextCloudClick.current = false;
     const cloudReadableId = (event.target as Element)
       .closest('[data-hypermedia-cloud]')
@@ -464,7 +465,6 @@ export function HypermediaCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerCancel}
-        onDoubleClick={fitHypermedia}
       >
         <HypermediaLayers
           layout={visibleLayout}
@@ -480,36 +480,6 @@ export function HypermediaCanvas({
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
       )}
-
-      <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Zoom in"
-          onClick={() => zoom(BUTTON_ZOOM_IN_FACTOR)}
-        >
-          <Plus aria-hidden="true" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Zoom out"
-          onClick={() => zoom(BUTTON_ZOOM_OUT_FACTOR)}
-        >
-          <Minus aria-hidden="true" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Fit Hypermedia"
-          onClick={fitHypermedia}
-        >
-          <Scan aria-hidden="true" />
-        </Button>
-      </div>
 
       {isInitialLoading && (
         <div

@@ -1,32 +1,35 @@
-import { type KnowledgePageKind, MAX_KNOWLEDGE_PAGE_TITLE_LENGTH } from '@repo/backend/page';
+import {
+  type KnowledgePageIntervalFilter,
+  MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
+} from '@repo/backend/page';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import { KeywordFilter } from '../knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../knowledge/knowledge-filter-popover';
 import { PageDateRangeFilter } from './page-date-range-filter';
-import { PageTypeFilter } from './page-type-filter';
+import { PageIntervalFilter } from './page-interval-filter';
 
 export function PageFilters({
   query,
-  kind,
+  interval,
   dateRange,
   onQueryApply,
-  onKindChange,
+  onIntervalChange,
   onDateRangeApply,
 }: {
   query: string;
-  kind?: KnowledgePageKind;
+  interval?: KnowledgePageIntervalFilter;
   dateRange?: CalendarDateRange;
   onQueryApply: (query: string) => void;
-  onKindChange: (kind?: KnowledgePageKind) => void;
+  onIntervalChange: (interval?: KnowledgePageIntervalFilter) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
 }) {
-  const filtered = Boolean(query || kind || dateRange);
+  const filtered = Boolean(query || interval || dateRange);
 
   return (
     <KnowledgeFilterPopover title="Filter pages" filtered={filtered}>
-      <PageTypeFilter
-        value={kind ?? 'all'}
-        onValueChange={(value) => onKindChange(value === 'all' ? undefined : value)}
+      <PageIntervalFilter
+        value={interval ?? 'all'}
+        onValueChange={(value) => onIntervalChange(value === 'all' ? undefined : value)}
       />
       <KeywordFilter
         key={query}
@@ -37,14 +40,10 @@ export function PageFilters({
         autoFocus
         onApply={onQueryApply}
       />
-      {kind !== 'semantic' && (
+      {interval !== 'without' && (
         <PageDateRangeFilter
           value={dateRange}
-          hint={
-            kind === 'temporal'
-              ? 'Only overlapping temporal pages stay visible.'
-              : 'Semantic pages stay visible.'
-          }
+          hint="Pages without an interval are excluded."
           onApply={onDateRangeApply}
         />
       )}

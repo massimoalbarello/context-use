@@ -12,7 +12,7 @@ test('date filtering uses one app-owned range trigger instead of native date inp
 
   expect(html).toContain('Filter by date range');
   expect(html).toContain('Choose dates');
-  expect(html).toContain('Semantic pages stay visible.');
+  expect(html).toContain('Pages without an interval are excluded.');
   expect(html).toContain('aria-haspopup="dialog"');
   expect(html).not.toContain('type="date"');
 });

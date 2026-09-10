@@ -15,11 +15,11 @@ function HypermediaResourceFilterFixture() {
   const [resourceKinds, setResourceKinds] = useState<HypermediaResourceKind[]>(['entity']);
   return (
     <HypermediaFilters
-      projection="semantic"
+      view="map"
       resourceKinds={resourceKinds}
       query=""
       selectedResources={[]}
-      onProjectionChange={() => undefined}
+      onViewChange={() => undefined}
       onResourceKindToggle={(kind) => {
         setResourceKinds((current) =>
           toggleDisplayedHypermediaResourceKind({ kinds: current, kind }),
@@ -31,35 +31,37 @@ function HypermediaResourceFilterFixture() {
   );
 }
 
-test('Hypermedia keeps page type, keyword, and resource filters in the shared sidebar', () => {
+test('Hypermedia keeps view, layer, keyword, and resource filters in the shared sidebar', () => {
   const html = renderToStaticMarkup(
     <HypermediaFilters
-      projection="temporal"
+      view="timeline"
+      month="2026-09"
       resourceKinds={['entity']}
       query="launch"
       selectedResources={[
         { kind: 'entity', readableId: 'maya-chen' },
         { kind: 'asset', readableId: 'rollout-metrics' },
       ]}
-      onProjectionChange={() => undefined}
+      onViewChange={() => undefined}
       onResourceKindToggle={() => undefined}
       onQueryApply={() => undefined}
       onClearSelectedResources={() => undefined}
     />,
   );
 
-  expect(html).toContain('Page type');
-  expect(html).not.toContain('>All<');
-  expect(html).toContain('Semantic');
-  expect(html).toContain('Temporal');
+  expect(html).toContain('View');
+  expect(html).toContain('Map');
+  expect(html).toContain('Timeline');
+  expect(html).toContain('Layer');
+  expect(html).toContain('September 2026');
   expect(html).toContain('Visualize');
   expect(html).toContain('Entities');
   expect(html).toContain('Assets');
   expect(html).toContain('aria-label="Hypermedia resource types"');
   expect(html).toContain('aria-pressed="true"');
   expect(html).toContain('aria-pressed="false"');
-  expect(html.indexOf('Semantic')).toBeGreaterThan(html.indexOf('Filter hypermedia'));
-  expect(html.indexOf('Visualize')).toBeGreaterThan(html.indexOf('Temporal'));
+  expect(html.indexOf('Map')).toBeGreaterThan(html.indexOf('Explore hypermedia'));
+  expect(html.indexOf('Visualize')).toBeGreaterThan(html.indexOf('September 2026'));
   expect(html).toContain('Keyword');
   expect(html.indexOf('Keyword')).toBeGreaterThan(html.indexOf('Assets'));
   expect(html).toContain('value="launch"');

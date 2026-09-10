@@ -320,10 +320,12 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toMatch(/governs selection, not page count/);
       expect(guide).toContain('Never turn uncertainty into assertion');
       expect(guide).toContain('The autobiography is the graph, not one page');
-      expect(guide).toMatch(/Give each page one subject from its first revision/);
-      expect(guide).toMatch(/never create or accumulate a catch-all page/);
+      expect(guide).toMatch(/Each page keeps one purpose and level/);
+      expect(guide).toMatch(/detail an event or usefully overview several events/);
+      expect(guide).toMatch(/never accumulate a[^a-z]+catch-all page/);
       expect(guide).toMatch(/retrieve or revise independently/);
-      expect(guide).toMatch(/No\s+truthful `temporalCoverage` is another signal/);
+      expect(guide).toMatch(/overview truthful spanning `temporalCoverage` when meaningful/);
+      expect(guide).toMatch(/otherwise\s+leave coverage unset/);
       expect(guide).toMatch(/Link targets must exist before writing/);
       expect(guide).toContain('smallest coherent revision');
       expect(guide).toContain('Decomposition is normal curation');

@@ -18,7 +18,7 @@ export const Route = createFileRoute('/pages/')({
           from: deps.filters.dateRange?.from,
           to: deps.filters.dateRange?.to,
           q: deps.filters.query,
-          pageType: deps.filters.kind,
+          interval: deps.filters.interval,
           view: 'preview',
         },
       });
@@ -29,7 +29,7 @@ export const Route = createFileRoute('/pages/')({
 
 function PagesIndexRoute() {
   const filters = pageListFilters(Route.useSearch());
-  if (filters.dateRange || filters.query || filters.kind) {
+  if (filters.dateRange || filters.query || filters.interval) {
     return (
       <WorkspaceEmpty
         eyebrow="Knowledge pages"

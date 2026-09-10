@@ -2,7 +2,7 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type {
   HypermediaPage,
-  HypermediaPageProjection,
+  HypermediaPageLayer,
   HypermediaPages,
   HypermediaResource,
   HypermediaResourceContinuation,
@@ -133,11 +133,12 @@ export interface HypermediaRepositoryContract {
   pages(input: {
     ownerId: string;
     resources: HypermediaResourceReference[];
+    visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
+    layer: HypermediaPageLayer;
     limit: number;
     offset: number;
     query?: string;
-    projection?: HypermediaPageProjection;
     temporalBounds?: TemporalBounds;
   }): Promise<HypermediaPages>;
 }
@@ -339,27 +340,40 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
   async pages({
     ownerId,
     resources,
+    visibleResources,
     kinds,
+    layer,
     limit,
     offset,
     query,
-    projection,
     temporalBounds,
   }: {
     ownerId: string;
     resources: HypermediaResourceReference[];
+    visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
+    layer: HypermediaPageLayer;
     limit: number;
     offset: number;
     query?: string;
-    projection?: HypermediaPageProjection;
     temporalBounds?: TemporalBounds;
   }): Promise<HypermediaPages> {
-    const resourceKeys = JSON.stringify(
+    const selectedResourceKeys = JSON.stringify(
       resources.map(({ kind, readableId }) => `${kind}:${readableId}`),
     );
+    const visibleResourceKeys = JSON.stringify(
+      visibleResources.map(({ kind, readableId }) => `${kind}:${readableId}`),
+    );
+    const scopedResources = new Map(
+      [...resources, ...visibleResources].map((resource) => [
+        `${resource.kind}:${resource.readableId}`,
+        resource,
+      ]),
+    );
+    const scopedResourceKeys = JSON.stringify([...scopedResources.keys()]);
     const selectedResourceCount = resources.length;
-    const visibleSelectedResourceCount = resources.filter(({ kind }) =>
+    const visibleResourceCount = visibleResources.length;
+    const visibleScopedResourceCount = [...scopedResources.values()].filter(({ kind }) =>
       kinds.includes(kind),
     ).length;
     const resourceKinds = JSON.stringify(kinds);
@@ -372,10 +386,12 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     const [pageRows, extentRows] = await Promise.all([
       this.matchingPageRows({
         ownerId,
-        resourceKeys,
+        selectedResourceKeys,
         selectedResourceCount,
+        visibleResourceKeys,
+        visibleResourceCount,
         normalizedQuery,
-        projection: projection ?? null,
+        layer,
         filterStart,
         filterEnd,
         rowLimit,
@@ -401,14 +417,13 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       };
     }
     const selectedPageIds = JSON.stringify(selectedPageRows.map(({ id }) => id));
-    const maximumSelectedResourceReferences =
-      visibleSelectedResourceCount * selectedPageRows.length;
+    const maximumScopedResourceReferences = visibleScopedResourceCount * selectedPageRows.length;
     const referenceLimit =
-      MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES + maximumSelectedResourceReferences + 1;
+      MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES + maximumScopedResourceReferences + 1;
     const referenceRows = await this.pageResourceRows({
       ownerId,
       resourceKinds,
-      resourceKeys,
+      resourceKeys: scopedResourceKeys,
       selectedPageIds,
       referenceLimit,
       normalizedQuery,
@@ -431,31 +446,36 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
 
   private matchingPageRows({
     ownerId,
-    resourceKeys,
+    selectedResourceKeys,
     selectedResourceCount,
+    visibleResourceKeys,
+    visibleResourceCount,
     normalizedQuery,
-    projection,
+    layer,
     filterStart,
     filterEnd,
     rowLimit,
     offset,
   }: {
     ownerId: string;
-    resourceKeys: string;
+    selectedResourceKeys: string;
     selectedResourceCount: number;
+    visibleResourceKeys: string;
+    visibleResourceCount: number;
     normalizedQuery: string | null;
-    projection: HypermediaPageProjection | null;
+    layer: HypermediaPageLayer;
     filterStart: number | null;
     filterEnd: number | null;
     rowLimit: number;
     offset: number;
   }): Promise<IListHypermediaPagesResult[]> {
     return this.sql.ListHypermediaPages`
-      /* @notNull id readableId revisionNumber title excerpt temporalSort ongoingSort createdAt updatedAt */
-      /* @type temporalSort number */
+      /* @notNull id readableId revisionNumber title excerpt ongoingSort createdAt updatedAt */
       /* @type ongoingSort number */
       with selected_key as (
-        select value as "key" from json_each(${resourceKeys})
+        select value as "key" from json_each(${selectedResourceKeys})
+      ), visible_key as (
+        select value as "key" from json_each(${visibleResourceKeys})
       ), active_resource_reference as (
         select mention."source_revision_id" as "revisionId",
           'entity:' || entity."readable_id" as "key"
@@ -473,15 +493,17 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       ), resource_matched_revision as (
         select reference."revisionId"
         from active_resource_reference reference
-        left join selected_key on selected_key."key" = reference."key"
+        left join selected_key selected on selected."key" = reference."key"
+        left join visible_key visible on visible."key" = reference."key"
         group by reference."revisionId"
-        having ${selectedResourceCount} = 0
-          or count(distinct selected_key."key") = ${selectedResourceCount}
+        having (
+          ${selectedResourceCount} = 0
+          or count(distinct selected."key") = ${selectedResourceCount}
+        ) and (${visibleResourceCount} = 0 or count(distinct visible."key") > 0)
       ), filtered_page as (
         select page."id", page."readable_id" as "readableId",
           revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
           revision."temporal_coverage" as "temporalCoverage",
-          revision."temporal_coverage" is not null as "temporalSort",
           revision."temporal_coverage" is not null
             and revision."temporal_end_exclusive_ms" is null as "ongoingSort",
           case when revision."temporal_coverage" is not null
@@ -497,9 +519,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         where page."owner_id" = ${ownerId} and page."archived_at" is null
           and page."current_revision_id" in (select "revisionId" from resource_matched_revision)
           and (
-            ${projection} is null
-            or (${projection} = 'semantic' and revision."temporal_coverage" is null)
-            or (${projection} = 'temporal' and revision."temporal_coverage" is not null)
+            (${layer} = 'undated' and revision."temporal_coverage" is null)
+            or (${layer} = 'dated' and revision."temporal_coverage" is not null)
           )
           and (
             ${normalizedQuery} is null
@@ -532,8 +553,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
             )
           )
           and (
-            ${filterStart} is null
-            or revision."temporal_coverage" is null
+            ${layer} = 'undated'
+            or ${filterStart} is null
             or (
               (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
               and (revision."temporal_end_exclusive_ms" is null
@@ -542,8 +563,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           )
       )
       select * from filtered_page
-      order by "temporalSort", "ongoingSort" desc,
-        "latestSort" desc, "startSort" desc, "updatedAt" desc, "readableId"
+      order by "ongoingSort" desc, "latestSort" desc, "startSort" desc,
+        "updatedAt" desc, "readableId"
       limit ${rowLimit}
       offset ${offset}
     `;

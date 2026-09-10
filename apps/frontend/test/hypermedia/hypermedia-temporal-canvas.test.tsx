@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
 import type { HypermediaSelection } from '../../src/components/hypermedia/hypermedia-selection';
-import { HypermediaTemporalCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
+import { HypermediaTimelineCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
 import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
 import type { HypermediaPage } from '../../src/queries/hypermedia';
 
@@ -70,7 +70,7 @@ function TemporalPaginationFixture({
   return (
     <KnowledgeWorkspace>
       <div />
-      <HypermediaTemporalCanvas
+      <HypermediaTimelineCanvas
         resources={[self, projectPlan]}
         pages={continued ? [temporalPage, continuedPage] : [temporalPage]}
         extent={{
@@ -89,7 +89,7 @@ function TemporalPaginationFixture({
   );
 }
 
-test('temporal canvas keeps resource filtering and page preview selection accessible', async () => {
+test('timeline keeps resource filtering and page preview selection accessible', async () => {
   const onSelect = mock(() => undefined);
   const user = userEvent.setup();
   render(<TemporalPaginationFixture onSelect={onSelect} />);
@@ -109,15 +109,13 @@ test('temporal canvas keeps resource filtering and page preview selection access
   await user.click(entityButton);
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'entity', readableId: 'self' });
 
-  const scroller = screen.getByRole('region', { name: 'Temporal timeline viewport' });
+  const scroller = screen.getByRole('region', { name: 'Timeline viewport' });
   scroller.scrollTop = PAGE_DISCOVERY_SCROLL_TOP;
   fireEvent.scroll(scroller);
-  expect(
-    screen.getByRole('link', { name: 'Open temporal knowledge page Earlier period' }),
-  ).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Open knowledge page Earlier period' })).toBeTruthy();
 
   const pageLink = screen.getByRole('link', {
-    name: 'Open temporal knowledge page Launch period',
+    name: 'Open knowledge page Launch period',
   });
   await user.hover(pageLink);
   expect(screen.getByText('A temporal page.')).toBeTruthy();
@@ -128,7 +126,7 @@ test('temporal canvas keeps resource filtering and page preview selection access
   expect(screen.queryByRole('note', { name: OVERLAP_NOTE })).toBeNull();
 });
 
-test('temporal canvas explains unavoidable page overlap', () => {
+test('timeline explains unavoidable page overlap', () => {
   const overlappingPages = ['first-page', 'second-page'].map(
     (readableId): HypermediaPage => ({
       ...temporalPage,
@@ -141,7 +139,7 @@ test('temporal canvas explains unavoidable page overlap', () => {
   render(
     <KnowledgeWorkspace>
       <div />
-      <HypermediaTemporalCanvas
+      <HypermediaTimelineCanvas
         resources={[self]}
         pages={overlappingPages}
         extent={{

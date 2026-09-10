@@ -5,9 +5,9 @@ import { useEntities } from '../../lib/hooks/use-entities';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import {
   type HypermediaPage,
-  type HypermediaPageProjection,
   type HypermediaPages,
   type HypermediaResourceReference,
+  type HypermediaView,
   hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
 } from '../../queries/hypermedia';
@@ -16,7 +16,7 @@ import { HypermediaCanvas } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
 import { filterHypermedia, type HypermediaResourceKind } from './hypermedia-resource-filter';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
-import { HypermediaTemporalCanvas } from './hypermedia-temporal-canvas';
+import { HypermediaTimelineCanvas } from './hypermedia-temporal-canvas';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
 
 type NeighborhoodRequest = {
@@ -37,7 +37,7 @@ function resourceSelection(
 }
 
 export function HypermediaExplorer({
-  projection,
+  view,
   resourceKinds,
   selfReadableId,
   selection,
@@ -53,10 +53,12 @@ export function HypermediaExplorer({
   isFetchingNextPage,
   onSelect,
   onDateRangeApply,
+  onTimeNavigate,
+  onVisibleResourcesChange,
   onRetryPages,
   onDiscoverMorePages,
 }: {
-  projection: HypermediaPageProjection;
+  view: HypermediaView;
   resourceKinds: HypermediaResourceKind[];
   selfReadableId: string;
   selection?: HypermediaSelection;
@@ -72,6 +74,8 @@ export function HypermediaExplorer({
   isFetchingNextPage: boolean;
   onSelect: (selection: HypermediaSelection) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
+  onTimeNavigate: (direction: 'older' | 'newer') => void;
+  onVisibleResourcesChange: (resources: HypermediaResourceReference[]) => void;
   onRetryPages: () => void;
   onDiscoverMorePages: () => void;
 }) {
@@ -162,6 +166,7 @@ export function HypermediaExplorer({
 
   const handleViewportSettled = useCallback(
     ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
+      onVisibleResourcesChange(focus);
       if (
         resourceKinds.includes('entity') &&
         discoverMoreEntities &&
@@ -212,6 +217,7 @@ export function HypermediaExplorer({
       hasNextEntityPage,
       isFetchingNextEntityPage,
       neighborhoodQueries,
+      onVisibleResourcesChange,
       resourceKinds,
     ],
   );
@@ -229,7 +235,7 @@ export function HypermediaExplorer({
     visualizedHypermedia.resources.some(({ key }) => !requestedAnchorKeys.has(key));
   return (
     <div className="relative size-full min-h-[28rem]">
-      {projection === 'semantic' ? (
+      {view === 'map' ? (
         <HypermediaCanvas
           key={query.trim().toLocaleLowerCase()}
           resources={visualizedHypermedia.resources}
@@ -238,6 +244,7 @@ export function HypermediaExplorer({
           selectedKey={selectedKey}
           onSelect={onSelect}
           onViewportSettled={handleViewportSettled}
+          onTimeNavigate={onTimeNavigate}
           canExplore={canExplore}
           isInitialLoading={
             visualizedHypermedia.resources.length === 0 &&
@@ -257,7 +264,7 @@ export function HypermediaExplorer({
           }}
         />
       ) : (
-        <HypermediaTemporalCanvas
+        <HypermediaTimelineCanvas
           key={query.trim().toLocaleLowerCase()}
           resources={visualizedHypermedia.resources}
           pages={visualizedHypermedia.pages}
@@ -274,7 +281,7 @@ export function HypermediaExplorer({
         />
       )}
       <HypermediaPageStatus
-        projection={projection}
+        view={view}
         pageCount={pages.length}
         loading={pagesLoading}
         error={pagesError}
@@ -288,7 +295,7 @@ export function HypermediaExplorer({
 }
 
 export function HypermediaPageStatus({
-  projection,
+  view,
   pageCount,
   loading,
   error,
@@ -297,7 +304,7 @@ export function HypermediaPageStatus({
   onRetry,
   onLoadMore,
 }: {
-  projection: HypermediaPageProjection;
+  view: HypermediaView;
   pageCount: number;
   loading: boolean;
   error: Error | null;
@@ -306,17 +313,17 @@ export function HypermediaPageStatus({
   onRetry: () => void;
   onLoadMore: () => void;
 }) {
-  const canLoadMore = projection === 'semantic' && hasNextPage;
+  const canLoadMore = view === 'map' && hasNextPage;
   if (!loading && !error && pageCount > 0 && !canLoadMore && !referencesTruncated) {
     return null;
   }
   let message: string | undefined;
   if (error) {
-    message = `Couldn’t load ${projection} pages.`;
+    message = 'Couldn’t load pages.';
   } else if (loading) {
-    message = `Loading ${projection} pages…`;
+    message = 'Loading pages…';
   } else if (pageCount === 0) {
-    message = `No ${projection} pages match this view.`;
+    message = 'No pages match this layer.';
   } else if (canLoadMore && referencesTruncated) {
     message = 'More pages are available, and some page connections are hidden.';
   } else if (canLoadMore) {

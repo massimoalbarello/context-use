@@ -7,22 +7,22 @@ afterEach(cleanup);
 
 function renderPageFilters() {
   const onQueryApply = mock(() => undefined);
-  const onKindChange = mock(() => undefined);
+  const onIntervalChange = mock(() => undefined);
   const onDateRangeApply = mock(() => undefined);
   render(
     <PageFilters
       query=""
       onQueryApply={onQueryApply}
-      onKindChange={onKindChange}
+      onIntervalChange={onIntervalChange}
       onDateRangeApply={onDateRangeApply}
     />,
   );
-  return { onQueryApply, onKindChange, onDateRangeApply };
+  return { onQueryApply, onIntervalChange, onDateRangeApply };
 }
 
-test('Pages keeps its search, type, and date controls behind one filter icon', async () => {
+test('Pages keeps its search, interval, and date controls behind one filter icon', async () => {
   const user = userEvent.setup();
-  const { onQueryApply, onKindChange } = renderPageFilters();
+  const { onQueryApply, onIntervalChange } = renderPageFilters();
   const trigger = screen.getByRole('button', { name: 'Filter pages' });
 
   expect(trigger.textContent).toBe('');
@@ -36,32 +36,32 @@ test('Pages keeps its search, type, and date controls behind one filter icon', a
   expect(keyword.getAttribute('placeholder')).toBe('Page title');
   expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
   expect(screen.getByRole('button', { name: 'Choose dates' })).toBeTruthy();
-  expect(filterText.indexOf('Page type')).toBeLessThan(filterText.indexOf('Keyword'));
+  expect(filterText.indexOf('Interval')).toBeLessThan(filterText.indexOf('Keyword'));
   expect(filterText.indexOf('Keyword')).toBeLessThan(filterText.indexOf('Filter by date range'));
 
-  await user.click(screen.getByRole('tab', { name: 'Temporal' }));
-  expect(onKindChange).toHaveBeenLastCalledWith('temporal');
+  await user.click(screen.getByRole('tab', { name: 'With' }));
+  expect(onIntervalChange).toHaveBeenLastCalledWith('with');
 
   await user.type(keyword, ' launch ');
   await user.click(screen.getByRole('button', { name: 'Apply' }));
   expect(onQueryApply).toHaveBeenLastCalledWith('launch');
 });
 
-test('Pages hides date filtering when semantic pages are selected', async () => {
+test('Pages hides date filtering when pages without intervals are selected', async () => {
   const user = userEvent.setup();
   render(
     <PageFilters
       query=""
-      kind="semantic"
+      interval="without"
       onQueryApply={() => undefined}
-      onKindChange={() => undefined}
+      onIntervalChange={() => undefined}
       onDateRangeApply={() => undefined}
     />,
   );
 
   await user.click(screen.getByRole('button', { name: 'Filter pages' }));
 
-  expect(screen.getByRole('tab', { name: 'Semantic' }).getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByRole('tab', { name: 'Without' }).getAttribute('aria-selected')).toBe('true');
   expect(screen.queryByText('Filter by date range')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Choose dates' })).toBeNull();
 });

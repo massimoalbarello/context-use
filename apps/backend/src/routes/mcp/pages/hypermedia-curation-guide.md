@@ -35,12 +35,11 @@ gate should you design entities and pages.
 
 ## Shape useful pages
 
-The autobiography is the graph, not one page. Give each page one subject from its first revision;
-never create or accumulate a catch-all page. Connect distinct ideas, relationships, events,
-decisions, and lines of thought with explanatory prose.
-
-Name one subject before writing. Split material a reader would retrieve or revise independently. No
-truthful `temporalCoverage` is another signal; cross-period synthesis may link narrower evidence.
+The autobiography is the graph, not one page. Each page keeps one purpose and level. A page may
+detail an event or usefully overview several events. Link narrower accounts rather than duplicate or
+replace them. Split material readers would retrieve or revise independently; never accumulate a
+catch-all page. Give an overview truthful spanning `temporalCoverage` when meaningful, otherwise
+leave coverage unset.
 
 Build structure bottom-up. An entity is a stable, identifiable referent, not a keyword. Put
 meaningful links inside prose that explains each relationship. A page should help someone understand

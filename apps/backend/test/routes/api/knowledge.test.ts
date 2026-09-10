@@ -68,7 +68,7 @@ const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
 const EXPECTED_TEMPORAL_PAGE_COUNT = 3;
 const EXPECTED_SECOND_PAGE_OFFSET = 4;
-const EXPECTED_FILTERED_PAGE_COUNT = 5;
+const EXPECTED_FILTERED_PAGE_COUNT = 3;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
 const EXPECTED_CURRENT_MENTION_COUNT = 5;
 const EXPECTED_BOUNDED_HYPERMEDIA_REFERENCE_COUNT = 121;
@@ -523,45 +523,45 @@ Every observation changes the next action.`,
       ].sort(),
     );
 
-    const semanticPagesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?kind=semantic' }),
+    const pagesWithoutIntervalsResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?interval=without' }),
     );
-    expect(semanticPagesResponse.status).toBe(StatusMap.OK);
-    const semanticPages = (await semanticPagesResponse.json()) as {
+    expect(pagesWithoutIntervalsResponse.status).toBe(StatusMap.OK);
+    const pagesWithoutIntervals = (await pagesWithoutIntervalsResponse.json()) as {
       items: Array<{ readableId: string; temporalCoverage: string | null }>;
       total: number;
     };
-    expect(semanticPages.items.map(({ readableId }) => readableId)).toEqual([
+    expect(pagesWithoutIntervals.items.map(({ readableId }) => readableId)).toEqual([
       'alpha-principles',
       duplicatePage.readableId,
     ]);
-    expect(semanticPages.items.every(({ temporalCoverage }) => temporalCoverage === null)).toBe(
-      true,
-    );
-    expect(semanticPages.total).toBe(2);
+    expect(
+      pagesWithoutIntervals.items.every(({ temporalCoverage }) => temporalCoverage === null),
+    ).toBe(true);
+    expect(pagesWithoutIntervals.total).toBe(2);
 
-    const temporalPagesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?kind=temporal' }),
+    const pagesWithIntervalsResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?interval=with' }),
     );
-    expect(temporalPagesResponse.status).toBe(StatusMap.OK);
-    const temporalPages = (await temporalPagesResponse.json()) as {
+    expect(pagesWithIntervalsResponse.status).toBe(StatusMap.OK);
+    const pagesWithIntervals = (await pagesWithIntervalsResponse.json()) as {
       items: Array<{ readableId: string; temporalCoverage: string | null }>;
       total: number;
     };
-    expect(temporalPages.items.map(({ readableId }) => readableId)).toEqual([
+    expect(pagesWithIntervals.items.map(({ readableId }) => readableId)).toEqual([
       'current-programme',
       'operating-rhythm',
       'growth-playbook',
     ]);
-    expect(temporalPages.items.every(({ temporalCoverage }) => temporalCoverage !== null)).toBe(
-      true,
-    );
-    expect(temporalPages.total).toBe(EXPECTED_TEMPORAL_PAGE_COUNT);
+    expect(
+      pagesWithIntervals.items.every(({ temporalCoverage }) => temporalCoverage !== null),
+    ).toBe(true);
+    expect(pagesWithIntervals.total).toBe(EXPECTED_TEMPORAL_PAGE_COUNT);
 
-    const invalidPageKindResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?kind=archived' }),
+    const invalidPageIntervalResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?interval=sometimes' }),
     );
-    expect(invalidPageKindResponse.status).toBe(StatusMap['Bad Request']);
+    expect(invalidPageIntervalResponse.status).toBe(StatusMap['Bad Request']);
 
     const firstNeighborhoodResponse = await app.handle(
       jsonRequest({
@@ -605,68 +605,55 @@ Every observation changes the next action.`,
     expect(remainingNeighborhood.neighbors[0]?.resource.entity.readableId).toBe('temporal-subject');
     expect(remainingNeighborhood.nextCursor).toBeNull();
 
-    const allHypermediaPagesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/hypermedia/pages?kinds=entity&limit=10' }),
+    const undatedLayerResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/hypermedia/pages?layer=undated&kinds=entity&limit=10' }),
     );
-    const allHypermediaPages = (await allHypermediaPagesResponse.json()) as {
+    const undatedLayer = (await undatedLayerResponse.json()) as {
       pages: Array<{ readableId: string }>;
       nextOffset: number | null;
       resourceReferencesTruncated: boolean;
       temporalExtent: { start: number; end: number } | null;
     };
-    expect(allHypermediaPages.pages.map(({ readableId }) => readableId)).toEqual([
-      'alpha-principles',
-      'current-programme',
-      'operating-rhythm',
-      'growth-playbook',
-    ]);
-    expect(allHypermediaPages.nextOffset).toBeNull();
-    expect(allHypermediaPages.resourceReferencesTruncated).toBe(false);
-    expect(allHypermediaPages.temporalExtent).toEqual({
+    expect(undatedLayer.pages.map(({ readableId }) => readableId)).toEqual(['alpha-principles']);
+    expect(undatedLayer.nextOffset).toBeNull();
+    expect(undatedLayer.resourceReferencesTruncated).toBe(false);
+    expect(undatedLayer.temporalExtent).toEqual({
       start: temporalBoundsFrom('2024-11').start,
       end: expect.any(Number),
     });
-    expect(allHypermediaPages.temporalExtent?.end).toBeGreaterThanOrEqual(
+    expect(undatedLayer.temporalExtent?.end).toBeGreaterThanOrEqual(
       temporalBoundsFrom('2025').start,
     );
 
-    const semanticProjectionResponse = await app.handle(
+    const datedLayerResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?projection=semantic&kinds=entity&limit=10',
+        path: '/hypermedia/pages?layer=dated&kinds=entity&limit=10',
       }),
     );
-    expect(semanticProjectionResponse.status).toBe(StatusMap.OK);
-    const semanticProjection = (await semanticProjectionResponse.json()) as {
+    expect(datedLayerResponse.status).toBe(StatusMap.OK);
+    const datedLayer = (await datedLayerResponse.json()) as {
       pages: Array<{ readableId: string; temporalCoverage: string | null }>;
     };
-    expect(semanticProjection.pages).toEqual([
-      expect.objectContaining({ readableId: 'alpha-principles', temporalCoverage: null }),
-    ]);
-
-    const temporalProjectionResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/hypermedia/pages?projection=temporal&kinds=entity&limit=10',
-      }),
-    );
-    expect(temporalProjectionResponse.status).toBe(StatusMap.OK);
-    const temporalProjection = (await temporalProjectionResponse.json()) as {
-      pages: Array<{ readableId: string; temporalCoverage: string | null }>;
-    };
-    expect(temporalProjection.pages.map(({ readableId }) => readableId)).toEqual([
+    expect(datedLayer.pages.map(({ readableId }) => readableId)).toEqual([
       'current-programme',
       'operating-rhythm',
       'growth-playbook',
     ]);
-    expect(
-      temporalProjection.pages.every(({ temporalCoverage }) => temporalCoverage !== null),
-    ).toBe(true);
+    expect(datedLayer.pages.every(({ temporalCoverage }) => temporalCoverage !== null)).toBe(true);
+
+    const undatedTimeResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?layer=undated&kinds=entity&time=2025-04',
+      }),
+    );
+    expect(undatedTimeResponse.status).toBe(StatusMap['Bad Request']);
 
     const filteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&limit=2',
+        path: '/hypermedia/pages?layer=dated&resources=entity:temporal-subject&kinds=entity&limit=2',
       }),
     );
     expect(filteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -681,21 +668,21 @@ Every observation changes the next action.`,
     };
     expectNoInternalResourceIds(filteredHypermedia);
     expect(filteredHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
-      'alpha-principles',
       'current-programme',
+      'operating-rhythm',
     ]);
-    expect(filteredHypermedia.pages[0]?.temporalCoverage).toBeNull();
+    expect(filteredHypermedia.pages[0]?.temporalCoverage).not.toBeNull();
     expect(filteredHypermedia.pages[0]?.resources).toContainEqual({
       kind: 'entity',
       readableId: 'temporal-subject',
     });
-    expect(filteredHypermedia.nextOffset).toBe(2);
+    expect(filteredHypermedia.nextOffset).toBeNull();
     expect(filteredHypermedia.resourceReferencesTruncated).toBe(false);
 
     const remainingFilteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&limit=2&offset=2',
+        path: '/hypermedia/pages?layer=dated&resources=entity:temporal-subject&kinds=entity&limit=2&offset=2',
       }),
     );
     expect(remainingFilteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -703,17 +690,13 @@ Every observation changes the next action.`,
       pages: Array<{ readableId: string }>;
       nextOffset: number | null;
     };
-    expect(remainingFilteredHypermedia.pages.length).toBeGreaterThan(0);
-    expect(
-      remainingFilteredHypermedia.pages.some(({ readableId }) =>
-        filteredHypermedia.pages.some((page) => page.readableId === readableId),
-      ),
-    ).toBe(false);
+    expect(remainingFilteredHypermedia.pages).toEqual([]);
+    expect(remainingFilteredHypermedia.nextOffset).toBeNull();
 
     const intersectedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject,entity:test-owner&kinds=entity',
+        path: '/hypermedia/pages?layer=undated&resources=entity:temporal-subject,entity:test-owner&kinds=entity',
       }),
     );
     const intersectedHypermedia = (await intersectedHypermediaResponse.json()) as {
@@ -723,17 +706,41 @@ Every observation changes the next action.`,
       'alpha-principles',
     ]);
 
+    const viewportHypermediaResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?layer=dated&visible=entity:temporal-subject,entity:test-owner&kinds=entity',
+      }),
+    );
+    const viewportHypermedia = (await viewportHypermediaResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+    };
+    expect(viewportHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
+      'current-programme',
+      'operating-rhythm',
+      'growth-playbook',
+    ]);
+
+    const combinedScopeResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?layer=dated&resources=entity:test-owner&visible=entity:temporal-subject&kinds=entity',
+      }),
+    );
+    expect(
+      ((await combinedScopeResponse.json()) as { pages: Array<{ readableId: string }> }).pages,
+    ).toEqual([]);
+
     const rangedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&time=2025-04',
+        path: '/hypermedia/pages?layer=dated&resources=entity:temporal-subject&kinds=entity&time=2025-04',
       }),
     );
     const rangedHypermedia = (await rangedHypermediaResponse.json()) as {
       pages: Array<{ readableId: string }>;
     };
     expect(rangedHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
-      'alpha-principles',
       'current-programme',
       'operating-rhythm',
     ]);
@@ -757,19 +764,7 @@ Every observation changes the next action.`,
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=2&time=2025-04' }),
     );
     expect(await remainingOverlappingPagesResponse.json()).toEqual({
-      items: [
-        expect.objectContaining({ readableId: 'growth-playbook' }),
-        expect.objectContaining({ readableId: 'alpha-principles' }),
-      ],
-      total: EXPECTED_FILTERED_PAGE_COUNT,
-      nextOffset: 4,
-    });
-
-    const finalOverlappingPagesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=4&time=2025-04' }),
-    );
-    expect(await finalOverlappingPagesResponse.json()).toEqual({
-      items: [expect.objectContaining({ readableId: duplicatePage.readableId })],
+      items: [expect.objectContaining({ readableId: 'growth-playbook' })],
       total: EXPECTED_FILTERED_PAGE_COUNT,
       nextOffset: null,
     });
@@ -778,12 +773,8 @@ Every observation changes the next action.`,
       jsonRequest({ method: 'GET', path: '/pages?time=2026' }),
     );
     expect(await futurePagesResponse.json()).toEqual({
-      items: [
-        expect.objectContaining({ readableId: 'current-programme' }),
-        expect.objectContaining({ readableId: 'alpha-principles' }),
-        expect.objectContaining({ readableId: duplicatePage.readableId }),
-      ],
-      total: 3,
+      items: [expect.objectContaining({ readableId: 'current-programme' })],
+      total: 1,
       nextOffset: null,
     });
 
@@ -791,11 +782,8 @@ Every observation changes the next action.`,
       jsonRequest({ method: 'GET', path: '/pages?time=2024-01/2024-10' }),
     );
     expect(await noOverlapResponse.json()).toEqual({
-      items: [
-        expect.objectContaining({ readableId: 'alpha-principles' }),
-        expect.objectContaining({ readableId: duplicatePage.readableId }),
-      ],
-      total: 2,
+      items: [],
+      total: 0,
       nextOffset: null,
     });
 
@@ -1248,7 +1236,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     const pageTextHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&query=alpha',
+        path: '/hypermedia/pages?layer=undated&resources=entity:temporal-subject&kinds=entity&query=alpha',
       }),
     );
     const pageTextHypermedia = (await pageTextHypermediaResponse.json()) as {
@@ -1264,7 +1252,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     const denseHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&query=dense',
+        path: '/hypermedia/pages?layer=undated&resources=entity:temporal-subject&kinds=entity&query=dense',
       }),
     );
     const denseHypermedia = (await denseHypermediaResponse.json()) as {

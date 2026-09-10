@@ -1,10 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { Library } from 'lucide-react';
+import type { CalendarMonth } from '../../lib/calendar-month';
 import { cn } from '../../lib/class-names';
-import type {
-  HypermediaPageProjection,
-  HypermediaResourceReference,
-} from '../../queries/hypermedia';
+import type { HypermediaResourceReference, HypermediaView } from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
   KnowledgeSidebarFooter,
@@ -17,21 +15,23 @@ import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 
 export function HypermediaSidebar({
   profile,
-  projection,
+  view,
+  month,
   resourceKinds,
   query,
   selectedResources,
-  onProjectionChange,
+  onViewChange,
   onResourceKindToggle,
   onQueryApply,
   onClearSelectedResources,
 }: {
   profile: KnowledgeProfile;
-  projection: HypermediaPageProjection;
+  view: HypermediaView;
+  month?: CalendarMonth;
   resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
-  onProjectionChange: (projection: HypermediaPageProjection) => void;
+  onViewChange: (view: HypermediaView) => void;
   onResourceKindToggle: (kind: HypermediaResourceKind) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
@@ -57,11 +57,12 @@ export function HypermediaSidebar({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
           <HypermediaFilters
-            projection={projection}
+            view={view}
+            month={month}
             resourceKinds={resourceKinds}
             query={query}
             selectedResources={selectedResources}
-            onProjectionChange={onProjectionChange}
+            onViewChange={onViewChange}
             onResourceKindToggle={onResourceKindToggle}
             onQueryApply={onQueryApply}
             onClearSelectedResources={onClearSelectedResources}

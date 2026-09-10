@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
+import { useState } from 'react';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
 import {
@@ -18,12 +19,19 @@ import {
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
-import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
+import {
+  type CalendarMonth,
+  calendarMonth,
+  calendarMonthFromRange,
+  calendarMonthRange,
+  currentCalendarMonth,
+  mapMonthAfterScroll,
+} from '../lib/calendar-month';
 import { entitiesQueryOptions } from '../queries/entities';
 import {
   type HypermediaPage,
-  type HypermediaPageProjection,
   type HypermediaResourceReference,
+  type HypermediaView,
   hypermediaPagesQueryOptions,
   hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
@@ -32,36 +40,27 @@ import {
 const MAX_HYPERMEDIA_SEARCH_LENGTH = 160;
 const MAX_HYPERMEDIA_READABLE_ID_LENGTH = 120;
 const EMPTY_HYPERMEDIA_PAGES: HypermediaPage[] = [];
-export type HypermediaSearch = Partial<CalendarDateRange> & {
+export type HypermediaSearch = {
   q?: string;
-  view?: 'temporal';
+  view?: 'timeline';
+  month?: CalendarMonth;
   kind?: HypermediaSelection['kind'];
   id?: string;
   focus?: string;
   show?: HypermediaResourceDisplay;
 };
 
-export function hypermediaSearchWithDateRange({
-  previous,
-  nextRange,
-}: {
-  previous: HypermediaSearch;
-  nextRange?: CalendarDateRange;
-}): HypermediaSearch {
-  return {
-    ...previous,
-    from: nextRange?.from,
-    to: nextRange?.to,
-  };
-}
-
 export function hypermediaSearch(search: Record<string, unknown>): HypermediaSearch {
-  const result: HypermediaSearch = calendarDateRangeFromSearch(search) ?? {};
+  const result: HypermediaSearch = {};
   if (typeof search.q === 'string' && search.q.trim()) {
     result.q = search.q.trim().slice(0, MAX_HYPERMEDIA_SEARCH_LENGTH);
   }
-  if (search.view === 'temporal') {
-    result.view = 'temporal';
+  if (search.view === 'timeline') {
+    result.view = 'timeline';
+  }
+  const selectedMonth = calendarMonth(search.month);
+  if (selectedMonth) {
+    result.month = selectedMonth;
   }
   if (search.show === 'assets' || search.show === 'all') {
     result.show = search.show;
@@ -82,8 +81,20 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
   return result;
 }
 
-export function hypermediaProjection(search: HypermediaSearch): HypermediaPageProjection {
-  return search.view === 'temporal' ? 'temporal' : 'semantic';
+export function hypermediaView(search: HypermediaSearch): HypermediaView {
+  return search.view === 'timeline' ? 'timeline' : 'map';
+}
+
+export function hypermediaActiveMonth({
+  search,
+  now = new Date(),
+}: {
+  search: HypermediaSearch;
+  now?: Date;
+}): CalendarMonth | undefined {
+  return (
+    search.month ?? (hypermediaView(search) === 'timeline' ? currentCalendarMonth(now) : undefined)
+  );
 }
 
 export function hypermediaSearchAfterEscape({
@@ -114,7 +125,7 @@ export const Route = createFileRoute('/hypermedia')({
   validateSearch: hypermediaSearch,
   loaderDeps: ({ search }) => ({
     query: search.q,
-    projection: hypermediaProjection(search),
+    month: hypermediaActiveMonth({ search }),
     resources: selectedHypermediaResources(search.focus),
     kinds: displayedHypermediaResourceKinds(search.show),
   }),
@@ -135,9 +146,11 @@ export const Route = createFileRoute('/hypermedia')({
         : Promise.resolve(),
       context.queryClient.ensureInfiniteQueryData(
         hypermediaPagesQueryOptions({
-          projection: deps.projection,
+          layer: deps.month ? 'dated' : 'undated',
           resources: deps.resources,
+          visibleResources: [],
           kinds: deps.kinds,
+          month: deps.month,
           query: deps.query,
         }),
       ),
@@ -150,18 +163,22 @@ function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
   const { q = '', kind, id, focus, show } = search;
-  const projection = hypermediaProjection(search);
+  const view = hypermediaView(search);
+  const activeMonth = hypermediaActiveMonth({ search });
   const resourceKinds = displayedHypermediaResourceKinds(show);
-  const dateRange = calendarDateRangeFromSearch(search);
+  const dateRange = activeMonth ? calendarMonthRange(activeMonth) : undefined;
   const navigate = Route.useNavigate();
+  const [visibleResources, setVisibleResources] = useState<HypermediaResourceReference[]>([]);
   const selection: HypermediaSelection | undefined =
     kind && id ? { kind, readableId: id } : undefined;
   const selectedResources = selectedHypermediaResources(focus);
   const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
-      projection,
+      layer: activeMonth ? 'dated' : 'undated',
       resources: selectedResources,
+      visibleResources,
       kinds: resourceKinds,
+      month: activeMonth,
       query: q,
     }),
     enabled: Boolean(profile),
@@ -213,15 +230,20 @@ function HypermediaRoute() {
     <KnowledgeWorkspace>
       <HypermediaSidebar
         profile={profile}
-        projection={projection}
+        view={view}
+        month={activeMonth}
         resourceKinds={resourceKinds}
         query={q}
         selectedResources={selectedResources}
-        onProjectionChange={(nextProjection) => {
+        onViewChange={(nextView) => {
           void navigate({
             search: (previous) => ({
               ...previous,
-              view: nextProjection === 'temporal' ? 'temporal' : undefined,
+              view: nextView === 'timeline' ? 'timeline' : undefined,
+              month:
+                nextView === 'timeline'
+                  ? (calendarMonth(previous.month) ?? currentCalendarMonth())
+                  : calendarMonth(previous.month),
             }),
             replace: true,
           });
@@ -264,7 +286,7 @@ function HypermediaRoute() {
         <div className="relative size-full">
           <HypermediaExplorer
             key={resourceKinds.join(':')}
-            projection={projection}
+            view={view}
             resourceKinds={resourceKinds}
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
@@ -280,9 +302,41 @@ function HypermediaRoute() {
             isFetchingNextPage={pageQuery.isFetchingNextPage}
             onSelect={selectKnowledge}
             onDateRangeApply={(nextRange) => {
+              if (!nextRange) {
+                return;
+              }
               void navigate({
-                search: (previous) => hypermediaSearchWithDateRange({ previous, nextRange }),
+                search: (previous) => ({
+                  ...previous,
+                  month: calendarMonthFromRange(nextRange),
+                  kind: previous.kind === 'page' ? undefined : previous.kind,
+                  id: previous.kind === 'page' ? undefined : previous.id,
+                }),
                 replace: true,
+              });
+            }}
+            onTimeNavigate={(direction) => {
+              void navigate({
+                search: (previous) => ({
+                  ...previous,
+                  month: mapMonthAfterScroll({
+                    month: calendarMonth(previous.month),
+                    direction,
+                  }),
+                  kind: previous.kind === 'page' ? undefined : previous.kind,
+                  id: previous.kind === 'page' ? undefined : previous.id,
+                }),
+                replace: true,
+              });
+            }}
+            onVisibleResourcesChange={(nextResources) => {
+              setVisibleResources((current) => {
+                const currentKeys = current.map(hypermediaResourceKey);
+                const nextKeys = nextResources.map(hypermediaResourceKey);
+                return currentKeys.length === nextKeys.length &&
+                  currentKeys.join('\u0000') === nextKeys.join('\u0000')
+                  ? current
+                  : nextResources;
               });
             }}
             onRetryPages={() => {

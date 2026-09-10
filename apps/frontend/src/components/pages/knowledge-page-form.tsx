@@ -117,8 +117,8 @@ export function KnowledgePageForm({
             )}
           </div>
           <FieldDescription className="sr-only" id={`${field.name}-help`}>
-            Add an interval for temporal knowledge, such as 2025 or 2025-03/2025-08. Leave blank for
-            semantic knowledge.
+            Add when the page's subject occurred or applied, such as 2025 or 2025-03/2025-08. Leave
+            blank when no useful interval is known.
           </FieldDescription>
           <FieldError>{field.state.meta.errors[0]}</FieldError>
         </Field>

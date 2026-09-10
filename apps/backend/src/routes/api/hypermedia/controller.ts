@@ -67,6 +67,7 @@ export function createHypermediaController({
       '/pages',
       async ({ query, user, status }) => {
         const resources = parseHypermediaResources(query.resources);
+        const visibleResources = parseHypermediaResources(query.visible);
         const kinds = parseHypermediaResourceKinds(query.kinds);
         let temporalBounds: TemporalBounds | undefined;
         try {
@@ -77,17 +78,23 @@ export function createHypermediaController({
           }
           throw error;
         }
-        if (!resources || !kinds) {
+        if (
+          !resources ||
+          !visibleResources ||
+          !kinds ||
+          (query.layer === 'undated' && query.time)
+        ) {
           return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
         const pages = await hypermediaService.pages({
           ownerId: user.id,
           resources,
+          visibleResources,
           kinds,
+          layer: query.layer,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
           offset: query.offset ?? 0,
           query: query.query,
-          projection: query.projection,
           temporalBounds,
         });
         return status(StatusMap.OK, hypermediaPagesResponse(pages));

@@ -1,4 +1,4 @@
-import type { KnowledgePageKind } from '@repo/backend/page';
+import type { KnowledgePageIntervalFilter } from '@repo/backend/page';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
@@ -11,7 +11,7 @@ export type KnowledgePageSummary = KnowledgePagePage['items'][number];
 export type KnowledgePageListFilters = {
   dateRange?: CalendarDateRange;
   query?: string;
-  kind?: KnowledgePageKind;
+  interval?: KnowledgePageIntervalFilter;
 };
 
 export type KnowledgePage = NonNullable<
@@ -38,14 +38,14 @@ export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
 export const pagePreviewsQueryKey = [...pagesQueryKey, 'preview'] as const;
 export const pageSuggestionsQueryKey = [...pagesQueryKey, 'suggestions'] as const;
 
-export function pagesQueryOptions({ dateRange, query, kind }: KnowledgePageListFilters = {}) {
+export function pagesQueryOptions({ dateRange, query, interval }: KnowledgePageListFilters = {}) {
   const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
   return infiniteQueryOptions({
-    queryKey: [...pagesListQueryKey, { dateRange: dateRange ?? null, query, kind }],
+    queryKey: [...pagesListQueryKey, { dateRange: dateRange ?? null, query, interval }],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const { data, error } = await api.api.pages.get({
-        query: { offset: pageParam, time, query, kind },
+        query: { offset: pageParam, time, query, interval },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));

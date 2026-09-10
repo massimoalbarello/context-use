@@ -285,7 +285,6 @@ export interface IListHypermediaPagesResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
-    temporalSort: number;
     ongoingSort: number;
     latestSort: unknown | null;
     startSort: unknown | null;
