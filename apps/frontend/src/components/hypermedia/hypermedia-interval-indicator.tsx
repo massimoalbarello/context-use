@@ -83,17 +83,12 @@ export function HypermediaIntervalIndicator({
 }) {
   const now = new Date();
   const present = currentCalendarMonth(now);
-  const label = month ? calendarMonthLabel(month) : undefined;
+  const label = calendarMonthLabel(month);
   const position = scrollPosition({ month, extent, scrollProgress, now });
   const selectedIsPresent = month === present;
-  const visible = position >= PRESENT_POSITION;
   const motion = scrolling
     ? 'transition-none'
     : 'transition-[top] duration-200 ease-out motion-reduce:transition-none';
-
-  if (!visible) {
-    return null;
-  }
 
   return (
     <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 select-none">
@@ -108,20 +103,18 @@ export function HypermediaIntervalIndicator({
         className={cn('absolute inset-x-0 -translate-y-1/2', motion)}
         style={{ top: `${position}%` }}
         role="img"
-        aria-label={label ? `Selected interval: ${label}` : 'Pages without a time interval'}
+        aria-label={month ? `Selected interval: ${label}` : 'Pages without a time interval'}
       >
         <span
           className="absolute top-0 right-3 size-2.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground ring-4 ring-card/85"
           aria-hidden="true"
         />
-        {label && (
-          <span
-            className="absolute top-0 right-7 -translate-y-1/2 whitespace-nowrap rounded-full border bg-card/92 px-2.5 py-1 font-medium text-xs tabular-nums shadow-sm backdrop-blur"
-            aria-live="polite"
-          >
-            {label}
-          </span>
-        )}
+        <span
+          className="absolute top-0 right-7 -translate-y-1/2 whitespace-nowrap rounded-full border bg-card/92 px-2.5 py-1 font-medium text-xs tabular-nums shadow-sm backdrop-blur"
+          aria-live="polite"
+        >
+          {label}
+        </span>
       </div>
     </div>
   );

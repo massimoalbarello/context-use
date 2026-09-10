@@ -177,19 +177,19 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
   expectResourceIdentities('link');
   const canvas = screen.getByLabelText('Interactive Hypermedia');
 
-  expect(screen.queryByText('Undated')).toBeNull();
-  expect(screen.queryByText('Now')).toBeNull();
-  expect(screen.queryByText('Past')).toBeNull();
-  expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
+  expect(screen.getByText('Undated')).toBeTruthy();
+  expect(screen.getByText('Now')).toBeTruthy();
+  expect(screen.getByText('Past')).toBeTruthy();
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
 
   fireEvent.wheel(canvas, { deltaY: 40 });
   expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
-  expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
-  expect(screen.queryByText('Now')).toBeNull();
-  expect(screen.queryByText('Past')).toBeNull();
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
+  expect(screen.getByText('Now')).toBeTruthy();
+  expect(screen.getByText('Past')).toBeTruthy();
 
   fireEvent.wheel(canvas, { deltaY: 40 });
-  expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
   expect(onMonthChange).not.toHaveBeenCalled();
 
   fireEvent.wheel(canvas, { deltaY: 80 });
@@ -214,15 +214,18 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
   ).toBeTruthy();
 
   fireEvent.wheel(canvas, { deltaY: -40 });
-  expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
+  ).toBeTruthy();
   expect(screen.queryByText('Now')).toBeNull();
-  expect(screen.queryByText('Past')).toBeNull();
+  expect(screen.getByText('Past')).toBeTruthy();
 
   fireEvent.wheel(canvas, { deltaY: -120 });
   expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
-  expect(screen.queryByText('Now')).toBeNull();
-  expect(screen.queryByText('Past')).toBeNull();
-  expect(screen.queryByRole('img', { name: 'Pages without a time interval' })).toBeNull();
+  expect(screen.getByText('Undated')).toBeTruthy();
+  expect(screen.getByText('Now')).toBeTruthy();
+  expect(screen.getByText('Past')).toBeTruthy();
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
   expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
 });
 
