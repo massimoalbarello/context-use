@@ -19,13 +19,7 @@ import {
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
-import {
-  type CalendarMonth,
-  calendarMonth,
-  calendarMonthFromRange,
-  calendarMonthRange,
-  currentCalendarMonth,
-} from '../lib/calendar-month';
+import { type CalendarMonth, calendarMonth, currentCalendarMonth } from '../lib/calendar-month';
 import { entitiesQueryOptions } from '../queries/entities';
 import {
   type HypermediaPage,
@@ -165,7 +159,6 @@ function HypermediaRoute() {
   const view = hypermediaView(search);
   const activeMonth = hypermediaActiveMonth({ search });
   const resourceKinds = displayedHypermediaResourceKinds(show);
-  const dateRange = activeMonth ? calendarMonthRange(activeMonth) : undefined;
   const navigate = Route.useNavigate();
   const [visibleResources, setVisibleResources] = useState<HypermediaResourceReference[]>([]);
   const selection: HypermediaSelection | undefined =
@@ -293,27 +286,12 @@ function HypermediaRoute() {
             pages={loadedPages}
             month={activeMonth}
             temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
-            dateRange={dateRange}
             pagesLoading={pageQuery.isFetching}
             pagesError={pageQuery.error}
             hasNextPage={pageQuery.hasNextPage}
             pageReferencesTruncated={pageReferencesTruncated}
             isFetchingNextPage={pageQuery.isFetchingNextPage}
             onSelect={selectKnowledge}
-            onDateRangeApply={(nextRange) => {
-              if (!nextRange) {
-                return;
-              }
-              void navigate({
-                search: (previous) => ({
-                  ...previous,
-                  month: calendarMonthFromRange(nextRange),
-                  kind: previous.kind === 'page' ? undefined : previous.kind,
-                  id: previous.kind === 'page' ? undefined : previous.id,
-                }),
-                replace: true,
-              });
-            }}
             onMonthChange={(nextMonth) => {
               void navigate({
                 search: (previous) => ({

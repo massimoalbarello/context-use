@@ -6,6 +6,11 @@ import type { HypermediaLayoutResource } from '../../src/components/hypermedia/h
 import type { HypermediaSelection } from '../../src/components/hypermedia/hypermedia-selection';
 import { HypermediaTimelineCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
 import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
+import {
+  calendarMonthLabel,
+  currentCalendarMonth,
+  shiftCalendarMonth,
+} from '../../src/lib/calendar-month';
 import type { HypermediaPage } from '../../src/queries/hypermedia';
 
 afterEach(cleanup);
@@ -63,8 +68,12 @@ const continuedPage: HypermediaPage = {
 
 function TemporalPaginationFixture({
   onSelect,
+  onMonthChange = () => undefined,
+  onIntervalScrollingChange = () => undefined,
 }: {
   onSelect: (selection: HypermediaSelection) => void;
+  onMonthChange?: (month?: `${number}-${string}`) => void;
+  onIntervalScrollingChange?: (scrolling: boolean) => void;
 }) {
   const [continued, setContinued] = useState(false);
   return (
@@ -77,9 +86,11 @@ function TemporalPaginationFixture({
           start: Date.parse('2024-01-01T00:00:00.000Z'),
           end: Date.parse('2026-12-31T00:00:00.000Z'),
         }}
+        month={currentCalendarMonth()}
         selectedResources={[{ kind: 'entity', readableId: 'self' }]}
         onSelect={onSelect}
-        onDateRangeApply={() => undefined}
+        onMonthChange={onMonthChange}
+        onIntervalScrollingChange={onIntervalScrollingChange}
         onViewportSettled={() => undefined}
         hasNextPage={!continued}
         isFetchingNextPage={false}
@@ -91,8 +102,16 @@ function TemporalPaginationFixture({
 
 test('timeline keeps resource filtering and page preview selection accessible', async () => {
   const onSelect = mock(() => undefined);
+  const onMonthChange = mock(() => undefined);
+  const onIntervalScrollingChange = mock(() => undefined);
   const user = userEvent.setup();
-  render(<TemporalPaginationFixture onSelect={onSelect} />);
+  render(
+    <TemporalPaginationFixture
+      onSelect={onSelect}
+      onMonthChange={onMonthChange}
+      onIntervalScrollingChange={onIntervalScrollingChange}
+    />,
+  );
 
   const entityButton = screen.getByRole('button', { name: /Self Entity/ });
   expect(entityButton.getAttribute('aria-pressed')).toBe('true');
@@ -110,6 +129,17 @@ test('timeline keeps resource filtering and page preview selection accessible', 
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'entity', readableId: 'self' });
 
   const scroller = screen.getByRole('region', { name: 'Timeline viewport' });
+  const present = currentCalendarMonth();
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
+  ).toBeTruthy();
+  expect(screen.queryByText('Dec 2026')).toBeNull();
+  fireEvent.wheel(scroller, { deltaY: 120 });
+  fireEvent.wheel(scroller, { deltaY: 40 });
+  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
+  expect(onMonthChange).toHaveBeenLastCalledWith(
+    shiftCalendarMonth({ value: present, offset: -1 }),
+  );
   scroller.scrollTop = PAGE_DISCOVERY_SCROLL_TOP;
   fireEvent.scroll(scroller);
   expect(screen.getByRole('link', { name: 'Open knowledge page Earlier period' })).toBeTruthy();
@@ -146,9 +176,11 @@ test('timeline explains unavoidable page overlap', () => {
           start: Date.parse('2025-01-01T00:00:00.000Z'),
           end: Date.parse('2025-12-31T00:00:00.000Z'),
         }}
+        month={currentCalendarMonth()}
         selectedResources={[]}
         onSelect={() => undefined}
-        onDateRangeApply={() => undefined}
+        onMonthChange={() => undefined}
+        onIntervalScrollingChange={() => undefined}
         onViewportSettled={() => undefined}
         hasNextPage={false}
         isFetchingNextPage={false}

@@ -264,9 +264,11 @@ test('Timeline uses the same entity and asset identities', () => {
           start: Date.parse('2025-01-01T00:00:00.000Z'),
           end: Date.parse('2026-01-01T00:00:00.000Z'),
         }}
+        month={currentCalendarMonth()}
         selectedResources={[]}
         onSelect={() => undefined}
-        onDateRangeApply={() => undefined}
+        onMonthChange={() => undefined}
+        onIntervalScrollingChange={() => undefined}
         onViewportSettled={() => undefined}
         hasNextPage={false}
         isFetchingNextPage={false}

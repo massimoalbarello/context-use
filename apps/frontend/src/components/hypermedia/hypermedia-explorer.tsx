@@ -3,7 +3,6 @@ import { LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
 import { useEntities } from '../../lib/hooks/use-entities';
-import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import {
   type HypermediaPage,
   type HypermediaPages,
@@ -49,14 +48,12 @@ export function HypermediaExplorer({
   pages,
   month,
   temporalExtent,
-  dateRange,
   pagesLoading,
   pagesError,
   hasNextPage,
   pageReferencesTruncated,
   isFetchingNextPage,
   onSelect,
-  onDateRangeApply,
   onMonthChange,
   onVisibleResourcesChange,
   onRetryPages,
@@ -71,14 +68,12 @@ export function HypermediaExplorer({
   pages: HypermediaPage[];
   month?: CalendarMonth;
   temporalExtent: HypermediaPages['temporalExtent'];
-  dateRange?: CalendarDateRange;
   pagesLoading: boolean;
   pagesError: Error | null;
   hasNextPage: boolean;
   pageReferencesTruncated: boolean;
   isFetchingNextPage: boolean;
   onSelect: (selection: HypermediaSelection) => void;
-  onDateRangeApply: (dateRange?: CalendarDateRange) => void;
   onMonthChange: (month?: CalendarMonth) => void;
   onVisibleResourcesChange: (resources: HypermediaResourceReference[]) => void;
   onRetryPages: () => void;
@@ -309,11 +304,12 @@ export function HypermediaExplorer({
           resources={visualizedHypermedia.resources}
           pages={visualizedHypermedia.pages}
           extent={temporalExtent}
-          dateRange={dateRange}
+          month={month}
           selectedResources={visualizedSelectedResources}
           selectedKey={selectedKey}
           onSelect={onSelect}
-          onDateRangeApply={onDateRangeApply}
+          onMonthChange={onMonthChange}
+          onIntervalScrollingChange={handleIntervalScrollingChange}
           onViewportSettled={handleViewportSettled}
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
