@@ -318,7 +318,9 @@ function HypermediaRoute() {
                 ? pageQuery.fetchNextPage()
                 : pageQuery.refetch());
             }}
-            onDiscoverMorePages={() => void pageQuery.fetchNextPage()}
+            onDiscoverMorePages={() => {
+              void pageQuery.fetchNextPage({ cancelRefetch: false });
+            }}
           />
           {selection && (
             <HypermediaPreviewPanel

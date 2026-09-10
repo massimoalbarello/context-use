@@ -199,7 +199,6 @@ export function HypermediaTimelineCanvas({
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const resourceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrollLeft = useRef<number | null>(null);
-  const pageDiscoveryPending = useRef(false);
   const [pageViewport, setPageViewport] = useState<TemporalPageViewport | null>(null);
   const layout = useMemo(
     () => (extent ? buildTemporalHypermediaLayout({ resources, pages, extent }) : null),
@@ -217,15 +216,6 @@ export function HypermediaTimelineCanvas({
     () => new Map(layout?.resources.map((resource) => [resource.key, resource]) ?? []),
     [layout],
   );
-  useEffect(
-    () => () => {
-      if (resourceTimer.current) {
-        clearTimeout(resourceTimer.current);
-      }
-    },
-    [],
-  );
-
   const publishVisibleResources = useCallback(
     (scroller: HTMLDivElement) => {
       if (!layout) {
@@ -254,13 +244,11 @@ export function HypermediaTimelineCanvas({
         !layout ||
         !hasNextPage ||
         isFetchingNextPage ||
-        pageDiscoveryPending.current ||
         scroller.scrollTop + scroller.clientHeight + PAGE_DISCOVERY_DISTANCE <
           layout.pageLoadBoundaryY
       ) {
         return;
       }
-      pageDiscoveryPending.current = true;
       onDiscoverMorePages();
     },
     [hasNextPage, isFetchingNextPage, layout, onDiscoverMorePages],
@@ -289,17 +277,6 @@ export function HypermediaTimelineCanvas({
       publishVisibleResources(scroller);
     }
   }, [layout, publishVisibleResources]);
-
-  useEffect(() => {
-    if (isFetchingNextPage) {
-      return;
-    }
-    pageDiscoveryPending.current = false;
-    const scroller = scrollerRef.current;
-    if (layout && scroller) {
-      discoverMorePages(scroller);
-    }
-  }, [discoverMorePages, isFetchingNextPage, layout]);
 
   function handleScroll(event: UIEvent<HTMLDivElement>) {
     const scroller = event.currentTarget;
@@ -336,7 +313,12 @@ export function HypermediaTimelineCanvas({
       return;
     }
     scroller.addEventListener('wheel', handleWheel, { passive: false });
-    return () => scroller.removeEventListener('wheel', handleWheel);
+    return () => {
+      scroller.removeEventListener('wheel', handleWheel);
+      if (resourceTimer.current) {
+        clearTimeout(resourceTimer.current);
+      }
+    };
   }, [layout]);
 
   if (!layout) {
