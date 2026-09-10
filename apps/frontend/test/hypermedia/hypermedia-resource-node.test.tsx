@@ -162,6 +162,17 @@ test('Map distinguishes entity and asset identities and advances once per scroll
   expect(onTimeNavigate).toHaveBeenCalledTimes(2);
 });
 
+test('Map consumes pinch zoom before the browser can zoom the dashboard', () => {
+  const onTimeNavigate = mock(() => undefined);
+  render(<HypermediaMapFixture onTimeNavigate={onTimeNavigate} />);
+  const canvas = screen.getByLabelText('Interactive Hypermedia');
+  const pinch = new WheelEvent('wheel', { cancelable: true, deltaY: -80 });
+  Object.defineProperty(pinch, 'ctrlKey', { value: true });
+
+  expect(fireEvent(canvas, pinch)).toBe(false);
+  expect(onTimeNavigate).not.toHaveBeenCalled();
+});
+
 test('Timeline uses the same entity and asset identities', () => {
   render(
     <KnowledgeWorkspace>

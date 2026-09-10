@@ -6,10 +6,10 @@ import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
-  type WheelEvent,
 } from 'react';
 import { cn } from '../../lib/class-names';
 import { Button } from '../ui/button';
@@ -239,6 +239,7 @@ export function HypermediaCanvas({
   const spotlightActive = selectedResources.length > 0;
   const layout = useMemo(() => buildHypermediaLayout(resources, pages), [pages, resources]);
   const viewBoxRef = useRef(viewBox);
+  const canvasRef = useRef<SVGSVGElement | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wheelIntervalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wheelIntervalDelta = useRef(0);
@@ -372,8 +373,12 @@ export function HypermediaCanvas({
     setShowExplorationHint(false);
   }
 
-  function handlePinchZoom(event: WheelEvent<SVGSVGElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
+  function handlePinchZoom(event: globalThis.WheelEvent) {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
     const boundedDelta = Math.max(
       -MAX_WHEEL_ZOOM_DELTA,
       Math.min(MAX_WHEEL_ZOOM_DELTA, event.deltaY),
@@ -384,14 +389,23 @@ export function HypermediaCanvas({
     });
   }
 
-  function handleWheel(event: WheelEvent<SVGSVGElement>) {
+  const handleWheel = useEffectEvent((event: globalThis.WheelEvent) => {
     event.preventDefault();
     if (event.ctrlKey) {
       handlePinchZoom(event);
       return;
     }
     handleIntervalWheel(event.deltaY);
-  }
+  });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, []);
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
     if (event.button !== 0 || (event.target as Element).closest('[data-hypermedia-resource]')) {
@@ -474,6 +488,7 @@ export function HypermediaCanvas({
       aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.resources.length} visible entities and assets`}
     >
       <svg
+        ref={canvasRef}
         className={cn(
           'size-full touch-none select-none bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] [background-size:22px_22px]',
           panning ? 'cursor-grabbing' : 'cursor-grab',
@@ -481,7 +496,6 @@ export function HypermediaCanvas({
         aria-label="Interactive Hypermedia"
         viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
         preserveAspectRatio="xMidYMid meet"
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
