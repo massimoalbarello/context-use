@@ -13,6 +13,8 @@ import {
 
 afterEach(cleanup);
 
+const INTERVAL_SETTLE_WAIT_MS = 160;
+
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const portrait = {
   readableId: 'grace-portrait',
@@ -164,7 +166,7 @@ function HypermediaMapFixture({
   );
 }
 
-test('Map distinguishes resource identities and moves smoothly through consecutive months', () => {
+test('Map distinguishes resource identities and retains partial progress between months', async () => {
   const onMonthChange = mock(() => undefined);
   const onIntervalScrollingChange = mock(() => undefined);
   render(
@@ -187,6 +189,15 @@ test('Map distinguishes resource identities and moves smoothly through consecuti
   expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
   expect(screen.getByText('Now')).toBeTruthy();
   expect(screen.getByText('Past')).toBeTruthy();
+  const partialPosition = screen
+    .getByRole('img', { name: 'Pages without a time interval' })
+    .getAttribute('style');
+  await new Promise((resolve) => setTimeout(resolve, INTERVAL_SETTLE_WAIT_MS));
+  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(false);
+  expect(
+    screen.getByRole('img', { name: 'Pages without a time interval' }).getAttribute('style'),
+  ).toBe(partialPosition);
+  expect(onMonthChange).not.toHaveBeenCalled();
 
   fireEvent.wheel(canvas, { deltaY: 40 });
   expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();

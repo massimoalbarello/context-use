@@ -4,7 +4,6 @@ import { type CalendarMonth, mapMonthAfterScroll } from '../../lib/calendar-mont
 const WHEEL_MONTH_DISTANCE = 160;
 const MAX_WHEEL_INTERVAL_DELTA = 120;
 const WHEEL_INTERVAL_SETTLE_MS = 120;
-const WHEEL_INTERVAL_SNAP_THRESHOLD = 0.35;
 const WHEEL_LINE_HEIGHT = 16;
 
 type IntervalDirection = 'older' | 'newer';
@@ -121,12 +120,6 @@ export function useHypermediaIntervalScroll({
   }
 
   function settle() {
-    const currentProgress = progressRef.current;
-    if (Math.abs(currentProgress) >= WHEEL_INTERVAL_SNAP_THRESHOLD) {
-      updateDisplayedMonth(intervalDirection(currentProgress));
-    }
-    progressRef.current = 0;
-    setProgress(0);
     setScrolling(false);
     onIntervalScrollingChange(false);
   }
