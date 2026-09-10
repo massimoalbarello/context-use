@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import {
   type CalendarMonth,
   calendarMonthLabel,
@@ -5,10 +6,14 @@ import {
   mapMonthAfterScroll,
 } from '../../lib/calendar-month';
 
-const UNDATED_POSITION = 3;
+export const HYPERMEDIA_TIMELINE_HEADER_HEIGHT = 112;
+
 const MONTH_POSITION_DISTANCE = 6;
-const PRESENT_POSITION = UNDATED_POSITION + MONTH_POSITION_DISTANCE;
+const MARKER_EDGE_CLEARANCE = 18;
+const PRESENT_POSITION = HYPERMEDIA_TIMELINE_HEADER_HEIGHT + MARKER_EDGE_CLEARANCE;
+const MIN_POSITION = 3;
 const PAST_POSITION = 94;
+const MAX_MONTH_POSITION = 14;
 const MONTHS_PER_YEAR = 12;
 
 function monthOrdinal(value: CalendarMonth): number {
@@ -18,11 +23,11 @@ function monthOrdinal(value: CalendarMonth): number {
 
 function intervalPosition({ month, now }: { month?: CalendarMonth; now: Date }): number {
   if (!month) {
-    return UNDATED_POSITION;
+    return -1;
   }
   const present = currentCalendarMonth(now);
   const selectedDistance = Math.max(0, monthOrdinal(present) - monthOrdinal(month));
-  return Math.min(PAST_POSITION, PRESENT_POSITION + selectedDistance * MONTH_POSITION_DISTANCE);
+  return Math.min(MAX_MONTH_POSITION, selectedDistance);
 }
 
 function scrollPosition({
@@ -49,6 +54,12 @@ function scrollPosition({
   );
 }
 
+function intervalPositionStyle(position: number): string {
+  const distance = position * MONTH_POSITION_DISTANCE;
+  const signedDistance = distance < 0 ? `- ${Math.abs(distance)}%` : `+ ${distance}%`;
+  return `clamp(${MIN_POSITION}%, calc(${PRESENT_POSITION}px ${signedDistance}), ${PAST_POSITION}%)`;
+}
+
 export function HypermediaIntervalIndicator({
   month,
   scrollProgress = 0,
@@ -68,7 +79,7 @@ export function HypermediaIntervalIndicator({
       {!selectedIsPresent && (
         <span
           className="absolute right-7 -translate-y-1/2 text-muted-foreground text-xs"
-          style={{ top: `${PRESENT_POSITION}%` }}
+          style={{ top: PRESENT_POSITION }}
         >
           Now
         </span>
@@ -76,7 +87,12 @@ export function HypermediaIntervalIndicator({
       <span className="absolute right-7 bottom-[2%] text-muted-foreground text-xs">Past</span>
       <div
         className="absolute inset-x-0 -translate-y-1/2"
-        style={{ top: `${position}%` }}
+        style={
+          {
+            '--interval-position': intervalPositionStyle(position),
+            top: 'var(--interval-position)',
+          } as CSSProperties
+        }
         role="img"
         aria-label={month ? `Selected interval: ${label}` : 'Pages without a time interval'}
       >

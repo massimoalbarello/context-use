@@ -14,6 +14,7 @@ import {
 afterEach(cleanup);
 
 const INTERVAL_SETTLE_WAIT_MS = 160;
+const MAX_RESPONSIVE_PINCH_WIDTH_RATIO = 0.72;
 
 async function settleIntervalScroll() {
   // biome-ignore lint/nursery/useAwaitThenable: React act intentionally returns a thenable.
@@ -21,7 +22,12 @@ async function settleIntervalScroll() {
 }
 
 function intervalIndicatorPosition(name: string): number {
-  return Number.parseFloat(screen.getByRole('img', { name }).style.top);
+  const position = screen.getByRole('img', { name }).style.getPropertyValue('--interval-position');
+  const distance = position.match(/calc\(\d+px ([+-]) ([\d.]+)%\)/);
+  if (!distance) {
+    throw new Error(`Unexpected interval indicator position: ${position}`);
+  }
+  return Number.parseFloat(distance[2] ?? '0') * (distance[1] === '-' ? -1 : 1);
 }
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
@@ -298,11 +304,14 @@ test('Map consumes pinch zoom before the browser can zoom the dashboard', () => 
   const onMonthChange = mock(() => undefined);
   render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
   const canvas = screen.getByLabelText('Interactive Hypermedia');
+  const initialWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
   const pinch = new WheelEvent('wheel', { cancelable: true, deltaY: -80 });
   Object.defineProperty(pinch, 'ctrlKey', { value: true });
 
   expect(fireEvent(canvas, pinch)).toBe(false);
   expect(onMonthChange).not.toHaveBeenCalled();
+  const zoomedWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
+  expect(zoomedWidth / initialWidth).toBeLessThan(MAX_RESPONSIVE_PINCH_WIDTH_RATIO);
 });
 
 test('Timeline uses the same entity and asset identities', () => {

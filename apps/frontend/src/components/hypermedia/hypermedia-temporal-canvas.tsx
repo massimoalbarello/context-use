@@ -20,7 +20,10 @@ import { cn } from '../../lib/class-names';
 import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
+import {
+  HYPERMEDIA_TIMELINE_HEADER_HEIGHT,
+  HypermediaIntervalIndicator,
+} from './hypermedia-interval-indicator';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import {
   buildTemporalHypermediaLayout,
@@ -43,7 +46,6 @@ import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
 const RESOURCE_SETTLE_MS = 280;
 const RESOURCE_DISCOVERY_DISTANCE = 360;
 const PAGE_DISCOVERY_DISTANCE = 360;
-const RESOURCE_HEADER_HEIGHT = 112;
 const PAGE_FADE_DISTANCE = 96;
 const OVERLAPPING_PAGES_NOTE = 'Overlapping clouds mark pages on the same or nearby dates';
 
@@ -59,7 +61,7 @@ function temporalPageOpacity({
   if (!viewport) {
     return 1;
   }
-  const topEdge = viewport.scrollTop + RESOURCE_HEADER_HEIGHT;
+  const topEdge = viewport.scrollTop + HYPERMEDIA_TIMELINE_HEADER_HEIGHT;
   const bottomEdge = viewport.scrollTop + viewport.height;
   const distanceFromTop = bounds.bottom - topEdge;
   const distanceFromBottom = bottomEdge - bounds.top;
@@ -101,7 +103,10 @@ function TemporalResourceHeaders({
   onPreviewEnd: (key: string) => void;
 }) {
   return (
-    <div className="pointer-events-none sticky top-0 z-30 h-28 border-b bg-card" style={{ width }}>
+    <div
+      className="pointer-events-none sticky top-0 z-30 border-b bg-card"
+      style={{ width, height: HYPERMEDIA_TIMELINE_HEADER_HEIGHT }}
+    >
       {resources.map((resource) => {
         const active = activeKey === resource.key || selectedResourceKeys.has(resource.key);
         const preview = resourcePreview(resource);
@@ -114,7 +119,7 @@ function TemporalResourceHeaders({
             <Button
               type="button"
               variant="ghost"
-              className="pointer-events-auto h-28 w-[72px] rounded-none p-0 hover:bg-transparent dark:hover:bg-transparent"
+              className="pointer-events-auto h-full w-[72px] rounded-none p-0 hover:bg-transparent dark:hover:bg-transparent"
               aria-label={resource.label}
               aria-pressed={selectedResourceKeys.has(resource.key)}
               onPointerEnter={() => preview && onPreview(preview)}
@@ -123,7 +128,11 @@ function TemporalResourceHeaders({
               onBlur={() => onPreviewEnd(resource.key)}
               onClick={() => onSelect({ kind: resource.kind, readableId: resource.readableId })}
             >
-              <svg className="size-full overflow-visible" viewBox="0 0 72 112" aria-hidden="true">
+              <svg
+                className="size-full overflow-visible"
+                viewBox={`0 0 72 ${HYPERMEDIA_TIMELINE_HEADER_HEIGHT}`}
+                aria-hidden="true"
+              >
                 <HypermediaResourceNode
                   point={{ x: 36, y: 31 }}
                   resource={resource.resource ?? resource}

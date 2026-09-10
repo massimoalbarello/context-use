@@ -48,7 +48,7 @@ import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
 type ViewBox = CanvasBounds;
 
 const MAX_WHEEL_ZOOM_DELTA = 80;
-const WHEEL_ZOOM_RATE = 0.0032;
+const WHEEL_ZOOM_RATE = 0.0046;
 const VIEWPORT_SETTLE_MS = 280;
 
 function ResourceDot({
