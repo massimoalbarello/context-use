@@ -64,7 +64,6 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     detail: unexpectedCall,
     update: unexpectedCall,
     archive: unexpectedCall,
-    rebuildIndex: unexpectedCall,
   };
   const profilesService: KnowledgeProfilesServiceContract = {
     create: unexpectedCall,

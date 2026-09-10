@@ -14,6 +14,7 @@ import {
   unusedAssetTransferCapabilities,
   unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
+  unusedMcpRecordsService,
 } from '../../support/mcp.ts';
 
 const LEGACY_PROTOCOL_VERSION = '2025-06-18';
@@ -63,7 +64,6 @@ const pagesService: KnowledgePagesServiceContract = {
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,
-  rebuildIndex: unexpectedCall,
 };
 
 const principal: McpClientAuthorizationPrincipal = {
@@ -78,6 +78,7 @@ test('authenticated 2025-06-18 clients can initialize and call the same tools', 
   const serverTransport = createMcpTransport({
     createServer: ({ principal: authenticatedPrincipal }) =>
       createContextUseMcpServer({
+        recordsService: unusedMcpRecordsService,
         principal: authenticatedPrincipal,
         assetsService,
         entitiesService,

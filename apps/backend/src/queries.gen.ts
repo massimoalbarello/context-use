@@ -16,8 +16,16 @@ export interface ICreateAssetResult {
     updatedAt: string;
 }
 
-/** Result of query `CreateAssetSearchDocument`. */
-export interface ICreateAssetSearchDocumentResult {
+/** Result of query `SearchAssets`. */
+export interface ISearchAssetsResult {
+    id: string;
+    readableId: string;
+    name: string;
+    mediaType: string;
+    extension: string | null;
+    sizeBytes: number;
+    createdAt: string;
+    updatedAt: string;
 }
 
 /** Result of query `ListAssets`. */
@@ -30,6 +38,11 @@ export interface IListAssetsResult {
     sizeBytes: number;
     createdAt: string;
     updatedAt: string;
+}
+
+/** Result of query `CountSearchedAssets`. */
+export interface ICountSearchedAssetsResult {
+    total: number;
 }
 
 /** Result of query `CountAssets`. */
@@ -67,18 +80,10 @@ export interface IUpdateAssetNameResult {
     updatedAt: string;
 }
 
-/** Result of query `UpdateAssetSearchDocument`. */
-export interface IUpdateAssetSearchDocumentResult {
-}
-
 /** Result of query `FindAssetArchiveTarget`. */
 export interface IFindAssetArchiveTargetResult {
     id: string;
     archivedAt: string | null;
-}
-
-/** Result of query `RemoveAssetSearchDocument`. */
-export interface IRemoveAssetSearchDocumentResult {
 }
 
 /** Result of query `ListActivePageAssetUsages`. */
@@ -114,8 +119,23 @@ export interface ICreateEntityResult {
     updatedAt: string;
 }
 
-/** Result of query `CreateEntitySearchDocument`. */
-export interface ICreateEntitySearchDocumentResult {
+/** Result of query `SearchEntities`. */
+export interface ISearchEntitiesResult {
+    id: string;
+    readableId: string;
+    name: string;
+    description: string;
+    isSelf: number;
+    createdAt: string;
+    updatedAt: string;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
 }
 
 /** Result of query `ListEntities`. */
@@ -135,6 +155,11 @@ export interface IListEntitiesResult {
     imageSizeBytes: number | null;
     imageCreatedAt: string | null;
     imageUpdatedAt: string | null;
+}
+
+/** Result of query `CountSearchedEntities`. */
+export interface ICountSearchedEntitiesResult {
+    total: number;
 }
 
 /** Result of query `CountEntities`. */
@@ -166,10 +191,6 @@ export interface IUpdateEntityIdentityResult {
     id: string;
 }
 
-/** Result of query `UpdateEntitySearchDocument`. */
-export interface IUpdateEntitySearchDocumentResult {
-}
-
 /** Result of query `SetEntityImage`. */
 export interface ISetEntityImageResult {
     entityId: string;
@@ -192,10 +213,6 @@ export interface IFindEntityArchiveTargetResult {
     isSelf: number;
 }
 
-/** Result of query `RemoveEntitySearchDocument`. */
-export interface IRemoveEntitySearchDocumentResult {
-}
-
 /** Result of query `ListActiveEntityMentioningPages`. */
 export interface IListActiveEntityMentioningPagesResult {
     id: string;
@@ -211,46 +228,6 @@ export interface IListActiveEntityMentioningPagesResult {
 /** Result of query `PingDatabase`. */
 export interface IPingDatabaseResult {
     value: number;
-}
-
-/** Result of query `SearchHypermedia`. */
-export interface ISearchHypermediaResult {
-    resourceType: "entity" | "knowledge_page" | "asset";
-    readableId: string;
-    rawMatchExcerpt: string;
-    entityId: string | null;
-    entityName: string | null;
-    entityDescription: string | null;
-    isSelf: number;
-    imageId: string | null;
-    imageReadableId: string | null;
-    imageName: string | null;
-    imageMediaType: string | null;
-    imageExtension: string | null;
-    imageSizeBytes: number | null;
-    imageCreatedAt: string | null;
-    imageUpdatedAt: string | null;
-    pageId: string | null;
-    pageTitle: string | null;
-    pageExcerpt: string | null;
-    revisionNumber: number;
-    temporalCoverage: string | null;
-    assetId: string | null;
-    assetName: string | null;
-    mediaType: string | null;
-    assetExtension: string | null;
-    assetSizeBytes: number | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/** Result of query `CountHypermediaSearchMatches`. */
-export interface ICountHypermediaSearchMatchesResult {
-    total: number;
-}
-
-/** Result of query `RebuildHypermediaSearchIndex`. */
-export interface IRebuildHypermediaSearchIndexResult {
 }
 
 /** Result of query `FindHypermediaResource`. */
@@ -370,16 +347,8 @@ export interface ICreateKnowledgePageResult {
     id: string;
 }
 
-/** Result of query `CreateKnowledgePageSearchDocument`. */
-export interface ICreateKnowledgePageSearchDocumentResult {
-}
-
-/** Result of query `UpdateKnowledgePageSearchDocument`. */
-export interface IUpdateKnowledgePageSearchDocumentResult {
-}
-
-/** Result of query `ListKnowledgePages`. */
-export interface IListKnowledgePagesResult {
+/** Result of query `SearchKnowledgePages`. */
+export interface ISearchKnowledgePagesResult {
     id: string;
     readableId: string;
     revisionNumber: number;
@@ -390,8 +359,8 @@ export interface IListKnowledgePagesResult {
     updatedAt: string;
 }
 
-/** Result of query `CountKnowledgePages`. */
-export interface ICountKnowledgePagesResult {
+/** Result of query `CountSearchedKnowledgePages`. */
+export interface ICountSearchedKnowledgePagesResult {
     total: number;
 }
 
@@ -429,10 +398,6 @@ export interface IFindKnowledgePageArchiveTargetResult {
     id: string;
     currentRevisionId: string;
     archivedAt: string | null;
-}
-
-/** Result of query `RemoveKnowledgePageSearchDocument`. */
-export interface IRemoveKnowledgePageSearchDocumentResult {
 }
 
 /** Result of query `ListKnowledgePageMentions`. */
@@ -485,10 +450,6 @@ export interface IListCurrentKnowledgePagesResult {
 export interface IFindKnowledgePageForIndexReplacementResult {
     id: string;
     currentRevisionId: string;
-}
-
-/** Result of query `RebuildKnowledgePageSearchDocument`. */
-export interface IRebuildKnowledgePageSearchDocumentResult {
 }
 
 /** Result of query `ListActiveKnowledgePageReferrers`. */
@@ -556,10 +517,6 @@ export interface ICreateKnowledgeProfileEntityResult {
     description: string;
     createdAt: string;
     updatedAt: string;
-}
-
-/** Result of query `CreateKnowledgeProfileSearchDocument`. */
-export interface ICreateKnowledgeProfileSearchDocumentResult {
 }
 
 /** Result of query `FindKnowledgeProfile`. */
@@ -730,33 +687,28 @@ export interface IAuthenticateRecordSyncApiKeyResult {
 
 export interface Queries {
     CreateAsset: ICreateAssetResult;
-    CreateAssetSearchDocument: ICreateAssetSearchDocumentResult;
+    SearchAssets: ISearchAssetsResult;
     ListAssets: IListAssetsResult;
+    CountSearchedAssets: ICountSearchedAssetsResult;
     CountAssets: ICountAssetsResult;
     FindAsset: IFindAssetResult;
     UpdateAssetName: IUpdateAssetNameResult;
-    UpdateAssetSearchDocument: IUpdateAssetSearchDocumentResult;
     FindAssetArchiveTarget: IFindAssetArchiveTargetResult;
-    RemoveAssetSearchDocument: IRemoveAssetSearchDocumentResult;
     ListActivePageAssetUsages: IListActivePageAssetUsagesResult;
     ListActiveEntityImageAssetUsages: IListActiveEntityImageAssetUsagesResult;
     CreateEntity: ICreateEntityResult;
-    CreateEntitySearchDocument: ICreateEntitySearchDocumentResult;
+    SearchEntities: ISearchEntitiesResult;
     ListEntities: IListEntitiesResult;
+    CountSearchedEntities: ICountSearchedEntitiesResult;
     CountEntities: ICountEntitiesResult;
     FindEntity: IFindEntityResult;
     UpdateEntityIdentity: IUpdateEntityIdentityResult;
-    UpdateEntitySearchDocument: IUpdateEntitySearchDocumentResult;
     SetEntityImage: ISetEntityImageResult;
     FindEntityImageAssignment: IFindEntityImageAssignmentResult;
     RemoveEntityImage: IRemoveEntityImageResult;
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
-    RemoveEntitySearchDocument: IRemoveEntitySearchDocumentResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
     PingDatabase: IPingDatabaseResult;
-    SearchHypermedia: ISearchHypermediaResult;
-    CountHypermediaSearchMatches: ICountHypermediaSearchMatchesResult;
-    RebuildHypermediaSearchIndex: IRebuildHypermediaSearchIndexResult;
     FindHypermediaResource: IFindHypermediaResourceResult;
     ListHypermediaResourceNeighbors: IListHypermediaResourceNeighborsResult;
     ListHypermediaPages: IListHypermediaPagesResult;
@@ -768,26 +720,21 @@ export interface Queries {
     ResolvePageLink: IResolvePageLinkResult;
     ResolveAssetLink: IResolveAssetLinkResult;
     CreateKnowledgePage: ICreateKnowledgePageResult;
-    CreateKnowledgePageSearchDocument: ICreateKnowledgePageSearchDocumentResult;
-    UpdateKnowledgePageSearchDocument: IUpdateKnowledgePageSearchDocumentResult;
-    ListKnowledgePages: IListKnowledgePagesResult;
-    CountKnowledgePages: ICountKnowledgePagesResult;
+    SearchKnowledgePages: ISearchKnowledgePagesResult;
+    CountSearchedKnowledgePages: ICountSearchedKnowledgePagesResult;
     ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;
     FindKnowledgePage: IFindKnowledgePageResult;
     FindKnowledgePageArchiveTarget: IFindKnowledgePageArchiveTargetResult;
-    RemoveKnowledgePageSearchDocument: IRemoveKnowledgePageSearchDocumentResult;
     ListKnowledgePageMentions: IListKnowledgePageMentionsResult;
     ListKnowledgePageRevisions: IListKnowledgePageRevisionsResult;
     ListCurrentKnowledgePages: IListCurrentKnowledgePagesResult;
     FindKnowledgePageForIndexReplacement: IFindKnowledgePageForIndexReplacementResult;
-    RebuildKnowledgePageSearchDocument: IRebuildKnowledgePageSearchDocumentResult;
     ListActiveKnowledgePageReferrers: IListActiveKnowledgePageReferrersResult;
     ListKnowledgePageReferences: IListKnowledgePageReferencesResult;
     ListKnowledgePageBacklinks: IListKnowledgePageBacklinksResult;
     ListKnowledgePageAssetUsages: IListKnowledgePageAssetUsagesResult;
     FindKnowledgeProfileOwner: IFindKnowledgeProfileOwnerResult;
     CreateKnowledgeProfileEntity: ICreateKnowledgeProfileEntityResult;
-    CreateKnowledgeProfileSearchDocument: ICreateKnowledgeProfileSearchDocumentResult;
     FindKnowledgeProfile: IFindKnowledgeProfileResult;
     FindMcpOAuthClient: IFindMcpOAuthClientResult;
     FindActiveMcpClientAuthorization: IFindActiveMcpClientAuthorizationResult;

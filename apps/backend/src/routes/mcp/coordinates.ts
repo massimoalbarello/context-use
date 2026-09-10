@@ -4,6 +4,7 @@ import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '#models/readable-id
 const ASSET_ADDRESS_PREFIX = 'context-use://asset/';
 const ENTITY_ADDRESS_PREFIX = 'context-use://entity/';
 const PAGE_ADDRESS_PREFIX = 'context-use://page/';
+const RECORD_ADDRESS_PREFIX = 'context-use://record/';
 const READABLE_ID_PATTERN_BODY = READABLE_ID_PATTERN.source.slice(1, -1);
 
 export const McpReadableIdSchema = z
@@ -29,6 +30,9 @@ export const EntityAddressSchema = addressSchema(ENTITY_ADDRESS_PREFIX).describe
 export const PageAddressSchema = addressSchema(PAGE_ADDRESS_PREFIX).describe(
   'Canonical knowledge-page address, for example context-use://page/growth-playbook',
 );
+export const RecordAddressSchema = addressSchema(RECORD_ADDRESS_PREFIX).describe(
+  'Canonical imported-record address, for example context-use://record/meeting-notes',
+);
 export const PageReferenceAddressSchema = z
   .string()
   .min(PAGE_ADDRESS_PREFIX.length + 1)
@@ -52,6 +56,14 @@ export function entityAddress(readableId: string): string {
 
 export function pageAddress(readableId: string): string {
   return `${PAGE_ADDRESS_PREFIX}${readableId}`;
+}
+
+export function recordAddress(readableId: string): string {
+  return `${RECORD_ADDRESS_PREFIX}${readableId}`;
+}
+
+export function recordReadableId(address: string): string {
+  return address.slice(RECORD_ADDRESS_PREFIX.length);
 }
 
 export function assetReadableId(address: string): string {

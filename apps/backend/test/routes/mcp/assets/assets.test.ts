@@ -26,6 +26,7 @@ import { createTestHypermediaRetrievalService } from '../../../support/hypermedi
 import {
   unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
+  unusedMcpRecordsService,
 } from '../../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../../support/public-api.ts';
 
@@ -82,7 +83,6 @@ const unusedPagesService: KnowledgePagesServiceContract = {
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,
-  rebuildIndex: unexpectedCall,
 };
 
 async function seedOwner(database: SQL): Promise<void> {
@@ -133,6 +133,7 @@ async function withAssetMcp({
     transferCapabilities,
   });
   const server = createContextUseMcpServer({
+    recordsService: unusedMcpRecordsService,
     principal,
     assetsService,
     entitiesService: unusedEntitiesService,
@@ -587,6 +588,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
     baseUrl: new URL('https://context-use.example'),
   });
   const server = createContextUseMcpServer({
+    recordsService: unusedMcpRecordsService,
     principal,
     assetsService,
     entitiesService: unusedEntitiesService,

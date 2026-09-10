@@ -92,15 +92,22 @@ export interface KnowledgePagesRepositoryContract {
     assetUsages: KnowledgePageAssetUsage[];
     revisions: KnowledgePageRevisionSummary[];
   } | null>;
-  listCurrent(input: { ownerId: string }): Promise<StoredKnowledgePage[]>;
+  listCurrent(input: {
+    ownerId: string;
+    afterReadableId: string | null;
+    limit: number;
+  }): Promise<StoredKnowledgePage[]>;
   replaceCurrentIndex(input: {
     ownerId: string;
     readableId: string;
+    expectedRevisionId: string;
     title: string;
     excerpt: string;
     searchableText: string;
     links: KnowledgePageLinkSet;
-  }): Promise<{ state: 'replaced' } | { state: 'link_target_not_found'; target: string }>;
+  }): Promise<
+    { state: 'replaced' | 'revision_changed' } | { state: 'link_target_not_found'; target: string }
+  >;
 }
 
 type StoredPageRow = Queries['FindKnowledgePage'];
@@ -863,7 +870,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     };
   }
 
-  async listCurrent({ ownerId }: { ownerId: string }): Promise<StoredKnowledgePage[]> {
+  async listCurrent({
+    ownerId,
+    afterReadableId,
+    limit,
+  }: {
+    ownerId: string;
+    afterReadableId: string | null;
+    limit: number;
+  }): Promise<StoredKnowledgePage[]> {
     const rows = await this.sql.ListCurrentKnowledgePages`
       /* @notNull id ownerId readableId currentRevisionId revisionNumber title excerpt storageKey contentHash sizeBytes createdAt updatedAt */
       select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
@@ -879,7 +894,9 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
        and revision."page_id" = page."id"
        and revision."owner_id" = page."owner_id"
       where page."owner_id" = ${ownerId} and page."archived_at" is null
-      order by page."id"
+        and (${afterReadableId} is null or page."readable_id" > ${afterReadableId})
+      order by page."readable_id"
+      limit ${limit}
     `;
     return rows.map(storedPageFrom);
   }
@@ -887,6 +904,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
   replaceCurrentIndex({
     ownerId,
     readableId,
+    expectedRevisionId,
     title,
     excerpt,
     searchableText,
@@ -894,11 +912,14 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
   }: {
     ownerId: string;
     readableId: string;
+    expectedRevisionId: string;
     title: string;
     excerpt: string;
     searchableText: string;
     links: KnowledgePageLinkSet;
-  }): Promise<{ state: 'replaced' } | { state: 'link_target_not_found'; target: string }> {
+  }): Promise<
+    { state: 'replaced' | 'revision_changed' } | { state: 'link_target_not_found'; target: string }
+  > {
     return this.sql.begin(async (db) => {
       const pages = await db.FindKnowledgePageForIndexReplacement`
         /* @notNull id currentRevisionId */
@@ -908,8 +929,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           and "archived_at" is null
       `;
       const page = pages[0];
-      if (!page) {
-        return { state: 'link_target_not_found' as const, target: `page/${readableId}` };
+      if (!page || page.currentRevisionId !== expectedRevisionId) {
+        return { state: 'revision_changed' as const };
       }
       const resolved = await resolveLinks({
         db,

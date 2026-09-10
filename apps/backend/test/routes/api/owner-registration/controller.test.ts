@@ -72,7 +72,6 @@ const pagesService: KnowledgePagesServiceContract = {
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,
-  rebuildIndex: unexpectedCall,
 };
 const profilesService: KnowledgeProfilesServiceContract = {
   create: unexpectedCall,

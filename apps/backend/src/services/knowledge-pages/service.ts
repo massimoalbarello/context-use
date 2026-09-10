@@ -1,4 +1,5 @@
 import type { StorageClient } from '#lib/storage/storage.ts';
+import { readVerifiedText } from '#lib/storage/verified-text.ts';
 import {
   InvalidKnowledgePageMarkdownError,
   parseKnowledgePageMarkdown,
@@ -270,24 +271,6 @@ export class KnowledgePagesService {
     });
   }
 
-  async rebuildIndex({ ownerId }: { ownerId: string }): Promise<void> {
-    const pages = await this.pages.listCurrent({ ownerId });
-    for (const page of pages) {
-      const parsed = parseKnowledgePageMarkdown(await this.readMarkdown(page));
-      const result = await this.pages.replaceCurrentIndex({
-        ownerId,
-        readableId: page.readableId,
-        title: parsed.title,
-        excerpt: parsed.excerpt,
-        searchableText: parsed.searchableText,
-        links: parsed.links,
-      });
-      if (result.state !== 'replaced') {
-        throw new Error(`Cannot rebuild knowledge links: missing ${result.target}`);
-      }
-    }
-  }
-
   private parse(
     markdown: string,
   ):
@@ -303,15 +286,12 @@ export class KnowledgePagesService {
     }
   }
 
-  private async readMarkdown(page: StoredKnowledgePage): Promise<string> {
-    if (!(await this.storage.exists(page.storageKey))) {
-      throw new Error(`Knowledge page blob ${page.currentRevisionId} is missing`);
-    }
-    const markdown = await this.storage.file(page.storageKey).text();
-    if (contentHash(markdown) !== page.contentHash) {
-      throw new Error(`Knowledge page blob ${page.currentRevisionId} failed its integrity check`);
-    }
-    return markdown;
+  private readMarkdown(page: StoredKnowledgePage): Promise<string> {
+    return readVerifiedText({
+      storage: this.storage,
+      key: page.storageKey,
+      contentHash: page.contentHash,
+    });
   }
 
   private storageKey({
@@ -358,5 +338,5 @@ export class KnowledgePagesService {
 
 export type KnowledgePagesServiceContract = Pick<
   KnowledgePagesService,
-  'create' | 'list' | 'detail' | 'preview' | 'update' | 'archive' | 'rebuildIndex'
+  'create' | 'list' | 'detail' | 'preview' | 'update' | 'archive'
 >;

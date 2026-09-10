@@ -115,6 +115,7 @@ try {
         retrievalService,
         pagesService,
         profilesService,
+        recordsService,
         transferCapabilities: assetTransferCapabilities,
       }),
   });

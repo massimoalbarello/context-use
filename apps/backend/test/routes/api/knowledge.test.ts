@@ -16,14 +16,17 @@ import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
+import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
+import { RecordsRepository } from '#repositories/records/repository.ts';
 import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
 import { HypermediaService } from '#services/hypermedia/service.ts';
+import { HypermediaSearchMaintenanceService } from '#services/hypermedia-retrieval/maintenance.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
@@ -38,39 +41,6 @@ import {
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
-const AUTH_MIGRATION = new URL(
-  '../../../src/db/migrations/0000_better_auth_schema.sql',
-  import.meta.url,
-);
-const KNOWLEDGE_MIGRATION = new URL(
-  '../../../src/db/migrations/0001_knowledge.sql',
-  import.meta.url,
-);
-const ENTITY_ARCHIVE_MIGRATION = new URL(
-  '../../../src/db/migrations/0002_add_entity_archived_at.sql',
-  import.meta.url,
-);
-const PAGE_ARCHIVE_MIGRATION = new URL(
-  '../../../src/db/migrations/0003_add_knowledge_page_archived_at.sql',
-  import.meta.url,
-);
-const ARCHIVE_INVARIANT_MIGRATION = new URL(
-  '../../../src/db/migrations/0004_prevent_self_entity_archiving.sql',
-  import.meta.url,
-);
-const ASSET_MIGRATION = new URL('../../../src/db/migrations/0005_add_assets.sql', import.meta.url);
-const OAUTH_MIGRATION = new URL(
-  '../../../src/db/migrations/0006_add_oauth_provider.sql',
-  import.meta.url,
-);
-const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
-  '../../../src/db/migrations/0007_add_mcp_client_authorizations.sql',
-  import.meta.url,
-);
-const HYPERMEDIA_RETRIEVAL_MIGRATION = new URL(
-  '../../../src/db/migrations/0008_add_hypermedia_retrieval.sql',
-  import.meta.url,
-);
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
 const EXPECTED_TEMPORAL_PAGE_COUNT = 3;
@@ -131,20 +101,7 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
   const database = await createSqliteDatabase({ dataFolder });
 
   try {
-    await runMigrations({
-      db: database,
-      migrations: new Map([
-        ['0000_better_auth_schema.sql', Bun.file(AUTH_MIGRATION)],
-        ['0001_knowledge.sql', Bun.file(KNOWLEDGE_MIGRATION)],
-        ['0002_add_entity_archived_at.sql', Bun.file(ENTITY_ARCHIVE_MIGRATION)],
-        ['0003_add_knowledge_page_archived_at.sql', Bun.file(PAGE_ARCHIVE_MIGRATION)],
-        ['0004_prevent_self_entity_archiving.sql', Bun.file(ARCHIVE_INVARIANT_MIGRATION)],
-        ['0005_add_assets.sql', Bun.file(ASSET_MIGRATION)],
-        ['0006_add_oauth_provider.sql', Bun.file(OAUTH_MIGRATION)],
-        ['0007_add_mcp_client_authorizations.sql', Bun.file(MCP_CLIENT_AUTHORIZATION_MIGRATION)],
-        ['0008_add_hypermedia_retrieval.sql', Bun.file(HYPERMEDIA_RETRIEVAL_MIGRATION)],
-      ]),
-    });
+    await runMigrations({ db: database });
     const timestamp = '2026-01-01T00:00:00.000Z';
     await database`
       insert into "auth_user"
@@ -958,7 +915,12 @@ Revise the current knowledge instead of appending snapshots.`,
         where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'growth-playbook'
       )
     `;
-    await pagesService.rebuildIndex({ ownerId: OWNER_USER_ID });
+    await new HypermediaSearchMaintenanceService({
+      pages: pagesRepository,
+      storage,
+      records: new RecordsRepository(database),
+      retrieval: new HypermediaRetrievalRepository(database),
+    }).rebuild({ ownerId: OWNER_USER_ID });
 
     const rebuiltResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages/growth-playbook' }),

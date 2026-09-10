@@ -23,11 +23,13 @@ import {
   type KnowledgePagesServiceContract,
 } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
+import type { RecordResourcesServiceContract } from '#services/records/service.ts';
 import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import {
   unusedAssetTransferCapabilities,
   unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
+  unusedMcpRecordsService,
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
@@ -109,7 +111,6 @@ const unusedPagesService: KnowledgePagesServiceContract = {
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,
-  rebuildIndex: unexpectedCall,
 };
 
 async function withMcpClient<T>({
@@ -119,6 +120,7 @@ async function withMcpClient<T>({
   retrievalService = unusedHypermediaRetrievalService,
   pagesService = unusedPagesService,
   profilesService = unusedKnowledgeProfilesService,
+  recordsService = unusedMcpRecordsService,
   run,
 }: {
   actor?: McpClientAuthorizationPrincipal;
@@ -127,9 +129,11 @@ async function withMcpClient<T>({
   retrievalService?: HypermediaRetrievalServiceContract;
   pagesService?: KnowledgePagesServiceContract;
   profilesService?: KnowledgeProfilesServiceContract;
+  recordsService?: Pick<RecordResourcesServiceContract, 'findResource'>;
   run: (client: Client) => Promise<T>;
 }): Promise<T> {
   const server = createContextUseMcpServer({
+    recordsService,
     principal: actor,
     assetsService,
     entitiesService,
@@ -187,6 +191,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
+        'read_record',
       ]);
       expect(tools.find(({ name }) => name === 'read_entity')?.annotations).toMatchObject({
         readOnlyHint: true,
@@ -338,7 +343,6 @@ test('search_hypermedia returns compact typed previews and canonical dereference
         truncated: true,
       });
     },
-    rebuildIndex: unexpectedCall,
   };
 
   await withMcpClient({
@@ -421,7 +425,7 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('explain the blockers to the user');
       expect(guide).toContain('search_hypermedia');
       expect(guide).toContain('names, aliases, identifiers, and topic phrases');
-      expect(guide).toContain('Similarity and rank are evidence of relevance');
+      expect(guide).toContain('Similarity and rank show relevance, not identity or relationships');
 
       const availableToolNames = new Set(tools.map(({ name }) => name));
       const guideToolNames = [...guide.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)].flatMap((match) =>
@@ -429,6 +433,96 @@ test('the concise guide is deterministic and names only available retrieval tool
       );
       expect(guideToolNames.length).toBeGreaterThan(0);
       expect(guideToolNames.every((toolName) => availableToolNames.has(toolName))).toBe(true);
+    },
+  });
+});
+
+test('record search previews have exact owner-scoped read paths without imported bodies or delivery internals', async () => {
+  const record = {
+    readableId: 'calendar-meeting-42',
+    kind: 'meeting',
+    recordId: 'meeting-42',
+    sync: { readableId: 'my-calendar', name: 'My calendar' },
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+  const markdown = '# Planning meeting\n\nEvidence that must not be included in search previews.';
+  await withMcpClient({
+    retrievalService: {
+      search: (input) => {
+        expect(input.ownerId).toBe(principal.ownerId);
+        expect(input.resourceTypes).toEqual(['record']);
+        return Promise.resolve({
+          results: [
+            {
+              resourceType: 'record',
+              record,
+              title: 'Planning meeting',
+              matchExcerpt: 'Meeting with Samantha.',
+            },
+          ],
+          totalMatches: 1,
+          truncated: false,
+        });
+      },
+    },
+    recordsService: {
+      findResource: (input) => {
+        expect(input.ownerId).toBe(principal.ownerId);
+        return Promise.resolve(
+          input.readableId === record.readableId
+            ? { ...record, markdown, metadata: { provider: 'calendar' } }
+            : null,
+        );
+      },
+    },
+    run: async (client) => {
+      const found = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: { query: 'Samantha', resourceTypes: ['record'] },
+      });
+      expect(found.isError).not.toBe(true);
+      expect(found.structuredContent).toEqual({
+        results: [
+          {
+            resourceType: 'record',
+            address: 'context-use://record/calendar-meeting-42',
+            readableId: record.readableId,
+            kind: record.kind,
+            recordId: record.recordId,
+            sync: record.sync,
+            title: 'Planning meeting',
+            matchExcerpt: 'Meeting with Samantha.',
+          },
+        ],
+        truncated: false,
+      });
+      expectNoInternalResourceIds(found.structuredContent);
+      expect(JSON.stringify(found.structuredContent)).not.toContain(markdown);
+      const read = await client.callTool({
+        name: 'read_record',
+        arguments: { address: 'context-use://record/calendar-meeting-42' },
+      });
+      expect(read.isError).not.toBe(true);
+      expect(read.structuredContent).toMatchObject({
+        markdown,
+        metadata: { provider: 'calendar' },
+      });
+      const missing = await client.callTool({
+        name: 'read_record',
+        arguments: { address: 'context-use://record/not-found' },
+      });
+      expect(errorCode(missing)).toBe('not_found');
+      const wrongType = await client.callTool({
+        name: 'read_record',
+        arguments: { address: 'context-use://entity/calendar-meeting-42' },
+      });
+      expect(wrongType.isError).toBe(true);
+      const { tools } = await client.listTools();
+      expect(tools.find(({ name }) => name === 'read_record')?.annotations).toMatchObject({
+        readOnlyHint: true,
+        destructiveHint: false,
+      });
     },
   });
 });

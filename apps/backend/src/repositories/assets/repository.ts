@@ -75,10 +75,12 @@ export class AssetsRepository implements AssetsRepositoryContract {
       }
       await db.CreateAssetSearchDocument`
         insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
-        values (${input.ownerId}, 'asset', ${input.readableId}, ${input.name}, '', '')
+          ("owner_id", "resource_type", "readable_id", "label", "summary", "body", "metadata")
+        values (${input.ownerId}, 'asset', ${input.readableId}, ${input.name}, '', '',
+          ${[input.mediaType, input.extension].filter(Boolean).join(' ')})
         on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
+          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body",
+          "metadata" = excluded."metadata"
       `;
       return { state: 'created' as const, asset: storedAssetFrom(rows[0]) };
     });
@@ -189,10 +191,12 @@ export class AssetsRepository implements AssetsRepositoryContract {
       }
       await db.UpdateAssetSearchDocument`
         insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
-        values (${input.ownerId}, 'asset', ${input.readableId}, ${input.name}, '', '')
+          ("owner_id", "resource_type", "readable_id", "label", "summary", "body", "metadata")
+        values (${input.ownerId}, 'asset', ${input.readableId}, ${input.name}, '', '',
+          ${[rows[0].mediaType, rows[0].extension].filter(Boolean).join(' ')})
         on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
+          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body",
+          "metadata" = excluded."metadata"
       `;
       const asset = storedAssetFrom(rows[0]);
       return {

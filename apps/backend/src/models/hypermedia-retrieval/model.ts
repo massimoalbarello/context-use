@@ -1,12 +1,18 @@
 import type { AssetSummary } from '#models/assets/model.ts';
 import type { Entity } from '#models/entities/model.ts';
-import type { KnowledgePageIntervalFilter, KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
+import type {
+  KnowledgePageIntervalFilter,
+  KnowledgePageSummary,
+} from '#models/knowledge-pages/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
+import type { RecordSummary } from '#models/records/model.ts';
 
-export const HYPERMEDIA_RESOURCE_TYPES = ['entity', 'knowledge_page', 'asset'] as const;
+export const HYPERMEDIA_RESOURCE_TYPES = ['entity', 'knowledge_page', 'asset', 'record'] as const;
 export const DEFAULT_HYPERMEDIA_SEARCH_LIMIT = 30;
 export const MAX_HYPERMEDIA_SEARCH_LIMIT = 50;
 export const MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH = 1_000;
+export const MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH = 480;
+export const MAX_RECORD_TITLE_PREVIEW_LENGTH = 160;
 
 export type HypermediaResourceType = (typeof HYPERMEDIA_RESOURCE_TYPES)[number];
 
@@ -24,6 +30,12 @@ export type HypermediaRetrievalResult =
   | {
       resourceType: 'asset';
       asset: AssetSummary;
+      matchExcerpt: string | null;
+    }
+  | {
+      resourceType: 'record';
+      record: RecordSummary;
+      title: string | null;
       matchExcerpt: string | null;
     };
 

@@ -8,7 +8,7 @@ import {
 import type { HypermediaRetrievalRepositoryContract } from '#repositories/hypermedia-retrieval/contract.ts';
 
 export class HypermediaRetrievalService {
-  constructor(private readonly retrieval: HypermediaRetrievalRepositoryContract) {}
+  constructor(private readonly retrieval: Pick<HypermediaRetrievalRepositoryContract, 'search'>) {}
 
   search({
     ownerId,
@@ -36,13 +36,6 @@ export class HypermediaRetrievalService {
       filters,
     });
   }
-
-  rebuildIndex(): Promise<void> {
-    return this.retrieval.rebuildIndex();
-  }
 }
 
-export type HypermediaRetrievalServiceContract = Pick<
-  HypermediaRetrievalService,
-  'search' | 'rebuildIndex'
->;
+export type HypermediaRetrievalServiceContract = Pick<HypermediaRetrievalService, 'search'>;

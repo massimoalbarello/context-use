@@ -1,7 +1,5 @@
-import type { Nodes, Root, Text } from 'mdast';
+import type { Nodes, Root } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
-import { toString as mdastToString } from 'mdast-util-to-string';
-import stripMarkdown from 'strip-markdown';
 import { SKIP, visit } from 'unist-util-visit';
 import {
   type KnowledgePageLinkSet,
@@ -9,6 +7,7 @@ import {
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#models/knowledge-pages/model.ts';
+import { readableMarkdownText } from '#models/markdown/text.ts';
 import { isReadableId } from '#models/readable-ids/model.ts';
 
 const INTERNAL_ADDRESS = /^context-use:\/\/(entity|page|asset)\/([^\s/?#]+)(?:#([^\s?#]+))?$/;
@@ -41,20 +40,8 @@ function normalizeReadableText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-function imageAltText(node: Nodes): Text | undefined {
-  if (node.type !== 'image' && node.type !== 'imageReference') {
-    return undefined;
-  }
-  return node.alt?.trim() ? { type: 'text', value: node.alt } : undefined;
-}
-
-const projectVisibleMarkdown = stripMarkdown({
-  remove: ['inlineCode', ['image', imageAltText], ['imageReference', imageAltText]],
-});
-
 function projectRoot(root: Root): string {
-  const projected = projectVisibleMarkdown(root);
-  return normalizeReadableText(projected.children.map((node) => mdastToString(node)).join(' '));
+  return readableMarkdownText(root);
 }
 
 function projectBlock(block: MarkdownBlock): string {
