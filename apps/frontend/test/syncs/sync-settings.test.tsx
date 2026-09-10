@@ -5,8 +5,7 @@ import userEvent from '@testing-library/user-event';
 import {
   CreateSyncForm,
   NewSyncCredential,
-  SyncCreation,
-  SyncList,
+  SyncSettings,
 } from '../../src/components/syncs/sync-settings';
 
 afterEach(cleanup);
@@ -20,6 +19,22 @@ const created = {
   },
   apiKey: '01991f43-0c00-7000-8000-000000000041',
 };
+
+function syncSettingsProps(overrides: Partial<Parameters<typeof SyncSettings>[0]> = {}) {
+  return {
+    syncs: [],
+    created: undefined,
+    recordEndpoint: 'https://context.example/api/records/batch',
+    creating: false,
+    createError: null,
+    revokingReadableId: null,
+    revokeError: null,
+    onCreate: () => undefined,
+    onResetCreate: () => undefined,
+    onRevoke: () => undefined,
+    ...overrides,
+  };
+}
 
 test('sync creation requires a name and submits its trimmed external-service identity', async () => {
   const onSubmit = mock(() => undefined);
@@ -41,17 +56,9 @@ test('sync creation requires a name and submits its trimmed external-service ide
 test('sync setup stays hidden until add sync is selected', async () => {
   const onReset = mock(() => undefined);
   const user = userEvent.setup({ document });
-  const view = render(
-    <SyncCreation
-      created={undefined}
-      recordEndpoint="https://context.example/api/records"
-      pending={false}
-      error={null}
-      onSubmit={() => undefined}
-      onReset={onReset}
-    />,
-  );
+  const view = render(<SyncSettings {...syncSettingsProps({ onResetCreate: onReset })} />);
 
+  expect(view.getByRole('heading', { name: 'Authorized syncs' })).toBeTruthy();
   expect(view.queryByRole('textbox', { name: 'Sync name' })).toBeNull();
   expect(view.queryByRole('textbox', { name: 'Record endpoint' })).toBeNull();
 
@@ -72,7 +79,7 @@ test('new credentials expose the generic endpoint and UUIDv7 key with copy actio
     value: { writeText: async (value: string) => writes.push(value) },
   });
   const onDone = mock(() => undefined);
-  const recordEndpoint = 'https://context.example/api/records';
+  const recordEndpoint = 'https://context.example/api/records/batch';
   const view = render(
     <NewSyncCredential created={created} recordEndpoint={recordEndpoint} onDone={onDone} />,
   );
@@ -93,21 +100,20 @@ test('new credentials expose the generic endpoint and UUIDv7 key with copy actio
   expect(onDone).toHaveBeenCalledTimes(1);
 });
 
-test('sync list separates authorized and revoked senders while preserving the revoke warning', () => {
+test('sync settings separates authorized and revoked senders while preserving the revoke warning', () => {
   const view = render(
-    <SyncList
-      syncs={[
-        created.sync,
-        {
-          ...created.sync,
-          readableId: 'old-sync-a1b2c3d4e5f60718293a4b5c',
-          name: 'Old sync',
-          revokedAt: '2026-09-09T10:00:00.000Z',
-        },
-      ]}
-      revokingReadableId={null}
-      error={null}
-      onRevoke={() => undefined}
+    <SyncSettings
+      {...syncSettingsProps({
+        syncs: [
+          created.sync,
+          {
+            ...created.sync,
+            readableId: 'old-sync-a1b2c3d4e5f60718293a4b5c',
+            name: 'Old sync',
+            revokedAt: '2026-09-09T10:00:00.000Z',
+          },
+        ],
+      })}
     />,
   );
 

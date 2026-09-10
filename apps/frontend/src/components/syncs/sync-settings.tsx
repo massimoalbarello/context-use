@@ -1,6 +1,6 @@
 import { MAX_SYNC_NAME_LENGTH } from '@repo/backend/sync';
 import { useForm } from '@tanstack/react-form';
-import { Check, Copy, KeyRound, Plus, RefreshCwOff } from 'lucide-react';
+import { Check, Copy, Recycle, RefreshCwOff } from 'lucide-react';
 import { useId, useState } from 'react';
 import { submitThenChangeValidation } from '../../lib/form-validation';
 import type { CreatedRecordSync, RecordSync } from '../../queries/syncs';
@@ -132,77 +132,11 @@ export function CreateSyncForm({
           Cancel
         </Button>
         <Button type="submit" size="lg" disabled={pending}>
-          <KeyRound data-icon="inline-start" aria-hidden="true" />
+          <Recycle data-icon="inline-start" aria-hidden="true" />
           {pending ? 'Adding…' : 'Add sync'}
         </Button>
       </div>
     </form>
-  );
-}
-
-export function SyncCreation({
-  created,
-  recordEndpoint,
-  pending,
-  error,
-  onSubmit,
-  onReset,
-}: {
-  created: CreatedRecordSync | undefined;
-  recordEndpoint: string;
-  pending: boolean;
-  error: Error | null;
-  onSubmit: (name: string) => void;
-  onReset: () => void;
-}) {
-  const [adding, setAdding] = useState(false);
-
-  if (created) {
-    return (
-      <NewSyncCredential
-        created={created}
-        recordEndpoint={recordEndpoint}
-        onDone={() => {
-          onReset();
-          setAdding(false);
-        }}
-      />
-    );
-  }
-
-  if (!adding) {
-    return (
-      <div>
-        <Button
-          type="button"
-          size="lg"
-          onClick={() => {
-            onReset();
-            setAdding(true);
-          }}
-        >
-          <Plus data-icon="inline-start" aria-hidden="true" />
-          Add sync
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <section className="grid gap-4" aria-labelledby="add-sync-heading">
-      <h2 id="add-sync-heading" className="font-semibold text-xl">
-        Add sync
-      </h2>
-      <CreateSyncForm
-        pending={pending}
-        error={error}
-        onSubmit={onSubmit}
-        onCancel={() => {
-          onReset();
-          setAdding(false);
-        }}
-      />
-    </section>
   );
 }
 
@@ -284,26 +218,73 @@ function RevokeSyncAction({
   );
 }
 
-export function SyncList({
+export function SyncSettings({
   syncs,
+  created,
+  recordEndpoint,
+  creating,
+  createError,
   revokingReadableId,
-  error,
+  revokeError,
+  onCreate,
+  onResetCreate,
   onRevoke,
 }: {
   syncs: RecordSync[];
+  created: CreatedRecordSync | undefined;
+  recordEndpoint: string;
+  creating: boolean;
+  createError: Error | null;
   revokingReadableId: string | null;
-  error: Error | null;
+  revokeError: Error | null;
+  onCreate: (name: string) => void;
+  onResetCreate: () => void;
   onRevoke: (syncReadableId: string) => void;
 }) {
+  const [adding, setAdding] = useState(false);
   const authorized = syncs.filter((sync) => sync.revokedAt === null);
   const revoked = syncs.filter((sync) => sync.revokedAt !== null);
+
+  function closeCreation() {
+    onResetCreate();
+    setAdding(false);
+  }
 
   return (
     <div className="grid gap-8">
       <section className="grid gap-4" aria-labelledby="authorized-syncs-heading">
-        <h2 id="authorized-syncs-heading" className="font-semibold text-xl">
-          Authorized syncs
-        </h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 id="authorized-syncs-heading" className="font-semibold text-xl">
+            Authorized syncs
+          </h2>
+          {!adding && !created && (
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => {
+                onResetCreate();
+                setAdding(true);
+              }}
+            >
+              <Recycle data-icon="inline-start" aria-hidden="true" />
+              Add sync
+            </Button>
+          )}
+        </div>
+        {created ? (
+          <NewSyncCredential
+            created={created}
+            recordEndpoint={recordEndpoint}
+            onDone={closeCreation}
+          />
+        ) : adding ? (
+          <CreateSyncForm
+            pending={creating}
+            error={createError}
+            onSubmit={onCreate}
+            onCancel={closeCreation}
+          />
+        ) : null}
         {authorized.length === 0 ? (
           <p className="text-muted-foreground">No authorized syncs.</p>
         ) : (
@@ -323,7 +304,7 @@ export function SyncList({
             </Card>
           ))
         )}
-        {error && <FieldError>{error.message}</FieldError>}
+        {revokeError && <FieldError>{revokeError.message}</FieldError>}
       </section>
       {revoked.length > 0 && (
         <section className="grid gap-4" aria-labelledby="revoked-syncs-heading">
