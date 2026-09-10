@@ -4,15 +4,15 @@ import type { JSONSchema } from 'json-schema-to-typescript';
 import { compile } from 'json-schema-to-typescript';
 import { jsonSchemaToZod } from 'json-schema-to-zod';
 import { parse } from 'yaml';
+import { backendDirectory, readPinnedContract } from './record-delivery-contract-source.ts';
 
-const backendDirectory = process.cwd();
-const sourcePath = join(backendDirectory, 'contracts/open-connector-record-delivery.openapi.yaml');
 const modelOutputPath = join(backendDirectory, 'src/models/records/delivery-contract.generated.ts');
 const routeOutputPath = join(
   backendDirectory,
   'src/routes/api/records/delivery-model.generated.ts',
 );
-const document = parse(await readFile(sourcePath, 'utf8')) as OpenApiDocument;
+const { source } = await readPinnedContract();
+const document = parse(source) as OpenApiDocument;
 const envelope = requireSchema({ document, name: 'RecordDeliveryEnvelope' });
 const recordContent = requireSchema({ document, name: 'RecordContent' });
 const definitions = document.components.schemas;

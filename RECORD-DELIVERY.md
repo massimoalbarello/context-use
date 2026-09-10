@@ -5,6 +5,15 @@ Context Use implements version 1.0.0 of OpenConnector’s
 The pinned OpenAPI document generates Context Use’s payload types, route validator, and delivery
 limits; payload and transport changes belong in that upstream contract first.
 
+Update the pin explicitly with a full commit SHA or published release tag:
+
+```sh
+bun --filter @repo/backend update:delivery-contract -- <commit-or-release-tag>
+```
+
+Normal generation, builds, and CI verify the checked-in provenance checksum and do not access the
+network.
+
 Context Use owns only its receiver configuration:
 
 - create an authorized sync in **Settings → Syncs**;

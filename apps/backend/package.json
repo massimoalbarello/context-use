@@ -18,6 +18,7 @@
   "scripts": {
     "dev": "bun run scripts/dev.ts",
     "build": "bun run scripts/build.ts",
+    "update:delivery-contract": "bun run scripts/update-record-delivery-contract.ts",
     "generate:delivery-contract": "bun run scripts/generate-record-delivery-contract.ts",
     "check:delivery-contract": "bun run scripts/generate-record-delivery-contract.ts --check",
     "generate:queries": "bun bun-sqlgen generate 'src/repositories/**/*.ts' --migrations src/db/migrations",

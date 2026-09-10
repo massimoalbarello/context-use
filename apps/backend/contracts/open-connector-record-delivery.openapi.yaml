@@ -1,5 +1,3 @@
-# Pinned from https://github.com/massimoalbarello/open-connector/blob/b16b86d84a1a3c8777f07ddb6edeadef878b82ae/docs/record-delivery.openapi.yaml
-# Do not edit directly; update from upstream and regenerate the delivery contract.
 openapi: 3.1.1
 info:
   title: OpenConnector record delivery contract
