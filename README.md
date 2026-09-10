@@ -4,6 +4,9 @@
 
 Context Use is personal hypermedia for human-agent collaboration.
 
+External sync implementations can follow the versioned
+[record delivery protocol](./RECORD-DELIVERY.md).
+
 ## Run it locally
 ```sh
 bun install
