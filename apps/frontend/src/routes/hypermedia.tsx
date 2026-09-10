@@ -287,6 +287,7 @@ function HypermediaRoute() {
             month={activeMonth}
             temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
             pagesLoading={pageQuery.isFetching}
+            pagesTransitioning={pageQuery.isPlaceholderData}
             pagesError={pageQuery.error}
             hasNextPage={pageQuery.hasNextPage}
             pageReferencesTruncated={pageReferencesTruncated}

@@ -1,6 +1,6 @@
 import { useQueries } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
 import { useEntities } from '../../lib/hooks/use-entities';
 import {
@@ -19,8 +19,6 @@ import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-s
 import { HypermediaTimelineCanvas } from './hypermedia-temporal-canvas';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
 
-const PAGE_STATUS_SCROLL_SETTLE_MS = 400;
-
 type NeighborhoodRequest = {
   anchor: HypermediaResourceReference;
   cursor?: string;
@@ -28,6 +26,32 @@ type NeighborhoodRequest = {
 
 function requestKey(request: NeighborhoodRequest): string {
   return `${hypermediaResourceKey(request.anchor)}:${request.cursor ?? 'first'}`;
+}
+
+function appendNeighborhoodRequest({
+  current,
+  request,
+}: {
+  current: NeighborhoodRequest[];
+  request: NeighborhoodRequest;
+}): NeighborhoodRequest[] {
+  return current.some((candidate) => requestKey(candidate) === requestKey(request))
+    ? current
+    : [...current, request];
+}
+
+function neighborhoodRequestsForResources({
+  resources,
+  initial = [],
+}: {
+  resources: HypermediaResourceReference[];
+  initial?: NeighborhoodRequest[];
+}): NeighborhoodRequest[] {
+  let requests = initial;
+  for (const anchor of resources) {
+    requests = appendNeighborhoodRequest({ current: requests, request: { anchor } });
+  }
+  return requests;
 }
 
 function resourceSelection(
@@ -49,6 +73,7 @@ export function HypermediaExplorer({
   month,
   temporalExtent,
   pagesLoading,
+  pagesTransitioning,
   pagesError,
   hasNextPage,
   pageReferencesTruncated,
@@ -69,6 +94,7 @@ export function HypermediaExplorer({
   month?: CalendarMonth;
   temporalExtent: HypermediaPages['temporalExtent'];
   pagesLoading: boolean;
+  pagesTransitioning: boolean;
   pagesError: Error | null;
   hasNextPage: boolean;
   pageReferencesTruncated: boolean;
@@ -84,13 +110,23 @@ export function HypermediaExplorer({
     [selfReadableId],
   );
   const selectedResource = useMemo(() => resourceSelection(selection), [selection]);
-  const [neighborhoodRequests, setNeighborhoodRequests] = useState<NeighborhoodRequest[]>(() => {
-    const initial = [{ anchor: self }];
-    return selectedResource &&
-      hypermediaResourceKey(selectedResource) !== hypermediaResourceKey(self)
-      ? [...initial, { anchor: selectedResource }]
-      : initial;
-  });
+  const selectedNeighborhoodResources = useMemo(
+    () => (selectedResource ? [...selectedResources, selectedResource] : selectedResources),
+    [selectedResource, selectedResources],
+  );
+  const [exploredNeighborhoodRequests, setExploredNeighborhoodRequests] = useState<
+    NeighborhoodRequest[]
+  >(() =>
+    neighborhoodRequestsForResources({ resources: [self, ...selectedNeighborhoodResources] }),
+  );
+  const neighborhoodRequests = useMemo(
+    () =>
+      neighborhoodRequestsForResources({
+        resources: selectedNeighborhoodResources,
+        initial: exploredNeighborhoodRequests,
+      }),
+    [exploredNeighborhoodRequests, selectedNeighborhoodResources],
+  );
   const neighborhoodQueries = useQueries({
     queries: neighborhoodRequests.map((request) =>
       hypermediaResourceNeighborhoodQueryOptions({ ...request, kinds: resourceKinds }),
@@ -117,25 +153,7 @@ export function HypermediaExplorer({
     [entityData, resourceKinds],
   );
   const [resources, setResources] = useState(() => buildStableResources([], []));
-  const explorerRef = useRef<HTMLDivElement | null>(null);
-  const statusSuppressionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleIntervalScrollingChange = useCallback((scrolling: boolean) => {
-    const explorer = explorerRef.current;
-    if (!explorer) {
-      return;
-    }
-    if (statusSuppressionTimer.current) {
-      clearTimeout(statusSuppressionTimer.current);
-    }
-    if (scrolling) {
-      explorer.dataset.intervalScrolling = 'true';
-      return;
-    }
-    statusSuppressionTimer.current = setTimeout(() => {
-      delete explorer.dataset.intervalScrolling;
-    }, PAGE_STATUS_SCROLL_SETTLE_MS);
-  }, []);
+  const [intervalScrolling, setIntervalScrolling] = useState(false);
 
   const visualizedHypermedia = useMemo(
     () => filterHypermedia({ resources, pages, kinds: resourceKinds, query }),
@@ -160,38 +178,6 @@ export function HypermediaExplorer({
     setResources((current) => buildStableResources(neighborhoods, entities, current));
   }, [entities, neighborhoods]);
 
-  useEffect(
-    () => () => {
-      if (statusSuppressionTimer.current) {
-        clearTimeout(statusSuppressionTimer.current);
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const requestedResources = selectedResource
-      ? [...selectedResources, selectedResource]
-      : selectedResources;
-    if (requestedResources.length === 0) {
-      return;
-    }
-    setNeighborhoodRequests((current) => {
-      const requestedKeys = new Set(current.map(({ anchor }) => hypermediaResourceKey(anchor)));
-      const additional = requestedResources.filter((resource) => {
-        const key = hypermediaResourceKey(resource);
-        if (requestedKeys.has(key)) {
-          return false;
-        }
-        requestedKeys.add(key);
-        return true;
-      });
-      return additional.length > 0
-        ? [...current, ...additional.map((anchor) => ({ anchor }))]
-        : current;
-    });
-  }, [selectedResource, selectedResources]);
-
   const handleViewportSettled = useCallback(
     ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
       onVisibleResourcesChange(focus);
@@ -206,48 +192,62 @@ export function HypermediaExplorer({
       if (!boundaryAnchor || neighborhoodQueries.some(({ isPending }) => isPending)) {
         return;
       }
-      setNeighborhoodRequests((current) => {
-        const candidates = [
-          boundaryAnchor,
-          ...focus.filter(
-            (resource) => hypermediaResourceKey(resource) !== hypermediaResourceKey(boundaryAnchor),
-          ),
-        ];
-        const anchor = candidates.find((candidate) => {
-          const key = hypermediaResourceKey(candidate);
-          const matchingRequests = current.filter(
-            (request) => hypermediaResourceKey(request.anchor) === key,
-          );
-          const lastRequest = matchingRequests.at(-1);
-          const result = lastRequest
-            ? neighborhoodQueries[current.indexOf(lastRequest)]
-            : undefined;
-          return matchingRequests.length === 0 || Boolean(result?.data?.nextCursor);
-        });
-        if (!anchor) {
-          return current;
-        }
-        const anchorKey = hypermediaResourceKey(anchor);
-        const matching = current.flatMap((request) =>
-          hypermediaResourceKey(request.anchor) === anchorKey
-            ? [{ request, result: neighborhoodQueries[current.indexOf(request)] }]
-            : [],
+      const candidates = [
+        boundaryAnchor,
+        ...focus.filter(
+          (resource) => hypermediaResourceKey(resource) !== hypermediaResourceKey(boundaryAnchor),
+        ),
+      ];
+      const anchor = candidates.find((candidate) => {
+        const key = hypermediaResourceKey(candidate);
+        const matchingRequests = neighborhoodRequests.filter(
+          (request) => hypermediaResourceKey(request.anchor) === key,
         );
-        const nextCursor = matching.at(-1)?.result?.data?.nextCursor ?? undefined;
-        const next = { anchor, cursor: nextCursor };
-        return current.some((request) => requestKey(request) === requestKey(next))
-          ? current
-          : [...current, next];
+        const lastRequest = matchingRequests.at(-1);
+        const result = lastRequest
+          ? neighborhoodQueries[neighborhoodRequests.indexOf(lastRequest)]
+          : undefined;
+        return matchingRequests.length === 0 || Boolean(result?.data?.nextCursor);
       });
+      if (!anchor) {
+        return;
+      }
+      const anchorKey = hypermediaResourceKey(anchor);
+      const matching = neighborhoodRequests.flatMap((request) =>
+        hypermediaResourceKey(request.anchor) === anchorKey
+          ? [{ request, result: neighborhoodQueries[neighborhoodRequests.indexOf(request)] }]
+          : [],
+      );
+      const next: NeighborhoodRequest = {
+        anchor,
+        cursor: matching.at(-1)?.result?.data?.nextCursor ?? undefined,
+      };
+      setExploredNeighborhoodRequests((current) =>
+        appendNeighborhoodRequest({ current, request: next }),
+      );
     },
     [
       fetchNextEntityPage,
       hasNextEntityPage,
       isFetchingNextEntityPage,
       neighborhoodQueries,
+      neighborhoodRequests,
       onVisibleResourcesChange,
       resourceKinds,
     ],
+  );
+
+  const handleSelect = useCallback(
+    (nextSelection: HypermediaSelection) => {
+      const resource = resourceSelection(nextSelection);
+      if (resource) {
+        setExploredNeighborhoodRequests((current) =>
+          appendNeighborhoodRequest({ current, request: { anchor: resource } }),
+        );
+      }
+      onSelect(nextSelection);
+    },
+    [onSelect],
   );
 
   const neighborhoodError =
@@ -262,11 +262,7 @@ export function HypermediaExplorer({
     neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
     visualizedHypermedia.resources.some(({ key }) => !requestedAnchorKeys.has(key));
   return (
-    <div
-      ref={explorerRef}
-      className="group/hypermedia relative size-full min-h-[28rem]"
-      data-hypermedia-explorer
-    >
+    <div className="relative size-full min-h-[28rem]">
       {view === 'map' ? (
         <HypermediaCanvas
           key={query.trim().toLocaleLowerCase()}
@@ -275,10 +271,10 @@ export function HypermediaExplorer({
           month={month}
           selectedResources={visualizedSelectedResources}
           selectedKey={selectedKey}
-          onSelect={onSelect}
+          onSelect={handleSelect}
           onViewportSettled={handleViewportSettled}
           onMonthChange={onMonthChange}
-          onIntervalScrollingChange={handleIntervalScrollingChange}
+          onIntervalScrollingChange={setIntervalScrolling}
           canExplore={canExplore}
           isInitialLoading={
             visualizedHypermedia.resources.length === 0 &&
@@ -306,9 +302,9 @@ export function HypermediaExplorer({
           month={month}
           selectedResources={visualizedSelectedResources}
           selectedKey={selectedKey}
-          onSelect={onSelect}
+          onSelect={handleSelect}
           onMonthChange={onMonthChange}
-          onIntervalScrollingChange={handleIntervalScrollingChange}
+          onIntervalScrollingChange={setIntervalScrolling}
           onViewportSettled={handleViewportSettled}
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
@@ -319,6 +315,7 @@ export function HypermediaExplorer({
         view={view}
         pageCount={pages.length}
         loading={pagesLoading}
+        suppressed={intervalScrolling || pagesTransitioning}
         error={pagesError}
         hasNextPage={hasNextPage}
         referencesTruncated={pageReferencesTruncated}
@@ -333,6 +330,7 @@ export function HypermediaPageStatus({
   view,
   pageCount,
   loading,
+  suppressed,
   error,
   hasNextPage,
   referencesTruncated,
@@ -342,6 +340,7 @@ export function HypermediaPageStatus({
   view: HypermediaView;
   pageCount: number;
   loading: boolean;
+  suppressed: boolean;
   error: Error | null;
   hasNextPage: boolean;
   referencesTruncated: boolean;
@@ -371,8 +370,9 @@ export function HypermediaPageStatus({
   }
   return (
     <div
-      className="absolute right-4 bottom-4 z-20 flex items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur group-data-[interval-scrolling=true]/hypermedia:hidden"
+      className="absolute right-4 bottom-4 z-20 flex items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur"
       role={error ? 'alert' : 'status'}
+      hidden={suppressed}
     >
       {loading && <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />}
       <span>{message}</span>

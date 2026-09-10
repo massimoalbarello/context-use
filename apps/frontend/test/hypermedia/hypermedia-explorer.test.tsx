@@ -13,6 +13,7 @@ test('Map exposes the next page batch without hiding incomplete connections', as
       view="map"
       pageCount={32}
       loading={false}
+      suppressed={false}
       error={null}
       hasNextPage={true}
       referencesTruncated={true}
@@ -34,6 +35,7 @@ test('Timeline reports incomplete page connections without a manual paging actio
       view="timeline"
       pageCount={32}
       loading={false}
+      suppressed={false}
       error={null}
       hasNextPage={true}
       referencesTruncated={true}
@@ -44,4 +46,22 @@ test('Timeline reports incomplete page connections without a manual paging actio
 
   expect(screen.getByText('Some page connections are hidden.')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Load more pages' })).toBeNull();
+});
+
+test('Interval navigation suppresses stale page status until the next query settles', () => {
+  render(
+    <HypermediaPageStatus
+      view="map"
+      pageCount={0}
+      loading={false}
+      suppressed={true}
+      error={null}
+      hasNextPage={false}
+      referencesTruncated={false}
+      onRetry={() => undefined}
+      onLoadMore={() => undefined}
+    />,
+  );
+
+  expect(screen.queryByRole('status')).toBeNull();
 });
